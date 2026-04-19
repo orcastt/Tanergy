@@ -4,9 +4,14 @@ from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException
 from sqlalchemy import select
 
+import logging
+
+from app.core.config import settings
 from app.core.redis import redis_pool
 from app.models.otp import EmailOtp
 from app.services.email_service import send_otp_email
+
+logger = logging.getLogger(__name__)
 
 
 async def rate_limit_check(email: str) -> None:
@@ -40,8 +45,15 @@ async def create_otp(email: str, db) -> dict:
     db.add(otp)
     await db.commit()
 
-    await send_otp_email(email, code)
-    return {"message": "Verification code sent", "expires_in": 600}
+    if settings.RESEND_API_KEY:
+        await send_otp_email(email, code)
+    else:
+        logger.info("DEV MODE — OTP for %s: %s", email, code)
+
+    resp = {"message": "Verification code sent", "expires_in": 600}
+    if settings.APP_ENV == "development" and not settings.RESEND_API_KEY:
+        resp["dev_code"] = code
+    return resp
 
 
 async def verify_otp(email: str, code: str, db) -> bool:

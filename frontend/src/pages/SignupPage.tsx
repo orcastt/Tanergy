@@ -28,9 +28,10 @@ export default function SignupPage() {
     if (!isValidEmail) { setError("Please enter a valid email"); return }
     setError("")
     try {
-      await sendOtp(email)
+      const res = await sendOtp(email)
       setCodeSent(true)
       setCountdown(60)
+      if (res.dev_code) setCode(res.dev_code)
     } catch (e: any) {
       setError(e.response?.data?.detail || "Failed to send code")
     }

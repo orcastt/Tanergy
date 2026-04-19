@@ -20,6 +20,7 @@ class SendOtpRequest(BaseModel):
 class SendOtpResponse(BaseModel):
     message: str
     expires_in: int = 600
+    dev_code: str | None = None
 
 
 class VerifyOtpRequest(BaseModel):

@@ -15,4 +15,5 @@ export interface AuthResponse {
 export interface SendOtpResponse {
   message: string
   expiresIn: number
+  dev_code?: string
 }
