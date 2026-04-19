@@ -5,6 +5,8 @@ from alembic import context
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.core.config import settings
+from app.core.database import Base
+from app.models import *  # noqa: F401,F403 — ensure all models registered
 
 config = context.config
 if config.config_file_name is not None:
@@ -12,7 +14,7 @@ if config.config_file_name is not None:
 
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
-target_metadata = None
+target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:

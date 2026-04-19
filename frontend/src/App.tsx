@@ -9,6 +9,7 @@ import CanvasPage from "./pages/CanvasPage"
 import SettingsPage from "./pages/SettingsPage"
 import UpgradePage from "./pages/UpgradePage"
 import NotFoundPage from "./pages/NotFoundPage"
+import ProtectedRoute from "./components/ProtectedRoute"
 
 export default function App() {
   return (
@@ -17,10 +18,12 @@ export default function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/canvas/:id" element={<CanvasPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/upgrade" element={<UpgradePage />} />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/canvas/:id" element={<CanvasPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/upgrade" element={<UpgradePage />} />
+        </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
