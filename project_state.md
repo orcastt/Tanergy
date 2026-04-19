@@ -7,8 +7,8 @@
 
 ## 当前阶段
 
-**阶段**: 准备阶段（尚未写任何代码）
-**正在做**: 等待确认待确认事项，准备进入 Slice 0（项目脚手架）
+**阶段**: Phase 1 MVP 开发
+**正在做**: 准备进入 Slice 2（Dashboard + 工作流）
 
 **已完成**:
 - [x] PRD.md v0.3：视觉规范切换为 Cal.com 风格（灰度克制、阴影即边框、Cal Sans + Inter）
@@ -16,10 +16,10 @@
 - [x] reference/theme.ts：Cal.com 风格设计 Token（灰度色、11级阴影、Cal Sans 排版）
 - [x] reference/design-system.md：Cal.com 设计规范原文存档
 - [x] dev-plans/phase1-mvp.md：Phase 1 完整开发计划（10 个 Slice）
-- [x] .env.example：环境变量模板
-- [x] .gitignore：Git 忽略规则
+- [x] Slice 0：项目脚手架（Docker, FastAPI, Vite, Alembic）
+- [x] Slice 1：用户系统（Email OTP + Google OAuth + JWT + 路由守卫）
 
-**下一步**: 确认待确认事项（PRD §17）→ 开始 Slice 0
+**下一步**: Slice 2 — Dashboard + 工作流
 
 ---
 
@@ -57,8 +57,8 @@
 
 | Slice | 名称 | 状态 |
 |-------|------|------|
-| 0 | 项目脚手架 | ⬜ 未开始 |
-| 1 | 用户系统 | ⬜ 未开始 |
+| 0 | 项目脚手架 | ✅ 完成 |
+| 1 | 用户系统 | ✅ 完成 |
 | 2 | Dashboard + 工作流 | ⬜ 未开始 |
 | 3 | 画布核心 | ⬜ 未开始 |
 | 4 | 文本类节点 | ⬜ 未开始 |

@@ -9,8 +9,8 @@
 
 | # | 文件 | 名称 | 难度 | 预计 | 状态 |
 |---|------|------|------|------|------|
-| 0 | [slice-00-scaffold.md](slice-00-scaffold.md) | 项目脚手架 | 低 | 2天 | ⬜ |
-| 1 | [slice-01-auth.md](slice-01-auth.md) | 用户系统 | 中 | 3天 | ⬜ |
+| 0 | [slice-00-scaffold.md](slice-00-scaffold.md) | 项目脚手架 | 低 | 2天 | ✅ |
+| 1 | [slice-01-auth.md](slice-01-auth.md) | 用户系统 | 中 | 3天 | ✅ |
 | 2 | [slice-02-dashboard.md](slice-02-dashboard.md) | Dashboard + 工作流 | 中 | 2天 | ⬜ |
 | 3 | [slice-03-canvas.md](slice-03-canvas.md) | 画布核心 | 高 | 4天 | ⬜ |
 | 4 | [slice-04-text-nodes.md](slice-04-text-nodes.md) | 文本类节点 | 中 | 3天 | ⬜ |
