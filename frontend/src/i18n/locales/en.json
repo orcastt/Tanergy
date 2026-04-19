@@ -1,0 +1,55 @@
+{
+  "app": {
+    "name": "TANVAS",
+    "tagline": "AI Creative Workflow Canvas"
+  },
+  "nav": {
+    "skills": "Skills",
+    "settings": "Settings",
+    "upgrade": "Upgrade",
+    "logout": "Log out"
+  },
+  "auth": {
+    "login": "Log in",
+    "signup": "Sign up",
+    "email": "Email",
+    "sendCode": "Send code",
+    "codeSent": "Sent ({{seconds}}s)",
+    "verifyCode": "Verification code",
+    "loginWithGoogle": "Log in with Google",
+    "noAccount": "No account? Sign up",
+    "hasAccount": "Already have an account? Log in",
+    "welcome": "Welcome to TANVAS"
+  },
+  "dashboard": {
+    "title": "My Workflows",
+    "newWorkflow": "New Workflow",
+    "empty": "No workflows yet",
+    "emptyGuide": "Click 'New Workflow' to start your first AI creative process",
+    "delete": "Delete",
+    "deleteConfirm": "Are you sure you want to delete this workflow?"
+  },
+  "canvas": {
+    "addNode": "Add Node",
+    "searchNode": "Search nodes...",
+    "save": "Save",
+    "saving": "Saving...",
+    "saved": "Saved",
+    "unsaved": "Unsaved changes",
+    "run": "Run",
+    "runAll": "Run All",
+    "cancel": "Cancel"
+  },
+  "time": {
+    "remaining": "Time remaining",
+    "expired": "Weekly limit reached"
+  },
+  "common": {
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "close": "Close",
+    "download": "Download",
+    "copy": "Copy",
+    "copied": "Copied ✓"
+  }
+}
