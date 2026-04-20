@@ -1,6 +1,10 @@
 @import "tailwindcss";
 
-/* Cal Sans — display/heading font */
+/* ============================================
+   TANVAS — Cal.com Design System Base Styles
+   ============================================ */
+
+/* Cal Sans — Display/Heading font (SemiBold only) */
 @font-face {
   font-family: "Cal Sans";
   src: url("https://fonts.gstatic.com/s/calsans/v1.0.1/CalSans-SemiBold.woff2") format("woff2");
@@ -8,8 +12,8 @@
   font-display: swap;
 }
 
-/* Base styles — Cal.com design system */
-* {
+/* Reset */
+*, *::before, *::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -32,13 +36,94 @@ body {
   min-height: 100vh;
 }
 
-/* Headings — Cal Sans weight 600 */
-h1, h2, h3 {
+/* Typography System */
+h1, h2, h3, h4, h5, h6 {
   font-family: "Cal Sans", sans-serif;
   font-weight: 600;
+  letter-spacing: 0px;
 }
 
-/* Code — Roboto Mono */
 code, pre {
+  font-family: "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Form Elements — Cal.com style */
+input, textarea, select {
+  font-family: "Inter", sans-serif;
+  font-size: 1rem;
+  color: #242424;
+  outline: none;
+  transition: box-shadow 150ms ease;
+}
+
+input:focus, textarea:focus {
+  box-shadow: rgba(34, 42, 53, 0.08) 0px 0px 0px 1px, 0px 0px 0px 2px rgba(59, 130, 246, 0.3) !important;
+}
+
+/* Buttons */
+button {
+  font-family: "Inter", sans-serif;
+  cursor: pointer;
+  transition: opacity 150ms ease;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d4d4d4;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a3a3a3;
+}
+
+/* Utility */
+.font-display {
+  font-family: "Cal Sans", sans-serif;
+}
+
+.font-body {
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+.font-mono {
   font-family: "Roboto Mono", ui-monospace, monospace;
+}
+
+.shadow-card {
+  box-shadow: rgba(19, 19, 22, 0.7) 0px 1px 5px -4px,
+              rgba(34, 42, 53, 0.08) 0px 0px 0px 1px,
+              rgba(34, 42, 53, 0.05) 0px 4px 8px;
+}
+
+.shadow-card-hover {
+  box-shadow: rgba(19, 19, 22, 0.7) 0px 1px 5px -4px,
+              rgba(34, 42, 53, 0.08) 0px 0px 0px 1px,
+              rgba(34, 42, 53, 0.08) 0px 6px 12px;
+}
+
+.shadow-panel {
+  box-shadow: rgba(19, 19, 22, 0.7) 0px 1px 5px -4px,
+              rgba(34, 42, 53, 0.08) 0px 0px 0px 1px,
+              rgba(34, 42, 53, 0.08) 0px 8px 24px;
+}
+
+.shadow-modal {
+  box-shadow: rgba(19, 19, 22, 0.7) 0px 1px 5px -4px,
+              rgba(34, 42, 53, 0.10) 0px 0px 0px 1px,
+              rgba(34, 42, 53, 0.12) 0px 16px 48px;
+}
+
+.shadow-input {
+  box-shadow: rgba(34, 42, 53, 0.08) 0px 0px 0px 1px;
 }
