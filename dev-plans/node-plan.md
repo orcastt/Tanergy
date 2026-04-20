@@ -1,1303 +1,654 @@
-# TANGENT — 节点开发完整计划
+# TANGENT — 节点开发计划（聚焦公众号 Skill）
 
-**版本**: v1.0  
+**版本**: v2.0  
 **日期**: 2026-04-20  
-**状态**: 规划中
+**策略**: 所有开发围绕「公众号长文创作」Skill 打通，其余节点进 Backlog
 
 ---
 
-## 目录
+## 一、MVP 节点清单（公众号 Skill 必须）
 
-1. [端口数据格式规范](#1-端口数据格式规范)
-2. [节点全景图](#2-节点全景图)
-3. [每个节点详细说明](#3-每个节点详细说明)
-4. [编辑器型节点（特殊）](#4-编辑器型节点特殊)
-5. [Skills 详细规划](#5-skills-详细规划)
-6. [开发优先级与分期](#6-开发优先级与分期)
-7. [后端执行架构](#7-后端执行架构)
+共 **11 个节点**，按开发顺序排列：
+
+| # | 节点 | 类型 | 是否新建 | 依赖 |
+|---|------|------|---------|------|
+| 1 | `text_input` | 输入 | 改造现有 | — |
+| 2 | `research` | AI | 全新 | Tavily + Claude |
+| 3 | `outline_generator` | AI | 全新 | Claude |
+| 4 | `gate` | 交互 | 全新（架构创新） | 画布执行引擎 |
+| 5 | `writer` | AI | 全新 | Claude |
+| 6 | `reviewer` | AI | 全新 | Claude |
+| 7 | `image_planner` | AI | 全新 | Claude |
+| 8 | `image_gen` | AI | 简化现有 | Imagen 3 |
+| 9 | `image_gallery` | 展示 | 全新 | — |
+| 10 | `html_formatter` | 模板引擎 | 全新 | — |
+| 11 | `preview_wechat` | 输出 | 改造现有 | — |
 
 ---
 
-## 1. 端口数据格式规范
+## 二、画布核心（Slice 3，所有节点的前置）
 
-每个端口传递的是一个 **强类型 JSON 对象**，节点之间传递的是值的引用（URL），不传递二进制。
+**在写任何节点之前，必须先建好以下基础设施：**
 
-| 端口类型 | 颜色 | TypeScript 格式 | 说明 |
-|---------|------|----------------|------|
-| `prompt` | 🟣 紫 `#9333EA` | `string` | 提示词文本，可含 `{{variable}}` |
-| `text` | 🔵 蓝 `#3B82F6` | `string` (Markdown) | 普通文本/长文/摘要 |
-| `image` | 🟢 绿 `#22C55E` | `ImageAsset[]` | 图片数组，见下 |
-| `video` | 🟠 橙 `#F97316` | `VideoAsset` | 单个视频 |
-| `audio` | ⚪ 灰 `#A1A1AA` | `AudioAsset` | 单个音频 |
-| `search_result` | 🔴 红 `#EF4444` | `SearchResult[]` | 搜索结果列表 |
-| `structured` | 🟡 黄 `#EAB308` | `Record<string, unknown>` | 结构化 JSON，如大纲、配置 |
+### 2.1 节点状态机
+
+每个节点有 5 种状态：
+
+| 状态 | 边框颜色 | 触发条件 |
+|------|---------|---------|
+| `idle` | 默认（灰） | 初始 / 上游未完成 |
+| `running` | 蓝色脉冲 | 正在执行 |
+| `waiting` | 琥珀色脉冲 🆕 | Gate 节点专用，等待用户操作 |
+| `done` | 绿色（2s后恢复） | 执行成功 |
+| `error` | 红色 | 执行失败 |
+
+### 2.2 端口类型系统
+
+| 类型 | 颜色 | 数据格式 |
+|------|------|---------|
+| `text` | 🔵 蓝 | `string` |
+| `research_result` | 🟤 棕 | `ResearchResult` |
+| `outline_options` | 🟣 紫 | `OutlineOption[]` |
+| `image` | 🟢 绿 | `ImageAsset[]` |
+| `image_slot` | 🟢 绿（虚线边） | `ImageAsset \| null` |
+| `structured` | 🟡 黄 | `Record<string, unknown>` |
 
 ```typescript
-// 图片资产
+// 核心数据类型
 interface ImageAsset {
-  url: string           // MinIO 永久访问 URL
-  storage_path: string  // MinIO 内部路径（用于权限校验）
-  width?: number
-  height?: number
-  mime_type: string     // "image/png" | "image/jpeg" | "image/webp"
-  source?: string       // "midjourney" | "imagen" | "upload" | "generated"
-}
-
-// 视频资产
-interface VideoAsset {
   url: string
   storage_path: string
-  duration?: number     // 秒
   width?: number
   height?: number
-  fps?: number
-  mime_type: string     // "video/mp4"
-  source?: string       // "kling" | "seedance" | "upload"
+  mime_type: string
 }
 
-// 音频资产
-interface AudioAsset {
-  url: string
-  storage_path: string
-  duration?: number     // 秒
-  mime_type: string     // "audio/mpeg" | "audio/wav"
-  source?: string       // "minimax" | "tencent" | "upload"
+interface ResearchResult {
+  topic: string
+  collected_at: string
+  sources: { title: string; url: string; snippet: string }[]
+  summary: string        // Markdown 汇总
 }
 
-// 搜索结果
-interface SearchResult {
-  title: string
-  url: string
-  snippet: string
-  published_at?: string
-  source?: string       // "tavily" | "wechat_trending" | "xiaohongshu"
-}
-```
-
-**端口规则**：
-- 相同类型才可连接（`image` → `image`，`prompt` → `prompt`）
-- 一个输出端口可 fan-out 到多个输入（一对多）
-- 一个输入端口只接受一条连线（防数据覆盖）
-- 类型不匹配：端口高亮红色 + tooltip 「类型不匹配：xxx → yyy」
-
----
-
-## 2. 节点全景图
-
-### 分期总览
-
-| 阶段 | 节点 | 说明 |
-|------|------|------|
-| **MVP (Slice 3-7)** | Prompt, Text Input, Chat, Optimize, Search, Analysis, Image Upload, MJ V7, Imagen 3, Preview:WeChat, Preview:RED | 两个 Skill 跑通 |
-| **Phase 2** | Trending, Storyboard, Translate, Article, Seedream 5.0, Niji 7, Image Grid, Image Split, Image Compress, Background Remove, Export ZIP, Merge | 扩展生产力 |
-| **Phase 3** | Image Edit (Fabric.js), PPT (Reveal.js), HTML (Monaco), Video×8, Audio×3, 2D→3D, Publish:WeChat, Publish:RED | 编辑器型节点 + 发布 |
-| **Phase 4** | View Angle, Loop, Switch, Image Reference, Sora2, Wan2.x | 高级节点 |
-
-### 节点分类全图
-
-```
-📥 输入类 (Input)
-├── Text Input          [MVP]   — 纯文本输入框
-├── Prompt              [MVP]   — 提示词编辑器，支持 {{变量}}
-├── Image Upload        [MVP]   — 上传/粘贴图片
-├── Video Upload        [P3]    — 上传视频素材
-└── Audio Upload        [P3]    — 上传音频素材
-
-✍️ 文本/AI 类 (Text)
-├── Chat                [MVP]   — Claude LLM 对话生成
-├── Optimize            [MVP]   — Prompt 优化器
-├── Analysis            [MVP]   — 图像反推 Prompt + 描述
-├── Search              [MVP]   — Tavily 搜索
-├── Storyboard          [P2]    — 文本 → 分镜脚本列表
-├── Translate           [P2]    — 多语言翻译
-├── Article             [P2]    — 长文写作（含富文本编辑器）
-└── Trending            [P2]    — 热点爬取（微信/小红书/通用）
-
-🎨 图像生成类 (Image Gen)
-├── MJ V7               [MVP]   — Midjourney V7
-├── Imagen 3            [MVP]   — Google Imagen 3
-├── Seedream 5.0        [P2]    — 字节跳动图像模型
-└── Niji 7              [P2]    — Midjourney 动漫风格
-
-🖼️ 图像处理类 (Image Process)
-├── Image Edit          [P3]    — 内嵌 Fabric.js 画板（Inpaint/Outpaint）
-├── Background Remove   [P2]    — AI 抠图
-├── Image Grid          [P2]    — N 张图拼接成网格
-├── Image Split         [P2]    — 网格图拆分成 N 张
-├── Image Compress      [P2]    — 压缩/格式转换
-├── View Angle          [P4]    — 视角变换（透视旋转）
-└── Image Reference     [P4]    — 参考图透传（组织用）
-
-🎬 视频类 (Video) — Phase 3
-├── Kling 3.0           [P3]    — I2V / T2V
-├── Kling 3.0-Omni      [P3]    — 全能版（角色一致性）
-├── Seedance            [P3]    — 字节 I2V
-├── Vidu                [P3]    — I2V / T2V
-├── Wan2.6              [P3]    — 文生视频
-├── Wan2.7 I2V          [P3]    — 图生视频
-├── Sora2 Pro           [P4]    — OpenAI 视频
-├── Video Analysis      [P3]    — 视频内容理解
-├── Frame Extract       [P3]    — 视频抽帧 → 图片数组
-└── Video to GIF        [P3]    — 视频转 GIF
-
-🔊 音频类 (Audio) — Phase 3
-├── MiniMax Speech      [P3]    — 文字转语音
-├── Tencent Speech      [P3]    — 腾讯 TTS
-└── MiniMax Music       [P3]    — 音乐生成
-
-📊 输出/发布类 (Output)
-├── Preview: WeChat     [MVP]   — 公众号图文预览
-├── Preview: RED        [MVP]   — 小红书卡片预览
-├── PPT                 [P3]    — Reveal.js PPT 编辑器（开子窗口）
-├── HTML                [P3]    — Monaco 代码编辑器（开子窗口）
-├── Export ZIP          [P2]    — 打包下载
-├── Publish: WeChat     [P3]    — 推送到公众号草稿箱
-└── Publish: RED        [P3]    — 小红书发布辅助
-
-🔧 工具类 (Utility) — Phase 2+
-├── Note                [P2]    — 便利贴（画布注释，无 I/O）
-├── Merge               [P2]    — 合并多个同类输入
-├── Switch              [P4]    — 条件分支
-└── Loop                [P4]    — 数组遍历（并发或串行）
-```
-
----
-
-## 3. 每个节点详细说明
-
----
-
-### 📥 输入类节点
-
----
-
-#### `text_input` — Text Input
-**分期**: MVP · **计费**: 免费
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `out` | 输出 | `text` | `string` | — |
-
-**节点配置项（UI 内）**:
-- 多行文本框（自动高度，最大 300px）
-- 支持换行
-
-**说明**: 最简单的输入节点，给下游提供静态文本。与 Prompt 的区别：Text Input 输出 `text` 类型（给 Chat/Optimize 用），Prompt 输出 `prompt` 类型（专门给图像生成节点用）。
-
-**执行行为**: 直接透传文本值，不调用 API，瞬时完成。
-
----
-
-#### `prompt` — Prompt
-**分期**: MVP · **计费**: 免费
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `text_in` | 输入（可选） | `text` | `string` | 否 |
-| `out` | 输出 | `prompt` | `string` | — |
-
-**节点配置项**:
-- 多行 Prompt 编辑器（支持 `{{variable}}` 占位符）
-- 若有上游 `text` 输入，可在编辑器中用 `{{input}}` 引用
-
-**执行行为**: 将编辑器内容与上游 `text` 合并，输出最终 prompt 字符串。
-
----
-
-#### `image_upload` — Image Upload
-**分期**: MVP · **计费**: 免费
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `out` | 输出 | `image` | `ImageAsset[]` | — |
-
-**节点配置项**:
-- 拖拽/点击上传区，支持多文件
-- 支持格式：JPG / PNG / WebP
-- 单文件上限：20MB
-- 粘贴图片（Cmd/Ctrl+V）
-
-**执行行为**: 
-1. 用户拖入文件 → 立即上传到 MinIO → 获取永久 URL
-2. 输出 `ImageAsset[]`（含所有上传图片）
-
----
-
-#### `video_upload` — Video Upload
-**分期**: Phase 3 · **计费**: 免费
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `out` | 输出 | `video` | `VideoAsset` | — |
-
-**节点配置项**: 上传区（MP4 / MOV，≤500MB）
-
----
-
-#### `audio_upload` — Audio Upload
-**分期**: Phase 3 · **计费**: 免费
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `out` | 输出 | `audio` | `AudioAsset` | — |
-
-**节点配置项**: 上传区（MP3 / WAV / M4A，≤100MB）
-
----
-
-### ✍️ 文本/AI 类节点
-
----
-
-#### `chat` — Chat
-**分期**: MVP · **计费**: 按 Token（执行时长计量）
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `prompt` | 输入 | `prompt` | `string` | 否 |
-| `text` | 输入 | `text` | `string` | 否 |
-| `context` | 输入 | `search_result` | `SearchResult[]` | 否 |
-| `out` | 输出 | `text` | `string` (Markdown) | — |
-
-**节点配置项**:
-- `System Prompt`：多行文本框（可折叠），预置模板按钮
-- `Model`：下拉选择（claude-sonnet-4-6 / claude-haiku-4-5）
-- `Temperature`：滑块 0.0 ~ 1.0（默认 0.7）
-- `Max tokens`：数字输入（默认 4096）
-- `Streaming`：开关（默认开，开启时节点内实时显示生成文本）
-
-**执行行为**:
-1. 将 `prompt` + `text` + `context` 拼合为完整消息
-2. 调用 Claude API（流式 SSE）
-3. 节点内实时显示生成文本（Streaming 模式）
-4. 完成后输出完整 `text`
-
-**节点内显示**:
-- 执行中：滚动显示流式输出（最多显示最后 10 行）
-- 完成：折叠显示前 200 字 + 「展开全文」
-
----
-
-#### `optimize` — Optimize
-**分期**: MVP · **计费**: 按 Token
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `prompt` | 输入 | `prompt` | `string` | 否 |
-| `text` | 输入 | `text` | `string` | 否 |
-| `out` | 输出 | `prompt` | `string` | — |
-
-**节点配置项**:
-- `Mode`：下拉选择
-  - `Image Prompt`：优化为 AI 生图专用 Prompt（英文、精确、细节丰富）
-  - `Article Title`：优化为吸引人的文章标题
-  - `Social Copy`：优化为社交媒体文案
-  - `Custom`：自定义优化规则（显示文本框）
-- `Language`：保持原语言 / 强制英文 / 强制中文
-
-**执行行为**: 调用 Claude API，按模式对输入文本进行改写/扩写，输出优化后 `prompt`。
-
----
-
-#### `analysis` — Analysis
-**分期**: MVP · **计费**: 按 Token（Claude Vision）
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `image` | 输入 | `image` | `ImageAsset[]` | 是 |
-| `prompt_out` | 输出 | `prompt` | `string` | — |
-| `text_out` | 输出 | `text` | `string` | — |
-
-**节点配置项**:
-- `Task`：下拉
-  - `Reverse Prompt`：反推 Prompt（适合图生图参考）
-  - `Describe`：详细描述图片内容
-  - `Extract Text`：提取图中文字（OCR 增强）
-  - `Custom`：自定义分析问题
-- `Language`：中文 / English
-
-**执行行为**: 将图片 URL 发给 Claude Vision，按 Task 输出结构化分析结果。`prompt_out` 给图像生成节点用，`text_out` 给 Chat/Article 用。
-
----
-
-#### `search` — Search
-**分期**: MVP · **计费**: 按调用次数
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `query` | 输入（可选） | `prompt` 或 `text` | `string` | 否 |
-| `out` | 输出 | `search_result` | `SearchResult[]` | — |
-
-**节点配置项**:
-- `关键词`：文本框（若上游有连线则禁用，用上游值）
-- `平台`：下拉
-  - `通用搜索`（Tavily）[MVP]
-  - `微信热榜` [P2]
-  - `小红书热词` [P2]
-- `返回数量`：5 / 10 / 20（默认 10）
-- `时间范围`：不限 / 最近一周 / 最近一月
-
-**执行行为**: 调用 Tavily API，返回 `SearchResult[]`。
-
----
-
-#### `storyboard` — Storyboard
-**分期**: Phase 2 · **计费**: 按 Token
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `text` | 输入 | `text` | `string` | 是 |
-| `out` | 输出 | `structured` | `{ scenes: Scene[] }` | — |
-
-```typescript
-interface Scene {
-  index: number
-  title: string
-  description: string    // 场景描述（中文）
-  image_prompt: string   // 配图 Prompt（英文）
-  duration?: number      // 建议时长（秒，视频分镜用）
-}
-```
-
-**节点配置项**:
-- `场景数量`：3 / 5 / 8 / 10
-- `类型`：图文分镜 / 视频分镜 / PPT 大纲
-
-**执行行为**: 调用 Claude，将输入文本拆解为结构化分镜，输出 JSON。
-
----
-
-#### `translate` — Translate
-**分期**: Phase 2 · **计费**: 按 Token
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `text` | 输入 | `text` 或 `prompt` | `string` | 是 |
-| `out` | 输出 | `text` 或 `prompt` | `string` | — |
-
-**节点配置项**: `目标语言`（中文 / 英文 / 日文 / 其他）
-
----
-
-#### `article` — Article Writer
-**分期**: Phase 2 · **计费**: 按 Token  
-**特殊**: 输出可在节点内用 TipTap 富文本编辑器二次编辑
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `text` | 输入 | `text` | `string`（大纲或主题） | 是 |
-| `context` | 输入（可选） | `search_result` | `SearchResult[]` | 否 |
-| `images` | 输入（可选） | `image` | `ImageAsset[]` | 否 |
-| `html_out` | 输出 | `structured` | `{ html: string, markdown: string }` | — |
-
-**节点配置项**:
-- `文章风格`：深度解析 / 轻松科普 / 情感共鸣 / 干货清单
-- `字数目标`：1000 / 2000 / 3000 / 5000
-- `语言`：中文 / English
-
-**节点内编辑器**（Phase 2）:
-- AI 生成后在节点内嵌入一个小型 TipTap 编辑器（折叠/展开）
-- 可手动修改标题、段落
-- 修改后的内容作为最终输出
-
----
-
-#### `trending` — Trending
-**分期**: Phase 2 · **计费**: 按调用次数
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `out` | 输出 | `search_result` | `SearchResult[]` | — |
-
-**节点配置项**:
-- `平台`：微信热榜 / 小红书热词 / 微博热搜 / 抖音热点
-- `分类`：不限 / 科技 / 娱乐 / 财经 / 生活
-- `数量`：10 / 20 / 50
-
-**执行行为**: 爬取目标平台实时热榜，无输入依赖，直接输出热点列表。
-
----
-
-### 🎨 图像生成类节点
-
----
-
-#### `image_mj` — Midjourney V7
-**分期**: MVP · **计费**: 按次（~0.04 USD/张）
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `prompt` | 输入 | `prompt` | `string` | 是 |
-| `ref_image` | 输入（可选） | `image` | `ImageAsset[]` | 否 |
-| `out` | 输出 | `image` | `ImageAsset[]`（4张） | — |
-
-**节点配置项**:
-- `Prompt 补充`：文本框（追加到上游 Prompt 后）
-- `负向 Prompt`：`--no xxx`（折叠显示）
-- `比例`：1:1 / 16:9 / 9:16 / 4:3 / 3:4
-- `版本`：V7 / V6（默认 V7）
-- `风格化`：0 ~ 1000（默认 100）
-- `速度`：快速（Turbo）/ 标准 / 慢速（质量）
-- `种子`：数字输入（可选，折叠）
-
-**执行行为**:
-1. 将 prompt + 配置参数组合成 MJ 指令
-2. 调用 MJ API（webhook 轮询或 SSE）
-3. 生成过程节点显示进度百分比（0→25→50→75→100%）
-4. 完成后返回 4 张图 → 上传 MinIO → 输出 `ImageAsset[]`
-
-**节点内显示**:
-- 完成后：2×2 缩略图网格（每格可点击查看大图）
-- 点击单张图：大图浮层（含下载、设为封面、发送给图像编辑节点）
-- 「单独放大」按钮（调用 MJ Upscale）
-
----
-
-#### `image_imagen` — Imagen 3
-**分期**: MVP · **计费**: 按次
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `prompt` | 输入 | `prompt` | `string` | 是 |
-| `out` | 输出 | `image` | `ImageAsset[]` | — |
-
-**节点配置项**:
-- `Prompt 补充`：文本框
-- `生成数量`：1 / 2 / 4（默认 4）
-- `比例`：1:1 / 16:9 / 9:16 / 4:3
-- `负向 Prompt`：文本框（折叠）
-
-**执行行为**: 调用 Google Vertex AI Imagen 3 API，直接同步返回图片，上传 MinIO，输出 `ImageAsset[]`。
-
----
-
-#### `image_seedream` — Seedream 5.0
-**分期**: Phase 2 · **计费**: 按次
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `prompt` | 输入 | `prompt` | `string` | 是 |
-| `ref_image` | 输入（可选） | `image` | `ImageAsset[]` | 否 |
-| `out` | 输出 | `image` | `ImageAsset[]` | — |
-
-**节点配置项**: 比例 / 数量 / 风格 / 中文 Prompt 支持
-
-**说明**: 字节跳动图像模型，对中文 Prompt 友好，特别适合小红书/公众号配图风格。
-
----
-
-#### `image_niji` — Niji 7
-**分期**: Phase 2 · **计费**: 按次
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `prompt` | 输入 | `prompt` | `string` | 是 |
-| `out` | 输出 | `image` | `ImageAsset[]`（4张） | — |
-
-**节点配置项**: 同 MJ V7，但风格固定为动漫/插画风。
-
----
-
-### 🖼️ 图像处理类节点
-
----
-
-#### `image_edit` — Image Edit（编辑器型）
-**分期**: Phase 3 · **计费**: 按 API 调用  
-**特殊**: 双击节点打开 **Fabric.js 画板子窗口**
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `image` | 输入 | `image` | `ImageAsset[]` | 是 |
-| `prompt` | 输入（可选） | `prompt` | `string` | 否 |
-| `out` | 输出 | `image` | `ImageAsset[]`（编辑后） | — |
-
-**节点配置项（节点上）**:
-- `模式`：Inpaint（局部重绘）/ Outpaint（扩展画布）/ Erase（擦除）
-- `「打开编辑器」按钮`
-
-**子窗口（Fabric.js 画板）**:
-- 工具栏：画笔（遮罩）/ 橡皮 / 套索 / 撤销重做
-- 画布：显示输入图片，用户用画笔涂抹想要修改的区域（遮罩）
-- `Prompt`：描述想要生成的内容
-- `Run`：将原图 + 遮罩 + Prompt 发给后端调用 Inpaint API
-- 结果显示在子窗口内，可接受或重试
-- 「确认」：关闭子窗口，结果写入节点输出
-
----
-
-#### `image_bg_remove` — Background Remove
-**分期**: Phase 2 · **计费**: 按次
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `image` | 输入 | `image` | `ImageAsset[]` | 是 |
-| `out` | 输出 | `image` | `ImageAsset[]`（PNG 含透明通道） | — |
-
-**执行行为**: 调用 Remove.bg API 或本地模型（REMBG）。
-
----
-
-#### `image_grid` — Image Grid
-**分期**: Phase 2 · **计费**: 免费（本地处理）
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `images` | 输入 | `image` | `ImageAsset[]`（2~9张） | 是 |
-| `out` | 输出 | `image` | `ImageAsset[]`（1张合并图） | — |
-
-**节点配置项**:
-- `布局`：2×1 / 1×2 / 2×2 / 3×3 / 自动
-- `间距`：0 / 4 / 8 / 16 px
-- `背景色`：颜色选择器
-
-**执行行为**: 后端用 Pillow 将多张图拼接成网格。
-
----
-
-#### `image_split` — Image Split
-**分期**: Phase 2 · **计费**: 免费
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `image` | 输入 | `image` | `ImageAsset[]`（1张） | 是 |
-| `out` | 输出 | `image` | `ImageAsset[]`（N张） | — |
-
-**节点配置项**: `切割方式`：2×2 / 3×3 / 4×4 / 自定义行列
-
----
-
-#### `image_compress` — Image Compress
-**分期**: Phase 2 · **计费**: 免费
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `image` | 输入 | `image` | `ImageAsset[]` | 是 |
-| `out` | 输出 | `image` | `ImageAsset[]`（压缩后） | — |
-
-**节点配置项**: `质量`（10~100，默认 80）/ `格式`（保持原格式 / 强制 WebP / 强制JPG）/ `最大边长`（不限 / 1024 / 2048 / 4096）
-
----
-
-#### `image_view_angle` — View Angle
-**分期**: Phase 4 · **计费**: 按次
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `image` | 输入 | `image` | `ImageAsset[]` | 是 |
-| `prompt` | 输入（可选） | `prompt` | `string` | 否 |
-| `out` | 输出 | `image` | `ImageAsset[]` | — |
-
-**节点配置项**: `视角变换`：俯视 / 仰视 / 左侧 / 右侧 / 正面 / 自定义
-
----
-
-#### `image_reference` — Image Reference
-**分期**: Phase 4 · **计费**: 免费
-
-透传节点，用于画布上组织多个参考图来源，集中输出给生成节点。
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `in_1` | 输入 | `image` | `ImageAsset[]` | 否 |
-| `in_2` | 输入 | `image` | `ImageAsset[]` | 否 |
-| `in_3` | 输入 | `image` | `ImageAsset[]` | 否 |
-| `out` | 输出 | `image` | `ImageAsset[]`（合并） | — |
-
----
-
-### 🎬 视频类节点（Phase 3）
-
----
-
-#### `video_kling` — Kling 3.0
-**分期**: Phase 3 · **计费**: 按次（按时长）
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `prompt` | 输入 | `prompt` | `string` | 是 |
-| `image` | 输入（可选） | `image` | `ImageAsset[]`（首帧参考） | 否 |
-| `out` | 输出 | `video` | `VideoAsset` | — |
-
-**节点配置项**:
-- `模式`：文生视频(T2V) / 图生视频(I2V)
-- `时长`：5s / 10s
-- `比例`：16:9 / 9:16 / 1:1
-- `运动幅度`：低 / 中 / 高
-- `摄像机运动`：静止 / 推进 / 拉远 / 左移 / 右移 / 旋转
-
-**执行行为**: 调用 Kling API，异步等待（5-10分钟），进度轮询。
-
----
-
-#### `video_kling_omni` — Kling 3.0-Omni
-**分期**: Phase 3 · **计费**: 按次
-
-与 Kling 3.0 类似，额外输入端口：
-- `character_image`：角色参考图（保持角色一致性）
-- `voice_audio`：配音文件
-
----
-
-#### `video_seedance` — Seedance
-**分期**: Phase 3 · **计费**: 按次
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `prompt` | 输入 | `prompt` | `string` | 是 |
-| `image` | 输入（可选） | `image` | `ImageAsset[]` | 否 |
-| `out` | 输出 | `video` | `VideoAsset` | — |
-
----
-
-#### `video_wan26` — Wan2.6（文生视频）
-**分期**: Phase 3 · **计费**: 按次
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `prompt` | 输入 | `prompt` | `string` | 是 |
-| `out` | 输出 | `video` | `VideoAsset` | — |
-
----
-
-#### `video_wan27_i2v` — Wan2.7 I2V（图生视频）
-**分期**: Phase 3 · **计费**: 按次
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `image` | 输入 | `image` | `ImageAsset[]`（首帧） | 是 |
-| `prompt` | 输入（可选） | `prompt` | `string` | 否 |
-| `out` | 输出 | `video` | `VideoAsset` | — |
-
----
-
-#### `video_analysis` — Video Analysis
-**分期**: Phase 3 · **计费**: 按 Token
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `video` | 输入 | `video` | `VideoAsset` | 是 |
-| `out` | 输出 | `text` | `string`（分析报告） | — |
-
-**节点配置项**: `分析维度`：内容描述 / 情感分析 / 关键帧摘要 / 字幕提取
-
----
-
-#### `video_frame_extract` — Frame Extract
-**分期**: Phase 3 · **计费**: 免费（后端处理）
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `video` | 输入 | `video` | `VideoAsset` | 是 |
-| `out` | 输出 | `image` | `ImageAsset[]`（N帧） | — |
-
-**节点配置项**: `抽帧方式`：等间距（N帧）/ 关键帧 / 固定时间点
-
----
-
-#### `video_to_gif` — Video to GIF
-**分期**: Phase 3 · **计费**: 免费
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `video` | 输入 | `video` | `VideoAsset` | 是 |
-| `out` | 输出 | `image` | `ImageAsset[]`（GIF 作为 image 处理） | — |
-
-**节点配置项**: `帧率`：10 / 15 / 24 FPS / `分辨率`：原始 / 720p / 480p / `裁剪`：起止时间（秒）
-
----
-
-### 🔊 音频类节点（Phase 3）
-
----
-
-#### `audio_minimax_speech` — MiniMax Speech
-**分期**: Phase 3 · **计费**: 按字数
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `text` | 输入 | `text` | `string` | 是 |
-| `out` | 输出 | `audio` | `AudioAsset` | — |
-
-**节点配置项**:
-- `声音`：下拉选择（预置多个中文/英文声线，可预听）
-- `语速`：0.5x ~ 2.0x
-- `格式`：MP3 / WAV
-
----
-
-#### `audio_tencent_speech` — Tencent Speech
-**分期**: Phase 3 · **计费**: 按字数
-
-同 MiniMax Speech，调用腾讯云 TTS API。
-
----
-
-#### `audio_minimax_music` — MiniMax Music
-**分期**: Phase 3 · **计费**: 按次
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `prompt` | 输入（可选） | `prompt` | `string`（音乐描述） | 否 |
-| `out` | 输出 | `audio` | `AudioAsset` | — |
-
-**节点配置项**: `风格`：流行 / 古典 / 电子 / 爵士 / 纯器乐 / `时长`：15s / 30s / 60s
-
----
-
-### 📊 输出/发布类节点
-
----
-
-#### `preview_wechat` — Preview: WeChat
-**分期**: MVP · **计费**: 免费
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `text` | 输入 | `text` | `string` (Markdown/HTML) | 是 |
-| `images` | 输入（可选） | `image` | `ImageAsset[]` | 否 |
-
-**节点内显示**:
-- 模拟公众号图文渲染（白底、黑字、居中图片、H2 小标题）
-- 「复制 HTML」按钮 → 复制可粘贴进微信编辑器的 HTML
-- 「下载配图」按钮 → 触发 ZIP 下载
-- 「全屏预览」按钮 → 浮层大图预览
-
----
-
-#### `preview_red` — Preview: RED
-**分期**: MVP · **计费**: 免费
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `text` | 输入 | `text` | `string` | 是 |
-| `images` | 输入（可选） | `image` | `ImageAsset[]` | 否 |
-
-**节点内显示**:
-- 模拟小红书卡片（白底红边、图片轮播、标题+正文+话题标签）
-- 「复制文案」按钮（复制标题+正文+话题标签）
-- 「下载图片」按钮（ZIP）
-- 「全屏预览」
-
----
-
-#### `ppt` — PPT（编辑器型）
-**分期**: Phase 3 · **计费**: 按 Token（生成阶段）  
-**特殊**: 双击节点打开 **Reveal.js 幻灯片编辑器子窗口**
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `structured` | 输入（可选） | `structured` | `{ outline: string[], images?: ImageAsset[] }` | 否 |
-| `text` | 输入（可选） | `text` | `string`（大纲文字） | 否 |
-| `images` | 输入（可选） | `image` | `ImageAsset[]` | 否 |
-| `html_out` | 输出 | `structured` | `{ html: string, slides: Slide[] }` | — |
-
-```typescript
-interface Slide {
-  index: number
-  title: string
-  content: string     // Markdown
-  image_url?: string
-  layout: "title" | "content" | "image-left" | "image-right" | "blank"
-}
-```
-
-**执行行为（首次 Run）**:
-1. 调用 Claude，将大纲/文本自动生成 Reveal.js HTML
-2. 节点显示幻灯片数量和「打开编辑器」按钮
-
-**子窗口（Reveal.js 编辑器）**:
-- 左侧：幻灯片列表（缩略图，可拖拽排序）
-- 中间：Reveal.js 实时预览
-- 右侧：当前幻灯片编辑（标题、内容、图片、布局）
-- 工具栏：添加幻灯片、删除、主题切换（Black/White/Night/Solarized）
-- 「导出 HTML」：生成自包含 HTML 文件下载
-- 「导出 PDF」：调用 print 打印为 PDF（Phase 4）
-
----
-
-#### `html_node` — HTML
-**分期**: Phase 3 · **计费**: 按 Token（生成阶段）  
-**特殊**: 双击节点打开 **Monaco 代码编辑器子窗口**
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `text` | 输入（可选） | `text` | `string` | 否 |
-| `prompt` | 输入（可选） | `prompt` | `string` | 否 |
-| `images` | 输入（可选） | `image` | `ImageAsset[]` | 否 |
-| `html_out` | 输出 | `structured` | `{ html: string }` | — |
-
-**执行行为（首次 Run）**:
-1. 调用 Claude，将 prompt/text 转换为 HTML 代码
-2. 节点显示 HTML 代码片段预览和「打开编辑器」按钮
-
-**子窗口（Monaco 编辑器）**:
-- 左侧：Monaco Editor（语法高亮、代码补全）
-- 右侧：实时 iframe 预览（debounce 500ms）
-- 工具栏：格式化、AI 修改（输入需求 → Claude 改代码）、复制、下载 .html
-
----
-
-#### `export_zip` — Export ZIP
-**分期**: Phase 2 · **计费**: 免费
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `images` | 输入（可选） | `image` | `ImageAsset[]` | 否 |
-| `videos` | 输入（可选） | `video` | `VideoAsset` | 否 |
-| `text` | 输入（可选） | `text` | `string` | 否 |
-
-**执行行为**: 后端将所有输入文件打包为 ZIP，生成临时下载链接，节点内显示「立即下载」按钮。
-
----
-
-#### `publish_wechat` — Publish: WeChat
-**分期**: Phase 3 · **计费**: 免费
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `text` | 输入 | `text` | `string`（HTML） | 是 |
-| `images` | 输入（可选） | `image` | `ImageAsset[]` | 否 |
-
-**节点配置项**:
-- 微信公众号绑定（引导用户在设置中完成 OAuth 授权）
-- `发布为`：草稿 / 直接发布
-
-**执行行为**: 调用微信公众号 API，将文章保存为草稿或直接发布。
-
----
-
-#### `publish_red` — Publish: RED（小红书）
-**分期**: Phase 3 · **计费**: 免费
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `text` | 输入 | `text` | `string` | 是 |
-| `images` | 输入（可选） | `image` | `ImageAsset[]` | 否 |
-
-**注意**: 小红书无官方 API，Phase 3 方案为：
-1. 格式化文案 + 图片供用户手动发布
-2. 可能通过浏览器扩展自动填写（研究中）
-
----
-
-### 🔧 工具类节点
-
----
-
-#### `note` — Note（便利贴）
-**分期**: Phase 2 · **计费**: 免费  
-**特殊**: 无端口，仅用于画布注释
-
-**节点配置项**: 多行文本编辑器 / 背景色选择（黄/蓝/绿/粉/白）/ 字体大小
-
----
-
-#### `merge` — Merge
-**分期**: Phase 2 · **计费**: 免费
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `in_1` | 输入 | `image` 或 `text` | 任意 | 否 |
-| `in_2` | 输入 | 同 in_1 类型 | 任意 | 否 |
-| `in_3` | 输入 | 同 in_1 类型 | 任意 | 否 |
-| `out` | 输出 | 同输入类型 | 合并后数组 | — |
-
-**说明**: 将多条同类型连线合并为一个数组输出，常用于把多个图像生成节点的结果汇聚给 Grid/Export。
-
----
-
-#### `switch` — Switch（条件分支）
-**分期**: Phase 4 · **计费**: 免费
-
-| 端口 | 方向 | 类型 | 数据格式 | 必填 |
-|------|------|------|---------|------|
-| `in` | 输入 | 任意 | 任意 | 是 |
-| `out_true` | 输出 | 任意 | 同输入 | — |
-| `out_false` | 输出 | 任意 | 同输入 | — |
-
-**节点配置项**: `条件表达式`（简单 JS-like 语法：如 `input.length > 3`）
-
----
-
-#### `loop` — Loop
-**分期**: Phase 4 · **计费**: 免费（执行内部节点计费）
-
-输入一个数组，对每个元素执行内嵌子工作流，输出结果数组。（实现较复杂，Phase 4）
-
----
-
-## 4. 编辑器型节点（特殊）
-
-以下节点双击后打开子窗口编辑器，编辑完成后结果写回节点输出。
-
-| 节点 | 触发方式 | 编辑器 | 输出 |
-|------|---------|--------|------|
-| `image_edit` | 双击 or「打开编辑器」按钮 | Fabric.js 画板（全屏/侧拉） | 编辑后图片 |
-| `ppt` | 双击 or「打开编辑器」按钮 | Reveal.js 幻灯片编辑器 | HTML/Slide JSON |
-| `html_node` | 双击 or「打开编辑器」按钮 | Monaco 代码编辑器 + iframe 预览 | HTML string |
-| `article` | 「展开编辑」按钮（节点内） | TipTap 富文本（内嵌，可展开） | Markdown/HTML |
-
-### 子窗口实现方案
-
-```
-CanvasPage
-  └── NodeEditModal（全屏遮罩，z-index 1000）
-       ├── FabricEditor.tsx        — image_edit
-       ├── RevealEditor.tsx        — ppt
-       ├── MonacoHTMLEditor.tsx    — html_node
-       └── TipTapArticleEditor.tsx — article（内嵌在节点内）
-```
-
-- 子窗口通过 `useEditorStore` 全局状态控制开关
-- 关闭子窗口时，将编辑结果写入对应节点的 `outputData`
-- 写入后触发节点「已完成」状态，下游节点可取用
-
----
-
-## 5. Skills 详细规划
-
-Skills = 一键生成完整节点链路的模板系统。
-
-### Skill 数据结构
-
-```typescript
-interface SkillDef {
+interface OutlineOption {
   id: string
-  name: string            // "小红书图文笔记"
-  name_en: string         // "Xiaohongshu Post"
-  description: string
-  icon: string            // material icon name
-  category: "social" | "content" | "design" | "video" | "custom"
-  phase: "mvp" | "p2" | "p3"
-  config_schema: ConfigField[]     // 配置弹窗字段定义
-  node_template: NodeTemplate[]    // 生成的节点定义
-  edge_template: EdgeTemplate[]    // 生成的连线定义
+  title: string          // 文章标题
+  angle: string          // 切入角度
+  pros: string[]
+  cons: string[]
+  sections: { heading: string; word_count: number }[]
 }
 ```
 
----
+### 2.3 执行引擎
 
-### Skill 1：小红书图文笔记 🔴（MVP 优先级 P0）
+- DAG 拓扑排序
+- 同层节点并发执行
+- **Gate 节点遇到 `waiting` 状态时，暂停整条下游链**，上游其他分支继续
+- WebSocket 推送节点状态变更
+- 执行时长计量（写入 execution_logs）
 
-**链路**:
-```
-[Search: 热点]──●──→[Chat: 文案]──●──→[Preview: RED]
-                                  │
-                           [Optimize]──●──→[Image: MJ V7 ×N]──●──┘
-```
+### 2.4 画布交互
 
-**配置弹窗**:
-| 字段 | 类型 | 必填 | 默认 |
-|------|------|------|------|
-| 主题 | 文本框 | ✅ | — |
-| 类型 | 单选：种草 / 教程 / 好物 / 生活 | ❌ | 种草推荐 |
-| 图片数量 | 单选：1 / 3 / 6 / 9 | ❌ | 6 |
-| 图片比例 | 单选：1:1 / 3:4 | ❌ | 3:4 |
-| 文案风格 | 单选：活泼可爱 / 简约高级 / 专业测评 | ❌ | 活泼可爱 |
-| 生图模型 | 单选：MJ V7 / Imagen 3 | ❌ | MJ V7 |
-
-**Chat 节点 System Prompt（预填）**:
-```
-你是专业的小红书内容创作者。根据输入主题和搜索热点，生成一篇小红书笔记。
-格式要求：
-- 标题：≤20字，含emoji，吸引人
-- 正文：100-500字，口语化，含2-3个分段
-- emoji：每段至少1个
-- 话题标签：3-8个，格式 #话题
-风格：{{文案风格}}
-```
-
-**Optimize 节点配置（预填）**: Mode = `Image Prompt`，Language = 英文
-
-**生成图片数量**: 根据用户选择的图片数量，生成对应数量的 Image 节点（并联执行）
-
-**验收标准**:
-- Preview:RED 内显示小红书样式卡片
-- 文案含标题 + 正文 + ≥3 emoji + 3-8 话题标签
-- 「复制文案」一键复制
-- 「下载图片」ZIP 下载
+- 双击空白 → NodePicker 弹窗（从节点列表添加）
+- 端口拖拽连线 → 类型校验（不匹配显示红色 tooltip）
+- Cmd+S 保存 → graph_json 写入后端
+- Cmd+Z / Cmd+Shift+Z 撤销重做（50步）
+- Fit View / Zoom 控制
 
 ---
 
-### Skill 2：公众号长文创作 📱（MVP 优先级 P0）
-
-**链路**:
-```
-[Search]──●──→[Chat: 大纲]──●──→[Chat: 正文]──●──→[Preview: WeChat]
-                                             │
-                                      [Optimize]──●──→[Image ×N]──●──┘
-```
-
-**配置弹窗**:
-| 字段 | 类型 | 必填 | 默认 |
-|------|------|------|------|
-| 主题关键词 | 文本框 | ✅ | — |
-| 文章风格 | 单选：深度解析 / 轻松科普 / 情感共鸣 / 干货清单 | ❌ | 干货清单 |
-| 配图数量 | 单选：1 / 3 / 5 | ❌ | 3 |
-| 配图风格 | 单选：写实 / 插画 / 简约 | ❌ | 写实 |
-| 生图模型 | 单选：MJ V7 / Imagen 3 | ❌ | MJ V7 |
-
-**Chat:大纲 System Prompt（预填）**:
-```
-你是资深公众号编辑。根据搜索热点，生成一篇{{文章风格}}公众号文章的大纲。
-格式：
-- 标题（20-30字）
-- 引言思路（2句）
-- H2 小标题 × 4-6 个（每个含要点说明）
-- 结语思路
-```
-
-**Chat:正文 System Prompt（预填）**:
-```
-根据以下大纲，撰写完整公众号文章正文。
-要求：2000-5000字，{{文章风格}}，含配图说明（写[图片N]表示配图位置），结尾有互动引导。
-```
-
-**验收标准**:
-- Preview:WeChat 内显示公众号样式
-- 文章 2000-5000 字，≥3 H2 标题
-- 「复制 HTML」可粘贴进微信编辑器
-- 配图数量与配置一致
+## 三、11 个节点详细规范
 
 ---
 
-### Skill 3：PPT 一键生成 📊（Phase 3）
+### 节点 1：`text_input` — 文本输入
 
-**链路**:
-```
-[Text Input: 主题]──●──→[Chat: PPT大纲]──●──→[PPT 节点（子编辑器）]
-                                         │
-                                  [Image ×N]──●──┘
-```
+**改造现有** · 计费: 免费
 
-**配置弹窗**:
-| 字段 | 类型 | 必填 | 默认 |
-|------|------|------|------|
-| 演讲主题 | 文本框 | ✅ | — |
-| 幻灯片数量 | 单选：8 / 12 / 16 / 20 | ❌ | 12 |
-| 风格 | 单选：商务 / 学术 / 创意 / 极简 | ❌ | 商务 |
-| 语言 | 单选：中文 / English | ❌ | 中文 |
-| 是否含图 | 开关 | ❌ | 开 |
+**端口**
+
+| ID | 方向 | 类型 | 必填 |
+|----|------|------|------|
+| `out` | 输出 | `text` | — |
+
+**配置项**
+- 多行文本框（自动高度）
+- Label 可自定义（默认「Text Input」）
+
+**执行行为**: 透传文本，不调 API，瞬时完成。
 
 ---
 
-### Skill 4：视频脚本 + 分镜图 🎬（Phase 3）
+### 节点 2：`research` — 深度调研
 
-**链路**:
+**全新** · 计费: 按调用次数（每轮搜索计 1 次）
+
+**端口**
+
+| ID | 方向 | 类型 | 必填 |
+|----|------|------|------|
+| `query` | 输入 | `text` | 是 |
+| `out` | 输出 | `research_result` | — |
+
+**配置项**
+- `搜索轮次`: 3 / 5 / 8（默认 5）
+- `时间范围`: 不限 / 最近一月 / 最近三月
+
+**执行行为**
+1. Claude 将输入关键词拆解为 N 个不同角度的 query
+2. 并发调用 Tavily，N 轮搜索
+3. Claude 汇总去重，标注信源，生成 `ResearchResult`
+
+**节点显示（完成后）**
 ```
-[Text Input: 主题]──●──→[Chat: 脚本]──●──→[Storyboard]──●──→[Image ×N（每个分镜）]
-                                                        │
-                                                [Preview: 脚本预览]
+🔍 Research                    ✓
+搜索 5 轮 · 引用 12 个信源
+─────────────────────────────
+[摘要前2行...]         [全文 ↗]
 ```
 
 ---
 
-### Skill 5：品牌全案设计 🎨（Phase 3）
+### 节点 3：`outline_generator` — 选题生成器
 
-**链路**:
+**全新** · 计费: 按 Token
+
+**端口**
+
+| ID | 方向 | 类型 | 必填 |
+|----|------|------|------|
+| `brief` | 输入 | `text` | 是 |
+| `research` | 输入 | `research_result` | 是 |
+| `out` | 输出 | `outline_options` | — |
+
+**配置项**
+- `选题数量`: 3 / 4（默认 3）
+
+**执行行为**
+调用 Claude，输出 N 个 `OutlineOption`（含标题、角度、优劣势、章节大纲）。
+
+**节点显示（完成后）**
 ```
-[Text Input: 品牌名/定位]──●──→[Chat: 品牌策略]──●──→[Optimize ×3 风格]──●──→[Image ×9 素材]
-                                                                              │
-                                                                   [Image Grid]──●──→[Export ZIP]
-```
-
----
-
-### Skill 6：小红书热点追踪 🔥（Phase 2）
-
-**链路**:
-```
-[Trending: 小红书]──●──→[Chat: 选题分析]──●──→[Chat: 笔记文案]──●──→[Preview: RED]
-                    │                                           │
-                    └──→[Optimize]──●──→[Image ×N]──●──────────┘
-```
-
----
-
-### Skills 面板 UI
-
-```
-┌─────────────────────────────────────────┐
-│ ✨ Skills                           [X] │
-├─────────────────────────────────────────┤
-│ [社交媒体] [内容创作] [设计] [视频]       │
-├─────────────────────────────────────────┤
-│  ┌──────────────────────────────────┐  │
-│  │ 🔴 小红书图文笔记          [MVP] │  │
-│  │ 一键生成完整小红书笔记链路        │  │
-│  │                          [使用→] │  │
-│  └──────────────────────────────────┘  │
-│  ┌──────────────────────────────────┐  │
-│  │ 📱 公众号长文创作          [MVP] │  │
-│  │ 搜索热点→撰文→配图→预览          │  │
-│  │                          [使用→] │  │
-│  └──────────────────────────────────┘  │
-└─────────────────────────────────────────┘
+📑 Outline Generator           ✓
+生成 3 个选题方向
+─────────────────────────────
+A. [标题A]
+B. [标题B]
+C. [标题C]
 ```
 
 ---
 
-## 6. 开发优先级与分期
+### 节点 4：`gate` — 人工决策门 ⭐ 架构核心
 
-### Slice 3 — 画布核心（优先级 🔥🔥🔥）
+**全新** · 计费: 免费  
+**唯一会暂停画布执行的节点**
 
-**目标**: 让节点能在画布上拖拽、连线、执行，建立节点状态机。
+**端口**
 
-**前端任务**:
-- [ ] NodeBase 完善：端口点击拖线、hover 放大、类型标识颜色
-- [ ] 连线 (Edge)：类型校验、颜色按端口类型、点击选中删除
-- [ ] 节点状态机：`idle → running → done / error`，边框颜色动画
-- [ ] 双击画布打开 NodePicker
-- [ ] NodePicker：搜索、分类 Tab、点击添加节点到画布
-- [ ] 节点内 Run 按钮：触发执行、可取消
-- [ ] Toolbar：Run All、Fit View、Zoom In/Out、Undo/Redo
-- [ ] canvasStore：完善 undo/redo（50步），节点数据更新
-- [ ] 工作流 Cmd+S 保存
+| ID | 方向 | 类型 | 说明 |
+|----|------|------|------|
+| `options_in` | 输入 | `outline_options` | select 模式专用 |
+| `text_in` | 输入 | `text` | input 模式专用（素材清单） |
+| `out` | 输出 | `text` | 用户选择/输入的内容 |
 
-**后端任务**:
-- [ ] `POST /workflows/{id}/execute` 接口（接受 node_id 或 "all"）
-- [ ] DAG 解析，拓扑排序执行
-- [ ] WebSocket (`/ws/execution/{job_id}`)：推送节点状态变更事件
-- [ ] 执行时长计量（写入 execution_logs）
+**配置项**
+- `Mode`: `select`（选择门）/ `input`（输入门）
+- `Title`: 临时节点的标题文字
 
----
-
-### Slice 4 — 文本类节点（优先级 🔥🔥）
-
-**节点**: `text_input` / `prompt` / `chat` / `optimize` / `search` / `analysis`
-
-**前端任务**:
-- [ ] 每个节点的 React 组件（配置 UI + 结果显示）
-- [ ] Chat 节点流式文本显示（SSE → 逐字渲染）
-- [ ] Search 节点：结果列表（标题+摘要+链接，可折叠）
-- [ ] Analysis 节点：图片预览 + 分析结果显示
-
-**后端任务**:
-- [ ] Claude API 集成（chat / optimize / analysis / streaming）
-- [ ] Tavily API 集成（search）
-- [ ] 每个节点类型的 executor 函数
-
----
-
-### Slice 5 — 图像节点（优先级 🔥🔥）
-
-**节点**: `image_upload` / `image_mj` / `image_imagen`
-
-**前端任务**:
-- [ ] image_upload：拖拽上传、多文件、粘贴、进度条
-- [ ] image_mj / image_imagen：配置 UI、2×2 图片网格显示
-- [ ] 图片大图浮层（点击缩略图 → 全屏查看 → 下载按钮）
-- [ ] 图片发送到其他节点（右键菜单 → 「发送到...」）
-
-**后端任务**:
-- [ ] MinIO 上传接口（`POST /assets/upload`）
-- [ ] MJ API 集成（webhook 回调 → 轮询状态）
-- [ ] Imagen 3 API 集成（Vertex AI）
-- [ ] 生成图片自动存入 assets 表
-
----
-
-### Slice 6 — 执行引擎完善（优先级 🔥🔥）
-
-- [ ] 并发控制（同层节点并发，不超过 10 个并发）
-- [ ] 全局 Run All 按钮（顶栏）
-- [ ] 部分失败处理：下游暂停，其他分支继续
-- [ ] 执行时长实时显示（顶栏倒计时）
-- [ ] 时长耗尽：按钮置灰 + 升级弹窗
-
----
-
-### Slice 7 — Skills 系统（优先级 🔥🔥🔥）
-
-- [ ] Skills 面板（左侧，滑入）
-- [ ] SkillDef 数据结构 + 2个内置 Skill
-- [ ] 配置弹窗（按 config_schema 动态渲染）
-- [ ] 节点生成动画（1.5s，节点逐个出现）
-- [ ] Preview:WeChat 节点完整实现
-- [ ] Preview:RED 节点完整实现
-- [ ] 下载 ZIP（后端打包接口）
-
----
-
-### Phase 2 节点（Slice 10-12，Phase 2）
-
-| 节点 | 优先级 | 依赖 |
-|------|--------|------|
-| Trending | P0 | Tavily + 热榜爬虫 |
-| Storyboard | P1 | Chat 节点 |
-| Seedream 5.0 | P0 | Seedream API |
-| Niji 7 | P1 | MJ API |
-| Image Grid | P1 | Pillow 后端 |
-| Image Split | P1 | Pillow 后端 |
-| Background Remove | P1 | Remove.bg API |
-| Image Compress | P2 | Pillow 后端 |
-| Export ZIP | P0 | MinIO ZIP |
-| Merge | P1 | — |
-| Article | P0 | Chat 节点 + TipTap |
-
----
-
-### Phase 3 节点（优先级排序）
-
-1. `image_edit`（Fabric.js）— 最复杂，最有差异化
-2. `ppt`（Reveal.js）— 高频需求
-3. `html_node`（Monaco）— 灵活输出
-4. `video_kling` — 视频生成入口
-5. `video_seedance`、`video_wan27_i2v`
-6. 音频节点
-7. `publish_wechat`（需微信认证号）
-
----
-
-## 7. 后端执行架构
+**完整生命周期**
 
 ```
-前端
-  │  POST /workflows/{id}/execute { node_ids: [...] | "all" }
-  │  WS  /ws/execution/{job_id}
-  ▼
-FastAPI
-  ├── 解析 graph_json → DAG
-  ├── 拓扑排序 → 分层执行计划
-  ├── 创建 ExecutionJob（Redis 存储状态）
-  ├── 逐层调用 execute_node(node, inputs)
-  │     每个 node 执行完 → 推送 WS 事件
-  │     { job_id, node_id, status, output, progress, error }
-  └── 记录 execution_logs（时长计量）
+① 上游完成 → 数据到 Gate
+② Gate 进入 waiting 状态（琥珀色边框脉冲）
+③ 画布动态生成「临时交互节点」（靠近 Gate，动画出现）
+④ 用户操作（选择 / 粘贴输入）
+⑤ 临时节点淡出消失（200ms）
+⑥ Gate 折叠显示：「✓ 已选：方向B」或「✓ 已输入（1,234字）」
+⑦ Gate 进入 done 状态，数据往下流，恢复执行
+```
 
-节点 Executor 注册表:
-  node_executors = {
-    "chat": ChatExecutor,
-    "optimize": OptimizeExecutor,
-    "search": SearchExecutor,
-    "analysis": AnalysisExecutor,
-    "image_mj": MidjourneyExecutor,
-    "image_imagen": ImagenExecutor,
-    ...
+**select 模式 临时节点 UI**
+```
+┌─────────────────────────────────────┐
+│ 📋 请选择选题方向                    │
+│ ─────────────────────────────────  │
+│  A  [标题A]                         │
+│     [角度一句话]              [选择] │
+│  ──────────────────────────────── │
+│  B  [标题B]                         │
+│     [角度一句话]              [选择] │
+│  ──────────────────────────────── │
+│  C  [标题C]                         │
+│     [角度一句话]              [选择] │
+└─────────────────────────────────────┘
+```
+
+**input 模式 临时节点 UI**
+```
+┌─────────────────────────────────────┐
+│ ✍️ 提供你的真实素材                  │
+│ ─────────────────────────────────  │
+│ 系统建议你提供：                     │
+│ · 个人使用体验（具体细节）            │
+│ · 真实数据或截图描述                  │
+│ · 你的核心观点                       │
+│ ─────────────────────────────────  │
+│ [在这里粘贴你的素材...             ] │
+│ [                                 ] │
+│                      [确认提交 →]   │
+└─────────────────────────────────────┘
+```
+
+**状态显示**
+
+| 状态 | 边框 | 节点内容 |
+|------|------|---------|
+| `idle` | 默认 | 「等待上游数据」 |
+| `waiting` | 琥珀色脉冲 | 「⏸ 等待你的选择」 |
+| `done` | 绿色 | `✓ 已选：[内容]` 或 `✓ 已输入（N字）` |
+
+---
+
+### 节点 5：`writer` — 长文写作引擎
+
+**全新** · 计费: 按 Token
+
+**端口**
+
+| ID | 方向 | 类型 | 必填 |
+|----|------|------|------|
+| `outline` | 输入 | `text` | 是（来自 Gate 选题输出） |
+| `research` | 输入 | `research_result` | 是 |
+| `materials` | 输入 | `text` | 是（来自 Gate 素材输入） |
+| `out` | 输出 | `text` | — |
+
+**配置项**
+- `目标字数`: 1000 / 2000 / 3000 / 5000（默认 3000）
+- `文章风格`: 深度解析 / 轻松科普 / 情感共鸣 / 干货清单
+
+**执行行为**  
+调用 Claude，综合三路输入撰写 Markdown 初稿。
+
+**内置写作规则（System Prompt，不暴露）**
+- 用真实经历/数据引入，禁止套话开头
+- 所有数据来自 research 或 materials，不得编造
+- 禁用词：在当今时代、综上所述、值得注意的是、不缺…缺的是…
+- 超 30 字长句必须拆短，每段≤5行
+
+---
+
+### 节点 6：`reviewer` — 三遍审校链
+
+**全新** · 计费: 按 Token（内部 3 次 Claude 调用）
+
+**端口**
+
+| ID | 方向 | 类型 | 必填 |
+|----|------|------|------|
+| `draft` | 输入 | `text` | 是 |
+| `research` | 输入 | `research_result` | 是（事实核查用） |
+| `out` | 输出 | `text` | — |
+
+**配置项**: 无（三遍规则内置固定）
+
+**执行行为（内部，用户不可见中间过程）**
+
+```
+Pass 1 — 事实核查
+  核对数据、时间、产品名，与 research 信源交叉验证
+  → 修正版文本
+
+Pass 2 — 反AI洗稿
+  删套话、拆排比、口语化、加个人态度
+  参考风格：Keso/和菜头句式节奏（只借风格，不引原话）
+  → 去AI化文本
+
+Pass 3 — 节奏格式
+  拆长句（>30字）、段落≤5行、标点优化
+  → 最终成稿
+```
+
+**节点显示**
+```
+执行中：
+✏️ Reviewer                  运行中
+██████████░░░░░░  Pass 2/3
+正在：反AI洗稿...
+
+完成后：
+✏️ Reviewer                     ✓
+三遍审校完成 · 修改 47 处
+─────────────────────────────
+[成稿前3行...]            [全文 ↗]
+```
+
+---
+
+### 节点 7：`image_planner` — 配图规划
+
+**全新** · 计费: 按 Token
+
+**端口**
+
+| ID | 方向 | 类型 | 必填 |
+|----|------|------|------|
+| `article` | 输入 | `text` | 是（成稿 Markdown） |
+| `out` | 输出 | `structured` | — |
+
+**输出格式**
+```typescript
+interface ImagePlan {
+  cover: {
+    description: string   // 封面描述
+    prompt: string        // Imagen 3 中文 Prompt（含16:9，含统一风格词）
   }
-
-每个 Executor 接口:
-  class BaseExecutor:
-    async def execute(inputs: dict, config: dict) -> dict:
-      ...  # 返回 { port_id: value, ... }
+  images: {
+    index: number         // 1-8
+    position: string      // 在文章中的位置描述（第几段后）
+    description: string
+    prompt: string        // Imagen 3 中文 Prompt（含统一风格词）
+  }[]
+}
 ```
 
-**WebSocket 事件格式**:
-```json
-{
-  "type": "node_update",
-  "job_id": "uuid",
-  "node_id": "node-1",
-  "status": "running | done | error",
-  "progress": 75,
-  "output": { "out": [...] },
-  "error": null,
-  "duration_ms": 3400,
-  "timestamp": "2026-04-20T12:00:00Z"
-}
+**配置项**
+- `配图数量`: 3 / 5 / 8（默认 5）
+- `图片风格`: 扁平插画+简笔画小人（默认）/ 写实 / 极简线条
+- `图片比例`: 16:9 / 1:1 / 3:4
+
+**执行行为**  
+调用 Claude，分析文章结构，在合适段落标出插图位置，为每张图生成中文 Prompt，统一风格控制词前置。
+
+**节点显示（完成后）**
+```
+🎨 Image Planner               ✓
+规划 6 张配图 + 1 张封面
+─────────────────────────────
+封面: [描述...]
+图1（第2段后）: [描述...]
+图2（第4段后）: [描述...]
 ```
 
 ---
 
-*本文档是节点开发的权威参考。新增/修改节点时需同步更新此文件。*
+### 节点 8：`image_gen` — 图像生成（Imagen 3）
+
+**简化现有** · 计费: 按次
+
+**端口**
+
+| ID | 方向 | 类型 | 必填 |
+|----|------|------|------|
+| `prompt` | 输入 | `text` | 是 |
+| `out` | 输出 | `image` | — |
+
+**配置项**
+- `生成数量`: 1（Skill 中每个节点生成1张，多张用多个节点并行）
+- `比例`: 16:9 / 1:1 / 3:4
+
+**说明**  
+Skill 中，image_planner 输出的每个 prompt 对应一个 image_gen 节点（由 Skill 模板自动创建，N 个并发执行）。
+
+---
+
+### 节点 9：`image_gallery` — 图片素材库
+
+**全新** · 计费: 免费
+
+**端口**
+
+| ID | 方向 | 类型 | 说明 |
+|----|------|------|------|
+| `images_in` | 输入 | `image` | 所有生成图片汇入 |
+| `cover_out` | 输出 | `image_slot` | 封面图 |
+| `img_1_out` | 输出 | `image_slot` | 配图1 |
+| `img_2_out` | 输出 | `image_slot` | 配图2 |
+| `img_3_out` | 输出 | `image_slot` | 配图3 |
+| `img_4_out` | 输出 | `image_slot` | 配图4 |
+| `img_5_out` | 输出 | `image_slot` | 配图5 |
+| `img_6_out` | 输出 | `image_slot` | 配图6 |
+| `img_7_out` | 输出 | `image_slot` | 配图7 |
+| `img_8_out` | 输出 | `image_slot` | 配图8 |
+
+图片按收到顺序自动分配到各输出端口（cover → img_1 → img_2 ...）。
+
+**节点 UI**
+```
+┌──────────────────────────────────┐
+│ 🖼 Image Gallery  [打开素材库 ↗] │
+│ [封面][图1][图2][图3][图4][图5]  │
+└──────────────────────────────────┘
+●cover_out
+●img_1_out ... ●img_8_out
+```
+
+**素材库弹窗（全屏）**
+- 网格展示所有图片
+- 点击单图 → 右侧 AI 对话修改（描述需求 → 重新生成该图 → 替换或保留）
+- 修改后自动更新对应输出端口的数据
+
+---
+
+### 节点 10：`html_formatter` — 微信 HTML 排版引擎
+
+**全新** · 计费: 免费（纯模板引擎，不调 LLM）
+
+**端口**
+
+| ID | 方向 | 类型 | 说明 |
+|----|------|------|------|
+| `markdown_in` | 输入 | `text` | 成稿 Markdown |
+| `cover_slot` | 输入 | `image_slot` | 封面图（可空） |
+| `img_slot_1` | 输入 | `image_slot` | 配图1（可空） |
+| `img_slot_2` | 输入 | `image_slot` | 配图2（可空） |
+| `img_slot_3` | 输入 | `image_slot` | 配图3（可空） |
+| `img_slot_4` | 输入 | `image_slot` | 配图4（可空） |
+| `img_slot_5` | 输入 | `image_slot` | 配图5（可空） |
+| `img_slot_6` | 输入 | `image_slot` | 配图6（可空） |
+| `img_slot_7` | 输入 | `image_slot` | 配图7（可空） |
+| `img_slot_8` | 输入 | `image_slot` | 配图8（可空） |
+| `html_out` | 输出 | `structured` | `{ html: string }` |
+
+**图片插槽逻辑**  
+- 文章中 `[配图3]` 位置 → `img_slot_3` 有连线 → 替换为 `<img src="..." />`  
+- `img_slot_3` 未连线 → 保留 `<!-- [配图3] 待手动插入 -->` 占位
+
+**Markdown → HTML 映射规则（确定性，不走 LLM）**
+
+| Markdown | 组件 |
+|---------|------|
+| `## 标题` | Heading 2（SVG 背景数字 01/02/03...） |
+| `### 标题` | Heading 3（黑底白字） |
+| `#### 标题` | Heading 4（主题色左竖线） |
+| `> 引用` | Quote 卡片（左边框+阴影） |
+| `` `==高亮==` `` | Highlight（紫底色） |
+| `**加粗**` | Bold（主题色加粗） |
+| 普通段落 | Paragraph（基础容器） |
+| 代码块 | Code Block（macOS 风格黑底） |
+
+**节点 UI**
+```
+┌────────────────────────────────┐
+│ 📄 WeChat HTML             [✏️]│  ← 打开右侧品牌编辑器
+│ 主题色: ████ #5965AF           │
+│ ──────────────────────────── │
+│ 图片插槽: 5/9 已连接            │
+│ [HTML 片段预览...]             │
+└────────────────────────────────┘
+```
+
+**右侧品牌编辑器（侧滑 Panel）**
+- 主题色选择器（影响所有组件的 `#5965AF`）
+- 正文字号 / 行高滑块
+- 组件实时预览（改色即看效果）
+- 「保存为默认」/ 「恢复默认」
+
+**内置组件库**（与用户 HTML.md 完全一致，7个）：
+Heading 2/3/4 · Quote · Highlight · Bold · Paragraph · Code Block
+
+---
+
+### 节点 11：`preview_wechat` — 公众号预览
+
+**改造现有** · 计费: 免费
+
+**端口**
+
+| ID | 方向 | 类型 | 必填 |
+|----|------|------|------|
+| `html` | 输入 | `structured` | 是（`{ html: string }`） |
+
+**节点 UI**
+```
+┌────────────────────────────────────┐
+│ 📱 Preview: WeChat                 │
+│ ──────────────────────────────── │
+│  [公众号图文渲染区域]               │
+│  白底 · 黑字 · 居中图片            │
+│  H2带数字背景 · Quote带阴影         │
+│ ──────────────────────────────── │
+│ [复制 HTML] [全屏预览] [下载配图]   │
+└────────────────────────────────────┘
+```
+
+- 「复制 HTML」→ 粘贴进微信编辑器即可发布
+- 「下载配图」→ 触发 ZIP 下载所有嵌入图片
+- 「全屏预览」→ 模拟手机屏幕宽度（375px）的渲染效果
+
+---
+
+## 四、完整画布连线
+
+```
+[Text Input: Brief]
+        │ text
+        ▼
+[Research]─────────────────────────────────────────────────┐
+        │ research_result                                   │ research_result
+        ▼                                                   │
+[Outline Generator]◄────────────────────────────────── research
+        │ outline_options
+        ▼
+[GATE: 选题确认] ⏸ waiting
+        │ text（选定标题+大纲）
+        ▼
+[Writer]◄────────────── outline（来自上方 Gate out）
+        ◄────────────── research（来自 Research out）
+        ◄────────────── materials（来自下方 Gate out）
+        │
+[GATE: 素材输入] ⏸ waiting ─────────────────────────────────┘
+        │ text（用户素材）                  （materials 接到 Writer）
+        
+[Writer]
+        │ text（初稿 Markdown）
+        ▼
+[Reviewer]◄──── research（事实核查）
+        │ text（成稿 Markdown）
+        ├──────────────────────────────────────┐
+        ▼                                      ▼
+[Image Planner]                       [HTML Formatter]
+        │ structured（配图计划）        ●markdown_in
+        │                              ●img_slot_1..8
+        ▼                              ●cover_slot
+[image_gen ×1] ← cover prompt               │
+[image_gen ×1] ← img_1 prompt               │ structured {html}
+[image_gen ×1] ← img_2 prompt               ▼
+...（N个并行）                       [Preview: WeChat]
+        │ image（各自1张）
+        ▼
+[Image Gallery]
+  ●cover_out ──────────────────────→ html_formatter●cover_slot
+  ●img_1_out ──────────────────────→ html_formatter●img_slot_1
+  ●img_2_out ──────────────────────→ html_formatter●img_slot_2
+  ...
+```
+
+---
+
+## 五、开发顺序（线性，无跳跃）
+
+```
+Week 1-2：Slice 3 — 画布核心
+  ├── NodeBase 组件（端口、状态机、Run按钮）
+  ├── Edge 连线（类型校验、颜色标识）
+  ├── NodePicker 弹窗
+  ├── canvasStore（undo/redo 50步）
+  ├── 后端：DAG 解析 + WebSocket 执行推送
+  └── 新增 waiting 状态支持（Gate 专用）
+
+Week 3：Slice 4 — 基础 AI 节点
+  ├── text_input（简单，1天）
+  ├── research（Tavily + Claude，2天）
+  └── outline_generator（Claude，1天）
+
+Week 4：Slice 4 续 — Gate + Writer + Reviewer
+  ├── gate（select + input 两种模式，3天）
+  ├── writer（Claude，1天）
+  └── reviewer（三遍链，2天）
+
+Week 5：Slice 5 — 图像链路
+  ├── image_planner（Claude，1天）
+  ├── image_gen / Imagen 3（2天）
+  └── image_gallery（多端口 + 素材库弹窗，2天）
+
+Week 6：Slice 6 — HTML 输出链路
+  ├── html_formatter（模板引擎 + 图片插槽 + 品牌编辑器，3天）
+  └── preview_wechat（HTML 渲染 + 复制 + 下载，2天）
+
+Week 7：Slice 7 — Skill 模板
+  ├── Skills 面板 UI
+  ├── 公众号 Skill 模板定义（生成完整节点+连线+动画）
+  └── 端到端测试：Brief → 预览 HTML 全流程跑通
+```
+
+---
+
+## 六、Backlog（暂不开发）
+
+以下节点已设计完成，等公众号 Skill 跑通后再开发：
+
+**通用 AI 节点**
+- `chat`（通用对话）
+- `optimize`（Prompt 优化）
+- `analysis`（图像分析）
+- `search`（基础搜索，被 research 替代）
+- `storyboard`（分镜）
+- `translate`（翻译）
+- `article`（TipTap 富文本）
+- `trending`（热榜爬取）
+
+**图像处理**
+- `image_upload`（上传）
+- `image_edit`（Fabric.js 画板）
+- `image_bg_remove`（抠图）
+- `image_grid`（拼图）
+- `image_split`（拆图）
+- `image_compress`（压缩）
+- `image_view_angle`（视角变换）
+- `image_mj`（Midjourney V7）
+- `image_seedream`（Seedream 5.0）
+- `image_niji`（Niji 7）
+
+**视频 / 音频**
+- 全部视频节点（Kling、Seedance、Vidu、Wan2.x 等）
+- 全部音频节点（MiniMax Speech、Tencent Speech、MiniMax Music）
+
+**输出 / 发布**
+- `ppt`（Reveal.js 编辑器）
+- `html_node`（Monaco 编辑器）
+- `export_zip`
+- `publish_wechat`（API 推送）
+- `publish_red`（小红书）
+- `preview_red`（小红书预览）
+
+**工具**
+- `note`（便利贴）
+- `merge`（合并）
+- `switch`（条件分支）
+- `loop`（循环）
+
+---
+
+*目标：7 周内让「公众号长文创作」Skill 端到端跑通，从 Brief 输入到预览 HTML 一键完成。*
