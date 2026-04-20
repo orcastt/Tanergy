@@ -274,47 +274,48 @@ export default function LandingPage() {
       </footer>
 
       <style>{`
-        .lp-root { background: #f5f3f3; min-height: 100vh; }
+        .lp-root { background: #f5f3f3; min-height: 100vh; overflow-x: hidden; }
+        * { box-sizing: border-box; }
         .lp-logo { font-family: 'Space Grotesk', sans-serif; font-size: 1.125rem; font-weight: 700; letter-spacing: -0.04em; color: #0e0f0f; cursor: pointer; }
         .lp-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 50; background: rgba(255,255,255,0.8); backdrop-filter: blur(12px); box-shadow: 0 0 0 1px rgba(0,0,0,0.05), 0 1px 2px 0 rgba(0,0,0,0.05); padding: 0 1.5rem; }
         .lp-nav-inner { max-width: 1280px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; height: 64px; }
         .lp-nav-links { display: flex; gap: 2rem; align-items: center; }
-        .lp-nav-link { font-size: 0.875rem; font-weight: 500; color: #5e5e5e; text-decoration: none; padding-bottom: 2px; border-bottom: 2px solid transparent; transition: all 150ms; }
+        .lp-nav-link { font-size: 0.875rem; font-weight: 500; color: #5e5e5e; text-decoration: none; padding-bottom: 2px; border-bottom: 2px solid transparent; transition: all 150ms; white-space: nowrap; }
         .lp-nav-link:hover { color: #0e0f0f; border-bottom-color: #0e0f0f; }
-        .lp-btn-ghost { font-size: 0.875rem; font-weight: 500; border: none; background: transparent; color: #5e5e5e; cursor: pointer; padding: 0.375rem 0; }
-        .lp-btn-primary { padding: 0.5rem 1.25rem; border-radius: 8px; border: none; font-size: 0.875rem; font-weight: 600; background: #242424; color: #fff; cursor: pointer; transform: scale(0.95); }
-        .lp-hero-section { max-width: 1280px; margin: 0 auto; padding: 7rem 1.5rem 5rem; display: flex; flex-direction: column; align-items: center; text-align: center; }
-        .lp-hero-content { opacity: 0; transform: translateY(24px); transition: opacity 0.7s ease 100ms, transform 0.7s ease 100ms; }
+        .lp-btn-ghost { font-size: 0.875rem; font-weight: 500; border: none; background: transparent; color: #5e5e5e; cursor: pointer; padding: 0.375rem 0; white-space: nowrap; }
+        .lp-btn-primary { padding: 0.5rem 1.25rem; border-radius: 8px; border: none; font-size: 0.875rem; font-weight: 600; background: #242424; color: #fff; cursor: pointer; transform: scale(0.95); white-space: nowrap; }
+        .lp-hero-section { max-width: 1280px; margin: 0 auto; padding: 7rem 1.5rem 5rem; display: flex; flex-direction: column; align-items: center; text-align: center; width: 100%; }
+        .lp-hero-content { width: 100%; max-width: 800px; opacity: 0; transform: translateY(24px); transition: opacity 0.7s ease 100ms, transform 0.7s ease 100ms; }
         .lp-hero-content.lp-hero-visible { opacity: 1; transform: translateY(0); }
         .lp-hero-badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px; background: #e3e2e2; font-size: 0.6875rem; font-weight: 700; color: #5e5e5e; margin-bottom: 1.5rem; letter-spacing: 0.1em; text-transform: uppercase; }
         .lp-hero-h1 { font-family: 'Space Grotesk', sans-serif; font-size: clamp(2.5rem, 8vw, 5rem); font-weight: 700; line-height: 0.9; letter-spacing: -0.04em; color: #0e0f0f; max-width: 800px; margin: 0 auto 2rem; }
         .lp-hero-p { font-size: clamp(1rem, 2vw, 1.25rem); color: #444748; max-width: 560px; margin: 0 auto 3rem; line-height: 1.6; }
-        .lp-btn-primary-lg { padding: 1rem 2rem; border-radius: 8px; border: none; font-size: 1rem; font-weight: 700; background: #242424; color: #fff; cursor: pointer; box-shadow: 0 0 0 2px #242424, 0 10px 15px -3px rgba(0,0,0,0.1); }
-        .lp-btn-secondary-lg { padding: 1rem 2rem; border-radius: 8px; border: none; font-size: 1rem; font-weight: 700; background: #fff; color: #0e0f0f; cursor: pointer; box-shadow: 0 0 0 1px rgba(0,0,0,0.05), 0 1px 2px 0 rgba(0,0,0,0.05); }
+        .lp-btn-primary-lg { padding: 1rem 2rem; border-radius: 8px; border: none; font-size: 1rem; font-weight: 700; background: #242424; color: #fff; cursor: pointer; box-shadow: 0 0 0 2px #242424, 0 10px 15px -3px rgba(0,0,0,0.1); white-space: nowrap; }
+        .lp-btn-secondary-lg { padding: 1rem 2rem; border-radius: 8px; border: none; font-size: 1rem; font-weight: 700; background: #fff; color: #0e0f0f; cursor: pointer; box-shadow: 0 0 0 1px rgba(0,0,0,0.05), 0 1px 2px 0 rgba(0,0,0,0.05); white-space: nowrap; }
         .lp-canvas-visual { margin-top: 5rem; width: 100%; max-width: 900px; background: #fff; border-radius: 12px; box-shadow: 0 0 0 1px rgba(0,0,0,0.05), 0 8px 32px rgba(0,0,0,0.1), 0 24px 60px rgba(0,0,0,0.08); height: 400px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; opacity: 0; transform: translateY(40px); transition: opacity 0.8s ease 300ms, transform 0.8s ease 300ms; }
         .lp-canvas-visual.lp-canvas-visible { opacity: 1; transform: translateY(0); }
         .lp-dot-grid { position: absolute; inset: 0; background-image: radial-gradient(circle, rgba(36,36,36,0.07) 1px, transparent 1px); background-size: 20px 20px; }
         .lp-card { box-shadow: 0 0 0 1px rgba(0,0,0,0.05), 0 1px 2px 0 rgba(0,0,0,0.05); transition: box-shadow 0.3s ease; }
         .lp-card:hover { box-shadow: 0 0 0 2px #242424, 0 10px 15px -3px rgba(0,0,0,0.1); }
-        .lp-node { width: 24px; height: 24px; border: 2px solid white; }
-        .lp-node-count { width: 24px; height: 24px; background: #efeded; color: #5e5e5e; border: 2px solid white; }
+        .lp-node { width: 24px; height: 24px; border: 2px solid white; flex-shrink: 0; }
+        .lp-node-count { width: 24px; height: 24px; background: #efeded; color: #5e5e5e; border: 2px solid white; flex-shrink: 0; }
         .lp-title { font-family: 'Space Grotesk', sans-serif; font-size: 0.9375rem; font-weight: 600; color: #0e0f0f; }
         .lp-desc { color: #444748; }
         .lp-tag { background: rgba(255,255,255,0.9); backdrop-filter: blur(8px); color: #5e5e5e; box-shadow: 0 0 0 1px rgba(0,0,0,0.05), 0 1px 2px 0 rgba(0,0,0,0.05); }
         .lp-templates { background: #fff; padding: 6rem 0; box-shadow: inset 0 1px 0 0 rgba(0,0,0,0.05); }
-        .lp-templates-inner { max-width: 1280px; margin: 0 auto; padding: 0 1.5rem; }
-        .lp-section-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 3rem; gap: 1.5rem; flex-wrap: wrap; }
+        .lp-templates-inner { max-width: 1280px; margin: 0 auto; padding: 0 1.5rem; width: 100%; }
+        .lp-section-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 3rem; gap: 1.5rem; flex-wrap: wrap; width: 100%; }
         .lp-section-h2 { font-family: 'Space Grotesk', sans-serif; font-size: clamp(1.75rem, 4vw, 2.5rem); font-weight: 700; letter-spacing: -0.03em; color: #0e0f0f; margin-bottom: 0.75rem; }
         .lp-section-p { color: #444748; max-width: 400px; }
-        .lp-icon-btn { padding: 0.5rem; border-radius: 8px; background: #f5f3f3; border: none; box-shadow: 0 0 0 1px rgba(0,0,0,0.05), 0 1px 2px 0 rgba(0,0,0,0.05); cursor: pointer; display: flex; align-items: center; }
-        .lp-icon-btn-active { padding: 0.5rem; border-radius: 8px; background: #fff; border: none; box-shadow: 0 0 0 1px rgba(0,0,0,0.05), 0 1px 2px 0 rgba(0,0,0,0.05); cursor: pointer; display: flex; align-items: center; }
-        .lp-philosophy { max-width: 1280px; margin: 0 auto; padding: 6rem 1.5rem; }
-        .lp-philosophy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; }
+        .lp-icon-btn { padding: 0.5rem; border-radius: 8px; background: #f5f3f3; border: none; box-shadow: 0 0 0 1px rgba(0,0,0,0.05), 0 1px 2px 0 rgba(0,0,0,0.05); cursor: pointer; display: flex; align-items: center; flex-shrink: 0; }
+        .lp-icon-btn-active { padding: 0.5rem; border-radius: 8px; background: #fff; border: none; box-shadow: 0 0 0 1px rgba(0,0,0,0.05), 0 1px 2px 0 rgba(0,0,0,0.05); cursor: pointer; display: flex; align-items: center; flex-shrink: 0; }
+        .lp-philosophy { max-width: 1280px; margin: 0 auto; padding: 6rem 1.5rem; width: 100%; }
+        .lp-philosophy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; width: 100%; }
         @media (max-width: 768px) { .lp-philosophy-grid { grid-template-columns: 1fr; } }
         .lp-philosophy-text { display: flex; flex-direction: column; gap: 1rem; color: #444748; line-height: 1.8; margin-top: 1.5rem; }
         .lp-feature-list { list-style: none; display: flex; flex-direction: column; gap: 1.25rem; margin-top: 2rem; }
         .lp-feature-item { display: flex; align-items: flex-start; gap: 1rem; }
-        .lp-feature-icon { font-size: 22px; color: #0e0f0f; margin-top: 2px; }
+        .lp-feature-icon { font-size: 22px; color: #0e0f0f; margin-top: 2px; flex-shrink: 0; }
         .lp-feature-title { font-family: 'Space Grotesk', sans-serif; font-weight: 700; color: #0e0f0f; margin-bottom: 0.25rem; }
         .lp-feature-desc { font-size: 0.875rem; color: #444748; }
         .lp-viz-wrapper { position: relative; }
@@ -322,7 +323,8 @@ export default function LandingPage() {
         .lp-viz-card { position: relative; background: #fff; border-radius: 12px; box-shadow: 0 0 0 1px rgba(0,0,0,0.05), 0 1px 2px 0 rgba(0,0,0,0.05); overflow: hidden; }
         .lp-viz-box { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px dashed #e3e2e2; border-radius: 8px; margin: 2rem; }
         .lp-viz-label { font-size: 0.6875rem; font-weight: 700; color: #a1a1aa; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 0.75rem; }
-        .lp-cta { background: #242424; padding: 6rem 1.5rem; text-align: center; }
+        .lp-cta { background: #242424; padding: 6rem 1.5rem; text-align: center; width: 100%; }
+        .lp-cta-inner { max-width: 1280px; margin: 0 auto; }
         .lp-cta-h2 { font-family: 'Space Grotesk', sans-serif; font-size: clamp(2rem, 5vw, 4rem); font-weight: 700; color: #fff; letter-spacing: -0.03em; margin-bottom: 1rem; }
         .lp-cta-p { color: #a1a1aa; font-size: 1.125rem; margin-bottom: 3rem; }
         .lp-cta-btn { padding: 1rem 2.5rem; border-radius: 8px; border: none; font-size: 1rem; font-weight: 700; background: #fff; color: #0e0f0f; cursor: pointer; }
@@ -338,6 +340,19 @@ export default function LandingPage() {
         .lp-footer-bottom { display: flex; justify-content: space-between; align-items: center; padding-top: 1.5rem; margin-top: 1.5rem; font-size: 0.75rem; color: #a1a1aa; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        @media (max-width: 640px) {
+          .lp-hero-section { padding: 6rem 1rem 4rem; }
+          .lp-section-header { flex-direction: column; align-items: flex-start; }
+          .lp-footer-grid { grid-template-columns: 1fr 1fr; }
+          .lp-footer-brand { grid-column: span 2; }
+          .lp-footer-bottom { flex-direction: column; gap: 0.5rem; text-align: center; }
+          .lp-nav-links { display: none; }
+          .lp-nav-inner { flex-wrap: nowrap; gap: 0.5rem; }
+        }
+        @media (max-width: 480px) {
+          .lp-cta { padding: 4rem 1rem; }
+          .lp-philosophy { padding: 4rem 1rem; }
+        }
       `}</style>
     </div>
   )
