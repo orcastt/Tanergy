@@ -3,12 +3,23 @@ import type { ComponentType } from "react"
 export { NODE_DEFS, NODE_MAP } from "./nodeDefs"
 export type { NodeDef } from "./nodeDefs"
 
-import PromptNode from "./PromptNode"
 import PlaceholderNode from "./PlaceholderNode"
 
-const placeholderTypes = ["chat", "optimize", "analysis", "search", "image_mj", "image_imagen", "image_upload", "preview_wechat", "preview_red"] as const
+const allTypes = [
+  "text_input",
+  "research",
+  "outline_generator",
+  "gate",
+  "writer",
+  "reviewer",
+  "image_planner",
+  "image_gen",
+  "image_gallery",
+  "html_formatter",
+  "preview_wechat",
+] as const
 
-export const nodeTypes: Record<string, ComponentType> = {
-  prompt: PromptNode,
-  ...Object.fromEntries(placeholderTypes.map((t) => [t, PlaceholderNode])),
-}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const nodeTypes: Record<string, ComponentType<any>> = Object.fromEntries(
+  allTypes.map((t) => [t, PlaceholderNode])
+)

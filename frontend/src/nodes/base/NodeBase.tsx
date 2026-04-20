@@ -3,8 +3,9 @@ import { Handle, Position } from "@xyflow/react"
 import type { PortType } from "../../types/node"
 import { PORT_COLORS } from "../../types/node"
 import NodeTitle from "./NodeTitle"
+import NodeRunButton from "./NodeRunButton"
 
-type Status = "idle" | "running" | "success" | "failed"
+type Status = "idle" | "running" | "waiting" | "done" | "error"
 
 export interface PortDef {
   id: string
@@ -19,18 +20,20 @@ interface Props {
   outputs?: PortDef[]
   status?: Status
   selected?: boolean
+  nodeId?: string
   children?: ReactNode
-  footer?: ReactNode
 }
 
-export default function NodeBase({ title, icon, inputs = [], outputs = [], status, selected, children, footer }: Props) {
+export default function NodeBase({ title, icon, inputs = [], outputs = [], status, selected, nodeId, children }: Props) {
   const ringStyle = selected
     ? "0 0 0 2px #242424, 0 4px 6px -1px rgba(0,0,0,0.1)"
     : status === "running"
     ? "0 0 0 2px #3B82F6, 0 4px 12px rgba(59,130,246,0.2)"
-    : status === "success"
+    : status === "waiting"
+    ? "0 0 0 2px #F59E0B, 0 4px 12px rgba(245,158,11,0.2)"
+    : status === "done"
     ? "0 0 0 2px #22C55E, 0 2px 8px rgba(34,197,94,0.15)"
-    : status === "failed"
+    : status === "error"
     ? "0 0 0 2px #EF4444, 0 4px 12px rgba(239,68,68,0.2)"
     : "0 0 0 1px rgba(0,0,0,0.05), 0 1px 2px 0 rgba(0,0,0,0.05)"
 
@@ -81,7 +84,7 @@ export default function NodeBase({ title, icon, inputs = [], outputs = [], statu
         />
       ))}
 
-      <NodeTitle icon={icon} title={title} status={status} />
+      <NodeTitle icon={icon} title={title} status={status} footer={nodeId ? <NodeRunButton nodeId={nodeId} status={status ?? "idle"} /> : undefined} />
 
       {children && (
         <div style={{ padding: "1rem" }}>
@@ -89,7 +92,7 @@ export default function NodeBase({ title, icon, inputs = [], outputs = [], statu
         </div>
       )}
 
-      {(footer || inputs.length > 0 || outputs.length > 0) && (
+      {(inputs.length > 0 || outputs.length > 0) && (
         <div style={{
           padding: "0.5rem",
           borderTop: "1px solid #efeded",
@@ -105,7 +108,6 @@ export default function NodeBase({ title, icon, inputs = [], outputs = [], statu
               </div>
             ))}
           </div>
-          {footer}
           <div style={{ display: "flex", gap: "0.375rem", alignItems: "center" }}>
             {outputs.map((p) => (
               <div key={p.id} style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>

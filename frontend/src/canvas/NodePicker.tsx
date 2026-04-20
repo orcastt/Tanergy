@@ -9,12 +9,13 @@ interface Props {
   onClose: () => void
 }
 
-type Category = "all" | "input" | "text" | "image" | "output"
+type Category = "all" | "input" | "text" | "ai" | "image" | "output"
 
 const CATEGORIES: { key: Category; label: string }[] = [
   { key: "all", label: "All" },
   { key: "input", label: "Input" },
   { key: "text", label: "Text" },
+  { key: "ai", label: "AI" },
   { key: "image", label: "Image" },
   { key: "output", label: "Output" },
 ]

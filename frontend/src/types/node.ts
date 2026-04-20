@@ -1,30 +1,29 @@
 export type PortType =
-  | "prompt"
-  | "image"
   | "text"
-  | "video"
-  | "search_result"
+  | "research_result"
+  | "outline_options"
+  | "image"
+  | "image_slot"
   | "structured"
-  | "audio"
 
 export type NodeType =
-  | "prompt"
-  | "chat"
-  | "optimize"
-  | "analysis"
-  | "search"
-  | "image_mj"
-  | "image_imagen"
-  | "image_upload"
+  | "text_input"
+  | "research"
+  | "outline_generator"
+  | "gate"
+  | "writer"
+  | "reviewer"
+  | "image_planner"
+  | "image_gen"
+  | "image_gallery"
+  | "html_formatter"
   | "preview_wechat"
-  | "preview_red"
 
 export const PORT_COLORS: Record<PortType, string> = {
-  prompt: "#8B5CF6",
-  image: "#22C55E",
   text: "#3B82F6",
-  video: "#F97316",
-  search_result: "#EF4444",
+  research_result: "#92400E",
+  outline_options: "#7C3AED",
+  image: "#22C55E",
+  image_slot: "#86EFAC",
   structured: "#EAB308",
-  audio: "#9CA3AF",
 }

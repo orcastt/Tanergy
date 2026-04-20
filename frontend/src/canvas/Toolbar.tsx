@@ -1,4 +1,5 @@
 import { useCanvasStore } from "../store/canvasStore"
+import { runAll, stopAll } from "../lib/executionEngine"
 
 interface Props {
   onAddNode: () => void
@@ -9,6 +10,10 @@ export default function Toolbar({ onAddNode }: Props) {
   const redo = useCanvasStore((s) => s.redo)
   const canUndo = useCanvasStore((s) => s.historyIndex > 0)
   const canRedo = useCanvasStore((s) => s.historyIndex < s.history.length - 1 && s.history.length > 0)
+  const nodes = useCanvasStore((s) => s.nodes)
+  const nodeStatuses = useCanvasStore((s) => s.nodeStatuses)
+
+  const hasRunningNodes = Object.values(nodeStatuses).some((s) => s === "running")
 
   return (
     <div style={{
@@ -21,6 +26,11 @@ export default function Toolbar({ onAddNode }: Props) {
       <ToolBtn icon="add" label="Add Node (N)" onClick={onAddNode} />
       <ToolBtn icon="auto_awesome" label="Skills" onClick={() => {}} />
       <div style={{ width: "24px", height: "1px", background: "#e3e2e2", margin: "0.375rem 0" }} />
+      {hasRunningNodes ? (
+        <ToolBtn icon="stop" label="Stop All" onClick={stopAll} />
+      ) : (
+        <ToolBtn icon="play_arrow" label="Run All" onClick={() => runAll()} disabled={nodes.length === 0} />
+      )}
       <ToolBtn icon="undo" label="Undo (⌘Z)" onClick={undo} disabled={!canUndo} />
       <ToolBtn icon="redo" label="Redo (⌘⇧Z)" onClick={redo} disabled={!canRedo} />
     </div>

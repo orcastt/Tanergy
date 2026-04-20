@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef } from "react"
+import { useCallback, useState, useRef, type ComponentType } from "react"
 import {
   ReactFlow,
   Background,
@@ -21,6 +21,24 @@ import CanvasControls from "./CanvasControls"
 import type { NodeType } from "../types/node"
 
 const SNAP_GRID = [20, 20] as [number, number]
+
+function getOutputPortType(nodeId: string, handleId: string | null | undefined, nodes: any[]) {
+  const node = nodes.find((n) => n.id === nodeId)
+  if (!node) return null
+  const def = NODE_MAP[node.data.nodeType as NodeType]
+  if (!def) return null
+  if (!handleId) return def.outputs[0]?.type ?? null
+  return def.outputs.find((o) => o.id === handleId)?.type ?? null
+}
+
+function getInputPortType(nodeId: string, handleId: string | null | undefined, nodes: any[]) {
+  const node = nodes.find((n) => n.id === nodeId)
+  if (!node) return null
+  const def = NODE_MAP[node.data.nodeType as NodeType]
+  if (!def) return null
+  if (!handleId) return def.inputs[0]?.type ?? null
+  return def.inputs.find((i) => i.id === handleId)?.type ?? null
+}
 
 export default function Canvas() {
   const { nodes, edges, addNode, addEdge, onNodesChange, onEdgesChange, removeNode } = useCanvasStore()
@@ -80,15 +98,24 @@ export default function Canvas() {
 
   const isValidConnection: IsValidConnection = useCallback((connection) => {
     if (connection.source === connection.target) return false
+    // Port type compatibility check
+    const sourceType = getOutputPortType(connection.source, connection.sourceHandle, nodes)
+    const targetType = getInputPortType(connection.target, connection.targetHandle, nodes)
+    if (sourceType === null || targetType === null) return false
+    if (sourceType !== targetType) return false
+    // Each input port accepts only one connection
     return !edges.some((e) => e.target === connection.target && e.targetHandle === connection.targetHandle)
-  }, [edges])
+  }, [nodes, edges])
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+const nodeTypesMap: Record<string, ComponentType<any>> = nodeTypes as any
 
   return (
     <div style={{ width: "100%", height: "100%", position: "relative" }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        nodeTypes={nodeTypes}
+        nodeTypes={nodeTypesMap}
         onConnect={handleConnect}
         onNodesChange={handleNodesChange}
         onEdgesChange={handleEdgesChange}

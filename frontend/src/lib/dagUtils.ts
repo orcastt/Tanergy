@@ -1,6 +1,6 @@
-import type { Node, Edge } from "@xyflow/react"
+// All functions use `any` to avoid version mismatches between @xyflow/react packages
 
-export function topologicalSort(nodes: Node[], edges: Edge[]): string[] {
+export function topologicalSort(nodes: any[], edges: any[]): string[] {
   const inDegree = new Map<string, number>()
   const adj = new Map<string, string[]>()
 
@@ -33,7 +33,7 @@ export function topologicalSort(nodes: Node[], edges: Edge[]): string[] {
   return result
 }
 
-export function getExecutionLayers(nodes: Node[], edges: Edge[]): string[][] {
+export function getExecutionLayers(nodes: any[], edges: any[]): string[][] {
   const inDegree = new Map<string, number>()
   const adj = new Map<string, string[]>()
 
@@ -47,7 +47,7 @@ export function getExecutionLayers(nodes: Node[], edges: Edge[]): string[][] {
   }
 
   const layers: string[][] = []
-  let remaining = new Set(nodes.map((n) => n.id))
+  const remaining = new Set(nodes.map((n: any) => n.id))
 
   while (remaining.size > 0) {
     const layer: string[] = []
@@ -66,7 +66,7 @@ export function getExecutionLayers(nodes: Node[], edges: Edge[]): string[][] {
   return layers
 }
 
-export function getNodeDependencies(nodeId: string, edges: Edge[]): string[] {
+export function getNodeDependencies(nodeId: string, edges: any[]): string[] {
   const deps = new Set<string>()
   const queue = [nodeId]
   while (queue.length > 0) {
@@ -81,7 +81,7 @@ export function getNodeDependencies(nodeId: string, edges: Edge[]): string[] {
   return Array.from(deps)
 }
 
-export function getNodeDependents(nodeId: string, edges: Edge[]): string[] {
+export function getNodeDependents(nodeId: string, edges: any[]): string[] {
   const deps = new Set<string>()
   const queue = [nodeId]
   while (queue.length > 0) {
@@ -96,6 +96,6 @@ export function getNodeDependents(nodeId: string, edges: Edge[]): string[] {
   return Array.from(deps)
 }
 
-export function hasCycle(nodes: Node[], edges: Edge[]): boolean {
+export function hasCycle(nodes: any[], edges: any[]): boolean {
   try { topologicalSort(nodes, edges); return false } catch { return true }
 }

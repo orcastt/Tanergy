@@ -6,7 +6,7 @@ interface CanvasSnapshot {
   edges: Edge[]
 }
 
-type NodeStatus = "idle" | "running" | "success" | "failed"
+type NodeStatus = "idle" | "running" | "waiting" | "done" | "error"
 
 interface CanvasState {
   nodes: Node[]
@@ -14,6 +14,9 @@ interface CanvasState {
   selectedNodeIds: string[]
   nodeStatuses: Record<string, NodeStatus>
   nodeResults: Record<string, unknown>
+
+  // Gate node waiting state
+  waitingGates: Record<string, string[]>  // gateNodeId → option labels
 
   history: CanvasSnapshot[]
   historyIndex: number
@@ -38,6 +41,10 @@ interface CanvasState {
   // Status
   setNodeStatus: (nodeId: string, status: NodeStatus) => void
   setNodeResult: (nodeId: string, result: unknown) => void
+
+  // Gate waiting
+  setWaitingGate: (nodeId: string, options: string[]) => void
+  resolveGate: (nodeId: string, selectedOption: string) => void
 
   // Bulk
   setGraphFromJson: (graphJson: { nodes: Node[]; edges: Edge[] }) => void
@@ -72,6 +79,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   selectedNodeIds: [],
   nodeStatuses: {},
   nodeResults: {},
+  waitingGates: {},
   history: [],
   historyIndex: -1,
   maxHistory: 50,
@@ -155,6 +163,20 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   setNodeResult: (nodeId, result) => set((s) => ({
     nodeResults: { ...s.nodeResults, [nodeId]: result },
   })),
+
+  setWaitingGate: (nodeId, options) => set((s) => ({
+    waitingGates: { ...s.waitingGates, [nodeId]: options },
+  })),
+
+  resolveGate: (nodeId, selectedOption) => set((s) => {
+    const newWaitingGates = { ...s.waitingGates }
+    delete newWaitingGates[nodeId]
+    return {
+      waitingGates: newWaitingGates,
+      nodeResults: { ...s.nodeResults, [nodeId]: { selected: selectedOption } },
+      nodeStatuses: { ...s.nodeStatuses, [nodeId]: "done" },
+    }
+  }),
 
   setGraphFromJson: (graphJson) => set({
     nodes: graphJson.nodes || [],

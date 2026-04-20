@@ -21,7 +21,7 @@ export default function DashboardPage() {
   const isTrashView = filter === "trash"
 
   const {
-    workflows, trashedWorkflows, total, isLoading,
+    workflows, trashedWorkflows, isLoading,
     fetchWorkflows, createAndNavigate, moveToTrash,
     restoreFromTrash, permanentlyDelete, copyWorkflow,
   } = useWorkflowStore()
