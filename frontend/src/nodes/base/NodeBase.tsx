@@ -1,0 +1,121 @@
+import type { ReactNode } from "react"
+import { Handle, Position } from "@xyflow/react"
+import type { PortType } from "../../types/node"
+import { PORT_COLORS } from "../../types/node"
+import NodeTitle from "./NodeTitle"
+
+type Status = "idle" | "running" | "success" | "failed"
+
+export interface PortDef {
+  id: string
+  type: PortType
+  label?: string
+}
+
+interface Props {
+  title: string
+  icon?: ReactNode
+  inputs?: PortDef[]
+  outputs?: PortDef[]
+  status?: Status
+  selected?: boolean
+  children?: ReactNode
+  footer?: ReactNode
+}
+
+export default function NodeBase({ title, icon, inputs = [], outputs = [], status, selected, children, footer }: Props) {
+  const ringStyle = selected
+    ? "0 0 0 2px #242424, 0 4px 6px -1px rgba(0,0,0,0.1)"
+    : status === "running"
+    ? "0 0 0 2px #3B82F6, 0 4px 12px rgba(59,130,246,0.2)"
+    : status === "success"
+    ? "0 0 0 2px #22C55E, 0 2px 8px rgba(34,197,94,0.15)"
+    : status === "failed"
+    ? "0 0 0 2px #EF4444, 0 4px 12px rgba(239,68,68,0.2)"
+    : "0 0 0 1px rgba(0,0,0,0.05), 0 1px 2px 0 rgba(0,0,0,0.05)"
+
+  const inputCount = inputs.length
+  const outputCount = outputs.length
+
+  return (
+    <div style={{
+      width: "256px",
+      background: "#ffffff",
+      borderRadius: "0.5rem",
+      boxShadow: ringStyle,
+      overflow: "visible",
+      position: "relative",
+      transition: "box-shadow 200ms ease",
+    }}>
+      {/* Input handles */}
+      {inputs.map((port, i) => (
+        <Handle
+          key={port.id}
+          type="target"
+          position={Position.Left}
+          id={port.id}
+          style={{
+            width: "8px", height: "8px", borderRadius: "50%",
+            background: PORT_COLORS[port.type],
+            border: "none",
+            top: inputCount === 1 ? "50%" : `${30 + (i / (inputCount - 1)) * 40}%`,
+            transition: "transform 150ms ease",
+          }}
+        />
+      ))}
+
+      {/* Output handles */}
+      {outputs.map((port, i) => (
+        <Handle
+          key={port.id}
+          type="source"
+          position={Position.Right}
+          id={port.id}
+          style={{
+            width: "8px", height: "8px", borderRadius: "50%",
+            background: PORT_COLORS[port.type],
+            border: "none",
+            top: outputCount === 1 ? "50%" : `${30 + (i / (outputCount - 1)) * 40}%`,
+            transition: "transform 150ms ease",
+          }}
+        />
+      ))}
+
+      <NodeTitle icon={icon} title={title} status={status} />
+
+      {children && (
+        <div style={{ padding: "1rem" }}>
+          {children}
+        </div>
+      )}
+
+      {(footer || inputs.length > 0 || outputs.length > 0) && (
+        <div style={{
+          padding: "0.5rem",
+          borderTop: "1px solid #efeded",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}>
+          <div style={{ display: "flex", gap: "0.375rem", alignItems: "center" }}>
+            {inputs.map((p) => (
+              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                {p.label && <span style={{ fontSize: "10px", color: "#747878" }}>{p.label}</span>}
+                <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: PORT_COLORS[p.type] }} />
+              </div>
+            ))}
+          </div>
+          {footer}
+          <div style={{ display: "flex", gap: "0.375rem", alignItems: "center" }}>
+            {outputs.map((p) => (
+              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                {p.label && <span style={{ fontSize: "10px", color: "#747878" }}>{p.label}</span>}
+                <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: PORT_COLORS[p.type] }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

@@ -6,22 +6,72 @@ export default function TopNav() {
   const navigate = useNavigate()
 
   return (
-    <header className="flex items-center justify-between px-6 h-14 bg-white/80 sticky top-0 z-30" style={{ backdropFilter: "blur(12px)", borderBottom: "1px solid #f4f4f5" }}>
-      <button onClick={() => navigate("/dashboard")} className="bg-transparent border-none cursor-pointer p-0 flex items-center gap-2.5">
-        <div className="flex items-center justify-center w-8 h-8 rounded-lg" style={{ background: "linear-gradient(135deg, #6366F1, #8B5CF6)" }}>
-          <svg width="16" height="16" viewBox="0 0 28 28" fill="none"><rect x="3" y="8" width="9" height="7" rx="2" fill="white" opacity="0.9"/><rect x="16" y="13" width="9" height="7" rx="2" fill="white" opacity="0.9"/><line x1="12" y1="11.5" x2="16" y2="16.5" stroke="white" strokeWidth="1.5" strokeDasharray="2 2"/></svg>
-        </div>
-        <span className="font-display" style={{ fontSize: "1.1rem", fontWeight: 600, color: "#1a1a2e" }}>TANVAS</span>
-      </button>
+    <header
+      style={{
+        background: "rgba(255,255,255,0.8)",
+        backdropFilter: "blur(12px)",
+        position: "fixed",
+        top: 0,
+        right: 0,
+        left: 0,
+        zIndex: 50,
+        boxShadow: "0 0 0 1px rgba(0,0,0,0.05), 0 1px 2px 0 rgba(0,0,0,0.05)",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        width: "100%",
+        padding: "0.75rem 1.5rem",
+        height: "64px",
+        boxSizing: "border-box",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
+        <span style={{
+          fontFamily: '"Space Grotesk", sans-serif',
+          fontSize: "1.25rem", fontWeight: 600, letterSpacing: "-0.03em", color: "#171717",
+        }}>
+          TANVAS AI
+        </span>
+        <nav style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          <button
+            onClick={() => navigate("/dashboard")}
+            style={{
+              fontFamily: '"Space Grotesk", sans-serif',
+              fontWeight: 700, fontSize: "0.875rem", color: "#171717",
+              background: "none", border: "none", cursor: "pointer",
+              borderBottom: "2px solid #171717", paddingBottom: "0.25rem",
+            }}
+          >
+            Main Workspace
+          </button>
+        </nav>
+      </div>
 
-      <div className="flex items-center gap-3">
+      <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+        <button style={{ background: "none", border: "none", color: "#737373", cursor: "pointer" }}>
+          <span className="material-symbols-outlined">notifications</span>
+        </button>
+        <button onClick={() => navigate("/settings")} style={{ background: "none", border: "none", color: "#737373", cursor: "pointer" }}>
+          <span className="material-symbols-outlined">settings</span>
+        </button>
         {user && (
           <>
-            <span className="text-xs hidden sm:block" style={{ color: "#a1a1aa" }}>{user.email}</span>
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: "linear-gradient(135deg, #6366F1, #8B5CF6)" }}>
+            <div style={{
+              width: "2rem", height: "2rem", borderRadius: "50%",
+              background: "#e3e2e2",
+              boxShadow: "0 0 0 1px rgba(0,0,0,0.05)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: "0.75rem", fontWeight: 700, color: "#0e0f0f",
+              cursor: "pointer", overflow: "hidden",
+            }}>
               {user.displayName?.[0]?.toUpperCase() || "U"}
             </div>
-            <button onClick={logout} className="text-xs font-medium bg-transparent border-none" style={{ color: "#a1a1aa" }}>Logout</button>
+            <button
+              onClick={logout}
+              style={{ fontSize: "0.75rem", fontWeight: 500, background: "none", border: "none", color: "#737373", cursor: "pointer" }}
+            >
+              Logout
+            </button>
           </>
         )}
       </div>
