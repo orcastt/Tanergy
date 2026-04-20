@@ -54,7 +54,7 @@ export default function SignupPage() {
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-4" style={{ background: "#e3e2e2" }}>
               <span className="material-symbols-outlined" style={{ color: "#22C55E" }}>check</span>
             </div>
-            <h2 className="font-headline" style={{ fontSize: "1.5rem", fontWeight: 600 }}>Welcome to TANVAS!</h2>
+            <h2 className="font-headline" style={{ fontSize: "1.5rem", fontWeight: 600 }}>Welcome to TANGENT!</h2>
             <p className="mt-2 text-sm" style={{ color: "#5e5e5e" }}>Redirecting to dashboard...</p>
           </div>
         </div>
@@ -63,7 +63,7 @@ export default function SignupPage() {
       <main className="w-full max-w-md">
         <div className="bg-white rounded-xl ring-shadow p-8 md:p-12 flex flex-col items-center">
           <div className="mb-10 text-center">
-            <h1 className="font-headline" style={{ fontSize: "1.875rem", fontWeight: 700, color: "#242424", letterSpacing: "-0.02em" }}>TANVAS</h1>
+            <h1 className="font-headline" style={{ fontSize: "1.875rem", fontWeight: 700, color: "#242424", letterSpacing: "-0.02em" }}>TANGENT</h1>
           </div>
 
           <div className="w-full text-center mb-8">

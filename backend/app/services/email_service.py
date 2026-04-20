@@ -18,10 +18,10 @@ async def send_otp_email(email: str, code: str) -> None:
             json={
                 "from": settings.RESEND_FROM_EMAIL,
                 "to": [email],
-                "subject": "TANVAS 验证码 / Verification Code",
+                "subject": "TANGENT 验证码 / Verification Code",
                 "html": (
                     f"<div style='font-family:sans-serif;max-width:400px;margin:0 auto;'>"
-                    f"<h2>TANVAS</h2>"
+                    f"<h2>TANGENT</h2>"
                     f"<p>您的验证码是：</p>"
                     f"<p style='font-size:32px;font-weight:bold;letter-spacing:4px;'>{code}</p>"
                     f"<p style='color:#898989;'>验证码 10 分钟内有效。</p>"

@@ -261,7 +261,7 @@ actions:
 
 ```
 布局:
-  - 顶栏: 左侧 TANVAS Logo (Cal Sans 24px weight 600)
+  - 顶栏: 左侧 TANGENT Logo (Cal Sans 24px weight 600)
   - 顶栏右侧: 头像 + 下拉菜单（设置、退出）
   - 主体: max-width 1200px 居中
 

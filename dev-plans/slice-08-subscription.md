@@ -270,11 +270,11 @@ app.include_router(webhooks.router, prefix="/api/v1/webhooks", tags=["webhooks"]
 ```
 Stripe Dashboard 配置:
 
-产品 1: TANVAS Free
+产品 1: TANGENT Free
   - 价格: €0/月
   - Price ID: price_free_xxx
 
-产品 2: TANVAS Starter
+产品 2: TANGENT Starter
   - 价格: €9/月
   - Price ID: price_starter_xx
 

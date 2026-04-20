@@ -1,14 +1,14 @@
-# TANVAS
+# TANGENT
 
 **AI Creative Workflow Canvas · AI 创意工作流画布平台**
 
 ---
 
-## What is TANVAS? · 什么是 TANVAS？
+## What is TANGENT? · 什么是 TANGENT？
 
-**EN** — TANVAS is a node-based AI workflow canvas where you drag, connect, and run AI models to produce images, videos, audio, articles, and presentations — all in one place. Describe what you want in natural language and the AI wires the nodes for you.
+**EN** — TANGENT is a node-based AI workflow canvas where you drag, connect, and run AI models to produce images, videos, audio, articles, and presentations — all in one place. Describe what you want in natural language and the AI wires the nodes for you.
 
-**中文** — TANVAS 是一个节点式 AI 工作流画布。你可以拖拽节点、连接模型，自动生成图片、视频、音频、文章和 PPT。用自然语言描述需求，AI 会自动为你连接节点、构建流水线。
+**中文** — TANGENT 是一个节点式 AI 工作流画布。你可以拖拽节点、连接模型，自动生成图片、视频、音频、文章和 PPT。用自然语言描述需求，AI 会自动为你连接节点、构建流水线。
 
 ---
 
@@ -83,8 +83,8 @@ Users can publish and share workflows. VIP unlocks premium templates.
 
 ```bash
 # Clone
-git clone https://github.com/your-org/TanvasAgent.git
-cd TanvasAgent
+git clone https://github.com/your-org/TangentAgent.git
+cd TangentAgent
 
 # Start all services (backend + DB + Redis)
 # 启动所有服务（后端 + 数据库 + Redis）
@@ -121,7 +121,7 @@ DATABASE_URL=postgresql://...
 ## Project Structure · 项目结构
 
 ```
-TanvasAgent/
+TangentAgent/
 ├── frontend/               # React app
 │   ├── src/
 │   │   ├── pages/          # Dashboard, Canvas, Login, Signup
@@ -160,4 +160,4 @@ TanvasAgent/
 
 ## License · 许可
 
-Proprietary · 版权所有 © 2026 TANVAS. All rights reserved.
+Proprietary · 版权所有 © 2026 TANGENT. All rights reserved.

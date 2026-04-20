@@ -58,7 +58,7 @@ class StorageService:
   __init__():
     - 从 config 读取 MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY
     - 初始化 MinIO client (minio.Minio)
-    - 确保 "tanvas" bucket 存在，不存在则创建
+    - 确保 "tangent" bucket 存在，不存在则创建
 
   async upload_file(
     file: UploadFile | bytes,
@@ -405,7 +405,7 @@ Props:
 下载逻辑:
   - 调用 GET /api/v1/assets/:id/download
   - 触发浏览器下载
-  - 文件名: tanvas_{workflow_name}_{timestamp}.{ext}
+  - 文件名: tangent_{workflow_name}_{timestamp}.{ext}
   - 如果直接有 URL (MJ 生成等):
     - fetch → blob → createObjectURL → <a download>
 ```

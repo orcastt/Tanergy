@@ -1,4 +1,4 @@
-# TANVAS — Architecture Decision Document
+# TANGENT — Architecture Decision Document
 
 **版本**: v0.1  
 **日期**: 2026-04-19  

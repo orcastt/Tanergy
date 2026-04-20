@@ -1,4 +1,4 @@
-# TANVAS — Project State
+# TANGENT — Project State
 
 > AI 每次开始新对话前，先读这个文件了解当前状态。
 > 每次 git commit 前更新此文件。

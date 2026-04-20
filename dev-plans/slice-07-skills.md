@@ -374,7 +374,7 @@ outputs: []
 
   "下载配图" 按钮:
     - 打包所有配图为 ZIP (JSZip)
-    - 文件名: tanvas_wechat_{date}.zip
+    - 文件名: tangent_wechat_{date}.zip
     - 触发浏览器下载
 
 节点数据:
@@ -433,7 +433,7 @@ outputs: []
 
   "下载图片" 按钮:
     - JSZip 打包所有图片
-    - 文件名: tanvas_red_{date}.zip
+    - 文件名: tangent_red_{date}.zip
 
 节点数据:
   {

@@ -30,7 +30,7 @@ export default function TopNav() {
           fontFamily: '"Space Grotesk", sans-serif',
           fontSize: "1.25rem", fontWeight: 600, letterSpacing: "-0.03em", color: "#171717",
         }}>
-          TANVAS AI
+          TANGENT AI
         </span>
         <nav style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
           <button

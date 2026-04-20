@@ -3,7 +3,7 @@ import { listWorkflows, createWorkflow, deleteWorkflow as deleteApi, getWorkflow
 import { useCanvasStore } from "./canvasStore"
 import type { Workflow, WorkflowDetail } from "../types/workflow"
 
-const TRASH_KEY = "tanvas_trash"
+const TRASH_KEY = "tangent_trash"
 
 function loadTrash(): Workflow[] {
   try { return JSON.parse(localStorage.getItem(TRASH_KEY) || "[]") } catch { return [] }

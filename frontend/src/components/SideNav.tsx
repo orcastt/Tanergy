@@ -44,7 +44,7 @@ export default function SideNav() {
             fontWeight: 900, fontSize: "1.125rem", letterSpacing: "-0.03em",
             color: "#0e0f0f", lineHeight: 1, margin: 0,
           }}>
-            TANVAS
+            TANGENT
           </h2>
           <p style={{ fontSize: "0.75rem", color: "#444748", fontWeight: 500, marginTop: "0.125rem" }}>
             Creative Engine

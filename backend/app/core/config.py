@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     BACKEND_URL: str = "http://localhost:8000"
 
     # Database
-    DATABASE_URL: str = "postgresql+asyncpg://tanvas:tanvas_dev@localhost:5432/tanvas_db"
+    DATABASE_URL: str = "postgresql+asyncpg://tangent:tangent_dev@localhost:5432/tangent_db"
     DATABASE_POOL_SIZE: int = 10
     DATABASE_MAX_OVERFLOW: int = 20
 
@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     MINIO_ENDPOINT: str = "localhost:9000"
     MINIO_ACCESS_KEY: str = ""
     MINIO_SECRET_KEY: str = ""
-    MINIO_BUCKET_NAME: str = "tanvas-assets"
+    MINIO_BUCKET_NAME: str = "tangent-assets"
     MINIO_USE_SSL: bool = False
 
     # AI API Keys
@@ -42,7 +42,7 @@ class Settings(BaseSettings):
 
     # Email
     RESEND_API_KEY: str = ""
-    RESEND_FROM_EMAIL: str = "noreply@tanvas.app"
+    RESEND_FROM_EMAIL: str = "noreply@tangent.app"
 
     # Stripe
     STRIPE_SECRET_KEY: str = ""

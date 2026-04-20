@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "TANVAS",
+    "name": "TANGENT",
     "tagline": "AI Creative Workflow Canvas"
   },
   "nav": {
@@ -19,7 +19,7 @@
     "loginWithGoogle": "Log in with Google",
     "noAccount": "No account? Sign up",
     "hasAccount": "Already have an account? Log in",
-    "welcome": "Welcome to TANVAS"
+    "welcome": "Welcome to TANGENT"
   },
   "dashboard": {
     "title": "My Workflows",

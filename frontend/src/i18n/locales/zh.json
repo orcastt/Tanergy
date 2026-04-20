@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "TANVAS",
+    "name": "TANGENT",
     "tagline": "AI 创意工作流画布"
   },
   "nav": {
@@ -19,7 +19,7 @@
     "loginWithGoogle": "用 Google 登录",
     "noAccount": "没有账户？注册",
     "hasAccount": "已有账户？登录",
-    "welcome": "欢迎来到 TANVAS"
+    "welcome": "欢迎来到 TANGENT"
   },
   "dashboard": {
     "title": "我的工作流",

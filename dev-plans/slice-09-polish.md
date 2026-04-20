@@ -27,13 +27,13 @@ interface ThemeStore:
 
 逻辑:
   初始化:
-    - 从 localStorage 读 "tanvas_theme"
+    - 从 localStorage 读 "tangent_theme"
     - 无值 → 检测系统偏好: window.matchMedia("(prefers-color-scheme: dark)")
     - 设置 document.documentElement.dataset.theme = theme
 
   setTheme(theme):
     - 更新 state.theme
-    - localStorage.setItem("tanvas_theme", theme)
+    - localStorage.setItem("tangent_theme", theme)
     - document.documentElement.dataset.theme = theme
     - 切换 CSS 自定义属性 (通过 data-theme 属性选择器)
 
@@ -139,7 +139,7 @@ i18n.use(initReactI18next).init({
     zh: { translation: zh },
     en: { translation: en },
   },
-  lng: localStorage.getItem("tanvas_lang") || "zh",
+  lng: localStorage.getItem("tangent_lang") || "zh",
   fallbackLng: "zh",
   interpolation: { escapeValue: false },
 })
@@ -354,8 +354,8 @@ export default i18n
     "or": "或",
     "noAccount": "没有账户？注册",
     "hasAccount": "已有账户？登录",
-    "createAccount": "创建 TANVAS 账户",
-    "welcomeTitle": "欢迎使用 TANVAS",
+    "createAccount": "创建 TANGENT 账户",
+    "welcomeTitle": "欢迎使用 TANGENT",
     "welcomeDesc": "开始你的 AI 创意之旅"
   },
   "errors": {
@@ -457,7 +457,7 @@ export default i18n
 
 逻辑:
   - i18n.changeLanguage(newLang)
-  - localStorage.setItem("tanvas_lang", newLang)
+  - localStorage.setItem("tangent_lang", newLang)
   - 所有使用 t() 的文案自动更新
 
 样式:
@@ -496,7 +496,7 @@ export default i18n
   └──────────────────────────────────────────────────────────┘
 
 左侧:
-  - TANVAS Logo (Cal Sans 24px weight 600) → 链接到 /dashboard
+  - TANGENT Logo (Cal Sans 24px weight 600) → 链接到 /dashboard
   - 在 /canvas/:id 页面:
     - [←] 返回按钮
     - 工作流名称 (可双击编辑)
@@ -551,7 +551,7 @@ export default i18n
 Hero 区域 (居中, 垂直居中):
   ┌──────────────────────────────────────────────┐
   │                                              │
-  │          TANVAS (Cal Sans 64px 600)          │
+  │          TANGENT (Cal Sans 64px 600)          │
   │    AI 创意工作流画布 (Cal Sans 32px 300)     │
   │                                              │
   │  拖拽节点构建 AI 生产流水线                  │  ← Inter 16px

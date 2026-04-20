@@ -11,7 +11,7 @@ interface AuthState {
   restore: () => Promise<void>
 }
 
-const TOKEN_KEY = "tanvas_token"
+const TOKEN_KEY = "tangent_token"
 
 function mapUser(raw: Awaited<ReturnType<typeof getMe>>): User {
   return {

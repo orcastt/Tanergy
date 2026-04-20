@@ -75,7 +75,7 @@ UserOut: id, email, display_name, avatar_url, created_at
 ```
 send_otp_email(email: str, code: str):
   - 使用 Resend API 发送邮件
-  - 邮件标题: "TANVAS 验证码"
+  - 邮件标题: "TANGENT 验证码"
   - 邮件内容: 6位数字验证码 + 10分钟有效期提示
   - 错误处理: Resend API 失败 → 抛出 HTTPException 500
 ```
@@ -216,11 +216,11 @@ state:
 actions:
   login(token, user):
     - 设置 state.user, state.token
-    - localStorage.setItem('tanvas_token', token)
+    - localStorage.setItem('tangent_token', token)
 
   logout():
     - 清空 state
-    - localStorage.removeItem('tanvas_token')
+    - localStorage.removeItem('tangent_token')
     - 跳转 /login
 
   restore():
@@ -254,7 +254,7 @@ App.tsx 修改：
 布局: 居中白色卡片 (card 阴影, 16px 圆角), #f5f5f5 背景
 
 内容:
-  - TANVAS Logo / 标题 (Cal Sans 48px weight 600)
+  - TANGENT Logo / 标题 (Cal Sans 48px weight 600)
   - 邮箱输入框 (Inter 16px)
   - 验证码输入区:
     - 6位数字输入框
@@ -277,7 +277,7 @@ App.tsx 修改：
 **文件**: `frontend/src/pages/SignupPage.tsx`
 
 与 LoginPage 共用组件，区别：
-- 标题改为 "创建 TANVAS 账户"
+- 标题改为 "创建 TANGENT 账户"
 - 底部链接改为 "已有账户？登录" → /login
 - 验证码成功后 is_new_user=True 显示欢迎弹窗
 

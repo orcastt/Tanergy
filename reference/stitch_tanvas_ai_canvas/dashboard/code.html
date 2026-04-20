@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TANVAS AI - Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary": "#5e5e5e",
+                        "inverse-primary": "#c8c6c5",
+                        "surface-tint": "#5f5e5e",
+                        "secondary-fixed": "#e3e2e2",
+                        "primary-fixed": "#e4e2e1",
+                        "on-error-container": "#93000a",
+                        "secondary-container": "#e3e2e2",
+                        "outline": "#747878",
+                        "on-surface-variant": "#444748",
+                        "surface-variant": "#e3e2e2",
+                        "tertiary": "#0d0042",
+                        "primary-fixed-dim": "#c8c6c5",
+                        "surface-bright": "#faf9f9",
+                        "inverse-surface": "#303031",
+                        "on-secondary": "#ffffff",
+                        "surface": "#faf9f9",
+                        "on-tertiary-container": "#8a78ff",
+                        "on-surface": "#1b1c1c",
+                        "on-secondary-fixed-variant": "#464747",
+                        "surface-container-low": "#f5f3f3",
+                        "background": "#faf9f9",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-container": "#646464",
+                        "on-background": "#1b1c1c",
+                        "on-secondary-fixed": "#1b1c1c",
+                        "secondary-fixed-dim": "#c7c6c6",
+                        "surface-dim": "#dbdad9",
+                        "on-tertiary-fixed-variant": "#421cca",
+                        "surface-container-highest": "#e3e2e2",
+                        "outline-variant": "#c4c7c7",
+                        "on-primary-fixed": "#1b1c1c",
+                        "on-primary-container": "#8c8b8b",
+                        "on-tertiary-fixed": "#190064",
+                        "tertiary-fixed": "#e5deff",
+                        "tertiary-fixed-dim": "#c8bfff",
+                        "surface-container-high": "#e9e8e8",
+                        "error": "#ba1a1a",
+                        "surface-container": "#efeded",
+                        "primary": "#0e0f0f",
+                        "on-primary": "#ffffff",
+                        "inverse-on-surface": "#f2f0f0",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#474746",
+                        "primary-container": "#242424",
+                        "tertiary-container": "#21007c",
+                        "on-error": "#ffffff",
+                        "on-tertiary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Space Grotesk", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                        "label": ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, h4, h5, h6, .font-headline { font-family: 'Space Grotesk', sans-serif; letter-spacing: -0.02em; }
+        .ring-shadow-sm { box-shadow: 0 0 0 1px rgba(0,0,0,0.05), 0 1px 2px 0 rgba(0,0,0,0.05); }
+        .ring-shadow-focus { box-shadow: 0 0 0 2px #242424, 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .ghost-border { border-bottom: 1px solid rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body class="bg-surface-container-low text-on-surface antialiased min-h-screen flex flex-col font-body">
+<!-- TopNavBar -->
+<header class="bg-white/80 backdrop-blur-xl docked full-width top-0 z-50 shadow-[0_0_0_1px_rgba(0,0,0,0.05),0_1px_2px_0_rgba(0,0,0,0.05)] ring-shadow-sm flex justify-between items-center w-full px-6 py-3 hidden md:flex">
+<div class="flex items-center gap-6">
+<span class="text-xl font-semibold tracking-tighter text-neutral-900 font-headline">TANVAS AI</span>
+<nav class="flex items-center gap-4">
+<a class="text-neutral-900 font-bold border-b-2 border-neutral-900 font-headline pb-1 hover:bg-neutral-50 transition-colors scale-95 active:opacity-80 duration-150" href="#">Main Workspace</a>
+<a class="text-neutral-500 font-medium font-body hover:bg-neutral-50 transition-colors scale-95 active:opacity-80 duration-150" href="#">Workflow Alpha*</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button aria-label="notifications" class="text-neutral-500 hover:text-neutral-900 transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button aria-label="settings" class="text-neutral-500 hover:text-neutral-900 transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden ring-shadow-sm cursor-pointer">
+<img alt="User profile" class="w-full h-full object-cover" data-alt="professional headshot of a person looking forward against a clean neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuByLa0jY9hPucXjokmtf_yaF2zVbpKCCD3rk57588KUpiPcGJO63CIVrPLNQbzTLTCkvAQvNIrvfkHxtt5b65IT2bDMnMHMYGUVNRDgbucXwELvaIB8jFyKMjoxY3tK7MsiEAu2I9bDJMrQbPopLzQY8E84gCDI9ovJOtC6DAld8dcl_reqcqUJu0_gf9VG7WclbrsUzUPZO-wPVuZPMXflfdpRlhz4rTWUk3ffVUuMNBNb2hVrObVykTJumSgqjxZ2IQscdIJ1NX4n"/>
+</div>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden h-[calc(100vh-64px)] md:mt-[64px]">
+<!-- SideNavBar -->
+<aside class="bg-[#F5F5F5] text-neutral-900 h-full w-64 flex flex-col bg-neutral-100 hidden md:flex z-40 p-4 gap-2">
+<div class="mb-8 px-2 flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-primary-container text-on-primary flex items-center justify-center font-bold font-headline text-xl">T</div>
+<div>
+<h2 class="font-black text-lg tracking-tighter font-headline text-primary">TANVAS</h2>
+<p class="text-xs text-on-surface-variant font-medium">Creative Engine</p>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 bg-white text-neutral-900 shadow-[0_0_0_1px_rgba(0,0,0,0.05)] rounded-md font-label font-semibold text-xs uppercase tracking-widest transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined text-[20px]">dashboard</span>
+                    All Workflows
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-200/50 rounded-md font-label font-semibold text-xs uppercase tracking-widest transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined text-[20px]">schedule</span>
+                    Recent
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-200/50 rounded-md font-label font-semibold text-xs uppercase tracking-widest transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined text-[20px]">auto_awesome_motion</span>
+                    Templates
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-200/50 rounded-md font-label font-semibold text-xs uppercase tracking-widest transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+                    Trash
+                </a>
+</nav>
+<div class="mt-auto pt-4">
+<button class="w-full flex items-center justify-center gap-2 bg-primary-container text-on-primary px-4 py-2 rounded-lg font-medium text-sm hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                    New Workflow
+                </button>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 overflow-y-auto bg-surface-container-low p-8 lg:p-12">
+<div class="max-w-6xl mx-auto space-y-12">
+<header class="flex items-end justify-between pb-4">
+<div>
+<h1 class="text-3xl font-headline text-primary font-bold">Workspace</h1>
+<p class="text-on-surface-variant text-sm mt-1">Manage and orchestrate your active workflows.</p>
+</div>
+</header>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- New Workflow Primary Action Card -->
+<button class="group flex flex-col justify-between h-56 bg-primary-container text-on-primary rounded-xl p-6 text-left transition-transform hover:scale-[1.02] active:scale-[0.98]">
+<div class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-2xl group-hover:rotate-90 transition-transform duration-300">add</span>
+</div>
+<div>
+<h3 class="font-headline text-xl font-semibold">Create New Workflow</h3>
+<p class="text-white/60 text-sm mt-1 font-body">Start a blank canvas or import data.</p>
+</div>
+</button>
+<!-- Existing Workflow Cards -->
+<div class="bg-surface-container-lowest rounded-xl p-5 h-56 flex flex-col justify-between ring-shadow-sm hover:bg-surface-bright transition-colors cursor-pointer group">
+<div class="w-full h-24 bg-surface-container-low rounded-lg mb-4 overflow-hidden relative">
+<div class="absolute inset-0 bg-gradient-to-br from-[#6349EA]/10 to-transparent"></div>
+<!-- Mock Nodes visually representing a workflow -->
+<div class="absolute top-2 left-2 w-16 h-8 bg-white ring-shadow-sm rounded flex items-center justify-center text-[8px] text-primary">Input</div>
+<div class="absolute top-8 left-10 w-16 h-8 bg-white ring-shadow-sm rounded flex items-center justify-center text-[8px] text-primary">Process</div>
+<svg class="absolute top-6 left-6 w-8 h-8 text-[#6349EA]/30" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<div>
+<h4 class="font-headline font-semibold text-primary group-hover:text-[#6349EA] transition-colors">Content Pipeline Alpha</h4>
+<p class="text-xs text-on-surface-variant mt-1 font-body">Edited 2 hrs ago</p>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-5 h-56 flex flex-col justify-between ring-shadow-sm hover:bg-surface-bright transition-colors cursor-pointer group">
+<div class="w-full h-24 bg-surface-container-low rounded-lg mb-4 overflow-hidden relative">
+<div class="absolute inset-0 bg-gradient-to-br from-[#22C55E]/10 to-transparent"></div>
+<div class="absolute top-4 left-4 w-12 h-12 bg-white ring-shadow-sm rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-[#22C55E] text-xl">image</span>
+</div>
+</div>
+<div>
+<h4 class="font-headline font-semibold text-primary group-hover:text-[#22C55E] transition-colors">Image Generation Batch</h4>
+<p class="text-xs text-on-surface-variant mt-1 font-body">Edited yesterday</p>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-5 h-56 flex flex-col justify-between ring-shadow-sm hover:bg-surface-bright transition-colors cursor-pointer group">
+<div class="w-full h-24 bg-surface-container-low rounded-lg mb-4 overflow-hidden relative">
+<div class="absolute inset-0 bg-gradient-to-br from-[#3B82F6]/10 to-transparent"></div>
+<div class="absolute inset-x-2 top-2 h-4 bg-white ring-shadow-sm rounded-sm"></div>
+<div class="absolute inset-x-2 top-8 h-4 bg-white ring-shadow-sm rounded-sm w-3/4"></div>
+<div class="absolute inset-x-2 top-14 h-4 bg-white ring-shadow-sm rounded-sm w-1/2"></div>
+</div>
+<div>
+<h4 class="font-headline font-semibold text-primary group-hover:text-[#3B82F6] transition-colors">Text Analysis Logic</h4>
+<p class="text-xs text-on-surface-variant mt-1 font-body">Edited 3 days ago</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

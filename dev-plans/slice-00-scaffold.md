@@ -95,7 +95,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1 import health
 
-app = FastAPI(title="TANVAS API", version="0.1.0")
+app = FastAPI(title="TANGENT API", version="0.1.0")
 
 # CORS：允许 FRONTEND_URL
 app.add_middleware(CORSMiddleware, allow_origins=[settings.FRONTEND_URL], ...)
@@ -264,9 +264,9 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: tanvas_db
-      POSTGRES_USER: tanvas
-      POSTGRES_PASSWORD: tanvas_dev
+      POSTGRES_DB: tangent_db
+      POSTGRES_USER: tangent
+      POSTGRES_PASSWORD: tangent_dev
     ports: ["5432:5432"]
     volumes: [pgdata:/var/lib/postgresql/data]
 
@@ -278,8 +278,8 @@ services:
     image: minio/minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: tanvas_minio
-      MINIO_ROOT_PASSWORD: tanvas_minio_dev
+      MINIO_ROOT_USER: tangent_minio
+      MINIO_ROOT_PASSWORD: tangent_minio_dev
     ports: ["9000:9000", "9001:9001"]
     volumes: [minio-data:/data]
 
@@ -304,7 +304,7 @@ volumes:
 ### Step 21: `.env` 文件
 
 从 `.env.example` 复制，填入本地开发值：
-- DATABASE_URL 改为 `postgresql+asyncpg://tanvas:tanvas_dev@postgres:5432/tanvas_db`
+- DATABASE_URL 改为 `postgresql+asyncpg://tangent:tangent_dev@postgres:5432/tangent_db`
 - REDIS_URL 改为 `redis://redis:6379/0`
 - MINIO_ENDPOINT 改为 `minio:9000`
 - ANTHROPIC_API_KEY 等留空（后续 slice 填）
@@ -320,7 +320,7 @@ volumes:
 ### Step 23: Git 初始化
 
 ```bash
-cd TanvasAgent
+cd TangentAgent
 git init
 git add .
 git commit -m "Slice 0: project scaffold (React+FastAPI+Docker)"

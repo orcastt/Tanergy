@@ -94,7 +94,7 @@ export default function LoginPage() {
                 letterSpacing: "-0.025em",
                 lineHeight: 1,
               }}>
-                TANVAS
+                TANGENT
               </h1>
             </div>
 
