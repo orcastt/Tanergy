@@ -1,8 +1,8 @@
 # TANGENT — Architecture Decision Document
 
-**版本**: v0.1  
-**日期**: 2026-04-19  
-**状态**: 草稿  
+**版本**: v0.2  
+**日期**: 2026-04-20  
+**状态**: 更新中——聚焦公众号 Skill，新增 Gate 执行模型
 
 > 本文档记录技术决策和工程约束。用户感受不到这些内容，但它们决定了产品怎么建。
 > 每次重大技术决策变更必须更新本文档。
@@ -241,13 +241,17 @@ backend/
 │   │   ├── storage_service.py     ← MinIO 操作
 │   │   └── subscription_service.py
 │   ├── nodes/            ← 节点执行器（每类节点一个文件）
-│   │   ├── base.py       ← NodeExecutor 基类
-│   │   ├── chat.py       ← Claude API 调用
-│   │   ├── optimize.py
-│   │   ├── analysis.py
-│   │   ├── search.py     ← Tavily API 调用
-│   │   ├── image_mj.py   ← MJ API 调用
-│   │   └── image_imagen.py ← Imagen3 API 调用
+│   │   ├── base.py              ← NodeExecutor 基类
+│   │   ├── registry.py          ← 节点类型 → Executor 映射表
+│   │   ├── text_input.py        ← 透传，免费
+│   │   ├── research.py          ← Tavily 多轮 + Claude 汇总
+│   │   ├── outline_generator.py ← Claude 生成选题方案
+│   │   ├── gate.py              ← 特殊：触发 waiting 状态，不走 ARQ
+│   │   ├── writer.py            ← Claude 长文写作（含反AI规则）
+│   │   ├── reviewer.py          ← Claude 三遍审校链
+│   │   ├── image_planner.py     ← Claude 配图规划
+│   │   ├── image_gen.py         ← Google Imagen 3
+│   │   └── html_formatter.py    ← 纯模板引擎，Markdown→WeChat HTML
 │   ├── models/           ← SQLAlchemy ORM 模型
 │   │   ├── user.py
 │   │   ├── workflow.py
@@ -301,6 +305,60 @@ backend/
 2. 同层节点并发提交到 ARQ 队列
 3. 每个节点完成后检查是否有依赖的下游节点可以启动
 4. 通过 WebSocket 推送每个节点的状态变化
+
+### 4.4 Gate 节点执行模型（新增）
+
+Gate 是唯一会暂停整条执行链的节点类型，引入了**人工决策门**机制。
+
+```
+用户点击 Run All
+    ↓
+后端：DAG 拓扑排序 → 生成 ExecutionJob
+    ↓
+执行到 Gate 节点：
+    后端：不推入 ARQ 队列，直接发送 waiting 事件
+    WebSocket → { type: "node_waiting", node_id: "gate_1", payload: { options/prompt } }
+    ↓
+前端：canvasStore 将 gate_1 状态设为 waiting（琥珀色边框）
+前端：动态在画布上生成「临时交互节点」（AnimatedTempNode）
+    ↓
+用户操作（选择/输入）→ 点击确认
+    ↓
+前端：POST /api/v1/executions/:job_id/gate-response
+      body: { node_id: "gate_1", value: "用户选择的内容" }
+    ↓
+后端：ExecutionJob 恢复，Gate 节点标记 done，输出 value
+前端：临时交互节点淡出消失，Gate 折叠显示「✓ 已选：xxx」
+    ↓
+继续执行下游节点
+```
+
+**前端 canvasStore 新增字段**：
+```typescript
+waitingGates: string[]          // 当前处于 waiting 状态的 Gate 节点 ID
+tempNodes: EphemeralNode[]      // 动态生成的临时交互节点（不存入 graph_json）
+```
+
+**Gate 临时节点不存入 graph_json**，只存在于运行时画布状态，用户保存时不包含。
+
+### 4.5 节点执行器注册表（MVP）
+
+```python
+# backend/app/nodes/registry.py
+NODE_EXECUTORS = {
+    "text_input":         TextInputExecutor,       # 透传，免费
+    "research":           ResearchExecutor,         # Tavily + Claude 汇总
+    "outline_generator":  OutlineGeneratorExecutor, # Claude 生成选题
+    "gate":               GateExecutor,             # 特殊：触发 waiting，不走 ARQ
+    "writer":             WriterExecutor,           # Claude 长文写作
+    "reviewer":           ReviewerExecutor,         # Claude 三遍审校链
+    "image_planner":      ImagePlannerExecutor,     # Claude 配图规划
+    "image_gen":          ImagenExecutor,           # Google Imagen 3
+    "image_gallery":      None,                     # 纯前端，无后端 executor
+    "html_formatter":     HtmlFormatterExecutor,    # 纯模板引擎，不走 LLM
+    "preview_wechat":     None,                     # 纯前端展示
+}
+```
 
 ### 4.4 认证模块（前后端）
 
@@ -477,24 +535,31 @@ POST   /api/v1/workflows/:id/duplicate  复制工作流
 ### 8.3 执行
 
 ```
-POST /api/v1/executions            提交执行请求（body: workflow_id, node_ids?）
-GET  /api/v1/executions/:id        查询执行状态
-POST /api/v1/executions/:id/cancel 取消执行
+POST /api/v1/executions                     提交执行请求（body: workflow_id, node_ids?）
+GET  /api/v1/executions/:id                 查询执行状态
+POST /api/v1/executions/:id/cancel          取消执行
+POST /api/v1/executions/:id/gate-response   Gate 节点用户响应（body: node_id, value）
 
-WS   /ws/executions/:execution_id  WebSocket 实时推送节点状态
+WS   /ws/executions/:execution_id           WebSocket 实时推送节点状态
 ```
 
 **WebSocket 消息格式**：
 ```json
 {
   "type": "node_status",
-  "node_id": "img_1",
-  "status": "running" | "success" | "failed",
+  "node_id": "gate_1",
+  "status": "idle" | "running" | "waiting" | "success" | "failed",
   "progress": 45,
-  "result": { "images": ["https://..."] },
+  "result": { "out": "用户选择的内容" },
+  "waiting_payload": {
+    "mode": "select",
+    "options": [{ "id": "a", "title": "标题A", "angle": "..." }]
+  },
   "error": null
 }
 ```
+
+`waiting` 是新增状态，仅 Gate 节点使用。前端收到 `waiting` 后负责渲染临时交互节点。
 
 ### 8.4 资产
 
