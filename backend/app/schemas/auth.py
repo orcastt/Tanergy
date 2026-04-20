@@ -1,10 +1,11 @@
 from datetime import datetime
+from uuid import UUID
 
 from pydantic import BaseModel, EmailStr
 
 
 class UserOut(BaseModel):
-    id: str
+    id: UUID
     email: str
     display_name: str
     avatar_url: str | None = None
