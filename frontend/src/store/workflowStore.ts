@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import { listWorkflows, createWorkflow, deleteWorkflow as deleteApi, getWorkflow, updateWorkflow } from "../services/workflow"
+import { tauri } from "../services/tauri"
 import { useCanvasStore } from "./canvasStore"
 import type { Workflow, WorkflowDetail } from "../types/workflow"
 
@@ -15,7 +15,6 @@ function saveTrash(trash: Workflow[]) {
 interface WorkflowState {
   workflows: Workflow[]
   trashedWorkflows: Workflow[]
-  total: number
   isLoading: boolean
   isDirty: boolean
   isSaving: boolean
@@ -23,7 +22,7 @@ interface WorkflowState {
   toast: string | null
 
   fetchWorkflows: () => Promise<void>
-  createAndNavigate: () => Promise<string>
+  createAndNavigate: () => Promise<string | undefined>
   deleteWorkflow: (id: string) => Promise<void>
   moveToTrash: (id: string) => void
   restoreFromTrash: (id: string) => void
@@ -38,7 +37,6 @@ interface WorkflowState {
 export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   workflows: [],
   trashedWorkflows: loadTrash(),
-  total: 0,
   isLoading: true,
   isDirty: false,
   isSaving: false,
@@ -48,26 +46,33 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   fetchWorkflows: async () => {
     set({ isLoading: true })
     try {
-      const res = await listWorkflows()
+      const wfs = await tauri.listWorkflows()
       const trashedIds = new Set(get().trashedWorkflows.map((w) => w.id))
-      const filtered = res.workflows.filter((w) => !trashedIds.has(w.id))
-      set({ workflows: filtered, total: filtered.length, isLoading: false })
+      const filtered = wfs.filter((w) => !trashedIds.has(w.id))
+      set({ workflows: filtered, isLoading: false })
     } catch {
       set({ isLoading: false })
     }
   },
 
   createAndNavigate: async () => {
-    const wf = await createWorkflow()
-    set((s) => ({ workflows: [wf, ...s.workflows], total: s.total + 1 }))
-    return wf.id
+    try {
+      const wf = await tauri.createWorkflow()
+      set((s) => ({ workflows: [wf, ...s.workflows] }))
+      return wf.id
+    } catch (e) {
+      if (String(e).includes("FREE_PLAN_LIMIT")) {
+        set({ toast: "Free 计划最多 3 个工作流，升级 Pro 解锁无限" })
+        setTimeout(() => set({ toast: null }), 4000)
+      }
+      return undefined
+    }
   },
 
   deleteWorkflow: async (id) => {
-    await deleteApi(id)
+    await tauri.deleteWorkflow(id)
     set((s) => ({
       workflows: s.workflows.filter((w) => w.id !== id),
-      total: s.total - 1,
     }))
   },
 
@@ -75,12 +80,11 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     const { workflows, trashedWorkflows } = get()
     const wf = workflows.find((w) => w.id === id)
     if (!wf) return
-    const newTrash = [{ ...wf, _trashedAt: new Date().toISOString() } as Workflow, ...trashedWorkflows]
+    const newTrash = [wf, ...trashedWorkflows]
     saveTrash(newTrash)
     set((s) => ({
       workflows: s.workflows.filter((w) => w.id !== id),
       trashedWorkflows: newTrash,
-      total: s.total - 1,
     }))
   },
 
@@ -93,28 +97,27 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     set((s) => ({
       workflows: [wf, ...s.workflows],
       trashedWorkflows: newTrash,
-      total: s.total + 1,
     }))
   },
 
   permanentlyDelete: async (id) => {
-    try { await deleteApi(id) } catch { /* already gone */ }
+    try { await tauri.deleteWorkflow(id) } catch { /* already gone */ }
     const newTrash = get().trashedWorkflows.filter((w) => w.id !== id)
     saveTrash(newTrash)
     set({ trashedWorkflows: newTrash })
   },
 
   copyWorkflow: async (id) => {
-    const original = await getWorkflow(id)
-    const copy = await createWorkflow(`${original.name} (copy)`)
-    await updateWorkflow(copy.id, { graph_json: original.graph_json })
-    const fresh = await getWorkflow(copy.id)
-    set((s) => ({ workflows: [fresh, ...s.workflows], total: s.total + 1 }))
+    const original = await tauri.getWorkflow(id)
+    const copy = await tauri.createWorkflow(`${original.name} (copy)`)
+    await tauri.updateWorkflow(copy.id, { graph_json: original.graph_json })
+    const fresh = await tauri.getWorkflow(copy.id)
+    set((s) => ({ workflows: [fresh, ...s.workflows] }))
   },
 
   loadWorkflow: async (id) => {
     try {
-      const wf = await getWorkflow(id)
+      const wf = await tauri.getWorkflow(id)
       set({ currentWorkflow: wf, isDirty: false })
     } catch {
       set({ currentWorkflow: null })
@@ -126,8 +129,9 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     if (!currentWorkflow || !isDirty) return
     set({ isSaving: true })
     try {
-      const graphJson = useCanvasStore.getState().getGraphJson()
-      await updateWorkflow(currentWorkflow.id, { graph_json: graphJson })
+      const graph = useCanvasStore.getState().getGraphJson()
+      const graphJson = JSON.stringify(graph)
+      await tauri.updateWorkflow(currentWorkflow.id, { graph_json: graphJson })
       set({ isSaving: false, isDirty: false, toast: "Saved" })
       setTimeout(() => set({ toast: null }), 3000)
     } catch {

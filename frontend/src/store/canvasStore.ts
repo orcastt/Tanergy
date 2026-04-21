@@ -14,9 +14,8 @@ interface CanvasState {
   selectedNodeIds: string[]
   nodeStatuses: Record<string, NodeStatus>
   nodeResults: Record<string, unknown>
-
-  // Gate node waiting state
-  waitingGates: Record<string, string[]>  // gateNodeId → option labels
+  waitingGates: Record<string, string[]>
+  clipboard: { nodes: Node[]; edges: Edge[] } | null
 
   history: CanvasSnapshot[]
   historyIndex: number
@@ -31,6 +30,12 @@ interface CanvasState {
   // Edge ops
   addEdge: (edge: Edge) => void
   removeEdge: (id: string) => void
+
+  // Clipboard
+  copySelected: () => void
+  pasteNodes: () => void
+  deleteSelected: () => void
+  duplicateNode: (id: string) => void
 
   // History
   undo: () => void
@@ -83,6 +88,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   history: [],
   historyIndex: -1,
   maxHistory: 50,
+  clipboard: null,
 
   addNode: (node) => set((s) => {
     const nodes = [...s.nodes, node]
@@ -220,6 +226,73 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     }
     s.onDirty?.()
     return { edges }
+  }),
+
+  copySelected: () => {
+    const s = get()
+    const ids = s.selectedNodeIds
+    if (ids.length === 0) return
+    const copiedNodes = s.nodes
+      .filter((n) => ids.includes(n.id))
+      .map((n) => JSON.parse(JSON.stringify(n)))
+    const copiedEdges = s.edges
+      .filter((e) => ids.includes(e.source) && ids.includes(e.target))
+      .map((e) => JSON.parse(JSON.stringify(e)))
+    set({ clipboard: { nodes: copiedNodes, edges: copiedEdges } })
+  },
+
+  pasteNodes: () => set((s) => {
+    const clip = s.clipboard
+    if (!clip || clip.nodes.length === 0) return s
+    const idMap: Record<string, string> = {}
+    const newNodes = clip.nodes.map((n) => {
+      const newId = crypto.randomUUID()
+      idMap[n.id] = newId
+      return {
+        ...JSON.parse(JSON.stringify(n)),
+        id: newId,
+        position: { x: n.position.x + 40, y: n.position.y + 40 },
+        selected: true,
+      }
+    })
+    const newEdges = clip.edges.map((e) => ({
+      ...JSON.parse(JSON.stringify(e)),
+      id: `e-${idMap[e.source]}-${e.sourceHandle}-${idMap[e.target]}-${e.targetHandle}`,
+      source: idMap[e.source],
+      target: idMap[e.target],
+    }))
+    // Deselect existing nodes
+    const nodes = s.nodes.map((n) => ({ ...n, selected: false })).concat(newNodes)
+    const edges = s.edges.concat(newEdges)
+    const hist = pushHistory(s)
+    s.onDirty?.()
+    return { nodes, edges, selectedNodeIds: newNodes.map((n) => n.id), ...hist }
+  }),
+
+  deleteSelected: () => set((s) => {
+    const ids = s.selectedNodeIds
+    if (ids.length === 0) return s
+    const nodes = s.nodes.filter((n) => !ids.includes(n.id))
+    const edges = s.edges.filter((e) => !ids.includes(e.source) && !ids.includes(e.target))
+    const hist = pushHistory(s)
+    s.onDirty?.()
+    return { nodes, edges, selectedNodeIds: [], ...hist }
+  }),
+
+  duplicateNode: (id) => set((s) => {
+    const node = s.nodes.find((n) => n.id === id)
+    if (!node) return s
+    const newId = crypto.randomUUID()
+    const newNode = {
+      ...JSON.parse(JSON.stringify(node)),
+      id: newId,
+      position: { x: node.position.x + 40, y: node.position.y + 40 },
+      selected: true,
+    }
+    const nodes = s.nodes.map((n) => ({ ...n, selected: false })).concat(newNode)
+    const hist = pushHistory(s)
+    s.onDirty?.()
+    return { nodes, selectedNodeIds: [newId], ...hist }
   }),
 
   setOnDirty: (cb) => set({ onDirty: cb }),

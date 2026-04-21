@@ -7,6 +7,14 @@ import NodeRunButton from "./NodeRunButton"
 
 type Status = "idle" | "running" | "waiting" | "done" | "error"
 
+const CATEGORY_COLORS: Record<string, string> = {
+  input: "#3B82F6",
+  text: "#92400E",
+  ai: "#6349EA",
+  image: "#22C55E",
+  output: "#EAB308",
+}
+
 export interface PortDef {
   id: string
   type: PortType
@@ -21,10 +29,11 @@ interface Props {
   status?: Status
   selected?: boolean
   nodeId?: string
+  category?: string
   children?: ReactNode
 }
 
-export default function NodeBase({ title, icon, inputs = [], outputs = [], status, selected, nodeId, children }: Props) {
+export default function NodeBase({ title, icon, inputs = [], outputs = [], status, selected, nodeId, category, children }: Props) {
   const ringStyle = selected
     ? "0 0 0 2px #242424, 0 4px 6px -1px rgba(0,0,0,0.1)"
     : status === "running"
@@ -49,39 +58,42 @@ export default function NodeBase({ title, icon, inputs = [], outputs = [], statu
       overflow: "visible",
       position: "relative",
       transition: "box-shadow 200ms ease",
+      borderLeft: category ? `3px solid ${CATEGORY_COLORS[category] ?? "#747878"}` : undefined,
     }}>
       {/* Input handles */}
       {inputs.map((port, i) => (
-        <Handle
-          key={port.id}
-          type="target"
-          position={Position.Left}
-          id={port.id}
-          style={{
-            width: "8px", height: "8px", borderRadius: "50%",
-            background: PORT_COLORS[port.type],
-            border: "none",
-            top: inputCount === 1 ? "50%" : `${30 + (i / (inputCount - 1)) * 40}%`,
-            transition: "transform 150ms ease",
-          }}
-        />
+        <div key={port.id} title={`Input: ${port.type}`} style={{ position: "absolute", left: 0, top: inputCount === 1 ? "50%" : `${30 + (i / (inputCount - 1)) * 40}%`, transform: "translate(-50%, -50%)", zIndex: 10 }}>
+          <Handle
+            type="target"
+            position={Position.Left}
+            id={port.id}
+            style={{
+              width: "8px", height: "8px", borderRadius: "50%",
+              background: PORT_COLORS[port.type],
+              border: "none",
+              position: "relative",
+              transition: "transform 150ms ease",
+            }}
+          />
+        </div>
       ))}
 
       {/* Output handles */}
       {outputs.map((port, i) => (
-        <Handle
-          key={port.id}
-          type="source"
-          position={Position.Right}
-          id={port.id}
-          style={{
-            width: "8px", height: "8px", borderRadius: "50%",
-            background: PORT_COLORS[port.type],
-            border: "none",
-            top: outputCount === 1 ? "50%" : `${30 + (i / (outputCount - 1)) * 40}%`,
-            transition: "transform 150ms ease",
-          }}
-        />
+        <div key={port.id} title={`Output: ${port.type}`} style={{ position: "absolute", right: 0, top: outputCount === 1 ? "50%" : `${30 + (i / (outputCount - 1)) * 40}%`, transform: "translate(50%, -50%)", zIndex: 10 }}>
+          <Handle
+            type="source"
+            position={Position.Right}
+            id={port.id}
+            style={{
+              width: "8px", height: "8px", borderRadius: "50%",
+              background: PORT_COLORS[port.type],
+              border: "none",
+              position: "relative",
+              transition: "transform 150ms ease",
+            }}
+          />
+        </div>
       ))}
 
       <NodeTitle icon={icon} title={title} status={status} footer={nodeId ? <NodeRunButton nodeId={nodeId} status={status ?? "idle"} /> : undefined} />

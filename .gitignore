@@ -50,3 +50,6 @@ htmlcov/
 # Temp files
 tmp/
 temp/
+
+# Tauri
+src-tauri/target/

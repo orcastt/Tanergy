@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef, type ComponentType } from "react"
+import { useCallback, useState, useRef, useEffect, type ComponentType } from "react"
 import {
   ReactFlow,
   Background,
@@ -16,6 +16,7 @@ import { useCanvasStore } from "../store/canvasStore"
 import { nodeTypes } from "../nodes/index"
 import { NODE_MAP } from "../nodes/nodeDefs"
 import NodePicker from "./NodePicker"
+import ContextMenu from "./ContextMenu"
 import Toolbar from "./Toolbar"
 import CanvasControls from "./CanvasControls"
 import type { NodeType } from "../types/node"
@@ -41,11 +42,40 @@ function getInputPortType(nodeId: string, handleId: string | null | undefined, n
 }
 
 export default function Canvas() {
-  const { nodes, edges, addNode, addEdge, onNodesChange, onEdgesChange, removeNode } = useCanvasStore()
+  const {
+    nodes, edges, addNode, addEdge, onNodesChange, onEdgesChange, removeNode,
+    copySelected, pasteNodes, deleteSelected, duplicateNode, clipboard,
+  } = useCanvasStore()
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pickerPos, setPickerPos] = useState<{ x: number; y: number } | null>(null)
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; nodeId?: string } | null>(null)
   const lastClickRef = useRef<{ time: number; x: number; y: number } | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const { screenToFlowPosition } = useReactFlow()
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return
+
+      if (e.key === "c" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        copySelected()
+      } else if (e.key === "v" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        pasteNodes()
+      } else if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault()
+        deleteSelected()
+      } else if (e.key === "Escape") {
+        setPickerOpen(false)
+        setCtxMenu(null)
+      }
+    }
+    window.addEventListener("keydown", handler)
+    return () => window.removeEventListener("keydown", handler)
+  }, [copySelected, pasteNodes, deleteSelected])
 
   const handleConnect: OnConnect = useCallback((connection: Connection) => {
     if (!connection.source || !connection.target) return
@@ -86,6 +116,23 @@ export default function Canvas() {
     }
   }, [screenToFlowPosition])
 
+  const handleNodeContextMenu = useCallback((event: React.MouseEvent, node: any) => {
+    event.preventDefault()
+    setCtxMenu({ x: event.clientX, y: event.clientY, nodeId: node.id })
+  }, [])
+
+  const handlePaneContextMenu = useCallback((event: MouseEvent | React.MouseEvent) => {
+    event.preventDefault()
+    setCtxMenu({ x: event.clientX, y: event.clientY })
+  }, [])
+
+  const handleNodeClick = useCallback((event: React.MouseEvent, node: any) => {
+    if (event.altKey) {
+      event.preventDefault()
+      duplicateNode(node.id)
+    }
+  }, [duplicateNode])
+
   const handleNodeSelect = useCallback((type: NodeType, position?: { x: number; y: number }) => {
     const def = NODE_MAP[type]
     if (!def) return
@@ -110,8 +157,18 @@ export default function Canvas() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const nodeTypesMap: Record<string, ComponentType<any>> = nodeTypes as any
 
+  const ctxMenuItems = ctxMenu?.nodeId
+    ? [
+        { label: "复制", shortcut: "⌘C", action: () => { useCanvasStore.getState().setSelectedNodes([ctxMenu.nodeId!]); copySelected() } },
+        ...(clipboard ? [{ label: "粘贴", shortcut: "⌘V", action: pasteNodes }] : []),
+        { label: "删除", shortcut: "Del", action: () => { useCanvasStore.getState().setSelectedNodes([ctxMenu.nodeId!]); deleteSelected() } },
+      ]
+    : clipboard
+      ? [{ label: "粘贴", shortcut: "⌘V", action: pasteNodes }]
+      : []
+
   return (
-    <div style={{ width: "100%", height: "100%", position: "relative" }}>
+    <div ref={containerRef} style={{ width: "100%", height: "100%", position: "relative" }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -120,12 +177,14 @@ const nodeTypesMap: Record<string, ComponentType<any>> = nodeTypes as any
         onNodesChange={handleNodesChange}
         onEdgesChange={handleEdgesChange}
         onPaneClick={handlePaneClick}
+        onNodeContextMenu={handleNodeContextMenu}
+        onPaneContextMenu={handlePaneContextMenu}
+        onNodeClick={handleNodeClick}
         isValidConnection={isValidConnection}
         snapToGrid={true}
         snapGrid={SNAP_GRID}
         minZoom={0.2}
         maxZoom={2}
-        deleteKeyCode="Delete"
         fitView
         proOptions={{ hideAttribution: true }}
         style={{ background: "#f5f3f3" }}
@@ -142,6 +201,15 @@ const nodeTypesMap: Record<string, ComponentType<any>> = nodeTypes as any
         onSelect={handleNodeSelect}
         onClose={() => setPickerOpen(false)}
       />
+
+      {ctxMenu && ctxMenuItems.length > 0 && (
+        <ContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          items={ctxMenuItems}
+          onClose={() => setCtxMenu(null)}
+        />
+      )}
     </div>
   )
 }

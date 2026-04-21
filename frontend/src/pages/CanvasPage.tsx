@@ -2,8 +2,11 @@ import { useParams, useNavigate } from "react-router-dom"
 import { ReactFlowProvider } from "@xyflow/react"
 import { useCanvas } from "../hooks/useCanvas"
 import { useWorkflowStore } from "../store/workflowStore"
+import { tauri } from "../services/tauri"
 import Canvas from "../canvas/Canvas"
 import { useState } from "react"
+import { save } from "@tauri-apps/plugin-dialog"
+import { writeFile } from "@tauri-apps/plugin-fs"
 
 export default function CanvasPage() {
   return (
@@ -69,7 +72,10 @@ function CanvasPageInner() {
         <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
           {/* Back */}
           <button
-            onClick={() => navigate("/dashboard")}
+            onClick={() => {
+              if (isDirty) saveWorkflow()
+              navigate("/dashboard")
+            }}
             style={{
               display: "flex", alignItems: "center", gap: "0.375rem",
               background: "none", border: "none", cursor: "pointer",
@@ -116,13 +122,32 @@ function CanvasPageInner() {
 
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <button
+            onClick={async () => {
+              if (!currentWorkflow) return
+              try {
+                const json = await tauri.exportWorkflow(currentWorkflow.id)
+                const filePath = await save({
+                  defaultPath: `${currentWorkflow.name}.tangent.json`,
+                  filters: [{ name: "Tangent Workflow", extensions: ["tangent.json"] }],
+                })
+                if (filePath) {
+                  await writeFile(filePath, new TextEncoder().encode(json))
+                  useWorkflowStore.setState({ toast: "Exported!" })
+                  setTimeout(() => useWorkflowStore.setState({ toast: null }), 2000)
+                }
+              } catch (e) {
+                console.error("export failed", e)
+              }
+            }}
             style={{
               background: "#e3e2e2", color: "#0e0f0f",
               padding: "0.375rem 1rem", borderRadius: "0.375rem",
               fontSize: "0.875rem", fontWeight: 500, border: "none", cursor: "pointer",
+              display: "flex", alignItems: "center", gap: "0.25rem",
             }}
           >
-            Skills
+            <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>upload</span>
+            Export
           </button>
           <button
             onClick={() => saveWorkflow()}

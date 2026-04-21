@@ -1,5 +1,7 @@
 import { getExecutionLayers, hasCycle } from "./dagUtils"
 import { useCanvasStore } from "../store/canvasStore"
+import { useWorkflowStore } from "../store/workflowStore"
+import { tauri } from "../services/tauri"
 import type { NodeType } from "../types/node"
 
 export type RunAllOptions = {
@@ -10,28 +12,103 @@ export type RunAllOptions = {
   onComplete?: () => void
 }
 
+const AI_NODES: Set<string> = new Set(["research", "outline_generator", "writer", "reviewer", "image_planner", "image_gen"])
+
+function extractGateOptions(inputData: Record<string, unknown>): string[] {
+  const input = inputData.in
+  if (Array.isArray(input)) return input as string[]
+
+  // outline_generator output format: { options: [{ title, angle, sections }] }
+  if (input && typeof input === "object") {
+    const obj = input as Record<string, unknown>
+    if (Array.isArray(obj.options)) {
+      return (obj.options as Array<Record<string, unknown>>).map(
+        (o) => `${o.title ?? ""} — ${o.angle ?? ""}`
+      )
+    }
+    // raw text fallback
+    if (typeof obj.raw === "string") return [obj.raw]
+    if (typeof obj.text === "string") return [obj.text]
+  }
+
+  if (typeof input === "string") return [input]
+
+  return ["方向 A", "方向 B", "方向 C"]
+}
+
+function waitForGateResolve(nodeId: string): Promise<string> {
+  return new Promise((resolve) => {
+    const unsub = useCanvasStore.subscribe((state) => {
+      const result = state.nodeResults[nodeId]
+      if (state.nodeStatuses[nodeId] === "done" && result && typeof result === "object" && "selected" in (result as Record<string, unknown>)) {
+        unsub()
+        resolve((result as { selected: string }).selected)
+      }
+    })
+  })
+}
+
 async function executeNode(node: any, inputData: any, options: RunAllOptions): Promise<unknown> {
   const type = node.data.nodeType as NodeType
+  const nodeData = node.data as Record<string, unknown>
 
   if (type === "gate") {
-    const outlineOptions = inputData.in as string[] | undefined
-    const options_list = outlineOptions ?? ["方向 A", "方向 B", "方向 C"]
+    const mode = (nodeData.mode as string) ?? "select"
 
+    if (mode === "select") {
+      const optionsList = extractGateOptions(inputData as Record<string, unknown>)
+      useCanvasStore.getState().setWaitingGate(node.id, optionsList)
+      useCanvasStore.getState().setNodeStatus(node.id, "waiting")
+      options.onGateWait?.(node.id, optionsList)
+
+      const selected = await waitForGateResolve(node.id)
+      return { selected }
+    }
+
+    // input mode — wait for user text input
+    useCanvasStore.getState().setWaitingGate(node.id, ["等待用户输入..."])
     useCanvasStore.getState().setNodeStatus(node.id, "waiting")
-    useCanvasStore.getState().setWaitingGate(node.id, options_list)
-    options.onGateWait?.(node.id, options_list)
+    options.onGateWait?.(node.id, ["等待用户输入..."])
 
-    // MVP placeholder: auto-resolve after 2s (real impl waits for user click)
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    const selected = options_list[0]
-
-    useCanvasStore.getState().resolveGate(node.id, selected)
+    const selected = await waitForGateResolve(node.id)
     return { selected }
   }
 
-  await new Promise((r) => setTimeout(r, 800))
+  // Route through Tauri IPC
+  if (type === "text_input" || AI_NODES.has(type)) {
+    const workflowId = useWorkflowStore.getState().currentWorkflow?.id ?? "default"
+    const enrichedData = {
+      ...nodeData,
+      workflow_id: workflowId,
+      node_id: node.id,
+    }
+    const result = await tauri.executeNode({
+      node_type: type,
+      node_data: enrichedData,
+      input_data: inputData as Record<string, unknown>,
+    })
+    return result.output
+  }
+
+  // image_gallery: aggregate images from all connected upstream nodes
+  if (type === "image_gallery") {
+    const allImages: unknown[] = []
+    for (const key of Object.keys(inputData)) {
+      const upstream = inputData[key] as { images?: unknown[] } | undefined
+      if (upstream?.images) {
+        allImages.push(...upstream.images)
+      }
+    }
+    return { images: allImages }
+  }
+
+  // Fallback for unimplemented nodes
+  await new Promise((r) => setTimeout(r, 500))
   return { ok: true, nodeType: type }
 }
+
+// Track running state for stopAll
+let running = false
 
 export async function runAll(options: RunAllOptions = {}) {
   const { nodes, edges } = useCanvasStore.getState()
@@ -41,48 +118,58 @@ export async function runAll(options: RunAllOptions = {}) {
     throw new Error("图中存在环路，请检查连线")
   }
 
+  running = true
   const layers = getExecutionLayers(nodes, edges)
 
-  for (const layer of layers) {
-    const promises = layer.map(async (nodeId) => {
-      const node = nodes.find((n) => n.id === nodeId)!
-      const { setNodeStatus, nodeResults } = useCanvasStore.getState()
+  try {
+    for (const layer of layers) {
+      if (!running) break
 
-      setNodeStatus(nodeId, "running")
-      options.onNodeStart?.(nodeId)
+      const promises = layer.map(async (nodeId) => {
+        if (!running) return
 
-      try {
-        const inputData: Record<string, unknown> = {}
-        for (const e of edges) {
-          if (e.target === nodeId) {
-            const key = (e.targetHandle ?? "in") as string
-            inputData[key] = nodeResults[e.source]
+        const node = nodes.find((n) => n.id === nodeId)!
+        const { setNodeStatus, nodeResults } = useCanvasStore.getState()
+
+        setNodeStatus(nodeId, "running")
+        options.onNodeStart?.(nodeId)
+
+        try {
+          const inputData: Record<string, unknown> = {}
+          for (const e of edges) {
+            if (e.target === nodeId) {
+              const key = (e.targetHandle ?? "in") as string
+              inputData[key] = nodeResults[e.source]
+            }
           }
+
+          const result = await executeNode(node, inputData, options)
+
+          setNodeStatus(nodeId, "done")
+          useCanvasStore.setState((s) => ({
+            nodeResults: { ...s.nodeResults, [nodeId]: result },
+          }))
+          options.onNodeComplete?.(nodeId, result)
+          return result
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err)
+          setNodeStatus(nodeId, "error")
+          options.onNodeError?.(nodeId, msg)
+          throw err
         }
+      })
 
-        const result = await executeNode(node, inputData, options)
+      await Promise.all(promises)
+    }
 
-        setNodeStatus(nodeId, "done")
-        useCanvasStore.setState((s) => ({
-          nodeResults: { ...s.nodeResults, [nodeId]: result },
-        }))
-        options.onNodeComplete?.(nodeId, result)
-        return result
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err)
-        setNodeStatus(nodeId, "error")
-        options.onNodeError?.(nodeId, msg)
-        throw err
-      }
-    })
-
-    await Promise.all(promises)
+    options.onComplete?.()
+  } finally {
+    running = false
   }
-
-  options.onComplete?.()
 }
 
 export function stopAll() {
+  running = false
   useCanvasStore.setState((s) => {
     const statuses: Record<string, "idle"> = {}
     for (const id of Object.keys(s.nodeStatuses)) {

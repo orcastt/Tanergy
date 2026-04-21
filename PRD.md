@@ -1,9 +1,9 @@
 # TANGENT — Product Requirements Document
 
-**版本**: v0.4  
-**日期**: 2026-04-20  
-**状态**: 草稿  
-**上次更新**: MVP 范围聚焦公众号长文 Skill，11 节点清单，Gate 机制，Skills 重排
+**版本**: v0.5
+**日期**: 2026-04-21
+**状态**: Desktop pivot — Tauri 桌面客户端，本地存储，用户自带 API Key
+**上次更新**: 从 Web SaaS 迁移到桌面客户端架构
 
 ---
 
@@ -12,7 +12,7 @@
 1. [产品概述](#1-产品概述)
 2. [目标用户与痛点](#2-目标用户与痛点)
 3. [MVP 功能范围](#3-mvp-功能范围)
-4. [页面清单](#4-页面清单)
+4. [应用视图](#4-应用视图)
 5. [用户流程](#5-用户流程)
 6. [功能完成定义](#6-功能完成定义)
 7. [节点系统设计](#7-节点系统设计)
@@ -33,7 +33,7 @@
 
 ### 1.1 一句话定位
 
-**TANGENT 是一款 AI 创意工作流画布平台**：用户通过拖拽节点或自然语言，自动构建从「提示词 → AI 生图/视频/文章」的完整生产流水线，一站完成内容创作并输出到小红书、公众号、PPT 等场景。
+**TANGENT 是一款桌面 AI 创意工作流画布应用**：用户通过拖拽节点或选择预置 Skill，自动构建从「提示词 → AI 生图/文章」的完整生产流水线，本地执行并输出到公众号、小红书等场景。用户自带 API Key，零服务器依赖。
 
 ### 1.2 解决的核心问题
 
@@ -44,13 +44,14 @@
 | 工作流不可复用，下次从头来 | 工作流可保存、分享、套模板 |
 | 需要写很长的 Prompt | 自然语言描述，AI 自动展开 |
 | 内容生产后还要手动整理发布 | 直接生成公众号/小红书可用格式 |
+| SaaS 平台按量收费贵 | 用户自带 API Key，只付软件费 |
 
 ### 1.3 竞品对比
 
 | 产品 | 定位 | TANGENT 差异点 |
 |------|------|-------------|
-| ComfyUI | 本地图像工作流 | 云端 + 多模态 + 内容输出 + 低门槛 |
-| n8n | 通用自动化 | 专注 AI 创意，有自然语言编排 |
+| ComfyUI | 本地图像工作流 | 引导式桌面应用 + Skills 系统 + 低门槛 |
+| n8n | 通用自动化 | 专注 AI 创意，有预置 Skill 模板 |
 | Coze | AI Bot 搭建 | 专注视觉创作，不是聊天机器人 |
 | Canva | 设计编辑工具 | 生产工具，不是精修工具 |
 
@@ -70,16 +71,17 @@
 - 痛点：MJ 出图后还要 PS 处理，多版本管理混乱
 - 期望：一个工作流跑完所有变体，结果直接可用
 
-**用户 C：创意团队负责人**
+**用户 C：创意团队负责人**（Phase 2 网页版）
 - 管理 5-20 人团队，需要复用工作流、统一风格
 - 痛点：每个人用自己的工具，难以沉淀方法论
 - 期望：团队共享工作流模板，统一出图标准
+- **注**：桌面 MVP 为单人使用，团队协作功能推迟到 Phase 2 网页版
 
 ### 2.2 用户规模预期
 
-- MVP（0-3个月）：个人用户，目标注册 500 人，付费转化 10%
-- V1（3-6个月）：小团队，目标付费用户 200 人
-- V2（6-12个月）：中型创意团队/MCN，月 MRR ≥ €5,000
+- MVP（0-3个月）：个人用户，目标 200 下载，50 激活，20 Pro 付费
+- V1（3-6个月）：目标 1000 下载，200 激活，80 Pro 付费
+- V2（6-12个月）：加入网页版，月 MRR ≥ €2,000
 
 ---
 
@@ -89,25 +91,27 @@
 
 以下功能不上线，产品不可用：
 
-- [ ] 用户注册/登录（邮箱验证码 + Google OAuth）
+- [ ] 首次启动向导（License 输入 + API Key 配置）
+- [ ] API Key 管理（安全本地存储、有效性测试、按提供商配置）
 - [ ] 主画布（节点拖拽、连线、网格对齐）
 - [ ] 双击画布 → 节点选择面板
 - [ ] 节点执行引擎（拓扑序执行、状态机、错误处理）
 - [ ] 公众号长文创作 Skill（完整节点链路跑通）
   - text_input · research · outline_generator · gate · writer · reviewer · image_planner · image_gen · image_gallery · html_formatter · preview_wechat
-- [ ] 图片永久存储 + 下载
-- [ ] Stripe 订阅（Free + Starter 套餐）
-- [ ] 执行时长计量与限额提示
+- [ ] 本地 SQLite 持久化（工作流、资产自动保存）
+- [ ] 图片本地存储 + 下载
+- [ ] License 激活与 Free/Pro 计划管理
 - [ ] 亮色 / 暗色主题切换
 - [ ] 中文 / 英文语言切换
 - [ ] 工作流保存与命名
+- [ ] Tauri 桌面打包与分发（.dmg / .msi）
 
 ### 3.2 Phase 2
 
 - [ ] 小红书图文笔记 Skill
 - [ ] 右侧 AI 对话面板 + 自然语言自动连线
 - [ ] 节点子画布（Draw + Comment + Inpaint）
-- [ ] 团队协作（多人实时编辑，Yjs）
+- [ ] 可选云同步（增值功能，渐进式引入网页版）
 - [ ] 工作流模板分享
 
 ### 3.3 Phase 3+ 再做
@@ -118,139 +122,129 @@
 - [ ] 小红书发布辅助
 - [ ] Skill 市场（用户发布/购买）
 - [ ] 音频节点、3D 节点
-- [ ] 积分系统
-- [ ] 企业版
+- [ ] 网页版（云端协同）
 
 ---
 
-## 4. 页面清单
+## 4. 应用视图
 
-| 页面 | 路由 | 作用 | 认证要求 |
+| 视图 | 触发 | 作用 | 前置条件 |
 |------|------|------|---------|
-| 落地页 | `/` | 产品介绍、注册入口 | 无需登录 |
-| 注册页 | `/signup` | 邮箱验证码注册 | 未登录 |
-| 登录页 | `/login` | 邮箱验证码 / Google 登录 | 未登录 |
-| 工作台首页 | `/dashboard` | 用户的工作流列表 | 必须登录 |
-| 画布编辑器 | `/canvas/:id` | 核心编辑界面 | 必须登录 |
-| 账户设置 | `/settings` | 个人信息、订阅管理 | 必须登录 |
-| 订阅/升级页 | `/upgrade` | 套餐对比、付款 | 必须登录 |
-| 404 页 | `*` | 找不到页面 | 无需登录 |
+| Welcome/Setup | 首次启动 | License 输入 + API Key 配置向导 | 无 |
+| Dashboard | 应用启动 | 用户的工作流列表 | License 已激活或试用中 |
+| Canvas Editor | 打开/创建工作流 | 核心编辑界面 | 同上 |
+| Settings | 菜单或快捷键 | API Keys、License、偏好设置 | 同上 |
+| About | 菜单 | 版本信息、License 信息 | 无 |
 
 ---
 
 ## 5. 用户流程
 
-### 5.1 注册流程（邮箱）
+### 5.1 首次启动向导
 
 ```
-用户访问 /signup
-  → 输入邮箱地址
-  → 点击「发送验证码」
-  → 系统发送 6 位验证码到邮箱（有效期 10 分钟）
-  → 输入验证码
-  → 点击「注册」
-  → 服务端验证通过
-  → 自动创建个人工作区
-  → 跳转到 /dashboard
-  → 显示欢迎弹窗（引导创建第一个工作流）
+用户首次启动 TANGENT
+  → Welcome 屏幕（品牌 Logo，简短介绍）
+  → Step 1: 输入 License Key（或开始 14 天免费试用）
+     → 点击「验证」
+     → 本地签名校验通过 → 激活，显示 Pro 计划
+     → 本地签名校验失败 → 提示「密钥无效」，允许重试
+     → 或点击「免费试用」→ 试用开始，14 天 Pro 功能
+  → Step 2: 配置 API Keys
+     → Anthropic API Key（Claude 节点必需）
+     → Tavily API Key（Research 节点必需）
+     → Google Cloud 凭证（Imagen 3 可选）
+     → 每个 Key 有「测试连接」按钮
+     → 可跳过，后续在 Settings 中配置
+  → Step 3: 选择工作空间位置
+     → 默认：~/Documents/TANGENT/
+     → 可自定义（原生文件夹选择器）
+  → Dashboard 加载
+  → 显示欢迎 toast：「TANGENT 已就绪，创建你的第一个工作流！」
 ```
 
-### 5.2 注册流程（Google OAuth）
+### 5.2 API Key 配置（持续使用中）
 
 ```
-用户点击「用 Google 登录」
-  → 弹出 Google 授权窗口
-  → 用户同意授权
-  → 回调到 /auth/callback?code=xxx
-  → 服务端换取 token，获取用户信息
-  → 新用户：自动创建账户 + 个人工作区
-  → 老用户：直接恢复会话
-  → 跳转到 /dashboard
+用户打开 Settings > API Keys
+  → 显示已配置/未配置的 API 服务列表
+  → Anthropic API Key [••••••••] [测试] ✓ 已验证
+  → Tavily API Key [未设置] [测试] ⚠ 未配置
+  → Google Cloud (Imagen 3) [••••••••] [测试] ✓ 已验证
+  → Key 在 Rust 侧加密存储，前端只显示掩码和状态
+  → 如果用户运行节点时缺少对应 Key：
+     → 节点显示错误：「[提供商] API Key 未配置，请前往 Settings > API Keys」
+     → 错误面板有「打开 Settings」按钮
 ```
 
 ### 5.3 核心流程 A：手动搭建工作流
 
 ```
-用户进入 /dashboard
+用户打开 TANGENT，进入 Dashboard
   → 点击「新建工作流」
-  → 系统创建空白画布，跳转 /canvas/:id
+  → 系统创建空白画布，进入 Canvas Editor
   → 用户双击画布空白处
   → 节点选择面板弹出（居中）
-  → 用户点击「Prompt」节点
+  → 用户点击「Text Input」节点
   → 节点出现在画布双击位置附近，自动对齐网格
-  → 用户在 Prompt 节点输入框中输入提示词
-  → 用户双击画布其他位置，选择「Image / Midjourney V7」
+  → 用户在 Text Input 节点输入框中输入主题
+  → 用户双击其他位置，选择「Research」
   → 节点出现
-  → 用户从 Prompt 节点右侧橙色端口拖拽连线
-  → 连线跟随鼠标移动，显示连线预览
-  → 拖到 Image 节点左侧对应端口
+  → 用户从 Text Input 节点右侧蓝色端口拖拽连线
+  → 连线跟随鼠标，显示连线预览
+  → 拖到 Research 节点左侧对应端口
   → 松手，连线建立，颜色标记类型
-  → 用户点击 Image 节点上的「Run」按钮
+  → 用户点击 Research 节点上的「Run」按钮
   → 节点边框变蓝，显示进度动画
-  → 生成完成，节点内显示 2×2 图片预览
+  → Tauri Rust 侧解密 Tavily Key → 调用 API → 返回结果
+  → 节点内显示结构化搜索结果
   → 节点边框变绿（2 秒后恢复默认）
-  → 用户点击任意图片缩略图，弹出大图预览
-  → 用户点击「下载」按钮，下载原图
   → 用户点击顶栏「保存」（或 Cmd/Ctrl+S）
-  → 工作流保存成功，显示 toast 提示
+  → 工作流保存到本地 SQLite，显示 toast「已保存」
 ```
 
-### 5.4 核心流程 B：使用 Skill 快速生成小红书笔记
+### 5.4 核心流程 B：使用 Skill 快速生成小红书笔记（Phase 2）
 
 ```
-用户在 /dashboard 点击「新建工作流」
+用户在 Dashboard 点击「新建工作流」
   → 进入空白画布
-  → 点击左侧工具栏「Skills」图标（或顶栏 Skills 按钮）
+  → 点击左侧工具栏「Skills」图标
   → Skills 面板从左侧滑入，显示内置 Skill 列表
   → 用户点击「小红书图文笔记」
-  → 弹出 Skill 配置弹窗：
-      - 主题（必填文本框）
-      - 类型：种草推荐 / 教程攻略 / 好物分享 / 生活记录（单选）
-      - 图片数量：1 / 3 / 6 / 9（单选）
-      - 图片比例：1:1 / 3:4（单选）
-      - 图片风格：写实 / 插画 / 简约（单选）
+  → 弹出 Skill 配置弹窗
   → 用户填写主题，选择配置
-  → 点击「生成工作流」
-  → Skills 面板关闭
-  → 画布动画：节点一个个从中心出现，连线逐条生成（动画时长约 1.5s）
-  → 所有节点出现完毕，居中显示
-  → 显示提示 toast：「工作流已生成，你可以调整任意节点参数」
-  → 用户可选择修改任意节点参数
-  → 用户点击最后一个 Chat 节点的「Run All」（或全局 Run 按钮）
-  → 工作流从左到右依次执行，每个节点实时更新状态
-  → 所有节点执行完毕
+  → 画布动画：节点一个个出现，连线逐条生成
+  → 用户点击 Run All
+  → 工作流从左到右依次执行
   → Preview: RED 节点展示小红书卡片样式预览
-  → 用户点击「复制文案」，复制正文+话题标签到剪贴板
-  → 用户点击「下载全部图片」，下载 ZIP 压缩包
-  → 用户手动发布到小红书
+  → 用户点击「复制文案」
+  → 用户点击「下载全部图片」
 ```
 
 ### 5.5 核心流程 C：公众号长文创作
 
 ```
-（同上 Skill 流程，选择「公众号长文创作」）
+（同 Skill 流程，选择「公众号长文创作」）
   → Skill 配置：主题、风格、配图数量、配图风格
-  → 工作流生成：Search → Chat(大纲) → Chat(正文) → Optimize → Image×N → Preview: WeChat
+  → 工作流生成：text_input → research → outline_generator → gate → writer → reviewer → image_planner → image_gen × N → image_gallery → html_formatter → preview_wechat
   → 执行完毕
   → Preview: WeChat 节点展示公众号图文预览
-  → 用户点击「复制 HTML」，得到可粘贴进微信编辑器的内容
-  → 用户点击「下载配图」，下载所有生成图片
+  → 用户点击「复制 HTML」
+  → 用户点击「下载配图」
 ```
 
-### 5.6 订阅升级流程
+### 5.6 License 管理
 
 ```
-用户触发限额（执行时剩余时间 < 5 分钟 / 已超出）
-  → 执行按钮变灰，显示「本周时长已用完」
-  → 顶栏时长显示 0:00，变红色
-  → 弹出升级提示弹窗：
-      「本周 5 小时已用完，升级 Pro 享受 20 小时」
-      [查看套餐] [下周再说]
-  → 用户点击「查看套餐」→ 跳转 /upgrade
-  → 用户选择套餐 → 点击「订阅」→ 跳转 Stripe 付款页
-  → 付款成功 → 回调 /upgrade?success=true
-  → 显示成功页面，时长立即刷新
-  → 用户可立即继续执行
+应用启动时检查 License 状态
+  → 试用期内：顶栏显示「试用剩余 N 天」
+  → Pro 已激活：顶栏显示 Pro 标记
+  → 过期/未激活：顶栏显示「Free 计划」，限制 3 个工作流
+
+用户在 Settings > License 输入新 Key
+  → 本地签名验证
+  → 验证通过 → 立即升级到 Pro
+  → 验证失败 → 提示「密钥无效」
 ```
 
 ---
@@ -259,28 +253,28 @@
 
 > 完成 = 按预期行为工作 + 错误情况有处理 + 空状态有设计
 
-### 6.1 用户注册/登录
+### 6.1 License 与 Setup
 
-**邮箱注册完成标准**：
-- 邮箱格式校验（实时，失焦触发），不合法显示「请输入有效的邮箱地址」
-- 点击「发送验证码」后，按钮变为「已发送（57s）」并倒计时，倒计时期间不可重复点击
-- 验证码 6 位纯数字，服务端 10 分钟有效，过期返回「验证码已过期，请重新获取」
-- 验证码错误显示「验证码不正确，还剩 N 次机会」，连续错误 5 次锁定 30 分钟
-- 注册成功后：
-  - 自动登录，颁发 JWT token（7天有效）
-  - 跳转 /dashboard
-  - 首次登录显示欢迎引导弹窗
+**License 激活完成标准**：
+- License Key 格式校验（长度、字符集）
+- 本地 Ed25519 签名验证通过 → 激活成功
+- 签名验证失败 → 提示「密钥无效」，允许重试
+- 试用期：首次启动自动开始，14 天后转为 Free 计划
+- Free 计划：可查看/编辑工作流，最多 3 个工作流，不可使用 Skill 模板
+- Pro 计划：无限制
 
-**Google 登录完成标准**：
-- OAuth 授权失败（用户取消）：回到登录页，不报错，不跳转
-- 账户已存在（邮箱相同）：合并账户，直接登录，不重复创建
-- 登录成功：跳转到登录前访问的页面（保留 redirect 参数），无则跳转 /dashboard
+**API Key 配置完成标准**：
+- 每个 API Key 输入框有「测试连接」按钮
+- 测试调用真实 API 端点验证 Key 有效性
+- 有效：显示绿色 ✓
+- 无效：显示红色 + 错误信息
+- Key 存储为加密 BLOB，前端只显示掩码（`sk-ant-...xxxx`）
 
 ### 6.2 画布基础操作
 
 **节点拖拽完成标准**：
 - 拖动时节点跟随鼠标，松手后对齐最近网格（20px）
-- 节点不能拖出画布边界（允许无限延展，但初始视口内可见）
+- 节点不能拖出画布边界
 - 多选：按住 Shift 点击，或框选，多选后可整体拖动
 
 **连线完成标准**：
@@ -307,7 +301,8 @@
   - 节点边框绿色 2 秒，恢复默认
 - 执行失败后：
   - 节点边框红色
-  - 节点内显示错误信息（来自 API 的错误 message）
+  - 节点内显示错误信息
+  - 如果是 API Key 问题：「[提供商] API Key 未配置或无效，请前往 Settings」
   - Run 按钮恢复可点击
   - 错误可展开查看详情
 
@@ -318,52 +313,42 @@
 - 全部完成：顶栏状态「执行完毕 ✓ 耗时 xx 秒」
 - 部分失败：顶栏状态「执行完毕（2 个节点失败）」
 
-### 6.4 Skill：小红书图文笔记
+### 6.4 Skill：公众号长文创作
 
 **完成标准**：
 - Skill 配置弹窗：主题为必填，未填不可点击「生成工作流」，按钮置灰
 - 工作流生成动画：节点逐个出现，总动画时长 1.0-2.0 秒
-- 执行完成后，Preview: RED 节点内显示：
-  - 模拟小红书卡片样式（含图片、标题、正文、话题标签）
-  - 「复制文案」按钮（点击后按钮变为「已复制 ✓」）
-  - 「下载图片」按钮（触发 ZIP 下载）
-- 生成的文案必须包含：标题（20字内）、正文（100-500字）、emoji、3-8个话题标签
-
-### 6.5 Skill：公众号长文创作
-
-**完成标准**：
 - 执行完成后，Preview: WeChat 节点内显示：
   - 模拟公众号图文样式（含标题、配图、正文分节）
-  - 「复制 HTML」按钮（复制可粘贴进微信编辑器的 HTML）
-  - 「下载配图」按钮
-- 生成文章必须包含：标题（20-30字）、正文（2000-5000字）、至少 3 个 H2 小标题、N 张配图（按配置数量）
+  - 「复制 HTML」按钮（点击后按钮变为「已复制 ✓」）
+  - 「下载配图」按钮（触发 ZIP 下载到本地）
+- 生成的文章必须包含：标题（20-30字）、正文（2000-5000字）、至少 3 个 H2 小标题、N 张配图
 
-### 6.6 工作流保存
+### 6.5 工作流保存
 
 **完成标准**：
 - Cmd/Ctrl+S 或点击顶栏「保存」：
   - 触发保存，按钮显示「保存中...」
   - 成功：显示 toast「已保存」（底部，3 秒消失）
   - 失败：显示 toast「保存失败，请重试」（带重试按钮）
-- 有未保存变更时，顶栏标题旁显示「●」（unsaved indicator）
-- 关闭/离开有未保存变更的页面时，浏览器弹出原生确认框「有未保存的变更，确认离开？」
+- 保存为本地 SQLite 操作，同步且瞬时（<50ms）
+- 有未保存变更时，顶栏标题旁显示「●」
+- 关闭有未保存变更的工作流时，弹窗确认「有未保存的变更，确认关闭？」
 
-### 6.7 图片下载
+### 6.6 图片下载
 
 **完成标准**：
-- 单图下载：点击下载按钮，浏览器直接下载 PNG/JPG
+- 单图下载：点击下载按钮，文件复制到用户指定位置
 - 多图下载：打包为 ZIP，文件名格式 `tangent_[workflow_name]_[date].zip`
-- 下载链接有效期不限（MinIO 永久存储）
-- 下载前校验用户是否有权限访问该资产（防止越权）
+- 图片存储在本地工作空间 assets/ 目录，应用重启后仍可访问
 
-### 6.8 订阅计费
+### 6.7 License 状态显示
 
 **完成标准**：
-- 顶栏始终显示本周剩余时长（格式：`4:32:10` 倒计时式）
-- 时长 ≤ 30 分钟时，数字变橙色
-- 时长 = 0 时，数字变红色，执行按钮全部置灰
-- 超出限额时，每次尝试点击 Run 弹出升级提示
-- 每周一 00:00 UTC 自动重置时长
+- 顶栏显示当前计划状态：Free / Pro / 试用剩余 N 天
+- 试用期最后 3 天：状态变橙色
+- 过期后：状态显示「Free」，Run 按钮仍可用（Free 不限制执行，限制工作流数量和 Skill）
+- Settings > License 页显示详细信息和升级入口
 
 ---
 
@@ -393,19 +378,19 @@
 #### 📥 输入类
 | 节点 | 说明 | 输出类型 | 计费 |
 |------|------|---------|------|
-| text_input | 用户输入主题/关键词 | `text` | 免费 |
+| text_input | 用户输入主题/关键词 | `text` | 免费（本地） |
 
 #### 🔍 AI 搜索类
-| 节点 | 说明 | 输入 | 输出 | 计费 |
-|------|------|------|------|------|
-| research | 调用 Tavily 多轮搜索，整合结果 | `text` | `research_result` | 按次数 |
+| 节点 | 说明 | 输入 | 输出 | 用户 API Key |
+|------|------|------|------|------------|
+| research | 调用 Tavily 多轮搜索，整合结果 | `text` | `research_result` | Tavily |
 
 #### ✍️ AI 写作类
-| 节点 | 说明 | 输入 | 输出 | 计费 |
-|------|------|------|------|------|
-| outline_generator | Claude 生成文章大纲（多个选项） | `text` / `research_result` | `outline_options` | 按 Token |
-| writer | Claude 生成完整文章 | `outline_options` | `text` | 按 Token |
-| reviewer | 三遍审校（事实/去AI味/节奏） | `text` | `text` | 按 Token |
+| 节点 | 说明 | 输入 | 输出 | 用户 API Key |
+|------|------|------|------|------------|
+| outline_generator | Claude 生成文章大纲（多个选项） | `text` / `research_result` | `outline_options` | Anthropic |
+| writer | Claude 生成完整文章 | `outline_options` | `text` | Anthropic |
+| reviewer | 三遍审校（事实/去AI味/节奏） | `text` | `text` | Anthropic |
 
 #### ⏸️ 交互类
 | 节点 | 说明 | 输入 | 输出 | 特殊 |
@@ -413,17 +398,17 @@
 | gate | 执行暂停，等用户选择大纲方向 | `outline_options` | `outline_options` | 执行到此时自动暂停，画布生成临时选项节点，用户选择后继续 |
 
 #### 🎨 配图类
-| 节点 | 说明 | 输入 | 输出 | 计费 |
-|------|------|------|------|------|
-| image_planner | Claude 规划配图数量+位置+描述 | `text` | `structured`（配图计划 JSON）| 按 Token |
-| image_gen | Google Imagen 3 生成单张图 | `text` | `image` | 按次 |
-| image_gallery | 收集图片，提供多个输出端口 | `image`×N | `image`（多端口） | 免费 |
+| 节点 | 说明 | 输入 | 输出 | 用户 API Key |
+|------|------|------|------|------------|
+| image_planner | Claude 规划配图数量+位置+描述 | `text` | `structured`（配图计划 JSON）| Anthropic |
+| image_gen | Google Imagen 3 生成单张图 | `text` | `image` | Google Cloud |
+| image_gallery | 收集图片，提供多个输出端口 | `image`×N | `image`（多端口） | 免费（本地） |
 
 #### 📄 输出类
 | 节点 | 说明 | 输入 | 输出 | 计费 |
 |------|------|------|------|------|
-| html_formatter | 确定性模板引擎，Markdown→微信样式 HTML | `text` + `image_slot`×N | `structured`（HTML） | 免费 |
-| preview_wechat | 公众号图文预览 + 复制 HTML + 下载配图 | `structured`（HTML）+ `image` | 预览 UI | 免费 |
+| html_formatter | 确定性模板引擎，Markdown→微信样式 HTML | `text` + `image_slot`×N | `structured`（HTML） | 免费（本地） |
+| preview_wechat | 公众号图文预览 + 复制 HTML + 下载配图 | `structured`（HTML）+ `image` | 预览 UI | 免费（本地） |
 
 ### 7.3 节点状态机
 
@@ -447,8 +432,6 @@
 - **音频类（MiniMax Speech 等）**：Phase 3
 - **PPT 节点**：Phase 3
 - **小红书 Skill**：Phase 2
-
----  
 
 ---
 
@@ -481,19 +464,19 @@ text_input ──→ research ──→ outline_generator ──→ gate
                                                       │
                                                (用户选择方向)
                                                       │
-                            writer ←─────────────────┘
-                              │
-                          reviewer
-                              │
-                       image_planner
+                               writer ←───────────────┘
+                                 │
+                             reviewer
+                                 │
+                        image_planner
                               │
                         image_gen × N
                               │
-                        image_gallery
+                       image_gallery
                               │
-              html_formatter ←┘
-                    │
-             preview_wechat
+             html_formatter ←┘
+                   │
+            preview_wechat
 ```
 
 **节点链路说明**：
@@ -519,7 +502,7 @@ text_input ──→ research ──→ outline_generator ──→ gate
 - 文章长度 2000-5000 字，含 ≥3 个 H2 小标题
 - 配图数量与配置一致
 - 「复制 HTML」按钮：点击后 2 秒内完成复制，按钮文字变「已复制 ✓」
-- 「下载配图」按钮：触发 ZIP 下载
+- 「下载配图」按钮：触发 ZIP 下载到本地
 
 ### 8.3 Phase 2 Skill：小红书图文笔记
 
@@ -585,13 +568,14 @@ text_input ──→ research ──→ outline_generator ──→ gate
 │ 48px │  [节点]──●──────●──[节点]             │               │
 │      │                                       │               │
 ├──────┴───────────────────────────────────────┴───────────────┤
-│ [59%] [对齐] [适应]        执行状态     [4:32:10]            │  ← 底栏 40px
+│ [59%] [对齐] [适应]        执行状态     [Pro / 试用 12 天]    │  ← 底栏 40px
 └──────────────────────────────────────────────────────────────┘
 ```
 
 **顶栏**：`#ffffff` 白底，ring shadow 底线 `rgba(34,42,53,0.08) 0px 0px 0px 1px`
 **画布**：`#f5f5f5` 极浅灰，`#d4d4d4` 点阵网格
 **节点**：`#ffffff` 白底，三层复合阴影定义边界（不用实线边框）
+**桌面窗口**：Tauri 自定义标题栏或原生标题栏（待定），画布区域不变
 
 ### 9.3 节点视觉规范
 
@@ -714,7 +698,7 @@ text_input ──→ research ──→ outline_generator ──→ gate
 ### 9.9 主题与语言
 
 - 主题切换：顶栏右侧图标，一键切换
-- 偏好：localStorage
+- 偏好：本地 Zustand + SQLite 持久化
 - 语言切换：顶栏右侧「CN/EN」，i18next
 
 ### 9.10 视觉红线（AI 不得违反）
@@ -731,136 +715,111 @@ text_input ──→ research ──→ outline_generator ──→ gate
 
 ## 10. 数据字段约束
 
-### 10.1 用户（users）
+> 本地 SQLite 数据库，单用户。与 ARCH.md §5 对齐。
+
+### 10.1 应用配置（app_config）
 
 | 字段 | 类型 | 约束 |
 |------|------|------|
-| id | UUID | PK，系统自动生成 |
-| email | VARCHAR(255) | UNIQUE, NOT NULL，标准邮箱格式校验 |
-| google_id | VARCHAR(100) | UNIQUE, NULLABLE |
-| display_name | VARCHAR(50) | NOT NULL，1-50 字符，默认取邮箱 @ 前缀 |
-| avatar_url | VARCHAR(500) | NULLABLE |
-| created_at | TIMESTAMPTZ | NOT NULL，自动填充 |
-| last_login_at | TIMESTAMPTZ | NULLABLE |
-| is_active | BOOLEAN | DEFAULT true |
+| key | TEXT | PK |
+| value | TEXT | NOT NULL |
+| updated_at | TEXT | NOT NULL，ISO 8601 |
 
-### 10.2 验证码（email_otps）
+**存储项**：license_key, first_launch_date, workspace_path, theme, language, trial_started_at
+
+### 10.2 API Keys（api_keys）
 
 | 字段 | 类型 | 约束 |
 |------|------|------|
-| id | UUID | PK |
-| email | VARCHAR(255) | NOT NULL，INDEX |
-| code | VARCHAR(6) | NOT NULL，6位纯数字 |
-| created_at | TIMESTAMPTZ | NOT NULL |
-| expires_at | TIMESTAMPTZ | NOT NULL，created_at + 10分钟 |
-| attempts | INTEGER | DEFAULT 0，最多 5 次尝试 |
-| used_at | TIMESTAMPTZ | NULLABLE，使用后标记 |
+| provider | TEXT | PK，'anthropic' / 'tavily' / 'google_cloud' |
+| encrypted_key | BLOB | NOT NULL，AES-256-GCM 加密 |
+| is_valid | INTEGER | NOT NULL，DEFAULT 0 |
+| last_tested_at | TEXT | NULLABLE，ISO 8601 |
+| created_at | TEXT | NOT NULL，ISO 8601 |
 
 ### 10.3 工作流（workflows）
 
 | 字段 | 类型 | 约束 |
 |------|------|------|
-| id | UUID | PK |
-| owner_id | UUID | FK → users.id, NOT NULL |
-| team_id | UUID | FK → teams.id, NULLABLE |
-| name | VARCHAR(100) | NOT NULL，1-100 字符 |
-| graph_json | JSONB | NOT NULL，完整 DAG 序列化 |
-| thumbnail_url | VARCHAR(500) | NULLABLE |
-| is_public | BOOLEAN | DEFAULT false |
-| is_template | BOOLEAN | DEFAULT false |
-| created_at | TIMESTAMPTZ | NOT NULL |
-| updated_at | TIMESTAMPTZ | NOT NULL |
+| id | TEXT | PK，UUID |
+| name | TEXT | NOT NULL，1-100 字符 |
+| graph_json | TEXT | NOT NULL，完整 DAG 序列化（JSON 字符串） |
+| thumbnail_path | TEXT | NULLABLE，本地文件路径 |
+| created_at | TEXT | NOT NULL，ISO 8601 |
+| updated_at | TEXT | NOT NULL，ISO 8601 |
 
 ### 10.4 生成资产（assets）
 
 | 字段 | 类型 | 约束 |
 |------|------|------|
-| id | UUID | PK |
-| user_id | UUID | FK → users.id, NOT NULL |
-| workflow_id | UUID | FK → workflows.id, NULLABLE |
-| node_id | VARCHAR(50) | NOT NULL |
-| type | ENUM | 'image' / 'video' / 'audio' / 'html' |
-| storage_path | VARCHAR(500) | NOT NULL，MinIO 路径 |
-| original_filename | VARCHAR(255) | NULLABLE |
-| size_bytes | BIGINT | NOT NULL |
-| mime_type | VARCHAR(100) | NOT NULL |
-| is_public | BOOLEAN | DEFAULT false |
-| created_at | TIMESTAMPTZ | NOT NULL |
+| id | TEXT | PK，UUID |
+| workflow_id | TEXT | FK → workflows.id, ON DELETE CASCADE |
+| node_id | TEXT | NOT NULL |
+| type | TEXT | NOT NULL，CHECK IN ('image','video','audio','html') |
+| file_path | TEXT | NOT NULL，本地文件系统路径 |
+| original_filename | TEXT | NULLABLE |
+| size_bytes | INTEGER | NOT NULL |
+| mime_type | TEXT | NOT NULL |
+| created_at | TEXT | NOT NULL，ISO 8601 |
 
 ### 10.5 执行日志（execution_logs）
 
 | 字段 | 类型 | 约束 |
 |------|------|------|
-| id | UUID | PK |
-| user_id | UUID | FK → users.id, NOT NULL |
-| workflow_id | UUID | NULLABLE |
-| node_id | VARCHAR(50) | NOT NULL |
-| node_type | VARCHAR(50) | NOT NULL |
-| started_at | TIMESTAMPTZ | NOT NULL |
-| ended_at | TIMESTAMPTZ | NULLABLE（运行中为 NULL）|
+| id | TEXT | PK，UUID |
+| workflow_id | TEXT | NULLABLE |
+| node_id | TEXT | NOT NULL |
+| node_type | TEXT | NOT NULL |
+| started_at | TEXT | NOT NULL，ISO 8601 |
+| ended_at | TEXT | NULLABLE |
 | duration_ms | INTEGER | NULLABLE |
-| week_start | DATE | NOT NULL，当周周一日期，用于分组汇总 |
-| status | ENUM | 'running' / 'success' / 'failed' / 'cancelled' |
+| status | TEXT | NOT NULL，CHECK IN ('running','success','failed','cancelled') |
 | error_message | TEXT | NULLABLE |
 
-### 10.6 订阅（subscriptions）
-
-| 字段 | 类型 | 约束 |
-|------|------|------|
-| id | UUID | PK |
-| user_id | UUID | FK → users.id, UNIQUE（一用户一订阅） |
-| plan | ENUM | 'free' / 'starter' / 'pro' / 'team' |
-| status | ENUM | 'active' / 'cancelled' / 'expired' / 'past_due' |
-| stripe_customer_id | VARCHAR(100) | NULLABLE |
-| stripe_subscription_id | VARCHAR(100) | NULLABLE, UNIQUE |
-| current_period_start | TIMESTAMPTZ | NULLABLE |
-| current_period_end | TIMESTAMPTZ | NULLABLE |
-| weekly_seconds_limit | INTEGER | NOT NULL，按套餐设定 |
+**注**：执行日志仅用于调试和用户查看历史，不用于计费。
 
 ---
 
 ## 11. 错误状态与空状态
 
-### 11.1 网络错误
+### 11.1 网络与 API 错误
 
 | 场景 | 显示方式 | 内容 |
 |------|---------|------|
-| API 请求失败（5xx）| 节点红色边框 + 节点内错误信息 | 「服务暂时不可用，请稍后重试」+ 重试按钮 |
-| 网络断开 | 顶栏提示条（橙色）| 「网络连接断开，正在重连...」|
-| 请求超时（>60s）| 节点错误状态 | 「请求超时，请检查网络后重试」|
-| 认证失效 | 全页面弹窗 | 「登录已过期，请重新登录」→ 跳转登录页 |
+| AI API 调用失败 | 节点红色边框 + 节点内错误信息 | 「[提供商] API 调用失败，请检查 API Key 和网络」+ 重试按钮 |
+| API Key 未配置 | 节点红色边框 + 节点内错误信息 | 「[提供商] API Key 未配置，请前往 Settings」+ 「打开 Settings」按钮 |
+| API Key 无效 | 节点红色边框 | 「[提供商] API Key 无效或已过期，请更新」+ 「打开 Settings」按钮 |
+| 请求超时（>60s）| 节点错误状态 | 「请求超时，请检查网络后重试」 |
+| API 速率限制 | 节点错误状态 | 「API 调用频率超限，请稍后重试」 |
 
-### 11.2 AI API 错误
-
-| 场景 | 显示 |
-|------|------|
-| Midjourney 队列满 | 「MJ 队列繁忙，预计等待 N 分钟，是否继续等待？」|
-| API Key 无效/过期 | 「图像生成服务暂时不可用，请联系支持」|
-| 内容违规（被 API 拒绝）| 「该内容不符合内容政策，请修改提示词后重试」|
-| Token 超限 | 「文本过长，请缩短输入后重试（当前 N 字，上限 M 字）」|
-
-### 11.3 文件上传错误
+### 11.2 AI API 内容错误
 
 | 场景 | 显示 |
 |------|------|
-| 文件过大（>20MB）| 上传区域红色 + 「文件不能超过 20MB」|
-| 格式不支持 | 「仅支持 JPG、PNG、WebP 格式」|
-| 上传失败 | 「上传失败，请重试」+ 重试按钮 |
+| 内容违规（被 API 拒绝）| 「该内容不符合内容政策，请修改提示词后重试」 |
+| Token 超限 | 「文本过长，请缩短输入后重试（当前 N 字，上限 M 字）」 |
+
+### 11.3 文件导入错误
+
+| 场景 | 显示 |
+|------|------|
+| 文件过大（>20MB）| 导入区域红色 + 「文件不能超过 20MB」 |
+| 格式不支持 | 「仅支持 JPG、PNG、WebP 格式」 |
 
 ### 11.4 空状态
 
-| 页面/场景 | 空状态内容 |
-|---------|----------|
-| /dashboard 无工作流 | 插画 + 「还没有工作流」+ 「创建第一个工作流」按钮 |
-| 画布为空 | 淡色提示「双击画布添加节点，或选择一个 Skill 快速开始」|
-| 节点未执行 | 节点预览区显示「点击 Run 生成」占位文字（浅灰色）|
-| Search 节点无结果 | 节点内「未找到相关热点，请尝试其他关键词」|
+| 场景 | 空状态内容 |
+|------|----------|
+| Dashboard 无工作流 | 插画 + 「还没有工作流」+ 「创建第一个工作流」按钮 |
+| 画布为空 | 淡色提示「双击画布添加节点，或选择一个 Skill 快速开始」 |
+| 节点未执行 | 节点预览区显示「点击 Run 生成」占位文字（浅灰色） |
+| Research 节点无结果 | 节点内「未找到相关结果，请尝试其他关键词」 |
 
 ### 11.5 加载状态
 
 | 场景 | 显示 |
 |------|------|
-| 页面初次加载 | 全屏 Loading，TANGENT Logo 居中 + 旋转圆圈 |
+| 应用启动 | 全屏 Loading，TANGENT Logo 居中 + 旋转圆圈 |
 | 画布加载工作流数据 | 骨架屏（节点位置处灰色占位块） |
 | 节点执行中 | 节点边框蓝色脉冲 + 内容区旋转动画 |
 | 图片生成中 | 2×2 网格内每格显示灰色占位 + 进度百分比 |
@@ -869,9 +828,12 @@ text_input ──→ research ──→ outline_generator ──→ gate
 
 ## 12. 本版本不做什么
 
-> MVP 阶段明确不包含以下功能。AI 不得自作主张实现这些功能。
+> MVP 阶段明确不包含以下功能。
 
 **功能边界**：
+- ❌ 服务器端执行（所有 AI API 调用经客户端 Tauri Rust 侧直接发出）
+- ❌ 用户数据云存储（所有数据存储在用户本地设备）
+- ❌ MVP 多人功能（桌面版为单人使用）
 - ❌ 右侧 AI 对话面板（Phase 2）
 - ❌ 自然语言自动连线（Phase 2）
 - ❌ 节点子画布 Draw/Comment/Inpaint（Phase 3）
@@ -879,13 +841,8 @@ text_input ──→ research ──→ outline_generator ──→ gate
 - ❌ PPT 节点（Phase 3）
 - ❌ 音频节点（Phase 3）
 - ❌ 2D to 3D 节点（Phase 4）
-- ❌ 团队实时协同（Phase 2）
+- ❌ 团队实时协同（Phase 2 网页版）
 - ❌ 工作流模板市场（Phase 3）
-- ❌ 积分系统（Phase 3）
-- ❌ 微信公众号直接发布（Phase 3）
-- ❌ 小红书直接发布（Phase 3，待 API 申请）
-- ❌ 图像编辑/融合（Phase 3）
-- ❌ 企业版/SSO（Phase 4）
 - ❌ 移动端适配（画布编辑器只做桌面版）
 
 **技术边界**：
@@ -899,15 +856,12 @@ text_input ──→ research ──→ outline_generator ──→ gate
 
 ### 13.1 MVP 必须接入（P0）
 
-| 服务 | 用途 | 接入方式 |
-|------|------|---------|
-| Claude API (Anthropic) | Chat / Optimize / Analysis 节点 | 官方 REST API |
-| Midjourney V7 | Image 节点 | 官方 API 或 useapi.net 代理 |
-| Google Imagen 3 | Image 节点（备选） | Vertex AI API |
-| Tavily Search | Search 节点 | REST API |
-| Stripe | 订阅计费 | Stripe SDK |
-| Google OAuth 2.0 | 第三方登录 | OAuth 2.0 |
-| SendGrid / Resend | 邮箱验证码 | REST API |
+| 服务 | 用途 | 接入方式 | Key 来源 |
+|------|------|---------|---------|
+| Claude API (Anthropic) | 文本 AI 节点 | 用户自带 Key，经 Tauri Rust reqwest 转发 | 用户在 Settings 输入 |
+| Google Imagen 3 | 图像生成 | 用户自带 Key，经 Tauri Rust reqwest 转发 | 用户在 Settings 输入 |
+| Tavily Search | Research 节点 | 用户自带 Key，经 Tauri Rust reqwest 转发 | 用户在 Settings 输入 |
+| License 签名验证 | 授权管理 | 本地 Ed25519 签名校验，无需联网 | 内嵌公钥 |
 
 ### 13.2 Phase 2 接入（P1）
 
@@ -927,25 +881,30 @@ Kling、Seedance、Vidu、Wan2.x、MiniMax、Tencent Speech、小红书 API
 
 ### 14.1 套餐定价
 
-| 套餐 | 价格 | 每周执行时长 | 成员数 | 存储 | 说明 |
-|------|------|------------|------|------|------|
-| Free | €0/月 | 30 分钟 | 1 | 500MB | 注册即得，永久有效 |
-| Starter | €9/月 | 5 小时 | 1 | 5GB | 个人创作者 |
-| Pro | €29/月 | 20 小时 | 5 | 50GB | 小团队 |
-| Team | €79/月 | 80 小时 | 20 | 200GB | 中型团队 |
+| 套餐 | 价格 | 功能 |
+|------|------|------|
+| Free | €0 | 最多 3 个工作流，手动节点搭建，无 Skill 模板 |
+| Pro | €19/月 或 €149/年 | 无限工作流，全部节点，Skill 模板，优先支持 |
 
-### 14.2 执行时长计算规则
+### 14.2 用户为什么付费
 
-- 从点击 Run 开始计时，到节点返回结果（success 或 error）停止
-- 免费节点（Upload、Prompt、Note、Preview）不计时
-- 计费节点：Chat、Optimize、Analysis、Search、所有生成节点
-- 时长按实际消耗秒数精确计量，精确到秒
-- 每周一 00:00 UTC 自动重置，不滚存
+- 为 **TANGENT 桌面软件本身**付费（软件授权）
+- 获得持续更新
+- **不为 API 使用量付费** — 用户自带 API Key，各自承担 AI API 费用
 
-### 14.3 积分系统（Phase 3）
+### 14.3 License 验证
 
-- 说明：部分高消耗节点（MJ、高分辨率视频）按积分计费，作为时长计费的补充
-- MVP 阶段不实现积分，所有计费均走执行时长
+- 密钥格式：Ed25519 签名的数据包（Base64 编码）
+- 验证方式：本地公钥校验，无需联网
+- 试用期：首次启动自动开始，14 天 Full Pro 功能
+- Free 计划：可查看/编辑工作流，限制 3 个，不可使用 Skill 模板
+- 过期后：自动降级为 Free，不删除任何数据
+
+### 14.4 离线使用
+
+- 应用完全可离线使用（AI API 调用需联网，但应用本身无需联网）
+- License 验证本地完成，不依赖网络
+- 工作流和资产始终在本地
 
 ---
 
@@ -953,14 +912,14 @@ Kling、Seedance、Vidu、Wan2.x、MiniMax、Tencent Speech、小红书 API
 
 > 以下每条均需人工验收通过，方可上线 MVP。验收范围围绕公众号长文创作 Skill 打通。
 
-### 用户系统
-- [ ] 邮箱注册：发送验证码 → 输入验证码 → 成功进入 Dashboard
-- [ ] 验证码 10 分钟有效，过期后提示重新获取
-- [ ] 验证码连续错误 5 次后锁定账户 30 分钟
-- [ ] Google OAuth 登录成功进入 Dashboard
-- [ ] 已有账户再次登录，工作流数据保留
-- [ ] JWT token 7 天有效，过期后强制重新登录
-- [ ] 未登录用户访问 /canvas 跳转到 /login，登录后自动跳转回原地址
+### License 与 Setup
+- [ ] 首次启动显示 Welcome 向导（License + API Key 配置）
+- [ ] License Key 本地签名验证正确（有效 Key 激活，无效 Key 拒绝）
+- [ ] 14 天试用期自动开始，倒计时正确显示
+- [ ] 每个 API Key 有「测试连接」按钮，实际验证 Key 有效性
+- [ ] API Key 加密存储（前端 DevTools 看不到明文）
+- [ ] Free 计划限制 3 个工作流，Pro 无限制
+- [ ] 过期/Free 模式：可查看编辑，Skill 不可用
 
 ### 画布基础
 - [ ] 双击空白处打开节点选择面板，ESC 可关闭
@@ -969,7 +928,15 @@ Kling、Seedance、Vidu、Wan2.x、MiniMax、Tencent Speech、小红书 API
 - [ ] 删除节点时，相关连线自动删除
 - [ ] Cmd/Ctrl+Z 撤销，Cmd/Ctrl+Shift+Z 重做，最多 50 步
 - [ ] Cmd/Ctrl+S 保存工作流，显示「已保存」toast
-- [ ] 有未保存变更离开页面时，浏览器弹出确认框
+- [ ] 节点左侧显示分类颜色边框（input=蓝, ai=紫, image=绿, output=黄, text=棕）
+- [ ] 鼠标悬停端口显示数据类型 tooltip
+- [ ] Ctrl+C / Ctrl+V 复制粘贴选中节点（保留数据）
+- [ ] Alt+Click 复制单个节点
+- [ ] Delete / Backspace 删除选中节点
+- [ ] 右键节点弹出上下文菜单（复制 / 粘贴 / 删除）
+- [ ] 右键空白处弹出菜单（粘贴）
+- [ ] 工作流 JSON 导出/导入（可分享）
+- [ ] 返回 Dashboard 时自动保存工作流
 
 ### 节点执行引擎
 - [ ] 节点状态机：idle → running → done/error，状态正确显示
@@ -1029,7 +996,7 @@ Kling、Seedance、Vidu、Wan2.x、MiniMax、Tencent Speech、小红书 API
 - [ ] 接收 html_formatter 的 HTML + image_gallery 的图片
 - [ ] 展示公众号样式预览
 - [ ] 「复制 HTML」按钮：点击后 2 秒内复制成功
-- [ ] 「下载配图」按钮：触发 ZIP 下载
+- [ ] 「下载配图」按钮：触发 ZIP 下载到本地
 
 ### Skill：公众号长文创作
 - [ ] 点击「公众号长文创作」，弹出配置弹窗
@@ -1039,64 +1006,53 @@ Kling、Seedance、Vidu、Wan2.x、MiniMax、Tencent Speech、小红书 API
 - [ ] 执行完毕，preview_wechat 显示完整预览
 - [ ] 「复制 HTML」和「下载配图」功能正常
 
-### Skills（Phase 2 验收，非 MVP）
-- [ ] 点击「小红书图文笔记」，填写配置，节点动画出现
-- [ ] 小红书 Skill 执行完毕，Preview 节点显示卡片预览
-
 ### 存储与下载
 - [ ] 生成的图片可在节点内点击放大查看
-- [ ] 单图下载：文件名合理（含工作流名+序号+时间戳）
-- [ ] 图片在刷新浏览器后仍可访问（MinIO 永久存储）
-- [ ] 其他用户无法通过猜测 URL 下载本用户的私有图片
-
-### 订阅计费
-- [ ] 顶栏实时显示本周剩余时长
-- [ ] 执行节点时扣除时长，精确到秒
-- [ ] 时长耗尽时，Run 按钮置灰，弹出升级提示
-- [ ] 周一 00:00 UTC 自动重置时长（可手动验证：修改数据库时间测试）
-- [ ] Stripe 付款流程跑通（测试卡号），付款成功后套餐立即升级
+- [ ] 单图下载：文件保存到用户指定位置
+- [ ] 图片在应用重启后仍可访问（本地 assets 目录）
+- [ ] 多图下载打包为 ZIP
 
 ### 主题/语言
-- [ ] 亮色/暗色切换即时生效，刷新后保持
+- [ ] 亮色/暗色切换即时生效，重启后保持
 - [ ] 中文/英文切换即时生效，所有文案切换正确
 
 ---
 
 ## 16. 开发路线图
 
-### Phase 1 — MVP（第 1-8 周）
+### Phase 1 — Desktop MVP（第 1-8 周）
 
-**目标**：核心画布可用，公众号 + 小红书两个 Skill 跑通，支付上线
+**目标**：桌面画布可用，公众号 Skill 跑通，Free/Pro 分层
 
-**详细开发计划**：[dev-plans/phase1-mvp.md](dev-plans/phase1-mvp.md)（10 个 Slice，每个含验收标准）
+**详细开发计划**：[dev-plans/phase1-mvp.md](dev-plans/phase1-mvp.md)
 
 | Slice | 名称 | 预计 | 难度 |
 |-------|------|------|------|
-| 0 | 项目脚手架 | 2天 | 低 |
-| 1 | 用户系统 | 3天 | 中 |
-| 2 | Dashboard + 工作流 | 2天 | 中 |
-| 3 | 画布核心 | 4天 | 高 |
-| 4 | 文本类节点 | 3天 | 中 |
-| 5 | 图像生成节点 | 3天 | 高 |
-| 6 | 执行引擎 | 3天 | 高 |
-| 7 | Skills 系统 | 3天 | 中 |
-| 8 | 订阅计费 | 2天 | 中 |
-| 9 | 主题 + 语言 + 收尾 | 2天 | 低 |
+| 0 | Tauri 脚手架 + SQLite | 2天 | 中 |
+| 1 | License + API Key 管理 | 2天 | 中 |
+| 2 | Dashboard + 工作流 CRUD（本地） | 2天 | 低 |
+| 3 | 画布核心（复用现有） | 4天 | 高 |
+| 4 | text_input · research · outline_generator | 3天 | 中 |
+| 5 | gate · writer · reviewer | 3天 | 高 |
+| 6 | image_planner · image_gen · image_gallery | 3天 | 高 |
+| 7 | html_formatter · preview_wechat | 2天 | 中 |
+| 8 | Skill 模板 + 端到端测试 | 3天 | 中 |
+| 9 | 主题 + 语言 + 桌面安装包 | 2天 | 低 |
+| 10 | 画布交互增强（分类颜色/复制粘贴/右键菜单/打组） | 3天 | 高 |
 
 ### Phase 2 — V1（第 9-14 周）
 
-**目标**：AI 自然语言连线，团队功能
+**目标**：AI 自然语言连线，小红书 Skill，可选云同步
 
 - 右侧 AI 对话面板
 - 自然语言 → 节点自动连线（Claude Function Calling）
-- 团队协作（Yjs 实时协同）
-- 工作流模板分享
-- Search 节点扩展（微信热榜、小红书热词）
+- 小红书图文笔记 Skill
 - Niji 7、Seedream 接入
+- 可选云同步（增值功能）
 
 ### Phase 3 — V2（第 15-22 周）
 
-**目标**：子画布编辑，视频，发布集成
+**目标**：子画布编辑，视频，发布集成，网页版
 
 - 节点子画布（Draw + Comment）
 - Image Inpaint
@@ -1104,13 +1060,13 @@ Kling、Seedance、Vidu、Wan2.x、MiniMax、Tencent Speech、小红书 API
 - 视频节点（Kling、Seedance）
 - 微信公众号直接发布
 - Skill 市场
-- 积分系统
+- 网页版（云端协同）
 
 ### Phase 4 — V3（第 23-30 周）
 
 - 音频节点、3D 节点
-- 企业版 SSO
 - 第三方开发者 API
+- 小红书发布集成
 
 ---
 
@@ -1118,12 +1074,12 @@ Kling、Seedance、Vidu、Wan2.x、MiniMax、Tencent Speech、小红书 API
 
 | # | 问题 | 影响范围 | 优先级 | 状态 |
 |---|------|---------|--------|------|
-| 1 | Midjourney 官方 API 权限是否已申请？还是用 useapi.net？ | MVP Image 节点 | P0 | ❓ 待确认 |
-| 2 | 邮件发送用 SendGrid 还是 Resend？ | MVP 注册流程 | P0 | ❓ 待确认 |
-| 3 | Hetzner 服务器规格：几核几G内存？ | 并发能力 | P0 | ❓ 待确认 |
-| 4 | 小红书发布：MVP 阶段只做「复制格式化文案」，不做 API 发布，确认？ | MVP 范围 | P1 | ✅ 已确认 |
-| 5 | 微信公众号：是否有已认证的服务号？ | Phase 3 发布功能 | P2 | ❓ 待确认 |
-| 6 | Search 节点 MVP 只接入 Tavily，不做国内平台爬虫，确认？ | MVP Search 节点 | P1 | ❓ 待确认 |
+| 1 | macOS 代码签名：Apple Developer 账号是否已准备？ | 应用分发 | P0 | ❓ 待确认 |
+| 2 | Tauri webview：用系统 webview 还是打包 Chromium？ | 一致性 vs 体积 | P0 | ❓ 待确认 |
+| 3 | License 签名密钥（Ed25519）：密钥对是否已生成？ | 授权系统 | P0 | ❓ 待确认 |
+| 4 | API Key 获取引导：为用户准备 Anthropic / Tavily / Google Cloud 获取步骤文档？ | 用户引导 | P1 | ❓ 待确认 |
+| 5 | 小红书 HTML 组件库品牌色：当前 `#5965AF`，以后是否可定制？ | Phase 2 Skill | P1 | ❓ 待确认 |
+| 6 | Auto-update：Tauri updater 是否已配置和测试？ | 版本更新 | P1 | ❓ 待确认 |
 
 ---
 

@@ -3,8 +3,11 @@ import { useNavigate, useLocation } from "react-router-dom"
 import SideNav from "../components/SideNav"
 import TopNav from "../components/TopNav"
 import { useWorkflowStore } from "../store/workflowStore"
-import { updateWorkflow } from "../services/workflow"
+import { useApiKeyStore } from "../store/apiKeyStore"
+import { tauri } from "../services/tauri"
 import type { Workflow } from "../types/workflow"
+import { open, save } from "@tauri-apps/plugin-dialog"
+import { readFile, writeFile } from "@tauri-apps/plugin-fs"
 
 const CARD_COLORS = ["#6349EA", "#22C55E", "#3B82F6", "#F59E0B", "#EF4444"]
 
@@ -28,18 +31,39 @@ export default function DashboardPage() {
 
   useEffect(() => { fetchWorkflows() }, [fetchWorkflows])
 
+  const { providers, loadProviders } = useApiKeyStore()
+  useEffect(() => { loadProviders() }, [loadProviders])
+  const noKeys = providers.length > 0 && providers.every((p) => !p.is_set)
+
   async function handleCreate() {
     const id = await createAndNavigate()
     if (id) navigate(`/canvas/${id}`)
   }
 
   async function handleRename(id: string, name: string) {
-    await updateWorkflow(id, { name })
+    await tauri.updateWorkflow(id, { name })
     fetchWorkflows()
   }
 
   async function handleCopy(id: string) {
     await copyWorkflow(id)
+  }
+
+  async function handleImport() {
+    try {
+      const filePath = await open({
+        filters: [{ name: "Tangent Workflow", extensions: ["tangent.json", "json"] }],
+        multiple: false,
+      })
+      if (!filePath) return
+      const bytes = await readFile(filePath as string)
+      const graphJson = new TextDecoder().decode(bytes)
+      const name = (filePath as string).split("/").pop()?.replace(/\.tangent\.json$/, "").replace(/\.json$/, "") ?? "Imported Workflow"
+      await tauri.importWorkflow(name, graphJson)
+      await fetchWorkflows()
+    } catch (e) {
+      console.error("import failed", e)
+    }
   }
 
   return (
@@ -51,6 +75,28 @@ export default function DashboardPage() {
 
         <main style={{ flex: 1, overflowY: "auto", background: "#f5f3f3", padding: "2rem" }}>
           <div style={{ maxWidth: "72rem", margin: "0 auto" }}>
+
+            {noKeys && (
+              <div
+                onClick={() => navigate("/settings")}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "0.75rem 1.25rem",
+                  marginBottom: "1.5rem",
+                  background: "#fef3c7",
+                  border: "1px solid #fde68a",
+                  borderRadius: 8,
+                  cursor: "pointer",
+                  fontSize: "0.875rem",
+                  color: "#92400e",
+                }}
+              >
+                <span>你还没有配置 AI API Key，点击前往 Settings 配置。</span>
+                <span style={{ color: "#b45309", fontWeight: 600 }}>前往设置 →</span>
+              </div>
+            )}
 
             <header style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", paddingBottom: "1rem", marginBottom: "2rem" }}>
               <div>
@@ -132,6 +178,38 @@ export default function DashboardPage() {
                     </h3>
                     <p style={{ fontSize: "0.875rem", color: "rgba(255,255,255,0.6)", marginTop: "0.25rem" }}>
                       Start a blank canvas or import data.
+                    </p>
+                  </div>
+                </button>
+
+                {/* Import */}
+                <button
+                  onClick={handleImport}
+                  style={{
+                    display: "flex", flexDirection: "column", justifyContent: "space-between",
+                    height: "14rem", background: "#ffffff",
+                    borderRadius: "0.5rem", padding: "1.5rem", textAlign: "left",
+                    border: "none", cursor: "pointer", transition: "transform 150ms ease",
+                    boxShadow: "0 0 0 1px rgba(0,0,0,0.05), 0 1px 2px 0 rgba(0,0,0,0.05)",
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.02)"}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+                  onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.98)"}
+                  onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}
+                >
+                  <div style={{
+                    width: "3rem", height: "3rem", borderRadius: "50%",
+                    background: "#f5f3f3",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: "1.5rem", color: "#747878" }}>download</span>
+                  </div>
+                  <div>
+                    <h3 style={{ fontFamily: '"Space Grotesk", sans-serif', fontSize: "1.25rem", fontWeight: 600, color: "#0e0f0f" }}>
+                      Import Workflow
+                    </h3>
+                    <p style={{ fontSize: "0.875rem", color: "#747878", marginTop: "0.25rem" }}>
+                      Load from .tangent.json file.
                     </p>
                   </div>
                 </button>
@@ -241,6 +319,22 @@ function WorkflowCardInline({ workflow, onClick, onRename, onCopy, onTrash }: {
     document.addEventListener("mousedown", h)
     return () => document.removeEventListener("mousedown", h)
   }, [menuOpen])
+
+  async function handleExport() {
+    try {
+      const json = await tauri.exportWorkflow(workflow.id)
+      const filePath = await save({
+        defaultPath: `${workflow.name}.tangent.json`,
+        filters: [{ name: "Tangent Workflow", extensions: ["tangent.json"] }],
+      })
+      if (filePath) {
+        await writeFile(filePath, new TextEncoder().encode(json))
+      }
+      setMenuOpen(false)
+    } catch (e) {
+      console.error("export failed", e)
+    }
+  }
 
   function finishRename() {
     const t = draft.trim()
@@ -361,6 +455,11 @@ function WorkflowCardInline({ workflow, onClick, onRename, onCopy, onTrash }: {
                   icon="content_copy"
                   label="Make a copy"
                   onClick={(e) => { e.stopPropagation(); onCopy(); setMenuOpen(false) }}
+                />
+                <MenuItem
+                  icon="upload"
+                  label="Export JSON"
+                  onClick={(e) => { e.stopPropagation(); handleExport() }}
                 />
                 <div style={{ height: "1px", background: "#f0f0f0", margin: "0.375rem 0" }} />
                 <MenuItem

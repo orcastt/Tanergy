@@ -1,27 +1,15 @@
-import axios from "axios"
+// DEPRECATED — Legacy REST API client (replaced by Tauri IPC in Slice 2).
+// This stub exists only to prevent build errors from workflowStore imports.
 
-const api = axios.create({
-  baseURL: "/api/v1",
-  headers: { "Content-Type": "application/json" },
-})
+function _throw(): Promise<never> {
+  return Promise.reject(new Error("REST API deprecated — use Tauri IPC"))
+}
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("tangent_token")
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
-
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem("tangent_token")
-      window.location.href = "/login"
-    }
-    return Promise.reject(error)
-  },
-)
+const api = {
+  get<T = any>(..._args: any[]): Promise<{ data: T }> { return _throw() },
+  post<T = any>(..._args: any[]): Promise<{ data: T }> { return _throw() },
+  put<T = any>(..._args: any[]): Promise<{ data: T }> { return _throw() },
+  delete(..._args: any[]): Promise<void> { return _throw() },
+}
 
 export default api

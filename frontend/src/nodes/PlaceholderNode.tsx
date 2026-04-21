@@ -19,6 +19,7 @@ export default function PlaceholderNode({ data, id, selected }: NodeProps) {
   return (
     <NodeBase
       title={def.label}
+      category={def.category}
       icon={<span className="material-symbols-outlined" style={{ fontSize: "18px", color: "#5e5e5e" }}>{def.icon}</span>}
       inputs={def.inputs}
       outputs={def.outputs}

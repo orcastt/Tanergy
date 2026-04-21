@@ -14,7 +14,7 @@ export function useCanvas(workflowId: string) {
   // Set graph when workflow loads
   useEffect(() => {
     if (currentWorkflow?.graph_json) {
-      setGraphFromJson(currentWorkflow.graph_json as { nodes: any[]; edges: any[] })
+      setGraphFromJson(JSON.parse(currentWorkflow.graph_json))
     }
   }, [currentWorkflow, setGraphFromJson])
 
@@ -59,6 +59,9 @@ export function useCanvas(workflowId: string) {
     return () => {
       document.removeEventListener("keydown", handleKeyDown)
       window.removeEventListener("beforeunload", handleBeforeUnload)
+      // Auto-save on unmount if dirty
+      const { isDirty } = useWorkflowStore.getState()
+      if (isDirty) useWorkflowStore.getState().saveWorkflow()
     }
   }, [handleKeyDown, handleBeforeUnload])
 

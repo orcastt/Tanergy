@@ -1,8 +1,8 @@
 # TANGENT — Architecture Decision Document
 
-**版本**: v0.2  
-**日期**: 2026-04-20  
-**状态**: 更新中——聚焦公众号 Skill，新增 Gate 执行模型
+**版本**: v0.3
+**日期**: 2026-04-21
+**状态**: Desktop pivot — Tauri + SQLite + 本地执行 + 用户自带 API Key
 
 > 本文档记录技术决策和工程约束。用户感受不到这些内容，但它们决定了产品怎么建。
 > 每次重大技术决策变更必须更新本文档。
@@ -16,10 +16,10 @@
 3. [目录结构](#3-目录结构)
 4. [核心模块划分](#4-核心模块划分)
 5. [数据模型](#5-数据模型)
-6. [服务端 vs 客户端边界](#6-服务端-vs-客户端边界)
+6. [本地 vs 远程 API 边界](#6-本地-vs-远程-api-边界)
 7. [状态管理方案](#7-状态管理方案)
-8. [API 设计](#8-api-设计)
-9. [部署架构](#9-部署架构)
+8. [IPC 接口设计](#8-ipc-接口设计)
+9. [构建与分发](#9-构建与分发)
 10. [安全规范](#10-安全规范)
 
 ---
@@ -28,70 +28,68 @@
 
 ### 1.1 用户范围与并发
 
-- **用户范围**：公开上线，面向全球（主要欧洲 + 东亚）
-- **MVP 预估并发**：同时在线 50 人，同时执行任务 20 个
-- **V1 预估并发**：同时在线 200 人，同时执行任务 80 个
-- **决策依据**：AI 任务耗时 10-60 秒，并发不依赖 HTTP 连接数，依赖任务队列容量
+- **应用类型**：单用户桌面应用
+- **并发定义**：同一工作流中同时执行的节点数，目标最多 5 个并发 AI API 调用
+- **决策依据**：AI 任务耗时 10-60 秒，并发受限于用户 API Key 的速率限制
 
 ### 1.2 性能上限
 
 | 指标 | 目标 |
 |------|------|
-| 页面首次加载（FCP） | < 2 秒（Cloudflare CDN 缓存） |
-| 画布打开（工作流加载） | < 1 秒（JSON ≤ 1MB） |
-| API 接口响应（非 AI） | < 200ms P95 |
-| AI 节点执行（图像生成） | 15-60 秒，WebSocket 实时推送进度 |
-| WebSocket 消息延迟 | < 500ms |
+| 应用冷启动 | < 3 秒 |
+| 画布打开（工作流加载） | < 500ms（SQLite 读取） |
+| 本地操作（保存、Undo、节点 CRUD） | < 100ms |
+| AI 节点执行 | 15-60 秒（取决于外部 API） |
+| Tauri IPC 调用延迟 | < 10ms |
 
 ### 1.3 成本上限
 
-| 资源 | 月预算 | 超出处理 |
-|------|--------|---------|
-| Hetzner 服务器 | ≤ €100/月 | 升级实例规格 |
-| MinIO 存储（Hetzner Volume） | ≤ €50/月（~1TB） | 清理超期资产 |
-| Claude API | 按用量，与订阅收入对齐 | 设置 API 用量上限告警 |
-| MJ API / Imagen3 | 按用量，与积分收入对齐 | 单用户每日 API 调用上限 |
-| Stripe 手续费 | 收入的 ~2.9% + €0.25 | 计入毛利 |
+| 资源 | 成本 | 说明 |
+|------|------|------|
+| 服务器 | **€0/月** | 无需服务器 |
+| 代码签名证书（macOS） | ~$100/年 | Apple Developer Program |
+| 代码签名证书（Windows） | ~$80/年 | 可选，无签名仅显示警告 |
+| License 签名密钥 | €0 | 本地 Ed25519 密钥对 |
 
-### 1.4 隐私合规（GDPR）
+### 1.4 隐私合规
 
-- 部署在 **欧盟境内**（Hetzner 芬兰/德国），数据不出欧盟
-- 用户数据：存储在 PostgreSQL（EU） + MinIO（EU），不使用欧盟以外服务存储个人数据
-- 注册时需用户同意隐私政策和服务条款
-- 用户有权申请：导出数据 / 删除账户及所有资产
-- Cookie：仅 JWT token（必要 Cookie），不追踪，不 Analytics（MVP 阶段）
-- 不向第三方出售用户数据
-- 向 AI API 发送的 Prompt 内容不含个人身份信息（用户需自行注意）
+- 所有用户数据（工作流、生成内容、API Key）存储在用户本地设备
+- AI API 调用：用户的 Prompt 直接从客户端发往 AI 提供商，用户自行承担数据传输责任
+- 不发送任何个人数据到 TANGENT 服务器（无服务器）
+- 无 Cookie、无 Analytics、无追踪
+- License 验证完全本地（加密签名校验），不联网
 
 ### 1.5 可用性
 
 | 指标 | 目标 |
 |------|------|
-| 月可用性 | ≥ 99.5%（允许约 3.6 小时/月停机） |
-| 计划维护 | 提前 24h 公告，选择低峰时段（UTC 02:00-04:00） |
-| 数据备份 | PostgreSQL 每日自动备份，保留 7 天 |
-| MinIO 备份 | Hetzner Volume 快照，每周 1 次 |
+| 应用可用性 | 始终可用（桌面应用，无服务器依赖） |
+| 离线可用 | 画布编辑、工作流管理、本地操作全部离线可用 |
+| 自动保存 | 每 30 秒自动保存到 SQLite |
+| 自动更新 | Tauri updater，新版本发布时提示更新 |
 
 ### 1.6 第三方依赖风险
 
 | 依赖 | 风险 | 降级方案 |
 |------|------|---------|
-| Midjourney API 不可用 | 图像节点无法执行 | 自动切换到 Imagen 3 |
-| Claude API 不可用 | Chat/Optimize 节点失败 | 节点显示错误，用户手动重试 |
-| Stripe 不可用 | 无法付款 | 订阅状态缓存，不影响已付费用户 |
-| Tavily 不可用 | Search 节点失败 | 节点显示错误 |
+| Claude API 不可用 | 文本 AI 节点失败 | 节点显示错误，用户手动重试 |
+| Imagen 3 不可用 | 图像节点失败 | 节点显示错误 |
+| Tavily 不可用 | Research 节点失败 | 节点显示错误 |
+| 用户 API Key 无效/过期 | 对应节点失败 | 提示用户去 Settings 更新 Key |
+| Tauri webview 兼容性 | 渲染差异 | macOS 用 WebKit，Windows 用 WebView2 |
 
-### 1.7 上线平台
+### 1.7 目标平台
 
-- **Web 应用**：桌面浏览器（Chrome 120+、Safari 17+、Firefox 120+、Edge 120+）
-- **不支持**：移动端浏览器（画布操作依赖鼠标）
-- **不做**：iOS App、Android App、桌面客户端
+- **主要支持**：macOS 13+（Apple Silicon + Intel）
+- **次要支持**：Windows 10/11
+- **三级支持**：Linux（AppImage / deb）
+- **不支持**：移动端、Web 浏览器（Phase 2 网页版另行规划）
 
 ### 1.8 维护方式
 
-- 开发+维护：小团队（1-3人）
-- 故障响应：工作时间内 2 小时响应，非工作时间次日响应
-- 监控：Hetzner 监控 + Sentry（前端错误捕获，Phase 2 接入）
+- 开发+维护：1人
+- 自动更新：Tauri 内置 updater
+- 无需服务器监控
 
 ---
 
@@ -101,38 +99,36 @@
 
 | 层级 | 选型 | 版本要求 | 选择理由 |
 |------|------|---------|---------|
+| **桌面壳** | **Tauri** | **v2.x** | Rust 内核，体积小（10-20MB），系统 webview，跨平台 |
 | **前端框架** | React + TypeScript | React 18, TS 5.x | 成熟生态，React Flow 官方支持 |
-| **画布引擎** | React Flow (`@xyflow/react`) | v12+ | 专为节点画布设计，文档完善，维护活跃 |
-| **子画布绘图** | Fabric.js | v6 | Draw/标注/Inpaint 遮罩，成熟稳定 |
-| **状态管理** | Zustand | v4 | 轻量，适合画布复杂状态，无样板代码 |
-| **UI 组件** | Tailwind CSS + Radix UI | Tailwind v3 | Cal.com 风格灰度系统，Radix 提供无样式原语 |
-| **多语言** | i18next + react-i18next | latest | 行业标准，支持动态加载语言包 |
-| **PPT 渲染** | Reveal.js | v5 | HTML 幻灯片，免费，嵌入方便 |
+| **画布引擎** | React Flow (`@xyflow/react`) | v12+ | 专为节点画布设计，文档完善 |
+| **状态管理** | Zustand | v4 | 轻量，适合画布复杂状态 |
+| **UI 组件** | Tailwind CSS + Radix UI | Tailwind v3 | Cal.com 风格灰度系统 |
+| **本地数据库** | **SQLite** | **v3** | 嵌入式、零配置、单文件、可靠 |
+| **ORM** | **Drizzle ORM** | **latest** | 轻量、类型安全、SQLite 支持好 |
+| **AI API 调用** | **Tauri Rust 侧 reqwest** | — | 用户自带 Key，经 Rust 侧转发，不暴露给 JS |
+| **文件存储** | **本地文件系统（Tauri fs API）** | — | 用户工作空间目录 |
+| **授权验证** | **本地加密签名（Ed25519）** | — | 无服务器，Honor system |
+| **API Key 加密** | **AES-256-GCM + OS keychain** | — | 安全存储用户的 API Key |
+| **多语言** | i18next + react-i18next | latest | 行业标准 |
+| **子画布绘图** | Fabric.js | v6 | Phase 2，Draw/标注/Inpaint |
 | **代码编辑** | Monaco Editor | latest | VS Code 同款，Prompt 编辑用 |
-| **实时协同** | Yjs + y-websocket | latest | CRDT 算法，无冲突合并，成熟方案 |
-| **构建工具** | Vite | v5 | 快，HMR 好用，TypeScript 原生支持 |
-| **后端框架** | FastAPI (Python) | 0.115+ | AI 生态最好，异步支持好，类型安全 |
-| **任务队列** | ARQ (Python) | latest | FastAPI 生态，基于 Redis，轻量 |
-| **数据库** | PostgreSQL | v16 | 可靠，JSONB 支持工作流存储 |
-| **ORM** | SQLAlchemy + Alembic | v2 | 成熟，迁移管理好 |
-| **缓存/队列** | Redis | v7 | Session、任务队列、限流 |
-| **对象存储** | MinIO | latest | S3 兼容，自托管，GDPR 友好 |
-| **认证** | python-jose (JWT) | latest | 轻量 JWT，无需额外服务 |
-| **支付** | Stripe Python SDK | latest | 欧洲合规，文档好 |
-| **邮件发送** | Resend | latest | 简单可靠，免费额度够用 |
-| **部署** | Docker + Docker Compose | Docker v25 | 简单，够用，后期迁移 K8s 容易 |
-| **CDN** | Cloudflare | 免费计划 | 静态资源缓存，DDoS 防护 |
+| **构建/打包** | **Tauri CLI + GitHub Actions** | — | 跨平台安装器 |
 
 ### 2.2 不选择的方案（及理由）
 
 | 方案 | 不选理由 |
 |------|---------|
+| Electron | 二进制体积 100MB+，内存占用高；Tauri 更轻量 |
 | Vue + VueFlow | React Flow 生态更成熟，团队更熟悉 React |
-| Next.js | 画布应用不需要 SSR，Vite 更轻量 |
-| Prisma ORM | Python 后端，SQLAlchemy 更适合 |
-| GraphQL | REST API 够用，不需要 GraphQL 的灵活性 |
-| Kubernetes | MVP 阶段 Docker Compose 足够，减少运维复杂度 |
-| MongoDB | 工作流数据有关联关系，JSONB + PostgreSQL 更合适 |
+| Next.js | 桌面应用不需要 SSR |
+| PostgreSQL | 单用户桌面过重，SQLite 嵌入式更合适 |
+| IndexedDB | 不适合关系型工作流数据，SQL 查询能力弱 |
+| Redis | 单用户无需缓存/队列 |
+| MinIO / S3 | 本地文件系统足够 |
+| Stripe | 用户自带 Key，按时计费不适用 |
+| Yjs | 单用户桌面无需协同（Phase 2 网页版再考虑） |
+| MongoDB | 工作流数据有关联关系，SQLite 更合适 |
 | Redux | Zustand 够用，Redux 样板代码太多 |
 
 ---
@@ -153,7 +149,7 @@ frontend/
 │   │   ├── base/         ← NodeBase（所有节点的基础外壳）
 │   │   ├── prompt/       ← PromptNode
 │   │   ├── chat/         ← ChatNode
-│   │   ├── image/        ← ImageNode（MJ / Imagen）
+│   │   ├── image/        ← ImageNode
 │   │   ├── search/       ← SearchNode
 │   │   ├── preview/      ← PreviewWechatNode, PreviewRedNode
 │   │   └── index.ts      ← 节点类型注册表
@@ -166,41 +162,32 @@ frontend/
 │   │   ├── SkillPanel.tsx
 │   │   ├── definitions/  ← 每个 Skill 的节点图定义
 │   │   └── hooks/        ← useSkillApply
-│   ├── pages/            ← 页面（路由级组件）
-│   │   ├── LandingPage.tsx
-│   │   ├── LoginPage.tsx
-│   │   ├── SignupPage.tsx
-│   │   ├── DashboardPage.tsx
-│   │   ├── CanvasPage.tsx
-│   │   ├── SettingsPage.tsx
-│   │   └── UpgradePage.tsx
+│   ├── pages/            ← 应用视图
+│   │   ├── WelcomePage.tsx   ← 首次启动向导（License + API Key）
+│   │   ├── DashboardPage.tsx ← 工作流列表
+│   │   ├── CanvasPage.tsx    ← 核心画布编辑
+│   │   └── SettingsPage.tsx  ← API Keys、License、偏好设置
 │   ├── store/            ← Zustand 状态
 │   │   ├── canvasStore.ts    ← 节点/连线/选中/历史
-│   │   ├── authStore.ts      ← 用户/token
-│   │   ├── workflowStore.ts  ← 工作流列表/当前工作流
-│   │   └── subscriptionStore.ts ← 套餐/时长
-│   ├── services/         ← API 请求封装
-│   │   ├── api.ts        ← axios 实例，含 token 拦截
-│   │   ├── auth.ts
-│   │   ├── workflow.ts
-│   │   ├── execution.ts
-│   │   └── subscription.ts
+│   │   ├── licenseStore.ts   ← License 状态（激活/试用/过期）
+│   │   ├── apiKeyStore.ts    ← API Key 管理状态
+│   │   └── workflowStore.ts  ← 工作流列表/当前工作流
+│   ├── services/         ← 服务层
+│   │   ├── tauri.ts      ← Tauri IPC invoke 封装
+│   │   └── aiProviders.ts← AI 提供商常量和类型定义
 │   ├── hooks/            ← 通用业务 hooks
-│   │   ├── useAuth.ts
-│   │   ├── useWebSocket.ts
 │   │   └── useExecution.ts
 │   ├── types/            ← TypeScript 类型定义
 │   │   ├── node.ts
 │   │   ├── workflow.ts
-│   │   └── api.ts
+│   │   └── license.ts
 │   ├── lib/              ← 工具函数
 │   │   ├── cn.ts         ← classnames 工具
-│   │   └── dagUtils.ts   ← DAG 拓扑排序
+│   │   ├── dagUtils.ts   ← DAG 拓扑排序
+│   │   └── executionEngine.ts ← 执行引擎（DAG 解析 + 节点调度）
 │   ├── i18n/             ← 多语言配置
 │   ├── App.tsx
 │   └── main.tsx
-├── reference/
-│   └── theme.ts          ← 颜色/字号/间距统一定义
 ├── index.html
 ├── vite.config.ts
 ├── tsconfig.json
@@ -210,75 +197,50 @@ frontend/
 **文件大小限制**：单文件不超过 300 行。超出时拆分为子组件或 hooks。
 
 **300 行审查规则**（强制执行）：
-- 每完成一个开发切片（slice），必须运行文件行数检查
-- 发现超过 300 行的文件，立即拆分，不累积技术债
+- 每完成一个 Slice，必须运行文件行数检查
+- 发现超过 300 行的文件，立即拆分
 - 拆分优先级：
   1. **职责混杂**：一个文件同时做 UI 渲染 + 业务逻辑 → 拆出 hooks
   2. **多组件堆叠**：一个文件里定义了 2+ 个组件 → 每个组件独立文件
   3. **配置过长**：类型定义、常量枚举占大头 → 拆到 `types/` 或 `lib/`
-  4. **样式内联**：大量 style 对象或 className 模板 → 拆到 `styles/` 或用 CSS Module
-- 拆分时创建新文件，不修改已完成切片的逻辑（避免引入回归）
-- 检查命令：`find src -name '*.ts' -o -name '*.tsx' -o -name '*.py' | xargs wc -l | sort -rn | head -20`
+- 检查命令：`find src -name '*.ts' -o -name '*.tsx' -o -name '*.rs' | xargs wc -l | sort -rn | head -20`
 
-### 3.2 后端（`/backend`）
+### 3.2 Tauri Rust 侧（`/src-tauri`）
 
 ```
-backend/
-├── app/
-│   ├── api/              ← 路由层（只处理 HTTP 请求/响应）
-│   │   ├── v1/
-│   │   │   ├── auth.py
-│   │   │   ├── workflows.py
-│   │   │   ├── executions.py
-│   │   │   ├── assets.py
-│   │   │   └── subscriptions.py
-│   │   └── ws/
-│   │       └── execution_ws.py ← WebSocket 端点
-│   ├── services/         ← 业务逻辑层（核心规则）
-│   │   ├── auth_service.py
-│   │   ├── workflow_service.py
-│   │   ├── execution_service.py   ← DAG 解析 + 调度
-│   │   ├── storage_service.py     ← MinIO 操作
-│   │   └── subscription_service.py
-│   ├── nodes/            ← 节点执行器（每类节点一个文件）
-│   │   ├── base.py              ← NodeExecutor 基类
-│   │   ├── registry.py          ← 节点类型 → Executor 映射表
-│   │   ├── text_input.py        ← 透传，免费
-│   │   ├── research.py          ← Tavily 多轮 + Claude 汇总
-│   │   ├── outline_generator.py ← Claude 生成选题方案
-│   │   ├── gate.py              ← 特殊：触发 waiting 状态，不走 ARQ
-│   │   ├── writer.py            ← Claude 长文写作（含反AI规则）
-│   │   ├── reviewer.py          ← Claude 三遍审校链
-│   │   ├── image_planner.py     ← Claude 配图规划
-│   │   ├── image_gen.py         ← Google Imagen 3
-│   │   └── html_formatter.py    ← 纯模板引擎，Markdown→WeChat HTML
-│   ├── models/           ← SQLAlchemy ORM 模型
-│   │   ├── user.py
-│   │   ├── workflow.py
-│   │   ├── asset.py
-│   │   ├── execution_log.py
-│   │   └── subscription.py
-│   ├── schemas/          ← Pydantic 请求/响应模型
-│   │   ├── auth.py
-│   │   ├── workflow.py
-│   │   └── execution.py
-│   ├── workers/          ← ARQ 任务队列 worker
-│   │   ├── execution_worker.py
-│   │   └── cleanup_worker.py
-│   ├── core/
-│   │   ├── config.py     ← 环境变量读取（pydantic-settings）
-│   │   ├── database.py   ← DB 连接池
-│   │   ├── redis.py      ← Redis 连接
-│   │   ├── security.py   ← JWT 生成/校验
-│   │   └── rate_limit.py ← 频率限制
-│   └── main.py           ← FastAPI app 入口
-├── migrations/           ← Alembic 数据库迁移
-├── tests/
-│   ├── unit/
-│   └── integration/
-├── Dockerfile
-├── requirements.txt
-└── .env.example
+src-tauri/
+├── src/
+│   ├── main.rs           ← Tauri app 入口
+│   ├── lib.rs            ← Command 注册
+│   ├── commands/         ← Tauri IPC 命令处理器
+│   │   ├── mod.rs
+│   │   ├── workflow.rs   ← 工作流 CRUD（SQLite）
+│   │   ├── asset.rs      ← 资产文件管理（本地文件系统）
+│   │   ├── license.rs    ← License 密钥验证
+│   │   ├── api_keys.rs   ← API Key 加密存储
+│   │   └── export.rs     ← 导出（ZIP、HTML 复制）
+│   ├── db/
+│   │   ├── mod.rs
+│   │   ├── schema.rs     ← SQLite schema 定义
+│   │   └── migrations.rs ← 数据库迁移逻辑
+│   ├── services/
+│   │   ├── mod.rs
+│   │   ├── ai_client.rs  ← HTTP 客户端（reqwest，调用 AI API）
+│   │   └── license.rs    ← License 签名验证逻辑
+│   └── crypto.rs         ← API Key 加解密工具
+├── Cargo.toml
+├── tauri.conf.json       ← Tauri 配置
+├── icons/                ← 应用图标（各平台）
+└── migrations/           ← SQL 迁移文件
+```
+
+### 3.3 已弃用（保留供参考）
+
+```
+backend/                   ← Legacy Web SaaS 后端（已弃用）
+├── app/                  ← FastAPI 代码，不再维护
+├── migrations/           ← Alembic 迁移，不再使用
+└── DEPRECATED.md         ← 弃用说明
 ```
 
 ---
@@ -287,50 +249,45 @@ backend/
 
 ### 4.1 画布模块（前端）
 
-**职责**：节点的渲染、拖拽、连线、状态展示  
-**边界**：不处理 AI 调用逻辑，只负责「用户看到什么 + 用户怎么操作」  
+**职责**：节点的渲染、拖拽、连线、状态展示
+**边界**：不处理 AI 调用逻辑，只负责「用户看到什么 + 用户怎么操作」
 **关键文件**：`canvas/Canvas.tsx`、`store/canvasStore.ts`
 
-### 4.2 节点模块（前后端）
+### 4.2 节点模块（前端 + Tauri IPC）
 
-**前端职责**：节点 UI 渲染 + 配置参数的本地状态  
-**后端职责**：节点的实际执行（调用对应 AI API）  
-**边界**：前端节点组件不调用 AI API，只显示数据和发 HTTP/WS 请求
+**前端职责**：节点 UI 渲染 + 配置参数的本地状态
+**Tauri Rust 职责**：节点的实际执行（解密 API Key → 调用 AI API → 返回结果）
+**边界**：前端节点组件不持有 API Key，通过 `invoke('execute_node')` 发请求到 Rust 侧
 
-### 4.3 执行引擎（后端）
+### 4.3 执行引擎（前端）
 
-**职责**：接收 DAG，解析拓扑顺序，分发任务到队列，推送进度  
+**职责**：接收 DAG，解析拓扑顺序，逐层调度节点执行，展示进度
 **关键逻辑**：
-1. 解析 DAG → 拓扑排序 → 得到执行层级
-2. 同层节点并发提交到 ARQ 队列
-3. 每个节点完成后检查是否有依赖的下游节点可以启动
-4. 通过 WebSocket 推送每个节点的状态变化
+1. 解析 DAG → 拓扑排序 → 得到执行层级（前端 JS，逻辑不变）
+2. 同层节点并发调用 `invoke('execute_node')`
+3. Rust 侧返回结果后，前端更新 canvasStore 节点状态
+4. 通过 Tauri event 机制推送进度（替代 WebSocket）
 
-### 4.4 Gate 节点执行模型（新增）
+### 4.4 Gate 节点执行模型
 
 Gate 是唯一会暂停整条执行链的节点类型，引入了**人工决策门**机制。
 
 ```
 用户点击 Run All
     ↓
-后端：DAG 拓扑排序 → 生成 ExecutionJob
+前端：DAG 拓扑排序 → 执行层级
     ↓
 执行到 Gate 节点：
-    后端：不推入 ARQ 队列，直接发送 waiting 事件
-    WebSocket → { type: "node_waiting", node_id: "gate_1", payload: { options/prompt } }
-    ↓
-前端：canvasStore 将 gate_1 状态设为 waiting（琥珀色边框）
-前端：动态在画布上生成「临时交互节点」（AnimatedTempNode）
+    前端：不调用 execute_node，直接设为 waiting 状态
+    canvasStore: setWaitingGate('gate_1')
+    画布动态生成「临时交互节点」（AnimatedTempNode）
     ↓
 用户操作（选择/输入）→ 点击确认
     ↓
-前端：POST /api/v1/executions/:job_id/gate-response
-      body: { node_id: "gate_1", value: "用户选择的内容" }
+前端：canvasStore.resolveGate('gate_1', value)
+      临时交互节点淡出消失，Gate 折叠显示「✓ 已选：xxx」
     ↓
-后端：ExecutionJob 恢复，Gate 节点标记 done，输出 value
-前端：临时交互节点淡出消失，Gate 折叠显示「✓ 已选：xxx」
-    ↓
-继续执行下游节点
+继续执行下游节点（调用 invoke('execute_node')）
 ```
 
 **前端 canvasStore 新增字段**：
@@ -339,88 +296,154 @@ waitingGates: string[]          // 当前处于 waiting 状态的 Gate 节点 ID
 tempNodes: EphemeralNode[]      // 动态生成的临时交互节点（不存入 graph_json）
 ```
 
-**Gate 临时节点不存入 graph_json**，只存在于运行时画布状态，用户保存时不包含。
+**Gate 临时节点不存入 graph_json**，只存在于运行时画布状态。
 
-### 4.5 节点执行器注册表（MVP）
+### 4.5 节点执行器注册表
 
-```python
-# backend/app/nodes/registry.py
-NODE_EXECUTORS = {
-    "text_input":         TextInputExecutor,       # 透传，免费
-    "research":           ResearchExecutor,         # Tavily + Claude 汇总
-    "outline_generator":  OutlineGeneratorExecutor, # Claude 生成选题
-    "gate":               GateExecutor,             # 特殊：触发 waiting，不走 ARQ
-    "writer":             WriterExecutor,           # Claude 长文写作
-    "reviewer":           ReviewerExecutor,         # Claude 三遍审校链
-    "image_planner":      ImagePlannerExecutor,     # Claude 配图规划
-    "image_gen":          ImagenExecutor,           # Google Imagen 3
-    "image_gallery":      None,                     # 纯前端，无后端 executor
-    "html_formatter":     HtmlFormatterExecutor,    # 纯模板引擎，不走 LLM
-    "preview_wechat":     None,                     # 纯前端展示
+```typescript
+// 前端侧：每个执行器知道如何调用对应的 Tauri command
+const NODE_EXECUTORS: Record<NodeType, NodeExecutor> = {
+  "text_input":        TextInputExecutor,       // 纯前端，无 API 调用
+  "research":          ResearchExecutor,         // Tavily + Claude（经 Tauri）
+  "outline_generator": OutlineGeneratorExecutor, // Claude（经 Tauri）
+  "gate":              GateExecutor,             // 特殊：触发 waiting 状态
+  "writer":            WriterExecutor,           // Claude（经 Tauri）
+  "reviewer":          ReviewerExecutor,         // Claude（经 Tauri）
+  "image_planner":     ImagePlannerExecutor,     // Claude（经 Tauri）
+  "image_gen":         ImagenExecutor,           // Imagen 3（经 Tauri）
+  "image_gallery":     ImageGalleryExecutor,     // 纯前端
+  "html_formatter":    HtmlFormatterExecutor,    // 纯前端（模板引擎）
+  "preview_wechat":    PreviewWechatExecutor,    // 纯前端展示
 }
 ```
 
-### 4.4 认证模块（前后端）
+### 4.6 License 模块（Tauri Rust 侧）
 
-**职责**：用户身份验证、JWT 管理  
-**边界**：JWT 验证必须在服务端做，前端只存储 token（localStorage）
+**职责**：License 密钥验证、试用管理、过期检测
+**机制**：
+- License 密钥 = Ed25519 签名的数据包（包含计划类型、过期时间、功能列表）
+- 验证：用内嵌公钥验证签名，完全本地，不联网
+- 试用：首次启动记录时间戳，14 天后转为只读模式
+- 过期：可查看/编辑工作流，不可执行节点
 
-### 4.5 订阅计量模块（后端）
+### 4.7 API Key 模块（Tauri Rust 侧）
 
-**职责**：记录执行时长、检查限额、每周重置  
-**边界**：扣除时长必须在服务端执行，前端只展示剩余时长（从服务端拉取）
+**职责**：API Key 加密存储、解密使用、有效性检测
+**机制**：
+- 用户在 Settings 输入 API Key → Rust 侧 AES-256-GCM 加密 → 存入 SQLite
+- 执行节点时 → Rust 侧从 SQLite 读取 → 解密到内存 → 调用 AI API → 清除内存
+- API Key 永不暴露给前端 JS
+- 支持的提供商：Anthropic (Claude)、Tavily (Search)、Google Cloud (Imagen 3)
 
 ---
 
 ## 5. 数据模型
 
-> 详见 PRD.md §10 数据字段约束，此处补充关系和索引说明
+> SQLite 本地数据库，单用户，无多租户字段。
 
 ```sql
--- 关键索引
-CREATE INDEX idx_workflows_owner ON workflows(owner_id);
-CREATE INDEX idx_workflows_team ON workflows(team_id);
-CREATE INDEX idx_assets_user ON assets(user_id);
-CREATE INDEX idx_execution_logs_user_week ON execution_logs(user_id, week_start);
-CREATE INDEX idx_email_otps_email ON email_otps(email);
+-- Schema 版本追踪
+CREATE TABLE schema_version (
+  version INTEGER PRIMARY KEY
+);
 
--- 执行时长汇总视图（用于快速查剩余时长）
-CREATE VIEW user_weekly_usage AS
-  SELECT 
-    user_id,
-    week_start,
-    SUM(duration_ms) / 1000 AS used_seconds
-  FROM execution_logs
-  WHERE status = 'success'
-  GROUP BY user_id, week_start;
+-- 应用配置（替代 users 表）
+CREATE TABLE app_config (
+  key        TEXT PRIMARY KEY,
+  value      TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+-- 存储项：license_key, first_launch_date, workspace_path, theme, language
+
+-- API Keys（加密存储）
+CREATE TABLE api_keys (
+  provider      TEXT PRIMARY KEY,  -- 'anthropic', 'tavily', 'google_cloud'
+  encrypted_key BLOB NOT NULL,     -- AES-256-GCM 加密
+  is_valid      INTEGER NOT NULL DEFAULT 0,
+  last_tested_at TEXT,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- 工作流
+CREATE TABLE workflows (
+  id             TEXT PRIMARY KEY,  -- UUID
+  name           TEXT NOT NULL CHECK(length(name) BETWEEN 1 AND 100),
+  graph_json     TEXT NOT NULL,     -- JSON 字符串（DAG 序列化）
+  thumbnail_path TEXT,
+  created_at     TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at     TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX idx_workflows_updated ON workflows(updated_at);
+
+-- 生成资产
+CREATE TABLE assets (
+  id                TEXT PRIMARY KEY,
+  workflow_id       TEXT REFERENCES workflows(id) ON DELETE CASCADE,
+  node_id           TEXT NOT NULL,
+  type              TEXT NOT NULL CHECK(type IN ('image','video','audio','html')),
+  file_path         TEXT NOT NULL,     -- 本地文件系统路径
+  original_filename TEXT,
+  size_bytes        INTEGER NOT NULL,
+  mime_type         TEXT NOT NULL,
+  created_at        TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX idx_assets_workflow ON assets(workflow_id);
+
+-- 执行日志（仅用于调试，不计费）
+CREATE TABLE execution_logs (
+  id            TEXT PRIMARY KEY,
+  workflow_id   TEXT,
+  node_id       TEXT NOT NULL,
+  node_type     TEXT NOT NULL,
+  started_at    TEXT NOT NULL,
+  ended_at      TEXT,
+  duration_ms   INTEGER,
+  status        TEXT NOT NULL CHECK(status IN ('running','success','failed','cancelled')),
+  error_message TEXT
+);
+CREATE INDEX idx_logs_workflow ON execution_logs(workflow_id);
 ```
+
+**与 Web 版 PostgreSQL 的关键差异**：
+- 无 `owner_id` / `user_id` 列（单用户）
+- TEXT 存储日期（替代 TIMESTAMPTZ）
+- BLOB 存储加密 API Key
+- CHECK 约束替代 ENUM 类型
+- 无 `subscriptions`、`email_otps`、`teams` 表
 
 ---
 
-## 6. 服务端 vs 客户端边界
+## 6. 本地 vs 远程 API 边界
 
-### 必须在服务端做（不可放前端）
+### 必须经 Tauri IPC（Rust 侧）
 
 | 操作 | 原因 |
 |------|------|
-| AI API 调用（MJ、Claude、Imagen3 等）| API Key 不能暴露到前端 |
-| JWT 颁发与校验 | 安全，防伪造 |
-| 执行时长扣除与检查 | 防客户端绕过 |
-| MinIO 文件上传/读取 | S3 凭证不能暴露 |
-| 邮件验证码生成发送 | 防止前端直接看到验证码 |
-| Stripe Webhook 处理 | 验证签名必须在服务端 |
-| 用户权限校验（资产是否属于本人） | 防越权访问 |
-| 频率限制（验证码发送、登录尝试）| 防暴力攻击 |
+| AI API 调用（Claude、Imagen 3、Tavily） | API Key 在 Rust 侧解密，不暴露给 JS |
+| SQLite 数据库操作 | DB 连接在 Rust 侧管理 |
+| 文件系统操作（资产存储） | Tauri fs API 安全访问 |
+| API Key 加密/解密 | 加密操作在 Rust 侧，不在 JS |
+| License 密钥验证 | Ed25519 签名验证在 Rust 侧 |
 
-### 可以在客户端做
+### 纯前端 JS/React
 
 | 操作 | 说明 |
 |------|------|
 | DAG 可视化渲染 | React Flow 前端渲染 |
-| 节点连线校验（类型匹配）| 前端快速反馈，服务端执行前再校验 |
-| Undo/Redo 历史 | 前端本地状态 |
-| 主题/语言偏好 | localStorage |
-| 工作流的临时编辑状态 | 未保存的变更在前端状态中 |
+| 节点连线校验（类型匹配） | 前端快速反馈 |
+| Undo/Redo 历史 | 内存中 Zustand 状态 |
+| 主题/语言偏好 | 本地状态 |
+| 工作流临时编辑状态 | Zustand 状态 |
+| 节点状态展示 | canvasStore 视觉状态 |
+| Gate UI（临时节点、选项展示） | 纯前端交互 |
+
+### 外部网络调用（Tauri Rust 侧发起）
+
+| 目标 | 用途 | Key 来源 |
+|------|------|---------|
+| api.anthropic.com | Claude API | 用户提供 |
+| vision.googleapis.com | Imagen 3 | 用户提供 |
+| api.tavily.com | 搜索 | 用户提供 |
 
 ---
 
@@ -429,14 +452,17 @@ CREATE VIEW user_weekly_usage AS
 ### 7.1 Zustand Store 划分
 
 ```typescript
-// canvasStore.ts — 画布状态（最核心，最复杂）
+// canvasStore.ts — 画布状态（最核心，完全不变）
 interface CanvasStore {
   nodes: Node[]
   edges: Edge[]
   selectedNodeIds: string[]
-  history: CanvasSnapshot[]  // Undo/Redo
+  nodeStatuses: Record<string, NodeStatus>
+  history: CanvasSnapshot[]
   historyIndex: number
-  
+  waitingGates: string[]
+  tempNodes: EphemeralNode[]
+
   addNode: (node: Node) => void
   removeNode: (id: string) => void
   updateNode: (id: string, data: Partial<NodeData>) => void
@@ -444,15 +470,9 @@ interface CanvasStore {
   removeEdge: (id: string) => void
   undo: () => void
   redo: () => void
-}
-
-// authStore.ts — 用户身份
-interface AuthStore {
-  user: User | null
-  token: string | null
-  isLoading: boolean
-  login: (token: string, user: User) => void
-  logout: () => void
+  setNodeStatus: (id: string, status: NodeStatus) => void
+  setWaitingGate: (nodeId: string) => void
+  resolveGate: (nodeId: string, value: unknown) => void
 }
 
 // workflowStore.ts — 工作流数据
@@ -460,18 +480,29 @@ interface WorkflowStore {
   currentWorkflow: Workflow | null
   workflows: Workflow[]
   isSaving: boolean
-  isDirty: boolean  // 有未保存变更
-  saveWorkflow: () => Promise<void>
-  loadWorkflow: (id: string) => Promise<void>
+  isDirty: boolean
+  saveWorkflow: () => Promise<void>   // 调用 Tauri IPC
+  loadWorkflow: (id: string) => Promise<void>  // 调用 Tauri IPC
+  createWorkflow: () => Promise<void>  // 调用 Tauri IPC
 }
 
-// subscriptionStore.ts — 订阅与时长
-interface SubscriptionStore {
-  plan: Plan
-  weeklyLimitSeconds: number
-  usedSeconds: number
-  remainingSeconds: number
-  refresh: () => Promise<void>
+// licenseStore.ts — License 状态（替代 authStore）
+interface LicenseStore {
+  status: 'active' | 'trial' | 'expired' | 'unknown'
+  plan: 'free' | 'pro'
+  trialEndsAt: string | null
+  expiresAt: string | null
+  activate: (licenseKey: string) => Promise<boolean>
+  checkStatus: () => Promise<void>
+}
+
+// apiKeyStore.ts — API Key 管理
+interface ApiKeyStore {
+  keys: Record<string, { provider: string; isSet: boolean; isValid: boolean | null }>
+  setKey: (provider: string, key: string) => Promise<boolean>
+  testKey: (provider: string) => Promise<boolean>
+  removeKey: (provider: string) => Promise<void>
+  refreshStatus: () => Promise<void>
 }
 ```
 
@@ -480,7 +511,7 @@ interface SubscriptionStore {
 ```
 用户操作（拖拽/连线）
     ↓
-canvasStore 更新（本地）
+canvasStore 更新（本地 Zustand）
     ↓
 React Flow 重新渲染
     ↓
@@ -488,190 +519,157 @@ React Flow 重新渲染
     ↓
 workflowStore.saveWorkflow()
     ↓
-POST /api/v1/workflows/:id
+invoke('update_workflow', { id, graphJson })
     ↓
-后端持久化到 PostgreSQL
+Tauri Rust 侧 → SQLite 持久化
 ```
 
 ```
 用户点击 Run
     ↓
-execution service 发 POST /api/v1/executions
+executionEngine.runAll()
     ↓
-后端创建执行任务，推入 ARQ 队列
+DAG 拓扑分层（JS，逻辑不变）
     ↓
-Worker 执行节点（调 AI API）
+逐节点调用 invoke('execute_node', { nodeId, nodeType, inputData })
     ↓
-WebSocket 推送进度 → canvasStore.updateNode(status)
+Tauri Rust 侧：
+  1. 解密对应 provider 的 API Key
+  2. 用 reqwest 发 HTTP 到 AI API
+  3. 返回结果
+    ↓
+前端 canvasStore.setNodeStatus('done')
+前端 canvasStore.setNodeResult(result)
     ↓
 React Flow 重新渲染节点状态
 ```
 
 ---
 
-## 8. API 设计
+## 8. IPC 接口设计
 
-### 8.1 认证相关
+### 8.1 Tauri IPC Commands（前端 → Rust）
 
-```
-POST /api/v1/auth/send-otp        发送邮箱验证码
-POST /api/v1/auth/verify-otp      验证码登录/注册
-POST /api/v1/auth/google          Google OAuth 换 token
-POST /api/v1/auth/logout          登出（清除 refresh token）
-GET  /api/v1/auth/me              获取当前用户信息
-```
+```typescript
+// === 工作流 ===
+invoke('list_workflows'): Promise<Workflow[]>
+invoke('get_workflow', { id: string }): Promise<WorkflowDetail>
+invoke('create_workflow', { name?: string }): Promise<WorkflowDetail>
+invoke('update_workflow', { id: string, name?: string, graphJson?: string }): Promise<WorkflowDetail>
+invoke('delete_workflow', { id: string }): Promise<void>
 
-### 8.2 工作流
+// === 执行 ===
+invoke('execute_node', {
+  nodeId: string,
+  nodeType: string,
+  inputData: Record<string, unknown>
+}): Promise<NodeResult>
 
-```
-GET    /api/v1/workflows           获取用户工作流列表
-POST   /api/v1/workflows           创建工作流
-GET    /api/v1/workflows/:id       获取工作流详情（含 graph_json）
-PUT    /api/v1/workflows/:id       保存工作流（全量更新 graph_json）
-DELETE /api/v1/workflows/:id       删除工作流
-POST   /api/v1/workflows/:id/duplicate  复制工作流
-```
+invoke('cancel_execution', { nodeId: string }): Promise<void>
 
-### 8.3 执行
+// === 资产 ===
+invoke('save_asset', {
+  workflowId: string,
+  nodeId: string,
+  type: string,
+  data: ArrayBuffer,
+  filename?: string
+}): Promise<Asset>
 
-```
-POST /api/v1/executions                     提交执行请求（body: workflow_id, node_ids?）
-GET  /api/v1/executions/:id                 查询执行状态
-POST /api/v1/executions/:id/cancel          取消执行
-POST /api/v1/executions/:id/gate-response   Gate 节点用户响应（body: node_id, value）
+invoke('get_assets', { workflowId?: string }): Promise<Asset[]>
+invoke('delete_asset', { id: string }): Promise<void>
+invoke('export_zip', { assetIds: string[], outputPath: string }): Promise<string>
 
-WS   /ws/executions/:execution_id           WebSocket 实时推送节点状态
-```
+// === API Keys ===
+invoke('set_api_key', { provider: string, key: string }): Promise<{ success: boolean; error?: string }>
+invoke('test_api_key', { provider: string }): Promise<{ valid: boolean; error?: string }>
+invoke('get_api_key_status', { provider: string }): Promise<{ isSet: boolean; isValid: boolean | null; lastTested?: string }>
+invoke('remove_api_key', { provider: string }): Promise<void>
 
-**WebSocket 消息格式**：
-```json
-{
-  "type": "node_status",
-  "node_id": "gate_1",
-  "status": "idle" | "running" | "waiting" | "success" | "failed",
-  "progress": 45,
-  "result": { "out": "用户选择的内容" },
-  "waiting_payload": {
-    "mode": "select",
-    "options": [{ "id": "a", "title": "标题A", "angle": "..." }]
-  },
-  "error": null
-}
-```
+// === License ===
+invoke('activate_license', { key: string }): Promise<{ valid: boolean; plan?: string; expiresAt?: string }>
+invoke('check_license_status'): Promise<{ status: string; plan: string; expiresAt?: string; trialEndsAt?: string }>
 
-`waiting` 是新增状态，仅 Gate 节点使用。前端收到 `waiting` 后负责渲染临时交互节点。
-
-### 8.4 资产
-
-```
-POST /api/v1/assets/upload         上传文件（multipart/form-data）
-GET  /api/v1/assets/:id/download   下载资产（redirect to signed URL）
-GET  /api/v1/assets?workflow_id=xx 获取工作流的所有资产
-DELETE /api/v1/assets/:id          删除资产
+// === 应用配置 ===
+invoke('get_app_config', { key: string }): Promise<string | null>
+invoke('set_app_config', { key: string, value: string }): Promise<void>
+invoke('choose_directory'): Promise<string | null>  // 原生文件夹选择器
 ```
 
-### 8.5 订阅
+### 8.2 Tauri Events（Rust → 前端）
 
-```
-GET  /api/v1/subscription          获取当前订阅信息 + 本周剩余时长
-POST /api/v1/subscription/checkout 创建 Stripe Checkout Session
-POST /api/v1/subscription/portal   获取 Stripe Customer Portal URL
-POST /api/v1/webhooks/stripe       Stripe Webhook（订阅状态变更）
-```
+```typescript
+// 替代 WebSocket，用于节点执行进度推送
+listen('node_status', (event) => {
+  // { nodeId, status, progress?, result?, error? }
+})
 
-### 8.6 通用约定
-
-**请求头**：
-```
-Authorization: Bearer <jwt_token>
-Content-Type: application/json
-Accept-Language: zh-CN | en
+listen('execution_complete', (event) => {
+  // { workflowId, successCount, failCount }
+})
 ```
 
-**成功响应**：
-```json
-{
-  "success": true,
-  "data": { ... }
-}
-```
+### 8.3 错误处理约定
 
-**错误响应**：
-```json
-{
-  "success": false,
-  "error": {
-    "code": "INVALID_TOKEN",
-    "message": "登录已过期，请重新登录",
-    "detail": "..."
-  }
-}
-```
-
-**HTTP 状态码约定**：
-- 200：成功
-- 201：创建成功
-- 400：请求参数错误
-- 401：未认证
-- 403：无权限
-- 404：资源不存在
-- 429：请求过频
-- 500：服务器内部错误
+- Rust 侧返回 `Result<T, String>` → 前端 `Promise<T>`，失败时 reject
+- 错误码约定：
+  - `API_KEY_NOT_SET` — 该 provider 的 API Key 未配置
+  - `API_KEY_INVALID` — API Key 验证失败
+  - `API_CALL_FAILED` — AI API 调用失败（含具体错误信息）
+  - `LICENSE_INVALID` — License 密钥无效
+  - `LICENSE_EXPIRED` — License 已过期
+  - `DB_ERROR` — SQLite 操作失败
+  - `FILE_ERROR` — 文件系统操作失败
 
 ---
 
-## 9. 部署架构
+## 9. 构建与分发
 
-### 9.1 Hetzner EU 服务器规格（MVP）
-
-```
-生产服务器（1台）: Hetzner CX32
-  - 4 vCPU, 8GB RAM
-  - 运行: FastAPI + Redis + ARQ Worker
-
-数据库服务器（1台）: Hetzner CX22
-  - 2 vCPU, 4GB RAM
-  - 运行: PostgreSQL 16
-
-对象存储: Hetzner Volume
-  - 100GB 起步，按需扩展
-  - 运行: MinIO
-```
-
-### 9.2 Docker Compose 服务
-
-```yaml
-services:
-  frontend:      # Nginx 静态文件服务
-  backend:       # FastAPI（uvicorn）
-  worker:        # ARQ Worker（AI 任务执行）
-  postgres:      # PostgreSQL
-  redis:         # Redis
-  minio:         # MinIO 对象存储
-  nginx:         # 反向代理（SSL 终止）
-```
-
-### 9.3 网络架构
+### 9.1 构建流程
 
 ```
-用户浏览器
-    ↓ HTTPS
-Cloudflare（CDN + DDoS 防护）
-    ↓
-Nginx（Hetzner EU）
-    ├── / → Frontend（静态文件）
-    ├── /api → Backend（FastAPI）
-    └── /ws → WebSocket（FastAPI）
-         ↓
-     Backend ←→ Redis ←→ ARQ Worker
-         ↓
-     PostgreSQL   MinIO
+GitHub Actions workflow:
+  on push to main (tagged release):
+    1. 安装 Rust toolchain + Node.js
+    2. npm install (前端依赖)
+    3. npm run build (Vite 构建)
+    4. cargo build (Rust 编译)
+    5. Tauri CLI 打包：
+       - macOS: .dmg + .app
+       - Windows: .msi + .exe
+       - Linux: .AppImage + .deb
+    6. 上传 artifacts 到 GitHub Release
+    7. 生成 auto-update feed
 ```
 
-### 9.4 CI/CD（MVP 手动，V1 自动化）
+### 9.2 分发渠道
 
-MVP 阶段：手动 SSH + `docker compose pull && docker compose up -d`  
-V1 阶段：GitHub Actions → 自动构建镜像 → 推送到 Hetzner Container Registry → 自动部署
+- **主要**：从网站下载（tangent.app 或 GitHub Release）
+- **更新**：Tauri 内置 updater，检测到新版本时提示安装
+- **签名**：
+  - macOS: Apple Developer ID 签名 + 公证
+  - Windows: 代码签名证书（可选）
+
+### 9.3 用户工作空间
+
+```
+~/Documents/TANGENT/              （可自定义）
+├── tangent.db                    （SQLite 数据库）
+├── assets/                       （生成的图片、HTML）
+│   └── {workflow_id}/
+│       ├── {asset_id}.png
+│       └── {asset_id}.html
+├── config.json                   （应用偏好）
+└── thumbnails/                   （工作流预览图）
+```
+
+### 9.4 License 机制
+
+- **密钥格式**：Base64 编码的签名数据包（JSON payload + Ed25519 签名）
+- **验证流程**：Rust 侧用内嵌公钥验证签名 → 解析 payload → 返回 plan/expiresAt
+- **试用机制**：首次启动时间记录在 app_config，14 天后自动转为 Free 计划
+- **Free 计划**：可查看/编辑工作流，限制 3 个工作流，不可使用 Skill 模板
+- **Pro 计划**：无限制，需有效 License 密钥或试用期内
 
 ---
 
@@ -679,46 +677,38 @@ V1 阶段：GitHub Actions → 自动构建镜像 → 推送到 Hetzner Containe
 
 ### 10.1 API Key 管理
 
-- 所有第三方 API Key 存储在服务器 `.env` 文件
-- 前端**不得**包含任何 API Key
-- 代码仓库中 `.env` 文件必须在 `.gitignore` 中
-- 仓库中只提交 `.env.example`（含变量名，不含值）
+- API Key 是用户自有财产，非 TANGENT 所有
+- 存储方式：AES-256-GCM 加密后存入 SQLite `api_keys` 表
+- 解密时机：仅在执行节点时在 Rust 内存中解密，用后清除
+- **API Key 永不暴露给前端 JS**（DevTools 也看不到）
+- Key 不发送到 TANGENT 服务器（无服务器）
 
-### 10.2 JWT 安全
+### 10.2 License 安全
 
-- Token 有效期：Access Token 7 天，无 Refresh Token（MVP 简化）
-- Token 存储：前端 localStorage（非 httpOnly Cookie，因为跨域 SPA 架构）
-- Token 吊销：MVP 阶段不实现（V1 用 Redis 实现黑名单）
-- 敏感操作（删除账户、修改邮箱）需重新验证
+- License 密钥使用 Ed25519 签名，公钥内嵌在 Rust 二进制中
+- 私钥由开发者离线保管，不进入代码仓库
+- 密钥包含：计划类型、过期时间、功能列表
+- 无法伪造（无私钥无法生成有效签名）
+- 无在线验证，完全离线校验
 
-### 10.3 数据库查询安全
+### 10.3 数据库安全
 
-- **所有**涉及用户数据的查询必须同时过滤 `user_id = current_user.id`
-- 使用 ORM 参数绑定，禁止字符串拼接 SQL
-- 示例（正确）：
-  ```python
-  # 正确：同时校验 user_id
-  asset = db.query(Asset).filter(
-      Asset.id == asset_id,
-      Asset.user_id == current_user.id  # ← 必须有
-  ).first()
-  ```
+- 单用户 SQLite，无多租户安全需求
+- 使用 Drizzle ORM 参数化查询，防止 SQL 注入
+- 数据库文件位于用户工作空间，用户完全控制
 
-### 10.4 频率限制
+### 10.4 客户端 API 限速
 
-| 接口 | 限制 |
-|------|------|
-| POST /auth/send-otp | 1次/分钟/邮箱，5次/小时/IP |
-| POST /auth/verify-otp | 5次/10分钟/邮箱 |
-| POST /executions | 10次/分钟/用户 |
-| 其他 API | 60次/分钟/用户 |
+- 客户端限制并发 AI API 调用数（默认最多 5 个同时）
+- 防止失控工作流导致用户 API 意外大额消费
+- 用户可在 Settings 中调整并发限制
 
-### 10.5 文件上传安全
+### 10.5 文件系统安全
 
-- 校验 MIME type（不信任扩展名）
-- 文件大小限制：图片 ≤ 20MB，视频 ≤ 500MB
-- 存储路径格式：`/users/{user_id}/{year}/{month}/{uuid}.{ext}`（不含用户输入的文件名）
-- 下载通过签名 URL（防止直接猜测路径）
+- 本地文件操作，无网络端点
+- 导入时校验 MIME type（不信任扩展名）
+- 工作空间通过 Tauri fs API 安全访问
+- 图片 ≤ 20MB，视频 ≤ 500MB（上限可在 Settings 调整）
 
 ---
 

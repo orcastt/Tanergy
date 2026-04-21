@@ -1,17 +1,16 @@
 export interface Workflow {
   id: string
   name: string
-  thumbnail_url: string | null
-  is_public: boolean
+  thumbnail_path: string | null
   created_at: string
   updated_at: string
 }
 
-export interface WorkflowDetail extends Workflow {
-  graph_json: { nodes: unknown[]; edges: unknown[] }
-}
-
-export interface WorkflowListResponse {
-  workflows: Workflow[]
-  total: number
+export interface WorkflowDetail {
+  id: string
+  name: string
+  graph_json: string
+  thumbnail_path: string | null
+  created_at: string
+  updated_at: string
 }

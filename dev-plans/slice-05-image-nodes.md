@@ -1,4 +1,4 @@
-# Slice 5: Image Generation Nodes + Storage
+# Slice 5: gate · writer · reviewer
 
 **优先级**: P0 | **难度**: 高 | **预计**: 3 天 | **状态**: ⬜ 未开始
 **依赖**: Slice 4 | **返回索引**: [phase1-mvp.md](phase1-mvp.md)
@@ -7,521 +7,201 @@
 
 ## 目标
 
-实现图像生成节点（Midjourney V7、Imagen 3）和图片上传节点，集成 MinIO 存储服务，支持图片预览放大和下载。
+实现 MVP 公众号 Skill 的核心交互节点和写作节点：gate（暂停等人选择大纲）、writer（Claude 长文写作）、reviewer（三遍审校）。Gate 是整个系统最关键的架构创新。
 
 ---
 
-## 后端步骤
+## Rust 侧步骤
 
-### Step 1: 数据库模型 — Asset
+### Step 1: 扩展 execute_node
 
-**文件**: `backend/app/models/asset.py`
+**文件**: `src-tauri/src/commands/execute.rs` — 新增分支
 
-```
-assets 表:
-  id                UUID PK
-  user_id           UUID FK → users.id, NOT NULL
-  workflow_id       UUID FK → workflows.id, NULLABLE
-  node_id           VARCHAR(50) NOT NULL
-  type              ENUM('image', 'video', 'audio', 'html') NOT NULL
-  storage_path      VARCHAR(500) NOT NULL
-  original_filename VARCHAR(255) NULLABLE
-  size_bytes        BIGINT NOT NULL
-  mime_type         VARCHAR(100) NOT NULL
-  is_public         BOOLEAN DEFAULT false
-  created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+```rust
+// "gate" → 不执行 API 调用，返回特殊标记
+//   返回 { "status": "waiting", "waiting_payload": { "mode": "select", "options": input_data.outline_options } }
+//   前端收到 waiting 后负责渲染临时选项节点
 
-索引:
-  idx_assets_user ON assets(user_id)
-  idx_assets_workflow ON assets(workflow_id)
-
-约束:
-  storage_path UNIQUE
+// "writer" → execute_writer(input_data, db)
+// "reviewer" → execute_reviewer(input_data, db)
 ```
 
-**文件**: `backend/app/models/__init__.py` — 添加 `from .asset import Asset`
+### Step 2: writer 执行逻辑
 
-### Step 2: Alembic 迁移
-
-```bash
-cd backend && alembic revision --autogenerate -m "add assets table"
-alembic upgrade head
+```rust
+// execute_writer(input_data, db) -> Result<Value, String>
+//   1. 从 input_data 取 "outline_options"（Gate 传来的用户选择）
+//   2. 解密 Anthropic key
+//   3. call_anthropic(
+//        system: "你是资深公众号写手。根据选定的大纲方向，撰写完整文章。要求：2000-5000字，至少3个H2小标题，语言生动有感染力，段落清晰。Markdown格式输出。",
+//        messages: [{ role: "user", content: "大纲方向：{selected_outline}\n研究素材：{research_context}" }],
+//        max_tokens: 8192,
+//      )
+//   4. 返回 { "text": article_markdown }
 ```
 
-### Step 3: MinIO 存储服务
+### Step 3: reviewer 执行逻辑
 
-**文件**: `backend/app/services/storage_service.py`
-
-```
-class StorageService:
-
-  __init__():
-    - 从 config 读取 MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY
-    - 初始化 MinIO client (minio.Minio)
-    - 确保 "tangent" bucket 存在，不存在则创建
-
-  async upload_file(
-    file: UploadFile | bytes,
-    user_id: str,
-    content_type: str,
-    file_extension: str,
-    workflow_id: str | None = None,
-  ) -> str:
-    """
-    上传文件到 MinIO。
-    - 存储路径: users/{user_id}/{year}/{month}/{uuid}.{ext}
-    - 返回 storage_path (不含 bucket 名)
-    - 使用 put_object，part_size=10MB
-    """
-
-  async get_signed_url(storage_path: str, expires: timedelta = timedelta(hours=1)) -> str:
-    """
-    生成预签名 URL。
-    - 用于图片预览和下载
-    - 默认有效期 1 小时
-    """
-
-  async get_permanent_url(storage_path: str) -> str:
-    """
-    生成永久访问 URL。
-    - 如果 bucket 设置了公开读策略: 直接拼接 URL
-    - 否则: 使用较长过期时间的签名 URL (7 天)
-    - 注意: PRD 要求图片下载链接有效期不限
-    - 实现方式: 使用较长的签名有效期 + 前端缓存
-    """
-
-  async delete_file(storage_path: str) -> None:
-    """删除 MinIO 中的文件"""
-
-  validate_image_file(filename: str, content_type: str, size_bytes: int) -> None:
-    """
-    校验图片文件:
-    - 格式: JPG/PNG/WebP (检查 MIME type)
-    - 大小: ≤ 20MB
-    - 不合法 → raise ValueError
-    """
-```
-
-### Step 4: Asset API 路由
-
-**文件**: `backend/app/api/v1/assets.py`
-
-```
-POST /api/v1/assets/upload
-  - 依赖 get_current_user
-  - Content-Type: multipart/form-data
-  - 字段: file (UploadFile), workflow_id (可选), node_id
-  - 校验: validate_image_file()
-  - storage_service.upload_file()
-  - 写入 assets 表
-  - 返回 201 { id, storage_path, url }
-
-GET /api/v1/assets/:id/download
-  - 依赖 get_current_user
-  - 查询 assets WHERE id = asset_id AND user_id = current_user.id
-  - 不存在 → 404
-  - 权限校验: 只能下载自己的资产（除非 is_public=true）
-  - 返回 redirect 到 signed URL
-
-GET /api/v1/assets?workflow_id=xx
-  - 依赖 get_current_user
-  - 查询 assets WHERE user_id = current_user.id AND workflow_id = workflow_id
-  - 返回资产列表
-
-DELETE /api/v1/assets/:id
-  - 依赖 get_current_user
-  - 校验 user_id
-  - 删除 MinIO 文件 + 数据库记录
-  - 返回 200
-```
-
-**文件**: `backend/app/main.py` — 添加 assets router
-
-### Step 5: Image Upload 节点执行器
-
-**文件**: `backend/app/nodes/upload.py`
-
-```
-@register_node("image_upload")
-class ImageUploadNodeExecutor(NodeExecutor):
-
-  inputs: []  (无，图片通过前端上传到 MinIO)
-  outputs:
-    image: str (MinIO URL)
-
-  execute():
-    1. 从 config 获取 storage_path (前端上传后传入)
-    2. 生成 signed URL
-    3. 返回 NodeResult(outputs={"image": signed_url})
-
-  注意: 上传节点实际上传在前端完成 (POST /assets/upload)，
-  后端执行器仅返回已有 URL
-```
-
-### Step 6: Midjourney V7 节点执行器
-
-**文件**: `backend/app/nodes/image_mj.py`
-
-```
-@register_node("image_mj")
-class MidjourneyNodeExecutor(NodeExecutor):
-
-  config 字段:
-    aspect_ratio: str (默认 "1:1")
-      可选: "1:1" | "16:9" | "9:16"
-    speed_mode: str (默认 "fast")
-      可选: "fast" | "standard"
-    negative_prompt: str (默认 "")
-    seed: int | None
-
-  inputs:
-    prompt: str (必填，提示词)
-    image: str (可选，参考图片 URL)
-
-  outputs:
-    image: list[str] (4 张图片 URL)
-
-  execute():
-    1. validate_inputs(["prompt"])
-    2. 构造 MJ API 请求:
-       - 使用 useapi.net 代理或官方 MJ API
-       - prompt = inputs["prompt"]
-       - 如果有参考图片 → 添加 --sref 或 --cref 参数
-       - ar = config["aspect_ratio"] 转换为 MJ 格式
-       - speed: fast → --fast
-    3. 提交任务，获取 task_id
-    4. 轮询任务状态 (间隔 5 秒，最长等待 300 秒):
-       - 调用 context.report_progress() 报告进度
-       - 状态 "completed" → 获取图片 URLs
-       - 状态 "failed" → raise 错误
-       - 超时 → raise TimeoutError
-    5. 下载 4 张图片到 MinIO:
-       - 每张图片: fetch → upload_file() → 记录 Asset
-       - storage_path 列表
-    6. 生成签名 URLs
-    7. 返回 NodeResult(
-         outputs={"image": [url1, url2, url3, url4]},
-         assets=[{...} × 4]
-       )
-
-  错误处理:
-    - MJ 队列满 → 友好提示 "MJ 队列繁忙，预计等待 N 分钟"
-    - 内容违规 → "该内容不符合内容政策，请修改提示词后重试"
-    - API Key 无效 → "图像生成服务暂时不可用"
-```
-
-### Step 7: Imagen 3 节点执行器
-
-**文件**: `backend/app/nodes/image_imagen.py`
-
-```
-@register_node("image_imagen")
-class ImagenNodeExecutor(NodeExecutor):
-
-  config 字段:
-    aspect_ratio: str (默认 "1:1")
-    number_of_images: int (默认 1, 范围 1-4)
-    negative_prompt: str (默认 "")
-    seed: int | None
-
-  inputs:
-    prompt: str (必填)
-
-  outputs:
-    image: str | list[str] (1-4 张图片 URL)
-
-  execute():
-    1. validate_inputs(["prompt"])
-    2. 调用 Google Vertex AI Imagen 3 API:
-       - 使用 google-cloud-aiplatform SDK
-       - project = GCP_PROJECT_ID
-       - model = "imagen-3.0-generate-002"
-       - prompt = inputs["prompt"]
-       - aspect_ratio = config["aspect_ratio"]
-       - number_of_images = config["number_of_images"]
-       - negative_prompt = config["negative_prompt"]
-    3. 获取生成图片 (base64)
-    4. 保存到 MinIO:
-       - 每个 base64 解码 → bytes → upload_file()
-       - 记录 Asset
-    5. 生成签名 URLs
-    6. 返回 NodeResult(
-         outputs={"image": urls},
-         assets=[{...}]
-       )
-
-  错误处理:
-    - 同 image_mj 错误处理策略
-    - GCP 认证失败 → 友好提示
-```
-
-### Step 8: Asset Schema
-
-**文件**: `backend/app/schemas/asset.py`
-
-```
-AssetUploadResponse:
-  id: str
-  storage_path: str
-  url: str
-  type: str
-
-AssetOut:
-  id: str
-  type: str
-  storage_path: str
-  url: str
-  size_bytes: int
-  mime_type: str
-  created_at: datetime
+```rust
+// execute_reviewer(input_data, db) -> Result<Value, String>
+//   1. 从 input_data 取 "text"（writer 的输出）
+//   2. 解密 Anthropic key
+//   3. 三遍审校（单次 API 调用，链式 prompt）：
+//      call_anthropic(
+//        system: "你是严格的内容审校编辑。对文章进行三遍审校：
+//          第一遍：事实核查 — 检查数据、引用的准确性，标注可疑之处
+//          第二遍：去AI味 — 修改过于模板化、机械化的表达，增加人味
+//          第三遍：节奏调整 — 检查段落长度、过渡、阅读节奏
+//          直接输出最终审校后的完整文章，不要输出中间过程。",
+//        messages: [{ role: "user", content: text }],
+//        max_tokens: 8192,
+//      )
+//   4. 返回 { "text": reviewed_article }
 ```
 
 ---
 
 ## 前端步骤
 
-### Step 9: ImageUploadNode 组件
+### Step 4: GateNode 组件
 
-**文件**: `frontend/src/nodes/upload/ImageUploadNode.tsx`
+**文件**: `frontend/src/nodes/gate/GateNode.tsx`
 
 ```
 使用 NodeBase 包裹
 
-inputs: []
-outputs: [{ id: "image", type: "image", label: "图片" }]
+inputs: [{ id: "outline_options", type: "outline_options", label: "大纲选项" }]
+outputs: [{ id: "outline_options", type: "outline_options", label: "用户选择" }]
 
-内容区:
-  - 拖拽上传区域:
-    ┌─────────────────────────┐
-    │                         │
-    │   拖拽图片到此处        │  ← 虚线边框, #f5f5f5 背景
-    │   或点击选择文件        │
-    │   支持 JPG/PNG/WebP    │  ← 12px #898989
-    │   最大 20MB             │
-    └─────────────────────────┘
+内容区 — 默认（idle）:
+  - 淡灰文字 "等待上游大纲输入"
 
-  - 上传后显示:
-    ┌─────────────────────────┐
-    │ [缩略图]  filename.jpg  │
-    │           1.2 MB  [×]   │  ← [×] 删除按钮
-    └─────────────────────────┘
+内容区 — waiting 状态:
+  - 琥珀色边框脉冲
+  - 动态生成 3 个临时交互节点（AnimatedTempNode）
+  - 每个临时节点显示大纲标题 + 角度 + 章节预览
+  - 点击一个临时节点 → resolveGate
 
-交互:
-  - 拖拽: onDragOver 高亮边框
-  - 粘贴: 支持 Ctrl+V 粘贴图片
-  - 文件校验 (前端预检):
-    - 格式: JPG/PNG/WebP
-    - 大小: ≤ 20MB
-    - 不合法: 红色提示 "文件不能超过 20MB" / "仅支持 JPG、PNG、WebP 格式"
-  - 上传: POST /api/v1/assets/upload (multipart/form-data)
-  - 上传中: 进度条
-  - 上传失败: "上传失败，请重试" + 重试按钮
+内容区 — resolved 后:
+  - 折叠显示 "✓ 已选：{选项标题}"
+  - 绿色边框 2 秒
 
 节点数据:
   {
-    storagePath: string | null
-    fileName: string | null
-    fileSize: number | null
-    previewUrl: string | null
+    selectedOption: OutlineOption | null
+    options: OutlineOption[] | null
   }
 ```
 
-### Step 10: ImageGrid 组件
+### Step 5: AnimatedTempNode 组件
 
-**文件**: `frontend/src/nodes/image/ImageGrid.tsx`
-
-```
-Props:
-  images: string[]  // 图片 URL 数组
-  columns?: number  // 默认 2
-
-布局 (2x2 网格):
-  ┌──────┬──────┐
-  │ img1 │ img2 │  ← 每格 8px 圆角
-  ├──────┼──────┤  ← gap 4px
-  │ img3 │ img4 │
-  └──────┴──────┘
-
-样式:
-  - 图片 object-fit: cover
-  - 每格正方形
-  - Hover: opacity 0.8 + cursor pointer
-  - 点击: 打开 ImageModal
-
-生成中占位:
-  - 每格灰色占位 + 进度百分比
-  - 动画: pulse 效果
-```
-
-### Step 11: ImagePreview 组件
-
-**文件**: `frontend/src/nodes/image/ImagePreview.tsx`
+**文件**: `frontend/src/nodes/gate/AnimatedTempNode.tsx`
 
 ```
-Props:
-  imageUrl: string
-  alt?: string
-
-渲染:
-  - 单张图片预览
-  - 点击放大 (打开 ImageModal)
-  - 下载按钮 (小图标)
-
-样式:
-  - 8px 圆角
-  - object-fit: cover
-  - max-height: 160px
-```
-
-### Step 12: ImageModal 放大预览
-
-**文件**: `frontend/src/components/ImageModal.tsx`
-
-```
-使用 Radix UI Dialog
+Gate 动态生成的临时交互节点（不存入 graph_json）
 
 Props:
-  imageUrl: string
-  isOpen: boolean
-  onClose: () => void
+  option: OutlineOption
+  onSelect: (option: OutlineOption) => void
 
 布局:
-  ┌──────────────────────────────────────┐
-  │                                 [×]  │
-  │                                      │
-  │          [大图预览]                   │
-  │          居中显示                     │
-  │          max 90vw × 85vh             │
-  │                                      │
-  │ [⬇ 下载]                             │
-  └──────────────────────────────────────┘
+  ┌───────────────────────────┐
+  │ 方案 A: [标题]            │  ← Cal Sans 14px 600
+  │ 角度: 深度分析            │
+  │ 1. 章节1                  │
+  │ 2. 章节2 ...              │
+  │                    [选择] │  ← #242424 药丸
+  └───────────────────────────┘
 
-样式:
-  - 遮罩: rgba(0,0,0,0.8) 黑色半透明
-  - 图片居中, 保持比例
-  - 右上角关闭按钮
-  - 左下角下载按钮 (#242424 主按钮)
-
-下载逻辑:
-  - 调用 GET /api/v1/assets/:id/download
-  - 触发浏览器下载
-  - 文件名: tangent_{workflow_name}_{timestamp}.{ext}
-  - 如果直接有 URL (MJ 生成等):
-    - fetch → blob → createObjectURL → <a download>
+动画:
+  - 淡入: opacity 0→1, scale 0.9→1, 300ms
+  - 选中后: 其他临时节点淡出，选中节点高亮后折叠进 Gate
 ```
 
-### Step 13: ImageNode 通用组件
+### Step 6: Gate 与执行引擎集成
 
-**文件**: `frontend/src/nodes/image/ImageNode.tsx`
+**文件**: `frontend/src/lib/executionEngine.ts` — 更新
 
-```
-Props:
-  nodeType: "image_mj" | "image_imagen"
-  title: string
-  inputs: PortDef[]
-  outputs: PortDef[]
-
-通用配置区 (适用于 MJ 和 Imagen):
-  - aspect_ratio: select 下拉
-    选项: 1:1 / 16:9 / 9:16
-  - speed_mode: select (MJ 专属)
-    选项: 快速 / 标准
-  - number_of_images: select (Imagen 专属)
-    选项: 1 / 2 / 3 / 4
-  - 高级控制 (折叠):
-    - negative_prompt: textarea
-    - seed: number input
-
-结果区:
-  - 未执行: "点击 Run 生成" 灰色占位
-  - 执行中: ImageGrid 显示 4 格灰色占位 + 进度百分比
-  - 成功: ImageGrid 显示生成图片
-  - 失败: 红色错误信息
-
-单图下载:
-  - 在 ImageModal 中提供下载按钮
+```typescript
+// runAll() 中遇到 Gate 节点的处理：
+// 1. 正常执行到 gate 节点
+// 2. executeNode 返回 { status: "waiting" }
+// 3. canvasStore.setWaitingGate(nodeId)
+// 4. 暂停执行（不继续下游）
+// 5. 用户选择后 → canvasStore.resolveGate(nodeId, value)
+// 6. 将 value 写入 nodeResult → 继续执行下游（writer）
 ```
 
-### Step 14: MidjourneyV7Node 和 Imagen3Node
+### Step 7: WriterNode 组件
 
-**文件**: `frontend/src/nodes/image/MidjourneyV7Node.tsx`
-
-```
-使用 ImageNode 通用组件
-传入 nodeType="image_mj", title="Midjourney V7"
-inputs: [{ id: "prompt", type: "prompt" }, { id: "image", type: "image" (可选参考图) }]
-outputs: [{ id: "image", type: "image" }]
-配置: 显示 speed_mode, 隐藏 number_of_images
-```
-
-**文件**: `frontend/src/nodes/image/Imagen3Node.tsx`
+**文件**: `frontend/src/nodes/writer/WriterNode.tsx`
 
 ```
-使用 ImageNode 通用组件
-传入 nodeType="image_imagen", title="Imagen 3"
-inputs: [{ id: "prompt", type: "prompt" }]
-outputs: [{ id: "image", type: "image" }]
-配置: 隐藏 speed_mode, 显示 number_of_images
-```
+使用 NodeBase 包裹
 
-### Step 15: 节点注册表更新
+inputs: [{ id: "outline_options", type: "outline_options", label: "大纲方向" }]
+outputs: [{ id: "text", type: "text", label: "文章" }]
 
-**文件**: `frontend/src/nodes/index.ts` — 修改
+内容区 - 配置:
+  - 写作风格: select（继承 Skill 配置，只读显示）
+  - 目标字数: select (2000-3000 / 3000-5000 / 5000+)
 
-```
-添加:
-  image_mj: MidjourneyV7Node
-  image_imagen: Imagen3Node
-  image_upload: ImageUploadNode
+内容区 - 结果:
+  - 执行中: 旋转 + "写作中..."（Claude 长文通常 15-30 秒）
+  - 成功: 文章预览
+    - 前 300 字显示
+    - "展开全文" 按钮
+    - 展开后完整 Markdown 渲染
+  - 失败: 红色错误
 
-NODE_DEFINITIONS 添加:
-  image_mj: {
-    type: "image_mj", label: "Midjourney V7", icon: "🎨",
-    description: "使用 MJ V7 生成图片",
-    category: "image",
-    defaultData: { aspectRatio: "1:1", speedMode: "fast", negativePrompt: "", seed: null },
-    inputs: [{ id: "prompt", type: "prompt" }, { id: "image", type: "image" }],
-    outputs: [{ id: "image", type: "image" }],
+节点数据:
+  {
+    targetLength: string
+    result: string | null
+    error: string | null
   }
-  image_imagen: { ... }
-  image_upload: { ... }
 ```
 
-### Step 16: 后端注册路由
+### Step 8: ReviewerNode 组件
 
-**文件**: `backend/app/main.py` — 修改
+**文件**: `frontend/src/nodes/reviewer/ReviewerNode.tsx`
 
-```python
-from app.api.v1 import assets
-app.include_router(assets.router, prefix="/api/v1/assets", tags=["assets"])
+```
+使用 NodeBase 包裹
+
+inputs: [{ id: "text", type: "text", label: "待审文章" }]
+outputs: [{ id: "text", type: "text", label: "审校后文章" }]
+
+内容区 - 配置:
+  - 审校轮次: 显示 "三遍审校（事实→去AI味→节奏）"（固定，不可调）
+
+内容区 - 结果:
+  - 执行中: 旋转 + "审校中..."（通常 10-20 秒）
+  - 成功: 审校后文章预览（同 WriterNode 展开/收起）
+  - 失败: 红色错误
+
+节点数据:
+  {
+    result: string | null
+    error: string | null
+  }
 ```
 
 ---
 
 ## 验收清单
 
-- [ ] `POST /api/v1/assets/upload` 上传图片成功，存储到 MinIO
-- [ ] 上传文件格式校验: 仅 JPG/PNG/WebP，超过 20MB 拒绝
-- [ ] `GET /api/v1/assets/:id/download` 生成签名 URL 可下载
-- [ ] 不能下载其他用户的私有图片（404）
-- [ ] ImageUploadNode: 拖拽上传正常
-- [ ] ImageUploadNode: Ctrl+V 粘贴图片上传正常
-- [ ] 文件过大/格式不对前端即时提示
-- [ ] 上传中显示进度条
-- [ ] MidjourneyV7Node: 输入 prompt，成功生成 4 张图片
-- [ ] MJ 节点支持参考图片输入
-- [ ] MJ 节点 aspect_ratio/speed_mode 配置正常
-- [ ] Imagen3Node: 输入 prompt，生成 1-4 张图片
-- [ ] Imagen 节点 number_of_images 配置正常
-- [ ] 生成图片显示 2×2 网格预览
-- [ ] 生成中显示灰色占位 + 进度
-- [ ] 点击图片弹出 ImageModal 放大预览
-- [ ] ImageModal 中下载按钮正常工作
-- [ ] 生成图片保存到 MinIO 永久存储
-- [ ] 刷新浏览器后图片仍可访问
-- [ ] 负向提示词和种子值配置正常
-- [ ] MJ API 队列满时显示友好提示
-- [ ] 内容违规时显示 "不符合内容政策" 提示
+- [ ] Gate 节点接收 outline_options，执行时触发 waiting 状态
+- [ ] waiting 时画布自动生成 3 个临时选项节点（不破坏原有结构）
+- [ ] 临时节点显示大纲标题、角度、章节列表
+- [ ] 点击选项后临时节点淡出消失，Gate 折叠显示 "✓ 已选：xxx"
+- [ ] 选择后数据正确传递给下游 writer
+- [ ] WriterNode 接收选择的大纲，Claude 生成完整文章
+- [ ] 文章 ≥2000 字，含 ≥3 个 H2 小标题
+- [ ] ReviewerNode 接收文章，三遍审校后输出改进版
+- [ ] 审校结果不暴露中间过程
+- [ ] Gate + Writer + Reviewer 整条链路跑通（text_input → research → outline → gate → writer → reviewer）
+- [ ] 上游输出正确传递给每个下游节点
 - [ ] 所有文件 < 300 行
 
 ---
@@ -531,4 +211,4 @@ app.include_router(assets.router, prefix="/api/v1/assets", tags=["assets"])
 - [ ] 本文件状态 → ✅
 - [ ] project_state.md → Slice 6
 - [ ] phase1-mvp.md → Slice 5 ✅
-- [ ] git commit: "Slice 5: image nodes (MJ V7 + Imagen 3) + MinIO storage + upload"
+- [ ] git commit: "Slice 5: gate + writer + reviewer nodes"

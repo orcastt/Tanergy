@@ -1,9 +1,23 @@
-import { useAuthStore } from "../store/authStore"
 import { useNavigate } from "react-router-dom"
+import { useLicenseStore } from "../store/licenseStore"
 
 export default function TopNav() {
-  const { user, logout } = useAuthStore()
   const navigate = useNavigate()
+  const { status } = useLicenseStore()
+
+  const label =
+    status === "active"
+      ? "Pro"
+      : status === "trial"
+        ? "Trial"
+        : "Free"
+
+  const labelColor =
+    status === "active"
+      ? "#22c55e"
+      : status === "trial"
+        ? "#f59e0b"
+        : "#737373"
 
   return (
     <header
@@ -48,32 +62,24 @@ export default function TopNav() {
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-        <button style={{ background: "none", border: "none", color: "#737373", cursor: "pointer" }}>
-          <span className="material-symbols-outlined">notifications</span>
+        <button
+          onClick={() => navigate("/settings")}
+          style={{
+            fontSize: "0.75rem",
+            fontWeight: 600,
+            color: labelColor,
+            background: "transparent",
+            border: `1px solid ${labelColor}`,
+            borderRadius: 4,
+            padding: "0.2rem 0.5rem",
+            cursor: "pointer",
+          }}
+        >
+          {label}
         </button>
         <button onClick={() => navigate("/settings")} style={{ background: "none", border: "none", color: "#737373", cursor: "pointer" }}>
           <span className="material-symbols-outlined">settings</span>
         </button>
-        {user && (
-          <>
-            <div style={{
-              width: "2rem", height: "2rem", borderRadius: "50%",
-              background: "#e3e2e2",
-              boxShadow: "0 0 0 1px rgba(0,0,0,0.05)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "0.75rem", fontWeight: 700, color: "#0e0f0f",
-              cursor: "pointer", overflow: "hidden",
-            }}>
-              {user.displayName?.[0]?.toUpperCase() || "U"}
-            </div>
-            <button
-              onClick={logout}
-              style={{ fontSize: "0.75rem", fontWeight: 500, background: "none", border: "none", color: "#737373", cursor: "pointer" }}
-            >
-              Logout
-            </button>
-          </>
-        )}
       </div>
     </header>
   )
