@@ -108,8 +108,8 @@ export const NODE_DEFS: NodeDef[] = [
     description: "Markdown → 微信样式 HTML",
     icon: "code",
     category: "output",
-    defaultData: {},
-    inputs: [{ id: "text", type: "text" }],
+    defaultData: { style: "经典", fontSize: 16, lineHeight: 1.75 },
+    inputs: [{ id: "text", type: "text", label: "文章" }, { id: "image_slot", type: "image_slot", label: "配图" }],
     outputs: [{ id: "out", type: "structured", label: "HTML" }],
   },
   {
@@ -119,7 +119,7 @@ export const NODE_DEFS: NodeDef[] = [
     icon: "article",
     category: "output",
     defaultData: {},
-    inputs: [{ id: "html", type: "structured" }, { id: "image", type: "image" }],
+    inputs: [{ id: "html", type: "structured", label: "排版 HTML" }],
     outputs: [],
   },
 ]
