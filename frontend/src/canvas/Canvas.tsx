@@ -45,6 +45,7 @@ export default function Canvas() {
   const {
     nodes, edges, addNode, addEdge, onNodesChange, onEdgesChange, removeNode,
     copySelected, pasteNodes, deleteSelected, duplicateNode, clipboard,
+    groupSelected, ungroupSelected,
   } = useCanvasStore()
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pickerPos, setPickerPos] = useState<{ x: number; y: number } | null>(null)
@@ -71,11 +72,16 @@ export default function Canvas() {
       } else if (e.key === "Escape") {
         setPickerOpen(false)
         setCtxMenu(null)
+      } else if (e.key === "g" && !e.metaKey && !e.ctrlKey) {
+        const { selectedNodeIds } = useCanvasStore.getState()
+        const isGroup = selectedNodeIds.length === 1 && nodes.find((n) => n.id === selectedNodeIds[0])?.type === "group"
+        if (isGroup) ungroupSelected()
+        else groupSelected()
       }
     }
     window.addEventListener("keydown", handler)
     return () => window.removeEventListener("keydown", handler)
-  }, [copySelected, pasteNodes, deleteSelected])
+  }, [copySelected, pasteNodes, deleteSelected, groupSelected, ungroupSelected, nodes])
 
   const handleConnect: OnConnect = useCallback((connection: Connection) => {
     if (!connection.source || !connection.target) return
@@ -157,15 +163,20 @@ export default function Canvas() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const nodeTypesMap: Record<string, ComponentType<any>> = nodeTypes as any
 
+  const isGroupNode = ctxMenu?.nodeId ? nodes.find((n) => n.id === ctxMenu.nodeId)?.type === "group" : false
   const ctxMenuItems = ctxMenu?.nodeId
     ? [
         { label: "复制", shortcut: "⌘C", action: () => { useCanvasStore.getState().setSelectedNodes([ctxMenu.nodeId!]); copySelected() } },
         ...(clipboard ? [{ label: "粘贴", shortcut: "⌘V", action: pasteNodes }] : []),
+        ...(isGroupNode
+          ? [{ label: "取消打组", shortcut: "G", action: () => { useCanvasStore.getState().setSelectedNodes([ctxMenu.nodeId!]); ungroupSelected() } }]
+          : [{ label: "打组", shortcut: "G", action: () => { useCanvasStore.getState().setSelectedNodes([ctxMenu.nodeId!]); groupSelected() } }]),
         { label: "删除", shortcut: "Del", action: () => { useCanvasStore.getState().setSelectedNodes([ctxMenu.nodeId!]); deleteSelected() } },
       ]
-    : clipboard
-      ? [{ label: "粘贴", shortcut: "⌘V", action: pasteNodes }]
-      : []
+    : [
+        ...(clipboard ? [{ label: "粘贴", shortcut: "⌘V", action: pasteNodes }] : []),
+        { label: "打组选中", shortcut: "G", action: groupSelected },
+      ]
 
   return (
     <div ref={containerRef} style={{ width: "100%", height: "100%", position: "relative" }}>

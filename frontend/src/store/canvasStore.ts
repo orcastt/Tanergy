@@ -1,10 +1,6 @@
 import { create } from "zustand"
 import type { Node, Edge } from "@xyflow/react"
-
-interface CanvasSnapshot {
-  nodes: Node[]
-  edges: Edge[]
-}
+import { pushHistory, copySelectedImpl, pasteNodesImpl, deleteSelectedImpl, duplicateNodeImpl, groupSelectedImpl, ungroupSelectedImpl } from "./canvasActions"
 
 type NodeStatus = "idle" | "running" | "waiting" | "done" | "error"
 
@@ -16,135 +12,72 @@ interface CanvasState {
   nodeResults: Record<string, unknown>
   waitingGates: Record<string, string[]>
   clipboard: { nodes: Node[]; edges: Edge[] } | null
-
-  history: CanvasSnapshot[]
+  history: { nodes: Node[]; edges: Edge[] }[]
   historyIndex: number
   maxHistory: number
-
-  // Node ops
   addNode: (node: Node) => void
   removeNode: (id: string) => void
   updateNodeData: (id: string, data: Record<string, unknown>) => void
   updateNodePosition: (id: string, position: { x: number; y: number }) => void
-
-  // Edge ops
   addEdge: (edge: Edge) => void
   removeEdge: (id: string) => void
-
-  // Clipboard
   copySelected: () => void
   pasteNodes: () => void
   deleteSelected: () => void
   duplicateNode: (id: string) => void
-
-  // History
+  groupSelected: () => void
+  ungroupSelected: () => void
   undo: () => void
   redo: () => void
   canUndo: () => boolean
   canRedo: () => boolean
-
-  // Status
   setNodeStatus: (nodeId: string, status: NodeStatus) => void
   setNodeResult: (nodeId: string, result: unknown) => void
-
-  // Gate waiting
   setWaitingGate: (nodeId: string, options: string[]) => void
   resolveGate: (nodeId: string, selectedOption: string) => void
-
-  // Bulk
   setGraphFromJson: (graphJson: { nodes: Node[]; edges: Edge[] }) => void
   getGraphJson: () => { nodes: Node[]; edges: Edge[] }
-
-  // Selection
   setSelectedNodes: (ids: string[]) => void
-
-  // React Flow sync
   onNodesChange: (changes: any) => void
   onEdgesChange: (changes: any) => void
-
-  // Dirty callback
   onDirty?: () => void
   setOnDirty: (cb: (() => void) | undefined) => void
 }
 
-function pushHistory(state: CanvasState): Partial<CanvasState> {
-  const truncated = state.history.slice(0, state.historyIndex + 1)
-  const snapshot: CanvasSnapshot = {
-    nodes: JSON.parse(JSON.stringify(state.nodes)),
-    edges: JSON.parse(JSON.stringify(state.edges)),
-  }
-  const newHistory = [...truncated, snapshot]
-  if (newHistory.length > state.maxHistory) newHistory.shift()
-  return { history: newHistory, historyIndex: newHistory.length - 1 }
-}
-
 export const useCanvasStore = create<CanvasState>((set, get) => ({
-  nodes: [],
-  edges: [],
-  selectedNodeIds: [],
-  nodeStatuses: {},
-  nodeResults: {},
-  waitingGates: {},
-  history: [],
-  historyIndex: -1,
-  maxHistory: 50,
-  clipboard: null,
+  nodes: [], edges: [], selectedNodeIds: [], nodeStatuses: {}, nodeResults: {},
+  waitingGates: {}, history: [], historyIndex: -1, maxHistory: 50, clipboard: null,
 
-  addNode: (node) => set((s) => {
-    const nodes = [...s.nodes, node]
-    const hist = pushHistory(s)
-    return { nodes, ...hist }
-  }),
+  addNode: (node) => set((s) => ({ nodes: [...s.nodes, node], ...pushHistory(s) })),
 
   removeNode: (id) => set((s) => {
     const nodes = s.nodes.filter((n) => n.id !== id)
     const edges = s.edges.filter((e) => e.source !== id && e.target !== id)
-    const hist = pushHistory(s)
     s.onDirty?.()
-    return { nodes, edges, ...hist }
+    return { nodes, edges, ...pushHistory(s) }
   }),
 
   updateNodeData: (id, data) => set((s) => {
-    const nodes = s.nodes.map((n) =>
-      n.id === id ? { ...n, data: { ...n.data, ...data } } : n
-    )
-    const hist = pushHistory(s)
+    const nodes = s.nodes.map((n) => n.id === id ? { ...n, data: { ...n.data, ...data } } : n)
     s.onDirty?.()
-    return { nodes, ...hist }
+    return { nodes, ...pushHistory(s) }
   }),
 
   updateNodePosition: (id, position) => set((s) => {
-    const nodes = s.nodes.map((n) =>
-      n.id === id ? { ...n, position } : n
-    )
+    const nodes = s.nodes.map((n) => n.id === id ? { ...n, position } : n)
     s.onDirty?.()
     return { nodes }
   }),
 
-  addEdge: (edge) => set((s) => {
-    const edges = [...s.edges, edge]
-    const hist = pushHistory(s)
-    s.onDirty?.()
-    return { edges, ...hist }
-  }),
-
-  removeEdge: (id) => set((s) => {
-    const edges = s.edges.filter((e) => e.id !== id)
-    const hist = pushHistory(s)
-    s.onDirty?.()
-    return { edges, ...hist }
-  }),
+  addEdge: (edge) => set((s) => { s.onDirty?.(); return { edges: [...s.edges, edge], ...pushHistory(s) } }),
+  removeEdge: (id) => set((s) => { s.onDirty?.(); return { edges: s.edges.filter((e) => e.id !== id), ...pushHistory(s) } }),
 
   undo: () => set((s) => {
     if (s.historyIndex <= 0) return s
     const idx = s.historyIndex - 1
     const snap = s.history[idx]
     s.onDirty?.()
-    return {
-      nodes: JSON.parse(JSON.stringify(snap.nodes)),
-      edges: JSON.parse(JSON.stringify(snap.edges)),
-      historyIndex: idx,
-    }
+    return { nodes: JSON.parse(JSON.stringify(snap.nodes)), edges: JSON.parse(JSON.stringify(snap.edges)), historyIndex: idx }
   }),
 
   redo: () => set((s) => {
@@ -152,148 +85,48 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const idx = s.historyIndex + 1
     const snap = s.history[idx]
     s.onDirty?.()
-    return {
-      nodes: JSON.parse(JSON.stringify(snap.nodes)),
-      edges: JSON.parse(JSON.stringify(snap.edges)),
-      historyIndex: idx,
-    }
+    return { nodes: JSON.parse(JSON.stringify(snap.nodes)), edges: JSON.parse(JSON.stringify(snap.edges)), historyIndex: idx }
   }),
 
   canUndo: () => get().historyIndex > 0,
   canRedo: () => get().historyIndex < get().history.length - 1,
 
-  setNodeStatus: (nodeId, status) => set((s) => ({
-    nodeStatuses: { ...s.nodeStatuses, [nodeId]: status },
-  })),
+  setNodeStatus: (nodeId, status) => set((s) => ({ nodeStatuses: { ...s.nodeStatuses, [nodeId]: status } })),
+  setNodeResult: (nodeId, result) => set((s) => ({ nodeResults: { ...s.nodeResults, [nodeId]: result } })),
 
-  setNodeResult: (nodeId, result) => set((s) => ({
-    nodeResults: { ...s.nodeResults, [nodeId]: result },
-  })),
-
-  setWaitingGate: (nodeId, options) => set((s) => ({
-    waitingGates: { ...s.waitingGates, [nodeId]: options },
-  })),
-
+  setWaitingGate: (nodeId, options) => set((s) => ({ waitingGates: { ...s.waitingGates, [nodeId]: options } })),
   resolveGate: (nodeId, selectedOption) => set((s) => {
     const newWaitingGates = { ...s.waitingGates }
     delete newWaitingGates[nodeId]
-    return {
-      waitingGates: newWaitingGates,
-      nodeResults: { ...s.nodeResults, [nodeId]: { selected: selectedOption } },
-      nodeStatuses: { ...s.nodeStatuses, [nodeId]: "done" },
-    }
+    return { waitingGates: newWaitingGates, nodeResults: { ...s.nodeResults, [nodeId]: { selected: selectedOption } }, nodeStatuses: { ...s.nodeStatuses, [nodeId]: "done" } }
   }),
 
-  setGraphFromJson: (graphJson) => set({
-    nodes: graphJson.nodes || [],
-    edges: graphJson.edges || [],
-    history: [],
-    historyIndex: -1,
-    nodeStatuses: {},
-    nodeResults: {},
-  }),
-
-  getGraphJson: () => {
-    const s = get()
-    return {
-      nodes: JSON.parse(JSON.stringify(s.nodes)),
-      edges: JSON.parse(JSON.stringify(s.edges)),
-    }
-  },
-
+  setGraphFromJson: (graphJson) => set({ nodes: graphJson.nodes || [], edges: graphJson.edges || [], history: [], historyIndex: -1, nodeStatuses: {}, nodeResults: {} }),
+  getGraphJson: () => { const s = get(); return { nodes: JSON.parse(JSON.stringify(s.nodes)), edges: JSON.parse(JSON.stringify(s.edges)) } },
   setSelectedNodes: (ids) => set({ selectedNodeIds: ids }),
 
   onNodesChange: (changes) => set((s) => {
     let nodes = s.nodes
     for (const c of changes) {
-      if (c.type === "position" && c.position) {
-        nodes = nodes.map((n) => n.id === c.id ? { ...n, position: c.position! } : n)
-      } else if (c.type === "remove") {
-        nodes = nodes.filter((n) => n.id !== c.id)
-      } else if (c.type === "select") {
-        // handled by selectedNodeIds
-      }
+      if (c.type === "position" && c.position) nodes = nodes.map((n) => n.id === c.id ? { ...n, position: c.position! } : n)
+      else if (c.type === "remove") nodes = nodes.filter((n) => n.id !== c.id)
     }
     return { nodes }
   }),
 
   onEdgesChange: (changes) => set((s) => {
     let edges = s.edges
-    for (const c of changes) {
-      if (c.type === "remove") {
-        edges = edges.filter((e) => e.id !== c.id)
-      }
-    }
+    for (const c of changes) { if (c.type === "remove") edges = edges.filter((e) => e.id !== c.id) }
     s.onDirty?.()
     return { edges }
   }),
 
-  copySelected: () => {
-    const s = get()
-    const ids = s.selectedNodeIds
-    if (ids.length === 0) return
-    const copiedNodes = s.nodes
-      .filter((n) => ids.includes(n.id))
-      .map((n) => JSON.parse(JSON.stringify(n)))
-    const copiedEdges = s.edges
-      .filter((e) => ids.includes(e.source) && ids.includes(e.target))
-      .map((e) => JSON.parse(JSON.stringify(e)))
-    set({ clipboard: { nodes: copiedNodes, edges: copiedEdges } })
-  },
-
-  pasteNodes: () => set((s) => {
-    const clip = s.clipboard
-    if (!clip || clip.nodes.length === 0) return s
-    const idMap: Record<string, string> = {}
-    const newNodes = clip.nodes.map((n) => {
-      const newId = crypto.randomUUID()
-      idMap[n.id] = newId
-      return {
-        ...JSON.parse(JSON.stringify(n)),
-        id: newId,
-        position: { x: n.position.x + 40, y: n.position.y + 40 },
-        selected: true,
-      }
-    })
-    const newEdges = clip.edges.map((e) => ({
-      ...JSON.parse(JSON.stringify(e)),
-      id: `e-${idMap[e.source]}-${e.sourceHandle}-${idMap[e.target]}-${e.targetHandle}`,
-      source: idMap[e.source],
-      target: idMap[e.target],
-    }))
-    // Deselect existing nodes
-    const nodes = s.nodes.map((n) => ({ ...n, selected: false })).concat(newNodes)
-    const edges = s.edges.concat(newEdges)
-    const hist = pushHistory(s)
-    s.onDirty?.()
-    return { nodes, edges, selectedNodeIds: newNodes.map((n) => n.id), ...hist }
-  }),
-
-  deleteSelected: () => set((s) => {
-    const ids = s.selectedNodeIds
-    if (ids.length === 0) return s
-    const nodes = s.nodes.filter((n) => !ids.includes(n.id))
-    const edges = s.edges.filter((e) => !ids.includes(e.source) && !ids.includes(e.target))
-    const hist = pushHistory(s)
-    s.onDirty?.()
-    return { nodes, edges, selectedNodeIds: [], ...hist }
-  }),
-
-  duplicateNode: (id) => set((s) => {
-    const node = s.nodes.find((n) => n.id === id)
-    if (!node) return s
-    const newId = crypto.randomUUID()
-    const newNode = {
-      ...JSON.parse(JSON.stringify(node)),
-      id: newId,
-      position: { x: node.position.x + 40, y: node.position.y + 40 },
-      selected: true,
-    }
-    const nodes = s.nodes.map((n) => ({ ...n, selected: false })).concat(newNode)
-    const hist = pushHistory(s)
-    s.onDirty?.()
-    return { nodes, selectedNodeIds: [newId], ...hist }
-  }),
+  copySelected: () => { const r = copySelectedImpl(get()); if (r) set(r) },
+  pasteNodes: () => set((s) => pasteNodesImpl(s)),
+  deleteSelected: () => set((s) => deleteSelectedImpl(s)),
+  duplicateNode: (id) => set((s) => duplicateNodeImpl(s, id)),
+  groupSelected: () => set((s) => groupSelectedImpl(s)),
+  ungroupSelected: () => set((s) => ungroupSelectedImpl(s)),
 
   setOnDirty: (cb) => set({ onDirty: cb }),
 }))

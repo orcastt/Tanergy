@@ -19,6 +19,7 @@ export type NodeType =
   | "image_gallery"
   | "html_formatter"
   | "preview_wechat"
+  | "group"
 
 export const PORT_COLORS: Record<PortType, string> = {
   text: "#3B82F6",
