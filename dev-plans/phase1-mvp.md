@@ -16,10 +16,11 @@
 | 4 | [slice-04-text-nodes.md](slice-04-text-nodes.md) | text_input · research · outline_generator | 中 | 3天 | ✅ |
 | 5 | [slice-05-image-nodes.md](slice-05-image-nodes.md) | gate · writer · reviewer | 高 | 3天 | ✅ |
 | 6 | [slice-06-execution.md](slice-06-execution.md) | image_planner · image_gen · image_gallery | 高 | 3天 | ✅ |
-| 7 | [slice-07-skills.md](slice-07-skills.md) | html_formatter · preview_wechat | 中 | 2天 | ⬜ |
+| 7 | [slice-07-skills.md](slice-07-skills.md) | html_formatter · preview_wechat | 中 | 2天 | ✅ |
 | 8 | [slice-08-subscription.md](slice-08-subscription.md) | 积分订阅系统 (Supabase+Stripe) | 高 | 5天 | 🔨 |
-| 9 | [slice-09-polish.md](slice-09-polish.md) | 主题 + 语言 + 桌面安装包 | 低 | 2天 | ⬜ |
-| 10 | [slice-10-canvas-interaction.md](slice-10-canvas-interaction.md) | 画布交互增强 | 高 | 3天 | 🔨 部分 |
+| 9 | [slice-09-polish.md](slice-09-polish.md) | 主题 + 语言 + 桌面安装包 | 低 | 2天 | ✅ |
+| 10 | [slice-10-canvas-interaction.md](slice-10-canvas-interaction.md) | 画布交互增强 | 高 | 3天 | ✅ |
+| 11 | [slice-11-image-list-agent.md](slice-11-image-list-agent.md) | Image List重构 + AI Agent面板 + 画布主题 | 高 | 5天 | ✅ |
 
 ## 依赖关系
 
@@ -65,9 +66,12 @@ Slice 0 (Tauri 脚手架)
 ## MVP 11 节点清单
 
 ```
-输入:  text_input
+MVP 12 节点清单：
+
+输入:  text_input (可缩放)
 AI:    research, outline_generator, writer, reviewer, image_planner
 交互:  gate
-图像:  image_gen, image_gallery
+图像:  image_list (双输入/动态端口), image_gallery
 输出:  html_formatter, preview_wechat
+分组:  group
 ```

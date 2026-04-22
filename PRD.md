@@ -109,8 +109,8 @@
 ### 3.2 Phase 2
 
 - [ ] 小红书图文笔记 Skill
-- [ ] 右侧 AI 对话面板 + 自然语言自动连线
-- [ ] 节点子画布（Draw + Comment + Inpaint）
+- [x] 右侧 AI 对话面板 + 自然语言自动连线（Slice 11 完成）
+- [ ] 节点子画布 Draw/Comment（图片编辑器 Modal 已完成 Slice 11）
 - [ ] 可选云同步（增值功能，渐进式引入网页版）
 - [ ] 工作流模板分享
 
@@ -401,7 +401,7 @@
 | 节点 | 说明 | 输入 | 输出 | 用户 API Key |
 |------|------|------|------|------------|
 | image_planner | Claude 规划配图数量+位置+描述 | `text` | `structured`（配图计划 JSON）| Anthropic |
-| image_gen | Google Imagen 3 生成单张图 | `text` | `image` | Google Cloud |
+| image_list | 多模型图片生成（MiniMax/GPT/Gemini），双输入，动态输出端口 | `image_plans` + `text` | `image_slot`×N（动态） | 用户 Key 或积分 |
 | image_gallery | 收集图片，提供多个输出端口 | `image`×N | `image`（多端口） | 免费（本地） |
 
 #### 📄 输出类
@@ -1039,6 +1039,7 @@ Kling、Seedance、Vidu、Wan2.x、MiniMax、Tencent Speech、小红书 API
 | 8 | Skill 模板 + 端到端测试 | 3天 | 中 |
 | 9 | 主题 + 语言 + 桌面安装包 | 2天 | 低 |
 | 10 | 画布交互增强（分类颜色/复制粘贴/右键菜单/打组） | 3天 | 高 |
+| 11 | Image List重构 + AI Agent面板 + 画布主题 + 图片编辑器 | 5天 | 高 |
 
 ### Phase 2 — V1（第 9-14 周）
 

@@ -9,7 +9,7 @@
 
 **阶段**: Phase 1 MVP 开发（Desktop pivot — 从 Web SaaS 迁移到 Tauri 桌面客户端）
 **核心目标**: 「公众号长文创作」Skill 端到端跑通
-**正在做**: Slice 8 — 积分订阅系统 (Supabase + Stripe)
+**正在做**: Slice 8 — 积分订阅系统 (Supabase + Stripe) 细节设计，Slice 9-11 已完成
 
 ---
 
@@ -50,21 +50,22 @@
 
 ---
 
-## MVP 节点清单（11个，已全部规格锁定）
+## MVP 节点清单（12个，已全部规格锁定）
 
 | 节点 | 类型 | 状态 |
 |------|------|------|
-| `text_input` | 输入 | ✅ 完成 |
+| `text_input` | 输入 | ✅ 完成（可缩放、滚动10行） |
 | `research` | AI（多轮搜索） | ✅ 完成 |
 | `outline_generator` | AI | ✅ 完成 |
 | `gate` | 交互（暂停等人） | ✅ 完成 ⭐最核心 |
 | `writer` | AI（长文写作） | ✅ 完成 |
 | `reviewer` | AI（三遍审校） | ✅ 完成 |
 | `image_planner` | AI（配图规划） | ✅ 完成 |
-| `image_gen` | AI（MiniMax image-01） | ✅ 完成 |
+| `image_list` | AI（多模型图片生成） | ✅ 完成（双输入、数量/模型选择、动态输出端口） |
 | `image_gallery` | 展示（多端口） | ✅ 完成 |
-| `html_formatter` | 模板引擎 | 🔲 待开发 |
-| `preview_wechat` | 输出 | 🔲 待开发 |
+| `html_formatter` | 模板引擎 | ✅ 完成 |
+| `preview_wechat` | 输出 | ✅ 完成 |
+| `group` | 分组容器 | ✅ 完成 |
 
 详细规范见 [dev-plans/node-plan.md](dev-plans/node-plan.md)
 WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/wechat-skill-nodes.md)
@@ -84,8 +85,9 @@ WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/w
 | 6 | image_planner · image_gen · image_gallery | ✅ 完成 | MiniMax image-01 生图 + 本地文件系统 + Lightbox |
 | 7 | html_formatter · preview_wechat | ✅ 完成 | MiniMax HTML 排版 + 微信预览 + 复制 HTML |
 | 8 | 积分订阅系统 (Supabase+Stripe) | 🔨 进行中 | 积分套餐/官方API代理/Pro会员8折/节点积分显示 |
-| 9 | 主题 + 语言 + 桌面安装包 | 🔲 未开始 | 打包 .dmg / .msi / .AppImage |
-| 10 | 画布交互增强（部分） | ✅ 完成 | 分类颜色边框、端口 tooltip、复制粘贴删除、右键菜单、Alt+Click 复制 |
+| 9 | 主题 + 语言 + 桌面安装包 | ✅ 完成 | 暗夜模式、文件拆分、桌面打包+CI |
+| 10 | 画布交互增强 | ✅ 完成 | 分类颜色边框、复制粘贴删除、右键菜单、打组/取消打组 |
+| 11 | Image List重构 + AI Agent面板 + 画布主题 | ✅ 完成 | 双输入/动态端口/图片编辑器/AI对话面板/主题切换 |
 
 ---
 
@@ -119,16 +121,25 @@ WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/w
 - **PortType 定义** [node.ts](frontend/src/types/node.ts) — 不变
 - **11个节点定义** [nodeDefs.ts](frontend/src/nodes/nodeDefs.ts) — 不变
 
-### Slice 10: 画布交互增强（部分完成）
+### Slice 10: 画布交互增强
 - **节点分类颜色边框**: NodeBase.tsx — 3px left border by category (input/ai/image/output/text)
 - **端口 Hover tooltip**: NodeBase.tsx — `title` attribute 显示端口数据类型
 - **复制粘贴删除**: canvasStore.ts — clipboard + copySelected/pasteNodes/deleteSelected/duplicateNode
-- **键盘快捷键**: Canvas.tsx — Ctrl+C/V, Delete/Backspace, Escape
-- **右键上下文菜单**: ContextMenu.tsx — 节点右键 Copy/Paste/Delete, 空白右键 Paste
+- **键盘快捷键**: Canvas.tsx — Ctrl+C/V, Delete/Backspace, Escape, G 打组
+- **右键上下文菜单**: ContextMenu.tsx — 节点右键 Copy/Paste/Delete/Group, 空白右键 Paste
 - **Alt+Click 复制节点**: Canvas.tsx — onNodeClick + altKey
+- **Group/Ungroup**: GroupNode.tsx — 可编辑标签 + 8色选择，G 键切换
 - **工作流自动保存**: CanvasPage.tsx — Back 按钮保存 + unmount 保存
 - **JSON 导出/导入**: DashboardPage.tsx + workflow.rs — Tauri dialog + fs 插件
 - **Welcome 页重设计**: WelcomePage.tsx — 取消自动跳转，产品介绍页
+
+### Slice 11: Image List 重构 + AI Agent 面板 + 画布主题
+- **Image Gen → Image List**: 双输入端口（配图方案+text）、数量(1-10)/模型选择器、动态输出端口(image1..imageN)
+- **画布主题切换**: Toolbar.tsx — dark_mode/light_mode 按钮
+- **AI Agent 对话面板**: 右侧可展开/收回面板，自然语言 → JSON actions → 自动创建节点+连线
+- **图片编辑器 Modal**: 双击打开，7 个文件（DrawingCanvas、DrawingPanel、AiEditPopup 等）
+- **TextInput 可缩放**: 四角拖拽缩放，最多10行滚动，直接输入无需 Run
+- **Rust agent_chat 命令**: MiniMax 生成 JSON actions，system prompt 指导返回结构化指令
 
 ---
 

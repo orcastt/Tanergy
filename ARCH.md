@@ -147,17 +147,17 @@ frontend/
 │   │   └── common/       ← 业务通用组件（NodeCard, PortDot, LoadingSpinner）
 │   ├── nodes/            ← 各类节点组件
 │   │   ├── base/         ← NodeBase（所有节点的基础外壳）
-│   │   ├── prompt/       ← PromptNode
-│   │   ├── chat/         ← ChatNode
-│   │   ├── image/        ← ImageNode
-│   │   ├── search/       ← SearchNode
-│   │   ├── preview/      ← PreviewWechatNode, PreviewRedNode
+│   │   ├── image/        ← 图片编辑器（DrawingCanvas, ImageEditorModal, AiEditPopup 等）
+│   │   ├── TextInputNode.tsx
+│   │   ├── ImageListNode.tsx  ← 图片生成列表（双输入/动态端口/数量模型选择）
+│   │   ├── GroupNode.tsx      ← 分组容器节点
 │   │   └── index.ts      ← 节点类型注册表
 │   ├── canvas/           ← 画布层
 │   │   ├── Canvas.tsx    ← React Flow 主画布
 │   │   ├── NodePicker.tsx← 节点选择面板
-│   │   ├── Toolbar.tsx   ← 左侧工具栏
-│   │   └── hooks/        ← useCanvas, useNodeDrop...
+│   │   ├── Toolbar.tsx   ← 左侧工具栏（含主题切换）
+│   │   ├── ContextMenu.tsx ← 右键菜单
+│   │   └── CanvasControls.tsx ← 缩放/适应控件
 │   ├── skills/           ← Skills 系统
 │   │   ├── SkillPanel.tsx
 │   │   ├── definitions/  ← 每个 Skill 的节点图定义
@@ -169,9 +169,16 @@ frontend/
 │   │   └── SettingsPage.tsx  ← API Keys、License、偏好设置
 │   ├── store/            ← Zustand 状态
 │   │   ├── canvasStore.ts    ← 节点/连线/选中/历史
+│   │   ├── canvasActions.ts  ← 剪贴板/打组操作
+│   │   ├── themeStore.ts     ← 亮/暗主题
 │   │   ├── licenseStore.ts   ← License 状态（激活/试用/过期）
-│   │   ├── apiKeyStore.ts    ← API Key 管理状态
+│   │   ├── creditsStore.ts   ← 积分/订阅状态
 │   │   └── workflowStore.ts  ← 工作流列表/当前工作流
+│   ├── agent/            ← AI Agent 面板
+│   │   ├── AgentPanel.tsx    ← 侧拉面板壳 + 展开/收回
+│   │   ├── AgentChat.tsx     ← 对话 UI
+│   │   ├── agentStore.ts     ← 对话历史/发送接收
+│   │   └── nodeBuilder.ts    ← 解析 AI 指令 → 创建节点+连线
 │   ├── services/         ← 服务层
 │   │   ├── tauri.ts      ← Tauri IPC invoke 封装
 │   │   └── aiProviders.ts← AI 提供商常量和类型定义
@@ -214,11 +221,15 @@ src-tauri/
 │   ├── lib.rs            ← Command 注册
 │   ├── commands/         ← Tauri IPC 命令处理器
 │   │   ├── mod.rs
+│   │   ├── agent.rs      ← AI Agent 对话（MiniMax → JSON actions）
+│   │   ├── credits.rs    ← 积分/订阅/Supabase 代理
 │   │   ├── workflow.rs   ← 工作流 CRUD（SQLite）
 │   │   ├── asset.rs      ← 资产文件管理（本地文件系统）
 │   │   ├── license.rs    ← License 密钥验证
 │   │   ├── api_keys.rs   ← API Key 加密存储
-│   │   └── export.rs     ← 导出（ZIP、HTML 复制）
+│   │   └── execute/      ← 节点执行器
+│   │       ├── mod.rs    ← 路由分发
+│   │       └── media.rs  ← image_planner / image_list / html_formatter
 │   ├── db/
 │   │   ├── mod.rs
 │   │   ├── schema.rs     ← SQLite schema 定义
@@ -310,7 +321,7 @@ const NODE_EXECUTORS: Record<NodeType, NodeExecutor> = {
   "writer":            WriterExecutor,           // Claude（经 Tauri）
   "reviewer":          ReviewerExecutor,         // Claude（经 Tauri）
   "image_planner":     ImagePlannerExecutor,     // Claude（经 Tauri）
-  "image_gen":         ImagenExecutor,           // Imagen 3（经 Tauri）
+  "image_list":        ImageListExecutor,        // 多模型图片生成（经 Tauri，动态输出端口）
   "image_gallery":     ImageGalleryExecutor,     // 纯前端
   "html_formatter":    HtmlFormatterExecutor,    // 纯前端（模板引擎）
   "preview_wechat":    PreviewWechatExecutor,    // 纯前端展示
@@ -594,6 +605,9 @@ invoke('check_license_status'): Promise<{ status: string; plan: string; expiresA
 invoke('get_app_config', { key: string }): Promise<string | null>
 invoke('set_app_config', { key: string, value: string }): Promise<void>
 invoke('choose_directory'): Promise<string | null>  // 原生文件夹选择器
+
+// === AI Agent ===
+invoke('agent_chat', { messages: ChatMessage[], context: object }): Promise<{ message: string }>
 ```
 
 ### 8.2 Tauri Events（Rust → 前端）
