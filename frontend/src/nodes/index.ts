@@ -11,6 +11,7 @@ import WriterNode from "./WriterNode"
 import ReviewerNode from "./ReviewerNode"
 import ImagePlannerNode from "./ImagePlannerNode"
 import ImageGenNode from "./ImageGenNode"
+import ImageListNode from "./ImageListNode"
 import ImageGalleryNode from "./ImageGalleryNode"
 import HtmlFormatterNode from "./HtmlFormatterNode"
 import PreviewWechatNode from "./PreviewWechatNode"
@@ -26,6 +27,7 @@ export const nodeTypes: Record<string, ComponentType<any>> = {
   reviewer: ReviewerNode,
   image_planner: ImagePlannerNode,
   image_gen: ImageGenNode,
+  image_list: ImageListNode,
   image_gallery: ImageGalleryNode,
   html_formatter: HtmlFormatterNode,
   preview_wechat: PreviewWechatNode,

@@ -1,4 +1,5 @@
 import { useCanvasStore } from "../store/canvasStore"
+import { useThemeStore } from "../store/themeStore"
 import { runAll, stopAll } from "../lib/executionEngine"
 
 interface Props {
@@ -33,8 +34,16 @@ export default function Toolbar({ onAddNode }: Props) {
       )}
       <ToolBtn icon="undo" label="Undo (⌘Z)" onClick={undo} disabled={!canUndo} />
       <ToolBtn icon="redo" label="Redo (⌘⇧Z)" onClick={redo} disabled={!canRedo} />
+      <div style={{ width: "24px", height: "1px", background: "var(--border-color)", margin: "0.375rem 0" }} />
+      <ThemeToggle />
     </div>
   )
+}
+
+function ThemeToggle() {
+  const theme = useThemeStore((s) => s.theme)
+  const toggleTheme = useThemeStore((s) => s.toggleTheme)
+  return <ToolBtn icon={theme === "dark" ? "light_mode" : "dark_mode"} label={theme === "dark" ? "Light Mode" : "Dark Mode"} onClick={toggleTheme} />
 }
 
 function ToolBtn({ icon, label, onClick, disabled }: { icon: string; label: string; onClick: () => void; disabled?: boolean }) {

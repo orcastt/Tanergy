@@ -87,24 +87,67 @@ pub async fn exec_image_gen(
     payload: &ExecutePayload,
     app_handle: &tauri::AppHandle,
 ) -> Result<ExecuteResult, String> {
+    // Accept plans from image_planner or generate from text input
     let plans_val = payload.input_data
         .get("in")
         .and_then(|v| v.get("image_plans"))
         .or_else(|| payload.input_data.get("image_plans"))
-        .cloned()
-        .unwrap_or(serde_json::json!([]));
+        .cloned();
 
-    let plans: Vec<Value> = if plans_val.is_array() {
-        plans_val.as_array().unwrap().clone()
-    } else if plans_val.is_object() && plans_val.get("raw").is_some() {
-        return Err("image_gen: planner returned raw text, not valid plans".into());
+    let text_input = payload.input_data
+        .get("text")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+
+    let count = payload.node_data
+        .get("count")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(1) as usize;
+
+    let model = payload.node_data
+        .get("model")
+        .and_then(|v| v.as_str())
+        .unwrap_or("minimax");
+
+    let plans: Vec<Value> = if let Some(pv) = plans_val {
+        if pv.is_array() {
+            pv.as_array().unwrap().clone()
+        } else if pv.is_object() && pv.get("raw").is_some() {
+            return Err("image_list: planner returned raw text, not valid plans".into());
+        } else {
+            return Err("image_list: no valid image plans".into());
+        }
+    } else if !text_input.is_empty() {
+        // Generate plans from text input using AI
+        let system = format!(
+            "你是配图策划。根据文本生成 {} 张配图方案。输出严格 JSON 数组：\n\
+             [{{\"position\": \"...\", \"description\": \"...\", \"prompt\": \"...\", \"aspect_ratio\": \"...\"}}]\n\
+             只输出 JSON。",
+            count
+        );
+        let messages = vec![
+            ChatMessage { role: "system".into(), content: system },
+            ChatMessage { role: "user".into(), content: text_input.to_string() },
+        ];
+        let completion = ai_client::chat_completion(model, MINIMAX_MODEL, messages, 2048, Some(0.7)).await?;
+        let raw = completion.text.trim();
+        if raw.starts_with('[') {
+            serde_json::from_str::<Vec<Value>>(raw).unwrap_or_default()
+        } else if let Some(s) = raw.find('[') {
+            let end = raw.rfind(']').unwrap_or(raw.len() - 1);
+            serde_json::from_str::<Vec<Value>>(&raw[s..=end]).unwrap_or_default()
+        } else {
+            vec![serde_json::json!({ "prompt": text_input, "description": text_input, "aspect_ratio": "16:9" })]
+        }
     } else {
-        return Err("image_gen: no image plans received".into());
+        return Err("image_list: no image plans or text input".into());
     };
 
     if plans.is_empty() {
-        return Err("image_gen: empty image plans".into());
+        return Err("image_list: empty image plans".into());
     }
+
+    let limited_plans: Vec<Value> = plans.into_iter().take(count).collect();
 
     let workflow_id = payload.node_data
         .get("workflow_id")
@@ -115,7 +158,7 @@ pub async fn exec_image_gen(
     let node_id = payload.node_data
         .get("node_id")
         .and_then(|v| v.as_str())
-        .unwrap_or("image_gen")
+        .unwrap_or("image_list")
         .to_string();
 
     let app_dir = db::get_app_dir();
@@ -123,10 +166,11 @@ pub async fn exec_image_gen(
     fs::create_dir_all(&assets_dir)
         .map_err(|e| format!("create assets dir: {}", e))?;
 
-    let total = plans.len();
+    let total = limited_plans.len();
     let mut images = Vec::new();
+    let mut per_image = serde_json::Map::new();
 
-    for (i, plan) in plans.iter().enumerate() {
+    for (i, plan) in limited_plans.iter().enumerate() {
         let plan_id = plan.get("id").and_then(|v| v.as_str()).unwrap_or("img").to_string();
         let prompt = plan.get("prompt").and_then(|v| v.as_str()).unwrap_or("a professional illustration");
         let aspect_ratio = plan.get("aspect_ratio").and_then(|v| v.as_str());
@@ -137,7 +181,7 @@ pub async fn exec_image_gen(
             "total": total as u32,
         }));
 
-        let result = ai_client::image_generation("minimax", prompt, aspect_ratio).await?;
+        let result = ai_client::image_generation(model, prompt, aspect_ratio).await?;
 
         let filename = format!("{}_{}.png", node_id, plan_id);
         let file_path = assets_dir.join(&filename);
@@ -157,18 +201,28 @@ pub async fn exec_image_gen(
         ).map_err(|e| format!("insert asset: {}", e))?;
         drop(locked);
 
-        images.push(serde_json::json!({
+        let img_obj = serde_json::json!({
             "id": asset_id,
             "plan_id": plan_id,
             "file_path": file_path_str,
             "prompt": prompt,
             "description": plan.get("description").and_then(|v| v.as_str()).unwrap_or(""),
             "position": plan.get("position").and_then(|v| v.as_str()).unwrap_or(""),
-        }));
+        });
+
+        per_image.insert(format!("image{}", i + 1), img_obj.clone());
+        images.push(img_obj);
+    }
+
+    let mut output = serde_json::json!({ "images": images });
+    if let serde_json::Value::Object(map) = &mut output {
+        for (k, v) in per_image {
+            map.insert(k, v);
+        }
     }
 
     Ok(ExecuteResult {
-        output: serde_json::json!({ "images": images }),
+        output,
         status: "done".into(),
     })
 }

@@ -12,7 +12,7 @@ export type RunAllOptions = {
   onComplete?: () => void
 }
 
-const AI_NODES: Set<string> = new Set(["research", "outline_generator", "writer", "reviewer", "image_planner", "image_gen"])
+const AI_NODES: Set<string> = new Set(["research", "outline_generator", "writer", "reviewer", "image_planner", "image_gen", "image_list"])
 
 function extractGateOptions(inputData: Record<string, unknown>): string[] {
   const input = inputData.in
@@ -139,7 +139,14 @@ export async function runAll(options: RunAllOptions = {}) {
           for (const e of edges) {
             if (e.target === nodeId) {
               const key = (e.targetHandle ?? "in") as string
-              inputData[key] = nodeResults[e.source]
+              const sourceResult = nodeResults[e.source]
+              // Route by sourceHandle for per-image outputs
+              if (e.sourceHandle && sourceResult && typeof sourceResult === "object") {
+                const specific = (sourceResult as Record<string, unknown>)[e.sourceHandle]
+                inputData[key] = specific ?? sourceResult
+              } else {
+                inputData[key] = sourceResult
+              }
             }
           }
 

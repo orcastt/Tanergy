@@ -19,6 +19,7 @@ import NodePicker from "./NodePicker"
 import ContextMenu from "./ContextMenu"
 import Toolbar from "./Toolbar"
 import CanvasControls from "./CanvasControls"
+import AgentPanel from "../agent/AgentPanel"
 import type { NodeType } from "../types/node"
 
 const SNAP_GRID = [20, 20] as [number, number]
@@ -29,7 +30,12 @@ function getOutputPortType(nodeId: string, handleId: string | null | undefined, 
   const def = NODE_MAP[node.data.nodeType as NodeType]
   if (!def) return null
   if (!handleId) return def.outputs[0]?.type ?? null
-  return def.outputs.find((o) => o.id === handleId)?.type ?? null
+  // Static port lookup
+  const staticPort = def.outputs.find((o) => o.id === handleId)
+  if (staticPort) return staticPort.type
+  // Dynamic port: image_list outputs image1..imageN as image_slot
+  if (node.data.nodeType === "image_list" && handleId.startsWith("image")) return "image_slot"
+  return null
 }
 
 function getInputPortType(nodeId: string, handleId: string | null | undefined, nodes: any[]) {
@@ -205,6 +211,7 @@ const nodeTypesMap: Record<string, ComponentType<any>> = nodeTypes as any
 
       <Toolbar onAddNode={() => { setPickerPos(null); setPickerOpen(true) }} />
       <CanvasControls />
+      <AgentPanel />
 
       <NodePicker
         open={pickerOpen}

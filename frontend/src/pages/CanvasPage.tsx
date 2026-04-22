@@ -26,8 +26,8 @@ function CanvasPageInner() {
 
   if (!currentWorkflow) {
     return (
-      <div style={{ height: "100vh", background: "#f5f3f3", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <span style={{ color: "#747878" }}>Loading workflow...</span>
+      <div style={{ height: "100vh", background: "var(--bg-canvas)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <span style={{ color: "var(--text-secondary)" }}>Loading workflow...</span>
       </div>
     )
   }
@@ -50,17 +50,15 @@ function CanvasPageInner() {
       height: "100vh",
       display: "flex",
       flexDirection: "column",
-      background: "#f5f3f3",
+      background: "var(--bg-canvas)",
       fontFamily: '"Inter", sans-serif',
-      color: "#1b1c1c",
-      backgroundImage: "radial-gradient(circle, #e3e2e2 1px, transparent 1px)",
-      backgroundSize: "20px 20px",
+      color: "var(--text-primary)",
     }}>
       {/* Top Bar */}
       <header style={{
-        background: "rgba(255,255,255,0.8)",
+        background: "var(--bg-header)",
         backdropFilter: "blur(12px)",
-        boxShadow: "0 0 0 1px rgba(0,0,0,0.05), 0 1px 2px 0 rgba(0,0,0,0.05)",
+        boxShadow: "0 0 0 1px var(--border-subtle), 0 1px 2px 0 rgba(0,0,0,0.05)",
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
@@ -79,14 +77,14 @@ function CanvasPageInner() {
             style={{
               display: "flex", alignItems: "center", gap: "0.375rem",
               background: "none", border: "none", cursor: "pointer",
-              color: "#5e5e5e", fontSize: "0.875rem", fontWeight: 500,
+              color: "var(--text-secondary)", fontSize: "0.875rem", fontWeight: 500,
             }}
           >
             <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>arrow_back</span>
             Back
           </button>
 
-          <div style={{ width: "1px", height: "24px", background: "#c4c7c7" }} />
+          <div style={{ width: "1px", height: "24px", background: "var(--border-color)" }} />
 
           {/* Workflow name */}
           {editingName ? (
@@ -100,7 +98,7 @@ function CanvasPageInner() {
                 border: "none", borderBottom: "2px solid #242424",
                 padding: "0.25rem 0", fontSize: "0.875rem", fontWeight: 600,
                 fontFamily: '"Space Grotesk", sans-serif',
-                color: "#0e0f0f", outline: "none", background: "transparent",
+                color: "var(--text-primary)", outline: "none", background: "transparent",
               }}
             />
           ) : (
@@ -109,13 +107,13 @@ function CanvasPageInner() {
                 onDoubleClick={startEditName}
                 style={{
                   fontFamily: '"Space Grotesk", sans-serif',
-                  fontWeight: 600, fontSize: "0.875rem", color: "#0e0f0f",
+                  fontWeight: 600, fontSize: "0.875rem", color: "var(--text-primary)",
                   cursor: "text",
                 }}
               >
                 {currentWorkflow.name}
               </span>
-              {isDirty && <span style={{ color: "#ba1a1a", fontSize: "0.75rem" }}>●</span>}
+              {isDirty && <span style={{ color: "var(--color-error)", fontSize: "0.75rem" }}>●</span>}
             </div>
           )}
         </div>
@@ -140,7 +138,7 @@ function CanvasPageInner() {
               }
             }}
             style={{
-              background: "#e3e2e2", color: "#0e0f0f",
+              background: "var(--bg-hover)", color: "var(--text-primary)",
               padding: "0.375rem 1rem", borderRadius: "0.375rem",
               fontSize: "0.875rem", fontWeight: 500, border: "none", cursor: "pointer",
               display: "flex", alignItems: "center", gap: "0.25rem",

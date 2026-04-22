@@ -35,6 +35,8 @@ body {
   --grid-dot: #d4d4d4;
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
   --shadow-md: 0 4px 6px rgba(0,0,0,0.07);
+  --bg-header: rgba(255,255,255,0.8);
+  --color-error: #ba1a1a;
 }
 
 [data-theme="dark"] {
@@ -50,6 +52,8 @@ body {
   --grid-dot: #2a2a2a;
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
   --shadow-md: 0 4px 6px rgba(0,0,0,0.4);
+  --bg-header: rgba(30,30,30,0.8);
+  --color-error: #f4845f;
 }
 
 #root { min-height: 100vh; }

@@ -16,6 +16,7 @@ export type NodeType =
   | "reviewer"
   | "image_planner"
   | "image_gen"
+  | "image_list"
   | "image_gallery"
   | "html_formatter"
   | "preview_wechat"

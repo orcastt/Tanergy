@@ -31,7 +31,7 @@ pub async fn execute_node(
         "writer" => exec_writer(&payload).await,
         "reviewer" => exec_reviewer(&payload).await,
         "image_planner" => media::exec_image_planner(&payload).await,
-        "image_gen" => media::exec_image_gen(&payload, &app_handle).await,
+        "image_gen" | "image_list" => media::exec_image_gen(&payload, &app_handle).await,
         "html_formatter" => media::exec_html_formatter(&payload).await,
         _ => Err(format!("unsupported node type: {}", payload.node_type)),
     }

@@ -59,6 +59,7 @@ pub fn run() {
             commands::credits::login_official,
             commands::credits::verify_otp,
             commands::credits::logout_official,
+            commands::agent::agent_chat,
         ])
         .run(tauri::generate_context!())
         .expect("error while running TANGENT");

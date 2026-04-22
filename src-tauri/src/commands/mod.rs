@@ -1,3 +1,4 @@
+pub mod agent;
 pub mod api_keys;
 pub mod app_config;
 pub mod asset;

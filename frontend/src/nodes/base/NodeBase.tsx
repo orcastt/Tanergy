@@ -31,10 +31,11 @@ interface Props {
   nodeId?: string
   category?: string
   creditCost?: number
+  width?: number
   children?: ReactNode
 }
 
-export default function NodeBase({ title, icon, inputs = [], outputs = [], status, selected, nodeId, category, creditCost, children }: Props) {
+export default function NodeBase({ title, icon, inputs = [], outputs = [], status, selected, nodeId, category, creditCost, width, children }: Props) {
   const ringStyle = selected
     ? "0 0 0 2px #242424, 0 4px 6px -1px rgba(0,0,0,0.1)"
     : status === "running"
@@ -52,7 +53,7 @@ export default function NodeBase({ title, icon, inputs = [], outputs = [], statu
 
   return (
     <div style={{
-      width: "256px",
+      width: width ? `${width}px` : "256px",
       background: "var(--bg-surface)",
       borderRadius: "0.5rem",
       boxShadow: ringStyle,

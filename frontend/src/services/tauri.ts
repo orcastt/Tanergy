@@ -97,4 +97,8 @@ export const tauri = {
     invoke<void>("verify_otp", { email, token }),
   logoutOfficial: () =>
     invoke<void>("logout_official"),
+
+  // Agent
+  agentChat: (params: { messages: { role: string; content: string }[]; context: Record<string, unknown> }) =>
+    invoke<{ message: string }>("agent_chat", params),
 }

@@ -18,5 +18,6 @@ export const NODE_CREDIT_COSTS: Record<string, number> = {
   reviewer: 12,
   image_planner: 3,
   image_gen: 15,
+  image_list: 15,
   html_formatter: 4,
 }
