@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom"
 import { useAgentStore } from "./agentStore"
 import AgentChat from "./AgentChat"
 
@@ -5,16 +6,16 @@ export default function AgentPanel() {
   const open = useAgentStore((s) => s.open)
   const setOpen = useAgentStore((s) => s.setOpen)
 
-  return (
+  return createPortal(
     <>
-      {/* Toggle button — always visible */}
+      {/* Toggle button — always visible at top-right */}
       <button
         onClick={() => setOpen(!open)}
         title={open ? "Close Agent" : "Open Agent"}
         style={{
-          position: "absolute",
+          position: "fixed",
           right: open ? "340px" : "12px",
-          top: "12px",
+          top: "68px",
           width: "36px",
           height: "36px",
           borderRadius: "0.5rem",
@@ -26,7 +27,7 @@ export default function AgentPanel() {
           justifyContent: "center",
           cursor: "pointer",
           boxShadow: "0 0 0 1px var(--border-subtle), var(--shadow-sm)",
-          zIndex: 30,
+          zIndex: 200,
           transition: "right 200ms ease, color 150ms ease",
         }}
       >
@@ -35,20 +36,21 @@ export default function AgentPanel() {
         </span>
       </button>
 
-      {/* Slide panel */}
+      {/* Slide panel — right side, below header */}
       <div style={{
-        position: "absolute",
+        position: "fixed",
         right: 0,
-        top: 0,
+        top: 56,
         bottom: 0,
         width: "340px",
         background: "var(--bg-surface)",
         borderLeft: "1px solid var(--border-color)",
-        zIndex: 25,
+        zIndex: 150,
         display: "flex",
         flexDirection: "column",
         transform: open ? "translateX(0)" : "translateX(100%)",
         transition: "transform 200ms ease",
+        boxShadow: open ? "-4px 0 12px rgba(0,0,0,0.08)" : "none",
       }}>
         {/* Header */}
         <div style={{
@@ -66,6 +68,7 @@ export default function AgentPanel() {
         {/* Chat */}
         <AgentChat />
       </div>
-    </>
+    </>,
+    document.body,
   )
 }
