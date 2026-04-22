@@ -9,7 +9,7 @@
 
 **阶段**: Phase 1 MVP 开发（Desktop pivot — 从 Web SaaS 迁移到 Tauri 桌面客户端）
 **核心目标**: 「公众号长文创作」Skill 端到端跑通
-**正在做**: Slice 7 — html_formatter · preview_wechat（Slice 10 画布交互已完成部分）
+**正在做**: Slice 8 — 积分订阅系统 (Supabase + Stripe)
 
 ---
 
@@ -82,8 +82,8 @@ WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/w
 | 4 | text_input · research · outline_generator | ✅ 完成 | MiniMax M2.7，Tauri IPC 执行 |
 | 5 | gate · writer · reviewer | ✅ 完成 | Gate 选择/输入模式，Writer 4风格，Reviewer 三遍审校 |
 | 6 | image_planner · image_gen · image_gallery | ✅ 完成 | MiniMax image-01 生图 + 本地文件系统 + Lightbox |
-| 7 | html_formatter · preview_wechat | 🔲 下一步 | |
-| 8 | Skill 模板 + 端到端测试 | 🔲 未开始 | Brief→HTML 全流程跑通 |
+| 7 | html_formatter · preview_wechat | ✅ 完成 | MiniMax HTML 排版 + 微信预览 + 复制 HTML |
+| 8 | 积分订阅系统 (Supabase+Stripe) | 🔨 进行中 | 积分套餐/官方API代理/Pro会员8折/节点积分显示 |
 | 9 | 主题 + 语言 + 桌面安装包 | 🔲 未开始 | 打包 .dmg / .msi / .AppImage |
 | 10 | 画布交互增强（部分） | ✅ 完成 | 分类颜色边框、端口 tooltip、复制粘贴删除、右键菜单、Alt+Click 复制 |
 
