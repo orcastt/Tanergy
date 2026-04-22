@@ -22,7 +22,7 @@ export default function Toolbar({ onAddNode }: Props) {
       width: "48px", background: "var(--bg-surface)",
       boxShadow: "1px 0 0 0 rgba(0,0,0,0.05)",
       display: "flex", flexDirection: "column", alignItems: "center",
-      padding: "0.75rem 0", gap: "0.25rem", zIndex: 20,
+      padding: "0.75rem 0", gap: "0.25rem", zIndex: 35,
     }}>
       <ToolBtn icon="add" label="Add Node (N)" onClick={onAddNode} />
       <ToolBtn icon="auto_awesome" label="Skills" onClick={() => {}} />

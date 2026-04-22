@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { createPortal } from "react-dom"
 import ImageEditorPanel from "./ImageEditorPanel"
 import DrawingPanel from "./DrawingPanel"
 import { useCanvasStore } from "../../store/canvasStore"
@@ -24,13 +25,12 @@ export default function ImageEditorModal({ nodeId, onClose }: Props) {
   const selectedImage = images[selectedIndex] ?? null
 
   function handleAiEdit(instruction: string) {
-    // TODO: call image edit API with drawing + instruction
     console.log("AI Edit:", instruction, "on image:", selectedImage?.file_path)
   }
 
-  return (
+  return createPortal(
     <div style={{
-      position: "fixed", inset: 0, zIndex: 1000,
+      position: "fixed", inset: 0, zIndex: 10000,
       display: "flex", flexDirection: "column",
       background: "var(--bg-surface)",
     }}>
@@ -53,21 +53,19 @@ export default function ImageEditorModal({ nodeId, onClose }: Props) {
         </span>
       </div>
 
-      {/* Body — left: image list, right: canvas */}
+      {/* Body */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-        {/* Left panel — image list */}
         <div style={{
           width: "200px", borderRight: "1px solid var(--border-color)", flexShrink: 0,
           background: "var(--bg-canvas)",
         }}>
           <ImageEditorPanel images={images} selectedIndex={selectedIndex} onSelect={setSelectedIndex} />
         </div>
-
-        {/* Right panel — drawing canvas */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
           <DrawingPanel image={selectedImage} onAiEdit={handleAiEdit} />
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
