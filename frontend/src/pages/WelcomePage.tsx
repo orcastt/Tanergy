@@ -4,10 +4,8 @@ import { SkillsSection, PhilosophySection, CtaSection } from "./welcome/WelcomeS
 
 export default function WelcomePage() {
   const navigate = useNavigate()
-  const licenseInfo = useLicenseStore((s) => ({
-    status: s.status,
-    trialEndsAt: s.trialEndsAt,
-  }))
+  const status = useLicenseStore((s) => s.status)
+  const trialEndsAt = useLicenseStore((s) => s.trialEndsAt)
 
   return (
     <div style={{ minHeight: "100vh", background: "#f5f3f3", fontFamily: "Inter, sans-serif" }}>
@@ -26,9 +24,9 @@ export default function WelcomePage() {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
           <span style={{ fontSize: "0.8125rem", color: "#898989" }}>
-            {licenseInfo?.status === "trial"
-              ? `${licenseInfo.trialEndsAt ?? ""} days trial`
-              : licenseInfo?.status === "active" ? "Pro" : "Free"}
+            {status === "trial"
+              ? `${trialEndsAt ?? ""} days trial`
+              : status === "active" ? "Pro" : "Free"}
           </span>
           <button
             onClick={() => navigate("/settings")}

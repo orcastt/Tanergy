@@ -60,8 +60,10 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       const wf = await tauri.createWorkflow()
       set((s) => ({ workflows: [wf, ...s.workflows] }))
       return wf.id
-    } catch (e) {
-      if (String(e).includes("FREE_PLAN_LIMIT")) {
+    } catch (e: unknown) {
+      console.error("createAndNavigate failed", e)
+      const msg = e instanceof Error ? e.message : String(e)
+      if (msg.includes("FREE_PLAN_LIMIT")) {
         set({ toast: "Free 计划最多 3 个工作流，升级 Pro 解锁无限" })
         setTimeout(() => set({ toast: null }), 4000)
       }

@@ -317,6 +317,35 @@ const NODE_CREDIT_COSTS: Record<string, number> = {
 
 ---
 
+## Supabase 架构决策与解耦备忘
+
+### 已采纳的设计原则
+
+1. **Repository Pattern 已就位**: `frontend/src/services/tauri.ts` 就是 Data Service 层。所有 IPC 调用都经过它封装。未来换 Supabase 直连时，只需修改此文件 + `credits.rs`，UI 层无需改动。
+
+2. **只用 anon_key + RLS**: 前端只持有 anon_key，所有写操作和扣费逻辑都在 Edge Function（SECURITY_DEFINER）中执行。用户数据隔离靠 RLS 策略。
+
+3. **Edge Function 做代理，而非直连**: AI 调用走 Rust → Supabase Edge Function → Provider，前端不直接调 Supabase 数据库。这样 Rust 侧控制扣费逻辑，前端无法绕过。
+
+### 不采纳的建议
+
+- **pgvector**: MVP 不需要向量搜索。TANGENT 是工作流画布应用，不是 RAG/搜索应用。后续如果做"模板推荐"功能再考虑。
+- **自建 Node.js/Go 后端**: Tauri IPC 就是后端。桌面 app 不需要额外的 Web API 层。Supabase 只做积分代理和用户认证。
+- **Cloudflare Workers**: Edge Function 已经覆盖了代理需求，多一层反而增加维护成本和延迟。
+
+### 未来迁移路径（如果需要离开 Supabase）
+
+| 组件 | 当前方案 | 迁移目标 | 改动范围 |
+|------|---------|---------|---------|
+| Auth | Supabase Email OTP | Clerk / Auth0 | `credits.rs` + `creditsStore.ts` |
+| 扣费 | Edge Function + RPC | 自建 API (FastAPI/Go) | `credits.rs` 中 3 个函数 |
+| 支付 | Stripe Checkout | 不变 | 无需改 |
+| 数据库 | Supabase Postgres | AWS RDS / 自建 | pg_dump 导出导入，RLS 逻辑移到后端 |
+
+**结论: MVP 阶段坚持用 Supabase 上线速度优先。迁移成本可控，只需改 `credits.rs` + `tauri.ts` 两个文件。**
+
+---
+
 ## 完成后更新
 
 - [ ] 本文件状态 → ✅

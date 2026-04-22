@@ -109,10 +109,10 @@ export default function Canvas() {
 
   // Double-click detection via onPaneClick
   const handlePaneClick = useCallback((event: React.MouseEvent) => {
+    if (pickerOpen) { setPickerOpen(false); return }
     const now = Date.now()
     const last = lastClickRef.current
     if (last && now - last.time < 350 && Math.abs(event.clientX - last.x) < 10 && Math.abs(event.clientY - last.y) < 10) {
-      // Double click detected
       const flowPos = screenToFlowPosition({ x: event.clientX, y: event.clientY })
       setPickerPos({ x: flowPos.x, y: flowPos.y })
       setPickerOpen(true)
@@ -120,7 +120,7 @@ export default function Canvas() {
     } else {
       lastClickRef.current = { time: now, x: event.clientX, y: event.clientY }
     }
-  }, [screenToFlowPosition])
+  }, [screenToFlowPosition, pickerOpen])
 
   const handleNodeContextMenu = useCallback((event: React.MouseEvent, node: any) => {
     event.preventDefault()

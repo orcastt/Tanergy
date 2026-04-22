@@ -74,7 +74,7 @@ pub fn create_workflow(name: Option<String>) -> Result<WorkflowDetail, String> {
         let count: i64 = conn
             .query_row("SELECT COUNT(*) FROM workflows", [], |r| r.get(0))
             .unwrap_or(0);
-        if count >= 3 {
+        if count >= 10 {
             return Err("FREE_PLAN_LIMIT".into());
         }
     }
@@ -164,7 +164,7 @@ pub fn import_workflow(name: String, graph_json: String) -> Result<WorkflowDetai
         let count: i64 = conn
             .query_row("SELECT COUNT(*) FROM workflows", [], |r| r.get(0))
             .unwrap_or(0);
-        if count >= 3 {
+        if count >= 10 {
             return Err("FREE_PLAN_LIMIT".into());
         }
     }
