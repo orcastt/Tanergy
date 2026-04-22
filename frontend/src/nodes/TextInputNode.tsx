@@ -11,9 +11,9 @@ interface TextInputData {
   height?: number
 }
 
-const MIN_WIDTH = 256
-const MIN_HEIGHT = 120
-const MAX_HEIGHT = 300
+const MIN_W = 256
+const MIN_H = 120
+const MAX_H = 600
 
 export default function TextInputNode({ data, id, selected }: NodeProps) {
   const d = data as unknown as TextInputData
@@ -27,36 +27,42 @@ export default function TextInputNode({ data, id, selected }: NodeProps) {
   const [size, setSize] = useState({ w: d.width ?? 256, h: d.height ?? 160 })
   const sizeRef = useRef(size)
   sizeRef.current = size
-  const resizing = useRef<{ corner: string; startX: number; startY: number; startW: number; startH: number } | null>(null)
 
-  const handleMouseDown = useCallback((corner: string, e: React.MouseEvent) => {
+  const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null)
+
+  const handleResizeStart = useCallback((e: React.PointerEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    resizing.current = { corner, startX: e.clientX, startY: e.clientY, startW: sizeRef.current.w, startH: sizeRef.current.h }
+    // Stop ReactFlow from initiating node drag
+    ;(e.nativeEvent as PointerEvent).stopImmediatePropagation()
+    resizeRef.current = { startX: e.clientX, startY: e.clientY, startW: sizeRef.current.w, startH: sizeRef.current.h }
 
-    const onMove = (ev: MouseEvent) => {
-      if (!resizing.current) return
-      const dx = ev.clientX - resizing.current.startX
-      const dy = ev.clientY - resizing.current.startY
-      const newW = Math.max(MIN_WIDTH, resizing.current.startW + dx)
-      const newH = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, resizing.current.startH + dy))
+    const onMove = (ev: PointerEvent) => {
+      if (!resizeRef.current) return
+      const dx = ev.clientX - resizeRef.current.startX
+      const dy = ev.clientY - resizeRef.current.startY
+      const newW = Math.max(MIN_W, resizeRef.current.startW + dx)
+      const newH = Math.min(MAX_H, Math.max(MIN_H, resizeRef.current.startH + dy))
       setSize({ w: newW, h: newH })
     }
 
     const onUp = () => {
       updateNodeData(id, { width: sizeRef.current.w, height: sizeRef.current.h })
-      resizing.current = null
-      window.removeEventListener("mousemove", onMove)
-      window.removeEventListener("mouseup", onUp)
+      resizeRef.current = null
+      window.removeEventListener("pointermove", onMove)
+      window.removeEventListener("pointerup", onUp)
     }
 
-    window.addEventListener("mousemove", onMove)
-    window.addEventListener("mouseup", onUp)
+    window.addEventListener("pointermove", onMove)
+    window.addEventListener("pointerup", onUp)
   }, [id, updateNodeData])
 
   const lineH = 20
-  const maxLines = Math.floor((size.h - 60) / lineH)
-  const maxTextH = maxLines * lineH
+  const headerH = 40
+  const portBarH = 28
+  const padding = 16
+  const textH = size.h - headerH - portBarH - padding * 2 - 8
+  const clampedTextH = Math.max(lineH * 2, textH)
 
   return (
     <div style={{ position: "relative" }}>
@@ -77,8 +83,7 @@ export default function TextInputNode({ data, id, selected }: NodeProps) {
           placeholder="输入主题、关键词或文章要求..."
           style={{
             width: "100%",
-            height: `${maxTextH}px`,
-            maxHeight: `${maxTextH}px`,
+            height: `${clampedTextH}px`,
             border: "1px solid var(--border-color)",
             borderRadius: "0.375rem",
             padding: "0.5rem",
@@ -106,19 +111,21 @@ export default function TextInputNode({ data, id, selected }: NodeProps) {
         )}
       </NodeBase>
 
-      {/* Resize handles — 4 corners */}
-      <div onMouseDown={(e) => handleMouseDown("se", e)} style={{
-        position: "absolute", right: -4, bottom: -4, width: 10, height: 10, cursor: "se-resize", zIndex: 20,
-      }} />
-      <div onMouseDown={(e) => handleMouseDown("sw", e)} style={{
-        position: "absolute", left: -4, bottom: -4, width: 10, height: 10, cursor: "sw-resize", zIndex: 20,
-      }} />
-      <div onMouseDown={(e) => handleMouseDown("ne", e)} style={{
-        position: "absolute", right: -4, top: -4, width: 10, height: 10, cursor: "ne-resize", zIndex: 20,
-      }} />
-      <div onMouseDown={(e) => handleMouseDown("nw", e)} style={{
-        position: "absolute", left: -4, top: -4, width: 10, height: 10, cursor: "nw-resize", zIndex: 20,
-      }} />
+      {/* Resize handle — bottom-right corner */}
+      <div
+        onPointerDown={handleResizeStart}
+        style={{
+          position: "absolute", right: 0, bottom: 0,
+          width: "14px", height: "14px", cursor: "se-resize", zIndex: 20,
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}
+      >
+        <svg width="8" height="8" viewBox="0 0 8 8" fill="none" style={{ opacity: 0.4 }}>
+          <circle cx="6" cy="2" r="1" fill="currentColor" />
+          <circle cx="2" cy="6" r="1" fill="currentColor" />
+          <circle cx="6" cy="6" r="1" fill="currentColor" />
+        </svg>
+      </div>
     </div>
   )
 }
