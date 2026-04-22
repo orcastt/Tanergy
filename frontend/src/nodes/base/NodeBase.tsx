@@ -65,7 +65,7 @@ export default function NodeBase({ title, icon, inputs = [], outputs = [], statu
     }}>
       {/* Input handles */}
       {inputs.map((port, i) => (
-        <div key={port.id} title={`${port.label ?? port.id}: ${port.type}`} style={{ position: "absolute", left: 0, top: inputCount === 1 ? "50%" : `${30 + (i / (inputCount - 1)) * 40}%`, transform: "translate(-50%, -50%)", zIndex: 10 }}>
+        <div key={port.id} title={`${port.label ?? port.id}: ${port.type}`} style={{ position: "absolute", left: 0, top: inputCount === 1 ? "50%" : `${30 + (i / (inputCount - 1)) * 40}%`, transform: "translate(-50%, -50%)", zIndex: 10, width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <Handle
             type="target"
             position={Position.Left}
@@ -74,7 +74,6 @@ export default function NodeBase({ title, icon, inputs = [], outputs = [], statu
               width: "8px", height: "8px", borderRadius: "50%",
               background: PORT_COLORS[port.type],
               border: "none",
-              position: "relative",
               transition: "transform 150ms ease",
             }}
           />
@@ -83,7 +82,7 @@ export default function NodeBase({ title, icon, inputs = [], outputs = [], statu
 
       {/* Output handles */}
       {outputs.map((port, i) => (
-        <div key={port.id} title={`Output: ${port.type}`} style={{ position: "absolute", right: 0, top: outputCount === 1 ? "50%" : `${30 + (i / (outputCount - 1)) * 40}%`, transform: "translate(50%, -50%)", zIndex: 10 }}>
+        <div key={port.id} title={`${port.label ?? port.id}: ${port.type}`} style={{ position: "absolute", right: 0, top: outputCount === 1 ? "50%" : `${30 + (i / (outputCount - 1)) * 40}%`, transform: "translate(50%, -50%)", zIndex: 10, width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <Handle
             type="source"
             position={Position.Right}
@@ -92,7 +91,6 @@ export default function NodeBase({ title, icon, inputs = [], outputs = [], statu
               width: "8px", height: "8px", borderRadius: "50%",
               background: PORT_COLORS[port.type],
               border: "none",
-              position: "relative",
               transition: "transform 150ms ease",
             }}
           />
