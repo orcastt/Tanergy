@@ -187,7 +187,7 @@ const nodeTypesMap: Record<string, ComponentType<any>> = nodeTypes as any
         maxZoom={2}
         fitView
         proOptions={{ hideAttribution: true }}
-        style={{ background: "#f5f3f3" }}
+        style={{ background: "var(--bg-canvas)" }}
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#d4d4d4" />
       </ReactFlow>

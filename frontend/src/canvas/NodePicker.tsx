@@ -57,9 +57,9 @@ export default function NodePicker({ open, position, onSelect, onClose }: Props)
         transform: position ? "translate(-50%, -50%)" : "translate(-50%, -50%)",
         width: "480px",
         maxHeight: "600px",
-        background: "#ffffff",
+        background: "var(--bg-surface)",
         borderRadius: "0.75rem",
-        boxShadow: "0 0 0 1px rgba(0,0,0,0.05), 0 8px 32px rgba(0,0,0,0.12)",
+        boxShadow: "0 0 0 1px var(--border-subtle), var(--shadow-md)",
         zIndex: 100,
         overflow: "hidden",
         display: "flex",
@@ -67,8 +67,8 @@ export default function NodePicker({ open, position, onSelect, onClose }: Props)
       }}
     >
       {/* Search */}
-      <div style={{ padding: "1rem", borderBottom: "1px solid #efeded", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-        <span className="material-symbols-outlined" style={{ fontSize: "20px", color: "#747878" }}>search</span>
+      <div style={{ padding: "1rem", borderBottom: "1px solid var(--border-color)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        <span className="material-symbols-outlined" style={{ fontSize: "20px", color: "var(--text-secondary)" }}>search</span>
         <input
           autoFocus
           value={search}
@@ -76,14 +76,14 @@ export default function NodePicker({ open, position, onSelect, onClose }: Props)
           placeholder="Search nodes..."
           style={{
             flex: 1, border: "none", outline: "none", fontSize: "0.875rem",
-            color: "#0e0f0f", background: "transparent", fontFamily: '"Inter", sans-serif',
+            color: "var(--text-primary)", background: "transparent", fontFamily: '"Inter", sans-serif',
           }}
         />
-        <span style={{ fontSize: "0.75rem", color: "#747878", background: "#f5f3f3", padding: "0.125rem 0.5rem", borderRadius: "0.25rem" }}>ESC</span>
+        <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", background: "var(--bg-hover)", padding: "0.125rem 0.5rem", borderRadius: "0.25rem" }}>ESC</span>
       </div>
 
       {/* Categories */}
-      <div style={{ padding: "0.5rem 1rem", display: "flex", gap: "0.375rem", borderBottom: "1px solid #efeded" }}>
+      <div style={{ padding: "0.5rem 1rem", display: "flex", gap: "0.375rem", borderBottom: "1px solid var(--border-color)" }}>
         {CATEGORIES.map((c) => (
           <button
             key={c.key}
@@ -91,8 +91,8 @@ export default function NodePicker({ open, position, onSelect, onClose }: Props)
             style={{
               padding: "0.25rem 0.75rem", borderRadius: "9999px", border: "none",
               fontSize: "0.75rem", fontWeight: 600, cursor: "pointer",
-              background: category === c.key ? "#242424" : "#f5f3f3",
-              color: category === c.key ? "#ffffff" : "#5e5e5e",
+              background: category === c.key ? "#242424" : "var(--bg-hover)",
+              color: category === c.key ? "#ffffff" : "var(--text-secondary)",
               transition: "all 150ms ease",
             }}
           >
@@ -104,7 +104,7 @@ export default function NodePicker({ open, position, onSelect, onClose }: Props)
       {/* Grid */}
       <div style={{ padding: "0.75rem", overflowY: "auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
         {filtered.length === 0 && (
-          <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "2rem", color: "#747878", fontSize: "0.875rem" }}>
+          <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "2rem", color: "var(--text-secondary)", fontSize: "0.875rem" }}>
             No matching nodes found
           </div>
         )}
@@ -115,7 +115,7 @@ export default function NodePicker({ open, position, onSelect, onClose }: Props)
             style={{
               display: "flex", alignItems: "center", gap: "0.625rem",
               padding: "0.75rem", borderRadius: "0.5rem", border: "none",
-              background: "#ffffff", cursor: "pointer", textAlign: "left",
+              background: "var(--bg-surface)", cursor: "pointer", textAlign: "left",
               boxShadow: "0 0 0 1px rgba(0,0,0,0.05), 0 1px 2px 0 rgba(0,0,0,0.05)",
               transition: "box-shadow 150ms ease",
             }}
@@ -124,14 +124,14 @@ export default function NodePicker({ open, position, onSelect, onClose }: Props)
           >
             <div style={{
               width: "2rem", height: "2rem", borderRadius: "0.375rem",
-              background: "#f5f3f3", display: "flex", alignItems: "center", justifyContent: "center",
+              background: "var(--bg-hover)", display: "flex", alignItems: "center", justifyContent: "center",
               flexShrink: 0,
             }}>
-              <span className="material-symbols-outlined" style={{ fontSize: "18px", color: "#5e5e5e" }}>{def.icon}</span>
+              <span className="material-symbols-outlined" style={{ fontSize: "18px", color: "var(--text-secondary)" }}>{def.icon}</span>
             </div>
             <div>
-              <div style={{ fontSize: "0.8125rem", fontWeight: 600, color: "#0e0f0f" }}>{def.label}</div>
-              <div style={{ fontSize: "0.6875rem", color: "#747878", marginTop: "0.125rem" }}>{def.description}</div>
+              <div style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-primary)" }}>{def.label}</div>
+              <div style={{ fontSize: "0.6875rem", color: "var(--text-secondary)", marginTop: "0.125rem" }}>{def.description}</div>
             </div>
           </button>
         ))}

@@ -40,7 +40,7 @@ export default function ContextMenu({ x, y, items, onClose }: Props) {
         left: x,
         top: y,
         zIndex: 10000,
-        background: "#fff",
+        background: "var(--bg-surface)",
         borderRadius: "0.5rem",
         boxShadow: "0 4px 16px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)",
         padding: "0.25rem 0",
@@ -58,7 +58,7 @@ export default function ContextMenu({ x, y, items, onClose }: Props) {
           style={{
             padding: "0.375rem 0.75rem",
             fontSize: "0.8125rem",
-            color: item.disabled ? "#c0c0c0" : "#1b1c1c",
+            color: item.disabled ? "var(--text-placeholder)" : "var(--text-primary)",
             cursor: item.disabled ? "default" : "pointer",
             display: "flex",
             justifyContent: "space-between",
@@ -66,7 +66,7 @@ export default function ContextMenu({ x, y, items, onClose }: Props) {
             gap: "1.5rem",
           }}
           onMouseEnter={(e) => {
-            if (!item.disabled) (e.currentTarget as HTMLDivElement).style.background = "#f5f3f3"
+            if (!item.disabled) (e.currentTarget as HTMLDivElement).style.background = "var(--bg-hover)"
           }}
           onMouseLeave={(e) => {
             (e.currentTarget as HTMLDivElement).style.background = "transparent"
@@ -74,7 +74,7 @@ export default function ContextMenu({ x, y, items, onClose }: Props) {
         >
           <span>{item.label}</span>
           {item.shortcut && (
-            <span style={{ fontSize: "0.6875rem", color: "#9ca3af" }}>{item.shortcut}</span>
+            <span style={{ fontSize: "0.6875rem", color: "var(--text-secondary)" }}>{item.shortcut}</span>
           )}
         </div>
       ))}

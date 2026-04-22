@@ -18,14 +18,14 @@ export default function Toolbar({ onAddNode }: Props) {
   return (
     <div style={{
       position: "absolute", left: 0, top: 0, bottom: 0,
-      width: "48px", background: "#ffffff",
+      width: "48px", background: "var(--bg-surface)",
       boxShadow: "1px 0 0 0 rgba(0,0,0,0.05)",
       display: "flex", flexDirection: "column", alignItems: "center",
       padding: "0.75rem 0", gap: "0.25rem", zIndex: 20,
     }}>
       <ToolBtn icon="add" label="Add Node (N)" onClick={onAddNode} />
       <ToolBtn icon="auto_awesome" label="Skills" onClick={() => {}} />
-      <div style={{ width: "24px", height: "1px", background: "#e3e2e2", margin: "0.375rem 0" }} />
+      <div style={{ width: "24px", height: "1px", background: "var(--border-color)", margin: "0.375rem 0" }} />
       {hasRunningNodes ? (
         <ToolBtn icon="stop" label="Stop All" onClick={stopAll} />
       ) : (
@@ -47,10 +47,10 @@ function ToolBtn({ icon, label, onClick, disabled }: { icon: string; label: stri
         width: "36px", height: "36px", borderRadius: "0.375rem",
         display: "flex", alignItems: "center", justifyContent: "center",
         border: "none", background: "transparent", cursor: disabled ? "not-allowed" : "pointer",
-        opacity: disabled ? 0.4 : 1, color: "#5e5e5e",
+        opacity: disabled ? 0.4 : 1, color: "var(--text-secondary)",
         transition: "background-color 150ms ease",
       }}
-      onMouseEnter={(e) => { if (!disabled) e.currentTarget.style.background = "#f5f3f3" }}
+      onMouseEnter={(e) => { if (!disabled) e.currentTarget.style.background = "var(--bg-hover)" }}
       onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
     >
       <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>{icon}</span>

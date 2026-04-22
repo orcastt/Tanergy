@@ -13,13 +13,13 @@ export default function NodeTitle({ icon, title, status, footer }: Props) {
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: "0.5rem",
-      padding: "0.75rem", borderBottom: "1px solid #efeded",
+      padding: "0.75rem", borderBottom: "1px solid var(--border-color)",
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", flex: 1 }}>
         {icon}
         <span style={{
           fontFamily: '"Space Grotesk", sans-serif',
-          fontSize: "0.875rem", fontWeight: 600, color: "#0e0f0f",
+          fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)",
         }}>
           {title}
         </span>

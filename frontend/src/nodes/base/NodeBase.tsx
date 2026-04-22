@@ -53,7 +53,7 @@ export default function NodeBase({ title, icon, inputs = [], outputs = [], statu
   return (
     <div style={{
       width: "256px",
-      background: "#ffffff",
+      background: "var(--bg-surface)",
       borderRadius: "0.5rem",
       boxShadow: ringStyle,
       overflow: "visible",
@@ -122,7 +122,7 @@ export default function NodeBase({ title, icon, inputs = [], outputs = [], statu
       {(inputs.length > 0 || outputs.length > 0) && (
         <div style={{
           padding: "0.5rem",
-          borderTop: "1px solid #efeded",
+          borderTop: "1px solid var(--border-color)",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -130,7 +130,7 @@ export default function NodeBase({ title, icon, inputs = [], outputs = [], statu
           <div style={{ display: "flex", gap: "0.375rem", alignItems: "center" }}>
             {inputs.map((p) => (
               <div key={p.id} style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-                {p.label && <span style={{ fontSize: "10px", color: "#747878" }}>{p.label}</span>}
+                {p.label && <span style={{ fontSize: "10px", color: "var(--text-secondary)" }}>{p.label}</span>}
                 <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: PORT_COLORS[p.type] }} />
               </div>
             ))}
@@ -138,7 +138,7 @@ export default function NodeBase({ title, icon, inputs = [], outputs = [], statu
           <div style={{ display: "flex", gap: "0.375rem", alignItems: "center" }}>
             {outputs.map((p) => (
               <div key={p.id} style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-                {p.label && <span style={{ fontSize: "10px", color: "#747878" }}>{p.label}</span>}
+                {p.label && <span style={{ fontSize: "10px", color: "var(--text-secondary)" }}>{p.label}</span>}
                 <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: PORT_COLORS[p.type] }} />
               </div>
             ))}

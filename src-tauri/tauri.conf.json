@@ -34,6 +34,15 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "category": "Productivity",
+    "shortDescription": "AI Creative Workflow Canvas",
+    "longDescription": "Drag-and-drop nodes to build AI-powered content creation pipelines for WeChat, social media, and more.",
+    "macOS": {
+      "minimumSystemVersion": "13.0"
+    },
+    "windows": {
+      "digestAlgorithm": "sha256"
+    }
   }
 }
