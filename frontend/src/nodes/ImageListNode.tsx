@@ -95,7 +95,7 @@ export default function ImageListNode({ data, id, selected }: NodeProps) {
   // Dynamic output ports based on generated images or count
   const outputs: PortDef[] = useMemo(() => {
     if (images.length > 0) {
-      return images.map((img, i) => ({ id: `image${i + 1}`, type: "image_slot" as const, label: `图${i + 1}` }))
+      return images.map((_img, i) => ({ id: `image${i + 1}`, type: "image_slot" as const, label: `图${i + 1}` }))
     }
     const num = Math.min(count, 10)
     return Array.from({ length: num }, (_, i) => ({ id: `image${i + 1}`, type: "image_slot" as const, label: `图${i + 1}` }))

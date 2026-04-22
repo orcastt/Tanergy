@@ -8,6 +8,7 @@ interface Props {
 
 export default function NodeRunButton({ nodeId, status }: Props) {
   const setNodeStatus = useCanvasStore((s) => s.setNodeStatus)
+  const setNodeResult = useCanvasStore((s) => s.setNodeResult)
 
   if (status === "running") {
     return (
@@ -32,7 +33,30 @@ export default function NodeRunButton({ nodeId, status }: Props) {
     )
   }
 
-  if (status === "waiting" || status === "done") {
+  if (status === "done" || status === "error") {
+    return (
+      <div style={{ display: "flex", gap: "0.25rem" }}>
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            setNodeStatus(nodeId, "idle")
+            setNodeResult(nodeId, null)
+          }}
+          title="Clear result"
+          style={{
+            width: "24px", height: "24px", borderRadius: "0.375rem",
+            border: "none", background: "var(--bg-hover)",
+            color: "var(--text-secondary)", cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>refresh</span>
+        </button>
+      </div>
+    )
+  }
+
+  if (status === "waiting") {
     return null
   }
 

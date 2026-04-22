@@ -37,7 +37,7 @@ interface Props {
 
 export default function NodeBase({ title, icon, inputs = [], outputs = [], status, selected, nodeId, category, creditCost, width, children }: Props) {
   const ringStyle = selected
-    ? "0 0 0 2px #242424, 0 4px 6px -1px rgba(0,0,0,0.1)"
+    ? "0 0 0 2px #3B82F6, 0 4px 12px rgba(59,130,246,0.25)"
     : status === "running"
     ? "0 0 0 2px #3B82F6, 0 4px 12px rgba(59,130,246,0.2)"
     : status === "waiting"
@@ -65,7 +65,7 @@ export default function NodeBase({ title, icon, inputs = [], outputs = [], statu
     }}>
       {/* Input handles */}
       {inputs.map((port, i) => (
-        <div key={port.id} title={`Input: ${port.type}`} style={{ position: "absolute", left: 0, top: inputCount === 1 ? "50%" : `${30 + (i / (inputCount - 1)) * 40}%`, transform: "translate(-50%, -50%)", zIndex: 10 }}>
+        <div key={port.id} title={`${port.label ?? port.id}: ${port.type}`} style={{ position: "absolute", left: 0, top: inputCount === 1 ? "50%" : `${30 + (i / (inputCount - 1)) * 40}%`, transform: "translate(-50%, -50%)", zIndex: 10 }}>
           <Handle
             type="target"
             position={Position.Left}

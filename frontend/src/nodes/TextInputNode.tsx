@@ -25,12 +25,14 @@ export default function TextInputNode({ data, id, selected }: NodeProps) {
   const result = nodeResults[id] as { text?: string } | undefined
 
   const [size, setSize] = useState({ w: d.width ?? 256, h: d.height ?? 160 })
+  const sizeRef = useRef(size)
+  sizeRef.current = size
   const resizing = useRef<{ corner: string; startX: number; startY: number; startW: number; startH: number } | null>(null)
 
   const handleMouseDown = useCallback((corner: string, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    resizing.current = { corner, startX: e.clientX, startY: e.clientY, startW: size.w, startH: size.h }
+    resizing.current = { corner, startX: e.clientX, startY: e.clientY, startW: sizeRef.current.w, startH: sizeRef.current.h }
 
     const onMove = (ev: MouseEvent) => {
       if (!resizing.current) return
@@ -42,7 +44,7 @@ export default function TextInputNode({ data, id, selected }: NodeProps) {
     }
 
     const onUp = () => {
-      updateNodeData(id, { width: size.w, height: size.h })
+      updateNodeData(id, { width: sizeRef.current.w, height: sizeRef.current.h })
       resizing.current = null
       window.removeEventListener("mousemove", onMove)
       window.removeEventListener("mouseup", onUp)
@@ -50,7 +52,7 @@ export default function TextInputNode({ data, id, selected }: NodeProps) {
 
     window.addEventListener("mousemove", onMove)
     window.addEventListener("mouseup", onUp)
-  }, [size, id, updateNodeData])
+  }, [id, updateNodeData])
 
   const lineH = 20
   const maxLines = Math.floor((size.h - 60) / lineH)

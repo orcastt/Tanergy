@@ -3,14 +3,8 @@ import { useCanvasStore } from "../store/canvasStore"
 import { NODE_MAP } from "../nodes/nodeDefs"
 import type { NodeType } from "../types/node"
 
-const PORT_DEFAULTS: Record<string, string> = {
-  in: "out",
-  text: "text",
-  research: "out",
-}
-
 export function buildActions(actions: AgentAction[]) {
-  const { addNode, addEdge, nodes } = useCanvasStore.getState()
+  const { addNode, addEdge } = useCanvasStore.getState()
   const idMap = new Map<string, string>()
 
   let offsetX = 200

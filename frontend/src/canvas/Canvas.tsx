@@ -4,6 +4,7 @@ import {
   Background,
   BackgroundVariant,
   useReactFlow,
+  SelectionMode,
   type OnConnect,
   type Connection,
   type NodeChange,
@@ -52,6 +53,7 @@ export default function Canvas() {
     nodes, edges, addNode, addEdge, onNodesChange, onEdgesChange, removeNode,
     copySelected, pasteNodes, deleteSelected, duplicateNode, clipboard,
     groupSelected, ungroupSelected,
+    undo, canUndo, getGraphJson, setGraphFromJson,
   } = useCanvasStore()
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pickerPos, setPickerPos] = useState<{ x: number; y: number } | null>(null)
@@ -146,6 +148,24 @@ export default function Canvas() {
     }
   }, [duplicateNode])
 
+  // Alt/Option + drag to duplicate
+  const dragStartRef = useRef<{ nodeId: string; origPos: { x: number; y: number } } | null>(null)
+
+  const handleNodeDragStart = useCallback((event: React.MouseEvent, node: any) => {
+    if (event.altKey) {
+      dragStartRef.current = { nodeId: node.id, origPos: { ...node.position } }
+    }
+  }, [])
+
+  const handleNodeDragStop = useCallback((_event: React.MouseEvent, node: any) => {
+    if (dragStartRef.current && dragStartRef.current.nodeId === node.id) {
+      const orig = dragStartRef.current.origPos
+      onNodesChange([{ id: node.id, type: "position", position: orig }])
+      duplicateNode(node.id)
+      dragStartRef.current = null
+    }
+  }, [onNodesChange, duplicateNode])
+
   const handleNodeSelect = useCallback((type: NodeType, position?: { x: number; y: number }) => {
     const def = NODE_MAP[type]
     if (!def) return
@@ -181,6 +201,16 @@ const nodeTypesMap: Record<string, ComponentType<any>> = nodeTypes as any
         { label: "删除", shortcut: "Del", action: () => { useCanvasStore.getState().setSelectedNodes([ctxMenu.nodeId!]); deleteSelected() } },
       ]
     : [
+        { label: "撤销", shortcut: "⌘Z", action: () => { if (canUndo()) undo() } },
+        { label: "导出 JSON", shortcut: "", action: () => {
+          const json = JSON.stringify(getGraphJson(), null, 2)
+          const blob = new Blob([json], { type: "application/json" })
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement("a")
+          a.href = url; a.download = "canvas.json"; a.click()
+          URL.revokeObjectURL(url)
+        }},
+        { label: "清除画布", shortcut: "", action: () => { setGraphFromJson({ nodes: [], edges: [] }) } },
         ...(clipboard ? [{ label: "粘贴", shortcut: "⌘V", action: pasteNodes }] : []),
       ]
 
@@ -197,7 +227,11 @@ const nodeTypesMap: Record<string, ComponentType<any>> = nodeTypes as any
         onNodeContextMenu={handleNodeContextMenu}
         onPaneContextMenu={handlePaneContextMenu}
         onNodeClick={handleNodeClick}
+        onNodeDragStart={handleNodeDragStart}
+        onNodeDragStop={handleNodeDragStop}
         isValidConnection={isValidConnection}
+        selectionMode={SelectionMode.Partial}
+        selectionOnDrag={true}
         snapToGrid={true}
         snapGrid={SNAP_GRID}
         minZoom={0.2}

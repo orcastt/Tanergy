@@ -2,7 +2,6 @@ import { useState, useEffect } from "react"
 import DrawingCanvas from "./DrawingCanvas"
 import AiEditPopup from "./AiEditPopup"
 import { useDrawingStore } from "./drawingStore"
-import ImageThumb from "./ImageThumb"
 
 interface Props {
   image: { file_path: string; description: string } | null

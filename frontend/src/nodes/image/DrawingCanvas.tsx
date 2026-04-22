@@ -9,7 +9,7 @@ interface Props {
 
 export default function DrawingCanvas({ backgroundImage, width, height }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const { strokes, currentStroke, color, width: strokeWidth, startStroke, addPoint, endStroke } = useDrawingStore()
+  const { strokes, currentStroke, startStroke, addPoint, endStroke } = useDrawingStore()
 
   const draw = useCallback((ctx: CanvasRenderingContext2D) => {
     ctx.clearRect(0, 0, width, height)
