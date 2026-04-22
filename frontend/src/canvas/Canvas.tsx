@@ -232,6 +232,7 @@ const nodeTypesMap: Record<string, ComponentType<any>> = nodeTypes as any
         isValidConnection={isValidConnection}
         selectionMode={SelectionMode.Partial}
         selectionOnDrag={true}
+        panOnDrag={[1, 2]}
         snapToGrid={true}
         snapGrid={SNAP_GRID}
         minZoom={0.2}
