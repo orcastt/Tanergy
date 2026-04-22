@@ -45,7 +45,12 @@ function getInputPortType(nodeId: string, handleId: string | null | undefined, n
   const def = NODE_MAP[node.data.nodeType as NodeType]
   if (!def) return null
   if (!handleId) return def.inputs[0]?.type ?? null
-  return def.inputs.find((i) => i.id === handleId)?.type ?? null
+  // Static port lookup
+  const staticPort = def.inputs.find((i) => i.id === handleId)
+  if (staticPort) return staticPort.type
+  // Dynamic port: image_list img_in_* ports are image_slot
+  if (node.data.nodeType === "image_list" && handleId.startsWith("img_in_")) return "image_slot"
+  return null
 }
 
 export default function Canvas() {

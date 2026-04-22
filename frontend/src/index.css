@@ -183,3 +183,4 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .react-flow__handle:hover { transform: scale(1.4); }
 .react-flow__edge-path { stroke: #c4c7c7; stroke-width: 2; }
 .react-flow__connection-line { stroke: #747878; stroke-width: 2; stroke-dasharray: 5; }
+.react-flow__selection { border-radius: 6px; padding: 4px; border: 1.5px solid rgba(59,130,246,0.5); background: rgba(59,130,246,0.08); }

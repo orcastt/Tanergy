@@ -88,7 +88,7 @@ export const NODE_DEFS: NodeDef[] = [
     description: "AI 生成配图列表",
     icon: "photo_library",
     category: "image",
-    defaultData: { count: 1, model: "minimax" },
+    defaultData: { count: 1, model: "minimax", imageInputs: ["img_in_1"] },
     inputs: [{ id: "in", type: "image_plans", label: "配图方案" }, { id: "text", type: "text", label: "Text" }],
     outputs: [],
   },
