@@ -24,6 +24,21 @@ pub async fn execute_node(
     payload: ExecutePayload,
     app_handle: tauri::AppHandle,
 ) -> Result<ExecuteResult, String> {
+    // Mock mode: return canned responses
+    let mock_mode = crate::db::get_connection()
+        .lock()
+        .unwrap()
+        .query_row(
+            "SELECT value FROM app_config WHERE key = 'mock_mode'",
+            [],
+            |row| row.get::<_, String>(0),
+        )
+        .unwrap_or_else(|_| "false".to_string());
+
+    if mock_mode == "true" {
+        return exec_mock(&payload).await;
+    }
+
     match payload.node_type.as_str() {
         "text_input" => exec_text_input(&payload),
         "research" => exec_research(&payload).await,
@@ -265,6 +280,29 @@ async fn exec_reviewer(payload: &ExecutePayload) -> Result<ExecuteResult, String
 
     Ok(ExecuteResult {
         output: serde_json::json!({ "text": pass3.text }),
+        status: "done".into(),
+    })
+}
+
+async fn exec_mock(payload: &ExecutePayload) -> Result<ExecuteResult, String> {
+    use crate::test::mock_data;
+    // Simulate network delay
+    std::thread::sleep(std::time::Duration::from_millis(300));
+
+    let output = match payload.node_type.as_str() {
+        "text_input" => mock_data::mock_text_input(&payload.node_data),
+        "research" => mock_data::mock_research(&payload.input_data),
+        "outline_generator" => mock_data::mock_outline(&payload.input_data),
+        "writer" => mock_data::mock_writer(&payload.input_data),
+        "reviewer" => mock_data::mock_reviewer(&payload.input_data),
+        "image_planner" => mock_data::mock_image_planner(&payload.input_data),
+        "image_gen" | "image_list" => mock_data::mock_image_list(&payload.input_data),
+        "html_formatter" => mock_data::mock_html_formatter(&payload.input_data),
+        _ => serde_json::json!({ "ok": true }),
+    };
+
+    Ok(ExecuteResult {
+        output,
         status: "done".into(),
     })
 }

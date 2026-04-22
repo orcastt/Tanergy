@@ -47,6 +47,25 @@ const SYSTEM_PROMPT: &str = r#"你是 TANGENT 工作流画布的 AI 助手。用
 pub async fn agent_chat(
     payload: AgentChatPayload,
 ) -> Result<AgentChatResult, String> {
+    // Mock mode check
+    let mock_mode = crate::db::get_connection()
+        .lock()
+        .unwrap()
+        .query_row(
+            "SELECT value FROM app_config WHERE key = 'mock_mode'",
+            [],
+            |row| row.get::<_, String>(0),
+        )
+        .unwrap_or_else(|_| "false".to_string());
+
+    if mock_mode == "true" {
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        let mock = crate::test::mock_data::mock_agent_chat(&serde_json::json!(payload.messages));
+        return Ok(AgentChatResult {
+            message: serde_json::to_string(&mock).unwrap_or_default(),
+        });
+    }
+
     let mut messages = vec![
         ChatMessage {
             role: "system".into(),

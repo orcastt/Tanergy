@@ -4,6 +4,7 @@ mod commands;
 mod crypto;
 mod db;
 mod services;
+mod test;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
