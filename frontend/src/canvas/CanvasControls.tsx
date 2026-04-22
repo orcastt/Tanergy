@@ -1,4 +1,5 @@
 import { useReactFlow } from "@xyflow/react"
+import { Z } from "./OverlayLayer"
 
 export default function CanvasControls() {
   const { zoomIn, zoomOut, fitView, getZoom } = useReactFlow()
@@ -7,11 +8,11 @@ export default function CanvasControls() {
 
   return (
     <div style={{
-      position: "absolute", bottom: "1rem", left: "4rem",
+      position: "fixed", bottom: "1rem", left: "4rem",
       background: "var(--bg-surface)", borderRadius: "0.5rem",
       boxShadow: "0 0 0 1px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.08)",
       display: "flex", alignItems: "center", gap: "0.125rem",
-      padding: "0.25rem", zIndex: 20,
+      padding: "0.25rem", zIndex: Z.CONTROLS, pointerEvents: "auto",
     }}>
       <CtrlBtn icon="remove" onClick={() => zoomOut()} />
       <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 600, minWidth: "2.5rem", textAlign: "center" }}>

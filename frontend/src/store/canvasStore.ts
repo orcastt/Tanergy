@@ -115,6 +115,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         const id = c.id
         if (c.selected) { if (!selectedIds.includes(id)) selectedIds = [...selectedIds, id] }
         else { selectedIds = selectedIds.filter((x) => x !== id) }
+        nodes = nodes.map((n) => n.id === id ? { ...n, selected: c.selected } : n)
       }
     }
     return { nodes, selectedNodeIds: selectedIds }

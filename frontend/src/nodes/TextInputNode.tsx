@@ -3,6 +3,7 @@ import type { NodeProps } from "@xyflow/react"
 import NodeBase from "./base/NodeBase"
 import { NODE_MAP } from "./nodeDefs"
 import { useCanvasStore } from "../store/canvasStore"
+import { nodeResize } from "../lib/nodeEvents"
 
 interface TextInputData {
   nodeType: string
@@ -31,10 +32,7 @@ export default function TextInputNode({ data, id, selected }: NodeProps) {
   const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null)
 
   const handleResizeStart = useCallback((e: React.PointerEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    // Stop ReactFlow from initiating node drag
-    ;(e.nativeEvent as PointerEvent).stopImmediatePropagation()
+    nodeResize(e)
     resizeRef.current = { startX: e.clientX, startY: e.clientY, startW: sizeRef.current.w, startH: sizeRef.current.h }
 
     const onMove = (ev: PointerEvent) => {

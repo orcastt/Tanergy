@@ -1,14 +1,14 @@
-import { createPortal } from "react-dom"
 import { useAgentStore } from "./agentStore"
 import AgentChat from "./AgentChat"
+import { Z } from "../canvas/OverlayLayer"
 
 export default function AgentPanel() {
   const open = useAgentStore((s) => s.open)
   const setOpen = useAgentStore((s) => s.setOpen)
 
-  return createPortal(
+  return (
     <>
-      {/* Toggle button — always visible at top-right */}
+      {/* Toggle button */}
       <button
         onClick={() => setOpen(!open)}
         title={open ? "Close Agent" : "Open Agent"}
@@ -27,8 +27,9 @@ export default function AgentPanel() {
           justifyContent: "center",
           cursor: "pointer",
           boxShadow: "0 0 0 1px var(--border-subtle), var(--shadow-sm)",
-          zIndex: 200,
+          zIndex: Z.AGENT_TOGGLE,
           transition: "right 200ms ease, color 150ms ease",
+          pointerEvents: "auto",
         }}
       >
         <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>
@@ -36,7 +37,7 @@ export default function AgentPanel() {
         </span>
       </button>
 
-      {/* Slide panel — right side, below header */}
+      {/* Slide panel */}
       <div style={{
         position: "fixed",
         right: 0,
@@ -45,12 +46,13 @@ export default function AgentPanel() {
         width: "340px",
         background: "var(--bg-surface)",
         borderLeft: "1px solid var(--border-color)",
-        zIndex: 150,
+        zIndex: Z.AGENT_PANEL,
         display: "flex",
         flexDirection: "column",
         transform: open ? "translateX(0)" : "translateX(100%)",
         transition: "transform 200ms ease",
         boxShadow: open ? "-4px 0 12px rgba(0,0,0,0.08)" : "none",
+        pointerEvents: "auto",
       }}>
         {/* Header */}
         <div style={{
@@ -68,7 +70,6 @@ export default function AgentPanel() {
         {/* Chat */}
         <AgentChat />
       </div>
-    </>,
-    document.body,
+    </>
   )
 }

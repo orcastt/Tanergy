@@ -65,17 +65,15 @@ export default function NodeBase({ title, icon, inputs = [], outputs = [], statu
     }}>
       {/* Input handles */}
       {inputs.map((port, i) => (
-        <div key={port.id} style={{ position: "absolute", left: 0, top: inputCount === 1 ? "50%" : `${30 + (i / (inputCount - 1)) * 40}%`, transform: "translate(-50%, -50%)", zIndex: 10, width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div key={port.id} data-tooltip={`${port.label ?? port.id}: ${port.type}`} data-tooltip-dir="left" className="port-handle" style={{ position: "absolute", left: 0, top: inputCount === 1 ? "50%" : `${30 + (i / (inputCount - 1)) * 40}%`, transform: "translate(-50%, -50%)", zIndex: 10, width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <Handle
             type="target"
             position={Position.Left}
             id={port.id}
-            title={`${port.label ?? port.id}: ${port.type}`}
             style={{
               width: "8px", height: "8px", borderRadius: "50%",
               background: PORT_COLORS[port.type],
               border: "none",
-              transition: "transform 150ms ease",
             }}
           />
         </div>
@@ -83,17 +81,15 @@ export default function NodeBase({ title, icon, inputs = [], outputs = [], statu
 
       {/* Output handles */}
       {outputs.map((port, i) => (
-        <div key={port.id} style={{ position: "absolute", right: 0, top: outputCount === 1 ? "50%" : `${30 + (i / (outputCount - 1)) * 40}%`, transform: "translate(50%, -50%)", zIndex: 10, width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div key={port.id} data-tooltip={`${port.label ?? port.id}: ${port.type}`} data-tooltip-dir="right" className="port-handle" style={{ position: "absolute", right: 0, top: outputCount === 1 ? "50%" : `${30 + (i / (outputCount - 1)) * 40}%`, transform: "translate(50%, -50%)", zIndex: 10, width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <Handle
             type="source"
             position={Position.Right}
             id={port.id}
-            title={`${port.label ?? port.id}: ${port.type}`}
             style={{
               width: "8px", height: "8px", borderRadius: "50%",
               background: PORT_COLORS[port.type],
               border: "none",
-              transition: "transform 150ms ease",
             }}
           />
         </div>

@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef, useEffect, type ComponentType } from "react"
+import { useCallback, useRef, useEffect, type ComponentType } from "react"
 import {
   ReactFlow,
   Background,
@@ -14,13 +14,17 @@ import {
 import "@xyflow/react/dist/style.css"
 
 import { useCanvasStore } from "../store/canvasStore"
+import { useOverlayStore } from "../store/overlayStore"
 import { nodeTypes } from "../nodes/index"
 import { NODE_MAP } from "../nodes/nodeDefs"
-import NodePicker from "./NodePicker"
-import ContextMenu from "./ContextMenu"
+import OverlayLayer from "./OverlayLayer"
 import Toolbar from "./Toolbar"
 import CanvasControls from "./CanvasControls"
 import AgentPanel from "../agent/AgentPanel"
+import NodePicker from "./NodePicker"
+import ContextMenu from "./ContextMenu"
+import LightboxOverlay from "./LightboxOverlay"
+import ImageEditorModal from "../nodes/image/ImageEditorModal"
 import type { NodeType } from "../types/node"
 
 const SNAP_GRID = [20, 20] as [number, number]
@@ -31,10 +35,8 @@ function getOutputPortType(nodeId: string, handleId: string | null | undefined, 
   const def = NODE_MAP[node.data.nodeType as NodeType]
   if (!def) return null
   if (!handleId) return def.outputs[0]?.type ?? null
-  // Static port lookup
   const staticPort = def.outputs.find((o) => o.id === handleId)
   if (staticPort) return staticPort.type
-  // Dynamic port: image_list outputs image1..imageN as image_slot
   if (node.data.nodeType === "image_list" && handleId.startsWith("image")) return "image_slot"
   return null
 }
@@ -45,10 +47,8 @@ function getInputPortType(nodeId: string, handleId: string | null | undefined, n
   const def = NODE_MAP[node.data.nodeType as NodeType]
   if (!def) return null
   if (!handleId) return def.inputs[0]?.type ?? null
-  // Static port lookup
   const staticPort = def.inputs.find((i) => i.id === handleId)
   if (staticPort) return staticPort.type
-  // Dynamic port: image_list img_in_* ports are image_slot
   if (node.data.nodeType === "image_list" && handleId.startsWith("img_in_")) return "image_slot"
   return null
 }
@@ -60,11 +60,9 @@ export default function Canvas() {
     groupSelected, ungroupSelected,
     undo, canUndo, getGraphJson, setGraphFromJson,
   } = useCanvasStore()
-  const [pickerOpen, setPickerOpen] = useState(false)
-  const [pickerPos, setPickerPos] = useState<{ x: number; y: number } | null>(null)
-  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; nodeId?: string } | null>(null)
+
+  const { pickerOpen, pickerScreenPos, ctxMenu, editorNodeId, lightboxImage } = useOverlayStore()
   const lastClickRef = useRef<{ time: number; x: number; y: number } | null>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
   const { screenToFlowPosition } = useReactFlow()
 
   // Keyboard shortcuts
@@ -83,8 +81,8 @@ export default function Canvas() {
         e.preventDefault()
         deleteSelected()
       } else if (e.key === "Escape") {
-        setPickerOpen(false)
-        setCtxMenu(null)
+        useOverlayStore.getState().closePicker()
+        useOverlayStore.getState().closeCtxMenu()
       } else if (e.key === "g" && !e.metaKey && !e.ctrlKey) {
         const { selectedNodeIds } = useCanvasStore.getState()
         const isGroup = selectedNodeIds.length === 1 && nodes.find((n) => n.id === selectedNodeIds[0])?.type === "group"
@@ -120,30 +118,29 @@ export default function Canvas() {
     onEdgesChange(changes)
   }, [onEdgesChange])
 
-  // Double-click detection via onPaneClick
+  // Double-click detection — stores screen coords
   const handlePaneClick = useCallback((event: React.MouseEvent) => {
-    setCtxMenu(null)
-    if (pickerOpen) { setPickerOpen(false); return }
+    const overlay = useOverlayStore.getState()
+    overlay.closeCtxMenu()
+    if (overlay.pickerOpen) { overlay.closePicker(); return }
     const now = Date.now()
     const last = lastClickRef.current
     if (last && now - last.time < 350 && Math.abs(event.clientX - last.x) < 10 && Math.abs(event.clientY - last.y) < 10) {
-      const flowPos = screenToFlowPosition({ x: event.clientX, y: event.clientY })
-      setPickerPos({ x: flowPos.x, y: flowPos.y })
-      setPickerOpen(true)
+      overlay.openPicker({ x: event.clientX, y: event.clientY })
       lastClickRef.current = null
     } else {
       lastClickRef.current = { time: now, x: event.clientX, y: event.clientY }
     }
-  }, [screenToFlowPosition, pickerOpen])
+  }, [])
 
   const handleNodeContextMenu = useCallback((event: React.MouseEvent, node: any) => {
     event.preventDefault()
-    setCtxMenu({ x: event.clientX, y: event.clientY, nodeId: node.id })
+    useOverlayStore.getState().openCtxMenu(event.clientX, event.clientY, node.id)
   }, [])
 
   const handlePaneContextMenu = useCallback((event: MouseEvent | React.MouseEvent) => {
     event.preventDefault()
-    setCtxMenu({ x: event.clientX, y: event.clientY })
+    useOverlayStore.getState().openCtxMenu(event.clientX, event.clientY)
   }, [])
 
   const handleNodeClick = useCallback((event: React.MouseEvent, node: any) => {
@@ -171,29 +168,33 @@ export default function Canvas() {
     }
   }, [onNodesChange, duplicateNode])
 
-  const handleNodeSelect = useCallback((type: NodeType, position?: { x: number; y: number }) => {
+  // Convert screen coords to flow coords when placing node
+  const handleNodeSelect = useCallback((type: NodeType) => {
     const def = NODE_MAP[type]
     if (!def) return
     const id = crypto.randomUUID()
-    const pos = position
-      ? { x: Math.round(position.x / 20) * 20, y: Math.round(position.y / 20) * 20 }
-      : { x: 200 + Math.random() * 300, y: 200 + Math.random() * 200 }
+    const screenPos = useOverlayStore.getState().pickerScreenPos
+    let pos: { x: number; y: number }
+    if (screenPos) {
+      const flowPos = screenToFlowPosition({ x: screenPos.x, y: screenPos.y })
+      pos = { x: Math.round(flowPos.x / 20) * 20, y: Math.round(flowPos.y / 20) * 20 }
+    } else {
+      pos = { x: 200 + Math.random() * 300, y: 200 + Math.random() * 200 }
+    }
     addNode({ id, type, position: pos, data: { nodeType: type, ...def.defaultData } })
-  }, [addNode])
+  }, [addNode, screenToFlowPosition])
 
   const isValidConnection: IsValidConnection = useCallback((connection) => {
     if (connection.source === connection.target) return false
-    // Port type compatibility check
     const sourceType = getOutputPortType(connection.source, connection.sourceHandle, nodes)
     const targetType = getInputPortType(connection.target, connection.targetHandle, nodes)
     if (sourceType === null || targetType === null) return false
     if (sourceType !== targetType) return false
-    // Each input port accepts only one connection
     return !edges.some((e) => e.target === connection.target && e.targetHandle === connection.targetHandle)
   }, [nodes, edges])
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const nodeTypesMap: Record<string, ComponentType<any>> = nodeTypes as any
+  const nodeTypesMap: Record<string, ComponentType<any>> = nodeTypes as any
 
   const selectedCount = useCanvasStore.getState().selectedNodeIds.length
   const isGroupNode = ctxMenu?.nodeId ? nodes.find((n) => n.id === ctxMenu.nodeId)?.type === "group" : false
@@ -220,54 +221,60 @@ const nodeTypesMap: Record<string, ComponentType<any>> = nodeTypes as any
       ]
 
   return (
-    <div ref={containerRef} style={{ width: "100%", height: "100%", position: "relative" }}>
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={nodeTypesMap}
-        onConnect={handleConnect}
-        onNodesChange={handleNodesChange}
-        onEdgesChange={handleEdgesChange}
-        onPaneClick={handlePaneClick}
-        onNodeContextMenu={handleNodeContextMenu}
-        onPaneContextMenu={handlePaneContextMenu}
-        onNodeClick={handleNodeClick}
-        onNodeDragStart={handleNodeDragStart}
-        onNodeDragStop={handleNodeDragStop}
-        isValidConnection={isValidConnection}
-        selectionMode={SelectionMode.Partial}
-        selectionOnDrag={true}
-        panOnDrag={[1, 2]}
-        snapToGrid={true}
-        snapGrid={SNAP_GRID}
-        minZoom={0.2}
-        maxZoom={2}
-        fitView
-        proOptions={{ hideAttribution: true }}
-        style={{ background: "var(--bg-canvas)" }}
-      >
-        <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#d4d4d4" />
-      </ReactFlow>
+    <>
+      {/* Canvas layer — clean, only ReactFlow */}
+      <div style={{ width: "100%", height: "100%", position: "relative" }}>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypesMap}
+          onConnect={handleConnect}
+          onNodesChange={handleNodesChange}
+          onEdgesChange={handleEdgesChange}
+          onPaneClick={handlePaneClick}
+          onNodeContextMenu={handleNodeContextMenu}
+          onPaneContextMenu={handlePaneContextMenu}
+          onNodeClick={handleNodeClick}
+          onNodeDragStart={handleNodeDragStart}
+          onNodeDragStop={handleNodeDragStop}
+          isValidConnection={isValidConnection}
+          selectionMode={SelectionMode.Partial}
+          selectionOnDrag={true}
+          panOnDrag={[1, 2]}
+          snapToGrid={true}
+          snapGrid={SNAP_GRID}
+          minZoom={0.2}
+          maxZoom={2}
+          fitView
+          proOptions={{ hideAttribution: true }}
+          style={{ background: "var(--bg-canvas)" }}
+        >
+          <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#d4d4d4" />
+        </ReactFlow>
+      </div>
 
-      <Toolbar onAddNode={() => { setPickerPos(null); setPickerOpen(true) }} />
-      <CanvasControls />
-      <AgentPanel />
-
-      <NodePicker
-        open={pickerOpen}
-        position={pickerPos}
-        onSelect={handleNodeSelect}
-        onClose={() => setPickerOpen(false)}
-      />
-
-      {ctxMenu && ctxMenuItems.length > 0 && (
-        <ContextMenu
-          x={ctxMenu.x}
-          y={ctxMenu.y}
-          items={ctxMenuItems}
-          onClose={() => setCtxMenu(null)}
+      {/* Overlay layer — all floating UI, one portal */}
+      <OverlayLayer>
+        <Toolbar onAddNode={() => useOverlayStore.getState().openPicker()} />
+        <CanvasControls />
+        <AgentPanel />
+        <NodePicker
+          open={pickerOpen}
+          screenPos={pickerScreenPos}
+          onSelect={handleNodeSelect}
+          onClose={() => useOverlayStore.getState().closePicker()}
         />
-      )}
-    </div>
+        {ctxMenu && ctxMenuItems.length > 0 && (
+          <ContextMenu
+            x={ctxMenu.x}
+            y={ctxMenu.y}
+            items={ctxMenuItems}
+            onClose={() => useOverlayStore.getState().closeCtxMenu()}
+          />
+        )}
+        {editorNodeId && <ImageEditorModal nodeId={editorNodeId} onClose={() => useOverlayStore.getState().closeEditor()} />}
+        {lightboxImage && <LightboxOverlay />}
+      </OverlayLayer>
+    </>
   )
 }

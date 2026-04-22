@@ -1,7 +1,7 @@
-import { createPortal } from "react-dom"
 import { useCanvasStore } from "../store/canvasStore"
 import { useThemeStore } from "../store/themeStore"
 import { runAll, stopAll } from "../lib/executionEngine"
+import { Z } from "./OverlayLayer"
 
 interface Props {
   onAddNode: () => void
@@ -17,13 +17,14 @@ export default function Toolbar({ onAddNode }: Props) {
 
   const hasRunningNodes = Object.values(nodeStatuses).some((s) => s === "running")
 
-  return createPortal(
+  return (
     <div style={{
       position: "fixed", left: 0, top: 56, bottom: 0,
       width: "48px", background: "var(--bg-surface)",
       boxShadow: "1px 0 0 0 rgba(0,0,0,0.05)",
       display: "flex", flexDirection: "column", alignItems: "center",
-      padding: "0.75rem 0", gap: "0.25rem", zIndex: 100,
+      padding: "0.75rem 0", gap: "0.25rem", zIndex: Z.TOOLBAR,
+      pointerEvents: "auto",
     }}>
       <ToolBtn icon="add" label="Add Node (N)" onClick={onAddNode} />
       <ToolBtn icon="auto_awesome" label="Skills" onClick={() => {}} />
@@ -37,8 +38,7 @@ export default function Toolbar({ onAddNode }: Props) {
       <ToolBtn icon="redo" label="Redo (⌘⇧Z)" onClick={redo} disabled={!canRedo} />
       <div style={{ width: "24px", height: "1px", background: "var(--border-color)", margin: "0.375rem 0" }} />
       <ThemeToggle />
-    </div>,
-    document.body,
+    </div>
   )
 }
 

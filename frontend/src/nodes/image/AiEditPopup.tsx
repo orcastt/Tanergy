@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { nodeAction } from "../../lib/nodeEvents"
 
 interface Props {
   onSubmit: (instruction: string) => void
@@ -16,7 +17,7 @@ export default function AiEditPopup({ onSubmit, onClose }: Props) {
       <div style={{
         background: "var(--bg-surface)", borderRadius: "0.75rem", padding: "1.5rem",
         width: "360px", boxShadow: "var(--shadow-md)",
-      }} onClick={(e) => e.stopPropagation()}>
+      }} onClick={(e) => nodeAction(e)}>
         <div style={{ fontSize: "0.875rem", fontWeight: 600, marginBottom: "0.75rem", color: "var(--text-primary)" }}>
           AI Edit Image
         </div>

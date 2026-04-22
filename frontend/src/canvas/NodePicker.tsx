@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from "react"
 import { NODE_DEFS } from "../nodes/nodeDefs"
 import type { NodeType } from "../types/node"
+import { Z } from "./OverlayLayer"
 
 interface Props {
   open: boolean
-  position: { x: number; y: number } | null
-  onSelect: (type: NodeType, position?: { x: number; y: number }) => void
+  screenPos: { x: number; y: number } | null
+  onSelect: (type: NodeType) => void
   onClose: () => void
 }
 
@@ -28,7 +29,7 @@ const CATEGORIES: { key: Category; label: string }[] = [
   { key: "output", label: "Output" },
 ]
 
-export default function NodePicker({ open, position, onSelect, onClose }: Props) {
+export default function NodePicker({ open, screenPos, onSelect, onClose }: Props) {
   const [search, setSearch] = useState("")
   const [category, setCategory] = useState<Category>("all")
   const ref = useRef<HTMLDivElement>(null)
@@ -36,7 +37,7 @@ export default function NodePicker({ open, position, onSelect, onClose }: Props)
   useEffect(() => {
     if (!open) return
     const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose() }
-    const click = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose() }
+    const click = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as HTMLElement)) onClose() }
     document.addEventListener("keydown", h)
     document.addEventListener("mousedown", click)
     return () => { document.removeEventListener("keydown", h); document.removeEventListener("mousedown", click) }
@@ -59,19 +60,20 @@ export default function NodePicker({ open, position, onSelect, onClose }: Props)
     <div
       ref={ref}
       style={{
-        position: "absolute",
-        left: position ? position.x : "50%",
-        top: position ? position.y : "50%",
-        transform: position ? "translate(-50%, -50%)" : "translate(-50%, -50%)",
+        position: "fixed",
+        left: screenPos ? screenPos.x : "50%",
+        top: screenPos ? screenPos.y : "50%",
+        transform: "translate(-50%, -50%)",
         width: "480px",
         maxHeight: "600px",
         background: "var(--bg-surface)",
         borderRadius: "0.75rem",
         boxShadow: "0 0 0 1px var(--border-subtle), var(--shadow-md)",
-        zIndex: 100,
+        zIndex: Z.PICKER,
         overflow: "hidden",
         display: "flex",
         flexDirection: "column",
+        pointerEvents: "auto",
       }}
     >
       {/* Search */}
@@ -119,7 +121,7 @@ export default function NodePicker({ open, position, onSelect, onClose }: Props)
         {filtered.map((def) => (
           <button
             key={def.type}
-            onClick={() => { onSelect(def.type, position || undefined); onClose() }}
+            onClick={() => { onSelect(def.type); onClose() }}
             style={{
               display: "flex", alignItems: "center", gap: "0.625rem",
               padding: "0.75rem", borderRadius: "0.5rem",

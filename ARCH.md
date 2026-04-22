@@ -726,4 +726,102 @@ GitHub Actions workflow:
 
 ---
 
+## 11. Canvas UI 架构规范 — "画布归画布，UI 归 UI"
+
+### 11.1 核心原则
+
+React Flow v12 会劫持 DOM：所有节点渲染在 CSS transform 容器内，`position: fixed` 失效，指针/键盘事件被拦截。必须建立**二元化**架构，将画布渲染与浮层 UI 严格分离。
+
+**规则**：
+1. `<ReactFlow>` 内部只放节点渲染和 Background，不放任何浮层 UI
+2. 所有浮层（菜单、弹窗、工具栏、面板）统一通过 `OverlayLayer` 渲染到 `document.body`
+3. 画布与浮层之间通过 **Zustand store 通信**，不依赖 DOM 事件冒泡
+4. 节点组件内部尽量简单 — 复杂交互（编辑器、大表单）弹出到 OverlayLayer
+5. 禁止在各组件中散落 `createPortal`，统一由 `OverlayLayer` 管理
+
+### 11.2 组件树结构
+
+```
+CanvasPage
+  ├── Canvas
+  │     └── <ReactFlow>          ← 画布层：只有节点 + Background
+  │
+  └── OverlayLayer (createPortal → document.body)
+        ├── Toolbar              ← 左侧工具栏
+        ├── CanvasControls       ← 缩放控件
+        ├── AgentPanel           ← 右侧 AI 面板
+        ├── NodePicker           ← 添加节点弹窗
+        ├── ContextMenu          ← 右键菜单
+        ├── ImageEditorModal     ← 全屏图片编辑器
+        └── LightboxOverlay      ← 图片预览
+```
+
+### 11.3 关键文件
+
+| 文件 | 职责 |
+|------|------|
+| `canvas/OverlayLayer.tsx` | 唯一的 `createPortal` 入口，导出 `Z` z-index 常量 |
+| `store/overlayStore.ts` | 浮层状态管理（picker、ctxMenu、editor、lightbox） |
+| `lib/nodeEvents.ts` | 节点内事件辅助函数（`nodeAction`, `nodeResize`） |
+| `canvas/Canvas.tsx` | 画布主组件，只含 ReactFlow + OverlayLayer |
+
+### 11.4 Z-Index 规范
+
+```typescript
+export const Z = {
+  CONTROLS: 20,       // CanvasControls — 缩放控件
+  TOOLBAR: 100,       // Toolbar — 左侧工具栏
+  PICKER: 110,        // NodePicker — 节点选择
+  AGENT_PANEL: 150,   // AgentPanel — 侧拉面板
+  AGENT_TOGGLE: 200,  // AgentPanel toggle button
+  CTX_OVERLAY: 300,   // ContextMenu — 点击关闭背景
+  CTX_MENU: 310,      // ContextMenu — 菜单本体
+  FULLSCREEN: 400,    // ImageEditorModal, Lightbox
+} as const
+```
+
+**规则**：
+- 所有 z-index 必须使用 `Z` 常量，禁止硬编码数字
+- 新增浮层先在 `Z` 中注册层级
+
+### 11.5 OverlayLayer 工作机制
+
+```tsx
+// OverlayLayer — 外层 pointerEvents: none，不挡画布
+// 每个子浮层自己设 pointerEvents: "auto"
+<OverlayLayer>
+  <div style={{ pointerEvents: "auto" }}>  {/* Toolbar */}
+  <div style={{ pointerEvents: "auto" }}>  {/* ContextMenu */}
+</OverlayLayer>
+```
+
+- 外层容器 `pointerEvents: "none"` — 让鼠标事件穿透到画布
+- 每个浮层子组件设 `pointerEvents: "auto"` — 只拦截自己区域的点击
+- 浮层之间通过 `overlayStore` 的状态控制显隐，不依赖 DOM 事件
+
+### 11.6 节点内事件处理
+
+| 场景 | 使用函数 | 说明 |
+|------|---------|------|
+| 按钮点击（Run/Stop/设置） | `nodeAction(e)` | `stopPropagation` 防止触发节点选中 |
+| 拖拽 resize handle | `nodeResize(e)` | `preventDefault` + `stopPropagation` + `stopImmediatePropagation` 防止触发节点拖拽 |
+| 输入框/textarea 焦点 | 无需处理 | React Flow 已自动忽略 INPUT/TEXTAREA 中的快捷键 |
+
+**禁止在节点内直接写 `e.stopPropagation()`**，统一使用 `nodeEvents.ts` 的辅助函数。
+
+### 11.7 新增浮层 UI 的检查清单
+
+添加新的浮层组件时，必须：
+
+1. ✅ 状态放在 `overlayStore.ts`
+2. ✅ 渲染放在 `OverlayLayer` 内（Canvas.tsx 的 JSX 中）
+3. ✅ z-index 使用 `Z` 常量
+4. ✅ 根元素设 `pointerEvents: "auto"`
+5. ✅ 坐标使用屏幕坐标（`clientX/clientY`），不使用 flow 坐标
+6. ❌ 不在自己的组件内 `createPortal`
+7. ❌ 不硬编码 z-index 数字
+8. ❌ 不在节点组件内渲染全屏浮层
+
+---
+
 *本文档是技术决策的权威来源。每次架构变更必须先更新此文档，再修改代码。*

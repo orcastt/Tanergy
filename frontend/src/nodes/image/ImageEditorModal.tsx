@@ -1,8 +1,8 @@
 import { useState } from "react"
-import { createPortal } from "react-dom"
 import ImageEditorPanel from "./ImageEditorPanel"
 import DrawingPanel from "./DrawingPanel"
 import { useCanvasStore } from "../../store/canvasStore"
+import { Z } from "../../canvas/OverlayLayer"
 
 interface ImageItem {
   id: string
@@ -28,11 +28,11 @@ export default function ImageEditorModal({ nodeId, onClose }: Props) {
     console.log("AI Edit:", instruction, "on image:", selectedImage?.file_path)
   }
 
-  return createPortal(
+  return (
     <div style={{
-      position: "fixed", inset: 0, zIndex: 10000,
+      position: "fixed", inset: 0, zIndex: Z.FULLSCREEN,
       display: "flex", flexDirection: "column",
-      background: "var(--bg-surface)",
+      background: "var(--bg-surface)", pointerEvents: "auto",
     }}>
       {/* Header with back button */}
       <div style={{
@@ -65,7 +65,6 @@ export default function ImageEditorModal({ nodeId, onClose }: Props) {
           <DrawingPanel image={selectedImage} onAiEdit={handleAiEdit} />
         </div>
       </div>
-    </div>,
-    document.body,
+    </div>
   )
 }

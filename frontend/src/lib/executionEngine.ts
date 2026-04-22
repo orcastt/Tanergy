@@ -110,6 +110,67 @@ async function executeNode(node: any, inputData: any, options: RunAllOptions): P
 // Track running state for stopAll
 let running = false
 
+function gatherInputData(nodeId: string, edges: any[], nodeResults: Record<string, unknown>): Record<string, unknown> {
+  const inputData: Record<string, unknown> = {}
+  for (const e of edges) {
+    if (e.target === nodeId) {
+      const key = (e.targetHandle ?? "in") as string
+      const sourceResult = nodeResults[e.source]
+      if (e.sourceHandle && sourceResult && typeof sourceResult === "object") {
+        const specific = (sourceResult as Record<string, unknown>)[e.sourceHandle]
+        inputData[key] = specific ?? sourceResult
+      } else {
+        inputData[key] = sourceResult
+      }
+    }
+  }
+  return inputData
+}
+
+async function executeSingleNode(nodeId: string, nodes: any[], edges: any[], options: RunAllOptions): Promise<void> {
+  if (!running) return
+
+  const node = nodes.find((n) => n.id === nodeId)
+  if (!node) return
+
+  const { setNodeStatus, nodeResults } = useCanvasStore.getState()
+  setNodeStatus(nodeId, "running")
+  options.onNodeStart?.(nodeId)
+
+  try {
+    const inputData = gatherInputData(nodeId, edges, nodeResults)
+    const result = await executeNode(node, inputData, options)
+
+    if (!running) {
+      // Stopped while executing — keep result but mark as stopped
+      setNodeStatus(nodeId, "error")
+      useCanvasStore.setState((s) => ({
+        nodeResults: { ...s.nodeResults, [nodeId]: result },
+      }))
+      return
+    }
+
+    setNodeStatus(nodeId, "done")
+    useCanvasStore.setState((s) => ({
+      nodeResults: { ...s.nodeResults, [nodeId]: result },
+    }))
+    options.onNodeComplete?.(nodeId, result)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (msg.includes("INSUFFICIENT_CREDITS")) {
+      setNodeStatus(nodeId, "error")
+      useCanvasStore.setState((s) => ({
+        nodeResults: { ...s.nodeResults, [nodeId]: { error: "积分不足，请前往积分中心购买" } },
+      }))
+      options.onNodeError?.(nodeId, "INSUFFICIENT_CREDITS")
+      return
+    }
+    setNodeStatus(nodeId, "error")
+    options.onNodeError?.(nodeId, msg)
+    throw err
+  }
+}
+
 export async function runAll(options: RunAllOptions = {}) {
   const { nodes, edges } = useCanvasStore.getState()
 
@@ -124,61 +185,22 @@ export async function runAll(options: RunAllOptions = {}) {
   try {
     for (const layer of layers) {
       if (!running) break
-
-      const promises = layer.map(async (nodeId) => {
-        if (!running) return
-
-        const node = nodes.find((n) => n.id === nodeId)!
-        const { setNodeStatus, nodeResults } = useCanvasStore.getState()
-
-        setNodeStatus(nodeId, "running")
-        options.onNodeStart?.(nodeId)
-
-        try {
-          const inputData: Record<string, unknown> = {}
-          for (const e of edges) {
-            if (e.target === nodeId) {
-              const key = (e.targetHandle ?? "in") as string
-              const sourceResult = nodeResults[e.source]
-              // Route by sourceHandle for per-image outputs
-              if (e.sourceHandle && sourceResult && typeof sourceResult === "object") {
-                const specific = (sourceResult as Record<string, unknown>)[e.sourceHandle]
-                inputData[key] = specific ?? sourceResult
-              } else {
-                inputData[key] = sourceResult
-              }
-            }
-          }
-
-          const result = await executeNode(node, inputData, options)
-
-          setNodeStatus(nodeId, "done")
-          useCanvasStore.setState((s) => ({
-            nodeResults: { ...s.nodeResults, [nodeId]: result },
-          }))
-          options.onNodeComplete?.(nodeId, result)
-          return result
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err)
-          if (msg.includes("INSUFFICIENT_CREDITS")) {
-            setNodeStatus(nodeId, "error")
-            useCanvasStore.setState((s) => ({
-              nodeResults: { ...s.nodeResults, [nodeId]: { error: "积分不足，请前往积分中心购买" } },
-            }))
-            options.onNodeError?.(nodeId, "INSUFFICIENT_CREDITS")
-            // Don't throw — let other nodes in the layer continue
-            return
-          }
-          setNodeStatus(nodeId, "error")
-          options.onNodeError?.(nodeId, msg)
-          throw err
-        }
-      })
-
-      await Promise.all(promises)
+      await Promise.all(layer.map((nodeId) => executeSingleNode(nodeId, nodes, edges, options)))
     }
-
     options.onComplete?.()
+  } finally {
+    running = false
+  }
+}
+
+export async function runSingleNode(nodeId: string) {
+  const { nodes, edges } = useCanvasStore.getState()
+  const node = nodes.find((n) => n.id === nodeId)
+  if (!node) return
+
+  running = true
+  try {
+    await executeSingleNode(nodeId, nodes, edges, {})
   } finally {
     running = false
   }
@@ -186,13 +208,17 @@ export async function runAll(options: RunAllOptions = {}) {
 
 export function stopAll() {
   running = false
-  useCanvasStore.setState((s) => {
-    const statuses: Record<string, "idle"> = {}
-    for (const id of Object.keys(s.nodeStatuses)) {
-      if (s.nodeStatuses[id] === "running" || s.nodeStatuses[id] === "waiting") {
-        statuses[id] = "idle"
-      }
+  // Running/waiting nodes: keep results if API already returned, mark red (error); else reset to idle
+  const { nodeStatuses, nodeResults } = useCanvasStore.getState()
+  const updates: Record<string, "idle" | "error"> = {}
+  for (const id of Object.keys(nodeStatuses)) {
+    if (nodeStatuses[id] === "running" || nodeStatuses[id] === "waiting") {
+      updates[id] = nodeResults[id] ? "error" : "idle"
     }
-    return { nodeStatuses: { ...s.nodeStatuses, ...statuses } }
-  })
+  }
+  useCanvasStore.setState({ nodeStatuses: { ...nodeStatuses, ...updates } })
+}
+
+export function isRunning() {
+  return running
 }

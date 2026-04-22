@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react"
 import type { NodeProps } from "@xyflow/react"
 import { useCanvasStore } from "../store/canvasStore"
+import { nodeAction } from "../lib/nodeEvents"
 
 const GROUP_COLORS = ["#6349EA", "#3B82F6", "#22C55E", "#EAB308", "#EF4444", "#EC4899", "#14B8A6", "#8B5CF6"]
 
@@ -47,7 +48,7 @@ export default function GroupNode({ id, data }: NodeProps) {
       }}>
         <div style={{ position: "relative" }} className="color-picker-panel">
           <button
-            onClick={(e) => { e.stopPropagation(); setPickerOpen(!pickerOpen) }}
+            onClick={(e) => { nodeAction(e); setPickerOpen(!pickerOpen) }}
             style={{
               width: "14px", height: "14px", borderRadius: "50%", background: color,
               border: "2px solid var(--bg-surface)", cursor: "pointer", padding: 0,
@@ -76,7 +77,7 @@ export default function GroupNode({ id, data }: NodeProps) {
           <input ref={inputRef} value={draft} onChange={(e) => setDraft(e.target.value)}
             onBlur={finishEdit}
             onKeyDown={(e) => { if (e.key === "Enter") finishEdit(); if (e.key === "Escape") { setDraft(label); setEditing(false) } }}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => nodeAction(e)}
             style={{
               fontSize: "0.75rem", fontWeight: 600, color: "var(--text-primary)",
               background: "var(--bg-hover)", border: "1px solid var(--border-color)",
@@ -85,7 +86,7 @@ export default function GroupNode({ id, data }: NodeProps) {
             }}
           />
         ) : (
-          <span onDoubleClick={(e) => { e.stopPropagation(); setEditing(true); setDraft(label) }}
+          <span onDoubleClick={(e) => { nodeAction(e); setEditing(true); setDraft(label) }}
             style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", cursor: "default", userSelect: "none" }}>
             {label}
           </span>

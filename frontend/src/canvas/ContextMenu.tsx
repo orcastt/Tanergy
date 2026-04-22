@@ -1,4 +1,4 @@
-import { useRef } from "react"
+import { Z } from "./OverlayLayer"
 
 interface MenuItem {
   label: string
@@ -15,8 +15,6 @@ interface Props {
 }
 
 export default function ContextMenu({ x, y, items, onClose }: Props) {
-  const ref = useRef<HTMLDivElement>(null)
-
   return (
     <>
       {/* Invisible overlay catches all clicks to dismiss */}
@@ -24,23 +22,23 @@ export default function ContextMenu({ x, y, items, onClose }: Props) {
         onClick={onClose}
         onContextMenu={(e) => { e.preventDefault(); onClose() }}
         style={{
-          position: "fixed", inset: 0, zIndex: 9999,
+          position: "fixed", inset: 0, zIndex: Z.CTX_OVERLAY, pointerEvents: "auto",
         }}
       />
       {/* Menu */}
       <div
-        ref={ref}
         style={{
           position: "fixed",
           left: x,
           top: y,
-          zIndex: 10000,
+          zIndex: Z.CTX_MENU,
           background: "var(--bg-surface)",
           borderRadius: "0.5rem",
           boxShadow: "0 4px 16px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)",
           padding: "0.25rem 0",
           minWidth: "160px",
           fontFamily: "Inter, sans-serif",
+          pointerEvents: "auto",
         }}
       >
         {items.map((item, i) => (

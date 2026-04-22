@@ -1,5 +1,6 @@
 import { useCanvasStore } from "../../store/canvasStore"
-import { runAll } from "../../lib/executionEngine"
+import { runSingleNode } from "../../lib/executionEngine"
+import { nodeAction } from "../../lib/nodeEvents"
 
 interface Props {
   nodeId: string
@@ -14,7 +15,7 @@ export default function NodeRunButton({ nodeId, status }: Props) {
     return (
       <button
         onClick={(e) => {
-          e.stopPropagation()
+          nodeAction(e)
           setNodeStatus(nodeId, "idle")
         }}
         style={{
@@ -38,7 +39,7 @@ export default function NodeRunButton({ nodeId, status }: Props) {
       <div style={{ display: "flex", gap: "0.25rem" }}>
         <button
           onClick={(e) => {
-            e.stopPropagation()
+            nodeAction(e)
             setNodeStatus(nodeId, "idle")
             setNodeResult(nodeId, null)
           }}
@@ -63,8 +64,8 @@ export default function NodeRunButton({ nodeId, status }: Props) {
   return (
     <button
       onClick={(e) => {
-        e.stopPropagation()
-        runAll()
+        nodeAction(e)
+        runSingleNode(nodeId)
       }}
       style={{
         padding: "0.25rem 0.625rem",

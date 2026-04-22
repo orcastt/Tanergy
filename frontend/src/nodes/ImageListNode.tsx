@@ -3,11 +3,11 @@ import type { NodeProps } from "@xyflow/react"
 import NodeBase from "./base/NodeBase"
 import { NODE_MAP } from "./nodeDefs"
 import { useCanvasStore } from "../store/canvasStore"
+import { useOverlayStore } from "../store/overlayStore"
 import { useCreditsStore } from "../store/creditsStore"
 import { NODE_CREDIT_COSTS } from "../types/credits"
 import { invoke } from "@tauri-apps/api/core"
 import type { PortDef } from "./base/NodeBase"
-import ImageEditorModal from "./image/ImageEditorModal"
 
 interface GeneratedImage {
   id: string
@@ -79,7 +79,6 @@ export default function ImageListNode({ data, id, selected }: NodeProps) {
   const imageInputs: string[] = d.imageInputs ?? ["img_in_1"]
 
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null)
-  const [editorOpen, setEditorOpen] = useState(false)
 
   useEffect(() => {
     let unlisten: (() => void) | null = null
@@ -255,7 +254,7 @@ export default function ImageListNode({ data, id, selected }: NodeProps) {
       {images.length > 0 && status === "done" && (
         <div
           style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(70px, 1fr))", gap: "0.25rem", cursor: "pointer" }}
-          onDoubleClick={() => setEditorOpen(true)}
+          onDoubleClick={() => useOverlayStore.getState().openEditor(id)}
         >
           {images.map((img) => (
             <ImageThumb key={img.id} filePath={img.file_path} description={img.description} />
@@ -273,7 +272,7 @@ export default function ImageListNode({ data, id, selected }: NodeProps) {
         </div>
       )}
     </NodeBase>
-    {editorOpen && <ImageEditorModal nodeId={id} onClose={() => setEditorOpen(false)} />}
+
     </>
   )
 }
