@@ -117,7 +117,7 @@ export default function Canvas() {
 
   // Double-click detection via onPaneClick
   const handlePaneClick = useCallback((event: React.MouseEvent) => {
-    if (ctxMenu) setCtxMenu(null)
+    setCtxMenu(null)
     if (pickerOpen) { setPickerOpen(false); return }
     const now = Date.now()
     const last = lastClickRef.current

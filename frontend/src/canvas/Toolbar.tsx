@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom"
 import { useCanvasStore } from "../store/canvasStore"
 import { useThemeStore } from "../store/themeStore"
 import { runAll, stopAll } from "../lib/executionEngine"
@@ -16,13 +17,13 @@ export default function Toolbar({ onAddNode }: Props) {
 
   const hasRunningNodes = Object.values(nodeStatuses).some((s) => s === "running")
 
-  return (
+  return createPortal(
     <div style={{
-      position: "absolute", left: 0, top: 0, bottom: 0,
+      position: "fixed", left: 0, top: 56, bottom: 0,
       width: "48px", background: "var(--bg-surface)",
       boxShadow: "1px 0 0 0 rgba(0,0,0,0.05)",
       display: "flex", flexDirection: "column", alignItems: "center",
-      padding: "0.75rem 0", gap: "0.25rem", zIndex: 35,
+      padding: "0.75rem 0", gap: "0.25rem", zIndex: 100,
     }}>
       <ToolBtn icon="add" label="Add Node (N)" onClick={onAddNode} />
       <ToolBtn icon="auto_awesome" label="Skills" onClick={() => {}} />
@@ -36,7 +37,8 @@ export default function Toolbar({ onAddNode }: Props) {
       <ToolBtn icon="redo" label="Redo (⌘⇧Z)" onClick={redo} disabled={!canRedo} />
       <div style={{ width: "24px", height: "1px", background: "var(--border-color)", margin: "0.375rem 0" }} />
       <ThemeToggle />
-    </div>
+    </div>,
+    document.body,
   )
 }
 
