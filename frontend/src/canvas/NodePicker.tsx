@@ -11,6 +11,14 @@ interface Props {
 
 type Category = "all" | "input" | "text" | "ai" | "image" | "output"
 
+const CATEGORY_COLORS: Record<string, string> = {
+  input: "#3B82F6",
+  text: "#92400E",
+  ai: "#6349EA",
+  image: "#22C55E",
+  output: "#EAB308",
+}
+
 const CATEGORIES: { key: Category; label: string }[] = [
   { key: "all", label: "All" },
   { key: "input", label: "Input" },
@@ -114,7 +122,8 @@ export default function NodePicker({ open, position, onSelect, onClose }: Props)
             onClick={() => { onSelect(def.type, position || undefined); onClose() }}
             style={{
               display: "flex", alignItems: "center", gap: "0.625rem",
-              padding: "0.75rem", borderRadius: "0.5rem", border: "none",
+              padding: "0.75rem", borderRadius: "0.5rem",
+              border: "none", borderLeft: `3px solid ${CATEGORY_COLORS[def.category] || "#d4d4d4"}`,
               background: "var(--bg-surface)", cursor: "pointer", textAlign: "left",
               boxShadow: "0 0 0 1px rgba(0,0,0,0.05), 0 1px 2px 0 rgba(0,0,0,0.05)",
               transition: "box-shadow 150ms ease",

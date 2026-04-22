@@ -58,7 +58,8 @@ export default function NodeBase({ title, icon, inputs = [], outputs = [], statu
       boxShadow: ringStyle,
       overflow: "visible",
       position: "relative",
-      transition: "box-shadow 200ms ease",
+      transition: selected ? "none" : "box-shadow 200ms ease",
+      willChange: "transform",
       borderLeft: category ? `3px solid ${CATEGORY_COLORS[category] ?? "#747878"}` : undefined,
     }}>
       {/* Input handles */}

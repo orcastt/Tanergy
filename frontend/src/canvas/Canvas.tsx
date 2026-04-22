@@ -109,6 +109,7 @@ export default function Canvas() {
 
   // Double-click detection via onPaneClick
   const handlePaneClick = useCallback((event: React.MouseEvent) => {
+    if (ctxMenu) setCtxMenu(null)
     if (pickerOpen) { setPickerOpen(false); return }
     const now = Date.now()
     const last = lastClickRef.current
@@ -163,19 +164,18 @@ export default function Canvas() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const nodeTypesMap: Record<string, ComponentType<any>> = nodeTypes as any
 
+  const selectedCount = useCanvasStore.getState().selectedNodeIds.length
   const isGroupNode = ctxMenu?.nodeId ? nodes.find((n) => n.id === ctxMenu.nodeId)?.type === "group" : false
   const ctxMenuItems = ctxMenu?.nodeId
     ? [
         { label: "复制", shortcut: "⌘C", action: () => { useCanvasStore.getState().setSelectedNodes([ctxMenu.nodeId!]); copySelected() } },
         ...(clipboard ? [{ label: "粘贴", shortcut: "⌘V", action: pasteNodes }] : []),
-        ...(isGroupNode
-          ? [{ label: "取消打组", shortcut: "G", action: () => { useCanvasStore.getState().setSelectedNodes([ctxMenu.nodeId!]); ungroupSelected() } }]
-          : [{ label: "打组", shortcut: "G", action: () => { useCanvasStore.getState().setSelectedNodes([ctxMenu.nodeId!]); groupSelected() } }]),
+        ...(selectedCount >= 2 && !isGroupNode ? [{ label: "打组", shortcut: "G", action: () => { useCanvasStore.getState().setSelectedNodes([ctxMenu.nodeId!]); groupSelected() } }] : []),
+        ...(isGroupNode ? [{ label: "取消打组", shortcut: "G", action: () => { useCanvasStore.getState().setSelectedNodes([ctxMenu.nodeId!]); ungroupSelected() } }] : []),
         { label: "删除", shortcut: "Del", action: () => { useCanvasStore.getState().setSelectedNodes([ctxMenu.nodeId!]); deleteSelected() } },
       ]
     : [
         ...(clipboard ? [{ label: "粘贴", shortcut: "⌘V", action: pasteNodes }] : []),
-        { label: "打组选中", shortcut: "G", action: groupSelected },
       ]
 
   return (

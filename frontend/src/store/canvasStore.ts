@@ -107,11 +107,17 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   onNodesChange: (changes) => set((s) => {
     let nodes = s.nodes
+    let selectedIds = s.selectedNodeIds
     for (const c of changes) {
       if (c.type === "position" && c.position) nodes = nodes.map((n) => n.id === c.id ? { ...n, position: c.position! } : n)
       else if (c.type === "remove") nodes = nodes.filter((n) => n.id !== c.id)
+      else if (c.type === "select") {
+        const id = c.id
+        if (c.selected) { if (!selectedIds.includes(id)) selectedIds = [...selectedIds, id] }
+        else { selectedIds = selectedIds.filter((x) => x !== id) }
+      }
     }
-    return { nodes }
+    return { nodes, selectedNodeIds: selectedIds }
   }),
 
   onEdgesChange: (changes) => set((s) => {
