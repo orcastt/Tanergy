@@ -5,6 +5,7 @@ import WelcomePage from "./pages/WelcomePage"
 import DashboardPage from "./pages/DashboardPage"
 import CanvasPage from "./pages/CanvasPage"
 import SettingsPage from "./pages/SettingsPage"
+import CreditsPage from "./pages/CreditsPage"
 import NotFoundPage from "./pages/NotFoundPage"
 
 export default function App() {
@@ -15,6 +16,7 @@ export default function App() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/canvas/:id" element={<CanvasPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/credits" element={<CreditsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>

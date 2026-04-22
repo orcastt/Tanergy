@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom"
 import { useLicenseStore } from "../store/licenseStore"
+import CreditBalance from "./CreditBalance"
 
 export default function TopNav() {
   const navigate = useNavigate()
@@ -62,6 +63,7 @@ export default function TopNav() {
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+        <CreditBalance />
         <button
           onClick={() => navigate("/settings")}
           style={{

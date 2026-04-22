@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core"
 import type { LicenseInfo, KeyStatus, ProviderInfo } from "../types/license"
 import type { Workflow, WorkflowDetail } from "../types/workflow"
+import type { CreditInfo } from "../types/credits"
 
 export interface ExecutePayload {
   node_type: string
@@ -84,4 +85,16 @@ export const tauri = {
     invoke<number[]>("read_asset_file", { filePath }),
   deleteAsset: (id: string) =>
     invoke<void>("delete_asset", { id }),
+
+  // Credits
+  getCreditBalance: () =>
+    invoke<CreditInfo>("get_credit_balance"),
+  refreshCredits: () =>
+    invoke<CreditInfo>("refresh_credits"),
+  loginOfficial: (email: string) =>
+    invoke<void>("login_official", { email }),
+  verifyOtp: (email: string, token: string) =>
+    invoke<void>("verify_otp", { email, token }),
+  logoutOfficial: () =>
+    invoke<void>("logout_official"),
 }

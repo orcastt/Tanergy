@@ -30,10 +30,11 @@ interface Props {
   selected?: boolean
   nodeId?: string
   category?: string
+  creditCost?: number
   children?: ReactNode
 }
 
-export default function NodeBase({ title, icon, inputs = [], outputs = [], status, selected, nodeId, category, children }: Props) {
+export default function NodeBase({ title, icon, inputs = [], outputs = [], status, selected, nodeId, category, creditCost, children }: Props) {
   const ringStyle = selected
     ? "0 0 0 2px #242424, 0 4px 6px -1px rgba(0,0,0,0.1)"
     : status === "running"
@@ -96,7 +97,21 @@ export default function NodeBase({ title, icon, inputs = [], outputs = [], statu
         </div>
       ))}
 
-      <NodeTitle icon={icon} title={title} status={status} footer={nodeId ? <NodeRunButton nodeId={nodeId} status={status ?? "idle"} /> : undefined} />
+      <NodeTitle icon={icon} title={title} status={status} footer={
+        <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+          {creditCost != null && creditCost > 0 && (
+            <div style={{
+              fontSize: "0.5625rem", color: "#6349EA", display: "flex",
+              alignItems: "center", gap: "0.125rem", padding: "0 0.25rem",
+              background: "#f5f3ff", borderRadius: "0.25rem",
+            }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "10px" }}>bolt</span>
+              {creditCost}
+            </div>
+          )}
+          {nodeId ? <NodeRunButton nodeId={nodeId} status={status ?? "idle"} /> : undefined}
+        </div>
+      } />
 
       {children && (
         <div style={{ padding: "1rem" }}>

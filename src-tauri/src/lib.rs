@@ -54,6 +54,11 @@ pub fn run() {
             commands::asset::get_assets,
             commands::asset::read_asset_file,
             commands::asset::delete_asset,
+            commands::credits::get_credit_balance,
+            commands::credits::refresh_credits,
+            commands::credits::login_official,
+            commands::credits::verify_otp,
+            commands::credits::logout_official,
         ])
         .run(tauri::generate_context!())
         .expect("error while running TANGENT");

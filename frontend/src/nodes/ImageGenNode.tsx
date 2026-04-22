@@ -3,6 +3,8 @@ import type { NodeProps } from "@xyflow/react"
 import NodeBase from "./base/NodeBase"
 import { NODE_MAP } from "./nodeDefs"
 import { useCanvasStore } from "../store/canvasStore"
+import { useCreditsStore } from "../store/creditsStore"
+import { NODE_CREDIT_COSTS } from "../types/credits"
 import { invoke } from "@tauri-apps/api/core"
 
 interface GeneratedImage {
@@ -60,6 +62,9 @@ export default function ImageGenNode({ data, id, selected }: NodeProps) {
   const def = NODE_MAP[d.nodeType]
   if (!def) return null
 
+  const { isLoggedIn } = useCreditsStore()
+  const creditCost = NODE_CREDIT_COSTS[d.nodeType] ?? 0
+
   const { nodeStatuses, nodeResults } = useCanvasStore()
   const status = nodeStatuses[id] ?? "idle"
   const result = nodeResults[id] as { images?: GeneratedImage[] } | undefined
@@ -96,6 +101,7 @@ export default function ImageGenNode({ data, id, selected }: NodeProps) {
       status={status}
       selected={selected}
       nodeId={id}
+      creditCost={isLoggedIn ? creditCost : undefined}
     >
       {status === "running" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>

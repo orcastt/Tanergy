@@ -2,6 +2,8 @@ import type { NodeProps } from "@xyflow/react"
 import NodeBase from "./base/NodeBase"
 import { NODE_MAP } from "./nodeDefs"
 import { useCanvasStore } from "../store/canvasStore"
+import { useCreditsStore } from "../store/creditsStore"
+import { NODE_CREDIT_COSTS } from "../types/credits"
 
 interface WriterData {
   nodeType: string
@@ -13,6 +15,9 @@ export default function WriterNode({ data, id, selected }: NodeProps) {
   const d = data as unknown as WriterData
   const def = NODE_MAP[d.nodeType]
   if (!def) return null
+
+  const { isLoggedIn } = useCreditsStore()
+  const creditCost = NODE_CREDIT_COSTS[d.nodeType] ?? 0
 
   const { nodeStatuses, nodeResults, updateNodeData } = useCanvasStore()
   const status = nodeStatuses[id] ?? "idle"
@@ -28,6 +33,7 @@ export default function WriterNode({ data, id, selected }: NodeProps) {
       status={status}
       selected={selected}
       nodeId={id}
+      creditCost={isLoggedIn ? creditCost : undefined}
     >
       {/* Style selector */}
       <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap", marginBottom: "0.375rem" }}>

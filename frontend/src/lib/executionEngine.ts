@@ -153,6 +153,15 @@ export async function runAll(options: RunAllOptions = {}) {
           return result
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err)
+          if (msg.includes("INSUFFICIENT_CREDITS")) {
+            setNodeStatus(nodeId, "error")
+            useCanvasStore.setState((s) => ({
+              nodeResults: { ...s.nodeResults, [nodeId]: { error: "积分不足，请前往积分中心购买" } },
+            }))
+            options.onNodeError?.(nodeId, "INSUFFICIENT_CREDITS")
+            // Don't throw — let other nodes in the layer continue
+            return
+          }
           setNodeStatus(nodeId, "error")
           options.onNodeError?.(nodeId, msg)
           throw err

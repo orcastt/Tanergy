@@ -2,6 +2,8 @@ import type { NodeProps } from "@xyflow/react"
 import NodeBase from "./base/NodeBase"
 import { NODE_MAP } from "./nodeDefs"
 import { useCanvasStore } from "../store/canvasStore"
+import { useCreditsStore } from "../store/creditsStore"
+import { NODE_CREDIT_COSTS } from "../types/credits"
 
 interface ImagePlan {
   id: string
@@ -15,6 +17,9 @@ export default function ImagePlannerNode({ data, id, selected }: NodeProps) {
   const d = data as unknown as { nodeType: string; count: number; style: string }
   const def = NODE_MAP[d.nodeType]
   if (!def) return null
+
+  const { isLoggedIn } = useCreditsStore()
+  const creditCost = NODE_CREDIT_COSTS[d.nodeType] ?? 0
 
   const { nodeStatuses, nodeResults, updateNodeData } = useCanvasStore()
   const status = nodeStatuses[id] ?? "idle"
@@ -32,6 +37,7 @@ export default function ImagePlannerNode({ data, id, selected }: NodeProps) {
       status={status}
       selected={selected}
       nodeId={id}
+      creditCost={isLoggedIn ? creditCost : undefined}
     >
       {/* Config */}
       <div style={{ display: "flex", gap: "0.375rem", marginBottom: "0.375rem", alignItems: "center" }}>

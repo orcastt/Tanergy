@@ -68,6 +68,14 @@ pub async fn image_generation(
     prompt: &str,
     aspect_ratio: Option<&str>,
 ) -> Result<ImageResult, String> {
+    // Smart routing: use official API if user has no own key
+    if !crate::services::credits::has_own_key(provider_id) {
+        let data = crate::services::credits::official_image_generation(
+            provider_id, prompt, aspect_ratio,
+        ).await?;
+        return Ok(ImageResult { image_data: data, url: None });
+    }
+
     let preset = provider::get_preset(provider_id).ok_or("unknown provider")?;
     let url = format!("{}/image_generation", preset.base_url);
 
@@ -193,6 +201,13 @@ pub async fn chat_completion(
     max_tokens: u32,
     temperature: Option<f64>,
 ) -> Result<AiCompletion, String> {
+    // Smart routing: use official API if user has no own key
+    if !crate::services::credits::has_own_key(provider_id) {
+        return crate::services::credits::official_chat_completion(
+            provider_id, model, messages, max_tokens, temperature,
+        ).await;
+    }
+
     let preset = provider::get_preset(provider_id).ok_or("unknown provider")?;
     let url = format!("{}/chat/completions", preset.base_url);
 
