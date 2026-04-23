@@ -25,7 +25,10 @@ import NodePicker from "./NodePicker"
 import ContextMenu from "./ContextMenu"
 import LightboxOverlay from "./LightboxOverlay"
 import ImageEditorModal from "../nodes/image/ImageEditorModal"
+import DeletableEdge from "./DeletableEdge"
 import type { NodeType } from "../types/node"
+
+const edgeTypes = { default: DeletableEdge }
 
 const SNAP_GRID = [20, 20] as [number, number]
 
@@ -64,6 +67,14 @@ export default function Canvas() {
   const { pickerOpen, pickerScreenPos, ctxMenu, editorNodeId, lightboxImage } = useOverlayStore()
   const lastClickRef = useRef<{ time: number; x: number; y: number } | null>(null)
   const { screenToFlowPosition } = useReactFlow()
+
+  // Clear overlays on unmount so they don't persist across navigations
+  useEffect(() => {
+    return () => {
+      useOverlayStore.getState().closeEditor()
+      useOverlayStore.getState().closeLightbox()
+    }
+  }, [])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -228,6 +239,7 @@ export default function Canvas() {
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypesMap}
+          edgeTypes={edgeTypes}
           onConnect={handleConnect}
           onNodesChange={handleNodesChange}
           onEdgesChange={handleEdgesChange}
@@ -245,7 +257,7 @@ export default function Canvas() {
           snapGrid={SNAP_GRID}
           minZoom={0.2}
           maxZoom={2}
-          fitView
+          defaultViewport={{ x: 0, y: 0, zoom: 1 }}
           proOptions={{ hideAttribution: true }}
           style={{ background: "var(--bg-canvas)" }}
         >

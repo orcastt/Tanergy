@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import ImageEditorPanel from "./ImageEditorPanel"
 import DrawingPanel from "./DrawingPanel"
 import { useCanvasStore } from "../../store/canvasStore"
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export default function ImageEditorModal({ nodeId, onClose }: Props) {
+  const { t } = useTranslation()
   const result = useCanvasStore((s) => s.nodeResults[nodeId]) as { images?: ImageItem[] } | undefined
   const images = result?.images ?? []
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -49,7 +51,7 @@ export default function ImageEditorModal({ nodeId, onClose }: Props) {
         </button>
         <span style={{ fontSize: "0.9375rem", fontWeight: 600, color: "var(--text-primary)" }}>Image Editor</span>
         <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
-          {images.length} 张图片
+          {t("image_editor.imageCount", { count: images.length })}
         </span>
       </div>
 

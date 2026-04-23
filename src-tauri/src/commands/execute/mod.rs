@@ -17,7 +17,28 @@ pub struct ExecuteResult {
     pub status: String,
 }
 
-const MINIMAX_MODEL: &str = "MiniMax-M2.7";
+const DEFAULT_TEXT_MODEL: &str = "MiniMax-M2.7";
+
+const AI_NODE_TYPES: &[&str] = &[
+    "research", "outline_generator", "writer", "reviewer",
+    "image_planner", "image_gen", "image_list", "html_formatter",
+];
+
+/// Extract a text string from input data. Handles both direct strings and
+/// wrapped objects like `{ text: "..." }` or `{ raw: "..." }`.
+fn extract_text(value: &Value) -> Option<&str> {
+    value.as_str()
+        .or_else(|| value.get("text").and_then(|v| v.as_str()))
+        .or_else(|| value.get("raw").and_then(|v| v.as_str()))
+}
+
+/// Get the model ID from node_data, falling back to the default text model.
+fn get_text_model(node_data: &Value) -> String {
+    node_data.get("model")
+        .and_then(|v| v.as_str())
+        .unwrap_or(DEFAULT_TEXT_MODEL)
+        .to_string()
+}
 
 #[tauri::command]
 pub async fn execute_node(
@@ -37,6 +58,15 @@ pub async fn execute_node(
 
     if mock_mode == "true" {
         return exec_mock(&payload).await;
+    }
+
+    // AI nodes require login or own API key
+    if AI_NODE_TYPES.contains(&payload.node_type.as_str()) {
+        if !crate::services::credits::has_official_access()
+            && !crate::services::credits::has_any_user_key()
+        {
+            return Err("LOGIN_REQUIRED".into());
+        }
     }
 
     match payload.node_type.as_str() {
@@ -72,8 +102,7 @@ fn exec_text_input(payload: &ExecutePayload) -> Result<ExecuteResult, String> {
 async fn exec_research(payload: &ExecutePayload) -> Result<ExecuteResult, String> {
     let query = payload.input_data
         .get("in")
-        .and_then(|v| v.get("text"))
-        .and_then(|v| v.as_str())
+        .and_then(extract_text)
         .or_else(|| payload.node_data.get("query").and_then(|v| v.as_str()))
         .unwrap_or("")
         .to_string();
@@ -90,7 +119,7 @@ async fn exec_research(payload: &ExecutePayload) -> Result<ExecuteResult, String
         ChatMessage { role: "user".into(), content: user_msg },
     ];
 
-    let completion = ai_client::chat_completion("minimax", MINIMAX_MODEL, messages, 4096, Some(0.7)).await?;
+    let completion = ai_client::chat_completion(&get_text_model(&payload.node_data), "", messages, 4096, Some(0.7)).await?;
 
     Ok(ExecuteResult {
         output: serde_json::json!({ "text": completion.text }),
@@ -101,14 +130,12 @@ async fn exec_research(payload: &ExecutePayload) -> Result<ExecuteResult, String
 async fn exec_outline(payload: &ExecutePayload) -> Result<ExecuteResult, String> {
     let topic = payload.input_data
         .get("in")
-        .and_then(|v| v.get("text"))
-        .and_then(|v| v.as_str())
+        .and_then(extract_text)
         .unwrap_or("");
 
     let research = payload.input_data
         .get("research")
-        .and_then(|v| v.get("text"))
-        .and_then(|v| v.as_str())
+        .and_then(extract_text)
         .unwrap_or("");
 
     let style = payload.node_data
@@ -128,7 +155,7 @@ async fn exec_outline(payload: &ExecutePayload) -> Result<ExecuteResult, String>
         ChatMessage { role: "user".into(), content: user_msg },
     ];
 
-    let completion = ai_client::chat_completion("minimax", MINIMAX_MODEL, messages, 2048, Some(0.8)).await?;
+    let completion = ai_client::chat_completion(&get_text_model(&payload.node_data), "", messages, 2048, Some(0.8)).await?;
 
     let options_str = completion.text.trim();
     let options_json: Value = if options_str.starts_with('{') || options_str.starts_with('[') {
@@ -146,14 +173,13 @@ async fn exec_outline(payload: &ExecutePayload) -> Result<ExecuteResult, String>
 async fn exec_writer(payload: &ExecutePayload) -> Result<ExecuteResult, String> {
     let outline = payload.input_data
         .get("outline")
-        .and_then(|v| v.as_str())
-        .or_else(|| payload.input_data.get("in").and_then(|v| v.as_str()))
+        .and_then(extract_text)
+        .or_else(|| payload.input_data.get("in").and_then(extract_text))
         .unwrap_or("");
 
     let research = payload.input_data
         .get("research")
-        .and_then(|v| v.get("text"))
-        .and_then(|v| v.as_str())
+        .and_then(extract_text)
         .unwrap_or("");
 
     let materials = payload.input_data
@@ -204,7 +230,7 @@ async fn exec_writer(payload: &ExecutePayload) -> Result<ExecuteResult, String> 
         ChatMessage { role: "user".into(), content: user_msg },
     ];
 
-    let completion = ai_client::chat_completion("minimax", MINIMAX_MODEL, messages, 8192, Some(0.7)).await?;
+    let completion = ai_client::chat_completion(&get_text_model(&payload.node_data), "", messages, 8192, Some(0.7)).await?;
 
     Ok(ExecuteResult {
         output: serde_json::json!({ "text": completion.text }),
@@ -215,15 +241,16 @@ async fn exec_writer(payload: &ExecutePayload) -> Result<ExecuteResult, String> 
 async fn exec_reviewer(payload: &ExecutePayload) -> Result<ExecuteResult, String> {
     let draft = payload.input_data
         .get("in")
-        .and_then(|v| v.as_str())
-        .or_else(|| payload.input_data.get("draft").and_then(|v| v.as_str()))
+        .and_then(extract_text)
+        .or_else(|| payload.input_data.get("draft").and_then(extract_text))
         .unwrap_or("");
 
     let research = payload.input_data
         .get("research")
-        .and_then(|v| v.get("text"))
-        .and_then(|v| v.as_str())
+        .and_then(extract_text)
         .unwrap_or("");
+
+    let model = get_text_model(&payload.node_data);
 
     if draft.trim().is_empty() {
         return Err("reviewer: empty draft".into());
@@ -234,7 +261,7 @@ async fn exec_reviewer(payload: &ExecutePayload) -> Result<ExecuteResult, String
     let pass1_msg = format!("调研资料：\n{}\n\n待核查文章：\n{}", research, draft);
 
     let pass1 = ai_client::chat_completion(
-        "minimax", MINIMAX_MODEL,
+        &model, "",
         vec![
             ChatMessage { role: "system".into(), content: pass1_system.into() },
             ChatMessage { role: "user".into(), content: pass1_msg },
@@ -252,7 +279,7 @@ async fn exec_reviewer(payload: &ExecutePayload) -> Result<ExecuteResult, String
     let pass2_msg = format!("请对以下文章进行反AI洗稿：\n{}", pass1.text);
 
     let pass2 = ai_client::chat_completion(
-        "minimax", MINIMAX_MODEL,
+        &model, "",
         vec![
             ChatMessage { role: "system".into(), content: pass2_system.into() },
             ChatMessage { role: "user".into(), content: pass2_msg },
@@ -270,7 +297,7 @@ async fn exec_reviewer(payload: &ExecutePayload) -> Result<ExecuteResult, String
     let pass3_msg = format!("请优化以下文章的节奏和格式：\n{}", pass2.text);
 
     let pass3 = ai_client::chat_completion(
-        "minimax", MINIMAX_MODEL,
+        &model, "",
         vec![
             ChatMessage { role: "system".into(), content: pass3_system.into() },
             ChatMessage { role: "user".into(), content: pass3_msg },

@@ -1,20 +1,27 @@
 import { useEffect, useCallback } from "react"
 import { useCanvasStore } from "../store/canvasStore"
 import { useWorkflowStore } from "../store/workflowStore"
+import { useAgentStore } from "../agent/agentStore"
 
 export function useCanvas(workflowId: string) {
   const { setGraphFromJson, setOnDirty, undo, redo } = useCanvasStore()
   const { currentWorkflow, loadWorkflow, saveWorkflow, isDirty } = useWorkflowStore()
 
-  // Load workflow on mount
+  // Load workflow on mount or workflow change
   useEffect(() => {
-    if (workflowId) loadWorkflow(workflowId)
+    if (workflowId) {
+      loadWorkflow(workflowId)
+      // Reset agent chat for new workflow
+      useAgentStore.getState().resetChat()
+    }
   }, [workflowId, loadWorkflow])
 
-  // Set graph when workflow loads
+  // Set graph when workflow loads (clear canvas for empty workflows too)
   useEffect(() => {
     if (currentWorkflow?.graph_json) {
       setGraphFromJson(JSON.parse(currentWorkflow.graph_json))
+    } else if (currentWorkflow) {
+      setGraphFromJson({ nodes: [], edges: [] })
     }
   }, [currentWorkflow, setGraphFromJson])
 

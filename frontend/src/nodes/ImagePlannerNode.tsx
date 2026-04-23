@@ -1,9 +1,11 @@
 import type { NodeProps } from "@xyflow/react"
+import { useTranslation } from "react-i18next"
 import NodeBase from "./base/NodeBase"
 import { NODE_MAP } from "./nodeDefs"
 import { useCanvasStore } from "../store/canvasStore"
 import { useCreditsStore } from "../store/creditsStore"
 import { NODE_CREDIT_COSTS } from "../types/credits"
+import ModelSelector from "../components/ModelSelector"
 
 interface ImagePlan {
   id: string
@@ -14,10 +16,11 @@ interface ImagePlan {
 }
 
 export default function ImagePlannerNode({ data, id, selected }: NodeProps) {
-  const d = data as unknown as { nodeType: string; count: number; style: string }
+  const d = data as unknown as { nodeType: string; count: number; style: string; model?: string }
   const def = NODE_MAP[d.nodeType]
   if (!def) return null
 
+  const { t } = useTranslation()
   const { isLoggedIn } = useCreditsStore()
   const creditCost = NODE_CREDIT_COSTS[d.nodeType] ?? 0
 
@@ -39,9 +42,19 @@ export default function ImagePlannerNode({ data, id, selected }: NodeProps) {
       nodeId={id}
       creditCost={isLoggedIn ? creditCost : undefined}
     >
+      {/* Model selector */}
+      <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", marginBottom: "0.375rem" }}>
+        <span style={{ fontSize: "0.6875rem", color: "var(--text-secondary)" }}>Model:</span>
+        <ModelSelector
+          category="text"
+          value={d.model as string | undefined}
+          onChange={(model) => updateNodeData(id, { model })}
+        />
+      </div>
+
       {/* Config */}
       <div style={{ display: "flex", gap: "0.375rem", marginBottom: "0.375rem", alignItems: "center" }}>
-        <span style={{ fontSize: "0.6875rem", color: "#747878" }}>数量:</span>
+        <span style={{ fontSize: "0.6875rem", color: "#747878" }}>{t("nodes.image_planner.count")}</span>
         <select
           value={d.count ?? 3}
           onChange={(e) => updateNodeData(id, { count: Number(e.target.value) })}
@@ -54,7 +67,7 @@ export default function ImagePlannerNode({ data, id, selected }: NodeProps) {
             <option key={n} value={n}>{n}</option>
           ))}
         </select>
-        <span style={{ fontSize: "0.6875rem", color: "#747878", marginLeft: "0.25rem" }}>风格:</span>
+        <span style={{ fontSize: "0.6875rem", color: "#747878", marginLeft: "0.25rem" }}>{t("nodes.image_planner.style")}</span>
         <select
           value={d.style ?? "写实"}
           onChange={(e) => updateNodeData(id, { style: e.target.value })}
@@ -76,7 +89,7 @@ export default function ImagePlannerNode({ data, id, selected }: NodeProps) {
           display: "flex", alignItems: "center", gap: "0.375rem",
         }}>
           <span className="material-symbols-outlined" style={{ fontSize: "14px", animation: "spin 1s linear infinite" }}>progress_activity</span>
-          分析文章中...
+          {t("nodes.image_planner.analyzing")}
         </div>
       )}
 
@@ -101,7 +114,7 @@ export default function ImagePlannerNode({ data, id, selected }: NodeProps) {
 
       {status === "idle" && (
         <div style={{ fontSize: "0.6875rem", color: "#747878", textAlign: "center" }}>
-          连接文章，点击 Run 规划配图
+          {t("nodes.image_planner.connectHint")}
         </div>
       )}
 
@@ -110,7 +123,7 @@ export default function ImagePlannerNode({ data, id, selected }: NodeProps) {
           padding: "0.375rem 0.5rem", background: "#fef2f2",
           borderRadius: "0.25rem", fontSize: "0.6875rem", color: "#991b1b",
         }}>
-          规划失败，请检查输入和 API Key
+          {t("nodes.image_planner.error")}
         </div>
       )}
     </NodeBase>

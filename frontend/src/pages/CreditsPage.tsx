@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 import { useCreditsStore } from "../store/creditsStore"
 
 const PACKAGES = [
@@ -10,6 +11,7 @@ const PACKAGES = [
 
 export default function CreditsPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { balance, isLoggedIn, isLoading, error, login, verify, logout, refresh, clearError } = useCreditsStore()
   const [email, setEmail] = useState("")
   const [otp, setOtp] = useState("")
@@ -32,7 +34,7 @@ export default function CreditsPage() {
           <button onClick={() => navigate(-1)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.25rem" }}>
             ←
           </button>
-          <h1 style={{ fontSize: "1.25rem", fontWeight: 600, color: "#1b1c1c" }}>积分中心</h1>
+          <h1 style={{ fontSize: "1.25rem", fontWeight: 600, color: "#1b1c1c" }}>{t("credits.title")}</h1>
         </div>
 
         {/* Balance Card */}
@@ -40,7 +42,7 @@ export default function CreditsPage() {
           background: "#fff", borderRadius: "0.75rem", padding: "1.5rem",
           boxShadow: "0 1px 3px rgba(0,0,0,0.06)", marginBottom: "1.5rem", textAlign: "center",
         }}>
-          <div style={{ fontSize: "0.75rem", color: "#747878", marginBottom: "0.5rem" }}>当前积分</div>
+          <div style={{ fontSize: "0.75rem", color: "#747878", marginBottom: "0.5rem" }}>{t("credits.currentCredits")}</div>
           <div style={{ fontSize: "2.5rem", fontWeight: 700, color: "#1b1c1c" }}>{balance}</div>
           {isLoggedIn && (
             <button onClick={refresh} style={{
@@ -48,7 +50,7 @@ export default function CreditsPage() {
               border: "1px solid #e3e2e2", borderRadius: "0.375rem", background: "#fff",
               cursor: "pointer", color: "#1b1c1c",
             }}>
-              刷新
+              {t("credits.refresh")}
             </button>
           )}
         </div>
@@ -60,12 +62,12 @@ export default function CreditsPage() {
             boxShadow: "0 1px 3px rgba(0,0,0,0.06)", marginBottom: "1.5rem",
           }}>
             <h2 style={{ fontSize: "0.875rem", fontWeight: 600, color: "#1b1c1c", marginBottom: "1rem" }}>
-              登录官方账号
+              {t("credits.loginOfficial")}
             </h2>
             <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
               <input
                 type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                placeholder="输入邮箱"
+                placeholder={t("credits.enterEmail")}
                 style={{
                   flex: 1, padding: "0.5rem 0.75rem", border: "1px solid #e3e2e2",
                   borderRadius: "0.375rem", fontSize: "0.8125rem", outline: "none", color: "#1b1c1c",
@@ -78,14 +80,14 @@ export default function CreditsPage() {
                   border: "none", borderRadius: "0.375rem", cursor: isLoading ? "default" : "pointer",
                 }}
               >
-                发送验证码
+                {t("credits.sendOtp")}
               </button>
             </div>
             {otpSent && (
               <div style={{ display: "flex", gap: "0.5rem" }}>
                 <input
                   type="text" value={otp} onChange={(e) => setOtp(e.target.value)}
-                  placeholder="输入验证码"
+                  placeholder={t("credits.enterOtp")}
                   style={{
                     flex: 1, padding: "0.5rem 0.75rem", border: "1px solid #e3e2e2",
                     borderRadius: "0.375rem", fontSize: "0.8125rem", outline: "none", color: "#1b1c1c",
@@ -98,7 +100,7 @@ export default function CreditsPage() {
                     border: "none", borderRadius: "0.375rem", cursor: isLoading ? "default" : "pointer",
                   }}
                 >
-                  验证
+                  {t("credits.verify")}
                 </button>
               </div>
             )}
@@ -114,18 +116,18 @@ export default function CreditsPage() {
             boxShadow: "0 1px 3px rgba(0,0,0,0.06)", marginBottom: "1.5rem",
             display: "flex", justifyContent: "space-between", alignItems: "center",
           }}>
-            <span style={{ fontSize: "0.8125rem", color: "#22C55E" }}>已登录</span>
+            <span style={{ fontSize: "0.8125rem", color: "#22C55E" }}>{t("credits.loggedIn")}</span>
             <button onClick={logout} style={{
               fontSize: "0.75rem", color: "#991b1b", background: "none", border: "none", cursor: "pointer",
             }}>
-              退出登录
+              {t("credits.logout")}
             </button>
           </div>
         )}
 
         {/* Package Cards */}
         <h2 style={{ fontSize: "0.875rem", fontWeight: 600, color: "#1b1c1c", marginBottom: "1rem" }}>
-          购买积分
+          {t("credits.purchaseCredits")}
         </h2>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.75rem" }}>
           {PACKAGES.map((pkg) => (
@@ -136,9 +138,9 @@ export default function CreditsPage() {
             }}>
               <div style={{ fontSize: "0.75rem", color: "#747878" }}>{pkg.name}</div>
               <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1b1c1c" }}>{pkg.credits}</div>
-              <div style={{ fontSize: "0.6875rem", color: "#9ca3af" }}>积分</div>
+              <div style={{ fontSize: "0.6875rem", color: "#9ca3af" }}>{t("credits.credits")}</div>
               <div style={{ fontSize: "1.125rem", fontWeight: 600, color: "#1b1c1c" }}>{pkg.price}</div>
-              <div style={{ fontSize: "0.625rem", color: "#6349EA" }}>Pro 会员 {pkg.proPrice}</div>
+              <div style={{ fontSize: "0.625rem", color: "#6349EA" }}>{t("credits.proMembership")} {pkg.proPrice}</div>
               <button disabled={!isLoggedIn}
                 style={{
                   padding: "0.5rem", fontSize: "0.75rem",
@@ -147,7 +149,7 @@ export default function CreditsPage() {
                   marginTop: "0.25rem",
                 }}
               >
-                购买
+                {t("credits.purchase")}
               </button>
             </div>
           ))}
@@ -158,13 +160,13 @@ export default function CreditsPage() {
           background: "linear-gradient(135deg, #6349EA, #3B82F6)", borderRadius: "0.75rem",
           padding: "1.5rem", marginTop: "1.5rem", color: "#fff",
         }}>
-          <div style={{ fontSize: "1rem", fontWeight: 600, marginBottom: "0.375rem" }}>Pro 会员</div>
+          <div style={{ fontSize: "1rem", fontWeight: 600, marginBottom: "0.375rem" }}>{t("credits.proMembership")}</div>
           <div style={{ fontSize: "0.75rem", opacity: 0.9, marginBottom: "0.75rem" }}>
-            解锁所有 Skill 模板 · 赠送 200 积分 · 购积分享 8 折
+            {t("credits.proBenefits")}
           </div>
           <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
-            <span style={{ fontSize: "1.25rem", fontWeight: 700 }}>$9.99/月</span>
-            <span style={{ fontSize: "0.75rem", opacity: 0.7 }}>$79.99/年</span>
+            <span style={{ fontSize: "1.25rem", fontWeight: 700 }}>{t("credits.monthly")}</span>
+            <span style={{ fontSize: "0.75rem", opacity: 0.7 }}>{t("credits.yearly")}</span>
           </div>
         </div>
       </div>

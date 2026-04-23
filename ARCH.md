@@ -1,8 +1,8 @@
 # TANGENT — Architecture Decision Document
 
-**版本**: v0.3
-**日期**: 2026-04-21
-**状态**: Desktop pivot — Tauri + SQLite + 本地执行 + 用户自带 API Key
+**版本**: v0.5
+**日期**: 2026-04-23
+**状态**: Phase 2 商业化 — 本地测试 + Bug 修复阶段
 
 > 本文档记录技术决策和工程约束。用户感受不到这些内容，但它们决定了产品怎么建。
 > 每次重大技术决策变更必须更新本文档。
@@ -21,6 +21,8 @@
 8. [IPC 接口设计](#8-ipc-接口设计)
 9. [构建与分发](#9-构建与分发)
 10. [安全规范](#10-安全规范)
+11. [Canvas UI 架构规范](#11-canvas-ui-架构规范--画布归画布ui-归-ui)
+12. [后端服务架构 (Phase 2)](#12-后端服务架构-phase-2)
 
 ---
 
@@ -154,6 +156,7 @@ frontend/
 │   │   └── index.ts      ← 节点类型注册表
 │   ├── canvas/           ← 画布层
 │   │   ├── Canvas.tsx    ← React Flow 主画布
+│   │   ├── DeletableEdge.tsx ← 自定义连线（hover 高亮 + − 按钮 + Delete 删除）
 │   │   ├── NodePicker.tsx← 节点选择面板
 │   │   ├── Toolbar.tsx   ← 左侧工具栏（含主题切换）
 │   │   ├── ContextMenu.tsx ← 右键菜单
@@ -379,7 +382,7 @@ CREATE TABLE api_keys (
 CREATE TABLE workflows (
   id             TEXT PRIMARY KEY,  -- UUID
   name           TEXT NOT NULL CHECK(length(name) BETWEEN 1 AND 100),
-  graph_json     TEXT NOT NULL,     -- JSON 字符串（DAG 序列化）
+  graph_json     TEXT,              -- JSON 字符串（DAG 序列化），可为 NULL（新建工作流）
   thumbnail_path TEXT,
   created_at     TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at     TEXT NOT NULL DEFAULT (datetime('now'))
@@ -468,6 +471,7 @@ interface CanvasStore {
   nodes: Node[]
   edges: Edge[]
   selectedNodeIds: string[]
+  selectedEdgeIds: string[]
   nodeStatuses: Record<string, NodeStatus>
   history: CanvasSnapshot[]
   historyIndex: number
@@ -821,6 +825,156 @@ export const Z = {
 6. ❌ 不在自己的组件内 `createPortal`
 7. ❌ 不硬编码 z-index 数字
 8. ❌ 不在节点组件内渲染全屏浮层
+
+### 11.8 连线交互规范
+
+- 使用自定义 `DeletableEdge` 替代默认边渲染
+- 点击连线 → 高亮（蓝色），加入 `selectedEdgeIds`
+- 鼠标悬停或选中 → 连线中点显示红色 − 按钮，点击即删除
+- 20px 宽透明命中区域确保连线易于选中
+- Delete/Backspace 键删除所有选中的连线（与节点共用 `deleteSelected`）
+- `canvasStore.selectedEdgeIds` 追踪边的选中状态
+
+### 11.9 画布视口规范
+
+- 初始视口：`defaultViewport={{ x: 0, y: 0, zoom: 1 }}`，不使用 `fitView`
+- 禁止 `fitView`：避免每次重渲染时自动缩放导致 200% 放大
+- 用户通过 CanvasControls 的 fit_screen 按钮手动触发 fitView
+- `willChange: transform` 禁止在节点组件上使用（导致 GPU 光栅化模糊）
+
+---
+
+## 12. 后端服务架构 (Phase 2)
+
+### 12.1 概述
+
+Phase 2 引入 FastAPI 后端，为桌面客户端提供：
+- **AI API 代理**：官方统一 Key，按积分扣费
+- **用户认证**：Email OTP + JWT
+- **积分系统**：余额管理 + 交易记录 + 差异定价
+- **支付**：Stripe Checkout + Webhook
+- **管理后台**：Admin API（用户管理、积分充值、日志查看、模型配置）
+
+### 12.2 技术栈
+
+| 组件 | 选型 | 说明 |
+|------|------|------|
+| API 框架 | FastAPI | Python，异步 |
+| 数据库 | PostgreSQL | 15+ |
+| 缓存 | Redis | Session / OTP |
+| 对象存储 | MinIO | S3 兼容（预留） |
+| 支付 | Stripe | Checkout + Webhook |
+| 部署 | Docker Compose | 单机部署 |
+
+### 12.3 API 路由
+
+```
+/api/v1/auth/send-otp        POST  发送验证码
+/api/v1/auth/verify-otp      POST  验证 + 登录
+
+/api/v1/credits/balance      GET   查询积分余额
+
+/api/v1/proxy/chat           POST  AI 文本代理（扣积分）
+/api/v1/proxy/image          POST  AI 图片代理（扣积分）
+
+/api/v1/billing/checkout     POST  创建 Stripe Checkout
+/api/v1/billing/webhook      POST  Stripe Webhook
+/api/v1/billing/subscription GET   查询订阅状态
+
+/api/v1/admin/stats          GET   仪表盘统计
+/api/v1/admin/users          GET   用户列表
+/api/v1/admin/users/{id}/toggle-active POST 禁用/启用
+/api/v1/admin/credits/grant  POST  积分充值
+/api/v1/admin/credits/transactions GET 积分流水
+/api/v1/admin/api-logs       GET   API 调用日志
+/api/v1/admin/models         CRUD  模型配置
+```
+
+### 12.4 数据模型（PostgreSQL）
+
+```sql
+-- 用户（扩展现有 users 表）
+ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'user';
+
+-- 积分余额
+CREATE TABLE credit_balances (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id),
+  balance INTEGER NOT NULL DEFAULT 0,
+  plan VARCHAR(20) NOT NULL DEFAULT 'free'
+);
+
+-- 积分交易
+CREATE TABLE credit_transactions (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id),
+  amount INTEGER NOT NULL,
+  type VARCHAR(20) NOT NULL,  -- credit / debit
+  reason VARCHAR(100),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- API 调用日志
+CREATE TABLE api_call_logs (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id),
+  provider VARCHAR(50),
+  model VARCHAR(100),
+  credits_used INTEGER,
+  status VARCHAR(20),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 模型配置（差异定价）
+CREATE TABLE model_configs (
+  id SERIAL PRIMARY KEY,
+  provider VARCHAR(50),
+  model VARCHAR(100),
+  credits_per_call INTEGER DEFAULT 1,
+  is_active BOOLEAN DEFAULT true
+);
+```
+
+### 12.5 AI 路由策略
+
+```
+客户端请求 AI 调用
+  ↓
+有官方 JWT？
+  ├── 是 → 调用 FastAPI 代理（扣积分）
+  │        ├── 积分足够 → 转发到 AI provider → 返回结果
+  │        └── 积分不足 → 返回 INSUFFICIENT_CREDITS
+  └── 否 → 有用户自带 Key？
+           ├── 是 → 直接调用 AI provider（经 Tauri Rust 侧）
+           └── 否 → 返回 LOGIN_REQUIRED
+```
+
+### 12.6 目录结构（后端）
+
+```
+backend/
+├── app/
+│   ├── main.py              ← FastAPI 入口 + 路由注册
+│   ├── core/
+│   │   ├── config.py        ← 环境变量 + API Key 配置
+│   │   └── security.py      ← JWT + OTP 工具
+│   ├── models/
+│   │   ├── user.py          ← User 模型（含 role 字段）
+│   │   └── credit.py        ← CreditBalance/Transaction/ApiCallLog/ModelConfig
+│   ├── api/v1/
+│   │   ├── auth.py          ← OTP 发送/验证 + 注册送积分
+│   │   ├── credits.py       ← 积分余额查询
+│   │   ├── proxy.py         ← AI 代理（chat + image）
+│   │   ├── billing.py       ← Stripe Checkout + Webhook
+│   │   └── admin.py         ← Admin API（统计/用户/积分/日志/模型）
+│   └── services/
+│       ├── proxy_service.py ← AI 代理核心（5 providers，差价积分）
+│       └── otp_service.py   ← OTP 生成/验证
+├── migrations/              ← Alembic 迁移
+├── docker-compose.yml
+├── Dockerfile
+└── requirements.txt
+```
 
 ---
 

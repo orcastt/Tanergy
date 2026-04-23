@@ -12,11 +12,13 @@ export interface AgentMessage {
 export interface AgentAction {
   op: "add" | "connect"
   type?: string
+  name?: string
   from?: string
   fromPort?: string
   to?: string
   toPort?: string
   position?: [number, number]
+  data?: Record<string, unknown>
 }
 
 interface AgentState {
@@ -25,6 +27,7 @@ interface AgentState {
   loading: boolean
   setOpen: (open: boolean) => void
   sendMessage: (text: string) => Promise<void>
+  resetChat: () => void
 }
 
 export const useAgentStore = create<AgentState>((set, get) => ({
@@ -33,6 +36,8 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   loading: false,
 
   setOpen: (open) => set({ open }),
+
+  resetChat: () => set({ messages: [], loading: false }),
 
   sendMessage: async (text: string) => {
     const userMsg: AgentMessage = {
@@ -72,13 +77,18 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 }))
 
 function parseAgentResponse(raw: string): { message: string; actions: AgentAction[] } {
+  let cleaned = raw.replace(/<think[^>]*>[\s\S]*?<\/think\s*>/g, "").trim()
+  const codeBlockMatch = cleaned.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/)
+  if (codeBlockMatch) {
+    cleaned = codeBlockMatch[1].trim()
+  }
   try {
-    const json = JSON.parse(raw)
+    const json = JSON.parse(cleaned)
     return {
-      message: json.message ?? raw,
+      message: json.message ?? cleaned,
       actions: Array.isArray(json.actions) ? json.actions : [],
     }
   } catch {
-    return { message: raw, actions: [] }
+    return { message: cleaned, actions: [] }
   }
 }

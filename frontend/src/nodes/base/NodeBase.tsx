@@ -1,4 +1,4 @@
-import type { ReactNode } from "react"
+import { useState, type ReactNode } from "react"
 import { Handle, Position } from "@xyflow/react"
 import type { PortType } from "../../types/node"
 import { PORT_COLORS } from "../../types/node"
@@ -19,6 +19,8 @@ export interface PortDef {
   id: string
   type: PortType
   label?: string
+  removable?: boolean
+  onRemove?: (id: string) => void
 }
 
 interface Props {
@@ -33,6 +35,34 @@ interface Props {
   creditCost?: number
   width?: number
   children?: ReactNode
+}
+
+function RemovablePortLabel({ port }: { port: PortDef }) {
+  const [hovered, setHovered] = useState(false)
+
+  return (
+    <div
+      style={{ display: "flex", alignItems: "center", gap: "0.25rem", position: "relative" }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {port.removable && hovered ? (
+        <button
+          onClick={(e) => { e.stopPropagation(); port.onRemove?.(port.id) }}
+          style={{
+            width: "12px", height: "12px", borderRadius: "50%",
+            background: "#EF4444", color: "#fff", border: "none",
+            fontSize: "10px", fontWeight: 700, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 0, lineHeight: "12px", flexShrink: 0,
+          }}
+        >−</button>
+      ) : (
+        <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: PORT_COLORS[port.type], flexShrink: 0 }} />
+      )}
+      {port.label && <span style={{ fontSize: "10px", color: "var(--text-secondary)" }}>{port.label}</span>}
+    </div>
+  )
 }
 
 export default function NodeBase({ title, icon, inputs = [], outputs = [], status, selected, nodeId, category, creditCost, width, children }: Props) {
@@ -60,7 +90,6 @@ export default function NodeBase({ title, icon, inputs = [], outputs = [], statu
       overflow: "visible",
       position: "relative",
       transition: selected ? "none" : "box-shadow 200ms ease",
-      willChange: "transform",
       borderLeft: category ? `3px solid ${CATEGORY_COLORS[category] ?? "#747878"}` : undefined,
     }}>
       {/* Input handles */}
@@ -117,7 +146,7 @@ export default function NodeBase({ title, icon, inputs = [], outputs = [], statu
         </div>
       )}
 
-      {(inputs.length > 0 || outputs.length > 0) && (
+      {(inputs.length > 0 || outputs.some((p) => p.label)) && (
         <div style={{
           padding: "0.5rem",
           borderTop: "1px solid var(--border-color)",
@@ -127,16 +156,13 @@ export default function NodeBase({ title, icon, inputs = [], outputs = [], statu
         }}>
           <div style={{ display: "flex", gap: "0.375rem", alignItems: "center" }}>
             {inputs.map((p) => (
-              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-                {p.label && <span style={{ fontSize: "10px", color: "var(--text-secondary)" }}>{p.label}</span>}
-                <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: PORT_COLORS[p.type] }} />
-              </div>
+              <RemovablePortLabel key={p.id} port={p} />
             ))}
           </div>
           <div style={{ display: "flex", gap: "0.375rem", alignItems: "center" }}>
-            {outputs.map((p) => (
+            {outputs.filter((p) => p.label).map((p) => (
               <div key={p.id} style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-                {p.label && <span style={{ fontSize: "10px", color: "var(--text-secondary)" }}>{p.label}</span>}
+                <span style={{ fontSize: "10px", color: "var(--text-secondary)" }}>{p.label}</span>
                 <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: PORT_COLORS[p.type] }} />
               </div>
             ))}

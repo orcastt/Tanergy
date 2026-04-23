@@ -15,6 +15,7 @@ class User(Base):
     google_id: Mapped[str | None] = mapped_column(String(100), unique=True, nullable=True)
     display_name: Mapped[str] = mapped_column(String(50), nullable=False)
     avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    role: Mapped[str] = mapped_column(String(20), default="user", nullable=False)  # user, admin
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[func.now()] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     last_login_at: Mapped[func.now() | None] = mapped_column(DateTime(timezone=True), nullable=True)

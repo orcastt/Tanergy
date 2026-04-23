@@ -1,13 +1,16 @@
 import type { NodeProps } from "@xyflow/react"
+import { useTranslation } from "react-i18next"
 import NodeBase from "./base/NodeBase"
 import { NODE_MAP } from "./nodeDefs"
 import { useCanvasStore } from "../store/canvasStore"
 import { useCreditsStore } from "../store/creditsStore"
 import { NODE_CREDIT_COSTS } from "../types/credits"
+import ModelSelector from "../components/ModelSelector"
 
 interface OutlineData {
   nodeType: string
   style: string
+  model?: string
 }
 
 export default function OutlineGeneratorNode({ data, id, selected }: NodeProps) {
@@ -15,6 +18,7 @@ export default function OutlineGeneratorNode({ data, id, selected }: NodeProps) 
   const def = NODE_MAP[d.nodeType]
   if (!def) return null
 
+  const { t } = useTranslation()
   const { isLoggedIn } = useCreditsStore()
   const creditCost = NODE_CREDIT_COSTS[d.nodeType] ?? 0
 
@@ -36,6 +40,14 @@ export default function OutlineGeneratorNode({ data, id, selected }: NodeProps) 
       nodeId={id}
       creditCost={isLoggedIn ? creditCost : undefined}
     >
+      <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", marginBottom: "0.375rem" }}>
+        <span style={{ fontSize: "0.6875rem", color: "var(--text-secondary)" }}>Model:</span>
+        <ModelSelector
+          category="text"
+          value={d.model as string | undefined}
+          onChange={(model) => updateNodeData(id, { model })}
+        />
+      </div>
       <div style={{ display: "flex", gap: "0.375rem", flexWrap: "wrap" }}>
         {["干货清单", "故事叙事", "深度分析"].map((s) => (
           <button
@@ -69,7 +81,7 @@ export default function OutlineGeneratorNode({ data, id, selected }: NodeProps) 
           gap: "0.375rem",
         }}>
           <span className="material-symbols-outlined" style={{ fontSize: "14px", animation: "spin 1s linear infinite" }}>progress_activity</span>
-          正在生成大纲...
+          {t("nodes.outline.generating")}
         </div>
       )}
       {options && status === "done" && (
@@ -111,7 +123,7 @@ export default function OutlineGeneratorNode({ data, id, selected }: NodeProps) 
           fontSize: "0.6875rem",
           color: "#991b1b",
         }}>
-          执行失败，请检查 API Key
+          {t("common.errorApiKey")}
         </div>
       )}
     </NodeBase>

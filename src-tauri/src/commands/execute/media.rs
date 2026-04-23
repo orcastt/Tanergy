@@ -1,4 +1,4 @@
-use super::{ExecutePayload, ExecuteResult, MINIMAX_MODEL};
+use super::{ExecutePayload, ExecuteResult, extract_text, get_text_model};
 use crate::db;
 use crate::services::ai_client::{self, ChatMessage};
 use serde_json::Value;
@@ -9,8 +9,8 @@ use tauri::Emitter;
 pub async fn exec_image_planner(payload: &ExecutePayload) -> Result<ExecuteResult, String> {
     let article = payload.input_data
         .get("in")
-        .and_then(|v| v.as_str())
-        .or_else(|| payload.input_data.get("text").and_then(|v| v.as_str()))
+        .and_then(extract_text)
+        .or_else(|| payload.input_data.get("text").and_then(extract_text))
         .unwrap_or("");
 
     if article.trim().is_empty() {
@@ -46,7 +46,7 @@ pub async fn exec_image_planner(payload: &ExecutePayload) -> Result<ExecuteResul
         ChatMessage { role: "user".into(), content: user_msg },
     ];
 
-    let completion = ai_client::chat_completion("minimax", MINIMAX_MODEL, messages, 4096, Some(0.7)).await?;
+    let completion = ai_client::chat_completion(&get_text_model(&payload.node_data), "", messages, 4096, Some(0.7)).await?;
 
     let raw = completion.text.trim();
     let plans = parse_json_array(raw);
@@ -96,7 +96,7 @@ pub async fn exec_image_gen(
 
     let text_input = payload.input_data
         .get("text")
-        .and_then(|v| v.as_str())
+        .and_then(extract_text)
         .unwrap_or("");
 
     let count = payload.node_data
@@ -107,7 +107,7 @@ pub async fn exec_image_gen(
     let model = payload.node_data
         .get("model")
         .and_then(|v| v.as_str())
-        .unwrap_or("minimax");
+        .unwrap_or("minimax-image");
 
     let plans: Vec<Value> = if let Some(pv) = plans_val {
         if pv.is_array() {
@@ -129,7 +129,7 @@ pub async fn exec_image_gen(
             ChatMessage { role: "system".into(), content: system },
             ChatMessage { role: "user".into(), content: text_input.to_string() },
         ];
-        let completion = ai_client::chat_completion(model, MINIMAX_MODEL, messages, 2048, Some(0.7)).await?;
+        let completion = ai_client::chat_completion(&get_text_model(&payload.node_data), "", messages, 2048, Some(0.7)).await?;
         let raw = completion.text.trim();
         if raw.starts_with('[') {
             serde_json::from_str::<Vec<Value>>(raw).unwrap_or_default()
@@ -172,7 +172,8 @@ pub async fn exec_image_gen(
 
     for (i, plan) in limited_plans.iter().enumerate() {
         let plan_id = plan.get("id").and_then(|v| v.as_str()).unwrap_or("img").to_string();
-        let prompt = plan.get("prompt").and_then(|v| v.as_str()).unwrap_or("a professional illustration");
+        let filename = format!("{}_{}_{}.png", node_id, plan_id, i + 1);
+        let base_prompt = plan.get("prompt").and_then(|v| v.as_str()).unwrap_or("a professional illustration");
         let aspect_ratio = plan.get("aspect_ratio").and_then(|v| v.as_str());
 
         let _ = app_handle.emit("node_progress", serde_json::json!({
@@ -181,9 +182,20 @@ pub async fn exec_image_gen(
             "total": total as u32,
         }));
 
-        let result = ai_client::image_generation(model, prompt, aspect_ratio).await?;
+        // Enrich prompt with plan-specific context to ensure each image is distinct
+        let description = plan.get("description").and_then(|v| v.as_str()).unwrap_or("");
+        let position = plan.get("position").and_then(|v| v.as_str()).unwrap_or("");
+        let prompt = if total > 1 {
+            format!(
+                "[variation {} of {}] Image for article section '{}'. Context: {}. {}",
+                i + 1, total, position, description, base_prompt,
+            )
+        } else {
+            base_prompt.to_string()
+        };
 
-        let filename = format!("{}_{}.png", node_id, plan_id);
+        let result = ai_client::image_generation(model, &prompt, aspect_ratio).await?;
+
         let file_path = assets_dir.join(&filename);
         fs::write(&file_path, &result.image_data)
             .map_err(|e| format!("save image: {}", e))?;
@@ -205,9 +217,9 @@ pub async fn exec_image_gen(
             "id": asset_id,
             "plan_id": plan_id,
             "file_path": file_path_str,
-            "prompt": prompt,
-            "description": plan.get("description").and_then(|v| v.as_str()).unwrap_or(""),
-            "position": plan.get("position").and_then(|v| v.as_str()).unwrap_or(""),
+            "prompt": base_prompt,
+            "description": description,
+            "position": position,
         });
 
         per_image.insert(format!("image{}", i + 1), img_obj.clone());
@@ -230,8 +242,8 @@ pub async fn exec_image_gen(
 pub async fn exec_html_formatter(payload: &ExecutePayload) -> Result<ExecuteResult, String> {
     let text = payload.input_data
         .get("text")
-        .and_then(|v| v.as_str())
-        .or_else(|| payload.input_data.get("in").and_then(|v| v.as_str()))
+        .and_then(extract_text)
+        .or_else(|| payload.input_data.get("in").and_then(extract_text))
         .unwrap_or("");
 
     if text.trim().is_empty() {
@@ -296,7 +308,7 @@ pub async fn exec_html_formatter(payload: &ExecutePayload) -> Result<ExecuteResu
         ChatMessage { role: "user".into(), content: user_msg },
     ];
 
-    let completion = ai_client::chat_completion("minimax", MINIMAX_MODEL, messages, 8192, Some(0.3)).await?;
+    let completion = ai_client::chat_completion(&get_text_model(&payload.node_data), "", messages, 8192, Some(0.3)).await?;
 
     let html = completion.text;
     let word_count = text.chars().filter(|c| !c.is_whitespace()).count();

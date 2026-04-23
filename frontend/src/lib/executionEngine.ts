@@ -33,7 +33,7 @@ function extractGateOptions(inputData: Record<string, unknown>): string[] {
 
   if (typeof input === "string") return [input]
 
-  return ["方向 A", "方向 B", "方向 C"]
+  return ["Direction A", "Direction B", "Direction C"]
 }
 
 function waitForGateResolve(nodeId: string): Promise<string> {
@@ -66,9 +66,9 @@ async function executeNode(node: any, inputData: any, options: RunAllOptions): P
     }
 
     // input mode — wait for user text input
-    useCanvasStore.getState().setWaitingGate(node.id, ["等待用户输入..."])
+    useCanvasStore.getState().setWaitingGate(node.id, ["Waiting for input..."])
     useCanvasStore.getState().setNodeStatus(node.id, "waiting")
-    options.onGateWait?.(node.id, ["等待用户输入..."])
+    options.onGateWait?.(node.id, ["Waiting for input..."])
 
     const selected = await waitForGateResolve(node.id)
     return { selected }
@@ -157,10 +157,18 @@ async function executeSingleNode(nodeId: string, nodes: any[], edges: any[], opt
     options.onNodeComplete?.(nodeId, result)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
+    if (msg === "LOGIN_REQUIRED" || msg.includes("LOGIN_REQUIRED")) {
+      setNodeStatus(nodeId, "error")
+      useCanvasStore.setState((s) => ({
+        nodeResults: { ...s.nodeResults, [nodeId]: { error: "Please log in or configure an API Key to use AI features" } },
+      }))
+      options.onNodeError?.(nodeId, "LOGIN_REQUIRED")
+      return
+    }
     if (msg.includes("INSUFFICIENT_CREDITS")) {
       setNodeStatus(nodeId, "error")
       useCanvasStore.setState((s) => ({
-        nodeResults: { ...s.nodeResults, [nodeId]: { error: "积分不足，请前往积分中心购买" } },
+        nodeResults: { ...s.nodeResults, [nodeId]: { error: "Insufficient credits. Please purchase more credits." } },
       }))
       options.onNodeError?.(nodeId, "INSUFFICIENT_CREDITS")
       return
@@ -176,7 +184,7 @@ export async function runAll(options: RunAllOptions = {}) {
 
   if (nodes.length === 0) return
   if (hasCycle(nodes, edges)) {
-    throw new Error("图中存在环路，请检查连线")
+    throw new Error("Cycle detected in the graph. Please check your connections.")
   }
 
   running = true

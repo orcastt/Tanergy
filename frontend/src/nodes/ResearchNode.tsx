@@ -4,10 +4,12 @@ import { NODE_MAP } from "./nodeDefs"
 import { useCanvasStore } from "../store/canvasStore"
 import { useCreditsStore } from "../store/creditsStore"
 import { NODE_CREDIT_COSTS } from "../types/credits"
+import ModelSelector from "../components/ModelSelector"
 
 interface ResearchData {
   nodeType: string
   query: string
+  model?: string
 }
 
 export default function ResearchNode({ data, id, selected }: NodeProps) {
@@ -34,6 +36,14 @@ export default function ResearchNode({ data, id, selected }: NodeProps) {
       nodeId={id}
       creditCost={isLoggedIn ? creditCost : undefined}
     >
+      <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", marginBottom: "0.375rem" }}>
+        <span style={{ fontSize: "0.6875rem", color: "var(--text-secondary)" }}>Model:</span>
+        <ModelSelector
+          category="text"
+          value={d.model as string | undefined}
+          onChange={(model) => updateNodeData(id, { model })}
+        />
+      </div>
       <input
         value={d.query ?? ""}
         onChange={(e) => updateNodeData(id, { query: e.target.value })}

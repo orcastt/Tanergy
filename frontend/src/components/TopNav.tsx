@@ -1,12 +1,14 @@
 import { useNavigate } from "react-router-dom"
 import { useLicenseStore } from "../store/licenseStore"
 import { useThemeStore } from "../store/themeStore"
+import { useLangStore } from "../store/langStore"
 import CreditBalance from "./CreditBalance"
 
 export default function TopNav() {
   const navigate = useNavigate()
   const { status } = useLicenseStore()
   const { theme, toggleTheme } = useThemeStore()
+  const { lang, toggleLang } = useLangStore()
 
   const label = status === "active" ? "Pro" : status === "trial" ? "Trial" : "Free"
   const labelColor = status === "active" ? "#22c55e" : status === "trial" ? "#f59e0b" : "#737373"
@@ -44,6 +46,15 @@ export default function TopNav() {
 
       <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
         <CreditBalance />
+        {/* Language toggle */}
+        <button onClick={toggleLang} style={{
+          background: "none", border: "none", cursor: "pointer",
+          color: "var(--text-secondary)", fontSize: "0.75rem", fontWeight: 600,
+          display: "flex", alignItems: "center", gap: "0.25rem",
+        }}>
+          <span className="material-symbols-outlined" style={{ fontSize: "1rem" }}>translate</span>
+          {lang.toUpperCase()}
+        </button>
         {/* Theme toggle */}
         <button onClick={toggleTheme} style={{
           background: "none", border: "none", cursor: "pointer",

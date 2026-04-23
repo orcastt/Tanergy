@@ -8,6 +8,7 @@ interface CanvasState {
   nodes: Node[]
   edges: Edge[]
   selectedNodeIds: string[]
+  selectedEdgeIds: string[]
   nodeStatuses: Record<string, NodeStatus>
   nodeResults: Record<string, unknown>
   waitingGates: Record<string, string[]>
@@ -45,7 +46,7 @@ interface CanvasState {
 }
 
 export const useCanvasStore = create<CanvasState>((set, get) => ({
-  nodes: [], edges: [], selectedNodeIds: [], nodeStatuses: {}, nodeResults: {},
+  nodes: [], edges: [], selectedNodeIds: [], selectedEdgeIds: [], nodeStatuses: {}, nodeResults: {},
   waitingGates: {}, history: [], historyIndex: -1, maxHistory: 50, clipboard: null,
 
   addNode: (node) => set((s) => ({ nodes: [...s.nodes, node], ...pushHistory(s) })),
@@ -123,9 +124,16 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   onEdgesChange: (changes) => set((s) => {
     let edges = s.edges
-    for (const c of changes) { if (c.type === "remove") edges = edges.filter((e) => e.id !== c.id) }
+    let selectedEdgeIds = s.selectedEdgeIds
+    for (const c of changes) {
+      if (c.type === "remove") edges = edges.filter((e) => e.id !== c.id)
+      else if (c.type === "select") {
+        if (c.selected) { if (!selectedEdgeIds.includes(c.id)) selectedEdgeIds = [...selectedEdgeIds, c.id] }
+        else { selectedEdgeIds = selectedEdgeIds.filter((x) => x !== c.id) }
+      }
+    }
     s.onDirty?.()
-    return { edges }
+    return { edges, selectedEdgeIds }
   }),
 
   copySelected: () => { const r = copySelectedImpl(get()); if (r) set(r) },

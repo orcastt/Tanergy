@@ -1,13 +1,14 @@
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import type { NodeProps } from "@xyflow/react"
+import { useTranslation } from "react-i18next"
 import NodeBase from "./base/NodeBase"
 import { NODE_MAP } from "./nodeDefs"
 import { useCanvasStore } from "../store/canvasStore"
-import { useOverlayStore } from "../store/overlayStore"
 import { useCreditsStore } from "../store/creditsStore"
 import { NODE_CREDIT_COSTS } from "../types/credits"
 import { invoke } from "@tauri-apps/api/core"
 import type { PortDef } from "./base/NodeBase"
+import ModelSelector from "../components/ModelSelector"
 
 interface GeneratedImage {
   id: string
@@ -17,6 +18,8 @@ interface GeneratedImage {
   description: string
   position: string
 }
+
+const MAX_IMAGE_INPUTS = 3
 
 function ImageThumb({ filePath, description, badge }: { filePath: string; description: string; badge?: number }) {
   const [src, setSrc] = useState<string | null>(null)
@@ -56,17 +59,60 @@ function ImageThumb({ filePath, description, badge }: { filePath: string; descri
   )
 }
 
-const MODELS = [
-  { value: "minimax", label: "MiniMax" },
-  { value: "gpt", label: "GPT Image" },
-  { value: "gemini", label: "Gemini" },
-]
+/** Input thumbnail with hover-delete "-" button */
+function InputThumb({ handleId, index, firstImg, canDelete, onDelete }: {
+  handleId: string
+  index: number
+  firstImg: GeneratedImage | undefined
+  canDelete: boolean
+  onDelete: (id: string) => void
+}) {
+  const [hovered, setHovered] = useState(false)
+
+  return (
+    <div
+      style={{ position: "relative" }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {firstImg ? (
+        <ImageThumb filePath={firstImg.file_path} description={firstImg.description} badge={index + 1} />
+      ) : (
+        <div style={{
+          aspectRatio: "4/3", background: "var(--bg-hover)", borderRadius: "0.25rem",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: "9px", color: "var(--text-secondary)", position: "relative",
+        }}>
+          图{index + 1}
+          <div style={{
+            position: "absolute", top: 2, left: 2, minWidth: "14px", height: "14px",
+            background: "#3B82F6", color: "#fff", borderRadius: "7px",
+            fontSize: "9px", fontWeight: 700, display: "flex", alignItems: "center",
+            justifyContent: "center", padding: "0 3px", lineHeight: 1,
+          }}>{index + 1}</div>
+        </div>
+      )}
+      {canDelete && hovered && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(handleId) }}
+          style={{
+            position: "absolute", top: 2, right: 2, width: "16px", height: "16px",
+            background: "rgba(239,68,68,0.85)", color: "#fff", border: "none",
+            borderRadius: "50%", fontSize: "12px", fontWeight: 700, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1,
+          }}
+        >−</button>
+      )}
+    </div>
+  )
+}
 
 export default function ImageListNode({ data, id, selected }: NodeProps) {
   const d = data as unknown as { nodeType: string; count?: number; model?: string; imageInputs?: string[] }
   const def = NODE_MAP[d.nodeType]
   if (!def) return null
 
+  const { t } = useTranslation()
   const { isLoggedIn } = useCreditsStore()
   const creditCost = NODE_CREDIT_COSTS["image_gen"] ?? 0
   const { nodeStatuses, nodeResults, updateNodeData, edges } = useCanvasStore()
@@ -75,7 +121,6 @@ export default function ImageListNode({ data, id, selected }: NodeProps) {
   const images = result?.images ?? []
 
   const count = d.count ?? 1
-  const model = d.model ?? "minimax"
   const imageInputs: string[] = d.imageInputs ?? ["img_in_1"]
 
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null)
@@ -96,7 +141,6 @@ export default function ImageListNode({ data, id, selected }: NodeProps) {
     return () => { unlisten?.() }
   }, [status, id])
 
-  // Collect connected image inputs from edges
   const connectedImageInputs = useMemo(() => {
     const incoming = edges
       .filter((e) => e.target === id && e.targetHandle?.startsWith("img_in_"))
@@ -104,40 +148,41 @@ export default function ImageListNode({ data, id, selected }: NodeProps) {
     return incoming
   }, [edges, id])
 
-  // Dynamic inputs: static (image_plans + text) + dynamic image inputs
-  const inputs: PortDef[] = useMemo(() => {
-    const base = [...def.inputs]
-    for (const inputId of imageInputs) {
-      base.push({ id: inputId, type: "image_slot" as const, label: `图${base.length}` })
-    }
-    return base
-  }, [imageInputs, def.inputs])
-
-  // Dynamic output ports
-  const outputs: PortDef[] = useMemo(() => {
-    if (images.length > 0) {
-      return images.map((_img, i) => ({ id: `image${i + 1}`, type: "image_slot" as const, label: `图${i + 1}` }))
-    }
-    const num = Math.min(count, 10)
-    return Array.from({ length: num }, (_, i) => ({ id: `image${i + 1}`, type: "image_slot" as const, label: `图${i + 1}` }))
-  }, [images.length, count])
-
-  function addImageInput() {
-    const nextIdx = imageInputs.length + 1
-    const newId = `img_in_${nextIdx}`
-    // Ensure unique id
+  const addImageInput = useCallback(() => {
+    if (imageInputs.length >= MAX_IMAGE_INPUTS) return
     const existing = new Set(imageInputs)
-    let candidate = newId
+    let candidate = `img_in_${imageInputs.length + 1}`
     while (existing.has(candidate)) {
       candidate = `img_in_${Date.now()}`
     }
     updateNodeData(id, { imageInputs: [...imageInputs, candidate] })
-  }
+  }, [imageInputs, id, updateNodeData])
 
-  function removeImageInput(inputId: string) {
+  const removeImageInput = useCallback((inputId: string) => {
     if (imageInputs.length <= 1) return
     updateNodeData(id, { imageInputs: imageInputs.filter((x) => x !== inputId) })
-  }
+  }, [imageInputs, id, updateNodeData])
+
+  const inputs: PortDef[] = useMemo(() => {
+    const base = [...def.inputs]
+    for (const inputId of imageInputs) {
+      base.push({
+        id: inputId, type: "image_slot" as const, label: `图${base.length}`,
+        removable: imageInputs.length > 1,
+        onRemove: removeImageInput,
+      })
+    }
+    return base
+  }, [imageInputs, def.inputs, removeImageInput])
+
+  // Outputs for handles only — no label in bottom bar
+  const outputs: PortDef[] = useMemo(() => {
+    if (images.length > 0) {
+      return images.map((_img, i) => ({ id: `image${i + 1}`, type: "image_slot" as const }))
+    }
+    const num = Math.min(count, 10)
+    return Array.from({ length: num }, (_, i) => ({ id: `image${i + 1}`, type: "image_slot" as const }))
+  }, [images.length, count])
 
   const selectStyle: React.CSSProperties = {
     width: "100%", padding: "0.25rem 0.375rem", fontSize: "0.6875rem",
@@ -163,65 +208,50 @@ export default function ImageListNode({ data, id, selected }: NodeProps) {
       {status === "idle" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
           <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-            <label style={{ fontSize: "0.6875rem", color: "var(--text-secondary)", minWidth: "2rem" }}>数量</label>
+            <label style={{ fontSize: "0.6875rem", color: "var(--text-secondary)", minWidth: "2rem" }}>{t("nodes.image_planner.count")}</label>
             <select value={count} onChange={(e) => updateNodeData(id, { count: Number(e.target.value) })} style={selectStyle}>
               {Array.from({ length: 10 }, (_, i) => (<option key={i + 1} value={i + 1}>{i + 1}</option>))}
             </select>
           </div>
           <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-            <label style={{ fontSize: "0.6875rem", color: "var(--text-secondary)", minWidth: "2rem" }}>模型</label>
-            <select value={model} onChange={(e) => updateNodeData(id, { model: e.target.value })} style={selectStyle}>
-              {MODELS.map((m) => (<option key={m.value} value={m.value}>{m.label}</option>))}
-            </select>
+            <label style={{ fontSize: "0.6875rem", color: "var(--text-secondary)", minWidth: "2rem" }}>{t("nodes.image_planner.style")}</label>
+            <ModelSelector
+              category="image"
+              value={d.model as string | undefined}
+              onChange={(model) => updateNodeData(id, { model })}
+            />
           </div>
 
-          {/* Add image input button */}
-          <button onClick={addImageInput} style={{
-            padding: "0.25rem 0.5rem", fontSize: "0.6875rem", borderRadius: "0.25rem",
-            border: "1px dashed var(--border-color)", background: "transparent",
-            color: "var(--text-secondary)", cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: "0.25rem",
-          }}>
-            <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>add</span>
-            添加图片输入 ({imageInputs.length})
-          </button>
+          {/* Add image input button — max 3 */}
+          {imageInputs.length < MAX_IMAGE_INPUTS && (
+            <button onClick={addImageInput} style={{
+              padding: "0.25rem 0.5rem", fontSize: "0.6875rem", borderRadius: "0.25rem",
+              border: "1px dashed var(--border-color)", background: "transparent",
+              color: "var(--text-secondary)", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: "0.25rem",
+            }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>add</span>
+              {t("nodes.image_list.addImageInput", { count: imageInputs.length })}
+            </button>
+          )}
         </div>
       )}
 
-      {/* Connected image inputs with thumbnails and order badges */}
+      {/* Connected image inputs with thumbnails and hover-delete */}
       {connectedImageInputs.length > 0 && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(60px, 1fr))", gap: "0.25rem" }}>
           {connectedImageInputs.map((conn, i) => {
             const srcResult = nodeResults[conn.sourceNodeId] as { images?: GeneratedImage[] } | undefined
             const firstImg = srcResult?.images?.[0]
             return (
-              <div key={conn.handleId} style={{ position: "relative" }}>
-                {firstImg ? (
-                  <ImageThumb filePath={firstImg.file_path} description={firstImg.description} badge={i + 1} />
-                ) : (
-                  <div style={{
-                    aspectRatio: "4/3", background: "var(--bg-hover)", borderRadius: "0.25rem",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: "9px", color: "var(--text-secondary)", position: "relative",
-                  }}>
-                    图{i + 1}
-                    <div style={{
-                      position: "absolute", top: 2, left: 2, minWidth: "14px", height: "14px",
-                      background: "#3B82F6", color: "#fff", borderRadius: "7px",
-                      fontSize: "9px", fontWeight: 700, display: "flex", alignItems: "center",
-                      justifyContent: "center", padding: "0 3px", lineHeight: 1,
-                    }}>{i + 1}</div>
-                  </div>
-                )}
-                {status === "idle" && imageInputs.length > 1 && (
-                  <button onClick={() => removeImageInput(conn.handleId)} style={{
-                    position: "absolute", top: 2, right: 2, width: "14px", height: "14px",
-                    background: "rgba(0,0,0,0.5)", color: "#fff", border: "none",
-                    borderRadius: "50%", fontSize: "8px", cursor: "pointer",
-                    display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1,
-                  }}>×</button>
-                )}
-              </div>
+              <InputThumb
+                key={conn.handleId}
+                handleId={conn.handleId}
+                index={i}
+                firstImg={firstImg}
+                canDelete={status === "idle" && imageInputs.length > 1}
+                onDelete={removeImageInput}
+              />
             )
           })}
         </div>
@@ -236,7 +266,7 @@ export default function ImageListNode({ data, id, selected }: NodeProps) {
             display: "flex", alignItems: "center", gap: "0.375rem",
           }}>
             <span className="material-symbols-outlined" style={{ fontSize: "14px", animation: "spin 1s linear infinite" }}>progress_activity</span>
-            {progress ? `生成中 ${progress.current}/${progress.total}...` : "准备生成..."}
+            {progress ? t("nodes.image_list.generating", { current: progress.current, total: progress.total }) : t("nodes.image_list.ready")}
           </div>
           {progress && (
             <div style={{ height: "4px", background: "var(--border-color)", borderRadius: "2px", overflow: "hidden" }}>
@@ -250,15 +280,14 @@ export default function ImageListNode({ data, id, selected }: NodeProps) {
         </div>
       )}
 
-      {/* Generated images grid — double click to open editor */}
+      {/* Done — show count only, no preview grid */}
       {images.length > 0 && status === "done" && (
-        <div
-          style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(70px, 1fr))", gap: "0.25rem", cursor: "pointer" }}
-          onDoubleClick={() => useOverlayStore.getState().openEditor(id)}
-        >
-          {images.map((img) => (
-            <ImageThumb key={img.id} filePath={img.file_path} description={img.description} />
-          ))}
+        <div style={{
+          padding: "0.375rem 0.5rem", background: "var(--bg-hover)",
+          borderRadius: "0.25rem", fontSize: "0.6875rem", color: "var(--text-secondary)",
+          textAlign: "center",
+        }}>
+          {t("nodes.image_list.generated", { count: images.length })}
         </div>
       )}
 
@@ -268,7 +297,7 @@ export default function ImageListNode({ data, id, selected }: NodeProps) {
           padding: "0.375rem 0.5rem", background: "#fef2f2",
           borderRadius: "0.25rem", fontSize: "0.6875rem", color: "#991b1b",
         }}>
-          生成失败，请检查 API Key
+          {t("nodes.image_list.error")}
         </div>
       )}
     </NodeBase>

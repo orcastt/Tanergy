@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import type { NodeProps } from "@xyflow/react"
+import { useTranslation } from "react-i18next"
 import NodeBase from "./base/NodeBase"
 import { NODE_MAP } from "./nodeDefs"
 import { useCanvasStore } from "../store/canvasStore"
@@ -18,6 +19,7 @@ interface GalleryImage {
 function GalleryThumb({ filePath, description, onClick }: {
   filePath: string; description: string; onClick: () => void
 }) {
+  const { t } = useTranslation()
   const [src, setSrc] = useState<string | null>(null)
 
   useEffect(() => {
@@ -43,7 +45,7 @@ function GalleryThumb({ filePath, description, onClick }: {
           borderRadius: "0.375rem", display: "flex", alignItems: "center",
           justifyContent: "center", fontSize: "0.625rem", color: "#9ca3af",
         }}>
-          加载中...
+          {t("common.loading")}
         </div>
       ) : (
         <img
@@ -60,7 +62,7 @@ function GalleryThumb({ filePath, description, onClick }: {
         textAlign: "center", overflow: "hidden", textOverflow: "ellipsis",
         whiteSpace: "nowrap",
       }}>
-        {description || "图片"}
+        {description || t("nodes.image_gallery.image")}
       </div>
     </div>
   )
@@ -71,6 +73,7 @@ export default function ImageGalleryNode({ data, id, selected }: NodeProps) {
   const def = NODE_MAP[d.nodeType]
   if (!def) return null
 
+  const { t } = useTranslation()
   const { nodeStatuses, nodeResults } = useCanvasStore()
   const status = nodeStatuses[id] ?? "idle"
   const result = nodeResults[id] as { images?: GalleryImage[] } | undefined
@@ -100,7 +103,7 @@ export default function ImageGalleryNode({ data, id, selected }: NodeProps) {
     >
       {images.length === 0 && status !== "running" && (
         <div style={{ fontSize: "0.6875rem", color: "#747878", textAlign: "center" }}>
-          连接图片节点展示图片
+          {t("nodes.image_gallery.connectHint")}
         </div>
       )}
 

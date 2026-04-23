@@ -1,9 +1,13 @@
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 import SideNav from "../components/SideNav"
 import TopNav from "../components/TopNav"
+import SkillPicker from "../components/SkillPicker"
 import { useWorkflowStore } from "../store/workflowStore"
 import { useApiKeyStore } from "../store/apiKeyStore"
+import { SKILL_DEFS } from "../nodes/skillDefs"
+import { NODE_MAP } from "../nodes/nodeDefs"
 import { tauri } from "../services/tauri"
 import { open } from "@tauri-apps/plugin-dialog"
 import { readFile } from "@tauri-apps/plugin-fs"
@@ -12,8 +16,10 @@ import { TrashCard, WorkflowCardInline } from "./dashboard/WorkflowCards"
 export default function DashboardPage() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { t } = useTranslation()
   const filter = new URLSearchParams(location.search).get("filter")
   const isTrashView = filter === "trash"
+  const [showSkillPicker, setShowSkillPicker] = useState(false)
 
   const {
     workflows, trashedWorkflows, isLoading,
@@ -27,7 +33,41 @@ export default function DashboardPage() {
   useEffect(() => { loadProviders() }, [loadProviders])
   const noKeys = providers.length > 0 && providers.every((p) => !p.is_set)
 
-  async function handleCreate() {
+  async function handleSkillSelect(skillId: string) {
+    setShowSkillPicker(false)
+    const skill = SKILL_DEFS.find((s) => s.id === skillId)
+    if (!skill) return
+
+    try {
+      const wf = await tauri.createWorkflow(t(skill.labelKey))
+
+      if (skill.nodes.length > 0) {
+        const nodes = skill.nodes.map((n, i) => {
+          const def = NODE_MAP[n.type]
+          return {
+            id: `node_${i}`,
+            type: n.type,
+            position: n.position,
+            data: { nodeType: n.type, ...(def?.defaultData ?? {}) },
+          }
+        })
+        const edges = skill.edges.map(([from, to], i) => ({
+          id: `edge_${i}`,
+          source: `node_${from}`,
+          target: `node_${to}`,
+        }))
+        await tauri.updateWorkflow(wf.id, { graph_json: JSON.stringify({ nodes, edges }) })
+      }
+
+      navigate(`/canvas/${wf.id}`)
+    } catch (e) {
+      // Fallback: plain blank workflow
+      const id = await createAndNavigate()
+      if (id) navigate(`/canvas/${id}`)
+    }
+  }
+
+  async function handleCreateBlank() {
     const id = await createAndNavigate()
     if (id) navigate(`/canvas/${id}`)
   }
@@ -85,8 +125,8 @@ export default function DashboardPage() {
                   color: "#92400e",
                 }}
               >
-                <span>你还没有配置 AI API Key，点击前往 Settings 配置。</span>
-                <span style={{ color: "#b45309", fontWeight: 600 }}>前往设置 →</span>
+                <span>{t("dashboard.setupPrompt")}</span>
+                <span style={{ color: "#b45309", fontWeight: 600 }}>{t("dashboard.goToSettings")}</span>
               </div>
             )}
 
@@ -143,9 +183,9 @@ export default function DashboardPage() {
               )
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1.5rem" }}>
-                {/* Create New */}
+                {/* Create New — opens Skill Picker */}
                 <button
-                  onClick={handleCreate}
+                  onClick={() => setShowSkillPicker(true)}
                   style={{
                     display: "flex", flexDirection: "column", justifyContent: "space-between",
                     height: "14rem", background: "#242424", color: "#ffffff",
@@ -166,10 +206,10 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <h3 style={{ fontFamily: '"Space Grotesk", sans-serif', fontSize: "1.25rem", fontWeight: 600, color: "#ffffff" }}>
-                      Create New Workflow
+                      {t("dashboard.createNew")}
                     </h3>
                     <p style={{ fontSize: "0.875rem", color: "rgba(255,255,255,0.6)", marginTop: "0.25rem" }}>
-                      Start a blank canvas or import data.
+                      {t("dashboard.createDescription")}
                     </p>
                   </div>
                 </button>
@@ -198,10 +238,10 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <h3 style={{ fontFamily: '"Space Grotesk", sans-serif', fontSize: "1.25rem", fontWeight: 600, color: "var(--text-primary)" }}>
-                      Import Workflow
+                      {t("dashboard.importWorkflow")}
                     </h3>
                     <p style={{ fontSize: "0.875rem", color: "var(--text-secondary)", marginTop: "0.25rem" }}>
-                      Load from .tangent.json file.
+                      {t("dashboard.importDescription")}
                     </p>
                   </div>
                 </button>
@@ -221,7 +261,10 @@ export default function DashboardPage() {
           </div>
         </main>
       </div>
+
+      {showSkillPicker && (
+        <SkillPicker onSelect={handleSkillSelect} onClose={() => setShowSkillPicker(false)} />
+      )}
     </div>
   )
 }
-

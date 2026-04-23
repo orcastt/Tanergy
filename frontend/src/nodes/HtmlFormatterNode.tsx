@@ -1,16 +1,19 @@
 import { useState } from "react"
 import type { NodeProps } from "@xyflow/react"
+import { useTranslation } from "react-i18next"
 import NodeBase from "./base/NodeBase"
 import { NODE_MAP } from "./nodeDefs"
 import { useCanvasStore } from "../store/canvasStore"
 import { useCreditsStore } from "../store/creditsStore"
 import { NODE_CREDIT_COSTS } from "../types/credits"
+import ModelSelector from "../components/ModelSelector"
 
 export default function HtmlFormatterNode({ data, id, selected }: NodeProps) {
-  const d = data as unknown as { nodeType: string; style: string; fontSize: number; lineHeight: number }
+  const d = data as unknown as { nodeType: string; style: string; fontSize: number; lineHeight: number; model?: string }
   const def = NODE_MAP[d.nodeType]
   if (!def) return null
 
+  const { t } = useTranslation()
   const { isLoggedIn } = useCreditsStore()
   const creditCost = NODE_CREDIT_COSTS[d.nodeType] ?? 0
 
@@ -32,9 +35,19 @@ export default function HtmlFormatterNode({ data, id, selected }: NodeProps) {
       nodeId={id}
       creditCost={isLoggedIn ? creditCost : undefined}
     >
+      {/* Model selector */}
+      <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", marginBottom: "0.375rem" }}>
+        <span style={{ fontSize: "0.6875rem", color: "var(--text-secondary)" }}>Model:</span>
+        <ModelSelector
+          category="text"
+          value={d.model as string | undefined}
+          onChange={(model) => updateNodeData(id, { model })}
+        />
+      </div>
+
       {/* Config */}
       <div style={{ display: "flex", gap: "0.375rem", marginBottom: "0.375rem", flexWrap: "wrap", alignItems: "center" }}>
-        <span style={{ fontSize: "0.6875rem", color: "#747878" }}>风格:</span>
+        <span style={{ fontSize: "0.6875rem", color: "#747878" }}>{t("nodes.html_formatter.style")}</span>
         <select
           value={d.style ?? "经典"}
           onChange={(e) => updateNodeData(id, { style: e.target.value })}
@@ -44,7 +57,7 @@ export default function HtmlFormatterNode({ data, id, selected }: NodeProps) {
             <option key={s} value={s}>{s}</option>
           ))}
         </select>
-        <span style={{ fontSize: "0.6875rem", color: "#747878" }}>字号:</span>
+        <span style={{ fontSize: "0.6875rem", color: "#747878" }}>{t("nodes.html_formatter.fontSize")}</span>
         <select
           value={d.fontSize ?? 16}
           onChange={(e) => updateNodeData(id, { fontSize: Number(e.target.value) })}
@@ -63,7 +76,7 @@ export default function HtmlFormatterNode({ data, id, selected }: NodeProps) {
           display: "flex", alignItems: "center", gap: "0.375rem",
         }}>
           <span className="material-symbols-outlined" style={{ fontSize: "14px", animation: "spin 1s linear infinite" }}>progress_activity</span>
-          排版中...
+          {t("nodes.html_formatter.formatting")}
         </div>
       )}
 
@@ -95,7 +108,7 @@ export default function HtmlFormatterNode({ data, id, selected }: NodeProps) {
           )}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: "0.625rem", color: "#9ca3af" }}>
-              {result.word_count?.toLocaleString()} 字 · 约 {result.reading_time} 分钟
+              {t("nodes.html_formatter.stats", { count: result.word_count?.toLocaleString(), time: result.reading_time })}
             </span>
             <div style={{ display: "flex", gap: "0.25rem" }}>
               <button
@@ -106,7 +119,7 @@ export default function HtmlFormatterNode({ data, id, selected }: NodeProps) {
                   cursor: "pointer", background: "#fff", color: "#1b1c1c",
                 }}
               >
-                {showEditor ? "预览" : "编辑 HTML"}
+                {showEditor ? t("nodes.html_formatter.preview") : t("nodes.html_formatter.editHtml")}
               </button>
             </div>
           </div>
@@ -115,7 +128,7 @@ export default function HtmlFormatterNode({ data, id, selected }: NodeProps) {
 
       {status === "idle" && (
         <div style={{ fontSize: "0.6875rem", color: "#747878", textAlign: "center" }}>
-          连接文章，点击 Run 排版
+          {t("nodes.html_formatter.connectHint")}
         </div>
       )}
 
@@ -124,7 +137,7 @@ export default function HtmlFormatterNode({ data, id, selected }: NodeProps) {
           padding: "0.375rem 0.5rem", background: "#fef2f2",
           borderRadius: "0.25rem", fontSize: "0.6875rem", color: "#991b1b",
         }}>
-          排版失败，请检查输入
+          {t("nodes.html_formatter.error")}
         </div>
       )}
     </NodeBase>

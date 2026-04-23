@@ -1,7 +1,9 @@
 import { useParams, useNavigate } from "react-router-dom"
 import { ReactFlowProvider } from "@xyflow/react"
+import { Component } from "react"
 import { useCanvas } from "../hooks/useCanvas"
 import { useWorkflowStore } from "../store/workflowStore"
+import { useOverlayStore } from "../store/overlayStore"
 import { tauri } from "../services/tauri"
 import Canvas from "../canvas/Canvas"
 import { useState } from "react"
@@ -11,23 +13,43 @@ import { writeFile } from "@tauri-apps/plugin-fs"
 export default function CanvasPage() {
   return (
     <ReactFlowProvider>
-      <CanvasPageInner />
+      <ErrorBoundary>
+        <CanvasPageInner />
+      </ErrorBoundary>
     </ReactFlowProvider>
   )
+}
+
+class ErrorBoundary extends Component<{ children: React.ReactNode }, { error: string | null }> {
+  state = { error: null as string | null }
+  static getDerivedStateFromError(e: Error) {
+    return { error: e.message + "\n" + e.stack?.slice(0, 500) }
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ height: "100vh", background: "#1a1a1a", padding: "2rem", color: "#EF4444", fontFamily: "monospace", whiteSpace: "pre-wrap", fontSize: "0.875rem" }}>
+          Canvas Error:\n{this.state.error}
+        </div>
+      )
+    }
+    return this.props.children
+  }
 }
 
 function CanvasPageInner() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { currentWorkflow, isDirty } = useCanvas(id!)
+  const editorNodeId = useOverlayStore((s) => s.editorNodeId)
   const { saveWorkflow, isSaving, toast, clearToast } = useWorkflowStore()
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState("")
 
   if (!currentWorkflow) {
     return (
-      <div style={{ height: "100vh", background: "var(--bg-canvas)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <span style={{ color: "var(--text-secondary)" }}>Loading workflow...</span>
+      <div style={{ height: "100vh", background: "#1a1a1a", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "1.25rem" }}>
+        Loading workflow...
       </div>
     )
   }
@@ -71,6 +93,10 @@ function CanvasPageInner() {
           {/* Back */}
           <button
             onClick={() => {
+              if (editorNodeId) {
+                useOverlayStore.getState().closeEditor()
+                return
+              }
               if (isDirty) saveWorkflow()
               navigate("/dashboard")
             }}

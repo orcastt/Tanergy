@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { useTranslation } from "react-i18next"
 import { useApiKeyStore } from "../../store/apiKeyStore"
 import type { ProviderInfo } from "../../types/license"
 
@@ -10,15 +11,16 @@ const btnBase: React.CSSProperties = {
 
 export function KeysTab() {
   const { providers, testing, loadProviders, setKey, testKey, removeKey } = useApiKeyStore()
+  const { t } = useTranslation()
   useEffect(() => { loadProviders() }, [loadProviders])
 
   return (
     <div>
       <h2 style={{ fontFamily: '"Space Grotesk", sans-serif', fontSize: "1.25rem", fontWeight: 600, marginBottom: "0.5rem" }}>
-        AI Provider
+        {t("settings.provider")}
       </h2>
       <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", marginBottom: "1.5rem" }}>
-        TANGENT 使用你自己的 API Key，密钥经本地加密存储，不会发送到任何第三方服务器。
+        {t("settings.apiKeyDesc")}
       </p>
       <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
         {providers.map((p) => (
@@ -36,11 +38,12 @@ function ProviderCard({ provider, isTesting, onSet, onTest, onRemove }: {
   onTest: () => Promise<boolean>; onRemove: () => void
 }) {
   const [input, setInput] = useState("")
+  const { t } = useTranslation()
   const [error, setError] = useState<string | null>(null)
   const [showConfirm, setShowConfirm] = useState(false)
 
   const handleSet = () => { if (!input.trim()) return; onSet(input.trim()); setInput(""); setError(null) }
-  const handleTest = async () => { setError(null); const ok = await onTest(); if (!ok) setError("验证失败，请检查 Key") }
+  const handleTest = async () => { setError(null); const ok = await onTest(); if (!ok) setError(t("settings.keyInvalid")) }
   const dotColor = provider.is_valid === true ? "#22c55e" : provider.is_valid === false ? "#ef4444" : "#d4d4d4"
 
   return (
@@ -55,27 +58,27 @@ function ProviderCard({ provider, isTesting, onSet, onTest, onRemove }: {
 
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         <input type="password" value={input} onChange={(e) => setInput(e.target.value)}
-          placeholder={provider.is_set ? "•••••••••••• (已保存)" : `${provider.key_prefix || "输入 API Key"}`}
+          placeholder={provider.is_set ? t("settings.keySaved") : `${provider.key_prefix || t("settings.enterApiKey")}`}
           onKeyDown={(e) => e.key === "Enter" && handleSet()}
           style={{ flex: 1, padding: "0.5rem 0.75rem", borderRadius: 6, border: "1px solid var(--border-color)", fontSize: "0.8125rem", fontFamily: '"Inter", sans-serif', outline: "none" }}
         />
-        <button onClick={handleSet} disabled={!input.trim()} style={{ ...btnBase, opacity: input.trim() ? 1 : 0.4 }}>保存</button>
+        <button onClick={handleSet} disabled={!input.trim()} style={{ ...btnBase, opacity: input.trim() ? 1 : 0.4 }}>{t("settings.save")}</button>
         {provider.is_set && (
           <button onClick={handleTest} disabled={isTesting}
             style={{ ...btnBase, background: "var(--bg-hover)", color: "var(--text-primary)" }}>
-            {isTesting ? "..." : "测试"}
+            {isTesting ? "..." : t("settings.test")}
           </button>
         )}
         {provider.is_set && !showConfirm && (
           <button onClick={() => setShowConfirm(true)}
-            style={{ ...btnBase, background: "transparent", color: "#ef4444", border: "1px solid #fecaca" }}>删除</button>
+            style={{ ...btnBase, background: "transparent", color: "#ef4444", border: "1px solid #fecaca" }}>{t("settings.delete")}</button>
         )}
         {showConfirm && (
           <div style={{ display: "flex", gap: 4 }}>
             <button onClick={() => { onRemove(); setShowConfirm(false) }}
-              style={{ ...btnBase, background: "#ef4444", color: "#fff", fontSize: "0.75rem" }}>确认</button>
+              style={{ ...btnBase, background: "#ef4444", color: "#fff", fontSize: "0.75rem" }}>{t("settings.confirm")}</button>
             <button onClick={() => setShowConfirm(false)}
-              style={{ ...btnBase, background: "var(--bg-hover)", color: "var(--text-primary)", fontSize: "0.75rem" }}>取消</button>
+              style={{ ...btnBase, background: "var(--bg-hover)", color: "var(--text-primary)", fontSize: "0.75rem" }}>{t("settings.cancel")}</button>
           </div>
         )}
       </div>

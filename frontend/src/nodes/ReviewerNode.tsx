@@ -1,19 +1,22 @@
 import type { NodeProps } from "@xyflow/react"
+import { useTranslation } from "react-i18next"
 import NodeBase from "./base/NodeBase"
 import { NODE_MAP } from "./nodeDefs"
 import { useCanvasStore } from "../store/canvasStore"
 import { useCreditsStore } from "../store/creditsStore"
 import { NODE_CREDIT_COSTS } from "../types/credits"
+import ModelSelector from "../components/ModelSelector"
 
 export default function ReviewerNode({ data, id, selected }: NodeProps) {
-  const d = data as unknown as { nodeType: string }
+  const d = data as unknown as { nodeType: string; model?: string }
   const def = NODE_MAP[d.nodeType]
   if (!def) return null
 
+  const { t } = useTranslation()
   const { isLoggedIn } = useCreditsStore()
   const creditCost = NODE_CREDIT_COSTS[d.nodeType] ?? 0
 
-  const { nodeStatuses, nodeResults } = useCanvasStore()
+  const { nodeStatuses, nodeResults, updateNodeData } = useCanvasStore()
   const status = nodeStatuses[id] ?? "idle"
   const result = nodeResults[id] as { text?: string } | undefined
 
@@ -29,6 +32,14 @@ export default function ReviewerNode({ data, id, selected }: NodeProps) {
       nodeId={id}
       creditCost={isLoggedIn ? creditCost : undefined}
     >
+      <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", marginBottom: "0.375rem" }}>
+        <span style={{ fontSize: "0.6875rem", color: "var(--text-secondary)" }}>Model:</span>
+        <ModelSelector
+          category="text"
+          value={d.model as string | undefined}
+          onChange={(model) => updateNodeData(id, { model })}
+        />
+      </div>
       {status === "running" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
           <div style={{
@@ -42,7 +53,7 @@ export default function ReviewerNode({ data, id, selected }: NodeProps) {
             gap: "0.375rem",
           }}>
             <span className="material-symbols-outlined" style={{ fontSize: "14px", animation: "spin 1s linear infinite" }}>progress_activity</span>
-            三遍审校中...
+            {t("nodes.reviewer.reviewing")}
           </div>
           {/* Progress bar */}
           <div style={{
@@ -60,7 +71,7 @@ export default function ReviewerNode({ data, id, selected }: NodeProps) {
             }} />
           </div>
           <div style={{ fontSize: "0.625rem", color: "#747878", textAlign: "center" }}>
-            Pass 1: 事实核查 → Pass 2: 反AI洗稿 → Pass 3: 节奏格式
+            {t("nodes.reviewer.passes")}
           </div>
         </div>
       )}
@@ -75,7 +86,7 @@ export default function ReviewerNode({ data, id, selected }: NodeProps) {
             color: "#166534",
             fontWeight: 600,
           }}>
-            ✓ 三遍审校完成
+            {t("nodes.reviewer.completed")}
           </div>
           <div style={{
             padding: "0.5rem",
@@ -95,7 +106,7 @@ export default function ReviewerNode({ data, id, selected }: NodeProps) {
 
       {status === "idle" && (
         <div style={{ fontSize: "0.6875rem", color: "#747878", textAlign: "center" }}>
-          三遍审校：事实核查 → 反AI洗稿 → 节奏格式
+          {t("nodes.reviewer.summary")}
         </div>
       )}
 
@@ -107,7 +118,7 @@ export default function ReviewerNode({ data, id, selected }: NodeProps) {
           fontSize: "0.6875rem",
           color: "#991b1b",
         }}>
-          执行失败，请检查 API Key
+          {t("common.errorApiKey")}
         </div>
       )}
     </NodeBase>

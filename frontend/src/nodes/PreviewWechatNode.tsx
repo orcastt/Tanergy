@@ -1,5 +1,6 @@
 import { useState } from "react"
 import type { NodeProps } from "@xyflow/react"
+import { useTranslation } from "react-i18next"
 import NodeBase from "./base/NodeBase"
 import { NODE_MAP } from "./nodeDefs"
 import { useCanvasStore } from "../store/canvasStore"
@@ -9,6 +10,7 @@ export default function PreviewWechatNode({ data, id, selected }: NodeProps) {
   const def = NODE_MAP[d.nodeType]
   if (!def) return null
 
+  const { t } = useTranslation()
   const { nodeStatuses, nodeResults } = useCanvasStore()
   const status = nodeStatuses[id] ?? "idle"
   const result = nodeResults[id] as { html?: string } | undefined
@@ -54,7 +56,7 @@ export default function PreviewWechatNode({ data, id, selected }: NodeProps) {
           display: "flex", alignItems: "center", gap: "0.375rem",
         }}>
           <span className="material-symbols-outlined" style={{ fontSize: "14px", animation: "spin 1s linear infinite" }}>progress_activity</span>
-          加载预览...
+          {t("nodes.preview_wechat.loading")}
         </div>
       )}
 
@@ -96,7 +98,7 @@ export default function PreviewWechatNode({ data, id, selected }: NodeProps) {
                 transition: "background 0.2s",
               }}
             >
-              {copied ? "已复制 ✓" : "复制 HTML"}
+              {copied ? t("nodes.preview_wechat.copied") : t("nodes.preview_wechat.copyHtml")}
             </button>
           </div>
         </div>
@@ -104,7 +106,7 @@ export default function PreviewWechatNode({ data, id, selected }: NodeProps) {
 
       {status === "idle" && (
         <div style={{ fontSize: "0.6875rem", color: "#747878", textAlign: "center" }}>
-          连接 HTML 排版节点预览
+          {t("nodes.preview_wechat.connectHint")}
         </div>
       )}
 
@@ -113,7 +115,7 @@ export default function PreviewWechatNode({ data, id, selected }: NodeProps) {
           padding: "0.375rem 0.5rem", background: "#fef2f2",
           borderRadius: "0.25rem", fontSize: "0.6875rem", color: "#991b1b",
         }}>
-          预览加载失败
+          {t("nodes.preview_wechat.error")}
         </div>
       )}
     </NodeBase>

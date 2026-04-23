@@ -5,6 +5,7 @@ import { Z } from "../canvas/OverlayLayer"
 export default function AgentPanel() {
   const open = useAgentStore((s) => s.open)
   const setOpen = useAgentStore((s) => s.setOpen)
+  const resetChat = useAgentStore((s) => s.resetChat)
 
   return (
     <>
@@ -64,7 +65,27 @@ export default function AgentPanel() {
           flexShrink: 0,
         }}>
           <span className="material-symbols-outlined" style={{ fontSize: "20px", color: "#6349EA" }}>smart_toy</span>
-          <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>AI Agent</span>
+          <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)", flex: 1 }}>AI Agent</span>
+          <button
+            onClick={resetChat}
+            title="New chat"
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              color: "var(--text-secondary)", display: "flex", padding: "0.25rem",
+            }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>add_comment</span>
+          </button>
+          <button
+            onClick={resetChat}
+            title="Clear chat"
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              color: "var(--text-secondary)", display: "flex", padding: "0.25rem",
+            }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>delete_sweep</span>
+          </button>
         </div>
 
         {/* Chat */}

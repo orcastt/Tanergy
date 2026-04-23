@@ -7,7 +7,8 @@
     "skills": "Skills",
     "settings": "Settings",
     "upgrade": "Upgrade",
-    "logout": "Log out"
+    "logout": "Log out",
+    "mainWorkspace": "Main Workspace"
   },
   "auth": {
     "login": "Log in",
@@ -27,7 +28,20 @@
     "empty": "No workflows yet",
     "emptyGuide": "Click 'New Workflow' to start your first AI creative process",
     "delete": "Delete",
-    "deleteConfirm": "Are you sure you want to delete this workflow?"
+    "deleteConfirm": "Are you sure you want to delete this workflow?",
+    "setupPrompt": "You haven't configured an AI API Key. Go to Settings to set one up.",
+    "goToSettings": "Go to Settings →",
+    "workspace": "Workspace",
+    "trash": "Trash",
+    "trashDescription": "Workflows moved to trash. Restore or permanently delete them.",
+    "workspaceDescription": "Manage and orchestrate your active workflows.",
+    "emptyTrash": "Empty Trash",
+    "loading": "Loading...",
+    "trashEmpty": "Trash is empty",
+    "createNew": "Create New Workflow",
+    "createDescription": "Start a blank canvas or import data.",
+    "importWorkflow": "Import Workflow",
+    "importDescription": "Load from .tangent.json file."
   },
   "canvas": {
     "addNode": "Add Node",
@@ -38,7 +52,13 @@
     "unsaved": "Unsaved changes",
     "run": "Run",
     "runAll": "Run All",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "copy": "Copy",
+    "paste": "Paste",
+    "delete": "Delete",
+    "undo": "Undo",
+    "exportJson": "Export JSON",
+    "clearCanvas": "Clear Canvas"
   },
   "time": {
     "remaining": "Time remaining",
@@ -50,6 +70,204 @@
     "close": "Close",
     "download": "Download",
     "copy": "Copy",
-    "copied": "Copied ✓"
+    "copied": "Copied ✓",
+    "loading": "Loading...",
+    "errorApiKey": "Execution failed, please check API Key"
+  },
+  "sidenav": {
+    "allWorkflows": "All Workflows",
+    "recent": "Recent",
+    "templates": "Templates",
+    "trash": "Trash",
+    "newWorkflow": "New Workflow"
+  },
+  "nodes": {
+    "text_input": {
+      "label": "Text Input",
+      "desc": "Enter topic or keywords",
+      "placeholder": "Enter topic, keywords, or article requirements..."
+    },
+    "research": {
+      "label": "Research",
+      "desc": "Tavily multi-round search"
+    },
+    "outline": {
+      "label": "Outline",
+      "desc": "Generate outline options",
+      "generating": "Generating outline..."
+    },
+    "gate": {
+      "label": "Gate",
+      "desc": "Pause for user selection",
+      "select": "Select",
+      "input": "Input",
+      "selectDirection": "⏸ Please choose direction:",
+      "waitingInput": "⏸ Waiting for your input...",
+      "placeholder": "Paste your material here...",
+      "submit": "Confirm →"
+    },
+    "writer": {
+      "label": "Writer",
+      "desc": "AI long-form writing",
+      "writing": "Writing article...",
+      "wordCount": "Words:"
+    },
+    "reviewer": {
+      "label": "Reviewer",
+      "desc": "Three-pass review",
+      "reviewing": "Reviewing...",
+      "passes": "Pass 1: Fact check → Pass 2: Anti-AI polish → Pass 3: Rhythm & format",
+      "completed": "✓ Three-pass review completed",
+      "summary": "Three-pass review: Fact check → Anti-AI polish → Rhythm & format"
+    },
+    "image_planner": {
+      "label": "Image Planner",
+      "desc": "AI image planning",
+      "count": "Count:",
+      "style": "Style:",
+      "analyzing": "Analyzing article...",
+      "imageN": "Image {{n}}",
+      "connectHint": "Connect article, click Run to plan images",
+      "error": "Planning failed, check input and API Key"
+    },
+    "image_list": {
+      "label": "Image List",
+      "desc": "AI image generation",
+      "generating": "Generating {{current}}/{{total}}...",
+      "ready": "Ready to generate...",
+      "connectHint": "Connect image plan, click Run to generate",
+      "error": "Generation failed, check API Key",
+      "addImageInput": "Add image input ({{count}})",
+      "generated": "{{count}} images generated"
+    },
+    "image_gallery": {
+      "label": "Gallery",
+      "desc": "Collect & display images",
+      "image": "Image",
+      "connectHint": "Connect image nodes to display images"
+    },
+    "html_formatter": {
+      "label": "HTML Formatter",
+      "desc": "Markdown → WeChat HTML",
+      "style": "Style:",
+      "fontSize": "Font size:",
+      "formatting": "Formatting...",
+      "stats": "{{count}} chars · ~{{time}} min read",
+      "preview": "Preview",
+      "editHtml": "Edit HTML",
+      "connectHint": "Connect article, click Run to format",
+      "error": "Formatting failed, check input"
+    },
+    "preview_wechat": {
+      "label": "Preview: WeChat",
+      "desc": "WeChat preview & copy HTML",
+      "loading": "Loading preview...",
+      "copyHtml": "Copy HTML",
+      "copied": "Copied ✓",
+      "connectHint": "Connect HTML formatter to preview",
+      "error": "Preview failed to load"
+    }
+  },
+  "image_editor": {
+    "title": "Image Editor",
+    "imageCount": "{{count}} images"
+  },
+  "ports": {
+    "article": "Article",
+    "imagePlan": "Image Plans",
+    "image": "Image",
+    "formattedHtml": "Formatted HTML"
+  },
+  "styles": {
+    "list": "Content List",
+    "story": "Story Narrative",
+    "analysis": "Deep Analysis",
+    "deepDive": "Deep Dive",
+    "popSci": "Easy Science",
+    "emotional": "Emotional Resonance",
+    "realistic": "Realistic",
+    "illustration": "Illustration",
+    "classic": "Classic",
+    "minimal": "Minimal",
+    "lively": "Lively",
+    "professional": "Professional",
+    "oilPainting": "Oil Painting"
+  },
+  "credits": {
+    "title": "Credits Center",
+    "currentCredits": "Current Credits",
+    "refresh": "Refresh",
+    "loginOfficial": "Login Official Account",
+    "enterEmail": "Enter email",
+    "sendOtp": "Send code",
+    "enterOtp": "Enter code",
+    "verify": "Verify",
+    "loggedIn": "Logged in",
+    "logout": "Log out",
+    "purchaseCredits": "Purchase Credits",
+    "purchase": "Purchase",
+    "proMember": "Pro Member",
+    "proMembership": "Pro Membership",
+    "proBenefits": "Unlock all Skill templates · 200 bonus credits · 20% off purchases",
+    "monthly": "$9.99/mo",
+    "yearly": "$79.99/yr",
+    "credits": "Credits"
+  },
+  "settings": {
+    "account": "Account",
+    "advanced": "Advanced",
+    "about": "About",
+    "theme": "Theme",
+    "language": "Language",
+    "loggedIn": "Logged in",
+    "notLoggedIn": "Not logged in",
+    "creditsBalance": "{{balance}} credits remaining",
+    "aboutDesc": "TANGENT is an AI-powered creative workflow canvas. Build multi-step content pipelines with visual node editing.",
+    "feedback": "Feedback",
+    "license": "License",
+    "general": "General",
+    "generalNote": "Theme / language settings will be available in future versions.",
+    "backDashboard": "Back to Dashboard",
+    "enterLicenseKey": "Enter License Key",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "currentStatus": "Current status:",
+    "activated": "Activated",
+    "invalidKey": "Invalid key",
+    "deactivated": "Deactivated",
+    "proExpires": "Pro — Expires {{date}}",
+    "trialDays": "Free trial — {{days}} days remaining",
+    "expired": "Expired",
+    "free": "Free",
+    "apiKeyDesc": "TANGENT uses your own API Key. Keys are encrypted locally and never sent to third-party servers.",
+    "keySaved": "•••••••••••• (Saved)",
+    "enterApiKey": "Enter API Key",
+    "save": "Save",
+    "test": "Test",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "keyInvalid": "Verification failed, check your Key",
+    "provider": "AI Provider"
+  },
+  "skills": {
+    "title": "New Workflow",
+    "subtitle": "Pick a skill template or start from scratch.",
+    "wechatArticle": "WeChat Article",
+    "wechatArticleDesc": "Research → outline → write → review → format for WeChat Official Account",
+    "ecommerce": "E-commerce Poster",
+    "ecommerceDesc": "Product copy → image planning → generation → HTML layout",
+    "xiaohongshu": "Xiaohongshu Post",
+    "xiaohongshuDesc": "Trending copy → image planning → review & polish",
+    "blank": "Blank Canvas",
+    "blankDesc": "Start with an empty canvas and add nodes manually."
+  },
+  "welcome": {
+    "wechatArticle": "WeChat Article",
+    "ecommerce": "E-commerce Poster",
+    "xiaohongshu": "Xiaohongshu Post"
+  },
+  "workflow": {
+    "freeLimit": "Free plan limited to 3 workflows. Upgrade to Pro for unlimited."
   }
 }

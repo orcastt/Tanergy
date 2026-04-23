@@ -1,9 +1,9 @@
 # TANGENT — Product Requirements Document
 
-**版本**: v0.5
-**日期**: 2026-04-21
-**状态**: Desktop pivot — Tauri 桌面客户端，本地存储，用户自带 API Key
-**上次更新**: 从 Web SaaS 迁移到桌面客户端架构
+**版本**: v0.7
+**日期**: 2026-04-23
+**状态**: Phase 2 商业化 — 本地测试 + Bug 修复阶段
+**上次更新**: 本地测试会话修复 9 个 Bug，连线交互增强，Image List 改进
 
 ---
 
@@ -87,29 +87,35 @@
 
 ## 3. MVP 功能范围
 
-### 3.1 必须有（MVP 范围，Phase 1）
+### 3.1 必须有（MVP 范围，Phase 1）— 已全部完成
 
-以下功能不上线，产品不可用：
+以下功能已实现：
 
-- [ ] 首次启动向导（License 输入 + API Key 配置）
-- [ ] API Key 管理（安全本地存储、有效性测试、按提供商配置）
-- [ ] 主画布（节点拖拽、连线、网格对齐）
-- [ ] 双击画布 → 节点选择面板
-- [ ] 节点执行引擎（拓扑序执行、状态机、错误处理）
-- [ ] 公众号长文创作 Skill（完整节点链路跑通）
+- [x] 首次启动向导（Email OTP 登录）
+- [x] API Key 管理（安全本地存储、有效性测试、按提供商配置）
+- [x] 主画布（节点拖拽、连线、网格对齐）
+- [x] 双击画布 → 节点选择面板
+- [x] 节点执行引擎（拓扑序执行、状态机、错误处理）
+- [x] 公众号长文创作 Skill（完整节点链路跑通）
   - text_input · research · outline_generator · gate · writer · reviewer · image_planner · image_gen · image_gallery · html_formatter · preview_wechat
-- [ ] 本地 SQLite 持久化（工作流、资产自动保存）
-- [ ] 图片本地存储 + 下载
-- [ ] License 激活与 Free/Pro 计划管理
-- [ ] 亮色 / 暗色主题切换
-- [ ] 中文 / 英文语言切换
-- [ ] 工作流保存与命名
-- [ ] Tauri 桌面打包与分发（.dmg / .msi）
+- [x] 本地 SQLite 持久化（工作流、资产自动保存）
+- [x] 图片本地存储 + 下载
+- [x] 官方 API 代理 + 积分系统 + 登录门控
+- [x] 亮色 / 暗色主题切换
+- [x] 中文 / 英文语言切换
+- [x] 工作流保存与命名
+- [x] Tauri 桌面打包与分发（.dmg / .msi）
 
-### 3.2 Phase 2
+### 3.2 Phase 2 — 进行中
 
-- [ ] 小红书图文笔记 Skill
+- [x] 官方 API 代理 + 积分系统（Slice 15-16 完成）
+- [x] i18n 中英切换（Slice 17 完成）
+- [x] 首次引导 + Stripe 支付（Slice 18 完成）
+- [x] Settings 简化 + Skill 推荐卡片（Slice 19 完成）
 - [x] 右侧 AI 对话面板 + 自然语言自动连线（Slice 11 完成）
+- [ ] Skill 动态拓扑系统（Slice 13 待开发）
+- [ ] 管理后台前端（API 已完成，Next.js 待开发）
+- [ ] 小红书图文笔记 Skill
 - [ ] 节点子画布 Draw/Comment（图片编辑器 Modal 已完成 Slice 11）
 - [ ] 可选云同步（增值功能，渐进式引入网页版）
 - [ ] 工作流模板分享
@@ -130,11 +136,12 @@
 
 | 视图 | 触发 | 作用 | 前置条件 |
 |------|------|------|---------|
-| Welcome/Setup | 首次启动 | License 输入 + API Key 配置向导 | 无 |
-| Dashboard | 应用启动 | 用户的工作流列表 | License 已激活或试用中 |
-| Canvas Editor | 打开/创建工作流 | 核心编辑界面 | 同上 |
-| Settings | 菜单或快捷键 | API Keys、License、偏好设置 | 同上 |
-| About | 菜单 | 版本信息、License 信息 | 无 |
+| Welcome | 首次启动 / 未登录 | Email OTP 登录引导 | 无 |
+| Credits | 导航 | 积分中心（余额、充值、升级） | 无 |
+| Dashboard | 登录后 | 工作流列表 + Skill 推荐 | 已登录 |
+| Canvas Editor | 打开/创建工作流 | 核心编辑界面 | 已登录 |
+| Settings | 导航 | Account / Advanced / About | 无 |
+| Admin Dashboard | 浏览器 | 后台管理（用户/积分/日志） | Admin 角色 |
 
 ---
 
@@ -881,29 +888,42 @@ Kling、Seedance、Vidu、Wan2.x、MiniMax、Tencent Speech、小红书 API
 
 ### 14.1 套餐定价
 
-| 套餐 | 价格 | 功能 |
-|------|------|------|
-| Free | €0 | 最多 3 个工作流，手动节点搭建，无 Skill 模板 |
-| Pro | €19/月 或 €149/年 | 无限工作流，全部节点，Skill 模板，优先支持 |
+| 套餐 | 价格 | 积分 | 功能 |
+|------|------|------|------|
+| Free | $0 | 50 注册赠送 | 官方 API 代理，按积分扣费 |
+| Pro Monthly | $9.99/月 | 500 积分/月 | 8 折购积分 |
+| Pro Yearly | $79.99/年 | 6000 积分/年 | 最佳价值 |
 
 ### 14.2 用户为什么付费
 
-- 为 **TANGENT 桌面软件本身**付费（软件授权）
-- 获得持续更新
-- **不为 API 使用量付费** — 用户自带 API Key，各自承担 AI API 费用
+- 为 **AI API 使用量**付费（官方代理，无需自配 Key）
+- 也支持**自带 API Key**（高级设置，免费使用）
+- Pro 会员享受积分折扣和专属功能
 
-### 14.3 License 验证
+### 14.3 AI 路由策略
 
-- 密钥格式：Ed25519 签名的数据包（Base64 编码）
-- 验证方式：本地公钥校验，无需联网
-- 试用期：首次启动自动开始，14 天 Full Pro 功能
-- Free 计划：可查看/编辑工作流，限制 3 个，不可使用 Skill 模板
-- 过期后：自动降级为 Free，不删除任何数据
+- **有官方 JWT** → FastAPI 代理（扣积分）
+  - 积分足够 → 转发到 AI provider
+  - 积分不足 → INSUFFICIENT_CREDITS 错误
+- **无 JWT + 有用户 Key** → 直接调用（经 Tauri Rust，免费）
+- **无 JWT + 无 Key** → LOGIN_REQUIRED 错误
 
-### 14.4 离线使用
+### 14.4 多模型差异定价
 
-- 应用完全可离线使用（AI API 调用需联网，但应用本身无需联网）
-- License 验证本地完成，不依赖网络
+| 模型 | 积分/次 | 类型 |
+|------|---------|------|
+| MiniMax-M2.7 | 1 | 文本 |
+| Claude Sonnet | 5 | 文本 |
+| GPT-4o | 5 | 文本 |
+| Gemini Pro | 3 | 文本 |
+| GLM-4 | 2 | 文本 |
+| MiniMax Image | 5 | 图片 |
+| （可后台配置） | — | — |
+
+### 14.5 离线使用
+
+- 画布编辑和本地操作完全离线
+- AI 调用需联网（经 FastAPI 代理或直接调 provider）
 - 工作流和资产始终在本地
 
 ---
@@ -1020,41 +1040,53 @@ Kling、Seedance、Vidu、Wan2.x、MiniMax、Tencent Speech、小红书 API
 
 ## 16. 开发路线图
 
-### Phase 1 — Desktop MVP（第 1-8 周）
+### Phase 1 — Desktop MVP ✅ 已完成
 
 **目标**：桌面画布可用，公众号 Skill 跑通，Free/Pro 分层
 
 **详细开发计划**：[dev-plans/phase1-mvp.md](dev-plans/phase1-mvp.md)
 
-| Slice | 名称 | 预计 | 难度 |
-|-------|------|------|------|
-| 0 | Tauri 脚手架 + SQLite | 2天 | 中 |
-| 1 | License + API Key 管理 | 2天 | 中 |
-| 2 | Dashboard + 工作流 CRUD（本地） | 2天 | 低 |
-| 3 | 画布核心（复用现有） | 4天 | 高 |
-| 4 | text_input · research · outline_generator | 3天 | 中 |
-| 5 | gate · writer · reviewer | 3天 | 高 |
-| 6 | image_planner · image_gen · image_gallery | 3天 | 高 |
-| 7 | html_formatter · preview_wechat | 2天 | 中 |
-| 8 | Skill 模板 + 端到端测试 | 3天 | 中 |
-| 9 | 主题 + 语言 + 桌面安装包 | 2天 | 低 |
-| 10 | 画布交互增强（分类颜色/复制粘贴/右键菜单/打组） | 3天 | 高 |
-| 11 | Image List重构 + AI Agent面板 + 画布主题 + 图片编辑器 | 5天 | 高 |
+| Slice | 名称 | 状态 |
+|-------|------|------|
+| 0 | Tauri 脚手架 + SQLite | ✅ |
+| 1 | License + API Key 管理 | ✅ |
+| 2 | Dashboard + 工作流 CRUD（本地） | ✅ |
+| 3 | 画布核心（复用现有） | ✅ |
+| 4 | text_input · research · outline_generator | ✅ |
+| 5 | gate · writer · reviewer | ✅ |
+| 6 | image_planner · image_gen · image_gallery | ✅ |
+| 7 | html_formatter · preview_wechat | ✅ |
+| 8 | 积分订阅系统（FastAPI 后端） | ✅ |
+| 9 | 主题 + 语言 + 桌面安装包 | ✅ |
+| 10 | 画布交互增强 | ✅ |
+| 11 | Image List重构 + AI Agent面板 + 画布主题 + 图片编辑器 | ✅ |
 
-### Phase 2 — V1（第 9-14 周）
+### Phase 2 — 商业化 ✅ 开发完成，测试修复中
 
-**目标**：AI 自然语言连线，小红书 Skill，可选云同步
+**目标**：官方 API 代理，积分订阅，管理后台，完善体验
 
-- 右侧 AI 对话面板
-- 自然语言 → 节点自动连线（Claude Function Calling）
-- 小红书图文笔记 Skill
-- Niji 7、Seedream 接入
-- 可选云同步（增值功能）
+**详细开发计划**：[dev-plans/phase2-commercial.md](dev-plans/phase2-commercial.md)
 
-### Phase 3 — V2（第 15-22 周）
+| Slice | 名称 | 优先级 | 状态 |
+|-------|------|--------|------|
+| 13 | Skill 动态拓扑系统 | P0 | ✅ |
+| 14 | 模型注册表 + 多模型路由 | P1 | ✅ |
+| 15 | 官方 API 默认路由 + 登录门控 | P0 | ✅ |
+| 16 | 多模型代理 + 差异积分 | P1 | ✅ |
+| 17 | i18n 中英切换完成 | P1 | ✅ |
+| 18 | 首次引导 + 订阅支付 | P1 | ✅ |
+| 19 | Settings 简化 + Skill 推荐卡片 | P2 | ✅ |
+| — | 管理后台 Web 应用 | P1 | ✅ |
+| — | Provider 可插拔架构 | P1 | ✅ |
+| 20 | 网页端架构预留 | P3 | ⬜ |
+
+**Bug 修复记录**：[debug-plans/bugs-session-2026-04-23.md](debug-plans/bugs-session-2026-04-23.md)
+
+### Phase 3 — V2
 
 **目标**：子画布编辑，视频，发布集成，网页版
 
+- 小红书图文笔记 Skill
 - 节点子画布（Draw + Comment）
 - Image Inpaint
 - PPT 节点
@@ -1063,7 +1095,7 @@ Kling、Seedance、Vidu、Wan2.x、MiniMax、Tencent Speech、小红书 API
 - Skill 市场
 - 网页版（云端协同）
 
-### Phase 4 — V3（第 23-30 周）
+### Phase 4 — V3
 
 - 音频节点、3D 节点
 - 第三方开发者 API
@@ -1077,9 +1109,9 @@ Kling、Seedance、Vidu、Wan2.x、MiniMax、Tencent Speech、小红书 API
 |---|------|---------|--------|------|
 | 1 | macOS 代码签名：Apple Developer 账号是否已准备？ | 应用分发 | P0 | ❓ 待确认 |
 | 2 | Tauri webview：用系统 webview 还是打包 Chromium？ | 一致性 vs 体积 | P0 | ❓ 待确认 |
-| 3 | License 签名密钥（Ed25519）：密钥对是否已生成？ | 授权系统 | P0 | ❓ 待确认 |
-| 4 | API Key 获取引导：为用户准备 Anthropic / Tavily / Google Cloud 获取步骤文档？ | 用户引导 | P1 | ❓ 待确认 |
-| 5 | 小红书 HTML 组件库品牌色：当前 `#5965AF`，以后是否可定制？ | Phase 2 Skill | P1 | ❓ 待确认 |
+| 3 | Docker 部署：FastAPI 后端生产环境部署验证 | 后端运行 | P0 | ❓ 待确认 |
+| 4 | Stripe Live 模式：从测试切正式密钥 | 支付上线 | P1 | ❓ 待确认 |
+| 5 | 小红书 HTML 组件库品牌色：当前 `#5965AF`，以后是否可定制？ | Phase 3 Skill | P1 | ❓ 待确认 |
 | 6 | Auto-update：Tauri updater 是否已配置和测试？ | 版本更新 | P1 | ❓ 待确认 |
 
 ---

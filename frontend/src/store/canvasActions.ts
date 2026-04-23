@@ -4,6 +4,7 @@ type CanvasState = {
   nodes: Node[]
   edges: Edge[]
   selectedNodeIds: string[]
+  selectedEdgeIds: string[]
   clipboard: { nodes: Node[]; edges: Edge[] } | null
   history: { nodes: Node[]; edges: Edge[] }[]
   historyIndex: number
@@ -52,13 +53,18 @@ export function pasteNodesImpl(s: CanvasState): Partial<CanvasState> {
 }
 
 export function deleteSelectedImpl(s: CanvasState): Partial<CanvasState> {
-  const ids = s.selectedNodeIds
-  if (ids.length === 0) return {}
-  const nodes = s.nodes.filter((n) => !ids.includes(n.id))
-  const edges = s.edges.filter((e) => !ids.includes(e.source) && !ids.includes(e.target))
+  const nodeIds = s.selectedNodeIds
+  const edgeIds = s.selectedEdgeIds
+  if (nodeIds.length === 0 && edgeIds.length === 0) return {}
+  const nodes = nodeIds.length > 0 ? s.nodes.filter((n) => !nodeIds.includes(n.id)) : s.nodes
+  const edges = s.edges.filter((e) => {
+    if (edgeIds.includes(e.id)) return false
+    if (nodeIds.includes(e.source) || nodeIds.includes(e.target)) return false
+    return true
+  })
   const hist = pushHistory(s)
   s.onDirty?.()
-  return { nodes, edges, selectedNodeIds: [], ...hist }
+  return { nodes, edges, selectedNodeIds: [], selectedEdgeIds: [], ...hist }
 }
 
 export function duplicateNodeImpl(s: CanvasState, id: string): Partial<CanvasState> {

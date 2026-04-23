@@ -1,14 +1,17 @@
 import type { NodeProps } from "@xyflow/react"
+import { useTranslation } from "react-i18next"
 import NodeBase from "./base/NodeBase"
 import { NODE_MAP } from "./nodeDefs"
 import { useCanvasStore } from "../store/canvasStore"
 import { useCreditsStore } from "../store/creditsStore"
 import { NODE_CREDIT_COSTS } from "../types/credits"
+import ModelSelector from "../components/ModelSelector"
 
 interface WriterData {
   nodeType: string
   target_words: number
   style: string
+  model?: string
 }
 
 export default function WriterNode({ data, id, selected }: NodeProps) {
@@ -16,6 +19,7 @@ export default function WriterNode({ data, id, selected }: NodeProps) {
   const def = NODE_MAP[d.nodeType]
   if (!def) return null
 
+  const { t } = useTranslation()
   const { isLoggedIn } = useCreditsStore()
   const creditCost = NODE_CREDIT_COSTS[d.nodeType] ?? 0
 
@@ -35,6 +39,16 @@ export default function WriterNode({ data, id, selected }: NodeProps) {
       nodeId={id}
       creditCost={isLoggedIn ? creditCost : undefined}
     >
+      {/* Model selector */}
+      <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", marginBottom: "0.375rem" }}>
+        <span style={{ fontSize: "0.6875rem", color: "var(--text-secondary)" }}>Model:</span>
+        <ModelSelector
+          category="text"
+          value={d.model as string | undefined}
+          onChange={(model) => updateNodeData(id, { model })}
+        />
+      </div>
+
       {/* Style selector */}
       <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap", marginBottom: "0.375rem" }}>
         {["深度解析", "轻松科普", "情感共鸣", "干货清单"].map((s) => (
@@ -59,7 +73,7 @@ export default function WriterNode({ data, id, selected }: NodeProps) {
 
       {/* Target words */}
       <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", marginBottom: "0.375rem" }}>
-        <span style={{ fontSize: "0.6875rem", color: "#747878" }}>字数:</span>
+        <span style={{ fontSize: "0.6875rem", color: "#747878" }}>{t("nodes.writer.wordCount")}</span>
         <select
           value={d.target_words ?? 3000}
           onChange={(e) => updateNodeData(id, { target_words: Number(e.target.value) })}
@@ -87,7 +101,7 @@ export default function WriterNode({ data, id, selected }: NodeProps) {
           gap: "0.375rem",
         }}>
           <span className="material-symbols-outlined" style={{ fontSize: "14px", animation: "spin 1s linear infinite" }}>progress_activity</span>
-          正在撰写长文...
+          {t("nodes.writer.writing")}
         </div>
       )}
 
@@ -116,7 +130,7 @@ export default function WriterNode({ data, id, selected }: NodeProps) {
           fontSize: "0.6875rem",
           color: "#991b1b",
         }}>
-          执行失败，请检查 API Key
+          {t("common.errorApiKey")}
         </div>
       )}
     </NodeBase>

@@ -100,5 +100,11 @@ export const tauri = {
 
   // Agent
   agentChat: (params: { messages: { role: string; content: string }[]; context: Record<string, unknown> }) =>
-    invoke<{ message: string }>("agent_chat", params),
+    invoke<{ message: string }>("agent_chat", { payload: params }),
+
+  // Billing
+  createCheckout: (plan: string) =>
+    invoke<{ url: string }>("create_checkout", { plan }),
+  getSubscription: () =>
+    invoke<{ plan: string; credits_remaining: number }>("get_subscription"),
 }

@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react"
 import type { NodeProps } from "@xyflow/react"
+import { useTranslation } from "react-i18next"
 import NodeBase from "./base/NodeBase"
 import { NODE_MAP } from "./nodeDefs"
 import { useCanvasStore } from "../store/canvasStore"
@@ -21,6 +22,7 @@ export default function TextInputNode({ data, id, selected }: NodeProps) {
   const def = NODE_MAP[d.nodeType]
   if (!def) return null
 
+  const { t } = useTranslation()
   const { nodeStatuses, nodeResults, updateNodeData } = useCanvasStore()
   const status = nodeStatuses[id] ?? "idle"
   const result = nodeResults[id] as { text?: string } | undefined
@@ -78,7 +80,7 @@ export default function TextInputNode({ data, id, selected }: NodeProps) {
         <textarea
           value={d.text ?? ""}
           onChange={(e) => updateNodeData(id, { text: e.target.value })}
-          placeholder="输入主题、关键词或文章要求..."
+          placeholder={t("nodes.text_input.placeholder")}
           style={{
             width: "100%",
             height: `${clampedTextH}px`,

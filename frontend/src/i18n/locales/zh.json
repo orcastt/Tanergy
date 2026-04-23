@@ -7,7 +7,8 @@
     "skills": "Skills",
     "settings": "设置",
     "upgrade": "升级",
-    "logout": "退出登录"
+    "logout": "退出登录",
+    "mainWorkspace": "Main Workspace"
   },
   "auth": {
     "login": "登录",
@@ -27,7 +28,20 @@
     "empty": "还没有工作流",
     "emptyGuide": "点击「新建工作流」开始你的第一个 AI 创作流程",
     "delete": "删除",
-    "deleteConfirm": "确定要删除这个工作流吗？"
+    "deleteConfirm": "确定要删除这个工作流吗？",
+    "setupPrompt": "你还没有配置 AI API Key，点击前往 Settings 配置。",
+    "goToSettings": "前往设置 →",
+    "workspace": "Workspace",
+    "trash": "Trash",
+    "trashDescription": "Workflows moved to trash. Restore or permanently delete them.",
+    "workspaceDescription": "Manage and orchestrate your active workflows.",
+    "emptyTrash": "Empty Trash",
+    "loading": "Loading...",
+    "trashEmpty": "Trash is empty",
+    "createNew": "Create New Workflow",
+    "createDescription": "Start a blank canvas or import data.",
+    "importWorkflow": "Import Workflow",
+    "importDescription": "Load from .tangent.json file."
   },
   "canvas": {
     "addNode": "添加节点",
@@ -38,7 +52,13 @@
     "unsaved": "有未保存的变更",
     "run": "运行",
     "runAll": "全部运行",
-    "cancel": "取消"
+    "cancel": "取消",
+    "copy": "复制",
+    "paste": "粘贴",
+    "delete": "删除",
+    "undo": "撤销",
+    "exportJson": "导出 JSON",
+    "clearCanvas": "清除画布"
   },
   "time": {
     "remaining": "剩余时长",
@@ -50,6 +70,204 @@
     "close": "关闭",
     "download": "下载",
     "copy": "复制",
-    "copied": "已复制 ✓"
+    "copied": "已复制 ✓",
+    "loading": "加载中...",
+    "errorApiKey": "执行失败，请检查 API Key"
+  },
+  "sidenav": {
+    "allWorkflows": "All Workflows",
+    "recent": "Recent",
+    "templates": "Templates",
+    "trash": "Trash",
+    "newWorkflow": "New Workflow"
+  },
+  "nodes": {
+    "text_input": {
+      "label": "Text Input",
+      "desc": "输入主题/关键词",
+      "placeholder": "输入主题、关键词或文章要求..."
+    },
+    "research": {
+      "label": "Research",
+      "desc": "Tavily 多轮搜索"
+    },
+    "outline": {
+      "label": "Outline",
+      "desc": "生成大纲选项",
+      "generating": "正在生成大纲..."
+    },
+    "gate": {
+      "label": "Gate",
+      "desc": "暂停等待用户选择",
+      "select": "选择",
+      "input": "输入",
+      "selectDirection": "⏸ 请选择方向：",
+      "waitingInput": "⏸ 等待你输入素材...",
+      "placeholder": "在这里粘贴你的素材...",
+      "submit": "确认提交 →"
+    },
+    "writer": {
+      "label": "Writer",
+      "desc": "AI 生成长文",
+      "writing": "正在撰写长文...",
+      "wordCount": "字数:"
+    },
+    "reviewer": {
+      "label": "Reviewer",
+      "desc": "三遍审校",
+      "reviewing": "三遍审校中...",
+      "passes": "Pass 1: 事实核查 → Pass 2: 反AI洗稿 → Pass 3: 节奏格式",
+      "completed": "✓ 三遍审校完成",
+      "summary": "三遍审校：事实核查 → 反AI洗稿 → 节奏格式"
+    },
+    "image_planner": {
+      "label": "Image Planner",
+      "desc": "AI 规划配图方案",
+      "count": "数量:",
+      "style": "风格:",
+      "analyzing": "分析文章中...",
+      "imageN": "图 {{n}}",
+      "connectHint": "连接文章，点击 Run 规划配图",
+      "error": "规划失败，请检查输入和 API Key"
+    },
+    "image_list": {
+      "label": "Image List",
+      "desc": "AI 生成配图列表",
+      "generating": "生成中 {{current}}/{{total}}...",
+      "ready": "准备生成...",
+      "connectHint": "连接配图方案，点击 Run 生成",
+      "error": "生成失败，请检查 API Key",
+      "addImageInput": "添加图片输入 ({{count}})",
+      "generated": "已生成 {{count}} 张图片"
+    },
+    "image_gallery": {
+      "label": "Gallery",
+      "desc": "收集展示图片",
+      "image": "图片",
+      "connectHint": "连接图片节点展示图片"
+    },
+    "html_formatter": {
+      "label": "HTML Formatter",
+      "desc": "Markdown → 微信样式 HTML",
+      "style": "风格:",
+      "fontSize": "字号:",
+      "formatting": "排版中...",
+      "stats": "{{count}} 字 · 约 {{time}} 分钟",
+      "preview": "预览",
+      "editHtml": "编辑 HTML",
+      "connectHint": "连接文章，点击 Run 排版",
+      "error": "排版失败，请检查输入"
+    },
+    "preview_wechat": {
+      "label": "Preview: WeChat",
+      "desc": "公众号预览 + 复制 HTML",
+      "loading": "加载预览...",
+      "copyHtml": "复制 HTML",
+      "copied": "已复制 ✓",
+      "connectHint": "连接 HTML 排版节点预览",
+      "error": "预览加载失败"
+    }
+  },
+  "image_editor": {
+    "title": "Image Editor",
+    "imageCount": "{{count}} 张图片"
+  },
+  "ports": {
+    "article": "文章",
+    "imagePlan": "配图方案",
+    "image": "图片",
+    "formattedHtml": "排版 HTML"
+  },
+  "styles": {
+    "list": "干货清单",
+    "story": "故事叙事",
+    "analysis": "深度分析",
+    "deepDive": "深度解析",
+    "popSci": "轻松科普",
+    "emotional": "情感共鸣",
+    "realistic": "写实",
+    "illustration": "插画",
+    "classic": "经典",
+    "minimal": "简约",
+    "lively": "活泼",
+    "professional": "专业",
+    "oilPainting": "油画"
+  },
+  "credits": {
+    "title": "积分中心",
+    "currentCredits": "当前积分",
+    "refresh": "刷新",
+    "loginOfficial": "登录官方账号",
+    "enterEmail": "输入邮箱",
+    "sendOtp": "发送验证码",
+    "enterOtp": "输入验证码",
+    "verify": "验证",
+    "loggedIn": "已登录",
+    "logout": "退出登录",
+    "purchaseCredits": "购买积分",
+    "purchase": "购买",
+    "proMember": "Pro 会员",
+    "proMembership": "Pro 会员",
+    "proBenefits": "解锁所有 Skill 模板 · 赠送 200 积分 · 购积分享 8 折",
+    "monthly": "$9.99/月",
+    "yearly": "$79.99/年",
+    "credits": "积分"
+  },
+  "settings": {
+    "account": "账户",
+    "advanced": "高级设置",
+    "about": "关于",
+    "theme": "主题",
+    "language": "语言",
+    "loggedIn": "已登录",
+    "notLoggedIn": "未登录",
+    "creditsBalance": "剩余 {{balance}} 积分",
+    "aboutDesc": "TANGENT 是 AI 驱动的创意工作流画布，通过可视化节点编辑构建多步骤内容管线。",
+    "feedback": "意见反馈",
+    "license": "License",
+    "general": "通用",
+    "generalNote": "主题 / 语言设置将在后续版本中提供。",
+    "backDashboard": "返回 Dashboard",
+    "enterLicenseKey": "输入 License Key",
+    "activate": "激活",
+    "deactivate": "停用",
+    "currentStatus": "当前状态：",
+    "activated": "激活成功",
+    "invalidKey": "密钥无效",
+    "deactivated": "已停用",
+    "proExpires": "Pro — 到期 {{date}}",
+    "trialDays": "免费试用 — 剩余 {{days}} 天",
+    "expired": "已过期",
+    "free": "Free",
+    "apiKeyDesc": "TANGENT 使用你自己的 API Key，密钥经本地加密存储，不会发送到任何第三方服务器。",
+    "keySaved": "•••••••••••• (已保存)",
+    "enterApiKey": "输入 API Key",
+    "save": "保存",
+    "test": "测试",
+    "delete": "删除",
+    "confirm": "确认",
+    "cancel": "取消",
+    "keyInvalid": "验证失败，请检查 Key",
+    "provider": "AI Provider"
+  },
+  "skills": {
+    "title": "新建工作流",
+    "subtitle": "选择一个 Skill 模板，或从空白画布开始。",
+    "wechatArticle": "公众号长文",
+    "wechatArticleDesc": "调研 → 大纲 → 撰写 → 审校 → 微信排版",
+    "ecommerce": "电商海报",
+    "ecommerceDesc": "商品文案 → 配图规划 → 生成 → HTML 排版",
+    "xiaohongshu": "小红书种草",
+    "xiaohongshuDesc": "种草文案 → 配图规划 → 审校润色",
+    "blank": "空白画布",
+    "blankDesc": "从空白画布开始，手动添加节点。"
+  },
+  "welcome": {
+    "wechatArticle": "公众号长文",
+    "ecommerce": "电商海报",
+    "xiaohongshu": "小红书种草"
+  },
+  "workflow": {
+    "freeLimit": "Free 计划最多 3 个工作流，升级 Pro 解锁无限"
   }
 }

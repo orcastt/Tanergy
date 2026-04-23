@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     APP_ENV: str = "development"
     APP_SECRET_KEY: str = "change-me-in-production"
     FRONTEND_URL: str = "http://localhost:5173"
+    ADMIN_URL: str = "http://localhost:3001"
     BACKEND_URL: str = "http://localhost:8000"
 
     # Database
@@ -25,6 +26,10 @@ class Settings(BaseSettings):
 
     # AI API Keys
     ANTHROPIC_API_KEY: str = ""
+    MINIMAX_API_KEY: str = ""
+    OPENAI_API_KEY: str = ""
+    GEMINI_API_KEY: str = ""
+    GLM_API_KEY: str = ""
     MIDJOURNEY_API_KEY: str = ""
     MIDJOURNEY_API_URL: str = "https://api.midjourney.com/v1"
     GOOGLE_CLOUD_PROJECT: str = ""

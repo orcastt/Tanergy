@@ -16,7 +16,7 @@ pub struct WorkflowOut {
 pub struct WorkflowDetail {
     pub id: String,
     pub name: String,
-    pub graph_json: String,
+    pub graph_json: Option<String>,
     pub thumbnail_path: Option<String>,
     pub created_at: String,
     pub updated_at: String,
@@ -141,14 +141,14 @@ pub fn delete_workflow(id: String) -> Result<(), String> {
 #[tauri::command]
 pub fn export_workflow(id: String) -> Result<String, String> {
     let conn = db::get_connection().lock().unwrap();
-    let graph_json: String = conn
+    let graph_json: Option<String> = conn
         .query_row(
             "SELECT graph_json FROM workflows WHERE id = ?1",
             rusqlite::params![id],
             |row| row.get(0),
         )
         .map_err(|_| "workflow not found")?;
-    Ok(graph_json)
+    Ok(graph_json.unwrap_or_else(|| "{}".to_string()))
 }
 
 #[tauri::command]

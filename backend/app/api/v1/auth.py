@@ -7,6 +7,7 @@ from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.core.security import create_jwt
 from app.models.user import User
+from app.models.credit import CreditBalance, CreditTransaction
 from app.schemas.auth import (
     GoogleAuthRequest, GoogleAuthResponse,
     SendOtpRequest, SendOtpResponse,
@@ -39,6 +40,16 @@ async def verify_otp_route(req: VerifyOtpRequest, db=Depends(get_db)):
         db.add(user)
         await db.commit()
         await db.refresh(user)
+
+        # Signup bonus: 50 free credits
+        balance = CreditBalance(user_id=user.id, balance=50, plan="free")
+        db.add(balance)
+        txn = CreditTransaction(
+            user_id=user.id, amount=50, type="credit",
+            reason="signup_bonus", description="Welcome bonus",
+        )
+        db.add(txn)
+        await db.commit()
 
     user.last_login_at = datetime.now(timezone.utc)
     await db.commit()

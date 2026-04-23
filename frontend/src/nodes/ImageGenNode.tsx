@@ -6,6 +6,7 @@ import { useCanvasStore } from "../store/canvasStore"
 import { useCreditsStore } from "../store/creditsStore"
 import { NODE_CREDIT_COSTS } from "../types/credits"
 import { invoke } from "@tauri-apps/api/core"
+import ModelSelector from "../components/ModelSelector"
 
 interface GeneratedImage {
   id: string
@@ -58,14 +59,14 @@ function ImageThumb({ filePath, description }: { filePath: string; description: 
 }
 
 export default function ImageGenNode({ data, id, selected }: NodeProps) {
-  const d = data as unknown as { nodeType: string }
+  const d = data as unknown as { nodeType: string; model?: string }
   const def = NODE_MAP[d.nodeType]
   if (!def) return null
 
   const { isLoggedIn } = useCreditsStore()
   const creditCost = NODE_CREDIT_COSTS[d.nodeType] ?? 0
 
-  const { nodeStatuses, nodeResults } = useCanvasStore()
+  const { nodeStatuses, nodeResults, updateNodeData } = useCanvasStore()
   const status = nodeStatuses[id] ?? "idle"
   const result = nodeResults[id] as { images?: GeneratedImage[] } | undefined
 
@@ -103,6 +104,14 @@ export default function ImageGenNode({ data, id, selected }: NodeProps) {
       nodeId={id}
       creditCost={isLoggedIn ? creditCost : undefined}
     >
+      <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", marginBottom: "0.375rem" }}>
+        <span style={{ fontSize: "0.6875rem", color: "var(--text-secondary)" }}>Model:</span>
+        <ModelSelector
+          category="image"
+          value={d.model as string | undefined}
+          onChange={(model) => updateNodeData(id, { model })}
+        />
+      </div>
       {status === "running" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
           <div style={{

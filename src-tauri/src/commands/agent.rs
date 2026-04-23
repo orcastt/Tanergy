@@ -5,6 +5,7 @@ use serde_json::Value;
 #[derive(Debug, Deserialize)]
 pub struct AgentChatPayload {
     pub messages: Vec<ChatMessage>,
+    #[allow(dead_code)]
     pub context: Value,
 }
 
@@ -13,41 +14,133 @@ pub struct AgentChatResult {
     pub message: String,
 }
 
-const SYSTEM_PROMPT: &str = r#"你是 TANGENT 工作流画布的 AI 助手。用户用自然语言描述需求，你返回 JSON 指令来自动创建节点和连线。
-
-可用节点类型：
-- text_input: 文本输入
-- research: Tavily 搜索调研
-- outline_generator: 大纲生成
-- gate: 用户选择/输入
-- writer: 长文写作
-- reviewer: 三遍审校
-- image_planner: 配图规划
-- image_list: 图片生成列表
-- image_gallery: 图片收集
-- html_formatter: HTML 排版
-- preview_wechat: 微信预览
-
-输出严格 JSON 格式：
-{
-  "message": "向用户解释你创建了什么",
-  "actions": [
-    {"op": "add", "type": "节点类型", "position": [x, y]},
-    {"op": "connect", "from": "源节点类型", "fromPort": "输出端口", "to": "目标节点类型", "toPort": "输入端口"}
-  ]
+fn build_node_registry() -> Vec<Value> {
+    vec![
+        serde_json::json!({
+            "type": "text_input",
+            "desc": "Text input, inject user content via data.text",
+            "inputs": [],
+            "outputs": [{"id": "out", "type": "text"}],
+            "injectUserText": true
+        }),
+        serde_json::json!({
+            "type": "research",
+            "desc": "Deep research on a topic",
+            "modelCategory": "text",
+            "defaultModel": "MiniMax-M2.7",
+            "inputs": [{"id": "in", "type": "text"}],
+            "outputs": [{"id": "out", "type": "research_result"}]
+        }),
+        serde_json::json!({
+            "type": "outline_generator",
+            "desc": "Generate outline options for an article",
+            "modelCategory": "text",
+            "defaultModel": "MiniMax-M2.7",
+            "inputs": [{"id": "in", "type": "text"}, {"id": "research", "type": "research_result"}],
+            "outputs": [{"id": "out", "type": "outline_options"}]
+        }),
+        serde_json::json!({
+            "type": "gate",
+            "desc": "Pause for user to select an outline option or input material",
+            "inputs": [{"id": "in", "type": "outline_options"}],
+            "outputs": [{"id": "out", "type": "outline_options"}]
+        }),
+        serde_json::json!({
+            "type": "writer",
+            "desc": "AI long-form article writing",
+            "modelCategory": "text",
+            "defaultModel": "MiniMax-M2.7",
+            "inputs": [{"id": "outline", "type": "outline_options"}],
+            "outputs": [{"id": "out", "type": "text"}]
+        }),
+        serde_json::json!({
+            "type": "reviewer",
+            "desc": "Three-pass review: fact check, anti-AI polish, rhythm & format",
+            "modelCategory": "text",
+            "defaultModel": "MiniMax-M2.7",
+            "inputs": [{"id": "in", "type": "text"}],
+            "outputs": [{"id": "out", "type": "text"}]
+        }),
+        serde_json::json!({
+            "type": "image_planner",
+            "desc": "AI image planning from article text",
+            "modelCategory": "text",
+            "defaultModel": "MiniMax-M2.7",
+            "inputs": [{"id": "in", "type": "text"}],
+            "outputs": [{"id": "out", "type": "image_plans"}]
+        }),
+        serde_json::json!({
+            "type": "image_list",
+            "desc": "AI image generation from plans or text description",
+            "modelCategory": "image",
+            "defaultModel": "minimax-image",
+            "inputs": [{"id": "in", "type": "image_plans"}, {"id": "text", "type": "text"}],
+            "outputs": []
+        }),
+        serde_json::json!({
+            "type": "image_gallery",
+            "desc": "Collect and display images from upstream",
+            "inputs": [{"id": "in", "type": "image_slot"}],
+            "outputs": []
+        }),
+        serde_json::json!({
+            "type": "html_formatter",
+            "desc": "Convert Markdown to WeChat-compatible styled HTML",
+            "modelCategory": "text",
+            "defaultModel": "MiniMax-M2.7",
+            "inputs": [{"id": "text", "type": "text"}, {"id": "image_slot", "type": "image_slot"}],
+            "outputs": [{"id": "out", "type": "structured"}]
+        }),
+        serde_json::json!({
+            "type": "preview_wechat",
+            "desc": "WeChat article preview with copy-to-clipboard",
+            "inputs": [{"id": "html", "type": "structured"}],
+            "outputs": []
+        }),
+    ]
 }
 
-规则：
-- position 的 x 值从 100 开始，每个节点间隔 300
-- connect 中 from/to 使用节点类型名，系统会自动解析
-- 常用端口：text_input 输出 out(text)，research 输出 out(research_result)，writer 输出 out(text)
-- 只输出 JSON，不要其他内容"#;
+fn build_system_prompt() -> String {
+    let nodes = serde_json::to_string_pretty(&build_node_registry()).unwrap_or_default();
+
+    format!(
+        r#"You are TANGENT, an AI workflow assistant. The user describes what they want to create, and you return JSON instructions to build the node graph.
+
+## Node Registry
+{nodes}
+
+## Output Format
+Strict JSON only, no other text:
+{{
+  "message": "Explain to the user what you created",
+  "actions": [
+    {{"op": "add", "type": "node_type", "name": "unique_name", "position": [x, y], "data": {{}}}},
+    {{"op": "connect", "from": "source_name", "fromPort": "port_id", "to": "target_name", "toPort": "port_id"}}
+  ]
+}}
+
+## Rules
+1. Every "add" must have a unique "name" (e.g. "topic", "research1", "outline"). "connect" uses name to reference nodes.
+2. position.x starts at 100, increment by 300 for each node.
+3. text_input MUST include "data": {{"text": "the user's full input content"}} — put the user's topic/request here.
+4. fromPort and toPort MUST be exact port IDs from the registry (e.g. "out", "in", "research", "text", "outline", "html", "image_slot").
+5. Port types must match: source output type === target input type. Valid types: text, research_result, outline_options, image_plans, image_slot, structured.
+6. Include ALL connect actions to form a complete pipeline.
+7. Be flexible based on user needs. Examples:
+   - "Write a WeChat article about AI" → text_input→research→outline_generator→gate→writer→reviewer→image_planner→image_list→html_formatter→preview_wechat
+   - "Just research this topic" → text_input→research
+   - "E-commerce poster" → text_input→research→writer→image_planner→image_list
+   - "Write an article without images" → skip image_planner and image_list
+   - "I only need HTML formatting" → text_input→html_formatter→preview_wechat
+8. When adding a node that has a "defaultModel", include it in the data: {{"model": "defaultModel"}}. Use the default unless the user explicitly requests a different model.
+9. Output ONLY the JSON object, nothing else."#
+    )
+}
 
 #[tauri::command]
 pub async fn agent_chat(
     payload: AgentChatPayload,
 ) -> Result<AgentChatResult, String> {
-    // Mock mode check
     let mock_mode = crate::db::get_connection()
         .lock()
         .unwrap()
@@ -66,12 +159,10 @@ pub async fn agent_chat(
         });
     }
 
-    let mut messages = vec![
-        ChatMessage {
-            role: "system".into(),
-            content: SYSTEM_PROMPT.into(),
-        },
-    ];
+    let mut messages = vec![ChatMessage {
+        role: "system".into(),
+        content: build_system_prompt(),
+    }];
     messages.extend(payload.messages);
 
     let completion = ai_client::chat_completion("minimax", "MiniMax-M2.7", messages, 2048, Some(0.7)).await?;

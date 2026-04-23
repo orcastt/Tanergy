@@ -1,5 +1,6 @@
 import { useState } from "react"
 import type { NodeProps } from "@xyflow/react"
+import { useTranslation } from "react-i18next"
 import NodeBase from "./base/NodeBase"
 import { NODE_MAP } from "./nodeDefs"
 import { useCanvasStore } from "../store/canvasStore"
@@ -15,6 +16,7 @@ export default function GateNode({ data, id, selected }: NodeProps) {
   const def = NODE_MAP[d.nodeType]
   if (!def) return null
 
+  const { t } = useTranslation()
   const { nodeStatuses, nodeResults, waitingGates, updateNodeData, resolveGate } = useCanvasStore()
   const status = nodeStatuses[id] ?? "idle"
   const result = nodeResults[id] as { selected?: string } | undefined
@@ -47,7 +49,7 @@ export default function GateNode({ data, id, selected }: NodeProps) {
             borderRadius: "0.25rem", cursor: "pointer", fontWeight: 600,
           }}
         >
-          选择
+          {t("nodes.gate.select")}
         </button>
         <button
           onClick={() => updateNodeData(id, { mode: "input" })}
@@ -59,7 +61,7 @@ export default function GateNode({ data, id, selected }: NodeProps) {
             borderRadius: "0.25rem", cursor: "pointer", fontWeight: 600,
           }}
         >
-          输入
+          {t("nodes.gate.input")}
         </button>
       </div>
 
@@ -67,7 +69,7 @@ export default function GateNode({ data, id, selected }: NodeProps) {
       {status === "waiting" && waitingOptions && d.mode !== "input" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
           <div style={{ fontSize: "0.6875rem", color: "#92400e", fontWeight: 600 }}>
-            ⏸ 请选择方向：
+            {t("nodes.gate.selectDirection")}
           </div>
           {waitingOptions.map((opt, i) => (
             <button
@@ -95,7 +97,7 @@ export default function GateNode({ data, id, selected }: NodeProps) {
       {status === "waiting" && d.mode === "input" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
           <div style={{ fontSize: "0.6875rem", color: "#92400e", fontWeight: 600 }}>
-            ⏸ 等待你输入素材...
+            {t("nodes.gate.waitingInput")}
           </div>
           <GateInputBox nodeId={id} />
         </div>
@@ -110,16 +112,16 @@ export default function GateNode({ data, id, selected }: NodeProps) {
           fontSize: "0.6875rem",
           color: "#166534",
         }}>
-          ✓ 已选：{typeof result.selected === "string"
+          {typeof result.selected === "string"
             ? result.selected.slice(0, 50) + (result.selected.length > 50 ? "..." : "")
-            : "已完成"}
+            : ""}
         </div>
       )}
 
       {/* Idle */}
       {status === "idle" && (
         <div style={{ fontSize: "0.6875rem", color: "#747878", textAlign: "center" }}>
-          等待上游数据...
+          {t("nodes.gate.selectDirection")}
         </div>
       )}
     </NodeBase>
@@ -127,6 +129,7 @@ export default function GateNode({ data, id, selected }: NodeProps) {
 }
 
 function GateInputBox({ nodeId }: { nodeId: string }) {
+  const { t } = useTranslation()
   const [text, setText] = useState("")
   const resolveGate = useCanvasStore((s) => s.resolveGate)
 
@@ -135,7 +138,7 @@ function GateInputBox({ nodeId }: { nodeId: string }) {
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="在这里粘贴你的素材..."
+        placeholder={t("nodes.gate.placeholder")}
         style={{
           width: "100%", minHeight: "60px",
           border: "1px solid #fde68a", borderRadius: "0.25rem",
@@ -153,7 +156,7 @@ function GateInputBox({ nodeId }: { nodeId: string }) {
           cursor: "pointer", fontWeight: 600,
         }}
       >
-        确认提交 →
+        {t("nodes.gate.submit")}
       </button>
     </div>
   )

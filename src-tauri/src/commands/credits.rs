@@ -9,7 +9,7 @@ pub struct CreditInfoResponse {
 
 #[tauri::command]
 pub fn get_credit_balance() -> Result<CreditInfoResponse, String> {
-    let jwt = credits::get_supabase_jwt();
+    let jwt = credits::get_jwt();
     let is_logged_in = jwt.is_some();
     let balance = if is_logged_in {
         credits::get_cached_balance()
