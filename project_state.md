@@ -116,9 +116,10 @@ WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/w
 | Image Editor 返回跳到 Dashboard | `CanvasPage.tsx` + `Canvas.tsx` | Back 按钮先检查 editor 状态；Canvas 卸载时清理 overlay |
 | 登录门控阻止本地测试 | `AuthGuard.tsx` | 临时禁用 auth check |
 | 画布 fitView 导致 200% 缩放 | `Canvas.tsx` | 移除 `fitView` prop，改用 `defaultViewport={{ zoom: 1 }}` |
-| 节点显示模糊 | `NodeBase.tsx` + `index.css` | 移除 `willChange: transform`，添加 `backface-visibility` + `subpixel-antialiased` |
+| 节点执行时渲染模糊 | `index.css` | 移除 `backface-visibility: hidden`，改用 `antialiased`（避免 GPU 光栅化模糊） |
 | 连线无法选择/删除 | `DeletableEdge.tsx` + `canvasStore.ts` | 自定义边组件 + hover 显示 − 按钮 + selectedEdgeIds + Delete 键支持 |
 | Image List output 预览冲突 | `ImageListNode.tsx` + `NodeBase.tsx` | 移除 done 状态的图片网格，output port 不显示底部标签 |
+| 图片拖拽到画板失败 | `SourcePanel.tsx` + `LayerCanvas.tsx` | base64 过大导致 dataTransfer 失败 → 改用 click-to-add 主方案 + image-id cache key 拖拽 |
 
 ### 待修复（见 debug-plans/）
 
@@ -128,27 +129,59 @@ WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/w
 
 ## 本次新增/改进功能
 
+### Image Editor 图层画板 (Slice 22) — 全新设计
+
+将简单涂鸦工具改造为 Procreate 风格的图层画板，架构完全重写。
+
+**新文件**:
+| 文件 | 说明 |
+|------|------|
+| `nodes/image/layerStore.ts` | Zustand 图层状态（Layer CRUD、绘画、拖拽/缩放、栅格化、网格吸附） |
+| `nodes/image/SourcePanel.tsx` | 左侧源图片列表（click-to-add + drag-to-canvas） |
+| `nodes/image/LayerCanvas.tsx` | 主画板 canvas（多层合成渲染 + 绘画 + 选择工具） |
+| `nodes/image/LayerPanel.tsx` | 右侧图层面板（列表 + 操作 + 不透明度滑条 + 导出到节点） |
+| `nodes/image/Toolbar.tsx` | 工具栏（选择/画笔切换、颜色、笔宽、橡皮、撤销、网格、吸附、AI Edit） |
+
+**核心功能**:
+- **图层系统**: 新建/删除/复制/上下移动，半透明度滑条，显示/隐藏切换，锁定/解锁
+- **图片 contain 渲染**: 不同比例图片不拉伸，自适应画布
+- **选择工具**: 点击选中图层，拖拽移动，右下角 handle 缩放
+- **绘画**: 画笔/橡皮，8色 4级笔宽
+- **网格 + 吸附**: 20px 网格线，移动/缩放时自动吸附对齐
+- **栅格化**: 合并所有可见图层为一张新图层
+- **导出到节点**: 将画布内容保存为文件，添加到 Image List 节点输出
+- **AI Edit**: 截取画布 → 调用 Rust AI 生成新图片 → 添加为新图层
+
+**AI Edit 技术细节**:
+- `AiEditPopup.tsx` 重写：多状态机（input → analyzing → generating → done/error）
+- 进度条：30% 分析 → 70% 生成 → 100% 完成
+- Rust 侧 `ai_edit_image` 命令：截图 base64 + 指令 → 文本模型生成增强 prompt → 图片生成
+
+**Rust 侧新增命令**:
+| 命令 | 说明 |
+|------|------|
+| `save_canvas_export` | Canvas base64 → 写文件 → 入 DB |
+| `ai_edit_image` | 截图 + 指令 → AI 图片生成 |
+
+**旧文件已弃用**（保留供参考）: DrawingCanvas.tsx, DrawingPanel.tsx, ImageEditorPanel.tsx, drawingStore.ts
+
 ### DeletableEdge — 连线交互增强
 
 - **新文件**: `frontend/src/canvas/DeletableEdge.tsx`
 - 点击连线 → 高亮变蓝
 - 鼠标悬停/选中 → 中点显示红色 − 按钮，点击删除
-- 20px 宽透明命中区域，解决"很难选中连线"的问题
 - Delete/Backspace 键删除选中的连线
-- `canvasStore` 新增 `selectedEdgeIds` 状态追踪
 
 ### NodeBase PortDef 增强
 
 - `PortDef` 新增 `removable` + `onRemove` 属性
 - 底部 port 标签 hover 时圆点变红色 − 按钮
-- 无 label 的 output 不再占据底部栏空间
 
 ### Image List 改进
 
 - 动态 input 限制最多 3 个（`MAX_IMAGE_INPUTS = 3`）
-- Input 端口 hover 显示 − 删除按钮
-- Output 端口不再在底部标签栏显示（避免和 Gallery 预览冲突）
-- done 状态显示 "已生成 N 张图片" 文字，不显示预览网格
+- done 状态显示 "已生成 N 张图片" 文字
+- 点击预览可打开 Image Editor
 
 ---
 

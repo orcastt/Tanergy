@@ -1,8 +1,9 @@
 # TANGENT — Architecture Decision Document
 
-**版本**: v0.5
+**版本**: v0.6
 **日期**: 2026-04-23
 **状态**: Phase 2 商业化 — 本地测试 + Bug 修复阶段
+**上次更新**: Image Editor 图层画板（Slice 22），Rust 侧新增 canvas export + AI edit 命令
 
 > 本文档记录技术决策和工程约束。用户感受不到这些内容，但它们决定了产品怎么建。
 > 每次重大技术决策变更必须更新本文档。
@@ -23,6 +24,7 @@
 10. [安全规范](#10-安全规范)
 11. [Canvas UI 架构规范](#11-canvas-ui-架构规范--画布归画布ui-归-ui)
 12. [后端服务架构 (Phase 2)](#12-后端服务架构-phase-2)
+13. [Image Editor 图层架构](#13-image-editor-图层架构)
 
 ---
 
@@ -149,7 +151,18 @@ frontend/
 │   │   └── common/       ← 业务通用组件（NodeCard, PortDot, LoadingSpinner）
 │   ├── nodes/            ← 各类节点组件
 │   │   ├── base/         ← NodeBase（所有节点的基础外壳）
-│   │   ├── image/        ← 图片编辑器（DrawingCanvas, ImageEditorModal, AiEditPopup 等）
+│   │   ├── image/        ← 图片编辑器（图层画板）
+│   │   │   ├── ImageEditorModal.tsx ← 全屏三栏布局（源图片+画板+图层面板）
+│   │   │   ├── LayerCanvas.tsx     ← 主画板（多层合成 + 绘画 + 选择 + 拖放）
+│   │   │   ├── LayerPanel.tsx      ← 右侧图层面板（列表 + 操作 + opacity + 导出）
+│   │   │   ├── SourcePanel.tsx     ← 左侧源图片列表（click-to-add + drag）
+│   │   │   ├── Toolbar.tsx         ← 工具栏（选择/画笔 + 颜色 + AI Edit）
+│   │   │   ├── AiEditPopup.tsx     ← AI 编辑弹窗（截图→生成→新图层）
+│   │   │   ├── layerStore.ts       ← Zustand 图层状态（CRUD + 绘画 + 拖拽 + 栅格化）
+│   │   │   ├── ImageEditorPanel.tsx ← [已弃用] 旧图片列表
+│   │   │   ├── DrawingCanvas.tsx   ← [已弃用] 旧画板
+│   │   │   ├── DrawingPanel.tsx    ← [已弃用] 旧绘图面板
+│   │   │   └── drawingStore.ts     ← [已弃用] 旧绘图状态
 │   │   ├── TextInputNode.tsx
 │   │   ├── ImageListNode.tsx  ← 图片生成列表（双输入/动态端口/数量模型选择）
 │   │   ├── GroupNode.tsx      ← 分组容器节点
@@ -227,7 +240,8 @@ src-tauri/
 │   │   ├── agent.rs      ← AI Agent 对话（MiniMax → JSON actions）
 │   │   ├── credits.rs    ← 积分/订阅/Supabase 代理
 │   │   ├── workflow.rs   ← 工作流 CRUD（SQLite）
-│   │   ├── asset.rs      ← 资产文件管理（本地文件系统）
+│   │   ├── asset.rs      ← 资产文件管理 + canvas 导出 + AI 图片编辑
+│   │   │                     save_canvas_export, ai_edit_image, read_asset_file
 │   │   ├── license.rs    ← License 密钥验证
 │   │   ├── api_keys.rs   ← API Key 加密存储
 │   │   └── execute/      ← 节点执行器
@@ -840,7 +854,7 @@ export const Z = {
 - 初始视口：`defaultViewport={{ x: 0, y: 0, zoom: 1 }}`，不使用 `fitView`
 - 禁止 `fitView`：避免每次重渲染时自动缩放导致 200% 放大
 - 用户通过 CanvasControls 的 fit_screen 按钮手动触发 fitView
-- `willChange: transform` 禁止在节点组件上使用（导致 GPU 光栅化模糊）
+- `willChange: transform` 和 `backface-visibility: hidden` 禁止在节点组件上使用（导致 GPU 光栅化模糊，执行时节点变糊）
 
 ---
 
@@ -974,6 +988,165 @@ backend/
 ├── docker-compose.yml
 ├── Dockerfile
 └── requirements.txt
+```
+
+---
+
+## 13. Image Editor 图层架构
+
+### 13.1 概述
+
+Image Editor 是全屏 Modal，从 Image List 节点的预览点击打开。采用 Procreate 风格的三栏布局，支持多图层编辑、绘画、拖放图片、AI 生成、栅格化、导出。
+
+### 13.2 三栏布局
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│ ← Back │ Image Editor │ N 张图片  [栅格化] [导出到节点]      │
+├──────────┬──────────────────────────────┬────────────────────┤
+│ 源图片    │                              │ 图层面板           │
+│ (180px)  │      主画板 (Canvas)          │ (220px)           │
+│          │   多层合成渲染                 │                   │
+│ [click]  │   白色背景 + 可选网格          │ [+新] [复制] [删]  │
+│ [drag]   │   选择/绘画模式               │ 图层3 👁🔒        │
+│          │                              │ ── opacity 滑条   │
+│ 猫1.jpg  │                              │ 图层2 👁🔓        │
+│ 猫2.jpg  │                              │ ── opacity 滑条   │
+├──────────┤                              ├────────────────────┤
+│          │                              │ [导出到节点输出]    │
+├──────────┴──────────────────────────────┴────────────────────┤
+│ [选择] [画笔] │ 🎨颜色 │ 笔宽 │ 橡皮 撤销 清除 │ 网格 吸附 │ [AI Edit] │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### 13.3 layerStore 状态模型
+
+```typescript
+interface Layer {
+  id: string
+  name: string           // "图层 1", "图层 2"...
+  visible: boolean       // 眼睛图标 toggle
+  locked: boolean        // 锁定图标 toggle
+  opacity: number        // 0~1，半透明滑条
+  imageSrc: string | null // 图片 base64 data URL（图片图层）
+  imgX: number           // 图片在画板中的 X 位置
+  imgY: number           // 图片在画板中的 Y 位置
+  imgW: number           // 图片显示宽度
+  imgH: number           // 图片显示高度
+  naturalW: number       // 图片原始宽度（首次加载时记录）
+  naturalH: number       // 图片原始高度
+  strokes: Stroke[]      // 画笔笔迹数组
+}
+
+interface Stroke {
+  points: { x: number; y: number }[]
+  color: string
+  width: number
+  eraser: boolean
+}
+
+// 工具: "select" | "draw"
+// GRID_SIZE: 20px
+// 吸附: snapToGrid(pos) → Math.round(pos / GRID_SIZE) * GRID_SIZE
+```
+
+### 13.4 渲染流程
+
+1. 主 canvas 尺寸 = 容器尺寸（ResizeObserver 响应式）
+2. 每帧从底到顶渲染 layers：
+   - `ctx.globalAlpha = layer.opacity`
+   - `!layer.visible` → skip
+   - 有 `imageSrc` → `drawImage` contain 模式（不拉伸）
+   - 绘制该 layer 的 strokes
+   - 当前绘画中的 stroke 也实时渲染
+3. 选择模式：active image layer 显示蓝色虚线边框 + 右下角缩放 handle
+4. 可选网格线（20px 间距）
+
+### 13.5 图片 contain 渲染
+
+```typescript
+// 不拉伸，等比缩放 fit 到 layer rect 内
+const scale = Math.min(imgW / img.width, imgH / img.height)
+const drawW = img.width * scale
+const drawH = img.height * scale
+const drawX = layer.imgX + (imgW - drawW) / 2  // 居中
+const drawY = layer.imgY + (imgH - drawH) / 2
+ctx.drawImage(img, drawX, drawY, drawW, drawH)
+```
+
+### 13.6 交互模式
+
+**选择模式 (`tool === "select"`)**:
+1. 点击 resize handle → 进入 resize 拖拽（保持比例，吸附网格）
+2. 点击 active layer 图片区 → 进入 move 拖拽（吸附网格）
+3. 点击其他 layer 图片 → 选中该 layer + 进入 move 拖拽
+
+**绘画模式 (`tool === "draw"`)**:
+- 只在 active + unlocked layer 上画
+- 支持画笔和橡皮（`globalCompositeOperation: "destination-out"`）
+
+### 13.7 图片拖放方案
+
+**问题**: HTML5 Drag and Drop API 对大 base64 数据不可靠（dataTransfer 限制）。
+
+**解决方案**: 双通道
+1. **Click-to-add（主）**: 点击源图片 → `addImageLayer(src, name)` 直接添加
+2. **Drag（辅）**: drag start 只传 `text/image-id`（短字符串）→ drop 时通过 `imageCache` Map 查找 base64
+
+```typescript
+// SourcePanel.tsx — 模块级缓存
+const imageCache = new Map<string, string>()  // imageId → base64 data URL
+
+// drag start
+e.dataTransfer.setData("text/image-id", img.id)
+
+// LayerCanvas drop handler
+const imageId = e.dataTransfer.getData("text/image-id")
+const src = imageId ? imageCache.get(imageId) : null
+```
+
+### 13.8 栅格化与导出
+
+**栅格化**: 创建离屏 canvas → 画所有可见层（含 opacity）→ `toDataURL("image/png")` → 替换为新 rasterized layer
+
+**导出到节点**: Canvas `toDataURL()` → base64 → 调用 Rust `save_canvas_export` → 写文件 → 插入 DB → push 到 `canvasStore.nodeResults[nodeId].images` 数组
+
+### 13.9 AI Edit
+
+```
+用户点击 AI Edit → 输入编辑指令
+  → AiEditPopup 截取画布 getCanvasElement().toDataURL()
+  → 调用 Rust ai_edit_image(base64, instruction, model)
+  → Rust: 文本模型生成增强 prompt → 图片生成 API
+  → 返回新图片 base64
+  → 前端 addImageLayer(dataUrl, "AI 生成")
+```
+
+**Rust 侧实现** (`services/ai_client.rs`):
+- `ai_edit_image()`: 接收截图 + 指令 → 用文本模型分析/增强 prompt → 调用图片生成
+- 进度状态: input → analyzing(30%) → generating(70%) → done(100%)
+
+### 13.10 Image Editor 关键文件
+
+| 文件 | 行数 | 职责 |
+|------|------|------|
+| `layerStore.ts` | ~300 | Zustand 图层状态管理（Layer CRUD + 绘画 + 拖拽/缩放 + 栅格化 + 网格吸附） |
+| `LayerCanvas.tsx` | ~300 | 主画板 canvas（合成渲染 + 绘画 + 选择 + 拖放接收） |
+| `SourcePanel.tsx` | ~125 | 左侧源图片列表（click-to-add + drag cache） |
+| `LayerPanel.tsx` | ~145 | 右侧图层面板（列表 + 操作按钮 + opacity + 导出按钮） |
+| `Toolbar.tsx` | ~100 | 工具栏（工具切换 + 颜色 + 笔宽 + 橡皮 + 网格 + AI Edit） |
+| `AiEditPopup.tsx` | ~150 | AI 编辑弹窗（状态机 + 进度条 + 截图 + 生成） |
+| `ImageEditorModal.tsx` | ~143 | 全屏 Modal 壳（三栏布局 + 导出逻辑 + AI popup） |
+
+### 13.11 Image Cache 策略
+
+```typescript
+// SourcePanel.tsx 模块级
+const imageCache = new Map<string, string>()  // imageId → base64 data URL
+
+// 加载时机: SourceThumb useEffect 中 invoke("read_asset_file") → base64 → cache
+// 复用场景: click-to-add + drag-to-canvas + LayerCanvas image rendering
+// 导出: LayerPanel 底部"导出到节点输出"按钮
 ```
 
 ---

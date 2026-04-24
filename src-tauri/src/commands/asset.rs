@@ -1,4 +1,5 @@
 use crate::db;
+use base64::Engine;
 use serde::Serialize;
 use std::fs;
 use std::path::PathBuf;
@@ -92,4 +93,63 @@ pub fn delete_asset(id: String) -> Result<(), String> {
     let _ = fs::remove_file(&file_path);
 
     Ok(())
+}
+
+#[derive(Debug, Serialize)]
+pub struct SaveResult {
+    pub file_path: String,
+}
+
+#[tauri::command]
+pub fn save_canvas_export(
+    base64_data: String,
+    workflow_id: String,
+    node_id: String,
+) -> Result<SaveResult, String> {
+    let image_data = base64::engine::general_purpose::STANDARD
+        .decode(&base64_data)
+        .map_err(|e| format!("base64 decode: {}", e))?;
+
+    let app_dir = db::get_app_dir();
+    let assets_dir = PathBuf::from(&app_dir).join("assets").join(&workflow_id);
+    fs::create_dir_all(&assets_dir)
+        .map_err(|e| format!("create dir: {}", e))?;
+
+    let filename = format!("{}_export_{}.png", node_id, chrono::Utc::now().format("%Y%m%d_%H%M%S"));
+    let file_path = assets_dir.join(&filename);
+    fs::write(&file_path, &image_data)
+        .map_err(|e| format!("write file: {}", e))?;
+
+    let asset_id = uuid::Uuid::new_v4().to_string();
+    let file_path_str = file_path.to_string_lossy().to_string();
+    let size_bytes = image_data.len() as i64;
+
+    let conn = db::get_connection();
+    let locked = conn.lock().unwrap();
+    locked.execute(
+        "INSERT INTO assets (id, workflow_id, node_id, type, file_path, original_filename, size_bytes, mime_type) \
+         VALUES (?1, ?2, ?3, 'image', ?4, ?5, ?6, 'image/png')",
+        rusqlite::params![&asset_id, &workflow_id, &node_id, &file_path_str, &filename, size_bytes],
+    ).map_err(|e| format!("insert asset: {}", e))?;
+
+    Ok(SaveResult { file_path: file_path_str })
+}
+
+#[tauri::command]
+pub async fn ai_edit_image(
+    image_base64: String,
+    instruction: String,
+    model: Option<String>,
+) -> Result<serde_json::Value, String> {
+    let model_id = model.unwrap_or_else(|| "minimax-image".to_string());
+    let result = crate::services::ai_client::ai_edit_image(
+        &image_base64,
+        &instruction,
+        &model_id,
+        None,
+    ).await?;
+
+    // Return base64 to frontend
+    let b64 = base64::engine::general_purpose::STANDARD.encode(&result.image_data);
+    Ok(serde_json::json!({ "base64": b64, "size": result.image_data.len() }))
 }

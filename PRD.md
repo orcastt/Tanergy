@@ -1,9 +1,9 @@
 # TANGENT — Product Requirements Document
 
-**版本**: v0.7
+**版本**: v0.8
 **日期**: 2026-04-23
 **状态**: Phase 2 商业化 — 本地测试 + Bug 修复阶段
-**上次更新**: 本地测试会话修复 9 个 Bug，连线交互增强，Image List 改进
+**上次更新**: Image Editor 图层画板完成（Slice 22），Procreate 风格多图层编辑
 
 ---
 
@@ -116,7 +116,8 @@
 - [ ] Skill 动态拓扑系统（Slice 13 待开发）
 - [ ] 管理后台前端（API 已完成，Next.js 待开发）
 - [ ] 小红书图文笔记 Skill
-- [ ] 节点子画布 Draw/Comment（图片编辑器 Modal 已完成 Slice 11）
+- [x] Image Editor 图层画板（Slice 22 完成）— Procreate 风格多图层编辑器
+- [ ] 节点子画布 Draw/Comment
 - [ ] 可选云同步（增值功能，渐进式引入网页版）
 - [ ] 工作流模板分享
 
@@ -408,7 +409,7 @@
 | 节点 | 说明 | 输入 | 输出 | 用户 API Key |
 |------|------|------|------|------------|
 | image_planner | Claude 规划配图数量+位置+描述 | `text` | `structured`（配图计划 JSON）| Anthropic |
-| image_list | 多模型图片生成（MiniMax/GPT/Gemini），双输入，动态输出端口 | `image_plans` + `text` | `image_slot`×N（动态） | 用户 Key 或积分 |
+| image_list | 多模型图片生成（MiniMax/GPT/Gemini），双输入，动态输出端口，点击预览打开图层编辑器 | `image_plans` + `text` | `image_slot`×N（动态） | 用户 Key 或积分 |
 | image_gallery | 收集图片，提供多个输出端口 | `image`×N | `image`（多端口） | 免费（本地） |
 
 #### 📄 输出类
@@ -439,6 +440,28 @@
 - **音频类（MiniMax Speech 等）**：Phase 3
 - **PPT 节点**：Phase 3
 - **小红书 Skill**：Phase 2
+
+### 7.5 Image Editor 图层画板
+
+**入口**：Image List 节点 done 状态 → 点击预览 → 打开全屏 Image Editor
+
+**布局**：三栏（源图片 180px | 主画板 | 图层面板 220px）+ 顶部 header + 工具栏
+
+**核心功能**：
+
+| 功能 | 说明 | 状态 |
+|------|------|------|
+| 图层 CRUD | 新建/删除/复制/上下移动 | ✅ |
+| 图层属性 | 不透明度(0-1)、显示/隐藏、锁定/解锁 | ✅ |
+| 图片 contain 渲染 | 不同比例图片不拉伸，等比居中 | ✅ |
+| 选择工具 | 点击选中图层，拖拽移动，handle 缩放 | ✅ |
+| 绘画工具 | 画笔/橡皮，8色 4级笔宽 | ✅ |
+| 网格 + 吸附 | 20px 网格线，移动/缩放时自动对齐 | ✅ |
+| 从源图片添加 | 点击或拖拽左侧图片到画板创建图层 | ✅ |
+| 栅格化 | 合并所有可见图层为一张新图层 | ✅ |
+| 导出到节点 | 画布内容保存到 Image List 输出 slots | ✅ |
+| AI Edit | 截取画布 + 指令 → AI 生成新图层 | ✅ |
+| 撤销 | 撤销当前图层最后一笔 | ✅ |
 
 ---
 
@@ -1076,6 +1099,7 @@ Kling、Seedance、Vidu、Wan2.x、MiniMax、Tencent Speech、小红书 API
 | 17 | i18n 中英切换完成 | P1 | ✅ |
 | 18 | 首次引导 + 订阅支付 | P1 | ✅ |
 | 19 | Settings 简化 + Skill 推荐卡片 | P2 | ✅ |
+| 22 | Image Editor 图层画板 | P1 | ✅ |
 | — | 管理后台 Web 应用 | P1 | ✅ |
 | — | Provider 可插拔架构 | P1 | ✅ |
 | 20 | 网页端架构预留 | P3 | ⬜ |

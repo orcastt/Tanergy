@@ -167,6 +167,13 @@ pub async fn exec_image_gen(
         .map_err(|e| format!("create assets dir: {}", e))?;
 
     let total = limited_plans.len();
+    eprintln!("[image_gen] total={} plans, count={}, model={}", total, count, model);
+    for (i, p) in limited_plans.iter().enumerate() {
+        eprintln!("[image_gen] plan[{}]: id={}, prompt='{}'", i,
+            p.get("id").and_then(|v| v.as_str()).unwrap_or("?"),
+            p.get("prompt").and_then(|v| v.as_str()).unwrap_or("?"));
+    }
+
     let mut images = Vec::new();
     let mut per_image = serde_json::Map::new();
 
@@ -182,19 +189,15 @@ pub async fn exec_image_gen(
             "total": total as u32,
         }));
 
-        // Enrich prompt with plan-specific context to ensure each image is distinct
         let description = plan.get("description").and_then(|v| v.as_str()).unwrap_or("");
         let position = plan.get("position").and_then(|v| v.as_str()).unwrap_or("");
-        let prompt = if total > 1 {
-            format!(
-                "[variation {} of {}] Image for article section '{}'. Context: {}. {}",
-                i + 1, total, position, description, base_prompt,
-            )
-        } else {
-            base_prompt.to_string()
-        };
+        let prompt = base_prompt.to_string();
+
+        eprintln!("[image_gen] call {}/{} prompt='{}' model={}", i + 1, total, &prompt[..prompt.len().min(80)], model);
 
         let result = ai_client::image_generation(model, &prompt, aspect_ratio).await?;
+
+        eprintln!("[image_gen] call {}/{} returned {} bytes, saved to {}", i + 1, total, result.image_data.len(), filename);
 
         let file_path = assets_dir.join(&filename);
         fs::write(&file_path, &result.image_data)

@@ -55,6 +55,8 @@ pub fn run() {
             commands::asset::get_assets,
             commands::asset::read_asset_file,
             commands::asset::delete_asset,
+            commands::asset::save_canvas_export,
+            commands::asset::ai_edit_image,
             commands::credits::get_credit_balance,
             commands::credits::refresh_credits,
             commands::credits::login_official,

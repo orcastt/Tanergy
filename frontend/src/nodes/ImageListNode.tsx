@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next"
 import NodeBase from "./base/NodeBase"
 import { NODE_MAP } from "./nodeDefs"
 import { useCanvasStore } from "../store/canvasStore"
+import { useOverlayStore } from "../store/overlayStore"
 import { useCreditsStore } from "../store/creditsStore"
 import { NODE_CREDIT_COSTS } from "../types/credits"
 import { invoke } from "@tauri-apps/api/core"
@@ -280,14 +281,18 @@ export default function ImageListNode({ data, id, selected }: NodeProps) {
         </div>
       )}
 
-      {/* Done — show count only, no preview grid */}
+      {/* Done — show preview grid, click opens Image Editor */}
       {images.length > 0 && status === "done" && (
-        <div style={{
-          padding: "0.375rem 0.5rem", background: "var(--bg-hover)",
-          borderRadius: "0.25rem", fontSize: "0.6875rem", color: "var(--text-secondary)",
-          textAlign: "center",
-        }}>
-          {t("nodes.image_list.generated", { count: images.length })}
+        <div
+          onClick={() => useOverlayStore.getState().openEditor(id)}
+          style={{
+            display: "grid", gridTemplateColumns: `repeat(${Math.min(images.length, 3)}, 1fr)`,
+            gap: "0.25rem", cursor: "pointer",
+          }}
+        >
+          {images.map((img, i) => (
+            <ImageThumb key={img.id} filePath={img.file_path} description={img.description} badge={i + 1} />
+          ))}
         </div>
       )}
 

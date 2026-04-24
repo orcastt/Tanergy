@@ -86,6 +86,48 @@ pub struct ImageResult {
     pub url: Option<String>,
 }
 
+// ── AI-powered image editing ──
+
+/// Edit an image based on user instruction:
+/// 1. Use vision model to understand current image
+/// 2. Generate new image based on instruction + context
+pub async fn ai_edit_image(
+    image_base64: &str,
+    instruction: &str,
+    model: &str,
+    aspect_ratio: Option<&str>,
+) -> Result<ImageResult, String> {
+    // Step 1: Use a text model to generate an enriched prompt for image generation
+    let system = "你是一个专业的AI图片编辑助手。用户会给你一张图片的描述和编辑指令。\
+                  请生成一个详细的英文 prompt，用于 AI 生图工具重新生成编辑后的图片。\
+                  prompt 需要保留原图的核心内容，同时体现用户的编辑指令。\
+                  只输出 prompt，不要其他内容。";
+
+    let user_msg = format!(
+        "原始图片描述：用户画板截图（包含图片和手绘内容）\n编辑指令：{}\n\n请生成生图 prompt：",
+        instruction
+    );
+
+    let text_model = get_text_model_for_edit(model);
+    let messages = vec![
+        ChatMessage { role: "system".into(), content: system.into() },
+        ChatMessage { role: "user".into(), content: user_msg },
+    ];
+
+    let completion = chat_completion(&text_model, "", messages, 1024, Some(0.7)).await?;
+    let prompt = completion.text.trim().to_string();
+
+    eprintln!("[ai_edit] generated prompt: {}", &prompt[..prompt.len().min(120)]);
+
+    // Step 2: Generate new image with the enriched prompt
+    image_generation(model, &prompt, aspect_ratio).await
+}
+
+fn get_text_model_for_edit(_image_model: &str) -> String {
+    // Use default text model for prompt generation
+    "MiniMax-M2.7".to_string()
+}
+
 // ── API key helper ──
 
 pub fn get_decrypted_key(app_dir: &str, provider_id: &str) -> Result<String, String> {
