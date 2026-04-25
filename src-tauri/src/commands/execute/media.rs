@@ -280,19 +280,22 @@ pub async fn exec_html_formatter(payload: &ExecutePayload) -> Result<ExecuteResu
     }
     let combined_text = sections.join("\n\n");
 
-    // 2. Collect images from image_list output
-    let images: Vec<Value> = payload.input_data
-        .get("images")
-        .and_then(|v| v.get("images").or(Some(v)))
-        .and_then(|v| v.as_array())
-        .cloned()
-        .unwrap_or_default()
-        .into_iter()
-        .chain(
-            payload.input_data.get("image_slot")
-                .and_then(|v| v.as_array()).cloned().unwrap_or_default()
-        )
-        .collect();
+    // 2. Collect images from image_list output or dynamic image_N ports
+    let mut images: Vec<Value> = Vec::new();
+    for (key, value) in payload.input_data.as_object().into_iter().flatten() {
+        let is_image_port = key == "images" || key == "image_slot" || key.starts_with("image_");
+        if !is_image_port {
+            continue;
+        }
+
+        if let Some(arr) = value.get("images").and_then(|v| v.as_array()) {
+            images.extend(arr.iter().cloned());
+        } else if let Some(arr) = value.as_array() {
+            images.extend(arr.iter().cloned());
+        } else if value.is_object() {
+            images.push(value.clone());
+        }
+    }
 
     // 3. Replace [图N] markers with inline HTML
     let replaced_text = replace_image_markers(&combined_text, &images);

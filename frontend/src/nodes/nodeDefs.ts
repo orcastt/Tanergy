@@ -94,7 +94,7 @@ export const NODE_DEFS: NodeDef[] = [
     icon: "code",
     category: "output",
     modelCategory: "text",
-    defaultData: { style: "标准紫", fontSize: 16, lineHeight: 1.75, model: "MiniMax-M2.7", textInputs: ["text_1"] },
+    defaultData: { style: "标准紫", fontSize: 16, lineHeight: 1.75, model: "MiniMax-M2.7", textInputs: ["text_1"], imageInputs: ["images"] },
     inputs: [
       { id: "text_1", type: "text", label: "Section 1" },
       { id: "images", type: "image_slot", label: "Images" },

@@ -29,6 +29,7 @@ const AI_NODE_TYPES: &[&str] = &[
 fn extract_text(value: &Value) -> Option<&str> {
     value.as_str()
         .or_else(|| value.get("text").and_then(|v| v.as_str()))
+        .or_else(|| value.get("content").and_then(|v| v.as_str()))
         .or_else(|| value.get("raw").and_then(|v| v.as_str()))
 }
 
@@ -86,6 +87,7 @@ fn exec_text_input(payload: &ExecutePayload) -> Result<ExecuteResult, String> {
     let text = payload.node_data
         .get("text")
         .and_then(|v| v.as_str())
+        .or_else(|| payload.input_data.get("in").and_then(extract_text))
         .unwrap_or("")
         .to_string();
 
@@ -437,7 +439,7 @@ async fn exec_mock(payload: &ExecutePayload) -> Result<ExecuteResult, String> {
     std::thread::sleep(std::time::Duration::from_millis(300));
 
     let output = match payload.node_type.as_str() {
-        "text_input" => mock_data::mock_text_input(&payload.node_data),
+        "text_input" => mock_data::mock_text_input(&payload.node_data, &payload.input_data),
         "research" => mock_data::mock_research(&payload.input_data),
         "outline_generator" => mock_data::mock_outline(&payload.input_data),
         "writer" => mock_data::mock_writer(&payload.input_data),

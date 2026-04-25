@@ -5,6 +5,7 @@ import { useCanvasStore } from "../../store/canvasStore"
 import TiptapEditor from "./TiptapEditor"
 import WeChatPreview from "./WeChatPreview"
 import HtmlRewritePopup from "./HtmlRewritePopup"
+import { toStandardPurpleHtml } from "./standardPurpleHtml"
 
 export default function HtmlEditorModal() {
   const nodeId = useOverlayStore((s) => s.htmlEditorNodeId)
@@ -101,7 +102,7 @@ export default function HtmlEditorModal() {
         <div style={{ display: "flex", gap: "0.5rem" }}>
           <button
             onClick={() => {
-              navigator.clipboard.writeText(html).catch(() => {})
+              navigator.clipboard.writeText(toStandardPurpleHtml(html)).catch(() => {})
                 .then(() => alert("HTML 已复制到剪贴板"))
             }}
             style={{

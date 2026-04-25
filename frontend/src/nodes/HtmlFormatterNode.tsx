@@ -17,9 +17,11 @@ interface HtmlFormatterData {
   lineHeight: number
   model?: string
   textInputs?: string[]
+  imageInputs?: string[]
 }
 
 const MAX_SECTION_INPUTS = 10
+const MAX_IMAGE_INPUTS = 10
 const STYLES = ["标准紫", "经典", "简约", "活泼", "专业"]
 
 export default function HtmlFormatterNode({ data, id, selected }: NodeProps) {
@@ -35,6 +37,7 @@ export default function HtmlFormatterNode({ data, id, selected }: NodeProps) {
   const result = nodeResults[id] as { html?: string; word_count?: number; reading_time?: number } | undefined
 
   const textInputs: string[] = d.textInputs ?? ["text_1"]
+  const imageInputs: string[] = d.imageInputs ?? ["images"]
 
   const addTextInput = useCallback(() => {
     if (textInputs.length >= MAX_SECTION_INPUTS) return
@@ -47,6 +50,17 @@ export default function HtmlFormatterNode({ data, id, selected }: NodeProps) {
     updateNodeData(id, { textInputs: textInputs.filter((p) => p !== portId) })
   }, [textInputs, id, updateNodeData])
 
+  const addImageInput = useCallback(() => {
+    if (imageInputs.length >= MAX_IMAGE_INPUTS) return
+    const next = `image_${imageInputs.length + 1}`
+    updateNodeData(id, { imageInputs: [...imageInputs, next] })
+  }, [imageInputs, id, updateNodeData])
+
+  const removeImageInput = useCallback((portId: string) => {
+    if (imageInputs.length <= 1) return
+    updateNodeData(id, { imageInputs: imageInputs.filter((p) => p !== portId) })
+  }, [imageInputs, id, updateNodeData])
+
   const dynamicInputs = useMemo((): PortDef[] => {
     const sections: PortDef[] = textInputs.map((portId, i) => ({
       id: portId,
@@ -55,8 +69,15 @@ export default function HtmlFormatterNode({ data, id, selected }: NodeProps) {
       removable: textInputs.length > 1,
       onRemove: removeTextInput,
     }))
-    return [...sections, { id: "images", type: "image_slot" as PortType, label: "Images" }]
-  }, [textInputs, removeTextInput])
+    const images: PortDef[] = imageInputs.map((portId, i) => ({
+      id: portId,
+      type: "image_slot" as PortType,
+      label: `Image ${i + 1}`,
+      removable: imageInputs.length > 1,
+      onRemove: removeImageInput,
+    }))
+    return [...sections, ...images]
+  }, [textInputs, imageInputs, removeTextInput, removeImageInput])
 
   function copyHtml() {
     if (result?.html) navigator.clipboard.writeText(result.html).catch(() => {})
@@ -123,6 +144,31 @@ export default function HtmlFormatterNode({ data, id, selected }: NodeProps) {
                 padding: "0.125rem 0.5rem", cursor: "pointer", marginTop: "0.125rem",
               }}
             >+ 添加章节</button>
+          )}
+          <div style={{ fontSize: "0.625rem", color: "var(--text-secondary)", margin: "0.5rem 0 0.25rem" }}>图片输入</div>
+          {imageInputs.map((portId, i) => (
+            <div key={portId} style={{ display: "flex", alignItems: "center", gap: "0.25rem", marginBottom: "0.125rem" }}>
+              <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#86EFAC", flexShrink: 0 }} />
+              <span style={{ fontSize: "0.625rem", color: "var(--text-secondary)", flex: 1 }}>Image {i + 1}</span>
+              {imageInputs.length > 1 && (
+                <button
+                  onClick={() => removeImageInput(portId)}
+                  className="nodrag nopan"
+                  style={{ fontSize: "0.75rem", background: "none", border: "none", color: "#EF4444", cursor: "pointer", padding: "0 2px", lineHeight: 1 }}
+                >−</button>
+              )}
+            </div>
+          ))}
+          {imageInputs.length < MAX_IMAGE_INPUTS && (
+            <button
+              onClick={addImageInput}
+              className="nodrag nopan"
+              style={{
+                fontSize: "0.625rem", color: "#22C55E", background: "none",
+                border: "1px dashed #22C55E", borderRadius: "0.25rem",
+                padding: "0.125rem 0.5rem", cursor: "pointer", marginTop: "0.125rem",
+              }}
+            >+ 添加图片输入</button>
           )}
         </div>
       )}

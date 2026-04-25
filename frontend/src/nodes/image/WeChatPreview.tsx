@@ -1,46 +1,29 @@
+import { toStandardPurpleHtml } from "./standardPurpleHtml"
+
 interface WeChatPreviewProps {
   html: string
-  maxHeight?: number
 }
 
-export default function WeChatPreview({ html, maxHeight = 500 }: WeChatPreviewProps) {
+export default function WeChatPreview({ html }: WeChatPreviewProps) {
+  const previewHtml = toStandardPurpleHtml(html)
+
   return (
-    <div style={{ padding: "1rem", height: "100%", boxSizing: "border-box", background: "#f5f5f5" }}>
-      {/* Phone mockup */}
-      <div style={{
-        width: "280px",
-        margin: "0 auto",
-        background: "#fff",
-        borderRadius: "1.5rem",
-        overflow: "hidden",
-        boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
-      }}>
-        {/* Status bar */}
-        <div style={{
-          background: "#f5f3f3",
-          padding: "0.5rem 0.75rem",
-          display: "flex",
-          justifyContent: "space-between",
-          fontSize: "0.75rem",
-          color: "#333",
-        }}>
-          <span>9:41</span>
-          <div style={{ display: "flex", gap: "0.25rem", alignItems: "center" }}>
-            <span>📶</span><span>🔋</span>
-          </div>
-        </div>
-        {/* Content */}
-        <div style={{
-          padding: "0.75rem",
-          maxHeight: `${maxHeight}px`,
-          overflowY: "auto",
+    <div style={{ height: "100%", boxSizing: "border-box", background: "#fff", overflow: "auto" }}>
+      <div
+        dangerouslySetInnerHTML={{ __html: previewHtml }}
+        style={{
+          width: "100%",
+          minHeight: "100%",
+          boxSizing: "border-box",
+          padding: "2rem 3rem",
           background: "#fff",
-        }}>
-          <div
-            dangerouslySetInnerHTML={{ __html: html }}
-            style={{ fontSize: "14px", lineHeight: "1.75", color: "#333" }}
-          />
-        </div>
+          color: "#252525",
+          fontSize: "15px",
+          lineHeight: 1.8,
+        }}
+      />
+      <div style={{ position: "sticky", bottom: 0, padding: "0.5rem 1rem", background: "rgba(255,255,255,0.92)", borderTop: "1px solid #f0f0f0", fontSize: "0.6875rem", color: "#878b8e" }}>
+        标准紫预览 · 复制时会输出微信兼容内联样式 HTML
       </div>
     </div>
   )

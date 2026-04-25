@@ -150,6 +150,7 @@ export function splitOutlineImpl(
         fontSize: 16,
         lineHeight: 1.75,
         textInputs: textInputPorts,
+        imageInputs: ["images"],
       },
       selected: false,
     } as Node)

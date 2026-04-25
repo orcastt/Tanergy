@@ -1,7 +1,12 @@
 use serde_json::{json, Value};
 
-pub fn mock_text_input(node_data: &Value) -> Value {
-    let text = node_data.get("text").and_then(|v| v.as_str()).unwrap_or("AI 技术发展趋势");
+pub fn mock_text_input(node_data: &Value, input_data: &Value) -> Value {
+    let text = node_data.get("text")
+        .and_then(|v| v.as_str())
+        .or_else(|| input_data.get("in").and_then(|v| v.as_str()))
+        .or_else(|| input_data.get("in").and_then(|v| v.get("text")).and_then(|v| v.as_str()))
+        .or_else(|| input_data.get("in").and_then(|v| v.get("content")).and_then(|v| v.as_str()))
+        .unwrap_or("AI 技术发展趋势");
     json!({ "text": text })
 }
 

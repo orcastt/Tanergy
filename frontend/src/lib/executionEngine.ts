@@ -117,7 +117,13 @@ function gatherInputData(nodeId: string, edges: any[], nodeResults: Record<strin
       const key = (e.targetHandle ?? "in") as string
       const sourceResult = nodeResults[e.source]
       if (e.sourceHandle && sourceResult && typeof sourceResult === "object") {
-        const specific = (sourceResult as Record<string, unknown>)[e.sourceHandle]
+        let specific = (sourceResult as Record<string, unknown>)[e.sourceHandle]
+        if (specific == null && e.sourceHandle.startsWith("section_")) {
+          const index = Number(e.sourceHandle.replace("section_", "")) - 1
+          const sections = (sourceResult as { sections?: Array<{ content?: string; title?: string }> }).sections
+          const section = Number.isFinite(index) ? sections?.[index] : undefined
+          if (section) specific = { text: section.content ?? section.title ?? "" }
+        }
         inputData[key] = specific ?? sourceResult
       } else {
         inputData[key] = sourceResult

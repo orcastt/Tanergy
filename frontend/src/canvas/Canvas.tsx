@@ -32,6 +32,7 @@ import type { NodeType } from "../types/node"
 const edgeTypes = { default: DeletableEdge }
 
 const SNAP_GRID = [20, 20] as [number, number]
+const MAX_AUTO_INPUTS = 10
 
 function getOutputPortType(nodeId: string, handleId: string | null | undefined, nodes: any[]) {
   const node = nodes.find((n) => n.id === nodeId)
@@ -54,6 +55,72 @@ function getInputPortType(nodeId: string, handleId: string | null | undefined, n
   const staticPort = def.inputs.find((i) => i.id === handleId)
   if (staticPort) return staticPort.type
   if (node.data.nodeType === "image_list" && handleId.startsWith("img_in_")) return "image_slot"
+  if (node.data.nodeType === "html_formatter" && handleId.startsWith("text_")) return "text"
+  if (node.data.nodeType === "html_formatter" && (handleId === "images" || handleId.startsWith("image_"))) return "image_slot"
+  return null
+}
+
+function isInputOccupied(edges: any[], nodeId: string, handleId: string | null | undefined) {
+  return edges.some((e) => e.target === nodeId && e.targetHandle === handleId)
+}
+
+function nextNumberedHandle(existing: string[], prefix: string) {
+  const used = new Set(existing)
+  for (let i = 1; i <= MAX_AUTO_INPUTS; i += 1) {
+    const candidate = `${prefix}${i}`
+    if (!used.has(candidate)) return candidate
+  }
+  return null
+}
+
+function resolveAutoInputExpansion(connection: Connection, nodes: any[], edges: any[]) {
+  if (!connection.source || !connection.target || !connection.targetHandle) return null
+  const sourceType = getOutputPortType(connection.source, connection.sourceHandle, nodes)
+  const targetType = getInputPortType(connection.target, connection.targetHandle, nodes)
+  if (!sourceType || !targetType || sourceType !== targetType) return null
+
+  const targetNode = nodes.find((n) => n.id === connection.target)
+  if (!targetNode) return null
+
+  const nodeType = targetNode.data.nodeType as NodeType
+  const targetHandle = connection.targetHandle
+
+  if (nodeType === "html_formatter" && targetType === "text" && targetHandle.startsWith("text_")) {
+    const textInputs = (targetNode.data.textInputs as string[] | undefined) ?? ["text_1"]
+    const existing = new Set(textInputs)
+    for (let i = 1; i <= MAX_AUTO_INPUTS; i += 1) {
+      const candidate = `text_${i}`
+      if (!existing.has(candidate) || !isInputOccupied(edges, targetNode.id, candidate)) {
+        return {
+          targetHandle: candidate,
+          data: existing.has(candidate) ? undefined : { textInputs: [...textInputs, candidate] },
+        }
+      }
+    }
+  }
+
+  if (nodeType === "html_formatter" && targetType === "image_slot" && (targetHandle === "images" || targetHandle.startsWith("image_"))) {
+    const imageInputs = (targetNode.data.imageInputs as string[] | undefined) ?? ["images"]
+    const used = new Set(imageInputs)
+    let candidate: string | null = null
+    for (let i = 2; i <= MAX_AUTO_INPUTS; i += 1) {
+      const handle = `image_${i}`
+      if (!used.has(handle)) {
+        candidate = handle
+        break
+      }
+    }
+    if (!candidate) return null
+    return { targetHandle: candidate, data: { imageInputs: [...imageInputs, candidate] } }
+  }
+
+  if (nodeType === "image_list" && targetType === "image_slot" && targetHandle.startsWith("img_in_")) {
+    const imageInputs = (targetNode.data.imageInputs as string[] | undefined) ?? ["img_in_1"]
+    const candidate = nextNumberedHandle(imageInputs, "img_in_")
+    if (!candidate) return null
+    return { targetHandle: candidate, data: { imageInputs: [...imageInputs, candidate] } }
+  }
+
   return null
 }
 
@@ -62,7 +129,7 @@ export default function Canvas() {
     nodes, edges, addNode, addEdge, onNodesChange, onEdgesChange, removeNode,
     copySelected, pasteNodes, deleteSelected, duplicateNode, clipboard,
     groupSelected, ungroupSelected,
-    undo, canUndo, getGraphJson, setGraphFromJson,
+    undo, canUndo, getGraphJson, setGraphFromJson, updateNodeData,
   } = useCanvasStore()
 
   const { pickerOpen, pickerScreenPos, ctxMenu, editorNodeId, htmlEditorNodeId, lightboxImage } = useOverlayStore()
@@ -110,16 +177,22 @@ export default function Canvas() {
 
   const handleConnect: OnConnect = useCallback((connection: Connection) => {
     if (!connection.source || !connection.target) return
-    const existing = edges.find((e) => e.target === connection.target && e.targetHandle === connection.targetHandle)
-    if (existing) return
+    let targetHandle = connection.targetHandle
+    const existing = edges.find((e) => e.target === connection.target && e.targetHandle === targetHandle)
+    if (existing) {
+      const expanded = resolveAutoInputExpansion(connection, nodes, edges)
+      if (!expanded) return
+      targetHandle = expanded.targetHandle
+      if (expanded.data) updateNodeData(connection.target, expanded.data)
+    }
     addEdge({
-      id: `e-${connection.source}-${connection.sourceHandle}-${connection.target}-${connection.targetHandle}`,
+      id: `e-${connection.source}-${connection.sourceHandle}-${connection.target}-${targetHandle}`,
       source: connection.source,
       target: connection.target,
       sourceHandle: connection.sourceHandle,
-      targetHandle: connection.targetHandle,
+      targetHandle,
     })
-  }, [edges, addEdge])
+  }, [nodes, edges, addEdge, updateNodeData])
 
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
     for (const c of changes) {
@@ -204,7 +277,8 @@ export default function Canvas() {
     const targetType = getInputPortType(connection.target, connection.targetHandle, nodes)
     if (sourceType === null || targetType === null) return false
     if (sourceType !== targetType) return false
-    return !edges.some((e) => e.target === connection.target && e.targetHandle === connection.targetHandle)
+    if (!edges.some((e) => e.target === connection.target && e.targetHandle === connection.targetHandle)) return true
+    return Boolean(resolveAutoInputExpansion(connection as Connection, nodes, edges))
   }, [nodes, edges])
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -20,7 +20,7 @@ interface GeneratedImage {
   position: string
 }
 
-const MAX_IMAGE_INPUTS = 3
+const MAX_IMAGE_INPUTS = 10
 
 function ImageThumb({ filePath, description, badge }: { filePath: string; description: string; badge?: number }) {
   const [src, setSrc] = useState<string | null>(null)
