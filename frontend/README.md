@@ -31,6 +31,18 @@ npm -C frontend run build
 
 2026-04-25 已验证通过。
 
+## 开发规范
+
+完整规范见 `../dev-plans/code-quality-standards.md`。
+
+本项目当前策略：
+
+- 前端改动必须跑 `npm -C frontend run build`。
+- 触碰文件必须从 `frontend/` 目录跑定向 lint：`npx eslint src/path/file.tsx`。
+- 全量 `npm -C frontend run lint` 仍有历史债，不作为每次提交阻断；但不允许新增触碰文件 lint 问题。
+- React 组件不要在 Hook 之前 early return，不要在 `useEffect` 里同步做 prop → state 镜像。
+- React Flow 相关代码优先使用 `Node`、`Edge`、`Connection`、`NodeMouseHandler`、`OnNodeDrag`、`NodeTypes` 等官方类型，禁止新增 `any`。
+
 ## Html Editor 文件索引
 
 | 文件 | 说明 |

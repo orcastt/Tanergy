@@ -8,7 +8,6 @@ import { useOverlayStore } from "../store/overlayStore"
 import { useCreditsStore } from "../store/creditsStore"
 import { NODE_CREDIT_COSTS } from "../types/credits"
 import ModelSelector from "../components/ModelSelector"
-import type { PortType } from "../types/node"
 
 interface HtmlFormatterData {
   nodeType: string
@@ -27,7 +26,6 @@ const STYLES = ["标准紫", "经典", "简约", "活泼", "专业"]
 export default function HtmlFormatterNode({ data, id, selected }: NodeProps) {
   const d = data as unknown as HtmlFormatterData
   const def = NODE_MAP[d.nodeType]
-  if (!def) return null
 
   const { isLoggedIn } = useCreditsStore()
   const creditCost = NODE_CREDIT_COSTS[d.nodeType] ?? 0
@@ -36,8 +34,8 @@ export default function HtmlFormatterNode({ data, id, selected }: NodeProps) {
   const status = nodeStatuses[id] ?? "idle"
   const result = nodeResults[id] as { html?: string; word_count?: number; reading_time?: number } | undefined
 
-  const textInputs: string[] = d.textInputs ?? ["text_1"]
-  const imageInputs: string[] = d.imageInputs ?? ["images"]
+  const textInputs = useMemo(() => d.textInputs ?? ["text_1"], [d.textInputs])
+  const imageInputs = useMemo(() => d.imageInputs ?? ["images"], [d.imageInputs])
 
   const addTextInput = useCallback(() => {
     if (textInputs.length >= MAX_SECTION_INPUTS) return
@@ -64,14 +62,14 @@ export default function HtmlFormatterNode({ data, id, selected }: NodeProps) {
   const dynamicInputs = useMemo((): PortDef[] => {
     const sections: PortDef[] = textInputs.map((portId, i) => ({
       id: portId,
-      type: "text" as PortType,
+      type: "text",
       label: `Section ${i + 1}`,
       removable: textInputs.length > 1,
       onRemove: removeTextInput,
     }))
     const images: PortDef[] = imageInputs.map((portId, i) => ({
       id: portId,
-      type: "image_slot" as PortType,
+      type: "image_slot",
       label: `Image ${i + 1}`,
       removable: imageInputs.length > 1,
       onRemove: removeImageInput,
@@ -82,6 +80,8 @@ export default function HtmlFormatterNode({ data, id, selected }: NodeProps) {
   function copyHtml() {
     if (result?.html) navigator.clipboard.writeText(result.html).catch(() => {})
   }
+
+  if (!def) return null
 
   return (
     <NodeBase

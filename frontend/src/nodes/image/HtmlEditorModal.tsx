@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { createPortal } from "react-dom"
 import { useOverlayStore } from "../../store/overlayStore"
 import { useCanvasStore } from "../../store/canvasStore"
@@ -19,13 +19,9 @@ export default function HtmlEditorModal() {
     return result?.html ?? (typeof nodeHtml === "string" ? nodeHtml : "")
   }, [node?.data?.editedHtml, result?.html])
 
-  const [html, setHtml] = useState(initialHtml)
+  const [html, setHtml] = useState(() => initialHtml)
   const [showRewrite, setShowRewrite] = useState(false)
   const [selectedText, setSelectedText] = useState("")
-
-  useEffect(() => {
-    setHtml(initialHtml)
-  }, [initialHtml, nodeId])
 
   const persistHtml = useCallback((nextHtml: string, persistToNodeData = false) => {
     if (!nodeId) return

@@ -118,6 +118,24 @@ cd frontend && npm install && cd ..
 cargo tauri dev
 ```
 
+### 开发规范与验证
+
+完整规范见 [dev-plans/code-quality-standards.md](dev-plans/code-quality-standards.md)。
+
+```bash
+# 前端构建
+npm -C frontend run build
+
+# Rust / Tauri 检查
+cargo check --manifest-path src-tauri/Cargo.toml
+
+# 对触碰文件做定向 lint（从 frontend/ 目录执行）
+cd frontend
+npx eslint src/path/to/changed-file.tsx
+```
+
+当前策略：全量 `npm -C frontend run lint` 仍有历史债，不作为每次提交阻断；但所有触碰文件必须定向 lint 通过，且禁止新增 `any`、Hook 顺序错误、effect 同步镜像 state 等问题。
+
 ### 启动后端服务（Phase 2 积分 / 登录功能需要）
 
 ```bash

@@ -3,6 +3,7 @@ import { useCanvasStore } from "../store/canvasStore"
 import { useWorkflowStore } from "../store/workflowStore"
 import { tauri } from "../services/tauri"
 import type { NodeType } from "../types/node"
+import type { Edge, Node } from "@xyflow/react"
 
 export type RunAllOptions = {
   onNodeStart?: (nodeId: string) => void
@@ -48,7 +49,7 @@ function waitForGateResolve(nodeId: string): Promise<string> {
   })
 }
 
-async function executeNode(node: any, inputData: any, options: RunAllOptions): Promise<unknown> {
+async function executeNode(node: Node, inputData: Record<string, unknown>, options: RunAllOptions): Promise<unknown> {
   const type = node.data.nodeType as NodeType
   const nodeData = node.data as Record<string, unknown>
 
@@ -110,7 +111,7 @@ async function executeNode(node: any, inputData: any, options: RunAllOptions): P
 // Track running state for stopAll
 let running = false
 
-function gatherInputData(nodeId: string, edges: any[], nodeResults: Record<string, unknown>): Record<string, unknown> {
+function gatherInputData(nodeId: string, edges: Edge[], nodeResults: Record<string, unknown>): Record<string, unknown> {
   const inputData: Record<string, unknown> = {}
   for (const e of edges) {
     if (e.target === nodeId) {
@@ -133,7 +134,7 @@ function gatherInputData(nodeId: string, edges: any[], nodeResults: Record<strin
   return inputData
 }
 
-async function executeSingleNode(nodeId: string, nodes: any[], edges: any[], options: RunAllOptions): Promise<void> {
+async function executeSingleNode(nodeId: string, nodes: Node[], edges: Edge[], options: RunAllOptions): Promise<void> {
   if (!running) return
 
   const node = nodes.find((n) => n.id === nodeId)

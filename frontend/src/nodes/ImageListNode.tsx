@@ -21,6 +21,7 @@ interface GeneratedImage {
 }
 
 const MAX_IMAGE_INPUTS = 10
+const EMPTY_PORTS: PortDef[] = []
 
 function ImageThumb({ filePath, description, badge }: { filePath: string; description: string; badge?: number }) {
   const [src, setSrc] = useState<string | null>(null)
@@ -111,7 +112,6 @@ function InputThumb({ handleId, index, firstImg, canDelete, onDelete }: {
 export default function ImageListNode({ data, id, selected }: NodeProps) {
   const d = data as unknown as { nodeType: string; count?: number; model?: string; imageInputs?: string[] }
   const def = NODE_MAP[d.nodeType]
-  if (!def) return null
 
   const { t } = useTranslation()
   const { isLoggedIn } = useCreditsStore()
@@ -122,7 +122,7 @@ export default function ImageListNode({ data, id, selected }: NodeProps) {
   const images = result?.images ?? []
 
   const count = d.count ?? 1
-  const imageInputs: string[] = d.imageInputs ?? ["img_in_1"]
+  const imageInputs = useMemo(() => d.imageInputs ?? ["img_in_1"], [d.imageInputs])
 
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null)
 
@@ -152,8 +152,6 @@ export default function ImageListNode({ data, id, selected }: NodeProps) {
           }
         }).then((fn) => { unlisten = fn })
       })
-    } else {
-      setProgress(null)
     }
     return () => { unlisten?.() }
   }, [status, id])
@@ -181,7 +179,7 @@ export default function ImageListNode({ data, id, selected }: NodeProps) {
   }, [imageInputs, id, updateNodeData])
 
   const inputs: PortDef[] = useMemo(() => {
-    const base: PortDef[] = [...def.inputs]
+    const base: PortDef[] = [...(def?.inputs ?? EMPTY_PORTS)]
     for (const inputId of imageInputs) {
       base.push({
         id: inputId, type: "image_slot" as const, label: `图${base.length}`,
@@ -190,15 +188,19 @@ export default function ImageListNode({ data, id, selected }: NodeProps) {
       })
     }
     return base
-  }, [imageInputs, def.inputs, removeImageInput])
+  }, [imageInputs, def?.inputs, removeImageInput])
 
   // Outputs: individual image handles (no label = hidden from bottom bar) + "out" for full images array
   const outputs: PortDef[] = useMemo(() => {
     const imagePorts = images.length > 0
-      ? images.map((_img, i) => ({ id: `image${i + 1}`, type: "image_slot" as const }))
+      ? Array.from({ length: images.length }, (_, i) => ({ id: `image${i + 1}`, type: "image_slot" as const }))
       : Array.from({ length: Math.min(count, 10) }, (_, i) => ({ id: `image${i + 1}`, type: "image_slot" as const }))
     return [...imagePorts, { id: "out", type: "image_slot" as const, label: "All" }]
   }, [images.length, count])
+
+  const runningProgress = status === "running" ? progress : null
+
+  if (!def) return null
 
   const selectStyle: React.CSSProperties = {
     width: "100%", padding: "0.25rem 0.375rem", fontSize: "0.6875rem",
@@ -282,12 +284,12 @@ export default function ImageListNode({ data, id, selected }: NodeProps) {
             display: "flex", alignItems: "center", gap: "0.375rem",
           }}>
             <span className="material-symbols-outlined" style={{ fontSize: "14px", animation: "spin 1s linear infinite" }}>progress_activity</span>
-            {progress ? t("nodes.image_list.generating", { current: progress.current, total: progress.total }) : t("nodes.image_list.ready")}
+            {runningProgress ? t("nodes.image_list.generating", { current: runningProgress.current, total: runningProgress.total }) : t("nodes.image_list.ready")}
           </div>
-          {progress && (
+          {runningProgress && (
             <div style={{ height: "4px", background: "var(--border-color)", borderRadius: "2px", overflow: "hidden" }}>
               <div style={{
-                width: `${(progress.current / progress.total) * 100}%`,
+                width: `${(runningProgress.current / runningProgress.total) * 100}%`,
                 height: "100%", background: "#3B82F6", borderRadius: "2px",
                 transition: "width 0.3s ease",
               }} />

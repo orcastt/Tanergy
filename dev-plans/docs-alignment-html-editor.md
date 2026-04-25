@@ -31,6 +31,7 @@ text_input → research → outline_generator → Split
 | AI 改写弹窗 | ✅ | `frontend/src/nodes/image/HtmlRewritePopup.tsx`, `src-tauri/src/commands/asset.rs` |
 | 端口契约 | ✅ | `frontend/src/nodes/nodeDefs.ts`, `frontend/src/nodes/OutlineGeneratorNode.tsx` |
 | 构建阻断修复 | ✅ | `frontend/src/canvas/DeletableEdge.tsx`, `frontend/src/nodes/image/*`, `frontend/src/store/canvasActions.ts` |
+| 开发测试规范 | ✅ | `dev-plans/code-quality-standards.md`, `frontend/README.md`, `project_state.md` |
 
 ---
 
@@ -41,12 +42,14 @@ text_input → research → outline_generator → Split
 - `html_formatter` 保持 terminal output：运行完成后双击进入 Html Editor。
 - Html Editor 编辑内容实时写回 `nodeResults`，关闭时写入节点 `data.editedHtml`，同一工作流会话内关闭再打开不丢内容。
 - `dev-plans/` 与 `debug-plans/` 标注历史链路和当前主链路，避免继续把 `preview_wechat` 当默认出口。
+- 新增代码质量规范：触碰文件定向 lint 必须通过，全量 lint 历史债暂不作为每次提交阻断。
 
 ---
 
 ## 验收清单
 
 - [x] `npm -C frontend run build` 通过。
+- [x] 本轮改动相关文件定向 lint 通过。
 - [ ] 手测：`html_formatter` 执行完成后双击打开 Html Editor。
 - [ ] 手测：编辑内容后右侧微信预览实时更新。
 - [ ] 手测：关闭 Html Editor 后重新打开，编辑内容仍保留。

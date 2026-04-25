@@ -4,6 +4,7 @@
 **日期**: 2026-04-24
 **状态**: ✅ 已按代码现状校准（2026-04-25 更新：Html Editor 为默认终点）
 **策略**: 公众号主流程以 Outline Split 架构为核心，移除 Gate/Writer 作为默认必需节点
+**开发规范**: 代码质量与测试门槛见 `dev-plans/code-quality-standards.md`
 
 ---
 

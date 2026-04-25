@@ -1,4 +1,4 @@
-import { useCallback, useRef, useEffect, type ComponentType } from "react"
+import { useCallback, useRef, useEffect } from "react"
 import {
   ReactFlow,
   Background,
@@ -7,9 +7,14 @@ import {
   SelectionMode,
   type OnConnect,
   type Connection,
+  type Edge,
   type NodeChange,
   type EdgeChange,
   type IsValidConnection,
+  type Node,
+  type NodeMouseHandler,
+  type NodeTypes,
+  type OnNodeDrag,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
 
@@ -34,7 +39,7 @@ const edgeTypes = { default: DeletableEdge }
 const SNAP_GRID = [20, 20] as [number, number]
 const MAX_AUTO_INPUTS = 10
 
-function getOutputPortType(nodeId: string, handleId: string | null | undefined, nodes: any[]) {
+function getOutputPortType(nodeId: string, handleId: string | null | undefined, nodes: Node[]) {
   const node = nodes.find((n) => n.id === nodeId)
   if (!node) return null
   const def = NODE_MAP[node.data.nodeType as NodeType]
@@ -46,7 +51,7 @@ function getOutputPortType(nodeId: string, handleId: string | null | undefined, 
   return null
 }
 
-function getInputPortType(nodeId: string, handleId: string | null | undefined, nodes: any[]) {
+function getInputPortType(nodeId: string, handleId: string | null | undefined, nodes: Node[]) {
   const node = nodes.find((n) => n.id === nodeId)
   if (!node) return null
   const def = NODE_MAP[node.data.nodeType as NodeType]
@@ -60,7 +65,7 @@ function getInputPortType(nodeId: string, handleId: string | null | undefined, n
   return null
 }
 
-function isInputOccupied(edges: any[], nodeId: string, handleId: string | null | undefined) {
+function isInputOccupied(edges: Edge[], nodeId: string, handleId: string | null | undefined) {
   return edges.some((e) => e.target === nodeId && e.targetHandle === handleId)
 }
 
@@ -73,7 +78,7 @@ function nextNumberedHandle(existing: string[], prefix: string) {
   return null
 }
 
-function resolveAutoInputExpansion(connection: Connection, nodes: any[], edges: any[]) {
+function resolveAutoInputExpansion(connection: Connection, nodes: Node[], edges: Edge[]) {
   if (!connection.source || !connection.target || !connection.targetHandle) return null
   const sourceType = getOutputPortType(connection.source, connection.sourceHandle, nodes)
   const targetType = getInputPortType(connection.target, connection.targetHandle, nodes)
@@ -220,7 +225,7 @@ export default function Canvas() {
     }
   }, [])
 
-  const handleNodeContextMenu = useCallback((event: React.MouseEvent, node: any) => {
+  const handleNodeContextMenu: NodeMouseHandler = useCallback((event, node) => {
     event.preventDefault()
     useOverlayStore.getState().openCtxMenu(event.clientX, event.clientY, node.id)
   }, [])
@@ -230,7 +235,7 @@ export default function Canvas() {
     useOverlayStore.getState().openCtxMenu(event.clientX, event.clientY)
   }, [])
 
-  const handleNodeClick = useCallback((event: React.MouseEvent, node: any) => {
+  const handleNodeClick: NodeMouseHandler = useCallback((event, node) => {
     if (event.altKey) {
       event.preventDefault()
       duplicateNode(node.id)
@@ -240,13 +245,13 @@ export default function Canvas() {
   // Alt/Option + drag to duplicate
   const dragStartRef = useRef<{ nodeId: string; origPos: { x: number; y: number } } | null>(null)
 
-  const handleNodeDragStart = useCallback((event: React.MouseEvent, node: any) => {
+  const handleNodeDragStart: OnNodeDrag = useCallback((event, node) => {
     if (event.altKey) {
       dragStartRef.current = { nodeId: node.id, origPos: { ...node.position } }
     }
   }, [])
 
-  const handleNodeDragStop = useCallback((_event: React.MouseEvent, node: any) => {
+  const handleNodeDragStop: OnNodeDrag = useCallback((_event, node) => {
     if (dragStartRef.current && dragStartRef.current.nodeId === node.id) {
       const orig = dragStartRef.current.origPos
       onNodesChange([{ id: node.id, type: "position", position: orig }])
@@ -281,8 +286,7 @@ export default function Canvas() {
     return Boolean(resolveAutoInputExpansion(connection as Connection, nodes, edges))
   }, [nodes, edges])
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const nodeTypesMap: Record<string, ComponentType<any>> = nodeTypes as any
+  const nodeTypesMap: NodeTypes = nodeTypes
 
   const selectedCount = useCanvasStore.getState().selectedNodeIds.length
   const isGroupNode = ctxMenu?.nodeId ? nodes.find((n) => n.id === ctxMenu.nodeId)?.type === "group" : false
@@ -362,7 +366,7 @@ export default function Canvas() {
           />
         )}
         {editorNodeId && <ImageEditorModal nodeId={editorNodeId} onClose={() => useOverlayStore.getState().closeEditor()} />}
-        {htmlEditorNodeId && <HtmlEditorModal />}
+        {htmlEditorNodeId && <HtmlEditorModal key={htmlEditorNodeId} />}
         {lightboxImage && <LightboxOverlay />}
       </OverlayLayer>
     </>

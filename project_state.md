@@ -60,6 +60,27 @@
 
 详细规范见 [dev-plans/node-plan.md](dev-plans/node-plan.md)
 WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/wechat-skill-nodes.md)
+开发/测试代码质量规范见 [dev-plans/code-quality-standards.md](dev-plans/code-quality-standards.md)
+
+---
+
+## 开发测试规范（2026-04-25 生效）
+
+当前策略：`npm -C frontend run build` 与触碰文件定向 lint 是前端改动的基础门槛；全量 `npm -C frontend run lint` 仍有历史债，不作为每次提交阻断，但不允许新增触碰文件 lint 问题。
+
+| 场景 | 必跑检查 |
+|------|----------|
+| 前端功能/节点/UI 改动 | `npm -C frontend run build` + `git diff --check` |
+| 前端触碰文件 | 从 `frontend/` 执行 `npx eslint <changed-files>` |
+| Rust / Tauri IPC 改动 | `cargo check --manifest-path src-tauri/Cargo.toml` |
+| 节点端口契约改动 | 手测连线、动态端口、执行输入聚合 |
+| Html Editor 改动 | 手测双击打开、实时预览、关闭重开、复制 HTML |
+
+关键规范：
+- 禁止新增 `any`；React Flow 使用官方 `Node`、`Edge`、`Connection`、`NodeMouseHandler`、`OnNodeDrag`、`NodeTypes` 类型。
+- React Hook 必须在 early return 之前调用。
+- 不在 `useEffect` 里同步做 prop → state 镜像；优先派生值、稳定 key 重新挂载或异步订阅。
+- 动态端口由 `Canvas.resolveAutoInputExpansion()` 统一扩展，节点组件只负责渲染和手动 add/remove UI。
 
 ---
 
