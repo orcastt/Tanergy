@@ -1,7 +1,9 @@
 # Slice 4: text_input · research · outline_generator
 
-**优先级**: P0 | **难度**: 中 | **预计**: 3 天 | **状态**: ⬜ 未开始
+**优先级**: P0 | **难度**: 中 | **预计**: 3 天 | **状态**: ✅ 已完成（状态校准）
 **依赖**: Slice 3 | **返回索引**: [phase1-mvp.md](phase1-mvp.md)
+
+> 2026-04-25 对齐：`outline_generator.image_plans` 已统一为真实 `image_plans` 端口类型，并驱动 Split 后的 `image_list`。
 
 ---
 

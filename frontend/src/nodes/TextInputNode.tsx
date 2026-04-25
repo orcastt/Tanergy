@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import type { NodeProps } from "@xyflow/react"
 import { useTranslation } from "react-i18next"
 import NodeBase from "./base/NodeBase"
@@ -23,9 +23,26 @@ export default function TextInputNode({ data, id, selected }: NodeProps) {
   if (!def) return null
 
   const { t } = useTranslation()
-  const { nodeStatuses, nodeResults, updateNodeData } = useCanvasStore()
+  const { nodeStatuses, nodeResults, edges, updateNodeData } = useCanvasStore()
   const status = nodeStatuses[id] ?? "idle"
   const result = nodeResults[id] as { text?: string } | undefined
+
+  // Get text from upstream node if connected
+  const upstreamEdge = edges.find((e) => e.target === id && e.targetHandle === "in")
+  const upstreamResult = upstreamEdge ? nodeResults[upstreamEdge.source] as { text?: string } | undefined : null
+  const upstreamText = upstreamResult?.text ?? ""
+
+  // Use upstream text as initial value if no user text entered yet
+  const displayText = d.text || upstreamText
+
+  // Local state to avoid re-render fighting with IME during composition
+  const [localText, setLocalText] = useState(displayText)
+  const isComposingRef = useRef(false)
+
+  // Sync external changes (upstream text / undo-redo) into local state
+  useEffect(() => {
+    if (!isComposingRef.current) setLocalText(displayText)
+  }, [displayText])
 
   const [size, setSize] = useState({ w: d.width ?? 256, h: d.height ?? 160 })
   const sizeRef = useRef(size)
@@ -77,26 +94,38 @@ export default function TextInputNode({ data, id, selected }: NodeProps) {
         nodeId={id}
         width={size.w}
       >
-        <textarea
-          value={d.text ?? ""}
-          onChange={(e) => updateNodeData(id, { text: e.target.value })}
-          placeholder={t("nodes.text_input.placeholder")}
-          style={{
-            width: "100%",
-            height: `${clampedTextH}px`,
-            border: "1px solid var(--border-color)",
-            borderRadius: "0.375rem",
-            padding: "0.5rem",
-            fontSize: "0.8125rem",
-            lineHeight: `${lineH}px`,
-            color: "var(--text-primary)",
-            resize: "none",
-            outline: "none",
-            fontFamily: "inherit",
-            background: "var(--bg-input)",
-            overflowY: "auto",
-          }}
-        />
+        <div className="nodrag nopan">
+          <textarea
+            value={localText}
+            onChange={(e) => {
+              setLocalText(e.target.value)
+              if (!isComposingRef.current) {
+                updateNodeData(id, { text: e.target.value })
+              }
+            }}
+            onCompositionStart={() => { isComposingRef.current = true }}
+            onCompositionEnd={(e) => {
+              isComposingRef.current = false
+              updateNodeData(id, { text: e.currentTarget.value })
+            }}
+            placeholder={upstreamText ? "" : t("nodes.text_input.placeholder")}
+            style={{
+              width: "100%",
+              height: `${clampedTextH}px`,
+              border: "1px solid var(--border-color)",
+              borderRadius: "0.375rem",
+              padding: "0.5rem",
+              fontSize: "0.8125rem",
+              lineHeight: `${lineH}px`,
+              color: "var(--text-primary)",
+              resize: "none",
+              outline: "none",
+              fontFamily: "inherit",
+              background: "var(--bg-input)",
+              overflowY: "auto",
+            }}
+          />
+        </div>
         {result?.text && status === "done" && (
           <div style={{
             marginTop: "0.375rem",

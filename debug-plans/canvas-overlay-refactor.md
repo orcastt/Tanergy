@@ -1,5 +1,7 @@
 # Plan: Canvas UI 层统一重构 — "画布归画布，UI 归 UI"
 
+> 2026-04-25 对齐：OverlayLayer 已承载 Image Editor、Html Editor、Lightbox、NodePicker 等浮层；后续新增浮层继续走统一 overlay store，不再在节点内散落 portal。
+
 ## Context
 
 React Flow v12 会劫持 DOM：所有节点在 CSS transform 容器内，`position: fixed` 失效，事件被拦截。当前代码用 `createPortal` + `stopImmediatePropagation` 散落在各处"打补丁"，导致每次加功能都冲突。需要建立"二元化"架构：画布层只管节点渲染，覆盖层统一管理所有浮层 UI。

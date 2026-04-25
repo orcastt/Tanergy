@@ -14,7 +14,6 @@ import ImageGenNode from "./ImageGenNode"
 import ImageListNode from "./ImageListNode"
 import ImageGalleryNode from "./ImageGalleryNode"
 import HtmlFormatterNode from "./HtmlFormatterNode"
-import PreviewWechatNode from "./PreviewWechatNode"
 import GroupNode from "./GroupNode"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -30,6 +29,5 @@ export const nodeTypes: Record<string, ComponentType<any>> = {
   image_list: ImageListNode,
   image_gallery: ImageGalleryNode,
   html_formatter: HtmlFormatterNode,
-  preview_wechat: PreviewWechatNode,
   group: GroupNode,
 }

@@ -12,7 +12,7 @@ export type RunAllOptions = {
   onComplete?: () => void
 }
 
-const AI_NODES: Set<string> = new Set(["research", "outline_generator", "writer", "reviewer", "image_planner", "image_gen", "image_list"])
+const AI_NODES: Set<string> = new Set(["research", "outline_generator", "writer", "reviewer", "image_planner", "image_gen", "image_list", "html_formatter"])
 
 function extractGateOptions(inputData: Record<string, unknown>): string[] {
   const input = inputData.in

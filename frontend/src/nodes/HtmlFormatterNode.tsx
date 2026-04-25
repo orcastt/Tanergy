@@ -1,19 +1,32 @@
-import { useState } from "react"
+import { useMemo, useCallback } from "react"
 import type { NodeProps } from "@xyflow/react"
-import { useTranslation } from "react-i18next"
 import NodeBase from "./base/NodeBase"
+import type { PortDef } from "./base/NodeBase"
 import { NODE_MAP } from "./nodeDefs"
 import { useCanvasStore } from "../store/canvasStore"
+import { useOverlayStore } from "../store/overlayStore"
 import { useCreditsStore } from "../store/creditsStore"
 import { NODE_CREDIT_COSTS } from "../types/credits"
 import ModelSelector from "../components/ModelSelector"
+import type { PortType } from "../types/node"
+
+interface HtmlFormatterData {
+  nodeType: string
+  style: string
+  fontSize: number
+  lineHeight: number
+  model?: string
+  textInputs?: string[]
+}
+
+const MAX_SECTION_INPUTS = 10
+const STYLES = ["标准紫", "经典", "简约", "活泼", "专业"]
 
 export default function HtmlFormatterNode({ data, id, selected }: NodeProps) {
-  const d = data as unknown as { nodeType: string; style: string; fontSize: number; lineHeight: number; model?: string }
+  const d = data as unknown as HtmlFormatterData
   const def = NODE_MAP[d.nodeType]
   if (!def) return null
 
-  const { t } = useTranslation()
   const { isLoggedIn } = useCreditsStore()
   const creditCost = NODE_CREDIT_COSTS[d.nodeType] ?? 0
 
@@ -21,53 +34,98 @@ export default function HtmlFormatterNode({ data, id, selected }: NodeProps) {
   const status = nodeStatuses[id] ?? "idle"
   const result = nodeResults[id] as { html?: string; word_count?: number; reading_time?: number } | undefined
 
-  const [showEditor, setShowEditor] = useState(false)
+  const textInputs: string[] = d.textInputs ?? ["text_1"]
+
+  const addTextInput = useCallback(() => {
+    if (textInputs.length >= MAX_SECTION_INPUTS) return
+    const next = `text_${textInputs.length + 1}`
+    updateNodeData(id, { textInputs: [...textInputs, next] })
+  }, [textInputs, id, updateNodeData])
+
+  const removeTextInput = useCallback((portId: string) => {
+    if (textInputs.length <= 1) return
+    updateNodeData(id, { textInputs: textInputs.filter((p) => p !== portId) })
+  }, [textInputs, id, updateNodeData])
+
+  const dynamicInputs = useMemo((): PortDef[] => {
+    const sections: PortDef[] = textInputs.map((portId, i) => ({
+      id: portId,
+      type: "text" as PortType,
+      label: `Section ${i + 1}`,
+      removable: textInputs.length > 1,
+      onRemove: removeTextInput,
+    }))
+    return [...sections, { id: "images", type: "image_slot" as PortType, label: "Images" }]
+  }, [textInputs, removeTextInput])
+
+  function copyHtml() {
+    if (result?.html) navigator.clipboard.writeText(result.html).catch(() => {})
+  }
 
   return (
     <NodeBase
       title={def.label}
       category={def.category}
       icon={<span className="material-symbols-outlined" style={{ fontSize: "18px", color: "#5e5e5e" }}>code</span>}
-      inputs={def.inputs}
+      inputs={dynamicInputs}
       outputs={def.outputs}
       status={status}
       selected={selected}
       nodeId={id}
       creditCost={isLoggedIn ? creditCost : undefined}
     >
-      {/* Model selector */}
+      {/* Model + Style row */}
       <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", marginBottom: "0.375rem" }}>
         <span style={{ fontSize: "0.6875rem", color: "var(--text-secondary)" }}>Model:</span>
-        <ModelSelector
-          category="text"
-          value={d.model as string | undefined}
-          onChange={(model) => updateNodeData(id, { model })}
-        />
+        <ModelSelector category="text" value={d.model} onChange={(model) => updateNodeData(id, { model })} />
+      </div>
+      <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap", marginBottom: "0.375rem" }}>
+        {STYLES.map((s) => (
+          <button
+            key={s}
+            onClick={() => updateNodeData(id, { style: s })}
+            className="nodrag nopan"
+            style={{
+              padding: "0.125rem 0.5rem", fontSize: "0.625rem", borderRadius: "9999px",
+              border: d.style === s ? "1px solid #7C3AED" : "1px solid var(--border-color)",
+              background: d.style === s ? "#f5f3ff" : "transparent",
+              color: d.style === s ? "#7C3AED" : "var(--text-secondary)",
+              cursor: "pointer", fontWeight: d.style === s ? 600 : 400,
+            }}
+          >{s}</button>
+        ))}
       </div>
 
-      {/* Config */}
-      <div style={{ display: "flex", gap: "0.375rem", marginBottom: "0.375rem", flexWrap: "wrap", alignItems: "center" }}>
-        <span style={{ fontSize: "0.6875rem", color: "#747878" }}>{t("nodes.html_formatter.style")}</span>
-        <select
-          value={d.style ?? "经典"}
-          onChange={(e) => updateNodeData(id, { style: e.target.value })}
-          style={{ fontSize: "0.6875rem", border: "1px solid #e3e2e2", borderRadius: "0.25rem", padding: "0.125rem 0.25rem", outline: "none", color: "#1b1c1c" }}
-        >
-          {["经典", "简约", "活泼", "专业"].map((s) => (
-            <option key={s} value={s}>{s}</option>
+      {/* Section ports manager — shown when idle */}
+      {status === "idle" && (
+        <div style={{ marginBottom: "0.375rem" }}>
+          <div style={{ fontSize: "0.625rem", color: "var(--text-secondary)", marginBottom: "0.25rem" }}>章节输入</div>
+          {textInputs.map((portId, i) => (
+            <div key={portId} style={{ display: "flex", alignItems: "center", gap: "0.25rem", marginBottom: "0.125rem" }}>
+              <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#3B82F6", flexShrink: 0 }} />
+              <span style={{ fontSize: "0.625rem", color: "var(--text-secondary)", flex: 1 }}>Section {i + 1}</span>
+              {textInputs.length > 1 && (
+                <button
+                  onClick={() => removeTextInput(portId)}
+                  className="nodrag nopan"
+                  style={{ fontSize: "0.75rem", background: "none", border: "none", color: "#EF4444", cursor: "pointer", padding: "0 2px", lineHeight: 1 }}
+                >−</button>
+              )}
+            </div>
           ))}
-        </select>
-        <span style={{ fontSize: "0.6875rem", color: "#747878" }}>{t("nodes.html_formatter.fontSize")}</span>
-        <select
-          value={d.fontSize ?? 16}
-          onChange={(e) => updateNodeData(id, { fontSize: Number(e.target.value) })}
-          style={{ fontSize: "0.6875rem", border: "1px solid #e3e2e2", borderRadius: "0.25rem", padding: "0.125rem 0.25rem", outline: "none", color: "#1b1c1c" }}
-        >
-          {[14, 16, 18].map((n) => (
-            <option key={n} value={n}>{n}px</option>
-          ))}
-        </select>
-      </div>
+          {textInputs.length < MAX_SECTION_INPUTS && (
+            <button
+              onClick={addTextInput}
+              className="nodrag nopan"
+              style={{
+                fontSize: "0.625rem", color: "#3B82F6", background: "none",
+                border: "1px dashed #3B82F6", borderRadius: "0.25rem",
+                padding: "0.125rem 0.5rem", cursor: "pointer", marginTop: "0.125rem",
+              }}
+            >+ 添加章节</button>
+          )}
+        </div>
+      )}
 
       {status === "running" && (
         <div style={{
@@ -76,68 +134,39 @@ export default function HtmlFormatterNode({ data, id, selected }: NodeProps) {
           display: "flex", alignItems: "center", gap: "0.375rem",
         }}>
           <span className="material-symbols-outlined" style={{ fontSize: "14px", animation: "spin 1s linear infinite" }}>progress_activity</span>
-          {t("nodes.html_formatter.formatting")}
+          正在排版中...
         </div>
       )}
 
       {status === "done" && result?.html && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
-          {!showEditor ? (
-            <div style={{
-              border: "1px solid #e3e2e2", borderRadius: "0.375rem",
-              overflow: "hidden", maxHeight: "200px",
-            }}>
-              <iframe
-                srcDoc={result.html}
-                sandbox="allow-same-origin"
-                style={{ width: "100%", height: "200px", border: "none", pointerEvents: "none" }}
-                title="HTML Preview"
-              />
-            </div>
-          ) : (
-            <textarea
-              value={result.html}
-              readOnly
-              style={{
-                width: "100%", minHeight: "150px", fontSize: "0.625rem",
-                fontFamily: "monospace", border: "1px solid #e3e2e2",
-                borderRadius: "0.25rem", padding: "0.375rem",
-                resize: "vertical", color: "#1b1c1c",
-              }}
-            />
-          )}
+        <div
+          onDoubleClick={() => useOverlayStore.getState().openHtmlEditor(id)}
+          style={{ display: "flex", flexDirection: "column", gap: "0.375rem", cursor: "pointer" }}
+        >
+          <div style={{
+            padding: "0.75rem", background: "#f5f3ff", borderRadius: "0.375rem",
+            border: "1px solid #ede9fe", textAlign: "center", color: "#6d28d9",
+            fontSize: "0.75rem",
+          }}>
+            <div style={{ fontSize: "1.25rem", marginBottom: "0.25rem" }}>📝</div>
+            双击编辑文章
+          </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: "0.625rem", color: "#9ca3af" }}>
-              {t("nodes.html_formatter.stats", { count: result.word_count?.toLocaleString(), time: result.reading_time })}
+              {result.word_count?.toLocaleString()} 字 · 约 {result.reading_time} 分钟
             </span>
-            <div style={{ display: "flex", gap: "0.25rem" }}>
-              <button
-                onClick={() => setShowEditor(!showEditor)}
-                style={{
-                  padding: "0.125rem 0.5rem", fontSize: "0.625rem",
-                  border: "1px solid #e3e2e2", borderRadius: "0.25rem",
-                  cursor: "pointer", background: "#fff", color: "#1b1c1c",
-                }}
-              >
-                {showEditor ? t("nodes.html_formatter.preview") : t("nodes.html_formatter.editHtml")}
-              </button>
-            </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); copyHtml() }}
+              className="nodrag nopan"
+              style={{ padding: "0.125rem 0.5rem", fontSize: "0.625rem", border: "1px solid #6349EA", borderRadius: "0.25rem", cursor: "pointer", background: "#6349EA", color: "#fff" }}
+            >复制 HTML</button>
           </div>
         </div>
       )}
 
-      {status === "idle" && (
-        <div style={{ fontSize: "0.6875rem", color: "#747878", textAlign: "center" }}>
-          {t("nodes.html_formatter.connectHint")}
-        </div>
-      )}
-
       {status === "error" && (
-        <div style={{
-          padding: "0.375rem 0.5rem", background: "#fef2f2",
-          borderRadius: "0.25rem", fontSize: "0.6875rem", color: "#991b1b",
-        }}>
-          {t("nodes.html_formatter.error")}
+        <div style={{ padding: "0.375rem 0.5rem", background: "#fef2f2", borderRadius: "0.25rem", fontSize: "0.6875rem", color: "#991b1b" }}>
+          执行失败，请检查 API Key
         </div>
       )}
     </NodeBase>

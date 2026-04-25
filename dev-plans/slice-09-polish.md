@@ -1,7 +1,9 @@
 # Slice 9: 主题 + 语言 + 桌面安装包
 
-**优先级**: P1 | **难度**: 低 | **预计**: 2 天 | **状态**: ⬜ 未开始
+**优先级**: P1 | **难度**: 低 | **预计**: 2 天 | **状态**: ✅ 已完成（状态校准）
 **依赖**: Slice 8 | **返回索引**: [phase1-mvp.md](phase1-mvp.md)
+
+> 2026-04-25 对齐：验收链路里的最终出口已从 `preview_wechat` 调整为 `html_formatter` / Html Editor。
 
 ---
 
@@ -450,16 +452,16 @@ License / Setup:
   □ Cmd+S 保存 (SQLite <50ms)
   □ 离开确认
 
-节点执行 (11 节点):
+节点执行 (公众号主链路):
   □ text_input → research → outline_generator
-  □ Gate waiting → 用户选择 → writer → reviewer
-  □ image_planner → image_gen → image_gallery
-  □ html_formatter → preview_wechat
+  □ outline Split → N×text_input(section) + image_list
+  □ image_planner（可选） → image_list → image_gallery
+  □ html_formatter / Html Editor
   □ 失败红色边框 + 错误信息
   □ 可取消执行
 
 Skills:
-  □ 公众号 Skill 一键生成 11 节点工作流
+  □ 公众号 Skill 一键生成主流程工作流（无 gate/writer 依赖）
   □ 节点逐个出现动画
   □ 复制 HTML 到剪贴板
   □ 下载配图 ZIP

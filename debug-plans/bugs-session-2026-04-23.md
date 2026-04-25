@@ -1,5 +1,7 @@
 # Bug 修复记录 — 2026-04-23 本地测试会话
 
+> 2026-04-25 对齐：当前默认主流程为 Outline Split + `html_formatter` / Html Editor。本文继续保留历史 Bug 记录，并新增 Html Editor / build 收口项。
+
 ## 已修复 Bug
 
 ### BUG-001: 旧工作流加载白屏
@@ -54,9 +56,50 @@
 - **修复**: done 状态改为显示 "已生成 N 张图片" 文字；output port 不再在底部标签栏显示
 - **文件**: `frontend/src/nodes/ImageListNode.tsx`, `frontend/src/nodes/base/NodeBase.tsx`
 
+### BUG-010: 节点内 textarea 拖动触发节点移动
+- **症状**: 在 TextInputNode 的 textarea 中拖选文字，节点跟着移动
+- **根因**: React Flow 默认在节点内所有 mousedown 上触发拖拽；内容区没有 `nodrag nopan`
+- **修复**: 内容区 div 加 `className="nodrag nopan"`；`index.css` 对 `.react-flow__node` 内的 input/select/textarea/button 设 `cursor: auto`，阻止拖拽触发
+- **文件**: `frontend/src/nodes/TextInputNode.tsx`, `frontend/src/nodes/base/NodeBase.tsx`, `frontend/src/index.css`
+
+### BUG-011: NodeBase port handle 位置错位
+- **症状**: 输入/输出端口圆点相对节点边缘偏移不准确，连线接入点与视觉圆点不重合
+- **根因**: 容器用 `translate(-50%, -50%)` 二维平移，叠加 Handle 组件自身的 absolute 定位，坐标计算叠加出错
+- **修复**: 容器改为 `left: -10px`/`right: -10px` + `translateY(-50%)`；Handle 自身 `position: relative`，`left/top: auto`，`transform: none`
+- **文件**: `frontend/src/nodes/base/NodeBase.tsx`
+
+### BUG-012: DeletableEdge 删除按钮 hover 离开太快消失
+- **症状**: 鼠标移向边中点的 − 按钮时，刚到达按钮附近就消失（hover 状态丢失）
+- **根因**: 透明 hit area 和按钮之间有间隙，鼠标从 path 滑到按钮时经过空白区触发 mouseLeave
+- **修复**: strokeWidth 20→24 扩大 path hit area；按钮加 `padding: 8px; margin: -8px` 扩大响应区
+- **文件**: `frontend/src/canvas/DeletableEdge.tsx`
+
+### BUG-013: Image Editor 关闭后图层丢失
+- **症状**: 关闭 Image Editor 再重新打开，之前画的图层全部消失
+- **根因**: `reset()` 在 `handleBack` 中被调用，layerStore 清空；重开时没有恢复机制
+- **修复**: `layerStore` 新增 `getState()`/`restoreState()`；关闭时 `getState()` 序列化存入 `nodeResults[nodeId].layerData`；打开时 `useEffect` 检测 `layerData` 并 `restoreState()`
+- **文件**: `frontend/src/nodes/image/ImageEditorModal.tsx`, `frontend/src/nodes/image/layerStore.ts`
+
+### BUG-014: Image Editor 导出调 Rust 失败
+- **症状**: 点击"导出到节点输出"报错，`save_canvas_export` Rust 命令返回错误
+- **根因**: 导出流程依赖 Rust 命令写文件，但 Rust 侧命令签名或路径处理有问题
+- **修复**: 导出改为纯前端——画布 `toDataURL()` 直接作为 `file_path` 存入 `nodeResults.images`；`SourcePanel` 检测 `data:` 前缀直接使用，跳过 `read_asset_file` 调用
+- **文件**: `frontend/src/nodes/image/ImageEditorModal.tsx`, `frontend/src/nodes/image/SourcePanel.tsx`
+
+### BUG-015: 栅格化/AI Edit 输出包含网格线和选择框
+- **症状**: 栅格化结果、AI Edit 截图中带有 20px 网格线和图层选择虚线框
+- **根因**: 直接用 `canvasEl.toDataURL()` 截取，而该 canvas 上渲染了 UI 元素（网格/选择框）
+- **修复**: 新增 `rasterizeLayers()` 函数，创建离屏 canvas，只渲染图层内容（跳过 UI 装饰）；`AiEditPopup` 和 `handleRasterize` 改用此函数
+- **文件**: `frontend/src/nodes/image/LayerCanvas.tsx`, `frontend/src/nodes/image/AiEditPopup.tsx`, `frontend/src/nodes/image/ImageEditorModal.tsx`
+
 ---
 
 ## 待修复 / 待验证
+
+### PENDING-000: Html Editor 手测验收
+- **状态**: 初版已开发且 `npm -C frontend run build` 已通过
+- **待验收**: 双击打开、编辑实时预览、关闭重开保留、AI 改写插入
+- **优先级**: P0
 
 ### PENDING-001: 画布缩放时文字清晰度
 - **症状**: 缩放到 >150% 或 <50% 时节点文字仍然有些模糊

@@ -7,7 +7,15 @@ export default function DeletableEdge(props: EdgeProps) {
     return <DeletableEdgeInner {...props} />
   } catch {
     // Fallback: render basic edge without delete button
-    return <BaseEdge id={props.id} path={props.path ?? ""} style={props.style} />
+    const [edgePath] = getBezierPath({
+      sourceX: props.sourceX,
+      sourceY: props.sourceY,
+      targetX: props.targetX,
+      targetY: props.targetY,
+      sourcePosition: props.sourcePosition ?? Position.Right,
+      targetPosition: props.targetPosition ?? Position.Left,
+    })
+    return <BaseEdge id={props.id} path={edgePath} style={props.style} />
   }
 }
 
@@ -32,10 +40,11 @@ function DeletableEdgeInner({
 
   return (
     <>
+      {/* Wide invisible hit area for easy hover detection */}
       <path
         d={edgePath}
         fill="none"
-        strokeWidth={20}
+        strokeWidth={24}
         stroke="transparent"
         style={{ cursor: "pointer" }}
         onMouseEnter={() => setHovered(true)}
@@ -61,6 +70,9 @@ function DeletableEdgeInner({
               position: "absolute",
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
               pointerEvents: "all",
+              /* Larger hit area around the button so mouse stays in zone */
+              padding: "8px",
+              margin: "-8px",
             }}
           >
             <button

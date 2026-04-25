@@ -10,7 +10,10 @@ interface ResearchData {
   nodeType: string
   query: string
   model?: string
+  direction?: string
 }
+
+const DIRECTIONS = ["行业分析", "案例研究", "数据洞察", "趋势预测"]
 
 export default function ResearchNode({ data, id, selected }: NodeProps) {
   const d = data as unknown as ResearchData
@@ -44,6 +47,28 @@ export default function ResearchNode({ data, id, selected }: NodeProps) {
           onChange={(model) => updateNodeData(id, { model })}
         />
       </div>
+      {/* Direction chips — shown when idle or done */}
+      {(status === "idle" || status === "done") && (
+        <div style={{ marginBottom: "0.375rem" }}>
+          <div style={{ fontSize: "0.625rem", color: "var(--text-secondary)", marginBottom: "0.25rem" }}>研究方向（可选）</div>
+          <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap" }}>
+            {DIRECTIONS.map((dir) => (
+              <button
+                key={dir}
+                onClick={() => updateNodeData(id, { direction: d.direction === dir ? "" : dir })}
+                className="nodrag nopan"
+                style={{
+                  padding: "0.125rem 0.5rem", fontSize: "0.625rem", borderRadius: "9999px",
+                  border: d.direction === dir ? "1px solid #7C3AED" : "1px solid var(--border-color)",
+                  background: d.direction === dir ? "#f5f3ff" : "transparent",
+                  color: d.direction === dir ? "#7C3AED" : "var(--text-secondary)",
+                  cursor: "pointer", fontWeight: d.direction === dir ? 600 : 400,
+                }}
+              >{dir}</button>
+            ))}
+          </div>
+        </div>
+      )}
       <input
         value={d.query ?? ""}
         onChange={(e) => updateNodeData(id, { query: e.target.value })}

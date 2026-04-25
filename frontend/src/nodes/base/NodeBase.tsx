@@ -89,20 +89,22 @@ export default function NodeBase({ title, icon, inputs = [], outputs = [], statu
       boxShadow: ringStyle,
       overflow: "visible",
       position: "relative",
-      transition: selected ? "none" : "box-shadow 200ms ease",
       borderLeft: category ? `3px solid ${CATEGORY_COLORS[category] ?? "#747878"}` : undefined,
     }}>
       {/* Input handles */}
       {inputs.map((port, i) => (
-        <div key={port.id} data-tooltip={`${port.label ?? port.id}: ${port.type}`} data-tooltip-dir="left" className="port-handle" style={{ position: "absolute", left: 0, top: inputCount === 1 ? "50%" : `${30 + (i / (inputCount - 1)) * 40}%`, transform: "translate(-50%, -50%)", zIndex: 10, width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div key={port.id} data-tooltip={`${port.label ?? port.id}: ${port.type}`} data-tooltip-dir="left" className="port-handle" style={{ position: "absolute", left: "-10px", top: inputCount === 1 ? "50%" : `${30 + (i / (inputCount - 1)) * 40}%`, transform: "translateY(-50%)", zIndex: 10, width: "10px", height: "10px" }}>
           <Handle
             type="target"
             position={Position.Left}
             id={port.id}
             style={{
-              width: "8px", height: "8px", borderRadius: "50%",
+              width: "10px", height: "10px", borderRadius: "50%",
               background: PORT_COLORS[port.type],
               border: "none",
+              position: "relative",
+              left: "auto", top: "auto",
+              transform: "none",
             }}
           />
         </div>
@@ -110,15 +112,18 @@ export default function NodeBase({ title, icon, inputs = [], outputs = [], statu
 
       {/* Output handles */}
       {outputs.map((port, i) => (
-        <div key={port.id} data-tooltip={`${port.label ?? port.id}: ${port.type}`} data-tooltip-dir="right" className="port-handle" style={{ position: "absolute", right: 0, top: outputCount === 1 ? "50%" : `${30 + (i / (outputCount - 1)) * 40}%`, transform: "translate(50%, -50%)", zIndex: 10, width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div key={port.id} data-tooltip={`${port.label ?? port.id}: ${port.type}`} data-tooltip-dir="right" className="port-handle" style={{ position: "absolute", right: "-10px", top: outputCount === 1 ? "50%" : `${30 + (i / (outputCount - 1)) * 40}%`, transform: "translateY(-50%)", zIndex: 10, width: "10px", height: "10px" }}>
           <Handle
             type="source"
             position={Position.Right}
             id={port.id}
             style={{
-              width: "8px", height: "8px", borderRadius: "50%",
+              width: "10px", height: "10px", borderRadius: "50%",
               background: PORT_COLORS[port.type],
               border: "none",
+              position: "relative",
+              left: "auto", top: "auto",
+              transform: "none",
             }}
           />
         </div>
@@ -141,13 +146,13 @@ export default function NodeBase({ title, icon, inputs = [], outputs = [], statu
       } />
 
       {children && (
-        <div style={{ padding: "1rem" }}>
+        <div className="nodrag nopan" style={{ padding: "1rem" }}>
           {children}
         </div>
       )}
 
       {(inputs.length > 0 || outputs.some((p) => p.label)) && (
-        <div style={{
+        <div className="nodrag nopan" style={{
           padding: "0.5rem",
           borderTop: "1px solid var(--border-color)",
           display: "flex",

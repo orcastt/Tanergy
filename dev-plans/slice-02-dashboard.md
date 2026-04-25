@@ -1,7 +1,9 @@
 # Slice 2: Dashboard + 工作流 CRUD（本地）
 
-**优先级**: P0 | **难度**: 低 | **预计**: 2 天 | **状态**: ⬜ 未开始
+**优先级**: P0 | **难度**: 低 | **预计**: 2 天 | **状态**: ✅ 已完成（状态校准）
 **依赖**: Slice 0, Slice 1 | **返回索引**: [phase1-mvp.md](phase1-mvp.md)
+
+> 2026-04-25 对齐：Dashboard 已接 SkillPicker；Admin Dashboard 是独立 `admin/` Web 应用，不属于本 Slice。
 
 ---
 

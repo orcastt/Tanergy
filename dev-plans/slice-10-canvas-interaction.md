@@ -1,7 +1,9 @@
 # Slice 10: Canvas Interaction Enhancements
 
-**优先级**: P0 | **难度**: 高 | **预计**: 3 天 | **状态**: 🔨 部分完成（Step 1-4 已完成，Step 5 打组待开发）
+**优先级**: P0 | **难度**: 高 | **预计**: 3 天 | **状态**: ✅ 已完成（含打组能力）
 **依赖**: Slice 3 | **返回索引**: [phase1-mvp.md](phase1-mvp.md)
+
+> 2026-04-25 对齐：画布交互已支持 Html Editor / Image Editor 这类 OverlayLayer 浮层。
 
 ---
 

@@ -3,6 +3,8 @@
 **优先级**: P2 | **难度**: 中 | **预计**: 3 天 | **状态**: ✅ 已完成
 **依赖**: Slice 18 ✅ | **返回索引**: [phase2-commercial.md](phase2-commercial.md)
 
+> 2026-04-25 对齐：Settings 简化已完成；用户自带 Key 继续作为官方代理失败/高级模式降级路径。
+
 ---
 
 ## 目标
@@ -95,7 +97,7 @@ export const SKILL_DEFS: SkillDef[] = [
   {
     id: "wechat_article",
     name: "WeChat Article",
-    description: "Full pipeline: research → outline → write → review → images → format → preview",
+    description: "Current pipeline: research → outline → Split → images → Html Editor",
     icon: "article",
     keywords: ["公众号", "wechat", "长文", "article"],
     nodeCount: 10,

@@ -78,6 +78,115 @@ export function duplicateNodeImpl(s: CanvasState, id: string): Partial<CanvasSta
   return { nodes, selectedNodeIds: [newId], ...hist }
 }
 
+export function splitOutlineImpl(
+  s: CanvasState,
+  outlineNodeId: string,
+  outlinePos: { x: number; y: number },
+  sections: Array<{ id: string; title: string; content: string }>,
+  imagePlans?: unknown[],
+): Partial<CanvasState> {
+  if (!sections.length) return {}
+
+  const W = 256, H = 160, GAP_Y = 16
+  const startX = outlinePos.x + W + 80
+  const startY = outlinePos.y
+
+  // Create N text_input nodes pre-filled with section content
+  const textNodes: Node[] = sections.map((sec, i) => ({
+    id: crypto.randomUUID(),
+    type: "text_input",
+    position: { x: startX, y: startY + i * (H + GAP_Y) },
+    data: { nodeType: "text_input", text: sec.content },
+    selected: true,
+  }))
+
+  // Edges: outline.section_${i+1} → text_input[i].in (visual connection, text_input runs with pre-filled content)
+  const outlineToTextEdges: Edge[] = textNodes.map((textNode, i) => ({
+    id: `e-${outlineNodeId}-section_${i + 1}-${textNode.id}-in`,
+    source: outlineNodeId,
+    sourceHandle: `section_${i + 1}`,
+    target: textNode.id,
+    targetHandle: "in",
+  } as Edge))
+
+  const newNodes: Node[] = [...textNodes]
+  const newEdges: Edge[] = [...outlineToTextEdges]
+
+  // Create image_list node if there are image plans
+  let ilId: string | null = null
+  if (imagePlans && imagePlans.length > 0) {
+    ilId = crypto.randomUUID()
+    newNodes.push({
+      id: ilId,
+      type: "image_list",
+      position: { x: startX, y: startY + sections.length * (H + GAP_Y) + 32 },
+      data: { nodeType: "image_list", count: imagePlans.length, model: "minimax-image", imageInputs: ["img_in_1"] },
+      selected: false,
+    } as Node)
+    newEdges.push({
+      id: `e-${outlineNodeId}-image_plans-${ilId}-in`,
+      source: outlineNodeId,
+      sourceHandle: "image_plans",
+      target: ilId,
+      targetHandle: "in",
+    } as Edge)
+  }
+
+  // Create html_formatter node if none exists on canvas
+  const existingFormatter = s.nodes.find((n) => n.type === "html_formatter")
+  if (!existingFormatter) {
+    const fmtId = crypto.randomUUID()
+    const fmtX = startX + W + 80
+    const fmtY = startY + Math.floor(sections.length / 2) * (H + GAP_Y)
+    const textInputPorts = textNodes.map((_, i) => `text_${i + 1}`)
+
+    newNodes.push({
+      id: fmtId,
+      type: "html_formatter",
+      position: { x: fmtX, y: fmtY },
+      data: {
+        nodeType: "html_formatter",
+        style: "经典",
+        fontSize: 16,
+        lineHeight: 1.75,
+        textInputs: textInputPorts,
+      },
+      selected: false,
+    } as Node)
+
+    // Connect each text_input.out → html_formatter.text_N
+    textNodes.forEach((textNode, i) => {
+      newEdges.push({
+        id: `e-${textNode.id}-out-${fmtId}-text_${i + 1}`,
+        source: textNode.id,
+        sourceHandle: "out",
+        target: fmtId,
+        targetHandle: `text_${i + 1}`,
+      } as Edge)
+    })
+
+    // Connect image_list.out → html_formatter.images
+    if (ilId) {
+      newEdges.push({
+        id: `e-${ilId}-out-${fmtId}-images`,
+        source: ilId,
+        sourceHandle: "out",
+        target: fmtId,
+        targetHandle: "images",
+      } as Edge)
+    }
+  }
+
+  const hist = pushHistory(s)
+  s.onDirty?.()
+  return {
+    nodes: [...s.nodes.map((n) => ({ ...n, selected: false })), ...newNodes],
+    edges: [...s.edges, ...newEdges],
+    selectedNodeIds: textNodes.map((n) => n.id),
+    ...hist,
+  }
+}
+
 export function groupSelectedImpl(s: CanvasState): Partial<CanvasState> {
   const ids = s.selectedNodeIds
   if (ids.length < 2) return {}

@@ -78,6 +78,7 @@ interface LayerState {
   toggleLocked: (id: string) => void
   setOpacity: (id: string, opacity: number) => void
   moveLayer: (id: string, direction: "up" | "down") => void
+  moveTo: (id: string, toIndex: number) => void
   updateLayerImage: (id: string, updates: { imgX?: number; imgY?: number; imgW?: number; imgH?: number; naturalW?: number; naturalH?: number }) => void
 
   // Drawing
@@ -107,6 +108,10 @@ interface LayerState {
 
   // Reset
   reset: () => void
+
+  // Serialize/restore for persistence per node
+  getState: () => { layers: Layer[]; activeLayerId: string | null; showGrid: boolean; snapEnabled: boolean }
+  restoreState: (data: { layers: Layer[]; activeLayerId: string | null; showGrid: boolean; snapEnabled: boolean }) => void
 }
 
 export const useLayerStore = create<LayerState>((set, get) => ({
@@ -118,7 +123,7 @@ export const useLayerStore = create<LayerState>((set, get) => ({
   eraser: false,
   currentStroke: null,
   dragState: null,
-  showGrid: true,
+  showGrid: false,
   snapEnabled: true,
 
   setTool: (tool) => set({ tool }),
@@ -182,6 +187,15 @@ export const useLayerStore = create<LayerState>((set, get) => ({
     const tmp = newLayers[idx]
     newLayers[idx] = newLayers[swapWith]
     newLayers[swapWith] = tmp
+    return { layers: newLayers }
+  }),
+
+  moveTo: (id, toIndex) => set((s) => {
+    const fromIndex = s.layers.findIndex((l) => l.id === id)
+    if (fromIndex < 0 || toIndex < 0 || toIndex >= s.layers.length || fromIndex === toIndex) return s
+    const newLayers = [...s.layers]
+    const [moved] = newLayers.splice(fromIndex, 1)
+    newLayers.splice(toIndex, 0, moved)
     return { layers: newLayers }
   }),
   updateLayerImage: (id, updates) => set((s) => ({
@@ -289,8 +303,25 @@ export const useLayerStore = create<LayerState>((set, get) => ({
       brushWidth: 3,
       eraser: false,
       dragState: null,
-      showGrid: true,
+      showGrid: false,
       snapEnabled: true,
+    })
+  },
+
+  getState: () => {
+    const s = get()
+    return { layers: s.layers, activeLayerId: s.activeLayerId, showGrid: s.showGrid, snapEnabled: s.snapEnabled }
+  },
+
+  restoreState: (data) => {
+    layerCounter = data.layers.length
+    set({
+      layers: data.layers,
+      activeLayerId: data.activeLayerId,
+      showGrid: data.showGrid,
+      snapEnabled: data.snapEnabled,
+      currentStroke: null,
+      dragState: null,
     })
   },
 }))

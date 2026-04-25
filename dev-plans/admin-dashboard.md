@@ -1,6 +1,6 @@
 # Admin 后台管理系统
 
-**优先级**: P1 | **难度**: 高 | **预计**: 5-7 天 | **状态**: 🔄 后端 Provider Registry 完成，Admin Dashboard 前端开发中
+**优先级**: P1 | **难度**: 高 | **预计**: 5-7 天 | **状态**: 🔄 API + 基础 Next.js 前端完成，待联调验收
 **返回索引**: [phase2-commercial.md](phase2-commercial.md)
 
 ---
@@ -23,7 +23,7 @@
 ```
 ┌─────────────────────────────────────────────────┐
 │  Admin Dashboard (独立 Web App)                  │
-│  Next.js 14 + React + TailwindCSS + shadcn/ui   │
+│  Next.js 16 + React + TailwindCSS + shadcn/ui   │
 │  部署: Vercel  域名: admin.tangent.ai            │
 └─────────────┬───────────────────────────────────┘
               │ FastAPI REST API (Bearer JWT)
@@ -127,13 +127,15 @@ Provider 注册信息从硬编码迁移到 `providers` DB 表。新增 provider 
 
 ---
 
-## 待开发：Admin Dashboard 前端 🔄 开发中
+## Admin Dashboard 前端 🔄 基础已实现，待联调
+
+> 2026-04-25 对齐：`admin/` 下已存在 Next.js 前端、页面路由、UI 组件和 API client；本文后续“页面结构/实现计划”按验收清单理解，不再视作从零待开发。
 
 ### 技术栈
 
 | 层 | 选型 |
 |---|---|
-| 框架 | Next.js 14 (App Router) |
+| 框架 | Next.js 16 (App Router) |
 | UI | shadcn/ui + TailwindCSS |
 | 图表 | Recharts |
 | 数据 | fetch FastAPI REST API (Bearer JWT) |
@@ -239,13 +241,13 @@ admin/
 
 ## 文件结构
 
-### Admin Dashboard (新项目)
+### Admin Dashboard（当前实现）
 
 ```
 admin/
 ├── package.json
-├── next.config.js
-├── tailwind.config.ts
+├── next.config.ts
+├── components.json
 ├── .env.local                    # NEXT_PUBLIC_API_URL, ADMIN_JWT
 ├── src/
 │   ├── app/
@@ -256,16 +258,12 @@ admin/
 │   │   │   ├── page.tsx           # 用户列表
 │   │   │   └── [id]/page.tsx      # 用户详情
 │   │   ├── api-logs/page.tsx
+│   │   ├── providers/page.tsx
 │   │   ├── models/page.tsx
-│   │   ├── credits/page.tsx
-│   │   └── settings/page.tsx
+│   │   └── credits/page.tsx
 │   ├── components/
-│   │   ├── Sidebar.tsx
-│   │   ├── Header.tsx
-│   │   ├── StatsCard.tsx
-│   │   ├── LineChart.tsx
-│   │   ├── DataTable.tsx
-│   │   └── ModelEditor.tsx
+│   │   ├── layout/                # AppShell / Sidebar / Header
+│   │   └── ui/                    # button/card/dialog/table/tabs...
 │   ├── lib/
 │   │   ├── api.ts                 # FastAPI client (fetch wrapper)
 │   │   └── auth.ts                # Admin auth helper
@@ -281,7 +279,7 @@ backend/app/
 │   ├── auth.py                    # ✅ OTP + Google OAuth
 │   ├── proxy.py                   # ✅ AI 代理
 │   ├── credits.py                 # ✅ 积分查询
-│   └── billing.py                 # ⬜ 待建: Stripe Checkout + Webhook
+│   └── billing.py                 # ✅ Stripe Checkout + Webhook
 ├── services/
 │   ├── proxy_service.py           # ✅ AI 代理 + 积分扣减
 │   └── otp_service.py             # ✅ OTP 服务
@@ -326,24 +324,25 @@ UPDATE users SET role = 'admin' WHERE email = 'your@email.com';
 | 1.4 | 实现 admin.py (所有管理端点) | ✅ |
 | 1.5 | User 表加 role 字段 | ✅ |
 
-### Phase 2: Admin Dashboard 前端（3-4天）
+### Phase 2: Admin Dashboard 基础前端 ✅ 已完成
 
-| 步骤 | 内容 |
-|------|------|
-| 2.1 | 初始化 Next.js 项目 (`admin/`) |
-| 2.2 | 配置 FastAPI client (Bearer JWT auth) |
-| 2.3 | Admin 登录页 (email OTP) |
-| 2.4 | Layout: Sidebar + Header |
-| 2.5 | Dashboard 总览页 (调用 `/admin/stats` + 图表) |
-| 2.6 | 用户列表页 + 用户详情页 |
+| 步骤 | 内容 | 状态 |
+|------|------|------|
+| 2.1 | 初始化 Next.js 项目 (`admin/`) | ✅ |
+| 2.2 | 配置 FastAPI client (Bearer JWT auth) | ✅ |
+| 2.3 | Admin 登录页 (email OTP) | ✅ |
+| 2.4 | Layout: Sidebar + Header | ✅ |
+| 2.5 | Dashboard 总览页 (调用 `/admin/stats` + 图表) | ✅ |
+| 2.6 | 用户列表页 + 用户详情页 | ✅ |
 
-### Phase 3: 功能页面（2-3天）
+### Phase 3: 功能页面 ✅ 基础已完成，待联调验收
 
-| 步骤 | 内容 |
-|------|------|
-| 3.1 | API 调用日志页 (调用 `/admin/api-logs` + 筛选) |
-| 3.2 | 模型管理页 (调用 `/admin/models` CRUD) |
-| 3.3 | 积分管理页 (充值 + 流水) |
+| 步骤 | 内容 | 状态 |
+|------|------|------|
+| 3.1 | API 调用日志页 (调用 `/admin/api-logs` + 筛选) | ✅ |
+| 3.2 | Provider 管理页 (调用 `/admin/providers` CRUD) | ✅ |
+| 3.3 | 模型管理页 (调用 `/admin/models` CRUD) | ✅ |
+| 3.4 | 积分管理页 (充值 + 流水) | ✅ |
 
 ---
 

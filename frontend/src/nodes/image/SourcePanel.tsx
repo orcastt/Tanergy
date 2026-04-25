@@ -23,6 +23,12 @@ function SourceThumb({ img, index }: { img: ImageItem; index: number }) {
 
   useEffect(() => {
     if (src) return
+    // If file_path is already a data URL, use it directly
+    if (img.file_path.startsWith("data:")) {
+      imageCache.set(img.id, img.file_path)
+      setSrc(img.file_path)
+      return
+    }
     let cancelled = false
     invoke<number[]>("read_asset_file", { filePath: img.file_path })
       .then((bytes) => {

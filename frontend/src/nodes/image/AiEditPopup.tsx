@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { invoke } from "@tauri-apps/api/core"
-import { getCanvasElement } from "./LayerCanvas"
+import { rasterizeLayers } from "./LayerCanvas"
 
 interface Props {
   onResult: (base64: string) => void
@@ -17,10 +17,8 @@ export default function AiEditPopup({ onResult, onClose }: Props) {
   async function handleSubmit() {
     if (!text.trim()) return
 
-    const canvasEl = getCanvasElement()
-    if (!canvasEl) { setErrorMsg("画板未就绪"); return }
-
-    const imageDataUrl = canvasEl.toDataURL("image/png")
+    const imageDataUrl = rasterizeLayers()
+    if (!imageDataUrl) { setErrorMsg("画板未就绪"); return }
     const imageBase64 = imageDataUrl.replace(/^data:image\/png;base64,/, "")
 
     setStatus("analyzing")

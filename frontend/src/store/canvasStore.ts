@@ -1,6 +1,6 @@
 import { create } from "zustand"
 import type { Node, Edge } from "@xyflow/react"
-import { pushHistory, copySelectedImpl, pasteNodesImpl, deleteSelectedImpl, duplicateNodeImpl, groupSelectedImpl, ungroupSelectedImpl } from "./canvasActions"
+import { pushHistory, copySelectedImpl, pasteNodesImpl, deleteSelectedImpl, duplicateNodeImpl, groupSelectedImpl, ungroupSelectedImpl, splitOutlineImpl } from "./canvasActions"
 
 type NodeStatus = "idle" | "running" | "waiting" | "done" | "error"
 
@@ -28,6 +28,7 @@ interface CanvasState {
   duplicateNode: (id: string) => void
   groupSelected: () => void
   ungroupSelected: () => void
+  splitOutline: (outlineNodeId: string, outlinePos: { x: number; y: number }, sections: Array<{ id: string; title: string; content: string }>, imagePlans?: unknown[]) => void
   undo: () => void
   redo: () => void
   canUndo: () => boolean
@@ -142,6 +143,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   duplicateNode: (id) => set((s) => duplicateNodeImpl(s, id)),
   groupSelected: () => set((s) => groupSelectedImpl(s)),
   ungroupSelected: () => set((s) => ungroupSelectedImpl(s)),
+  splitOutline: (outlineNodeId, outlinePos, sections, imagePlans) =>
+    set((s) => splitOutlineImpl(s, outlineNodeId, outlinePos, sections, imagePlans)),
 
   setOnDirty: (cb) => set({ onDirty: cb }),
 }))

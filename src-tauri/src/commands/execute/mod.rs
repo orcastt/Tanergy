@@ -111,11 +111,25 @@ async fn exec_research(payload: &ExecutePayload) -> Result<ExecuteResult, String
         return Err("research: empty query".into());
     }
 
-    let system = "你是一个专业的研究助手。根据用户给出的主题，进行深入调研，输出详细的调研报告。包括：核心概念、最新趋势、关键数据点、行业观点、可引用的案例。用中文回答。";
+    let direction = payload.node_data
+        .get("direction")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+
+    let system = if direction.is_empty() {
+        "你是一个专业的研究助手。根据用户给出的主题，进行深入调研，输出详细的调研报告。包括：核心概念、最新趋势、关键数据点、行业观点、可引用的案例。用中文回答。".to_string()
+    } else {
+        format!(
+            "你是一个专业的研究助手。根据用户给出的主题，进行深入调研，重点侧重【{}】方向，\
+             输出详细的调研报告。包括：核心概念、最新趋势、关键数据点、行业观点、可引用的案例。用中文回答。",
+            direction
+        )
+    };
+
     let user_msg = format!("请对以下主题进行深入调研：{}\n\n请输出结构化的调研报告，包含关键事实、数据和洞察。", query);
 
     let messages = vec![
-        ChatMessage { role: "system".into(), content: system.into() },
+        ChatMessage { role: "system".into(), content: system },
         ChatMessage { role: "user".into(), content: user_msg },
     ];
 
@@ -143,31 +157,137 @@ async fn exec_outline(payload: &ExecutePayload) -> Result<ExecuteResult, String>
         .and_then(|v| v.as_str())
         .unwrap_or("干货清单");
 
-    let system = "你是一个公众号写作大纲规划师。根据用户主题和调研资料，生成3个不同角度的文章大纲选项。\n每个选项包含：标题、角度说明、3-5个章节标题。\n\n输出严格 JSON 格式：\n{\"options\": [{\"title\": \"...\", \"angle\": \"...\", \"sections\": [\"...\"]}]}\n只输出 JSON，不要其他内容。";
+    let custom = payload.node_data
+        .get("promptOverride")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+
+    let system = format!(
+        "你是公众号写作大纲规划师。根据主题和调研资料，生成一篇文章的详细大纲。\n\
+         风格：{}{}\n\n\
+         输出规则：\n\
+         1. 用 **[1]**, **[2]**, **[3]**... 标记每个章节开头（必须严格使用此格式）\n\
+         2. 每个章节包含：标题 + 2-4 个要点\n\
+         3. 章节数量：3-6 个，根据主题复杂度决定\n\
+         4. 最后输出如下 JSON 块（图片数量 = 章节数 - 1）：\n\
+         ---IMAGE_PLANS_START---\n\
+         [{{\"position\":\"第X节后\",\"description\":\"...\",\"prompt\":\"...\",\"aspect_ratio\":\"16:9\"}}]\n\
+         ---IMAGE_PLANS_END---\n\
+         只输出大纲正文和 JSON 块，不要其他说明。",
+        style,
+        if custom.is_empty() { "".to_string() } else { format!("\n附加要求：{}", custom) }
+    );
 
     let user_msg = format!(
-        "主题：{}\n风格：{}\n\n调研资料：\n{}\n\n请生成3个大纲选项。",
-        topic, style, research
+        "主题：{}\n\n调研资料：\n{}\n\n请生成详细大纲。",
+        topic, research
     );
 
     let messages = vec![
-        ChatMessage { role: "system".into(), content: system.into() },
+        ChatMessage { role: "system".into(), content: system },
         ChatMessage { role: "user".into(), content: user_msg },
     ];
 
-    let completion = ai_client::chat_completion(&get_text_model(&payload.node_data), "", messages, 2048, Some(0.8)).await?;
+    let completion = ai_client::chat_completion(&get_text_model(&payload.node_data), "", messages, 4096, Some(0.8)).await?;
 
-    let options_str = completion.text.trim();
-    let options_json: Value = if options_str.starts_with('{') || options_str.starts_with('[') {
-        serde_json::from_str(options_str).unwrap_or(serde_json::json!({ "raw": options_str }))
-    } else {
-        serde_json::json!({ "raw": options_str })
-    };
+    let raw = completion.text.trim();
+    let mut sections = parse_sections(raw);
+    let image_plans = parse_image_plans(raw);
+    inject_image_markers(&mut sections, &image_plans);
+
+    let options = vec![serde_json::json!({
+        "title": sections.first()
+            .and_then(|s| s.get("title"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("文章大纲"),
+        "angle": format!("{} 风格", style),
+        "sections": sections.iter()
+            .filter_map(|s| s.get("title").and_then(|v| v.as_str()))
+            .collect::<Vec<_>>(),
+    })];
 
     Ok(ExecuteResult {
-        output: options_json,
+        output: serde_json::json!({
+            "sections": sections,
+            "image_plans": image_plans,
+            "options": options,
+            "raw": raw,
+        }),
         status: "done".into(),
     })
+}
+
+fn parse_sections(raw: &str) -> Vec<Value> {
+    let outline_text = raw.split("---IMAGE_PLANS_START---").next().unwrap_or(raw).trim();
+
+    // Split on **[N]** markers
+    let parts: Vec<&str> = outline_text.split("**[").filter(|s| !s.is_empty()).collect();
+    if parts.is_empty() {
+        return vec![serde_json::json!({"id": "1", "title": "大纲", "content": outline_text})];
+    }
+
+    parts.iter().filter_map(|part| {
+        let close = part.find("]**")?;
+        let section_id = part[..close].trim().to_string();
+        let rest = part[close + 3..].trim();
+        let title = rest.lines().next().unwrap_or("").trim()
+            .trim_start_matches(':').trim().to_string();
+        Some(serde_json::json!({
+            "id": section_id,
+            "title": title,
+            "content": format!("**[{}]** {}", section_id, rest),
+        }))
+    }).collect()
+}
+
+fn parse_image_plans(raw: &str) -> Value {
+    if let Some(start_pos) = raw.find("---IMAGE_PLANS_START---") {
+        if let Some(end_pos) = raw.find("---IMAGE_PLANS_END---") {
+            let json_str = raw[start_pos + 23..end_pos].trim();
+            // Find the JSON array within
+            if let Some(arr_start) = json_str.find('[') {
+                if let Some(arr_end) = json_str.rfind(']') {
+                    let arr_str = &json_str[arr_start..=arr_end];
+                    if let Ok(parsed) = serde_json::from_str::<Vec<Value>>(arr_str) {
+                        let with_ids: Vec<Value> = parsed.into_iter().enumerate().map(|(i, mut p)| {
+                            if let Some(obj) = p.as_object_mut() {
+                                obj.insert("id".into(), serde_json::json!(format!("img_{}", i + 1)));
+                            }
+                            p
+                        }).collect();
+                        return serde_json::json!(with_ids);
+                    }
+                }
+            }
+        }
+    }
+    serde_json::json!([])
+}
+
+fn inject_image_markers(sections: &mut Vec<Value>, image_plans: &Value) {
+    let plans = match image_plans.as_array() {
+        Some(arr) => arr,
+        None => return,
+    };
+    for (img_idx, plan) in plans.iter().enumerate() {
+        let position = plan.get("position").and_then(|v| v.as_str()).unwrap_or("");
+        let section_idx = extract_section_index(position)
+            .map(|n| (n as usize).saturating_sub(1))
+            .unwrap_or_else(|| img_idx.min(sections.len().saturating_sub(1)));
+        if let Some(sec) = sections.get_mut(section_idx) {
+            if let Some(content_str) = sec.get("content").and_then(|v| v.as_str()) {
+                let new_content = format!("{}\n\n[图{}]", content_str, img_idx + 1);
+                if let Some(obj) = sec.as_object_mut() {
+                    obj.insert("content".into(), serde_json::json!(new_content));
+                }
+            }
+        }
+    }
+}
+
+fn extract_section_index(position: &str) -> Option<u32> {
+    let digits: String = position.chars().filter(|c| c.is_ascii_digit()).collect();
+    digits.parse::<u32>().ok()
 }
 
 async fn exec_writer(payload: &ExecutePayload) -> Result<ExecuteResult, String> {

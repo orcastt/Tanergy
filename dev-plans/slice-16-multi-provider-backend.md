@@ -3,6 +3,8 @@
 **优先级**: P1 | **难度**: 高 | **预计**: 5 天 | **状态**: ✅ 已完成
 **依赖**: Slice 15 | **返回索引**: [phase2-commercial.md](phase2-commercial.md)
 
+> 2026-04-25 对齐：多 provider 代理和差异积分已完成；Admin 基础前端已具备 Provider/Model 管理入口，待联调。
+
 ---
 
 ## 目标

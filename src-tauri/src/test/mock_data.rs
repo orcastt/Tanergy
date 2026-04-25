@@ -11,23 +11,59 @@ pub fn mock_research(_input: &Value) -> Value {
 
 pub fn mock_outline(_input: &Value) -> Value {
     json!({
+        "sections": [
+            {
+                "id": "1",
+                "title": "引言：内容创作者的日常正在改变",
+                "content": "**[1]** 引言：内容创作者的日常正在改变\n- 用一个创作者的真实场景引入\n- AI 渗透到内容生产每个环节\n- 本文核心观点"
+            },
+            {
+                "id": "2",
+                "title": "趋势一：从单一工具到工作流自动化",
+                "content": "**[2]** 趋势一：从单一工具到工作流自动化\n- 各工具孤岛现状\n- 画布式 AI 工作流崛起\n- TANGENT 案例\n\n[图1]"
+            },
+            {
+                "id": "3",
+                "title": "趋势二：多模态融合让创作更直观",
+                "content": "**[3]** 趋势二：多模态融合让创作更直观\n- 文字+图像 AI 联动\n- 配图自动规划\n- 实际效果对比\n\n[图2]"
+            },
+            {
+                "id": "4",
+                "title": "结语：拥抱 AI，保持判断力",
+                "content": "**[4]** 结语：拥抱 AI，保持判断力\n- AI 是工具，判断力是核心\n- 行动建议\n\n[图3]"
+            }
+        ],
+        "image_plans": [
+            {
+                "id": "img_1",
+                "position": "第2节后",
+                "description": "工作流节点连接示意图",
+                "prompt": "A flat illustration of connected AI workflow nodes, purple and blue, minimal style, white background",
+                "aspect_ratio": "16:9"
+            },
+            {
+                "id": "img_2",
+                "position": "第3节后",
+                "description": "多模态 AI 交互概念图",
+                "prompt": "Person annotating a digital canvas while AI generates images, modern tech style, clean background",
+                "aspect_ratio": "16:9"
+            },
+            {
+                "id": "img_3",
+                "position": "第4节后",
+                "description": "人机协作概念图",
+                "prompt": "Human creator and AI robot collaborating side by side, friendly pastel colors, optimistic tone",
+                "aspect_ratio": "16:9"
+            }
+        ],
         "options": [
             {
                 "title": "AI 重塑内容创作的三个关键趋势",
-                "angle": "从工具到伙伴，AI正在改变创作者的工作方式",
-                "sections": ["引言：一个创作者的日常正在被改写", "趋势一：从单一工具到工作流自动化", "趋势二：多模态融合让创作更直观", "趋势三：本地化AI让隐私和效率兼得", "结语：拥抱变化，但保持独立思考"]
-            },
-            {
-                "title": "为什么 2026 年是 AI Agent 的元年",
-                "angle": "AI从单点工具进化为协作智能体",
-                "sections": ["Agent不是新概念，但2026年它真的来了", "从ChatGPT到Canvas：AI界面的进化", "工作流编排：让多个AI协作完成任务", "现实挑战：可靠性、成本和用户信任", "未来展望：每个人都会有一个AI团队"]
-            },
-            {
-                "title": "本地AI vs 云端AI：创业者的技术选择",
-                "angle": "隐私、成本、性能的三方博弈",
-                "sections": ["一场正在发生的架构迁移", "云端AI的优势：规模、更新、生态", "本地AI的优势：隐私、可控、零延迟", "混合方案：Tauri + API的中间路线", "给创业者的建议：根据场景选技术栈"]
+                "angle": "从工具到伙伴",
+                "sections": ["引言", "趋势一", "趋势二", "结语"]
             }
-        ]
+        ],
+        "raw": "**[1]** 引言：内容创作者的日常正在改变\n..."
     })
 }
 
@@ -133,27 +169,14 @@ pub fn mock_html_formatter(_input: &Value) -> Value {
 
 pub fn mock_agent_chat(_messages: &Value) -> Value {
     json!({
-        "message": "我为你创建了一个公众号长文创作工作流，包含完整的调研-写作-配图-排版链路：",
+        "message": "我为你创建了一个公众号文章创作工作流：\n\n📝 Text Input → 🔍 Research → 📋 Outline Generator\n\n点击 Outline 节点的「Split」按钮，自动生成：\n• N 个章节 Text 节点（预填内容）\n• Image List（自动同步配图数量）\n• Html Reviewer（自动连线）\n\n然后按顺序运行各节点即可。",
         "actions": [
-            {"op": "add", "type": "text_input", "position": [100, 200]},
-            {"op": "add", "type": "research", "position": [400, 200]},
-            {"op": "connect", "from": "text_input", "fromPort": "out", "to": "research", "toPort": "in"},
-            {"op": "add", "type": "outline_generator", "position": [700, 200]},
-            {"op": "connect", "from": "research", "fromPort": "out", "to": "outline_generator", "toPort": "in"},
-            {"op": "add", "type": "gate", "position": [1000, 200]},
-            {"op": "connect", "from": "outline_generator", "fromPort": "out", "to": "gate", "toPort": "in"},
-            {"op": "add", "type": "writer", "position": [1300, 200]},
-            {"op": "connect", "from": "gate", "fromPort": "out", "to": "writer", "toPort": "outline"},
-            {"op": "add", "type": "reviewer", "position": [1600, 200]},
-            {"op": "connect", "from": "writer", "fromPort": "out", "to": "reviewer", "toPort": "in"},
-            {"op": "add", "type": "image_planner", "position": [1900, 200]},
-            {"op": "connect", "from": "reviewer", "fromPort": "out", "to": "image_planner", "toPort": "in"},
-            {"op": "add", "type": "image_list", "position": [2200, 200]},
-            {"op": "connect", "from": "image_planner", "fromPort": "out", "to": "image_list", "toPort": "in"},
-            {"op": "add", "type": "html_formatter", "position": [2500, 200]},
-            {"op": "connect", "from": "reviewer", "fromPort": "out", "to": "html_formatter", "toPort": "text"},
-            {"op": "add", "type": "preview_wechat", "position": [2800, 200]},
-            {"op": "connect", "from": "html_formatter", "fromPort": "out", "to": "preview_wechat", "toPort": "html"}
+            {"op": "add", "type": "text_input", "name": "topic", "position": [100, 300], "data": {"text": "AI技术发展趋势"}},
+            {"op": "add", "type": "research", "name": "research1", "position": [400, 300]},
+            {"op": "connect", "from": "topic", "fromPort": "out", "to": "research1", "toPort": "in"},
+            {"op": "add", "type": "outline_generator", "name": "outline1", "position": [700, 300]},
+            {"op": "connect", "from": "research1", "fromPort": "out", "to": "outline1", "toPort": "in"},
+            {"op": "connect", "from": "research1", "fromPort": "out", "to": "outline1", "toPort": "research"}
         ]
     })
 }

@@ -199,3 +199,26 @@ pub fn remove_api_key(provider_id: String) -> Result<(), String> {
     .map_err(|e| format!("delete: {}", e))?;
     Ok(())
 }
+
+#[tauri::command]
+pub fn set_app_config(key: String, value: String) -> Result<(), String> {
+    let conn = db::get_connection().lock().unwrap();
+    conn.execute(
+        "INSERT INTO app_config (key, value) VALUES (?1, ?2)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        rusqlite::params![key, value],
+    )
+    .map_err(|e| format!("set config: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_app_config(key: String) -> Result<String, String> {
+    let conn = db::get_connection().lock().unwrap();
+    conn.query_row(
+        "SELECT value FROM app_config WHERE key = ?1",
+        rusqlite::params![key],
+        |row| row.get::<_, String>(0),
+    )
+    .map_err(|_| format!("config key '{}' not found", key))
+}

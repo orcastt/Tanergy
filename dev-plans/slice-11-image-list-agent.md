@@ -3,6 +3,8 @@
 **优先级**: P0 | **难度**: 高 | **预计**: 5 天 | **状态**: ✅ 完成
 **依赖**: Slice 10 | **返回索引**: [phase1-mvp.md](phase1-mvp.md)
 
+> 2026-04-25 对齐：Agent 默认生成 Outline + Split 路径，终点为 `html_formatter` / Html Editor。
+
 ---
 
 ## 目标

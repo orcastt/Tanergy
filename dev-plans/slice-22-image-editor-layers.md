@@ -5,6 +5,8 @@
 > 前置: Image List 节点完成
 > 实际耗时: 1 天
 
+> 2026-04-25 对齐：Image Editor 已完成；当前图文输出终点由 Slice 23 Html Editor 承接。
+
 ---
 
 ## 目标

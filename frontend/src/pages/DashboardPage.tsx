@@ -51,10 +51,12 @@ export default function DashboardPage() {
             data: { nodeType: n.type, ...(def?.defaultData ?? {}) },
           }
         })
-        const edges = skill.edges.map(([from, to], i) => ({
+        const edges = skill.edges.map(([from, to, sh, th], i) => ({
           id: `edge_${i}`,
           source: `node_${from}`,
           target: `node_${to}`,
+          ...(sh ? { sourceHandle: sh } : {}),
+          ...(th ? { targetHandle: th } : {}),
         }))
         await tauri.updateWorkflow(wf.id, { graph_json: JSON.stringify({ nodes, edges }) })
       }
@@ -65,11 +67,6 @@ export default function DashboardPage() {
       const id = await createAndNavigate()
       if (id) navigate(`/canvas/${id}`)
     }
-  }
-
-  async function handleCreateBlank() {
-    const id = await createAndNavigate()
-    if (id) navigate(`/canvas/${id}`)
   }
 
   async function handleRename(id: string, name: string) {

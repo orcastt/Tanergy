@@ -1,5 +1,7 @@
 # Slice 12: UI Polish & Bug Fixes
 
+> 2026-04-25 对齐：本文件保留早期 UI 修复记录；当前 P0 收口见 `docs-alignment-html-editor.md` 与 `debug-plans/bugs-session-2026-04-23.md`。
+
 ## 概述
 
 8 项 UI 问题修复，4 项已完成，4 项待实现。同步清理无效文件。

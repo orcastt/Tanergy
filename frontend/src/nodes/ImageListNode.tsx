@@ -126,6 +126,22 @@ export default function ImageListNode({ data, id, selected }: NodeProps) {
 
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null)
 
+  // Auto-sync count from upstream image_plans array length
+  useEffect(() => {
+    const plansEdge = edges.find((e) => e.target === id && e.targetHandle === "in")
+    if (!plansEdge) return
+    const upstream = nodeResults[plansEdge.source] as
+      | { image_plans?: unknown[] }
+      | unknown[]
+      | undefined
+    const planCount = Array.isArray(upstream)
+      ? upstream.length
+      : (upstream as { image_plans?: unknown[] } | undefined)?.image_plans?.length ?? 0
+    if (planCount > 0 && planCount !== count) {
+      updateNodeData(id, { count: planCount })
+    }
+  }, [edges, id, nodeResults, count, updateNodeData])
+
   useEffect(() => {
     let unlisten: (() => void) | null = null
     if (status === "running") {
@@ -165,7 +181,7 @@ export default function ImageListNode({ data, id, selected }: NodeProps) {
   }, [imageInputs, id, updateNodeData])
 
   const inputs: PortDef[] = useMemo(() => {
-    const base = [...def.inputs]
+    const base: PortDef[] = [...def.inputs]
     for (const inputId of imageInputs) {
       base.push({
         id: inputId, type: "image_slot" as const, label: `图${base.length}`,
@@ -176,13 +192,12 @@ export default function ImageListNode({ data, id, selected }: NodeProps) {
     return base
   }, [imageInputs, def.inputs, removeImageInput])
 
-  // Outputs for handles only — no label in bottom bar
+  // Outputs: individual image handles (no label = hidden from bottom bar) + "out" for full images array
   const outputs: PortDef[] = useMemo(() => {
-    if (images.length > 0) {
-      return images.map((_img, i) => ({ id: `image${i + 1}`, type: "image_slot" as const }))
-    }
-    const num = Math.min(count, 10)
-    return Array.from({ length: num }, (_, i) => ({ id: `image${i + 1}`, type: "image_slot" as const }))
+    const imagePorts = images.length > 0
+      ? images.map((_img, i) => ({ id: `image${i + 1}`, type: "image_slot" as const }))
+      : Array.from({ length: Math.min(count, 10) }, (_, i) => ({ id: `image${i + 1}`, type: "image_slot" as const }))
+    return [...imagePorts, { id: "out", type: "image_slot" as const, label: "All" }]
   }, [images.length, count])
 
   const selectStyle: React.CSSProperties = {

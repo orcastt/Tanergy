@@ -7,9 +7,9 @@
 
 ## 当前阶段
 
-**阶段**: Phase 2 商业化开发 — 全部 Slice 完成，本地测试 + Bug 修复中
-**核心目标**: 官方 API 默认路由 + 订阅制 + 完善体验 + 管理后台
-**下一步**: 修复已知 Bug → 端到端测试 → 线上部署
+**阶段**: Phase 2 商业化开发 — 核心能力完成，Html Editor / 构建 / Admin 联调 / 部署收口中
+**核心目标**: 官方 API 默认路由 + 订阅制 + Html Editor 终点体验 + 管理后台
+**下一步**: 手测 Html Editor → 端到端测试 → Admin 联调 → 线上部署
 
 ---
 
@@ -45,22 +45,18 @@
 
 ---
 
-## MVP 节点清单（12个，已全部规格锁定）
+## 公众号主流程（现网默认）
 
 | 节点 | 类型 | 状态 |
 |------|------|------|
-| `text_input` | 输入 | ✅ 完成（可缩放、滚动10行） |
-| `research` | AI（多轮搜索） | ✅ 完成 |
-| `outline_generator` | AI | ✅ 完成 |
-| `gate` | 交互（暂停等人） | ✅ 完成 ⭐最核心 |
-| `writer` | AI（长文写作） | ✅ 完成 |
-| `reviewer` | AI（三遍审校） | ✅ 完成 |
-| `image_planner` | AI（配图规划） | ✅ 完成 |
-| `image_list` | AI（多模型图片生成） | ✅ 完成（双输入、数量/模型选择、动态输出端口、hover删除input） |
-| `image_gallery` | 展示（多端口） | ✅ 完成 |
-| `html_formatter` | 模板引擎 | ✅ 完成 |
-| `preview_wechat` | 输出 | ✅ 完成 |
-| `group` | 分组容器 | ✅ 完成 |
+| `text_input` | 输入 | ✅ 完成（支持上游输入） |
+| `research` | AI（调研） | ✅ 完成 |
+| `outline_generator` | AI（大纲 + 图片计划） | ✅ 完成 |
+| `image_list` | AI（多模型图片生成） | ✅ 完成（双输入、数量/模型选择、动态输出端口） |
+| `html_formatter` / Html Editor | 图文编排终点 | ✅ 初版完成（双击编辑、Tiptap、微信预览、AI 改写） |
+
+可选节点：`image_planner`、`image_gallery`。
+非默认/遗留节点：`gate`、`writer`、`reviewer`、`image_gen`、`preview_wechat`（不在公众号默认模板中）。
 
 详细规范见 [dev-plans/node-plan.md](dev-plans/node-plan.md)
 WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/wechat-skill-nodes.md)
@@ -78,15 +74,15 @@ WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/w
 | 2 | Dashboard + 工作流 CRUD | ✅ | Tauri IPC 替代 REST API，本地 SQLite |
 | 3 | 画布核心 | ✅ | Canvas/NodePicker/Toolbar/执行引擎 全部复用 |
 | 4 | text_input · research · outline_generator | ✅ | MiniMax M2.7，Tauri IPC 执行 |
-| 5 | gate · writer · reviewer | ✅ | Gate 选择/输入模式，Writer 4风格，Reviewer 三遍审校 |
+| 5 | Outline Split 编排 | ✅ | 以大纲拆分替代 Gate 主链路，自动生成章节节点并连到 html_formatter |
 | 6 | image_planner · image_gen · image_gallery | ✅ | MiniMax image-01 生图 + 本地文件系统 + Lightbox |
-| 7 | html_formatter · preview_wechat | ✅ | MiniMax HTML 排版 + 微信预览 + 复制 HTML |
+| 7 | html_formatter · legacy preview_wechat | ✅ | MiniMax HTML 排版；当前默认出口已升级为 Html Editor |
 | 8 | 积分订阅系统 | ✅ | FastAPI 后端替代 Supabase，完整积分/支付系统 |
 | 9 | 主题 + 语言 + 桌面安装包 | ✅ | 暗夜模式、文件拆分、桌面打包+CI |
 | 10 | 画布交互增强 | ✅ | 分类颜色边框、复制粘贴删除、右键菜单、打组/取消打组 |
 | 11 | Image List重构 + AI Agent面板 | ✅ | 双输入/动态端口/图片编辑器/AI对话面板/主题切换 |
 
-### Phase 2 — 商业化 ✅ 全部完成
+### Phase 2 — 商业化 🔄 核心完成，收口中
 
 | Slice | 名称 | 优先级 | 状态 | 说明 |
 |-------|------|--------|------|------|
@@ -98,7 +94,9 @@ WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/w
 | 18 | 首次引导 + 订阅支付 | P1 | ✅ | AuthGuard，OTP 登录，Stripe Checkout，ProUpgradeModal |
 | 19 | Settings 简化 + Skill 推荐卡片 | P2 | ✅ | Account/Advanced/About 三 Tab，SkillPicker 模态框 |
 | 20 | 网页端架构预留 | P3 | ⬜ | 仅规划，暂不开发 |
-| — | 管理后台 Web 应用 | P1 | ✅ | Admin API + Provider Registry + Next.js 前端 8 页面 |
+| 22 | Image Editor 图层画板 | P1 | ✅ | Procreate 风格图层画板，导出/AI Edit/状态恢复 |
+| 23 | Html Editor 富文本编辑 | P1 | ✅ / 🔄 | 初版已开发并构建通过；待手测验收 |
+| — | 管理后台 Web 应用 | P1 | 🔄 | Admin API + Provider Registry + 基础 Next.js 前端完成；待联调验收 |
 | — | Provider 可插拔架构 | P1 | ✅ | providers DB 表 + proxy_service DB-first 查询 |
 | — | 线上部署方案 | P0 | ⬜ | Docker/Nginx/SSL 配置已就绪，待实际部署 |
 
@@ -121,6 +119,18 @@ WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/w
 | Image List output 预览冲突 | `ImageListNode.tsx` + `NodeBase.tsx` | 移除 done 状态的图片网格，output port 不显示底部标签 |
 | 图片拖拽到画板失败 | `SourcePanel.tsx` + `LayerCanvas.tsx` | base64 过大导致 dataTransfer 失败 → 改用 click-to-add 主方案 + image-id cache key 拖拽 |
 
+### 已修复（2026-04-24 会话）
+
+| Bug | 文件 | 修复 |
+|-----|------|------|
+| 节点内拖拽 textarea 触发节点移动 | `TextInputNode.tsx` + `NodeBase.tsx` | 内容区加 `nodrag nopan`，input/select/textarea 加 `cursor: auto` CSS |
+| NodeBase port handle 位置偏移 | `NodeBase.tsx` | 重写 handle 容器定位逻辑，直接 `left: -10px`/`right: -10px` + `translateY(-50%)`，不再使用 `translate(-50%, -50%)` |
+| DeletableEdge 删除按钮 hover 区域太小 | `DeletableEdge.tsx` | hit area strokeWidth 20→24，按钮加 `padding: 8px; margin: -8px` |
+| Image Editor 关闭后图层状态丢失 | `ImageEditorModal.tsx` + `layerStore.ts` | 新增 `getState()`/`restoreState()`，关闭时保存到 `nodeResults.layerData`，重开时恢复 |
+| Image Editor 导出失败（Rust 命令错误） | `ImageEditorModal.tsx` | 导出改为直接存 data URL，不再调 `save_canvas_export` Rust 命令；SourcePanel 支持 `data:` URL 路径 |
+| 栅格化/AI Edit 包含网格线和选择框 | `LayerCanvas.tsx` + `AiEditPopup.tsx` | 新增 `rasterizeLayers()` 离屏合成函数（只渲染图层，无 UI 元素），替代 `getCanvasElement().toDataURL()` |
+| 图层面板无法拖拽排序 | `LayerPanel.tsx` + `layerStore.ts` | LayerRow 支持 HTML5 drag-and-drop；新增 `moveTo(id, toIndex)` action |
+
 ### 待修复（见 debug-plans/）
 
 详见 [debug-plans/bugs-session-2026-04-23.md](debug-plans/bugs-session-2026-04-23.md)
@@ -128,6 +138,31 @@ WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/w
 ---
 
 ## 本次新增/改进功能
+
+### Html Editor 富文本编辑器 (Slice 23) — 初版收口（2026-04-25）
+
+| 改进 | 说明 |
+|------|------|
+| **默认终点统一** | 公众号主流程以 `html_formatter` / Html Editor 为终点，`preview_wechat` 降为 legacy |
+| **双击进入编辑器** | `HtmlFormatterNode` done 状态双击打开全屏 Html Editor |
+| **Tiptap 富文本** | 支持标题、加粗、斜体、下划线、列表、引用、链接、分割线 |
+| **微信实时预览** | 右侧手机框实时渲染编辑后的 HTML |
+| **AI 改写** | 选中文本后调用 `ai_rewrite_html`，结果插入文章 |
+| **保存闭环** | 编辑内容写回 `nodeResults`，关闭时写入节点 `editedHtml`，重开不丢 |
+| **构建通过** | `npm -C frontend run build` 已通过 |
+
+### Image Editor 图层画板 (Slice 22) — 后续改进（2026-04-24）
+
+| 改进 | 说明 |
+|------|------|
+| **图层状态持久化** | 编辑器关闭再打开，图层内容保留（layerData 存入 nodeResults） |
+| **导出无需 Rust** | 直接存 data URL 到 canvasStore，SourcePanel 支持识别 data: 路径 |
+| **纯净栅格化** | `rasterizeLayers()` 离屏合成，导出/AI Edit 时不含网格线和选择框 |
+| **图层拖拽排序** | LayerPanel 支持拖拽调整图层顺序，drag indicator 图标指示可拖 |
+| **默认关闭网格** | 初始状态 `showGrid: false`，用户可手动开启 |
+| **TextInputNode 支持上游连接** | 新增 `in` input port，可接收上游节点文本；有上游时自动显示上游内容 |
+
+---
 
 ### Image Editor 图层画板 (Slice 22) — 全新设计
 
@@ -191,9 +226,9 @@ WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/w
 
 核心：Tauri 桌面壳 + SQLite + React Flow 画布 + 12 个节点 + 执行引擎 + 主题切换 + AI Agent 面板。
 
-### Phase 2: Slice 13-19 + Admin（全部完成）
+### Phase 2: Slice 13-19 + 22-23 + Admin（核心完成，收口中）
 
-详见各 slice 的 dev-plans 文件。
+详见各 slice 的 dev-plans 文件；当前待手测 Html Editor、Admin 联调和生产部署。
 
 ---
 
@@ -231,7 +266,7 @@ WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/w
 
 ### P0 — 上线前必须
 
-- [ ] 端到端测试：完整 Skill 流程跑通（text_input → preview_wechat）
+- [ ] 端到端测试：完整 Skill 流程跑通（text_input → html_formatter / Html Editor）
 - [ ] 购买云服务器 + 域名 + SSL 证书
 - [ ] macOS 代码签名：Apple Developer 账号
 - [ ] 配置生产环境 AI Provider API Keys
@@ -260,9 +295,9 @@ WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/w
 | 层级 | 选型 |
 |------|------|
 | 桌面壳 | Tauri v2 (Rust) |
-| 前端 | React + TypeScript + Vite |
+| 前端 | React 19 + TypeScript 6 + Vite 8 |
 | 画布 | React Flow v12 |
-| 状态管理 | Zustand |
+| 状态管理 | Zustand 5 |
 | 本地数据库 | SQLite |
 | API Key 加密 | AES-256-GCM |
 | i18n | i18next + react-i18next |
@@ -285,7 +320,7 @@ WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/w
 
 | 层级 | 选型 |
 |------|------|
-| 框架 | Next.js 14 + App Router |
+| 框架 | Next.js 16 + App Router |
 | UI | shadcn/ui + TailwindCSS |
 | 图表 | Recharts |
 | 部署 | Docker（同服务器） |
@@ -304,5 +339,6 @@ WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/w
 
 ```
 先读 project_state.md、dev-plans/phase2-commercial.md。
+再读 dev-plans/docs-alignment-html-editor.md。
 然后我们来做：[具体任务]
 ```

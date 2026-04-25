@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TANGENT Admin Dashboard
 
-## Getting Started
+Next.js 管理后台，用于运营查看用户、积分、API 调用、Provider 和模型配置。
 
-First, run the development server:
+## 当前状态
+
+- 基础 Next.js 前端已实现，不再是 create-next-app 模板状态。
+- Admin API、Provider Registry 和基础页面已对接到 `backend` 的 `/api/v1/admin/*`。
+- 下一步是本地联调、管理员鉴权验收、生产环境部署。
+
+## 技术栈
+
+| 层级 | 选型 |
+|------|------|
+| 框架 | Next.js 16 + App Router |
+| 前端 | React 19 + TypeScript |
+| UI | Tailwind CSS + shadcn/base-ui 风格组件 |
+| 图表 | Recharts |
+| API | FastAPI Admin API |
+
+## 本地开发
 
 ```bash
+cd admin
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+默认 API 地址来自 `NEXT_PUBLIC_API_URL`，未配置时使用 `http://localhost:8000`。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 页面索引
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| 页面 | 状态 |
+|------|------|
+| `/login` | ✅ 管理员登录入口 |
+| `/dashboard` | ✅ 统计卡片、趋势图、Provider 分布、Top Models |
+| `/users` / `/users/[id]` | ✅ 用户列表与详情 |
+| `/credits` | ✅ 积分流水/充值入口 |
+| `/api-logs` | ✅ API 调用日志 |
+| `/providers` | ✅ Provider 管理 |
+| `/models` | ✅ 模型配置管理 |
 
-## Learn More
+## 验收待办
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [ ] 使用真实后端验证管理员登录和 JWT 持久化。
+- [ ] 验证列表分页、筛选、编辑、删除、充值等操作。
+- [ ] 配置生产域名、环境变量和部署方式。

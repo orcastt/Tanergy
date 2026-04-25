@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { useLayerStore } from "./layerStore"
 
 interface Props {
@@ -7,11 +8,26 @@ interface Props {
 export default function LayerPanel({ onExportLayer }: Props) {
   const {
     layers, activeLayerId,
-    setActive, toggleVisible, toggleLocked, setOpacity,
-    addLayer, removeLayer, duplicateLayer, moveLayer,
+    setOpacity,
+    addLayer, removeLayer, duplicateLayer, moveLayer, moveTo,
   } = useLayerStore()
 
+  const [draggingId, setDraggingId] = useState<string | null>(null)
+
   const activeLayer = layers.find((l) => l.id === activeLayerId)
+
+  function handleDragStart(id: string) {
+    setDraggingId(id)
+  }
+
+  function handleDrop(targetVisualIndex: number) {
+    if (!draggingId) return
+    // Convert visual index back to actual array index
+    // visual index 0 (top) = layers[length-1], visual 1 = layers[length-2]
+    const toIndex = layers.length - 1 - targetVisualIndex
+    moveTo(draggingId, toIndex)
+    setDraggingId(null)
+  }
 
   return (
     <div style={{
@@ -30,8 +46,16 @@ export default function LayerPanel({ onExportLayer }: Props) {
 
       {/* Layer list */}
       <div style={{ flex: 1, overflowY: "auto", padding: "0.375rem" }}>
-        {[...layers].reverse().map((layer) => (
-          <LayerRow key={layer.id} layer={layer} isActive={layer.id === activeLayerId} />
+        {[...layers].reverse().map((layer, visualIdx) => (
+          <LayerRow
+            key={layer.id}
+            layer={layer}
+            isActive={layer.id === activeLayerId}
+            index={visualIdx}
+            total={layers.length}
+            onDragStart={handleDragStart}
+            onDrop={handleDrop}
+          />
         ))}
       </div>
 
@@ -86,23 +110,39 @@ export default function LayerPanel({ onExportLayer }: Props) {
   )
 }
 
-function LayerRow({ layer, isActive }: { layer: { id: string; name: string; visible: boolean; locked: boolean; opacity: number; imageSrc: string | null; strokes: { points: unknown[] }[] }; isActive: boolean }) {
+function LayerRow({ layer, isActive, index, total, onDragStart, onDrop }: {
+  layer: { id: string; name: string; visible: boolean; locked: boolean; opacity: number; imageSrc: string | null; strokes: { points: unknown[] }[] }
+  isActive: boolean
+  index: number
+  total: number
+  onDragStart: (id: string) => void
+  onDrop: (targetIndex: number) => void
+}) {
   const { setActive, toggleVisible, toggleLocked } = useLayerStore()
 
   const icon = layer.imageSrc ? "image" : layer.strokes.length > 0 ? "brush" : "square"
   const subtitle = layer.imageSrc ? "图片" : `${layer.strokes.length} 笔`
 
+  // Visual index = reverse of array index (top row = last in array)
+  const visualIndex = total - 1 - index
+
   return (
     <div
+      draggable
+      onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; onDragStart(layer.id) }}
+      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move" }}
+      onDrop={(e) => { e.preventDefault(); e.stopPropagation(); onDrop(visualIndex) }}
       onClick={() => setActive(layer.id)}
       style={{
         display: "flex", alignItems: "center", gap: "0.375rem",
-        padding: "0.375rem 0.5rem", borderRadius: "0.375rem", cursor: "pointer",
+        padding: "0.375rem 0.5rem", borderRadius: "0.375rem", cursor: "grab",
         background: isActive ? "var(--bg-hover)" : "transparent",
         border: isActive ? "1px solid #6349EA" : "1px solid transparent",
         marginBottom: "0.125rem",
+        userSelect: "none",
       }}
     >
+      <span className="material-symbols-outlined" style={{ fontSize: "14px", color: "var(--text-secondary)", cursor: "grab" }}>drag_indicator</span>
       <span className="material-symbols-outlined" style={{ fontSize: "14px", color: "var(--text-secondary)" }}>{icon}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: "0.6875rem", color: isActive ? "var(--text-primary)" : "var(--text-secondary)", fontWeight: isActive ? 600 : 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>

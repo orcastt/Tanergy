@@ -153,3 +153,33 @@ pub async fn ai_edit_image(
     let b64 = base64::engine::general_purpose::STANDARD.encode(&result.image_data);
     Ok(serde_json::json!({ "base64": b64, "size": result.image_data.len() }))
 }
+
+#[tauri::command]
+pub async fn ai_rewrite_html(
+    original_html: String,
+    instruction: String,
+) -> Result<String, String> {
+    use crate::services::ai_client::{ChatMessage, chat_completion};
+
+    let system = r#"你是一个微信排版专家。用户选中了一段 HTML 内容，需要你根据指示进行改写。
+
+要求：
+1. 直接输出改写后的完整 HTML（只包含内容部分，不包裹 <html><body>）
+2. 保留原有的 HTML 标签结构（<p> <h1> <h2> <h3> <blockquote> <ul> <ol> <strong> <em> <a> 等）
+3. 只修改文字内容，不要改变标签结构
+4. 输出纯 HTML，不要加任何解释说明
+5. 风格参考用户指示，保持与原文风格一致"#;
+
+    let user_msg = format!(
+        "【原文 HTML】：\n{}\n\n【改写要求】：{}\n\n请直接输出改写后的 HTML。",
+        original_html, instruction
+    );
+
+    let messages = vec![
+        ChatMessage { role: "system".into(), content: system.into() },
+        ChatMessage { role: "user".into(), content: user_msg },
+    ];
+
+    let result = chat_completion("minimax", "MiniMax-M2.7", messages, 2048, Some(0.7)).await?;
+    Ok(result.text)
+}

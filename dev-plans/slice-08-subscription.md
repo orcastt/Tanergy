@@ -1,13 +1,17 @@
-# Slice 8: Credits & Subscription System (Supabase + Stripe)
+# Slice 8: Credits & Subscription System (FastAPI + Stripe)
 
-**优先级**: P0 | **难度**: 高 | **预计**: 5 天 | **状态**: 🔨 进行中
+**优先级**: P0 | **难度**: 高 | **预计**: 5 天 | **状态**: ✅ 已完成（实现迁移：FastAPI + Stripe）
 **依赖**: Slice 7 | **返回索引**: [phase1-mvp.md](phase1-mvp.md)
+
+> 2026-04-25 对齐：积分订阅核心已完成；生产前仍需恢复/验收登录门控与 Stripe Live 配置。
 
 ---
 
 ## 目标
 
 三层商业模式：Free / 积分包 / Pro 订阅。
+
+> 状态校准：本切片已从早期 Supabase 方案迁移到 FastAPI + PostgreSQL + Stripe，当前文档中涉及 Supabase 的段落仅作历史参考，不再作为实施依据。
 
 ### 用户场景
 
@@ -167,13 +171,11 @@ Skill 单次购买: 每个 Skill $2.99（Free 用户解锁单个 Skill 模板）
 |------|------|
 | research | 5 |
 | outline_generator | 3 |
-| writer | 10 |
-| reviewer (3 pass) | 12 |
 | image_planner | 3 |
-| image_gen (per image) | 15 |
+| image_list (per image) | 15 |
 | html_formatter | 4 |
 
-完整 WeChat Skill ≈ 82 积分 (不含图) / ~127 积分 (含 3 张图)
+完整 WeChat Skill（现网主流程）≈ 12 积分（不含图）/ ~57 积分（含 3 张图）
 
 ### Step 4: Supabase Edge Functions
 
@@ -284,8 +286,8 @@ INSERT OR IGNORE INTO app_config (key, value) VALUES ('credit_balance_cache', '0
 
 ```typescript
 const NODE_CREDIT_COSTS: Record<string, number> = {
-  research: 5, outline_generator: 3, writer: 10, reviewer: 12,
-  image_planner: 3, image_gen: 15, html_formatter: 4,
+  research: 5, outline_generator: 3,
+  image_planner: 3, image_list: 15, html_formatter: 4,
 }
 ```
 

@@ -6,6 +6,59 @@ let _canvasEl: HTMLCanvasElement | null = null
 export function getCanvasElement(): HTMLCanvasElement | null { return _canvasEl }
 let _canvasSize = { w: 800, h: 600 }
 export function getCanvasSize() { return _canvasSize }
+let _imageCacheRef: React.RefObject<Map<string, HTMLImageElement>> | null = null
+
+/** Read what's currently displayed on the canvas element (with grid/selection). */
+export function captureCanvasDisplay(): string | null {
+  const el = getCanvasElement()
+  if (!el || el.width === 0 || el.height === 0) return null
+  try {
+    return el.toDataURL("image/png")
+  } catch {
+    return null
+  }
+}
+
+/** Render only visible layers to an offscreen canvas (no grid, no selection). */
+export function rasterizeLayers(): string | null {
+  const { w, h } = _canvasSize
+  if (w <= 0 || h <= 0) return null
+  const offscreen = document.createElement("canvas")
+  offscreen.width = w
+  offscreen.height = h
+  const ctx = offscreen.getContext("2d")
+  if (!ctx) return null
+
+  const { layers, activeLayerId, currentStroke } = useLayerStore.getState()
+  const imgCache = _imageCacheRef?.current
+
+  // White background
+  ctx.fillStyle = "#ffffff"
+  ctx.fillRect(0, 0, w, h)
+
+  // Layers only — no grid, no selection indicators
+  for (const layer of layers) {
+    if (!layer.visible) continue
+    ctx.save()
+    ctx.globalAlpha = layer.opacity
+    if (layer.imageSrc) {
+      const img = imgCache?.get(layer.imageSrc)
+      if (img) {
+        const scale = Math.min(layer.imgW / img.width, layer.imgH / img.height)
+        const drawW = img.width * scale
+        const drawH = img.height * scale
+        const drawX = layer.imgX + (layer.imgW - drawW) / 2
+        const drawY = layer.imgY + (layer.imgH - drawH) / 2
+        ctx.drawImage(img, drawX, drawY, drawW, drawH)
+      }
+    }
+    for (const stroke of layer.strokes) drawStroke(ctx, stroke)
+    if (layer.id === activeLayerId && currentStroke) drawStroke(ctx, currentStroke)
+    ctx.restore()
+  }
+
+  return offscreen.toDataURL("image/png")
+}
 
 function drawStroke(ctx: CanvasRenderingContext2D, stroke: { points: { x: number; y: number }[]; color: string; width: number; eraser: boolean }) {
   if (stroke.points.length < 2) return
@@ -55,6 +108,7 @@ export default function LayerCanvas() {
     startDrag, updateDrag, endDrag,
   } = useLayerStore()
   const imageCacheRef = useRef<Map<string, HTMLImageElement>>(new Map())
+  _imageCacheRef = imageCacheRef
 
   // Track natural dimensions of loaded images
   useEffect(() => {

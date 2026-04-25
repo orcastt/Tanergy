@@ -1,7 +1,9 @@
 # Slice 20: 网页端架构预留
 
 **优先级**: P3 | **难度**: - | **预计**: - | **状态**: ⬜ 远期规划
-**依赖**: Phase 2 完成 | **返回索引**: [phase2-commercial.md](phase2-commercial.md)
+**依赖**: Phase 2 核心完成 | **返回索引**: [phase2-commercial.md](phase2-commercial.md)
+
+> 2026-04-25 对齐：Phase 2 核心能力已完成，但 Html Editor 手测、Admin 联调和部署仍在收口中；网页端仍暂不开发。
 
 ---
 
@@ -62,7 +64,7 @@ interface StorageProvider {
 
 ## 实施前提
 
-- Phase 2 全部完成（官方 API 为默认）
+- Phase 2 核心能力完成（官方 API 为默认）
 - 订阅支付稳定运行
 - 桌面端用户反馈收敛
 

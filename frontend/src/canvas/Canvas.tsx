@@ -25,6 +25,7 @@ import NodePicker from "./NodePicker"
 import ContextMenu from "./ContextMenu"
 import LightboxOverlay from "./LightboxOverlay"
 import ImageEditorModal from "../nodes/image/ImageEditorModal"
+import HtmlEditorModal from "../nodes/image/HtmlEditorModal"
 import DeletableEdge from "./DeletableEdge"
 import type { NodeType } from "../types/node"
 
@@ -64,7 +65,7 @@ export default function Canvas() {
     undo, canUndo, getGraphJson, setGraphFromJson,
   } = useCanvasStore()
 
-  const { pickerOpen, pickerScreenPos, ctxMenu, editorNodeId, lightboxImage } = useOverlayStore()
+  const { pickerOpen, pickerScreenPos, ctxMenu, editorNodeId, htmlEditorNodeId, lightboxImage } = useOverlayStore()
   const lastClickRef = useRef<{ time: number; x: number; y: number } | null>(null)
   const { screenToFlowPosition } = useReactFlow()
 
@@ -72,6 +73,7 @@ export default function Canvas() {
   useEffect(() => {
     return () => {
       useOverlayStore.getState().closeEditor()
+      useOverlayStore.getState().closeHtmlEditor()
       useOverlayStore.getState().closeLightbox()
     }
   }, [])
@@ -94,6 +96,7 @@ export default function Canvas() {
       } else if (e.key === "Escape") {
         useOverlayStore.getState().closePicker()
         useOverlayStore.getState().closeCtxMenu()
+        useOverlayStore.getState().closeHtmlEditor()
       } else if (e.key === "g" && !e.metaKey && !e.ctrlKey) {
         const { selectedNodeIds } = useCanvasStore.getState()
         const isGroup = selectedNodeIds.length === 1 && nodes.find((n) => n.id === selectedNodeIds[0])?.type === "group"
@@ -285,6 +288,7 @@ export default function Canvas() {
           />
         )}
         {editorNodeId && <ImageEditorModal nodeId={editorNodeId} onClose={() => useOverlayStore.getState().closeEditor()} />}
+        {htmlEditorNodeId && <HtmlEditorModal />}
         {lightboxImage && <LightboxOverlay />}
       </OverlayLayer>
     </>

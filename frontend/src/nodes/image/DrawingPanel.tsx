@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react"
 import DrawingCanvas from "./DrawingCanvas"
-import AiEditPopup from "./AiEditPopup"
 import { useDrawingStore } from "./drawingStore"
 
 interface Props {
@@ -14,7 +13,6 @@ const WIDTHS = [2, 4, 8, 12]
 export default function DrawingPanel({ image, onAiEdit }: Props) {
   const { color, width, eraser, setColor, setWidth, setEraser, undo, clear } = useDrawingStore()
   const [bgSrc, setBgSrc] = useState<string | null>(null)
-  const [showAiPopup, setShowAiPopup] = useState(false)
 
   useEffect(() => {
     if (!image) { setBgSrc(null); return }
@@ -53,7 +51,10 @@ export default function DrawingPanel({ image, onAiEdit }: Props) {
         <ToolBtn icon="undo" onClick={undo} title="Undo" />
         <ToolBtn icon="delete" onClick={clear} title="Clear" />
         <div style={{ flex: 1 }} />
-        <button onClick={() => setShowAiPopup(true)} disabled={!bgSrc} style={{
+        <button onClick={() => {
+          const instruction = window.prompt("描述你想要的编辑效果")
+          if (instruction?.trim()) onAiEdit(instruction.trim())
+        }} disabled={!bgSrc} style={{
           padding: "0.25rem 0.5rem", borderRadius: "0.375rem", border: "none",
           background: "#6349EA", color: "#fff", fontSize: "0.6875rem", fontWeight: 600,
           cursor: bgSrc ? "pointer" : "not-allowed", opacity: bgSrc ? 1 : 0.4,
@@ -69,7 +70,6 @@ export default function DrawingPanel({ image, onAiEdit }: Props) {
         <DrawingCanvas backgroundImage={bgSrc} width={600} height={450} />
       </div>
 
-      {showAiPopup && <AiEditPopup onSubmit={onAiEdit} onClose={() => setShowAiPopup(false)} />}
     </div>
   )
 }

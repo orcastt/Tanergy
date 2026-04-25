@@ -1,12 +1,27 @@
+import { useState, useEffect } from "react"
 import { KeysTab } from "./KeysTabContent"
 import { useTranslation } from "react-i18next"
 import { useThemeStore } from "../../store/themeStore"
 import { useLangStore } from "../../store/langStore"
+import { tauri } from "../../services/tauri"
 
 export function AdvancedTab() {
   const { t } = useTranslation()
   const { theme, toggleTheme } = useThemeStore()
   const { lang, toggleLang } = useLangStore()
+  const [mockMode, setMockMode] = useState(false)
+
+  useEffect(() => {
+    tauri.getAppConfig("mock_mode")
+      .then((v) => setMockMode(v === "true"))
+      .catch(() => setMockMode(false))
+  }, [])
+
+  async function toggleMock() {
+    const next = !mockMode
+    setMockMode(next)
+    await tauri.setAppConfig("mock_mode", next ? "true" : "false")
+  }
 
   return (
     <div>
@@ -57,6 +72,35 @@ export function AdvancedTab() {
             {lang.toUpperCase()}
           </button>
         </div>
+      </div>
+
+      {/* Mock Mode */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "0.75rem 1rem", borderRadius: 8, border: "1px solid var(--border-color)",
+        background: "var(--bg-surface)", marginBottom: "1.5rem",
+      }}>
+        <div>
+          <div style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>Mock Mode</div>
+          <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "0.125rem" }}>
+            Use fake AI responses (no API key needed)
+          </div>
+        </div>
+        <button
+          onClick={toggleMock}
+          style={{
+            width: 44, height: 24, borderRadius: 12, border: "none",
+            background: mockMode ? "#22c55e" : "var(--border-color)",
+            position: "relative", cursor: "pointer", transition: "background 200ms",
+          }}
+        >
+          <div style={{
+            width: 20, height: 20, borderRadius: 10, background: "#fff",
+            position: "absolute", top: 2,
+            left: mockMode ? 22 : 2,
+            transition: "left 200ms",
+          }} />
+        </button>
       </div>
 
       {/* API Keys (reuse existing component) */}

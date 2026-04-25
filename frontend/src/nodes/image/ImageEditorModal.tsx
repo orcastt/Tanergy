@@ -1,15 +1,15 @@
-import { useCallback, useState } from "react"
+import { useCallback, useState, useEffect } from "react"
 import SourcePanel from "./SourcePanel"
-import LayerCanvas, { getCanvasElement } from "./LayerCanvas"
+import LayerCanvas, { rasterizeLayers, captureCanvasDisplay } from "./LayerCanvas"
 import LayerPanel from "./LayerPanel"
 import Toolbar from "./Toolbar"
 import AiEditPopup from "./AiEditPopup"
 import { useLayerStore } from "./layerStore"
 import { useCanvasStore } from "../../store/canvasStore"
-import { invoke } from "@tauri-apps/api/core"
 
 interface ImageItem {
   id: string
+  plan_id?: string
   file_path: string
   description: string
   prompt: string
@@ -24,55 +24,57 @@ interface Props {
 export default function ImageEditorModal({ nodeId, onClose }: Props) {
   const result = useCanvasStore((s) => s.nodeResults[nodeId]) as { images?: ImageItem[] } | undefined
   const images = result?.images ?? []
-  const { rasterize, reset, addImageLayer } = useLayerStore()
+  const { rasterize, reset, addImageLayer, getState, restoreState } = useLayerStore()
   const [showAiPopup, setShowAiPopup] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
+
+  // Restore saved layer data for this node, or reset to clean slate
+  useEffect(() => {
+    const saved = (useCanvasStore.getState().nodeResults[nodeId] as any)?.layerData
+    if (saved) restoreState(saved)
+    else reset()
+  }, [nodeId, reset, restoreState])
 
   const handleRasterize = useCallback(() => {
-    const canvasEl = getCanvasElement()
-    if (!canvasEl) return
-    const dataUrl = canvasEl.toDataURL("image/png")
-    rasterize(dataUrl)
+    const dataUrl = rasterizeLayers() ?? captureCanvasDisplay()
+    if (dataUrl) rasterize(dataUrl)
   }, [rasterize])
 
   const doExport = useCallback(async (closeAfter = false) => {
-    const canvasEl = getCanvasElement()
-    if (!canvasEl) return
-    const dataUrl = canvasEl.toDataURL("image/png")
-    const base64 = dataUrl.replace(/^data:image\/png;base64,/, "")
+    const dataUrl = captureCanvasDisplay()
+    if (!dataUrl) { setExportError("画布未就绪"); return }
 
-    try {
-      const saveResult = await invoke<{ file_path: string }>("save_canvas_export", {
-        base64Data: base64,
-        workflowId: "exported",
-        nodeId,
-      })
-      const newImage = {
-        id: `export_${Date.now()}`,
-        plan_id: "export",
-        file_path: saveResult.file_path,
-        prompt: "Canvas export",
-        description: "导出图片",
-        position: "",
-      }
-      const currentResult = useCanvasStore.getState().nodeResults[nodeId] as { images?: ImageItem[] } | undefined
-      const currentImages = currentResult?.images ?? []
-      useCanvasStore.getState().setNodeResult(nodeId, {
-        ...currentResult,
-        images: [...currentImages, newImage],
-      })
-      if (closeAfter) onClose()
-    } catch (e) {
-      console.error("Export failed:", e)
+    const newImage: ImageItem = {
+      id: `export_${Date.now()}`,
+      plan_id: "export",
+      file_path: dataUrl,
+      prompt: "Canvas export",
+      description: "导出图片",
+      position: "",
     }
-  }, [nodeId, onClose])
+    const currentResult = useCanvasStore.getState().nodeResults[nodeId] as any
+    const currentImages: ImageItem[] = currentResult?.images ?? []
+    const layerData = getState()
+    useCanvasStore.getState().setNodeResult(nodeId, {
+      ...currentResult,
+      images: [...currentImages, newImage],
+      layerData,
+    })
+    setExportError(null)
+    if (closeAfter) onClose()
+  }, [nodeId, onClose, getState])
 
   const handleExport = useCallback(() => doExport(true), [doExport])
   const handleExportToNode = useCallback(() => doExport(false), [doExport])
 
   const handleBack = useCallback(() => {
+    // Save layer data to node results before closing
+    const layerData = getState()
+    const currentResult = useCanvasStore.getState().nodeResults[nodeId] as any
+    useCanvasStore.getState().setNodeResult(nodeId, { ...currentResult, layerData })
     reset()
     onClose()
-  }, [reset, onClose])
+  }, [nodeId, reset, onClose, getState])
 
   function handleAiResult(base64: string) {
     const dataUrl = `data:image/png;base64,${base64}`
@@ -103,6 +105,9 @@ export default function ImageEditorModal({ nodeId, onClose }: Props) {
         <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
           {images.length} 张图片
         </span>
+        {exportError && (
+          <span style={{ fontSize: "0.6875rem", color: "#EF4444" }}>导出失败: {exportError}</span>
+        )}
         <div style={{ flex: 1 }} />
         <button onClick={handleRasterize} style={{
           padding: "0.375rem 0.75rem", borderRadius: "0.375rem", border: "1px solid var(--border-color)",

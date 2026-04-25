@@ -42,6 +42,7 @@ function CanvasPageInner() {
   const navigate = useNavigate()
   const { currentWorkflow, isDirty } = useCanvas(id!)
   const editorNodeId = useOverlayStore((s) => s.editorNodeId)
+  const htmlEditorNodeId = useOverlayStore((s) => s.htmlEditorNodeId)
   const { saveWorkflow, isSaving, toast, clearToast } = useWorkflowStore()
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState("")
@@ -95,6 +96,10 @@ function CanvasPageInner() {
             onClick={() => {
               if (editorNodeId) {
                 useOverlayStore.getState().closeEditor()
+                return
+              }
+              if (htmlEditorNodeId) {
+                useOverlayStore.getState().closeHtmlEditor()
                 return
               }
               if (isDirty) saveWorkflow()

@@ -1,7 +1,9 @@
 # Slice 3: Canvas Core（复用现有）
 
-**优先级**: P0 | **难度**: 高 | **预计**: 4 天 | **状态**: ⬜ 未开始
+**优先级**: P0 | **难度**: 高 | **预计**: 4 天 | **状态**: ✅ 已完成（状态校准）
 **依赖**: Slice 2 | **返回索引**: [phase1-mvp.md](phase1-mvp.md)
+
+> 2026-04-25 对齐：本文件为画布基础历史计划；当前默认输出节点为 `html_formatter` / Html Editor，`preview_wechat` 为 legacy。
 
 ---
 
@@ -102,10 +104,11 @@ interface CanvasStore {
 
 **文件**: `frontend/src/nodes/nodeDefs.ts`
 
-确认已有 11 个 MVP 节点定义正确：
-- text_input, research, outline_generator, gate, writer, reviewer
-- image_planner, image_gen, image_gallery
-- html_formatter, preview_wechat
+确认当前公众号主流程节点定义正确：
+- text_input, research, outline_generator
+- image_planner, image_list, image_gallery
+- html_formatter / Html Editor（preview_wechat 为 legacy）
+- legacy: gate, writer, reviewer, image_gen（仅兼容，不作为默认模板）
 
 **文件**: `frontend/src/types/node.ts`
 
@@ -128,12 +131,11 @@ interface CanvasStore {
 **文件**: `frontend/src/canvas/Toolbar.tsx`
 **文件**: `frontend/src/canvas/CanvasControls.tsx`
 
-直接复用。NodePicker 分类改为 MVP 11 节点：
+直接复用。NodePicker 分类以当前主节点为准：
 - 输入: text_input
-- AI: research, outline_generator, writer, reviewer, image_planner
-- 交互: gate
-- 图像: image_gen, image_gallery
-- 输出: html_formatter, preview_wechat
+- AI: research, outline_generator, image_planner
+- 图像: image_list, image_gallery
+- 输出: html_formatter / Html Editor
 
 ### Step 8: useCanvas Hook（改动：保存路径）
 
@@ -208,7 +210,7 @@ async saveWorkflow() {
 
 - [ ] 画布打开显示 #f5f5f5 背景 + #d4d4d4 点阵网格
 - [ ] 工作流数据正确加载（从 SQLite 经 Tauri IPC）
-- [ ] 双击画布空白处打开 NodePicker，显示 MVP 11 节点
+- [ ] 双击画布空白处打开 NodePicker，显示当前主节点 + legacy 节点（标记清晰）
 - [ ] NodePicker 搜索过滤和分类切换正常
 - [ ] 点击节点在双击位置创建（snap to 20px grid）
 - [ ] 节点渲染正确（白底 + 三层阴影 + Cal Sans 标题 + 彩色端口）

@@ -87,12 +87,17 @@ pub async fn exec_image_gen(
     payload: &ExecutePayload,
     app_handle: &tauri::AppHandle,
 ) -> Result<ExecuteResult, String> {
-    // Accept plans from image_planner or generate from text input
+    // Accept plans from image_planner, outline_generator, or generate from text input
+    // input_data["in"] can be: the array directly, an object with image_plans key, or an image_planner result
     let plans_val = payload.input_data
         .get("in")
-        .and_then(|v| v.get("image_plans"))
-        .or_else(|| payload.input_data.get("image_plans"))
-        .cloned();
+        .cloned()
+        .map(|v| {
+            if v.is_array() { v }
+            else if let Some(arr) = v.get("image_plans") { arr.clone() }
+            else { v }
+        })
+        .or_else(|| payload.input_data.get("image_plans").cloned());
 
     let text_input = payload.input_data
         .get("text")
@@ -112,8 +117,15 @@ pub async fn exec_image_gen(
     let plans: Vec<Value> = if let Some(pv) = plans_val {
         if pv.is_array() {
             pv.as_array().unwrap().clone()
-        } else if pv.is_object() && pv.get("raw").is_some() {
-            return Err("image_list: planner returned raw text, not valid plans".into());
+        } else if pv.is_object() {
+            // Could be { image_plans: [...] } from outline_generator
+            if let Some(arr) = pv.get("image_plans").and_then(|v| v.as_array()) {
+                arr.clone()
+            } else if pv.get("raw").is_some() {
+                return Err("image_list: planner returned raw text, not valid plans".into());
+            } else {
+                return Err("image_list: no valid image plans".into());
+            }
         } else {
             return Err("image_list: no valid image plans".into());
         }
@@ -243,68 +255,72 @@ pub async fn exec_image_gen(
 }
 
 pub async fn exec_html_formatter(payload: &ExecutePayload) -> Result<ExecuteResult, String> {
-    let text = payload.input_data
-        .get("text")
-        .and_then(extract_text)
-        .or_else(|| payload.input_data.get("in").and_then(extract_text))
-        .unwrap_or("");
-
-    if text.trim().is_empty() {
-        return Err("html_formatter: empty text input".into());
+    // 1. Collect text sections: text_1, text_2, ... (dynamic ports)
+    let mut sections: Vec<String> = Vec::new();
+    let mut i = 1;
+    loop {
+        let key = format!("text_{}", i);
+        if let Some(txt) = payload.input_data.get(&key).and_then(extract_text) {
+            sections.push(txt.to_string());
+            i += 1;
+        } else {
+            break;
+        }
     }
+    // Fallback: single "text" or "in" port (backward compat)
+    if sections.is_empty() {
+        if let Some(txt) = payload.input_data.get("text").and_then(extract_text)
+            .or_else(|| payload.input_data.get("in").and_then(extract_text))
+        {
+            sections.push(txt.to_string());
+        }
+    }
+    if sections.is_empty() {
+        return Err("html_formatter: no text input".into());
+    }
+    let combined_text = sections.join("\n\n");
+
+    // 2. Collect images from image_list output
+    let images: Vec<Value> = payload.input_data
+        .get("images")
+        .and_then(|v| v.get("images").or(Some(v)))
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default()
+        .into_iter()
+        .chain(
+            payload.input_data.get("image_slot")
+                .and_then(|v| v.as_array()).cloned().unwrap_or_default()
+        )
+        .collect();
+
+    // 3. Replace [图N] markers with inline HTML
+    let replaced_text = replace_image_markers(&combined_text, &images);
 
     let style = payload.node_data
         .get("style")
         .and_then(|v| v.as_str())
-        .unwrap_or("经典");
+        .unwrap_or("标准紫");
 
-    let font_size = payload.node_data
-        .get("fontSize")
-        .and_then(|v| v.as_u64())
-        .unwrap_or(16);
-
-    let line_height = payload.node_data
-        .get("lineHeight")
-        .and_then(|v| v.as_f64())
-        .unwrap_or(1.75);
-
-    let images_info = payload.input_data
-        .get("image_slot")
-        .and_then(|v| v.as_array())
-        .map(|arr| {
-            arr.iter().filter_map(|img| {
-                let pos = img.get("position").and_then(|v| v.as_str()).unwrap_or("");
-                let desc = img.get("description").and_then(|v| v.as_str()).unwrap_or("");
-                let fp = img.get("file_path").and_then(|v| v.as_str()).unwrap_or("");
-                if !fp.is_empty() {
-                    Some(format!("- 位置: {}, 描述: {}, 文件: {}", pos, desc, fp))
-                } else { None }
-            }).collect::<Vec<_>>().join("\n")
-        })
-        .unwrap_or_default();
-
-    let style_guide = match style {
-        "简约" => "极简风格，大量留白，浅灰色分隔线，无装饰元素",
-        "活泼" => "活泼风格，鲜艳强调色（橙色 #FF6B35），圆角卡片布局",
-        "专业" => "专业商务风格，深蓝色强调（#1a5276），严谨排版",
-        _ => "经典公众号风格，温暖色调，适度分隔线和强调元素",
+    let system = if style == "标准紫" {
+        "你是微信公众号排版专家，精通「Tanvas 视觉规范」。将 Markdown 内容转换为微信编辑器兼容的原生内联样式 HTML。风格：标准紫 — 主题色 #5965AF，紫色系视觉系统。严格按以下组件库输出（只替换方括号内容，不修改 style 属性）：\
+         【H2 二级标题 - 带浅紫大数字背景】<section style=\"margin-top:48px;margin-bottom:20px;display:flex;flex-direction:column;\"><svg width=\"100\" height=\"70\" style=\"margin-bottom:-45px;display:block;\" xmlns=\"http://www.w3.org/2000/svg\"><text x=\"0\" y=\"55\" font-size=\"65\" font-weight=\"900\" fill=\"#5965AF\" fill-opacity=\"0.15\" font-family=\"Arial,sans-serif\">[序号如01、02、03]</text></svg><span style=\"font-size:22px;font-weight:700;line-height:1.6;color:#252525;display:block;position:relative;z-index:10;\">[二级标题文字]</span></section>\
+         【H3 三级标题 - 黑底白字副标题】<section style=\"display:inline-block;background-color:#1a1a1a;color:#ffffff;font-size:15px;font-weight:bold;padding:4px 12px;margin-top:30px;margin-bottom:10px;border-radius:2px;\">[三级标题文字]</section>\
+         【H4 四级标题 - 紫色左修饰线】<section style=\"font-size:16px;font-weight:bold;color:#5965AF;margin-top:24px;margin-bottom:12px;display:flex;align-items:center;\"><span style=\"display:inline-block;width:4px;height:16px;background-color:#5965AF;margin-right:8px;border-radius:2px;\"></span>[四级标题文字]</section>\
+         【Quote 引用卡片】<section style=\"padding:14px 18px;border-left:3px solid #5965AF;background:#fdfdfd;border-radius:5px;box-shadow:0px 2px 6px rgba(0,0,0,0.08);color:#878b8e;font-size:14px;line-height:1.6;font-style:italic;margin:28px 4px;\"><span style=\"color:#5965AF;font-weight:bold;font-style:normal;display:block;margin-bottom:8px;\">[选填引导词如「💡 核心洞察」]</span>[引用或导语内容]</section>\
+         【Highlight 重点高亮】<span style=\"font-family:'Noto Sans SC',sans-serif;font-size:15px;line-height:1.8;color:#5965AF;font-weight:bold;background-color:#EDE4F1;padding:2px 4px;border-radius:2px;\">[高亮词汇]</span>\
+         【Bold 加粗】<span style=\"font-weight:bold;color:#5965AF;\">[加粗文字]</span>\
+         【Paragraph 普通正文段落】<section style=\"margin-top:20px;font-family:'Noto Sans SC',sans-serif;font-weight:normal;font-size:15px;line-height:1.8;color:#333333;letter-spacing:0.5px;text-align:justify;\">[正文内容，高亮和加粗需嵌套在此标签内]</section>\
+         【Code Block macOS风格】<section style=\"background-color:#1e1e2e;border-radius:10px;margin-top:24px;margin-bottom:24px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.3);\"><section style=\"background-color:#252540;padding:12px 16px;border-bottom:1px solid #33334a;\"><span style=\"display:inline-block;width:12px;height:12px;border-radius:50%;background-color:#ff5f56;margin-right:6px;\"></span><span style=\"display:inline-block;width:12px;height:12px;border-radius:50%;background-color:#ffbd2e;margin-right:6px;\"></span><span style=\"display:inline-block;width:12px;height:12px;border-radius:50%;background-color:#27c93f;\"></span></section><section style=\"padding:18px 20px;font-family:'Courier New',Courier,monospace;font-size:13px;line-height:2;color:#e0e0e0;word-break:break-all;\">[代码内容，每行用br换行]</section></section>\
+         输出规则：禁止修改 style 属性；普通文本换行必须用 Paragraph 包裹；Markdown 映射：H1→H2组件, H2→H3组件(黑底), H3→H4组件(左竖线), 引用→Quote卡片, 高亮→Highlight, 加粗→Bold, 普通段落→Paragraph；保留已有 img 和 div 占位标签原样不变；直接输出 HTML 片段，不包裹 html body".to_string()
+    } else {
+        format!(
+            "你是微信公众号排版专家。将 Markdown 内容转换为微信编辑器兼容的原生内联样式 HTML。风格：{}\n\n要求：内联样式，字体 -apple-system/PingFang SC/sans-serif。标题用 <section> 包裹，正文用 <p>，列表用 <ul>/<li>。保留 <img> 标签原样不变。直接输出 HTML 片段，不包裹 <html><body>。",
+            style
+        )
     };
 
-    let system = format!(
-        "你是微信公众号排版专家。将 Markdown 转为微信编辑器兼容的 HTML。\n\n\
-         风格：{}\n字号: {}px, 行高: {}\n\n\
-         要求：内联样式（无 class/CSS），字体 -apple-system/'PingFang SC'/sans-serif\n\
-         正文 #333 {}px，H2 {}px 加粗 #1a1a1a，图片居中 border-radius:8px\n\
-         引用块：左边框 3px #ddd，背景 #f8f8f8。代码块：背景 #f5f5f5 等宽字体\n\
-         图片用 <img src=\"{{file_path}}\" alt=\"{{description}}\"> 插入\n\
-         直接输出 HTML，不包裹 <html><body>",
-        style_guide, font_size, line_height, font_size, font_size + 4,
-    );
-
-    let mut user_msg = format!("文章 Markdown：\n{}", text);
-    if !images_info.is_empty() {
-        user_msg.push_str(&format!("\n\n图片资源：\n{}", images_info));
-    }
+    let user_msg = format!("文章内容（含图片占位）：\n{}", replaced_text);
 
     let messages = vec![
         ChatMessage { role: "system".into(), content: system },
@@ -314,7 +330,7 @@ pub async fn exec_html_formatter(payload: &ExecutePayload) -> Result<ExecuteResu
     let completion = ai_client::chat_completion(&get_text_model(&payload.node_data), "", messages, 8192, Some(0.3)).await?;
 
     let html = completion.text;
-    let word_count = text.chars().filter(|c| !c.is_whitespace()).count();
+    let word_count = combined_text.chars().filter(|c| !c.is_whitespace()).count();
 
     Ok(ExecuteResult {
         output: serde_json::json!({
@@ -324,4 +340,32 @@ pub async fn exec_html_formatter(payload: &ExecutePayload) -> Result<ExecuteResu
         }),
         status: "done".into(),
     })
+}
+
+fn replace_image_markers(text: &str, images: &[Value]) -> String {
+    let mut result = text.to_string();
+    for (i, img) in images.iter().enumerate() {
+        let marker = format!("[图{}]", i + 1);
+        let file_path = img.get("file_path").and_then(|v| v.as_str()).unwrap_or("");
+        let description = img.get("description").and_then(|v| v.as_str()).unwrap_or("");
+
+        let replacement = if file_path.starts_with("data:") {
+            format!(
+                "<div style=\"text-align:center;margin:16px 0\"><img src=\"{}\" alt=\"{}\" style=\"max-width:100%;border-radius:8px\" /></div>",
+                file_path, description
+            )
+        } else if !file_path.is_empty() {
+            format!(
+                "<div style=\"text-align:center;margin:16px 0;padding:20px;background:#f5f3ff;border-radius:8px;color:#6d28d9;font-size:14px\">[配图：{}]</div>",
+                description
+            )
+        } else {
+            format!(
+                "<div style=\"text-align:center;margin:16px 0;padding:20px;background:#f5f3ff;border-radius:8px;color:#6d28d9;font-size:14px\">[配图占位：{}]</div>",
+                description
+            )
+        };
+        result = result.replace(&marker, &replacement);
+    }
+    result
 }

@@ -1,8 +1,10 @@
 # Plan: 完善现有节点 — 跑通完整工作流
 
+> 备注（2026-04-25）：本文件为历史排障记录，流程描述基于旧链路（Gate/Writer/Reviewer/preview_wechat）。当前默认公众号主流程已切换为 Outline Split + `html_formatter` / Html Editor 终点。
+
 ## Context
 
-所有 12 个节点类型的前端 UI 和后端 executor 都已实现。AI 节点全部走 MiniMax API。但完整工作流（Text Input → Research → Outline → Gate → Writer → Reviewer → Image Planner → Image List → HTML Formatter → Preview WeChat）还没有端到端跑通过。需要验证每个节点的输入输出衔接，修复数据传递问题。
+所有节点类型的前端 UI 和后端 executor 都已实现。本文关注旧链路（Text Input → Research → Outline → Gate → Writer → Reviewer → ...）的历史问题排查，用于回溯，不作为当前默认流程规范。
 
 ## 审计结果
 
@@ -10,7 +12,7 @@
 - **text_input** — 纯前端，直接返回 `{ text }` ✅
 - **gate** — 纯前端交互，等待用户选择 ✅
 - **image_gallery** — 纯前端聚合图片 ✅
-- **preview_wechat** — 纯前端预览 ✅
+- **preview_wechat** — 历史预览组件，非默认主流程 ✅
 
 ### AI 节点（全部走 MiniMax API）
 - **research** — 输入 text，输出 `{ text }` ✅
@@ -75,11 +77,11 @@ writer 输出 `{ text: "markdown article" }`，html_formatter 需要接收这个
 
 1. **修复后端 executor 输入解析** — 统一处理 `{ text }` 包装对象
 2. **修复前端 gatherInputData** — 确保数据格式正确传递
-3. **测试完整工作流** — Text Input → Research → Outline → Gate → Writer → Reviewer → HTML Formatter → Preview
+3. **测试当前默认工作流** — Text Input → Research → Outline → Split → Image List → HTML Formatter / Html Editor
 4. **测试图片工作流** — Writer → Image Planner → Image List → HTML Formatter
 5. **修复 Agent Chat** — 排查 API 调用问题
 
 ## 验证
-- 完整 10 节点工作流端到端跑通
+- 当前默认 Html Editor 终点工作流端到端跑通
 - 每个节点输出结果正确传递到下游
 - Agent Chat 能正常对话并创建节点

@@ -11,6 +11,8 @@
 
 核心原则：**节点注册表是唯一真相源**，AI 的输入输出都从注册表推导，加新节点只改 `nodeDefs.ts`。
 
+> 状态校准（2026-04-25）：公众号默认模板已切到 Outline Split 架构，且默认终点为 `html_formatter` / Html Editor。`gate/writer/reviewer/preview_wechat` 视为 legacy，不再作为默认推荐节点。
+
 ---
 
 ## 现有问题
@@ -65,27 +67,9 @@ fn build_system_prompt() -> String {
         },
         {
             "type": "outline_generator",
-            "desc": "Generate outline options",
+            "desc": "Generate sections[] and image_plans[] for Split",
             "inputs": [{"id": "in", "type": "text"}, {"id": "research", "type": "research_result"}],
-            "outputs": [{"id": "out", "type": "outline_options"}]
-        },
-        {
-            "type": "gate",
-            "desc": "Pause for user selection or input",
-            "inputs": [{"id": "in", "type": "outline_options"}],
-            "outputs": [{"id": "out", "type": "outline_options"}]
-        },
-        {
-            "type": "writer",
-            "desc": "AI long-form writing",
-            "inputs": [{"id": "outline", "type": "outline_options"}],
-            "outputs": [{"id": "out", "type": "text"}]
-        },
-        {
-            "type": "reviewer",
-            "desc": "Three-pass review (fact check, anti-AI, rhythm)",
-            "inputs": [{"id": "in", "type": "text"}],
-            "outputs": [{"id": "out", "type": "text"}]
+            "outputs": [{"id": "out", "type": "text"}, {"id": "image_plans", "type": "image_plans"}]
         },
         {
             "type": "image_planner",
@@ -107,14 +91,8 @@ fn build_system_prompt() -> String {
         },
         {
             "type": "html_formatter",
-            "desc": "Markdown to WeChat HTML",
-            "inputs": [{"id": "text", "type": "text"}, {"id": "image_slot", "type": "image_slot"}],
-            "outputs": [{"id": "out", "type": "structured"}]
-        },
-        {
-            "type": "preview_wechat",
-            "desc": "WeChat article preview + copy HTML",
-            "inputs": [{"id": "html", "type": "structured"}],
+            "desc": "Html Editor terminal node: combine text + images into WeChat HTML, then double-click to edit/preview/copy",
+            "inputs": [{"id": "text_1", "type": "text"}, {"id": "images", "type": "image_slot"}],
             "outputs": []
         }
     ]);
@@ -139,12 +117,12 @@ fn build_system_prompt() -> String {
 2. position.x 从 100 开始，每个节点间隔 300
 3. text_input 必须带 "data": {{"text": "用户的完整输入内容"}}
 4. connect 的 fromPort/toPort 必须使用注册表中定义的端口 id（如 "out"、"in"、"research"、"text"）
-5. 端口类型必须匹配：text→text, research_result→research_result, outline_options→outline_options, image_plans→image_plans, image_slot→image_slot, structured→structured
+5. 端口类型必须匹配：text→text, research_result→research_result, image_plans→image_plans, image_slot→image_slot
 6. 必须包含所有 connect 指令形成完整链路
 7. 根据用户需求灵活选择节点，不要固定流程。例如：
-   - "写公众号" → text_input→research→outline→gate→writer→reviewer→image_planner→image_list→html_formatter→preview_wechat
+   - "写公众号" → text_input→research→outline（由 Split 自动补齐后续图）
    - "只要研究" → text_input→research
-   - "电商海报" → text_input→research→writer→image_planner→image_list
+   - "电商海报" → text_input→research→image_planner→image_list
    - "不要配图" → 跳过 image_planner 和 image_list
 8. 只输出 JSON"#,
         nodes = serde_json::to_string_pretty(&nodes).unwrap_or_default()
@@ -239,9 +217,9 @@ Step 4  ─── i18n: 完成剩余组件的中英切换（~2h，可与 Step 1-
 
 ## 验证清单
 
-- [x] Agent 能正确创建公众号长文全流程（10+ 节点 + 全部连线）
+- [x] Agent 能正确创建公众号主流程（Outline + Split 路径）
 - [x] 用户说"只要研究" → 只创建 2 个节点 + 1 条连线
-- [x] 用户说"写电商海报，不要审校" → 跳过 reviewer 节点
+- [x] 用户说"写电商海报" → 不强制插入 legacy writer/reviewer 节点
 - [x] 用户说"写公众号，不要配图" → 跳过 image_planner/image_list
 - [x] 非法端口名 → 前端 console.warn + 跳过该连线（不崩溃）
 - [x] text_input 节点自动填入用户输入的内容

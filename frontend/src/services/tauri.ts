@@ -55,6 +55,14 @@ export const tauri = {
     invoke<ProviderInfo[]>("get_all_providers"),
   removeApiKey: (providerId: string) =>
     invoke<void>("remove_api_key", { providerId }),
+  setAppConfig: (key: string, value: string) =>
+    invoke<void>("set_app_config", { key, value }),
+  getAppConfig: (key: string) =>
+    invoke<string>("get_app_config", { key }),
+
+  // AI rewrite
+  aiRewriteHtml: (originalHtml: string, instruction: string) =>
+    invoke<string>("ai_rewrite_html", { originalHtml, instruction }),
 
   // Workflows
   listWorkflows: () =>
