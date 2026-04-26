@@ -1,20 +1,20 @@
-import { useCallback, useRef, useEffect } from "react"
+import { useCallback, useRef, useEffect, type CSSProperties } from "react"
 import {
   ReactFlow,
   Background,
   BackgroundVariant,
   useReactFlow,
+  useViewport,
   SelectionMode,
   type OnConnect,
   type Connection,
-  type Edge,
   type NodeChange,
   type EdgeChange,
   type IsValidConnection,
-  type Node,
   type NodeMouseHandler,
   type NodeTypes,
   type OnNodeDrag,
+  type Viewport,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
 
@@ -33,101 +33,15 @@ import ImageEditorModal from "../nodes/image/ImageEditorModal"
 import HtmlEditorModal from "../nodes/image/HtmlEditorModal"
 import DeletableEdge from "./DeletableEdge"
 import type { NodeType } from "../types/node"
+import { getCrispViewport, isSameViewport } from "./viewportQuality"
+import { getInputPortType, getOutputPortType, resolveAutoInputExpansion } from "./canvasConnectionRules"
+import { buildCanvasContextMenuItems } from "./canvasContextMenu"
+import { useCanvasKeyboardShortcuts } from "./useCanvasKeyboardShortcuts"
+import { useLibraryDrop } from "./useLibraryDrop"
 
 const edgeTypes = { default: DeletableEdge }
 
 const SNAP_GRID = [20, 20] as [number, number]
-const MAX_AUTO_INPUTS = 10
-
-function getOutputPortType(nodeId: string, handleId: string | null | undefined, nodes: Node[]) {
-  const node = nodes.find((n) => n.id === nodeId)
-  if (!node) return null
-  const def = NODE_MAP[node.data.nodeType as NodeType]
-  if (!def) return null
-  if (!handleId) return def.outputs[0]?.type ?? null
-  const staticPort = def.outputs.find((o) => o.id === handleId)
-  if (staticPort) return staticPort.type
-  if (node.data.nodeType === "image_list" && handleId.startsWith("image")) return "image_slot"
-  return null
-}
-
-function getInputPortType(nodeId: string, handleId: string | null | undefined, nodes: Node[]) {
-  const node = nodes.find((n) => n.id === nodeId)
-  if (!node) return null
-  const def = NODE_MAP[node.data.nodeType as NodeType]
-  if (!def) return null
-  if (!handleId) return def.inputs[0]?.type ?? null
-  const staticPort = def.inputs.find((i) => i.id === handleId)
-  if (staticPort) return staticPort.type
-  if (node.data.nodeType === "image_list" && handleId.startsWith("img_in_")) return "image_slot"
-  if (node.data.nodeType === "html_formatter" && handleId.startsWith("text_")) return "text"
-  if (node.data.nodeType === "html_formatter" && (handleId === "images" || handleId.startsWith("image_"))) return "image_slot"
-  return null
-}
-
-function isInputOccupied(edges: Edge[], nodeId: string, handleId: string | null | undefined) {
-  return edges.some((e) => e.target === nodeId && e.targetHandle === handleId)
-}
-
-function nextNumberedHandle(existing: string[], prefix: string) {
-  const used = new Set(existing)
-  for (let i = 1; i <= MAX_AUTO_INPUTS; i += 1) {
-    const candidate = `${prefix}${i}`
-    if (!used.has(candidate)) return candidate
-  }
-  return null
-}
-
-function resolveAutoInputExpansion(connection: Connection, nodes: Node[], edges: Edge[]) {
-  if (!connection.source || !connection.target || !connection.targetHandle) return null
-  const sourceType = getOutputPortType(connection.source, connection.sourceHandle, nodes)
-  const targetType = getInputPortType(connection.target, connection.targetHandle, nodes)
-  if (!sourceType || !targetType || sourceType !== targetType) return null
-
-  const targetNode = nodes.find((n) => n.id === connection.target)
-  if (!targetNode) return null
-
-  const nodeType = targetNode.data.nodeType as NodeType
-  const targetHandle = connection.targetHandle
-
-  if (nodeType === "html_formatter" && targetType === "text" && targetHandle.startsWith("text_")) {
-    const textInputs = (targetNode.data.textInputs as string[] | undefined) ?? ["text_1"]
-    const existing = new Set(textInputs)
-    for (let i = 1; i <= MAX_AUTO_INPUTS; i += 1) {
-      const candidate = `text_${i}`
-      if (!existing.has(candidate) || !isInputOccupied(edges, targetNode.id, candidate)) {
-        return {
-          targetHandle: candidate,
-          data: existing.has(candidate) ? undefined : { textInputs: [...textInputs, candidate] },
-        }
-      }
-    }
-  }
-
-  if (nodeType === "html_formatter" && targetType === "image_slot" && (targetHandle === "images" || targetHandle.startsWith("image_"))) {
-    const imageInputs = (targetNode.data.imageInputs as string[] | undefined) ?? ["images"]
-    const used = new Set(imageInputs)
-    let candidate: string | null = null
-    for (let i = 2; i <= MAX_AUTO_INPUTS; i += 1) {
-      const handle = `image_${i}`
-      if (!used.has(handle)) {
-        candidate = handle
-        break
-      }
-    }
-    if (!candidate) return null
-    return { targetHandle: candidate, data: { imageInputs: [...imageInputs, candidate] } }
-  }
-
-  if (nodeType === "image_list" && targetType === "image_slot" && targetHandle.startsWith("img_in_")) {
-    const imageInputs = (targetNode.data.imageInputs as string[] | undefined) ?? ["img_in_1"]
-    const candidate = nextNumberedHandle(imageInputs, "img_in_")
-    if (!candidate) return null
-    return { targetHandle: candidate, data: { imageInputs: [...imageInputs, candidate] } }
-  }
-
-  return null
-}
 
 export default function Canvas() {
   const {
@@ -135,11 +49,30 @@ export default function Canvas() {
     copySelected, pasteNodes, deleteSelected, duplicateNode, clipboard,
     groupSelected, ungroupSelected,
     undo, canUndo, getGraphJson, setGraphFromJson, updateNodeData,
+    nodeStatuses,
   } = useCanvasStore()
 
   const { pickerOpen, pickerScreenPos, ctxMenu, editorNodeId, htmlEditorNodeId, lightboxImage } = useOverlayStore()
   const lastClickRef = useRef<{ time: number; x: number; y: number } | null>(null)
-  const { screenToFlowPosition } = useReactFlow()
+  const wasRunningRef = useRef(false)
+  const { screenToFlowPosition, getViewport, setViewport } = useReactFlow()
+  const viewport = useViewport()
+  const alignedViewport = getCrispViewport(viewport)
+  const useCrispZoom = viewport.zoom > 1.001
+  const reactFlowStyle = {
+    background: "var(--bg-canvas)",
+    "--rf-crisp-translate-x": `${alignedViewport.x / alignedViewport.zoom}px`,
+    "--rf-crisp-translate-y": `${alignedViewport.y / alignedViewport.zoom}px`,
+    "--rf-crisp-zoom": alignedViewport.zoom,
+  } as CSSProperties
+
+  const snapViewport = useCallback((viewport?: Viewport) => {
+    const currentViewport = viewport ?? getViewport()
+    const crispViewport = getCrispViewport(currentViewport)
+    if (!isSameViewport(currentViewport, crispViewport)) {
+      void setViewport(crispViewport, { duration: 0 })
+    }
+  }, [getViewport, setViewport])
 
   // Clear overlays on unmount so they don't persist across navigations
   useEffect(() => {
@@ -150,35 +83,20 @@ export default function Canvas() {
     }
   }, [])
 
-  // Keyboard shortcuts
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement).tagName
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return
+    requestAnimationFrame(() => snapViewport())
+  }, [snapViewport])
 
-      if (e.key === "c" && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault()
-        copySelected()
-      } else if (e.key === "v" && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault()
-        pasteNodes()
-      } else if (e.key === "Delete" || e.key === "Backspace") {
-        e.preventDefault()
-        deleteSelected()
-      } else if (e.key === "Escape") {
-        useOverlayStore.getState().closePicker()
-        useOverlayStore.getState().closeCtxMenu()
-        useOverlayStore.getState().closeHtmlEditor()
-      } else if (e.key === "g" && !e.metaKey && !e.ctrlKey) {
-        const { selectedNodeIds } = useCanvasStore.getState()
-        const isGroup = selectedNodeIds.length === 1 && nodes.find((n) => n.id === selectedNodeIds[0])?.type === "group"
-        if (isGroup) ungroupSelected()
-        else groupSelected()
-      }
+  const hasRunningNodes = Object.values(nodeStatuses).some((status) => status === "running")
+
+  useEffect(() => {
+    if (hasRunningNodes && !wasRunningRef.current) {
+      requestAnimationFrame(() => snapViewport())
     }
-    window.addEventListener("keydown", handler)
-    return () => window.removeEventListener("keydown", handler)
-  }, [copySelected, pasteNodes, deleteSelected, groupSelected, ungroupSelected, nodes])
+    wasRunningRef.current = hasRunningNodes
+  }, [hasRunningNodes, snapViewport])
+
+  useCanvasKeyboardShortcuts({ nodes, copySelected, pasteNodes, deleteSelected, groupSelected, ungroupSelected })
 
   const handleConnect: OnConnect = useCallback((connection: Connection) => {
     if (!connection.source || !connection.target) return
@@ -276,6 +194,8 @@ export default function Canvas() {
     addNode({ id, type, position: pos, data: { nodeType: type, ...def.defaultData } })
   }, [addNode, screenToFlowPosition])
 
+  const { handleLibraryDrop, handleCanvasDragOver } = useLibraryDrop({ addNode, screenToFlowPosition })
+
   const isValidConnection: IsValidConnection = useCallback((connection) => {
     if (connection.source === connection.target) return false
     const sourceType = getOutputPortType(connection.source, connection.sourceHandle, nodes)
@@ -289,28 +209,22 @@ export default function Canvas() {
   const nodeTypesMap: NodeTypes = nodeTypes
 
   const selectedCount = useCanvasStore.getState().selectedNodeIds.length
-  const isGroupNode = ctxMenu?.nodeId ? nodes.find((n) => n.id === ctxMenu.nodeId)?.type === "group" : false
-  const ctxMenuItems = ctxMenu?.nodeId
-    ? [
-        { label: "复制", shortcut: "⌘C", action: () => { useCanvasStore.getState().setSelectedNodes([ctxMenu.nodeId!]); copySelected() } },
-        ...(clipboard ? [{ label: "粘贴", shortcut: "⌘V", action: pasteNodes }] : []),
-        ...(selectedCount >= 2 && !isGroupNode ? [{ label: "打组", shortcut: "G", action: () => { useCanvasStore.getState().setSelectedNodes([ctxMenu.nodeId!]); groupSelected() } }] : []),
-        ...(isGroupNode ? [{ label: "取消打组", shortcut: "G", action: () => { useCanvasStore.getState().setSelectedNodes([ctxMenu.nodeId!]); ungroupSelected() } }] : []),
-        { label: "删除", shortcut: "Del", action: () => { useCanvasStore.getState().setSelectedNodes([ctxMenu.nodeId!]); deleteSelected() } },
-      ]
-    : [
-        { label: "撤销", shortcut: "⌘Z", action: () => { if (canUndo()) undo() } },
-        { label: "导出 JSON", shortcut: "", action: () => {
-          const json = JSON.stringify(getGraphJson(), null, 2)
-          const blob = new Blob([json], { type: "application/json" })
-          const url = URL.createObjectURL(blob)
-          const a = document.createElement("a")
-          a.href = url; a.download = "canvas.json"; a.click()
-          URL.revokeObjectURL(url)
-        }},
-        { label: "清除画布", shortcut: "", action: () => { setGraphFromJson({ nodes: [], edges: [] }) } },
-        ...(clipboard ? [{ label: "粘贴", shortcut: "⌘V", action: pasteNodes }] : []),
-      ]
+  const ctxMenuItems = buildCanvasContextMenuItems({
+    ctxNodeId: ctxMenu?.nodeId,
+    nodes,
+    clipboard,
+    selectedCount,
+    canUndo,
+    undo,
+    copySelected,
+    pasteNodes,
+    deleteSelected,
+    groupSelected,
+    ungroupSelected,
+    setSelectedNodes: useCanvasStore.getState().setSelectedNodes,
+    setGraphFromJson,
+    getGraphJson,
+  })
 
   return (
     <>
@@ -319,6 +233,7 @@ export default function Canvas() {
         <ReactFlow
           nodes={nodes}
           edges={edges}
+          className={useCrispZoom ? "react-flow--crisp-zoom" : undefined}
           nodeTypes={nodeTypesMap}
           edgeTypes={edgeTypes}
           onConnect={handleConnect}
@@ -330,6 +245,9 @@ export default function Canvas() {
           onNodeClick={handleNodeClick}
           onNodeDragStart={handleNodeDragStart}
           onNodeDragStop={handleNodeDragStop}
+          onDrop={handleLibraryDrop}
+          onDragOver={handleCanvasDragOver}
+          onMoveEnd={(_event, viewport) => snapViewport(viewport)}
           isValidConnection={isValidConnection}
           selectionMode={SelectionMode.Partial}
           selectionOnDrag={true}
@@ -340,7 +258,7 @@ export default function Canvas() {
           maxZoom={2}
           defaultViewport={{ x: 0, y: 0, zoom: 1 }}
           proOptions={{ hideAttribution: true }}
-          style={{ background: "var(--bg-canvas)" }}
+          style={reactFlowStyle}
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#d4d4d4" />
         </ReactFlow>

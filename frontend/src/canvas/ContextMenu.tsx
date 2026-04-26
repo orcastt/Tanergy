@@ -1,6 +1,6 @@
 import { Z } from "./OverlayLayer"
 
-interface MenuItem {
+export interface MenuItem {
   label: string
   shortcut?: string
   action: () => void

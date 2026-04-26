@@ -4,6 +4,7 @@ const MIGRATION_001: &str = include_str!("../../migrations/001_init.sql");
 const MIGRATION_002: &str = include_str!("../../migrations/002_api_keys_ext.sql");
 const MIGRATION_003: &str = include_str!("../../migrations/003_credits.sql");
 const MIGRATION_004: &str = include_str!("../../migrations/004_mock_mode.sql");
+const MIGRATION_005: &str = include_str!("../../migrations/005_library.sql");
 
 pub fn run(conn: &Connection) -> Result<(), String> {
     let current_version: i64 = conn
@@ -32,6 +33,11 @@ pub fn run(conn: &Connection) -> Result<(), String> {
     if current_version < 4 {
         conn.execute_batch(MIGRATION_004)
             .map_err(|e| format!("migration 004 failed: {}", e))?;
+    }
+
+    if current_version < 5 {
+        conn.execute_batch(MIGRATION_005)
+            .map_err(|e| format!("migration 005 failed: {}", e))?;
     }
 
     Ok(())

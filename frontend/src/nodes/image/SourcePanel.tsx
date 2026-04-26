@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react"
-import { invoke } from "@tauri-apps/api/core"
 import { useLayerStore } from "./layerStore"
+import { resolveLocalImageSrc } from "./localImageHtml"
+import { imageCache } from "./imageCache"
 
 interface ImageItem {
   id: string
@@ -14,33 +14,10 @@ interface Props {
   images: ImageItem[]
 }
 
-// Module-level cache: id → base64 data URL
-const imageCache = new Map<string, string>()
-
 function SourceThumb({ img, index }: { img: ImageItem; index: number }) {
-  const [src, setSrc] = useState<string | null>(() => imageCache.get(img.id) ?? null)
+  const src = imageCache.get(img.id) ?? resolveLocalImageSrc(img.file_path)
   const { addImageLayer } = useLayerStore()
-
-  useEffect(() => {
-    if (src) return
-    // If file_path is already a data URL, use it directly
-    if (img.file_path.startsWith("data:")) {
-      imageCache.set(img.id, img.file_path)
-      setSrc(img.file_path)
-      return
-    }
-    let cancelled = false
-    invoke<number[]>("read_asset_file", { filePath: img.file_path })
-      .then((bytes) => {
-        if (cancelled) return
-        const base64 = btoa(bytes.map((b) => String.fromCharCode(b)).join(""))
-        const dataUrl = `data:image/png;base64,${base64}`
-        imageCache.set(img.id, dataUrl)
-        setSrc(dataUrl)
-      })
-      .catch(() => {})
-    return () => { cancelled = true }
-  }, [img.file_path, img.id, src])
+  if (src) imageCache.set(img.id, src)
 
   // Click to add directly to canvas
   function handleClick() {
@@ -93,8 +70,6 @@ function SourceThumb({ img, index }: { img: ImageItem; index: number }) {
     </div>
   )
 }
-
-export { imageCache }
 
 export default function SourcePanel({ images }: Props) {
   return (

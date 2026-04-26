@@ -8,6 +8,7 @@ import { useOverlayStore } from "../store/overlayStore"
 import { useCreditsStore } from "../store/creditsStore"
 import { NODE_CREDIT_COSTS } from "../types/credits"
 import ModelSelector from "../components/ModelSelector"
+import { toStandardPurpleHtml } from "./image/standardPurpleHtml"
 
 interface HtmlFormatterData {
   nodeType: string
@@ -76,9 +77,10 @@ export default function HtmlFormatterNode({ data, id, selected }: NodeProps) {
     }))
     return [...sections, ...images]
   }, [textInputs, imageInputs, removeTextInput, removeImageInput])
+  const nodeWidth = dynamicInputs.length >= 8 ? 340 : 300
 
   function copyHtml() {
-    if (result?.html) navigator.clipboard.writeText(result.html).catch(() => {})
+    if (result?.html) navigator.clipboard.writeText(toStandardPurpleHtml(result.html)).catch(() => {})
   }
 
   if (!def) return null
@@ -93,6 +95,7 @@ export default function HtmlFormatterNode({ data, id, selected }: NodeProps) {
       status={status}
       selected={selected}
       nodeId={id}
+      width={nodeWidth}
       creditCost={isLoggedIn ? creditCost : undefined}
     >
       {/* Model + Style row */}

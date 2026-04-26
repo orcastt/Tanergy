@@ -1,9 +1,9 @@
 # TANGENT — Product Requirements Document
 
 **版本**: v0.9
-**日期**: 2026-04-25
+**日期**: 2026-04-26
 **状态**: Phase 2 商业化 — 核心能力完成，Html Editor / Admin 联调 / 部署收口中
-**上次更新**: Html Editor 作为默认终点；`preview_wechat` 降为 legacy；Admin 基础前端状态对齐
+**上次更新**: 个人素材库 MVP + `image_asset` 图片容器节点；Html Editor / Admin 状态继续收口
 
 ---
 
@@ -118,6 +118,7 @@
 - [ ] 小红书图文笔记 Skill
 - [x] Image Editor 图层画板（Slice 22 完成）— Procreate 风格多图层编辑器
 - [x] Html Editor 富文本编辑（Slice 23 初版完成，待手测验收）— Tiptap + 微信双栏预览 + AI 改写
+- [x] 个人素材库 MVP — 全局文章组/图片组、标签保存、拖拽到画布、`image_asset` 容器节点
 - [ ] 节点子画布 Draw/Comment
 - [ ] 可选云同步（增值功能，渐进式引入网页版）
 - [ ] 工作流模板分享
@@ -392,6 +393,7 @@
 | 节点 | 说明 | 输入 | 输出 | 用户 API Key |
 |------|------|------|------|------------|
 | image_list | 多模型图片生成（MiniMax/GPT/Gemini），双输入，动态输出端口，点击预览打开图层编辑器 | `image_plans` + `text` | `image_slot`×N（动态） | 用户 Key 或积分 |
+| image_asset | 个人图片素材容器，可缩放，双击进入 Image Editor | 无 | `image_slot` | 免费（本地） |
 | image_gallery | 可选：收集图片并展示 | `image_slot` | 展示 UI | 免费（本地） |
 
 #### 📄 输出类
@@ -1011,6 +1013,13 @@ Kling、Seedance、Vidu、Wan2.x、MiniMax、Tencent Speech、小红书 API
 - [ ] 图片在应用重启后仍可访问（本地 assets 目录）
 - [ ] 多图下载打包为 ZIP
 
+### Personal Library（Phase 2 MVP）
+- [ ] 左侧素材库在所有 workflow 中共享同一批文章/图片素材
+- [ ] Text 节点可保存文章素材，并支持新增标签、搜索、筛选
+- [ ] Image Editor 可导出当前画布到图片素材库
+- [ ] 文章素材拖入画布生成 `text_input`
+- [ ] 图片素材拖入画布生成可缩放 `image_asset`，并可进入 Image Editor
+
 ### 主题/语言
 - [ ] 亮色/暗色切换即时生效，重启后保持
 - [ ] 中文/英文切换即时生效，所有文案切换正确
@@ -1057,6 +1066,7 @@ Kling、Seedance、Vidu、Wan2.x、MiniMax、Tencent Speech、小红书 API
 | 19 | Settings 简化 + Skill 推荐卡片 | P2 | ✅ |
 | 22 | Image Editor 图层画板 | P1 | ✅ |
 | 23 | Html Editor 富文本编辑 | P1 | ✅ 初版完成，待手测验收 |
+| — | 个人素材库 + Image 容器 | P1 | ✅ MVP 完成，待手测验收 |
 | — | 管理后台 Web 应用 | P1 | 🔄 API + 基础前端完成，待联调验收 |
 | — | Provider 可插拔架构 | P1 | ✅ |
 | 20 | 网页端架构预留 | P3 | ⬜ |

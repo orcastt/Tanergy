@@ -8,8 +8,8 @@
 ## 当前阶段
 
 **阶段**: Phase 2 商业化开发 — 核心能力完成，Html Editor / 构建 / Admin 联调 / 部署收口中
-**核心目标**: 官方 API 默认路由 + 订阅制 + Html Editor 终点体验 + 管理后台
-**下一步**: 手测 Html Editor → 端到端测试 → Admin 联调 → 线上部署
+**核心目标**: 官方 API 默认路由 + 订阅制 + Html Editor 终点体验 + 个人素材库 + 管理后台
+**下一步**: 手测素材库保存/搜索/拖拽/Image Editor 导出 → 手测 Html Editor → 端到端测试 → Admin 联调 → 线上部署
 
 ---
 
@@ -53,6 +53,7 @@
 | `research` | AI（调研） | ✅ 完成 |
 | `outline_generator` | AI（大纲 + 图片计划） | ✅ 完成 |
 | `image_list` | AI（多模型图片生成） | ✅ 完成（双输入、数量/模型选择、动态输出端口） |
+| `image_asset` | 图片素材容器 | ✅ MVP 完成（素材库拖拽生成、可缩放、打开 Image Editor） |
 | `html_formatter` / Html Editor | 图文编排终点 | ✅ 初版完成（双击编辑、Tiptap、微信预览、AI 改写） |
 
 可选节点：`image_planner`、`image_gallery`。
@@ -117,6 +118,7 @@ WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/w
 | 20 | 网页端架构预留 | P3 | ⬜ | 仅规划，暂不开发 |
 | 22 | Image Editor 图层画板 | P1 | ✅ | Procreate 风格图层画板，导出/AI Edit/状态恢复 |
 | 23 | Html Editor 富文本编辑 | P1 | ✅ / 🔄 | 初版已开发并构建通过；待手测验收 |
+| — | 个人素材库 + Image 容器 | P1 | ✅ / 🔄 | 全局素材库 MVP 完成；待手测保存、搜索、拖拽和 Image Editor 导出 |
 | — | 管理后台 Web 应用 | P1 | 🔄 | Admin API + Provider Registry + 基础 Next.js 前端完成；待联调验收 |
 | — | Provider 可插拔架构 | P1 | ✅ | providers DB 表 + proxy_service DB-first 查询 |
 | — | 线上部署方案 | P0 | ⬜ | Docker/Nginx/SSL 配置已就绪，待实际部署 |
@@ -166,6 +168,16 @@ WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/w
 |------|------|
 | **默认终点统一** | 公众号主流程以 `html_formatter` / Html Editor 为终点，`preview_wechat` 降为 legacy |
 | **双击进入编辑器** | `HtmlFormatterNode` done 状态双击打开全屏 Html Editor |
+
+### Personal Library 素材库 — MVP（2026-04-26）
+
+| 能力 | 状态 |
+|------|------|
+| **全局素材库** | SQLite `library_items/tags`，跨 workflow 共享 |
+| **左侧侧拉面板** | 工作流页面左侧 Drawer，文章组/图片组切换、搜索、标签筛选 |
+| **保存入口** | Text 节点保存文字素材；Image Editor 导出当前画布到图片素材 |
+| **拖拽生成节点** | Text 素材生成 `text_input`；Image 素材生成 `image_asset` |
+| **图片容器** | `image_asset` 支持缩放、输出 `image_slot`、打开 Image Editor |
 | **Tiptap 富文本** | 支持标题、加粗、斜体、下划线、列表、引用、链接、分割线 |
 | **微信实时预览** | 右侧手机框实时渲染编辑后的 HTML |
 | **AI 改写** | 选中文本后调用 `ai_rewrite_html`，结果插入文章 |
@@ -247,9 +259,9 @@ WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/w
 
 核心：Tauri 桌面壳 + SQLite + React Flow 画布 + 12 个节点 + 执行引擎 + 主题切换 + AI Agent 面板。
 
-### Phase 2: Slice 13-19 + 22-23 + Admin（核心完成，收口中）
+### Phase 2: Slice 13-19 + 22-23 + Personal Library + Admin（核心完成，收口中）
 
-详见各 slice 的 dev-plans 文件；当前待手测 Html Editor、Admin 联调和生产部署。
+详见各 slice 的 dev-plans 文件；当前待手测 Personal Library、Html Editor、Admin 联调和生产部署。
 
 ---
 
@@ -288,6 +300,7 @@ WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/w
 ### P0 — 上线前必须
 
 - [ ] 端到端测试：完整 Skill 流程跑通（text_input → html_formatter / Html Editor）
+- [ ] Personal Library 手测：保存文字/图片、标签搜索、拖拽生成节点、Image Editor 导出
 - [ ] 购买云服务器 + 域名 + SSL 证书
 - [ ] macOS 代码签名：Apple Developer 账号
 - [ ] 配置生产环境 AI Provider API Keys

@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { invoke } from "@tauri-apps/api/core"
-import { rasterizeLayers } from "./LayerCanvas"
+import { rasterizeLayers } from "./layerCanvasRuntime"
 
 interface Props {
   onResult: (base64: string) => void

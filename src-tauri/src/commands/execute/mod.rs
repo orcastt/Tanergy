@@ -3,6 +3,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 mod media;
+mod html_formatter;
+mod legacy_text;
+mod mock;
 
 #[derive(Debug, Deserialize)]
 pub struct ExecutePayload {
@@ -58,7 +61,7 @@ pub async fn execute_node(
         .unwrap_or_else(|_| "false".to_string());
 
     if mock_mode == "true" {
-        return exec_mock(&payload).await;
+        return mock::exec_mock(&payload).await;
     }
 
     // AI nodes require login or own API key
@@ -74,11 +77,11 @@ pub async fn execute_node(
         "text_input" => exec_text_input(&payload),
         "research" => exec_research(&payload).await,
         "outline_generator" => exec_outline(&payload).await,
-        "writer" => exec_writer(&payload).await,
-        "reviewer" => exec_reviewer(&payload).await,
+        "writer" => legacy_text::exec_writer(&payload).await,
+        "reviewer" => legacy_text::exec_reviewer(&payload).await,
         "image_planner" => media::exec_image_planner(&payload).await,
         "image_gen" | "image_list" => media::exec_image_gen(&payload, &app_handle).await,
-        "html_formatter" => media::exec_html_formatter(&payload).await,
+        "html_formatter" => html_formatter::exec_html_formatter(&payload).await,
         _ => Err(format!("unsupported node type: {}", payload.node_type)),
     }
 }
@@ -290,168 +293,4 @@ fn inject_image_markers(sections: &mut Vec<Value>, image_plans: &Value) {
 fn extract_section_index(position: &str) -> Option<u32> {
     let digits: String = position.chars().filter(|c| c.is_ascii_digit()).collect();
     digits.parse::<u32>().ok()
-}
-
-async fn exec_writer(payload: &ExecutePayload) -> Result<ExecuteResult, String> {
-    let outline = payload.input_data
-        .get("outline")
-        .and_then(extract_text)
-        .or_else(|| payload.input_data.get("in").and_then(extract_text))
-        .unwrap_or("");
-
-    let research = payload.input_data
-        .get("research")
-        .and_then(extract_text)
-        .unwrap_or("");
-
-    let materials = payload.input_data
-        .get("materials")
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
-
-    let target_words = payload.node_data
-        .get("target_words")
-        .and_then(|v| v.as_u64())
-        .unwrap_or(3000);
-
-    let style = payload.node_data
-        .get("style")
-        .and_then(|v| v.as_str())
-        .unwrap_or("干货清单");
-
-    if outline.trim().is_empty() {
-        return Err("writer: empty outline".into());
-    }
-
-    let system = format!(
-        "你是一位资深公众号作者。请根据提供的大纲、调研资料和用户素材，撰写一篇完整的公众号长文。\n\n\
-         写作风格：{}\n\
-         目标字数：约{}字\n\n\
-         严格规则：\n\
-         - 用真实经历或具体场景引入，不用「在当今时代」「随着...的发展」等套话开头\n\
-         - 所有数据和案例必须来自调研资料或用户素材，不得编造\n\
-         - 禁止使用：综上所述、值得注意的是、不缺...缺的是...、毋庸置疑\n\
-         - 超过30字的长句必须拆短\n\
-         - 每段不超过5行（手机屏幕友好）\n\
-         - 口语化表达，避免书面词汇\n\
-         - 输出 Markdown 格式，用 ## 作为章节标题",
-        style, target_words
-    );
-
-    let mut user_parts = vec![format!("大纲：\n{}", outline)];
-    if !research.is_empty() {
-        user_parts.push(format!("\n\n调研资料：\n{}", research));
-    }
-    if !materials.is_empty() {
-        user_parts.push(format!("\n\n用户提供的真实素材：\n{}", materials));
-    }
-    let user_msg = user_parts.join("");
-
-    let messages = vec![
-        ChatMessage { role: "system".into(), content: system },
-        ChatMessage { role: "user".into(), content: user_msg },
-    ];
-
-    let completion = ai_client::chat_completion(&get_text_model(&payload.node_data), "", messages, 8192, Some(0.7)).await?;
-
-    Ok(ExecuteResult {
-        output: serde_json::json!({ "text": completion.text }),
-        status: "done".into(),
-    })
-}
-
-async fn exec_reviewer(payload: &ExecutePayload) -> Result<ExecuteResult, String> {
-    let draft = payload.input_data
-        .get("in")
-        .and_then(extract_text)
-        .or_else(|| payload.input_data.get("draft").and_then(extract_text))
-        .unwrap_or("");
-
-    let research = payload.input_data
-        .get("research")
-        .and_then(extract_text)
-        .unwrap_or("");
-
-    let model = get_text_model(&payload.node_data);
-
-    if draft.trim().is_empty() {
-        return Err("reviewer: empty draft".into());
-    }
-
-    let pass1_system = "你是一个严谨的事实核查编辑。核对文章中的所有数据、时间、产品名称是否与提供的调研资料一致。\
-                        如果有不一致或无法验证的内容，进行修正或标注。输出修正后的完整文章（Markdown），不要加额外注释。";
-    let pass1_msg = format!("调研资料：\n{}\n\n待核查文章：\n{}", research, draft);
-
-    let pass1 = ai_client::chat_completion(
-        &model, "",
-        vec![
-            ChatMessage { role: "system".into(), content: pass1_system.into() },
-            ChatMessage { role: "user".into(), content: pass1_msg },
-        ],
-        8192, Some(0.3),
-    ).await?;
-
-    let pass2_system = "你是一个反AI洗稿编辑。将文章改写得更像人写的：\n\
-                        - 删除所有套话和模板化表达\n\
-                        - 拆解排比句，让句式长短错落\n\
-                        - 加入个人态度和真实感受\n\
-                        - 口语化，像在跟朋友聊天\n\
-                        - 风格参考：自然、直接、有态度\n\
-                        输出改写后的完整文章（Markdown）。";
-    let pass2_msg = format!("请对以下文章进行反AI洗稿：\n{}", pass1.text);
-
-    let pass2 = ai_client::chat_completion(
-        &model, "",
-        vec![
-            ChatMessage { role: "system".into(), content: pass2_system.into() },
-            ChatMessage { role: "user".into(), content: pass2_msg },
-        ],
-        8192, Some(0.7),
-    ).await?;
-
-    let pass3_system = "你是一个排版编辑。优化文章的阅读节奏和格式：\n\
-                        - 拆分超过30字的长句\n\
-                        - 每段不超过5行\n\
-                        - 优化标点符号使用\n\
-                        - 确保段落之间有呼吸感\n\
-                        - 保持 Markdown 格式整洁\n\
-                        输出最终成稿（Markdown）。";
-    let pass3_msg = format!("请优化以下文章的节奏和格式：\n{}", pass2.text);
-
-    let pass3 = ai_client::chat_completion(
-        &model, "",
-        vec![
-            ChatMessage { role: "system".into(), content: pass3_system.into() },
-            ChatMessage { role: "user".into(), content: pass3_msg },
-        ],
-        8192, Some(0.3),
-    ).await?;
-
-    Ok(ExecuteResult {
-        output: serde_json::json!({ "text": pass3.text }),
-        status: "done".into(),
-    })
-}
-
-async fn exec_mock(payload: &ExecutePayload) -> Result<ExecuteResult, String> {
-    use crate::test::mock_data;
-    // Simulate network delay
-    std::thread::sleep(std::time::Duration::from_millis(300));
-
-    let output = match payload.node_type.as_str() {
-        "text_input" => mock_data::mock_text_input(&payload.node_data, &payload.input_data),
-        "research" => mock_data::mock_research(&payload.input_data),
-        "outline_generator" => mock_data::mock_outline(&payload.input_data),
-        "writer" => mock_data::mock_writer(&payload.input_data),
-        "reviewer" => mock_data::mock_reviewer(&payload.input_data),
-        "image_planner" => mock_data::mock_image_planner(&payload.input_data),
-        "image_gen" | "image_list" => mock_data::mock_image_list(&payload.input_data),
-        "html_formatter" => mock_data::mock_html_formatter(&payload.input_data),
-        _ => serde_json::json!({ "ok": true }),
-    };
-
-    Ok(ExecuteResult {
-        output,
-        status: "done".into(),
-    })
 }

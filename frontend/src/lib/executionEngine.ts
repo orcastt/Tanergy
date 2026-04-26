@@ -92,6 +92,18 @@ async function executeNode(node: Node, inputData: Record<string, unknown>, optio
   }
 
   // image_gallery: aggregate images from all connected upstream nodes
+  if (type === "image_asset") {
+    const image = {
+      id: node.id,
+      plan_id: nodeData.libraryItemId ?? node.id,
+      file_path: nodeData.filePath ?? "",
+      description: nodeData.description ?? nodeData.title ?? "Image",
+      prompt: nodeData.title ?? "Library image",
+      position: "",
+    }
+    return { images: [image], image1: image }
+  }
+
   if (type === "image_gallery") {
     const allImages: unknown[] = []
     for (const key of Object.keys(inputData)) {

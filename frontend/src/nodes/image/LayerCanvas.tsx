@@ -1,101 +1,8 @@
 import { useRef, useEffect, useCallback, useState } from "react"
-import { useLayerStore, type Layer, GRID_SIZE } from "./layerStore"
-import { imageCache } from "./SourcePanel"
-
-let _canvasEl: HTMLCanvasElement | null = null
-export function getCanvasElement(): HTMLCanvasElement | null { return _canvasEl }
-let _canvasSize = { w: 800, h: 600 }
-export function getCanvasSize() { return _canvasSize }
-let _imageCacheRef: React.RefObject<Map<string, HTMLImageElement>> | null = null
-
-/** Read what's currently displayed on the canvas element (with grid/selection). */
-export function captureCanvasDisplay(): string | null {
-  const el = getCanvasElement()
-  if (!el || el.width === 0 || el.height === 0) return null
-  try {
-    return el.toDataURL("image/png")
-  } catch {
-    return null
-  }
-}
-
-/** Render only visible layers to an offscreen canvas (no grid, no selection). */
-export function rasterizeLayers(): string | null {
-  const { w, h } = _canvasSize
-  if (w <= 0 || h <= 0) return null
-  const offscreen = document.createElement("canvas")
-  offscreen.width = w
-  offscreen.height = h
-  const ctx = offscreen.getContext("2d")
-  if (!ctx) return null
-
-  const { layers, activeLayerId, currentStroke } = useLayerStore.getState()
-  const imgCache = _imageCacheRef?.current
-
-  // White background
-  ctx.fillStyle = "#ffffff"
-  ctx.fillRect(0, 0, w, h)
-
-  // Layers only — no grid, no selection indicators
-  for (const layer of layers) {
-    if (!layer.visible) continue
-    ctx.save()
-    ctx.globalAlpha = layer.opacity
-    if (layer.imageSrc) {
-      const img = imgCache?.get(layer.imageSrc)
-      if (img) {
-        const scale = Math.min(layer.imgW / img.width, layer.imgH / img.height)
-        const drawW = img.width * scale
-        const drawH = img.height * scale
-        const drawX = layer.imgX + (layer.imgW - drawW) / 2
-        const drawY = layer.imgY + (layer.imgH - drawH) / 2
-        ctx.drawImage(img, drawX, drawY, drawW, drawH)
-      }
-    }
-    for (const stroke of layer.strokes) drawStroke(ctx, stroke)
-    if (layer.id === activeLayerId && currentStroke) drawStroke(ctx, currentStroke)
-    ctx.restore()
-  }
-
-  return offscreen.toDataURL("image/png")
-}
-
-function drawStroke(ctx: CanvasRenderingContext2D, stroke: { points: { x: number; y: number }[]; color: string; width: number; eraser: boolean }) {
-  if (stroke.points.length < 2) return
-  ctx.beginPath()
-  ctx.strokeStyle = stroke.color
-  ctx.lineWidth = stroke.width
-  ctx.lineCap = "round"
-  ctx.lineJoin = "round"
-  ctx.globalCompositeOperation = stroke.eraser ? "destination-out" : "source-over"
-  ctx.moveTo(stroke.points[0].x, stroke.points[0].y)
-  for (let i = 1; i < stroke.points.length; i++) ctx.lineTo(stroke.points[i].x, stroke.points[i].y)
-  ctx.stroke()
-  ctx.globalCompositeOperation = "source-over"
-}
-
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onload = () => resolve(img)
-    img.onerror = reject
-    img.src = src
-  })
-}
-
-// Hit test: check if point is inside a layer's image rect
-function hitTestLayer(layer: Layer, x: number, y: number): boolean {
-  if (!layer.imageSrc) return false
-  return x >= layer.imgX && x <= layer.imgX + layer.imgW && y >= layer.imgY && y <= layer.imgY + layer.imgH
-}
-
-// Check if point is on resize handle (bottom-right corner)
-function hitTestResizeHandle(layer: Layer, x: number, y: number): boolean {
-  if (!layer.imageSrc) return false
-  const hx = layer.imgX + layer.imgW
-  const hy = layer.imgY + layer.imgH
-  return Math.abs(x - hx) < 10 && Math.abs(y - hy) < 10
-}
+import { useLayerStore, GRID_SIZE } from "./layerStore"
+import { imageCache } from "./imageCache"
+import { setCanvasElement, setCanvasSize as setRuntimeCanvasSize, setImageCacheRef } from "./layerCanvasRuntime"
+import { drawStroke, hitTestLayer, hitTestResizeHandle, loadCanvasImage } from "./layerCanvasHelpers"
 
 export default function LayerCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -108,13 +15,16 @@ export default function LayerCanvas() {
     startDrag, updateDrag, endDrag,
   } = useLayerStore()
   const imageCacheRef = useRef<Map<string, HTMLImageElement>>(new Map())
-  _imageCacheRef = imageCacheRef
+
+  useEffect(() => {
+    setImageCacheRef(imageCacheRef)
+  }, [])
 
   // Track natural dimensions of loaded images
   useEffect(() => {
     for (const layer of layers) {
       if (layer.imageSrc && !imageCacheRef.current.has(layer.imageSrc)) {
-        loadImage(layer.imageSrc).then((img) => {
+        loadCanvasImage(layer.imageSrc).then((img) => {
           imageCacheRef.current.set(layer.imageSrc!, img)
           // Update natural dimensions
           if (layer.naturalW === 0) {
@@ -129,8 +39,8 @@ export default function LayerCanvas() {
 
   // Sync refs
   useEffect(() => {
-    _canvasEl = canvasRef.current
-    return () => { _canvasEl = null }
+    setCanvasElement(canvasRef.current)
+    return () => { setCanvasElement(null) }
   })
 
   // Responsive
@@ -142,7 +52,7 @@ export default function LayerCanvas() {
       if (width > 0 && height > 0) {
         const size = { w: Math.floor(width), h: Math.floor(height) }
         setCanvasSize(size)
-        _canvasSize = size
+        setRuntimeCanvasSize(size)
       }
     })
     observer.observe(container)
@@ -235,7 +145,11 @@ export default function LayerCanvas() {
     const load = async () => {
       for (const layer of layers) {
         if (layer.imageSrc && !imageCacheRef.current.has(layer.imageSrc)) {
-          try { imageCacheRef.current.set(layer.imageSrc, await loadImage(layer.imageSrc)) } catch {}
+          try {
+            imageCacheRef.current.set(layer.imageSrc, await loadCanvasImage(layer.imageSrc))
+          } catch {
+            // Ignore failed image loads; source thumbnails can still be retried.
+          }
         }
       }
       render()
@@ -297,7 +211,7 @@ export default function LayerCanvas() {
     if (tool === "draw") addPoint(pos.x, pos.y)
   }
 
-  function handleUp(_e?: React.MouseEvent | React.TouchEvent) {
+  function handleUp() {
     const { dragState } = useLayerStore.getState()
     if (dragState) { endDrag(); return }
     if (tool === "draw") endStroke()

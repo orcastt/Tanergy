@@ -1,119 +1,171 @@
-import { useCallback, useRef, useState, useEffect } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import type { Editor } from "@tiptap/core"
 import { useEditor, EditorContent } from "@tiptap/react"
+import { DragHandle } from "@tiptap/extension-drag-handle-react"
 import StarterKit from "@tiptap/starter-kit"
 import Underline from "@tiptap/extension-underline"
 import Link from "@tiptap/extension-link"
 import Placeholder from "@tiptap/extension-placeholder"
-
+import Highlight from "@tiptap/extension-highlight"
+import { TextStyle } from "@tiptap/extension-text-style"
+import Color from "@tiptap/extension-color"
+import TextAlign from "@tiptap/extension-text-align"
+import { Table } from "@tiptap/extension-table"
+import TableRow from "@tiptap/extension-table-row"
+import TableCell from "@tiptap/extension-table-cell"
+import TableHeader from "@tiptap/extension-table-header"
+import { hydrateLocalImageHtml } from "./localImageHtml"
+import TiptapToolbar from "./TiptapToolbar"
+import { FloatingToolbar } from "./TiptapMenus"
+import { BlockCommandMenu, SlashCommandMenu } from "./TiptapCommandMenus"
+import { getTiptapEditorStyles } from "./tiptapEditorStyles"
+import {
+  DEFAULT_FONT_SIZE,
+  FontSize,
+  LocalImage,
+  SLASH_COMMANDS,
+  normalizeRewriteHtml,
+  type AlignType,
+  type BlockMenuState,
+  type BlockType,
+  type SlashMenuState,
+  type ToolbarMenu,
+} from "./tiptapEditorConfig"
 interface TiptapEditorProps {
   content: string
   onUpdate: (html: string) => void
-  onAiRewrite: (selectedText: string) => void
+  onAiRewrite: (selectedText: string, insertRewrittenHtml: (rewrittenHtml: string) => void) => void
 }
-
-type BlockType = "paragraph" | "h1" | "h2" | "h3" | "blockquote"
-
-const BLOCK_LABELS: Record<BlockType, string> = {
-  paragraph: "正文",
-  h1: "标题1",
-  h2: "标题2",
-  h3: "标题3",
-  blockquote: "引用",
-}
-
-function ToolbarButton({ onClick, active, title, children }: {
-  onClick: () => void
-  active?: boolean
-  title: string
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      onMouseDown={(e) => { e.preventDefault(); onClick() }}
-      title={title}
-      style={{
-        width: 28, height: 28, borderRadius: 4, border: "none",
-        background: active ? "#f0e6ff" : "transparent",
-        color: active ? "#7C3AED" : "#555",
-        cursor: "pointer", display: "flex",
-        alignItems: "center", justifyContent: "center",
-        fontSize: "13px", fontWeight: active ? 600 : 400,
-      }}
-    >
-      {children}
-    </button>
-  )
-}
-
-function FloatingToolbar({ editor }: { editor: NonNullable<ReturnType<typeof useEditor>> }) {
-  const [visible, setVisible] = useState(false)
-  const [position, setPosition] = useState({ top: 0, left: 0 })
-
-  useEffect(() => {
-    const update = () => {
-      const { from, to } = editor.state.selection
-      if (from === to) { setVisible(false); return }
-      const sel = window.getSelection()
-      if (!sel || sel.rangeCount === 0) { setVisible(false); return }
-      const range = sel.getRangeAt(0)
-      const rect = range.getBoundingClientRect()
-      setPosition({ top: rect.top - 60, left: rect.left + rect.width / 2 })
-      setVisible(true)
-    }
-    editor.on("selectionUpdate", update)
-    return () => { editor.off("selectionUpdate", update) }
-  }, [editor])
-
-  if (!visible) return null
-
-  return (
-    <div
-      style={{
-        position: "fixed",
-        top: position.top,
-        left: position.left,
-        transform: "translateX(-50%)",
-        display: "flex", gap: 2, padding: "0.25rem 0.375rem",
-        background: "#1a1a1a", borderRadius: 8,
-        boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-        zIndex: 9999,
-      }}
-    >
-      <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive("bold")} title="加粗"><b style={{ color: "#fff" }}>B</b></ToolbarButton>
-      <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive("italic")} title="斜体"><i style={{ color: "#fff" }}>I</i></ToolbarButton>
-      <ToolbarButton onClick={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive("underline")} title="下划线"><u style={{ color: "#fff" }}>U</u></ToolbarButton>
-      <ToolbarButton onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive("strike")} title="删除线"><s style={{ color: "#fff" }}>S</s></ToolbarButton>
-      <div style={{ width: 1, height: 20, background: "#555", margin: "0 2px" }} />
-      <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} active={editor.isActive("heading", { level: 1 })} title="标题1"><span style={{ color: "#fff", fontSize: 11, fontWeight: 700 }}>H1</span></ToolbarButton>
-      <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive("heading", { level: 2 })} title="标题2"><span style={{ color: "#fff", fontSize: 11, fontWeight: 700 }}>H2</span></ToolbarButton>
-      <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} active={editor.isActive("heading", { level: 3 })} title="标题3"><span style={{ color: "#fff", fontSize: 11, fontWeight: 700 }}>H3</span></ToolbarButton>
-      <ToolbarButton onClick={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive("blockquote")} title="引用"><span style={{ color: "#fff" }}>"</span></ToolbarButton>
-    </div>
-  )
-}
-
 export default function TiptapEditor({ content, onUpdate, onAiRewrite }: TiptapEditorProps) {
   const [blockType, setBlockType] = useState<BlockType>("paragraph")
-  const toolbarRef = useRef<HTMLDivElement>(null)
+  const [fontSize, setFontSize] = useState(DEFAULT_FONT_SIZE)
+  const [toolbarMenu, setToolbarMenu] = useState<ToolbarMenu>(null)
+  const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null)
+  const [slashIndex, setSlashIndex] = useState(0)
+  const [blockMenu, setBlockMenu] = useState<BlockMenuState | null>(null)
+  const [activeBlockPos, setActiveBlockPos] = useState<number | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const hydratedContent = useMemo(() => hydrateLocalImageHtml(content), [content])
+  const updateBlockType = useCallback((editorInstance: Editor) => {
+    if (editorInstance.isActive("heading", { level: 1 })) setBlockType("h1")
+    else if (editorInstance.isActive("heading", { level: 2 })) setBlockType("h2")
+    else if (editorInstance.isActive("heading", { level: 3 })) setBlockType("h3")
+    else if (editorInstance.isActive("bulletList")) setBlockType("bulletList")
+    else if (editorInstance.isActive("orderedList")) setBlockType("orderedList")
+    else if (editorInstance.isActive("codeBlock")) setBlockType("codeBlock")
+    else if (editorInstance.isActive("blockquote")) setBlockType("blockquote")
+    else setBlockType("paragraph")
 
+    const currentFontSize = editorInstance.getAttributes("textStyle").fontSize as string | undefined
+    if (currentFontSize) {
+      const parsed = Number.parseInt(currentFontSize, 10)
+      if (Number.isFinite(parsed)) setFontSize(parsed)
+    }
+  }, [])
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
       Underline,
+      TextStyle,
+      FontSize,
+      Color.configure({ types: ["textStyle"] }),
+      Highlight.configure({ multicolor: true }),
+      TextAlign.configure({ types: ["heading", "paragraph"] }),
+      LocalImage.configure({ inline: false, allowBase64: true }),
+      Table.configure({ resizable: true }),
+      TableRow,
+      TableHeader,
+      TableCell,
       Link.configure({ openOnClick: false }),
-      Placeholder.configure({ placeholder: "输入文章内容..." }),
+      Placeholder.configure({
+        placeholder: ({ node }) => node.type.name === "heading" ? "请输入标题" : "输入 “/” 符号，快速添加不同形式内容",
+      }),
     ],
-    content,
-    onUpdate: ({ editor: e }) => { onUpdate(e.getHTML()) },
-    onSelectionUpdate: ({ editor: e }) => {
-      if (e.isActive("heading", { level: 1 })) setBlockType("h1")
-      else if (e.isActive("heading", { level: 2 })) setBlockType("h2")
-      else if (e.isActive("heading", { level: 3 })) setBlockType("h3")
-      else if (e.isActive("blockquote")) setBlockType("blockquote")
-      else setBlockType("paragraph")
+    content: hydratedContent,
+    editorProps: {
+      attributes: { class: "notion-editor-content" },
+      handleKeyDown: (_view, event) => {
+        if (slashMenu && handleSlashMenuKey(event)) return true
+        if (event.key === "/") requestAnimationFrame(() => updateSlashMenu())
+        return false
+      },
+    },
+    onUpdate: ({ editor: editorInstance }) => {
+      onUpdate(editorInstance.getHTML())
+      updateSlashMenu(editorInstance)
+    },
+    onSelectionUpdate: ({ editor: editorInstance }) => {
+      updateBlockType(editorInstance)
+      updateSlashMenu(editorInstance)
     },
   })
-
+  const updateSlashMenu = useCallback((editorInstance = editor) => {
+    if (!editorInstance) return
+    const { from, to } = editorInstance.state.selection
+    if (from !== to || from < 2) { setSlashMenu(null); return }
+    const previous = editorInstance.state.doc.textBetween(from - 1, from, "\n")
+    if (previous !== "/") { setSlashMenu(null); return }
+    const coords = editorInstance.view.coordsAtPos(from)
+    setSlashMenu({ top: coords.bottom + 8, left: coords.left, from: from - 1, to: from })
+    setSlashIndex(0)
+  }, [editor])
+  const deleteActiveSlash = useCallback(() => {
+    if (!editor || !slashMenu) return false
+    editor.chain().focus().deleteRange({ from: slashMenu.from, to: slashMenu.to }).run()
+    setSlashMenu(null)
+    return true
+  }, [editor, slashMenu])
+  const applyBlockType = useCallback((type: BlockType) => {
+    if (!editor) return
+    setBlockType(type)
+    const chain = editor.chain().focus()
+    if (type === "paragraph") chain.setParagraph().run()
+    else if (type === "h1") chain.toggleHeading({ level: 1 }).run()
+    else if (type === "h2") chain.toggleHeading({ level: 2 }).run()
+    else if (type === "h3") chain.toggleHeading({ level: 3 }).run()
+    else if (type === "bulletList") chain.toggleBulletList().run()
+    else if (type === "orderedList") chain.toggleOrderedList().run()
+    else if (type === "codeBlock") chain.toggleCodeBlock().run()
+    else if (type === "blockquote") chain.toggleBlockquote().run()
+  }, [editor])
+  const runSlashCommand = useCallback((id: string) => {
+    if (!editor) return
+    deleteActiveSlash()
+    if (id === "paragraph") editor.chain().focus().setParagraph().run()
+    else if (id === "h1") editor.chain().focus().toggleHeading({ level: 1 }).run()
+    else if (id === "h2") editor.chain().focus().toggleHeading({ level: 2 }).run()
+    else if (id === "h3") editor.chain().focus().toggleHeading({ level: 3 }).run()
+    else if (id === "bulletList") editor.chain().focus().toggleBulletList().run()
+    else if (id === "orderedList") editor.chain().focus().toggleOrderedList().run()
+    else if (id === "codeBlock") editor.chain().focus().toggleCodeBlock().run()
+    else if (id === "blockquote") editor.chain().focus().toggleBlockquote().run()
+    else if (id === "table") editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
+    else if (id === "image") fileInputRef.current?.click()
+    else if (id === "emoji") editor.chain().focus().insertContent("😊").run()
+  }, [deleteActiveSlash, editor])
+  const handleSlashMenuKey = useCallback((event: KeyboardEvent) => {
+    if (event.key === "ArrowDown") {
+      event.preventDefault()
+      setSlashIndex((value) => (value + 1) % SLASH_COMMANDS.length)
+      return true
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault()
+      setSlashIndex((value) => (value - 1 + SLASH_COMMANDS.length) % SLASH_COMMANDS.length)
+      return true
+    }
+    if (event.key === "Enter") {
+      event.preventDefault()
+      runSlashCommand(SLASH_COMMANDS[slashIndex].id)
+      return true
+    }
+    if (event.key === "Escape") {
+      event.preventDefault()
+      setSlashMenu(null)
+      return true
+    }
+    return false
+  }, [runSlashCommand, slashIndex])
   const setLink = useCallback(() => {
     if (!editor) return
     const prev = editor.getAttributes("link").href as string | undefined
@@ -122,101 +174,116 @@ export default function TiptapEditor({ content, onUpdate, onAiRewrite }: TiptapE
     if (url === "") { editor.chain().focus().unsetLink().run(); return }
     editor.chain().focus().setLink({ href: url }).run()
   }, [editor])
+  const insertImageFromUrl = useCallback(() => {
+    if (!editor) return
+    const url = window.prompt("输入图片 URL")
+    if (url) editor.chain().focus().setImage({ src: url }).run()
+  }, [editor])
+  const insertImageFile = useCallback((file: File) => {
+    if (!editor) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      const src = typeof reader.result === "string" ? reader.result : ""
+      if (src) editor.chain().focus().setImage({ src, alt: file.name }).run()
+    }
+    reader.readAsDataURL(file)
+  }, [editor])
+  const getRewriteTarget = useCallback(() => {
+    if (!editor) return { selectedText: "", insertRewrittenHtml: () => {} }
+    const { from, to, $to } = editor.state.selection
+    const selectedText = from === to ? "" : editor.state.doc.textBetween(from, to, " ")
+    const insertAt = $to.depth >= 1 ? $to.after(1) : to
+    const topLevelText = $to.depth >= 1 ? editor.state.doc.nodeAt($to.before(1))?.textContent ?? "" : ""
+    return {
+      selectedText: selectedText || topLevelText,
+      insertRewrittenHtml: (rewrittenHtml: string) => {
+        const normalizedHtml = normalizeRewriteHtml(rewrittenHtml)
+        if (normalizedHtml) editor.chain().focus().insertContentAt(insertAt, normalizedHtml).run()
+      },
+    }
+  }, [editor])
+  const handleAiRewriteSelected = useCallback(() => {
+    const target = getRewriteTarget()
+    onAiRewrite(target.selectedText, target.insertRewrittenHtml)
+  }, [getRewriteTarget, onAiRewrite])
+  const setTextAlign = useCallback((align: AlignType) => {
+    if (editor) editor.chain().focus().setTextAlign(align).run()
+  }, [editor])
+  const insertParagraphAfterBlock = useCallback(() => {
+    if (!editor || activeBlockPos == null) return
+    const node = editor.state.doc.nodeAt(activeBlockPos)
+    const insertAt = node ? activeBlockPos + node.nodeSize : editor.state.selection.to
+    editor.chain().focus().insertContentAt(insertAt, { type: "paragraph" }).setTextSelection(insertAt + 1).run()
+  }, [activeBlockPos, editor])
+  const focusBlockAt = useCallback((pos: number) => {
+    if (!editor) return
+    const node = editor.state.doc.nodeAt(pos)
+    editor.chain().focus().setTextSelection(node?.isTextblock ? pos + 1 : pos).run()
+  }, [editor])
+  const deleteBlockAt = useCallback((pos: number) => {
+    if (!editor) return
+    const node = editor.state.doc.nodeAt(pos)
+    if (!node) return
+    editor.chain().focus().deleteRange({ from: pos, to: pos + node.nodeSize }).run()
+    setBlockMenu(null)
+  }, [editor])
 
   useEffect(() => {
-    if (!editor || editor.getHTML() === content) return
-    editor.commands.setContent(content, { emitUpdate: false })
-  }, [content, editor])
-
-  const getSelectedText = useCallback(() => {
-    if (!editor) return ""
-    const { from, to } = editor.state.selection
-    return editor.state.doc.textBetween(from, to, " ")
-  }, [editor])
+    if (!editor || editor.getHTML() === hydratedContent) return
+    editor.commands.setContent(hydratedContent, { emitUpdate: false })
+  }, [hydratedContent, editor])
 
   if (!editor) return null
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
-      <div
-        ref={toolbarRef}
-        style={{
-          display: "flex", alignItems: "center", gap: 2,
-          padding: "0.375rem 0.75rem",
-          borderBottom: "1px solid var(--border-color)",
-          background: "#fff",
-          flexShrink: 0,
-          overflowX: "auto",
-        }}
-      >
-        <select
-          value={blockType}
-          onChange={(e) => {
-            const v = e.target.value as BlockType
-            setBlockType(v)
-            if (v === "paragraph") editor.chain().focus().setParagraph().run()
-            else if (v === "h1") editor.chain().focus().toggleHeading({ level: 1 }).run()
-            else if (v === "h2") editor.chain().focus().toggleHeading({ level: 2 }).run()
-            else if (v === "h3") editor.chain().focus().toggleHeading({ level: 3 }).run()
-            else if (v === "blockquote") editor.chain().focus().toggleBlockquote().run()
-          }}
-          style={{ height: 28, borderRadius: 4, border: "1px solid #e3e2e2", padding: "0 0.25rem", fontSize: "12px", cursor: "pointer" }}
-        >
-          {Object.entries(BLOCK_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-        </select>
-
-        <div style={{ width: 1, height: 20, background: "var(--border-color)", margin: "0 4px" }} />
-
-        <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive("bold")} title="加粗 (Ctrl+B)"><b>B</b></ToolbarButton>
-        <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive("italic")} title="斜体 (Ctrl+I)"><i>I</i></ToolbarButton>
-        <ToolbarButton onClick={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive("underline")} title="下划线 (Ctrl+U)"><u>U</u></ToolbarButton>
-        <ToolbarButton onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive("strike")} title="删除线"><s>S</s></ToolbarButton>
-
-        <div style={{ width: 1, height: 20, background: "var(--border-color)", margin: "0 4px" }} />
-
-        <ToolbarButton onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive("bulletList")} title="无序列表">•</ToolbarButton>
-        <ToolbarButton onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive("orderedList")} title="有序列表">1.</ToolbarButton>
-        <ToolbarButton onClick={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive("blockquote")} title="引用">"</ToolbarButton>
-        <ToolbarButton onClick={() => editor.chain().focus().setHorizontalRule().run()} active={false} title="分隔线">—</ToolbarButton>
-        <ToolbarButton onClick={setLink} active={editor.isActive("link")} title="链接">🔗</ToolbarButton>
-
-        <div style={{ width: 1, height: 20, background: "var(--border-color)", margin: "0 4px" }} />
-
-        <button
-          onMouseDown={(e) => { e.preventDefault(); onAiRewrite(getSelectedText()) }}
-          style={{
-            height: 28, padding: "0 0.625rem", borderRadius: 4, border: "none",
-            background: "#6349EA", color: "#fff", fontSize: "12px", fontWeight: 600,
-            cursor: "pointer", display: "flex", alignItems: "center", gap: "0.25rem",
-          }}
-        >
-          <span style={{ fontSize: "14px" }}>✨</span>
-          AI 改写
-        </button>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", background: "#fff" }}>
+      <input ref={fileInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => {
+        const file = event.target.files?.[0]
+        if (file) insertImageFile(file)
+        event.target.value = ""
+      }} />
+      <TiptapToolbar
+        editor={editor}
+        blockType={blockType}
+        fontSize={fontSize}
+        toolbarMenu={toolbarMenu}
+        fileInputRef={fileInputRef}
+        setFontSize={setFontSize}
+        setToolbarMenu={setToolbarMenu}
+        applyBlockType={applyBlockType}
+        runSlashCommand={runSlashCommand}
+        setTextAlign={setTextAlign}
+        setLink={setLink}
+        insertImageFromUrl={insertImageFromUrl}
+        onAiRewriteSelected={handleAiRewriteSelected}
+      />
+      <div style={{ flex: 1, overflow: "auto", padding: "2.25rem 3rem", position: "relative" }}>
+        <EditorContent editor={editor} />
+        <DragHandle editor={editor} nested onNodeChange={({ pos }) => { setActiveBlockPos(pos); setBlockMenu(null) }}>
+          <div className="notion-block-handle">
+            <button className="notion-block-add" title="点击在下方添加块" onMouseDown={(event) => { event.preventDefault(); event.stopPropagation(); insertParagraphAfterBlock() }}>＋</button>
+            <button className="notion-block-grip" title="拖拽移动 / 点击查看选项" onClick={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              if (activeBlockPos != null) {
+                const rect = event.currentTarget.getBoundingClientRect()
+                setBlockMenu({ top: rect.bottom + 8, left: rect.left, pos: activeBlockPos })
+              }
+            }}>⠿</button>
+          </div>
+        </DragHandle>
+        {slashMenu && <SlashCommandMenu slashMenu={slashMenu} slashIndex={slashIndex} runSlashCommand={runSlashCommand} />}
+        {blockMenu && (
+          <BlockCommandMenu
+            blockMenu={blockMenu}
+            focusBlockAt={focusBlockAt}
+            applyBlockType={applyBlockType}
+            deleteBlockAt={deleteBlockAt}
+            closeBlockMenu={() => setBlockMenu(null)}
+          />
+        )}
+        <style>{getTiptapEditorStyles()}</style>
       </div>
-
-      <div style={{ flex: 1, overflow: "auto", padding: "1rem" }}>
-        <EditorContent editor={editor} style={{ height: "100%" }} />
-        <style>{`
-          .tiptap { height: 100%; outline: none; }
-          .tiptap p { margin: 0 0 0.75em 0; }
-          .tiptap h1 { font-size: 1.5em; font-weight: 700; margin: 1em 0 0.5em; }
-          .tiptap h2 { font-size: 1.25em; font-weight: 600; margin: 0.9em 0 0.4em; }
-          .tiptap h3 { font-size: 1.1em; font-weight: 600; margin: 0.8em 0 0.3em; }
-          .tiptap blockquote { border-left: 3px solid #5965AF; padding-left: 1em; color: #666; margin: 1em 0; }
-          .tiptap ul, .tiptap ol { padding-left: 1.5em; margin: 0.5em 0; }
-          .tiptap hr { border: none; border-top: 1px solid #e3e2e2; margin: 1.5em 0; }
-          .tiptap a { color: #5965AF; text-decoration: underline; }
-          .tiptap p.is-editor-empty:first-child::before {
-            content: attr(data-placeholder);
-            color: #aaa;
-            float: left;
-            height: 0;
-            pointer-events: none;
-          }
-        `}</style>
-      </div>
-
       <FloatingToolbar editor={editor} />
     </div>
   )

@@ -9,6 +9,7 @@ import Canvas from "../canvas/Canvas"
 import { useState } from "react"
 import { save } from "@tauri-apps/plugin-dialog"
 import { writeFile } from "@tauri-apps/plugin-fs"
+import LibraryDrawer from "../library/LibraryDrawer"
 
 export default function CanvasPage() {
   return (
@@ -63,7 +64,11 @@ function CanvasPageInner() {
   function finishEditName() {
     if (nameDraft.trim()) {
       useWorkflowStore.getState().markDirty()
-      currentWorkflow!.name = nameDraft.trim()
+      useWorkflowStore.setState((state) => ({
+        currentWorkflow: state.currentWorkflow
+          ? { ...state.currentWorkflow, name: nameDraft.trim() }
+          : state.currentWorkflow,
+      }))
     }
     setEditingName(false)
   }
@@ -197,6 +202,7 @@ function CanvasPageInner() {
       {/* Canvas */}
       <div style={{ flex: 1, position: "relative" }}>
         <Canvas />
+        <LibraryDrawer />
       </div>
 
       {/* Toast */}

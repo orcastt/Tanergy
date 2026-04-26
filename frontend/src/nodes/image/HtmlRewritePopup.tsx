@@ -165,7 +165,7 @@ export default function HtmlRewritePopup({ selectedText, onResult, onClose }: Ht
               <button
                 onClick={handleInsert}
                 style={{ padding: "0.375rem 0.75rem", borderRadius: 6, border: "none", background: "#22c55e", color: "#fff", cursor: "pointer", fontSize: "0.8125rem" }}
-              >插入下方</button>
+              >插入到选中段落下方</button>
             </>
           )}
           {status === "error" && (

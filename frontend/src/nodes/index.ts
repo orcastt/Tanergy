@@ -12,6 +12,7 @@ import ReviewerNode from "./ReviewerNode"
 import ImagePlannerNode from "./ImagePlannerNode"
 import ImageGenNode from "./ImageGenNode"
 import ImageListNode from "./ImageListNode"
+import ImageAssetNode from "./ImageAssetNode"
 import ImageGalleryNode from "./ImageGalleryNode"
 import HtmlFormatterNode from "./HtmlFormatterNode"
 import GroupNode from "./GroupNode"
@@ -27,6 +28,7 @@ export const nodeTypes: Record<string, ComponentType<any>> = {
   image_planner: ImagePlannerNode,
   image_gen: ImageGenNode,
   image_list: ImageListNode,
+  image_asset: ImageAssetNode,
   image_gallery: ImageGalleryNode,
   html_formatter: HtmlFormatterNode,
   group: GroupNode,

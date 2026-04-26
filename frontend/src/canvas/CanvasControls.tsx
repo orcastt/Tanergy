@@ -1,10 +1,26 @@
-import { useReactFlow } from "@xyflow/react"
+import { useReactFlow, useViewport } from "@xyflow/react"
 import { Z } from "./OverlayLayer"
+import { getCrispViewport, getNextCrispZoom } from "./viewportQuality"
 
 export default function CanvasControls() {
-  const { zoomIn, zoomOut, fitView, getZoom } = useReactFlow()
+  const { setViewport, getViewport, fitView } = useReactFlow()
+  const { zoom } = useViewport()
 
-  const zoom = Math.round(getZoom() * 100)
+  const zoomPercent = Math.round(zoom * 100)
+
+  function setCrispZoom(direction: 1 | -1) {
+    const viewport = getViewport()
+    void setViewport({
+      ...getCrispViewport(viewport),
+      zoom: getNextCrispZoom(viewport.zoom, direction),
+    }, { duration: 0 })
+  }
+
+  async function fitCrispView() {
+    await fitView({ padding: 0.2, duration: 0 })
+    const viewport = getViewport()
+    void setViewport(getCrispViewport(viewport), { duration: 0 })
+  }
 
   return (
     <div style={{
@@ -14,13 +30,13 @@ export default function CanvasControls() {
       display: "flex", alignItems: "center", gap: "0.125rem",
       padding: "0.25rem", zIndex: Z.CONTROLS, pointerEvents: "auto",
     }}>
-      <CtrlBtn icon="remove" onClick={() => zoomOut()} />
+      <CtrlBtn icon="remove" onClick={() => setCrispZoom(-1)} />
       <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 600, minWidth: "2.5rem", textAlign: "center" }}>
-        {zoom}%
+        {zoomPercent}%
       </span>
-      <CtrlBtn icon="add" onClick={() => zoomIn()} />
+      <CtrlBtn icon="add" onClick={() => setCrispZoom(1)} />
       <div style={{ width: "1px", height: "20px", background: "var(--border-color)" }} />
-      <CtrlBtn icon="fit_screen" onClick={() => fitView({ padding: 0.2 })} />
+      <CtrlBtn icon="fit_screen" onClick={fitCrispView} />
     </div>
   )
 }

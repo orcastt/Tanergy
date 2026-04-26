@@ -19,6 +19,7 @@ TANGENT is a **desktop application (Tauri v2)** — a node-based AI canvas that 
 | 🎨 节点画布 | 拖拽节点、连线、网格对齐，React Flow 引擎 |
 | 🤖 AI 对话面板 | 右侧 AI 面板自然语言描述需求，自动生成节点拓扑 |
 | 📝 公众号图文 Skill | text_input → research → outline → image → Html Editor 完整链路 |
+| 🗂️ 个人素材库 | 全局文章/图片素材库，支持标签、搜索、拖拽回画布 |
 | 🖼️ 图层图片编辑器 | Procreate 风格多图层编辑器（画笔/选择/AI Edit/栅格化） |
 | 🌍 中英双语 | 一键切换中文/英文界面 |
 | 🌙 暗色/亮色主题 | 顶栏一键切换 |
@@ -38,6 +39,7 @@ TANGENT is a **desktop application (Tauri v2)** — a node-based AI canvas that 
 | `research` | AI | Tavily 多轮搜索，整合背景素材 |
 | `outline_generator` | AI | 生成章节大纲 + image_plans，驱动 Split |
 | `image_list` | AI | 多模型图片生成，双输入，动态输出端口，内置图层编辑器 |
+| `image_asset` | 图片 | 个人图片素材容器，可缩放，双击进入 Image Editor |
 | `html_formatter` / Html Editor | 输出 | Markdown + 图片 → 微信样式 HTML；双击进入富文本编辑、微信预览、AI 改写 |
 
 可选节点：`image_planner`、`image_gallery`。
@@ -224,6 +226,7 @@ TanvasAgent/
 - [x] 首次引导 + Stripe 支付（Slice 18）
 - [x] Settings 简化 + Skill 推荐卡片（Slice 19）
 - [x] Image Editor 图层画板（Slice 22，Procreate 风格）
+- [x] 个人素材库 MVP（文章/图片素材、标签、拖拽到画布、Image 容器）
 - [ ] 管理后台联调验收（Admin API + 基础 Next.js 前端已完成）
 - [x] Html Editor 富文本编辑（Slice 23，初版完成，待手测验收）
 - [ ] 线上部署（Docker/Nginx 配置已就绪，待执行）

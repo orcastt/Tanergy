@@ -12,7 +12,7 @@ html {
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-rendering: geometricPrecision;
+  text-rendering: auto;
 }
 
 body {
@@ -183,6 +183,11 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
   to { transform: rotate(360deg); }
 }
 
+@keyframes nodeStatusPulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
 /* ===== React Flow overrides ===== */
 .react-flow__node { cursor: grab; }
 .react-flow__node:active { cursor: grabbing; }
@@ -190,7 +195,26 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .react-flow__node * {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-rendering: geometricPrecision;
+  text-rendering: auto;
+  backface-visibility: visible;
+  transform-style: flat;
+}
+.react-flow__node {
+  will-change: auto;
+}
+.react-flow__node [style*="spin"] {
+  animation-name: nodeStatusPulse !important;
+  animation-timing-function: ease-in-out !important;
+  will-change: opacity !important;
+}
+.react-flow__node button:active {
+  transform: none !important;
+}
+.react-flow--crisp-zoom .react-flow__viewport {
+  transform:
+    translate(var(--rf-crisp-translate-x), var(--rf-crisp-translate-y)) !important;
+  transform-origin: 0 0;
+  zoom: var(--rf-crisp-zoom);
 }
 /* Prevent node drag when interacting with form elements */
 .react-flow__node select,

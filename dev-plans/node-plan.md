@@ -2,7 +2,7 @@
 
 **版本**: v3.0
 **日期**: 2026-04-24
-**状态**: ✅ 已按代码现状校准（2026-04-25 更新：Html Editor 为默认终点）
+**状态**: ✅ 已按代码现状校准（2026-04-26 更新：新增个人素材库与 `image_asset`）
 **策略**: 公众号主流程以 Outline Split 架构为核心，移除 Gate/Writer 作为默认必需节点
 **开发规范**: 代码质量与测试门槛见 `dev-plans/code-quality-standards.md`
 
@@ -20,7 +20,7 @@
 | 4 | `image_list` | 图像 AI | ✅ | 双输入（plans/text）+ 动态输出 |
 | 5 | `html_formatter` / Html Editor | 输出编排 | ✅ | 多文本输入 + 图片输入 + 富文本编辑/微信预览 |
 
-可选节点：`image_planner`、`image_gallery`。
+可选节点：`image_planner`、`image_gallery`、`image_asset`（个人图片素材容器）。
 遗留节点（非公众号默认）：
 - `gate`（legacy）
 - `writer`（legacy）
@@ -96,13 +96,18 @@ outline_generator done 后触发 Split：
 - 支持数量、模型、动态输入口和动态输出口。
 - 双击可进入 Image Editor 图层画板。
 
-### 4.5 `html_formatter`
+### 4.5 `image_asset`
+- 由个人素材库图片拖拽到画布生成。
+- 可缩放预览图片，输出 `image_slot`。
+- 双击进入 Image Editor，可继续编辑或导出到素材库。
+
+### 4.6 `html_formatter`
 - 多 `text_N` 输入汇总为文章。
 - 接收 `images` 输入进行图文混排。
 - 执行后产出 HTML，done 状态双击进入 Html Editor。
 - Html Editor 支持富文本编辑、微信预览、AI 改写和复制 HTML。
 
-### 4.6 `preview_wechat`（legacy）
+### 4.7 `preview_wechat`（legacy）
 - 历史微信阅读预览组件。
 - 不再进入公众号默认模板；新流程由 Html Editor 右侧预览承担。
 
@@ -124,6 +129,7 @@ outline_generator done 后触发 Split：
 - [x] `image_list` 动态输入/输出口可用。
 - [x] `html_formatter` 能消费多段文本 + 图片。
 - [x] Html Editor 可显示微信预览并复制 HTML。
+- [x] 个人素材库 Text/Image 可拖拽生成节点。
 - [x] 公众号模板不依赖 `gate`、`writer`。
 
 ---

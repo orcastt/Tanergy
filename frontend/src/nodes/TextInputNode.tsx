@@ -4,7 +4,9 @@ import { useTranslation } from "react-i18next"
 import NodeBase from "./base/NodeBase"
 import { NODE_MAP } from "./nodeDefs"
 import { useCanvasStore } from "../store/canvasStore"
+import { useWorkflowStore } from "../store/workflowStore"
 import { nodeResize } from "../lib/nodeEvents"
+import LibrarySaveDialog from "../library/LibrarySaveDialog"
 
 interface TextInputData {
   nodeType: string
@@ -17,13 +19,20 @@ const MIN_W = 256
 const MIN_H = 120
 const MAX_H = 600
 
+function textToHtml(text: string) {
+  return `<p>${text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\n/g, "<br />")}</p>`
+}
+
 export default function TextInputNode({ data, id, selected }: NodeProps) {
   const d = data as unknown as TextInputData
   const def = NODE_MAP[d.nodeType]
-  if (!def) return null
-
   const { t } = useTranslation()
   const { nodeStatuses, nodeResults, edges, updateNodeData } = useCanvasStore()
+  const workflowId = useWorkflowStore((s) => s.currentWorkflow?.id)
   const status = nodeStatuses[id] ?? "idle"
   const result = nodeResults[id] as { text?: string } | undefined
 
@@ -37,6 +46,7 @@ export default function TextInputNode({ data, id, selected }: NodeProps) {
 
   // Local state to avoid re-render fighting with IME during composition
   const [localText, setLocalText] = useState(displayText)
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
   const isComposingRef = useRef(false)
 
   // Sync external changes (upstream text / undo-redo) into local state
@@ -46,9 +56,9 @@ export default function TextInputNode({ data, id, selected }: NodeProps) {
 
   const [size, setSize] = useState({ w: d.width ?? 256, h: d.height ?? 160 })
   const sizeRef = useRef(size)
-  sizeRef.current = size
-
   const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null)
+
+  useEffect(() => { sizeRef.current = size }, [size])
 
   const handleResizeStart = useCallback((e: React.PointerEvent) => {
     nodeResize(e)
@@ -80,6 +90,8 @@ export default function TextInputNode({ data, id, selected }: NodeProps) {
   const padding = 16
   const textH = size.h - headerH - portBarH - padding * 2 - 8
   const clampedTextH = Math.max(lineH * 2, textH)
+
+  if (!def) return null
 
   return (
     <div style={{ position: "relative" }}>
@@ -138,6 +150,25 @@ export default function TextInputNode({ data, id, selected }: NodeProps) {
             ✓ 输出就绪
           </div>
         )}
+        {localText.trim() && (
+          <button
+            onClick={() => setShowSaveDialog(true)}
+            style={{
+              marginTop: "0.5rem",
+              width: "100%",
+              border: "1px solid #5965AF",
+              borderRadius: "0.375rem",
+              background: "#f5f3ff",
+              color: "#5965AF",
+              padding: "0.375rem 0.5rem",
+              fontSize: "0.6875rem",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            保存到素材库
+          </button>
+        )}
       </NodeBase>
 
       {/* Resize handle — bottom-right corner */}
@@ -155,6 +186,20 @@ export default function TextInputNode({ data, id, selected }: NodeProps) {
           <circle cx="6" cy="6" r="1" fill="currentColor" />
         </svg>
       </div>
+      {showSaveDialog && (
+        <LibrarySaveDialog
+          kind="text"
+          defaultTitle={localText.trim().slice(0, 24) || "文字素材"}
+          payload={{
+            plain_text: localText,
+            content_html: textToHtml(localText),
+            source_workflow_id: workflowId,
+            source_node_id: id,
+            mime_type: "text/html",
+          }}
+          onClose={() => setShowSaveDialog(false)}
+        />
+      )}
     </div>
   )
 }

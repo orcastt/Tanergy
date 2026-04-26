@@ -17,6 +17,7 @@ export type NodeType =
   | "image_planner"
   | "image_gen"
   | "image_list"
+  | "image_asset"
   | "image_gallery"
   | "html_formatter"
   | "group"

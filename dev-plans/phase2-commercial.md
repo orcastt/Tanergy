@@ -50,6 +50,7 @@ Phase 2: 官方 API 为默认 → 用户自带 Key 为高级选项
 | 19 | [slice-19-settings-v2.md](slice-19-settings-v2.md) | Settings 简化 + Skill 推荐卡片 | P2 | 中 | 3天 | ✅ |
 | 22 | [slice-22-image-editor-layers.md](slice-22-image-editor-layers.md) | Image Editor 图层画板 | P1 | 高 | 5天 | ✅ |
 | 23 | [slice-23-html-editor.md](slice-23-html-editor.md) | Html Editor 富文本编辑 | P1 | 高 | 5天 | ✅ 初版完成，待手测 |
+| — | [personal-library-plan.md](personal-library-plan.md) | 个人素材库 + Image 容器 | P1 | 中 | 3天 | ✅ MVP 完成，待手测 |
 | 20 | [slice-20-web-placeholder.md](slice-20-web-placeholder.md) | 网页端架构预留 | P3 | - | - | ⬜ |
 | — | [admin-dashboard.md](admin-dashboard.md) | 管理后台 Web 应用 | P1 | 高 | 5天 | 🔄 API + 基础前端完成，待联调 |
 | — | [docs-alignment-html-editor.md](docs-alignment-html-editor.md) | 文档对齐 + Html Editor 收口 | P0 | 中 | 1天 | ✅ |
@@ -71,6 +72,7 @@ Slice 15 (路由翻转 + 登录门控)      ← ✅ 已完成
 
 Slice 22 (Image Editor 图层画板)    ← ✅ 已完成 (Procreate 风格，持久化)
   └──→ Slice 23 (Html Editor)       ← ✅ 初版完成 (Tiptap 富文本 + 微信预览 + AI 改写)
+  └──→ Personal Library              ← ✅ MVP 完成 (Text/Image 素材 + image_asset)
 
 admin-dashboard.md                  ← 🔄 API + 基础 Next.js 前端完成，待联调验收
 ```

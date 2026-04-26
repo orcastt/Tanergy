@@ -7,4 +7,5 @@ pub mod credits;
 pub mod execute;
 pub mod health;
 pub mod license;
+pub mod library;
 pub mod workflow;

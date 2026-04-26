@@ -26,11 +26,6 @@ struct BalanceResponse {
     plan: String,
 }
 
-#[derive(Debug, Deserialize)]
-struct VerifyOtpResponse {
-    token: String,
-}
-
 /// Check if user has their own API key for a given provider
 pub fn has_own_key(provider_id: &str) -> bool {
     let conn = db::get_connection();

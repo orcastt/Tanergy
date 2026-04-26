@@ -1,55 +1,7 @@
 import { create } from "zustand"
+import { getLayerCounter, makeLayer, resetLayerCounter, snapToGrid, type Layer, type Stroke, type Tool } from "./layerTypes"
 
-export interface Stroke {
-  points: { x: number; y: number }[]
-  color: string
-  width: number
-  eraser: boolean
-}
-
-export type Tool = "select" | "draw"
-
-export const GRID_SIZE = 20
-
-export function snapToGrid(value: number): number {
-  return Math.round(value / GRID_SIZE) * GRID_SIZE
-}
-
-export interface Layer {
-  id: string
-  name: string
-  visible: boolean
-  locked: boolean
-  opacity: number
-  imageSrc: string | null
-  strokes: Stroke[]
-  // Image position & size (canvas coords)
-  imgX: number
-  imgY: number
-  imgW: number
-  imgH: number
-  // Natural image dimensions (loaded once)
-  naturalW: number
-  naturalH: number
-}
-
-let layerCounter = 0
-
-function makeLayer(partial?: Partial<Layer>): Layer {
-  layerCounter++
-  return {
-    id: `layer_${Date.now()}_${layerCounter}`,
-    name: `图层 ${layerCounter}`,
-    visible: true,
-    locked: false,
-    opacity: 1,
-    imageSrc: null,
-    strokes: [],
-    imgX: 50, imgY: 50, imgW: 200, imgH: 150,
-    naturalW: 0, naturalH: 0,
-    ...partial,
-  }
-}
+export { GRID_SIZE, snapToGrid, type Layer, type Stroke, type Tool } from "./layerTypes"
 
 interface LayerState {
   layers: Layer[]
@@ -247,7 +199,7 @@ export const useLayerStore = create<LayerState>((set, get) => ({
     const ch = canvasH ?? 600
     const layer = makeLayer({
       imageSrc: src,
-      name: name ?? `图片 ${layerCounter}`,
+      name: name ?? `图片 ${getLayerCounter()}`,
       imgX: snapToGrid(cw * 0.1), imgY: snapToGrid(ch * 0.1),
       imgW: snapToGrid(cw * 0.8), imgH: snapToGrid(ch * 0.8),
     })
@@ -293,7 +245,7 @@ export const useLayerStore = create<LayerState>((set, get) => ({
   },
 
   reset: () => {
-    layerCounter = 0
+    resetLayerCounter()
     set({
       layers: [makeLayer({ name: "图层 1" })],
       activeLayerId: null,
@@ -314,7 +266,7 @@ export const useLayerStore = create<LayerState>((set, get) => ({
   },
 
   restoreState: (data) => {
-    layerCounter = data.layers.length
+    resetLayerCounter(data.layers.length)
     set({
       layers: data.layers,
       activeLayerId: data.activeLayerId,

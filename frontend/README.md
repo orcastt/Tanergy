@@ -29,7 +29,7 @@ cargo tauri dev
 npm -C frontend run build
 ```
 
-2026-04-25 已验证通过。
+2026-04-26 已验证通过。
 
 ## 开发规范
 
@@ -53,3 +53,13 @@ npm -C frontend run build
 | `src/nodes/image/WeChatPreview.tsx` | 微信样式实时预览 |
 | `src/nodes/image/HtmlRewritePopup.tsx` | AI 改写弹窗 |
 | `src/store/overlayStore.ts` | `htmlEditorNodeId` overlay 状态 |
+
+## Personal Library 文件索引
+
+| 文件 | 说明 |
+|------|------|
+| `src/library/LibraryDrawer.tsx` | 工作流左侧全局素材库侧拉面板 |
+| `src/library/LibrarySaveDialog.tsx` | 保存文章/图片素材与标签弹窗 |
+| `src/library/LibraryCard.tsx` | 素材卡片展示、拖拽、删除 |
+| `src/store/libraryStore.ts` | 素材库列表、标签与创建/删除状态 |
+| `src/nodes/ImageAssetNode.tsx` | 图片素材容器节点，可缩放并进入 Image Editor |

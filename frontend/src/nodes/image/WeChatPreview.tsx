@@ -1,11 +1,12 @@
 import { toStandardPurpleHtml } from "./standardPurpleHtml"
+import { hydrateLocalImageHtml } from "./localImageHtml"
 
 interface WeChatPreviewProps {
   html: string
 }
 
 export default function WeChatPreview({ html }: WeChatPreviewProps) {
-  const previewHtml = toStandardPurpleHtml(html)
+  const previewHtml = hydrateLocalImageHtml(toStandardPurpleHtml(html))
 
   return (
     <div style={{ height: "100%", boxSizing: "border-box", background: "#fff", overflow: "auto" }}>

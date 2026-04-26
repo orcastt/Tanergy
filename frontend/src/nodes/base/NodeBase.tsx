@@ -42,7 +42,14 @@ function RemovablePortLabel({ port }: { port: PortDef }) {
 
   return (
     <div
-      style={{ display: "flex", alignItems: "center", gap: "0.25rem", position: "relative" }}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "0.25rem",
+        position: "relative",
+        flex: "0 1 58px",
+        minWidth: 0,
+      }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -60,26 +67,41 @@ function RemovablePortLabel({ port }: { port: PortDef }) {
       ) : (
         <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: PORT_COLORS[port.type], flexShrink: 0 }} />
       )}
-      {port.label && <span style={{ fontSize: "10px", color: "var(--text-secondary)" }}>{port.label}</span>}
+      {port.label && (
+        <span
+          style={{
+            fontSize: "10px",
+            color: "var(--text-secondary)",
+            lineHeight: 1.15,
+            whiteSpace: "normal",
+            overflowWrap: "anywhere",
+            minWidth: 0,
+          }}
+        >
+          {port.label}
+        </span>
+      )}
     </div>
   )
 }
 
 export default function NodeBase({ title, icon, inputs = [], outputs = [], status, selected, nodeId, category, creditCost, width, children }: Props) {
   const ringStyle = selected
-    ? "0 0 0 2px #3B82F6, 0 4px 12px rgba(59,130,246,0.25)"
+    ? "0 0 0 2px #3B82F6, 0 2px 4px rgba(0,0,0,0.08)"
     : status === "running"
-    ? "0 0 0 2px #3B82F6, 0 4px 12px rgba(59,130,246,0.2)"
+    ? "0 0 0 2px #3B82F6, 0 2px 4px rgba(0,0,0,0.08)"
     : status === "waiting"
-    ? "0 0 0 2px #F59E0B, 0 4px 12px rgba(245,158,11,0.2)"
+    ? "0 0 0 2px #F59E0B, 0 2px 4px rgba(0,0,0,0.08)"
     : status === "done"
-    ? "0 0 0 2px #22C55E, 0 2px 8px rgba(34,197,94,0.15)"
+    ? "0 0 0 2px #22C55E, 0 2px 4px rgba(0,0,0,0.08)"
     : status === "error"
-    ? "0 0 0 2px #EF4444, 0 4px 12px rgba(239,68,68,0.2)"
+    ? "0 0 0 2px #EF4444, 0 2px 4px rgba(0,0,0,0.08)"
     : "0 0 0 1px rgba(0,0,0,0.05), 0 1px 2px 0 rgba(0,0,0,0.05)"
 
   const inputCount = inputs.length
   const outputCount = outputs.length
+  const outputLabels = outputs.filter((p) => p.label)
+  const hasOutputLabels = outputLabels.length > 0
 
   return (
     <div style={{
@@ -151,27 +173,47 @@ export default function NodeBase({ title, icon, inputs = [], outputs = [], statu
         </div>
       )}
 
-      {(inputs.length > 0 || outputs.some((p) => p.label)) && (
+      {(inputs.length > 0 || hasOutputLabels) && (
         <div className="nodrag nopan" style={{
           padding: "0.5rem",
           borderTop: "1px solid var(--border-color)",
           display: "flex",
+          gap: "0.5rem",
           justifyContent: "space-between",
-          alignItems: "center",
+          alignItems: "flex-start",
+          overflow: "hidden",
         }}>
-          <div style={{ display: "flex", gap: "0.375rem", alignItems: "center" }}>
+          <div style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "0.375rem 0.5rem",
+            alignItems: "center",
+            minWidth: 0,
+            flex: "1 1 auto",
+            maxWidth: hasOutputLabels ? "68%" : "100%",
+          }}>
             {inputs.map((p) => (
               <RemovablePortLabel key={p.id} port={p} />
             ))}
           </div>
-          <div style={{ display: "flex", gap: "0.375rem", alignItems: "center" }}>
-            {outputs.filter((p) => p.label).map((p) => (
-              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-                <span style={{ fontSize: "10px", color: "var(--text-secondary)" }}>{p.label}</span>
-                <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: PORT_COLORS[p.type] }} />
-              </div>
-            ))}
-          </div>
+          {hasOutputLabels && (
+            <div style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "0.375rem 0.5rem",
+              alignItems: "center",
+              justifyContent: "flex-end",
+              minWidth: 0,
+              flex: "0 1 40%",
+            }}>
+              {outputLabels.map((p) => (
+                <div key={p.id} style={{ display: "flex", alignItems: "center", gap: "0.25rem", minWidth: 0 }}>
+                  <span style={{ fontSize: "10px", color: "var(--text-secondary)", lineHeight: 1.15, overflowWrap: "anywhere" }}>{p.label}</span>
+                  <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: PORT_COLORS[p.type] }} />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

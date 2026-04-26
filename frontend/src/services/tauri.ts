@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core"
 import type { LicenseInfo, KeyStatus, ProviderInfo } from "../types/license"
 import type { Workflow, WorkflowDetail } from "../types/workflow"
 import type { CreditInfo } from "../types/credits"
+import type { CreateLibraryItemPayload, LibraryItem, LibraryKind } from "../types/library"
 
 export interface ExecutePayload {
   node_type: string
@@ -93,6 +94,16 @@ export const tauri = {
     invoke<number[]>("read_asset_file", { filePath }),
   deleteAsset: (id: string) =>
     invoke<void>("delete_asset", { id }),
+
+  // Personal Library
+  listLibraryItems: (payload: { kind?: LibraryKind; query?: string; tag?: string }) =>
+    invoke<LibraryItem[]>("list_library_items", { payload }),
+  listLibraryTags: () =>
+    invoke<string[]>("list_library_tags"),
+  createLibraryItem: (payload: CreateLibraryItemPayload) =>
+    invoke<LibraryItem>("create_library_item", { payload }),
+  deleteLibraryItem: (id: string) =>
+    invoke<void>("delete_library_item", { id }),
 
   // Credits
   getCreditBalance: () =>

@@ -1,9 +1,9 @@
 # TANGENT — Architecture Decision Document
 
 **版本**: v0.8
-**日期**: 2026-04-25
+**日期**: 2026-04-26
 **状态**: Phase 2 商业化 — 核心能力完成，Html Editor / Admin 联调 / 部署收口中
-**上次更新**: Html Editor 终点架构；`preview_wechat` legacy 化；端口契约与 Admin 状态对齐
+**上次更新**: 个人素材库 MVP + `image_asset` 图片容器节点；Html Editor 终点架构继续收口
 
 > 本文档记录技术决策和工程约束。用户感受不到这些内容，但它们决定了产品怎么建。
 > 每次重大技术决策变更必须更新本文档。
@@ -178,6 +178,7 @@ frontend/
 │   │   ├── SkillPanel.tsx
 │   │   ├── definitions/  ← 每个 Skill 的节点图定义
 │   │   └── hooks/        ← useSkillApply
+│   ├── library/          ← 全局个人素材库 Drawer、卡片、保存弹窗、拖拽协议
 │   ├── pages/            ← 应用视图
 │   │   ├── WelcomePage.tsx   ← 首次启动向导（Email OTP + API Key 可选）
 │   │   ├── DashboardPage.tsx ← 工作流列表
@@ -189,6 +190,7 @@ frontend/
 │   │   ├── themeStore.ts     ← 亮/暗主题
 │   │   ├── authStore.ts      ← 登录状态（OTP/JWT）
 │   │   ├── creditsStore.ts   ← 积分/订阅状态
+│   │   ├── libraryStore.ts   ← 全局素材库列表/标签状态
 │   │   └── workflowStore.ts  ← 工作流列表/当前工作流
 │   ├── agent/            ← AI Agent 面板
 │   │   ├── AgentPanel.tsx    ← 侧拉面板壳 + 展开/收回
@@ -202,6 +204,7 @@ frontend/
 │   │   └── useExecution.ts
 │   ├── types/            ← TypeScript 类型定义
 │   │   ├── node.ts
+│   │   ├── library.ts
 │   │   ├── workflow.ts
 │   │   └── license.ts
 │   ├── lib/              ← 工具函数
@@ -244,6 +247,7 @@ src-tauri/
 │   │   │                     save_canvas_export, ai_edit_image, read_asset_file
 │   │   ├── billing.rs    ← 订阅支付相关命令
 │   │   ├── api_keys.rs   ← API Key 加密存储
+│   │   ├── library.rs    ← 全局素材库 CRUD + 图片文件保存
 │   │   └── execute/      ← 节点执行器
 │   │       ├── mod.rs    ← 路由分发
 │   │       └── media.rs  ← image_planner / image_list / html_formatter
@@ -350,6 +354,7 @@ const NODE_EXECUTORS: Record<NodeType, NodeExecutor> = {
   "reviewer":          ReviewerExecutor,         // legacy
   "image_planner":     ImagePlannerExecutor,     // Claude（经 Tauri）
   "image_list":        ImageListExecutor,        // 多模型图片生成（经 Tauri，动态输出端口）
+  "image_asset":       ImageAssetExecutor,       // 个人素材库图片容器，纯前端输出 image_slot
   "image_gallery":     ImageGalleryExecutor,     // 纯前端
   "html_formatter":    HtmlFormatterExecutor,    // Tauri IPC + Html Editor 终点
   "preview_wechat":    PreviewWechatExecutor,    // legacy：非默认预览节点
@@ -1228,6 +1233,32 @@ Canvas
 | `frontend/src/nodes/image/WeChatPreview.tsx` | 微信样式实时预览 |
 | `frontend/src/nodes/image/HtmlRewritePopup.tsx` | AI 改写交互 |
 | `src-tauri/src/commands/asset.rs` | `ai_rewrite_html` IPC 命令 |
+
+## 15. Personal Library 全局素材库
+
+### 15.1 设计目标
+
+个人素材库是 workspace 级能力，不绑定单个 workflow。用户可将 Text 节点内容保存为文章素材，将 Image Editor 当前画布保存为图片素材，并在任意新工作流中复用。
+
+### 15.2 数据模型
+
+| 表 | 职责 |
+|----|------|
+| `library_items` | 存储文章/图片素材、内容、文件路径、来源 workflow/node |
+| `library_tags` | 全局标签字典 |
+| `library_item_tags` | 素材与标签多对多关系 |
+
+图片素材保存到 `$APPDATA/library/images`，工作流运行产生的图片仍保存到 `$APPDATA/assets/{workflow_id}`。Tauri `assetProtocol` 同时允许 `assets/**` 和 `library/**` 用于本地预览。
+
+### 15.3 前端结构
+
+| 文件 | 职责 |
+|------|------|
+| `frontend/src/library/LibraryDrawer.tsx` | 工作流左侧素材库侧拉面板 |
+| `frontend/src/library/LibrarySaveDialog.tsx` | 保存素材和标签弹窗 |
+| `frontend/src/store/libraryStore.ts` | 素材列表、标签、创建、删除状态 |
+| `frontend/src/nodes/ImageAssetNode.tsx` | 可缩放图片容器节点，输出 `image_slot` |
+| `src-tauri/src/commands/library.rs` | 素材库 Tauri IPC 命令 |
 
 ---
 

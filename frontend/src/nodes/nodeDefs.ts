@@ -78,6 +78,16 @@ export const NODE_DEFS: NodeDef[] = [
     outputs: [{ id: "out", type: "image_slot" }],
   },
   {
+    type: "image_asset",
+    label: "Image",
+    description: "Personal image asset container",
+    icon: "image",
+    category: "image",
+    defaultData: { title: "Image", filePath: "", description: "", width: 300, height: 220 },
+    inputs: [],
+    outputs: [{ id: "out", type: "image_slot", label: "Image" }],
+  },
+  {
     type: "image_gallery",
     label: "Gallery",
     description: "Collect & display images",

@@ -2,89 +2,8 @@ use crate::crypto;
 use crate::db;
 use crate::services::provider;
 use base64::Engine;
-use serde::{Deserialize, Serialize};
-
-// ── Model registry: maps model IDs to provider + actual model name ──
-
-static TEXT_MODELS: &[(&str, &str, &str)] = &[
-    // (model_id, provider, api_model_name)
-    ("MiniMax-M2.7", "minimax", "MiniMax-M2.7"),
-    ("claude-sonnet-4-6", "claude", "claude-sonnet-4-6"),
-    ("gpt-4o", "gpt", "gpt-4o"),
-    ("gemini-2.5-pro", "gemini", "gemini-2.5-pro"),
-    ("glm-4-plus", "glm", "glm-4-plus"),
-];
-
-static IMAGE_MODELS: &[(&str, &str, &str)] = &[
-    ("minimax-image", "minimax", "image-01"),
-    ("dall-e-3", "gpt", "dall-e-3"),
-];
-
-fn resolve_model<'a>(model_id: &str, table: &'a [(&'a str, &'a str, &'a str)]) -> (&'a str, &'a str) {
-    table
-        .iter()
-        .find(|(id, _, _)| *id == model_id)
-        .map(|(_, provider, api_model)| (*provider, *api_model))
-        .unwrap_or(("minimax", "MiniMax-M2.7"))
-}
-
-pub fn resolve_text_model(model_id: &str) -> (&str, &str) {
-    resolve_model(model_id, TEXT_MODELS)
-}
-
-pub fn resolve_image_model(model_id: &str) -> (&str, &str) {
-    resolve_model(model_id, IMAGE_MODELS)
-}
-
-// ── Data types ──
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ChatMessage {
-    pub role: String,
-    pub content: String,
-}
-
-#[derive(Debug, Serialize)]
-struct ChatRequest {
-    model: String,
-    messages: Vec<ChatMessage>,
-    max_tokens: u32,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    temperature: Option<f64>,
-}
-
-#[derive(Debug, Deserialize)]
-struct ChatChoice {
-    message: ChatChoiceMessage,
-}
-
-#[derive(Debug, Deserialize)]
-struct ChatChoiceMessage {
-    content: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct ChatResponse {
-    choices: Vec<ChatChoice>,
-}
-
-pub struct AiCompletion {
-    pub text: String,
-}
-
-#[derive(Debug, Serialize)]
-struct ImageGenRequest {
-    model: String,
-    prompt: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    aspect_ratio: Option<String>,
-}
-
-pub struct ImageResult {
-    pub image_data: Vec<u8>,
-    #[allow(dead_code)]
-    pub url: Option<String>,
-}
+pub use super::ai_types::{AiCompletion, ChatMessage, ImageResult};
+use super::ai_types::{ChatRequest, ChatResponse, ImageGenRequest, resolve_image_model, resolve_text_model};
 
 // ── AI-powered image editing ──
 
@@ -92,7 +11,7 @@ pub struct ImageResult {
 /// 1. Use vision model to understand current image
 /// 2. Generate new image based on instruction + context
 pub async fn ai_edit_image(
-    image_base64: &str,
+    _image_base64: &str,
     instruction: &str,
     model: &str,
     aspect_ratio: Option<&str>,
