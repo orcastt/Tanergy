@@ -1,6 +1,8 @@
+import { useEffect, useMemo, useState } from "react"
 import { getModelsByCategory, DEFAULT_MODELS, type ModelCategory } from "../nodes/modelDefs"
 import { useCreditsStore } from "../store/creditsStore"
-import { useApiKeyStore } from "../store/apiKeyStore"
+import { useTranslation } from "react-i18next"
+import { tauri, type OfficialModel } from "../services/tauri"
 
 interface Props {
   category: ModelCategory
@@ -9,17 +11,43 @@ interface Props {
 }
 
 export default function ModelSelector({ category, value, onChange }: Props) {
-  const models = getModelsByCategory(category)
+  const { t } = useTranslation()
+  const [remoteModels, setRemoteModels] = useState<OfficialModel[] | null>(null)
   const isLoggedIn = useCreditsStore((s) => s.isLoggedIn)
-  const isProviderReady = useApiKeyStore((s) => s.isProviderReady)
-  const hasNoAccess = !isLoggedIn && models.length <= 1
+  const models = useMemo(() => {
+    const callType = category === "text" ? "chat" : category
+    const fallbackModels = getModelsByCategory(category)
+    const filtered = remoteModels
+      ?.filter((m) => m.is_active && m.call_type === callType)
+      .map((m) => ({
+        id: m.model,
+        name: m.display_name,
+        provider: m.provider,
+        category,
+      }))
+    return filtered && filtered.length > 0 ? filtered : fallbackModels
+  }, [category, remoteModels])
+  const selectedValue = models.some((m) => m.id === value) ? value : DEFAULT_MODELS[category]
 
-  if (hasNoAccess) return null
+  useEffect(() => {
+    if (!isLoggedIn) {
+      return
+    }
+    let cancelled = false
+    tauri.listOfficialModels()
+      .then((items) => {
+        if (!cancelled) setRemoteModels(items)
+      })
+      .catch(() => {
+        if (!cancelled) setRemoteModels(null)
+      })
+    return () => { cancelled = true }
+  }, [isLoggedIn])
 
   return (
     <div style={{ position: "relative" }}>
       <select
-        value={value ?? DEFAULT_MODELS[category]}
+        value={isLoggedIn ? selectedValue : ""}
         onChange={(e) => onChange(e.target.value)}
         disabled={!isLoggedIn}
         style={{
@@ -36,21 +64,13 @@ export default function ModelSelector({ category, value, onChange }: Props) {
         }}
       >
         {isLoggedIn ? (
-          models.map((m) => {
-            const ready = isProviderReady(m.provider)
-            return (
-              <option
-                key={m.id}
-                value={m.id}
-                disabled={!ready}
-                style={!ready ? { color: "#999" } : undefined}
-              >
-                {m.name}{!ready ? " (no key)" : ""}
-              </option>
-            )
-          })
+          models.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
+          ))
         ) : (
-          <option value="">Log in to use AI</option>
+          <option value="">{t("auth.loginToUseAi")}</option>
         )}
       </select>
     </div>

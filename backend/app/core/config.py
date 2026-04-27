@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
     MINIMAX_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
+    GEEKAI_API_KEY: str = ""
     GEMINI_API_KEY: str = ""
     GLM_API_KEY: str = ""
     MIDJOURNEY_API_KEY: str = ""

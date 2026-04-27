@@ -61,7 +61,6 @@ function ImageThumb({ filePath, description }: { filePath: string; description: 
 export default function ImageGenNode({ data, id, selected }: NodeProps) {
   const d = data as unknown as { nodeType: string; model?: string }
   const def = NODE_MAP[d.nodeType]
-  if (!def) return null
 
   const { isLoggedIn } = useCreditsStore()
   const creditCost = NODE_CREDIT_COSTS[d.nodeType] ?? 0
@@ -83,14 +82,15 @@ export default function ImageGenNode({ data, id, selected }: NodeProps) {
           }
         }).then((fn) => { unlisten = fn })
       })
-    } else {
-      setProgress(null)
     }
 
     return () => { unlisten?.() }
   }, [status, id])
 
   const images = result?.images ?? []
+  const visibleProgress = status === "running" ? progress : null
+
+  if (!def) return null
 
   return (
     <NodeBase
@@ -120,12 +120,12 @@ export default function ImageGenNode({ data, id, selected }: NodeProps) {
             display: "flex", alignItems: "center", gap: "0.375rem",
           }}>
             <span className="material-symbols-outlined" style={{ fontSize: "14px", animation: "spin 1s linear infinite" }}>progress_activity</span>
-            {progress ? `生成中 ${progress.current}/${progress.total}...` : "准备生成..."}
+            {visibleProgress ? `生成中 ${visibleProgress.current}/${visibleProgress.total}...` : "准备生成..."}
           </div>
-          {progress && (
+          {visibleProgress && (
             <div style={{ height: "4px", background: "#e3e2e2", borderRadius: "2px", overflow: "hidden" }}>
               <div style={{
-                width: `${(progress.current / progress.total) * 100}%`,
+                width: `${(visibleProgress.current / visibleProgress.total) * 100}%`,
                 height: "100%", background: "#3B82F6", borderRadius: "2px",
                 transition: "width 0.3s ease",
               }} />
@@ -153,7 +153,7 @@ export default function ImageGenNode({ data, id, selected }: NodeProps) {
           padding: "0.375rem 0.5rem", background: "#fef2f2",
           borderRadius: "0.25rem", fontSize: "0.6875rem", color: "#991b1b",
         }}>
-          生成失败，请检查 API Key
+          生成失败，请登录或检查官方线路
         </div>
       )}
     </NodeBase>

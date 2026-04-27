@@ -14,7 +14,9 @@
 - **image_gallery** — 纯前端聚合图片 ✅
 - **preview_wechat** — 历史预览组件，非默认主流程 ✅
 
-### AI 节点（全部走 MiniMax API）
+### AI 节点（历史记录：当时全部走 MiniMax API）
+
+> 当前默认执行口径已变更：文本默认 `gpt-5-mini`、图片默认 `gpt-image-2`，均经 FastAPI 官方代理与 GeekAI relay；以下列表仅用于回溯旧输入/输出解析问题。
 - **research** — 输入 text，输出 `{ text }` ✅
 - **outline_generator** — 输入 text + research，输出 `{ options: [...] }` ✅
 - **writer** — 输入 outline，输出 `{ text }` ✅
@@ -62,8 +64,9 @@ executionEngine.ts 中的 `gatherInputData` 通过 edge 的 targetHandle/sourceH
 修改 `exec_research`、`exec_outline`、`exec_writer`、`exec_reviewer` 中的输入解析逻辑。
 
 ### 3. 修复 Agent Chat
-Agent Chat 的代码完整（前端 agentStore → tauri.agentChat → 后端 agent.rs → MiniMax API），可能的问题：
-- 没有配置 MiniMax API Key
+Agent Chat 的代码完整（前端 agentStore → tauri.agentChat → 后端 agent.rs → 官方文本模型），可能的问题：
+- 没有登录或没有官方线路访问权限
+- 后端 Provider / 模型配置不可用
 - 或者智能路由（credits）的判断逻辑有问题
 
 需要测试确认是否能正常调用。

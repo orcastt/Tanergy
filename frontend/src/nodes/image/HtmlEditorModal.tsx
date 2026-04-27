@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
+import { useTranslation } from "react-i18next"
 import { useOverlayStore } from "../../store/overlayStore"
 import { useCanvasStore } from "../../store/canvasStore"
 import TiptapEditor from "./TiptapEditor"
@@ -7,6 +8,7 @@ import WeChatPreview from "./WeChatPreview"
 import HtmlRewritePopup from "./HtmlRewritePopup"
 import { toStandardPurpleHtml } from "./standardPurpleHtml"
 import { hasLocalAssetImage, hydrateLocalImageHtml } from "./localImageHtml"
+import { editorColors, editorShadows, editorTypography, iconButtonStyle, primaryButtonStyle, secondaryButtonStyle } from "../../styles/editorDesign"
 
 function getPlainTextFromHtml(html: string) {
   const container = document.createElement("div")
@@ -69,6 +71,7 @@ async function copyRichHtmlToClipboard(html: string) {
 }
 
 export default function HtmlEditorModal() {
+  const { t } = useTranslation()
   const nodeId = useOverlayStore((s) => s.htmlEditorNodeId)
   const node = useCanvasStore((s) => s.nodes.find((n) => n.id === nodeId))
   const result = useCanvasStore((s) => nodeId ? s.nodeResults[nodeId] : undefined) as
@@ -132,42 +135,42 @@ export default function HtmlEditorModal() {
   const copyForWeChat = useCallback(async () => {
     const standardHtml = hydrateLocalImageHtml(toStandardPurpleHtml(html))
     if (!standardHtml.trim()) {
-      setCopyStatus("没有可复制的 HTML 内容")
+      setCopyStatus(t("html_editor.emptyCopy"))
       return
     }
 
     if (hasLocalAssetImage(standardHtml)) {
-      setCopyStatus("本地图片仅支持预览，公众号正式复制需上线远程 URL")
+      setCopyStatus(t("html_editor.localImageCopyBlocked"))
       return
     }
 
     try {
       await copyRichHtmlToClipboard(standardHtml)
-      setCopyStatus("已复制富文本，可直接粘贴到公众号编辑器")
+      setCopyStatus(t("html_editor.richCopied"))
     } catch {
       try {
         await copyTextToClipboard(standardHtml)
-        setCopyStatus("富文本复制失败，已改为复制 HTML 源码")
+        setCopyStatus(t("html_editor.richFallback"))
       } catch {
-        setCopyStatus("复制失败，请检查浏览器剪贴板权限")
+        setCopyStatus(t("html_editor.copyFailed"))
       }
     }
-  }, [html])
+  }, [html, t])
 
   const copySourceHtml = useCallback(async () => {
     const standardHtml = hydrateLocalImageHtml(toStandardPurpleHtml(html))
     if (!standardHtml.trim()) {
-      setCopyStatus("没有可复制的 HTML 内容")
+      setCopyStatus(t("html_editor.emptyCopy"))
       return
     }
 
     try {
       await copyTextToClipboard(standardHtml)
-      setCopyStatus("已复制 HTML 源码")
+      setCopyStatus(t("html_editor.sourceCopied"))
     } catch {
-      setCopyStatus("复制源码失败，请检查浏览器剪贴板权限")
+      setCopyStatus(t("html_editor.sourceCopyFailed"))
     }
-  }, [html])
+  }, [html, t])
 
   if (!nodeId) return null
 
@@ -176,30 +179,28 @@ export default function HtmlEditorModal() {
       style={{
         position: "fixed", inset: 0, zIndex: 10000,
         display: "flex", flexDirection: "column",
-        background: "var(--bg-canvas, #f5f5f5)",
+        background: editorColors.canvas,
       }}
     >
-      {/* Header */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "0.5rem 1rem",
-        borderBottom: "1px solid var(--border-color)",
-        background: "#fff",
+        padding: "0.5rem 1rem", boxShadow: editorShadows.insetBottom,
+        background: "rgba(255,255,255,0.92)", backdropFilter: "blur(12px)",
         flexShrink: 0,
-        height: 48,
+        height: 56,
         boxSizing: "border-box",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <button
             onClick={close}
-            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)", display: "flex", padding: "0.25rem" }}
+            style={iconButtonStyle}
           >
             <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>arrow_back</span>
           </button>
-          <span style={{ fontSize: "0.9375rem", fontWeight: 600 }}>Html Editor</span>
+          <span style={{ ...editorTypography.title, fontSize: "1rem" }}>{t("html_editor.title")}</span>
           {result?.word_count != null && (
             <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
-              {result.word_count.toLocaleString()} 字 · 约 {result.reading_time} 分钟
+              {t("html_editor.stats", { count: result.word_count.toLocaleString(), time: result.reading_time })}
             </span>
           )}
         </div>
@@ -211,46 +212,34 @@ export default function HtmlEditorModal() {
           )}
           <button
             onClick={copySourceHtml}
-            style={{
-              padding: "0.375rem 0.75rem", borderRadius: 6, border: "1px solid #e2e2e2",
-              background: "#fff", color: "#333", fontSize: "0.8125rem",
-              cursor: "pointer", display: "flex", alignItems: "center", gap: "0.375rem",
-            }}
+            style={secondaryButtonStyle}
           >
             <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>code</span>
-            复制源码
+            {t("html_editor.copySource")}
           </button>
           <button
             onClick={copyForWeChat}
-            style={{
-              padding: "0.375rem 0.75rem", borderRadius: 6, border: "none",
-              background: "#242424", color: "#fff", fontSize: "0.8125rem",
-              cursor: "pointer", display: "flex", alignItems: "center", gap: "0.375rem",
-            }}
+            style={primaryButtonStyle}
           >
             <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>content_copy</span>
-            复制到公众号
+            {t("html_editor.copyWechat")}
           </button>
         </div>
       </div>
 
-      {/* Body: editor + preview */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-        {/* Left: editor */}
-        <div style={{ flex: 1, overflow: "hidden", borderRight: "1px solid var(--border-color)" }}>
+        <div style={{ flex: 1, overflow: "hidden", boxShadow: editorShadows.insetRight }}>
           <TiptapEditor
             content={html}
             onUpdate={handleUpdate}
             onAiRewrite={handleAiRewrite}
           />
         </div>
-        {/* Right: preview */}
-        <div style={{ flex: 1, overflow: "auto", background: "#f5f5f5" }}>
+        <div style={{ flex: 1, overflow: "auto", background: editorColors.canvas }}>
           <WeChatPreview html={html} />
         </div>
       </div>
 
-      {/* AI Rewrite popup */}
       {showRewrite && (
         <HtmlRewritePopup
           selectedText={selectedText}

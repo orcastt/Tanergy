@@ -1,8 +1,9 @@
 import { create } from "zustand"
-import type { Node, Edge } from "@xyflow/react"
+import type { Node, Edge, NodeChange, EdgeChange } from "@xyflow/react"
 import { pushHistory, copySelectedImpl, pasteNodesImpl, deleteSelectedImpl, duplicateNodeImpl, groupSelectedImpl, ungroupSelectedImpl, splitOutlineImpl } from "./canvasActions"
 
 type NodeStatus = "idle" | "running" | "waiting" | "done" | "error"
+type NodeDataUpdate = { nodeId: string; data: Record<string, unknown> }
 
 interface CanvasState {
   nodes: Node[]
@@ -21,6 +22,7 @@ interface CanvasState {
   updateNodeData: (id: string, data: Record<string, unknown>) => void
   updateNodePosition: (id: string, position: { x: number; y: number }) => void
   addEdge: (edge: Edge) => void
+  applyConnectionBatch: (batch: { edges: Edge[]; nodeDataUpdates: NodeDataUpdate[] }) => void
   removeEdge: (id: string) => void
   copySelected: () => void
   pasteNodes: () => void
@@ -40,8 +42,8 @@ interface CanvasState {
   setGraphFromJson: (graphJson: { nodes: Node[]; edges: Edge[] }) => void
   getGraphJson: () => { nodes: Node[]; edges: Edge[] }
   setSelectedNodes: (ids: string[]) => void
-  onNodesChange: (changes: any) => void
-  onEdgesChange: (changes: any) => void
+  onNodesChange: (changes: NodeChange[]) => void
+  onEdgesChange: (changes: EdgeChange[]) => void
   onDirty?: () => void
   setOnDirty: (cb: (() => void) | undefined) => void
 }
@@ -72,6 +74,23 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   }),
 
   addEdge: (edge) => set((s) => { s.onDirty?.(); return { edges: [...s.edges, edge], ...pushHistory(s) } }),
+  applyConnectionBatch: (batch) => set((s) => {
+    const edgeIds = new Set(s.edges.map((edge) => edge.id))
+    const edgesToAdd: Edge[] = []
+    for (const edge of batch.edges) {
+      if (edgeIds.has(edge.id)) continue
+      edgeIds.add(edge.id)
+      edgesToAdd.push(edge)
+    }
+    if (edgesToAdd.length === 0 && batch.nodeDataUpdates.length === 0) return {}
+
+    const updateMap = new Map(batch.nodeDataUpdates.map((update) => [update.nodeId, update.data]))
+    const nodes = updateMap.size === 0
+      ? s.nodes
+      : s.nodes.map((node) => updateMap.has(node.id) ? { ...node, data: { ...node.data, ...updateMap.get(node.id) } } : node)
+    s.onDirty?.()
+    return { nodes, edges: [...s.edges, ...edgesToAdd], ...pushHistory(s) }
+  }),
   removeEdge: (id) => set((s) => { s.onDirty?.(); return { edges: s.edges.filter((e) => e.id !== id), ...pushHistory(s) } }),
 
   undo: () => set((s) => {

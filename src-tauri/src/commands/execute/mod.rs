@@ -2,9 +2,9 @@ use crate::services::ai_client::{self, ChatMessage};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-mod media;
 mod html_formatter;
 mod legacy_text;
+mod media;
 mod mock;
 
 #[derive(Debug, Deserialize)]
@@ -20,17 +20,24 @@ pub struct ExecuteResult {
     pub status: String,
 }
 
-const DEFAULT_TEXT_MODEL: &str = "MiniMax-M2.7";
+const DEFAULT_TEXT_MODEL: &str = "hunyuan-3.0-preview";
 
 const AI_NODE_TYPES: &[&str] = &[
-    "research", "outline_generator", "writer", "reviewer",
-    "image_planner", "image_gen", "image_list", "html_formatter",
+    "research",
+    "outline_generator",
+    "writer",
+    "reviewer",
+    "image_planner",
+    "image_gen",
+    "image_list",
+    "html_formatter",
 ];
 
 /// Extract a text string from input data. Handles both direct strings and
 /// wrapped objects like `{ text: "..." }` or `{ raw: "..." }`.
 fn extract_text(value: &Value) -> Option<&str> {
-    value.as_str()
+    value
+        .as_str()
         .or_else(|| value.get("text").and_then(|v| v.as_str()))
         .or_else(|| value.get("content").and_then(|v| v.as_str()))
         .or_else(|| value.get("raw").and_then(|v| v.as_str()))
@@ -38,7 +45,8 @@ fn extract_text(value: &Value) -> Option<&str> {
 
 /// Get the model ID from node_data, falling back to the default text model.
 fn get_text_model(node_data: &Value) -> String {
-    node_data.get("model")
+    node_data
+        .get("model")
         .and_then(|v| v.as_str())
         .unwrap_or(DEFAULT_TEXT_MODEL)
         .to_string()
@@ -64,11 +72,9 @@ pub async fn execute_node(
         return mock::exec_mock(&payload).await;
     }
 
-    // AI nodes require login or own API key
+    // AI nodes require official backend access
     if AI_NODE_TYPES.contains(&payload.node_type.as_str()) {
-        if !crate::services::credits::has_official_access()
-            && !crate::services::credits::has_any_user_key()
-        {
+        if !crate::services::credits::has_official_access() {
             return Err("LOGIN_REQUIRED".into());
         }
     }
@@ -87,7 +93,8 @@ pub async fn execute_node(
 }
 
 fn exec_text_input(payload: &ExecutePayload) -> Result<ExecuteResult, String> {
-    let text = payload.node_data
+    let text = payload
+        .node_data
         .get("text")
         .and_then(|v| v.as_str())
         .or_else(|| payload.input_data.get("in").and_then(extract_text))
@@ -105,7 +112,8 @@ fn exec_text_input(payload: &ExecutePayload) -> Result<ExecuteResult, String> {
 }
 
 async fn exec_research(payload: &ExecutePayload) -> Result<ExecuteResult, String> {
-    let query = payload.input_data
+    let query = payload
+        .input_data
         .get("in")
         .and_then(extract_text)
         .or_else(|| payload.node_data.get("query").and_then(|v| v.as_str()))
@@ -116,7 +124,8 @@ async fn exec_research(payload: &ExecutePayload) -> Result<ExecuteResult, String
         return Err("research: empty query".into());
     }
 
-    let direction = payload.node_data
+    let direction = payload
+        .node_data
         .get("direction")
         .and_then(|v| v.as_str())
         .unwrap_or("");
@@ -131,14 +140,30 @@ async fn exec_research(payload: &ExecutePayload) -> Result<ExecuteResult, String
         )
     };
 
-    let user_msg = format!("请对以下主题进行深入调研：{}\n\n请输出结构化的调研报告，包含关键事实、数据和洞察。", query);
+    let user_msg = format!(
+        "请对以下主题进行深入调研：{}\n\n请输出结构化的调研报告，包含关键事实、数据和洞察。",
+        query
+    );
 
     let messages = vec![
-        ChatMessage { role: "system".into(), content: system },
-        ChatMessage { role: "user".into(), content: user_msg },
+        ChatMessage {
+            role: "system".into(),
+            content: system,
+        },
+        ChatMessage {
+            role: "user".into(),
+            content: user_msg,
+        },
     ];
 
-    let completion = ai_client::chat_completion(&get_text_model(&payload.node_data), "", messages, 4096, Some(0.7)).await?;
+    let completion = ai_client::chat_completion(
+        &get_text_model(&payload.node_data),
+        "",
+        messages,
+        4096,
+        Some(0.7),
+    )
+    .await?;
 
     Ok(ExecuteResult {
         output: serde_json::json!({ "text": completion.text }),
@@ -147,22 +172,26 @@ async fn exec_research(payload: &ExecutePayload) -> Result<ExecuteResult, String
 }
 
 async fn exec_outline(payload: &ExecutePayload) -> Result<ExecuteResult, String> {
-    let topic = payload.input_data
+    let topic = payload
+        .input_data
         .get("in")
         .and_then(extract_text)
         .unwrap_or("");
 
-    let research = payload.input_data
+    let research = payload
+        .input_data
         .get("research")
         .and_then(extract_text)
         .unwrap_or("");
 
-    let style = payload.node_data
+    let style = payload
+        .node_data
         .get("style")
         .and_then(|v| v.as_str())
         .unwrap_or("干货清单");
 
-    let custom = payload.node_data
+    let custom = payload
+        .node_data
         .get("promptOverride")
         .and_then(|v| v.as_str())
         .unwrap_or("");
@@ -189,11 +218,24 @@ async fn exec_outline(payload: &ExecutePayload) -> Result<ExecuteResult, String>
     );
 
     let messages = vec![
-        ChatMessage { role: "system".into(), content: system },
-        ChatMessage { role: "user".into(), content: user_msg },
+        ChatMessage {
+            role: "system".into(),
+            content: system,
+        },
+        ChatMessage {
+            role: "user".into(),
+            content: user_msg,
+        },
     ];
 
-    let completion = ai_client::chat_completion(&get_text_model(&payload.node_data), "", messages, 4096, Some(0.8)).await?;
+    let completion = ai_client::chat_completion(
+        &get_text_model(&payload.node_data),
+        "",
+        messages,
+        4096,
+        Some(0.8),
+    )
+    .await?;
 
     let raw = completion.text.trim();
     let mut sections = parse_sections(raw);
@@ -223,26 +265,42 @@ async fn exec_outline(payload: &ExecutePayload) -> Result<ExecuteResult, String>
 }
 
 fn parse_sections(raw: &str) -> Vec<Value> {
-    let outline_text = raw.split("---IMAGE_PLANS_START---").next().unwrap_or(raw).trim();
+    let outline_text = raw
+        .split("---IMAGE_PLANS_START---")
+        .next()
+        .unwrap_or(raw)
+        .trim();
 
     // Split on **[N]** markers
-    let parts: Vec<&str> = outline_text.split("**[").filter(|s| !s.is_empty()).collect();
+    let parts: Vec<&str> = outline_text
+        .split("**[")
+        .filter(|s| !s.is_empty())
+        .collect();
     if parts.is_empty() {
         return vec![serde_json::json!({"id": "1", "title": "大纲", "content": outline_text})];
     }
 
-    parts.iter().filter_map(|part| {
-        let close = part.find("]**")?;
-        let section_id = part[..close].trim().to_string();
-        let rest = part[close + 3..].trim();
-        let title = rest.lines().next().unwrap_or("").trim()
-            .trim_start_matches(':').trim().to_string();
-        Some(serde_json::json!({
-            "id": section_id,
-            "title": title,
-            "content": format!("**[{}]** {}", section_id, rest),
-        }))
-    }).collect()
+    parts
+        .iter()
+        .filter_map(|part| {
+            let close = part.find("]**")?;
+            let section_id = part[..close].trim().to_string();
+            let rest = part[close + 3..].trim();
+            let title = rest
+                .lines()
+                .next()
+                .unwrap_or("")
+                .trim()
+                .trim_start_matches(':')
+                .trim()
+                .to_string();
+            Some(serde_json::json!({
+                "id": section_id,
+                "title": title,
+                "content": format!("**[{}]** {}", section_id, rest),
+            }))
+        })
+        .collect()
 }
 
 fn parse_image_plans(raw: &str) -> Value {
@@ -254,12 +312,19 @@ fn parse_image_plans(raw: &str) -> Value {
                 if let Some(arr_end) = json_str.rfind(']') {
                     let arr_str = &json_str[arr_start..=arr_end];
                     if let Ok(parsed) = serde_json::from_str::<Vec<Value>>(arr_str) {
-                        let with_ids: Vec<Value> = parsed.into_iter().enumerate().map(|(i, mut p)| {
-                            if let Some(obj) = p.as_object_mut() {
-                                obj.insert("id".into(), serde_json::json!(format!("img_{}", i + 1)));
-                            }
-                            p
-                        }).collect();
+                        let with_ids: Vec<Value> = parsed
+                            .into_iter()
+                            .enumerate()
+                            .map(|(i, mut p)| {
+                                if let Some(obj) = p.as_object_mut() {
+                                    obj.insert(
+                                        "id".into(),
+                                        serde_json::json!(format!("img_{}", i + 1)),
+                                    );
+                                }
+                                p
+                            })
+                            .collect();
                         return serde_json::json!(with_ids);
                     }
                 }

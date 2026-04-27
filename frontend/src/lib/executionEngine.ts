@@ -179,7 +179,7 @@ async function executeSingleNode(nodeId: string, nodes: Node[], edges: Edge[], o
     if (msg === "LOGIN_REQUIRED" || msg.includes("LOGIN_REQUIRED")) {
       setNodeStatus(nodeId, "error")
       useCanvasStore.setState((s) => ({
-        nodeResults: { ...s.nodeResults, [nodeId]: { error: "Please log in or configure an API Key to use AI features" } },
+        nodeResults: { ...s.nodeResults, [nodeId]: { error: "Please log in to use Tangent official AI routing" } },
       }))
       options.onNodeError?.(nodeId, "LOGIN_REQUIRED")
       return

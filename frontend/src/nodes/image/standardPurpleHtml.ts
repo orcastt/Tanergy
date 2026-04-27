@@ -57,7 +57,7 @@ function renderBlock(el: HTMLElement, index: number): string {
   if (!content && tag !== "img" && tag !== "hr") return ""
 
   if (tag === "h1") {
-    return `<section style="margin:10px 0 30px;text-align:left;"><section style="display:inline-block;background:${THEME_LIGHT};color:${THEME};font-size:13px;font-weight:700;padding:4px 10px;border-radius:999px;margin-bottom:12px;">Tanvas 视觉规范 · 标准紫</section><section style="font-size:26px;font-weight:800;line-height:1.45;color:#252525;letter-spacing:0.2px;">${content}</section></section>`
+    return `<section style="margin:10px 0 30px;text-align:left;"><section style="display:inline-block;background:${THEME_LIGHT};color:${THEME};font-size:13px;font-weight:700;padding:4px 10px;border-radius:999px;margin-bottom:12px;">${i18n.t("standard_purple.badge")}</section><section style="font-size:26px;font-weight:800;line-height:1.45;color:#252525;letter-spacing:0.2px;">${content}</section></section>`
   }
 
   if (tag === "h2") {
@@ -74,7 +74,7 @@ function renderBlock(el: HTMLElement, index: number): string {
   }
 
   if (tag === "blockquote") {
-    return `<section style="padding:14px 18px;border-left:3px solid ${THEME};background:#fdfdfd;border-radius:5px;box-shadow:0px 2px 6px rgba(0,0,0,0.08);color:#878b8e;font-size:14px;line-height:1.6;font-style:italic;margin:28px 4px;"><span style="color:${THEME};font-weight:bold;font-style:normal;display:block;margin-bottom:8px;">💡 核心洞察</span>${content}</section>`
+    return `<section style="padding:14px 18px;border-left:3px solid ${THEME};background:#fdfdfd;border-radius:5px;box-shadow:0px 2px 6px rgba(0,0,0,0.08);color:#878b8e;font-size:14px;line-height:1.6;font-style:italic;margin:28px 4px;"><span style="color:${THEME};font-weight:bold;font-style:normal;display:block;margin-bottom:8px;">💡 ${i18n.t("standard_purple.insight")}</span>${content}</section>`
   }
 
   if (tag === "ul" || tag === "ol") {
@@ -139,6 +139,7 @@ function renderBlock(el: HTMLElement, index: number): string {
 function isAlreadyStandardPurple(html: string) {
   return (
     html.includes("Tanvas 视觉规范") ||
+    html.includes("Tanvas Visual System") ||
     (
       html.includes("fill=\"#5965AF\"") &&
       html.includes("margin-bottom:-45px") &&
@@ -194,3 +195,4 @@ export function toStandardPurpleHtml(html: string): string {
     .filter(Boolean)
     .join("\n")
 }
+import i18n from "../../i18n"

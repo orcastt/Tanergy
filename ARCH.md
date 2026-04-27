@@ -34,7 +34,7 @@
 
 - **应用类型**：单用户桌面应用
 - **并发定义**：同一工作流中同时执行的节点数，目标最多 5 个并发 AI API 调用
-- **决策依据**：AI 任务耗时 10-60 秒，并发受限于用户 API Key 的速率限制
+- **决策依据**：AI 任务耗时 10-60 秒，并发、限流与备用线路由官方后端代理统一管理
 
 ### 1.2 性能上限
 
@@ -57,9 +57,9 @@
 
 ### 1.4 隐私合规
 
-- 所有用户数据（工作流、生成内容、API Key）存储在用户本地设备
-- AI API 调用：用户的 Prompt 直接从客户端发往 AI 提供商，用户自行承担数据传输责任
-- 不发送任何个人数据到 TANGENT 服务器（无服务器）
+- 工作流、生成内容和本地素材优先存储在用户本地设备
+- AI API 调用：用户 Prompt 通过 Tangent FastAPI 官方代理转发到已配置 Provider
+- 第三方 Provider Key 不暴露给桌面端，由后端环境变量和 Admin Provider Registry 管理
 - 无 Cookie、无 Analytics、无追踪
 - 认证与计费通过 FastAPI（OTP + JWT + 订阅）进行，工作流数据仍本地存储
 
@@ -76,10 +76,10 @@
 
 | 依赖 | 风险 | 降级方案 |
 |------|------|---------|
-| Claude API 不可用 | 文本 AI 节点失败 | 节点显示错误，用户手动重试 |
-| Imagen 3 不可用 | 图像节点失败 | 节点显示错误 |
+| 官方文本线路不可用 | 文本 AI 节点失败 | 后端 fallback / 节点显示错误，用户手动重试 |
+| 官方图片线路不可用 | 图像节点失败 | 后端 fallback / 节点显示错误 |
 | Tavily 不可用 | Research 节点失败 | 节点显示错误 |
-| 用户 API Key 无效/过期 | 对应节点失败 | 提示用户去 Settings 更新 Key |
+| 官方 Provider 线路不可用 | 对应节点失败 | 后端 fallback / Admin 切换线路 / 节点提示重试 |
 | Tauri webview 兼容性 | 渲染差异 | macOS 用 WebKit，Windows 用 WebView2 |
 
 ### 1.7 目标平台
@@ -110,10 +110,10 @@
 | **UI 组件** | Tailwind CSS + Radix UI | Tailwind v3 | Cal.com 风格灰度系统 |
 | **本地数据库** | **SQLite** | **v3** | 嵌入式、零配置、单文件、可靠 |
 | **ORM** | **Drizzle ORM** | **latest** | 轻量、类型安全、SQLite 支持好 |
-| **AI API 调用** | **Tauri Rust 侧 reqwest** | — | 用户自带 Key，经 Rust 侧转发，不暴露给 JS |
+| **AI API 调用** | **FastAPI Proxy** | — | 桌面端携带 JWT 调用官方代理，Provider Key 不暴露给客户端 |
 | **文件存储** | **本地文件系统（Tauri fs API）** | — | 用户工作空间目录 |
 | **用户认证** | **FastAPI Email OTP + JWT** | — | 统一登录态，支持积分与订阅 |
-| **API Key 加密** | **AES-256-GCM + OS keychain** | — | 安全存储用户的 API Key |
+| **API Key 加密** | **AES-256-GCM + OS keychain** | — | legacy BYOK 能力，当前默认关闭 |
 | **多语言** | i18next + react-i18next | latest | 行业标准 |
 | **子画布绘图** | Fabric.js | v6 | Phase 2，Draw/标注/Inpaint |
 | **代码编辑** | Monaco Editor | latest | VS Code 同款，Prompt 编辑用 |
@@ -130,7 +130,7 @@
 | IndexedDB | 不适合关系型工作流数据，SQL 查询能力弱 |
 | Redis | 单用户无需缓存/队列 |
 | MinIO / S3 | 本地文件系统足够 |
-| Stripe | 用户自带 Key，按时计费不适用 |
+| Stripe | 已在 Phase 2 作为积分/订阅支付接入 |
 | Yjs | 单用户桌面无需协同（Phase 2 网页版再考虑） |
 | MongoDB | 工作流数据有关联关系，SQLite 更合适 |
 | Redux | Zustand 够用，Redux 样板代码太多 |
@@ -180,10 +180,10 @@ frontend/
 │   │   └── hooks/        ← useSkillApply
 │   ├── library/          ← 全局个人素材库 Drawer、卡片、保存弹窗、拖拽协议
 │   ├── pages/            ← 应用视图
-│   │   ├── WelcomePage.tsx   ← 首次启动向导（Email OTP + API Key 可选）
+│   │   ├── WelcomePage.tsx   ← 首次启动向导（Email OTP）
 │   │   ├── DashboardPage.tsx ← 工作流列表
 │   │   ├── CanvasPage.tsx    ← 核心画布编辑
-│   │   └── SettingsPage.tsx  ← API Keys、账户、偏好设置
+│   │   └── SettingsPage.tsx  ← 账户、偏好设置、官方线路说明
 │   ├── store/            ← Zustand 状态
 │   │   ├── canvasStore.ts    ← 节点/连线/选中/历史
 │   │   ├── canvasActions.ts  ← 剪贴板/打组操作
@@ -240,13 +240,13 @@ src-tauri/
 │   ├── lib.rs            ← Command 注册
 │   ├── commands/         ← Tauri IPC 命令处理器
 │   │   ├── mod.rs
-│   │   ├── agent.rs      ← AI Agent 对话（MiniMax → JSON actions）
+│   │   ├── agent.rs      ← AI Agent 对话（官方文本模型 → JSON actions）
 │   │   ├── credits.rs    ← 积分/订阅/FastAPI 代理
 │   │   ├── workflow.rs   ← 工作流 CRUD（SQLite）
 │   │   ├── asset.rs      ← 资产文件管理 + canvas 导出 + AI 图片编辑
 │   │   │                     save_canvas_export, ai_edit_image, read_asset_file
 │   │   ├── billing.rs    ← 订阅支付相关命令
-│   │   ├── api_keys.rs   ← API Key 加密存储
+│   │   ├── api_keys.rs   ← legacy BYOK 加密存储（当前默认关闭）
 │   │   ├── library.rs    ← 全局素材库 CRUD + 图片文件保存
 │   │   └── execute/      ← 节点执行器
 │   │       ├── mod.rs    ← 路由分发
@@ -257,9 +257,9 @@ src-tauri/
 │   │   └── migrations.rs ← 数据库迁移逻辑
 │   ├── services/
 │   │   ├── mod.rs
-│   │   ├── ai_client.rs  ← HTTP 客户端（reqwest，调用 AI API）
+│   │   ├── ai_client.rs  ← 官方后端代理客户端（chat/image）
 │   │   └── auth.rs       ← 登录态与会话辅助逻辑
-│   └── crypto.rs         ← API Key 加解密工具
+│   └── crypto.rs         ← legacy 本地密钥加解密工具
 ├── Cargo.toml
 ├── tauri.conf.json       ← Tauri 配置
 ├── icons/                ← 应用图标（各平台）
@@ -278,7 +278,8 @@ backend/
 │   ├── models/              ← User / Credit 数据模型
 │   ├── api/v1/              ← auth / credits / proxy / billing / admin
 │   └── services/
-│       ├── proxy_service.py ← AI 代理核心（5 providers，差价积分）
+│       ├── proxy_service.py ← 兼容导出层
+│       ├── proxy/           ← AI 代理核心（Provider/Model 校验、扣费、chat/image）
 │       └── otp_service.py   ← OTP 生成/验证
 ├── migrations/              ← Alembic 迁移
 ├── docker-compose.yml       ← 本地开发（PostgreSQL + Redis）
@@ -299,8 +300,8 @@ backend/
 ### 4.2 节点模块（前端 + Tauri IPC）
 
 **前端职责**：节点 UI 渲染 + 配置参数的本地状态
-**Tauri Rust 职责**：节点的实际执行（解密 API Key → 调用 AI API → 返回结果）
-**边界**：前端节点组件不持有 API Key，通过 `invoke('execute_node')` 发请求到 Rust 侧
+**Tauri Rust 职责**：节点的实际执行、登录态检查、调用 FastAPI 官方代理并返回结果
+**边界**：前端节点组件不持有 Provider Key，通过 `invoke('execute_node')` 发请求到 Rust 侧，再由 Rust 调用后端代理
 
 ### 4.3 执行引擎（前端）
 
@@ -368,16 +369,15 @@ const NODE_EXECUTORS: Record<NodeType, NodeExecutor> = {
 - 邮箱 OTP 登录：`/api/v1/auth/send-otp` + `/verify-otp`
 - JWT 写入本地 `app_config.backend_jwt`
 - 应用启动时检查 JWT，有效则直达业务页
-- AI 节点执行前校验：有 official access 或用户自带 Key 才可执行
+- AI 节点执行前校验：必须有 official access，未登录返回 `LOGIN_REQUIRED`
 
-### 4.7 API Key 模块（Tauri Rust 侧）
+### 4.7 API Key 模块（legacy，当前默认关闭）
 
-**职责**：API Key 加密存储、解密使用、有效性检测
+**职责**：历史 BYOK 能力的 API Key 加密存储、解密使用、有效性检测
 **机制**：
-- 用户在 Settings 输入 API Key → Rust 侧 AES-256-GCM 加密 → 存入 SQLite
-- 执行节点时 → Rust 侧从 SQLite 读取 → 解密到内存 → 调用 AI API → 清除内存
-- API Key 永不暴露给前端 JS
-- 支持的提供商：Anthropic (Claude)、Tavily (Search)、Google Cloud (Imagen 3)
+- 当前 UI 不暴露 BYOK 入口，AI 节点默认不读取本地 `api_keys`
+- 如后续恢复高级模式，再启用 Settings 入口和对应 direct provider 调用
+- 当前 Provider Key 统一放在后端环境变量和 Admin Provider Registry
 
 ---
 
@@ -463,10 +463,10 @@ CREATE INDEX idx_logs_workflow ON execution_logs(workflow_id);
 
 | 操作 | 原因 |
 |------|------|
-| AI API 调用（Claude、Imagen 3、Tavily） | API Key 在 Rust 侧解密，不暴露给 JS |
+| AI API 调用 | Rust 侧读取 JWT 后调用 FastAPI 官方代理，Provider Key 不暴露给客户端 |
 | SQLite 数据库操作 | DB 连接在 Rust 侧管理 |
 | 文件系统操作（资产存储） | Tauri fs API 安全访问 |
-| API Key 加密/解密 | 加密操作在 Rust 侧，不在 JS |
+| API Key 加密/解密 | legacy BYOK 能力，当前默认关闭 |
 | 登录态检查/会话缓存 | JWT 保存在本地配置，调用前做本地前置校验 |
 
 ### 纯前端 JS/React
@@ -485,9 +485,9 @@ CREATE INDEX idx_logs_workflow ON execution_logs(workflow_id);
 
 | 目标 | 用途 | Key 来源 |
 |------|------|---------|
-| api.anthropic.com | Claude API | 用户提供 |
-| vision.googleapis.com | Imagen 3 | 用户提供 |
-| api.tavily.com | 搜索 | 用户提供 |
+| FastAPI `/api/v1/proxy/chat` | 文本 AI 官方代理 | 后端 Provider Registry |
+| FastAPI `/api/v1/proxy/image` | 图片生成官方代理 | 后端 Provider Registry |
+| FastAPI `/api/v1/proxy/image/edit` | 图片编辑官方代理 | 后端 Provider Registry |
 
 ---
 
@@ -541,7 +541,7 @@ interface AuthStore {
   checkSession: () => Promise<void>
 }
 
-// apiKeyStore.ts — API Key 管理
+// apiKeyStore.ts — legacy API Key 管理（当前默认关闭）
 interface ApiKeyStore {
   keys: Record<string, { provider: string; isSet: boolean; isValid: boolean | null }>
   setKey: (provider: string, key: string) => Promise<boolean>
@@ -579,8 +579,8 @@ DAG 拓扑分层（JS，逻辑不变）
 逐节点调用 invoke('execute_node', { nodeId, nodeType, inputData })
     ↓
 Tauri Rust 侧：
-  1. 解密对应 provider 的 API Key
-  2. 用 reqwest 发 HTTP 到 AI API
+  1. 检查本地 JWT / official access
+  2. 用 reqwest 发 HTTP 到 FastAPI proxy
   3. 返回结果
     ↓
 前端 canvasStore.setNodeStatus('done')
@@ -625,7 +625,7 @@ invoke('get_assets', { workflowId?: string }): Promise<Asset[]>
 invoke('delete_asset', { id: string }): Promise<void>
 invoke('export_zip', { assetIds: string[], outputPath: string }): Promise<string>
 
-// === API Keys ===
+// === API Keys (legacy BYOK, current UI disabled) ===
 invoke('set_api_key', { provider: string, key: string }): Promise<{ success: boolean; error?: string }>
 invoke('test_api_key', { provider: string }): Promise<{ valid: boolean; error?: string }>
 invoke('get_api_key_status', { provider: string }): Promise<{ isSet: boolean; isValid: boolean | null; lastTested?: string }>
@@ -662,8 +662,7 @@ listen('execution_complete', (event) => {
 
 - Rust 侧返回 `Result<T, String>` → 前端 `Promise<T>`，失败时 reject
 - 错误码约定：
-  - `API_KEY_NOT_SET` — 该 provider 的 API Key 未配置
-  - `API_KEY_INVALID` — API Key 验证失败
+  - `PROVIDER_NOT_CONFIGURED` — 官方 Provider 未配置或不可用
   - `API_CALL_FAILED` — AI API 调用失败（含具体错误信息）
   - `LOGIN_REQUIRED` — 需要登录后使用官方 API
   - `INSUFFICIENT_CREDITS` — 积分不足
@@ -723,13 +722,11 @@ GitHub Actions workflow:
 
 ## 10. 安全规范
 
-### 10.1 API Key 管理
+### 10.1 API Key 管理（legacy）
 
-- API Key 是用户自有财产，非 TANGENT 所有
-- 存储方式：AES-256-GCM 加密后存入 SQLite `api_keys` 表
-- 解密时机：仅在执行节点时在 Rust 内存中解密，用后清除
-- **API Key 永不暴露给前端 JS**（DevTools 也看不到）
-- Key 不发送到 TANGENT 服务器（无服务器）
+- 当前默认产品路径关闭 BYOK，桌面端不要求用户配置第三方 Key。
+- 历史 `api_keys` 表保留，便于后续恢复高级模式。
+- 当前 Provider Key 统一在后端环境变量和 Admin Provider Registry 管理，不暴露给客户端。
 
 ### 10.2 认证与会话安全
 
@@ -971,11 +968,10 @@ CREATE TABLE model_configs (
   ↓
 有官方 JWT？
   ├── 是 → 调用 FastAPI 代理（扣积分）
-  │        ├── 积分足够 → 转发到 AI provider → 返回结果
+  │        ├── 模型启用 → Provider Registry 选择线路 → 积分足够 → 返回结果
+  │        ├── 模型禁用/类型不匹配 → 返回 MODEL_NOT_ENABLED
   │        └── 积分不足 → 返回 INSUFFICIENT_CREDITS
-  └── 否 → 有用户自带 Key？
-           ├── 是 → 直接调用 AI provider（经 Tauri Rust 侧）
-           └── 否 → 返回 LOGIN_REQUIRED
+  └── 否 → 返回 LOGIN_REQUIRED
 ```
 
 ### 12.6 目录结构（后端）
@@ -985,7 +981,7 @@ backend/
 ├── app/
 │   ├── main.py              ← FastAPI 入口 + 路由注册
 │   ├── core/
-│   │   ├── config.py        ← 环境变量 + API Key 配置
+│   │   ├── config.py        ← 环境变量 + Provider Key 配置
 │   │   └── security.py      ← JWT + OTP 工具
 │   ├── models/
 │   │   ├── user.py          ← User 模型（含 role 字段）
@@ -997,7 +993,8 @@ backend/
 │   │   ├── billing.py       ← Stripe Checkout + Webhook
 │   │   └── admin.py         ← Admin API（统计/用户/积分/日志/模型）
 │   └── services/
-│       ├── proxy_service.py ← AI 代理核心（5 providers，差价积分）
+│       ├── proxy_service.py ← 兼容导出层
+│       ├── proxy/           ← AI 代理核心（Provider/Model 校验、扣费、chat/image）
 │       └── otp_service.py   ← OTP 生成/验证
 ├── migrations/              ← Alembic 迁移
 ├── docker-compose.yml
@@ -1132,13 +1129,13 @@ const src = imageId ? imageCache.get(imageId) : null
 用户点击 AI Edit → 输入编辑指令
   → AiEditPopup 截取画布 getCanvasElement().toDataURL()
   → 调用 Rust ai_edit_image(base64, instruction, model)
-  → Rust: 文本模型生成增强 prompt → 图片生成 API
+  → Rust: official image edit proxy → FastAPI Provider Registry → GeekAI/备用线路
   → 返回新图片 base64
   → 前端 addImageLayer(dataUrl, "AI 生成")
 ```
 
 **Rust 侧实现** (`services/ai_client.rs`):
-- `ai_edit_image()`: 接收截图 + 指令 → 用文本模型分析/增强 prompt → 调用图片生成
+- `ai_edit_image()`: 接收截图 + 指令 + 图片模型 → 调用官方图片编辑代理
 - 进度状态: input → analyzing(30%) → generating(70%) → done(100%)
 
 ### 13.10 Image Editor 关键文件

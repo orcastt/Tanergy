@@ -6,7 +6,8 @@ export function getTiptapEditorStyles() {
       max-width: 760px;
       margin: 0 auto;
       outline: none;
-      color: #1f2328;
+      color: #0E0F0F;
+      font-family: "Inter", sans-serif;
       font-size: 16px;
       line-height: 1.72;
       min-height: 100%;
@@ -18,23 +19,31 @@ export function getTiptapEditorStyles() {
       padding: 2px 4px;
     }
     .notion-editor-content > *:hover {
-      background: rgba(89, 101, 175, 0.045);
+      background: #F5F3F3;
     }
     .notion-editor-content p { margin: 0.35em 0; }
     .notion-editor-content h1 {
-      color: #b9b9bd;
+      color: #242424;
+      font-family: "Space Grotesk", sans-serif;
       font-size: 2rem;
-      font-weight: 800;
+      font-weight: 700;
+      letter-spacing: -0.02em;
       line-height: 1.2;
       margin: 0.6em 0 0.5em;
     }
-    .notion-editor-content h2 { font-size: 1.45rem; font-weight: 750; margin: 1em 0 0.45em; }
+    .notion-editor-content h2,
+    .notion-editor-content h3 {
+      color: #242424;
+      font-family: "Space Grotesk", sans-serif;
+      letter-spacing: -0.02em;
+    }
+    .notion-editor-content h2 { font-size: 1.45rem; font-weight: 700; margin: 1em 0 0.45em; }
     .notion-editor-content h3 { font-size: 1.15rem; font-weight: 700; margin: 0.9em 0 0.35em; }
     .notion-editor-content blockquote {
-      border-left: 3px solid ${THEME};
       padding: 0.5rem 0.75rem;
       color: #5f6368;
-      background: #faf9ff;
+      background: #F5F3F3;
+      box-shadow: inset 3px 0 0 ${THEME};
       margin: 0.9rem 0;
     }
     .notion-editor-content ul,
@@ -62,19 +71,19 @@ export function getTiptapEditorStyles() {
     }
     .notion-editor-content td,
     .notion-editor-content th {
-      border: 1px solid #dedede;
+      border: 1px solid #E3E2E2;
       padding: 0.5rem;
       vertical-align: top;
       min-width: 90px;
     }
     .notion-editor-content th {
-      background: #f5f3ff;
+      background: #F5F3F3;
       color: ${THEME};
       font-weight: 700;
     }
     .notion-editor-content img {
       max-width: 100%;
-      border-radius: 10px;
+      border-radius: 8px;
       display: block;
       margin: 1rem auto;
     }
@@ -108,8 +117,8 @@ export function getTiptapEditorStyles() {
     }
     .notion-block-add:hover,
     .notion-block-grip:hover {
-      background: #f1f3f4;
-      color: #333;
+      background: #F5F3F3;
+      color: #242424;
     }
     .notion-block-grip {
       cursor: grab;

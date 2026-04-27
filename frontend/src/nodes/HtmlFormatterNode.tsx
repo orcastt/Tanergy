@@ -215,7 +215,7 @@ export default function HtmlFormatterNode({ data, id, selected }: NodeProps) {
 
       {status === "error" && (
         <div style={{ padding: "0.375rem 0.5rem", background: "#fef2f2", borderRadius: "0.25rem", fontSize: "0.6875rem", color: "#991b1b" }}>
-          执行失败，请检查 API Key
+          执行失败，请登录或检查官方线路
         </div>
       )}
     </NodeBase>

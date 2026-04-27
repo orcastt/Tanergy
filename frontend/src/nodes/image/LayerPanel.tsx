@@ -1,11 +1,14 @@
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import { useLayerStore } from "./layerStore"
+import { editorColors, editorShadows, editorTypography, primaryButtonStyle } from "../../styles/editorDesign"
 
 interface Props {
   onExportLayer?: () => void
 }
 
 export default function LayerPanel({ onExportLayer }: Props) {
+  const { t } = useTranslation()
   const {
     layers, activeLayerId,
     setOpacity,
@@ -31,20 +34,18 @@ export default function LayerPanel({ onExportLayer }: Props) {
 
   return (
     <div style={{
-      width: "220px", borderLeft: "1px solid var(--border-color)", flexShrink: 0,
-      background: "var(--bg-canvas)", display: "flex", flexDirection: "column",
+      width: "220px", boxShadow: editorShadows.insetLeft, flexShrink: 0,
+      background: editorColors.canvas, display: "flex", flexDirection: "column",
     }}>
-      {/* Header */}
       <div style={{
-        padding: "0.5rem 0.75rem", borderBottom: "1px solid var(--border-color)",
-        fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-secondary)",
+        padding: "0.5rem 0.75rem", boxShadow: editorShadows.insetBottom,
+        ...editorTypography.label, color: "var(--text-secondary)",
         display: "flex", alignItems: "center", gap: "0.375rem",
       }}>
         <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>layers</span>
-        图层 ({layers.length})
+        {t("image_editor.layers.title", { count: layers.length })}
       </div>
 
-      {/* Layer list */}
       <div style={{ flex: 1, overflowY: "auto", padding: "0.375rem" }}>
         {[...layers].reverse().map((layer, visualIdx) => (
           <LayerRow
@@ -59,50 +60,41 @@ export default function LayerPanel({ onExportLayer }: Props) {
         ))}
       </div>
 
-      {/* Active layer opacity */}
       {activeLayer && (
         <div style={{
-          padding: "0.5rem 0.75rem", borderTop: "1px solid var(--border-color)",
+          padding: "0.5rem 0.75rem", boxShadow: "inset 0 1px 0 rgba(0,0,0,0.05)",
         }}>
           <div style={{ fontSize: "0.5625rem", color: "var(--text-secondary)", marginBottom: "0.25rem" }}>
-            不透明度 {Math.round(activeLayer.opacity * 100)}%
+            {t("image_editor.layers.opacity", { value: Math.round(activeLayer.opacity * 100) })}
           </div>
           <input
             type="range" min={0} max={100}
             value={Math.round(activeLayer.opacity * 100)}
             onChange={(e) => setOpacity(activeLayer.id, Number(e.target.value) / 100)}
-            style={{ width: "100%", height: "4px", accentColor: "#6349EA" }}
+            style={{ width: "100%", height: "4px", accentColor: editorColors.primary }}
           />
         </div>
       )}
 
-      {/* Action buttons */}
       <div style={{
-        padding: "0.5rem", borderTop: "1px solid var(--border-color)",
+        padding: "0.5rem", boxShadow: "inset 0 1px 0 rgba(0,0,0,0.05)",
         display: "flex", gap: "0.25rem", flexWrap: "wrap",
       }}>
-        <ActionBtn icon="add" title="新建图层" onClick={() => addLayer()} />
-        <ActionBtn icon="content_copy" title="复制图层" onClick={() => activeLayerId && duplicateLayer(activeLayerId)} />
-        <ActionBtn icon="delete" title="删除图层" onClick={() => activeLayerId && removeLayer(activeLayerId)} />
-        <ActionBtn icon="arrow_upward" title="上移" onClick={() => activeLayerId && moveLayer(activeLayerId, "up")} />
-        <ActionBtn icon="arrow_downward" title="下移" onClick={() => activeLayerId && moveLayer(activeLayerId, "down")} />
+        <ActionBtn icon="add" title={t("image_editor.layers.add")} onClick={() => addLayer()} />
+        <ActionBtn icon="content_copy" title={t("image_editor.layers.duplicate")} onClick={() => activeLayerId && duplicateLayer(activeLayerId)} />
+        <ActionBtn icon="delete" title={t("image_editor.layers.delete")} onClick={() => activeLayerId && removeLayer(activeLayerId)} />
+        <ActionBtn icon="arrow_upward" title={t("image_editor.layers.moveUp")} onClick={() => activeLayerId && moveLayer(activeLayerId, "up")} />
+        <ActionBtn icon="arrow_downward" title={t("image_editor.layers.moveDown")} onClick={() => activeLayerId && moveLayer(activeLayerId, "down")} />
       </div>
 
-      {/* Export to node */}
       {onExportLayer && (
-        <div style={{ padding: "0.375rem 0.5rem", borderTop: "1px solid var(--border-color)" }}>
+        <div style={{ padding: "0.375rem 0.5rem", boxShadow: "inset 0 1px 0 rgba(0,0,0,0.05)" }}>
           <button
             onClick={onExportLayer}
-            style={{
-              width: "100%", padding: "0.375rem 0.5rem", borderRadius: "0.375rem",
-              border: "1px solid #22C55E", background: "transparent",
-              color: "#22C55E", fontSize: "0.6875rem", fontWeight: 600,
-              cursor: "pointer", display: "flex", alignItems: "center",
-              justifyContent: "center", gap: "0.25rem",
-            }}
+            style={{ ...primaryButtonStyle, width: "100%", justifyContent: "center" }}
           >
             <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>download</span>
-            导出到节点输出
+            {t("image_editor.layers.exportToOutput")}
           </button>
         </div>
       )}
@@ -118,10 +110,11 @@ function LayerRow({ layer, isActive, index, total, onDragStart, onDrop }: {
   onDragStart: (id: string) => void
   onDrop: (targetIndex: number) => void
 }) {
+  const { t } = useTranslation()
   const { setActive, toggleVisible, toggleLocked } = useLayerStore()
 
   const icon = layer.imageSrc ? "image" : layer.strokes.length > 0 ? "brush" : "square"
-  const subtitle = layer.imageSrc ? "图片" : `${layer.strokes.length} 笔`
+  const subtitle = layer.imageSrc ? t("image_editor.layers.image") : t("image_editor.layers.strokes", { count: layer.strokes.length })
 
   // Visual index = reverse of array index (top row = last in array)
   const visualIndex = total - 1 - index
@@ -136,8 +129,8 @@ function LayerRow({ layer, isActive, index, total, onDragStart, onDrop }: {
       style={{
         display: "flex", alignItems: "center", gap: "0.375rem",
         padding: "0.375rem 0.5rem", borderRadius: "0.375rem", cursor: "grab",
-        background: isActive ? "var(--bg-hover)" : "transparent",
-        border: isActive ? "1px solid #6349EA" : "1px solid transparent",
+        background: isActive ? editorColors.surface : "transparent",
+        boxShadow: isActive ? editorShadows.ring : "none",
         marginBottom: "0.125rem",
         userSelect: "none",
       }}
@@ -152,15 +145,15 @@ function LayerRow({ layer, isActive, index, total, onDragStart, onDrop }: {
       </div>
       <button
         onClick={(e) => { e.stopPropagation(); toggleVisible(layer.id) }}
-        title={layer.visible ? "隐藏" : "显示"}
+        title={layer.visible ? t("image_editor.layers.hide") : t("image_editor.layers.show")}
         style={{ background: "none", border: "none", cursor: "pointer", padding: "2px", color: layer.visible ? "var(--text-secondary)" : "var(--text-placeholder)" }}
       >
         <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>{layer.visible ? "visibility" : "visibility_off"}</span>
       </button>
       <button
         onClick={(e) => { e.stopPropagation(); toggleLocked(layer.id) }}
-        title={layer.locked ? "解锁" : "锁定"}
-        style={{ background: "none", border: "none", cursor: "pointer", padding: "2px", color: layer.locked ? "#F59E0B" : "var(--text-placeholder)" }}
+        title={layer.locked ? t("image_editor.layers.unlock") : t("image_editor.layers.lock")}
+        style={{ background: "none", border: "none", cursor: "pointer", padding: "2px", color: layer.locked ? editorColors.primary : "var(--text-placeholder)" }}
       >
         <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>{layer.locked ? "lock" : "lock_open"}</span>
       </button>
@@ -174,8 +167,8 @@ function ActionBtn({ icon, title, onClick }: { icon: string; title: string; onCl
       onClick={onClick}
       title={title}
       style={{
-        width: "28px", height: "28px", borderRadius: "0.375rem", border: "1px solid var(--border-color)",
-        background: "var(--bg-surface)", cursor: "pointer", display: "flex",
+        width: "28px", height: "28px", borderRadius: "0.375rem", border: "none",
+        boxShadow: editorShadows.ring, background: "var(--bg-surface)", cursor: "pointer", display: "flex",
         alignItems: "center", justifyContent: "center", color: "var(--text-secondary)",
       }}
     >

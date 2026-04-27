@@ -1,4 +1,4 @@
-use super::{ExecutePayload, ExecuteResult, extract_text, get_text_model};
+use super::{extract_text, get_text_model, ExecutePayload, ExecuteResult};
 use crate::db;
 use crate::services::ai_client::{self, ChatMessage};
 use serde_json::Value;
@@ -7,7 +7,8 @@ use std::path::PathBuf;
 use tauri::Emitter;
 
 pub async fn exec_image_planner(payload: &ExecutePayload) -> Result<ExecuteResult, String> {
-    let article = payload.input_data
+    let article = payload
+        .input_data
         .get("in")
         .and_then(extract_text)
         .or_else(|| payload.input_data.get("text").and_then(extract_text))
@@ -17,12 +18,14 @@ pub async fn exec_image_planner(payload: &ExecutePayload) -> Result<ExecuteResul
         return Err("image_planner: empty article text".into());
     }
 
-    let count = payload.node_data
+    let count = payload
+        .node_data
         .get("count")
         .and_then(|v| v.as_u64())
         .unwrap_or(3) as u32;
 
-    let style = payload.node_data
+    let style = payload
+        .node_data
         .get("style")
         .and_then(|v| v.as_str())
         .unwrap_or("写实");
@@ -42,11 +45,24 @@ pub async fn exec_image_planner(payload: &ExecutePayload) -> Result<ExecuteResul
     let user_msg = format!("请为以下文章规划配图：\n\n{}", article);
 
     let messages = vec![
-        ChatMessage { role: "system".into(), content: system },
-        ChatMessage { role: "user".into(), content: user_msg },
+        ChatMessage {
+            role: "system".into(),
+            content: system,
+        },
+        ChatMessage {
+            role: "user".into(),
+            content: user_msg,
+        },
     ];
 
-    let completion = ai_client::chat_completion(&get_text_model(&payload.node_data), "", messages, 4096, Some(0.7)).await?;
+    let completion = ai_client::chat_completion(
+        &get_text_model(&payload.node_data),
+        "",
+        messages,
+        4096,
+        Some(0.7),
+    )
+    .await?;
 
     let raw = completion.text.trim();
     let plans = parse_json_array(raw);
@@ -59,12 +75,15 @@ pub async fn exec_image_planner(payload: &ExecutePayload) -> Result<ExecuteResul
 
 fn parse_json_array(raw: &str) -> Value {
     let add_ids = |arr: Vec<Value>| -> Vec<Value> {
-        arr.into_iter().enumerate().map(|(i, mut p)| {
-            if let Some(obj) = p.as_object_mut() {
-                obj.insert("id".into(), serde_json::json!(format!("img_{}", i + 1)));
-            }
-            p
-        }).collect()
+        arr.into_iter()
+            .enumerate()
+            .map(|(i, mut p)| {
+                if let Some(obj) = p.as_object_mut() {
+                    obj.insert("id".into(), serde_json::json!(format!("img_{}", i + 1)));
+                }
+                p
+            })
+            .collect()
     };
 
     if raw.starts_with('[') {
@@ -89,30 +108,38 @@ pub async fn exec_image_gen(
 ) -> Result<ExecuteResult, String> {
     // Accept plans from image_planner, outline_generator, or generate from text input
     // input_data["in"] can be: the array directly, an object with image_plans key, or an image_planner result
-    let plans_val = payload.input_data
+    let plans_val = payload
+        .input_data
         .get("in")
         .cloned()
         .map(|v| {
-            if v.is_array() { v }
-            else if let Some(arr) = v.get("image_plans") { arr.clone() }
-            else { v }
+            if v.is_array() {
+                v
+            } else if let Some(arr) = v.get("image_plans") {
+                arr.clone()
+            } else {
+                v
+            }
         })
         .or_else(|| payload.input_data.get("image_plans").cloned());
 
-    let text_input = payload.input_data
+    let text_input = payload
+        .input_data
         .get("text")
         .and_then(extract_text)
         .unwrap_or("");
 
-    let count = payload.node_data
+    let count = payload
+        .node_data
         .get("count")
         .and_then(|v| v.as_u64())
         .unwrap_or(1) as usize;
 
-    let model = payload.node_data
+    let model = payload
+        .node_data
         .get("model")
         .and_then(|v| v.as_str())
-        .unwrap_or("minimax-image");
+        .unwrap_or("gpt-image-2");
 
     let plans: Vec<Value> = if let Some(pv) = plans_val {
         if pv.is_array() {
@@ -138,10 +165,23 @@ pub async fn exec_image_gen(
             count
         );
         let messages = vec![
-            ChatMessage { role: "system".into(), content: system },
-            ChatMessage { role: "user".into(), content: text_input.to_string() },
+            ChatMessage {
+                role: "system".into(),
+                content: system,
+            },
+            ChatMessage {
+                role: "user".into(),
+                content: text_input.to_string(),
+            },
         ];
-        let completion = ai_client::chat_completion(&get_text_model(&payload.node_data), "", messages, 2048, Some(0.7)).await?;
+        let completion = ai_client::chat_completion(
+            &get_text_model(&payload.node_data),
+            "",
+            messages,
+            2048,
+            Some(0.7),
+        )
+        .await?;
         let raw = completion.text.trim();
         if raw.starts_with('[') {
             serde_json::from_str::<Vec<Value>>(raw).unwrap_or_default()
@@ -149,7 +189,9 @@ pub async fn exec_image_gen(
             let end = raw.rfind(']').unwrap_or(raw.len() - 1);
             serde_json::from_str::<Vec<Value>>(&raw[s..=end]).unwrap_or_default()
         } else {
-            vec![serde_json::json!({ "prompt": text_input, "description": text_input, "aspect_ratio": "16:9" })]
+            vec![
+                serde_json::json!({ "prompt": text_input, "description": text_input, "aspect_ratio": "16:9" }),
+            ]
         }
     } else {
         return Err("image_list: no image plans or text input".into());
@@ -161,13 +203,15 @@ pub async fn exec_image_gen(
 
     let limited_plans: Vec<Value> = plans.into_iter().take(count).collect();
 
-    let workflow_id = payload.node_data
+    let workflow_id = payload
+        .node_data
         .get("workflow_id")
         .and_then(|v| v.as_str())
         .unwrap_or("default")
         .to_string();
 
-    let node_id = payload.node_data
+    let node_id = payload
+        .node_data
         .get("node_id")
         .and_then(|v| v.as_str())
         .unwrap_or("image_list")
@@ -175,45 +219,74 @@ pub async fn exec_image_gen(
 
     let app_dir = db::get_app_dir();
     let assets_dir = PathBuf::from(&app_dir).join("assets").join(&workflow_id);
-    fs::create_dir_all(&assets_dir)
-        .map_err(|e| format!("create assets dir: {}", e))?;
+    fs::create_dir_all(&assets_dir).map_err(|e| format!("create assets dir: {}", e))?;
 
     let total = limited_plans.len();
-    eprintln!("[image_gen] total={} plans, count={}, model={}", total, count, model);
+    eprintln!(
+        "[image_gen] total={} plans, count={}, model={}",
+        total, count, model
+    );
     for (i, p) in limited_plans.iter().enumerate() {
-        eprintln!("[image_gen] plan[{}]: id={}, prompt='{}'", i,
+        eprintln!(
+            "[image_gen] plan[{}]: id={}, prompt='{}'",
+            i,
             p.get("id").and_then(|v| v.as_str()).unwrap_or("?"),
-            p.get("prompt").and_then(|v| v.as_str()).unwrap_or("?"));
+            p.get("prompt").and_then(|v| v.as_str()).unwrap_or("?")
+        );
     }
 
     let mut images = Vec::new();
     let mut per_image = serde_json::Map::new();
 
     for (i, plan) in limited_plans.iter().enumerate() {
-        let plan_id = plan.get("id").and_then(|v| v.as_str()).unwrap_or("img").to_string();
+        let plan_id = plan
+            .get("id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("img")
+            .to_string();
         let filename = format!("{}_{}_{}.png", node_id, plan_id, i + 1);
-        let base_prompt = plan.get("prompt").and_then(|v| v.as_str()).unwrap_or("a professional illustration");
+        let base_prompt = plan
+            .get("prompt")
+            .and_then(|v| v.as_str())
+            .unwrap_or("a professional illustration");
         let aspect_ratio = plan.get("aspect_ratio").and_then(|v| v.as_str());
 
-        let _ = app_handle.emit("node_progress", serde_json::json!({
-            "node_id": node_id,
-            "progress": (i + 1) as u32,
-            "total": total as u32,
-        }));
+        let _ = app_handle.emit(
+            "node_progress",
+            serde_json::json!({
+                "node_id": node_id,
+                "progress": (i + 1) as u32,
+                "total": total as u32,
+            }),
+        );
 
-        let description = plan.get("description").and_then(|v| v.as_str()).unwrap_or("");
+        let description = plan
+            .get("description")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
         let position = plan.get("position").and_then(|v| v.as_str()).unwrap_or("");
         let prompt = base_prompt.to_string();
 
-        eprintln!("[image_gen] call {}/{} prompt='{}' model={}", i + 1, total, &prompt[..prompt.len().min(80)], model);
+        eprintln!(
+            "[image_gen] call {}/{} prompt='{}' model={}",
+            i + 1,
+            total,
+            &prompt[..prompt.len().min(80)],
+            model
+        );
 
         let result = ai_client::image_generation(model, &prompt, aspect_ratio).await?;
 
-        eprintln!("[image_gen] call {}/{} returned {} bytes, saved to {}", i + 1, total, result.image_data.len(), filename);
+        eprintln!(
+            "[image_gen] call {}/{} returned {} bytes, saved to {}",
+            i + 1,
+            total,
+            result.image_data.len(),
+            filename
+        );
 
         let file_path = assets_dir.join(&filename);
-        fs::write(&file_path, &result.image_data)
-            .map_err(|e| format!("save image: {}", e))?;
+        fs::write(&file_path, &result.image_data).map_err(|e| format!("save image: {}", e))?;
 
         let asset_id = uuid::Uuid::new_v4().to_string();
         let file_path_str = file_path.to_string_lossy().to_string();

@@ -26,35 +26,21 @@ struct BalanceResponse {
     plan: String,
 }
 
-/// Check if user has their own API key for a given provider
-pub fn has_own_key(provider_id: &str) -> bool {
-    let conn = db::get_connection();
-    let locked = conn.lock().unwrap();
-    let result = locked.query_row(
-        "SELECT COUNT(*) FROM api_keys WHERE provider = ?1",
-        rusqlite::params![provider_id],
-        |row| row.get::<_, i64>(0),
-    );
-    drop(locked);
-    result.unwrap_or(0) > 0
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OfficialModel {
+    pub provider: String,
+    pub model: String,
+    pub display_name: String,
+    pub call_type: String,
+    pub is_active: bool,
+    pub credits_per_call: i64,
+    pub credits_per_1k_tokens: f64,
+    pub max_tokens: i64,
 }
 
 /// Check if user has official API access (logged in with valid JWT)
 pub fn has_official_access() -> bool {
     get_jwt().is_some()
-}
-
-/// Check if user has ANY own API key configured (across all providers)
-pub fn has_any_user_key() -> bool {
-    let conn = db::get_connection();
-    let locked = conn.lock().unwrap();
-    let result = locked.query_row(
-        "SELECT COUNT(*) FROM api_keys",
-        [],
-        |row| row.get::<_, i64>(0),
-    );
-    drop(locked);
-    result.unwrap_or(0) > 0
 }
 
 /// Get stored JWT from app_config
@@ -74,10 +60,12 @@ pub fn get_jwt() -> Option<String> {
 fn store_jwt(token: &str) -> Result<(), String> {
     let conn = db::get_connection();
     let locked = conn.lock().unwrap();
-    locked.execute(
-        "INSERT OR REPLACE INTO app_config (key, value) VALUES ('backend_jwt', ?1)",
-        rusqlite::params![token],
-    ).map_err(|e| e.to_string())?;
+    locked
+        .execute(
+            "INSERT OR REPLACE INTO app_config (key, value) VALUES ('backend_jwt', ?1)",
+            rusqlite::params![token],
+        )
+        .map_err(|e| e.to_string())?;
     drop(locked);
     Ok(())
 }
@@ -166,16 +154,44 @@ pub async fn refresh_credit_balance() -> Result<CreditInfo, String> {
     // Cache locally
     let conn = db::get_connection();
     let locked = conn.lock().unwrap();
-    locked.execute(
-        "INSERT OR REPLACE INTO app_config (key, value) VALUES ('credit_balance_cache', ?1)",
-        rusqlite::params![balance_resp.balance.to_string()],
-    ).map_err(|e| e.to_string())?;
+    locked
+        .execute(
+            "INSERT OR REPLACE INTO app_config (key, value) VALUES ('credit_balance_cache', ?1)",
+            rusqlite::params![balance_resp.balance.to_string()],
+        )
+        .map_err(|e| e.to_string())?;
     drop(locked);
 
     Ok(CreditInfo {
         balance: balance_resp.balance,
         plan: balance_resp.plan,
     })
+}
+
+/// Fetch active official model configs from backend.
+pub async fn list_official_models() -> Result<Vec<OfficialModel>, String> {
+    let jwt = get_jwt().ok_or("LOGIN_REQUIRED")?;
+    let client = reqwest::Client::new();
+    let resp = client
+        .get(format!("{}/api/v1/models", backend_url()))
+        .header("Authorization", format!("Bearer {}", jwt))
+        .send()
+        .await
+        .map_err(|e| format!("official models API: {}", e))?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        if status.as_u16() == 401 {
+            clear_jwt()?;
+            return Err("LOGIN_REQUIRED".to_string());
+        }
+        let text = resp.text().await.unwrap_or_default();
+        return Err(format!("official models API error {}: {}", status, text));
+    }
+
+    resp.json()
+        .await
+        .map_err(|e| format!("parse official models: {}", e))
 }
 
 /// Get cached credit balance
@@ -264,6 +280,7 @@ pub async fn official_chat_completion(
 /// Call official image generation via backend proxy
 pub async fn official_image_generation(
     provider_id: &str,
+    model: &str,
     prompt: &str,
     aspect_ratio: Option<&str>,
 ) -> Result<Vec<u8>, String> {
@@ -275,6 +292,7 @@ pub async fn official_image_generation(
         .header("Content-Type", "application/json")
         .json(&serde_json::json!({
             "provider": provider_id,
+            "model": model,
             "prompt": prompt,
             "aspect_ratio": aspect_ratio,
         }))
@@ -292,6 +310,54 @@ pub async fn official_image_generation(
         return Err(format!("official image API error {}: {}", status, text));
     }
 
-    let body = resp.bytes().await.map_err(|e| format!("read image: {}", e))?;
+    let body = resp
+        .bytes()
+        .await
+        .map_err(|e| format!("read image: {}", e))?;
+    Ok(body.to_vec())
+}
+
+/// Call official image editing via backend proxy
+pub async fn official_image_edit(
+    provider_id: &str,
+    model: &str,
+    image_base64: &str,
+    prompt: &str,
+    aspect_ratio: Option<&str>,
+) -> Result<Vec<u8>, String> {
+    let jwt = get_jwt().ok_or("INSUFFICIENT_CREDITS: not logged in")?;
+    let client = reqwest::Client::new();
+    let resp = client
+        .post(format!("{}/api/v1/proxy/image/edit", backend_url()))
+        .header("Authorization", format!("Bearer {}", jwt))
+        .header("Content-Type", "application/json")
+        .json(&serde_json::json!({
+            "provider": provider_id,
+            "model": model,
+            "image": image_base64,
+            "prompt": prompt,
+            "aspect_ratio": aspect_ratio,
+        }))
+        .send()
+        .await
+        .map_err(|e| format!("official image edit API: {}", e))?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        if status.as_u16() == 401 {
+            clear_jwt()?;
+            return Err("LOGIN_REQUIRED".to_string());
+        }
+        let text = resp.text().await.unwrap_or_default();
+        return Err(format!(
+            "official image edit API error {}: {}",
+            status, text
+        ));
+    }
+
+    let body = resp
+        .bytes()
+        .await
+        .map_err(|e| format!("read image edit: {}", e))?;
     Ok(body.to_vec())
 }

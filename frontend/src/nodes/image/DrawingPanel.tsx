@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react"
+import { useTranslation } from "react-i18next"
 import DrawingCanvas from "./DrawingCanvas"
 import { useDrawingStore } from "./drawingStore"
+import { editorColors, editorShadows, primaryButtonStyle } from "../../styles/editorDesign"
 
 interface Props {
   image: { file_path: string; description: string } | null
@@ -11,11 +13,12 @@ const COLORS = ["#ff0000", "#ff8800", "#ffff00", "#00cc00", "#0066ff", "#9933ff"
 const WIDTHS = [2, 4, 8, 12]
 
 export default function DrawingPanel({ image, onAiEdit }: Props) {
+  const { t } = useTranslation()
   const { color, width, eraser, setColor, setWidth, setEraser, undo, clear } = useDrawingStore()
   const [bgSrc, setBgSrc] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!image) { setBgSrc(null); return }
+    if (!image) return
     invoke<number[]>("read_asset_file", { filePath: image.file_path })
       .then((bytes) => {
         const base64 = btoa(bytes.map((b) => String.fromCharCode(b)).join(""))
@@ -29,45 +32,42 @@ export default function DrawingPanel({ image, onAiEdit }: Props) {
       {/* Toolbar */}
       <div style={{
         padding: "0.5rem", display: "flex", alignItems: "center", gap: "0.375rem",
-        borderBottom: "1px solid var(--border-color)", flexShrink: 0, flexWrap: "wrap",
+        boxShadow: editorShadows.insetBottom, flexShrink: 0, flexWrap: "wrap",
       }}>
         {COLORS.map((c) => (
           <button key={c} onClick={() => { setColor(c); setEraser(false) }} style={{
-            width: "20px", height: "20px", borderRadius: "50%", border: color === c && !eraser ? "2px solid var(--text-primary)" : "1px solid var(--border-color)",
+            width: "20px", height: "20px", borderRadius: "50%", border: "none", boxShadow: color === c && !eraser ? editorShadows.focus : editorShadows.ring,
             background: c, cursor: "pointer", padding: 0,
           }} />
         ))}
         <div style={{ width: "1px", height: "20px", background: "var(--border-color)", margin: "0 0.25rem" }} />
         {WIDTHS.map((w) => (
           <button key={w} onClick={() => setWidth(w)} style={{
-            width: "24px", height: "24px", borderRadius: "0.25rem", border: width === w ? "2px solid var(--text-primary)" : "1px solid var(--border-color)",
+            width: "24px", height: "24px", borderRadius: "0.25rem", border: "none", boxShadow: width === w ? editorShadows.focus : editorShadows.ring,
             background: "var(--bg-surface)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
           }}>
             <div style={{ width: `${w}px`, height: `${w}px`, borderRadius: "50%", background: "var(--text-primary)" }} />
           </button>
         ))}
         <div style={{ width: "1px", height: "20px", background: "var(--border-color)", margin: "0 0.25rem" }} />
-        <ToolBtn icon="ink_eraser" active={eraser} onClick={() => setEraser(!eraser)} title="Eraser" />
-        <ToolBtn icon="undo" onClick={undo} title="Undo" />
-        <ToolBtn icon="delete" onClick={clear} title="Clear" />
+        <ToolBtn icon="ink_eraser" active={eraser} onClick={() => setEraser(!eraser)} title={t("image_editor.toolbar.eraser")} />
+        <ToolBtn icon="undo" onClick={undo} title={t("image_editor.toolbar.undo")} />
+        <ToolBtn icon="delete" onClick={clear} title={t("image_editor.toolbar.clear")} />
         <div style={{ flex: 1 }} />
         <button onClick={() => {
-          const instruction = window.prompt("描述你想要的编辑效果")
+          const instruction = window.prompt(t("image_editor.ai.promptDialog"))
           if (instruction?.trim()) onAiEdit(instruction.trim())
         }} disabled={!bgSrc} style={{
-          padding: "0.25rem 0.5rem", borderRadius: "0.375rem", border: "none",
-          background: "#6349EA", color: "#fff", fontSize: "0.6875rem", fontWeight: 600,
+          ...primaryButtonStyle,
           cursor: bgSrc ? "pointer" : "not-allowed", opacity: bgSrc ? 1 : 0.4,
-          display: "flex", alignItems: "center", gap: "0.25rem",
         }}>
           <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>auto_fix_high</span>
-          AI Edit
+          {t("image_editor.toolbar.aiEdit")}
         </button>
       </div>
 
-      {/* Canvas */}
       <div style={{ flex: 1, overflow: "hidden", background: "#1a1a1a" }}>
-        <DrawingCanvas backgroundImage={bgSrc} width={600} height={450} />
+        <DrawingCanvas backgroundImage={image ? bgSrc : null} width={600} height={450} />
       </div>
 
     </div>
@@ -78,8 +78,8 @@ function ToolBtn({ icon, onClick, active, title }: { icon: string; onClick: () =
   return (
     <button onClick={onClick} title={title} style={{
       width: "28px", height: "28px", borderRadius: "0.25rem", border: "none",
-      background: active ? "var(--bg-hover)" : "transparent",
-      color: active ? "#6349EA" : "var(--text-secondary)",
+      background: active ? editorColors.primary : "transparent",
+      color: active ? "#fff" : "var(--text-secondary)",
       cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
     }}>
       <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>{icon}</span>

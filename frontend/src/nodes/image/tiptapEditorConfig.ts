@@ -11,38 +11,40 @@ export const THEME = "#5965AF"
 export const HIGHLIGHT = "#EDE4F1"
 export const DEFAULT_FONT_SIZE = 16
 
-export const BLOCK_LABELS: Record<BlockType, string> = {
-  paragraph: "正文文本",
-  h1: "一级标题",
-  h2: "二级标题",
-  h3: "三级标题",
-  bulletList: "无序列表",
-  orderedList: "有序列表",
-  codeBlock: "代码块",
-  blockquote: "引用",
+export const BLOCK_TYPES: BlockType[] = ["paragraph", "h1", "h2", "h3", "bulletList", "orderedList", "codeBlock", "blockquote"]
+
+export const BLOCK_LABEL_KEYS: Record<BlockType, string> = {
+  paragraph: "html_editor.blocks.paragraph",
+  h1: "html_editor.blocks.h1",
+  h2: "html_editor.blocks.h2",
+  h3: "html_editor.blocks.h3",
+  bulletList: "html_editor.blocks.bulletList",
+  orderedList: "html_editor.blocks.orderedList",
+  codeBlock: "html_editor.blocks.codeBlock",
+  blockquote: "html_editor.blocks.blockquote",
 }
 
 export const EMOJIS = ["😊", "🔥", "✨", "💡", "📌", "✅", "⚠️", "🚀", "❤️", "🎯", "📈", "🧠"]
 
-export const ALIGN_COMMANDS: Array<{ id: AlignType; icon: string; label: string }> = [
-  { id: "left", icon: "☰", label: "左对齐" },
-  { id: "center", icon: "≡", label: "居中对齐" },
-  { id: "right", icon: "☷", label: "右对齐" },
-  { id: "justify", icon: "▤", label: "两端对齐" },
+export const ALIGN_COMMANDS: Array<{ id: AlignType; icon: string; labelKey: string }> = [
+  { id: "left", icon: "format_align_left", labelKey: "html_editor.align.left" },
+  { id: "center", icon: "format_align_center", labelKey: "html_editor.align.center" },
+  { id: "right", icon: "format_align_right", labelKey: "html_editor.align.right" },
+  { id: "justify", icon: "format_align_justify", labelKey: "html_editor.align.justify" },
 ]
 
 export const SLASH_COMMANDS = [
-  { id: "paragraph", icon: "¶", label: "正文文本", hint: "普通段落" },
-  { id: "h1", icon: "H1", label: "一级标题", hint: "大标题" },
-  { id: "h2", icon: "H2", label: "二级标题", hint: "章节标题" },
-  { id: "h3", icon: "H3", label: "三级标题", hint: "小标题" },
-  { id: "bulletList", icon: "☷", label: "无序列表", hint: "项目符号" },
-  { id: "orderedList", icon: "1.", label: "有序列表", hint: "编号列表" },
-  { id: "codeBlock", icon: "{}", label: "代码块", hint: "代码片段" },
-  { id: "blockquote", icon: "❞", label: "引用", hint: "引文/洞察" },
-  { id: "table", icon: "▦", label: "表格", hint: "3×3" },
-  { id: "image", icon: "▧", label: "插入图片", hint: "上传本地图片" },
-  { id: "emoji", icon: "😊", label: "表情", hint: "插入 emoji" },
+  { id: "paragraph", icon: "notes", labelKey: "html_editor.blocks.paragraph", hintKey: "html_editor.hints.paragraph" },
+  { id: "h1", icon: "title", labelKey: "html_editor.blocks.h1", hintKey: "html_editor.hints.h1" },
+  { id: "h2", icon: "title", labelKey: "html_editor.blocks.h2", hintKey: "html_editor.hints.h2" },
+  { id: "h3", icon: "title", labelKey: "html_editor.blocks.h3", hintKey: "html_editor.hints.h3" },
+  { id: "bulletList", icon: "format_list_bulleted", labelKey: "html_editor.blocks.bulletList", hintKey: "html_editor.hints.bulletList" },
+  { id: "orderedList", icon: "format_list_numbered", labelKey: "html_editor.blocks.orderedList", hintKey: "html_editor.hints.orderedList" },
+  { id: "codeBlock", icon: "code", labelKey: "html_editor.blocks.codeBlock", hintKey: "html_editor.hints.codeBlock" },
+  { id: "blockquote", icon: "format_quote", labelKey: "html_editor.blocks.blockquote", hintKey: "html_editor.hints.blockquote" },
+  { id: "table", icon: "table", labelKey: "html_editor.blocks.table", hintKey: "html_editor.hints.table" },
+  { id: "image", icon: "image", labelKey: "html_editor.blocks.image", hintKey: "html_editor.hints.image" },
+  { id: "emoji", icon: "mood", labelKey: "html_editor.blocks.emoji", hintKey: "html_editor.hints.emoji" },
 ]
 
 export const FontSize = Extension.create({

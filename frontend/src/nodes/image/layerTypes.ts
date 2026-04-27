@@ -35,7 +35,7 @@ export function makeLayer(partial?: Partial<Layer>): Layer {
   layerCounter++
   return {
     id: `layer_${Date.now()}_${layerCounter}`,
-    name: `图层 ${layerCounter}`,
+    name: i18n.t("image_editor.layers.defaultName", { count: layerCounter, defaultValue: `Layer ${layerCounter}` }),
     visible: true,
     locked: false,
     opacity: 1,
@@ -54,3 +54,4 @@ export function resetLayerCounter(value = 0) {
 export function getLayerCounter() {
   return layerCounter
 }
+import i18n from "../../i18n"

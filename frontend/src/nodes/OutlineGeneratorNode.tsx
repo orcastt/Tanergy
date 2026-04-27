@@ -33,11 +33,12 @@ interface OutlineResult {
 }
 
 const STYLES = ["干货清单", "故事叙事", "深度分析"]
+const EMPTY_SECTIONS: OutlineSection[] = []
+const EMPTY_IMAGE_PLANS: unknown[] = []
 
 export default function OutlineGeneratorNode({ data, id, selected }: NodeProps) {
   const d = data as unknown as OutlineData
   const def = NODE_MAP[d.nodeType]
-  if (!def) return null
 
   const { isLoggedIn } = useCreditsStore()
   const creditCost = NODE_CREDIT_COSTS[d.nodeType] ?? 0
@@ -46,8 +47,8 @@ export default function OutlineGeneratorNode({ data, id, selected }: NodeProps) 
   const status = nodeStatuses[id] ?? "idle"
   const result = nodeResults[id] as OutlineResult | undefined
 
-  const sections = result?.sections ?? []
-  const imagePlans = result?.image_plans as unknown[] | undefined
+  const sections = result?.sections ?? EMPTY_SECTIONS
+  const imagePlans = (result?.image_plans as unknown[] | undefined) ?? EMPTY_IMAGE_PLANS
 
   // Auto-split when outline completes (Agent mode: no manual split needed)
   useEffect(() => {
@@ -65,14 +66,14 @@ export default function OutlineGeneratorNode({ data, id, selected }: NodeProps) 
         }, 100)
       }
     }
-  }, [status])
+  }, [d.splitCount, id, imagePlans, nodes, sections, splitOutline, status, updateNodeData])
 
   // Clear splitCount when outline is re-run so Split button re-enables
   useEffect(() => {
     if (status === "running" && d.splitCount != null) {
       updateNodeData(id, { splitCount: undefined })
     }
-  }, [status])
+  }, [d.splitCount, id, status, updateNodeData])
 
   // Re-enable Split button if outline is re-run (splitCount cleared when nodeData changes from outside)
   const isSplitDone = d.splitCount != null && d.splitCount > 0
@@ -102,7 +103,9 @@ export default function OutlineGeneratorNode({ data, id, selected }: NodeProps) 
       { id: "image_plans", type: "image_plans" as PortType, label: "Images" },
     ]
     return [...sectionPorts, ...imagePlansPort]
-  }, [sections.length])
+  }, [sections])
+
+  if (!def) return null
 
   return (
     <NodeBase
@@ -218,7 +221,7 @@ export default function OutlineGeneratorNode({ data, id, selected }: NodeProps) 
           padding: "0.375rem 0.5rem", background: "#fef2f2",
           borderRadius: "0.25rem", fontSize: "0.6875rem", color: "#991b1b",
         }}>
-          执行失败，请检查 API Key
+          执行失败，请登录或检查官方线路
         </div>
       )}
     </NodeBase>

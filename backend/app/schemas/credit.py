@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class BalanceOut(BaseModel):
@@ -48,8 +48,48 @@ class ChatProxyResponse(BaseModel):
 
 class ImageProxyRequest(BaseModel):
     provider: str
+    model: str = "gpt-image-2"
     prompt: str
     aspect_ratio: str | None = None
+    negative_prompt: str | None = None
+    image: str | list[str] | None = None
+    strength: float | None = None
+    size: str | None = None
+    quality: str | None = None
+    style_preset: str | None = None
+    mask: str | None = None
+    watermark: bool | None = None
+    background: str | None = None
+    extra_body: dict | None = None
+    async_mode: bool = Field(default=False, alias="async")
+    retries: int = 0
+
+
+class ImageEditProxyRequest(BaseModel):
+    provider: str
+    model: str = "gemini-nano-banana"
+    prompt: str
+    image: str | list[str]
+    aspect_ratio: str | None = None
+    background: str | None = "auto"
+    mask: str | None = None
+    size: str | None = None
+    n: int = 1
+    quality: str | None = "auto"
+    response_format: str = "url"
+    output_format: str = "png"
+    retries: int = 0
+
+
+class ImageEnhanceProxyRequest(BaseModel):
+    provider: str = "geekai"
+    model: str = "jimeng-image-enhance-v2"
+    image: str
+    size: str = "720p"
+    response_format: str = "url"
+    output_format: str = "png"
+    extra_body: dict | None = None
+    retries: int = 0
 
 
 class ModelConfigOut(BaseModel):

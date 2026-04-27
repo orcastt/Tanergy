@@ -34,6 +34,7 @@ def upgrade() -> None:
         ('minimax',  'MiniMax',  'https://api.minimax.chat/v1',                          'MINIMAX_API_KEY',  'bearer', '{}'),
         ('claude',   'Claude',   'https://api.anthropic.com/v1',                         'ANTHROPIC_API_KEY','x-api-key', '{"anthropic-version": "2023-06-01"}'),
         ('gpt',      'GPT',      'https://api.openai.com/v1',                            'OPENAI_API_KEY',   'bearer', '{}'),
+        ('geekai',   'GeekAI',   'https://geekai.co/api/v1',                             'GEEKAI_API_KEY',   'bearer', '{}'),
         ('gemini',   'Gemini',   'https://generativelanguage.googleapis.com/v1beta/openai','GEMINI_API_KEY',  'bearer', '{}'),
         ('glm',      'GLM',      'https://open.bigmodel.cn/api/paas/v4',                 'GLM_API_KEY',      'bearer', '{}')
         ON CONFLICT (id) DO NOTHING;

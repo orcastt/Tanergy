@@ -1,8 +1,8 @@
 # TANGENT — 节点开发计划（聚焦公众号 Skill）
 
-**版本**: v3.0
-**日期**: 2026-04-24
-**状态**: ✅ 已按代码现状校准（2026-04-26 更新：新增个人素材库与 `image_asset`）
+**版本**: v3.1
+**日期**: 2026-04-26
+**状态**: ✅ 已按代码现状校准（2026-04-26 更新：GeekAI 测试模型白名单 + 个人素材库）
 **策略**: 公众号主流程以 Outline Split 架构为核心，移除 Gate/Writer 作为默认必需节点
 **开发规范**: 代码质量与测试门槛见 `dev-plans/code-quality-standards.md`
 
@@ -85,16 +85,19 @@ outline_generator done 后触发 Split：
 ### 4.2 `research`
 - 接收主题文本。
 - 返回结构化调研文本（供大纲生成参考）。
+- 支持官方文本模型选择；测试阶段免费模型优先，默认 `hunyuan-3.0-preview`。
 
 ### 4.3 `outline_generator`
 - 生成章节 `sections[]`。
 - 同时生成 `image_plans[]`。
 - 支持一键 Split 自动搭建后续图。
+- 支持官方文本模型选择；测试阶段免费模型优先，默认 `hunyuan-3.0-preview`。
 
 ### 4.4 `image_list`
 - 输入可来自 `image_plans` 或 `text`。
 - 支持数量、模型、动态输入口和动态输出口。
 - 双击可进入 Image Editor 图层画板。
+- 支持官方图片模型选择，当前默认 `gpt-image-2`，备用 `nano-banana-2` / `nano-banana-hd` / `jimeng_t2i_v40`。
 
 ### 4.5 `image_asset`
 - 由个人素材库图片拖拽到画布生成。
@@ -106,6 +109,7 @@ outline_generator done 后触发 Split：
 - 接收 `images` 输入进行图文混排。
 - 执行后产出 HTML，done 状态双击进入 Html Editor。
 - Html Editor 支持富文本编辑、微信预览、AI 改写和复制 HTML。
+- 执行与 AI 改写均支持官方文本模型选择；测试阶段免费模型优先。
 
 ### 4.7 `preview_wechat`（legacy）
 - 历史微信阅读预览组件。
@@ -118,7 +122,9 @@ outline_generator done 后触发 Split：
 1. 若使用 `outline_generator`，默认停在 Outline，不直接手动添加完整后半段，由 Split 生成。
 2. 不默认生成 `gate`、`writer`、`reviewer`。
 3. `fromPort/toPort` 必须使用节点注册表中的真实端口。
-4. 文本默认模型使用 `MiniMax-M2.7`，图片默认 `minimax-image`。
+4. 测试阶段文本默认模型使用 `hunyuan-3.0-preview`，免费备用为 `minimax-m2.7:free` / `nemotron-3-super-120b-a12b`。
+5. 图片生成默认模型使用 `gpt-image-2`，图片编辑默认使用 `gemini-nano-banana`，均走官方 GeekAI relay。
+6. 所有 AI 生成入口必须支持官方模型切换：`research`、`outline_generator`、`image_planner`、`html_formatter`、`image_list`、Html Editor AI 改写、Image Editor AI Edit。
 
 ---
 
@@ -137,5 +143,7 @@ outline_generator done 后触发 Split：
 ## 七、后续演进
 
 - Html Editor（Slice 23）已成为 `html_formatter` 的默认终点面板。
+- 官方模型路由进入下一阶段：前端当前可用硬编码模型列表，后续改为 Admin/后端动态模型源。
+- GeekAI 图片后续能力独立推进：`GET /images/{task_id}` 异步结果轮询、`/images/enhance`、clarify/upscale 不阻塞当前主流程。
 - `writer/reviewer/gate` 若保留，仅作为“高级/实验节点”管理，不进入默认模板。
 - 后续若引入小红书模板，建议沿用 Split 思路，不回退到 Gate 暂停架构。

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { Editor } from "@tiptap/core"
 import { useEditor, EditorContent } from "@tiptap/react"
 import { DragHandle } from "@tiptap/extension-drag-handle-react"
+import { useTranslation } from "react-i18next"
 import StarterKit from "@tiptap/starter-kit"
 import Underline from "@tiptap/extension-underline"
 import Link from "@tiptap/extension-link"
@@ -19,6 +20,8 @@ import TiptapToolbar from "./TiptapToolbar"
 import { FloatingToolbar } from "./TiptapMenus"
 import { BlockCommandMenu, SlashCommandMenu } from "./TiptapCommandMenus"
 import { getTiptapEditorStyles } from "./tiptapEditorStyles"
+import { useTiptapLibrarySave } from "./useTiptapLibrarySave"
+import { editorColors } from "../../styles/editorDesign"
 import {
   DEFAULT_FONT_SIZE,
   FontSize,
@@ -37,6 +40,7 @@ interface TiptapEditorProps {
   onAiRewrite: (selectedText: string, insertRewrittenHtml: (rewrittenHtml: string) => void) => void
 }
 export default function TiptapEditor({ content, onUpdate, onAiRewrite }: TiptapEditorProps) {
+  const { t } = useTranslation()
   const [blockType, setBlockType] = useState<BlockType>("paragraph")
   const [fontSize, setFontSize] = useState(DEFAULT_FONT_SIZE)
   const [toolbarMenu, setToolbarMenu] = useState<ToolbarMenu>(null)
@@ -78,7 +82,7 @@ export default function TiptapEditor({ content, onUpdate, onAiRewrite }: TiptapE
       TableCell,
       Link.configure({ openOnClick: false }),
       Placeholder.configure({
-        placeholder: ({ node }) => node.type.name === "heading" ? "请输入标题" : "输入 “/” 符号，快速添加不同形式内容",
+        placeholder: ({ node }) => node.type.name === "heading" ? t("html_editor.headingPlaceholder") : t("html_editor.bodyPlaceholder"),
       }),
     ],
     content: hydratedContent,
@@ -99,6 +103,7 @@ export default function TiptapEditor({ content, onUpdate, onAiRewrite }: TiptapE
       updateSlashMenu(editorInstance)
     },
   })
+  const { saveSelectionToLibrary, saveBlockToLibrary, librarySaveDialog } = useTiptapLibrarySave(editor)
   const updateSlashMenu = useCallback((editorInstance = editor) => {
     if (!editorInstance) return
     const { from, to } = editorInstance.state.selection
@@ -169,16 +174,16 @@ export default function TiptapEditor({ content, onUpdate, onAiRewrite }: TiptapE
   const setLink = useCallback(() => {
     if (!editor) return
     const prev = editor.getAttributes("link").href as string | undefined
-    const url = window.prompt("输入链接地址", prev ?? "https://")
+    const url = window.prompt(t("html_editor.linkPrompt"), prev ?? "https://")
     if (url === null) return
     if (url === "") { editor.chain().focus().unsetLink().run(); return }
     editor.chain().focus().setLink({ href: url }).run()
-  }, [editor])
+  }, [editor, t])
   const insertImageFromUrl = useCallback(() => {
     if (!editor) return
-    const url = window.prompt("输入图片 URL")
+    const url = window.prompt(t("html_editor.imageUrlPrompt"))
     if (url) editor.chain().focus().setImage({ src: url }).run()
-  }, [editor])
+  }, [editor, t])
   const insertImageFile = useCallback((file: File) => {
     if (!editor) return
     const reader = new FileReader()
@@ -236,7 +241,7 @@ export default function TiptapEditor({ content, onUpdate, onAiRewrite }: TiptapE
   if (!editor) return null
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", background: "#fff" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", background: editorColors.surface }}>
       <input ref={fileInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => {
         const file = event.target.files?.[0]
         if (file) insertImageFile(file)
@@ -261,15 +266,17 @@ export default function TiptapEditor({ content, onUpdate, onAiRewrite }: TiptapE
         <EditorContent editor={editor} />
         <DragHandle editor={editor} nested onNodeChange={({ pos }) => { setActiveBlockPos(pos); setBlockMenu(null) }}>
           <div className="notion-block-handle">
-            <button className="notion-block-add" title="点击在下方添加块" onMouseDown={(event) => { event.preventDefault(); event.stopPropagation(); insertParagraphAfterBlock() }}>＋</button>
-            <button className="notion-block-grip" title="拖拽移动 / 点击查看选项" onClick={(event) => {
+            <button className="notion-block-add" title={t("html_editor.toolbar.insertBlock")} onMouseDown={(event) => { event.preventDefault(); event.stopPropagation(); insertParagraphAfterBlock() }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
+            </button>
+            <button className="notion-block-grip" title={t("html_editor.menu.blockOptions")} onClick={(event) => {
               event.preventDefault()
               event.stopPropagation()
               if (activeBlockPos != null) {
                 const rect = event.currentTarget.getBoundingClientRect()
                 setBlockMenu({ top: rect.bottom + 8, left: rect.left, pos: activeBlockPos })
               }
-            }}>⠿</button>
+            }}><span className="material-symbols-outlined" style={{ fontSize: 17 }}>drag_indicator</span></button>
           </div>
         </DragHandle>
         {slashMenu && <SlashCommandMenu slashMenu={slashMenu} slashIndex={slashIndex} runSlashCommand={runSlashCommand} />}
@@ -279,12 +286,14 @@ export default function TiptapEditor({ content, onUpdate, onAiRewrite }: TiptapE
             focusBlockAt={focusBlockAt}
             applyBlockType={applyBlockType}
             deleteBlockAt={deleteBlockAt}
+            saveBlockToLibrary={saveBlockToLibrary}
             closeBlockMenu={() => setBlockMenu(null)}
           />
         )}
         <style>{getTiptapEditorStyles()}</style>
       </div>
-      <FloatingToolbar editor={editor} />
+      <FloatingToolbar editor={editor} onSaveSelection={saveSelectionToLibrary} />
+      {librarySaveDialog}
     </div>
   )
 }

@@ -9,7 +9,7 @@
 
 **阶段**: Phase 2 商业化开发 — 核心能力完成，Html Editor / 构建 / Admin 联调 / 部署收口中
 **核心目标**: 官方 API 默认路由 + 订阅制 + Html Editor 终点体验 + 个人素材库 + 管理后台
-**下一步**: 手测素材库保存/搜索/拖拽/Image Editor 导出 → 手测 Html Editor → 端到端测试 → Admin 联调 → 线上部署
+**下一步**: 手测素材库/Html Editor → GeekAI 真 Key 端到端联调 → Admin UI 中文/设计对齐 → Staging 部署
 
 ---
 
@@ -32,8 +32,8 @@
 - **新增支付**：Stripe Checkout + Webhook
 - **新增管理后台**：Next.js Web App + Admin API
 - **新增 Provider Registry**：DB 表驱动，零代码新增 AI provider
-- **保留桌面架构**：Tauri v2 + SQLite 本地缓存 + 用户自带 Key 降级
-- **AI 路由翻转**：official API（FastAPI 代理，扣积分）→ 用户自带 Key → LOGIN_REQUIRED
+- **保留桌面架构**：Tauri v2 + SQLite 本地缓存；用户自带 API Key / BYOK 暂停为默认路径
+- **AI 路由收口**：official API（FastAPI 代理，扣积分）→ 未登录返回 LOGIN_REQUIRED
 
 ### Desktop Pivot（2026-04-21 锁定）
 
@@ -92,13 +92,13 @@ WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/w
 | Slice | 名称 | 状态 | 说明 |
 |-------|------|------|------|
 | 0 | Tauri 脚手架 + SQLite | ✅ | Rust 骨架 + SQLite 6 张表 + health_check |
-| 1 | License + API Key 管理 | ✅ | Settings 集成，5 providers，AES-256-GCM 加密 |
+| 1 | License + API Key 管理 | ✅ / legacy | 本地 Key 能力保留在历史实现中；当前 UI 默认关闭 BYOK |
 | 2 | Dashboard + 工作流 CRUD | ✅ | Tauri IPC 替代 REST API，本地 SQLite |
 | 3 | 画布核心 | ✅ | Canvas/NodePicker/Toolbar/执行引擎 全部复用 |
-| 4 | text_input · research · outline_generator | ✅ | MiniMax M2.7，Tauri IPC 执行 |
+| 4 | text_input · research · outline_generator | ✅ | 历史初版为 MiniMax；当前测试默认走官方 `hunyuan-3.0-preview` 免费文本模型 |
 | 5 | Outline Split 编排 | ✅ | 以大纲拆分替代 Gate 主链路，自动生成章节节点并连到 html_formatter |
-| 6 | image_planner · image_gen · image_gallery | ✅ | MiniMax image-01 生图 + 本地文件系统 + Lightbox |
-| 7 | html_formatter · legacy preview_wechat | ✅ | MiniMax HTML 排版；当前默认出口已升级为 Html Editor |
+| 6 | image_planner · image_gen · image_gallery | ✅ | 历史初版图片链路完成；当前默认图片模型为官方 `gpt-image-2`，`image_list` 为主节点 |
+| 7 | html_formatter · legacy preview_wechat | ✅ | 官方文本模型 HTML 排版；当前默认出口已升级为 Html Editor |
 | 8 | 积分订阅系统 | ✅ | FastAPI 后端替代 Supabase，完整积分/支付系统 |
 | 9 | 主题 + 语言 + 桌面安装包 | ✅ | 暗夜模式、文件拆分、桌面打包+CI |
 | 10 | 画布交互增强 | ✅ | 分类颜色边框、复制粘贴删除、右键菜单、打组/取消打组 |
@@ -109,9 +109,9 @@ WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/w
 | Slice | 名称 | 优先级 | 状态 | 说明 |
 |-------|------|--------|------|------|
 | 13 | Skill 动态拓扑系统 | P0 | ✅ | build_system_prompt + nodeBuilder 校验 |
-| 14 | 模型注册表 + 多模型路由 | P1 | ✅ | ModelSelector + provider 灰显 + defaultModel |
-| 15 | 官方 API 默认路由 + 登录门控 | P0 | ✅ | credits.rs 重写 → FastAPI，路由翻转 |
-| 16 | 多模型代理 + 差异积分 | P1 | ✅ | proxy_service.py，5 providers，差价积分 |
+| 14 | 模型注册表 + 多模型路由 | P1 | ✅ / 🔄 | ModelSelector 已支持后端动态模型源 + 本地白名单 fallback；待 Admin 页面真数据验收 |
+| 15 | 官方 API 默认路由 + 登录门控 | P0 | ✅ | Tauri AI 执行只走 FastAPI 官方代理，未登录返回 LOGIN_REQUIRED |
+| 16 | 多模型代理 + 差异积分 | P1 | ✅ / 🔄 | GeekAI 文本/图片/编辑/增强白名单已接入，后端按启用模型强校验；图片轮询/enhance 已开发，待真 Key 联调 |
 | 17 | i18n 中英切换完成 | P1 | ✅ | 16+ 组件 t() 替换，langStore，TopNav 切换按钮 |
 | 18 | 首次引导 + 订阅支付 | P1 | ✅ | AuthGuard，OTP 登录，Stripe Checkout，ProUpgradeModal |
 | 19 | Settings 简化 + Skill 推荐卡片 | P2 | ✅ | Account/Advanced/About 三 Tab，SkillPicker 模态框 |
@@ -119,8 +119,8 @@ WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/w
 | 22 | Image Editor 图层画板 | P1 | ✅ | Procreate 风格图层画板，导出/AI Edit/状态恢复 |
 | 23 | Html Editor 富文本编辑 | P1 | ✅ / 🔄 | 初版已开发并构建通过；待手测验收 |
 | — | 个人素材库 + Image 容器 | P1 | ✅ / 🔄 | 全局素材库 MVP 完成；待手测保存、搜索、拖拽和 Image Editor 导出 |
-| — | 管理后台 Web 应用 | P1 | 🔄 | Admin API + Provider Registry + 基础 Next.js 前端完成；待联调验收 |
-| — | Provider 可插拔架构 | P1 | ✅ | providers DB 表 + proxy_service DB-first 查询 |
+| — | 管理后台 Web 应用 | P1 | ✅ / 🔄 | Admin API + Provider Registry + 基础 Next.js 前端本地自动联调通过；待人工视觉/交互复核与部署 |
+| — | Provider 可插拔架构 | P1 | ✅ / 🔄 | providers DB 表 + `services/proxy/` DB-first 查询；GeekAI seed 已加入，待真实 Key、Admin 动态模型源联调 |
 | — | 线上部署方案 | P0 | ⬜ | Docker/Nginx/SSL 配置已就绪，待实际部署 |
 
 ---
@@ -218,12 +218,12 @@ WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/w
 - **网格 + 吸附**: 20px 网格线，移动/缩放时自动吸附对齐
 - **栅格化**: 合并所有可见图层为一张新图层
 - **导出到节点**: 将画布内容保存为文件，添加到 Image List 节点输出
-- **AI Edit**: 截取画布 → 调用 Rust AI 生成新图片 → 添加为新图层
+- **AI Edit**: 截取画布 → 选择官方图片模型 → 调用 FastAPI 图片编辑代理 → 添加为新图层
 
 **AI Edit 技术细节**:
 - `AiEditPopup.tsx` 重写：多状态机（input → analyzing → generating → done/error）
 - 进度条：30% 分析 → 70% 生成 → 100% 完成
-- Rust 侧 `ai_edit_image` 命令：截图 base64 + 指令 → 文本模型生成增强 prompt → 图片生成
+- Rust 侧 `ai_edit_image` 命令：截图 base64 + 指令 + 图片模型 → 官方图片编辑代理 → 返回新图
 
 **Rust 侧新增命令**:
 | 命令 | 说明 |
@@ -301,9 +301,12 @@ WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/w
 
 - [ ] 端到端测试：完整 Skill 流程跑通（text_input → html_formatter / Html Editor）
 - [ ] Personal Library 手测：保存文字/图片、标签搜索、拖拽生成节点、Image Editor 导出
+- [ ] Official-only routing 手测：未登录提示登录，登录后走 `/api/v1/proxy/*`
+- [ ] GeekAI 真 Key 联调：免费文本模型、图片生成、图片编辑、图片增强、模型切换、积分扣减
+- [ ] Admin 动态模型源：前端模型列表从后端读取，Admin 可设置文本/图片/编辑默认模型
 - [ ] 购买云服务器 + 域名 + SSL 证书
 - [ ] macOS 代码签名：Apple Developer 账号
-- [ ] 配置生产环境 AI Provider API Keys
+- [ ] 配置 Staging/生产环境 AI Provider Keys（Admin/后端环境变量）
 - [ ] Stripe Live 模式切换
 
 ### P1 — 体验优化
@@ -333,7 +336,7 @@ WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/w
 | 画布 | React Flow v12 |
 | 状态管理 | Zustand 5 |
 | 本地数据库 | SQLite |
-| API Key 加密 | AES-256-GCM |
+| API Key 加密 | AES-256-GCM（legacy，本地 BYOK 当前关闭） |
 | i18n | i18next + react-i18next |
 
 ### 后端服务

@@ -25,7 +25,7 @@ export function getCrispViewport(viewport: Viewport): Viewport {
   return {
     x: snapToDevicePixel(viewport.x),
     y: snapToDevicePixel(viewport.y),
-    zoom: viewport.zoom,
+    zoom: getNearestCrispZoom(viewport.zoom),
   }
 }
 

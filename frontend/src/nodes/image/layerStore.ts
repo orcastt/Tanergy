@@ -1,4 +1,5 @@
 import { create } from "zustand"
+import i18n from "../../i18n"
 import { getLayerCounter, makeLayer, resetLayerCounter, snapToGrid, type Layer, type Stroke, type Tool } from "./layerTypes"
 
 export { GRID_SIZE, snapToGrid, type Layer, type Stroke, type Tool } from "./layerTypes"
@@ -67,7 +68,7 @@ interface LayerState {
 }
 
 export const useLayerStore = create<LayerState>((set, get) => ({
-  layers: [makeLayer({ name: "图层 1" })],
+  layers: [makeLayer({ name: i18n.t("image_editor.layers.defaultName", { count: 1 }) })],
   activeLayerId: null,
   tool: "select",
   color: "#ff0000",
@@ -105,7 +106,7 @@ export const useLayerStore = create<LayerState>((set, get) => ({
       const src = s.layers.find((l) => l.id === id)
       if (!src) return s
       const copy = makeLayer({
-        name: `${src.name} 副本`,
+        name: i18n.t("image_editor.layers.copyName", { name: src.name, defaultValue: `${src.name} copy` }),
         opacity: src.opacity,
         imageSrc: src.imageSrc,
         strokes: [...src.strokes],
@@ -199,7 +200,7 @@ export const useLayerStore = create<LayerState>((set, get) => ({
     const ch = canvasH ?? 600
     const layer = makeLayer({
       imageSrc: src,
-      name: name ?? `图片 ${getLayerCounter()}`,
+      name: name ?? i18n.t("image_editor.source.fallback", { index: getLayerCounter() }),
       imgX: snapToGrid(cw * 0.1), imgY: snapToGrid(ch * 0.1),
       imgW: snapToGrid(cw * 0.8), imgH: snapToGrid(ch * 0.8),
     })
@@ -240,14 +241,14 @@ export const useLayerStore = create<LayerState>((set, get) => ({
 
   // Rasterize
   rasterize: (dataUrl) => {
-    const layer = makeLayer({ imageSrc: dataUrl, name: "栅格化", strokes: [] })
+    const layer = makeLayer({ imageSrc: dataUrl, name: i18n.t("image_editor.rasterize"), strokes: [] })
     set((s) => ({ layers: [...s.layers, layer], activeLayerId: layer.id }))
   },
 
   reset: () => {
     resetLayerCounter()
     set({
-      layers: [makeLayer({ name: "图层 1" })],
+      layers: [makeLayer({ name: i18n.t("image_editor.layers.defaultName", { count: 1 }) })],
       activeLayerId: null,
       currentStroke: null,
       tool: "select",

@@ -16,7 +16,10 @@ pub fn get_credit_balance() -> Result<CreditInfoResponse, String> {
     } else {
         0
     };
-    Ok(CreditInfoResponse { balance, is_logged_in })
+    Ok(CreditInfoResponse {
+        balance,
+        is_logged_in,
+    })
 }
 
 #[tauri::command]
@@ -26,6 +29,11 @@ pub async fn refresh_credits() -> Result<CreditInfoResponse, String> {
         balance: info.balance,
         is_logged_in: true,
     })
+}
+
+#[tauri::command]
+pub async fn list_official_models() -> Result<Vec<credits::OfficialModel>, String> {
+    credits::list_official_models().await
 }
 
 #[tauri::command]

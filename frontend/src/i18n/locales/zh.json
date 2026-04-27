@@ -18,6 +18,7 @@
     "codeSent": "已发送 ({{seconds}}s)",
     "verifyCode": "验证码",
     "loginWithGoogle": "用 Google 登录",
+    "loginToUseAi": "登录后使用 AI",
     "noAccount": "没有账户？注册",
     "hasAccount": "已有账户？登录",
     "welcome": "欢迎来到 TANGENT"
@@ -29,7 +30,7 @@
     "emptyGuide": "点击「新建工作流」开始你的第一个 AI 创作流程",
     "delete": "删除",
     "deleteConfirm": "确定要删除这个工作流吗？",
-    "setupPrompt": "你还没有配置 AI API Key，点击前往 Settings 配置。",
+    "setupPrompt": "登录后即可使用 Tangent 官方 AI 线路。",
     "goToSettings": "前往设置 →",
     "workspace": "Workspace",
     "trash": "Trash",
@@ -72,7 +73,13 @@
     "copy": "复制",
     "copied": "已复制 ✓",
     "loading": "加载中...",
-    "errorApiKey": "执行失败，请检查 API Key"
+    "errorApiKey": "执行失败，请登录或检查官方 AI 线路",
+    "retry": "重试",
+    "done": "完成",
+    "save": "保存",
+    "saving": "保存中...",
+    "title": "标题",
+    "tags": "标签"
   },
   "sidenav": {
     "allWorkflows": "All Workflows",
@@ -82,6 +89,7 @@
     "newWorkflow": "New Workflow"
   },
   "nodes": {
+    "model": "模型",
     "text_input": {
       "label": "Text Input",
       "desc": "输入主题/关键词",
@@ -128,7 +136,7 @@
       "analyzing": "分析文章中...",
       "imageN": "图 {{n}}",
       "connectHint": "连接文章，点击 Run 规划配图",
-      "error": "规划失败，请检查输入和 API Key"
+      "error": "规划失败，请检查输入或官方 AI 线路"
     },
     "image_list": {
       "label": "Image List",
@@ -136,7 +144,7 @@
       "generating": "生成中 {{current}}/{{total}}...",
       "ready": "准备生成...",
       "connectHint": "连接配图方案，点击 Run 生成",
-      "error": "生成失败，请检查 API Key",
+      "error": "生成失败，请检查官方 AI 线路",
       "addImageInput": "添加图片输入 ({{count}})",
       "generated": "已生成 {{count}} 张图片"
     },
@@ -169,8 +177,80 @@
     }
   },
   "image_editor": {
-    "title": "Image Editor",
-    "imageCount": "{{count}} 张图片"
+    "title": "图片编辑器",
+    "imageCount": "{{count}} 张图片",
+    "libraryImage": "素材图片",
+    "canvasNotReady": "画布未就绪",
+    "exportImage": "导出图片",
+    "saved": "已保存",
+    "clipboardUnavailable": "剪贴板不可用",
+    "copiedImage": "已复制图片",
+    "clipboardReadUnavailable": "剪贴板读取不可用",
+    "pastedImage": "粘贴图片",
+    "noClipboardImage": "剪贴板里没有图片",
+    "aiGenerated": "AI 生成",
+    "exportFailed": "导出失败：{{error}}",
+    "copy": "复制",
+    "paste": "粘贴",
+    "download": "下载",
+    "saveToLibrary": "素材库",
+    "rasterize": "栅格化",
+    "exportToNode": "导出到节点",
+    "libraryDefaultTitle": "图片素材",
+    "libraryPlainText": "图片编辑器导出",
+    "toolbar": {
+      "select": "选择",
+      "brush": "画笔",
+      "eraser": "橡皮擦",
+      "undo": "撤销",
+      "clear": "清除当前图层",
+      "grid": "网格",
+      "snap": "吸附",
+      "aiEdit": "AI 编辑"
+    },
+    "source": {
+      "title": "源图片 ({{count}})",
+      "add": "添加",
+      "thumbTitle": "点击添加到画板 / 拖拽到画板",
+      "fallback": "图片 {{index}}",
+      "empty": "暂无图片\n运行节点后生成",
+      "footer": "点击图片添加到画板",
+      "loading": "..."
+    },
+    "layers": {
+      "title": "图层 ({{count}})",
+      "opacity": "不透明度 {{value}}%",
+      "add": "新建图层",
+      "duplicate": "复制图层",
+      "delete": "删除图层",
+      "moveUp": "上移",
+      "moveDown": "下移",
+      "exportToOutput": "导出到节点输出",
+      "image": "图片",
+      "strokes": "{{count}} 笔",
+      "hide": "隐藏",
+      "show": "显示",
+      "unlock": "解锁",
+      "lock": "锁定",
+      "defaultName": "图层 {{count}}",
+      "copyName": "{{name}} 副本"
+    },
+    "ai": {
+      "title": "AI 图片编辑",
+      "prompt": "描述你想要的编辑效果...\n例如：把背景换成海边、增加暖色调、添加一只猫",
+      "promptDialog": "描述你想要的编辑效果",
+      "analyzing": "正在分析图片...",
+      "generating": "正在生成新图片...",
+      "done": "生成完成",
+      "error": "生成失败：{{error}}",
+      "generate": "生成",
+      "generatingButton": "生成中..."
+    },
+    "panel": {
+      "empty": "还没有图片。运行节点后生成。",
+      "images": "图片 ({{count}})",
+      "fallback": "图片 {{index}}"
+    }
   },
   "ports": {
     "article": "文章",
@@ -227,6 +307,12 @@
     "license": "License",
     "general": "通用",
     "generalNote": "主题 / 语言设置将在后续版本中提供。",
+    "dark": "深色",
+    "light": "浅色",
+    "mockMode": "Mock 模式",
+    "mockModeDesc": "使用本地假数据测试 AI 流程，不调用官方 API。",
+    "officialRoute": "官方 AI 线路",
+    "officialRouteDesc": "TANGENT 现在统一通过官方后端代理调用 AI，Provider Key、模型价格和备用线路都在 Admin 管理。",
     "backDashboard": "返回 Dashboard",
     "enterLicenseKey": "输入 License Key",
     "activate": "激活",
@@ -239,9 +325,9 @@
     "trialDays": "免费试用 — 剩余 {{days}} 天",
     "expired": "已过期",
     "free": "Free",
-    "apiKeyDesc": "TANGENT 使用你自己的 API Key，密钥经本地加密存储，不会发送到任何第三方服务器。",
+    "apiKeyDesc": "Provider Key 统一在 Admin 管理，BYOK 当前关闭。",
     "keySaved": "•••••••••••• (已保存)",
-    "enterApiKey": "输入 API Key",
+    "enterApiKey": "在 Admin 管理",
     "save": "保存",
     "test": "测试",
     "delete": "删除",
@@ -269,5 +355,110 @@
   },
   "workflow": {
     "freeLimit": "Free 计划最多 3 个工作流，升级 Pro 解锁无限"
+  },
+  "html_editor": {
+    "title": "HTML 编辑器",
+    "stats": "{{count}} 字 · 约 {{time}} 分钟",
+    "emptyCopy": "没有可复制的 HTML 内容",
+    "localImageCopyBlocked": "本地图片仅支持预览，公众号正式复制需上线远程 URL",
+    "richCopied": "已复制富文本，可直接粘贴到公众号编辑器",
+    "richFallback": "富文本复制失败，已改为复制 HTML 源码",
+    "copyFailed": "复制失败，请检查浏览器剪贴板权限",
+    "sourceCopied": "已复制 HTML 源码",
+    "sourceCopyFailed": "复制源码失败，请检查浏览器剪贴板权限",
+    "copySource": "复制源码",
+    "copyWechat": "复制到公众号",
+    "previewHint": "标准紫预览 · 复制时会输出微信兼容内联样式 HTML",
+    "headingPlaceholder": "请输入标题",
+    "bodyPlaceholder": "输入 “/” 符号，快速添加不同形式内容",
+    "linkPrompt": "输入链接地址",
+    "imageUrlPrompt": "输入图片 URL",
+    "libraryTitleFallback": "HTML 编辑器素材",
+    "toolbar": {
+      "undo": "撤销",
+      "redo": "前进",
+      "insertBlock": "添加块",
+      "bold": "加粗",
+      "italic": "斜体",
+      "underline": "下划线",
+      "textColor": "文字颜色",
+      "highlight": "高亮",
+      "orderedList": "有序列表",
+      "bulletList": "无序列表",
+      "align": "对齐方式",
+      "table": "表格",
+      "emoji": "表情",
+      "image": "插入图片",
+      "more": "更多",
+      "decreaseFont": "减小字号",
+      "increaseFont": "增大字号",
+      "insertLink": "插入链接",
+      "imageUrl": "图片 URL",
+      "rewriteSelected": "AI 改写选中文本",
+      "saveToLibrary": "保存到素材库"
+    },
+    "blocks": {
+      "paragraph": "正文文本",
+      "h1": "一级标题",
+      "h2": "二级标题",
+      "h3": "三级标题",
+      "bulletList": "无序列表",
+      "orderedList": "有序列表",
+      "codeBlock": "代码块",
+      "blockquote": "引用",
+      "table": "表格",
+      "image": "插入图片",
+      "emoji": "表情"
+    },
+    "hints": {
+      "paragraph": "普通段落",
+      "h1": "大标题",
+      "h2": "章节标题",
+      "h3": "小标题",
+      "bulletList": "项目符号",
+      "orderedList": "编号列表",
+      "codeBlock": "代码片段",
+      "blockquote": "引文/洞察",
+      "table": "3×3",
+      "image": "上传本地图片",
+      "emoji": "插入 emoji"
+    },
+    "align": {
+      "left": "左对齐",
+      "center": "居中对齐",
+      "right": "右对齐",
+      "justify": "两端对齐"
+    },
+    "menu": {
+      "convertTo": "转换为",
+      "blockOptions": "块选项",
+      "toParagraph": "转换为正文",
+      "toH1": "转换为一级标题",
+      "toH2": "转换为二级标题",
+      "toQuote": "转换为引用",
+      "deleteBlock": "删除块"
+    },
+    "rewrite": {
+      "title": "AI 改写",
+      "selectedText": "选中文本：",
+      "placeholder": "例如：把这段改得更活泼、加入更多数据、突出核心观点...",
+      "shortcut": "按 Ctrl+Enter 快速提交",
+      "loading": "AI 正在改写中...",
+      "result": "改写结果：",
+      "error": "错误：{{error}}",
+      "generate": "生成",
+      "editAgain": "重新编辑",
+      "insert": "插入到选中段落下方"
+    }
+  },
+  "library": {
+    "saveTitle": "保存到素材库",
+    "titleRequired": "请输入素材标题",
+    "tagPlaceholder": "用逗号分隔，例如：产品, 封面, 案例",
+    "willAdd": "将添加：{{tags}}"
+  },
+  "standard_purple": {
+    "badge": "Tanvas 视觉规范 · 标准紫",
+    "insight": "核心洞察"
   }
 }

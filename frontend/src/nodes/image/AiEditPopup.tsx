@@ -1,6 +1,10 @@
 import { useState } from "react"
 import { invoke } from "@tauri-apps/api/core"
+import { useTranslation } from "react-i18next"
 import { rasterizeLayers } from "./layerCanvasRuntime"
+import { editorColors, editorShadows, editorTypography, inputStyle, primaryButtonStyle, secondaryButtonStyle } from "../../styles/editorDesign"
+import ModelSelector from "../../components/ModelSelector"
+import { DEFAULT_MODELS } from "../modelDefs"
 
 interface Props {
   onResult: (base64: string) => void
@@ -10,15 +14,17 @@ interface Props {
 type Status = "input" | "analyzing" | "generating" | "done" | "error"
 
 export default function AiEditPopup({ onResult, onClose }: Props) {
+  const { t } = useTranslation()
   const [text, setText] = useState("")
   const [status, setStatus] = useState<Status>("input")
   const [errorMsg, setErrorMsg] = useState("")
+  const [model, setModel] = useState(DEFAULT_MODELS.image_edit)
 
   async function handleSubmit() {
     if (!text.trim()) return
 
     const imageDataUrl = rasterizeLayers()
-    if (!imageDataUrl) { setErrorMsg("画板未就绪"); return }
+    if (!imageDataUrl) { setErrorMsg(t("image_editor.canvasNotReady")); return }
     const imageBase64 = imageDataUrl.replace(/^data:image\/png;base64,/, "")
 
     setStatus("analyzing")
@@ -29,6 +35,7 @@ export default function AiEditPopup({ onResult, onClose }: Props) {
       const result = await invoke<{ base64: string; size: number }>("ai_edit_image", {
         imageBase64,
         instruction: text.trim(),
+        model,
       })
 
       setStatus("done")
@@ -41,10 +48,10 @@ export default function AiEditPopup({ onResult, onClose }: Props) {
 
   const statusText: Record<Status, string> = {
     input: "",
-    analyzing: "正在分析图片...",
-    generating: "正在生成新图片...",
-    done: "生成完成",
-    error: `生成失败: ${errorMsg}`,
+    analyzing: t("image_editor.ai.analyzing"),
+    generating: t("image_editor.ai.generating"),
+    done: t("image_editor.ai.done"),
+    error: t("image_editor.ai.error", { error: errorMsg }),
   }
 
   const progress = status === "analyzing" ? 30 : status === "generating" ? 70 : status === "done" ? 100 : 0
@@ -52,43 +59,42 @@ export default function AiEditPopup({ onResult, onClose }: Props) {
 
   return (
     <div style={{
-      position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)",
+      position: "absolute", inset: 0, background: "rgba(36,36,36,0.36)",
+      backdropFilter: "blur(8px)",
       display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10,
     }} onClick={isLoading ? undefined : onClose}>
       <div style={{
-        background: "var(--bg-surface)", borderRadius: "0.75rem", padding: "1.25rem",
-        width: "400px", boxShadow: "0 25px 50px rgba(0,0,0,0.3)",
+        background: editorColors.surface, borderRadius: "0.75rem", padding: "1.25rem",
+        width: "400px", boxShadow: editorShadows.modal,
       }} onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem" }}>
-          <span className="material-symbols-outlined" style={{ fontSize: "18px", color: "#6349EA" }}>auto_fix_high</span>
-          <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>
-            AI 图片编辑
+          <span className="material-symbols-outlined" style={{ fontSize: "18px", color: editorColors.primary }}>auto_fix_high</span>
+          <span style={{ ...editorTypography.title, fontSize: "0.9375rem", color: "var(--text-primary)" }}>
+            {t("image_editor.ai.title")}
           </span>
         </div>
 
-        {/* Text input */}
         <textarea
           autoFocus
           value={text}
           onChange={(e) => setText(e.target.value)}
           disabled={isLoading}
-          placeholder="描述你想要的编辑效果...&#10;例如：把背景换成海边、增加暖色调、添加一只猫"
+          placeholder={t("image_editor.ai.prompt")}
           style={{
-            width: "100%", height: "80px", padding: "0.5rem 0.75rem",
-            border: "1px solid var(--border-color)", borderRadius: "0.375rem",
-            fontSize: "0.8125rem", resize: "none", outline: "none",
-            fontFamily: '"Inter", sans-serif', color: "var(--text-primary)",
-            background: "var(--bg-input)",
+            ...inputStyle, height: "80px", resize: "none",
             opacity: isLoading ? 0.6 : 1,
           }}
         />
 
-        {/* Progress bar */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.75rem" }}>
+          <span style={{ ...editorTypography.label, minWidth: 44 }}>{t("nodes.model")}</span>
+          <ModelSelector category="image_edit" value={model} onChange={setModel} />
+        </div>
+
         {status !== "input" && (
           <div style={{ marginTop: "0.75rem" }}>
             <div style={{
-              fontSize: "0.6875rem", color: status === "error" ? "#EF4444" : status === "done" ? "#22C55E" : "#6349EA",
+              fontSize: "0.6875rem", color: status === "error" ? editorColors.danger : status === "done" ? editorColors.success : editorColors.primary,
               marginBottom: "0.375rem", display: "flex", alignItems: "center", gap: "0.25rem",
             }}>
               {isLoading && (
@@ -97,45 +103,31 @@ export default function AiEditPopup({ onResult, onClose }: Props) {
               {statusText[status]}
             </div>
             <div style={{
-              height: "4px", background: "var(--border-color)", borderRadius: "2px", overflow: "hidden",
+              height: "4px", background: editorColors.hover, borderRadius: "2px", overflow: "hidden",
             }}>
               <div style={{
                 width: `${progress}%`, height: "100%",
-                background: status === "error" ? "#EF4444" : status === "done" ? "#22C55E" : "#6349EA",
+                background: status === "error" ? editorColors.danger : status === "done" ? editorColors.success : editorColors.primary,
                 borderRadius: "2px", transition: "width 0.5s ease",
               }} />
             </div>
           </div>
         )}
 
-        {/* Buttons */}
         <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end", marginTop: "0.75rem" }}>
-          <button onClick={onClose} disabled={isLoading} style={{
-            padding: "0.375rem 1rem", borderRadius: "0.375rem", border: "none",
-            background: "var(--bg-hover)", color: "var(--text-primary)",
-            fontSize: "0.8125rem", cursor: isLoading ? "not-allowed" : "pointer",
-            opacity: isLoading ? 0.5 : 1,
-          }}>取消</button>
+          <button onClick={onClose} disabled={isLoading} style={{ ...secondaryButtonStyle, opacity: isLoading ? 0.5 : 1, cursor: isLoading ? "not-allowed" : "pointer" }}>{t("common.cancel")}</button>
           {status === "error" ? (
-            <button onClick={handleSubmit} style={{
-              padding: "0.375rem 1rem", borderRadius: "0.375rem", border: "none",
-              background: "#6349EA", color: "#fff", fontSize: "0.8125rem", cursor: "pointer",
-            }}>重试</button>
+            <button onClick={handleSubmit} style={primaryButtonStyle}>{t("common.retry")}</button>
           ) : status === "done" ? (
-            <button onClick={onClose} style={{
-              padding: "0.375rem 1rem", borderRadius: "0.375rem", border: "none",
-              background: "#22C55E", color: "#fff", fontSize: "0.8125rem", cursor: "pointer",
-            }}>完成</button>
+            <button onClick={onClose} style={primaryButtonStyle}>{t("common.done")}</button>
           ) : (
             <button onClick={handleSubmit} disabled={isLoading || !text.trim()} style={{
-              padding: "0.375rem 1rem", borderRadius: "0.375rem", border: "none",
-              background: "#6349EA", color: "#fff", fontSize: "0.8125rem",
+              ...primaryButtonStyle,
               cursor: isLoading || !text.trim() ? "not-allowed" : "pointer",
               opacity: !text.trim() ? 0.5 : 1,
-              display: "flex", alignItems: "center", gap: "0.25rem",
             }}>
               {isLoading && <span className="material-symbols-outlined" style={{ fontSize: "14px", animation: "spin 1s linear infinite" }}>progress_activity</span>}
-              {isLoading ? "生成中..." : "生成"}
+              {isLoading ? t("image_editor.ai.generatingButton") : t("image_editor.ai.generate")}
             </button>
           )}
         </div>

@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1 import auth, health, workflows, credits, proxy, admin, billing
+from app.api.v1 import auth, health, workflows, credits, proxy, admin, billing, models
 from app.core.config import settings
 
 
@@ -27,5 +27,6 @@ app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(workflows.router, prefix="/api/v1/workflows", tags=["workflows"])
 app.include_router(credits.router, prefix="/api/v1/credits", tags=["credits"])
 app.include_router(proxy.router, prefix="/api/v1/proxy", tags=["proxy"])
+app.include_router(models.router, prefix="/api/v1/models", tags=["models"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
 app.include_router(billing.router, prefix="/api/v1/billing", tags=["billing"])

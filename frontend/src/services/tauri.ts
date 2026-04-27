@@ -26,6 +26,17 @@ export interface AssetInfo {
   created_at: string
 }
 
+export interface OfficialModel {
+  provider: string
+  model: string
+  display_name: string
+  call_type: string
+  is_active: boolean
+  credits_per_call: number
+  credits_per_1k_tokens: number
+  max_tokens: number
+}
+
 export const tauri = {
   // Health
   healthCheck: () =>
@@ -45,7 +56,7 @@ export const tauri = {
   deactivateLicense: () =>
     invoke<void>("deactivate_license"),
 
-  // API Keys
+  // Legacy local key commands (BYOK is disabled in the current product path)
   setApiKey: (providerId: string, key: string) =>
     invoke<void>("set_api_key", { providerId, key }),
   testApiKey: (providerId: string) =>
@@ -62,8 +73,8 @@ export const tauri = {
     invoke<string>("get_app_config", { key }),
 
   // AI rewrite
-  aiRewriteHtml: (originalHtml: string, instruction: string) =>
-    invoke<string>("ai_rewrite_html", { originalHtml, instruction }),
+  aiRewriteHtml: (originalHtml: string, instruction: string, model?: string) =>
+    invoke<string>("ai_rewrite_html", { originalHtml, instruction, model }),
 
   // Workflows
   listWorkflows: () =>
@@ -110,6 +121,8 @@ export const tauri = {
     invoke<CreditInfo>("get_credit_balance"),
   refreshCredits: () =>
     invoke<CreditInfo>("refresh_credits"),
+  listOfficialModels: () =>
+    invoke<OfficialModel[]>("list_official_models"),
   loginOfficial: (email: string) =>
     invoke<void>("login_official", { email }),
   verifyOtp: (email: string, token: string) =>

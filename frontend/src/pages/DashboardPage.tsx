@@ -5,20 +5,23 @@ import SideNav from "../components/SideNav"
 import TopNav from "../components/TopNav"
 import SkillPicker from "../components/SkillPicker"
 import { useWorkflowStore } from "../store/workflowStore"
-import { useApiKeyStore } from "../store/apiKeyStore"
 import { SKILL_DEFS } from "../nodes/skillDefs"
 import { NODE_MAP } from "../nodes/nodeDefs"
 import { tauri } from "../services/tauri"
 import { open } from "@tauri-apps/plugin-dialog"
 import { readFile } from "@tauri-apps/plugin-fs"
 import { TrashCard, WorkflowCardInline } from "./dashboard/WorkflowCards"
+import WorkspaceLibraryPanel from "./dashboard/WorkspaceLibraryPanel"
+import WorkspaceTabs, { type WorkspaceTab } from "./dashboard/WorkspaceTabs"
 
 export default function DashboardPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { t } = useTranslation()
-  const filter = new URLSearchParams(location.search).get("filter")
+  const searchParams = new URLSearchParams(location.search)
+  const filter = searchParams.get("filter")
   const isTrashView = filter === "trash"
+  const activeWorkspaceTab: WorkspaceTab = searchParams.get("tab") === "library" ? "library" : "workflows"
   const [showSkillPicker, setShowSkillPicker] = useState(false)
 
   const {
@@ -28,10 +31,6 @@ export default function DashboardPage() {
   } = useWorkflowStore()
 
   useEffect(() => { fetchWorkflows() }, [fetchWorkflows])
-
-  const { providers, loadProviders } = useApiKeyStore()
-  useEffect(() => { loadProviders() }, [loadProviders])
-  const noKeys = providers.length > 0 && providers.every((p) => !p.is_set)
 
   async function handleSkillSelect(skillId: string) {
     setShowSkillPicker(false)
@@ -62,7 +61,7 @@ export default function DashboardPage() {
       }
 
       navigate(`/canvas/${wf.id}`)
-    } catch (e) {
+    } catch {
       // Fallback: plain blank workflow
       const id = await createAndNavigate()
       if (id) navigate(`/canvas/${id}`)
@@ -95,6 +94,15 @@ export default function DashboardPage() {
     }
   }
 
+  function handleWorkspaceTabChange(tab: WorkspaceTab) {
+    const nextParams = new URLSearchParams(location.search)
+    nextParams.delete("filter")
+    if (tab === "library") nextParams.set("tab", "library")
+    else nextParams.delete("tab")
+    const nextSearch = nextParams.toString()
+    navigate(`/dashboard${nextSearch ? `?${nextSearch}` : ""}`)
+  }
+
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", fontFamily: '"Inter", sans-serif', color: "var(--text-primary)", background: "var(--bg-canvas)" }}>
       <TopNav />
@@ -104,28 +112,6 @@ export default function DashboardPage() {
 
         <main style={{ flex: 1, overflowY: "auto", background: "var(--bg-canvas)", padding: "2rem" }}>
           <div style={{ maxWidth: "72rem", margin: "0 auto" }}>
-
-            {noKeys && (
-              <div
-                onClick={() => navigate("/settings")}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "0.75rem 1.25rem",
-                  marginBottom: "1.5rem",
-                  background: "#fef3c7",
-                  border: "1px solid #fde68a",
-                  borderRadius: 8,
-                  cursor: "pointer",
-                  fontSize: "0.875rem",
-                  color: "#92400e",
-                }}
-              >
-                <span>{t("dashboard.setupPrompt")}</span>
-                <span style={{ color: "#b45309", fontWeight: 600 }}>{t("dashboard.goToSettings")}</span>
-              </div>
-            )}
 
             <header style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", paddingBottom: "1rem", marginBottom: "2rem" }}>
               <div>
@@ -138,6 +124,9 @@ export default function DashboardPage() {
                     : "Manage and orchestrate your active workflows."}
                 </p>
               </div>
+              {!isTrashView && (
+                <WorkspaceTabs value={activeWorkspaceTab} onChange={handleWorkspaceTabChange} />
+              )}
               {isTrashView && trashedWorkflows.length > 0 && (
                 <button
                   onClick={async () => {
@@ -178,6 +167,8 @@ export default function DashboardPage() {
                   ))}
                 </div>
               )
+            ) : activeWorkspaceTab === "library" ? (
+              <WorkspaceLibraryPanel />
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1.5rem" }}>
                 {/* Create New — opens Skill Picker */}

@@ -210,12 +210,6 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .react-flow__node button:active {
   transform: none !important;
 }
-.react-flow--crisp-zoom .react-flow__viewport {
-  transform:
-    translate(var(--rf-crisp-translate-x), var(--rf-crisp-translate-y)) !important;
-  transform-origin: 0 0;
-  zoom: var(--rf-crisp-zoom);
-}
 /* Prevent node drag when interacting with form elements */
 .react-flow__node select,
 .react-flow__node input,

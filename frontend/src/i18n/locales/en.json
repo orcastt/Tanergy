@@ -18,6 +18,7 @@
     "codeSent": "Sent ({{seconds}}s)",
     "verifyCode": "Verification code",
     "loginWithGoogle": "Log in with Google",
+    "loginToUseAi": "Log in to use AI",
     "noAccount": "No account? Sign up",
     "hasAccount": "Already have an account? Log in",
     "welcome": "Welcome to TANGENT"
@@ -29,7 +30,7 @@
     "emptyGuide": "Click 'New Workflow' to start your first AI creative process",
     "delete": "Delete",
     "deleteConfirm": "Are you sure you want to delete this workflow?",
-    "setupPrompt": "You haven't configured an AI API Key. Go to Settings to set one up.",
+    "setupPrompt": "Log in to use Tangent official AI routing.",
     "goToSettings": "Go to Settings →",
     "workspace": "Workspace",
     "trash": "Trash",
@@ -72,7 +73,13 @@
     "copy": "Copy",
     "copied": "Copied ✓",
     "loading": "Loading...",
-    "errorApiKey": "Execution failed, please check API Key"
+    "errorApiKey": "Execution failed, please log in or check the official AI route",
+    "retry": "Retry",
+    "done": "Done",
+    "save": "Save",
+    "saving": "Saving...",
+    "title": "Title",
+    "tags": "Tags"
   },
   "sidenav": {
     "allWorkflows": "All Workflows",
@@ -82,6 +89,7 @@
     "newWorkflow": "New Workflow"
   },
   "nodes": {
+    "model": "Model",
     "text_input": {
       "label": "Text Input",
       "desc": "Enter topic or keywords",
@@ -128,7 +136,7 @@
       "analyzing": "Analyzing article...",
       "imageN": "Image {{n}}",
       "connectHint": "Connect article, click Run to plan images",
-      "error": "Planning failed, check input and API Key"
+      "error": "Planning failed, check input or the official AI route"
     },
     "image_list": {
       "label": "Image List",
@@ -136,7 +144,7 @@
       "generating": "Generating {{current}}/{{total}}...",
       "ready": "Ready to generate...",
       "connectHint": "Connect image plan, click Run to generate",
-      "error": "Generation failed, check API Key",
+      "error": "Generation failed, check the official AI route",
       "addImageInput": "Add image input ({{count}})",
       "generated": "{{count}} images generated"
     },
@@ -170,7 +178,79 @@
   },
   "image_editor": {
     "title": "Image Editor",
-    "imageCount": "{{count}} images"
+    "imageCount": "{{count}} images",
+    "libraryImage": "Library image",
+    "canvasNotReady": "Canvas is not ready",
+    "exportImage": "Exported image",
+    "saved": "Saved",
+    "clipboardUnavailable": "Clipboard is unavailable",
+    "copiedImage": "Image copied",
+    "clipboardReadUnavailable": "Clipboard read is unavailable",
+    "pastedImage": "Pasted image",
+    "noClipboardImage": "No image found in clipboard",
+    "aiGenerated": "AI generated",
+    "exportFailed": "Export failed: {{error}}",
+    "copy": "Copy",
+    "paste": "Paste",
+    "download": "Download",
+    "saveToLibrary": "Library",
+    "rasterize": "Rasterize",
+    "exportToNode": "Export to node",
+    "libraryDefaultTitle": "Image asset",
+    "libraryPlainText": "Image Editor export",
+    "toolbar": {
+      "select": "Select",
+      "brush": "Brush",
+      "eraser": "Eraser",
+      "undo": "Undo",
+      "clear": "Clear current layer",
+      "grid": "Grid",
+      "snap": "Snap",
+      "aiEdit": "AI Edit"
+    },
+    "source": {
+      "title": "Source images ({{count}})",
+      "add": "Add",
+      "thumbTitle": "Click to add to canvas / drag onto canvas",
+      "fallback": "Image {{index}}",
+      "empty": "No images yet\nRun the node to generate",
+      "footer": "Click an image to add it to the canvas",
+      "loading": "..."
+    },
+    "layers": {
+      "title": "Layers ({{count}})",
+      "opacity": "Opacity {{value}}%",
+      "add": "New layer",
+      "duplicate": "Duplicate layer",
+      "delete": "Delete layer",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "exportToOutput": "Export to node output",
+      "image": "Image",
+      "strokes": "{{count}} strokes",
+      "hide": "Hide",
+      "show": "Show",
+      "unlock": "Unlock",
+      "lock": "Lock",
+      "defaultName": "Layer {{count}}",
+      "copyName": "{{name}} copy"
+    },
+    "ai": {
+      "title": "AI Image Edit",
+      "prompt": "Describe the edit you want...\nExample: replace the background with a beach, add warm tones, add a cat",
+      "promptDialog": "Describe the edit you want",
+      "analyzing": "Analyzing image...",
+      "generating": "Generating new image...",
+      "done": "Generation complete",
+      "error": "Generation failed: {{error}}",
+      "generate": "Generate",
+      "generatingButton": "Generating..."
+    },
+    "panel": {
+      "empty": "No images yet. Run the node to generate.",
+      "images": "Images ({{count}})",
+      "fallback": "Image {{index}}"
+    }
   },
   "ports": {
     "article": "Article",
@@ -227,6 +307,12 @@
     "license": "License",
     "general": "General",
     "generalNote": "Theme / language settings will be available in future versions.",
+    "dark": "Dark",
+    "light": "Light",
+    "mockMode": "Mock Mode",
+    "mockModeDesc": "Use fake AI responses for local testing without calling the official API.",
+    "officialRoute": "Official AI Route",
+    "officialRouteDesc": "TANGENT now uses the official backend proxy for AI calls. Provider keys, model pricing, and fallback routes are managed in Admin.",
     "backDashboard": "Back to Dashboard",
     "enterLicenseKey": "Enter License Key",
     "activate": "Activate",
@@ -239,9 +325,9 @@
     "trialDays": "Free trial — {{days}} days remaining",
     "expired": "Expired",
     "free": "Free",
-    "apiKeyDesc": "TANGENT uses your own API Key. Keys are encrypted locally and never sent to third-party servers.",
+    "apiKeyDesc": "Provider keys are managed in Admin. BYOK is currently disabled.",
     "keySaved": "•••••••••••• (Saved)",
-    "enterApiKey": "Enter API Key",
+    "enterApiKey": "Managed in Admin",
     "save": "Save",
     "test": "Test",
     "delete": "Delete",
@@ -269,5 +355,110 @@
   },
   "workflow": {
     "freeLimit": "Free plan limited to 3 workflows. Upgrade to Pro for unlimited."
+  },
+  "html_editor": {
+    "title": "HTML Editor",
+    "stats": "{{count}} chars · ~{{time}} min read",
+    "emptyCopy": "No HTML content to copy",
+    "localImageCopyBlocked": "Local images are preview-only. Use remote URLs before publishing to WeChat.",
+    "richCopied": "Rich text copied. Paste it directly into the WeChat editor.",
+    "richFallback": "Rich copy failed; copied HTML source instead.",
+    "copyFailed": "Copy failed. Check browser clipboard permissions.",
+    "sourceCopied": "HTML source copied.",
+    "sourceCopyFailed": "Failed to copy source. Check browser clipboard permissions.",
+    "copySource": "Copy source",
+    "copyWechat": "Copy for WeChat",
+    "previewHint": "Standard Purple preview · Copy outputs WeChat-compatible inline HTML",
+    "headingPlaceholder": "Enter a heading",
+    "bodyPlaceholder": "Type “/” to quickly add content blocks",
+    "linkPrompt": "Enter link URL",
+    "imageUrlPrompt": "Enter image URL",
+    "libraryTitleFallback": "HTML Editor asset",
+    "toolbar": {
+      "undo": "Undo",
+      "redo": "Redo",
+      "insertBlock": "Add block",
+      "bold": "Bold",
+      "italic": "Italic",
+      "underline": "Underline",
+      "textColor": "Text color",
+      "highlight": "Highlight",
+      "orderedList": "Ordered list",
+      "bulletList": "Bulleted list",
+      "align": "Alignment",
+      "table": "Table",
+      "emoji": "Emoji",
+      "image": "Insert image",
+      "more": "More",
+      "decreaseFont": "Decrease font size",
+      "increaseFont": "Increase font size",
+      "insertLink": "Insert link",
+      "imageUrl": "Image URL",
+      "rewriteSelected": "AI rewrite selected text",
+      "saveToLibrary": "Save to library"
+    },
+    "blocks": {
+      "paragraph": "Paragraph",
+      "h1": "Heading 1",
+      "h2": "Heading 2",
+      "h3": "Heading 3",
+      "bulletList": "Bulleted list",
+      "orderedList": "Ordered list",
+      "codeBlock": "Code block",
+      "blockquote": "Quote",
+      "table": "Table",
+      "image": "Insert image",
+      "emoji": "Emoji"
+    },
+    "hints": {
+      "paragraph": "Plain paragraph",
+      "h1": "Large heading",
+      "h2": "Section heading",
+      "h3": "Small heading",
+      "bulletList": "Bullet points",
+      "orderedList": "Numbered list",
+      "codeBlock": "Code snippet",
+      "blockquote": "Quote or insight",
+      "table": "3×3",
+      "image": "Upload local image",
+      "emoji": "Insert emoji"
+    },
+    "align": {
+      "left": "Align left",
+      "center": "Align center",
+      "right": "Align right",
+      "justify": "Justify"
+    },
+    "menu": {
+      "convertTo": "Turn into",
+      "blockOptions": "Block options",
+      "toParagraph": "Turn into paragraph",
+      "toH1": "Turn into heading 1",
+      "toH2": "Turn into heading 2",
+      "toQuote": "Turn into quote",
+      "deleteBlock": "Delete block"
+    },
+    "rewrite": {
+      "title": "AI Rewrite",
+      "selectedText": "Selected text:",
+      "placeholder": "Example: make this paragraph livelier, add more data, or emphasize the key idea...",
+      "shortcut": "Press Ctrl+Enter to submit",
+      "loading": "AI is rewriting...",
+      "result": "Rewrite result:",
+      "error": "Error: {{error}}",
+      "generate": "Generate",
+      "editAgain": "Edit again",
+      "insert": "Insert below selected paragraph"
+    }
+  },
+  "library": {
+    "saveTitle": "Save to library",
+    "titleRequired": "Enter an asset title",
+    "tagPlaceholder": "Separate with commas, e.g. product, cover, case study",
+    "willAdd": "Will add: {{tags}}"
+  },
+  "standard_purple": {
+    "badge": "Tanvas Visual System · Standard Purple",
+    "insight": "Key insight"
   }
 }

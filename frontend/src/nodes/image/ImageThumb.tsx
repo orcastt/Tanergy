@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import { invoke } from "@tauri-apps/api/core"
+import { editorShadows } from "../../styles/editorDesign"
 
 interface Props {
   filePath: string
@@ -41,8 +42,8 @@ export default function ImageThumb({ filePath, description, selected, onClick }:
       style={{
         width: "100%", borderRadius: "0.25rem", objectFit: "cover",
         cursor: onClick ? "pointer" : "default",
-        border: selected ? "2px solid #6349EA" : "2px solid transparent",
-        transition: "border-color 150ms ease",
+        boxShadow: selected ? editorShadows.focus : "none",
+        transition: "box-shadow 150ms ease",
       }}
     />
   )

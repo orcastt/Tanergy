@@ -47,7 +47,8 @@ pub fn get_assets(workflow_id: String, node_id: Option<String>) -> Result<Vec<As
     let rows = match &node_id {
         Some(nid) => stmt.query_map(rusqlite::params![workflow_id, nid], row_to_asset),
         None => stmt.query_map(rusqlite::params![workflow_id], row_to_asset),
-    }.map_err(|e| e.to_string())?;
+    }
+    .map_err(|e| e.to_string())?;
 
     let mut assets = Vec::new();
     for row in rows {
@@ -62,7 +63,9 @@ pub fn read_asset_file(file_path: String) -> Result<Vec<u8>, String> {
 
     let app_dir = db::get_app_dir();
     let assets_root = PathBuf::from(&app_dir).join("assets");
-    let canonical = path.canonicalize().map_err(|e| format!("invalid path: {}", e))?;
+    let canonical = path
+        .canonicalize()
+        .map_err(|e| format!("invalid path: {}", e))?;
     let canonical_root = assets_root.canonicalize().unwrap_or(assets_root);
     if !canonical.starts_with(&canonical_root) {
         return Err("path traversal: file must be under assets directory".into());
@@ -112,13 +115,15 @@ pub fn save_canvas_export(
 
     let app_dir = db::get_app_dir();
     let assets_dir = PathBuf::from(&app_dir).join("assets").join(&workflow_id);
-    fs::create_dir_all(&assets_dir)
-        .map_err(|e| format!("create dir: {}", e))?;
+    fs::create_dir_all(&assets_dir).map_err(|e| format!("create dir: {}", e))?;
 
-    let filename = format!("{}_export_{}.png", node_id, chrono::Utc::now().format("%Y%m%d_%H%M%S"));
+    let filename = format!(
+        "{}_export_{}.png",
+        node_id,
+        chrono::Utc::now().format("%Y%m%d_%H%M%S")
+    );
     let file_path = assets_dir.join(&filename);
-    fs::write(&file_path, &image_data)
-        .map_err(|e| format!("write file: {}", e))?;
+    fs::write(&file_path, &image_data).map_err(|e| format!("write file: {}", e))?;
 
     let asset_id = uuid::Uuid::new_v4().to_string();
     let file_path_str = file_path.to_string_lossy().to_string();
@@ -132,7 +137,9 @@ pub fn save_canvas_export(
         rusqlite::params![&asset_id, &workflow_id, &node_id, &file_path_str, &filename, size_bytes],
     ).map_err(|e| format!("insert asset: {}", e))?;
 
-    Ok(SaveResult { file_path: file_path_str })
+    Ok(SaveResult {
+        file_path: file_path_str,
+    })
 }
 
 #[tauri::command]
@@ -141,13 +148,10 @@ pub async fn ai_edit_image(
     instruction: String,
     model: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    let model_id = model.unwrap_or_else(|| "minimax-image".to_string());
-    let result = crate::services::ai_client::ai_edit_image(
-        &image_base64,
-        &instruction,
-        &model_id,
-        None,
-    ).await?;
+    let model_id = model.unwrap_or_else(|| "gemini-nano-banana".to_string());
+    let result =
+        crate::services::ai_client::ai_edit_image(&image_base64, &instruction, &model_id, None)
+            .await?;
 
     // Return base64 to frontend
     let b64 = base64::engine::general_purpose::STANDARD.encode(&result.image_data);
@@ -158,8 +162,9 @@ pub async fn ai_edit_image(
 pub async fn ai_rewrite_html(
     original_html: String,
     instruction: String,
+    model: Option<String>,
 ) -> Result<String, String> {
-    use crate::services::ai_client::{ChatMessage, chat_completion};
+    use crate::services::ai_client::{chat_completion, ChatMessage};
 
     let system = r#"你是一个微信排版专家。用户选中了一段 HTML 内容，需要你根据指示进行改写。
 
@@ -176,10 +181,17 @@ pub async fn ai_rewrite_html(
     );
 
     let messages = vec![
-        ChatMessage { role: "system".into(), content: system.into() },
-        ChatMessage { role: "user".into(), content: user_msg },
+        ChatMessage {
+            role: "system".into(),
+            content: system.into(),
+        },
+        ChatMessage {
+            role: "user".into(),
+            content: user_msg,
+        },
     ];
 
-    let result = chat_completion("minimax", "MiniMax-M2.7", messages, 2048, Some(0.7)).await?;
+    let model_id = model.unwrap_or_else(|| "hunyuan-3.0-preview".to_string());
+    let result = chat_completion(&model_id, "", messages, 2048, Some(0.7)).await?;
     Ok(result.text)
 }

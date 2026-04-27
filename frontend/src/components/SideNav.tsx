@@ -5,7 +5,7 @@ export default function SideNav() {
   const navigate = useNavigate()
   const location = useLocation()
   const currentPath = location.pathname
-  const currentSearch = location.search
+  const currentFilter = new URLSearchParams(location.search).get("filter")
   const trashedCount = useWorkflowStore((s) => s.trashedWorkflows.length)
 
   const items = [
@@ -57,7 +57,7 @@ export default function SideNav() {
         {items.map((item) => {
           const active =
             currentPath === item.path &&
-            (item.search === "" ? !currentSearch || currentSearch === "" : currentSearch === item.search)
+            (item.search === "" ? !currentFilter : item.search === `?filter=${currentFilter}`)
 
           return (
             <button

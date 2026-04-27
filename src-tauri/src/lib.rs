@@ -66,6 +66,7 @@ pub fn run() {
             commands::library::delete_library_item,
             commands::credits::get_credit_balance,
             commands::credits::refresh_credits,
+            commands::credits::list_official_models,
             commands::credits::login_official,
             commands::credits::verify_otp,
             commands::credits::logout_official,

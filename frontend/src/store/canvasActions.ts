@@ -120,7 +120,7 @@ export function splitOutlineImpl(
       id: ilId,
       type: "image_list",
       position: { x: startX, y: startY + sections.length * (H + GAP_Y) + 32 },
-      data: { nodeType: "image_list", count: imagePlans.length, model: "minimax-image", imageInputs: ["img_in_1"] },
+      data: { nodeType: "image_list", count: imagePlans.length, model: "gpt-image-2", imageInputs: ["img_in_1"] },
       selected: false,
     } as Node)
     newEdges.push({

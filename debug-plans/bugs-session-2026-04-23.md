@@ -107,7 +107,7 @@
 - **优先级**: P1
 
 ### PENDING-002: 生图多张是否真的不同
-- **状态**: 已修复文件名覆盖问题，但需验证 MiniMax API 对相似 prompt 是否返回不同图片
+- **状态**: 已修复文件名覆盖问题；当前需用官方图片线路（默认 `gpt-image-2` / GeekAI relay）验证相似 prompt 是否返回不同图片
 - **优先级**: P0（下次测试验证）
 
 ### PENDING-003: ErrorBoundary 生产移除

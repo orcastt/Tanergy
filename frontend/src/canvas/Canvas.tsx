@@ -1,10 +1,9 @@
-import { useCallback, useRef, useEffect, type CSSProperties } from "react"
+import { useCallback, useRef, useEffect } from "react"
 import {
   ReactFlow,
   Background,
   BackgroundVariant,
   useReactFlow,
-  useViewport,
   SelectionMode,
   type OnConnect,
   type Connection,
@@ -14,6 +13,8 @@ import {
   type NodeMouseHandler,
   type NodeTypes,
   type OnNodeDrag,
+  type OnConnectStart,
+  type OnConnectStartParams,
   type Viewport,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
@@ -38,6 +39,7 @@ import { getInputPortType, getOutputPortType, resolveAutoInputExpansion } from "
 import { buildCanvasContextMenuItems } from "./canvasContextMenu"
 import { useCanvasKeyboardShortcuts } from "./useCanvasKeyboardShortcuts"
 import { useLibraryDrop } from "./useLibraryDrop"
+import { createConnectionBatch } from "./batchConnect"
 
 const edgeTypes = { default: DeletableEdge }
 
@@ -45,26 +47,18 @@ const SNAP_GRID = [20, 20] as [number, number]
 
 export default function Canvas() {
   const {
-    nodes, edges, addNode, addEdge, onNodesChange, onEdgesChange, removeNode,
+    nodes, edges, selectedNodeIds, addNode, applyConnectionBatch, onNodesChange, onEdgesChange, removeNode,
     copySelected, pasteNodes, deleteSelected, duplicateNode, clipboard,
     groupSelected, ungroupSelected,
-    undo, canUndo, getGraphJson, setGraphFromJson, updateNodeData,
+    undo, canUndo, getGraphJson, setGraphFromJson,
     nodeStatuses,
   } = useCanvasStore()
 
   const { pickerOpen, pickerScreenPos, ctxMenu, editorNodeId, htmlEditorNodeId, lightboxImage } = useOverlayStore()
   const lastClickRef = useRef<{ time: number; x: number; y: number } | null>(null)
   const wasRunningRef = useRef(false)
+  const connectionStartRef = useRef<OnConnectStartParams | null>(null)
   const { screenToFlowPosition, getViewport, setViewport } = useReactFlow()
-  const viewport = useViewport()
-  const alignedViewport = getCrispViewport(viewport)
-  const useCrispZoom = viewport.zoom > 1.001
-  const reactFlowStyle = {
-    background: "var(--bg-canvas)",
-    "--rf-crisp-translate-x": `${alignedViewport.x / alignedViewport.zoom}px`,
-    "--rf-crisp-translate-y": `${alignedViewport.y / alignedViewport.zoom}px`,
-    "--rf-crisp-zoom": alignedViewport.zoom,
-  } as CSSProperties
 
   const snapViewport = useCallback((viewport?: Viewport) => {
     const currentViewport = viewport ?? getViewport()
@@ -98,24 +92,25 @@ export default function Canvas() {
 
   useCanvasKeyboardShortcuts({ nodes, copySelected, pasteNodes, deleteSelected, groupSelected, ungroupSelected })
 
+  const handleConnectStart: OnConnectStart = useCallback((_event, params) => {
+    connectionStartRef.current = params
+  }, [])
+
+  const handleConnectEnd = useCallback(() => {
+    connectionStartRef.current = null
+  }, [])
+
   const handleConnect: OnConnect = useCallback((connection: Connection) => {
-    if (!connection.source || !connection.target) return
-    let targetHandle = connection.targetHandle
-    const existing = edges.find((e) => e.target === connection.target && e.targetHandle === targetHandle)
-    if (existing) {
-      const expanded = resolveAutoInputExpansion(connection, nodes, edges)
-      if (!expanded) return
-      targetHandle = expanded.targetHandle
-      if (expanded.data) updateNodeData(connection.target, expanded.data)
-    }
-    addEdge({
-      id: `e-${connection.source}-${connection.sourceHandle}-${connection.target}-${targetHandle}`,
-      source: connection.source,
-      target: connection.target,
-      sourceHandle: connection.sourceHandle,
-      targetHandle,
+    const state = useCanvasStore.getState()
+    const batch = createConnectionBatch({
+      connection,
+      nodes: state.nodes,
+      edges: state.edges,
+      selectedNodeIds: state.selectedNodeIds,
+      connectionStart: connectionStartRef.current,
     })
-  }, [nodes, edges, addEdge, updateNodeData])
+    applyConnectionBatch(batch)
+  }, [applyConnectionBatch])
 
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
     for (const c of changes) {
@@ -208,7 +203,7 @@ export default function Canvas() {
 
   const nodeTypesMap: NodeTypes = nodeTypes
 
-  const selectedCount = useCanvasStore.getState().selectedNodeIds.length
+  const selectedCount = selectedNodeIds.length
   const ctxMenuItems = buildCanvasContextMenuItems({
     ctxNodeId: ctxMenu?.nodeId,
     nodes,
@@ -233,10 +228,11 @@ export default function Canvas() {
         <ReactFlow
           nodes={nodes}
           edges={edges}
-          className={useCrispZoom ? "react-flow--crisp-zoom" : undefined}
           nodeTypes={nodeTypesMap}
           edgeTypes={edgeTypes}
+          onConnectStart={handleConnectStart}
           onConnect={handleConnect}
+          onConnectEnd={handleConnectEnd}
           onNodesChange={handleNodesChange}
           onEdgesChange={handleEdgesChange}
           onPaneClick={handlePaneClick}
@@ -258,7 +254,7 @@ export default function Canvas() {
           maxZoom={2}
           defaultViewport={{ x: 0, y: 0, zoom: 1 }}
           proOptions={{ hideAttribution: true }}
-          style={reactFlowStyle}
+          style={{ background: "var(--bg-canvas)" }}
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#d4d4d4" />
         </ReactFlow>

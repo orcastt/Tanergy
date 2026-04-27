@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react"
-import { KeysTab } from "./KeysTabContent"
 import { useTranslation } from "react-i18next"
 import { useThemeStore } from "../../store/themeStore"
 import { useLangStore } from "../../store/langStore"
@@ -41,7 +40,7 @@ export function AdvancedTab() {
           <div>
             <div style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>{t("settings.theme")}</div>
             <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "0.125rem" }}>
-              {theme === "dark" ? "Dark" : "Light"}
+              {theme === "dark" ? t("settings.dark") : t("settings.light")}
             </div>
           </div>
           <button onClick={toggleTheme} style={{
@@ -50,7 +49,7 @@ export function AdvancedTab() {
             color: "var(--text-primary)", fontSize: "0.8125rem", fontWeight: 600,
             cursor: "pointer", minWidth: "60px",
           }}>
-            {theme === "dark" ? "Dark" : "Light"}
+            {theme === "dark" ? t("settings.dark") : t("settings.light")}
           </button>
         </div>
         <div style={{
@@ -81,9 +80,9 @@ export function AdvancedTab() {
         background: "var(--bg-surface)", marginBottom: "1.5rem",
       }}>
         <div>
-          <div style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>Mock Mode</div>
+          <div style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>{t("settings.mockMode")}</div>
           <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "0.125rem" }}>
-            Use fake AI responses (no API key needed)
+            {t("settings.mockModeDesc")}
           </div>
         </div>
         <button
@@ -103,8 +102,17 @@ export function AdvancedTab() {
         </button>
       </div>
 
-      {/* API Keys (reuse existing component) */}
-      <KeysTab />
+      <div style={{
+        padding: "1rem", borderRadius: 8, border: "1px solid var(--border-color)",
+        background: "var(--bg-surface)",
+      }}>
+        <div style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>
+          {t("settings.officialRoute")}
+        </div>
+        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "0.25rem", lineHeight: 1.6 }}>
+          {t("settings.officialRouteDesc")}
+        </div>
+      </div>
     </div>
   )
 }

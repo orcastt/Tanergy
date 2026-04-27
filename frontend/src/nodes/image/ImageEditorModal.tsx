@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState, useEffect } from "react"
+import { useTranslation } from "react-i18next"
 import SourcePanel from "./SourcePanel"
 import LayerCanvas from "./LayerCanvas"
 import LayerPanel from "./LayerPanel"
@@ -9,6 +10,7 @@ import { captureCanvasDisplay, rasterizeLayers } from "./layerCanvasRuntime"
 import { useCanvasStore } from "../../store/canvasStore"
 import { useWorkflowStore } from "../../store/workflowStore"
 import LibrarySaveDialog from "../../library/LibrarySaveDialog"
+import { editorColors, editorShadows, editorTypography, iconButtonStyle, primaryButtonStyle, secondaryButtonStyle } from "../../styles/editorDesign"
 
 interface ImageItem {
   id: string
@@ -41,13 +43,14 @@ function isLayerSnapshot(value: unknown): value is LayerSnapshot {
 }
 
 export default function ImageEditorModal({ nodeId, onClose }: Props) {
+  const { t } = useTranslation()
   const node = useCanvasStore((s) => s.nodes.find((n) => n.id === nodeId))
   const result = useCanvasStore((s) => s.nodeResults[nodeId]) as ImageEditorResult | undefined
   const nodeData = node?.data as Record<string, unknown> | undefined
   const nodeType = nodeData?.nodeType
   const filePath = typeof nodeData?.filePath === "string" ? nodeData.filePath : ""
   const libraryItemId = typeof nodeData?.libraryItemId === "string" ? nodeData.libraryItemId : nodeId
-  const title = typeof nodeData?.title === "string" ? nodeData.title : "Library image"
+  const title = typeof nodeData?.title === "string" ? nodeData.title : t("image_editor.libraryImage")
   const description = typeof nodeData?.description === "string" ? nodeData.description : title
   const nodeImage = useMemo(() => nodeType === "image_asset" && filePath
     ? [{
@@ -83,14 +86,14 @@ export default function ImageEditorModal({ nodeId, onClose }: Props) {
 
   const doExport = useCallback(async (closeAfter = false) => {
     const dataUrl = captureCanvasDisplay()
-    if (!dataUrl) { setExportError("画布未就绪"); return }
+    if (!dataUrl) { setExportError(t("image_editor.canvasNotReady")); return }
 
     const newImage: ImageItem = {
       id: `export_${Date.now()}`,
       plan_id: "export",
       file_path: dataUrl,
       prompt: "Canvas export",
-      description: "导出图片",
+      description: t("image_editor.exportImage"),
       position: "",
     }
     const currentResult = useCanvasStore.getState().nodeResults[nodeId] as ImageEditorResult | undefined
@@ -102,11 +105,11 @@ export default function ImageEditorModal({ nodeId, onClose }: Props) {
       layerData,
     })
     if (nodeType === "image_asset") {
-      useCanvasStore.getState().updateNodeData(nodeId, { filePath: dataUrl, description: "导出图片" })
+      useCanvasStore.getState().updateNodeData(nodeId, { filePath: dataUrl, description: t("image_editor.exportImage") })
     }
     setExportError(null)
     if (closeAfter) onClose()
-  }, [getState, nodeId, nodeType, onClose])
+  }, [getState, nodeId, nodeType, onClose, t])
 
   const handleExport = useCallback(() => doExport(true), [doExport])
   const handleExportToNode = useCallback(() => doExport(false), [doExport])
@@ -115,47 +118,47 @@ export default function ImageEditorModal({ nodeId, onClose }: Props) {
     const layerData = getState()
     const currentResult = useCanvasStore.getState().nodeResults[nodeId] as ImageEditorResult | undefined
     useCanvasStore.getState().setNodeResult(nodeId, { ...(currentResult ?? {}), layerData, images })
-    setSaveStatus("已保存")
+    setSaveStatus(t("image_editor.saved"))
     setTimeout(() => setSaveStatus(""), 1500)
-  }, [getState, images, nodeId])
+  }, [getState, images, nodeId, t])
 
   const handleDownload = useCallback(() => {
     const dataUrl = rasterizeLayers() ?? captureCanvasDisplay()
-    if (!dataUrl) { setExportError("画布未就绪"); return }
+    if (!dataUrl) { setExportError(t("image_editor.canvasNotReady")); return }
     const link = document.createElement("a")
     link.href = dataUrl
     link.download = `tanvas-image-${Date.now()}.png`
     link.click()
-  }, [])
+  }, [t])
 
   const handleCopy = useCallback(async () => {
     const dataUrl = rasterizeLayers() ?? captureCanvasDisplay()
-    if (!dataUrl || !navigator.clipboard?.write) { setExportError("剪贴板不可用"); return }
+    if (!dataUrl || !navigator.clipboard?.write) { setExportError(t("image_editor.clipboardUnavailable")); return }
     const blob = dataUrlToBlob(dataUrl)
     await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })])
-    setSaveStatus("已复制图片")
+    setSaveStatus(t("image_editor.copiedImage"))
     setTimeout(() => setSaveStatus(""), 1500)
-  }, [])
+  }, [t])
 
   const handlePaste = useCallback(async () => {
-    if (!navigator.clipboard?.read) { setExportError("剪贴板读取不可用"); return }
+    if (!navigator.clipboard?.read) { setExportError(t("image_editor.clipboardReadUnavailable")); return }
     const items = await navigator.clipboard.read()
     for (const item of items) {
       const imageType = item.types.find((type) => type.startsWith("image/"))
       if (!imageType) continue
       const blob = await item.getType(imageType)
       const dataUrl = await blobToDataUrl(blob)
-      addImageLayer(dataUrl, "粘贴图片")
+      addImageLayer(dataUrl, t("image_editor.pastedImage"))
       return
     }
-    setExportError("剪贴板里没有图片")
-  }, [addImageLayer])
+    setExportError(t("image_editor.noClipboardImage"))
+  }, [addImageLayer, t])
 
   const handleSaveToLibrary = useCallback(() => {
     const dataUrl = rasterizeLayers() ?? captureCanvasDisplay()
-    if (!dataUrl) { setExportError("画布未就绪"); return }
+    if (!dataUrl) { setExportError(t("image_editor.canvasNotReady")); return }
     setLibraryDataUrl(dataUrl)
-  }, [])
+  }, [t])
 
   const handleBack = useCallback(() => {
     // Save layer data to node results before closing
@@ -168,58 +171,48 @@ export default function ImageEditorModal({ nodeId, onClose }: Props) {
 
   function handleAiResult(base64: string) {
     const dataUrl = `data:image/png;base64,${base64}`
-    addImageLayer(dataUrl, "AI 生成")
+    addImageLayer(dataUrl, t("image_editor.aiGenerated"))
   }
 
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 10000,
       display: "flex", flexDirection: "column",
-      background: "var(--bg-surface)", pointerEvents: "auto",
+      background: editorColors.canvas, pointerEvents: "auto",
     }}>
-      {/* Header */}
       <div style={{
         padding: "0.5rem 1rem", display: "flex", alignItems: "center", gap: "0.75rem",
-        borderBottom: "1px solid var(--border-color)", flexShrink: 0,
-        background: "var(--bg-surface)",
+        boxShadow: editorShadows.insetBottom, flexShrink: 0, height: 56,
+        background: "rgba(255,255,255,0.92)", backdropFilter: "blur(12px)",
       }}>
-        <button onClick={handleBack} style={{
-          width: "32px", height: "32px", borderRadius: "0.5rem", border: "none",
-          background: "var(--bg-hover)", cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          color: "var(--text-secondary)",
-        }}>
+        <button onClick={handleBack} style={iconButtonStyle}>
           <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>arrow_back</span>
         </button>
-        <span style={{ fontSize: "0.9375rem", fontWeight: 600, color: "var(--text-primary)" }}>Image Editor</span>
+        <span style={{ ...editorTypography.title, fontSize: "1rem", color: "var(--text-primary)" }}>{t("image_editor.title")}</span>
         <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
-          {images.length} 张图片
+          {t("image_editor.imageCount", { count: images.length })}
         </span>
         {exportError && (
-          <span style={{ fontSize: "0.6875rem", color: "#EF4444" }}>导出失败: {exportError}</span>
+          <span style={{ fontSize: "0.6875rem", color: editorColors.danger }}>{t("image_editor.exportFailed", { error: exportError })}</span>
         )}
-        {saveStatus && <span style={{ fontSize: "0.6875rem", color: "#22C55E" }}>{saveStatus}</span>}
+        {saveStatus && <span style={{ fontSize: "0.6875rem", color: editorColors.success }}>{saveStatus}</span>}
         <div style={{ flex: 1 }} />
-        <HeaderBtn icon="content_copy" label="Copy" onClick={() => void handleCopy()} />
-        <HeaderBtn icon="content_paste" label="Paste" onClick={() => void handlePaste()} />
-        <HeaderBtn icon="save" label="Save" onClick={handleSave} />
-        <HeaderBtn icon="file_download" label="Download" onClick={handleDownload} />
-        <HeaderBtn icon="folder_open" label="素材库" onClick={handleSaveToLibrary} />
+        <HeaderBtn icon="content_copy" label={t("image_editor.copy")} onClick={() => void handleCopy()} />
+        <HeaderBtn icon="content_paste" label={t("image_editor.paste")} onClick={() => void handlePaste()} />
+        <HeaderBtn icon="save" label={t("common.save")} onClick={handleSave} />
+        <HeaderBtn icon="file_download" label={t("image_editor.download")} onClick={handleDownload} />
+        <HeaderBtn icon="folder_open" label={t("image_editor.saveToLibrary")} onClick={handleSaveToLibrary} />
         <button onClick={handleRasterize} style={{
-          padding: "0.375rem 0.75rem", borderRadius: "0.375rem", border: "1px solid var(--border-color)",
-          background: "var(--bg-surface)", color: "var(--text-primary)", fontSize: "0.75rem",
-          fontWeight: 500, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.25rem",
+          ...secondaryButtonStyle,
         }}>
           <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>layers</span>
-          栅格化
+          {t("image_editor.rasterize")}
         </button>
         <button onClick={handleExport} style={{
-          padding: "0.375rem 0.75rem", borderRadius: "0.375rem", border: "none",
-          background: "#22C55E", color: "#fff", fontSize: "0.75rem",
-          fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.25rem",
+          ...primaryButtonStyle,
         }}>
           <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>download</span>
-          导出到节点
+          {t("image_editor.exportToNode")}
         </button>
       </div>
 
@@ -242,13 +235,13 @@ export default function ImageEditorModal({ nodeId, onClose }: Props) {
       {libraryDataUrl && (
         <LibrarySaveDialog
           kind="image"
-          defaultTitle="图片素材"
+          defaultTitle={t("image_editor.libraryDefaultTitle")}
           payload={{
             data_url: libraryDataUrl,
             mime_type: "image/png",
             source_workflow_id: workflowId,
             source_node_id: nodeId,
-            plain_text: "Image Editor export",
+            plain_text: t("image_editor.libraryPlainText"),
           }}
           onClose={() => setLibraryDataUrl(null)}
         />
@@ -259,12 +252,7 @@ export default function ImageEditorModal({ nodeId, onClose }: Props) {
 
 function HeaderBtn({ icon, label, onClick }: { icon: string; label: string; onClick: () => void }) {
   return (
-    <button onClick={onClick} style={{
-      padding: "0.375rem 0.625rem", borderRadius: "0.375rem",
-      border: "1px solid var(--border-color)", background: "var(--bg-surface)",
-      color: "var(--text-primary)", fontSize: "0.75rem", cursor: "pointer",
-      display: "flex", alignItems: "center", gap: "0.25rem",
-    }}>
+    <button onClick={onClick} style={secondaryButtonStyle}>
       <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>{icon}</span>
       {label}
     </button>

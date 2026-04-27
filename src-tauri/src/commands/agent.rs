@@ -27,7 +27,7 @@ fn build_node_registry() -> Vec<Value> {
             "type": "research",
             "desc": "Deep research on a topic. Optional data.direction: '行业分析'|'案例研究'|'数据洞察'|'趋势预测'.",
             "modelCategory": "text",
-            "defaultModel": "MiniMax-M2.7",
+            "defaultModel": "hunyuan-3.0-preview",
             "inputs": [{"id": "in", "type": "text"}],
             "outputs": [{"id": "out", "type": "research_result"}]
         }),
@@ -35,7 +35,7 @@ fn build_node_registry() -> Vec<Value> {
             "type": "outline_generator",
             "desc": "Generate a structured article outline with N sections. Outputs sections[] and image_plans[]. After running, user clicks Split to auto-create text_input nodes + image_list + html_formatter.",
             "modelCategory": "text",
-            "defaultModel": "MiniMax-M2.7",
+            "defaultModel": "hunyuan-3.0-preview",
             "data_options": {"style": "干货清单|故事叙事|深度分析", "promptOverride": "optional extra instructions"},
             "inputs": [{"id": "in", "type": "text"}, {"id": "research", "type": "research_result"}],
             "outputs": [{"id": "out", "type": "text"}, {"id": "image_plans", "type": "image_plans"}]
@@ -44,7 +44,7 @@ fn build_node_registry() -> Vec<Value> {
             "type": "image_list",
             "desc": "AI image generation from image plans or text. Count auto-syncs from connected image_plans.",
             "modelCategory": "image",
-            "defaultModel": "minimax-image",
+            "defaultModel": "gpt-image-2",
             "inputs": [{"id": "in", "type": "image_plans"}, {"id": "text", "type": "text"}],
             "outputs": [{"id": "out", "type": "image_slot"}]
         }),
@@ -52,7 +52,7 @@ fn build_node_registry() -> Vec<Value> {
             "type": "html_formatter",
             "desc": "Html Editor — combine N text sections + images into WeChat HTML. Double-click the node after running to open the built-in editor with WeChat preview. Dynamic inputs text_1, text_2... connect one per section. images port connects from image_list.out. This is the terminal output node — do not add preview_wechat after it.",
             "modelCategory": "text",
-            "defaultModel": "MiniMax-M2.7",
+            "defaultModel": "hunyuan-3.0-preview",
             "data_options": {"style": "经典|简约|活泼|专业", "textInputs": ["text_1"]},
             "inputs": [{"id": "text_1", "type": "text"}, {"id": "images", "type": "image_slot"}],
             "outputs": []
@@ -61,7 +61,7 @@ fn build_node_registry() -> Vec<Value> {
             "type": "image_planner",
             "desc": "Plan images for an existing article text (alternative to outline_generator's built-in image planning)",
             "modelCategory": "text",
-            "defaultModel": "MiniMax-M2.7",
+            "defaultModel": "hunyuan-3.0-preview",
             "inputs": [{"id": "in", "type": "text"}],
             "outputs": [{"id": "out", "type": "image_plans"}]
         }),
@@ -109,15 +109,13 @@ Strict JSON only, no other text:
    - "E-commerce poster" → text_input→research→image_planner→image_list
    - "Only HTML formatting" → text_input→html_formatter
    - "Polish and format text" → text_input→html_formatter
-9. When adding a node with "defaultModel", include it in data: {{"model": "MiniMax-M2.7"}} (or "minimax-image" for image nodes).
+9. When adding a node with "defaultModel", include it in data: {{"model": "hunyuan-3.0-preview"}} (or "gpt-image-2" for image nodes).
 10. Output ONLY the JSON object, nothing else."#
     )
 }
 
 #[tauri::command]
-pub async fn agent_chat(
-    payload: AgentChatPayload,
-) -> Result<AgentChatResult, String> {
+pub async fn agent_chat(payload: AgentChatPayload) -> Result<AgentChatResult, String> {
     let mock_mode = crate::db::get_connection()
         .lock()
         .unwrap()
@@ -142,7 +140,8 @@ pub async fn agent_chat(
     }];
     messages.extend(payload.messages);
 
-    let completion = ai_client::chat_completion("minimax", "MiniMax-M2.7", messages, 2048, Some(0.7)).await?;
+    let completion =
+        ai_client::chat_completion("hunyuan-3.0-preview", "", messages, 2048, Some(0.7)).await?;
 
     Ok(AgentChatResult {
         message: completion.text,

@@ -33,7 +33,7 @@
 
 ### 1.1 一句话定位
 
-**TANGENT 是一款桌面 AI 创意工作流画布应用**：用户通过拖拽节点或选择预置 Skill，自动构建从「提示词 → AI 生图/文章」的完整生产流水线，本地执行并输出到公众号、小红书等场景。用户自带 API Key，零服务器依赖。
+**TANGENT 是一款桌面 AI 创意工作流画布应用**：用户通过拖拽节点或选择预置 Skill，自动构建从「提示词 → AI 生图/文章」的完整生产流水线，本地编辑并输出到公众号、小红书等场景。AI 调用统一走 Tangent 官方后端代理，用户自带 API Key / BYOK 暂不作为默认路径。
 
 ### 1.2 解决的核心问题
 
@@ -44,7 +44,7 @@
 | 工作流不可复用，下次从头来 | 工作流可保存、分享、套模板 |
 | 需要写很长的 Prompt | 自然语言描述，AI 自动展开 |
 | 内容生产后还要手动整理发布 | 直接生成公众号/小红书可用格式 |
-| SaaS 平台按量收费贵 | 用户自带 API Key，只付软件费 |
+| 第三方 AI 线路不稳定、维护成本高 | 官方后端统一管理 Provider、模型价格、备用线路 |
 
 ### 1.3 竞品对比
 
@@ -92,7 +92,7 @@
 以下功能已实现：
 
 - [x] 首次启动向导（Email OTP 登录）
-- [x] API Key 管理（安全本地存储、有效性测试、按提供商配置）
+- [x] 官方 API 路由（登录后通过 FastAPI 代理调用 AI；本地 BYOK 能力转为 legacy）
 - [x] 主画布（节点拖拽、连线、网格对齐）
 - [x] 双击画布 → 节点选择面板
 - [x] 节点执行引擎（拓扑序执行、状态机、错误处理）
@@ -157,23 +157,23 @@
   → Welcome 屏幕（品牌 Logo，简短介绍）
   → Step 1: 输入邮箱 → 发送 OTP
   → Step 2: 输入验证码 → 验证通过后登录
-  → Step 3: 进入 Dashboard（可选去 Settings 配置自带 API Key）
+  → Step 3: 进入 Dashboard（AI 调用走官方后端代理）
   → Dashboard 加载
   → 显示欢迎 toast：「TANGENT 已就绪，创建你的第一个工作流！」
 ```
 
-### 5.2 API Key 配置（持续使用中）
+### 5.2 官方 AI 线路配置（当前路径）
 
 ```
-用户打开 Settings > API Keys
-  → 显示已配置/未配置的 API 服务列表
-  → Anthropic API Key [••••••••] [测试] ✓ 已验证
-  → Tavily API Key [未设置] [测试] ⚠ 未配置
-  → Google Cloud (Imagen 3) [••••••••] [测试] ✓ 已验证
-  → Key 在 Rust 侧加密存储，前端只显示掩码和状态
-  → 如果用户运行节点时缺少对应 Key：
-     → 节点显示错误：「[提供商] API Key 未配置，请前往 Settings > API Keys」
-     → 错误面板有「打开 Settings」按钮
+用户登录 Tangent 账号
+  → 节点执行时携带 JWT 调用 FastAPI proxy
+  → 后端根据 Provider Registry / ModelConfig 校验启用模型、选择线路并扣积分
+  → Provider Key 只存在后端环境变量和 Admin 管理侧
+  → 如果模型被禁用或类型不匹配：
+     → 返回 MODEL_NOT_ENABLED，前端提示切换可用模型
+  → 如果用户未登录：
+     → 节点显示错误：「请登录后使用官方 AI 线路」
+     → 错误面板引导登录
 ```
 
 ### 5.3 核心流程 A：手动搭建工作流
@@ -262,12 +262,11 @@
 - 未登录用户访问受保护页面时，自动跳转 Welcome
 - 登录失败有明确错误提示并可重试
 
-**API Key 配置完成标准**：
-- 每个 API Key 输入框有「测试连接」按钮
-- 测试调用真实 API 端点验证 Key 有效性
-- 有效：显示绿色 ✓
-- 无效：显示红色 + 错误信息
-- Key 存储为加密 BLOB，前端只显示掩码（`sk-ant-...xxxx`）
+**官方线路完成标准**：
+- 登录后 AI 节点统一调用 FastAPI 官方代理
+- 未登录时 AI 节点返回 `LOGIN_REQUIRED` 并引导登录
+- Provider Key 不出现在桌面端，由后端环境变量和 Admin 管理
+- 调用失败、积分不足、Provider 未配置都有明确错误提示
 
 ### 6.2 画布基础操作
 
@@ -301,7 +300,7 @@
 - 执行失败后：
   - 节点边框红色
   - 节点内显示错误信息
-  - 如果是 API Key 问题：「[提供商] API Key 未配置或无效，请前往 Settings」
+  - 如果是登录/官方线路问题：「请登录或检查官方 AI 线路」
   - Run 按钮恢复可点击
   - 错误可展开查看详情
 
@@ -379,30 +378,30 @@
 | text_input | 用户输入主题/关键词 | `text` | 免费（本地） |
 
 #### 🔍 AI 搜索类
-| 节点 | 说明 | 输入 | 输出 | 用户 API Key |
+| 节点 | 说明 | 输入 | 输出 | AI 线路 |
 |------|------|------|------|------------|
-| research | 调用 Tavily 多轮搜索，整合结果 | `text` | `research_result` | Tavily |
+| research | 官方线路调研，整合结果 | `text` | `research_result` | 官方代理 |
 
 #### ✍️ AI 编排类
-| 节点 | 说明 | 输入 | 输出 | 用户 API Key |
+| 节点 | 说明 | 输入 | 输出 | AI 线路 |
 |------|------|------|------|------------|
-| outline_generator | 生成章节大纲 + image_plans（供 Split） | `text` / `research_result` | `text`（章节输出）+ `image_plans` | 文本模型（用户 Key 或积分） |
-| image_planner | 可选：基于文章文本补充配图计划 | `text` | `image_plans` | 文本模型（用户 Key 或积分） |
+| outline_generator | 生成章节大纲 + image_plans（供 Split） | `text` / `research_result` | `text`（章节输出）+ `image_plans` | 官方代理 |
+| image_planner | 可选：基于文章文本补充配图计划 | `text` | `image_plans` | 官方代理 |
 
 #### 🎨 配图类
-| 节点 | 说明 | 输入 | 输出 | 用户 API Key |
+| 节点 | 说明 | 输入 | 输出 | AI 线路 |
 |------|------|------|------|------------|
-| image_list | 多模型图片生成（MiniMax/GPT/Gemini），双输入，动态输出端口，点击预览打开图层编辑器 | `image_plans` + `text` | `image_slot`×N（动态） | 用户 Key 或积分 |
+| image_list | 官方多模型图片生成（GPT Image / Nano Banana / Jimeng / Seedream 等），双输入，动态输出端口，点击预览打开图层编辑器 | `image_plans` + `text` | `image_slot`×N（动态） | 官方代理 |
 | image_asset | 个人图片素材容器，可缩放，双击进入 Image Editor | 无 | `image_slot` | 免费（本地） |
 | image_gallery | 可选：收集图片并展示 | `image_slot` | 展示 UI | 免费（本地） |
 
 #### 📄 输出类
 | 节点 | 说明 | 输入 | 输出 | 计费 |
 |------|------|------|------|------|
-| html_formatter / Html Editor | Markdown + 图片 → 微信样式 HTML；双击进入富文本编辑、实时预览、AI 改写、复制 HTML | `text` + `image_slot`×N | 终点编辑 UI | 文本模型（用户 Key 或积分） |
+| html_formatter / Html Editor | Markdown + 图片 → 微信样式 HTML；双击进入富文本编辑、实时预览、AI 改写、复制 HTML | `text` + `image_slot`×N | 终点编辑 UI | 官方代理 |
 
 默认主链路节点：`text_input`、`research`、`outline_generator`、`image_list`、`html_formatter`。
-可选节点：`image_planner`、`image_gallery`。
+可选节点：`image_planner`、`image_gallery`、`image_asset`。
 legacy（非默认）节点：`gate`、`writer`、`reviewer`、`image_gen`、`preview_wechat`。
 
 ### 7.3 节点状态机
@@ -422,7 +421,7 @@ legacy（非默认）节点：`gate`、`writer`、`reviewer`、`image_gen`、`pr
 - **Prompt / Chat / Optimize**：通用文本节点，公众号 Skill 用 outline_generator + Split 路径代替
 - **Search（热点）**：公众号 Skill 用 research 代替
 - **Analysis（图像分析）**：Phase 2+ 再做
-- **Midjourney V7 / Niji 7 / Seedream 5.0**：Phase 2+，MVP 只接 Imagen 3
+- **Midjourney V7 / Niji 7 / Seedream 5.0**：Phase 2+，当前主流程优先使用 GeekAI 官方图片模型
 - **视频类（Kling、Seedance、Vidu 等）**：Phase 3
 - **音频类（MiniMax Speech 等）**：Phase 3
 - **PPT 节点**：Phase 3
@@ -724,7 +723,9 @@ text_input ──→ research ──→ outline_generator
 
 **存储项**：license_key, first_launch_date, workspace_path, theme, language, trial_started_at
 
-### 10.2 API Keys（api_keys）
+### 10.2 API Keys（api_keys，legacy）
+
+> 当前 BYOK 关闭；该表仅作为历史本地 Key 能力保留，默认产品路径不再读取。
 
 | 字段 | 类型 | 约束 |
 |------|------|------|
@@ -783,9 +784,9 @@ text_input ──→ research ──→ outline_generator
 
 | 场景 | 显示方式 | 内容 |
 |------|---------|------|
-| AI API 调用失败 | 节点红色边框 + 节点内错误信息 | 「[提供商] API 调用失败，请检查 API Key 和网络」+ 重试按钮 |
-| API Key 未配置 | 节点红色边框 + 节点内错误信息 | 「[提供商] API Key 未配置，请前往 Settings」+ 「打开 Settings」按钮 |
-| API Key 无效 | 节点红色边框 | 「[提供商] API Key 无效或已过期，请更新」+ 「打开 Settings」按钮 |
+| AI API 调用失败 | 节点红色边框 + 节点内错误信息 | 「官方 AI 线路调用失败，请稍后重试或联系管理员」+ 重试按钮 |
+| 未登录 | 节点红色边框 + 节点内错误信息 | 「请登录后使用官方 AI 线路」+ 「登录」按钮 |
+| Provider 未配置 | 节点红色边框 | 「官方 Provider 未配置或不可用，请联系管理员」 |
 | 请求超时（>60s）| 节点错误状态 | 「请求超时，请检查网络后重试」 |
 | API 速率限制 | 节点错误状态 | 「API 调用频率超限，请稍后重试」 |
 
@@ -855,9 +856,8 @@ text_input ──→ research ──→ outline_generator
 
 | 服务 | 用途 | 接入方式 | Key 来源 |
 |------|------|---------|---------|
-| Claude API (Anthropic) | 文本 AI 节点 | 用户自带 Key，经 Tauri Rust reqwest 转发 | 用户在 Settings 输入 |
-| Google Imagen 3 | 图像生成 | 用户自带 Key，经 Tauri Rust reqwest 转发 | 用户在 Settings 输入 |
-| Tavily Search | Research 节点 | 用户自带 Key，经 Tauri Rust reqwest 转发 | 用户在 Settings 输入 |
+| Official AI Proxy | 文本/图像 AI 节点 | FastAPI `/api/v1/proxy/*` 转发 | 后端环境变量 + Admin Provider Registry |
+| GeekAI Relay | OpenAI-compatible 中转线路 | 后端 Provider `geekai` | `GEEKAI_API_KEY` |
 | Email OTP + JWT | 登录与会话 | FastAPI `/auth/send-otp` + `/auth/verify-otp` | 用户邮箱 |
 
 ### 13.2 Phase 2 接入（P1）
@@ -887,7 +887,7 @@ Kling、Seedance、Vidu、Wan2.x、MiniMax、Tencent Speech、小红书 API
 ### 14.2 用户为什么付费
 
 - 为 **AI API 使用量**付费（官方代理，无需自配 Key）
-- 也支持**自带 API Key**（高级设置，免费使用）
+- 用户自带 API Key / BYOK 当前关闭，后续如需要再作为高级能力恢复
 - Pro 会员享受积分折扣和专属功能
 
 ### 14.3 AI 路由策略
@@ -895,25 +895,27 @@ Kling、Seedance、Vidu、Wan2.x、MiniMax、Tencent Speech、小红书 API
 - **有官方 JWT** → FastAPI 代理（扣积分）
   - 积分足够 → 转发到 AI provider
   - 积分不足 → INSUFFICIENT_CREDITS 错误
-- **无 JWT + 有用户 Key** → 直接调用（经 Tauri Rust，免费）
-- **无 JWT + 无 Key** → LOGIN_REQUIRED 错误
+- **无 JWT** → LOGIN_REQUIRED 错误
 
 ### 14.4 多模型差异定价
 
 | 模型 | 积分/次 | 类型 |
 |------|---------|------|
-| MiniMax-M2.7 | 1 | 文本 |
-| Claude Sonnet | 5 | 文本 |
-| GPT-4o | 5 | 文本 |
-| Gemini Pro | 3 | 文本 |
-| GLM-4 | 2 | 文本 |
-| MiniMax Image | 5 | 图片 |
+| Hunyuan 3.0 Preview（GeekAI） | 0–1 | 文本测试默认 |
+| MiniMax M2.7 Free（GeekAI） | 0–1 | 文本测试备用 |
+| Nemotron 3 Super 120B A12B（GeekAI） | 0–1 | 文本测试备用 |
+| GPT-Image-2（GeekAI） | 8 | 图片生成默认 |
+| Nano Banana 2 / HD（GeekAI） | 5–8 | 图片生成备用 |
+| Jimeng T2I v4.0（GeekAI） | 5–8 | 图片生成备用 |
+| Gemini Nano Banana（GeekAI） | 6–8 | 图片编辑默认 |
+| GPT-Image-1（GeekAI） | 6–8 | 图片编辑备用 |
+| Jimeng Image Enhance v2（GeekAI） | 3–6 | 图片增强 |
 | （可后台配置） | — | — |
 
 ### 14.5 离线使用
 
 - 画布编辑和本地操作完全离线
-- AI 调用需联网（经 FastAPI 代理或直接调 provider）
+- AI 调用需联网（经 FastAPI 官方代理）
 - 工作流和资产始终在本地
 
 ---
@@ -923,11 +925,11 @@ Kling、Seedance、Vidu、Wan2.x、MiniMax、Tencent Speech、小红书 API
 > 以下每条均需人工验收通过，方可上线 MVP。验收范围围绕公众号长文创作 Skill 打通。
 
 ### 登录与 Setup
-- [ ] 首次启动显示 Welcome 向导（OTP 登录 + 可选 API Key 配置）
+- [ ] 首次启动显示 Welcome 向导（OTP 登录）
 - [ ] Email OTP 登录流程正确（发送验证码/验证/失败重试）
 - [ ] 登录态持久化正确（重启后仍可识别）
-- [ ] 每个 API Key 有「测试连接」按钮，实际验证 Key 有效性
-- [ ] API Key 加密存储（前端 DevTools 看不到明文）
+- [ ] 未登录执行 AI 节点会提示登录，不再提示配置 API Key
+- [ ] 登录后 AI 节点走官方后端代理并正确扣积分
 - [ ] Free 计划限制 3 个工作流，Pro 无限制
 - [ ] Free 模式：可查看编辑，按积分/权限控制 AI 能力
 
@@ -978,9 +980,10 @@ Kling、Seedance、Vidu、Wan2.x、MiniMax、Tencent Speech、小红书 API
 - [ ] 配图计划正确显示（配图 N 张，对应文章位置）
 
 **image_list**
-- [ ] 接收 image_planner 的输出，调用 Imagen 3 生成图片
-- [ ] 图片正确显示在节点内
-- [ ] 支持生成多张（配置 N 张则生成 N 张）
+- [x] 接收 image_planner / outline_generator 的 `image_plans`，经官方图片代理生成图片
+- [x] 图片正确显示在节点内
+- [x] 支持生成多张（配置 N 张则生成 N 张）
+- [ ] GeekAI 真 Key 联调异步结果轮询、图片编辑、图片增强与失败重试
 
 **image_gallery**
 - [ ] 收集所有 image_list 的图片
@@ -1037,7 +1040,7 @@ Kling、Seedance、Vidu、Wan2.x、MiniMax、Tencent Speech、小红书 API
 | Slice | 名称 | 状态 |
 |-------|------|------|
 | 0 | Tauri 脚手架 + SQLite | ✅ |
-| 1 | Auth + API Key 管理 | ✅ |
+| 1 | Auth + API Key 管理 | ✅ / legacy |
 | 2 | Dashboard + 工作流 CRUD（本地） | ✅ |
 | 3 | 画布核心（复用现有） | ✅ |
 | 4 | text_input · research · outline_generator | ✅ |

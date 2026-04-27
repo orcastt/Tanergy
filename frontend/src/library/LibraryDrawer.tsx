@@ -17,33 +17,12 @@ export default function LibraryDrawer() {
 
   return (
     <>
-      <button
-        onClick={() => setOpen(!open)}
-        title="个人素材库"
-        style={{
-          position: "absolute",
-          left: open ? 332 : 16,
-          top: 78,
-          zIndex: 90,
-          width: 36,
-          height: 36,
-          borderRadius: 10,
-          border: "1px solid var(--border-color)",
-          background: "var(--bg-surface)",
-          color: "#5965AF",
-          cursor: "pointer",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-        }}
-      >
-        <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{open ? "chevron_left" : "folder_open"}</span>
-      </button>
-
       {open && (
         <aside
           style={{
             position: "absolute",
-            left: 16,
-            top: 70,
+            left: 64,
+            top: 16,
             bottom: 16,
             zIndex: 80,
             width: 300,

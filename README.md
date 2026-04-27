@@ -24,8 +24,8 @@ TANGENT is a **desktop application (Tauri v2)** — a node-based AI canvas that 
 | 🌍 中英双语 | 一键切换中文/英文界面 |
 | 🌙 暗色/亮色主题 | 顶栏一键切换 |
 | 💳 积分订阅系统 | Free 50 积分起步；Pro 月付/年付，按积分使用 AI |
-| 🔐 Email OTP 登录 | 注册即用，无需 API Key |
-| ⚙️ 用户自带 Key | 高级模式：自带 Anthropic / Tavily / Google Key，免费调用 |
+| 🔐 Email OTP 登录 | 注册即用，AI 调用统一走官方后端代理 |
+| 🧭 官方 Provider 线路 | Provider Key、模型价格、备用线路统一在 Admin 管理 |
 
 ---
 
@@ -62,7 +62,7 @@ TANGENT is a **desktop application (Tauri v2)** — a node-based AI canvas that 
 | 状态管理 | Zustand v5 |
 | UI | Tailwind CSS + Radix UI |
 | 本地数据库 | SQLite（Rust 侧管理） |
-| API Key 加密 | AES-256-GCM |
+| API Key 加密 | AES-256-GCM（legacy，本地 BYOK 当前关闭） |
 | 多语言 | i18next + react-i18next |
 
 ### 后端服务（Phase 2）
@@ -74,7 +74,7 @@ TANGENT is a **desktop application (Tauri v2)** — a node-based AI canvas that 
 | 缓存 | Redis 7 |
 | 支付 | Stripe Checkout + Webhook |
 | 认证 | Email OTP + JWT |
-| AI 代理 | httpx 多 provider 路由（minimax / claude / gpt / gemini / glm） |
+| AI 代理 | httpx 多 provider 路由（minimax / claude / gpt / gemini / glm / geekai） |
 | 部署 | Docker Compose + Nginx |
 
 ### 管理后台
@@ -94,7 +94,7 @@ TANGENT is a **desktop application (Tauri v2)** — a node-based AI canvas that 
 | Pro Monthly | $9.99/月 | 500 积分/月 | 8 折购积分 |
 | Pro Yearly | $79.99/年 | 6000 积分/年 | 最佳价值 |
 
-用户也可在设置里配置自带 API Key，绕过积分直接调用。
+当前产品路线为官方后端代理优先；用户自带 API Key / BYOK 暂不开放，后续如需要再作为高级模式恢复。
 
 ---
 
@@ -142,7 +142,7 @@ npx eslint src/path/to/changed-file.tsx
 
 ```bash
 cd backend
-cp .env.example .env   # 填入 AI provider API Keys + Stripe Key
+cp .env.example .env   # 填入官方 Provider Keys + Stripe Key
 
 docker compose up -d   # 启动 PostgreSQL + Redis
 uvicorn app.main:app --reload --port 8000
@@ -189,7 +189,7 @@ TanvasAgent/
 ├── backend/                ← Phase 2 FastAPI 后端
 │   └── app/
 │       ├── api/v1/         ← auth / credits / proxy / billing / admin
-│       └── services/       ← proxy_service.py（多 provider AI 路由）
+│       └── services/proxy/ ← 多 provider AI 路由、模型校验、积分日志
 ├── admin/                  ← 管理后台（Next.js，基础前端已实现，待联调）
 ├── dev-plans/              ← Slice 开发计划文档
 ├── debug-plans/            ← Bug 修复记录
@@ -205,7 +205,7 @@ TanvasAgent/
 ### Phase 1 — Desktop MVP ✅ 已全部完成
 
 - [x] Tauri 脚手架 + SQLite 本地存储
-- [x] Email OTP 登录 + API Key 管理（AES-256-GCM 加密）
+- [x] Email OTP 登录 + 官方 API 路由（本地 BYOK legacy 能力当前关闭）
 - [x] Dashboard 工作流 CRUD
 - [x] React Flow 画布核心（拖拽 / 连线 / 网格 / 框选 / 复制粘贴）
 - [x] 公众号 Skill 完整链路（text_input → research → outline → Split → image_list → html_formatter / Html Editor）
@@ -221,13 +221,16 @@ TanvasAgent/
 - [x] Skill 动态拓扑系统（Slice 13）
 - [x] 模型注册表 + 多模型路由（Slice 14）
 - [x] 官方 API 默认路由 + 登录门控（Slice 15）
-- [x] 多模型代理 + 差异积分（Slice 16，5 providers）
+- [x] Official-only routing 初版收口（BYOK UI/Fallback 暂停）
+- [x] 多模型代理 + 差异积分（Slice 16，GeekAI 文本/图片模型可选，后端启用模型强校验，待真 Key 联调）
 - [x] i18n 完整覆盖（Slice 17，100+ key）
 - [x] 首次引导 + Stripe 支付（Slice 18）
 - [x] Settings 简化 + Skill 推荐卡片（Slice 19）
 - [x] Image Editor 图层画板（Slice 22，Procreate 风格）
 - [x] 个人素材库 MVP（文章/图片素材、标签、拖拽到画布、Image 容器）
 - [ ] 管理后台联调验收（Admin API + 基础 Next.js 前端已完成）
+- [x] Admin 动态模型源初版（前端模型列表从后端读取，测试默认 `hunyuan-3.0-preview` / 图片默认 `gpt-image-2` / 编辑默认 `gemini-nano-banana`）
+- [ ] GeekAI 真 Key 联调（文本、图片生成、图片编辑、图片异步结果、enhance；clarify 待后续确认）
 - [x] Html Editor 富文本编辑（Slice 23，初版完成，待手测验收）
 - [ ] 线上部署（Docker/Nginx 配置已就绪，待执行）
 
