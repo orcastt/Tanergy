@@ -1,5 +1,6 @@
 import { useMemo, useCallback } from "react"
 import type { NodeProps } from "@xyflow/react"
+import { useTranslation } from "react-i18next"
 import NodeBase from "./base/NodeBase"
 import type { PortDef } from "./base/NodeBase"
 import { NODE_MAP } from "./nodeDefs"
@@ -8,7 +9,7 @@ import { useOverlayStore } from "../store/overlayStore"
 import { useCreditsStore } from "../store/creditsStore"
 import { NODE_CREDIT_COSTS } from "../types/credits"
 import ModelSelector from "../components/ModelSelector"
-import { toStandardPurpleHtml } from "./image/standardPurpleHtml"
+import { getWeChatStyleTheme, toWechatStyledHtml, WECHAT_STYLE_THEMES } from "./image/standardPurpleHtml"
 
 interface HtmlFormatterData {
   nodeType: string
@@ -22,11 +23,11 @@ interface HtmlFormatterData {
 
 const MAX_SECTION_INPUTS = 10
 const MAX_IMAGE_INPUTS = 10
-const STYLES = ["标准紫", "经典", "简约", "活泼", "专业"]
 
 export default function HtmlFormatterNode({ data, id, selected }: NodeProps) {
   const d = data as unknown as HtmlFormatterData
   const def = NODE_MAP[d.nodeType]
+  const { t } = useTranslation()
 
   const { isLoggedIn } = useCreditsStore()
   const creditCost = NODE_CREDIT_COSTS[d.nodeType] ?? 0
@@ -37,6 +38,7 @@ export default function HtmlFormatterNode({ data, id, selected }: NodeProps) {
 
   const textInputs = useMemo(() => d.textInputs ?? ["text_1"], [d.textInputs])
   const imageInputs = useMemo(() => d.imageInputs ?? ["images"], [d.imageInputs])
+  const currentStyle = getWeChatStyleTheme(d.style).id
 
   const addTextInput = useCallback(() => {
     if (textInputs.length >= MAX_SECTION_INPUTS) return
@@ -80,7 +82,7 @@ export default function HtmlFormatterNode({ data, id, selected }: NodeProps) {
   const nodeWidth = dynamicInputs.length >= 8 ? 340 : 300
 
   function copyHtml() {
-    if (result?.html) navigator.clipboard.writeText(toStandardPurpleHtml(result.html)).catch(() => {})
+    if (result?.html) navigator.clipboard.writeText(toWechatStyledHtml(result.html, d.style)).catch(() => {})
   }
 
   if (!def) return null
@@ -104,19 +106,19 @@ export default function HtmlFormatterNode({ data, id, selected }: NodeProps) {
         <ModelSelector category="text" value={d.model} onChange={(model) => updateNodeData(id, { model })} />
       </div>
       <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap", marginBottom: "0.375rem" }}>
-        {STYLES.map((s) => (
+        {WECHAT_STYLE_THEMES.map((theme) => (
           <button
-            key={s}
-            onClick={() => updateNodeData(id, { style: s })}
+            key={theme.id}
+            onClick={() => updateNodeData(id, { style: theme.id })}
             className="nodrag nopan"
             style={{
               padding: "0.125rem 0.5rem", fontSize: "0.625rem", borderRadius: "9999px",
-              border: d.style === s ? "1px solid #7C3AED" : "1px solid var(--border-color)",
-              background: d.style === s ? "#f5f3ff" : "transparent",
-              color: d.style === s ? "#7C3AED" : "var(--text-secondary)",
-              cursor: "pointer", fontWeight: d.style === s ? 600 : 400,
+              border: currentStyle === theme.id ? "1px solid #7C3AED" : "1px solid var(--border-color)",
+              background: currentStyle === theme.id ? "#f5f3ff" : "transparent",
+              color: currentStyle === theme.id ? "#7C3AED" : "var(--text-secondary)",
+              cursor: "pointer", fontWeight: currentStyle === theme.id ? 600 : 400,
             }}
-          >{s}</button>
+          >{t(`html_editor.themes.${theme.id}`)}</button>
         ))}
       </div>
 

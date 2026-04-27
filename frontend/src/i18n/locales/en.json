@@ -118,7 +118,10 @@
       "label": "Writer",
       "desc": "AI long-form writing",
       "writing": "Writing article...",
-      "wordCount": "Words:"
+      "wordCount": "Words:",
+      "newDraft": "Open writer editor",
+      "openDraft": "Continue draft",
+      "doubleClickEdit": "Double-click to open Writer Editor"
     },
     "reviewer": {
       "label": "Reviewer",
@@ -368,7 +371,7 @@
     "sourceCopyFailed": "Failed to copy source. Check browser clipboard permissions.",
     "copySource": "Copy source",
     "copyWechat": "Copy for WeChat",
-    "previewHint": "Standard Purple preview · Copy outputs WeChat-compatible inline HTML",
+    "previewHint": "{{theme}} preview · Copy outputs WeChat-compatible inline HTML",
     "headingPlaceholder": "Enter a heading",
     "bodyPlaceholder": "Type “/” to quickly add content blocks",
     "linkPrompt": "Enter link URL",
@@ -449,7 +452,57 @@
       "generate": "Generate",
       "editAgain": "Edit again",
       "insert": "Insert below selected paragraph"
+    },
+    "themes": {
+      "standard_purple": "Standard Purple",
+      "classic_blue": "Classic Blue",
+      "ink_black": "Ink Black",
+      "warm_gray": "Warm Gray",
+      "terracotta": "Terracotta"
     }
+  },
+  "writer_editor": {
+    "title": "Writer Editor",
+    "stats": "{{count}} chars · ~{{time}} min read",
+    "copyText": "Copy text",
+    "done": "Done",
+    "editorLabel": "Plain-text manuscript editor",
+    "editorHint": "Supports Markdown headings; the right side previews a PDF/book layout.",
+    "placeholder": "# Book Title\n\n## Chapter One\n\nStart writing here...",
+    "bookPreview": "Book preview",
+    "pages": "{{count}} pages",
+    "untitled": "Untitled Draft",
+    "emptyPreview": "Start writing. A PDF/book-style preview appears here."
+  },
+  "workspaceLibrary": {
+    "images": "Images",
+    "documents": "Documents",
+    "gallery": "Gallery",
+    "list": "List",
+    "graph": "Graph",
+    "searchPlaceholder": "Search title, body, or tags",
+    "allTags": "All tags",
+    "loading": "Loading assets...",
+    "empty": "No assets yet. Save one from a node first.",
+    "updated": "Updated {{time}}",
+    "noPreview": "No preview content",
+    "documentAsset": "Document asset",
+    "deleteAsset": "Delete asset",
+    "tagCloud": "Tags",
+    "graphTitle": "Library Knowledge Graph",
+    "graphSubtitle": "Generated from {{count}} assets, tags, and types",
+    "showAll": "Show all",
+    "clearTag": "Clear tag",
+    "graphLoading": "Building graph...",
+    "graphEmpty": "No connected assets yet. Save tagged content first.",
+    "legendLibrary": "Library",
+    "legendText": "Documents",
+    "legendImage": "Images",
+    "legendTag": "Tags",
+    "kindRoot": "Library",
+    "kindType": "Type",
+    "kindTag": "Tag",
+    "kindItem": "Asset"
   },
   "library": {
     "saveTitle": "Save to library",

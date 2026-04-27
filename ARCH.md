@@ -1,9 +1,9 @@
 # TANGENT — Architecture Decision Document
 
 **版本**: v0.8
-**日期**: 2026-04-26
+**日期**: 2026-04-27
 **状态**: Phase 2 商业化 — 核心能力完成，Html Editor / Admin 联调 / 部署收口中
-**上次更新**: 个人素材库 MVP + `image_asset` 图片容器节点；Html Editor 终点架构继续收口
+**上次更新**: Writer 高级节点 + Html 多主题 + 素材库 Knowledge Graph；Html Editor 终点架构继续收口
 
 > 本文档记录技术决策和工程约束。用户感受不到这些内容，但它们决定了产品怎么建。
 > 每次重大技术决策变更必须更新本文档。
@@ -164,6 +164,7 @@ frontend/
 │   │   │   ├── DrawingPanel.tsx    ← [已弃用] 旧绘图面板
 │   │   │   └── drawingStore.ts     ← [已弃用] 旧绘图状态
 │   │   ├── TextInputNode.tsx
+│   │   ├── WriterNode.tsx     ← 高级长文/书稿节点
 │   │   ├── ImageListNode.tsx  ← 图片生成列表（双输入/动态端口/数量模型选择）
 │   │   ├── GroupNode.tsx      ← 分组容器节点
 │   │   └── index.ts      ← 节点类型注册表
@@ -182,6 +183,7 @@ frontend/
 │   ├── pages/            ← 应用视图
 │   │   ├── WelcomePage.tsx   ← 首次启动向导（Email OTP）
 │   │   ├── DashboardPage.tsx ← 工作流列表
+│   │   ├── dashboard/LibraryKnowledgeGraph.tsx ← Workspace 素材知识图谱
 │   │   ├── CanvasPage.tsx    ← 核心画布编辑
 │   │   └── SettingsPage.tsx  ← 账户、偏好设置、官方线路说明
 │   ├── store/            ← Zustand 状态
@@ -351,7 +353,7 @@ const NODE_EXECUTORS: Record<NodeType, NodeExecutor> = {
   "research":          ResearchExecutor,         // Tavily + Claude（经 Tauri）
   "outline_generator": OutlineGeneratorExecutor, // Claude（经 Tauri）
   "gate":              GateExecutor,             // legacy：触发 waiting 状态
-  "writer":            WriterExecutor,           // legacy
+  "writer":            WriterExecutor,           // 高级/实验：长文、小说、书稿草稿
   "reviewer":          ReviewerExecutor,         // legacy
   "image_planner":     ImagePlannerExecutor,     // Claude（经 Tauri）
   "image_list":        ImageListExecutor,        // 多模型图片生成（经 Tauri，动态输出端口）
@@ -1209,9 +1211,13 @@ Canvas
 └── OverlayLayer
     └── HtmlEditorModal
         ├── TiptapEditor       ← 左侧富文本编辑
-        ├── WeChatPreview      ← 右侧手机样式实时预览
+        ├── WeChatPreview      ← 右侧微信样式实时预览
         └── HtmlRewritePopup   ← AI 改写弹窗
 ```
+
+### 14.2.1 多主题模板
+
+`standardPurpleHtml.ts` 提供公众号样式主题 registry。当前支持 `standard_purple`、`classic_blue`、`ink_black`、`warm_gray`、`terracotta`。Html Formatter 节点和 Html Editor 共享 `toWechatStyledHtml(html, themeId)`，确保节点主题、编辑器预览、复制源码和复制到公众号的输出一致。
 
 ### 14.3 状态与持久化
 
@@ -1228,6 +1234,7 @@ Canvas
 | `frontend/src/nodes/image/HtmlEditorModal.tsx` | 全屏双栏编辑壳、保存闭环 |
 | `frontend/src/nodes/image/TiptapEditor.tsx` | Tiptap 富文本编辑器 |
 | `frontend/src/nodes/image/WeChatPreview.tsx` | 微信样式实时预览 |
+| `frontend/src/nodes/image/standardPurpleHtml.ts` | 公众号样式主题 registry 与 HTML 内联样式输出 |
 | `frontend/src/nodes/image/HtmlRewritePopup.tsx` | AI 改写交互 |
 | `src-tauri/src/commands/asset.rs` | `ai_rewrite_html` IPC 命令 |
 
@@ -1253,9 +1260,47 @@ Canvas
 |------|------|
 | `frontend/src/library/LibraryDrawer.tsx` | 工作流左侧素材库侧拉面板 |
 | `frontend/src/library/LibrarySaveDialog.tsx` | 保存素材和标签弹窗 |
+| `frontend/src/pages/dashboard/WorkspaceLibraryPanel.tsx` | Workspace Library 标签页，Gallery/List/Graph 入口 |
+| `frontend/src/pages/dashboard/LibraryKnowledgeGraph.tsx` | 基于素材类型、标签、素材生成 SVG 知识图谱 |
 | `frontend/src/store/libraryStore.ts` | 素材列表、标签、创建、删除状态 |
 | `frontend/src/nodes/ImageAssetNode.tsx` | 可缩放图片容器节点，输出 `image_slot` |
 | `src-tauri/src/commands/library.rs` | 素材库 Tauri IPC 命令 |
+
+### 15.4 Graph 推导规则
+
+- Graph 视图通过 `list_library_items({ kind?, query?, tag? })` 读取本地素材，不新增数据库表。
+- 节点类型：素材库根节点、类型节点（文档/图片）、标签节点、素材节点。
+- 边类型：根节点 → 类型/标签，类型 → 素材，标签 → 素材。
+- 点击标签节点写回 `libraryStore.selectedTag`，点击类型节点同步当前素材类型筛选。
+
+## 16. Writer 高级节点架构
+
+`writer` 是长文/小说/书稿场景的高级节点，不进入公众号默认 Skill 主链路。其执行仍走官方文本模型代理，输出纯文本 draft。
+
+### 16.1 组件结构
+
+```
+Canvas
+└── OverlayLayer
+    └── WriterEditorModal
+        ├── textarea          ← 左侧纯文本/Markdown 书稿编辑
+        └── BookPreview       ← 右侧 PDF/书籍式分页预览
+```
+
+### 16.2 状态与持久化
+
+- 打开入口：`WriterNode` 按钮或 done 状态双击调用 `openWriterEditor(nodeId)`。
+- 编辑过程：写回 `canvasStore.nodeResults[nodeId].text`，保持输出端可继续作为 text 被下游消费。
+- 关闭时：写入节点 `data.editedText`，同一工作流会话内重新打开不丢内容。
+
+### 16.3 关键文件
+
+| 文件 | 职责 |
+|------|------|
+| `frontend/src/nodes/WriterNode.tsx` | Writer 节点 UI、模型/字数/风格选择、打开编辑器 |
+| `frontend/src/nodes/writer/WriterEditorModal.tsx` | 全屏书稿编辑器壳与保存闭环 |
+| `frontend/src/nodes/writer/BookPreview.tsx` | Markdown-ish 纯文本解析与书籍式分页预览 |
+| `frontend/src/store/overlayStore.ts` | `writerEditorNodeId` overlay 状态 |
 
 ---
 

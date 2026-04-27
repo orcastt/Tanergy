@@ -32,6 +32,7 @@ import ContextMenu from "./ContextMenu"
 import LightboxOverlay from "./LightboxOverlay"
 import ImageEditorModal from "../nodes/image/ImageEditorModal"
 import HtmlEditorModal from "../nodes/image/HtmlEditorModal"
+import WriterEditorModal from "../nodes/writer/WriterEditorModal"
 import DeletableEdge from "./DeletableEdge"
 import type { NodeType } from "../types/node"
 import { getCrispViewport, isSameViewport } from "./viewportQuality"
@@ -54,7 +55,7 @@ export default function Canvas() {
     nodeStatuses,
   } = useCanvasStore()
 
-  const { pickerOpen, pickerScreenPos, ctxMenu, editorNodeId, htmlEditorNodeId, lightboxImage } = useOverlayStore()
+  const { pickerOpen, pickerScreenPos, ctxMenu, editorNodeId, htmlEditorNodeId, writerEditorNodeId, lightboxImage } = useOverlayStore()
   const lastClickRef = useRef<{ time: number; x: number; y: number } | null>(null)
   const wasRunningRef = useRef(false)
   const connectionStartRef = useRef<OnConnectStartParams | null>(null)
@@ -73,6 +74,7 @@ export default function Canvas() {
     return () => {
       useOverlayStore.getState().closeEditor()
       useOverlayStore.getState().closeHtmlEditor()
+      useOverlayStore.getState().closeWriterEditor()
       useOverlayStore.getState().closeLightbox()
     }
   }, [])
@@ -281,6 +283,7 @@ export default function Canvas() {
         )}
         {editorNodeId && <ImageEditorModal nodeId={editorNodeId} onClose={() => useOverlayStore.getState().closeEditor()} />}
         {htmlEditorNodeId && <HtmlEditorModal key={htmlEditorNodeId} />}
+        {writerEditorNodeId && <WriterEditorModal key={writerEditorNodeId} />}
         {lightboxImage && <LightboxOverlay />}
       </OverlayLayer>
     </>

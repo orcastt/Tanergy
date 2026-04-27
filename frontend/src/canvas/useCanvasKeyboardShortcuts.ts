@@ -38,6 +38,7 @@ export function useCanvasKeyboardShortcuts({
         useOverlayStore.getState().closePicker()
         useOverlayStore.getState().closeCtxMenu()
         useOverlayStore.getState().closeHtmlEditor()
+        useOverlayStore.getState().closeWriterEditor()
       } else if (event.key === "g" && !event.metaKey && !event.ctrlKey) {
         const { selectedNodeIds } = useCanvasStore.getState()
         const isGroup = selectedNodeIds.length === 1 && nodes.find((node) => node.id === selectedNodeIds[0])?.type === "group"

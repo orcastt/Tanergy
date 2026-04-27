@@ -53,6 +53,21 @@ export const NODE_DEFS: NodeDef[] = [
     ],
   },
   {
+    type: "writer",
+    label: "Writer",
+    description: "Write long-form chapters or book drafts",
+    icon: "stylus_note",
+    category: "text",
+    modelCategory: "text",
+    defaultData: { target_words: 3000, style: "长文叙事", model: "hunyuan-3.0-preview" },
+    inputs: [
+      { id: "outline", type: "text", label: "Outline" },
+      { id: "research", type: "research_result", label: "Research" },
+      { id: "materials", type: "text", label: "Materials" },
+    ],
+    outputs: [{ id: "out", type: "text", label: "Draft" }],
+  },
+  {
     type: "image_planner",
     label: "Image Planner",
     description: "AI image planning",
@@ -104,7 +119,7 @@ export const NODE_DEFS: NodeDef[] = [
     icon: "code",
     category: "output",
     modelCategory: "text",
-    defaultData: { style: "标准紫", fontSize: 16, lineHeight: 1.75, model: "hunyuan-3.0-preview", textInputs: ["text_1"], imageInputs: ["images"] },
+    defaultData: { style: "standard_purple", fontSize: 16, lineHeight: 1.75, model: "hunyuan-3.0-preview", textInputs: ["text_1"], imageInputs: ["images"] },
     inputs: [
       { id: "text_1", type: "text", label: "Section 1" },
       { id: "images", type: "image_slot", label: "Images" },

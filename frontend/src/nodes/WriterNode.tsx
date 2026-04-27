@@ -4,6 +4,7 @@ import NodeBase from "./base/NodeBase"
 import { NODE_MAP } from "./nodeDefs"
 import { useCanvasStore } from "../store/canvasStore"
 import { useCreditsStore } from "../store/creditsStore"
+import { useOverlayStore } from "../store/overlayStore"
 import { NODE_CREDIT_COSTS } from "../types/credits"
 import ModelSelector from "../components/ModelSelector"
 
@@ -17,7 +18,6 @@ interface WriterData {
 export default function WriterNode({ data, id, selected }: NodeProps) {
   const d = data as unknown as WriterData
   const def = NODE_MAP[d.nodeType]
-  if (!def) return null
 
   const { t } = useTranslation()
   const { isLoggedIn } = useCreditsStore()
@@ -26,6 +26,9 @@ export default function WriterNode({ data, id, selected }: NodeProps) {
   const { nodeStatuses, nodeResults, updateNodeData } = useCanvasStore()
   const status = nodeStatuses[id] ?? "idle"
   const result = nodeResults[id] as { text?: string } | undefined
+  const hasDraft = Boolean(result?.text || data.editedText)
+
+  if (!def) return null
 
   return (
     <NodeBase
@@ -89,6 +92,33 @@ export default function WriterNode({ data, id, selected }: NodeProps) {
         </select>
       </div>
 
+      {status !== "running" && (
+        <button
+          onClick={() => useOverlayStore.getState().openWriterEditor(id)}
+          className="nodrag nopan"
+          style={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "0.375rem",
+            padding: "0.45rem 0.5rem",
+            marginBottom: "0.375rem",
+            border: "none",
+            borderRadius: "0.375rem",
+            background: "#242424",
+            color: "#fff",
+            boxShadow: "rgba(19,19,22,0.7) 0px 1px 5px -4px, rgba(34,42,53,0.08) 0px 0px 0px 1px, rgba(34,42,53,0.05) 0px 4px 8px",
+            cursor: "pointer",
+            fontSize: "0.6875rem",
+            fontWeight: 700,
+          }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: 15 }}>menu_book</span>
+          {hasDraft ? t("nodes.writer.openDraft") : t("nodes.writer.newDraft")}
+        </button>
+      )}
+
       {status === "running" && (
         <div style={{
           padding: "0.5rem",
@@ -106,7 +136,9 @@ export default function WriterNode({ data, id, selected }: NodeProps) {
       )}
 
       {result?.text && status === "done" && (
-        <div style={{
+        <div
+          onDoubleClick={() => useOverlayStore.getState().openWriterEditor(id)}
+          style={{
           marginTop: "0.25rem",
           padding: "0.5rem",
           background: "#f0fdf4",
@@ -117,8 +149,10 @@ export default function WriterNode({ data, id, selected }: NodeProps) {
           overflow: "auto",
           lineHeight: 1.4,
           whiteSpace: "pre-wrap",
+          cursor: "pointer",
         }}>
           {result.text.slice(0, 400)}{result.text.length > 400 ? "..." : ""}
+          <div style={{ marginTop: "0.375rem", fontWeight: 700 }}>{t("nodes.writer.doubleClickEdit")}</div>
         </div>
       )}
 

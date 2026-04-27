@@ -2,7 +2,7 @@
 
 **版本**: v3.1
 **日期**: 2026-04-26
-**状态**: ✅ 已按代码现状校准（2026-04-26 更新：GeekAI 测试模型白名单 + 个人素材库）
+**状态**: ✅ 已按代码现状校准（2026-04-27 更新：Writer 高级节点、Html 多主题、素材库 Graph）
 **策略**: 公众号主流程以 Outline Split 架构为核心，移除 Gate/Writer 作为默认必需节点
 **开发规范**: 代码质量与测试门槛见 `dev-plans/code-quality-standards.md`
 
@@ -20,10 +20,9 @@
 | 4 | `image_list` | 图像 AI | ✅ | 双输入（plans/text）+ 动态输出 |
 | 5 | `html_formatter` / Html Editor | 输出编排 | ✅ | 多文本输入 + 图片输入 + 富文本编辑/微信预览 |
 
-可选节点：`image_planner`、`image_gallery`、`image_asset`（个人图片素材容器）。
+可选节点：`image_planner`、`image_gallery`、`image_asset`（个人图片素材容器）、`writer`（长文/书稿高级节点）。
 遗留节点（非公众号默认）：
 - `gate`（legacy）
-- `writer`（legacy）
 - `reviewer`（legacy）
 - `image_gen`（兼容别名）
 - `preview_wechat`（legacy 预览，不再作为默认出口）
@@ -109,9 +108,15 @@ outline_generator done 后触发 Split：
 - 接收 `images` 输入进行图文混排。
 - 执行后产出 HTML，done 状态双击进入 Html Editor。
 - Html Editor 支持富文本编辑、微信预览、AI 改写和复制 HTML。
+- 公众号模板支持标准紫、经典蓝、墨黑、暖灰、赭红五套颜色主题；编辑器切换后预览与复制输出同步。
 - 执行与 AI 改写均支持官方文本模型选择；测试阶段免费模型优先。
 
-### 4.7 `preview_wechat`（legacy）
+### 4.7 `writer`（高级/实验）
+- 用于小说、长文章、书稿草稿，不进入公众号默认模板。
+- 接收 outline、research、materials 输入，输出纯文本 draft。
+- 执行完成或手动打开后进入 Writer Editor：左侧纯文本/Markdown 编辑，右侧 PDF/书籍式分页预览。
+
+### 4.8 `preview_wechat`（legacy）
 - 历史微信阅读预览组件。
 - 不再进入公众号默认模板；新流程由 Html Editor 右侧预览承担。
 
@@ -135,7 +140,9 @@ outline_generator done 后触发 Split：
 - [x] `image_list` 动态输入/输出口可用。
 - [x] `html_formatter` 能消费多段文本 + 图片。
 - [x] Html Editor 可显示微信预览并复制 HTML。
+- [x] Html Editor 可切换标准紫/经典蓝/墨黑/暖灰/赭红主题。
 - [x] 个人素材库 Text/Image 可拖拽生成节点。
+- [x] Workspace 个人素材库支持 Gallery/List/Graph 三视图与标签筛选。
 - [x] 公众号模板不依赖 `gate`、`writer`。
 
 ---
@@ -145,5 +152,5 @@ outline_generator done 后触发 Split：
 - Html Editor（Slice 23）已成为 `html_formatter` 的默认终点面板。
 - 官方模型路由进入下一阶段：前端当前可用硬编码模型列表，后续改为 Admin/后端动态模型源。
 - GeekAI 图片后续能力独立推进：`GET /images/{task_id}` 异步结果轮询、`/images/enhance`、clarify/upscale 不阻塞当前主流程。
-- `writer/reviewer/gate` 若保留，仅作为“高级/实验节点”管理，不进入默认模板。
+- `writer` 已恢复为长文/书稿高级节点；`reviewer/gate` 若保留，仅作为高级/实验或 legacy 节点管理，不进入默认模板。
 - 后续若引入小红书模板，建议沿用 Split 思路，不回退到 Gate 暂停架构。

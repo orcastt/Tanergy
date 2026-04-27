@@ -9,7 +9,7 @@
 
 **阶段**: Phase 2 商业化开发 — 核心能力完成，Html Editor / 构建 / Admin 联调 / 部署收口中
 **核心目标**: 官方 API 默认路由 + 订阅制 + Html Editor 终点体验 + 个人素材库 + 管理后台
-**下一步**: 手测素材库/Html Editor → GeekAI 真 Key 端到端联调 → Admin UI 中文/设计对齐 → Staging 部署
+**下一步**: 手测 Html 多主题 / Writer Editor / 素材库 Graph → GeekAI 真 Key 端到端联调 → Admin UI 中文/设计对齐 → Staging 部署
 
 ---
 
@@ -57,7 +57,8 @@
 | `html_formatter` / Html Editor | 图文编排终点 | ✅ 初版完成（双击编辑、Tiptap、微信预览、AI 改写） |
 
 可选节点：`image_planner`、`image_gallery`。
-非默认/遗留节点：`gate`、`writer`、`reviewer`、`image_gen`、`preview_wechat`（不在公众号默认模板中）。
+高级/非默认节点：`writer`（长文/书稿编辑器）。
+非默认/遗留节点：`gate`、`reviewer`、`image_gen`、`preview_wechat`（不在公众号默认模板中）。
 
 详细规范见 [dev-plans/node-plan.md](dev-plans/node-plan.md)
 WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/wechat-skill-nodes.md)
@@ -118,7 +119,8 @@ WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/w
 | 20 | 网页端架构预留 | P3 | ⬜ | 仅规划，暂不开发 |
 | 22 | Image Editor 图层画板 | P1 | ✅ | Procreate 风格图层画板，导出/AI Edit/状态恢复 |
 | 23 | Html Editor 富文本编辑 | P1 | ✅ / 🔄 | 初版已开发并构建通过；待手测验收 |
-| — | 个人素材库 + Image 容器 | P1 | ✅ / 🔄 | 全局素材库 MVP 完成；待手测保存、搜索、拖拽和 Image Editor 导出 |
+| — | Writer 高级节点 + 书稿预览 | P2 | ✅ / 🔄 | Writer 已恢复为非默认高级节点；支持纯文本书稿编辑与 PDF/书籍式预览，待手测 |
+| — | 个人素材库 + Image 容器 + Graph | P1 | ✅ / 🔄 | 全局素材库 MVP 完成；新增 Gallery/List/Graph 三视图，待手测保存、搜索、拖拽和图谱筛选 |
 | — | 管理后台 Web 应用 | P1 | ✅ / 🔄 | Admin API + Provider Registry + 基础 Next.js 前端本地自动联调通过；待人工视觉/交互复核与部署 |
 | — | Provider 可插拔架构 | P1 | ✅ / 🔄 | providers DB 表 + `services/proxy/` DB-first 查询；GeekAI seed 已加入，待真实 Key、Admin 动态模型源联调 |
 | — | 线上部署方案 | P0 | ⬜ | Docker/Nginx/SSL 配置已就绪，待实际部署 |
@@ -168,6 +170,16 @@ WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/w
 |------|------|
 | **默认终点统一** | 公众号主流程以 `html_formatter` / Html Editor 为终点，`preview_wechat` 降为 legacy |
 | **双击进入编辑器** | `HtmlFormatterNode` done 状态双击打开全屏 Html Editor |
+| **多主题模板** | 支持标准紫、经典蓝、墨黑、暖灰、赭红五套公众号颜色主题，预览与复制输出同步 |
+
+### Writer 高级节点 — 书稿编辑器（2026-04-27）
+
+| 能力 | 状态 |
+|------|------|
+| **非默认高级节点** | `writer` 回到 Node Picker，但不进入公众号默认主链路 |
+| **书稿编辑器** | 节点可打开全屏 Writer Editor，左侧纯文本/Markdown 编辑 |
+| **PDF/书籍预览** | 右侧按章节/段落分页展示书籍式排版预览 |
+| **保存闭环** | 编辑内容写回 `nodeResults.text` 与节点 `editedText`，关闭重开不丢 |
 
 ### Personal Library 素材库 — MVP（2026-04-26）
 
@@ -175,11 +187,13 @@ WeChat Skill 节点完整设计见 [dev-plans/wechat-skill-nodes.md](dev-plans/w
 |------|------|
 | **全局素材库** | SQLite `library_items/tags`，跨 workflow 共享 |
 | **左侧侧拉面板** | 工作流页面左侧 Drawer，文章组/图片组切换、搜索、标签筛选 |
+| **Workspace 页面** | Workspace 右侧 Library 标签页支持 Gallery/List/Graph 三视图 |
+| **Knowledge Graph** | 基于素材类型、标签、素材节点生成关系图，点击标签可筛选 |
 | **保存入口** | Text 节点保存文字素材；Image Editor 导出当前画布到图片素材 |
 | **拖拽生成节点** | Text 素材生成 `text_input`；Image 素材生成 `image_asset` |
 | **图片容器** | `image_asset` 支持缩放、输出 `image_slot`、打开 Image Editor |
 | **Tiptap 富文本** | 支持标题、加粗、斜体、下划线、列表、引用、链接、分割线 |
-| **微信实时预览** | 右侧手机框实时渲染编辑后的 HTML |
+| **微信实时预览** | 右侧整页预览实时渲染编辑后的 HTML |
 | **AI 改写** | 选中文本后调用 `ai_rewrite_html`，结果插入文章 |
 | **保存闭环** | 编辑内容写回 `nodeResults`，关闭时写入节点 `editedHtml`，重开不丢 |
 | **构建通过** | `npm -C frontend run build` 已通过 |

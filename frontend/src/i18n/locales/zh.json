@@ -118,7 +118,10 @@
       "label": "Writer",
       "desc": "AI 生成长文",
       "writing": "正在撰写长文...",
-      "wordCount": "字数:"
+      "wordCount": "字数:",
+      "newDraft": "打开书稿编辑器",
+      "openDraft": "继续编辑书稿",
+      "doubleClickEdit": "双击打开书稿编辑器"
     },
     "reviewer": {
       "label": "Reviewer",
@@ -368,7 +371,7 @@
     "sourceCopyFailed": "复制源码失败，请检查浏览器剪贴板权限",
     "copySource": "复制源码",
     "copyWechat": "复制到公众号",
-    "previewHint": "标准紫预览 · 复制时会输出微信兼容内联样式 HTML",
+    "previewHint": "{{theme}}预览 · 复制时会输出微信兼容内联样式 HTML",
     "headingPlaceholder": "请输入标题",
     "bodyPlaceholder": "输入 “/” 符号，快速添加不同形式内容",
     "linkPrompt": "输入链接地址",
@@ -449,7 +452,57 @@
       "generate": "生成",
       "editAgain": "重新编辑",
       "insert": "插入到选中段落下方"
+    },
+    "themes": {
+      "standard_purple": "标准紫",
+      "classic_blue": "经典蓝",
+      "ink_black": "墨黑",
+      "warm_gray": "暖灰",
+      "terracotta": "赭红"
     }
+  },
+  "writer_editor": {
+    "title": "Writer 书稿编辑器",
+    "stats": "{{count}} 字 · 约 {{time}} 分钟",
+    "copyText": "复制文本",
+    "done": "完成",
+    "editorLabel": "纯文本书稿编辑",
+    "editorHint": "支持 Markdown 标题；右侧为 PDF/书籍排版预览。",
+    "placeholder": "# 书名\n\n## 第一章\n\n从这里开始写作...",
+    "bookPreview": "书籍预览",
+    "pages": "{{count}} 页",
+    "untitled": "未命名书稿",
+    "emptyPreview": "开始写作吧。这里会显示类似 PDF 书籍的排版预览。"
+  },
+  "workspaceLibrary": {
+    "images": "图片",
+    "documents": "文档",
+    "gallery": "画廊",
+    "list": "列表",
+    "graph": "图谱",
+    "searchPlaceholder": "搜索标题、正文或标签",
+    "allTags": "全部标签",
+    "loading": "加载素材中...",
+    "empty": "还没有素材，先从节点保存一个吧",
+    "updated": "更新于 {{time}}",
+    "noPreview": "暂无预览内容",
+    "documentAsset": "文档素材",
+    "deleteAsset": "删除素材",
+    "tagCloud": "标签",
+    "graphTitle": "素材知识图谱",
+    "graphSubtitle": "基于 {{count}} 个素材、标签和类型生成关系图",
+    "showAll": "显示全部",
+    "clearTag": "清除标签",
+    "graphLoading": "正在生成图谱...",
+    "graphEmpty": "暂无可连接的素材，先保存一些带标签的内容",
+    "legendLibrary": "素材库",
+    "legendText": "文档",
+    "legendImage": "图片",
+    "legendTag": "标签",
+    "kindRoot": "素材库",
+    "kindType": "类型",
+    "kindTag": "标签",
+    "kindItem": "素材"
   },
   "library": {
     "saveTitle": "保存到素材库",

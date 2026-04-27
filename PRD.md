@@ -1,9 +1,9 @@
 # TANGENT — Product Requirements Document
 
 **版本**: v0.9
-**日期**: 2026-04-26
+**日期**: 2026-04-27
 **状态**: Phase 2 商业化 — 核心能力完成，Html Editor / Admin 联调 / 部署收口中
-**上次更新**: 个人素材库 MVP + `image_asset` 图片容器节点；Html Editor / Admin 状态继续收口
+**上次更新**: Writer 高级节点 + Html 多主题 + 素材库 Knowledge Graph；Admin 状态继续收口
 
 ---
 
@@ -118,7 +118,9 @@
 - [ ] 小红书图文笔记 Skill
 - [x] Image Editor 图层画板（Slice 22 完成）— Procreate 风格多图层编辑器
 - [x] Html Editor 富文本编辑（Slice 23 初版完成，待手测验收）— Tiptap + 微信双栏预览 + AI 改写
-- [x] 个人素材库 MVP — 全局文章组/图片组、标签保存、拖拽到画布、`image_asset` 容器节点
+- [x] Html Editor 多主题 — 标准紫、经典蓝、墨黑、暖灰、赭红，预览与复制输出同步
+- [x] 个人素材库 MVP — 全局文章组/图片组、标签保存、拖拽到画布、`image_asset` 容器节点、Workspace Knowledge Graph
+- [x] Writer 高级节点 — 非默认长文/小说/书稿节点，纯文本编辑 + PDF/书籍式预览
 - [ ] 节点子画布 Draw/Comment
 - [ ] 可选云同步（增值功能，渐进式引入网页版）
 - [ ] 工作流模板分享
@@ -351,7 +353,7 @@
 
 ## 7. 节点系统设计
 
-> 现网默认围绕公众号 Skill 的 Outline Split 主链路（8 个主节点）运行；`gate/writer/reviewer` 保留为 legacy，不进入默认模板。
+> 现网默认围绕公众号 Skill 的 Outline Split 主链路运行；`writer` 作为高级/实验长文节点保留但不进入默认模板，`gate/reviewer` 保留为 legacy。
 
 ### 7.1 端口类型与颜色
 
@@ -398,11 +400,12 @@
 #### 📄 输出类
 | 节点 | 说明 | 输入 | 输出 | 计费 |
 |------|------|------|------|------|
-| html_formatter / Html Editor | Markdown + 图片 → 微信样式 HTML；双击进入富文本编辑、实时预览、AI 改写、复制 HTML | `text` + `image_slot`×N | 终点编辑 UI | 官方代理 |
+| html_formatter / Html Editor | Markdown + 图片 → 微信样式 HTML；双击进入富文本编辑、实时预览、AI 改写、复制 HTML；支持标准紫/经典蓝/墨黑/暖灰/赭红主题 | `text` + `image_slot`×N | 终点编辑 UI | 官方代理 |
+| writer | 高级/实验：长文、小说、书稿草稿；打开 Writer Editor 后左侧纯文本编辑、右侧 PDF/书籍式预览 | `text` / `research_result` | `text` draft | 官方代理 |
 
 默认主链路节点：`text_input`、`research`、`outline_generator`、`image_list`、`html_formatter`。
-可选节点：`image_planner`、`image_gallery`、`image_asset`。
-legacy（非默认）节点：`gate`、`writer`、`reviewer`、`image_gen`、`preview_wechat`。
+可选节点：`image_planner`、`image_gallery`、`image_asset`、`writer`。
+legacy（非默认）节点：`gate`、`reviewer`、`image_gen`、`preview_wechat`。
 
 ### 7.3 节点状态机
 
@@ -999,6 +1002,7 @@ Kling、Seedance、Vidu、Wan2.x、MiniMax、Tencent Speech、小红书 API
 **Html Editor**
 - [ ] 双击 html_formatter done 状态进入编辑器
 - [ ] 左侧富文本编辑，右侧微信样式实时预览
+- [ ] 可切换标准紫/经典蓝/墨黑/暖灰/赭红主题，复制输出同步当前主题
 - [ ] 编辑内容关闭后重开仍保留
 - [ ] 「复制 HTML」按钮：点击后 2 秒内复制成功
 
@@ -1022,6 +1026,13 @@ Kling、Seedance、Vidu、Wan2.x、MiniMax、Tencent Speech、小红书 API
 - [ ] Image Editor 可导出当前画布到图片素材库
 - [ ] 文章素材拖入画布生成 `text_input`
 - [ ] 图片素材拖入画布生成可缩放 `image_asset`，并可进入 Image Editor
+- [ ] Workspace Library 支持 Gallery/List/Graph 三视图，Graph 能展示素材、标签、类型关系并点击标签筛选
+
+### Writer 高级节点
+- [ ] `writer` 可从 Node Picker 添加，但不进入公众号默认模板
+- [ ] 执行完成后可打开 Writer Editor
+- [ ] 左侧纯文本/Markdown 编辑，右侧 PDF/书籍式分页预览
+- [ ] 关闭后重开不丢书稿内容
 
 ### 主题/语言
 - [ ] 亮色/暗色切换即时生效，重启后保持
@@ -1069,7 +1080,8 @@ Kling、Seedance、Vidu、Wan2.x、MiniMax、Tencent Speech、小红书 API
 | 19 | Settings 简化 + Skill 推荐卡片 | P2 | ✅ |
 | 22 | Image Editor 图层画板 | P1 | ✅ |
 | 23 | Html Editor 富文本编辑 | P1 | ✅ 初版完成，待手测验收 |
-| — | 个人素材库 + Image 容器 | P1 | ✅ MVP 完成，待手测验收 |
+| — | Html 多主题 + Writer 高级节点 | P2 | ✅ MVP 完成，待手测验收 |
+| — | 个人素材库 + Image 容器 + Graph | P1 | ✅ MVP 完成，待手测验收 |
 | — | 管理后台 Web 应用 | P1 | 🔄 API + 基础前端完成，待联调验收 |
 | — | Provider 可插拔架构 | P1 | ✅ |
 | 20 | 网页端架构预留 | P3 | ⬜ |

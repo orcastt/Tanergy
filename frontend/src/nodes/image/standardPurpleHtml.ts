@@ -1,5 +1,27 @@
+import i18n from "../../i18n"
+
 const THEME = "#5965AF"
 const THEME_LIGHT = "#EDE4F1"
+export type WeChatStyleThemeId = "standard_purple" | "classic_blue" | "ink_black" | "warm_gray" | "terracotta"
+
+export interface WeChatStyleTheme {
+  id: WeChatStyleThemeId
+  label: string
+  accent: string
+  accentSoft: string
+  chipBg: string
+  text: string
+  muted: string
+}
+
+export const WECHAT_STYLE_THEMES: WeChatStyleTheme[] = [
+  { id: "standard_purple", label: "标准紫", accent: "#5965AF", accentSoft: "#EDE4F1", chipBg: "#f5f3ff", text: "#333333", muted: "#878b8e" },
+  { id: "classic_blue", label: "经典蓝", accent: "#2563EB", accentSoft: "#DBEAFE", chipBg: "#EFF6FF", text: "#243247", muted: "#64748B" },
+  { id: "ink_black", label: "墨黑", accent: "#1F2937", accentSoft: "#E5E7EB", chipBg: "#F3F4F6", text: "#242424", muted: "#6B7280" },
+  { id: "warm_gray", label: "暖灰", accent: "#78716C", accentSoft: "#E7E5E4", chipBg: "#FAFAF9", text: "#35312E", muted: "#78716C" },
+  { id: "terracotta", label: "赭红", accent: "#B45309", accentSoft: "#FED7AA", chipBg: "#FFF7ED", text: "#3B2F2A", muted: "#9A6B4F" },
+]
+
 const BLOCK_TAGS = new Set(["h1", "h2", "h3", "h4", "h5", "h6", "p", "blockquote", "ul", "ol", "hr", "img", "pre", "table"])
 const WRAPPER_TAGS = new Set(["body", "main", "article", "section", "div"])
 
@@ -195,4 +217,29 @@ export function toStandardPurpleHtml(html: string): string {
     .filter(Boolean)
     .join("\n")
 }
-import i18n from "../../i18n"
+
+export function getWeChatStyleTheme(themeId?: string) {
+  return WECHAT_STYLE_THEMES.find((theme) => theme.id === themeId || theme.label === themeId) ?? WECHAT_STYLE_THEMES[0]
+}
+
+export function toWechatStyledHtml(html: string, themeId?: string): string {
+  const baseHtml = toStandardPurpleHtml(html)
+  const theme = getWeChatStyleTheme(themeId)
+  if (theme.id === "standard_purple") return baseHtml
+  return applyColorTheme(baseHtml, theme)
+}
+
+function applyColorTheme(html: string, theme: WeChatStyleTheme) {
+  const themeLabel = i18n.t(`html_editor.themes.${theme.id}`, { defaultValue: theme.label })
+  return html
+    .replaceAll("#5965AF", theme.accent)
+    .replaceAll("#EDE4F1", theme.accentSoft)
+    .replaceAll("#f5f3ff", theme.chipBg)
+    .replaceAll("#ede9fe", theme.accentSoft)
+    .replaceAll("#6366F1", theme.accent)
+    .replaceAll("#6d28d9", theme.accent)
+    .replaceAll("#333333", theme.text)
+    .replaceAll("#878b8e", theme.muted)
+    .replaceAll("Tanvas 视觉规范", `${themeLabel}视觉规范`)
+    .replaceAll("Tanvas Visual System", `${themeLabel} Visual System`)
+}

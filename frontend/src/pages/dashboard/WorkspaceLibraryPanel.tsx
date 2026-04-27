@@ -1,18 +1,20 @@
 import { useEffect, useState, type CSSProperties } from "react"
+import { useTranslation } from "react-i18next"
 import { useLibraryStore } from "../../store/libraryStore"
 import type { LibraryItem, LibraryKind } from "../../types/library"
 import { resolveLocalImageSrc } from "../../nodes/image/localImageHtml"
 import { setLibraryDragData } from "../../library/libraryDrag"
-import { getTimeAgo } from "./WorkflowCards"
+import LibraryKnowledgeGraph from "./LibraryKnowledgeGraph"
 
-type ViewMode = "gallery" | "list"
+type ViewMode = "gallery" | "list" | "graph"
 
-const KIND_TABS: Array<{ id: LibraryKind; label: string; icon: string }> = [
-  { id: "image", label: "图片", icon: "image" },
-  { id: "text", label: "文档", icon: "article" },
+const KIND_TABS: Array<{ id: LibraryKind; labelKey: string; icon: string }> = [
+  { id: "image", labelKey: "workspaceLibrary.images", icon: "image" },
+  { id: "text", labelKey: "workspaceLibrary.documents", icon: "article" },
 ]
 
 export default function WorkspaceLibraryPanel() {
+  const { t } = useTranslation()
   const { kind, query, selectedTag, items, tags, loading, error, setKind, setQuery, setSelectedTag, refresh, deleteItem } = useLibraryStore()
   const [viewMode, setViewMode] = useState<ViewMode>("gallery")
 
@@ -26,20 +28,24 @@ export default function WorkspaceLibraryPanel() {
           <ViewToggle value={viewMode} onChange={setViewMode} />
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "minmax(240px, 1fr) 180px", gap: "0.75rem", marginTop: "1rem" }}>
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索标题、正文或标签" style={inputStyle} />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("workspaceLibrary.searchPlaceholder")} style={inputStyle} />
           <select value={selectedTag} onChange={(event) => setSelectedTag(event.target.value)} style={inputStyle}>
-            <option value="">全部标签</option>
+            <option value="">{t("workspaceLibrary.allTags")}</option>
             {tags.map((tag) => <option key={tag} value={tag}>{tag}</option>)}
           </select>
         </div>
+        <TagCloud tags={tags} selectedTag={selectedTag} onSelect={setSelectedTag} />
       </div>
 
-      {loading && <LibraryEmpty icon="hourglass_top" text="加载素材中..." />}
-      {error && <LibraryEmpty icon="error" text={error} tone="error" />}
-      {!loading && !error && items.length === 0 && (
-        <LibraryEmpty icon={kind === "image" ? "image" : "article"} text="还没有素材，先从节点保存一个吧" />
+      {viewMode === "graph" && (
+        <LibraryKnowledgeGraph query={query} selectedTag={selectedTag} onSelectTag={setSelectedTag} onSelectKind={setKind} />
       )}
-      {!loading && !error && items.length > 0 && (
+      {viewMode !== "graph" && loading && <LibraryEmpty icon="hourglass_top" text={t("workspaceLibrary.loading")} />}
+      {viewMode !== "graph" && error && <LibraryEmpty icon="error" text={error} tone="error" />}
+      {viewMode !== "graph" && !loading && !error && items.length === 0 && (
+        <LibraryEmpty icon={kind === "image" ? "image" : "article"} text={t("workspaceLibrary.empty")} />
+      )}
+      {viewMode !== "graph" && !loading && !error && items.length > 0 && (
         viewMode === "gallery" ? (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1.5rem" }}>
             {items.map((item) => <LibraryGalleryCard key={item.id} item={item} onDelete={(id) => void deleteItem(id)} />)}
@@ -55,18 +61,21 @@ export default function WorkspaceLibraryPanel() {
 }
 
 function KindTabs({ value, onChange }: { value: LibraryKind; onChange: (value: LibraryKind) => void }) {
+  const { t } = useTranslation()
   return (
     <div style={{ display: "flex", gap: "0.375rem" }}>
-      {KIND_TABS.map((tab) => <PillButton key={tab.id} active={value === tab.id} icon={tab.icon} label={tab.label} onClick={() => onChange(tab.id)} />)}
+      {KIND_TABS.map((tab) => <PillButton key={tab.id} active={value === tab.id} icon={tab.icon} label={t(tab.labelKey)} onClick={() => onChange(tab.id)} />)}
     </div>
   )
 }
 
 function ViewToggle({ value, onChange }: { value: ViewMode; onChange: (value: ViewMode) => void }) {
+  const { t } = useTranslation()
   return (
     <div style={{ display: "flex", gap: "0.375rem" }}>
-      <PillButton active={value === "gallery"} icon="grid_view" label="Gallery" onClick={() => onChange("gallery")} />
-      <PillButton active={value === "list"} icon="view_list" label="List" onClick={() => onChange("list")} />
+      <PillButton active={value === "gallery"} icon="grid_view" label={t("workspaceLibrary.gallery")} onClick={() => onChange("gallery")} />
+      <PillButton active={value === "list"} icon="view_list" label={t("workspaceLibrary.list")} onClick={() => onChange("list")} />
+      <PillButton active={value === "graph"} icon="hub" label={t("workspaceLibrary.graph")} onClick={() => onChange("graph")} />
     </div>
   )
 }
@@ -85,6 +94,7 @@ function PillButton({ active, icon, label, onClick }: { active: boolean; icon: s
 }
 
 function LibraryGalleryCard({ item, onDelete }: { item: LibraryItem; onDelete: (id: string) => void }) {
+  const { t, i18n } = useTranslation()
   const imageSrc = item.kind === "image" ? resolveLocalImageSrc(item.file_path) : ""
   const summary = getSummary(item)
   return (
@@ -94,7 +104,7 @@ function LibraryGalleryCard({ item, onDelete }: { item: LibraryItem; onDelete: (
         <div style={{ minWidth: 0 }}>
           <h3 style={titleStyle}>{item.title}</h3>
           <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "0.25rem" }}>
-            Updated {getTimeAgo(new Date(item.updated_at))}
+            {t("workspaceLibrary.updated", { time: getLocalizedTimeAgo(new Date(item.updated_at), i18n.language) })}
           </p>
         </div>
         <DeleteButton onClick={() => onDelete(item.id)} />
@@ -106,6 +116,7 @@ function LibraryGalleryCard({ item, onDelete }: { item: LibraryItem; onDelete: (
 }
 
 function LibraryListRow({ item, onDelete }: { item: LibraryItem; onDelete: (id: string) => void }) {
+  const { t, i18n } = useTranslation()
   const imageSrc = item.kind === "image" ? resolveLocalImageSrc(item.file_path) : ""
   const summary = getSummary(item)
   return (
@@ -118,12 +129,12 @@ function LibraryListRow({ item, onDelete }: { item: LibraryItem; onDelete: (id: 
           </span>
           <h3 style={titleStyle}>{item.title}</h3>
         </div>
-        <p style={summaryStyle}>{summary || "No preview content"}</p>
+        <p style={summaryStyle}>{summary || t("workspaceLibrary.noPreview")}</p>
         <TagList tags={item.tags} />
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
         <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", whiteSpace: "nowrap" }}>
-          {getTimeAgo(new Date(item.updated_at))}
+          {getLocalizedTimeAgo(new Date(item.updated_at), i18n.language)}
         </span>
         <DeleteButton onClick={() => onDelete(item.id)} />
       </div>
@@ -132,6 +143,7 @@ function LibraryListRow({ item, onDelete }: { item: LibraryItem; onDelete: (id: 
 }
 
 function Preview({ item, imageSrc, summary, compact }: { item: LibraryItem; imageSrc: string; summary: string; compact: boolean }) {
+  const { t } = useTranslation()
   if (item.kind === "image") {
     return (
       <div style={{ ...previewStyle, width: compact ? 88 : "100%", height: compact ? 66 : 144 }}>
@@ -143,7 +155,7 @@ function Preview({ item, imageSrc, summary, compact }: { item: LibraryItem; imag
     <div style={{ ...previewStyle, width: compact ? 88 : "100%", height: compact ? 66 : 144, padding: compact ? "0.5rem" : "1rem" }}>
       <span className="material-symbols-outlined" style={{ fontSize: compact ? 18 : 24, color: "#3B82F6" }}>article</span>
       <p style={{ marginTop: "0.5rem", fontSize: compact ? "0.625rem" : "0.75rem", lineHeight: 1.5, color: "var(--text-secondary)", overflow: "hidden" }}>
-        {summary || "Document asset"}
+        {summary || t("workspaceLibrary.documentAsset")}
       </p>
     </div>
   )
@@ -154,10 +166,26 @@ function PreviewIcon({ icon }: { icon: string }) {
 }
 
 function DeleteButton({ onClick }: { onClick: () => void }) {
+  const { t } = useTranslation()
   return (
-    <button onClick={onClick} title="删除素材" style={{ border: "none", background: "transparent", color: "var(--text-secondary)", cursor: "pointer", padding: "0.25rem" }}>
+    <button onClick={onClick} title={t("workspaceLibrary.deleteAsset")} style={{ border: "none", background: "transparent", color: "var(--text-secondary)", cursor: "pointer", padding: "0.25rem" }}>
       <span className="material-symbols-outlined" style={{ fontSize: 18 }}>delete</span>
     </button>
+  )
+}
+
+function TagCloud({ tags, selectedTag, onSelect }: { tags: string[]; selectedTag: string; onSelect: (tag: string) => void }) {
+  const { t } = useTranslation()
+  if (tags.length === 0) return null
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", flexWrap: "wrap", marginTop: "0.875rem" }}>
+      <span style={{ fontSize: "0.6875rem", fontWeight: 800, color: "var(--text-secondary)" }}>{t("workspaceLibrary.tagCloud")}</span>
+      {tags.slice(0, 16).map((tag) => (
+        <button key={tag} onClick={() => onSelect(selectedTag === tag ? "" : tag)} style={{ ...tagButtonStyle, ...(selectedTag === tag ? activeTagButtonStyle : null) }}>
+          #{tag}
+        </button>
+      ))}
+    </div>
   )
 }
 
@@ -183,6 +211,18 @@ function getSummary(item: LibraryItem) {
   return (item.plain_text ?? item.content_html ?? "").replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim().slice(0, 150)
 }
 
+function getLocalizedTimeAgo(date: Date, language: string) {
+  const locale = language.startsWith("zh") ? "zh-CN" : "en-US"
+  const formatter = new Intl.RelativeTimeFormat(locale, { numeric: "auto" })
+  const diffMins = Math.max(1, Math.floor((Date.now() - date.getTime()) / 60000))
+  if (diffMins < 60) return formatter.format(-diffMins, "minute")
+  const diffHours = Math.floor(diffMins / 60)
+  if (diffHours < 24) return formatter.format(-diffHours, "hour")
+  const diffDays = Math.floor(diffHours / 24)
+  if (diffDays < 7) return formatter.format(-diffDays, "day")
+  return date.toLocaleDateString(locale, { month: "short", day: "numeric" })
+}
+
 const panelStyle: CSSProperties = { background: "var(--bg-surface)", borderRadius: "0.5rem", padding: "1.25rem", boxShadow: "0 0 0 1px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.05)" }
 const inputStyle: CSSProperties = { width: "100%", border: "1px solid var(--border-color)", borderRadius: "0.5rem", padding: "0.625rem 0.75rem", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: "0.8125rem", outline: "none" }
 const cardStyle: CSSProperties = { minHeight: "18rem", background: "var(--bg-surface)", borderRadius: "0.5rem", padding: "1.25rem", display: "flex", flexDirection: "column", gap: "0.875rem", cursor: "grab", boxShadow: "0 0 0 1px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.05)" }
@@ -191,3 +231,5 @@ const previewStyle: CSSProperties = { borderRadius: "0.5rem", overflow: "hidden"
 const titleStyle: CSSProperties = { fontFamily: '"Space Grotesk", sans-serif', fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }
 const summaryStyle: CSSProperties = { fontSize: "0.75rem", lineHeight: 1.5, color: "var(--text-secondary)", overflow: "hidden" }
 const tagStyle: CSSProperties = { fontSize: "0.625rem", color: "#5965AF", background: "#f5f3ff", borderRadius: 999, padding: "0.125rem 0.375rem", fontWeight: 700 }
+const tagButtonStyle: CSSProperties = { border: "none", borderRadius: 999, padding: "0.25rem 0.5rem", background: "var(--bg-hover)", color: "var(--text-secondary)", cursor: "pointer", fontSize: "0.6875rem", fontWeight: 700 }
+const activeTagButtonStyle: CSSProperties = { background: "#242424", color: "#fff" }

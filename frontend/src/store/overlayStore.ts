@@ -17,6 +17,8 @@ interface OverlayState {
 
   htmlEditorNodeId: string | null
 
+  writerEditorNodeId: string | null
+
   lightboxImage: LightboxImage | null
 
   openPicker: (screenPos?: { x: number; y: number } | null) => void
@@ -31,6 +33,9 @@ interface OverlayState {
   openHtmlEditor: (nodeId: string) => void
   closeHtmlEditor: () => void
 
+  openWriterEditor: (nodeId: string) => void
+  closeWriterEditor: () => void
+
   openLightbox: (img: LightboxImage) => void
   closeLightbox: () => void
 }
@@ -41,6 +46,7 @@ export const useOverlayStore = create<OverlayState>((set) => ({
   ctxMenu: null,
   editorNodeId: null,
   htmlEditorNodeId: null,
+  writerEditorNodeId: null,
   lightboxImage: null,
 
   openPicker: (screenPos) => set({ pickerOpen: true, pickerScreenPos: screenPos ?? null }),
@@ -54,6 +60,9 @@ export const useOverlayStore = create<OverlayState>((set) => ({
 
   openHtmlEditor: (nodeId) => set({ htmlEditorNodeId: nodeId }),
   closeHtmlEditor: () => set({ htmlEditorNodeId: null }),
+
+  openWriterEditor: (nodeId) => set({ writerEditorNodeId: nodeId }),
+  closeWriterEditor: () => set({ writerEditorNodeId: null }),
 
   openLightbox: (img) => set({ lightboxImage: img }),
   closeLightbox: () => set({ lightboxImage: null }),

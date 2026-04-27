@@ -18,8 +18,9 @@ TANGENT is a **desktop application (Tauri v2)** — a node-based AI canvas that 
 |------|------|
 | 🎨 节点画布 | 拖拽节点、连线、网格对齐，React Flow 引擎 |
 | 🤖 AI 对话面板 | 右侧 AI 面板自然语言描述需求，自动生成节点拓扑 |
-| 📝 公众号图文 Skill | text_input → research → outline → image → Html Editor 完整链路 |
-| 🗂️ 个人素材库 | 全局文章/图片素材库，支持标签、搜索、拖拽回画布 |
+| 📝 公众号图文 Skill | text_input → research → outline → image → Html Editor 完整链路，支持多套公众号主题 |
+| 🗂️ 个人素材库 | 全局文章/图片素材库，支持标签、搜索、拖拽回画布和 Knowledge Graph |
+| 📚 Writer 书稿编辑器 | 高级节点，用于长文/小说/书稿，纯文本编辑 + 书籍式预览 |
 | 🖼️ 图层图片编辑器 | Procreate 风格多图层编辑器（画笔/选择/AI Edit/栅格化） |
 | 🌍 中英双语 | 一键切换中文/英文界面 |
 | 🌙 暗色/亮色主题 | 顶栏一键切换 |
@@ -40,13 +41,13 @@ TANGENT is a **desktop application (Tauri v2)** — a node-based AI canvas that 
 | `outline_generator` | AI | 生成章节大纲 + image_plans，驱动 Split |
 | `image_list` | AI | 多模型图片生成，双输入，动态输出端口，内置图层编辑器 |
 | `image_asset` | 图片 | 个人图片素材容器，可缩放，双击进入 Image Editor |
-| `html_formatter` / Html Editor | 输出 | Markdown + 图片 → 微信样式 HTML；双击进入富文本编辑、微信预览、AI 改写 |
+| `html_formatter` / Html Editor | 输出 | Markdown + 图片 → 微信样式 HTML；双击进入富文本编辑、微信预览、AI 改写、多主题输出 |
 
-可选节点：`image_planner`、`image_gallery`。
+可选节点：`image_planner`、`image_gallery`、`writer`。
 
 ### 遗留节点（非默认）
 
-`gate`、`writer`、`reviewer`、`image_gen`、`preview_wechat` — 不进入默认模板。
+`gate`、`reviewer`、`image_gen`、`preview_wechat` — 不进入默认模板。
 
 ---
 
@@ -228,10 +229,12 @@ TanvasAgent/
 - [x] Settings 简化 + Skill 推荐卡片（Slice 19）
 - [x] Image Editor 图层画板（Slice 22，Procreate 风格）
 - [x] 个人素材库 MVP（文章/图片素材、标签、拖拽到画布、Image 容器）
+- [x] 素材库 Knowledge Graph（Workspace Library 支持 Gallery/List/Graph）
+- [x] Writer 高级节点（书稿编辑器 + PDF/书籍式预览）
 - [ ] 管理后台联调验收（Admin API + 基础 Next.js 前端已完成）
 - [x] Admin 动态模型源初版（前端模型列表从后端读取，测试默认 `hunyuan-3.0-preview` / 图片默认 `gpt-image-2` / 编辑默认 `gemini-nano-banana`）
 - [ ] GeekAI 真 Key 联调（文本、图片生成、图片编辑、图片异步结果、enhance；clarify 待后续确认）
-- [x] Html Editor 富文本编辑（Slice 23，初版完成，待手测验收）
+- [x] Html Editor 富文本编辑（Slice 23，初版完成；支持标准紫/经典蓝/墨黑/暖灰/赭红主题，待手测验收）
 - [ ] 线上部署（Docker/Nginx 配置已就绪，待执行）
 
 ### Phase 3 — V2

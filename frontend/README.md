@@ -6,7 +6,9 @@ React + TypeScript + Vite 前端，运行在 Tauri v2 桌面壳内。
 
 - React 19 + TypeScript 6 + Vite 8。
 - React Flow v12 画布、Zustand v5 状态管理、i18next 中英切换。
-- 公众号默认主流程终点是 `html_formatter` / Html Editor。
+- 公众号默认主流程终点是 `html_formatter` / Html Editor，支持标准紫/经典蓝/墨黑/暖灰/赭红主题。
+- `writer` 是高级/实验长文节点，提供纯文本书稿编辑与 PDF/书籍式预览，不进入默认公众号模板。
+- Workspace Library 支持 Gallery/List/Graph 三视图，Graph 基于素材类型与标签推导。
 - `preview_wechat` 是历史/legacy 预览能力，不进入默认模板。
 
 ## 本地开发
@@ -29,7 +31,7 @@ cargo tauri dev
 npm -C frontend run build
 ```
 
-2026-04-26 已验证通过。
+2026-04-27 已验证通过。
 
 ## 开发规范
 
@@ -51,8 +53,18 @@ npm -C frontend run build
 | `src/nodes/image/HtmlEditorModal.tsx` | 全屏双栏编辑器壳，负责保存闭环 |
 | `src/nodes/image/TiptapEditor.tsx` | Tiptap 富文本编辑器 |
 | `src/nodes/image/WeChatPreview.tsx` | 微信样式实时预览 |
+| `src/nodes/image/standardPurpleHtml.ts` | 公众号主题 registry 与微信兼容 HTML 输出 |
 | `src/nodes/image/HtmlRewritePopup.tsx` | AI 改写弹窗 |
 | `src/store/overlayStore.ts` | `htmlEditorNodeId` overlay 状态 |
+
+## Writer 文件索引
+
+| 文件 | 说明 |
+|------|------|
+| `src/nodes/WriterNode.tsx` | 高级 Writer 节点，模型/字数/风格选择，打开书稿编辑器 |
+| `src/nodes/writer/WriterEditorModal.tsx` | 全屏纯文本书稿编辑器与保存闭环 |
+| `src/nodes/writer/BookPreview.tsx` | PDF/书籍式分页预览 |
+| `src/store/overlayStore.ts` | `writerEditorNodeId` overlay 状态 |
 
 ## Personal Library 文件索引
 
@@ -61,5 +73,7 @@ npm -C frontend run build
 | `src/library/LibraryDrawer.tsx` | 工作流左侧全局素材库侧拉面板 |
 | `src/library/LibrarySaveDialog.tsx` | 保存文章/图片素材与标签弹窗 |
 | `src/library/LibraryCard.tsx` | 素材卡片展示、拖拽、删除 |
+| `src/pages/dashboard/WorkspaceLibraryPanel.tsx` | Workspace Library 标签页，Gallery/List/Graph 入口 |
+| `src/pages/dashboard/LibraryKnowledgeGraph.tsx` | 素材、标签、类型关系图谱 |
 | `src/store/libraryStore.ts` | 素材库列表、标签与创建/删除状态 |
 | `src/nodes/ImageAssetNode.tsx` | 图片素材容器节点，可缩放并进入 Image Editor |

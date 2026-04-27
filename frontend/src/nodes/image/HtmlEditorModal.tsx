@@ -6,7 +6,7 @@ import { useCanvasStore } from "../../store/canvasStore"
 import TiptapEditor from "./TiptapEditor"
 import WeChatPreview from "./WeChatPreview"
 import HtmlRewritePopup from "./HtmlRewritePopup"
-import { toStandardPurpleHtml } from "./standardPurpleHtml"
+import { getWeChatStyleTheme, toWechatStyledHtml, WECHAT_STYLE_THEMES } from "./standardPurpleHtml"
 import { hasLocalAssetImage, hydrateLocalImageHtml } from "./localImageHtml"
 import { editorColors, editorShadows, editorTypography, iconButtonStyle, primaryButtonStyle, secondaryButtonStyle } from "../../styles/editorDesign"
 
@@ -87,6 +87,7 @@ export default function HtmlEditorModal() {
   const [showRewrite, setShowRewrite] = useState(false)
   const [selectedText, setSelectedText] = useState("")
   const [copyStatus, setCopyStatus] = useState("")
+  const [styleTheme, setStyleTheme] = useState(() => getWeChatStyleTheme(String(node?.data?.style ?? "standard_purple")).id)
   const rewriteInsertRef = useRef<((rewrittenHtml: string) => void) | null>(null)
 
   const persistHtml = useCallback((nextHtml: string, persistToNodeData = false) => {
@@ -109,6 +110,12 @@ export default function HtmlEditorModal() {
     persistHtml(html, true)
     useOverlayStore.getState().closeHtmlEditor()
   }, [html, persistHtml])
+
+  const updateTheme = useCallback((nextTheme: string) => {
+    const resolvedTheme = getWeChatStyleTheme(nextTheme).id
+    setStyleTheme(resolvedTheme)
+    if (nodeId) useCanvasStore.getState().updateNodeData(nodeId, { style: resolvedTheme })
+  }, [nodeId])
 
   const handleUpdate = useCallback((newHtml: string) => {
     setHtml(newHtml)
@@ -133,7 +140,7 @@ export default function HtmlEditorModal() {
   }, [])
 
   const copyForWeChat = useCallback(async () => {
-    const standardHtml = hydrateLocalImageHtml(toStandardPurpleHtml(html))
+    const standardHtml = hydrateLocalImageHtml(toWechatStyledHtml(html, styleTheme))
     if (!standardHtml.trim()) {
       setCopyStatus(t("html_editor.emptyCopy"))
       return
@@ -155,10 +162,10 @@ export default function HtmlEditorModal() {
         setCopyStatus(t("html_editor.copyFailed"))
       }
     }
-  }, [html, t])
+  }, [html, styleTheme, t])
 
   const copySourceHtml = useCallback(async () => {
-    const standardHtml = hydrateLocalImageHtml(toStandardPurpleHtml(html))
+    const standardHtml = hydrateLocalImageHtml(toWechatStyledHtml(html, styleTheme))
     if (!standardHtml.trim()) {
       setCopyStatus(t("html_editor.emptyCopy"))
       return
@@ -170,7 +177,7 @@ export default function HtmlEditorModal() {
     } catch {
       setCopyStatus(t("html_editor.sourceCopyFailed"))
     }
-  }, [html, t])
+  }, [html, styleTheme, t])
 
   if (!nodeId) return null
 
@@ -205,6 +212,13 @@ export default function HtmlEditorModal() {
           )}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <select
+            value={styleTheme}
+            onChange={(event) => updateTheme(event.target.value)}
+            style={{ height: 32, border: "1px solid var(--border-color)", borderRadius: 8, padding: "0 0.5rem", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: "0.75rem", outline: "none" }}
+          >
+            {WECHAT_STYLE_THEMES.map((theme) => <option key={theme.id} value={theme.id}>{t(`html_editor.themes.${theme.id}`)}</option>)}
+          </select>
           {copyStatus && (
             <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", maxWidth: 260, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {copyStatus}
@@ -236,7 +250,7 @@ export default function HtmlEditorModal() {
           />
         </div>
         <div style={{ flex: 1, overflow: "auto", background: editorColors.canvas }}>
-          <WeChatPreview html={html} />
+          <WeChatPreview html={html} themeId={styleTheme} />
         </div>
       </div>
 

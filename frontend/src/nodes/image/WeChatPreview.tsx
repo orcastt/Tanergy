@@ -1,15 +1,17 @@
 import { useTranslation } from "react-i18next"
-import { toStandardPurpleHtml } from "./standardPurpleHtml"
+import { getWeChatStyleTheme, toWechatStyledHtml } from "./standardPurpleHtml"
 import { hydrateLocalImageHtml } from "./localImageHtml"
 import { editorColors, editorShadows } from "../../styles/editorDesign"
 
 interface WeChatPreviewProps {
   html: string
+  themeId?: string
 }
 
-export default function WeChatPreview({ html }: WeChatPreviewProps) {
+export default function WeChatPreview({ html, themeId }: WeChatPreviewProps) {
   const { t } = useTranslation()
-  const previewHtml = hydrateLocalImageHtml(toStandardPurpleHtml(html))
+  const previewHtml = hydrateLocalImageHtml(toWechatStyledHtml(html, themeId))
+  const theme = getWeChatStyleTheme(themeId)
 
   return (
     <div style={{ height: "100%", boxSizing: "border-box", background: editorColors.surface, overflow: "auto" }}>
@@ -27,7 +29,7 @@ export default function WeChatPreview({ html }: WeChatPreviewProps) {
         }}
       />
       <div style={{ position: "sticky", bottom: 0, padding: "0.5rem 1rem", background: "rgba(255,255,255,0.92)", boxShadow: editorShadows.insetBottom, fontSize: "0.6875rem", color: editorColors.secondary }}>
-        {t("html_editor.previewHint")}
+        {t("html_editor.previewHint", { theme: t(`html_editor.themes.${theme.id}`) })}
       </div>
     </div>
   )
