@@ -6,6 +6,7 @@ import type { NodeCardShape } from '@/types/nodeCardShape'
 import { validateNodeConnection, getArrowColorForDataType } from '@/features/node-runtime/connectionRules'
 import { getResolvedNodePorts } from '@/features/node-runtime/registry'
 import type { JsonObject, NodePortDataType, ResolvedNodePort } from '@/types/nodeRuntime'
+import { toTldrawAnchor } from './arrowAnchorUtils'
 
 type ConnectionFrom = {
   pagePoint: { x: number; y: number }
@@ -77,14 +78,14 @@ function createConnectionArrow(
   const color = getArrowColorForDataType(dataType)
   const arrowId = createShapeId('arrow') as TLShapeId
 
-  const sourceAnchor = {
+  const sourceAnchor = toTldrawAnchor({
     x: sourcePort.direction === 'out' ? 1 : 0,
     y: sourcePort.anchorY,
-  }
-  const targetAnchor = {
+  })
+  const targetAnchor = toTldrawAnchor({
     x: targetPort.direction === 'in' ? 0 : 1,
     y: targetPort.anchorY,
-  }
+  })
 
   editor.run(() => {
     editor.createShape<TLArrowShape>({

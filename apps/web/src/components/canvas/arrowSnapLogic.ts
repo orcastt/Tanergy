@@ -5,7 +5,9 @@ import {
   getCandidateAnchors,
   getResolvedTerminalPagePoint,
   getArrowTerminalPagePoint,
+  isCleanTldrawAnchor,
   isSameAnchor,
+  toTldrawAnchor,
   type Anchor,
   type ArrowTerminal,
 } from './arrowAnchorUtils'
@@ -26,6 +28,7 @@ export function snapArrowBindings(editor: Editor) {
         binding.props.isPrecise &&
         !binding.props.isExact &&
         binding.props.snap === 'edge-point' &&
+        isCleanTldrawAnchor(binding.props.normalizedAnchor) &&
         isSameAnchor(binding.props.normalizedAnchor, anchor)
       ) {
         continue
@@ -37,7 +40,7 @@ export function snapArrowBindings(editor: Editor) {
           ...binding.props,
           isExact: false,
           isPrecise: true,
-          normalizedAnchor: anchor,
+          normalizedAnchor: toTldrawAnchor(anchor),
           snap: 'edge-point',
         },
       })
@@ -201,10 +204,11 @@ function createOrUpdateArrowBinding(
     .getBindingsFromShape(arrow.id, 'arrow')
     .filter((binding) => binding.props.terminal === terminal)
 
+  const cleanAnchor = toTldrawAnchor(anchor)
   const props = {
     isExact: false,
     isPrecise: true,
-    normalizedAnchor: anchor,
+    normalizedAnchor: cleanAnchor,
     snap: 'edge-point' as const,
     terminal,
   }
@@ -216,7 +220,8 @@ function createOrUpdateArrowBinding(
       existing.props.isPrecise &&
       !existing.props.isExact &&
       existing.props.snap === 'edge-point' &&
-      isSameAnchor(existing.props.normalizedAnchor, anchor)
+      isCleanTldrawAnchor(existing.props.normalizedAnchor) &&
+      isSameAnchor(existing.props.normalizedAnchor, cleanAnchor)
     ) {
       if (existingBindings.length > 1) editor.deleteBindings(existingBindings.slice(1))
       return

@@ -22,7 +22,7 @@ export function getCandidateAnchors(shape: TLShape): Anchor[] | null {
   if (shape.type === 'arrow' || shape.type === 'line' || shape.type === 'draw') return null
 
   if (shape.type === 'node_card') {
-    return getNodePortAnchors(shape as NodeCardShape).map(({ x, y }) => ({ x, y }))
+    return getNodePortAnchors(shape as NodeCardShape).map(toTldrawAnchor)
   }
 
   if (shape.type === 'geo') {
@@ -40,9 +40,10 @@ export function getAnchorPagePoint(editor: Editor, shape: TLShape, anchor: Ancho
   if (!geometry || !transform) return null
 
   const bounds = geometry.bounds
+  const cleanAnchor = toTldrawAnchor(anchor)
   return transform.applyToPoint({
-    x: bounds.minX + bounds.w * anchor.x,
-    y: bounds.minY + bounds.h * anchor.y,
+    x: bounds.minX + bounds.w * cleanAnchor.x,
+    y: bounds.minY + bounds.h * cleanAnchor.y,
   })
 }
 
@@ -64,16 +65,17 @@ export function getBestAnchorForReferencePoint(
   const candidates = getCandidateAnchors(target)
   if (!candidates) return null
 
-  let bestAnchor = candidates[0]
+  let bestAnchor = toTldrawAnchor(candidates[0])
   let bestDistance = Infinity
 
   for (const candidate of candidates) {
-    const point = getAnchorPagePoint(editor, target, candidate)
+    const cleanCandidate = toTldrawAnchor(candidate)
+    const point = getAnchorPagePoint(editor, target, cleanCandidate)
     if (!point) continue
     const distance = (point.x - referencePoint.x) ** 2 + (point.y - referencePoint.y) ** 2
     if (distance < bestDistance) {
       bestDistance = distance
-      bestAnchor = candidate
+      bestAnchor = cleanCandidate
     }
   }
 
@@ -99,5 +101,17 @@ export function getResolvedTerminalPagePoint(
 }
 
 export function isSameAnchor(a: Anchor, b: Anchor) {
-  return Math.abs(a.x - b.x) < 0.001 && Math.abs(a.y - b.y) < 0.001
+  const cleanA = toTldrawAnchor(a)
+  const cleanB = toTldrawAnchor(b)
+  return Math.abs(cleanA.x - cleanB.x) < 0.001 && Math.abs(cleanA.y - cleanB.y) < 0.001
+}
+
+export function isCleanTldrawAnchor(anchor: unknown) {
+  if (!anchor || typeof anchor !== 'object' || Array.isArray(anchor)) return false
+  const keys = Object.keys(anchor)
+  return keys.length === 2 && keys.includes('x') && keys.includes('y')
+}
+
+export function toTldrawAnchor(anchor: VecLike): Anchor {
+  return { x: anchor.x, y: anchor.y }
 }

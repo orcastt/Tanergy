@@ -92,8 +92,10 @@ function createBoundArrow(
   const target = editor.getShape<NodeCardShape>(targetId)
   if (!source || !target) return
 
-  const sourcePoint = { x: source.x + source.props.w * sourceAnchor.x, y: source.y + source.props.h * sourceAnchor.y }
-  const targetPoint = { x: target.x + target.props.w * targetAnchor.x, y: target.y + target.props.h * targetAnchor.y }
+  const cleanSourceAnchor = toCleanAnchor(sourceAnchor)
+  const cleanTargetAnchor = toCleanAnchor(targetAnchor)
+  const sourcePoint = { x: source.x + source.props.w * cleanSourceAnchor.x, y: source.y + source.props.h * cleanSourceAnchor.y }
+  const targetPoint = { x: target.x + target.props.w * cleanTargetAnchor.x, y: target.y + target.props.h * cleanTargetAnchor.y }
   const arrowId = createShapeId()
 
   editor.createShape({
@@ -112,7 +114,7 @@ function createBoundArrow(
     props: {
       isExact: false,
       isPrecise: true,
-      normalizedAnchor: sourceAnchor,
+      normalizedAnchor: cleanSourceAnchor,
       snap: 'edge-point',
       terminal: 'start',
     },
@@ -124,11 +126,15 @@ function createBoundArrow(
     props: {
       isExact: false,
       isPrecise: true,
-      normalizedAnchor: targetAnchor,
+      normalizedAnchor: cleanTargetAnchor,
       snap: 'edge-point',
       terminal: 'end',
     },
     toId: targetId,
     type: 'arrow',
   })
+}
+
+function toCleanAnchor(anchor: { x: number; y: number }) {
+  return { x: anchor.x, y: anchor.y }
 }
