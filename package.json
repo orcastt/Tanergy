@@ -1,12 +1,16 @@
 {
-  "name": "tangent",
+  "name": "tangent-web-ai-image-canvas",
+  "version": "0.1.0",
   "private": true,
+  "description": "Fresh Web AI image canvas restart for TANGENT.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "npm run dev --workspace=frontend",
-    "build": "npm run build --workspace=frontend",
-    "tauri": "tauri"
-  },
-  "devDependencies": {
-    "@tauri-apps/cli": "^2.10.1"
+    "dev:web": "npm -C apps/web run dev",
+    "build:web": "npm -C apps/web run build",
+    "lint:web": "npm -C apps/web run lint",
+    "typecheck:web": "npm -C apps/web run typecheck"
   }
 }

@@ -1,0 +1,156 @@
+# TANGENT — 节点开发计划（聚焦公众号 Skill）
+
+**版本**: v3.1
+**日期**: 2026-04-26
+**状态**: ✅ 已按代码现状校准（2026-04-27 更新：Writer 高级节点、Html 多主题、素材库 Graph）
+**策略**: 公众号主流程以 Outline Split 架构为核心，移除 Gate/Writer 作为默认必需节点
+**开发规范**: 代码质量与测试门槛见 `dev-plans/code-quality-standards.md`
+
+---
+
+## 一、公众号主节点清单（当前默认）
+
+当前默认主链路共 **5 类节点**，按默认使用顺序排列：
+
+| # | 节点 | 类型 | 状态 | 备注 |
+|---|------|------|------|------|
+| 1 | `text_input` | 输入 | ✅ | 支持手输 + 接收上游文本 |
+| 2 | `research` | AI | ✅ | 主题调研 |
+| 3 | `outline_generator` | AI | ✅ | 生成章节 + image_plans |
+| 4 | `image_list` | 图像 AI | ✅ | 双输入（plans/text）+ 动态输出 |
+| 5 | `html_formatter` / Html Editor | 输出编排 | ✅ | 多文本输入 + 图片输入 + 富文本编辑/微信预览 |
+
+可选节点：`image_planner`、`image_gallery`、`image_asset`（个人图片素材容器）、`writer`（长文/书稿高级节点）。
+遗留节点（非公众号默认）：
+- `gate`（legacy）
+- `reviewer`（legacy）
+- `image_gen`（兼容别名）
+- `preview_wechat`（legacy 预览，不再作为默认出口）
+
+---
+
+## 二、核心执行模型：Outline Split
+
+### 2.1 主流程
+
+```
+text_input -> research -> outline_generator
+
+outline_generator done 后触发 Split：
+- 依据 sections[] 自动创建 N 个 text_input
+- 依据 image_plans 自动创建 image_list
+- 自动连到 html_formatter.text_1...text_N / html_formatter.images
+- 最终停在 html_formatter / Html Editor
+```
+
+### 2.2 为什么采用 Split
+
+- 避免 Gate 暂停式交互打断整体执行。
+- 章节文本与图片计划可并行编辑，结构更清晰。
+- 便于 Agent 自动搭图和后续 Html Editor 二次编辑。
+
+### 2.3 执行状态
+
+| 状态 | 含义 | 备注 |
+|------|------|------|
+| `idle` | 未执行 | 默认 |
+| `running` | 执行中 | 蓝色反馈 |
+| `done` | 执行完成 | 绿色反馈 |
+| `error` | 执行失败 | 错误信息可见 |
+| `waiting` | 保留 | 仅 legacy gate 场景 |
+
+---
+
+## 三、端口类型（现网）
+
+| 类型 | 颜色 | 数据格式 | 典型节点 |
+|------|------|---------|---------|
+| `text` | 蓝 | `string` 或 `{ text }` | text_input / html_formatter |
+| `research_result` | 棕 | 调研文本对象 | research |
+| `outline_options` | 紫 | 大纲选项（legacy 兼容字段） | legacy outline |
+| `image_plans` | 紫 | 图片计划数组 | outline_generator / image_planner |
+| `image_slot` | 绿 | 图片资产或数组 | image_list / image_gallery / html_formatter |
+| `structured` | 黄 | HTML 结构化结果 | legacy preview_wechat |
+
+---
+
+## 四、节点职责（摘要）
+
+### 4.1 `text_input`
+- 输入主题或段落。
+- 作为 Split 后章节承载节点。
+- 支持 `in` 输入端口，允许上游覆盖内容。
+
+### 4.2 `research`
+- 接收主题文本。
+- 返回结构化调研文本（供大纲生成参考）。
+- 支持官方文本模型选择；测试阶段免费模型优先，默认 `nemotron-3-super-120b-a12b`。
+
+### 4.3 `outline_generator`
+- 生成章节 `sections[]`。
+- 同时生成 `image_plans[]`。
+- 支持一键 Split 自动搭建后续图。
+- 支持官方文本模型选择；测试阶段免费模型优先，默认 `nemotron-3-super-120b-a12b`。
+
+### 4.4 `image_list`
+- 输入可来自 `image_plans` 或 `text`。
+- 支持数量、模型、动态输入口和动态输出口。
+- 双击可进入 Image Editor 图层画板。
+- 支持官方图片模型选择，当前默认 `gpt-image-2`；Gemini / Nano Banana 2 路线使用 `gemini-3.1-flash-image-preview`；`jimeng_t2i_v40` 为图片备用；`nano-banana-2` / `nano-banana-hd` 仅保留为待核验非默认标签。
+
+### 4.5 `image_asset`
+- 由个人素材库图片拖拽到画布生成。
+- 可缩放预览图片，输出 `image_slot`。
+- 双击进入 Image Editor，可继续编辑或导出到素材库。
+
+### 4.6 `html_formatter`
+- 多 `text_N` 输入汇总为文章。
+- 接收 `images` 输入进行图文混排。
+- 执行后产出 HTML，done 状态双击进入 Html Editor。
+- Html Editor 支持富文本编辑、微信预览、AI 改写和复制 HTML。
+- 公众号模板支持标准紫、经典蓝、墨黑、暖灰、赭红五套颜色主题；编辑器切换后预览与复制输出同步。
+- 执行与 AI 改写均支持官方文本模型选择；测试阶段免费模型优先。
+
+### 4.7 `writer`（高级/实验）
+- 用于小说、长文章、书稿草稿，不进入公众号默认模板。
+- 接收 outline、research、materials 输入，输出纯文本 draft。
+- 执行完成或手动打开后进入 Writer Editor：左侧纯文本/Markdown 编辑，右侧 PDF/书籍式分页预览。
+
+### 4.8 `preview_wechat`（legacy）
+- 历史微信阅读预览组件。
+- 不再进入公众号默认模板；新流程由 Html Editor 右侧预览承担。
+
+---
+
+## 五、Agent 搭图约束（必须遵守）
+
+1. 若使用 `outline_generator`，默认停在 Outline，不直接手动添加完整后半段，由 Split 生成。
+2. 不默认生成 `gate`、`writer`、`reviewer`。
+3. `fromPort/toPort` 必须使用节点注册表中的真实端口。
+4. 测试阶段文本默认模型使用 `nemotron-3-super-120b-a12b`；备用为 `minimax-m2.7:free` / `hunyuan-3.0-preview`，其中 Hunyuan 当前原始 API 返回“模型不存在”，暂不作为默认。
+5. 图片生成默认模型使用 `gpt-image-2`；Gemini / Nano Banana 2 与图片编辑默认使用 `gemini-3.1-flash-image-preview`，均走官方 GeekAI relay。
+6. 所有 AI 生成入口必须支持官方模型切换：`research`、`outline_generator`、`image_planner`、`html_formatter`、`image_list`、Html Editor AI 改写、Image Editor AI Edit。
+
+---
+
+## 六、验收清单（主流程）
+
+- [x] `text_input -> research -> outline_generator` 可稳定执行。
+- [x] Outline Split 自动生成章节节点与图片节点。
+- [x] `image_list` 动态输入/输出口可用。
+- [x] `html_formatter` 能消费多段文本 + 图片。
+- [x] Html Editor 可显示微信预览并复制 HTML。
+- [x] Html Editor 可切换标准紫/经典蓝/墨黑/暖灰/赭红主题。
+- [x] 个人素材库 Text/Image 可拖拽生成节点。
+- [x] Workspace 个人素材库支持 Gallery/List/Graph 三视图与标签筛选。
+- [x] 公众号模板不依赖 `gate`、`writer`。
+
+---
+
+## 七、后续演进
+
+- Html Editor（Slice 23）已成为 `html_formatter` 的默认终点面板。
+- 官方模型路由进入下一阶段：前端当前可用硬编码模型列表，后续改为 Admin/后端动态模型源。
+- GeekAI 图片后续能力独立推进：`GET /images/{task_id}` 异步结果轮询、`/images/enhance`、clarify/upscale 不阻塞当前主流程。
+- `writer` 已恢复为长文/书稿高级节点；`reviewer/gate` 若保留，仅作为高级/实验或 legacy 节点管理，不进入默认模板。
+- 后续若引入小红书模板，建议沿用 Split 思路，不回退到 Gate 暂停架构。
