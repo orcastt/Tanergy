@@ -1,0 +1,51 @@
+.canvas-spike-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  min-height: 720px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.canvas-spike-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 18px 24px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: var(--shadow-ring);
+  backdrop-filter: blur(16px);
+  z-index: 10;
+}
+
+.canvas-spike-header h1 {
+  margin: 0;
+  font-size: 26px;
+  letter-spacing: -0.04em;
+}
+
+.canvas-spike-checklist {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.canvas-spike-checklist span {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: white;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow: var(--shadow-ring);
+}
+
+.canvas-spike-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}

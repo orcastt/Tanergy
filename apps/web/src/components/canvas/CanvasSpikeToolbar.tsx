@@ -4,11 +4,10 @@ import { useCallback, useEffect, useRef, useState, type MouseEvent, type Synthet
 import { GeoShapeGeoStyle, type Editor, type TLShapeId } from 'tldraw'
 import {
   directTools,
-  frameTool,
-  noteTool,
   shapeTools,
   type ToolAction,
 } from './canvasToolbarConfig'
+import { CanvasSpikeInsertMenu } from './CanvasSpikeInsertMenu'
 import { useEditorRevision } from './useEditorRevision'
 
 type CanvasSpikeToolbarProps = {
@@ -146,6 +145,11 @@ export function CanvasSpikeToolbar({
     action()
   }
 
+  const runInsertDrawTool = (action: ToolAction) => {
+    setOpenMenu(null)
+    setDrawTool(action, false)
+  }
+
   const handleContinuousTool = (event: MouseEvent<HTMLButtonElement>, action: ToolAction) => {
     event.preventDefault()
     event.stopPropagation()
@@ -262,50 +266,23 @@ export function CanvasSpikeToolbar({
           <span aria-hidden>＋</span>
         </button>
         {openMenu === 'insert' ? (
-          <div className="canvas-spike-toolbar__popover canvas-spike-toolbar__popover--wide" role="menu">
-            <button disabled={disabled} onClick={() => runInsertAction(onCreatePromptNode)} title="Prompt node" type="button">
-              <span aria-hidden>⌘</span>
-            </button>
-            <button disabled={disabled} onClick={() => runInsertAction(onCreateImageGenNode)} title="Image Gen node" type="button">
-              <span aria-hidden>✧</span>
-            </button>
-            <button disabled={disabled} onClick={() => runInsertAction(onCreateImageGen4Node)} title="Image Gen 4 node" type="button">
-              <span aria-hidden>✥</span>
-            </button>
-            <button disabled={disabled} onClick={() => runInsertAction(onCreateAnalysisNode)} title="Analysis node" type="button">
-              <span aria-hidden>☌</span>
-            </button>
-            <button disabled={disabled} onClick={() => runInsertAction(onCreateImageNode)} title="Image node" type="button">
-              <span aria-hidden>▧</span>
-            </button>
-            <button disabled={disabled} onClick={() => setDrawTool(noteTool, false)} title="Sticky note" type="button">
-              <span aria-hidden>▤</span>
-            </button>
-            <button disabled={disabled} onClick={() => setDrawTool(frameTool, false)} title="Frame" type="button">
-              <span aria-hidden>▣</span>
-            </button>
-            <button disabled={disabled} onClick={() => runInsertAction(onCreateImage)} title="Image" type="button">
-              <span aria-hidden>🖼</span>
-            </button>
-            <button disabled={disabled} onClick={() => runInsertAction(onCreateLinkCard)} title="Link card" type="button">
-              <span aria-hidden>🔗</span>
-            </button>
-            <button disabled={disabled} onClick={() => runInsertAction(onCreateAiCards)} title="AI cards" type="button">
-              <span aria-hidden>✦</span>
-            </button>
-            <button disabled={disabled} onClick={() => runInsertAction(onCreateStep15Graph)} title="S1.5 node graph" type="button">
-              <span aria-hidden>⚙</span>
-            </button>
-            <button disabled={disabled} onClick={() => runInsertAction(onCreateStressNodes)} title="60 node stress test" type="button">
-              <span aria-hidden>▦</span>
-            </button>
-            <button disabled={disabled} onClick={() => runInsertAction(onCreateShapeSet)} title="Sample shapes" type="button">
-              <span aria-hidden>⋯</span>
-            </button>
-            <button disabled={disabled} onClick={() => runInsertAction(onCreateBoardKit)} title="Board kit" type="button">
-              <span aria-hidden>☰</span>
-            </button>
-          </div>
+          <CanvasSpikeInsertMenu
+            disabled={disabled}
+            onCreateAiCards={onCreateAiCards}
+            onCreateAnalysisNode={onCreateAnalysisNode}
+            onCreateBoardKit={onCreateBoardKit}
+            onCreateImage={onCreateImage}
+            onCreateImageGen4Node={onCreateImageGen4Node}
+            onCreateImageGenNode={onCreateImageGenNode}
+            onCreateImageNode={onCreateImageNode}
+            onCreateLinkCard={onCreateLinkCard}
+            onCreatePromptNode={onCreatePromptNode}
+            onCreateShapeSet={onCreateShapeSet}
+            onCreateStep15Graph={onCreateStep15Graph}
+            onCreateStressNodes={onCreateStressNodes}
+            onDrawTool={runInsertDrawTool}
+            onRunInsertAction={runInsertAction}
+          />
         ) : null}
       </div>
 

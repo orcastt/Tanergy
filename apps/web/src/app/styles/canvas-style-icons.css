@@ -1,0 +1,112 @@
+.style-icon {
+  position: relative;
+  display: block;
+  width: 24px;
+  height: 16px;
+}
+
+.style-icon::before,
+.style-icon::after {
+  position: absolute;
+  content: '';
+}
+
+.style-icon--fill-none {
+  border: 2px solid currentColor;
+  border-radius: 5px;
+  background: white;
+}
+
+.style-icon--fill-semi {
+  border: 2px solid currentColor;
+  border-radius: 5px;
+  background: color-mix(in srgb, currentColor 18%, white);
+}
+
+.style-icon--fill-solid {
+  border: 2px solid currentColor;
+  border-radius: 5px;
+  background: currentColor;
+}
+
+.style-icon--fill-pattern {
+  border: 2px solid currentColor;
+  border-radius: 5px;
+  background:
+    repeating-linear-gradient(45deg, currentColor 0 1px, transparent 1px 4px),
+    white;
+}
+
+.style-icon[class*='style-icon--size-']::before,
+.style-icon[class*='style-icon--dash-']::before {
+  top: 50%;
+  left: 2px;
+  width: 20px;
+  border-top: 2px solid currentColor;
+  transform: translateY(-50%);
+}
+
+.style-icon--size-s::before {
+  border-top-width: 1px;
+}
+
+.style-icon--size-m::before {
+  border-top-width: 2px;
+}
+
+.style-icon--size-l::before {
+  border-top-width: 4px;
+}
+
+.style-icon--size-xl::before {
+  border-top-width: 6px;
+}
+
+.style-icon--dash-draw::before {
+  border-radius: 999px;
+  transform: translateY(-50%) rotate(-4deg);
+}
+
+.style-icon--dash-dashed::before {
+  border-top-style: dashed;
+}
+
+.style-icon--dash-dotted::before {
+  border-top-style: dotted;
+}
+
+.style-icon--font-draw,
+.style-icon--font-sans,
+.style-icon--font-serif,
+.style-icon--font-mono {
+  display: grid;
+  width: 24px;
+  height: 18px;
+  place-items: center;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.style-icon--font-draw::before,
+.style-icon--font-sans::before,
+.style-icon--font-serif::before,
+.style-icon--font-mono::before {
+  position: static;
+  content: 'A';
+}
+
+.style-icon--font-draw {
+  font-family: cursive;
+}
+
+.style-icon--font-sans {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.style-icon--font-serif {
+  font-family: ui-serif, Georgia, serif;
+}
+
+.style-icon--font-mono {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}

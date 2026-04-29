@@ -56,6 +56,7 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 - ✅ 节点是显示器/控制器，不是数据库；`shape.props` 和协同文档只存 id、短参数、布局、端口、运行摘要和 Asset 引用。
 - ✅ 图片、Base64、长 prompt 分析、Provider 原始响应、完整日志不进入节点或协同文档，必须通过 Asset / AiRun / 后端结果表外置。
 - ✅ 源码文件执行 300 行上限和代码最小化原则：250 行开始预警，超过 300 行不继续加功能，进入下一 Sprint 前拆分；禁止 1000 行级源码文件。
+- ✅ 阶段性开发动作、大范围修复或高风险重构前，先创建/切换工作分支并提交当前稳定快照，再继续修复。
 - ✅ tldraw 视窗剔除有价值但不能盲信；Step 1.5 必须用生产构建验证 50-100 复杂节点和图片密集画布。
 - ✅ 协作后置到 P0.5；Presence 和软锁不落 PostgreSQL，CRDT 不替代 AI Run、扣费、Asset 写入的后端权威。
 - ✅ 前端视觉保持干净白板、小卡片、轻边框，不大换皮。
@@ -167,7 +168,7 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 | 旧代码污染新实现 | legacy archive 默认不读；只在用户明确要求时打开 |
 | 缩放/拖拽/选择偏移复发 | 第一切片先做坐标精度 spike |
 | 复杂节点越做越大 | Node Runtime + Node Registry + Inspector；节点卡片只显示摘要 |
-| Spike 源码文件已过大 | 当前 `globals.css`、`useArrowPortSnapping.ts`、`CanvasSpikeToolbar.tsx` 已超过 300 行；S1.5 收口前应拆成样式分区、arrow snapping 子模块和 toolbar 子组件 |
+| Spike 源码文件变大 | 已拆分 `globals.css`、`useArrowPortSnapping.ts`、`CanvasSpikeToolbar.tsx`；后续触碰 250 行以上文件时继续提前拆分 |
 | tldraw 端口/连线不足 | Step 1.5 先验证；失败再评估 tldraw + 独立节点层或 React Flow + Konva |
 | 动态 image 输入端口漂移 | 端口使用稳定 anchor；每连入一个 image 保留一个新空端口，P0 上限 6；复测旧线是否仍指向原端口 |
 | text/image 数据类型混线 | Node Runtime 校验端口 dataType；text 端口/连线黄色，image 端口/连线绿色；非法线自动删除 |

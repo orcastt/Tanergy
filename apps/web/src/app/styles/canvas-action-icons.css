@@ -1,0 +1,235 @@
+.style-icon--spline-line::before,
+.style-icon--spline-cubic::before,
+.style-icon[class*='style-icon--arrow-kind-']::before,
+.style-icon[class*='style-icon--arrow-end-']::before,
+.style-icon[class*='style-icon--arrow-start-']::before {
+  top: 50%;
+  left: 2px;
+  width: 20px;
+  border-top: 2px solid currentColor;
+  transform: translateY(-50%);
+}
+
+.style-icon--spline-cubic::before {
+  border-top: 0;
+  border-radius: 50%;
+  border-bottom: 2px solid currentColor;
+  height: 10px;
+  transform: translateY(-70%) rotate(-8deg);
+}
+
+.style-icon--arrow-kind-arc::before {
+  border-top: 0;
+  border-radius: 50%;
+  border-bottom: 2px solid currentColor;
+  height: 11px;
+  transform: translateY(-70%) rotate(-10deg);
+}
+
+.style-icon--arrow-kind-elbow::before {
+  width: 14px;
+  height: 12px;
+  border-top: 0;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translate(1px, -70%);
+}
+
+.style-icon[class*='style-icon--arrow-end-']::after,
+.style-icon[class*='style-icon--arrow-start-']::after {
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border-top: 2px solid currentColor;
+  border-right: 2px solid currentColor;
+  content: '';
+}
+
+.style-icon--arrow-end-arrow::after,
+.style-icon--arrow-end-triangle::after {
+  right: 1px;
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.style-icon--arrow-start-arrow::after {
+  left: 1px;
+  transform: translateY(-50%) rotate(-135deg);
+}
+
+.style-icon--arrow-end-triangle::after {
+  border-radius: 1px;
+}
+
+.style-icon--arrow-end-none::after,
+.style-icon--arrow-start-none::after {
+  display: none;
+}
+
+.style-action-icon {
+  position: relative;
+  display: block;
+  width: 24px;
+  height: 22px;
+}
+
+.style-action-icon::before,
+.style-action-icon::after {
+  position: absolute;
+  content: '';
+}
+
+.style-action-icon[class*='align-']::before {
+  background: currentColor;
+  border-radius: 999px;
+  box-shadow: 0 7px 0 currentColor, 0 14px 0 currentColor;
+  height: 2px;
+  top: 3px;
+  width: 14px;
+}
+
+.style-action-icon[class*='align-']::after {
+  background: currentColor;
+  height: 20px;
+  top: 1px;
+  width: 2px;
+}
+
+.style-action-icon--align-left::before,
+.style-action-icon--align-top::before,
+.style-action-icon--align-bottom::before {
+  left: 6px;
+}
+
+.style-action-icon--align-left::after {
+  left: 2px;
+}
+
+.style-action-icon--align-center-x::before,
+.style-action-icon--align-center-y::before {
+  left: 5px;
+}
+
+.style-action-icon--align-center-x::after {
+  left: 11px;
+}
+
+.style-action-icon--align-right::before {
+  right: 6px;
+}
+
+.style-action-icon--align-right::after {
+  right: 2px;
+}
+
+.style-action-icon--align-top::after,
+.style-action-icon--align-bottom::after {
+  height: 2px;
+  left: 2px;
+  width: 20px;
+}
+
+.style-action-icon--align-top::after {
+  top: 2px;
+}
+
+.style-action-icon--align-bottom::after {
+  bottom: 2px;
+  top: auto;
+}
+
+.style-action-icon--align-center-y::after {
+  height: 2px;
+  left: 2px;
+  top: 10px;
+  width: 20px;
+}
+
+.style-action-icon[class*='layer-']::before,
+.style-action-icon[class*='layer-']::after {
+  width: 13px;
+  height: 10px;
+  border: 2px solid currentColor;
+  border-radius: 3px;
+}
+
+.style-action-icon[class*='layer-']::before {
+  left: 3px;
+  top: 3px;
+}
+
+.style-action-icon[class*='layer-']::after {
+  bottom: 3px;
+  right: 3px;
+  background: #f7f7f7;
+}
+
+.style-action-icon--layer-front::after,
+.style-action-icon--layer-up::after {
+  z-index: 1;
+}
+
+.style-action-icon--layer-back::before,
+.style-action-icon--layer-down::before {
+  z-index: 1;
+}
+
+.style-action-icon--duplicate::before,
+.style-action-icon--duplicate::after {
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-radius: 4px;
+}
+
+.style-action-icon--duplicate::before {
+  bottom: 3px;
+  left: 3px;
+}
+
+.style-action-icon--duplicate::after {
+  right: 3px;
+  top: 3px;
+  background: #f7f7f7;
+}
+
+.style-action-icon--delete::before {
+  top: 7px;
+  left: 6px;
+  width: 13px;
+  height: 11px;
+  border: 2px solid currentColor;
+  border-top: 0;
+  border-radius: 0 0 3px 3px;
+}
+
+.style-action-icon--delete::after {
+  top: 3px;
+  left: 5px;
+  width: 15px;
+  border-top: 2px solid currentColor;
+  box-shadow: 5px -3px 0 -1px currentColor;
+}
+
+.style-action-icon--stretch-x::before,
+.style-action-icon--stretch-y::before {
+  left: 4px;
+  top: 4px;
+  width: 14px;
+  height: 12px;
+  border: 2px dashed currentColor;
+  border-radius: 3px;
+}
+
+.style-action-icon--stretch-x::after {
+  top: 10px;
+  left: 1px;
+  width: 22px;
+  border-top: 2px solid currentColor;
+}
+
+.style-action-icon--stretch-y::after {
+  top: 1px;
+  left: 11px;
+  height: 20px;
+  border-left: 2px solid currentColor;
+}
