@@ -32,6 +32,7 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 | 技术架构 | `ARCH.md` | 正式 ARCH：技术栈、目录、模块、API、安全、部署 |
 | 总开发路线 | `dev-plans/web-collaborative-canvas-pivot.md` | 当前 P0 分阶段路线图 |
 | 详细开发计划 | `dev-plans/web-alpha-detailed-development-plan.md` | Alpha 逐 Sprint 执行计划、分工、文件范围、验收标准 |
+| AI 接班交接 | `dev-plans/ai-shift-handoff-2026-04-29.md` | 半天接班计划、GLM 执行边界、手测清单、Codex 回来后的复核清单 |
 | 海外成本/增长预测 | `dev-plans/overseas-cost-growth-forecast.md` | 海外部署成本、用户量、社媒增长、AI 单位经济预测 |
 | 旧代码归档 | `legacy/old-tangent-desktop-2026-04-29/` | 旧桌面/Admin/backend/frontend 已隔离，默认不要读 |
 
@@ -194,4 +195,4 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 
 ## 下一步
 
-打开 `http://localhost:3000/spikes/canvas`，从顶部插入菜单添加五类节点、S1.5 graph 或 60 node stress，手测 Prompt / Image Gen / Image Gen 4 / Analysis / Image、轻量 payload、动态 image 输入端口、text/image 类型连线、连线 `−` 断开、左侧 Inspector、自动布局、Merge Capture 本地预览和压力表现。代码侧下一步补图片密集压力与必要的粘贴降采样策略。
+临时接班 AI 先读 `dev-plans/ai-shift-handoff-2026-04-29.md`，按 Round 0-2 做安全检查、基线验证和 S1.5 手测记录；只修 S1.5 阻塞问题，不做真实 AI API、后端、依赖或大重构。Codex 回来后按该交接计划复核 git、质量闸门、文件行数、手测结果和任何 GLM 改动。
