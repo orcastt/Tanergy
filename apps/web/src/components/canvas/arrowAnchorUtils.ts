@@ -21,7 +21,9 @@ const triangleAnchors: Anchor[] = [
 export function getCandidateAnchors(shape: TLShape): Anchor[] | null {
   if (shape.type === 'arrow' || shape.type === 'line' || shape.type === 'draw') return null
 
-  if (shape.type === 'node_card') return getNodePortAnchors(shape as NodeCardShape)
+  if (shape.type === 'node_card') {
+    return getNodePortAnchors(shape as NodeCardShape).map(({ x, y }) => ({ x, y }))
+  }
 
   if (shape.type === 'geo') {
     const geo = shape.props.geo

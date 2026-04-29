@@ -15,16 +15,33 @@ export function NodePortDot({ getEditorPagePoint, port, shape }: NodePortDotProp
   const [showTooltip, setShowTooltip] = useState(false)
   const connectingFrom = usePortConnectionStore((state) => state.connectingFrom)
   const storeStart = usePortConnectionStore((state) => state.start)
-  const storeCancel = usePortConnectionStore((state) => state.cancel)
   const setMouseScreenPoint = usePortConnectionStore((state) => state.setMouseScreenPoint)
 
   const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     event.stopPropagation()
     event.preventDefault()
-    if (port.direction !== 'out') return
+  }, [])
 
+  const handleClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    event.stopPropagation()
+    event.preventDefault()
     const pagePoint = getPortPagePoint(getEditorPagePoint, shape, port)
     if (!pagePoint) return
+
+    if (connectingFrom && port.direction === 'in') {
+      window.dispatchEvent(new CustomEvent('port:complete', {
+        detail: {
+          from: connectingFrom,
+          targetPortId: port.id,
+          targetScreenPoint: { x: event.clientX, y: event.clientY },
+          targetShapeId: shape.id,
+        },
+      }))
+      usePortConnectionStore.getState().cancel()
+      return
+    }
+
+    if (port.direction !== 'out') return
 
     storeStart({
       pagePoint,
@@ -34,26 +51,7 @@ export function NodePortDot({ getEditorPagePoint, port, shape }: NodePortDotProp
       shapeId: shape.id,
     })
     setMouseScreenPoint({ x: event.clientX, y: event.clientY })
-
-    const onMove = (moveEvent: PointerEvent) => {
-      setMouseScreenPoint({ x: moveEvent.clientX, y: moveEvent.clientY })
-    }
-
-    const onUp = (upEvent: PointerEvent) => {
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
-      window.dispatchEvent(new CustomEvent('port:complete', {
-        detail: {
-          from: usePortConnectionStore.getState().connectingFrom,
-          targetScreenPoint: { x: upEvent.clientX, y: upEvent.clientY },
-        },
-      }))
-      storeCancel()
-    }
-
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onUp)
-  }, [getEditorPagePoint, port, setMouseScreenPoint, shape, storeCancel, storeStart])
+  }, [connectingFrom, getEditorPagePoint, port, setMouseScreenPoint, shape, storeStart])
 
   return (
     <div
@@ -65,6 +63,7 @@ export function NodePortDot({ getEditorPagePoint, port, shape }: NodePortDotProp
       data-port-type={port.dataType}
       data-shape-id={shape.id}
       data-type={port.dataType}
+      onClick={handleClick}
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
       onPointerDown={handlePointerDown}

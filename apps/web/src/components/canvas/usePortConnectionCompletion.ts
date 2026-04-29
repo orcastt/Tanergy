@@ -93,8 +93,11 @@ function createConnectionArrow(
       x: sourcePagePoint.x,
       y: sourcePagePoint.y,
       props: {
+        bend: getArrowBend(sourcePagePoint, targetPagePoint),
         color,
+        dash: 'solid',
         end: { x: targetPagePoint.x - sourcePagePoint.x, y: targetPagePoint.y - sourcePagePoint.y },
+        kind: 'arc',
         start: { x: 0, y: 0 },
       },
     })
@@ -113,6 +116,12 @@ function createConnectionArrow(
       type: 'arrow',
     })
   })
+}
+
+function getArrowBend(sourcePagePoint: { x: number; y: number }, targetPagePoint: { x: number; y: number }) {
+  const direction = targetPagePoint.y >= sourcePagePoint.y ? 1 : -1
+  const distance = Math.hypot(targetPagePoint.x - sourcePagePoint.x, targetPagePoint.y - sourcePagePoint.y)
+  return Math.min(Math.max(distance * 0.08, 18), 42) * direction
 }
 
 function getConnectionTarget(editor: Editor, detail: CompleteDetail, from: ConnectionFrom): PortTarget | null {

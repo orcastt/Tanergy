@@ -164,3 +164,29 @@ git diff --check
 3. text → image 或 image → text：应拒绝创建。
 4. Image Gen / Image Gen 4 的 image 输入连入后，应自动保留一个新的空 image 输入端口。
 5. 鼠标靠近 node-node 连线中点，应出现 `−`，点击后删除连线。
+
+### 7.1 Codex Follow-up 2 — Click-to-connect
+
+用户复测发现 drag-to-connect 不够丝滑，且页面报错：
+
+```text
+At binding(type = arrow).props.normalizedAnchor.dataType:
+Unexpected property
+```
+
+根因：
+
+- `getCandidateAnchors()` 对 `node_card` 返回了完整 `NodePortAnchor`，其中包含 `dataType`、`direction`、`id`、`label`。
+- tldraw `arrow` binding 的 `normalizedAnchor` schema 只允许 `{ x, y }`，当 arrow snapping 把完整端口对象写进 binding 时会触发校验崩溃。
+- 原交互是 pointerdown → pointerup 的拖拽式连接，不符合用户期望的 React Flow-like click-to-connect。
+
+已修复：
+
+- `arrowAnchorUtils.ts` 只向 tldraw binding 写入干净的 `{ x, y }` anchor。
+- `NodePortDot.tsx` 改为：点击 output 端口开始连接；点击 input 端口完成连接；点击新的 output 端口会重启连接。
+- `CanvasConnectionLine.tsx` 负责全局 mousemove / Esc / 空白点击取消，并显示跟随鼠标的 Bezier 曲线预览。
+- `usePortConnectionCompletion.ts` 生成 clean solid arc arrow，仍使用 tldraw arrow binding，因此节点移动后连线会跟随。
+
+注意：
+
+- 如果浏览器中已经存过旧的非法 binding，本地 tldraw 数据可能仍会报错；需要在错误弹窗中点击 `Reset data` 清掉本地旧画布数据后再测。
