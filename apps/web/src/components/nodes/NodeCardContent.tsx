@@ -1,12 +1,11 @@
 'use client'
 
-import { useCallback, useState } from 'react'
 import type { JsonValue } from '@tldraw/utils'
 import type { NodeCardShape } from '@/types/nodeCardShape'
-import type { JsonObject, NodeRuntimeSummary, ResolvedNodePort } from '@/types/nodeRuntime'
+import type { JsonObject, NodeRuntimeSummary } from '@/types/nodeRuntime'
 import { getNodeDefinition, getResolvedNodePorts } from '@/features/node-runtime/registry'
 import { auditNodePayload } from '@/features/node-runtime/payloadAudit'
-import { usePortConnectionStore } from '@/components/canvas/portConnectionStore'
+import { NodePortDot } from './NodePortDot'
 
 type NodeCardContentProps = {
   getEditorPagePoint: (localX: number, localY: number) => { x: number; y: number } | null
@@ -35,11 +34,11 @@ export function NodeCardContent({ getEditorPagePoint, onDataChange, onRunMock, s
     <div className={`node-card node-card--${shape.props.nodeType}`}>
       <div className="node-card__ports">
         {ports.map((port) => (
-          <PortDot
+          <NodePortDot
             getEditorPagePoint={getEditorPagePoint}
             key={port.id}
             port={port}
-            shapeId={shape.id}
+            shape={shape}
           />
         ))}
       </div>
@@ -195,82 +194,6 @@ function ImagePreview({ data }: { data: JsonObject }) {
       <div className="node-card__image-frame">
         <span>{String(data.title ?? 'Image')}</span>
       </div>
-    </div>
-  )
-}
-
-type PortDotProps = {
-  getEditorPagePoint: (localX: number, localY: number) => { x: number; y: number } | null
-  port: ResolvedNodePort
-  shapeId: string
-}
-
-function PortDot({ getEditorPagePoint, port, shapeId }: PortDotProps) {
-  const [showTooltip, setShowTooltip] = useState(false)
-  const connectingFrom = usePortConnectionStore((s) => s.connectingFrom)
-  const storeStart = usePortConnectionStore((s) => s.start)
-  const storeCancel = usePortConnectionStore((s) => s.cancel)
-  const setMouseScreenPoint = usePortConnectionStore((s) => s.setMouseScreenPoint)
-
-  const handlePointerDown = useCallback((event: React.PointerEvent) => {
-    event.stopPropagation()
-    event.preventDefault()
-    const isOutput = port.direction === 'out'
-    if (!isOutput) return
-
-    const pagePoint = getEditorPagePoint(event.nativeEvent.offsetX, event.nativeEvent.offsetY)
-    if (!pagePoint) return
-
-    storeStart({
-      pagePoint,
-      portDataType: port.dataType,
-      portDirection: port.direction,
-      portId: port.id,
-      shapeId,
-    })
-
-    const onMove = (e: PointerEvent) => {
-      setMouseScreenPoint({ x: e.clientX, y: e.clientY })
-    }
-    const onUp = (e: PointerEvent) => {
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
-      const target = document.elementFromPoint(e.clientX, e.clientY)
-      const targetPort = target?.closest('[data-port-id]') as HTMLElement | null
-      const targetPortId = targetPort?.dataset.portId
-      const targetShapeId = targetPort?.dataset.shapeId
-      if (targetPortId && targetShapeId && targetShapeId !== shapeId) {
-        window.dispatchEvent(new CustomEvent('port:complete', {
-          detail: {
-            from: usePortConnectionStore.getState().connectingFrom,
-            targetPagePoint: getEditorPagePoint(0, 0),
-            targetPortId,
-            targetShapeId,
-          },
-        }))
-      }
-      storeCancel()
-    }
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onUp)
-  }, [getEditorPagePoint, port, setMouseScreenPoint, shapeId, storeCancel, storeStart])
-
-  return (
-    <div
-      className="node-card__port"
-      data-active={connectingFrom?.portId === port.id ? 'true' : undefined}
-      data-direction={port.direction}
-      data-port-id={port.id}
-      data-shape-id={shapeId}
-      data-type={port.dataType}
-      onPointerDown={handlePointerDown}
-      onMouseEnter={() => setShowTooltip(true)}
-      onMouseLeave={() => setShowTooltip(false)}
-      style={{ top: `${port.anchorY * 100}%` }}
-    >
-      {showTooltip ? (
-        <span className="node-card__port-tooltip">{port.dataType}</span>
-      ) : null}
     </div>
   )
 }

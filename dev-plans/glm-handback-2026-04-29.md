@@ -132,3 +132,35 @@ GLM 未触碰以下边界：
 1. 如果连线复测通过 → 建议创建 checkpoint commit，然后进入正式五节点 UI 链路
 2. 如果连线有问题 → 优先修复连线，这是 S1.5 的核心裁决项
 3. 无论结果 → 建议将 `NodeCardContent.tsx`（294 行）拆分端口相关代码到独立文件
+
+---
+
+## 7. Codex Follow-up — Port Connection Fix
+
+**时间**: 2026-04-29
+
+结论：端口连线失败暂不判定为 tldraw 框架不可行，当前更像实现层问题。
+
+已修复：
+
+- 将端口起点从 `event.nativeEvent.offsetX/Y` 改为 `shape.props.w/h + port.anchorY` 计算，避免把端口局部坐标误当作节点局部坐标。
+- 将目标端口识别从单纯 `document.elementFromPoint()` 改为“DOM 精确命中 + 最近输入端口几何命中”双路径，降低 tldraw canvas / overlay / pointer 事件干扰。
+- 拆出 `components/nodes/NodePortDot.tsx`，让 `NodeCardContent.tsx` 从 294 行降到 217 行。
+- 保留 tldraw arrow + binding 作为真实连线载体，因此断连按钮、类型颜色和现有连接校验可继续复用。
+
+已通过：
+
+```bash
+npm -C apps/web run lint
+npm -C apps/web run typecheck
+npm -C apps/web run build
+git diff --check
+```
+
+待手测：
+
+1. Prompt `text_out` → Image Gen `text_in`：应创建黄色连线。
+2. Image `image_out` → Image Gen / Analysis `image_in`：应创建绿色连线。
+3. text → image 或 image → text：应拒绝创建。
+4. Image Gen / Image Gen 4 的 image 输入连入后，应自动保留一个新的空 image 输入端口。
+5. 鼠标靠近 node-node 连线中点，应出现 `−`，点击后删除连线。

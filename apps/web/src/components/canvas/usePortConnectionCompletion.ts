@@ -5,7 +5,7 @@ import { createShapeId, type Editor, type TLArrowShape, type TLShapeId } from 't
 import type { NodeCardShape } from '@/types/nodeCardShape'
 import { validateNodeConnection, getArrowColorForDataType } from '@/features/node-runtime/connectionRules'
 import { getResolvedNodePorts } from '@/features/node-runtime/registry'
-import type { JsonObject, ResolvedNodePort } from '@/types/nodeRuntime'
+import type { JsonObject, NodePortDataType, ResolvedNodePort } from '@/types/nodeRuntime'
 
 type ConnectionFrom = {
   pagePoint: { x: number; y: number }
@@ -16,10 +16,16 @@ type ConnectionFrom = {
 }
 
 type CompleteDetail = {
-  from: ConnectionFrom
-  targetPagePoint: { x: number; y: number }
-  targetPortId: string
-  targetShapeId: string
+  from: ConnectionFrom | null
+  targetPortId?: string
+  targetScreenPoint?: { x: number; y: number }
+  targetShapeId?: string
+}
+
+type PortTarget = {
+  pagePoint: { x: number; y: number }
+  port: ResolvedNodePort
+  shape: NodeCardShape
 }
 
 export function usePortConnectionCompletion(editor: Editor | null) {
@@ -35,31 +41,27 @@ export function usePortConnectionCompletion(editor: Editor | null) {
 }
 
 function completeConnection(editor: Editor, detail: CompleteDetail) {
-  const { from, targetPortId, targetShapeId } = detail
+  const { from } = detail
+  if (!from) return
+
   const sourceShape = editor.getShape<NodeCardShape>(from.shapeId as TLShapeId)
-  const targetShape = editor.getShape<NodeCardShape>(targetShapeId as TLShapeId)
-  if (!sourceShape || !targetShape) return
+  if (!isNodeCard(sourceShape)) return
 
   const sourceData = asJsonObject(sourceShape.props.data)
   const sourcePorts = getResolvedNodePorts(sourceShape.props.nodeType, sourceData)
   const sourcePort = sourcePorts.find((p) => p.id === from.portId)
   if (!sourcePort) return
 
-  const targetData = asJsonObject(targetShape.props.data)
-  const targetPorts = getResolvedNodePorts(targetShape.props.nodeType, targetData)
-  const targetPort = targetPorts.find((p) => p.id === targetPortId)
-  if (!targetPort) return
+  const target = getConnectionTarget(editor, detail, from)
+  if (!target) return
 
-  const result = validateNodeConnection(sourceShape, sourcePort, targetShape, targetPort)
+  const result = validateNodeConnection(sourceShape, sourcePort, target.shape, target.port)
   if (!result.valid || !result.dataType) return
 
-  const targetTransform = editor.getShapePageTransform(targetShape.id)
-  if (!targetTransform) return
-  const targetAnchorX = targetPort.direction === 'in' ? 0 : targetShape.props.w
-  const targetAnchorY = targetShape.props.h * targetPort.anchorY
-  const computedTargetPage = targetTransform.applyToPoint({ x: targetAnchorX, y: targetAnchorY })
+  const sourcePagePoint = getPortPagePoint(editor, sourceShape, sourcePort)
+  if (!sourcePagePoint) return
 
-  createConnectionArrow(editor, sourceShape, sourcePort, from.pagePoint, targetShape, targetPort, computedTargetPage, result.dataType)
+  createConnectionArrow(editor, sourceShape, sourcePort, sourcePagePoint, target.shape, target.port, target.pagePoint, result.dataType)
 }
 
 function createConnectionArrow(
@@ -111,6 +113,88 @@ function createConnectionArrow(
       type: 'arrow',
     })
   })
+}
+
+function getConnectionTarget(editor: Editor, detail: CompleteDetail, from: ConnectionFrom): PortTarget | null {
+  const exactTarget = getExactDomTarget(editor, detail)
+  if (exactTarget) return exactTarget
+  if (!detail.targetScreenPoint) return null
+
+  const pointerPagePoint = editor.screenToPage(detail.targetScreenPoint)
+  return findNearestInputPort(editor, pointerPagePoint, {
+    sourceShapeId: from.shapeId,
+    sourceType: from.portDataType,
+  })
+}
+
+function getExactDomTarget(editor: Editor, detail: CompleteDetail): PortTarget | null {
+  const targetFromDetail = getPortTargetFromIds(editor, detail.targetShapeId, detail.targetPortId)
+  if (targetFromDetail) return targetFromDetail
+  if (!detail.targetScreenPoint) return null
+
+  const element = document.elementFromPoint(detail.targetScreenPoint.x, detail.targetScreenPoint.y)
+  const portElement = element?.closest('[data-port-id]') as HTMLElement | null
+  if (!portElement || portElement.dataset.portDirection !== 'in') return null
+
+  return getPortTargetFromIds(editor, portElement.dataset.shapeId, portElement.dataset.portId)
+}
+
+function getPortTargetFromIds(editor: Editor, shapeId?: string, portId?: string): PortTarget | null {
+  if (!shapeId || !portId) return null
+  const shape = editor.getShape<NodeCardShape>(shapeId as TLShapeId)
+  if (!isNodeCard(shape)) return null
+
+  const data = asJsonObject(shape.props.data)
+  const port = getResolvedNodePorts(shape.props.nodeType, data).find((item) => item.id === portId)
+  if (!port || port.direction !== 'in') return null
+
+  const pagePoint = getPortPagePoint(editor, shape, port)
+  return pagePoint ? { pagePoint, port, shape } : null
+}
+
+function findNearestInputPort(
+  editor: Editor,
+  pointerPagePoint: { x: number; y: number },
+  options: { sourceShapeId: string; sourceType: NodePortDataType }
+): PortTarget | null {
+  const maxDistance = 40 / editor.getZoomLevel()
+  const maxDistanceSquared = maxDistance * maxDistance
+  let bestTarget: PortTarget | null = null
+  let bestDistance = Infinity
+
+  for (const shape of [...editor.getCurrentPageShapesSorted()].reverse()) {
+    if (!isNodeCard(shape) || shape.id === options.sourceShapeId) continue
+
+    const data = asJsonObject(shape.props.data)
+    const ports = getResolvedNodePorts(shape.props.nodeType, data).filter((port) => port.direction === 'in')
+    for (const port of ports) {
+      const pagePoint = getPortPagePoint(editor, shape, port)
+      if (!pagePoint) continue
+
+      const distance = (pagePoint.x - pointerPagePoint.x) ** 2 + (pagePoint.y - pointerPagePoint.y) ** 2
+      const typePenalty = port.dataType === options.sourceType ? 0 : maxDistanceSquared
+      const weightedDistance = distance + typePenalty
+      if (distance <= maxDistanceSquared && weightedDistance < bestDistance) {
+        bestDistance = weightedDistance
+        bestTarget = { pagePoint, port, shape }
+      }
+    }
+  }
+
+  return bestTarget
+}
+
+function getPortPagePoint(editor: Editor, shape: NodeCardShape, port: ResolvedNodePort) {
+  const transform = editor.getShapePageTransform(shape.id)
+  if (!transform) return null
+  return transform.applyToPoint({
+    x: port.direction === 'out' ? shape.props.w : 0,
+    y: shape.props.h * port.anchorY,
+  })
+}
+
+function isNodeCard(shape: unknown): shape is NodeCardShape {
+  return Boolean(shape && typeof shape === 'object' && 'type' in shape && shape.type === 'node_card')
 }
 
 function asJsonObject(value: unknown): JsonObject {

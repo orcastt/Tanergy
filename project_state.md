@@ -7,7 +7,7 @@
 
 ## 当前阶段
 
-**阶段**: Web AI 图像画布重启 — S1.5 复杂节点与架构裁决开发中；GLM 班次已完成端口连线交互重写、Node Picker 分类面板、Selection Toolbar 浮动工具栏、Run UI 优化和节点自适应高度
+**阶段**: Web AI 图像画布重启 — S1.5 复杂节点与架构裁决开发中；GLM 班次已完成端口连线交互重写、Node Picker 分类面板、Selection Toolbar 浮动工具栏、Run UI 优化和节点自适应高度；Codex 已修复端口 drag-to-connect 的坐标与命中逻辑，待用户手测确认
 
 **核心目标**: 用全新、干净的 Web 项目重做 TANGENT。P0 只跑通：
 
@@ -19,7 +19,7 @@ Image Node → Canvas Markup → Merge Capture → New Image Node
 Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Image → 自动连线 → 用户确认后 Run
 ```
 
-**下一步**: 在 `http://localhost:3000/spikes/canvas` 复测 GLM 班次的改动：端口 drag-to-connect 连线（从输出端口按住拖到输入端口释放）、双击画布弹出分类 Node Picker、选中 2+ 对象显示浮动工具栏（Screenshot + 对齐）、Run/Stop 按钮、节点内容自适应高度。确认连线颜色和校验正确后，标记 S1.5 通过或继续修复阻塞项。
+**下一步**: 在 `http://localhost:3000/spikes/canvas` 复测端口 drag-to-connect 连线：Prompt 右侧 text 输出拖到 Image Gen 左侧 text 输入应出现黄色连接；Image 右侧 image 输出拖到 Image Gen / Analysis 左侧 image 输入应出现绿色连接；非法类型连接应被拒绝；连线中点 `−` 应可断开。再复测双击画布 Node Picker、选中 2+ 对象 Selection Toolbar、Run/Stop 按钮和节点内容自适应高度。
 
 ---
 
@@ -88,6 +88,7 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 - ✅ 整合 Gemini 节点/协同/算力复盘：采纳轻量节点、Asset 引用、React 组合节点、Presence/软锁、预算熔断、R2/缩略图思路；修正“视窗剔除不会卡”“CRDT 等于最后写入”“$100/月可每天 20,000 张图”等过乐观口径。
 - ✅ S1.5 已推进到五类节点原型：新增 Prompt / Image Gen / Image Gen 4 / Analysis / Image 注册表、轻量 payload audit、`node_card` custom shape、动态 image 输入端口、text/image 端口和连线颜色、连线中点 `−` 断开按钮、左侧 Node Inspector、node-node 连接规则校验、mock planner graph、单节点插入入口、60 node stress 入口和 Merge Capture 本地预览。
 - ✅ GLM 班次 2026-04-29：重写端口连线为 drag-to-connect（pointerdown→全局 pointermove→pointerup）；新增分类 Node Picker（双击画布弹出，Text/Image 分组）；新增 Selection Toolbar 浮动工具栏（替换右下角 Merge Capture，Screenshot + 对齐）；Run 按钮移至节点标题栏并加 Stop 态；去掉 IDLE/SUCCEEDED 状态文字；节点默认高度增大以自适应内容；节点冗余文字精简。
+- ✅ Codex 复核 2026-04-29：端口连线阻塞不是 tldraw 架构失败，而是实现层问题；已把端口起点从 DOM `offsetX/Y` 改为节点尺寸 + port anchor 的 page 坐标，并把目标命中从脆弱的 `elementFromPoint()` 改为 DOM 精确命中 + 几何最近输入端口兜底；已拆出 `NodePortDot.tsx`，避免 `NodeCardContent.tsx` 逼近 300 行。
 
 ---
 
@@ -113,7 +114,7 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
    - Merge Capture 最小验证。
    - 50-100 节点压力测试。
    - 外部图片 5-10 张粘贴/导入压力测试。
-   - 当前状态：开发中；五类节点、Inspector、动态端口、类型连线颜色、端口校验、断连按钮、mock graph、60 节点入口已实现；GLM 班次重写了端口连线交互（drag-to-connect）、Node Picker 分类面板、Selection Toolbar 浮动工具栏、Run UI 优化和节点自适应高度；**连线颜色和校验逻辑待用户复测确认**；图片密集压力测试仍未完成。
+   - 当前状态：开发中；五类节点、Inspector、动态端口、类型连线颜色、端口校验、断连按钮、mock graph、60 节点入口已实现；GLM 班次重写了端口连线交互（drag-to-connect）、Node Picker 分类面板、Selection Toolbar 浮动工具栏、Run UI 优化和节点自适应高度；Codex 已修复端口起点坐标和目标端口几何命中；**连线颜色、校验逻辑、断连按钮仍待用户手测确认**；图片密集压力测试仍未完成。
 
 3. **五类节点 UI 链路**
    - 双击画布调用出节点面板，或者工具栏增加一个加号，然后调用出节点面板
