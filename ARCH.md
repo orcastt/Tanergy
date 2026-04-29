@@ -1,8 +1,8 @@
 # TANGENT Web AI Image Canvas — Architecture Decision Document
 
-**版本**: v0.2
+**版本**: v0.5
 **日期**: 2026-04-29
-**状态**: Web 重启方向正式架构草案，开发前基线
+**状态**: Web 重启方向正式架构草案，tldraw-first，P0 节点收敛为 Prompt / Image Gen / Image Gen 4 / Analysis / Image，新增动态 image 输入端口、类型连线颜色和轻量节点数据原则
 **对应 PRD**: `PRD.md`
 
 ---
@@ -39,6 +39,7 @@
 | Board 元数据 | PostgreSQL | 用户/Workspace |
 | 画布文档状态 | P0 可存在 PostgreSQL JSON；协作后进入协作文档存储 | 用户/Workspace |
 | 生成图片 | S3-compatible object storage | 用户/Workspace |
+| 节点重型结果 | PostgreSQL / object storage / cache | 用户/Workspace；通过 id 引用 |
 | API 调用日志 | PostgreSQL | 平台运营数据，含用户关联 |
 | Provider API Key | 服务端环境变量或密钥管理 | 平台，不属于用户 |
 
@@ -87,10 +88,14 @@ P0 只需要记录 API 成本和调用日志，避免先做复杂订阅系统。
 | 节点拖动响应 | 60fps 目标；明显不卡顿 |
 | 生图等待 | 取决于 Provider；UI 必须立刻进入 running 状态 |
 | 单图上传大小 | P0 最大 20MB |
+| 画布粘贴图片 | P0 需要限制单图大小和长边；大量外部图片进入画布前优先压缩/降采样 |
+| 复杂 React 节点 | Step 1.5 必须验证 50-100 个节点；不能只依赖画布库视窗剔除的理论能力 |
 | Board 对象数量 | P0 目标 500 objects 内稳定 |
 | Merge Capture | 选区最长边建议 <= 4096px，超出提示降采样 |
 
 ### 1.7 成本上限
+
+详细海外部署、用户量、社媒增长、AI 单位经济预测见 `dev-plans/overseas-cost-growth-forecast.md`。
 
 | 项 | P0 预算 |
 |----|---------|
@@ -171,7 +176,11 @@ P0 只需要记录 API 成本和调用日志，避免先做复杂订阅系统。
 |------|------|----------|
 | Web 框架 | Next.js + React + TypeScript | 适合 Web SaaS、路由、部署、未来 OAuth/SEO |
 | Canvas | tldraw SDK 优先 | 白板、图片、画笔、箭头、自定义 shape 更贴近目标 |
-| 节点 UI | tldraw custom shapes 或独立轻节点层 | P0 需要 Text / Multi Generate / Image / Image Editor |
+| 节点 UI | tldraw custom shapes + React HTMLContainer | P0 需要 Prompt / Image Gen / Image Gen 4 / Analysis / Image；复杂表单不全部塞进节点 |
+| Node Runtime | 自研轻量运行时 | 管节点类型、端口、参数 schema、连接规则、运行状态映射 |
+| Node Registry | TypeScript 注册表 | 每种节点声明 `type`、`version`、`ports`、`paramsSchema`、`renderComponent`、`validate`、`migrate` |
+| Inspector | React 左侧侧边栏 | 编辑复杂节点参数，降低节点卡片膨胀风险，并为右侧 AI Chat 预留空间 |
+| Layout Engine | P0 手写 horizontal layout；后续 Dagre/ELK | AI Chat 自动创建节点时计算 x/y，避免重叠 |
 | 状态管理 | Zustand | 当前项目已使用，轻量，可控 |
 | UI | Tailwind CSS + Radix UI | 当前设计体系一致，易维护 |
 | 后端 | FastAPI | 当前已有 backend，可复用认证、Provider、Credits、Logs |
@@ -185,7 +194,7 @@ P0 只需要记录 API 成本和调用日志，避免先做复杂订阅系统。
 | 技术 | 原因 |
 |------|------|
 | Tauri | 当前方向不做桌面端 |
-| React Flow 作为唯一画布 | 更偏工程节点流，涂鸦/图片/白板/截图合并成本高 |
+| React Flow 作为默认主画布 | 更偏工程节点流，涂鸦/图片/白板/截图合并成本高；仅作为 Step 1.5 失败后的 fallback |
 | 完整 Paper.js 复制 | Tanva 技术债较多，不照搬 |
 | Electron | 不做桌面端 |
 | Supabase 全量替换 | 当前已有 FastAPI/PostgreSQL，不在 P0 换栈 |
@@ -201,12 +210,26 @@ P0 只需要记录 API 成本和调用日志，避免先做复杂订阅系统。
 - 画笔/橡皮。
 - 选中对象离屏导出。
 - 缩放/拖动/框选/连线无坐标偏移。
+- 复杂节点内部输入、下拉、按钮、滚轮不误触画布。
+- 简单端口/Handle 连线和连接规则校验。
+- AI Chat 插入节点后的当前视野自动布局。
 
-如果失败，再评估：
+如果 Step 1.5 任一关键项失败，再评估：
 
 1. tldraw + 独立节点层。
-2. React Flow + whiteboard layer。
+2. React Flow + Konva / whiteboard layer。
 3. Paper.js 自研轻量画布。
+
+Step 1.5 的硬性裁决项：
+
+- Image Gen / Image Gen 4 复杂节点可交互。
+- 端口连线可视且可校验。
+- text / image 数据类型有不同端口和连线颜色。
+- Image Gen / Image Gen 4 的 image 输入端口可随连接数量动态增加，且旧连接不漂移。
+- 非法连线能自动断开。
+- AI Planner mock graph 能自动布局到当前 viewport。
+- Merge Capture 能输出纯净图片。
+- 50-100 个节点下拖拽、缩放无明显卡顿。
 
 ---
 
@@ -234,13 +257,19 @@ TanvasAgent/
 │           ├── components/
 │           │   ├── ui/
 │           │   ├── canvas/
+│           │   ├── chat/
+│           │   ├── inspector/
+│           │   ├── model-selector/
 │           │   ├── nodes/
 │           │   └── editor/
 │           ├── features/
 │           │   ├── auth/
 │           │   ├── boards/
 │           │   ├── canvas/
+│           │   ├── ai-chat/
 │           │   ├── ai-runs/
+│           │   ├── model-registry/
+│           │   ├── node-runtime/
 │           │   └── assets/
 │           ├── hooks/
 │           ├── services/
@@ -263,8 +292,12 @@ TanvasAgent/
 |----|------------|----------|
 | `components/ui` | 通用按钮、输入框、弹窗 | 写业务请求 |
 | `components/canvas` | 画布渲染、工具栏、坐标交互 | 调 Provider API |
+| `components/chat` | 右侧 AI Chat 面板和 composer UI | 自主执行 Provider 调用 |
+| `components/inspector` | 选中节点的详细参数面板 | 保存 Provider Key 或直接扣费 |
+| `components/model-selector` | 复用模型下拉、能力标签、禁用态 | 写死 Provider Key 或价格逻辑 |
 | `components/nodes` | 节点卡片 UI | 直接访问数据库 |
 | `features/*` | 业务流程和 hook | 写通用 UI 样式系统 |
+| `features/node-runtime` | 节点注册表、端口规则、参数校验、迁移 | 直接渲染大块 UI 或调用第三方 Provider |
 | `services` | HTTP 请求封装 | 存 React 状态 |
 | `store` | 前端状态 | 直接写复杂业务规则 |
 | `backend/services` | 服务端业务逻辑 | 返回前端组件结构 |
@@ -272,12 +305,18 @@ TanvasAgent/
 
 ### 3.3 文件大小
 
-- 单文件目标不超过 300 行。
-- 超过 300 行优先拆分：
+- 单个源码文件目标不超过 300 行，包括 `.ts`、`.tsx`、`.css`、`.py`、测试和工具脚本。
+- 250 行开始预警：如果继续加功能会超过 300 行，必须先拆分再继续加。
+- 超过 300 行不能继续承接新功能，除非本轮任务就是拆分它，或先在 dev-plan 中记录临时例外和拆分计划。
+- 禁止出现 1000 行级别源码文件；如果 spike 阶段临时产生，必须在进入下一 Sprint 前拆掉。
+- 拆分优先级：
   - UI 拆 component。
   - 业务流程拆 hook。
   - 纯函数拆 `lib`。
   - 类型拆 `types`。
+  - 样式按 feature / component 拆 CSS module 或局部样式文件，避免全局 CSS 成为垃圾桶。
+- 文档文件可以因为 PRD / ARCH / 长计划天然超过 300 行，但必须保持目录清晰；超过 500 行时优先把执行清单、历史记录、附录、手测记录拆到 `dev-plans/`、`debug-plans/` 或 `docs/`。
+- 每一轮代码更新都要遵守“最小代码原则”：新增代码先放在职责最窄的位置，不让一个文件同时承接 UI、状态、数据转换、API 调用和样式。
 
 ---
 
@@ -329,15 +368,28 @@ TanvasAgent/
 
 职责：
 
-- Text / Multi Generate / Image / Image Editor 节点类型。
+- Prompt / Image Gen / Image Gen 4 / Analysis / Image 节点类型。
+- 节点注册表：`type`、`version`、`displayName`、`ports`、`paramsSchema`、`defaultData`、`renderComponent`、`validate`、`migrate`。
+- 节点端口定义：输入/输出方向、数据类型、是否必填、是否允许多连。
+- text 端口和连线使用黄色；image 端口和连线使用绿色。
+- Image Gen / Image Gen 4 的 image 输入端口是动态端口：每个已连接 image 后保留一个新的空 image 输入端口，P0 最大 6 个。
 - 节点连接规则。
+- 非法连线即时断开和提示。
+- 鼠标靠近 node-node 连线时，中点显示 `−` 断开按钮。
 - 节点执行状态。
 - 节点自动布局。
+- 节点版本迁移，避免后续节点参数变更导致旧 Board 损坏。
+- 把服务端权威状态映射为前端可见摘要，例如 run status、asset ids、cost hint。
+- 维护节点轻量数据边界：节点和 `shape.props` 只保存 id、短参数、布局、端口、状态摘要和 Asset 引用。
+- 将反推 prompt、AI 原始响应、大图、长日志等重型数据交给后端、对象存储或 query/store 层按需加载。
 
 不负责：
 
 - 复杂工作流引擎。
 - Research / Outline / Html Formatter。
+- Provider Key。
+- 扣费、余额和 API 日志最终写入。
+- 保存 Base64 图片、完整 Provider 响应、长对话历史或大段二进制数据。
 
 ### 4.5 Image Editor 模块
 
@@ -387,12 +439,62 @@ TanvasAgent/
 
 - 接收自然语言。
 - 生成最小 graph spec。
+- 接收当前 composer 选择的 `selected_model_id`，并写入生成节点草稿。
 - 前端校验后应用到画布。
 
 不负责：
 
 - 自主执行复杂 Agent。
 - 多轮长对话记忆。
+
+### 4.9 AI Chat 模块
+
+职责：
+
+- 渲染 Canvas 右侧可收起侧边栏。
+- 管理当前 Board 的短会话消息。
+- 提供最小 composer：文本输入、模式选择、图片模型选择、图片上传入口。
+- 调用 AI Planner 并把合法 graph spec 交给 Node Runtime 应用。
+- 展开/收起时通知画布容器 resize，不能导致对象、选择框、连线漂移。
+- Chat 内输入框、滚轮、下拉阻止事件穿透到画布。
+
+不负责：
+
+- 长期聊天历史管理。
+- PDF / 视频 / 音频 / 3D 文件对话。
+- 不经用户确认的复杂自治执行。
+
+### 4.9.1 Inspector 模块
+
+职责：
+
+- 渲染左侧节点参数面板。
+- 根据 Node Registry 和 Model Registry 生成参数表单。
+- 编辑 Image Gen / Image Gen 4 的模型、尺寸、质量、比例等参数。
+- 显示能力标签、成本提示、耗时提示、错误详情。
+- 将可协同的参数变更写回 Board document。
+
+不负责：
+
+- 直接调用 Provider。
+- 自行扣费。
+- 保存本地 UI 展开状态到协同文档。
+- 替代完整 Admin 模型市场。
+
+### 4.10 Model Registry 模块
+
+职责：
+
+- 服务端维护 P0 可用图片模型清单、Provider、能力标签、参数 schema、启用状态。
+- 前端通过 API 获取模型列表，用于 Image Gen / Image Gen 4 Node 和 AI Chat composer。
+- 按模型过滤参数，例如 `quality`、`size`、`image_size`、`aspect_ratio`。
+- 后端在 AI Run 时再次校验模型是否启用、参数是否合法。
+
+不负责：
+
+- P0 完整模型市场。
+- 前端硬编码真实 Provider 线路。
+- 让普通用户配置 Provider Key。
 
 ---
 
@@ -405,8 +507,10 @@ User 1 ── * WorkspaceMembership * ── 1 Workspace
 Workspace 1 ── * Board
 Board 1 ── * Asset
 Board 1 ── * AiRun
+Board 1 ── * AiChatSession
 Board 1 ── 1 document_state(JSON)
 AiRun * ── * Asset(output)
+ModelOption 1 ── * AiRun
 ```
 
 P0 可以简化为每个 User 默认一个 personal Workspace。
@@ -475,7 +579,39 @@ P0 可以简化为每个 User 默认一个 personal Workspace。
 
 现有 backend 的 `api_call_logs` 字段可复用和扩展。
 
-### 5.6 Document State
+### 5.6 AiChatSession / AiChatMessage
+
+- `id`
+- `board_id`
+- `user_id`
+- `messages`
+- `selected_model_id`
+- `mode`
+- `created_at`
+- `updated_at`
+
+P0 可只保留当前 Board 的短历史；不做长期多会话检索。
+
+### 5.7 ModelOption
+
+- `id`
+- `provider`
+- `display_name`
+- `capabilities`
+- `parameter_schema`
+- `is_enabled`
+- `is_default`
+- `estimated_latency`
+- `cost_hint`
+
+P0 推荐至少包含：
+
+- `gpt-image-2`
+- `gemini-3.1-flash-image-preview`
+
+真实可用性以服务端返回为准，前端 disabled 不等于后端可跳过校验。
+
+### 5.8 Document State
 
 前端保存的 Board 文档结构建议：
 
@@ -483,14 +619,80 @@ P0 可以简化为每个 User 默认一个 personal Workspace。
 {
   "version": 1,
   "viewport": { "x": 0, "y": 0, "zoom": 1 },
-  "nodes": [],
-  "edges": [],
+  "nodes": [
+    {
+      "id": "gen-1",
+      "type": "image_gen_4",
+      "version": 1,
+      "position": { "x": 360, "y": 120 },
+      "size": { "width": 360, "height": 280 },
+      "ports": [
+        { "id": "text_in", "direction": "in", "dataType": "text" },
+        { "id": "image_in_1", "direction": "in", "dataType": "image" },
+        { "id": "image_out", "direction": "out", "dataType": "image" }
+      ],
+      "data": {
+        "selected_model_id": "gpt-image-2",
+        "count": 4,
+        "image_input_count": 1,
+        "aspect_ratio": "auto",
+        "resolution": "1K",
+        "quality": "low"
+      },
+      "runtime_summary": {
+        "status": "idle",
+        "last_run_id": null,
+        "result_asset_ids": []
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "source_node_id": "prompt-1",
+      "source_handle": "text_out",
+      "target_node_id": "gen-1",
+      "target_handle": "text_in",
+      "type": "text"
+    }
+  ],
   "canvasObjects": [],
+  "chat": { "activeSessionId": null },
+  "inspector": { "selectedNodeId": null },
   "updatedAt": "2026-04-29T00:00:00Z"
 }
 ```
 
 P0 不把 `blob:` / `data:` 存入此 JSON。所有图片引用必须是 `asset_id` 或远程 URL。
+
+Document State 只保存可协同、可恢复、可渲染的 Board 数据。扣费、余额、Provider 原始响应、API Key、完整日志不进入此 JSON。
+
+### 5.9 节点轻量数据原则
+
+节点是画布上的显示器和控制器，不是数据库。无论节点 UI 看起来多复杂，`shape.props`、Node Runtime document 和未来协同文档都必须保持轻量。
+
+允许进入节点 / 协同文档的数据：
+
+- `node_id`、`asset_id`、`run_id`、`model_id` 等短 id。
+- 节点位置、尺寸、端口、连线、版本号。
+- 可协同的短参数，例如 `count`、`quality`、`aspect_ratio`。
+- 运行摘要，例如 `idle/running/failed/succeeded`、`last_run_id`、`result_asset_ids`。
+- 用于渲染的安全缩略图引用或服务端授权后的短 URL。
+
+禁止进入节点 / 协同文档的数据：
+
+- Base64 图片、`blob:`、`data:`、视频、压缩包或任意二进制大对象。
+- Provider API Key、签名密钥、真实扣费余额。
+- Provider 原始响应、完整 API 调用日志、长错误堆栈。
+- 反推 prompt 的长文本结果、长聊天历史、批量图片元数据。
+
+重型数据流转规则：
+
+1. 图片上传、AI 生成、Editor 导出、Merge Capture 输出都必须先进入 Asset 层。
+2. 节点只保存 `asset_id`；展示时由前端通过后端解析为可访问 URL，隐私场景优先使用授权 URL 或不可猜测对象路径。
+3. 反推 prompt、图片分析、长日志等结果存入后端表或缓存；节点只保存 `run_id` / `result_id` 并在 UI 中按需读取。
+4. 未来多人协作时，WebSocket / CRDT 只同步轻量 diff，绝不广播大图或 Provider 原始响应。
+5. Step 1.5 压力测试必须包含“节点 props 瘦身检查”，确认 50-100 节点时 document payload 仍可控。
 
 ---
 
@@ -500,7 +702,7 @@ P0 不把 `blob:` / `data:` 存入此 JSON。所有图片引用必须是 `asset_
 
 - 渲染页面和画布。
 - 处理 pan/zoom/drag/selection。
-- 本地编辑 Text Node。
+- 本地编辑 Prompt Node。
 - 本地绘制笔迹。
 - 组织 graph spec 并提交服务端。
 - 调用自己的后端 API。
@@ -542,6 +744,30 @@ P0 不把 `blob:` / `data:` 存入此 JSON。所有图片引用必须是 `asset_
 | Image Editor 草稿 | editor store；导出后变 Asset |
 | API 请求状态 | per feature hook / query |
 | AI Chat 输入 | local component state，必要时 store |
+| 模型列表 | query cache + model registry store |
+| 当前选择图片模型 | node data / AI Chat composer state |
+| Inspector 当前 tab、展开状态 | local component state |
+
+### 7.1.1 协同状态边界
+
+多人协作进入 P0.5 时，状态必须分四类处理：
+
+| 类别 | 示例 | 存储/同步方式 |
+|------|------|---------------|
+| 协同文档状态 | 节点位置、尺寸、类型、参数、端口、连线、图片对象、笔迹 | tldraw/sync 或协作文档层 + 持久化快照 |
+| Presence 状态 | 光标、当前选区、谁正在编辑某节点 | presence 通道；不写 PostgreSQL document_state |
+| 服务端权威状态 | AI run 状态、扣费、余额、API 日志、Provider 响应 | 后端数据库；前端只订阅/刷新摘要 |
+| 本地 UI 状态 | dropdown open、hover、modal、Inspector tab、输入法草稿 | React local state / Zustand local slice |
+
+原则：协同文档可以同步“用户看得到且应该共享”的节点参数和结果引用；不能同步 API Key、扣费结果、真实余额或 Provider 原始密钥相关信息。
+
+协同冲突处理原则：
+
+- Presence 用于多人光标、选区、正在编辑哪个节点、软锁提示，不能落 PostgreSQL，也不能作为权限依据。
+- 软锁只解决 UI 防碰撞，例如用户 A 正在编辑某个节点参数时，用户 B 看到占用提示或控件禁用；它不是安全锁，后端仍必须校验权限和状态。
+- CRDT / Yjs / tldraw sync 可以保证文档最终一致，但不等于所有业务冲突都自动正确；模型参数、运行状态、结果写入仍需要 Node Runtime 和后端定义合并/覆盖规则。
+- AI Run、扣费、Asset 写入必须以服务端为权威；协同文档只接收服务端返回的摘要和引用。
+- 协作文档快照使用 debounce / 定时保存，避免每个鼠标移动都写 PostgreSQL。
 
 ### 7.2 保存策略
 
@@ -550,6 +776,7 @@ P0：
 - 用户操作后 debounce 保存 Board document。
 - 关键操作（生成结果、导出、合并）立即保存。
 - 保存失败时显示状态，不丢本地当前操作。
+- 可用 IndexedDB / local persistence 保存短期草稿，但服务端快照仍是最终恢复依据。
 
 P0.5 协作：
 
@@ -606,7 +833,48 @@ DELETE /api/v1/assets/{asset_id}
 
 P0 可先用 `from-data-url` 处理 editor export / merge capture，但服务端必须落成真实 Asset URL 后返回，不能让 `data:` 进入持久化 document。
 
-### 8.4 AI Runs
+### 8.4 Model Registry
+
+```http
+GET /api/v1/ai/models?capability=image_generation
+```
+
+模型列表响应示例：
+
+```json
+{
+  "models": [
+    {
+      "id": "gpt-image-2",
+      "provider": "geekai",
+      "display_name": "GPT Image 2",
+      "capabilities": ["image_generation", "image_edit"],
+      "parameter_schema": {
+        "quality": ["low", "medium", "high"],
+        "size": ["1024x1024", "1024x1536", "1536x1024"]
+      },
+      "is_enabled": true,
+      "is_default": true,
+      "cost_hint": "Low quality is cheapest for tests"
+    },
+    {
+      "id": "gemini-3.1-flash-image-preview",
+      "provider": "geekai",
+      "display_name": "Gemini 3.1 Flash Image Preview",
+      "capabilities": ["image_generation", "image_edit", "image_reference"],
+      "parameter_schema": {
+        "image_size": ["0.5K", "1K", "2K", "4K"],
+        "aspect_ratio": ["1:1", "4:3", "16:9", "5:4"]
+      },
+      "is_enabled": true,
+      "is_default": false,
+      "cost_hint": "Use 0.5K for tests"
+    }
+  ]
+}
+```
+
+### 8.5 AI Runs
 
 ```http
 POST /api/v1/ai/runs
@@ -621,6 +889,7 @@ GET /api/v1/ai/runs/{run_id}
   "node_id": "gen-1",
   "type": "image_generation",
   "model_role": "default_image",
+  "selected_model_id": "gpt-image-2",
   "prompt": "A clean product poster...",
   "params": {
     "count": 4,
@@ -653,7 +922,7 @@ GET /api/v1/ai/runs/{run_id}
 }
 ```
 
-### 8.5 AI Planner
+### 8.6 AI Planner
 
 ```http
 POST /api/v1/ai/planner
@@ -664,7 +933,9 @@ POST /api/v1/ai/planner
 ```json
 {
   "board_id": "uuid",
-  "message": "Create a workflow to generate 4 cat poster ideas and edit the best one."
+  "message": "Create a workflow to generate 4 cat poster ideas and edit the best one.",
+  "mode": "auto",
+  "selected_model_id": "gemini-3.1-flash-image-preview"
 }
 ```
 
@@ -673,13 +944,19 @@ POST /api/v1/ai/planner
 ```json
 {
   "nodes": [
-    { "id": "text-1", "type": "text", "text": "A cat poster..." },
-    { "id": "gen-1", "type": "multi_generate", "count": 4 },
-    { "id": "editor-1", "type": "image_editor" }
+    { "id": "prompt-1", "type": "prompt", "prompt": "A cat poster..." },
+    {
+      "id": "gen-1",
+      "type": "image_gen_4",
+      "count": 4,
+      "selected_model_id": "gemini-3.1-flash-image-preview"
+    },
+    { "id": "image-1", "type": "image", "deferred_from": "gen-1" },
+    { "id": "analysis-1", "type": "analysis", "analysis_prompt": "分析这个图片，反推提示词" }
   ],
   "edges": [
-    { "from": "text-1", "to": "gen-1" },
-    { "from": "gen-1", "to": "editor-1", "deferred": true }
+    { "from": "prompt-1", "to": "gen-1", "type": "text" },
+    { "from": "image-1", "to": "analysis-1", "type": "image", "deferred": true }
   ],
   "layout": "horizontal"
 }
@@ -690,9 +967,10 @@ POST /api/v1/ai/planner
 - type 是否属于 P0 允许列表。
 - edge 是否符合连接规则。
 - 节点数量是否合理。
+- `selected_model_id` 是否在服务端返回的可用模型列表内。
 - layout 是否可应用在当前 viewport。
 
-### 8.6 Merge Capture
+### 8.7 Merge Capture
 
 P0 可先在前端离屏渲染，然后上传：
 
@@ -723,6 +1001,15 @@ POST /api/v1/boards/{board_id}/merge-captures
 
 禁止让绘图层和节点层分别维护不同 transform。
 
+节点复杂度处理原则：
+
+- tldraw 负责画布、坐标、选择、拖拽、基础形状和协同底座。
+- Node Runtime 负责节点类型、端口、参数、连接规则、运行摘要和迁移。
+- 复杂参数不全部塞进节点卡片，优先进入左侧 Inspector。
+- 节点卡片内部的输入框、下拉、按钮、滚轮必须阻止事件穿透，避免误触 pan/zoom/drag。
+- React 节点按组合模式拆成 `NodeContainer`、`NodeHeader`、`NodeBody`、`NodeFooter` 和可插拔功能组件，避免单个超级节点文件膨胀。
+- 画布库的视窗剔除只能降低不可见节点成本，不能替代图片压缩、懒加载、缩略图、生产构建压力测试和 document payload 控制。
+
 ### 9.2 画布精度验收
 
 | 场景 | 必须通过 |
@@ -731,7 +1018,39 @@ POST /api/v1/boards/{board_id}/merge-captures
 | 浏览器 resize | 对象位置不漂移 |
 | Retina / 高 DPI | 画笔位置准确 |
 | 图片发送到画布 | 图片出现在当前 viewport 附近 |
+| 外部图片粘贴 | 连续粘贴 5-10 张大图时有明确限制/提示，不导致页面长时间卡死 |
+| 工具栏行为 | 顶部图标工具栏保留完整基础白板入口；形状和插入类按类别收纳；箭头和直线使用独立图标，箭头入口只画箭头；左键单次绘制后回 Select，右键连续绘制，Esc 退出且不暴露需要手动解锁的状态 |
+| 导航地图 | 左下角导航地图显示内容缩略、当前 viewport、缩放百分比、加号/减号缩放；点击地图位置可 center 到对应画布区域 |
+| 箭头吸附 | 矩形、圆形、Frame、图片、卡片吸附到边中点；三角形、菱形吸附到角点；箭头工具靠近对象时对象轮廓和候选捕捉点预高亮；source / target 捕捉点可见高亮；靠近形状边缘或端口时能灵敏吸附，不默认只吸附形状中心 |
+| 属性面板 | 左侧属性面板只在有选中对象且没有拖动画布时出现，跟随最后选中/最后创建图形，可用清晰图标控件编辑样式、线条风格、箭头类型、端点、透明度、对齐、图层和操作 |
+| 复杂节点内部交互 | 下拉、输入、按钮、滚轮不触发画布操作 |
+| AI Chat / Inspector resize | 右侧 AI Chat 或左侧 Inspector 展开收起后对象、选框、连线不漂移 |
+| 自动布局 | mock graph 插入当前 viewport 且节点不重叠 |
 | Merge Capture | 输出只包含选中对象内容 |
+
+### 9.2.1 Step 1.5 技术裁决验收
+
+Step 1.5 通过前，不进入正式五节点链路开发。
+
+| 验收项 | 通过标准 |
+|--------|----------|
+| 复杂节点 | Prompt / Image Gen / Image Gen 4 / Analysis / Image 原型可交互；Image Gen 4 包含模型下拉、参数、Run、4 图结果态 |
+| 防事件穿透 | 节点内交互不误触画布 pan/zoom/drag |
+| 端口连线 | 可视端口能承载 Prompt → Image Gen、Image → Image Gen、Image → Analysis、Analysis → Prompt |
+| 类型颜色 | text 端口/连线为黄色；image 端口/连线为绿色 |
+| 动态端口 | Image Gen / Image Gen 4 每连入一个 image 后自动增加一个空 image 输入端口，旧连接不漂移 |
+| 连接校验 | 非法连线自动断开并提示 |
+| 断连交互 | 鼠标靠近 node-node 连线时中点出现 `−`，点击可断开 |
+| 自动布局 | 3-4 个 mock 节点插入当前视野且不重叠 |
+| Merge Capture | 图片 + 笔迹 + 形状可导出纯净结果 |
+| 轻量数据 | 复杂节点 `shape.props` 不含 Base64、大图、长日志、Provider 原始响应 |
+| 压力测试 | 50-100 节点下基础拖拽和缩放可接受；同时记录 5-10 张图片粘贴后的内存/卡顿体感 |
+
+失败处理：
+
+1. 先尝试 tldraw custom shape + HTMLContainer + Node Runtime 修正。
+2. 若端口/复杂交互仍不可接受，评估 tldraw + 独立节点层。
+3. 若仍失败，切换到 React Flow + Konva / whiteboard layer 方案。
 
 ### 9.3 Merge Capture 实现原则
 
@@ -786,6 +1105,7 @@ POST /api/v1/boards/{board_id}/merge-captures
 - Prompt 可进入 API Log，但后续可加脱敏策略。
 - 内容违规返回结构化错误。
 - 生图接口做用户级限流。
+- `selected_model_id` 必须来自服务端 Model Registry，不能信任前端任意传入的模型名或参数。
 
 ---
 
@@ -827,6 +1147,7 @@ pytest backend/tests
 通用：
 
 - `git diff --check`
+- 检查触碰源码文件行数，接近或超过 300 行时先拆分；已知大文件必须在对应 dev-plan 标记拆分任务。
 - 更新 `project_state.md`
 
 ---
@@ -836,15 +1157,18 @@ pytest backend/tests
 每次只做可独立验收的端到端切片：
 
 1. Canvas 坐标 spike。
-2. Text / Multi Generate / Image / Image Editor 节点 UI。
-3. Text → Multi Generate 4 图真实调用。
-4. 缩略图 → Image Node。
-5. Image Editor 绘图导出 → New Image Node。
-6. Send to Canvas → Markup。
-7. Merge Capture → New Image Node。
-8. AI Chat 自动搭线。
-9. Dashboard / 保存 / 登录收口。
-10. P0.5 多人协作。
+2. Step 1.5 复杂节点、端口、自动布局、Merge Capture 技术裁决。
+3. Prompt / Image Gen / Image Gen 4 / Analysis / Image 节点 UI。
+4. Model Registry / 图片模型选择器。
+5. Prompt → Image Gen / Image Gen 4 真实调用。
+6. 缩略图 → Image Node。
+7. Analysis → Prompt 反推提示词。
+8. Send to Canvas → Markup。
+9. Merge Capture → New Image Node。
+10. 后置 Image Editor 绘图导出 → New Image Node。
+11. 右侧 AI Chat 自动搭线。
+12. Dashboard / 保存 / 登录收口。
+13. P0.5 多人协作。
 
 每个切片完成后：
 
@@ -859,14 +1183,25 @@ pytest backend/tests
 
 | 风险 | 缓解 |
 |------|------|
-| tldraw 自定义节点不足 | 先做 spike；失败再评估轻节点层 |
+| tldraw 自定义节点不足 | 先做 Step 1.5；失败再评估轻节点层或 React Flow + Konva |
+| 复杂节点交互穿透 | 节点内控件阻止 pointer/wheel 事件；Inspector 承载复杂参数 |
+| 节点参数膨胀 | Node Registry + Inspector；节点卡片只展示摘要 |
+| 端口连线不稳定 | Node Runtime 做连接校验；非法连线自动断开 |
+| 自动布局重叠 | P0 手写 horizontal layout；复杂后接 Dagre/ELK |
+| 协同状态混乱 | 状态分为协同文档、presence、服务端权威、本地 UI 四类 |
+| CRDT 被误认为万能 | CRDT 只解决文档最终一致；AI Run、扣费、Asset、模型参数冲突仍由后端和 Node Runtime 定规则 |
 | 坐标偏移复发 | 单一 world 坐标；先验收坐标再做 AI |
 | Editor 变复杂 | P0 只做画笔、橡皮、导出 |
 | Merge Capture 截到 UI | 离屏渲染对象，不 DOM 截屏 |
+| 远程图片污染 canvas | Asset/CDN 配置 CORS；导出前确认图片可安全渲染 |
+| 节点 props 存重型数据 | 节点只存 id、短参数和摘要；图片、长文本、日志、Provider 响应外置 |
+| 过度相信 tldraw 视窗剔除 | Step 1.5 用生产构建验证 50-100 复杂节点和图片密集画布，而不是只看理论能力 |
+| 粘贴多张外部大图导致卡顿 | 上传/粘贴入口限制 MIME、体积和长边；前端降采样，后续用缩略图懒加载 |
 | AI 成本失控 | 默认低成本参数，限流 |
 | 旧项目复杂度回流 | 冻结旧桌面/公众号/素材库路线 |
 | API Key 泄露 | Key 只在服务端 `.env` |
 | 数据权限遗漏 | 所有查询带 current user / workspace |
+| 模型能力写死 | 由 Model Registry 返回能力和参数 schema |
 
 ---
 
@@ -878,10 +1213,10 @@ pytest backend/tests
 - `ARCH.md`：新 Web AI 图像画布架构。
 - `project_state.md`：当前状态和下一步。
 
-旧文件：
+旧路线已归档：
 
-- `PRD.md`：旧桌面/公众号路线，legacy/frozen。
-- `ARCH.md`：旧 Tauri/FastAPI 商业化路线，legacy/frozen。
+- `legacy/old-tangent-desktop-2026-04-29/`：旧桌面/Admin/backend/frontend 实现，默认不读不改。
+- `docs/archive/pivot-docs-2026-04-29/`：旧 pivot 草案镜像，非当前 canonical 文档。
 
 每次新对话建议提示：
 

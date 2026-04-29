@@ -12,6 +12,9 @@ __pycache__/
 # Build
 dist/
 build/
+.next/
+**/.next/
+*.tsbuildinfo
 *.egg-info/
 
 # IDE

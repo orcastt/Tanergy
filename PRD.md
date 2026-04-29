@@ -1,10 +1,10 @@
 # TANGENT Web AI Image Canvas — PRD
 
-**版本**: v0.2
+**版本**: v0.5
 **日期**: 2026-04-29
-**状态**: Web 重启方向正式 PRD 草案，开发前基线
-**当前优先级**: P0 最小图像链路
-**一句话定位**: TANGENT 是一个极简 Web AI 图像画布，用户用文本节点连接生图节点一次生成 4 张图，再把图片送入绘图编辑器或画布涂改，最后合并导出为新的图片节点。
+**状态**: Web 重启方向正式 PRD 草案，tldraw-first，左侧 Inspector / 属性面板，右侧保留 AI Chat，P0 节点收敛为 Prompt / Image Gen / Image Gen 4 / Analysis / Image
+**当前优先级**: P0 最小图像链路；先验证五类轻量节点、动态端口、类型连线、自动布局和 Merge Capture，再进入真实 AI 调用
+**一句话定位**: TANGENT 是一个极简 Web AI 图像画布，主体验像 Miro/FigJam 一样自由涂画和摆放内容，同时把 AI 能力封装成可连接的节点卡片；用户可以手动连接 Prompt、生图、图片承接和 Analysis 节点，也可以在右侧 AI 对话栏里用自然语言让系统自动创建节点、连线和切换生图模型。
 
 ---
 
@@ -28,23 +28,45 @@
 
 ### 1.1 这个产品是什么
 
-TANGENT 是一个运行在浏览器里的 AI 图像创作画布。它把“提示词、生成图片、选择图片、绘制修改、合并导出”做成一条非常短的可视化链路。
+TANGENT 是一个运行在浏览器里的 AI 图像创作画布。它的主画布首先要像一个轻量 Miro/FigJam：用户可以涂鸦、放图、画箭头、贴便签、框选和自由排布；在这个白板上，AI 能力以节点卡片的形式出现。节点可以越来越复杂，但画布的基本交互必须保持简单。
 
-用户不需要理解复杂工作流，也不需要安装桌面客户端。核心体验是：
+它把“提示词、参考图/编辑图、单图生成、四图生成、图片承接、图片分析反推提示词、画布标注、合并导出”做成一条非常短的可视化链路，并提供一个右侧 AI 对话栏，用户可以直接用自然语言创建节点、自动连线、解释当前画布或发起生成。
+
+用户不需要理解复杂工作流，也不需要安装桌面客户端。P0 只有两个入口：
+
+1. **手动节点链路**：用户自己添加 Prompt / Image Gen / Image Gen 4 / Analysis / Image 五类节点。
+2. **右侧 AI Chat**：用户一句话描述目标，AI 自动创建最小节点链路并连线。
+
+核心体验是：
 
 ```text
-Text Node → Multi Generate Node（4 张图）→ Image Node → Image Editor / Canvas Markup → New Image Node
+Prompt Node → Image Gen 4 Node（同一 prompt 调用 4 次）→ Image Node
+Image Node + Prompt Node → Image Gen Node（参考 / 编辑 / 融合由 prompt 和 API body 决定）→ Image Node
+Image Node + Prompt Node → Analysis Node（默认反推提示词）→ Prompt Node
 ```
+
+AI Chat 入口对应的最小体验是：
+
+```text
+Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Image → 用户确认或微调 → Run
+```
+
+产品主次：
+
+1. **主画布优先**：白板涂画、图片、便签、箭头、框选和自由排布是底座。
+2. **AI 节点其次**：节点是画布上的智能卡片，承载模型选择、参数设置、运行状态和结果。
+3. **连线规则第三**：P0 只做简单、可校验的图像链路，不做重型工作流引擎。
 
 ### 1.2 解决什么问题
 
 | 用户问题 | 产品解法 |
 |----------|----------|
 | AI 生图工具结果零散，难以继续修改 | 每张图都成为画布上的 Image Node，可继续连接、编辑、导出 |
-| 节点工作流太复杂，小白不知道从哪开始 | P0 只保留 4 类核心节点，AI Chat 可自动创建节点和连线 |
+| 节点工作流太复杂，小白不知道从哪开始 | P0 只保留 5 类核心节点，右侧 AI Chat 可自动创建节点和连线 |
 | 生成后想手动画几笔、圈选、标注 | Image Editor 和 Canvas Markup 提供轻量绘图 |
 | 改完后难以保存成新的图 | Merge Capture 把图片和笔迹合并为新的 Image Node |
 | 设计工具太重，AI 工具太散 | 用一个干净画布承载生成、对比、编辑和导出 |
+| 不同图片模型入口分散 | Image Gen / Image Gen 4 Node 和 AI Chat composer 内提供简洁模型切换 |
 
 ### 1.3 目标用户
 
@@ -67,10 +89,16 @@ Text Node → Multi Generate Node（4 张图）→ Image Node → Image Editor /
 ### 1.4 产品原则
 
 1. **干净优先**：沿用白色大画布、小卡片、轻边框、少按钮的视觉方向。
-2. **小白优先**：用户可以通过一句话或一个文本节点开始，不需要先学习节点系统。
+2. **小白优先**：用户可以通过右侧 AI 对话栏或一个文本节点开始，不需要先学习节点系统。
 3. **图像链路优先**：先跑通一条完整图像链路，再加协作、素材库、复杂模型管理。
 4. **结果回到画布**：AI 输出、编辑导出、截图合并都必须生成画布上的 Image Node。
 5. **不照搬 Tanva**：只参考 `https://github.com/litai12/Tanva.git` 的操作逻辑，如发送到画布、截图合并、坐标转换；不复制复杂代码和技术债。
+6. **模型切换要克制**：P0 只在图片生成入口支持切换官方可用图片模型，不做完整模型市场。
+7. **对话栏是入口，不是复杂 Agent**：右侧 AI 对话栏用于创建节点、自动连线、辅助 prompt 和触发生图，不做复杂多工具自治执行。
+8. **参考图只参考交互形态**：即使参考图里有很多节点、上传菜单或高级参数，P0 只实现最简单的图像创作链路。
+9. **节点复杂度要分层**：节点卡片只显示关键摘要和少量高频操作；复杂参数优先放左侧 Inspector，不把所有配置堆进节点里。
+10. **节点不是数据库**：节点可以像一个微型 React App，但只保存 id、短参数和运行摘要；图片、长文本、Provider 响应和日志必须外置。
+11. **先证明再扩展**：Step 1.5 必须先验证复杂节点、端口连线、自动布局和合并导出能否在 tldraw-first 架构里稳定成立。
 
 ---
 
@@ -83,18 +111,21 @@ Text Node → Multi Generate Node（4 张图）→ Image Node → Image Editor /
 | F01 | Web 登录 | 用户能登录进入 Dashboard；P0 可先用现有认证或本地开发模式 | P0 |
 | F02 | Dashboard / Board 列表 | 创建、打开、重命名 Board | P0 |
 | F03 | Canvas Editor | 无限画布，支持 pan、zoom、选择、拖拽、连线 | P0 |
-| F04 | Text Node | 输入 prompt，输出 text | P0 |
-| F05 | Multi Generate Node | 接收 text，一次生成 4 张图片，2×2 显示缩略图 | P0 |
-| F06 | Image Node | 承载单张图，支持查看、下载、发送到画布、连接编辑器 | P0 |
-| F07 | Image Editor Node | 接收 Image，打开轻量绘图编辑器 | P0 |
-| F08 | Image Editor | 画笔、橡皮、清空、导出为新 Image Node | P0 |
+| F03.5 | Step 1.5 技术裁决 Spike | 验证复杂节点交互、端口连线、自动布局、Merge Capture、50-100 节点压力；未通过不进入正式节点链路 | P0 Blocker |
+| F04 | Prompt Node | 输入 prompt，支持 text 输入端口和 text 输出端口；节点可拖动、复制、删除和四角缩放 | P0 |
+| F05 | Image Gen Node | 接收 text 和 0-N 个 image 输入，生成 1 张 Image；支持模型、分辨率和比例参数 | P0 |
+| F06 | Image Gen 4 Node | 接收 text 和 0-N 个 image 输入，同一 prompt 调用 4 次，返回 4 张 Image 结果 | P0 |
+| F07 | Analysis Node | 接收 image 和 prompt，内置默认分析 prompt，输出 text，用于反推提示词 | P0 |
+| F08 | Image Node | 无运算功能，只承接和预览上游图片 Asset；支持四角缩放、查看、下载、发送到画布 | P0 |
 | F09 | Canvas Markup | Image Node 可发送为画布图片对象，用户可在其上绘制标注 | P0 |
 | F10 | Merge Capture | 选中图片和笔迹，离屏合并成新 Image Node | P0 |
-| F11 | AI Chat 自动搭线 | 用户一句话生成 Text / Multi Generate / Image Editor 节点和连线 | P0 |
+| F11 | 右侧 AI Chat 对话栏 | 侧边栏对话，用户一句话生成 Prompt / Image Gen / Image Gen 4 / Analysis / Image 节点和连线 | P0 |
 | F12 | AI Proxy 调用 | 前端不暴露 API Key，由服务端调用生图模型 | P0 |
 | F13 | API 调用日志 | 记录用户、Board、模型、参数、状态、耗时、费用 | P0 |
 | F14 | 加载 / 空 / 错误状态 | 所有核心流程有明确状态反馈 | P0 |
-| F15 | i18n 基线 | P0 UI 默认英文，保留中文开发文案能力 | P0 |
+| F15 | 图片模型切换 | Image Gen / Image Gen 4 Node 和 AI Chat 输入区可选择 P0 图片模型 | P0 |
+| F16 | i18n 基线 | P0 UI 默认英文，保留中文开发文案能力 | P0 |
+| F17 | 左侧 Inspector | 选中复杂节点后显示模型、参数、运行摘要等详细配置；避免节点卡片变成巨型表单 | P0 |
 
 ### 2.2 P0.5 / P1 将来再说
 
@@ -104,7 +135,7 @@ Text Node → Multi Generate Node（4 张图）→ Image Node → Image Editor /
 | 分享链接 | 邀请他人查看或编辑 Board | P0.5 |
 | Personal Assets / Library | 素材库、历史图、标签 | P1 |
 | 专业 Image Editor | 多图层、选择变换、局部 AI 编辑、历史栈 | P1 |
-| 模型选择 UI | 用户端选择 gpt-image-2、Gemini 等模型 | P1 |
+| 高级模型市场 | 完整模型价格、能力、排序、收藏、fallback UI | P1 |
 | Admin Analytics | 漏斗、留存、收入、内容审核大屏 | P1/P2 |
 | 支付订阅 | Stripe 订阅、额度购买 | P1 |
 | 版本历史 | Board 快照、回滚 | P1 |
@@ -155,33 +186,55 @@ Text Node → Multi Generate Node（4 张图）→ Image Node → Image Editor /
 空画布引导：
 
 - 主文案：`Start with a text prompt.`
-- 次文案：`Create a Text Node, connect it to Multi Generate, and generate 4 image options.`
-- 快捷按钮：`Add Text Node`、`Ask AI to build it`。
+- 次文案：`Create a Prompt Node, connect it to Image Gen 4, and generate 4 image options.`
+- 快捷按钮：`Add Prompt Node`、`Ask AI to build it`。
+- 右侧 AI Chat 对话栏默认收起或轻量显示欢迎语：`What would you like to create today?`。
 
 ### 3.3 手动最小链路
 
 ```text
 Canvas Editor 空白状态
-  → 用户点击 Add Text Node
-  → Text Node 出现在当前视野中央
+  → 用户点击 Add Prompt Node
+  → Prompt Node 出现在当前视野中央
   → 用户输入 prompt
-  → 用户添加 Multi Generate Node
-  → 用户从 Text Node 输出端连到 Multi Generate 输入端
-  → Multi Generate Node 的 Run 按钮可点击
+  → 用户添加 Image Gen 4 Node
+  → 用户从 Prompt Node 输出端连到 Image Gen 4 输入端
+  → Image Gen 4 Node 的 Run 按钮可点击
   → 用户点击 Run
   → 节点进入 loading 状态
-  → 生成成功后显示 4 张缩略图
-  → 用户点击一张缩略图
+  → 生成成功后显示 4 张结果
+  → 用户点击一张结果
   → 系统在右侧创建 Image Node
 ```
 
-### 3.4 Image Editor 绘图导出
+### 3.3.5 Step 1.5 技术裁决 Spike 流程
+
+这一步不是正式用户功能，而是进入正式节点开发前必须通过的可手测技术门。
+
+```text
+打开 /spikes/canvas
+  → 画布中出现 Prompt / Image Gen / Image Gen 4 / Analysis / Image 原型
+  → 用户在节点内选择模型、修改参数、点击 Run
+  → 节点内部交互不触发画布拖拽或缩放
+  → 用户从 Prompt Node 端口连接到 Image Gen / Image Gen 4 Node
+  → 用户从 Image Node 连到 Image Gen / Image Gen 4 / Analysis 的 image 端口
+  → 合法连线保留，非法连线自动断开并提示
+  → AI Chat 或 mock planner 插入 3-4 个节点
+  → 节点自动排布到当前视野中，不重叠
+  → 用户选中图片、笔迹和形状，尝试 Merge Capture
+  → 输出纯净图片，不包含 UI、选框、网格
+```
+
+通过条件：
+
+- tldraw 可继续作为主画布底座。
+- 复杂节点、端口、自动布局、导出任一项不可接受时，暂停正式开发，评估 React Flow + Konva 或 tldraw + 独立节点层。
+
+### 3.4 Image Editor 绘图导出（后置工具）
 
 ```text
 用户选择 Image Node
-  → 添加 Image Editor Node
-  → 连接 Image Node → Image Editor Node
-  → 点击 Image Editor Node 的 Open Editor
+  → 打开 Image Editor 工具/面板
   → 打开 Image Editor
   → 用户使用画笔绘制
   → 点击 Export to Image Node
@@ -214,20 +267,29 @@ Canvas Editor 空白状态
 - toast：`Merged selection into a new image node.`
 - 原图片和笔迹不删除，用户可以对比前后结果。
 
-### 3.6 AI Chat 自动搭线
+### 3.6 右侧 AI Chat 自动搭线
 
 ```text
 用户打开空白 Canvas
-  → 在底部 AI Chat 输入：
+  → 打开或聚焦右侧 AI Chat 侧边栏
+  → 在 AI Chat 输入：
     "Create a workflow to generate 4 cat poster ideas and edit the best one."
   → 点击 Send
   → AI Planner 返回 graph spec
   → 前端校验节点类型和连线规则
-  → 自动创建 Text Node、Multi Generate Node、Image Editor Node
+  → 自动创建 Prompt Node、Image Gen 4 Node、Image Node 或 Analysis Node
   → 自动连线并布局到当前视野
-  → Text Node 中填入 prompt 草稿
+  → Prompt Node 中填入 prompt 草稿
   → 用户点击 Run 或修改 prompt 后再 Run
 ```
+
+AI Chat 侧边栏显示规则：
+
+- 右侧固定侧边栏宽度约 320-380px，可收起。
+- 顶部显示新建会话、历史/重置、关闭按钮和简短统计。
+- 中部显示用户消息和 AI 回复。
+- 底部 composer 支持输入文字、选择模式、选择图片模型、上传图片入口。
+- Canvas 中可以保留一个底部轻量 composer，但 P0 以右侧对话栏为主入口。
 
 AI Chat 失败：
 
@@ -267,8 +329,8 @@ AI Chat 失败：
 |----|------|
 | 路径 | `/boards/:boardId` |
 | 作用 | 核心画布编辑 |
-| 主要内容 | 无限画布、节点、图片对象、笔迹、连线、工具栏、底部 AI Chat |
-| 空状态 | 中央引导 + Add Text Node / Ask AI |
+| 主要内容 | 无限画布、节点、图片对象、笔迹、连线、Excalidraw-like 统一工具层、右侧 AI Chat 侧边栏、左侧 Inspector、可选底部轻量输入框 |
+| 空状态 | 中央引导 + Add Prompt Node / Ask AI |
 | 加载状态 | Canvas skeleton + loading overlay |
 | 错误状态 | Board 不存在、无权限、网络错误 |
 
@@ -278,25 +340,49 @@ AI Chat 失败：
 |----|------|
 | 触发 | 双击画布、快捷键、工具栏 Add |
 | 作用 | 添加核心节点 |
-| 主要内容 | Text、Multi Generate、Image、Image Editor |
-| P0 约束 | 不展示旧节点分类，不展示复杂模型节点 |
+| 主要内容 | Prompt、Image Gen、Image Gen 4、Analysis、Image；参考图中的节点列表只取最小图像链路，不显示视频/音频/3D 等复杂节点 |
+| P0 约束 | 不展示旧节点分类，不展示复杂模型节点；参考图中如有视频、音频、PDF、3D 等节点也不进入 P0 |
 | 空状态 | 无 |
 
-### 4.5 AI Chat 输入区
+### 4.5 右侧 AI Chat 侧边栏
 
 | 项 | 内容 |
 |----|------|
-| 位置 | Canvas 底部居中 |
-| 作用 | 一句话创建节点链路或辅助修改 prompt |
-| 主要内容 | 输入框、Send、简短提示、loading 状态 |
+| 位置 | Canvas 右侧，可收起；P0 可保留底部轻量 composer 作为快捷入口 |
+| 作用 | 一句话创建节点链路、辅助 prompt、解释当前画布、触发生图 |
+| 主要内容 | 会话标题/统计、用户消息、AI 回复、底部 composer、图片模型选择、图片上传入口、Send |
+| 空状态 | `What would you like to create today?` + 2-3 个 prompt 建议 |
+| 加载状态 | AI 回复区显示 `Thinking...` 或 `Building workflow...` |
 | 错误状态 | inline error 或 toast |
-| P0 约束 | 不做多轮复杂 Agent，不做长对话历史管理 |
+| P0 约束 | 不做复杂 Agent、不做长历史管理、不做视频/音频/3D 生成 |
+
+### 4.5.1 AI Chat Composer
+
+| 项 | 内容 |
+|----|------|
+| 输入框 | placeholder：`Describe what you want to create...` |
+| 模式 | P0 支持 `Auto` / `Image`，默认 `Auto` |
+| 模型 | P0 只显示可用图片模型，如 `gpt-image-2`、`gemini-3.1-flash-image-preview` |
+| 数量 | P0 默认 `4`，可显示为固定值或轻量下拉 |
+| 图片参数 | P0 可显示 `Auto`、`1:1`、`4:3`、`16:9`、`0.5K/1K/2K/4K` 或模型支持的 size；实际可用项按模型能力过滤 |
+| 上传 | P0 支持上传图片入口作为后续 Image Node 输入；PDF、视频、音频、3D 上传不进入 P0 |
+| 发送 | prompt 为空时禁用；请求中显示 loading |
+
+### 4.5.2 左侧 Inspector
+
+| 项 | 内容 |
+|----|------|
+| 位置 | Canvas 左侧；右侧保留给 AI Chat |
+| 作用 | 编辑选中节点的详细参数，避免节点卡片过度膨胀 |
+| 主要内容 | 节点标题、模型选择、参数表单、能力标签、成本/耗时提示、运行摘要、错误详情 |
+| 空状态 | 未选中节点时显示 `Select a node to edit its settings.` |
+| P0 约束 | 只支持 Prompt / Image Gen / Image Gen 4 / Analysis / Image 相关字段；不做完整模型市场 |
 
 ### 4.6 Image Editor 屏幕 / Modal
 
 | 项 | 内容 |
 |----|------|
-| 触发 | Image Editor Node → Open Editor |
+| 触发 | Image Node → Open Editor / Edit |
 | 作用 | 对输入图片进行轻量绘图并导出 |
 | 主要内容 | 画布、画笔、橡皮、颜色、笔刷大小、清空、Export、Close |
 | 空状态 | 没有输入图时显示 `Connect an image node first.` |
@@ -344,57 +430,101 @@ AI Chat 失败：
 - 打开 Board 后显示可 pan/zoom 的画布。
 - 画布对象在 50% / 100% / 200% 缩放下点击、拖动、框选不偏移。
 - resize 浏览器窗口后对象位置不漂移。
+- 工具入口不分散到默认左上/右上/底部多套 UI，优先使用统一、克制、接近 Excalidraw 的顶部图标工具栏。
+- 顶部工具栏按类别收纳：形状按钮默认使用上次选择的形状，点击弹出矩形、菱形、圆、三角、云等选择；箭头和直线必须是独立图标，箭头入口只负责画箭头；插入类入口收纳便签、Frame、图片、链接卡片和 AI 卡片。
+- 顶部工具栏必须保留基础白板能力：选择、平移、形状、箭头、线条、画笔、文本、橡皮、便签、Frame、图片、链接卡片和 AI 卡片入口。
+- 左下角保留导航地图：显示当前画布缩略范围、viewport 框、缩放百分比、Zoom In / Zoom Out 控制，点击地图位置可跳转到对应画布区域。
+- 箭头连接吸附接近 Excalidraw：矩形、圆形、Frame、图片和卡片优先吸附到边的中点；三角形、菱形优先吸附到角点；箭头工具靠近对象时，对象轮廓和候选捕捉点要预高亮；拖拽时 source / target 的捕捉点要可见高亮；不能默认只吸到形状中心。
+- 左侧属性面板只在选中对象且没有拖动画布时出现，用于最后选中/最后创建图形的属性编辑，包含描边、填充、宽度、线型、线条风格、箭头类型、端点、字体、透明度、对齐、图层和基础操作；样式选项优先使用清晰图标，不用大段文字按钮。
+- 绘制类按钮左键进入单次绘制；画完后默认回到 Select，并选中最后创建的图形。
+- 绘制类按钮右键进入连续绘制；连续绘制不能表现为“画布锁定”，不暴露 Lock 按钮；Esc 必须立即退出，退出后选中本轮新增图形，点击空白处取消选择。
+- 卡片缩小后文本必须自适应裁切或折叠，不能溢出边界。
+- 连续粘贴多张外部大图时必须有限制或提示，不能让页面长时间卡死。
 - 空画布显示引导。
 - 画布加载失败显示可返回 Dashboard 的错误页。
 
-### F04 Text Node
+### F03.5 Step 1.5 技术裁决 Spike
+
+完成定义：
+
+- `/spikes/canvas` 内可以创建 Prompt / Image Gen / Image Gen 4 / Analysis / Image 五类 `node_card` 原型。
+- 节点内部模型下拉、参数输入、Run 按钮、滚轮操作不会触发画布拖拽或缩放。
+- 节点端口可视，合法连线可保留，非法连线自动断开并给出轻提示。
+- text 端口和连线使用黄色，image 端口和连线使用绿色。
+- Image Gen / Image Gen 4 的 image input 支持动态端口：每连入一张 image，自动多显示一个空 image 输入端口，P0 上限 6 个。
+- 鼠标靠近 node-node 连线时，中点显示 `−` 断开按钮。
+- mock AI Planner 可插入 3-4 个节点并自动排布到当前视野，节点不重叠。
+- Merge Capture 能对图片、笔迹和形状输出纯净图片，不包含 UI、选框、网格。
+- 50-100 个节点压力测试下，拖拽和缩放没有明显卡顿。
+- 如果任一关键项失败，不进入 F04-F11 正式节点链路开发。
+
+### F04 Prompt Node
 
 完成定义：
 
 - 可添加到当前视野中央。
-- 文本输入可编辑、自动保存到画布状态。
-- 空文本时输出端仍存在，但连接到 Multi Generate 后 Run 按钮不可用。
+- Prompt 输入可编辑、自动保存到画布状态。
+- 左侧有 text 输入端口，右侧有 text 输出端口。
+- 空 prompt 时输出端仍存在，但连接到 Image Gen / Image Gen 4 后 Run 按钮不可用或显示提示。
 - 文本最长 4,000 字符，超过显示计数和错误。
-- 支持复制、删除、拖动。
+- 支持复制、删除、拖动和四角缩放。
 
-### F05 Multi Generate Node
+### F05 Image Gen Node
 
 完成定义：
 
-- 连接 Text Node 后读取 prompt。
-- 未连接或 prompt 为空时显示 `Connect a text prompt first.`。
-- 点击 Run 后进入 loading 状态，显示 4 个生成占位。
-- 成功后显示 4 张缩略图。
-- 每张缩略图可点击创建 Image Node。
+- 连接 Prompt Node 后读取 prompt。
+- 支持一个 text 输入端口和多个 image 输入端口；未连接 image 时按纯文生图处理。
+- 每连入一个 image 输入，就自动增加一个新的空 image 输入端口；P0 默认最多 6 个 image 输入。
+- image 输入用于参考图、编辑图或融合图，具体 API 请求体后续按 Provider 能力补齐；P0 由 prompt 和后端逻辑决定请求模式。
+- 未连接 text 或 prompt 为空时显示 `Connect a prompt first.`。
+- 节点内提供图片模型选择，下拉只展示 P0 可用图片模型。
+- 选择不同模型后，参数选项按模型能力变化。
+- 支持分辨率和模型支持的比例参数；高频参数可在节点内显示，完整参数在左侧 Inspector 编辑。
+- 节点内交互不会误触发画布拖拽、框选或缩放。
+- 点击 Run 后进入 loading 状态，显示 1 个生成占位。
+- 成功后生成 1 个 image 输出，可承接为 Image Node。
 - 失败时显示错误和 Retry，不生成空 Image Node。
 - 重复 Run 会保留上一轮结果直到新结果成功，避免画布突然清空。
 
-### F06 Image Node
+### F06 Image Gen 4 Node
 
 完成定义：
 
-- 可从生成缩略图、编辑器导出、合并截图创建。
+- 参数和端口规则与 Image Gen Node 一致。
+- 同一个 prompt 调用 4 次生成接口，返回 4 张图。
+- 成功后在节点内以 2×2 结果态显示 4 张图。
+- 每张结果都可以创建独立 Image Node。
+- 失败时显示具体失败状态，已成功图片不被清空。
+
+### F07 Analysis Node
+
+完成定义：
+
+- 接收 image 输入和可选 prompt/text 输入。
+- 节点内预设一个 prompt 文本框，默认值为：`分析这个图片，反推提示词`。
+- 支持在左侧 Inspector 编辑 analysis prompt。
+- 输出 text，可连接到 Prompt Node 或 Image Gen / Image Gen 4 的 text 输入。
+- 后续真实实现时，长分析结果不进入 `shape.props`，只保存 result/run 引用和短摘要。
+
+### F08 Image Node
+
+完成定义：
+
+- 可从 Image Gen、Image Gen 4、上传、编辑器导出、合并截图创建。
+- 没有运算功能，只作为上游图片 Asset 的预览和承接节点。
 - 显示图片预览、标题/来源、基础操作按钮。
+- 支持四角缩放以更好显示图片。
 - 支持双击预览。
 - 支持 Download。
 - 支持 Send to Canvas。
-- 支持连接到 Image Editor Node。
 - 图片加载失败显示破图占位和 Retry。
 
-### F07 Image Editor Node
+### F08.5 Image Editor Tool（P0 后置，不作为当前节点）
 
 完成定义：
 
-- 接收 Image Node 连接。
-- 未连接图片时 Open Editor 不可用并显示提示。
-- 连接图片后显示小预览和 Open Editor。
-- 打开编辑器时加载对应图片。
-- 导出成功后在画布创建新 Image Node。
-
-### F08 Image Editor
-
-完成定义：
-
+- P0 当前节点集合不包含 Image Editor Node；编辑能力先作为后续工具/面板进入。
 - 打开后显示输入图片。
 - 画笔可绘制，橡皮可擦除笔迹。
 - 可调整颜色和笔刷大小。
@@ -421,15 +551,21 @@ AI Chat 失败：
 - 不截入 UI 控件、选择框、网格。
 - 没有选中可合并对象时按钮不可用。
 
-### F11 AI Chat 自动搭线
+### F11 右侧 AI Chat 对话栏
 
 完成定义：
 
-- 空画布输入自然语言后，生成 Text / Multi Generate / Image Editor 节点。
+- Canvas 右侧显示可收起的 AI Chat 侧边栏。
+- 空状态显示欢迎语和 2-3 个建议 prompt。
+- 用户输入自然语言后，能生成 Prompt / Image Gen / Image Gen 4 / Analysis / Image 节点。
 - 节点自动连线。
 - 节点出现在当前视野，不跑到画布远处。
 - Planner 返回非法 graph 时不修改画布，并显示错误。
 - 用户可以撤销 AI 创建的节点组。
+- Composer 内可选择图片模型；选择后会影响自动创建的 Image Gen / Image Gen 4 Node。
+- 上传图片入口可见，但 P0 只要求图片上传，PDF/视频不进入 P0。
+- AI Chat 展开/收起后，画布 resize 不导致对象位置、选择框或连线漂移。
+- AI Chat 内滚轮、输入框点击、下拉选择不会触发画布 zoom、pan 或选中对象。
 
 ### F12 AI Proxy 调用
 
@@ -459,13 +595,35 @@ AI Chat 失败：
 - 所有失败有明确错误文案和可重试动作。
 - 删除操作有确认或可撤销。
 
-### F15 i18n 基线
+### F15 图片模型切换
+
+完成定义：
+
+- Image Gen / Image Gen 4 Node 内可打开模型选择下拉。
+- AI Chat composer 内可打开模型选择下拉。
+- P0 至少支持 `gpt-image-2` 和 `gemini-3.1-flash-image-preview` 两个显示项；真实可用性由后端返回。
+- 模型显示包含名称、能力标签和预计耗时/成本提示中的至少一种。
+- 禁用或不可用模型显示 disabled 状态，不允许提交。
+- 切换模型后，生成请求携带 `selected_model_id` 或 `model_role`。
+
+### F16 i18n 基线
 
 完成定义：
 
 - P0 默认英文。
 - 中文开发环境显示中文时，不混入英文业务文案。
 - 所有用户可见文案走 i18n key，不在组件里散落硬编码。
+
+### F17 左侧 Inspector
+
+完成定义：
+
+- 选中节点后，左侧 Inspector 显示该节点可编辑参数。
+- 未选中节点时显示空状态。
+- Image Gen / Image Gen 4 Node 的模型、尺寸、质量、比例等参数可在 Inspector 中编辑。
+- 参数项按 Model Registry 的能力和 schema 过滤。
+- Inspector 的滚轮、输入框和下拉不会触发画布 pan/zoom。
+- 修改参数后节点摘要同步更新，但不把完整表单塞进节点卡片。
 
 ---
 
@@ -512,32 +670,48 @@ P0 可默认每个用户一个 personal workspace。
 | 字段 | 类型 | 必填 | 约束 |
 |------|------|------|------|
 | `id` | string | 是 | board 内唯一 |
-| `type` | enum | 是 | `text` / `multi_generate` / `image` / `image_editor` |
+| `type` | enum | 是 | `prompt` / `image_gen` / `image_gen_4` / `analysis` / `image` |
+| `version` | number | 是 | 节点 schema 版本，用于后续迁移 |
 | `position.x` | number | 是 | world 坐标 |
 | `position.y` | number | 是 | world 坐标 |
 | `size.width` | number | 是 | 120-1,200 |
 | `size.height` | number | 是 | 80-1,200 |
+| `ports` | object[] | 是 | 输入/输出端口定义，按节点类型生成 |
 | `data` | object | 是 | 按节点类型校验 |
+| `runtime_summary` | object | 否 | 仅保存可见摘要，如状态、最后运行时间、结果 asset 引用；不保存敏感服务端权威数据 |
 | `created_at` | datetime | 是 | 创建时间 |
 | `updated_at` | datetime | 是 | 更新时间 |
 
-### 6.5 Text Node Data
+### 6.5 Prompt Node Data
 
 | 字段 | 类型 | 必填 | 约束 |
 |------|------|------|------|
-| `text` | string | 是 | 0-4,000 字符 |
+| `prompt` | string | 是 | 0-4,000 字符 |
 | `placeholder` | string | 否 | 最长 120 |
 
-### 6.6 Multi Generate Node Data
+### 6.6 Image Gen / Image Gen 4 Node Data
 
 | 字段 | 类型 | 必填 | 约束 |
 |------|------|------|------|
 | `model_role` | string | 是 | 默认 `default_image` |
-| `count` | number | 是 | P0 固定 4 |
+| `selected_model_id` | string | 否 | 用户显式选择的图片模型，如 `gpt-image-2` |
+| `count` | number | 是 | `image_gen` 固定 1；`image_gen_4` 固定 4 |
+| `image_input_count` | number | 是 | 当前可见 image 输入端口数量；每个已连接 image 后保留一个空端口，P0 最大 6 |
+| `aspect_ratio` | string | 否 | `auto` / `1:1` / `4:3` / `16:9` 等，按模型能力过滤 |
+| `resolution` | string | 否 | `auto` / `0.5K` / `1K` / `2K` / `4K` 或模型支持的 size |
 | `status` | enum | 是 | `idle` / `running` / `succeeded` / `failed` |
 | `result_asset_ids` | string[] | 否 | 最多 4 |
 | `last_run_id` | uuid | 否 | 对应 AI Run |
+| `cost_hint` | string | 否 | 展示给用户的预估成本提示，不作为扣费依据 |
 | `error_code` | string | 否 | 失败时存在 |
+
+### 6.6.5 Analysis Node Data
+
+| 字段 | 类型 | 必填 | 约束 |
+|------|------|------|------|
+| `analysis_prompt` | string | 是 | 默认 `分析这个图片，反推提示词`；0-4,000 字符 |
+| `last_run_id` | uuid | 否 | 对应 AI Run |
+| `result_text_id` | string | 否 | 长分析结果外置引用，不把完整长文本塞入 `shape.props` |
 
 ### 6.7 Image Node Data
 
@@ -563,9 +737,16 @@ P0 可默认每个用户一个 personal workspace。
 
 允许连接：
 
-- Text → Multi Generate
-- Image → Image Editor
-- Multi Generate result → Image（可由点击缩略图创建，不一定用 Edge）
+- Prompt text out → Image Gen / Image Gen 4 text in
+- Image out → Image Gen / Image Gen 4 image in
+- Image out → Analysis image in
+- Analysis text out → Prompt text in 或 Image Gen / Image Gen 4 text in
+- Image Gen / Image Gen 4 result → Image（可由点击结果创建，不一定用 Edge）
+
+非法连接：
+
+- 前端必须立即断开并提示，例如 `This connection is not supported yet.`
+- 后端保存 Board 时也必须二次校验，不能只信任前端。
 
 ### 6.9 Asset
 
@@ -602,7 +783,35 @@ P0 可默认每个用户一个 personal workspace。
 | `error_code` | string | 否 | 失败时存在 |
 | `created_at` | datetime | 是 | 服务端生成 |
 
-### 6.11 Merge Capture
+### 6.11 AI Chat Session / Message
+
+| 字段 | 类型 | 必填 | 约束 |
+|------|------|------|------|
+| `id` | uuid | 是 | 服务端或本地生成 |
+| `board_id` | uuid | 是 | 当前 Board |
+| `messages` | object[] | 是 | P0 可只保留当前会话短历史 |
+| `messages[].role` | enum | 是 | `user` / `assistant` / `system` |
+| `messages[].content` | string | 是 | 单条最长 8,000 字符 |
+| `selected_model_id` | string | 否 | 当前 composer 选择的模型 |
+| `mode` | enum | 是 | `auto` / `image` |
+| `created_at` | datetime | 是 | 创建时间 |
+| `updated_at` | datetime | 是 | 更新时间 |
+
+### 6.12 Model Option
+
+| 字段 | 类型 | 必填 | 约束 |
+|------|------|------|------|
+| `id` | string | 是 | 如 `gpt-image-2` |
+| `provider` | string | 是 | 如 `geekai` |
+| `display_name` | string | 是 | 最长 80 |
+| `capabilities` | string[] | 是 | 如 `image_generation` / `image_edit` |
+| `parameter_schema` | object | 否 | aspect ratio、resolution、quality 等可用项 |
+| `is_enabled` | boolean | 是 | false 时前端 disabled |
+| `is_default` | boolean | 是 | 默认模型 |
+| `estimated_latency` | string | 否 | 如 `5-10s` |
+| `cost_hint` | string | 否 | 简短成本提示，不展示复杂价格表 |
+
+### 6.13 Merge Capture
 
 | 字段 | 类型 | 必填 | 约束 |
 |------|------|------|------|
@@ -615,6 +824,17 @@ P0 可默认每个用户一个 personal workspace。
 | `bounds.height` | number | 是 | > 0 |
 | `output_asset_id` | uuid | 是 | 生成的 Asset |
 | `created_by` | uuid | 是 | 当前用户 |
+
+### 6.14 状态分类与协同边界
+
+| 状态类别 | 示例 | 是否进入协同文档 | 说明 |
+|----------|------|------------------|------|
+| 协同文档状态 | 节点位置、尺寸、类型、参数、端口、连线、图片对象、笔迹 | 是 | 未来 P0.5 多人协同时需要同步 |
+| Presence 状态 | 多人光标、正在选中的对象、谁正在编辑节点 | 否，走 presence 通道 | 高频临时状态，不持久化到 Board document |
+| 服务端权威状态 | 扣费、余额、AI run 最终状态、API 日志、Provider 响应 | 否，由后端数据库记录 | 前端只显示摘要，不能自行决定 |
+| 本地 UI 状态 | 下拉是否打开、hover、弹窗、输入法临时草稿、Inspector tab | 否 | 只存在当前浏览器会话 |
+
+节点和协同文档中不得保存 Base64 图片、`blob:` / `data:` 图片、Provider API Key、Provider 原始响应、完整日志、长聊天历史或反推 prompt 的长文本结果；这些数据通过 `asset_id`、`run_id`、`result_id` 等轻量引用按需读取。
 
 ---
 
@@ -639,7 +859,7 @@ P0 可默认每个用户一个 personal workspace。
 | 错误 | 显示 |
 |------|------|
 | 余额不足 | `Not enough credits to generate images.` |
-| 模型不可用 | `The selected image model is unavailable. Try again later.` |
+| 模型不可用 | `The selected image model is unavailable. Try another model.` |
 | Provider 超时 | `Image generation timed out. Retry?` |
 | 内容违规 | `This prompt could not be processed. Try a different prompt.` |
 | 返回空图片 | `No image was returned. Retry will not charge again if the previous run failed.` |
@@ -656,7 +876,9 @@ P0 可默认每个用户一个 personal workspace。
 |------|--------|
 | 没有 Board | `No boards yet. Create your first AI image canvas.` |
 | 空 Canvas | `Start with a text prompt.` |
-| Multi Generate 未连接 Text | `Connect a text prompt first.` |
+| Image Gen 未连接 Prompt | `Connect a prompt first.` |
+| AI Chat 无会话 | `What would you like to create today?` |
+| 无可用图片模型 | `No image models are available. Try again later.` |
 | Image Editor 未连接图片 | `Connect an image node first.` |
 | 没有可合并对象 | `Select an image and drawings to merge.` |
 
@@ -667,6 +889,7 @@ P0 可默认每个用户一个 personal workspace。
 | Dashboard 加载 | Board skeleton cards |
 | Canvas 加载 | 中央 spinner + `Loading board...` |
 | 生图运行中 | 4 个缩略图 skeleton + 进度文案 |
+| AI Chat 回复中 | 侧边栏显示 assistant loading 行，不阻塞画布操作 |
 | 图片加载中 | Blur / skeleton placeholder |
 | Editor 导出中 | Export 按钮 loading，禁止重复点击 |
 | Merge Capture | 选区上方显示 `Merging...` |
@@ -685,15 +908,18 @@ P0 可默认每个用户一个 personal workspace。
 6. 不做完整 Tanva 复制或迁移。
 7. 不做复杂 Paper.js 大型画布架构照搬。
 8. 不做专业 Photoshop 级图层系统。
-9. 不做视频、3D、音频节点。
+9. 不做视频、3D、音频、PDF 节点。
 10. 不做用户自带 API Key。
 11. 不在前端暴露任何 Provider Key。
-12. 不做复杂 Admin Analytics 大屏。
-13. P0 不做多人实时协作。
-14. P0 不做 Stripe 付费上线闭环。
-15. P0 不做移动端。
-16. P0 不做公开模板市场。
-17. P0 不做复杂模型参数面板；默认低成本生图参数即可。
+12. P0 不做 PDF 对话和文件对话；上传菜单只要求图片入口。
+13. 不做复杂 Admin Analytics 大屏。
+14. P0 不做多人实时协作。
+15. P0 不做 Stripe 付费上线闭环。
+16. P0 不做移动端。
+17. P0 不做公开模板市场。
+18. P0 不做完整模型市场；只做图片模型下拉、少量关键参数和左侧 Inspector。
+19. P0 不默认切到 React Flow + Konva；除非 Step 1.5 证明 tldraw-first 无法承载复杂节点、端口或导出。
+20. P0 不把 AI Chat 变成全自动 Agent；用户仍需确认或手动运行关键生成步骤。
 
 ---
 
@@ -715,19 +941,55 @@ P0 可默认每个用户一个 personal workspace。
 - [ ] 拖拽节点不偏移。
 - [ ] 框选对象不偏移。
 - [ ] resize 浏览器窗口后对象不漂移。
+- [ ] 工具栏集中、清爽，不同时出现 tldraw 默认左上/右上/底部多套控制。
+- [ ] 顶部图标工具栏保留选择、平移、形状、线条、箭头、画笔、文本、橡皮和插入入口；形状可收纳但不能删功能。
+- [ ] 形状工具按类别收纳，选择具体形状后默认复用上次选择；箭头和直线是独立图标，箭头入口只画箭头。
+- [ ] 左下角导航地图显示缩放百分比、加号/减号缩放按钮和 viewport 框；点击地图位置可以跳转到对应画布区域。
+- [ ] 箭头连接矩形、圆形、Frame、图片、卡片时吸附到边中点；连接三角形、菱形时吸附到角点；箭头工具靠近对象时对象轮廓和候选捕捉点预高亮；拖拽时 source / target 捕捉点高亮，靠近形状边缘或端口时能灵敏吸附，不默认吸附到中心点。
+- [ ] 左侧属性面板只在选中对象且没有拖动画布时出现，可编辑描边、填充、宽度、线型、线条风格、箭头类型、端点、字体、透明度、对齐、图层和基础操作，按钮使用清晰图标表达。
+- [ ] 左键选择绘制工具后只绘制一次，完成后回到 Select，并选中最后创建对象。
+- [ ] 右键选择绘制工具后可连续绘制，不出现需要手动解锁的状态；Esc 立即退出后选中本轮新增对象，点击空白处可取消选择。
+- [ ] 卡片缩小时标题、URL、详情不会溢出边界。
+- [ ] 连续粘贴 5-10 张外部图片时有大小/长边限制或提示，页面不长时间卡死。
 - [ ] 空画布显示引导。
 
-### 9.3 Text → Multi Generate
+### 9.2.5 Step 1.5 技术裁决
 
-- [ ] 可创建 Text Node。
-- [ ] Text Node 可输入 prompt。
-- [ ] 可创建 Multi Generate Node。
-- [ ] 可连接 Text → Multi Generate。
+- [ ] Prompt / Image Gen / Image Gen 4 / Analysis / Image 五类 `node_card` 可在 tldraw 中渲染。
+- [ ] 节点内模型下拉、输入框、按钮和滚轮不会触发画布 pan/zoom/drag。
+- [ ] 节点端口可视，合法连线可保留。
+- [ ] 非法连线自动断开，并显示轻提示。
+- [ ] text 端口和连线为黄色，image 端口和连线为绿色。
+- [ ] Image Gen / Image Gen 4 的 image 输入端口可随已连接图片动态增加，且旧连接不漂移到错误端口。
+- [ ] 鼠标靠近 node-node 连线时，中点出现 `−`，点击可断开连接。
+- [ ] mock AI Planner 自动插入 3-4 个节点，节点出现在当前视野且不重叠。
+- [ ] Merge Capture 输出不包含 UI、选择框或网格。
+- [ ] 50-100 个节点下，拖拽和缩放没有明显卡顿。
+- [ ] 复杂节点的 `shape.props` / document payload 不包含 Base64、大图、长日志或 Provider 原始响应。
+- [ ] 如果任一项不通过，先更新 ARCH 决策，不继续正式节点开发。
+
+### 9.3 Prompt → Image Gen / Image Gen 4
+
+- [ ] 可创建 Prompt Node。
+- [ ] Prompt Node 可输入 prompt，并有 text 输入/输出端口。
+- [ ] 可创建 Image Gen Node 和 Image Gen 4 Node。
+- [ ] 可连接 Prompt → Image Gen / Image Gen 4。
+- [ ] 可连接多个 Image Node → Image Gen / Image Gen 4 image 输入端口，并自动新增空 image 输入端口。
 - [ ] prompt 为空时 Run 禁用或显示提示。
 - [ ] 点击 Run 进入 loading。
-- [ ] 成功后显示 4 张缩略图。
+- [ ] 可在 Image Gen / Image Gen 4 Node 中切换图片模型。
+- [ ] 切换模型后参数选项按模型能力过滤。
+- [ ] Image Gen 成功后显示 1 张结果；Image Gen 4 成功后显示 4 张结果。
 - [ ] 失败后显示错误和 Retry。
-- [ ] 点击缩略图创建 Image Node。
+- [ ] 点击结果创建 Image Node。
+
+### 9.3.5 Analysis
+
+- [ ] 可创建 Analysis Node。
+- [ ] Analysis Node 默认 prompt 为 `分析这个图片，反推提示词`。
+- [ ] 可连接 Image Node → Analysis image 输入。
+- [ ] 可连接 Prompt Node → Analysis prompt 输入。
+- [ ] Analysis 输出 text 可连接到 Prompt / Image Gen / Image Gen 4。
 
 ### 9.4 Image Node
 
@@ -736,7 +998,7 @@ P0 可默认每个用户一个 personal workspace。
 - [ ] 双击可预览。
 - [ ] Download 可用。
 - [ ] Send to Canvas 可用。
-- [ ] 可连接 Image Editor Node。
+- [ ] 可作为 image 输出连接到 Image Gen / Image Gen 4 / Analysis。
 
 ### 9.5 Image Editor
 
@@ -759,16 +1021,37 @@ P0 可默认每个用户一个 personal workspace。
 - [ ] Merge 不截到 UI、网格、选框。
 - [ ] 原图和笔迹保留，不被自动删除。
 
-### 9.7 AI Chat 自动搭线
+### 9.7 右侧 AI Chat 对话栏
 
+- [ ] Canvas 右侧显示可收起 AI Chat。
+- [ ] 空状态显示欢迎语和建议 prompt。
 - [ ] 输入一句自然语言后返回节点图。
-- [ ] 自动创建 Text / Multi Generate / Image Editor 节点。
+- [ ] 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Image 节点。
 - [ ] 自动连线。
 - [ ] 节点出现在当前视野。
 - [ ] 返回非法 graph 时不修改画布。
 - [ ] 用户可撤销 AI 创建的节点组。
+- [ ] AI Chat composer 可以切换图片模型。
+- [ ] 图片上传入口可见，PDF/视频入口不进入 P0。
+- [ ] AI Chat 展开/收起后，画布选择框、对象位置和连线不漂移。
 
-### 9.8 AI Proxy / Logs
+### 9.7.5 左侧 Inspector
+
+- [ ] 选中 Image Gen / Image Gen 4 Node 后显示模型和参数设置。
+- [ ] 未选中节点时显示空状态。
+- [ ] 参数项按模型能力过滤。
+- [ ] Inspector 滚轮和输入不会触发画布 zoom/pan。
+- [ ] 参数修改后节点摘要同步更新。
+
+### 9.8 图片模型切换
+
+- [ ] 模型列表来自后端或本地 mock registry，不写死在组件里。
+- [ ] 至少显示 `gpt-image-2` 和 `gemini-3.1-flash-image-preview` 两个候选项。
+- [ ] 不可用模型 disabled。
+- [ ] 生成请求携带选中的模型。
+- [ ] API Log 记录实际模型。
+
+### 9.9 AI Proxy / Logs
 
 - [ ] 前端代码不包含真实 Provider Key。
 - [ ] 生图请求走后端。
@@ -777,7 +1060,7 @@ P0 可默认每个用户一个 personal workspace。
 - [ ] 失败日志包含错误码。
 - [ ] 失败不扣费或记录退款状态。
 
-### 9.9 i18n / UI
+### 9.10 i18n / UI
 
 - [ ] 默认英文 UI。
 - [ ] 中文环境不混入英文业务文案。

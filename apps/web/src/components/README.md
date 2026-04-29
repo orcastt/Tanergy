@@ -2,5 +2,5 @@
 
 - `ui/`: reusable design-system primitives.
 - `canvas/`: canvas shell, toolbar, viewport, coordinate helpers.
-- `nodes/`: Text, Multi Generate, Image, Image Editor node cards.
+- `nodes/`: Prompt, Image Gen, Image Gen 4, Analysis, and Image node cards.
 - `editor/`: lightweight image editor UI.
