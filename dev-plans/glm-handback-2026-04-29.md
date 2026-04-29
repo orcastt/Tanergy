@@ -1,0 +1,134 @@
+# GLM Shift Handback — 2026-04-29
+
+**Branch**: `checkpoint/s15-node-runtime-before-refactor`
+**GLM shift**: 端口连线交互重写、Node Picker、Selection Toolbar、Run UI 优化
+**Codex 复核要点**: 见第 5 节
+
+---
+
+## 1. Current State
+
+- **分支**: `checkpoint/s15-node-runtime-before-refactor`
+- **工作区**: dirty（未 commit）
+- **lint**: 0 errors, 0 warnings
+- **typecheck**: pass
+- **build**: pass
+- **文件行数**: 全部 ≤300 行（NodeCardContent 294 行最接近上限）
+
+## 2. What GLM Changed
+
+### 新增文件（5 个）
+
+| 文件 | 行数 | 用途 |
+|------|------|------|
+| `components/canvas/portConnectionStore.ts` | 25 | Zustand store 管理端口连接状态（connectingFrom + mouseScreenPoint） |
+| `components/canvas/CanvasConnectionLine.tsx` | 40 | 拖拽连线时跟随鼠标的临时虚线 SVG overlay |
+| `components/canvas/usePortConnectionCompletion.ts` | 113 | 端口连线完成逻辑：校验连接规则 + 程序化创建 tldraw arrow + bindings |
+| `components/canvas/CanvasNodePicker.tsx` | 80 | 双击画布弹出的分类 Node Picker（Text: Prompt/Analysis; Image: Image Gen/4/Image） |
+| `components/canvas/CanvasSelectionToolbar.tsx` | 150 | 选中 2+ 对象时显示的浮动工具栏（📷 Screenshot + ⊞ 对齐下拉） |
+
+### 修改文件（8 个）
+
+| 文件 | 变更内容 |
+|------|----------|
+| `components/nodes/NodeCardContent.tsx` | 端口改为 drag-to-connect 交互（pointerdown→全局 pointermove→pointerup）；端口 hover 显示黑底白字 tooltip；Run 按钮移至标题栏右侧；去掉 IDLE/SUCCEEDED 状态文字；精简冗余文字 |
+| `components/nodes/NodeCardShape.tsx` | 新增 `getEditorPagePoint` 函数传给 NodeCardContent 用于坐标转换 |
+| `components/canvas/CanvasSpike.tsx` | 接入 CanvasConnectionLine、CanvasNodePicker、CanvasSelectionToolbar；移除 CanvasMergeCapturePanel |
+| `features/node-runtime/createNodeCard.ts` | 增大默认节点高度：Prompt 220、Image Gen 320、Image Gen 4 350、Analysis 340、Image 240 |
+| `styles/node-card-content.css` | 端口 `pointer-events: auto`，hover 放大，tooltip 黑底白字样式 |
+| `styles/node-card-base.css` | Run 按钮样式（含 Stop 红色态）；精简 header 样式 |
+| `styles/canvas-overlays.css` | 连接线 overlay、Node Picker 分类面板、Selection Toolbar 浮动工具栏样式 |
+
+## 3. User Test Results
+
+| 测试项 | 结果 |
+|--------|------|
+| 节点创建/拖拽/复制/删除 | ✅ 通过，流畅 |
+| 节点内部交互不穿透画布 | ✅ 通过 |
+| 端口 tooltip（hover 显示 text/image） | ✅ 通过 |
+| 端口连线（drag-to-connect） | ⚠️ 已实现但用户尚未确认连线是否成功创建（连线颜色/校验未复测） |
+| Node Picker（双击弹出分类面板） | ✅ 面板出现，用户要求分类（已实现 Text/Image 分组） |
+| Run/Stop 按钮 | ✅ 通过 |
+| 节点内容自适应 | ✅ 通过 |
+| Selection Toolbar（Screenshot + 对齐） | ✅ 工具栏出现，用户已确认功能需求 |
+| 60 节点压力测试 | ✅ 流畅不卡顿 |
+| Merge Capture 位置 | 已改为 Selection Toolbar 中的 Screenshot 按钮 |
+| 图片密集压力测试 | 未测试 |
+
+## 4. Known Issues / Follow-up
+
+| # | 事项 | 优先级 |
+|---|------|--------|
+| 1 | 端口 drag-to-connect 连线交互已实现，需 Codex 复测确认 arrow 创建和绑定正确 | P0 |
+| 2 | Screenshot 功能使用 `editor.toImageDataUrl()` 创建截图，但 P0 规格要求离屏渲染不包含 UI — 需验证 | P0 |
+| 3 | 对齐功能只实现了上/下/左/右/居中，尚未实现"横向等距排布"和"纵向等距排布" | P1 |
+| 4 | Run 按钮 hover 显示积分扣除数量 — 用户提到后续要加，P0 不阻塞 | P1 |
+| 5 | 打组功能（Group）— 用户提到但未在本次实现 | P1 |
+| 6 | 端口连线时如果快速拖动可能丢失 pointerup 事件 — 需要实际测试 | P1 |
+| 7 | 图片密集压力测试仍未完成 | P1 |
+| 8 | NodeCardContent.tsx 294 行，接近 300 行上限，下次改动前需拆分 | 维护 |
+
+## 5. What Codex Should Verify
+
+### 5.1 Git / Diff
+
+```bash
+git branch --show-current        # 应为 checkpoint/s15-node-runtime-before-refactor
+git status --short                # 应有 8 modified + 5 untracked
+git diff --stat                   # 确认变更范围
+```
+
+确认：
+- GLM 是否误触 `.env`、legacy archive 或非 S1.5 范围文件
+- 所有新增文件是否职责单一、不超过 300 行
+
+### 5.2 Quality Gates
+
+```bash
+npm -C apps/web run lint          # 应 0 error
+npm -C apps/web run typecheck     # 应 pass
+npm -C apps/web run build         # 应 pass
+git diff --check                  # 应 empty
+```
+
+文件行数检查：
+
+```bash
+find apps/web/src -type f \( -name '*.ts' -o -name '*.tsx' -o -name '*.css' \) -print0 \
+  | xargs -0 wc -l \
+  | awk '$2 != "total" && $1 > 300 {print}' \
+  | sort -nr
+```
+
+应输出为空。
+
+### 5.3 Manual UI Verification
+
+Codex 应引导用户复测：
+1. **端口连线**：从 Prompt 右侧黄色输出端口按住 → 拖到 Image Gen 左侧黄色输入端口 → 释放 → 应出现黄色连线
+2. **非法连线**：尝试 image 端口连到 text 端口 → 应被校验拒绝
+3. **连线颜色**：text 连线黄色，image 连线绿色
+4. **断开按钮**：鼠标靠近 node-node 连线中点 → `−` 按钮出现 → 点击断开
+5. **动态 image 端口**：Image → Image Gen image 输入 → 是否自动新增空端口
+6. **Screenshot**：选中 2+ 形状 → bounding box 上方 📷 → 点击 → 是否在下方创建 Image Node
+7. **对齐**：选中多个形状 → ⊞ → 各种对齐是否正确
+
+### 5.4 Architecture / Scope Review
+
+GLM 未触碰以下边界：
+- ❌ 无真实 AI API 调用
+- ❌ 无后端 auth / credits / provider 修改
+- ❌ 无新依赖添加
+- ❌ 无 legacy archive 访问
+- ❌ 无画布库替换
+
+需要关注：
+- `portConnectionStore.ts` 使用 Zustand 在 tldraw HTMLContainer 内共享状态 — 确认跨 React root 是否可靠
+- `usePortConnectionCompletion.ts` 使用 `window.dispatchEvent(CustomEvent)` 通信 — 确认是否有更好的方式
+- `CanvasSelectionToolbar.tsx` 使用 `editor.getShapeGeometry()` 和 `editor.getShapePageTransform()` — 这些方法在 tldraw 类型声明中不存在但在运行时可用，确认 tldraw 版本兼容性
+
+## 6. Recommendation
+
+1. 如果连线复测通过 → 建议创建 checkpoint commit，然后进入正式五节点 UI 链路
+2. 如果连线有问题 → 优先修复连线，这是 S1.5 的核心裁决项
+3. 无论结果 → 建议将 `NodeCardContent.tsx`（294 行）拆分端口相关代码到独立文件

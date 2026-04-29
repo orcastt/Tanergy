@@ -1,12 +1,15 @@
 'use client'
 
+import { useCallback, useState } from 'react'
 import type { JsonValue } from '@tldraw/utils'
 import type { NodeCardShape } from '@/types/nodeCardShape'
-import type { JsonObject, NodeRuntimeSummary } from '@/types/nodeRuntime'
+import type { JsonObject, NodeRuntimeSummary, ResolvedNodePort } from '@/types/nodeRuntime'
 import { getNodeDefinition, getResolvedNodePorts } from '@/features/node-runtime/registry'
 import { auditNodePayload } from '@/features/node-runtime/payloadAudit'
+import { usePortConnectionStore } from '@/components/canvas/portConnectionStore'
 
 type NodeCardContentProps = {
+  getEditorPagePoint: (localX: number, localY: number) => { x: number; y: number } | null
   onDataChange: (data: JsonObject) => void
   onRunMock: () => void
   shape: NodeCardShape
@@ -16,7 +19,7 @@ function stopNodeControlEvent(event: React.SyntheticEvent) {
   event.stopPropagation()
 }
 
-export function NodeCardContent({ onDataChange, onRunMock, shape }: NodeCardContentProps) {
+export function NodeCardContent({ getEditorPagePoint, onDataChange, onRunMock, shape }: NodeCardContentProps) {
   const definition = getNodeDefinition(shape.props.nodeType)
   const data = asJsonObject(shape.props.data)
   const runtimeSummary = asRuntimeSummary(shape.props.runtimeSummary)
@@ -32,25 +35,27 @@ export function NodeCardContent({ onDataChange, onRunMock, shape }: NodeCardCont
     <div className={`node-card node-card--${shape.props.nodeType}`}>
       <div className="node-card__ports">
         {ports.map((port) => (
-          <div
-            className="node-card__port"
-            data-direction={port.direction}
-            data-type={port.dataType}
+          <PortDot
+            getEditorPagePoint={getEditorPagePoint}
             key={port.id}
-            style={{ top: `${port.anchorY * 100}%` }}
-            title={`${port.label} · ${port.dataType}`}
+            port={port}
+            shapeId={shape.id}
           />
         ))}
       </div>
 
       <header className="node-card__header">
-        <div>
-          <span className="node-card__eyebrow">S1.5 · {shape.props.nodeType}</span>
-          <h2>{definition.displayName}</h2>
-        </div>
-        <span className={`node-card__status node-card__status--${runtimeSummary.status}`}>
-          {runtimeSummary.status}
-        </span>
+        <h2>{definition.displayName}</h2>
+        {(shape.props.nodeType === 'image_gen' || shape.props.nodeType === 'image_gen_4' || shape.props.nodeType === 'analysis') ? (
+          <button
+            className={`node-card__run-btn ${runtimeSummary.status === 'running' ? 'node-card__run-btn--running' : ''}`}
+            onPointerDown={stopNodeControlEvent}
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onRunMock() }}
+          >
+            {runtimeSummary.status === 'running' ? '■ Stop' : '▶ Run'}
+          </button>
+        ) : null}
       </header>
 
       <div className="node-card__body">
@@ -62,12 +67,11 @@ export function NodeCardContent({ onDataChange, onRunMock, shape }: NodeCardCont
             data={data}
             imageCount={shape.props.nodeType === 'image_gen_4' ? 4 : 1}
             onDataChange={onDataChange}
-            onRunMock={onRunMock}
             runtimeSummary={runtimeSummary}
           />
         ) : null}
         {shape.props.nodeType === 'analysis' ? (
-          <AnalysisPreview data={data} onDataChange={onDataChange} onRunMock={onRunMock} runtimeSummary={runtimeSummary} />
+          <AnalysisPreview data={data} onDataChange={onDataChange} runtimeSummary={runtimeSummary} />
         ) : null}
         {shape.props.nodeType === 'image' ? <ImagePreview data={data} /> : null}
       </div>
@@ -106,19 +110,16 @@ function ImageGeneratePreview({
   data,
   imageCount,
   onDataChange,
-  onRunMock,
   runtimeSummary,
 }: {
   data: JsonObject
   imageCount: 1 | 4
   onDataChange: (data: JsonObject) => void
-  onRunMock: () => void
   runtimeSummary: NodeRuntimeSummary
 }) {
   const modelId = String(data.modelId ?? 'gpt-image-2')
   const aspectRatio = String(data.aspectRatio ?? 'auto')
   const resolution = String(data.resolution ?? '1K')
-  const imageInputCount = Number(data.imageInputCount ?? 1)
   const results = runtimeSummary.resultAssetIds ?? []
 
   return (
@@ -150,13 +151,6 @@ function ImageGeneratePreview({
             <option value="4K">4K</option>
           </select>
         </label>
-        <button type="button" onClick={onRunMock}>
-          Run mock
-        </button>
-      </div>
-
-      <div className="node-card__hint">
-        Text + {Math.max(imageInputCount - 1, 0)} image refs · API body later decides edit / fusion / reference.
       </div>
 
       <div className="node-card__result-grid">
@@ -173,30 +167,24 @@ function ImageGeneratePreview({
 function AnalysisPreview({
   data,
   onDataChange,
-  onRunMock,
   runtimeSummary,
 }: {
   data: JsonObject
   onDataChange: (data: JsonObject) => void
-  onRunMock: () => void
   runtimeSummary: NodeRuntimeSummary
 }) {
   return (
     <div className="node-card__analysis" onPointerDown={stopNodeControlEvent} onWheel={stopNodeControlEvent}>
       <div className="node-card__thumb" data-type="image">img</div>
       <label className="node-card__prompt-field node-card__prompt-field--compact">
-        <span>Analysis Prompt</span>
         <textarea
           value={String(data.analysisPrompt ?? '')}
           onChange={(event) => onDataChange({ ...data, analysisPrompt: event.currentTarget.value })}
         />
       </label>
       <div className="node-card__analysis-output">
-        {runtimeSummary.status === 'succeeded' ? 'Analysis text output will become a text connection.' : 'Analysis result will appear here'}
+        {runtimeSummary.status === 'succeeded' ? 'Analysis text output will become a text connection.' : ''}
       </div>
-      <button className="node-card__secondary-run" type="button" onClick={onRunMock}>
-        Run analysis mock
-      </button>
     </div>
   )
 }
@@ -205,9 +193,84 @@ function ImagePreview({ data }: { data: JsonObject }) {
   return (
     <div className="node-card__image-preview">
       <div className="node-card__image-frame">
-        <span>{String(data.title ?? 'Generated image')}</span>
+        <span>{String(data.title ?? 'Image')}</span>
       </div>
-      <small>{String(data.assetId ?? 'asset_id will be resolved by backend')}</small>
+    </div>
+  )
+}
+
+type PortDotProps = {
+  getEditorPagePoint: (localX: number, localY: number) => { x: number; y: number } | null
+  port: ResolvedNodePort
+  shapeId: string
+}
+
+function PortDot({ getEditorPagePoint, port, shapeId }: PortDotProps) {
+  const [showTooltip, setShowTooltip] = useState(false)
+  const connectingFrom = usePortConnectionStore((s) => s.connectingFrom)
+  const storeStart = usePortConnectionStore((s) => s.start)
+  const storeCancel = usePortConnectionStore((s) => s.cancel)
+  const setMouseScreenPoint = usePortConnectionStore((s) => s.setMouseScreenPoint)
+
+  const handlePointerDown = useCallback((event: React.PointerEvent) => {
+    event.stopPropagation()
+    event.preventDefault()
+    const isOutput = port.direction === 'out'
+    if (!isOutput) return
+
+    const pagePoint = getEditorPagePoint(event.nativeEvent.offsetX, event.nativeEvent.offsetY)
+    if (!pagePoint) return
+
+    storeStart({
+      pagePoint,
+      portDataType: port.dataType,
+      portDirection: port.direction,
+      portId: port.id,
+      shapeId,
+    })
+
+    const onMove = (e: PointerEvent) => {
+      setMouseScreenPoint({ x: e.clientX, y: e.clientY })
+    }
+    const onUp = (e: PointerEvent) => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      const target = document.elementFromPoint(e.clientX, e.clientY)
+      const targetPort = target?.closest('[data-port-id]') as HTMLElement | null
+      const targetPortId = targetPort?.dataset.portId
+      const targetShapeId = targetPort?.dataset.shapeId
+      if (targetPortId && targetShapeId && targetShapeId !== shapeId) {
+        window.dispatchEvent(new CustomEvent('port:complete', {
+          detail: {
+            from: usePortConnectionStore.getState().connectingFrom,
+            targetPagePoint: getEditorPagePoint(0, 0),
+            targetPortId,
+            targetShapeId,
+          },
+        }))
+      }
+      storeCancel()
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }, [getEditorPagePoint, port, setMouseScreenPoint, shapeId, storeCancel, storeStart])
+
+  return (
+    <div
+      className="node-card__port"
+      data-active={connectingFrom?.portId === port.id ? 'true' : undefined}
+      data-direction={port.direction}
+      data-port-id={port.id}
+      data-shape-id={shapeId}
+      data-type={port.dataType}
+      onPointerDown={handlePointerDown}
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+      style={{ top: `${port.anchorY * 100}%` }}
+    >
+      {showTooltip ? (
+        <span className="node-card__port-tooltip">{port.dataType}</span>
+      ) : null}
     </div>
   )
 }

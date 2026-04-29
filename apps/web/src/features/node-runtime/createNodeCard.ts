@@ -46,9 +46,9 @@ function getDefaultNodeWidth(type: NodeType) {
 }
 
 function getDefaultNodeHeight(type: NodeType) {
-  if (type === 'image') return 230
-  if (type === 'image_gen_4') return 320
-  if (type === 'image_gen') return 300
-  if (type === 'analysis') return 300
-  return 210
+  if (type === 'image') return 240
+  if (type === 'image_gen_4') return 350
+  if (type === 'image_gen') return 320
+  if (type === 'analysis') return 340
+  return 220
 }

@@ -7,7 +7,7 @@
 
 ## 当前阶段
 
-**阶段**: Web AI 图像画布重启 — S1.5 复杂节点与架构裁决开发中；已接入五类轻量 `node_card`、左侧 Inspector、动态 image 输入端口、text/image 类型连线、断连按钮、mock graph 入口和 Merge Capture 本地预览
+**阶段**: Web AI 图像画布重启 — S1.5 复杂节点与架构裁决开发中；GLM 班次已完成端口连线交互重写、Node Picker 分类面板、Selection Toolbar 浮动工具栏、Run UI 优化和节点自适应高度
 
 **核心目标**: 用全新、干净的 Web 项目重做 TANGENT。P0 只跑通：
 
@@ -19,7 +19,7 @@ Image Node → Canvas Markup → Merge Capture → New Image Node
 Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Image → 自动连线 → 用户确认后 Run
 ```
 
-**下一步**: 在 `http://localhost:3000/spikes/canvas` 手测 S1.5：点击顶部插入菜单里的 Prompt / Image Gen / Image Gen 4 / Analysis / Image 或 S1.5 graph / 60 node stress，测试节点内下拉与 Run、左侧 Inspector、Prompt → Image Gen、Image → Image Gen、Image → Analysis、Analysis → Prompt 合法连线、非法连线自动删除、动态 image 输入端口、连线中点 `−` 断开、Merge Capture 本地预览、50-60 节点拖拽缩放和 5-10 张外部图片粘贴。
+**下一步**: 在 `http://localhost:3000/spikes/canvas` 复测 GLM 班次的改动：端口 drag-to-connect 连线（从输出端口按住拖到输入端口释放）、双击画布弹出分类 Node Picker、选中 2+ 对象显示浮动工具栏（Screenshot + 对齐）、Run/Stop 按钮、节点内容自适应高度。确认连线颜色和校验正确后，标记 S1.5 通过或继续修复阻塞项。
 
 ---
 
@@ -33,6 +33,7 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 | 总开发路线 | `dev-plans/web-collaborative-canvas-pivot.md` | 当前 P0 分阶段路线图 |
 | 详细开发计划 | `dev-plans/web-alpha-detailed-development-plan.md` | Alpha 逐 Sprint 执行计划、分工、文件范围、验收标准 |
 | AI 接班交接 | `dev-plans/ai-shift-handoff-2026-04-29.md` | 半天接班计划、GLM 执行边界、手测清单、Codex 回来后的复核清单 |
+| GLM 交接笔记 | `dev-plans/glm-handback-2026-04-29.md` | GLM 班次完成内容、变更文件清单、复测要点、已知问题 |
 | 海外成本/增长预测 | `dev-plans/overseas-cost-growth-forecast.md` | 海外部署成本、用户量、社媒增长、AI 单位经济预测 |
 | 旧代码归档 | `legacy/old-tangent-desktop-2026-04-29/` | 旧桌面/Admin/backend/frontend 已隔离，默认不要读 |
 
@@ -86,6 +87,7 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 - ✅ 根据首轮手测反馈收口 S1：隐藏 tldraw 默认分散工具 UI，自定义 Excalidraw-like 顶部图标工具栏；形状和插入类入口收纳为弹出菜单，箭头和直线改为独立图标；左下角恢复自定义导航地图和缩放控件；箭头连接增加边中点/角点吸附、靠近对象时轮廓预高亮、source / target 捕捉点高亮和主动端口命中；连续绘制不暴露 Lock 且 Esc 强制退出；左侧属性面板仅在选中对象且非拖动画布时出现，并改为更清晰的图标控件，补上线条风格、箭头类型和端点；AI/link card 文本缩小时裁切；粘贴图片限制为 PNG/JPEG/WebP、3MB、长边 1280px。
 - ✅ 整合 Gemini 节点/协同/算力复盘：采纳轻量节点、Asset 引用、React 组合节点、Presence/软锁、预算熔断、R2/缩略图思路；修正“视窗剔除不会卡”“CRDT 等于最后写入”“$100/月可每天 20,000 张图”等过乐观口径。
 - ✅ S1.5 已推进到五类节点原型：新增 Prompt / Image Gen / Image Gen 4 / Analysis / Image 注册表、轻量 payload audit、`node_card` custom shape、动态 image 输入端口、text/image 端口和连线颜色、连线中点 `−` 断开按钮、左侧 Node Inspector、node-node 连接规则校验、mock planner graph、单节点插入入口、60 node stress 入口和 Merge Capture 本地预览。
+- ✅ GLM 班次 2026-04-29：重写端口连线为 drag-to-connect（pointerdown→全局 pointermove→pointerup）；新增分类 Node Picker（双击画布弹出，Text/Image 分组）；新增 Selection Toolbar 浮动工具栏（替换右下角 Merge Capture，Screenshot + 对齐）；Run 按钮移至节点标题栏并加 Stop 态；去掉 IDLE/SUCCEEDED 状态文字；节点默认高度增大以自适应内容；节点冗余文字精简。
 
 ---
 
@@ -111,7 +113,7 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
    - Merge Capture 最小验证。
    - 50-100 节点压力测试。
    - 外部图片 5-10 张粘贴/导入压力测试。
-   - 当前状态：开发中；五类节点、Inspector、动态端口、类型连线颜色、端口校验、断连按钮、mock graph、60 节点入口和 Merge Capture 本地预览已实现；图片密集压力测试仍未完成。
+   - 当前状态：开发中；五类节点、Inspector、动态端口、类型连线颜色、端口校验、断连按钮、mock graph、60 节点入口已实现；GLM 班次重写了端口连线交互（drag-to-connect）、Node Picker 分类面板、Selection Toolbar 浮动工具栏、Run UI 优化和节点自适应高度；**连线颜色和校验逻辑待用户复测确认**；图片密集压力测试仍未完成。
 
 3. **五类节点 UI 链路**
    - 双击画布调用出节点面板，或者工具栏增加一个加号，然后调用出节点面板

@@ -105,9 +105,15 @@ export class NodeCardShapeUtil extends BaseBoxShapeUtil<NodeCardShape> {
       }, 450)
     }
 
+    const getEditorPagePoint = (localX: number, localY: number) => {
+      const transform = this.editor.getShapePageTransform(shape.id)
+      if (!transform) return null
+      return transform.applyToPoint({ x: localX, y: localY })
+    }
+
     return (
       <HTMLContainer className="node-card-shape">
-        <NodeCardContent onDataChange={updateData} onRunMock={runMock} shape={shape} />
+        <NodeCardContent getEditorPagePoint={getEditorPagePoint} onDataChange={updateData} onRunMock={runMock} shape={shape} />
       </HTMLContainer>
     )
   }

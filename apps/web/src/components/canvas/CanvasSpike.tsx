@@ -11,7 +11,9 @@ import type { NodeType } from '@/types/nodeRuntime'
 import { AiCardShapeUtil } from './AiCardShape'
 import { CanvasArrowPortOverlay } from './CanvasArrowPortOverlay'
 import { CanvasConnectionCutOverlay } from './CanvasConnectionCutOverlay'
-import { CanvasMergeCapturePanel } from './CanvasMergeCapturePanel'
+import { CanvasConnectionLine } from './CanvasConnectionLine'
+import { CanvasNodePicker } from './CanvasNodePicker'
+import { CanvasSelectionToolbar } from './CanvasSelectionToolbar'
 import { CanvasSpikeNavigator } from './CanvasSpikeNavigator'
 import { CanvasSpikeStylePanel } from './CanvasSpikeStylePanel'
 import { CanvasSpikeToolbar } from './CanvasSpikeToolbar'
@@ -24,6 +26,7 @@ import {
   seedCanvasSpike,
 } from './canvasSeed'
 import { useArrowPortSnapping } from './useArrowPortSnapping'
+import { usePortConnectionCompletion } from './usePortConnectionCompletion'
 
 const shapeUtils = [
   AiCardShapeUtil,
@@ -67,6 +70,7 @@ export function CanvasSpike() {
   } | null>(null)
   useArrowPortSnapping(editor)
   useNodeConnectionValidation(editor, setConnectionMessage)
+  usePortConnectionCompletion(editor)
 
   const handleMount = useCallback((mountedEditor: Editor) => {
     setEditor(mountedEditor)
@@ -134,6 +138,8 @@ export function CanvasSpike() {
         />
         <CanvasArrowPortOverlay editor={editor} />
         <CanvasConnectionCutOverlay editor={editor} />
+        <CanvasConnectionLine editor={editor} />
+        <CanvasNodePicker editor={editor} onSelect={createNodeAtViewport} />
         <CanvasSpikeNavigator editor={editor} />
         <CanvasSpikeToolbar
           editor={editor}
@@ -151,7 +157,7 @@ export function CanvasSpike() {
           onCreateStressNodes={toolbarActions.createStressNodes}
         />
         <CanvasNodeInspector connectionMessage={connectionMessage} editor={editor} />
-        <CanvasMergeCapturePanel editor={editor} />
+        <CanvasSelectionToolbar editor={editor} />
         <CanvasSpikeStylePanel editor={editor} />
       </div>
     </div>
