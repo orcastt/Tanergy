@@ -8,8 +8,10 @@ export type LocalBoardSaveResponse = {
   board?: {
     byteSize: number
     id: string
+    ownerId?: string
     savedAt: string
     title: string
+    workspaceId?: string
   }
   error?: string
   ok: boolean
@@ -20,8 +22,10 @@ export type LocalBoardLoadResponse = {
     byteSize: number
     document: unknown
     id: string
+    ownerId?: string
     savedAt: string
     title: string
+    workspaceId?: string
   }
   error?: string
   ok: boolean

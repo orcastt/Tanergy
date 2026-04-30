@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { auditBoardDocument } from '@/features/boards/boardDocumentGuard'
+import type { ApiRequestContext } from '../../_lib/apiRequestContext'
 
 const storageRoot = process.env.TANGENT_BOARD_STORAGE_DIR ?? path.join(process.cwd(), '.tangent-boards')
 const boardsRoot = path.join(storageRoot, 'boards')
@@ -10,15 +11,17 @@ export type LocalBoardRecord = {
   byteSize: number
   document: unknown
   id: string
+  ownerId: string
   savedAt: string
   title: string
+  workspaceId: string
 }
 
 export async function saveLocalBoard(input: {
   boardId?: string
   document: unknown
   title?: string
-}) {
+}, context: ApiRequestContext) {
   const audit = auditBoardDocument(input.document)
   if (!audit.ok) {
     return { audit, board: null }
@@ -29,8 +32,10 @@ export async function saveLocalBoard(input: {
     byteSize: audit.byteSize,
     document: input.document,
     id: boardId,
+    ownerId: context.userId,
     savedAt: new Date().toISOString(),
     title: input.title?.trim() || 'Untitled Board',
+    workspaceId: context.workspaceId,
   }
 
   await mkdir(boardsRoot, { recursive: true })
@@ -38,11 +43,13 @@ export async function saveLocalBoard(input: {
   return { audit, board: record }
 }
 
-export async function loadLocalBoard(boardId: string) {
+export async function loadLocalBoard(boardId: string, context: ApiRequestContext) {
   const safeBoardId = sanitizeBoardId(boardId)
   if (!safeBoardId) throw new Error('Invalid board id.')
   const raw = await readFile(getBoardPath(safeBoardId), 'utf8')
-  return JSON.parse(raw) as LocalBoardRecord
+  const board = normalizeBoardRecord(JSON.parse(raw) as Partial<LocalBoardRecord>, context)
+  assertBoardAccess(board, context)
+  return board
 }
 
 function getBoardPath(boardId: string) {
@@ -52,4 +59,22 @@ function getBoardPath(boardId: string) {
 function sanitizeBoardId(value: string | undefined) {
   if (!value) return null
   return /^[a-zA-Z0-9._-]+$/.test(value) && !value.includes('..') ? value : null
+}
+
+function normalizeBoardRecord(record: Partial<LocalBoardRecord>, context: ApiRequestContext): LocalBoardRecord {
+  return {
+    byteSize: record.byteSize ?? 0,
+    document: record.document ?? null,
+    id: record.id ?? '',
+    ownerId: record.ownerId ?? context.userId,
+    savedAt: record.savedAt ?? new Date(0).toISOString(),
+    title: record.title ?? 'Untitled Board',
+    workspaceId: record.workspaceId ?? context.workspaceId,
+  }
+}
+
+function assertBoardAccess(board: LocalBoardRecord, context: ApiRequestContext) {
+  if (board.workspaceId !== context.workspaceId) {
+    throw new Error('Board not found in workspace.')
+  }
 }

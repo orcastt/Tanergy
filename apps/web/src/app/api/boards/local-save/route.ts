@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { getApiRequestContext } from '../../_lib/apiRequestContext'
 import { saveLocalBoard } from '../_lib/localBoardStore'
 
 export const runtime = 'nodejs'
@@ -16,7 +17,7 @@ export async function POST(request: Request) {
       boardId: body.boardId,
       document: body.document,
       title: body.title,
-    })
+    }, getApiRequestContext(request))
 
     if (!board) {
       return NextResponse.json({ audit, error: 'Board document failed save guard.', ok: false }, { status: 422 })

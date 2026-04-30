@@ -534,11 +534,13 @@ Scope:
 - Add a storage adapter entry point for asset operations.
 - Keep `local-dev` as the default storage driver, while making unsupported drivers fail loudly.
 - Route asset create / metadata / file reads through the adapter and request context.
+- Route local board save / load through the same request context and stamp saved board records with `workspaceId` / `ownerId`.
 
 Acceptance:
 
 - Existing Image Node import, Merge Capture, Screenshot and `Save local` continue to work without custom headers in local dev.
 - New asset metadata contains `workspaceId` and `createdBy`.
+- New local board records contain `workspaceId` and `ownerId`.
 - Unsupported `TANGENT_ASSET_STORAGE_DRIVER` values return a clear error instead of silently falling back.
 - The frontend asset upload client contract does not need to change when this local bridge later moves behind FastAPI.
 
@@ -546,11 +548,16 @@ Manual test:
 
 - Open `/spikes/canvas`, import or paste an image, then run `Save local`.
 - Fetch a created asset metadata record and verify it contains `workspaceId: "dev-workspace"` and `createdBy: "dev-user"` by default.
+- Call `GET /api/boards/local-load?boardId=canvas-spike-local` and verify the board metadata contains `workspaceId: "dev-workspace"` and `ownerId: "dev-user"` after saving.
 - Set `TANGENT_ASSET_STORAGE_DRIVER` to an unsupported value and confirm upload returns a clear configuration error.
 
 2026-05-01 implementation note:
 
 Codex added `apps/web/src/app/api/_lib/apiRequestContext.ts` and `apps/web/src/app/api/assets/_lib/assetStorageAdapter.ts`. Asset create / metadata / file routes now resolve a local request context before touching storage, and `TangentAssetRecord` includes `workspaceId` and `createdBy`. The local adapter remains file-system backed under `.tangent-assets/`, but unsupported storage drivers fail explicitly. Smoke tests verified `POST /api/assets/from-data-url`, metadata GET, file GET and unsupported driver failure.
+
+2026-05-01 continuation note:
+
+Local board save / load now also uses the same request context. `LocalBoardRecord` includes `workspaceId` and `ownerId`; `local-load` checks workspace access before returning a saved document. Smoke tests verified clean save/load returns `dev-workspace` / `dev-user`, while documents containing `data:` asset URLs still fail with 422.
 
 ---
 

@@ -883,8 +883,8 @@ GET /api/v1/boards/local-load?boardId=...
 - 当前本地开发 bridge 在 `apps/web/src/app/api/boards/validate-document/route.ts` 提供相同 guard contract；正式 FastAPI 保存接口必须复用同等规则。
 - 当前 canvas spike 使用 `serializeBoardDocument()` 生成保存候选 document，只包含 shapes、assets、camera、viewport、runtime edges 等轻量恢复信息，不保存完整 tldraw store snapshot。
 - 当前 `Save audit` dev control 会先迁移可处理的 runtime image assets 到本地 Asset API，再执行 guard；不能迁移的 `data:` / `blob:` 仍会阻塞保存候选。
-- 当前 `Save local` dev control 会在 guard 通过后写入 `.tangent-boards/boards/canvas-spike-local.json`；这是本地开发保存支架，不替代正式数据库、Auth 或 workspace 权限。
-- 当前 `Load local` dev control 会从 `.tangent-boards/` 读取同一 document，重建 tldraw assets / shapes、runtime edges 和 camera；这是 restore 验证支架，不替代正式 Board load。
+- 当前 `Save local` dev control 会在 guard 通过后写入 `.tangent-boards/boards/canvas-spike-local.json`，并通过 `apiRequestContext` 给本地记录写入 `workspaceId` / `ownerId`；这是本地开发保存支架，不替代正式数据库、Auth 或 workspace 权限。
+- 当前 `Load local` dev control 会从 `.tangent-boards/` 读取同一 document，按 `workspaceId` 校验本地记录后重建 tldraw assets / shapes、runtime edges 和 camera；这是 restore 验证支架，不替代正式 Board load。
 
 ### 8.3 Assets
 
