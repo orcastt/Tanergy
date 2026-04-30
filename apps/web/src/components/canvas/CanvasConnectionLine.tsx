@@ -52,13 +52,14 @@ export function CanvasConnectionLine({ editor }: CanvasConnectionLineProps) {
   if (!editor || !connectingFrom || !mouseScreenPoint) return null
 
   const start = editor.pageToScreen(connectingFrom.pagePoint)
+  const end = getPreviewEndPoint(start, mouseScreenPoint)
   const color = connectingFrom.portDataType === 'image' ? '#22c55e' : '#eab308'
-  const curveOffset = Math.max(64, Math.abs(mouseScreenPoint.x - start.x) * 0.45)
+  const curveOffset = Math.max(64, Math.abs(end.x - start.x) * 0.45)
   const path = [
     `M ${start.x} ${start.y}`,
     `C ${start.x + curveOffset} ${start.y}`,
-    `${mouseScreenPoint.x - curveOffset} ${mouseScreenPoint.y}`,
-    `${mouseScreenPoint.x} ${mouseScreenPoint.y}`,
+    `${end.x - curveOffset} ${end.y}`,
+    `${end.x} ${end.y}`,
   ].join(' ')
 
   return (
@@ -67,12 +68,19 @@ export function CanvasConnectionLine({ editor }: CanvasConnectionLineProps) {
         d={path}
         fill="none"
         stroke={color}
-        strokeDasharray="6 4"
         strokeLinecap="round"
-        strokeWidth={2}
+        strokeWidth={3}
       />
+      <circle cx={start.x} cy={start.y} fill="white" r={9} stroke={color} strokeWidth={3} />
       <circle cx={start.x} cy={start.y} fill={color} r={4} />
-      <circle cx={mouseScreenPoint.x} cy={mouseScreenPoint.y} fill={color} r={3} />
+      <circle cx={end.x} cy={end.y} fill="white" r={7} stroke={color} strokeWidth={3} />
+      <circle cx={end.x} cy={end.y} fill={color} r={3} />
     </svg>
   )
+}
+
+function getPreviewEndPoint(start: { x: number; y: number }, point: { x: number; y: number }) {
+  const distance = Math.hypot(point.x - start.x, point.y - start.y)
+  if (distance >= 12) return point
+  return { x: start.x + 54, y: start.y }
 }

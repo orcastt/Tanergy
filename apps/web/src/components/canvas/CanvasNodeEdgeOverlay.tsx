@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { Editor, TLShapeId } from 'tldraw'
 import type { NodeCardShape } from '@/types/nodeCardShape'
 import type { JsonObject } from '@/types/nodeRuntime'
@@ -25,25 +25,15 @@ type EdgeView = {
   target: { x: number; y: number }
 }
 
-const edgeHoverDistance = 22
-
 export function CanvasNodeEdgeOverlay({ editor }: CanvasNodeEdgeOverlayProps) {
   const edges = useNodeEdgeStore((state) => state.edges)
   const removeEdge = useNodeEdgeStore((state) => state.removeEdge)
   const [hoverEdgeId, setHoverEdgeId] = useState<string | null>(null)
-  const [pointerScreenPoint, setPointerScreenPoint] = useState<{ x: number; y: number } | null>(null)
   useEditorRevision(editor)
-
-  useEffect(() => {
-    const updatePointer = (event: PointerEvent) => setPointerScreenPoint({ x: event.clientX, y: event.clientY })
-    window.addEventListener('pointermove', updatePointer)
-    return () => window.removeEventListener('pointermove', updatePointer)
-  }, [])
 
   if (!editor || edges.length === 0) return null
 
   const edgeViews = getEdgeViews(editor, edges)
-  const hovered = getHoveredEdge(edgeViews, hoverEdgeId, pointerScreenPoint)
 
   return (
     <div className="node-edge-overlay" aria-hidden>
@@ -55,6 +45,15 @@ export function CanvasNodeEdgeOverlay({ editor }: CanvasNodeEdgeOverlayProps) {
             data-type={view.edge.dataType}
             key={view.edge.id}
             stroke={view.color}
+          />
+        ))}
+        {edgeViews.map((view) => (
+          <path
+            className="node-edge-overlay__path-hit"
+            d={view.path}
+            key={`${view.edge.id}-hit`}
+            onPointerEnter={() => setHoverEdgeId(view.edge.id)}
+            onPointerLeave={() => setHoverEdgeId(null)}
           />
         ))}
       </svg>
@@ -71,8 +70,8 @@ export function CanvasNodeEdgeOverlay({ editor }: CanvasNodeEdgeOverlayProps) {
           onPointerLeave={() => setHoverEdgeId(null)}
           style={{
             left: view.midpoint.x,
-            opacity: hovered?.edge.id === view.edge.id ? 1 : 0,
-            pointerEvents: hovered?.edge.id === view.edge.id ? 'auto' : 'none',
+            opacity: hoverEdgeId === view.edge.id ? 1 : 0,
+            pointerEvents: hoverEdgeId === view.edge.id ? 'auto' : 'none',
             top: view.midpoint.y,
           }}
           title="Disconnect"
@@ -127,16 +126,6 @@ function getPortScreenPoint(editor: Editor, shapeId: string, portId: string) {
   return editor.pageToScreen(pagePoint)
 }
 
-function getHoveredEdge(
-  views: EdgeView[],
-  hoverEdgeId: string | null,
-  pointerScreenPoint: { x: number; y: number } | null
-) {
-  if (hoverEdgeId) return views.find((view) => view.edge.id === hoverEdgeId) ?? null
-  if (!pointerScreenPoint) return null
-  return views.find((view) => distanceToSegment(pointerScreenPoint, view.start, view.target) <= edgeHoverDistance) ?? null
-}
-
 function getBezierMidpoint(start: { x: number; y: number }, target: { x: number; y: number }, offset: number) {
   const first = { x: start.x + offset, y: start.y }
   const second = { x: target.x - offset, y: target.y }
@@ -152,23 +141,6 @@ function getBezierMidpoint(start: { x: number; y: number }, target: { x: number;
     3 * (1 - t) * t ** 2 * second.y +
     t ** 3 * target.y
   return { x, y }
-}
-
-function distanceToSegment(
-  point: { x: number; y: number },
-  start: { x: number; y: number },
-  end: { x: number; y: number }
-) {
-  const segmentX = end.x - start.x
-  const segmentY = end.y - start.y
-  const lengthSquared = segmentX * segmentX + segmentY * segmentY
-  if (lengthSquared === 0) return Math.hypot(point.x - start.x, point.y - start.y)
-
-  const amount = Math.max(
-    0,
-    Math.min(1, ((point.x - start.x) * segmentX + (point.y - start.y) * segmentY) / lengthSquared)
-  )
-  return Math.hypot(point.x - (start.x + amount * segmentX), point.y - (start.y + amount * segmentY))
 }
 
 function isNodeCard(shape: unknown): shape is NodeCardShape {

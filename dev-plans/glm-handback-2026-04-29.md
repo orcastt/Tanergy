@@ -280,3 +280,22 @@ Unexpected property
 3. 选中数据线附近中点 `−` 可断开 runtime edge。
 4. 普通白板箭头仍可画、仍有 tldraw 的白板编辑能力。
 5. S1.5 Graph 插入后应使用 runtime 数据线，而不是 tldraw arrow。
+
+### 7.5 Codex Follow-up 6 — Data edge interaction polish
+
+用户复测确认 runtime edge 方向正确，但缺少两个交互：
+
+- 点击输出端口后，应该立刻出现一个“线头/插头”，并随鼠标拉伸成预览曲线。
+- 已完成数据线中点应该出现 `−` 断连按钮。
+
+已修复：
+
+- `CanvasConnectionLine.tsx`：连接开始后立即渲染白底彩色插头、彩色起点和跟随鼠标的贝塞尔预览线；鼠标还没移动时也显示一段短线，提示连接已开始。
+- `CanvasNodeEdgeOverlay.tsx`：断连按钮不再靠直线距离猜测 hover，改为在每条贝塞尔曲线上叠一条透明粗 hit path。
+- `node-edge-overlay.css`：增加透明 hit path 和断连按钮 hover 动效。
+
+待手测：
+
+1. 点击输出端口后不移动鼠标，也应看到短线头。
+2. 移动鼠标时预览线应持续拉伸，不应闪断。
+3. 鼠标移到已完成数据线中段附近，应出现 `−`；点击后 edge 删除，动态 image 输入端口数量同步回收。
