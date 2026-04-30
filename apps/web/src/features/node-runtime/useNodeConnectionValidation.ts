@@ -4,7 +4,6 @@ import { useEffect, useRef } from 'react'
 import type { Editor, TLArrowBinding, TLArrowShape } from 'tldraw'
 import type { NodeCardShape } from '@/types/nodeCardShape'
 import { getArrowColorForDataType, getNodePortForAnchor, validateNodeConnection } from './connectionRules'
-import { maxImageInputPorts } from './registry'
 
 type ConnectionValidationEvent = {
   tone: 'error' | 'success'
@@ -50,7 +49,6 @@ function validateConnections(editor: Editor, onEvent: (event: ConnectionValidati
   const arrows = editor
     .getCurrentPageShapes()
     .filter((shape): shape is TLArrowShape => shape.type === 'arrow')
-  const imageInputCounts = new Map<NodeCardShape['id'], number>()
   const occupiedInputPorts = new Map<NodeCardShape['id'], Set<string>>()
 
   for (const arrow of arrows) {
@@ -96,37 +94,7 @@ function validateConnections(editor: Editor, onEvent: (event: ConnectionValidati
       })
     }
 
-    if (targetPort.dataType === 'image' && targetPort.direction === 'in') {
-      imageInputCounts.set(target.id, (imageInputCounts.get(target.id) ?? 0) + 1)
-    }
-
     onEvent({ text: result.reason, tone: 'success' })
-  }
-
-  updateDynamicImageInputCounts(editor, imageInputCounts)
-}
-
-function updateDynamicImageInputCounts(editor: Editor, counts: Map<NodeCardShape['id'], number>) {
-  for (const shape of editor.getCurrentPageShapes()) {
-    if (!isNodeCard(shape)) continue
-    if (shape.props.nodeType !== 'image_gen' && shape.props.nodeType !== 'image_gen_4') continue
-
-    const data = shape.props.data && typeof shape.props.data === 'object' && !Array.isArray(shape.props.data)
-      ? shape.props.data
-      : {}
-    const nextCount = Math.min(Math.max((counts.get(shape.id) ?? 0) + 1, 1), maxImageInputPorts)
-    if (Number(data.imageInputCount ?? 1) === nextCount) continue
-
-    editor.updateShape<NodeCardShape>({
-      id: shape.id,
-      props: {
-        data: {
-          ...data,
-          imageInputCount: nextCount,
-        },
-      },
-      type: 'node_card',
-    })
   }
 }
 

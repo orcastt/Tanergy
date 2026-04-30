@@ -247,3 +247,36 @@ Unexpected property
 1. 普通矩形/圆形之间连续画两条箭头，第二条应可稳定吸到目标形状另一个边中点。
 2. 已完成箭头不应在移动其他对象或创建新箭头时闪烁/跳点。
 3. 拖动已完成箭头端点时，仍可按鼠标靠近的边中点重新吸附。
+
+### 7.4 Codex Follow-up 5 — Runtime data edge layer
+
+用户指出：
+
+- 当前 node 端口连线本质仍是 tldraw `arrow` shape。
+- tldraw arrow 会暴露中点/锚点编辑；用户改锚点后数据线会断。
+- 期望效果更接近 React Flow / ComfyUI：端口之间是稳定的贝塞尔数据线，不是白板箭头。
+
+架构结论：
+
+- 不需要立刻换掉 tldraw 画布框架。
+- 但 node-node 数据连线不能继续复用 tldraw `arrow`。
+- 正确分层是：
+  - 白板普通箭头：继续使用 tldraw arrow。
+  - 节点数据连线：进入 Node Runtime Edge Store，由 React/SVG overlay 渲染。
+
+已实现：
+
+- 新增 `features/node-runtime/nodeEdges.ts`：轻量 runtime edge store，记录 `sourceShapeId/sourcePortId/targetShapeId/targetPortId/dataType`。
+- 新增 `components/canvas/CanvasNodeEdgeOverlay.tsx`：根据节点和端口位置渲染 ComfyUI/React Flow 风格贝塞尔曲线。
+- 新增 `styles/node-edge-overlay.css`，避免继续撑大 287 行的 `canvas-overlays.css`。
+- `usePortConnectionCompletion.ts` 不再创建 tldraw arrow/binding，而是写入 runtime edge store。
+- `createMockWorkflow.ts` 的 S1.5 Graph 改为创建 runtime edges。
+- `useNodeConnectionValidation.ts` 不再用 tldraw arrow 统计动态 image input，避免与 runtime edge store 打架。
+
+待手测：
+
+1. 点击 Prompt output → Image Gen text input 后，出现 Comfy 风格数据线，不能出现 tldraw arrow 中点/锚点手柄。
+2. 移动任一节点后，数据线应跟随端口。
+3. 选中数据线附近中点 `−` 可断开 runtime edge。
+4. 普通白板箭头仍可画、仍有 tldraw 的白板编辑能力。
+5. S1.5 Graph 插入后应使用 runtime 数据线，而不是 tldraw arrow。

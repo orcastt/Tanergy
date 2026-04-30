@@ -1,6 +1,7 @@
-import { createShapeId, type Editor, type TLShapeId } from 'tldraw'
-import type { NodeCardShape } from '@/types/nodeCardShape'
+import { type Editor, type TLShapeId } from 'tldraw'
+import type { NodePortDataType } from '@/types/nodeRuntime'
 import { createNodeCard } from './createNodeCard'
+import { syncNodeEdgeInputCounts, useNodeEdgeStore } from './nodeEdges'
 
 const graphGap = 120
 
@@ -49,11 +50,12 @@ export function createStep15MockGraph(editor: Editor) {
     y: startY + 180,
   })
 
-  createBoundArrow(editor, promptId, multiGenId, { x: 1, y: 0.5 }, { x: 0, y: 0.19 })
-  createBoundArrow(editor, multiGenId, imageId, { x: 1, y: 0.5 }, { x: 0, y: 0.5 })
-  createBoundArrow(editor, imageId, analysisId, { x: 1, y: 0.5 }, { x: 0, y: 0.19 })
-  createBoundArrow(editor, imageId, singleGenId, { x: 1, y: 0.5 }, { x: 0, y: 0.5 })
-  createBoundArrow(editor, editPromptId, singleGenId, { x: 1, y: 0.5 }, { x: 0, y: 0.19 })
+  createRuntimeEdge(promptId, 'text_out', multiGenId, 'text_in', 'text')
+  createRuntimeEdge(multiGenId, 'image_out', imageId, 'image_in', 'image')
+  createRuntimeEdge(imageId, 'image_out', analysisId, 'image_in', 'image')
+  createRuntimeEdge(imageId, 'image_out', singleGenId, 'image_in_1', 'image')
+  createRuntimeEdge(editPromptId, 'text_out', singleGenId, 'text_in', 'text')
+  syncNodeEdgeInputCounts(editor)
   editor.select(promptId, multiGenId, imageId, analysisId, editPromptId, singleGenId)
   editor.zoomToSelection({ animation: { duration: 220 } })
 }
@@ -81,60 +83,18 @@ export function createStep15StressNodes(editor: Editor) {
   editor.select(...ids.slice(0, 10))
 }
 
-function createBoundArrow(
-  editor: Editor,
+function createRuntimeEdge(
   sourceId: TLShapeId,
+  sourcePortId: string,
   targetId: TLShapeId,
-  sourceAnchor: { x: number; y: number },
-  targetAnchor: { x: number; y: number }
+  targetPortId: string,
+  dataType: NodePortDataType
 ) {
-  const source = editor.getShape<NodeCardShape>(sourceId)
-  const target = editor.getShape<NodeCardShape>(targetId)
-  if (!source || !target) return
-
-  const cleanSourceAnchor = toCleanAnchor(sourceAnchor)
-  const cleanTargetAnchor = toCleanAnchor(targetAnchor)
-  const sourcePoint = { x: source.x + source.props.w * cleanSourceAnchor.x, y: source.y + source.props.h * cleanSourceAnchor.y }
-  const targetPoint = { x: target.x + target.props.w * cleanTargetAnchor.x, y: target.y + target.props.h * cleanTargetAnchor.y }
-  const arrowId = createShapeId()
-
-  editor.createShape({
-    id: arrowId,
-    type: 'arrow',
-    x: sourcePoint.x,
-    y: sourcePoint.y,
-    props: {
-      end: { x: targetPoint.x - sourcePoint.x, y: targetPoint.y - sourcePoint.y },
-      start: { x: 0, y: 0 },
-    },
+  useNodeEdgeStore.getState().addEdge({
+    dataType,
+    sourcePortId,
+    sourceShapeId: sourceId,
+    targetPortId,
+    targetShapeId: targetId,
   })
-
-  editor.createBinding({
-    fromId: arrowId,
-    props: {
-      isExact: false,
-      isPrecise: true,
-      normalizedAnchor: cleanSourceAnchor,
-      snap: 'edge-point',
-      terminal: 'start',
-    },
-    toId: sourceId,
-    type: 'arrow',
-  })
-  editor.createBinding({
-    fromId: arrowId,
-    props: {
-      isExact: false,
-      isPrecise: true,
-      normalizedAnchor: cleanTargetAnchor,
-      snap: 'edge-point',
-      terminal: 'end',
-    },
-    toId: targetId,
-    type: 'arrow',
-  })
-}
-
-function toCleanAnchor(anchor: { x: number; y: number }) {
-  return { x: anchor.x, y: anchor.y }
 }

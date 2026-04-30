@@ -12,6 +12,7 @@ import { AiCardShapeUtil } from './AiCardShape'
 import { CanvasArrowPortOverlay } from './CanvasArrowPortOverlay'
 import { CanvasConnectionCutOverlay } from './CanvasConnectionCutOverlay'
 import { CanvasConnectionLine } from './CanvasConnectionLine'
+import { CanvasNodeEdgeOverlay } from './CanvasNodeEdgeOverlay'
 import { CanvasNodePicker } from './CanvasNodePicker'
 import { CanvasSelectionToolbar } from './CanvasSelectionToolbar'
 import { CanvasSpikeNavigator } from './CanvasSpikeNavigator'
@@ -70,7 +71,7 @@ export function CanvasSpike() {
   } | null>(null)
   useArrowPortSnapping(editor)
   useNodeConnectionValidation(editor, setConnectionMessage)
-  usePortConnectionCompletion(editor)
+  usePortConnectionCompletion(editor, setConnectionMessage)
 
   const handleMount = useCallback((mountedEditor: Editor) => {
     setEditor(mountedEditor)
@@ -137,6 +138,7 @@ export function CanvasSpike() {
           shapeUtils={shapeUtils}
         />
         <CanvasArrowPortOverlay editor={editor} />
+        <CanvasNodeEdgeOverlay editor={editor} />
         <CanvasConnectionCutOverlay editor={editor} />
         <CanvasConnectionLine editor={editor} />
         <CanvasNodePicker editor={editor} onSelect={createNodeAtViewport} />

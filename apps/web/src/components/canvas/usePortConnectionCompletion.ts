@@ -1,12 +1,12 @@
 'use client'
 
 import { useEffect } from 'react'
-import { createShapeId, type Editor, type TLArrowShape, type TLShapeId } from 'tldraw'
+import { type Editor, type TLShapeId } from 'tldraw'
 import type { NodeCardShape } from '@/types/nodeCardShape'
-import { validateNodeConnection, getArrowColorForDataType } from '@/features/node-runtime/connectionRules'
+import { validateNodeConnection } from '@/features/node-runtime/connectionRules'
 import { getResolvedNodePorts } from '@/features/node-runtime/registry'
 import type { JsonObject, NodePortDataType, ResolvedNodePort } from '@/types/nodeRuntime'
-import { toTldrawAnchor } from './arrowAnchorUtils'
+import { syncNodeEdgeInputCounts, useNodeEdgeStore } from '@/features/node-runtime/nodeEdges'
 
 type ConnectionFrom = {
   pagePoint: { x: number; y: number }
@@ -29,19 +29,24 @@ type PortTarget = {
   shape: NodeCardShape
 }
 
-export function usePortConnectionCompletion(editor: Editor | null) {
+type ConnectionEvent = {
+  text: string
+  tone: 'error' | 'success'
+}
+
+export function usePortConnectionCompletion(editor: Editor | null, onEvent: (event: ConnectionEvent) => void) {
   useEffect(() => {
     if (!editor) return
     const handler = (event: Event) => {
       const detail = (event as CustomEvent<CompleteDetail>).detail
-      completeConnection(editor, detail)
+      completeConnection(editor, detail, onEvent)
     }
     window.addEventListener('port:complete', handler)
     return () => { window.removeEventListener('port:complete', handler) }
-  }, [editor])
+  }, [editor, onEvent])
 }
 
-function completeConnection(editor: Editor, detail: CompleteDetail) {
+function completeConnection(editor: Editor, detail: CompleteDetail, onEvent: (event: ConnectionEvent) => void) {
   const { from } = detail
   if (!from) return
 
@@ -57,72 +62,29 @@ function completeConnection(editor: Editor, detail: CompleteDetail) {
   if (!target) return
 
   const result = validateNodeConnection(sourceShape, sourcePort, target.shape, target.port)
-  if (!result.valid || !result.dataType) return
+  if (!result.valid || !result.dataType) {
+    onEvent({ text: result.reason, tone: 'error' })
+    return
+  }
 
-  const sourcePagePoint = getPortPagePoint(editor, sourceShape, sourcePort)
-  if (!sourcePagePoint) return
+  const existingEdges = useNodeEdgeStore.getState().edges
+  if (existingEdges.some((edge) => (
+    edge.targetShapeId === target.shape.id &&
+    edge.targetPortId === target.port.id
+  ))) {
+    onEvent({ text: `Input already connected: ${target.port.label}`, tone: 'error' })
+    return
+  }
 
-  createConnectionArrow(editor, sourceShape, sourcePort, sourcePagePoint, target.shape, target.port, target.pagePoint, result.dataType)
-}
-
-function createConnectionArrow(
-  editor: Editor,
-  sourceShape: NodeCardShape,
-  sourcePort: ResolvedNodePort,
-  sourcePagePoint: { x: number; y: number },
-  targetShape: NodeCardShape,
-  targetPort: ResolvedNodePort,
-  targetPagePoint: { x: number; y: number },
-  dataType: 'image' | 'text'
-) {
-  const color = getArrowColorForDataType(dataType)
-  const arrowId = createShapeId('arrow') as TLShapeId
-
-  const sourceAnchor = toTldrawAnchor({
-    x: sourcePort.direction === 'out' ? 1 : 0,
-    y: sourcePort.anchorY,
+  useNodeEdgeStore.getState().addEdge({
+    dataType: result.dataType,
+    sourcePortId: sourcePort.id,
+    sourceShapeId: sourceShape.id,
+    targetPortId: target.port.id,
+    targetShapeId: target.shape.id,
   })
-  const targetAnchor = toTldrawAnchor({
-    x: targetPort.direction === 'in' ? 0 : 1,
-    y: targetPort.anchorY,
-  })
-
-  editor.run(() => {
-    editor.createShape<TLArrowShape>({
-      id: arrowId,
-      type: 'arrow',
-      x: sourcePagePoint.x,
-      y: sourcePagePoint.y,
-      props: {
-        bend: getArrowBend(sourcePagePoint, targetPagePoint),
-        color,
-        dash: 'solid',
-        end: { x: targetPagePoint.x - sourcePagePoint.x, y: targetPagePoint.y - sourcePagePoint.y },
-        kind: 'arc',
-        start: { x: 0, y: 0 },
-      },
-    })
-
-    editor.createBinding({
-      fromId: arrowId,
-      props: { isExact: false, isPrecise: true, normalizedAnchor: sourceAnchor, snap: 'edge-point', terminal: 'start' },
-      toId: sourceShape.id,
-      type: 'arrow',
-    })
-
-    editor.createBinding({
-      fromId: arrowId,
-      props: { isExact: false, isPrecise: true, normalizedAnchor: targetAnchor, snap: 'edge-point', terminal: 'end' },
-      toId: targetShape.id,
-      type: 'arrow',
-    })
-  })
-}
-
-function getArrowBend(sourcePagePoint: { x: number; y: number }, targetPagePoint: { x: number; y: number }) {
-  const direction = targetPagePoint.y >= sourcePagePoint.y ? 1 : -1
-  const distance = Math.hypot(targetPagePoint.x - sourcePagePoint.x, targetPagePoint.y - sourcePagePoint.y)
-  return Math.min(Math.max(distance * 0.08, 18), 42) * direction
+  syncNodeEdgeInputCounts(editor)
+  onEvent({ text: result.reason, tone: 'success' })
 }
 
 function getConnectionTarget(editor: Editor, detail: CompleteDetail, from: ConnectionFrom): PortTarget | null {

@@ -179,6 +179,7 @@ P0 只需要记录 API 成本和调用日志，避免先做复杂订阅系统。
 | Canvas | tldraw SDK 优先 | 白板、图片、画笔、箭头、自定义 shape 更贴近目标 |
 | 节点 UI | tldraw custom shapes + React HTMLContainer | P0 需要 Prompt / Image Gen / Image Gen 4 / Analysis / Image；复杂表单不全部塞进节点 |
 | Node Runtime | 自研轻量运行时 | 管节点类型、端口、参数 schema、连接规则、运行状态映射 |
+| Node Data Edges | Node Runtime edge store + SVG overlay | 数据端口线需要 React Flow / ComfyUI 式稳定曲线，不复用 tldraw arrow 的中点/锚点编辑 |
 | Node Registry | TypeScript 注册表 | 每种节点声明 `type`、`version`、`ports`、`paramsSchema`、`renderComponent`、`validate`、`migrate` |
 | Inspector | React 左侧侧边栏 | 编辑复杂节点参数，降低节点卡片膨胀风险，并为右侧 AI Chat 预留空间 |
 | Layout Engine | P0 手写 horizontal layout；后续 Dagre/ELK | AI Chat 自动创建节点时计算 x/y，避免重叠 |
@@ -375,6 +376,7 @@ TanvasAgent/
 - text 端口和连线使用黄色；image 端口和连线使用绿色。
 - Image Gen / Image Gen 4 的 image 输入端口是动态端口：每个已连接 image 后保留一个新的空 image 输入端口，P0 最大 6 个。
 - 节点连接规则。
+- 节点数据连线：runtime edge store 保存 `sourceNode/sourcePort/targetNode/targetPort/dataType`，由 SVG overlay 渲染曲线。
 - 非法连线即时断开和提示。
 - 鼠标靠近 node-node 连线时，中点显示 `−` 断开按钮。
 - 节点执行状态。
@@ -1006,6 +1008,8 @@ POST /api/v1/boards/{board_id}/merge-captures
 
 - tldraw 负责画布、坐标、选择、拖拽、基础形状和协同底座。
 - Node Runtime 负责节点类型、端口、参数、连接规则、运行摘要和迁移。
+- 白板普通箭头继续使用 tldraw arrow；节点数据端口线不使用 tldraw arrow，避免暴露中点/锚点编辑导致数据连接断裂。
+- 节点数据端口线使用 Node Runtime edge store + React/SVG overlay，视觉接近 React Flow / ComfyUI，路径随节点和端口位置实时计算。
 - 复杂参数不全部塞进节点卡片，优先进入左侧 Inspector。
 - 节点卡片内部的输入框、下拉、按钮、滚轮必须阻止事件穿透，避免误触 pan/zoom/drag。
 - React 节点按组合模式拆成 `NodeContainer`、`NodeHeader`、`NodeBody`、`NodeFooter` 和可插拔功能组件，避免单个超级节点文件膨胀。
