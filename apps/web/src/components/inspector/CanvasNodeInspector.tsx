@@ -6,7 +6,7 @@ import type { Editor } from 'tldraw'
 import { auditNodePayload } from '@/features/node-runtime/payloadAudit'
 import { getNodeDefinition, getResolvedNodePorts } from '@/features/node-runtime/registry'
 import { resolveNodeInputs } from '@/features/node-runtime/nodeDataFlow'
-import { useNodeEdgeStore } from '@/features/node-runtime/nodeEdges'
+import { getNodeEdgeSignatureForShape, useNodeEdgeStore } from '@/features/node-runtime/nodeEdges'
 import type { NodeCardShape } from '@/types/nodeCardShape'
 import type { JsonObject, NodeInspectorField, NodeRuntimeSummary } from '@/types/nodeRuntime'
 import { useEditorRevision } from '../canvas/useEditorRevision'
@@ -23,12 +23,12 @@ function stopCanvasEvent(event: SyntheticEvent) {
 export function CanvasNodeInspector({ connectionMessage, editor }: CanvasNodeInspectorProps) {
   useEditorRevision(editor, 'selection')
   useEditorRevision(editor, 'node-content')
-  useNodeEdgeStore((state) => state.edges)
+  const selectedNode = editor?.getSelectedShapes().find(isNodeCard) ?? null
+  useNodeEdgeStore((state) => (
+    selectedNode ? getNodeEdgeSignatureForShape(state.edges, selectedNode.id) : ''
+  ))
 
-  if (!editor) return null
-
-  const selectedNode = editor.getSelectedShapes().find(isNodeCard)
-  if (!selectedNode) return null
+  if (!editor || !selectedNode) return null
 
   const definition = getNodeDefinition(selectedNode.props.nodeType)
   const data = asJsonObject(selectedNode.props.data)

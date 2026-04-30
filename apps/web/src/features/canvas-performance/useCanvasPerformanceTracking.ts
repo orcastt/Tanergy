@@ -7,6 +7,7 @@ import {
   updateCanvasImagePerformanceMetrics,
   updateCanvasViewPerformanceMetrics,
 } from './editorPerformanceMetrics'
+import { usePortConnectionStore } from '@/components/canvas/portConnectionStore'
 import { useCanvasPerformanceStore } from './canvasPerformanceStore'
 
 const IMAGE_PREVIEW_IDLE_RECOVERY_MS = 160
@@ -74,6 +75,7 @@ export function useCanvasPerformanceTracking(editor: Editor | null) {
 
     scheduleSync()
     const stopSessionListen = editor.store.listen(scheduleSync, { scope: 'session', source: 'all' })
+    const stopPortConnectionListen = usePortConnectionStore.subscribe(scheduleSync)
     editor.on('event', scheduleSync)
     editor.on('resize', scheduleSync)
 
@@ -81,6 +83,7 @@ export function useCanvasPerformanceTracking(editor: Editor | null) {
       if (frame) window.cancelAnimationFrame(frame)
       window.clearTimeout(idleTimeout)
       stopSessionListen()
+      stopPortConnectionListen()
       editor.off('event', scheduleSync)
       editor.off('resize', scheduleSync)
       useCanvasPerformanceStore.getState().setImagePreviewInteractionActive(false)
@@ -92,6 +95,7 @@ function isImagePreviewInteractionActive(editor: Editor) {
   return (
     editor.getCameraState() === 'moving' ||
     editor.inputs.getIsDragging() ||
-    editor.inputs.getIsPanning()
+    editor.inputs.getIsPanning() ||
+    Boolean(usePortConnectionStore.getState().connectingFrom)
   )
 }

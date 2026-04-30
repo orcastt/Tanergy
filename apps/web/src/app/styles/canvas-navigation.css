@@ -117,8 +117,13 @@
   font-weight: 900;
 }
 
-.canvas-navigator__controls button:hover {
+.canvas-navigator__controls button:hover:not(:disabled) {
   background: #e9e9e9;
+}
+
+.canvas-navigator__controls button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .canvas-navigator__controls span {

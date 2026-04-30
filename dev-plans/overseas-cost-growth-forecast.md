@@ -1,9 +1,9 @@
 # Overseas Deployment Cost, User Growth, and Social Forecast
 
 **Date**: 2026-04-29  
-**Status**: Planning baseline for overseas Web launch  
+**Status**: Planning baseline for overseas Web launch; synced 2026-04-30 after Slice D pass with notes
 **Scope**: TANGENT Web AI Image Canvas P0 / P0.5  
-**Related docs**: `PRD.md`, `ARCH.md`, `project_state.md`, `dev-plans/web-collaborative-canvas-pivot.md`
+**Related docs**: `PRD.md`, `ARCH.md`, `project_state.md`, `dev-plans/web-collaborative-canvas-pivot.md`, `dev-plans/Asset-lod-roadmap.md`, `dev-plans/cross-platform-canvas-performance-test-2026-04-30.md`
 
 ---
 
@@ -38,10 +38,29 @@ TANGENT 海外 P0 推荐从更轻的 Serverless / Managed stack 开始：
 我的建议：
 
 1. **P0 不买重服务器**，先用 Vercel / Render / Cloudflare R2 这类组合。
-2. **P0 生图默认最低成本参数**：GPT Image 2 用 `low`；Gemini Image Preview 测试默认 `0.5K`。
-3. **免费用户必须有硬额度**，例如每人每月 3-10 次 4 图生成，不然社媒一波小爆就会烧钱。
-4. **增长先靠短视频和作品分享，不先重投广告**；广告在产品留存和付费验证后再开。
-5. **第一个上线目标不是 10k 并发，而是 1k-3k MAU 能稳定跑完核心链路。**
+2. **Slice E Real Asset Pipeline 先于真实 AI 放量**：对象存储、Asset metadata、多尺寸缩略图、权限 URL 和保存前拒绝 `data:` / `blob:` 是成本控制前置项。
+3. **P0 生图默认最低成本参数**：GPT Image 2 用 `low`；Gemini Image Preview 测试默认 `0.5K`。
+4. **免费用户必须有硬额度**，例如每人每月 3-10 次 4 图生成，不然社媒一波小爆就会烧钱。
+5. **增长先靠短视频和作品分享，不先重投广告**；广告在产品留存和付费验证后再开。
+6. **第一个上线目标不是 10k 并发，而是 1k-3k MAU 能稳定跑完核心链路。**
+
+### 1.0 Current Engineering Sync — 2026-04-30
+
+当前产品状态影响成本模型：
+
+- S1 / S1.5 / Asset LOD Slice A-D 已完成。
+- Slice D 跨平台 Canvas 性能门为 `pass with notes`。
+- Windows 密集画布残余卡顿是 non-blocking performance follow-up，不阻塞 Slice E。
+- 当前不要继续在 Cloudflare Tunnel + `next dev` 临时测试环境里追求性能完美。
+- 下一步是 Slice E Real Asset Pipeline：Cloudflare R2 / S3-compatible storage、多尺寸缩略图、Asset metadata 和权限 URL。
+- 本地 spike 图片入口已调到单图 30MB，但正式上线必须用服务端上传限制、缩略图和原图分层控制存储 / 带宽成本。
+- Canvas 最大缩放已从 800% 限到 500%，减少无产品意义的超高倍渲染成本。
+
+成本含义：
+
+- R2 / S3-compatible object storage 不再是 P1 才考虑的优化，而是进入真实 AI 生成前的 P0 基础设施。
+- 缩略图生成会增加少量计算和存储，但会显著降低浏览器渲染、对象存储出流量和未来协作同步风险。
+- Board document / CRDT 不能携带图片二进制，否则未来协作成本会被图片 payload 放大。
 
 ### 1.1 Gemini 对话成本建议复盘
 

@@ -6,7 +6,7 @@ import type { NodeCardShape } from '@/types/nodeCardShape'
 import { validateNodeConnection } from '@/features/node-runtime/connectionRules'
 import { getResolvedNodePorts } from '@/features/node-runtime/registry'
 import type { JsonObject, NodePortDataType, ResolvedNodePort } from '@/types/nodeRuntime'
-import { syncNodeEdgeInputCounts, useNodeEdgeStore } from '@/features/node-runtime/nodeEdges'
+import { syncNodeEdgeInputCountsForShapes, useNodeEdgeStore } from '@/features/node-runtime/nodeEdges'
 
 type ConnectionFrom = {
   pagePoint: { x: number; y: number }
@@ -75,7 +75,7 @@ function completeConnection(editor: Editor, detail: CompleteDetail, onEvent: (ev
     targetPortId: target.port.id,
     targetShapeId: target.shape.id,
   })
-  syncNodeEdgeInputCounts(editor)
+  syncNodeEdgeInputCountsForShapes(editor, [target.shape.id])
   const message = wasReplaced ? `Replaced: ${target.port.label}` : result.reason
   onEvent({ text: message, tone: 'success' })
 }

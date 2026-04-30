@@ -7,7 +7,7 @@
 
 ## 当前阶段
 
-**阶段**: Web AI 图像画布重启 — S1.5 复杂节点与架构裁决稳定快照；GLM 班次 2026-04-30 已修 Node Runtime fan-out 和 input auto-replacement；Codex 已补齐 runtime edge 断链、canvas image / Image Node 双向转换、本地导图、Merge Capture 预览，并完成低缩放 / 放大编辑多图性能第一轮降噪；当前已进入 Asset Pipeline + Image / Node LOD 架构主线，Slice A Image Node moving degrade、Slice B Node LOD shell、Slice C local thumbnail resolver 已本地落地，Slice D 普通 canvas image LOD spike 已本地验收；Mac 浏览器多图缩放和移动手感已足够顺滑，下一道质量门是跨平台性能验证
+**阶段**: Web AI 图像画布重启 — S1.5 复杂节点与架构裁决已通过；Asset LOD 主线 Slice A Image Node moving degrade、Slice B Node LOD shell、Slice C local thumbnail resolver、Slice D 普通 canvas image LOD spike 已落地；Windows / Mac 跨平台质量门已按 `pass with notes` 收口。当前不再继续在 Cloudflare Tunnel + `next dev` 临时环境里追求完美，下一主线进入 Slice E Real Asset Pipeline。
 
 **核心目标**: 用全新、干净的 Web 项目重做 TANGENT。P0 只跑通：
 
@@ -19,7 +19,13 @@ Image Node → Canvas Markup → Merge Capture → New Image Node
 Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Image → 自动连线 → 用户确认后 Run
 ```
 
-**下一步**: 提交 Slice D 稳定快照后，补一轮跨平台性能验收。原因：当前 Mac 浏览器多图缩放和移动已足够顺滑，但上线后真实 AI 输出图会更大，Windows Chrome / Edge、4K 屏、浏览器缩放比例、低端 GPU 和不同滚轮输入都可能改变阈值和卡顿感。短期建立 Windows Chrome / Edge、1080p / 2K / 4K、browser zoom 90% / 100% / 125% 的性能手测矩阵。中期进入 Slice E Real Asset Pipeline / object storage / 多尺寸缩略图。P1 后续：区分 Screenshot（普通图片贴回画布）与 Merge / Convert to Image Node（截图变 Image Node）；Link Preview 需要后端 URL unfurl + image proxy / asset 化。
+**下一步**: 当前跨平台测试支架已收口为默认关闭的 dev-only 路径：`CanvasRuntimeDiagnostics` 只在 `NEXT_PUBLIC_CANVAS_RUNTIME_DIAGNOSTICS=1` 时启用，Cloudflare Tunnel allowlist 只通过 `NEXT_ALLOWED_DEV_ORIGINS` 临时注入。下一主线开始 Slice E Real Asset Pipeline：后端 upload endpoint、object storage、Asset metadata、多尺寸缩略图、权限 URL、保存前拒绝或迁移 `data:` / `blob:` 图片引用。真实 Asset Pipeline 稳定后，再接 Model Registry / AI Proxy / AI Run log、Dashboard / 保存 / 登录，以及 Link Preview 后端 unfurl + image proxy / Asset 化。
+
+**跨平台结论**: Slice D 跨平台门先记为 `pass with notes`。Windows 侧在 50+ 图片/节点、50%-100% 缩放、runtime edge 增长时仍可能出现轻微卡顿，但当前已可用，归档为 `non-blocking performance follow-up`。这类后续问题优先通过 Slice E 的真实缩略图、对象存储、多尺寸 Asset、viewport-aware 挂载继续解决。
+
+**临时测试支架**: 当前跨平台测试因家庭/企业共享 Wi-Fi 存在设备隔离，使用 Cloudflare Tunnel + `NEXT_ALLOWED_DEV_ORIGINS` 跑 `next dev`。此前 `next start` 白屏是 tldraw production license gate，不是 Windows 性能问题。`CanvasRuntimeDiagnostics` 红色诊断面板已挂到 `NEXT_PUBLIC_CANVAS_RUNTIME_DIAGNOSTICS=1`，默认关闭；tunnel 域名 allowlist 和 quick tunnel 都只用于本轮 Windows 测试。正式上线必须使用真实部署域名和 tldraw production license，不依赖 tunnel。
+
+**当前运行进程记录**: Mac 上仍有 `node` 监听 `*:3000`（PID 4827）和 `cloudflared tunnel --url http://localhost:3000`（PID 1145）。本轮 Windows 测试 URL 为 `https://dice-queensland-markets-selected.trycloudflare.com/spikes/canvas`；下线或提交前建议停掉两个临时进程。
 
 ---
 
@@ -35,6 +41,7 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 | 详细开发计划 | `dev-plans/web-alpha-detailed-development-plan.md` | Alpha 逐 Sprint 执行计划、分工、文件范围、验收标准 |
 | P0 Harness 路线 | `dev-plans/p0-development-harness-roadmap-2026-04-30.md` | 后续切片顺序、每个切片 Done 标准、交接模板 |
 | Asset LOD 主线 | `dev-plans/Asset-lod-roadmap.md` | 当前下一阶段正式路线：Asset model、thumbnail cache、Image / Node LOD、协作前置资产管线 |
+| Codex 交接手册 | `dev-plans/codex-handoff-slice-e-real-asset-pipeline-2026-04-30.md` | 当前未提交变更、运行进程、质量门、下一位 AI 的接手步骤 |
 | 已归档 dev-plans | `dev-plans/Archive/` | 已完成、已验收或废弃的切片计划、handoff、外部复核 brief |
 | 海外成本/增长预测 | `dev-plans/overseas-cost-growth-forecast.md` | 海外部署成本、用户量、社媒增长、AI 单位经济预测 |
 | 旧代码归档 | `legacy/old-tangent-desktop-2026-04-29/` | 旧桌面/Admin/backend/frontend 已隔离，默认不要读 |
@@ -89,7 +96,7 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 - ✅ 完成 S1 Canvas Spike 初版：`/spikes/canvas`，包含白板工具验证、图片、链接卡片、Prompt/Generate/Edit AI 卡片。
 - ✅ S1 质量检查已通过：`npm -C apps/web run lint`、`npm -C apps/web run typecheck`、`npm -C apps/web run build`、`git diff --check`。
 - ✅ 更新 `PRD.md` / `ARCH.md` / dev-plans：锁定 tldraw-first + Node Runtime + Inspector + Step 1.5 技术裁决门。
-- ✅ 根据首轮手测反馈收口 S1：隐藏 tldraw 默认分散工具 UI，自定义 Excalidraw-like 顶部图标工具栏；形状和插入类入口收纳为弹出菜单，箭头和直线改为独立图标；左下角恢复自定义导航地图和缩放控件；箭头连接增加边中点/角点吸附、靠近对象时轮廓预高亮、source / target 捕捉点高亮和主动端口命中；连续绘制不暴露 Lock 且 Esc 强制退出；左侧属性面板仅在选中对象且非拖动画布时出现，并改为更清晰的图标控件，补上线条风格、箭头类型和端点；AI/link card 文本缩小时裁切；粘贴图片限制为 PNG/JPEG/WebP、3MB、长边 1280px。
+- ✅ 根据首轮手测反馈收口 S1：隐藏 tldraw 默认分散工具 UI，自定义 Excalidraw-like 顶部图标工具栏；形状和插入类入口收纳为弹出菜单，箭头和直线改为独立图标；左下角恢复自定义导航地图和缩放控件；箭头连接增加边中点/角点吸附、靠近对象时轮廓预高亮、source / target 捕捉点高亮和主动端口命中；连续绘制不暴露 Lock 且 Esc 强制退出；左侧属性面板仅在选中对象且非拖动画布时出现，并改为更清晰的图标控件，补上线条风格、箭头类型和端点；AI/link card 文本缩小时裁切；粘贴图片限制为 PNG/JPEG/WebP、当前已调到 30MB、长边自适应降采样。
 - ✅ 整合 Gemini 节点/协同/算力复盘：采纳轻量节点、Asset 引用、React 组合节点、Presence/软锁、预算熔断、R2/缩略图思路；修正“视窗剔除不会卡”“CRDT 等于最后写入”“$100/月可每天 20,000 张图”等过乐观口径。
 - ✅ S1.5 已推进到五类节点原型：新增 Prompt / Image Gen / Image Gen 4 / Analysis / Image 注册表、轻量 payload audit、`node_card` custom shape、动态 image 输入端口、text/image 端口和连线颜色、连线中点 `−` 断开按钮、左侧 Node Inspector、node-node 连接规则校验、mock planner graph、单节点插入入口、60 node stress 入口和 Merge Capture 本地预览。
 - ✅ GLM 班次 2026-04-29：重写端口连线为 drag-to-connect（pointerdown→全局 pointermove→pointerup）；新增分类 Node Picker（双击画布弹出，Text/Image 分组）；新增 Selection Toolbar 浮动工具栏（替换右下角 Merge Capture，Screenshot + 对齐）；Run 按钮移至节点标题栏并加 Stop 态；去掉 IDLE/SUCCEEDED 状态文字；节点默认高度增大以自适应内容；节点冗余文字精简。
@@ -125,6 +132,8 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 - ✅ Codex 二十九次整理 2026-04-30：根据用户手测确认当前 Mac 浏览器 25%-50% 多图缩放基本可用；记录上线前风险为真实 AI 图片尺寸、Windows Chrome / Edge、不同屏幕分辨率、browser zoom 与低端 GPU 可能改变性能阈值。下一步明确为 Slice D 普通 canvas image LOD spike + 跨平台性能矩阵；Link card 预览问题后续走服务端 unfurl / image proxy / Asset 化，不在前端直接依赖第三方远程图。
 - ✅ Codex 三十次推进 2026-04-30：完成 Slice D 普通 canvas image LOD spike；新增 `CanvasImageShapeUtil` 继承 tldraw 默认 `ImageShapeUtil`，只覆盖屏幕 `component()` 渲染，resize / geometry / crop capability / SVG export 保持默认实现；普通 canvas image 屏幕渲染复用 `assetPreviewResolver`，full 模式用原图，thumbnail / reduced 模式优先使用本地缩略图；缩略图生成失败时回退原图，避免跨域/tainted canvas 导致图片消失。用户手测确认当前多图缩放和移动已明显更顺，暂未复现明显卡顿。
 - ✅ Codex 三十一次修复 2026-04-30：修复 Image Node → Image Node 的图片继承预览：下游 Image Node 有 image input 时优先显示并输出上游 asset，空 Image Node 不再默认带 `asset_mock_image_001` 假图，`To Canvas` 也复用同一 effective asset 规则。Slice D 已本地验收，lint / typecheck / build / git diff --check 全通过。
+- ✅ Codex 三十二次跨平台测试 2026-04-30：由于当前网络存在 client isolation，局域网直连 Mac:3000 不可用，已改用 Cloudflare Tunnel。测试中确认 `next start` 会触发 tldraw production license gate，因此 Windows 跨平台测试临时使用 `next dev` + `NEXT_ALLOWED_DEV_ORIGINS`。新增 `CanvasRuntimeDiagnostics` 用于显示 Windows / tunnel 下的 editor 初始化错误；该诊断面板已挂到 `NEXT_PUBLIC_CANVAS_RUNTIME_DIAGNOSTICS=1`，默认关闭，tunnel 配置仍仅是临时测试支架。Slice D 跨平台门最终按 `pass with notes` 通过。
+- ✅ Codex 三十三次 Windows 阈值调优 2026-04-30：根据 Windows 手测反馈，50%-100% 画布缩放下，当 Image Node / Image Gen 图片 / runtime edge 增至约 50+ 后，连接、复制、拖动、缩放会明显卡顿；已调高 dense thumbnail 覆盖范围，让 48+ image-like 对象在 110% 以下保持 thumbnail，80+ 在 120% 以下保持 thumbnail，避免 100% 附近突然批量切回 full 原图；端口连线也会触发 interaction LOD；高密度节点交互中更早 shell 化；NodeCard / Inspector 的 edge store 订阅已从全量 edges 缩小到当前节点相关 edges，连接 / 断开 runtime edge 只同步受影响目标节点的动态 image input 数量；图片粘贴 / Image Node 导入上限从早期 spike 的 3MB 调到 30MB；画布最大缩放从 tldraw 默认 800% 限制到 500%。lint / typecheck / build / git diff --check 已通过；Windows 当前遗留卡顿归档为 `non-blocking performance follow-up`。
 
 ---
 
@@ -228,7 +237,7 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 | 连续绘制被误解为画布锁定 | 连续绘制内部可使用 tool lock，但 UI 不暴露 Lock；Esc 强制取消当前 tool state 并选中本轮新增对象 |
 | 属性面板常驻打扰画布操作 | 左侧属性面板只在有选中对象且没有拖动画布时出现；拖动画布或空选时隐藏 |
 | card 缩小后文字溢出 | 内容层 line clamp、长 URL 断行、小尺寸折叠；正式节点继续由 Inspector 承载复杂参数 |
-| 粘贴 Pinterest/外部多张大图导致卡顿 | Spike 先限制 MIME、3MB、长边 1280px；Step 1.5 继续测 5-10 张并评估压缩、缩略图、懒加载 |
+| 粘贴 Pinterest/外部多张大图导致卡顿 | 当前限制 MIME、30MB、长边自适应降采样；Windows 遗留卡顿作为 non-blocking follow-up，后续由 Slice E 多尺寸缩略图 / Asset Pipeline 继续处理 |
 | AI 成本失控 | 默认低成本参数，服务端限流、全局预算熔断；`$100/月` 按月总量核算，不误判为每日额度 |
 | 前端暴露 API Key | Key 只在服务端 `.env`，前端只调自己的 API |
 | 模型列表又被写死在组件里 | 先做 Model Registry / mock registry，再做真实 provider 调用 |
@@ -237,4 +246,4 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 
 ## 下一步
 
-提交当前 Slice D 稳定快照；随后补 Windows Chrome / Edge、不同分辨率和 browser zoom 的性能矩阵。跨平台质量门通过后进入 Slice E Real Asset Pipeline：后端上传、object storage、多尺寸缩略图、asset metadata、权限 URL、保存前拒绝或迁移 `data:` / `blob:` 图片引用。真实 Asset Pipeline 稳定后，再接真实 Model Registry / AI Proxy / AI Run log、Dashboard / 保存 / 登录，以及 Link Preview 后端 unfurl + image proxy；多人协作仍在这些资产边界稳定后进入 P0.5。
+Slice D 跨平台质量门已 `pass with notes`，不再继续在 Cloudflare Tunnel + `next dev` 临时环境里追求完美。下一位 Codex 先停掉临时进程，确认 `CanvasRuntimeDiagnostics` 继续默认关闭（仅 `NEXT_PUBLIC_CANVAS_RUNTIME_DIAGNOSTICS=1` 启用），确认 `NEXT_ALLOWED_DEV_ORIGINS` 不被当作生产部署路径，并恢复任何 Next 自动生成态差异。随后进入 Slice E Real Asset Pipeline：后端上传、object storage、多尺寸缩略图、asset metadata、权限 URL、保存前拒绝或迁移 `data:` / `blob:` 图片引用。真实 Asset Pipeline 稳定后，再接真实 Model Registry / AI Proxy / AI Run log、Dashboard / 保存 / 登录，以及 Link Preview 后端 unfurl + image proxy；多人协作仍在这些资产边界稳定后进入 P0.5。

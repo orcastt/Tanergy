@@ -10,7 +10,7 @@ import { createCanvasImageFromNode } from '@/features/node-runtime/imageNodeAsse
 import { getImageNodeEffectiveAsset } from '@/features/node-runtime/imageNodeEffectiveAsset'
 import { auditNodePayload } from '@/features/node-runtime/payloadAudit'
 import { resolveNodeInputs } from '@/features/node-runtime/nodeDataFlow'
-import { useNodeEdgeStore } from '@/features/node-runtime/nodeEdges'
+import { getNodeEdgeSignatureForShape, useNodeEdgeStore } from '@/features/node-runtime/nodeEdges'
 import { useEditorRevision } from '@/components/canvas/useEditorRevision'
 import { NodePortDot } from './NodePortDot'
 import { AnalysisPreview, ImageGeneratePreview, ImagePreview, PromptPreview } from './NodeCardPreviews'
@@ -87,7 +87,7 @@ function NodeCardFullContent({
   runtimeSummary: NodeRuntimeSummary
 }) {
   useEditorRevision(editor, 'node-content')
-  useNodeEdgeStore((state) => state.edges)
+  useNodeEdgeStore((state) => getNodeEdgeSignatureForShape(state.edges, shape.id))
   const inputResolution = resolveNodeInputs(editor, shape)
   const imageAsset = shape.props.nodeType === 'image' ? getImageNodeEffectiveAsset(data, inputResolution) : null
   const payloadAudit = auditNodePayload({

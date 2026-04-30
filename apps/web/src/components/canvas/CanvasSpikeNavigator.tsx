@@ -6,6 +6,7 @@ import type { Editor } from 'tldraw'
 import { useCanvasPerformanceStore } from '@/features/canvas-performance/canvasPerformanceStore'
 import { useEditorInteractionState } from './useEditorInteractionState'
 import { useEditorRevision } from './useEditorRevision'
+import { canvasMaxZoom } from './useCanvasSettings'
 
 type CanvasSpikeNavigatorProps = {
   editor: Editor | null
@@ -82,7 +83,8 @@ export function CanvasSpikeNavigator({ editor }: CanvasSpikeNavigatorProps) {
   const mapContentHeight = worldHeight * scale
   const offsetX = (mapWidth - mapContentWidth) / 2
   const offsetY = (mapHeight - mapContentHeight) / 2
-  const zoomPercent = Math.round(editor.getZoomLevel() * 100)
+  const zoomLevel = editor.getZoomLevel()
+  const zoomPercent = Math.round(zoomLevel * 100)
 
   const toMapRect = (bounds: { minX: number; minY: number; w: number; h: number }) => ({
     h: Math.max(bounds.h * scale, 2),
@@ -173,6 +175,7 @@ export function CanvasSpikeNavigator({ editor }: CanvasSpikeNavigatorProps) {
         <span>{zoomPercent}%</span>
         <button
           aria-label="Zoom in"
+          disabled={zoomLevel >= canvasMaxZoom}
           onClick={() => editor.zoomIn(undefined, { animation: { duration: 120 } })}
           title="Zoom in"
           type="button"

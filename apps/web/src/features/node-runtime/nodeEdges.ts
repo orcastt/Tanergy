@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Editor } from 'tldraw'
+import type { Editor, TLShapeId } from 'tldraw'
 import type { NodeCardShape } from '@/types/nodeCardShape'
 import type { NodePortDataType } from '@/types/nodeRuntime'
 import { maxImageInputPorts } from './registry'
@@ -42,15 +42,22 @@ export function getNodeEdgesSnapshot() {
 }
 
 export function syncNodeEdgeInputCounts(editor: Editor) {
+  syncNodeEdgeInputCountsForShapes(
+    editor,
+    editor.getCurrentPageShapes().filter(isImageInputNode).map((shape) => shape.id)
+  )
+}
+
+export function syncNodeEdgeInputCountsForShapes(editor: Editor, shapeIds: Iterable<string>) {
   const imageCounts = new Map<string, number>()
   for (const edge of getNodeEdgesSnapshot()) {
     if (edge.dataType !== 'image') continue
     imageCounts.set(edge.targetShapeId, (imageCounts.get(edge.targetShapeId) ?? 0) + 1)
   }
 
-  for (const shape of editor.getCurrentPageShapes()) {
-    if (!isNodeCard(shape)) continue
-    if (shape.props.nodeType !== 'image_gen' && shape.props.nodeType !== 'image_gen_4') continue
+  for (const shapeId of shapeIds) {
+    const shape = editor.getShape<NodeCardShape>(shapeId as TLShapeId)
+    if (!isImageInputNode(shape)) continue
 
     const data = shape.props.data && typeof shape.props.data === 'object' && !Array.isArray(shape.props.data)
       ? shape.props.data
@@ -66,10 +73,31 @@ export function syncNodeEdgeInputCounts(editor: Editor) {
   }
 }
 
+export function getNodeEdgeSignatureForShape(edges: NodeRuntimeEdge[], shapeId: string) {
+  return edges
+    .filter((edge) => edge.sourceShapeId === shapeId || edge.targetShapeId === shapeId)
+    .map((edge) => [
+      edge.id,
+      edge.sourceShapeId,
+      edge.sourcePortId,
+      edge.targetShapeId,
+      edge.targetPortId,
+      edge.dataType,
+    ].join(':'))
+    .join('|')
+}
+
 function createEdgeId() {
   return `edge_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 }
 
 function isNodeCard(shape: unknown): shape is NodeCardShape {
   return Boolean(shape && typeof shape === 'object' && 'type' in shape && shape.type === 'node_card')
+}
+
+function isImageInputNode(shape: unknown): shape is NodeCardShape {
+  return Boolean(
+    isNodeCard(shape) &&
+    (shape.props.nodeType === 'image_gen' || shape.props.nodeType === 'image_gen_4')
+  )
 }

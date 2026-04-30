@@ -80,7 +80,10 @@ function getImagePreviewMode(metrics: {
   viewportWidth: number
   zoom: number
 }): ImagePreviewMode {
-  if (metrics.imagePreviewInteractionActive && shouldReduceDuringInteraction(metrics)) return 'reduced'
+  if (metrics.imagePreviewInteractionActive) {
+    if (shouldReduceDuringInteraction(metrics)) return 'reduced'
+    if (metrics.zoom <= getInteractionThumbnailThreshold(metrics.imageLikeCount)) return 'thumbnail'
+  }
   if (metrics.zoom <= getImageOverviewThreshold(metrics.imageLikeCount)) return 'reduced'
   if (metrics.zoom <= getImageThumbnailThreshold(metrics.imageLikeCount)) return 'thumbnail'
   return 'full'
@@ -103,11 +106,17 @@ function getImageOverviewThreshold(imageLikeCount: number) {
 }
 
 function getImageThumbnailThreshold(imageLikeCount: number) {
-  if (imageLikeCount >= 80) return 0.56
-  if (imageLikeCount >= 48) return 0.52
-  if (imageLikeCount >= 16) return 0.5
+  if (imageLikeCount >= 80) return 1.2
+  if (imageLikeCount >= 48) return 1.1
+  if (imageLikeCount >= 32) return 0.95
+  if (imageLikeCount >= 24) return 0.82
+  if (imageLikeCount >= 16) return 0.64
   if (imageLikeCount >= 10) return 0.42
   return 0
+}
+
+function getInteractionThumbnailThreshold(imageLikeCount: number) {
+  return getImageThumbnailThreshold(imageLikeCount)
 }
 
 function getNodeRenderMode(metrics: {
@@ -116,6 +125,12 @@ function getNodeRenderMode(metrics: {
   zoom: number
 }): NodeRenderMode {
   if (metrics.nodeCardCount === 0) return 'full'
+  if (
+    metrics.imagePreviewInteractionActive &&
+    metrics.zoom <= getNodeInteractionShellThreshold(metrics.nodeCardCount)
+  ) {
+    return 'shell'
+  }
   return metrics.zoom <= getNodeShellThreshold(metrics.nodeCardCount) ? 'shell' : 'full'
 }
 
@@ -125,4 +140,11 @@ function getNodeShellThreshold(nodeCardCount: number) {
   if (nodeCardCount >= 28) return 0.25
   if (nodeCardCount >= 16) return 0.22
   return 0.18
+}
+
+function getNodeInteractionShellThreshold(nodeCardCount: number) {
+  if (nodeCardCount >= 80) return 0.64
+  if (nodeCardCount >= 48) return 0.56
+  if (nodeCardCount >= 32) return 0.46
+  return getNodeShellThreshold(nodeCardCount)
 }

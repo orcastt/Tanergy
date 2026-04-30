@@ -6,7 +6,7 @@ import type { NodeCardShape } from '@/types/nodeCardShape'
 import type { JsonObject } from '@/types/nodeRuntime'
 import { getResolvedNodePorts } from '@/features/node-runtime/registry'
 import {
-  syncNodeEdgeInputCounts,
+  syncNodeEdgeInputCountsForShapes,
   useNodeEdgeStore,
   type NodeRuntimeEdge,
 } from '@/features/node-runtime/nodeEdges'
@@ -83,7 +83,7 @@ export function CanvasNodeEdgeOverlay({ editor }: CanvasNodeEdgeOverlayProps) {
               event.stopPropagation()
               removeEdge(view.edge.id)
               setSelectedEdgeId(null)
-              syncNodeEdgeInputCounts(editor)
+              syncNodeEdgeInputCountsForShapes(editor, [view.edge.targetShapeId])
             }}
             onPointerDown={(event) => { event.stopPropagation() }}
             style={{

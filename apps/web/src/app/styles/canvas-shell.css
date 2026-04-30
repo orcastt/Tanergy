@@ -56,3 +56,38 @@
 .canvas-spike-stage .tl-snap-point {
   opacity: 0.2;
 }
+
+.canvas-runtime-diagnostics {
+  position: absolute;
+  left: 24px;
+  bottom: 24px;
+  z-index: 60;
+  display: grid;
+  gap: 8px;
+  width: min(520px, calc(100% - 48px));
+  padding: 14px 16px;
+  border: 1px solid rgba(180, 35, 24, 0.24);
+  border-radius: 8px;
+  background: rgba(255, 247, 245, 0.96);
+  box-shadow: var(--shadow-card);
+  color: #8a1f15;
+  font-size: 13px;
+  pointer-events: auto;
+}
+
+.canvas-runtime-diagnostics strong {
+  color: #61160f;
+  font-size: 14px;
+}
+
+.canvas-runtime-diagnostics span {
+  color: #a34538;
+  font-weight: 700;
+}
+
+.canvas-runtime-diagnostics code {
+  max-height: 140px;
+  overflow: auto;
+  white-space: pre-wrap;
+  color: #5f241e;
+}

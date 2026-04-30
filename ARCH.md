@@ -2,7 +2,7 @@
 
 **版本**: v0.6
 **日期**: 2026-04-30
-**状态**: Web 重启方向正式架构草案，补齐 Harness 覆盖映射、文档入口、执行标准和 P0/P0.5/P1 架构边界
+**状态**: Web 重启方向正式架构草案，补齐 Harness 覆盖映射、文档入口、执行标准和 P0/P0.5/P1 架构边界；2026-04-30 Slice D 跨平台门已 pass with notes，下一主线进入 Slice E Real Asset Pipeline
 **对应 PRD**: `PRD.md`
 
 ---
@@ -14,6 +14,13 @@
 当前状态见 `project_state.md`。
 跨功能执行规范见 `HARNESS.md`。
 每次大改架构、换栈、换部署方式、改数据模型，都必须同步更新本文件。
+
+当前架构交接状态：
+
+- tldraw-first + Node Runtime + SVG runtime edge 架构继续保留，不切 React Flow / Konva。
+- LOD 状态是本地 UI 状态，不写入 Board document / CRDT。
+- Windows 当前遗留卡顿是 non-blocking performance follow-up，后续优先通过真实 Asset Pipeline、多尺寸缩略图和 viewport-aware 挂载解决。
+- Cloudflare quick tunnel、`NEXT_ALLOWED_DEV_ORIGINS`、`CanvasRuntimeDiagnostics` 只属于跨平台测试支架，不是部署架构；`CanvasRuntimeDiagnostics` 默认关闭，仅 `NEXT_PUBLIC_CANVAS_RUNTIME_DIAGNOSTICS=1` 时启用。
 
 ---
 
@@ -88,11 +95,18 @@ P0 只需要记录 API 成本和调用日志，避免先做复杂订阅系统。
 | Canvas 打开 | < 2 秒，空画布 < 1 秒 |
 | 节点拖动响应 | 60fps 目标；明显不卡顿 |
 | 生图等待 | 取决于 Provider；UI 必须立刻进入 running 状态 |
-| 单图上传大小 | P0 最大 20MB |
+| 单图上传大小 | P0 最大 30MB |
 | 画布粘贴图片 | P0 需要限制单图大小和长边；大量外部图片进入画布前优先压缩/降采样 |
+| Canvas 最大缩放 | P0 Spike 当前限制为 500%；tldraw 默认 800% 对当前图像画布没有产品意义且性能成本更高 |
 | 复杂 React 节点 | Step 1.5 必须验证 50-100 个节点；不能只依赖画布库视窗剔除的理论能力 |
 | Board 对象数量 | P0 目标 500 objects 内稳定 |
 | Merge Capture | 选区最长边建议 <= 4096px，超出提示降采样 |
+
+当前跨平台性能口径：
+
+- Slice D 普通 canvas image LOD + Image Node LOD + Node LOD 已通过 Mac / Windows 手测，可进入下一切片。
+- Windows 50+ 图片/节点、50%-100% 画布缩放下仍可能轻微卡顿，但当前不阻塞 Slice E。
+- 后续性能优化不应继续围绕 quick tunnel 调参，而应落到 server-backed Asset、缩略图生成、持久化 asset id 和更细的可见性挂载。
 
 ### 1.7 成本上限
 
@@ -1107,7 +1121,7 @@ Step 1.5 通过前，不进入正式五节点链路开发。
 ### 10.3 上传安全
 
 - 限制 MIME：PNG/JPEG/WebP。
-- 限制大小：P0 单图 20MB。
+- 限制大小：P0 单图 30MB。
 - 文件名服务端生成。
 - 不信任客户端传来的扩展名。
 

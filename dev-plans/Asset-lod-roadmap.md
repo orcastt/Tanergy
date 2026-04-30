@@ -3,7 +3,7 @@
 **Date**: 2026-04-30  
 **Branch**: `feature/asset-lod-roadmap`  
 **Base checkpoint**: `a6f20c1 checkpoint: stabilize s1.5 canvas runtime`  
-**Status**: Slices A-D implemented and accepted locally. Slice E remains the later production Asset Pipeline. Windows/browser validation is the next quality gate, not a separate implementation slice.
+**Status**: Slices A-D implemented. Cross-platform quality gate is `pass with notes` as of 2026-04-30. Windows dense-board stutter is a non-blocking performance follow-up. Next active slice is Slice E Real Asset Pipeline.
 
 **Owner**: Codex / TANGENT
 
@@ -22,7 +22,7 @@ S1.5 has proven that the tldraw-first architecture can support the core AI canva
 - Low zoom Image Node preview degradation.
 - React overlay and editor subscription churn reduction.
 
-After these fixes, user testing shows the canvas is better but still slows down when a board has many images and many nodes. The current bottleneck has moved from "our React overlays refresh too often" to "the browser is paying real image rendering cost."
+After these fixes, user testing shows the canvas is usable enough to pass the Slice D gate, with notes for Windows dense-board stutter. The current bottleneck has moved from "our React overlays refresh too often" to "the browser is paying real image rendering cost and needs real asset thumbnails."
 
 For a future studio collaboration product, many images and many nodes are not edge cases. A real shared project can naturally contain:
 
@@ -50,17 +50,16 @@ Already improved:
 - Inspector and overlays use narrower editor revision subscriptions.
 - Prompt / Analysis nodes now use resized space better, reducing wasted internal whitespace.
 
-Still unresolved:
+Still unresolved / next:
 
-- Ordinary tldraw canvas image shapes can still render full image resources.
-- Cross-platform performance is not validated yet on Windows Chrome / Edge, 4K displays, browser zoom settings and lower-end GPUs.
+- Slice D cross-platform validation passed with notes; Windows dense boards remain a non-blocking follow-up.
 - Local spike assets still rely on tldraw local asset URLs / data URLs / blob URLs.
 - Collaboration cannot safely sync or persist heavy image data in the board document.
 - Link preview cards still need a server-side URL unfurl + image proxy / asset path; direct remote preview images can fail due to CORS, hotlinking or bot protection.
 
 Main conclusion:
 
-> Keep tldraw as the interaction and layout base. Add a real Asset Layer and local Render LOD Layer above it.
+> Keep tldraw as the interaction and layout base. Move next into Slice E: a real Asset Layer with server-backed originals and thumbnails.
 
 ---
 
@@ -271,9 +270,9 @@ Status:
 
 2026-04-30 Codex implemented the first local resolver pass. `assetPreviewResolver` now resolves Image Node assets into `full`, `thumbnail`, or `placeholder` preview modes, keeps an in-memory thumbnail cache, and generates local 256/512 thumbnails for uploaded / merge-captured / converted tldraw image assets. `canvasPerformanceStore` now has three image modes: `full`, `thumbnail`, and `reduced`; common dense boards use thumbnail mode around the 25%-50% zoom band instead of jumping straight from original image to placeholder. This is intentionally local UI state and does not enter shape props or the board document.
 
-2026-04-30 user test confirmed the 25%-50% band is basically usable on the current Mac browser setup after thumbnail mode. Remaining uncertainty is cross-platform behavior after real AI images, production build, Windows Chrome / Edge, browser zoom and different monitor resolutions.
+2026-04-30 user test confirmed the 25%-50% band is basically usable on the current Mac browser setup after thumbnail mode. Later Windows validation passed with notes; remaining uncertainty belongs to real AI images and server-backed Asset thumbnails.
 
-2026-04-30 Status: done locally. Quality gates passed. Needs cross-platform performance validation before being considered production-ready.
+2026-04-30 Status: done locally. Quality gates passed. Cross-platform gate later passed with notes.
 
 Proposed API:
 
@@ -347,7 +346,11 @@ Status:
 
 2026-04-30 user test: after Slice D local rendering changes, multi-image zoom / move feels much smoother and obvious stutter was not reproduced in the tested Mac browser session. The remaining bug found in the same pass was Image Node -> Image Node inheritance: downstream Image Nodes received the upstream asset id but still rendered their own empty/default placeholder. Codex fixed this by adding one effective Image Node asset rule: connected image input wins over the node's own imported asset, and empty Image Nodes no longer default to `asset_mock_image_001`.
 
-2026-04-30 user accepted Slice D locally. The current state is good enough to checkpoint before cross-platform performance validation.
+2026-04-30 user accepted Slice D locally. The current state was checkpointed before cross-platform performance validation.
+
+2026-04-30 Windows cross-platform pass found a new threshold issue: below 50% zoom the board remains relatively smooth, but around 50%-100% zoom, 50+ Image Nodes / generated images / runtime edges make connection, copy, drag and resize noticeably stutter on Windows. Codex treated this as a cross-platform LOD threshold problem, not a tldraw architecture rollback: dense image previews now stay on thumbnails through 100% for common 48+ image-like boards, port connection counts as an interaction, high-density nodes shell earlier during interaction, and node edge subscriptions are narrowed to relevant nodes.
+
+2026-04-30 final gate: Slice D cross-platform testing is `pass with notes`. The Windows stutter that remains is recorded as non-blocking performance follow-up. Do not keep polishing the Cloudflare Tunnel + `next dev` test setup; move the next optimization into Slice E Real Asset Pipeline.
 
 Acceptance:
 
@@ -361,7 +364,7 @@ Current acceptance state:
 
 - Accepted in local Mac browser testing.
 - Multi-image zoom / move feels smooth enough to stop tuning thresholds for now.
-- Next validation is cross-platform performance, especially Windows Chrome / Edge and browser zoom settings.
+- Cross-platform quality gate is pass with notes. Any remaining Windows performance issue should feed Slice E / later LOD tuning, not block the next slice.
 
 Risk:
 
@@ -436,8 +439,8 @@ Recommended order:
 2. ✅ Slice B — Node LOD
 3. ✅ Slice C — Local Asset Preview Resolver
 4. ✅ Slice D — Ordinary Canvas Image LOD Spike
-5. ⛳ Quality gate — Cross-platform performance pass: Windows Chrome / Edge, browser zoom, 1080p / 2K / 4K, lower-end GPU
-6. ⏭️ Slice E — Real Asset Pipeline
+5. ✅ Quality gate — Cross-platform performance pass with notes: Windows Chrome / Edge via temporary tunnel, browser zoom, dense boards
+6. ▶️ Slice E — Real Asset Pipeline
 7. Link preview backend unfurl + image proxy / asset path
 8. Multiplayer collaboration
 
@@ -446,10 +449,10 @@ Reason:
 - A and B are local UI changes with immediate performance payoff.
 - C creates a stable abstraction before touching ordinary canvas image rendering.
 - D is the risky tldraw integration spike.
-- Cross-platform validation is a release gate after D, not a new implementation slice.
-- E is required before collaboration.
+- Cross-platform validation was a release gate after D and is now pass with notes.
+- E is the next active slice and is required before collaboration.
 - Collaboration should not be built on a board document that can still carry heavy image payloads.
-- Windows/browser performance validation should happen before real AI integration changes the image sizes and density profile.
+- Windows/browser performance validation happened before real AI integration and produced non-blocking follow-up notes for dense boards.
 
 ---
 

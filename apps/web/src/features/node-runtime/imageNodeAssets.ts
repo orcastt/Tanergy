@@ -34,7 +34,7 @@ type ImageNodeDataPatch = {
 }
 
 export const spikeAcceptedNodeImageMimeTypes = ['image/png', 'image/jpeg', 'image/webp']
-export const spikeNodeImageMaxBytes = 3 * 1024 * 1024
+export const spikeNodeImageMaxBytes = 30 * 1024 * 1024
 
 export async function createImageNodeFromCanvasImage(editor: Editor, shapeId: TLShapeId) {
   const shape = editor.getShape(shapeId)
@@ -267,6 +267,6 @@ function validateImageFile(file: File) {
     throw new Error('Use PNG, JPEG, or WebP.')
   }
   if (file.size > spikeNodeImageMaxBytes) {
-    throw new Error('Image must be 3MB or smaller.')
+    throw new Error('Image must be 30MB or smaller.')
   }
 }

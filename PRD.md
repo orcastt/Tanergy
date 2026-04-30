@@ -2,8 +2,8 @@
 
 **版本**: v0.6
 **日期**: 2026-04-30
-**状态**: Web 重启方向正式 PRD 草案，补齐产品验证假设、MoSCoW、用户故事、Alpha 指标和开发 Harness 边界
-**当前优先级**: P0 最小图像链路；先验证五类轻量节点、动态端口、类型连线、自动布局和 Merge Capture，再进入真实 AI 调用
+**状态**: Web 重启方向正式 PRD 草案，补齐产品验证假设、MoSCoW、用户故事、Alpha 指标和开发 Harness 边界；2026-04-30 Slice D 跨平台门已 pass with notes
+**当前优先级**: P0 最小图像链路；五类轻量节点、动态端口、类型连线、自动布局、Merge Capture 和跨平台性能基线已验证到可继续推进；下一步先做 Slice E Real Asset Pipeline，再进入真实 AI 调用
 **一句话定位**: TANGENT 是一个极简 Web AI 图像画布，主体验像 Miro/FigJam 一样自由涂画和摆放内容，同时把 AI 能力封装成可连接的节点卡片；用户可以手动连接 Prompt、生图、图片承接和 Analysis 节点，也可以在右侧 AI 对话栏里用自然语言让系统自动创建节点、连线和切换生图模型。
 
 ---
@@ -22,6 +22,13 @@
 2. `PRD.md`
 3. `ARCH.md`
 4. 当前切片对应的 `dev-plans/`
+
+当前交接状态：
+
+- Slice D 跨平台 Canvas 性能门按 `pass with notes` 通过。
+- Windows 50+ 图片/节点密集场景仍可能有轻微卡顿，归档为 non-blocking performance follow-up。
+- 临时 Cloudflare Tunnel、`NEXT_ALLOWED_DEV_ORIGINS` 和 `CanvasRuntimeDiagnostics` 不是产品方案；`CanvasRuntimeDiagnostics` 默认关闭，仅 `NEXT_PUBLIC_CANVAS_RUNTIME_DIAGNOSTICS=1` 时启用。
+- 下一主线是 Slice E Real Asset Pipeline：图片上传、对象存储、多尺寸缩略图、Asset metadata、权限 URL 和保存前拒绝 / 迁移 `data:` / `blob:` 引用。
 
 ---
 
@@ -826,7 +833,7 @@ P0 可默认每个用户一个 personal workspace。
 | `kind` | enum | 是 | `generated` / `editor_export` / `merge_capture` / `upload` |
 | `url` | string | 是 | 远程 URL 或服务端 asset URL |
 | `mime_type` | string | 是 | P0 支持 `image/png` / `image/jpeg` / `image/webp` |
-| `size_bytes` | number | 否 | P0 单图最大 20MB |
+| `size_bytes` | number | 否 | P0 单图最大 30MB |
 | `width` | number | 否 | > 0 |
 | `height` | number | 否 | > 0 |
 | `created_by` | uuid | 是 | 当前用户 |

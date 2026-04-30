@@ -8,6 +8,7 @@ import { useCanvasPerformanceStore } from '@/features/canvas-performance/canvasP
 import { useCanvasPerformanceTracking } from '@/features/canvas-performance/useCanvasPerformanceTracking'
 import { createNodeCard } from '@/features/node-runtime/createNodeCard'
 import { createStep15MockGraph, createStep15StressNodes } from '@/features/node-runtime/createMockWorkflow'
+import { spikeNodeImageMaxBytes } from '@/features/node-runtime/imageNodeAssets'
 import { useNodeConnectionValidation } from '@/features/node-runtime/useNodeConnectionValidation'
 import type { NodeType } from '@/types/nodeRuntime'
 import { AiCardShapeUtil } from './AiCardShape'
@@ -18,6 +19,7 @@ import { CanvasConnectionLine } from './CanvasConnectionLine'
 import { CanvasGrid } from './CanvasGrid'
 import { CanvasNodeEdgeOverlay } from './CanvasNodeEdgeOverlay'
 import { CanvasNodePicker } from './CanvasNodePicker'
+import { CanvasRuntimeDiagnostics, CanvasRuntimeErrorBoundary } from './CanvasRuntimeDiagnostics'
 import { CanvasSelectionToolbar } from './CanvasSelectionToolbar'
 import { CanvasSettingsControl } from './CanvasSettingsControl'
 import { CanvasSpikeNavigator } from './CanvasSpikeNavigator'
@@ -46,7 +48,6 @@ const shapeUtils = [
   }),
 ] satisfies TLAnyShapeUtilConstructor[]
 const spikeAcceptedImageMimeTypes = ['image/png', 'image/jpeg', 'image/webp']
-const spikeMaxAssetSizeBytes = 3 * 1024 * 1024
 const spikeMaxImageDimension = getAdaptiveImageMaxDimension()
 
 const tldrawComponents = {
@@ -70,6 +71,8 @@ const tldrawComponents = {
   VideoToolbar: null,
   ZoomMenu: null,
 } satisfies TLComponents
+
+const canvasRuntimeDiagnosticsEnabled = process.env.NEXT_PUBLIC_CANVAS_RUNTIME_DIAGNOSTICS === '1'
 
 export function CanvasSpike() {
   const [editor, setEditor] = useState<Editor | null>(null)
@@ -137,6 +140,19 @@ export function CanvasSpike() {
     [createNodeAtViewport, editor]
   )
 
+  const tldrawCanvas = (
+    <Tldraw
+      acceptedImageMimeTypes={spikeAcceptedImageMimeTypes}
+      autoFocus
+      components={tldrawComponents}
+      inferDarkMode={false}
+      maxAssetSize={spikeNodeImageMaxBytes}
+      maxImageDimension={spikeMaxImageDimension}
+      onMount={handleMount}
+      shapeUtils={shapeUtils}
+    />
+  )
+
   return (
     <div className="canvas-spike-shell" data-image-preview-mode={imagePreviewMode}>
       <div className="canvas-spike-header">
@@ -156,16 +172,11 @@ export function CanvasSpike() {
         </div>
       </div>
       <div className="canvas-spike-stage">
-        <Tldraw
-          acceptedImageMimeTypes={spikeAcceptedImageMimeTypes}
-          autoFocus
-          components={tldrawComponents}
-          inferDarkMode={false}
-          maxAssetSize={spikeMaxAssetSizeBytes}
-          maxImageDimension={spikeMaxImageDimension}
-          onMount={handleMount}
-          shapeUtils={shapeUtils}
-        />
+        {canvasRuntimeDiagnosticsEnabled ? (
+          <CanvasRuntimeErrorBoundary>{tldrawCanvas}</CanvasRuntimeErrorBoundary>
+        ) : (
+          tldrawCanvas
+        )}
         <CanvasArrowPortOverlay editor={editor} />
         <CanvasNodeEdgeOverlay editor={editor} />
         <CanvasConnectionCutOverlay editor={editor} />
@@ -191,6 +202,7 @@ export function CanvasSpike() {
         <CanvasSelectionToolbar editor={editor} />
         <CanvasSettingsControl />
         <CanvasSpikeStylePanel editor={editor} />
+        {canvasRuntimeDiagnosticsEnabled ? <CanvasRuntimeDiagnostics editorReady={editor !== null} /> : null}
       </div>
     </div>
   )
