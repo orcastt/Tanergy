@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import type { Editor } from 'tldraw'
-import { usePortConnectionStore } from './portConnectionStore'
+import { usePortConnectionStore } from '@/components/canvas/portConnectionStore'
 
 type CanvasConnectionLineProps = {
   editor: Editor | null

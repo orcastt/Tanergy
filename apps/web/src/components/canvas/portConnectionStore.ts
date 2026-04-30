@@ -13,7 +13,7 @@ type PortConnectionState = {
   connectingFrom: ConnectionFrom | null
   mouseScreenPoint: { x: number; y: number } | null
   setMouseScreenPoint: (point: { x: number; y: number } | null) => void
-  start: (from: ConnectionFrom) => void
+  start: (from: ConnectionFrom, mouseScreenPoint: { x: number; y: number }) => void
 }
 
 export const usePortConnectionStore = create<PortConnectionState>((set) => ({
@@ -21,7 +21,7 @@ export const usePortConnectionStore = create<PortConnectionState>((set) => ({
   connectingFrom: null,
   mouseScreenPoint: null,
   setMouseScreenPoint: (point) => set({ mouseScreenPoint: point }),
-  start: (from) => set({ connectingFrom: from, mouseScreenPoint: null }),
+  start: (from, mouseScreenPoint) => set({ connectingFrom: from, mouseScreenPoint }),
 }))
 
 export type { ConnectionFrom }

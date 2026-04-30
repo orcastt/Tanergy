@@ -299,3 +299,17 @@ Unexpected property
 1. 点击输出端口后不移动鼠标，也应看到短线头。
 2. 移动鼠标时预览线应持续拉伸，不应闪断。
 3. 鼠标移到已完成数据线中段附近，应出现 `−`；点击后 edge 删除，动态 image 输入端口数量同步回收。
+
+### 7.6 Codex Follow-up 7 — Preview line visibility
+
+用户复测发现连接预览线仍不可见。
+
+补充修复：
+
+- `CanvasConnectionLine.tsx` 统一从 `@/components/canvas/portConnectionStore` 引入 store，避免相对路径和 alias 在开发构建里产生状态链路不一致的风险。
+- `portConnectionStore.ts` 的 `start()` 改为一次性写入 `connectingFrom` 和初始鼠标点，点击输出端口后首帧就有可渲染状态。
+- `canvas-overlays.css` 给 `.canvas-connection-line-overlay` 增加 `width: 100%`、`height: 100%`、`overflow: visible`，避免 SVG 使用默认 `300x150` viewport 裁剪掉画布中部/右侧的预览线。
+
+注意：
+
+- `canvas-overlays.css` 现为 290 行，下一次再新增 overlay 样式前应先拆分。

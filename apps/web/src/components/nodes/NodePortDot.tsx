@@ -15,7 +15,6 @@ export function NodePortDot({ getEditorPagePoint, port, shape }: NodePortDotProp
   const [showTooltip, setShowTooltip] = useState(false)
   const connectingFrom = usePortConnectionStore((state) => state.connectingFrom)
   const storeStart = usePortConnectionStore((state) => state.start)
-  const setMouseScreenPoint = usePortConnectionStore((state) => state.setMouseScreenPoint)
   const isCompatibleTarget = Boolean(
     connectingFrom &&
     connectingFrom.shapeId !== shape.id &&
@@ -55,9 +54,8 @@ export function NodePortDot({ getEditorPagePoint, port, shape }: NodePortDotProp
       portDirection: port.direction,
       portId: port.id,
       shapeId: shape.id,
-    })
-    setMouseScreenPoint({ x: event.clientX, y: event.clientY })
-  }, [connectingFrom, getEditorPagePoint, port, setMouseScreenPoint, shape, storeStart])
+    }, { x: event.clientX, y: event.clientY })
+  }, [connectingFrom, getEditorPagePoint, port, shape, storeStart])
 
   return (
     <div
