@@ -5,11 +5,7 @@ import { ArrowShapeUtil, Tldraw, type Editor, type TLAnyShapeUtilConstructor, ty
 import { CanvasNodeInspector } from '@/components/inspector/CanvasNodeInspector'
 import { NodeCardShapeUtil } from '@/components/nodes/NodeCardShape'
 import { useCanvasPerformanceStore } from '@/features/canvas-performance/canvasPerformanceStore'
-import {
-  hasImageLikeStructureChange,
-  updateCanvasImagePerformanceMetrics,
-  updateCanvasViewPerformanceMetrics,
-} from '@/features/canvas-performance/editorPerformanceMetrics'
+import { useCanvasPerformanceTracking } from '@/features/canvas-performance/useCanvasPerformanceTracking'
 import { createNodeCard } from '@/features/node-runtime/createNodeCard'
 import { createStep15MockGraph, createStep15StressNodes } from '@/features/node-runtime/createMockWorkflow'
 import { useNodeConnectionValidation } from '@/features/node-runtime/useNodeConnectionValidation'
@@ -80,6 +76,7 @@ export function CanvasSpike() {
     tone: 'error' | 'success'
   } | null>(null)
   const imagePreviewMode = useCanvasPerformanceStore((state) => state.imagePreviewMode)
+  useCanvasPerformanceTracking(editor)
   useArrowPortSnapping(editor)
   useCanvasSettings(editor)
   useNodeConnectionValidation(editor, setConnectionMessage)
@@ -102,45 +99,6 @@ export function CanvasSpike() {
     document.addEventListener('selectionchange', clearUnexpectedSelection)
     return () => document.removeEventListener('selectionchange', clearUnexpectedSelection)
   }, [])
-
-  useEffect(() => {
-    if (!editor) return
-    let imageFrame = 0
-    let viewFrame = 0
-    const updateImageMetrics = () => {
-      imageFrame = 0
-      updateCanvasImagePerformanceMetrics(editor)
-    }
-    const updateViewMetrics = () => {
-      viewFrame = 0
-      updateCanvasViewPerformanceMetrics(editor)
-    }
-    const scheduleImageMetricsUpdate = () => {
-      if (imageFrame) return
-      imageFrame = window.requestAnimationFrame(updateImageMetrics)
-    }
-    const scheduleViewMetricsUpdate = () => {
-      if (viewFrame) return
-      viewFrame = window.requestAnimationFrame(updateViewMetrics)
-    }
-
-    updateImageMetrics()
-    const stopStoreListen = editor.store.listen(({ changes }) => {
-      if (hasImageLikeStructureChange(changes)) scheduleImageMetricsUpdate()
-    }, { scope: 'document', source: 'all' })
-    editor.on('event', scheduleViewMetricsUpdate)
-    editor.on('resize', scheduleViewMetricsUpdate)
-    window.addEventListener('resize', scheduleImageMetricsUpdate)
-
-    return () => {
-      if (imageFrame) window.cancelAnimationFrame(imageFrame)
-      if (viewFrame) window.cancelAnimationFrame(viewFrame)
-      stopStoreListen()
-      editor.off('event', scheduleViewMetricsUpdate)
-      editor.off('resize', scheduleViewMetricsUpdate)
-      window.removeEventListener('resize', scheduleImageMetricsUpdate)
-    }
-  }, [editor])
 
   const handleMount = useCallback((mountedEditor: Editor) => {
     setEditor(mountedEditor)

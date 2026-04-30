@@ -22,46 +22,46 @@ export function updateCanvasViewPerformanceMetrics(editor: Editor) {
 }
 
 export function updateCanvasImagePerformanceMetrics(editor: Editor) {
+  const counts = getCanvasPerformanceCounts(editor)
   useCanvasPerformanceStore.getState().updateMetrics({
-    imageLikeCount: getImageLikeCount(editor),
+    imageLikeCount: counts.imageLikeCount,
+    nodeCardCount: counts.nodeCardCount,
     viewportWidth: window.innerWidth,
     zoom: editor.getZoomLevel(),
   })
 }
 
-export function hasImageLikeStructureChange(changes: StoreChanges) {
+export function hasCanvasPerformanceStructureChange(changes: StoreChanges) {
   const records = [
     ...Object.values(changes.added ?? {}),
     ...Object.values(changes.removed ?? {}),
   ]
-  if (records.some(isImageLikeRecord)) return true
+  if (records.some(isPerformanceCountedRecord)) return true
 
   return Object.values(changes.updated ?? {}).some((record) => {
     const update = normalizeUpdatedRecord(record)
-    return update ? isImageLikeRecord(update.from) !== isImageLikeRecord(update.to) : false
+    return update ? isPerformanceCountedRecord(update.from) !== isPerformanceCountedRecord(update.to) : false
   })
 }
 
-function getImageLikeCount(editor: Editor) {
-  return editor.getCurrentPageShapes().filter((shape) => (
-    shape.type === 'image' ||
-    (isNodeCard(shape) && shape.props.nodeType === 'image')
-  )).length
+function getCanvasPerformanceCounts(editor: Editor) {
+  return editor.getCurrentPageShapes().reduce((counts, shape) => {
+    if (shape.type === 'image') counts.imageLikeCount += 1
+    if (isNodeCard(shape)) {
+      counts.nodeCardCount += 1
+      if (shape.props.nodeType === 'image') counts.imageLikeCount += 1
+    }
+    return counts
+  }, { imageLikeCount: 0, nodeCardCount: 0 })
 }
 
-function isImageLikeRecord(record: unknown) {
+function isPerformanceCountedRecord(record: unknown) {
   const item = asShapeRecord(record)
   return Boolean(
     item &&
     item.typeName === 'shape' &&
-    (item.type === 'image' || (item.type === 'node_card' && getNodeType(item.props) === 'image'))
+    (item.type === 'image' || item.type === 'node_card')
   )
-}
-
-function getNodeType(props: unknown) {
-  return props && typeof props === 'object' && 'nodeType' in props
-    ? (props as { nodeType?: unknown }).nodeType
-    : null
 }
 
 function normalizeUpdatedRecord(record: unknown) {

@@ -3,7 +3,8 @@
 **Date**: 2026-04-30  
 **Branch**: `feature/asset-lod-roadmap`  
 **Base checkpoint**: `a6f20c1 checkpoint: stabilize s1.5 canvas runtime`  
-**Status**: Planning for the next development branch  
+**Status**: Slices A-C implemented locally; next is Slice D ordinary canvas image LOD spike. Slice E remains the later production Asset Pipeline. Windows/browser validation is a quality gate, not a separate slice.
+
 **Owner**: Codex / TANGENT
 
 ---
@@ -40,19 +41,22 @@ Already improved:
 
 - NodeCard no longer rerenders on camera-only changes.
 - Image Node can switch to reduced preview at low zoom / high density.
+- Image Node now has a local resolver-backed thumbnail mode for the 25%-50% zoom band.
+- Complex AI nodes can switch to a low-zoom shell while preserving clickable ports.
 - Image import max dimension is adaptive by viewport width.
 - Image count metrics only rescan when image-like structure changes.
 - Navigator samples fewer shapes in dense boards and can collapse.
 - Selection Toolbar / Style Panel hide during dragging and camera movement.
 - Inspector and overlays use narrower editor revision subscriptions.
+- Prompt / Analysis nodes now use resized space better, reducing wasted internal whitespace.
 
 Still unresolved:
 
 - Ordinary tldraw canvas image shapes can still render full image resources.
-- Image Node previews can still cost too much during camera movement when many are visible.
-- Complex node HTMLContainer content can become a DOM burden at low zoom.
+- Cross-platform performance is not validated yet on Windows Chrome / Edge, 4K displays, browser zoom settings and lower-end GPUs.
 - Local spike assets still rely on tldraw local asset URLs / data URLs / blob URLs.
 - Collaboration cannot safely sync or persist heavy image data in the board document.
+- Link preview cards still need a server-side URL unfurl + image proxy / asset path; direct remote preview images can fail due to CORS, hotlinking or bot protection.
 
 Main conclusion:
 
@@ -173,11 +177,19 @@ Rules:
 
 ## 5. Implementation Slices
 
-### Slice A — Image Node Moving Degrade
+### Slice A — Image Node Moving Degrade ✅
 
 Goal:
 
 Image Node should avoid mounting full image previews while camera is moving, zooming, panning or while the user is dragging.
+
+Status:
+
+2026-04-30 Codex implemented the local interaction-aware preview degrade. `canvasPerformanceStore` now treats camera movement, panning and dragging as a local reduced-preview signal with a short idle recovery delay; `CanvasSpike` uses `useCanvasPerformanceTracking()` so Image Nodes unmount full previews during motion and restore after idle. LOD state remains local UI state and is not written into shape props.
+
+2026-04-30 user test confirmed the hard degrade removed the stutter but felt too abrupt because readable Image Nodes only recovered after movement stopped. Codex tuned the rule to keep full image previews during interaction when the canvas is at readable zoom (50% and above) or when an individual Image Node has a large enough on-screen footprint. Reduced preview is now reserved for low-zoom overview and high-density movement where internal image detail is not useful.
+
+2026-04-30 Status: done locally. Quality gates passed.
 
 Scope:
 
@@ -206,11 +218,19 @@ Risk:
 
 ---
 
-### Slice B — Node LOD
+### Slice B — Node LOD ✅
 
 Goal:
 
 At low zoom or high density, complex AI nodes should not mount full React forms, buttons and previews.
+
+Status:
+
+2026-04-30 user testing at roughly 30 image/node objects showed remaining stutter during zooming and node connection even after Image Node preview LOD improved. Codex started Slice B by adding local `nodeCardCount` / `nodeRenderMode` to `canvasPerformanceStore`. Dense boards now switch non-readable nodes to a shell render mode at low zoom or while moving: the shell keeps node title, status and clickable ports, but skips full React controls, input summaries, payload audit footer and image/body rendering. Readable Image Nodes can still stay full so visible images are not hidden unnecessarily.
+
+2026-04-30 user feedback: switching around 45% zoom made nodes feel unreadable too early. Codex retuned the LOD thresholds so the common 24-48 image/node board only starts reduced image preview / node shell at roughly 25% zoom. Higher thresholds are now reserved only for extreme density boards.
+
+2026-04-30 Status: done locally. User accepted the later 25% threshold as a better interaction balance. Quality gates passed.
 
 Scope:
 
@@ -241,11 +261,19 @@ Risk:
 
 ---
 
-### Slice C — Local Asset Preview Resolver
+### Slice C — Local Asset Preview Resolver ✅
 
 Goal:
 
 Introduce a single client-side resolver that Image Node and future canvas image LOD can share.
+
+Status:
+
+2026-04-30 Codex implemented the first local resolver pass. `assetPreviewResolver` now resolves Image Node assets into `full`, `thumbnail`, or `placeholder` preview modes, keeps an in-memory thumbnail cache, and generates local 256/512 thumbnails for uploaded / merge-captured / converted tldraw image assets. `canvasPerformanceStore` now has three image modes: `full`, `thumbnail`, and `reduced`; common dense boards use thumbnail mode around the 25%-50% zoom band instead of jumping straight from original image to placeholder. This is intentionally local UI state and does not enter shape props or the board document.
+
+2026-04-30 user test confirmed the 25%-50% band is basically usable on the current Mac browser setup after thumbnail mode. Remaining uncertainty is cross-platform behavior after real AI images, production build, Windows Chrome / Edge, browser zoom and different monitor resolutions.
+
+2026-04-30 Status: done locally. Quality gates passed. Needs cross-platform performance validation before being considered production-ready.
 
 Proposed API:
 
@@ -292,7 +320,7 @@ Risk:
 
 ---
 
-### Slice D — Ordinary Canvas Image LOD Spike
+### Slice D — Ordinary Canvas Image LOD Spike ⏭️ Next
 
 Goal:
 
@@ -309,6 +337,10 @@ Important caution:
 
 Do not permanently replace original images with downsampled versions. Users need original fidelity for export, merge and inspection.
 
+Boundary:
+
+Slice D is a frontend spike. It proves ordinary canvas images can use the same local resolver / thumbnail strategy as Image Node without breaking tldraw behavior. It does not build backend upload, object storage, asset tables, signed URLs, persistence migration or multiplayer-safe asset sync.
+
 Acceptance:
 
 - A pasted/imported canvas image can display a thumbnail at low zoom or camera movement.
@@ -320,13 +352,24 @@ Risk:
 
 - Medium-high. This touches tldraw default image shape behavior and export consistency.
 
+Next entry criteria:
+
+- Keep Slice D as a spike, not a broad refactor.
+- Reuse `assetPreviewResolver` instead of inventing a second image-resolution path.
+- Verify Convert to Image Node, To Canvas, Screenshot and Merge Capture still use the expected fidelity.
+- Add a rollback note because custom image rendering can affect tldraw export and copy/paste behavior.
+
 ---
 
-### Slice E — Real Asset Pipeline
+### Slice E — Real Asset Pipeline ⏭️ Later
 
 Goal:
 
 Move from local spike assets to production-ready image assets before multiplayer collaboration.
+
+Boundary:
+
+Slice E productionizes the asset layer after the frontend LOD path is proven. It should turn local `data:` / `blob:` spike assets into durable server-backed asset records with original and thumbnail URLs. It should not be started as part of the Slice D frontend spike.
 
 Scope:
 
@@ -374,20 +417,24 @@ Risk:
 
 Recommended order:
 
-1. Slice A — Image Node Moving Degrade
-2. Slice B — Node LOD
-3. Slice C — Local Asset Preview Resolver
-4. Slice D — Ordinary Canvas Image LOD Spike
-5. Slice E — Real Asset Pipeline
-6. Multiplayer collaboration
+1. ✅ Slice A — Image Node Moving Degrade
+2. ✅ Slice B — Node LOD
+3. ✅ Slice C — Local Asset Preview Resolver
+4. ⏭️ Slice D — Ordinary Canvas Image LOD Spike
+5. ⛳ Quality gate — Cross-platform performance pass: Windows Chrome / Edge, browser zoom, 1080p / 2K / 4K, lower-end GPU
+6. ⏭️ Slice E — Real Asset Pipeline
+7. Link preview backend unfurl + image proxy / asset path
+8. Multiplayer collaboration
 
 Reason:
 
 - A and B are local UI changes with immediate performance payoff.
 - C creates a stable abstraction before touching ordinary canvas image rendering.
 - D is the risky tldraw integration spike.
+- Cross-platform validation is a release gate after D, not a new implementation slice.
 - E is required before collaboration.
 - Collaboration should not be built on a board document that can still carry heavy image payloads.
+- Windows/browser performance validation should happen before real AI integration changes the image sizes and density profile.
 
 ---
 
@@ -428,6 +475,7 @@ Medium board:
 
 - 30 images, 30 nodes.
 - Zoom 10%, 50%, 100%, 200%.
+- Zoom 25%-50% with Image Nodes and ordinary canvas images mixed.
 - Drag selected images.
 - Pan while nodes are selected.
 
@@ -445,6 +493,14 @@ Future collaboration readiness:
 - Inspect board document payload.
 - Confirm no `data:` / `blob:` / Base64 image payloads in persistent state.
 - Confirm asset ids are enough to restore visual state.
+
+Cross-platform performance readiness:
+
+- Mac Chrome / Safari at 1080p, 2K and high-DPI display settings.
+- Windows Chrome / Edge at 1080p, 2K and 4K.
+- Browser zoom 90%, 100%, 125%.
+- Boards with 30 images / 30 nodes and 100 images / 50 nodes.
+- Track whether 25%-50% zoom remains usable after real AI output images replace mock / local test assets.
 
 ---
 
@@ -494,4 +550,3 @@ Before multiplayer collaboration begins:
 - Complex AI nodes have a low-zoom shell mode.
 - 100 images + 50 nodes remain usable in production build.
 - Asset upload and thumbnail generation path is defined, even if initially local or mocked.
-

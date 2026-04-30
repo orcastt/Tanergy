@@ -5,9 +5,10 @@ import { useRef, useState, type DragEvent, type SyntheticEvent } from 'react'
 import type { Editor } from 'tldraw'
 import type { NodeCardShape } from '@/types/nodeCardShape'
 import type { JsonObject } from '@/types/nodeRuntime'
+import { useAssetPreview, type AssetPreviewMode } from '@/features/assets/assetPreviewResolver'
 import { useCanvasPerformanceStore } from '@/features/canvas-performance/canvasPerformanceStore'
 import type { RuntimeInputResolution } from '@/features/node-runtime/nodeDataFlow'
-import { getImageAsset, importFileToImageNode } from '@/features/node-runtime/imageNodeAssets'
+import { importFileToImageNode } from '@/features/node-runtime/imageNodeAssets'
 
 type ImageNodePreviewProps = {
   data: JsonObject
@@ -31,11 +32,21 @@ export function ImageNodePreview({ data, editor, inputResolution, shape }: Image
   const [isDragging, setIsDragging] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
   const imagePreviewMode = useCanvasPerformanceStore((state) => state.imagePreviewMode)
+  const zoom = useCanvasPerformanceStore((state) => state.zoom)
 
   const incomingImage = inputResolution.imageValues[0]
-  const asset = getImageAsset(editor, String(data.assetId ?? incomingImage?.assetId ?? ''))
-  const title = asset?.title ?? incomingImage?.title ?? String(data.title ?? 'Image')
-  const shouldRenderImage = Boolean(asset?.src) && imagePreviewMode === 'full'
+  const assetId = String(data.assetId ?? incomingImage?.assetId ?? '')
+  const previewSize = getPreviewScreenSize(shape, zoom)
+  const assetPreviewMode = getAssetPreviewMode(imagePreviewMode, previewSize.isReadable)
+  const preview = useAssetPreview(editor, {
+    assetId,
+    mode: assetPreviewMode,
+    screenHeight: previewSize.height,
+    screenWidth: previewSize.width,
+  })
+  const fallbackTitle = incomingImage?.title ?? String(data.title ?? 'Image')
+  const title = preview.title === 'Image' ? fallbackTitle : preview.title
+  const shouldRenderImage = Boolean(preview.src)
 
   const handleFiles = async (files: FileList | null) => {
     const file = files?.[0]
@@ -85,7 +96,7 @@ export function ImageNodePreview({ data, editor, inputResolution, shape }: Image
         onPointerDown={stopNodeControlEvent}
         onWheel={stopNodeControlEvent}
       >
-        {asset?.src && shouldRenderImage ? (
+        {shouldRenderImage ? (
           <div className="node-card__image-media">
             <Image
               alt={title}
@@ -94,12 +105,12 @@ export function ImageNodePreview({ data, editor, inputResolution, shape }: Image
               fill
               onDragStart={preventNativeImageDrag}
               sizes="(max-width: 420px) 100vw, 320px"
-              src={asset.src}
+              src={preview.src ?? ''}
               unoptimized
             />
           </div>
-        ) : asset?.src ? (
-          <div className="node-card__image-lite" data-detail={imagePreviewMode}>
+        ) : assetId ? (
+          <div className="node-card__image-lite" data-detail={preview.quality}>
             <span>{title}</span>
           </div>
         ) : (
@@ -116,4 +127,20 @@ export function ImageNodePreview({ data, editor, inputResolution, shape }: Image
       <small>{error ?? incomingImage?.assetId ?? String(data.assetId ?? 'Double-click or drop an image')}</small>
     </div>
   )
+}
+
+function getPreviewScreenSize(shape: NodeCardShape, zoom: number) {
+  const frameWidth = Math.max(0, shape.props.w - 20) * zoom
+  const frameHeight = Math.max(0, shape.props.h - 86) * zoom
+  return {
+    height: frameHeight,
+    isReadable: frameWidth >= 180 && frameHeight >= 120,
+    width: frameWidth,
+  }
+}
+
+function getAssetPreviewMode(imagePreviewMode: 'full' | 'reduced' | 'thumbnail', isReadable: boolean): AssetPreviewMode {
+  if (imagePreviewMode === 'full') return 'full'
+  if (imagePreviewMode === 'thumbnail' || isReadable) return 'thumbnail'
+  return 'placeholder'
 }

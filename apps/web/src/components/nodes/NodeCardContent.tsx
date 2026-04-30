@@ -4,6 +4,7 @@ import type { JsonValue } from '@tldraw/utils'
 import type { Editor } from 'tldraw'
 import type { NodeCardShape } from '@/types/nodeCardShape'
 import type { JsonObject, NodeRuntimeSummary } from '@/types/nodeRuntime'
+import { useCanvasPerformanceStore } from '@/features/canvas-performance/canvasPerformanceStore'
 import { getNodeDefinition, getResolvedNodePorts } from '@/features/node-runtime/registry'
 import { createCanvasImageFromNode } from '@/features/node-runtime/imageNodeAssets'
 import { auditNodePayload } from '@/features/node-runtime/payloadAudit'
@@ -31,13 +32,62 @@ function clearBrowserSelection() {
 }
 
 export function NodeCardContent({ editor, getEditorPagePoint, onDataChange, onRunMock, shape }: NodeCardContentProps) {
-  useEditorRevision(editor, 'node-content')
-  useNodeEdgeStore((state) => state.edges)
+  const nodeRenderMode = useCanvasPerformanceStore((state) => state.nodeRenderMode)
+  const zoom = useCanvasPerformanceStore((state) => state.zoom)
   const definition = getNodeDefinition(shape.props.nodeType)
   const data = asJsonObject(shape.props.data)
   const runtimeSummary = asRuntimeSummary(shape.props.runtimeSummary)
-  const inputResolution = resolveNodeInputs(editor, shape)
   const ports = getResolvedNodePorts(shape.props.nodeType, data)
+  const shouldUseShell = nodeRenderMode === 'shell' && !hasReadableImageNodeFootprint(shape, zoom)
+
+  if (shouldUseShell) {
+    return (
+      <div className={`node-card node-card--${shape.props.nodeType} node-card--shell`}>
+        <NodeCardPorts getEditorPagePoint={getEditorPagePoint} ports={ports} shape={shape} />
+        <div className="node-card__shell-body">
+          <span className="node-card__shell-title">{definition.displayName}</span>
+          <span className="node-card__shell-status" data-status={runtimeSummary.status}>
+            {runtimeSummary.status === 'idle' ? `${ports.length} ports` : runtimeSummary.status}
+          </span>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <NodeCardFullContent
+      data={data}
+      definition={definition}
+      editor={editor}
+      getEditorPagePoint={getEditorPagePoint}
+      onDataChange={onDataChange}
+      onRunMock={onRunMock}
+      ports={ports}
+      runtimeSummary={runtimeSummary}
+      shape={shape}
+    />
+  )
+}
+
+function NodeCardFullContent({
+  data,
+  definition,
+  editor,
+  getEditorPagePoint,
+  onDataChange,
+  onRunMock,
+  ports,
+  runtimeSummary,
+  shape,
+}: NodeCardContentProps & {
+  data: JsonObject
+  definition: ReturnType<typeof getNodeDefinition>
+  ports: ReturnType<typeof getResolvedNodePorts>
+  runtimeSummary: NodeRuntimeSummary
+}) {
+  useEditorRevision(editor, 'node-content')
+  useNodeEdgeStore((state) => state.edges)
+  const inputResolution = resolveNodeInputs(editor, shape)
   const imageAssetId = shape.props.nodeType === 'image'
     ? (typeof data.assetId === 'string' && data.assetId
       ? data.assetId
@@ -52,16 +102,7 @@ export function NodeCardContent({ editor, getEditorPagePoint, onDataChange, onRu
 
   return (
     <div className={`node-card node-card--${shape.props.nodeType}`}>
-      <div className="node-card__ports">
-        {ports.map((port) => (
-          <NodePortDot
-            getEditorPagePoint={getEditorPagePoint}
-            key={port.id}
-            port={port}
-            shape={shape}
-          />
-        ))}
-      </div>
+      <NodeCardPorts getEditorPagePoint={getEditorPagePoint} ports={ports} shape={shape} />
 
       <header className="node-card__header">
         <h2>{definition.displayName}</h2>
@@ -153,6 +194,34 @@ export function NodeCardContent({ editor, getEditorPagePoint, onDataChange, onRu
       ) : null}
     </div>
   )
+}
+
+function NodeCardPorts({
+  getEditorPagePoint,
+  ports,
+  shape,
+}: {
+  getEditorPagePoint: NodeCardContentProps['getEditorPagePoint']
+  ports: ReturnType<typeof getResolvedNodePorts>
+  shape: NodeCardShape
+}) {
+  return (
+    <div className="node-card__ports">
+      {ports.map((port) => (
+        <NodePortDot
+          getEditorPagePoint={getEditorPagePoint}
+          key={port.id}
+          port={port}
+          shape={shape}
+        />
+      ))}
+    </div>
+  )
+}
+
+function hasReadableImageNodeFootprint(shape: NodeCardShape, zoom: number) {
+  if (shape.props.nodeType !== 'image') return false
+  return shape.props.w * zoom >= 220 && shape.props.h * zoom >= 160
 }
 
 function asJsonObject(value: JsonValue): JsonObject {

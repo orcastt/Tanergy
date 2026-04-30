@@ -19,9 +19,9 @@ function stopNodeControlEvent(event: React.SyntheticEvent) {
 export function PromptPreview({ data, inputResolution, onDataChange }: PreviewProps) {
   return (
     <>
-      <label className="node-card__prompt-field" onPointerDown={stopNodeControlEvent} onWheel={stopNodeControlEvent}>
-        <span>Prompt</span>
+      <label className="node-card__prompt-field node-card__prompt-field--unlabeled" onPointerDown={stopNodeControlEvent} onWheel={stopNodeControlEvent}>
         <textarea
+          aria-label="Prompt"
           value={String(data.prompt ?? '')}
           onChange={(event) => onDataChange({ ...data, prompt: event.currentTarget.value })}
         />

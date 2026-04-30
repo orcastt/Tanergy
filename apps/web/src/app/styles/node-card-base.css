@@ -39,6 +39,66 @@
   --node-accent: #16a34a;
 }
 
+.node-card--shell {
+  display: grid;
+  grid-template-rows: 1fr;
+  gap: 0;
+  padding: 12px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--node-accent) 12%, white), white 58%),
+    white;
+}
+
+.node-card__shell-body {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  place-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.node-card__shell-title {
+  max-width: 100%;
+  overflow: hidden;
+  color: #1f2937;
+  font-size: 15px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.node-card__shell-status {
+  max-width: 100%;
+  overflow: hidden;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.node-card__shell-status[data-status='running'] {
+  color: #b91c1c;
+}
+
+.node-card--shell .node-card__port {
+  width: 18px;
+  height: 18px;
+}
+
+.node-card--shell .node-card__port[data-direction='in'] {
+  left: -9px;
+}
+
+.node-card--shell .node-card__port[data-direction='out'] {
+  right: -9px;
+}
+
 .node-card__header {
   display: flex;
   align-items: center;

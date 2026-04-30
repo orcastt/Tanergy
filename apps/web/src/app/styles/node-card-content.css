@@ -2,6 +2,7 @@
   display: grid;
   height: 100%;
   gap: 7px;
+  grid-template-rows: auto minmax(112px, 1fr);
 }
 
 .node-card__prompt-field span {
@@ -13,7 +14,7 @@
 .node-card__prompt-field textarea {
   width: 100%;
   height: 100%;
-  min-height: 112px;
+  min-height: 0;
   padding: 10px;
   border: 1px solid rgba(36, 36, 36, 0.11);
   border-radius: 10px;
@@ -26,6 +27,10 @@
 
 .node-card__prompt-field--compact textarea {
   min-height: 62px;
+}
+
+.node-card__prompt-field--unlabeled {
+  grid-template-rows: minmax(112px, 1fr);
 }
 
 .node-card__hint {
@@ -57,7 +62,10 @@
 
 .node-card__analysis {
   display: grid;
+  height: 100%;
   gap: 9px;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  min-height: 0;
 }
 
 .node-card__thumb {
@@ -73,13 +81,17 @@
 }
 
 .node-card__analysis-output {
+  height: 100%;
   min-height: 48px;
+  overflow: auto;
   padding: 11px;
   border-radius: 10px;
   background: #f8fafc;
   color: #94a3b8;
   font-size: 12px;
   font-weight: 750;
+  line-height: 1.35;
+  white-space: pre-wrap;
 }
 
 .node-card__image-preview {

@@ -1,5 +1,6 @@
 import { AssetRecordType, createShapeId, type Editor, type TLAssetId, type TLShapeId } from 'tldraw'
 import type { NodeCardShape } from '@/types/nodeCardShape'
+import { primeAssetPreviewThumbnails } from '@/features/assets/assetPreviewResolver'
 import { createNodeCard } from './createNodeCard'
 
 type ImageAssetRecord = {
@@ -220,6 +221,12 @@ function createLocalAsset(
       typeName: 'asset',
     },
   ])
+  primeAssetPreviewThumbnails({
+    assetId: String(assetId),
+    height: input.height,
+    src: input.src,
+    width: input.width,
+  })
   return assetId
 }
 

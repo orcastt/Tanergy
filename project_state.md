@@ -7,7 +7,7 @@
 
 ## 当前阶段
 
-**阶段**: Web AI 图像画布重启 — S1.5 复杂节点与架构裁决稳定快照；GLM 班次 2026-04-30 已修 Node Runtime fan-out 和 input auto-replacement；Codex 已补齐 runtime edge 断链、canvas image / Image Node 双向转换、本地导图、Merge Capture 预览，并完成低缩放 / 放大编辑多图性能第一轮降噪；用户手测确认性能有所改善但多图多节点仍会卡，下一阶段进入 Asset Pipeline + Image / Node LOD 架构主线
+**阶段**: Web AI 图像画布重启 — S1.5 复杂节点与架构裁决稳定快照；GLM 班次 2026-04-30 已修 Node Runtime fan-out 和 input auto-replacement；Codex 已补齐 runtime edge 断链、canvas image / Image Node 双向转换、本地导图、Merge Capture 预览，并完成低缩放 / 放大编辑多图性能第一轮降噪；当前已进入 Asset Pipeline + Image / Node LOD 架构主线，Slice A Image Node moving degrade、Slice B Node LOD shell、Slice C local thumbnail resolver 已本地落地，Mac 浏览器 25%-50% 多图缩放手测基本可用
 
 **核心目标**: 用全新、干净的 Web 项目重做 TANGENT。P0 只跑通：
 
@@ -19,7 +19,7 @@ Image Node → Canvas Markup → Merge Capture → New Image Node
 Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Image → 自动连线 → 用户确认后 Run
 ```
 
-**下一步**: 在新分支正式规划并推进 Asset LOD 主线。原因：当前卡顿已经从 React subscription / overlay churn 转向浏览器图片渲染成本；TANGENT 未来面向工作室协同，一个项目天然会有 100+ 图片、50+ AI 节点和多人同时 pan / zoom / 拖图 / 标注。协作前必须把图片从 `data:` / `blob:` spike 状态推进到统一 Asset model、thumbnail cache、render LOD 和 node LOD，否则多人同步会放大内存、带宽和重采样成本。短期先做 Image Node moving degrade 和 Node LOD，本地 spike 普通 canvas image thumbnail / ImageShapeUtil LOD；中期做真实 Asset Pipeline / object storage / 多尺寸缩略图。P1 后续：区分 Screenshot（普通图片贴回画布）与 Merge / Convert to Image Node（截图变 Image Node）。
+**下一步**: 进入 Slice D 普通 canvas image LOD spike，并补一轮跨平台性能验收。原因：当前 Mac 浏览器上 25%-50% 多图缩放基本可用，但上线后真实 AI 输出图会更大，Windows Chrome / Edge、4K 屏、浏览器缩放比例、低端 GPU 和不同滚轮输入都可能改变阈值和卡顿感。短期下一刀优先让普通 tldraw canvas image 也复用 `assetPreviewResolver` 的 thumbnail LOD；同时建立 Windows Chrome / Edge、1080p / 2K / 4K、browser zoom 90% / 100% / 125% 的性能手测矩阵。中期做真实 Asset Pipeline / object storage / 多尺寸缩略图。P1 后续：区分 Screenshot（普通图片贴回画布）与 Merge / Convert to Image Node（截图变 Image Node）；Link Preview 需要后端 URL unfurl + image proxy / asset 化。
 
 ---
 
@@ -64,6 +64,8 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 - ✅ tldraw 视窗剔除有价值但不能盲信；Step 1.5 必须用生产构建验证 50-100 复杂节点和图片密集画布。
 - ✅ 协作后置到 P0.5；Presence 和软锁不落 PostgreSQL，CRDT 不替代 AI Run、扣费、Asset 写入的后端权威。
 - ✅ Asset Pipeline + Image / Node LOD 提前为协作前置基础设施：LOD 状态只属于本地 UI，不进入 CRDT / Board document；协作文档只同步轻量 shape / node / edge / assetId / layout / summary。
+- ✅ Mac 浏览器手感不能作为上线唯一性能口径；真实 AI 图、Windows Chrome / Edge、不同屏幕分辨率和浏览器缩放比例必须进入性能验收。
+- ✅ Link card 预览不能依赖前端直接加载第三方 preview 图；后续应走服务端 URL unfurl + image proxy / Asset 化，避免 CORS、防盗链和 bot protection 导致预览图失败。
 - ✅ 前端视觉保持干净白板、小卡片、轻边框，不大换皮。
 - ✅ Tanva 只参考操作逻辑，不复制代码。
 
@@ -117,6 +119,10 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 - ✅ Codex 二十三次修复 2026-04-30：左下角 navigator 增加折叠按钮；展开态右上角可收起，折叠态只保留 42px 图标按钮，再点可展开。折叠态直接跳过小地图 bounds / shape rect 计算，减少高密度画布上的额外浮层工作。lint / typecheck / build / git diff --check 全通过，触碰源码文件 < 300 行。
 - ✅ Codex 二十四次架构确认 2026-04-30：根据用户多图多节点手测和 Gemini 复核思路，确认当前性能瓶颈已进入图片资产渲染层；保留 tldraw-first + Node Runtime，不推翻现有节点/连线/Image Node/Merge 链路；下一阶段在新分支规划 Asset LOD Roadmap，把 Asset model、thumbnail cache、Image Node moving degrade、普通 canvas image LOD、Node LOD 和真实 Asset Pipeline 作为多人协作前置主线。
 - ✅ Codex 二十五次文档整理 2026-04-30：将已完成、已验收或废弃的 dev-plan/handoff 切片移入 `dev-plans/Archive/`，保留 `dev-plans/Asset-lod-roadmap.md` 作为当前主线入口，并更新 README / P0 Harness / project_state 的索引路径。
+- ✅ Codex 二十六次推进 2026-04-30：完成 Asset LOD Slice A；新增 `useCanvasPerformanceTracking()`，把 image metrics / camera metrics / interaction preview degrade 从 `CanvasSpike.tsx` 抽出；`canvasPerformanceStore` 新增本地 `imagePreviewInteractionActive` 状态。首轮手测确认移动缩放明显更顺且不丢图；随后按用户反馈把“交互中一律 reduced”调成可读 LOD：低缩放/密集概览才降级，50% 以上或单个 Image Node 屏幕尺寸足够大时，拖动/缩放中继续显示真实图片。lint / typecheck / build / git diff --check 全通过，LOD 状态不写入 shape props。
+- ✅ Codex 二十七次推进 2026-04-30：根据约 30 个 image/node 对象下仍有缩放和连线卡顿的手测反馈，启动 Asset LOD Slice B Node LOD；`canvasPerformanceStore` 新增本地 `nodeCardCount` / `nodeRenderMode`，低缩放、高密度或移动中将不可读 AI 节点切为 shell，只保留节点标题、状态和可点击端口，跳过完整表单、输入解析、footer 和图片/body 渲染；可读尺寸的 Image Node 仍保持 full 以避免隐藏用户正在看的图片。用户反馈 45% 左右过早降级影响交互后，已把常见 24-48 图片/节点规模的 reduce / shell 阈值调到约 25%，极高密度才更早降级。
+- ✅ Codex 二十八次推进 2026-04-30：启动 Asset LOD Slice C；新增本地 `assetPreviewResolver`，Image Node 预览从直接读取 tldraw asset 原图改为 resolver 输出 `full / thumbnail / placeholder`；本地导入、Merge Capture、Convert to Image Node 等由 `createLocalAsset()` 创建的图片会预热 256/512 thumbnail cache；`canvasPerformanceStore` 新增 `thumbnail` 模式，让 25%-50% 中等缩放区间显示真实缩略图而非高清原图或纯占位。该缓存仍为本地 UI 层，不写入 shape props / board document。
+- ✅ Codex 二十九次整理 2026-04-30：根据用户手测确认当前 Mac 浏览器 25%-50% 多图缩放基本可用；记录上线前风险为真实 AI 图片尺寸、Windows Chrome / Edge、不同屏幕分辨率、browser zoom 与低端 GPU 可能改变性能阈值。下一步明确为 Slice D 普通 canvas image LOD spike + 跨平台性能矩阵；Link card 预览问题后续走服务端 unfurl / image proxy / Asset 化，不在前端直接依赖第三方远程图。
 
 ---
 
