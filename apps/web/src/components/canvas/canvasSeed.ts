@@ -11,17 +11,8 @@ import {
 } from 'tldraw'
 import type { AiCardShape, AiCardTone } from './AiCardShape'
 
-const sampleImageSvg = encodeURIComponent(`
-<svg width="960" height="640" viewBox="0 0 960 640" xmlns="http://www.w3.org/2000/svg">
-  <rect width="960" height="640" fill="#f5f3f3"/>
-  <rect x="72" y="72" width="816" height="496" rx="36" fill="#ffffff"/>
-  <circle cx="264" cy="256" r="92" fill="#e9e8e8"/>
-  <rect x="420" y="190" width="290" height="34" rx="17" fill="#242424"/>
-  <rect x="420" y="252" width="380" height="26" rx="13" fill="#898989"/>
-  <rect x="420" y="302" width="320" height="26" rx="13" fill="#c4c7c7"/>
-  <text x="420" y="392" font-family="Inter, Arial" font-size="44" font-weight="700" fill="#242424">Sample image</text>
-</svg>
-`)
+const sampleImageUrl = '/spikes/sample-image.svg'
+
 
 function richText(text: string) {
   return toRichText(text)
@@ -114,7 +105,7 @@ export function createSampleImage(editor: Editor, x = 720, y = 80) {
           isAnimated: false,
           mimeType: 'image/svg+xml',
           name: 'sample-image.svg',
-          src: `data:image/svg+xml,${sampleImageSvg}`,
+          src: sampleImageUrl,
           w: 960,
         },
         meta: {},

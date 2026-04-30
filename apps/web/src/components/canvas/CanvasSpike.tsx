@@ -12,8 +12,9 @@ import { spikeNodeImageMaxBytes } from '@/features/node-runtime/imageNodeAssets'
 import { useNodeConnectionValidation } from '@/features/node-runtime/useNodeConnectionValidation'
 import type { NodeType } from '@/types/nodeRuntime'
 import { AiCardShapeUtil } from './AiCardShape'
-import { CanvasImageShapeUtil } from './CanvasImageShapeUtil'
 import { CanvasArrowPortOverlay } from './CanvasArrowPortOverlay'
+import { CanvasBoardSaveAudit } from './CanvasBoardSaveAudit'
+import { CanvasImageShapeUtil } from './CanvasImageShapeUtil'
 import { CanvasConnectionCutOverlay } from './CanvasConnectionCutOverlay'
 import { CanvasConnectionLine } from './CanvasConnectionLine'
 import { CanvasGrid } from './CanvasGrid'
@@ -200,6 +201,7 @@ export function CanvasSpike() {
         />
         <CanvasNodeInspector connectionMessage={connectionMessage} editor={editor} />
         <CanvasSelectionToolbar editor={editor} />
+        <CanvasBoardSaveAudit editor={editor} />
         <CanvasSettingsControl />
         <CanvasSpikeStylePanel editor={editor} />
         {canvasRuntimeDiagnosticsEnabled ? <CanvasRuntimeDiagnostics editorReady={editor !== null} /> : null}

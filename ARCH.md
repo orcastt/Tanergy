@@ -446,6 +446,7 @@ TanvasAgent/
 - 保存生成图、编辑导出图、合并截图。
 - 返回可持久化 URL。
 - 禁止持久化 `blob:` / `data:`。
+- 当前 Slice E-A 在 `apps/web/src/app/api/assets/` 提供本地开发 Asset API bridge，文件写入 `.tangent-assets/`，用于验证前端 Asset 合同；正式实现仍需迁移到带 Auth / Workspace 校验的 FastAPI + R2/S3 adapter。
 
 不负责：
 
@@ -837,12 +838,21 @@ POST /api/v1/boards
 GET /api/v1/boards/{board_id}
 PATCH /api/v1/boards/{board_id}
 DELETE /api/v1/boards/{board_id}
+POST /api/v1/boards/validate-document
+POST /api/v1/boards/local-save
+GET /api/v1/boards/local-load?boardId=...
 ```
 
 约束：
 
 - 所有接口必须校验 Board 属于当前用户或当前 workspace。
 - `PATCH` 只允许更新 title、thumbnail、document_state 等白名单字段。
+- 写入 `document_state` 前必须通过 Board document guard，拒绝 `data:` / `blob:` 和大段 base64-like payload。
+- 当前本地开发 bridge 在 `apps/web/src/app/api/boards/validate-document/route.ts` 提供相同 guard contract；正式 FastAPI 保存接口必须复用同等规则。
+- 当前 canvas spike 使用 `serializeBoardDocument()` 生成保存候选 document，只包含 shapes、assets、camera、viewport、runtime edges 等轻量恢复信息，不保存完整 tldraw store snapshot。
+- 当前 `Save audit` dev control 会先迁移可处理的 runtime image assets 到本地 Asset API，再执行 guard；不能迁移的 `data:` / `blob:` 仍会阻塞保存候选。
+- 当前 `Save local` dev control 会在 guard 通过后写入 `.tangent-boards/boards/canvas-spike-local.json`；这是本地开发保存支架，不替代正式数据库、Auth 或 workspace 权限。
+- 当前 `Load local` dev control 会从 `.tangent-boards/` 读取同一 document，重建 tldraw assets / shapes、runtime edges 和 camera；这是 restore 验证支架，不替代正式 Board load。
 
 ### 8.3 Assets
 
@@ -854,6 +864,14 @@ DELETE /api/v1/assets/{asset_id}
 ```
 
 P0 可先用 `from-data-url` 处理 editor export / merge capture，但服务端必须落成真实 Asset URL 后返回，不能让 `data:` 进入持久化 document。
+
+当前本地开发 bridge：
+
+- `apps/web/src/app/api/assets/from-data-url/route.ts` 接收原图 data URL 和客户端生成的 thumbnails。
+- `apps/web/src/app/api/assets/upload/route.ts` 保留 multipart upload 合同。
+- `apps/web/src/app/api/assets/[assetId]/route.ts` 返回 metadata。
+- `apps/web/src/app/api/assets/files/[assetId]/[fileName]/route.ts` 只服务 Git 忽略目录里的本地开发文件。
+- 该 bridge 不替代正式鉴权、workspace 权限和对象存储。
 
 ### 8.4 Model Registry
 

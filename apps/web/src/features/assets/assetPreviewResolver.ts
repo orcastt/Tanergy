@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import type { Editor, TLAssetId } from 'tldraw'
+import type { TangentAssetRecord } from './assetTypes'
 
 export type AssetPreviewMode = 'full' | 'placeholder' | 'thumbnail'
 export type AssetPreviewQuality = 'original' | 'placeholder' | 'thumb-1024' | 'thumb-256' | 'thumb-512'
@@ -23,6 +24,9 @@ type AssetPreviewResult = {
 }
 
 type LocalImageAsset = {
+  meta?: {
+    tangentAsset?: TangentAssetRecord
+  }
   props?: {
     h?: number
     name?: string
@@ -115,6 +119,16 @@ function resolveAssetPreview(editor: Editor, intent: AssetPreviewIntent): AssetP
     return { ...base, pending: false, quality: 'placeholder', src: null }
   }
 
+  const persistedThumbnail = getPersistedThumbnail(asset.serverAsset, targetThumbnailSize)
+  if (persistedThumbnail) {
+    return {
+      ...base,
+      pending: false,
+      quality: `thumb-${targetThumbnailSize}` as AssetPreviewQuality,
+      src: persistedThumbnail,
+    }
+  }
+
   const thumbnail = getCachedThumbnail(intent.assetId, asset.src, targetThumbnailSize)
   if (thumbnail) {
     return {
@@ -140,10 +154,18 @@ function getLocalImageAsset(editor: Editor, assetId: string | null) {
   if (!src) return null
   return {
     height: asset.props?.h,
+    serverAsset: asset.meta?.tangentAsset,
     src,
     title: asset.props?.name || 'Image',
     width: asset.props?.w,
   }
+}
+
+function getPersistedThumbnail(asset: TangentAssetRecord | undefined, size: ThumbnailSize) {
+  if (!asset) return null
+  if (size === 1024) return asset.thumbnail1024Url ?? asset.thumbnail512Url ?? asset.thumbnail256Url ?? null
+  if (size === 512) return asset.thumbnail512Url ?? asset.thumbnail256Url ?? asset.thumbnail1024Url ?? null
+  return asset.thumbnail256Url ?? asset.thumbnail512Url ?? asset.thumbnail1024Url ?? null
 }
 
 function getCachedThumbnail(assetId: string | null, src: string, size: ThumbnailSize) {

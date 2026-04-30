@@ -3,7 +3,7 @@
 **Date**: 2026-04-30  
 **Branch**: `feature/asset-lod-roadmap`  
 **Base checkpoint**: `a6f20c1 checkpoint: stabilize s1.5 canvas runtime`  
-**Status**: Slices A-D implemented. Cross-platform quality gate is `pass with notes` as of 2026-04-30. Windows dense-board stutter is a non-blocking performance follow-up. Next active slice is Slice E Real Asset Pipeline.
+**Status**: Slices A-D implemented. Cross-platform quality gate is `pass with notes` as of 2026-04-30. Windows dense-board stutter is a non-blocking performance follow-up. Current active work is Slice E-C board save guard and local save/restore stabilization.
 
 **Owner**: Codex / TANGENT
 
@@ -379,7 +379,7 @@ Next entry criteria:
 
 ---
 
-### Slice E — Real Asset Pipeline ⏭️ Later
+### Slice E — Real Asset Pipeline ▶️ Active
 
 Goal:
 
@@ -431,6 +431,91 @@ Risk:
 
 ---
 
+### Slice E-A — Local Server-Backed Asset Contract ✅
+
+Goal:
+
+Create the first replaceable Asset API contract inside the current Web app before wiring a full FastAPI / R2 backend.
+
+Boundary:
+
+This is a development bridge, not the final production storage implementation. It should move Image Node import and Merge Capture away from raw `data:` URLs by posting image data to a local server route, storing files under an ignored local asset directory, and returning an asset record with original and thumbnail URLs. Auth, workspace permission checks and object storage migration remain for later Slice E steps.
+
+Scope:
+
+- `POST /api/assets/from-data-url` stores an original image plus client-generated thumbnails.
+- `POST /api/assets/upload` exists for the future upload contract and stores the original file.
+- `GET /api/assets/{assetId}` returns metadata.
+- `GET /api/assets/files/{assetId}/{fileName}` serves local development asset files.
+- Image Node file import and Merge Capture / Screenshot create tldraw assets from returned asset URLs, not raw data URLs.
+- `assetPreviewResolver` prefers persisted thumbnail URLs when available, falling back to the existing local thumbnail cache.
+
+Acceptance:
+
+- Imported Image Node images have a non-`data:` `props.src` URL.
+- Merge Capture creates an Image Node whose tldraw asset points at `/api/assets/files/...`.
+- Thumbnail mode can use `thumbnail256Url` / `thumbnail512Url` / `thumbnail1024Url` from asset metadata.
+- API response shape matches the future server Asset model closely enough to swap storage later.
+- Generated asset files are ignored by Git.
+
+Known limitations:
+
+- Local Next route has no real auth or workspace authorization yet.
+- Thumbnails are generated client-side in this bridge slice; production should move thumbnail generation server-side.
+- The seeded spike image is now served from `/spikes/sample-image.svg`; seeded demo data URLs should not enter persistence candidates.
+
+2026-04-30 implementation note:
+
+Codex implemented the first bridge in `apps/web/src/app/api/assets/`. Image Node file import and Merge Capture / Screenshot now post image data to `POST /api/assets/from-data-url`, create a tldraw image asset from the returned `/api/assets/files/...` URL, and store the returned `TangentAssetRecord` on the tldraw asset metadata. `assetPreviewResolver` now prefers `thumbnail256Url` / `thumbnail512Url` / `thumbnail1024Url` from that metadata before falling back to the local thumbnail cache. Generated files live under `.tangent-assets/`, which is ignored by Git.
+
+---
+
+### Slice E-C — Board Save Guard / Data URL Migration ▶️ Active
+
+Goal:
+
+Add a hard validation layer before Board persistence exists, so future save APIs cannot accidentally store raw image payloads.
+
+Boundary:
+
+This slice does not implement Dashboard, Board CRUD, database persistence or migration UI. It only creates a reusable guard and a local validation endpoint that future save code must call before writing `document_state`.
+
+Scope:
+
+- Add a pure Board document audit function for arbitrary JSON-like values.
+- Block strings starting with `data:` or `blob:`.
+- Block large base64-like payloads that could be hidden inside props or metadata.
+- Report JSON byte size and issue paths for developer diagnostics.
+- Add a local `POST /api/boards/validate-document` route as a save-guard contract.
+- Add a lightweight editor serializer that emits shapes, assets, camera, viewport and runtime edges before running the guard.
+- Add a dev `Save audit` control on the canvas spike so this path can be exercised before real persistence.
+- Before audit, migrate browser runtime image assets (`data:image/png|jpeg|webp` / `blob:`) through the local Asset API and update the existing tldraw asset in place.
+- Add local `POST /api/boards/local-save` and `GET /api/boards/local-load` routes that write/read ignored `.tangent-boards/` JSON for development.
+- Add a `Save local` dev control that runs migrate -> serialize -> guard -> local save.
+- Add a `Load local` dev control that restores assets, shapes, runtime edges and camera from the local document.
+
+Acceptance:
+
+- Clean board-like JSON validates with `ok: true`.
+- Documents containing `data:image/...` or `blob:...` validate with `ok: false`.
+- Documents containing very large base64-like strings validate with `ok: false`.
+- The guard is pure and can be reused by future FastAPI / Board save implementations.
+- Current editor state can be serialized and guarded without using a full tldraw store snapshot.
+- Guarded documents can be written to the local dev board store.
+- The local saved document can be restored into the editor enough to verify refresh/reopen fundamentals.
+
+2026-04-30 implementation note:
+
+Codex added `boardDocumentGuard.ts`, `boardDocumentSerializer.ts`, `boardDocumentRestore.ts`, `POST /api/boards/validate-document`, `runtimeAssetMigration.ts`, `POST /api/boards/local-save`, `GET /api/boards/local-load`, and a `CanvasBoardSaveAudit` dev control. The serializer intentionally includes asset source URLs in the candidate document so local `data:` / `blob:` assets are visible to the guard instead of silently passing into persistence. The save audit / local save controls first upload migratable runtime image assets through the local Asset API and update their existing tldraw asset records, preserving shape references. The local load control restores tldraw assets, shapes, runtime edges and camera from the saved local document. The original seeded SVG sample was moved from an inline data URL to `apps/web/public/spikes/sample-image.svg`, so the default spike board should no longer fail save audit because of fixture data. Local board JSON is written under `.tangent-boards/`, which is ignored by Git.
+
+2026-05-01 stabilization note:
+
+Manual dense-board save testing exposed a tldraw image asset schema issue: migrated runtime assets must include `props.isAnimated`, otherwise `editor.updateAssets()` throws `Expected boolean, got undefined`. `runtimeAssetMigration.ts` now preserves `true` animated flags and defaults everything else to `false`. The same pass also tightened Analysis node internal layout so the output prompt area is no longer clipped by hidden compact textarea whitespace.
+
+User retest confirms the Analysis layout and `Save local` schema error are no longer reproducing in the current local canvas spike.
+
+---
+
 ## 6. Development Order
 
 Recommended order:
@@ -440,8 +525,10 @@ Recommended order:
 3. ✅ Slice C — Local Asset Preview Resolver
 4. ✅ Slice D — Ordinary Canvas Image LOD Spike
 5. ✅ Quality gate — Cross-platform performance pass with notes: Windows Chrome / Edge via temporary tunnel, browser zoom, dense boards
-6. ▶️ Slice E — Real Asset Pipeline
-7. Link preview backend unfurl + image proxy / asset path
+6. ▶️ Slice E-A — Local Server-Backed Asset Contract
+7. ▶️ Slice E-C — Board save guard / data URL migration
+8. Slice E-B — Authenticated Asset API + object storage adapter
+9. Link preview backend unfurl + image proxy / asset path
 8. Multiplayer collaboration
 
 Reason:

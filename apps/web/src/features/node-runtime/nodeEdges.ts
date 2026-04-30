@@ -17,6 +17,7 @@ type NodeEdgeState = {
   addEdge: (edge: Omit<NodeRuntimeEdge, 'id'>) => NodeRuntimeEdge
   edges: NodeRuntimeEdge[]
   removeEdge: (id: string) => void
+  setEdges: (edges: NodeRuntimeEdge[]) => void
 }
 
 export const useNodeEdgeStore = create<NodeEdgeState>((set) => ({
@@ -35,10 +36,15 @@ export const useNodeEdgeStore = create<NodeEdgeState>((set) => ({
   },
   edges: [],
   removeEdge: (id) => set((state) => ({ edges: state.edges.filter((edge) => edge.id !== id) })),
+  setEdges: (edges) => set({ edges: edges.map((edge) => ({ ...edge })) }),
 }))
 
 export function getNodeEdgesSnapshot() {
   return useNodeEdgeStore.getState().edges
+}
+
+export function setNodeEdgesSnapshot(edges: NodeRuntimeEdge[]) {
+  useNodeEdgeStore.getState().setEdges(edges)
 }
 
 export function syncNodeEdgeInputCounts(editor: Editor) {

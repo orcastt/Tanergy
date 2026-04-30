@@ -37,6 +37,10 @@ logs/
 
 # MinIO data (local dev)
 minio-data/
+.tangent-assets/
+.tangent-boards/
+apps/web/.tangent-assets/
+apps/web/.tangent-boards/
 
 # Redis dump
 dump.rdb

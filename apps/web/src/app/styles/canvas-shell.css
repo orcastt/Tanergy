@@ -91,3 +91,53 @@
   white-space: pre-wrap;
   color: #5f241e;
 }
+
+.canvas-board-save-audit {
+  position: absolute;
+  right: 24px;
+  bottom: 108px;
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px;
+  border: 1px solid rgba(17, 24, 39, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--shadow-ring);
+  color: var(--text-secondary);
+  font-size: 12px;
+  pointer-events: auto;
+  user-select: none;
+}
+
+.canvas-board-save-audit button {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid rgba(17, 24, 39, 0.14);
+  border-radius: 6px;
+  background: white;
+  color: var(--text-primary);
+  font-weight: 800;
+}
+
+.canvas-board-save-audit span {
+  font-weight: 800;
+}
+
+.canvas-board-save-audit span[data-state='ok'] {
+  color: #0f766e;
+}
+
+.canvas-board-save-audit span[data-state='blocked'] {
+  color: #b42318;
+}
+
+.canvas-board-save-audit small {
+  max-width: 180px;
+  overflow: hidden;
+  color: #b42318;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

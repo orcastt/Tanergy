@@ -25,8 +25,14 @@
   resize: none;
 }
 
+.node-card__prompt-field--compact {
+  height: auto;
+  grid-template-rows: minmax(72px, auto);
+}
+
 .node-card__prompt-field--compact textarea {
-  min-height: 62px;
+  min-height: 72px;
+  max-height: 96px;
 }
 
 .node-card__prompt-field--unlabeled {
@@ -63,8 +69,8 @@
 .node-card__analysis {
   display: grid;
   height: 100%;
-  gap: 9px;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 8px;
+  grid-template-rows: auto minmax(72px, auto) minmax(64px, 1fr);
   min-height: 0;
 }
 
@@ -82,7 +88,7 @@
 
 .node-card__analysis-output {
   height: 100%;
-  min-height: 48px;
+  min-height: 0;
   overflow: auto;
   padding: 11px;
   border-radius: 10px;

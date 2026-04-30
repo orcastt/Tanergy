@@ -1,17 +1,9 @@
-import { AssetRecordType, createShapeId, type Editor, type TLAssetId, type TLShapeId } from 'tldraw'
+import { createShapeId, type Editor, type TLAssetId, type TLShapeId } from 'tldraw'
+import { createEditorImageAsset, getImageAsset } from '@/features/assets/editorImageAssets'
+import { imageMaxBytes, acceptedImageMimeTypes, readImageFileAsDataUrl, validateImageFile } from '@/features/assets/imageAssetInputs'
+import { uploadImageDataUrlAsset } from '@/features/assets/assetUploadClient'
 import type { NodeCardShape } from '@/types/nodeCardShape'
-import { primeAssetPreviewThumbnails } from '@/features/assets/assetPreviewResolver'
 import { createNodeCard } from './createNodeCard'
-
-type ImageAssetRecord = {
-  props?: {
-    h?: number
-    mimeType?: string
-    name?: string
-    src?: string
-    w?: number
-  }
-}
 
 type CanvasImageShape = {
   id: TLShapeId
@@ -33,8 +25,8 @@ type ImageNodeDataPatch = {
   title: string
 }
 
-export const spikeAcceptedNodeImageMimeTypes = ['image/png', 'image/jpeg', 'image/webp']
-export const spikeNodeImageMaxBytes = 30 * 1024 * 1024
+export const spikeAcceptedNodeImageMimeTypes = acceptedImageMimeTypes
+export const spikeNodeImageMaxBytes = imageMaxBytes
 
 export async function createImageNodeFromCanvasImage(editor: Editor, shapeId: TLShapeId) {
   const shape = editor.getShape(shapeId)
@@ -101,13 +93,15 @@ export async function createImageNodeFromDataUrl(
     y: number
   }
 ) {
-  const assetId = createLocalAsset(editor, {
+  const assetRecord = await uploadImageDataUrlAsset({
+    dataUrl: input.url,
+    fileName: `${slugify(input.title)}.png`,
     height: input.height,
-    mimeType: 'image/png',
-    name: `${slugify(input.title)}.png`,
-    src: input.url,
+    origin: input.source,
+    title: input.title,
     width: input.width,
   })
+  const assetId = createEditorImageAsset(editor, assetRecord)
 
   return createImageNode(editor, {
     assetId,
@@ -120,35 +114,22 @@ export async function createImageNodeFromDataUrl(
   })
 }
 
-export function getImageAsset(editor: Editor, assetId?: string | null) {
-  if (!assetId) return null
-  const asset = editor.getAsset(assetId as TLAssetId) as ImageAssetRecord | undefined
-  const src = asset?.props?.src
-  if (!src) return null
-  return {
-    assetId,
-    height: asset.props?.h,
-    mimeType: asset.props?.mimeType,
-    src,
-    title: asset.props?.name || 'Image',
-    width: asset.props?.w,
-  }
-}
-
 export async function importFileToImageNode(
   editor: Editor,
   shape: NodeCardShape,
   file: File
 ) {
   validateImageFile(file)
-  const preview = await readFileAsDataUrl(file)
-  const assetId = createLocalAsset(editor, {
+  const preview = await readImageFileAsDataUrl(file)
+  const assetRecord = await uploadImageDataUrlAsset({
+    dataUrl: preview.url,
+    fileName: file.name,
     height: preview.height,
-    mimeType: file.type,
-    name: file.name,
-    src: preview.url,
+    origin: 'upload',
+    title: file.name,
     width: preview.width,
   })
+  const assetId = createEditorImageAsset(editor, assetRecord)
 
   const nextData = {
     ...(asJsonObject(shape.props.data)),
@@ -194,60 +175,6 @@ function createImageNode(
   })
 }
 
-function createLocalAsset(
-  editor: Editor,
-  input: {
-    height: number
-    mimeType: string
-    name: string
-    src: string
-    width: number
-  }
-) {
-  const assetId = AssetRecordType.createId(`${slugify(input.name)}-${Date.now()}`) as TLAssetId
-  editor.createAssets([
-    {
-      id: assetId,
-      meta: {},
-      props: {
-        h: input.height,
-        isAnimated: false,
-        mimeType: input.mimeType,
-        name: input.name,
-        src: input.src,
-        w: input.width,
-      },
-      type: 'image',
-      typeName: 'asset',
-    },
-  ])
-  primeAssetPreviewThumbnails({
-    assetId: String(assetId),
-    height: input.height,
-    src: input.src,
-    width: input.width,
-  })
-  return assetId
-}
-
-async function readFileAsDataUrl(file: File) {
-  const url = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onerror = () => reject(new Error('Failed to read image file.'))
-    reader.onload = () => resolve(String(reader.result ?? ''))
-    reader.readAsDataURL(file)
-  })
-
-  const dimensions = await new Promise<{ height: number; width: number }>((resolve, reject) => {
-    const image = new window.Image()
-    image.onerror = () => reject(new Error('Failed to decode image.'))
-    image.onload = () => resolve({ height: image.naturalHeight, width: image.naturalWidth })
-    image.src = url
-  })
-
-  return { ...dimensions, url }
-}
-
 function slugify(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 32) || 'image'
 }
@@ -259,14 +186,5 @@ function fitCanvasImageSize(width: number, height: number) {
   return {
     height: Math.max(96, Math.round(height * scale)),
     width: Math.max(96, Math.round(width * scale)),
-  }
-}
-
-function validateImageFile(file: File) {
-  if (!spikeAcceptedNodeImageMimeTypes.includes(file.type)) {
-    throw new Error('Use PNG, JPEG, or WebP.')
-  }
-  if (file.size > spikeNodeImageMaxBytes) {
-    throw new Error('Image must be 30MB or smaller.')
   }
 }
