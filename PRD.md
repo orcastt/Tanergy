@@ -1,9 +1,9 @@
 # TANGENT Web AI Image Canvas — PRD
 
 **版本**: v0.6
-**日期**: 2026-04-30
-**状态**: Web 重启方向正式 PRD 草案，补齐产品验证假设、MoSCoW、用户故事、Alpha 指标和开发 Harness 边界；2026-04-30 Slice D 跨平台门已 pass with notes
-**当前优先级**: P0 最小图像链路；五类轻量节点、动态端口、类型连线、自动布局、Merge Capture 和跨平台性能基线已验证到可继续推进；下一步先做 Slice E Real Asset Pipeline，再进入真实 AI 调用
+**日期**: 2026-05-01
+**状态**: Web 重启方向正式 PRD；S1.5 复杂节点与 Asset LOD Slice A-D 已通过，Slice D 跨平台门为 pass with notes
+**当前优先级**: P0 最小图像链路已在 canvas spike 中证明可行；当前先完成 Slice E Real Asset Pipeline 的 Asset / Board persistence 边界，再进入 Model Registry、真实 AI 调用、Dashboard / Board 保存和登录闭环
 **一句话定位**: TANGENT 是一个极简 Web AI 图像画布，主体验像 Miro/FigJam 一样自由涂画和摆放内容，同时把 AI 能力封装成可连接的节点卡片；用户可以手动连接 Prompt、生图、图片承接和 Analysis 节点，也可以在右侧 AI 对话栏里用自然语言让系统自动创建节点、连线和切换生图模型。
 
 ---
@@ -13,7 +13,7 @@
 本文件回答“用户能看到什么、能操作什么、怎样算完成”。
 工程实现细节见 `ARCH.md`。
 当前项目状态见 `project_state.md`。
-切片计划见 `dev-plans/web-collaborative-canvas-pivot.md`。
+当前计划入口见 `dev-plans/README.md`；活跃主线见 `dev-plans/Asset-lod-roadmap.md`。
 跨功能执行规范见 `HARNESS.md`。
 
 每次开发前先读：
@@ -21,14 +21,24 @@
 1. `project_state.md`
 2. `PRD.md`
 3. `ARCH.md`
-4. 当前切片对应的 `dev-plans/`
+4. `HARNESS.md`
+5. `dev-plans/README.md`
+6. 当前切片对应的 active plan
 
 当前交接状态：
 
+- S1.5 复杂节点、runtime edge、mock 数据流、Merge Capture 本地闭环已通过。
 - Slice D 跨平台 Canvas 性能门按 `pass with notes` 通过。
 - Windows 50+ 图片/节点密集场景仍可能有轻微卡顿，归档为 non-blocking performance follow-up。
 - 临时 Cloudflare Tunnel、`NEXT_ALLOWED_DEV_ORIGINS` 和 `CanvasRuntimeDiagnostics` 不是产品方案；`CanvasRuntimeDiagnostics` 默认关闭，仅 `NEXT_PUBLIC_CANVAS_RUNTIME_DIAGNOSTICS=1` 时启用。
-- 下一主线是 Slice E Real Asset Pipeline：图片上传、对象存储、多尺寸缩略图、Asset metadata、权限 URL 和保存前拒绝 / 迁移 `data:` / `blob:` 引用。
+- 当前主线是 Slice E Real Asset Pipeline：E-A 本地 server-backed Asset API bridge 已落地，E-C Board save guard + local save/restore 已落地，E-B request context + storage adapter seam 正在推进。下一步迁到带 Auth / Workspace 校验的 FastAPI + R2/S3 adapter。
+
+当前实现状态：
+
+- `/spikes/canvas` 仍是开发验证入口，不是最终 Dashboard。
+- Image Node 导入、Screenshot / Merge Capture、runtime asset migration 已开始走本地 server-backed Asset URL，避免继续把新图片写成 raw `data:` URL。
+- `Save audit` / `Save local` / `Load local` 是 dev controls，用来验证 Board document 保存边界；正式产品需要 Dashboard、Board CRUD、Auth、Workspace 和持久数据库。
+- P0 真实 AI 调用、Model Registry、AI Run log、登录、Dashboard、右侧 AI Chat 产品化仍未完成。
 
 ---
 
@@ -827,15 +837,19 @@ P0 可默认每个用户一个 personal workspace。
 
 | 字段 | 类型 | 必填 | 约束 |
 |------|------|------|------|
-| `id` | uuid | 是 | 服务端生成 |
+| `id` | string / uuid | 是 | 服务端生成；当前 local bridge 使用 `asset_<uuid>` |
 | `workspace_id` | uuid | 是 | 必须属于当前用户 |
 | `board_id` | uuid | 否 | 产生它的 Board |
-| `kind` | enum | 是 | `generated` / `editor_export` / `merge_capture` / `upload` |
-| `url` | string | 是 | 远程 URL 或服务端 asset URL |
+| `origin` | enum | 是 | `ai_run` / `generated` / `editor_export` / `merge_capture` / `screenshot` / `paste` / `upload` |
+| `original_url` | string | 是 | 服务端 asset URL；不能是 `blob:` / `data:` |
+| `thumbnail_256_url` | string | 否 | 小预览 |
+| `thumbnail_512_url` | string | 否 | 中预览 |
+| `thumbnail_1024_url` | string | 否 | 大预览 |
 | `mime_type` | string | 是 | P0 支持 `image/png` / `image/jpeg` / `image/webp` |
-| `size_bytes` | number | 否 | P0 单图最大 30MB |
-| `width` | number | 否 | > 0 |
-| `height` | number | 否 | > 0 |
+| `byte_size` | number | 是 | P0 单图最大 30MB |
+| `width` | number | 是 | > 0 |
+| `height` | number | 是 | > 0 |
+| `storage` | enum | 是 | 当前 local bridge 为 `local-dev`；生产为 S3-compatible / R2 |
 | `created_by` | uuid | 是 | 当前用户 |
 | `created_at` | datetime | 是 | 服务端生成 |
 

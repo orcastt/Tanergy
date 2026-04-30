@@ -3,7 +3,7 @@
 **Date**: 2026-04-30  
 **Branch**: `feature/asset-lod-roadmap`  
 **Last stable commit before this handoff**: `d627835 feat: accept canvas image lod spike`  
-**Current gate**: Slice D cross-platform Canvas performance is `pass with notes`  
+**Current gate**: Archived handoff; superseded by `project_state.md`, `dev-plans/README.md`, and `dev-plans/Asset-lod-roadmap.md`  
 **Next owner**: next Codex / TANGENT
 
 ---

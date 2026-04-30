@@ -19,23 +19,16 @@ Read in this order before development:
 2. `PRD.md` — user-visible product requirements and acceptance.
 3. `ARCH.md` — technical decisions, boundaries, data/API/security.
 4. `HARNESS.md` — cross-functional development rules and handoff standards.
-5. Current `dev-plans/*.md` for the active slice.
+5. `dev-plans/README.md` and the current active slice plan.
 
 ## Current Focus
 
-The project is in S1.5: complex node and canvas architecture validation.
+The project has passed S1.5 and Asset LOD Slice D with notes. Current focus is Slice E Real Asset Pipeline:
 
-Current hand-test focus:
-
-- Canvas Settings / Snap Alignment.
-- Node Runtime mock data flow.
-- Prompt / Image output fan-out.
-- Image Gen 4 four separate asset outputs.
-- 50-100 node pressure test.
-- External image paste/import pressure test.
-- Merge Capture clean export.
-
-Do not start real AI API work until the S1.5 gate is accepted.
+- E-A local server-backed Asset API bridge is implemented.
+- E-C Board save guard + local save/restore is implemented for development validation.
+- E-B request context + storage adapter seam is active, preparing the move to authenticated FastAPI + R2/S3 storage.
+- Real AI API work should wait until asset persistence and Board save boundaries are stable enough to keep generated images out of `data:` / `blob:` document state.
 
 ## Active Source
 
@@ -79,10 +72,10 @@ http://localhost:3000/spikes/canvas
 
 ## Planning Docs
 
-- `dev-plans/web-collaborative-canvas-pivot.md` — original pivot plan.
-- `dev-plans/web-alpha-detailed-development-plan.md` — Alpha sprint plan.
+- `dev-plans/README.md` — active/archived plan index.
 - `dev-plans/p0-development-harness-roadmap-2026-04-30.md` — current P0 Harness roadmap.
 - `dev-plans/Asset-lod-roadmap.md` — current Asset Pipeline + Image / Node LOD roadmap before multiplayer.
+- `dev-plans/overseas-cost-growth-forecast.md` — cost and growth planning reference.
 - `dev-plans/Archive/` — completed, accepted, or deprecated dev-plan slices and handoff notes.
 
 ## Harness Coverage

@@ -1,7 +1,7 @@
 # 跨平台 Canvas 性能测试指引
 
 **日期**: 2026-04-30
-**状态**: Pass with notes；Windows 遗留性能问题记录为 non-blocking follow-up
+**状态**: Archived；Pass with notes；Windows 遗留性能问题记录为 non-blocking follow-up
 **范围**: Mac 作为服务端主机，Windows 11 / Windows 10 作为浏览器测试客户端
 
 ---

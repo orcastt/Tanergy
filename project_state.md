@@ -1,13 +1,13 @@
 # TANGENT — Project State
 
-> 每次开始开发前先读：`project_state.md` → `PRD.md` → `ARCH.md` → 当前 `dev-plans/`。
+> 每次开始开发前先读：`project_state.md` → `PRD.md` → `ARCH.md` → `HARNESS.md` → `dev-plans/README.md` → 当前 slice plan。
 > 每次 commit 前更新此文件。
 
 ---
 
 ## 当前阶段
 
-**阶段**: Web AI 图像画布重启 — S1.5 复杂节点与架构裁决已通过；Asset LOD 主线 Slice A Image Node moving degrade、Slice B Node LOD shell、Slice C local thumbnail resolver、Slice D 普通 canvas image LOD spike 已落地；Windows / Mac 跨平台质量门已按 `pass with notes` 收口。当前不再继续在 Cloudflare Tunnel + `next dev` 临时环境里追求完美，已进入 Slice E Real Asset Pipeline；Slice E-A 本地 server-backed Asset 合同已落地，当前推进 Slice E-C Board save guard。
+**阶段**: Web AI 图像画布重启 — S1.5 复杂节点与架构裁决已通过；Asset LOD 主线 Slice A Image Node moving degrade、Slice B Node LOD shell、Slice C local thumbnail resolver、Slice D 普通 canvas image LOD spike 已落地；Windows / Mac 跨平台质量门已按 `pass with notes` 收口。当前不再继续在 Cloudflare Tunnel + `next dev` 临时环境里追求完美，已进入 Slice E Real Asset Pipeline；Slice E-A 本地 server-backed Asset 合同已落地，Slice E-C Board save guard 已可本地保存/恢复，当前推进 Slice E-B Auth context + storage adapter seam。
 
 **核心目标**: 用全新、干净的 Web 项目重做 TANGENT。P0 只跑通：
 
@@ -19,13 +19,13 @@ Image Node → Canvas Markup → Merge Capture → New Image Node
 Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Image → 自动连线 → 用户确认后 Run
 ```
 
-**下一步**: 当前跨平台测试支架已收口为默认关闭的 dev-only 路径：`CanvasRuntimeDiagnostics` 只在 `NEXT_PUBLIC_CANVAS_RUNTIME_DIAGNOSTICS=1` 时启用，Cloudflare Tunnel allowlist 只通过 `NEXT_ALLOWED_DEV_ORIGINS` 临时注入。Slice E-C 正在建立 Board save guard + local save/restore：任何未来 `document_state` 保存前都必须拒绝 `data:` / `blob:` 和大段 base64-like payload；当前先写入 `.tangent-boards/` 并可恢复到 editor 做开发验证，随后继续做 Authenticated FastAPI/R2 adapter。真实 Asset Pipeline 稳定后，再接 Model Registry / AI Proxy / AI Run log、Dashboard / 保存 / 登录，以及 Link Preview 后端 unfurl + image proxy / Asset 化。
+**下一步**: 当前跨平台测试支架已收口为默认关闭的 dev-only 路径：`CanvasRuntimeDiagnostics` 只在 `NEXT_PUBLIC_CANVAS_RUNTIME_DIAGNOSTICS=1` 时启用，Cloudflare Tunnel allowlist 只通过 `NEXT_ALLOWED_DEV_ORIGINS` 临时注入。Slice E-B 正在把本地 Asset API bridge 抽成 request context + storage adapter 合同：本地开发默认 `dev-user` / `dev-workspace`，metadata 已开始带 `createdBy` / `workspaceId`，随后继续迁到 Authenticated FastAPI/R2 adapter。真实 Asset Pipeline 稳定后，再接 Model Registry / AI Proxy / AI Run log、Dashboard / 保存 / 登录，以及 Link Preview 后端 unfurl + image proxy；多人协作仍后置到资产边界稳定之后。
 
 **跨平台结论**: Slice D 跨平台门先记为 `pass with notes`。Windows 侧在 50+ 图片/节点、50%-100% 缩放、runtime edge 增长时仍可能出现轻微卡顿，但当前已可用，归档为 `non-blocking performance follow-up`。这类后续问题优先通过 Slice E 的真实缩略图、对象存储、多尺寸 Asset、viewport-aware 挂载继续解决。
 
-**临时测试支架**: 当前跨平台测试因家庭/企业共享 Wi-Fi 存在设备隔离，使用 Cloudflare Tunnel + `NEXT_ALLOWED_DEV_ORIGINS` 跑 `next dev`。此前 `next start` 白屏是 tldraw production license gate，不是 Windows 性能问题。`CanvasRuntimeDiagnostics` 红色诊断面板已挂到 `NEXT_PUBLIC_CANVAS_RUNTIME_DIAGNOSTICS=1`，默认关闭；tunnel 域名 allowlist 和 quick tunnel 都只用于本轮 Windows 测试。正式上线必须使用真实部署域名和 tldraw production license，不依赖 tunnel。
+**临时测试支架**: Slice D 跨平台测试曾因家庭/企业共享 Wi-Fi 存在设备隔离而使用 Cloudflare Tunnel + `NEXT_ALLOWED_DEV_ORIGINS` 跑 `next dev`。此前 `next start` 白屏是 tldraw production license gate，不是 Windows 性能问题。`CanvasRuntimeDiagnostics` 红色诊断面板已挂到 `NEXT_PUBLIC_CANVAS_RUNTIME_DIAGNOSTICS=1`，默认关闭；tunnel 域名 allowlist 和 quick tunnel 都只用于 Windows 测试支架。正式上线必须使用真实部署域名和 tldraw production license，不依赖 tunnel。
 
-**当前运行进程记录**: Mac 上仍有 `node` 监听 `*:3000`（PID 4827）和 `cloudflared tunnel --url http://localhost:3000`（PID 1145）。本轮 Windows 测试 URL 为 `https://dice-queensland-markets-selected.trycloudflare.com/spikes/canvas`；下线或提交前建议停掉两个临时进程。
+**当前运行进程记录**: Mac 上当前有 `node` 监听 `*:3000`（PID 62685），用于 `http://localhost:3000/spikes/canvas` 本地手测。当前未检测到 `cloudflared` 进程；如再次做 Windows 隧道测试，必须重新生成临时 tunnel URL，并通过 `NEXT_ALLOWED_DEV_ORIGINS` 注入。
 
 ---
 
@@ -37,11 +37,9 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 | 产品需求 | `PRD.md` | 正式 PRD：功能、流程、页面、数据、错误、验收 |
 | 技术架构 | `ARCH.md` | 正式 ARCH：技术栈、目录、模块、API、安全、部署 |
 | 开发 Harness | `HARNESS.md` | 跨功能开发索引、代码规范、验收标准、接班规则 |
-| 总开发路线 | `dev-plans/web-collaborative-canvas-pivot.md` | 当前 P0 分阶段路线图 |
-| 详细开发计划 | `dev-plans/web-alpha-detailed-development-plan.md` | Alpha 逐 Sprint 执行计划、分工、文件范围、验收标准 |
+| Dev Plans 索引 | `dev-plans/README.md` | 当前活跃计划与归档计划入口 |
 | P0 Harness 路线 | `dev-plans/p0-development-harness-roadmap-2026-04-30.md` | 后续切片顺序、每个切片 Done 标准、交接模板 |
 | Asset LOD 主线 | `dev-plans/Asset-lod-roadmap.md` | 当前下一阶段正式路线：Asset model、thumbnail cache、Image / Node LOD、协作前置资产管线 |
-| Codex 交接手册 | `dev-plans/codex-handoff-slice-e-real-asset-pipeline-2026-04-30.md` | 当前未提交变更、运行进程、质量门、下一位 AI 的接手步骤 |
 | 已归档 dev-plans | `dev-plans/Archive/` | 已完成、已验收或废弃的切片计划、handoff、外部复核 brief |
 | 海外成本/增长预测 | `dev-plans/overseas-cost-growth-forecast.md` | 海外部署成本、用户量、社媒增长、AI 单位经济预测 |
 | 旧代码归档 | `legacy/old-tangent-desktop-2026-04-29/` | 旧桌面/Admin/backend/frontend 已隔离，默认不要读 |
@@ -83,7 +81,7 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 - ✅ 创建外部安全快照：`../TanvasAgent-backups/pivot-2026-04-29_065640`。
 - ✅ 编写完整新 PRD：`PRD.md`。
 - ✅ 编写完整新 ARCH：`ARCH.md`。
-- ✅ 编写 P0 pivot 开发计划：`dev-plans/web-collaborative-canvas-pivot.md`。
+- ✅ 编写 P0 pivot 开发计划；历史基线现已归档到 `dev-plans/Archive/web-collaborative-canvas-pivot.md`。
 - ✅ 隔离旧项目：`legacy/old-tangent-desktop-2026-04-29/`。
 - ✅ 创建新项目骨架：`apps/web/`、`services/api/`、`packages/shared/`。
 - ✅ 更新根目录 `AGENTS.md`，禁止默认读取 legacy archive。
@@ -91,7 +89,7 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 - ✅ 已归档重复 pivot 文档：`docs/archive/pivot-docs-2026-04-29/PRD.web-collab.md` 和 `docs/archive/pivot-docs-2026-04-29/ARCH.web-collab.md`。
 - ✅ 补齐 `PRD.md` / `ARCH.md` 中右侧 AI Chat、AI Chat composer、图片模型切换、模型注册表口径。
 - ✅ 新增海外部署成本、用户增长、社媒增长预测：`dev-plans/overseas-cost-growth-forecast.md`。
-- ✅ 新增 Alpha 详细开发计划：`dev-plans/web-alpha-detailed-development-plan.md`。
+- ✅ 新增 Alpha 详细开发计划；早期计划现已归档到 `dev-plans/Archive/web-alpha-detailed-development-plan.md`。
 - ✅ 完成 S0 Web 脚手架初版：Next.js 16 + TypeScript + ESLint + tldraw。
 - ✅ 完成 S1 Canvas Spike 初版：`/spikes/canvas`，包含白板工具验证、图片、链接卡片、Prompt/Generate/Edit AI 卡片。
 - ✅ S1 质量检查已通过：`npm -C apps/web run lint`、`npm -C apps/web run typecheck`、`npm -C apps/web run build`、`git diff --check`。
@@ -137,6 +135,8 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 - ✅ Codex 三十四次推进 2026-04-30：启动 Slice E-A Local Server-Backed Asset Contract；新增 Next 本地 Asset API：`POST /api/assets/from-data-url`、`POST /api/assets/upload`、`GET /api/assets/{assetId}`、`GET /api/assets/files/{assetId}/{fileName}`，本地文件落在 Git 忽略的 `.tangent-assets/`；新增 `TangentAssetRecord` 合同和 client thumbnail upload helper；Image Node 本地导入、Selection Toolbar 的 Merge Capture / Screenshot 现在先上传 data URL，再用返回的 `/api/assets/files/...` URL 创建 tldraw image asset，避免这些新路径继续把 raw `data:` 放进 asset `props.src`；`assetPreviewResolver` 优先使用 persisted thumbnail URL，缺失时回落本地 thumbnail cache。该切片仍是本地开发 bridge，尚未包含 Auth、Workspace 权限、R2/S3 adapter 或 Board save guard。lint / typecheck / build / git diff --check 通过；built server 3100 端口 API smoke 已验证 `from-data-url`、metadata GET 和 file GET。
 - ✅ Codex 三十五次推进 2026-04-30：启动 Slice E-C Board save guard；新增 `auditBoardDocument()` / `assertBoardDocumentCanPersist()` 纯函数，递归检查任意 JSON-like Board document，阻止 `data:` / `blob:` runtime URL、大段 base64-like 字符串、不可 JSON 序列化 payload 和超大 document；新增本地 `POST /api/boards/validate-document` guard route，未来 Board save API 必须复用同一规则。随后新增 `serializeBoardDocument()` / `createGuardedBoardDocument()` / `restoreBoardDocument()`，从当前 tldraw editor 导出轻量候选 document：shapes、assets、camera、viewport、runtime edges，并可从本地 JSON 恢复 tldraw assets / shapes、runtime edges 和 camera；Canvas spike 右下角新增 `Save audit` / `Save local` / `Load local` dev 控件用于手动检查、保存和恢复当前画布；该控件会先把当前 editor 里的 `data:image/png|jpeg|webp` / `blob:` runtime image assets 上传到本地 Asset API 并原地更新 tldraw asset `src/meta`，再运行 guard；默认 seeded sample image 已从 inline data URL 移到 `/spikes/sample-image.svg` 静态文件；本地 Board JSON 写入 Git 忽略的 `.tangent-boards/boards/canvas-spike-local.json`。lint / typecheck / build / git diff --check 已通过；built server 3100 端口 smoke 已验证 local-save 200、local-load 200、含 `data:image/...` 的 local-save 422。
 - ✅ Codex 三十六次修复 2026-05-01：修复 Analysis 节点内部 compact prompt 继承普通 Prompt grid 导致输出区被挤到底部裁切的问题；`runtimeAssetMigration()` 更新 tldraw image asset 时补齐 `props.isAnimated`，避免粘贴/复制多图后 `Save local` 触发 `Expected boolean, got undefined` 的 tldraw schema validation error。lint / typecheck / build / git diff --check 已通过；用户复测反馈当前看起来已无问题。
+- ✅ Codex 三十七次推进 2026-05-01：启动 Slice E-B Auth context + storage adapter seam；新增 `apiRequestContext.ts`，本地开发默认 `dev-user` / `dev-workspace`，可用 `x-tangent-user-id` / `x-tangent-workspace-id` 或 env 覆盖；新增 `assetStorageAdapter.ts`，当前只支持 `local-dev` driver，不支持的 `TANGENT_ASSET_STORAGE_DRIVER` 会明确报错；`TangentAssetRecord` 增加 `createdBy` / `workspaceId`，asset create / metadata / file routes 统一经 request context + storage adapter。lint / typecheck / build 已通过；API smoke 已验证 from-data-url、metadata、file，以及 unsupported driver 400。
+- ✅ Codex 三十八次文档规整 2026-05-01：系统更新 `PRD.md`、`ARCH.md`、`HARNESS.md`、`AGENTS.md`、`README.md`、`project_state.md` 和 active `dev-plans/`；新增 `dev-plans/README.md` 作为活跃计划索引；把已完成/过期的 cross-platform test、旧 handoff、旧 Alpha 详细计划和旧 pivot plan 移入 `dev-plans/Archive/`；同步当前 Slice E-B/E-C 状态、运行进程和源码 size watchlist。lint / typecheck / build / git diff --check 已通过。
 
 ---
 
@@ -145,7 +145,7 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 1. **Canvas 坐标 Spike**
    - tldraw 或候选画布技术验证。
    - 验证 50% / 100% / 200% 缩放、resize、Retina、拖拽、框选、连线端口不偏移。
-   - 当前状态：已根据首轮手测反馈修正为顶部分类图标工具栏、独立箭头/直线入口、箭头边中点/角点吸附、对象轮廓预高亮与捕捉点高亮、左下角导航地图、按需显示的左侧属性面板、连续绘制 Esc 强制退出、card 文本裁切和图片粘贴限制；小 UI 暂时冻结，只保留阻塞项复测。
+   - 当前状态：已通过。顶部分类图标工具栏、独立箭头/直线入口、箭头吸附、左下角导航地图、按需属性面板、连续绘制 Esc、card 文本裁切和图片粘贴限制均已进入当前 canvas spike 基线。
 
 2. **Step 1.5 复杂节点与架构裁决**
    - Prompt / Image Gen / Image Gen 4 / Analysis / Image 五类节点原型。
@@ -162,7 +162,7 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
    - Merge Capture 最小验证。
    - 50-100 节点压力测试。
    - 外部图片 5-10 张粘贴/导入压力测试。
-   - 当前状态：S1.5 稳定快照准备提交；五类节点、Inspector、动态端口、类型连线颜色、端口校验、mock graph、60 节点入口已实现；端口数据线已切换为 Node Runtime SVG overlay；Prompt / Image / Analysis / Image Gen mock 数据流已接入；fan-out 与 input auto-replacement 已修；密集连线下断链交互已改为点击选中 edge 后在 target 端显示 `−`；canvas image 现可转换成带预览的 Image Node，Image Node 支持本地拖拽/双击导图，也可通过标题栏 `To Canvas` 回放成普通画布图片；竖图预览、容器内拖图报错和 Screenshot / Convert 后整页文字蓝色高亮问题已修；低缩放 / 放大编辑的 React 订阅和浮层重算已降噪，但多图多节点下仍暴露图片渲染本身瓶颈，下一阶段转入 Asset LOD Roadmap。
+   - 当前状态：已通过。五类节点、Inspector、动态端口、类型连线颜色、端口校验、mock graph、60 节点入口已实现；端口数据线已切换为 Node Runtime SVG overlay；Prompt / Image / Analysis / Image Gen mock 数据流已接入；fan-out 与 input auto-replacement 已修；canvas image 与 Image Node 可双向转换；Merge Capture / Screenshot 可生成带预览的 Image Node；多图多节点暴露的图片渲染瓶颈已转入 Asset LOD / Slice E 处理。
 
 3. **五类节点 UI 链路**
    - 双击画布调用出节点面板，或者工具栏增加一个加号，然后调用出节点面板
@@ -220,7 +220,7 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 | 旧代码污染新实现 | legacy archive 默认不读；只在用户明确要求时打开 |
 | 缩放/拖拽/选择偏移复发 | 第一切片先做坐标精度 spike |
 | 复杂节点越做越大 | Node Runtime + Node Registry + Inspector；节点卡片只显示摘要 |
-| Spike 源码文件变大 | 已拆分 `globals.css`、`useArrowPortSnapping.ts` 等；当前 `CanvasSpikeStylePanel.tsx`、`CanvasSpikeToolbar.tsx`、`canvas-overlays.css` 接近 300 行，后续触碰这些文件必须优先拆分 |
+| Spike 源码文件变大 | 已拆分 `globals.css`、`useArrowPortSnapping.ts` 等；当前 `CanvasSpikeStylePanel.tsx`、`CanvasSpikeToolbar.tsx`、`canvas-overlays.css`、`node-card-content.css` 接近 300 行，`assetPreviewResolver.ts` 超过 250 行，后续触碰这些文件必须优先拆分 |
 | tldraw 端口/连线不足 | Step 1.5 先验证；失败再评估 tldraw + 独立节点层或 React Flow + Konva |
 | 动态 image 输入端口漂移 | 端口使用稳定 anchor；每连入一个 image 保留一个新空端口，P0 上限 6；复测旧线是否仍指向原端口 |
 | Output fan-out | GLM 2026-04-30 已修 `nodeEdges.ts` addEdge 按 target input 去重 + `usePortConnectionCompletion.ts` 移除 occupied 阻断；后续继续手测密集连接 |
@@ -229,7 +229,7 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 | Image Node 仍是空壳占位或不能回到画布 | Codex 2026-04-30 已补 `canvas image -> Image Node`、Screenshot 生成节点预览、本地拖拽/双击导图和 `Image Node -> canvas image`；等待用户复测 |
 | 多人协作状态混乱 | 协同文档、Presence、服务端权威、本地 UI 四类状态分离 |
 | 节点 props 存重型数据 | 节点只存 id、短参数、布局、端口、运行摘要和 Asset 引用；重型数据外置 |
-| 过度相信视窗剔除 | Step 1.5 用生产构建验证 50-100 复杂节点和图片密集画布；Codex 2026-04-30 已减少 camera 驱动的 NodeCard 无效重渲染，加 Image Node 低缩放 LOD / 导入尺寸自适应，并把放大编辑时的图片计数、小地图、Selection Toolbar、Style Panel、Inspector、node edge overlay 等 React 浮层订阅降噪；用户手测显示多图多节点仍会卡，说明下一阶段必须做普通 canvas image thumbnail / LOD 和 Node LOD |
+| 过度相信视窗剔除 | Step 1.5 和 Asset LOD Slice A-D 已验证并降噪 NodeCard、Image Node、普通 canvas image、navigator 和 overlay 热路径；Windows 密集画布仍是 non-blocking follow-up，下一阶段继续由真实 Asset Pipeline、多尺寸缩略图和对象存储解决根因 |
 | 协作前图片资产不规范 | 正式多人协作前必须完成 Asset Pipeline：Board document / CRDT 不存 `data:`、`blob:`、Base64 或高清原图，只同步 assetId / dimensions / layout；图片原图、缩略图、权限 URL 由 Asset service / object storage 管理 |
 | CRDT 被误解为业务规则 | CRDT 只解决文档一致性；AI Run、扣费、Asset、参数冲突仍由后端/Node Runtime 定义 |
 | Image Editor 重新变复杂 | P0 只做画笔、橡皮、导出 |
@@ -249,4 +249,4 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 
 ## 下一步
 
-Slice D 跨平台质量门已 `pass with notes`，不再继续在 Cloudflare Tunnel + `next dev` 临时环境里追求完美。当前已进入 Slice E：本地 Next Asset API bridge 已建立 Image Node 导入和 Merge Capture 的 server-backed URL 路径，Board serializer + save guard 已能从当前 editor 生成候选 document，Save local 会先迁移 runtime image assets、挡住剩余 `data:` / `blob:` 和 base64 payload，再写入 `.tangent-boards/`；Load local 可恢复 assets / shapes / runtime edges / camera。下一步把本地 API 合同迁移到带 Auth / Workspace 校验的 FastAPI + R2/S3 adapter，并继续补正式 Dashboard / Board persistence。真实 Asset Pipeline 稳定后，再接真实 Model Registry / AI Proxy / AI Run log、Dashboard / 保存 / 登录，以及 Link Preview 后端 unfurl + image proxy；多人协作仍在这些资产边界稳定后进入 P0.5。
+Slice D 跨平台质量门已 `pass with notes`，不再继续在 Cloudflare Tunnel + `next dev` 临时环境里追求完美。当前已进入 Slice E：本地 Next Asset API bridge 已建立 Image Node 导入和 Merge Capture 的 server-backed URL 路径，Board serializer + save guard 已能从当前 editor 生成候选 document，Save local 会先迁移 runtime image assets、挡住剩余 `data:` / `blob:` 和 base64 payload，再写入 `.tangent-boards/`；Load local 可恢复 assets / shapes / runtime edges / camera。当前 Slice E-B 已把 Asset API 抽到 request context + storage adapter seam，下一步继续把本地合同迁移到带真实 Auth / Workspace 校验的 FastAPI + R2/S3 adapter，并补正式 Dashboard / Board persistence。真实 Asset Pipeline 稳定后，再接真实 Model Registry / AI Proxy / AI Run log、Dashboard / 保存 / 登录，以及 Link Preview 后端 unfurl + image proxy；多人协作仍在这些资产边界稳定后进入 P0.5。

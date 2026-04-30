@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
-import { createLocalAssetFromUpload } from '../_lib/localAssetStore'
 import type { TangentAssetOrigin } from '@/features/assets/assetTypes'
+import { getApiRequestContext } from '../../_lib/apiRequestContext'
+import { getAssetStorageAdapter } from '../_lib/assetStorageAdapter'
 
 export const runtime = 'nodejs'
 
@@ -10,7 +11,7 @@ export async function POST(request: Request) {
     const file = form.get('file')
     if (!(file instanceof File)) throw new Error('Missing image file.')
 
-    const record = await createLocalAssetFromUpload({
+    const record = await getAssetStorageAdapter().createFromUpload({
       bytes: await file.arrayBuffer(),
       fileName: file.name,
       height: getOptionalNumber(form.get('height')),
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
       origin: getOrigin(form.get('origin')),
       title: getOptionalString(form.get('title')) ?? file.name,
       width: getOptionalNumber(form.get('width')),
-    })
+    }, getApiRequestContext(request))
     return NextResponse.json({ asset: record })
   } catch (error) {
     return NextResponse.json(

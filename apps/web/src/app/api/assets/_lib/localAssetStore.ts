@@ -6,6 +6,7 @@ import type {
   TangentAssetRecord,
   TangentAssetThumbnailInput,
 } from '@/features/assets/assetTypes'
+import type { ApiRequestContext } from '../../_lib/apiRequestContext'
 
 const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const maxAssetBytes = 30 * 1024 * 1024
@@ -17,7 +18,7 @@ type ParsedDataUrl = {
   mime: string
 }
 
-export async function createLocalAssetFromDataUrl(input: TangentAssetDataUrlInput) {
+export async function createLocalAssetFromDataUrl(input: TangentAssetDataUrlInput, context: ApiRequestContext) {
   const original = parseImageDataUrl(input.dataUrl)
   assertImageMime(original.mime)
   assertAssetSize(original.buffer.byteLength)
@@ -41,6 +42,7 @@ export async function createLocalAssetFromDataUrl(input: TangentAssetDataUrlInpu
     ...thumbnailUrls,
     byteSize: original.buffer.byteLength,
     createdAt: new Date().toISOString(),
+    createdBy: context.userId,
     height: input.height,
     id: assetId,
     mime: original.mime,
@@ -49,6 +51,7 @@ export async function createLocalAssetFromDataUrl(input: TangentAssetDataUrlInpu
     storage: 'local-dev',
     title: input.title || input.fileName || 'Image',
     width: input.width,
+    workspaceId: context.workspaceId,
   }
   await writeAssetRecord(assetDir, record)
   return record
@@ -62,7 +65,7 @@ export async function createLocalAssetFromUpload(input: {
   origin?: TangentAssetRecord['origin']
   title?: string
   width?: number
-}) {
+}, context: ApiRequestContext) {
   assertImageMime(input.mime)
   const assetId = `asset_${randomUUID()}`
   const assetDir = path.join(assetsRoot, assetId)
@@ -76,6 +79,7 @@ export async function createLocalAssetFromUpload(input: {
   const record: TangentAssetRecord = {
     byteSize: buffer.byteLength,
     createdAt: new Date().toISOString(),
+    createdBy: context.userId,
     height: input.height ?? 0,
     id: assetId,
     mime: input.mime,
@@ -84,24 +88,29 @@ export async function createLocalAssetFromUpload(input: {
     storage: 'local-dev',
     title: input.title || input.fileName || 'Image',
     width: input.width ?? 0,
+    workspaceId: context.workspaceId,
   }
   await writeAssetRecord(assetDir, record)
   return record
 }
 
-export async function getLocalAssetRecord(assetId: string) {
+export async function getLocalAssetRecord(assetId: string, context: ApiRequestContext) {
   assertSafePathSegment(assetId)
   const recordPath = path.join(assetsRoot, assetId, 'metadata.json')
   const raw = await readFile(recordPath, 'utf8')
-  return JSON.parse(raw) as TangentAssetRecord
+  const record = normalizeAssetRecord(JSON.parse(raw) as Partial<TangentAssetRecord>, context)
+  assertWorkspaceAccess(record, context)
+  return record
 }
 
-export async function readLocalAssetFile(assetId: string, fileName: string) {
+export async function readLocalAssetFile(assetId: string, fileName: string, context: ApiRequestContext) {
   assertSafePathSegment(assetId)
   assertSafePathSegment(fileName)
+  await getLocalAssetRecord(assetId, context)
   const filePath = path.join(assetsRoot, assetId, fileName)
   const file = await readFile(filePath)
-  return { file, mime: getMimeFromFileName(fileName) }
+  const body = file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength) as ArrayBuffer
+  return { file: body, mime: getMimeFromFileName(fileName) }
 }
 
 function parseImageDataUrl(dataUrl: string): ParsedDataUrl {
@@ -154,6 +163,32 @@ function getMimeFromFileName(fileName: string) {
   if (fileName.endsWith('.png')) return 'image/png'
   if (fileName.endsWith('.webp')) return 'image/webp'
   return 'image/jpeg'
+}
+
+function normalizeAssetRecord(record: Partial<TangentAssetRecord>, context: ApiRequestContext): TangentAssetRecord {
+  return {
+    byteSize: record.byteSize ?? 0,
+    createdAt: record.createdAt ?? new Date(0).toISOString(),
+    createdBy: record.createdBy ?? context.userId,
+    height: record.height ?? 0,
+    id: record.id ?? '',
+    mime: record.mime ?? 'image/jpeg',
+    origin: record.origin ?? 'upload',
+    originalUrl: record.originalUrl ?? '',
+    storage: record.storage ?? 'local-dev',
+    thumbnail1024Url: record.thumbnail1024Url,
+    thumbnail256Url: record.thumbnail256Url,
+    thumbnail512Url: record.thumbnail512Url,
+    title: record.title ?? 'Image',
+    width: record.width ?? 0,
+    workspaceId: record.workspaceId ?? context.workspaceId,
+  }
+}
+
+function assertWorkspaceAccess(record: TangentAssetRecord, context: ApiRequestContext) {
+  if (record.workspaceId !== context.workspaceId) {
+    throw new Error('Asset not found in workspace.')
+  }
 }
 
 function assertSafePathSegment(value: string) {

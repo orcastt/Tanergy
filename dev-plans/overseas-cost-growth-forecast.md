@@ -1,9 +1,9 @@
 # Overseas Deployment Cost, User Growth, and Social Forecast
 
 **Date**: 2026-04-29  
-**Status**: Planning baseline for overseas Web launch; synced 2026-04-30 after Slice D pass with notes
+**Status**: Planning baseline for overseas Web launch; synced 2026-05-01 after Slice E local Asset / Board bridge progress
 **Scope**: TANGENT Web AI Image Canvas P0 / P0.5  
-**Related docs**: `PRD.md`, `ARCH.md`, `project_state.md`, `dev-plans/web-collaborative-canvas-pivot.md`, `dev-plans/Asset-lod-roadmap.md`, `dev-plans/cross-platform-canvas-performance-test-2026-04-30.md`
+**Related docs**: `PRD.md`, `ARCH.md`, `project_state.md`, `dev-plans/README.md`, `dev-plans/Asset-lod-roadmap.md`, `dev-plans/Archive/cross-platform-canvas-performance-test-2026-04-30.md`
 
 ---
 
@@ -52,7 +52,7 @@ TANGENT 海外 P0 推荐从更轻的 Serverless / Managed stack 开始：
 - Slice D 跨平台 Canvas 性能门为 `pass with notes`。
 - Windows 密集画布残余卡顿是 non-blocking performance follow-up，不阻塞 Slice E。
 - 当前不要继续在 Cloudflare Tunnel + `next dev` 临时测试环境里追求性能完美。
-- 下一步是 Slice E Real Asset Pipeline：Cloudflare R2 / S3-compatible storage、多尺寸缩略图、Asset metadata 和权限 URL。
+- 当前是 Slice E Real Asset Pipeline：本地 Next Asset API bridge、Board save guard、local save/restore、request context 和 storage adapter seam 已开始落地；下一步迁到 Cloudflare R2 / S3-compatible storage、多尺寸缩略图、Asset metadata 和权限 URL。
 - 本地 spike 图片入口已调到单图 30MB，但正式上线必须用服务端上传限制、缩略图和原图分层控制存储 / 带宽成本。
 - Canvas 最大缩放已从 800% 限到 500%，减少无产品意义的超高倍渲染成本。
 

@@ -3,7 +3,7 @@
 **Date**: 2026-04-30  
 **Branch**: `feature/asset-lod-roadmap`  
 **Base checkpoint**: `a6f20c1 checkpoint: stabilize s1.5 canvas runtime`  
-**Status**: Slices A-D implemented. Cross-platform quality gate is `pass with notes` as of 2026-04-30. Windows dense-board stutter is a non-blocking performance follow-up. Current active work is Slice E-C board save guard and local save/restore stabilization.
+**Status**: Slices A-D implemented. Cross-platform quality gate is `pass with notes` as of 2026-04-30. Windows dense-board stutter is a non-blocking performance follow-up. Slice E-A local Asset API bridge and Slice E-C board save guard / local save-restore are implemented. Current active work is Slice E-B auth context + storage adapter seam before moving to FastAPI + R2/S3.
 
 **Owner**: Codex / TANGENT
 
@@ -470,7 +470,7 @@ Codex implemented the first bridge in `apps/web/src/app/api/assets/`. Image Node
 
 ---
 
-### Slice E-C — Board Save Guard / Data URL Migration ▶️ Active
+### Slice E-C — Board Save Guard / Data URL Migration ✅
 
 Goal:
 
@@ -516,6 +516,44 @@ User retest confirms the Analysis layout and `Save local` schema error are no lo
 
 ---
 
+### Slice E-B — Auth Context + Storage Adapter Contract ▶️ Active
+
+Goal:
+
+Prepare the local Asset API bridge for the production FastAPI / R2 path without pretending full authentication already exists.
+
+Boundary:
+
+This slice keeps the current Next.js local dev API working. It does not implement login UI, JWT validation, database tables or real R2/S3 writes yet. It adds the request-context and storage-driver seams that the production API will replace.
+
+Scope:
+
+- Add an API request context helper that resolves `workspaceId` and `userId`.
+- Use explicit development fallback IDs for the local spike so current `/spikes/canvas` testing remains unblocked.
+- Add `workspaceId` and `createdBy` to `TangentAssetRecord`.
+- Add a storage adapter entry point for asset operations.
+- Keep `local-dev` as the default storage driver, while making unsupported drivers fail loudly.
+- Route asset create / metadata / file reads through the adapter and request context.
+
+Acceptance:
+
+- Existing Image Node import, Merge Capture, Screenshot and `Save local` continue to work without custom headers in local dev.
+- New asset metadata contains `workspaceId` and `createdBy`.
+- Unsupported `TANGENT_ASSET_STORAGE_DRIVER` values return a clear error instead of silently falling back.
+- The frontend asset upload client contract does not need to change when this local bridge later moves behind FastAPI.
+
+Manual test:
+
+- Open `/spikes/canvas`, import or paste an image, then run `Save local`.
+- Fetch a created asset metadata record and verify it contains `workspaceId: "dev-workspace"` and `createdBy: "dev-user"` by default.
+- Set `TANGENT_ASSET_STORAGE_DRIVER` to an unsupported value and confirm upload returns a clear configuration error.
+
+2026-05-01 implementation note:
+
+Codex added `apps/web/src/app/api/_lib/apiRequestContext.ts` and `apps/web/src/app/api/assets/_lib/assetStorageAdapter.ts`. Asset create / metadata / file routes now resolve a local request context before touching storage, and `TangentAssetRecord` includes `workspaceId` and `createdBy`. The local adapter remains file-system backed under `.tangent-assets/`, but unsupported storage drivers fail explicitly. Smoke tests verified `POST /api/assets/from-data-url`, metadata GET, file GET and unsupported driver failure.
+
+---
+
 ## 6. Development Order
 
 Recommended order:
@@ -525,11 +563,11 @@ Recommended order:
 3. ✅ Slice C — Local Asset Preview Resolver
 4. ✅ Slice D — Ordinary Canvas Image LOD Spike
 5. ✅ Quality gate — Cross-platform performance pass with notes: Windows Chrome / Edge via temporary tunnel, browser zoom, dense boards
-6. ▶️ Slice E-A — Local Server-Backed Asset Contract
-7. ▶️ Slice E-C — Board save guard / data URL migration
-8. Slice E-B — Authenticated Asset API + object storage adapter
+6. ✅ Slice E-A — Local Server-Backed Asset Contract
+7. ✅ Slice E-C — Board save guard / data URL migration
+8. ▶️ Slice E-B — Auth context + storage adapter contract
 9. Link preview backend unfurl + image proxy / asset path
-8. Multiplayer collaboration
+10. Multiplayer collaboration
 
 Reason:
 

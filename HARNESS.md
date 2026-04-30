@@ -7,7 +7,8 @@ Canonical docs 仍然是：
 1. `project_state.md`
 2. `PRD.md`
 3. `ARCH.md`
-4. 当前 `dev-plans/*.md`
+4. `dev-plans/README.md`
+5. 当前 slice plan
 
 `HARNESS.md` 只回答：**做某一类功能时，先读哪里、边界是什么、怎么验收。**
 
@@ -16,7 +17,7 @@ Canonical docs 仍然是：
 ## 1. Global Rules
 
 - P0 是 Web-first AI image canvas，不做桌面端。
-- 当前 blocker 是 S1.5：复杂节点、runtime data edge、Settings/Snap、Merge Capture、压力测试。
+- S1.5 和 Asset LOD Slice A-D 已通过；当前 blocker 是 Slice E Real Asset Pipeline，把图片和 Board persistence 边界做成可保存、可迁移、可接对象存储的形状。
 - 不读不改 `legacy/old-tangent-desktop-2026-04-29/`，除非用户明确要求。
 - 不读取 `.env`，不把 API Key 写入前端或日志。
 - 源码文件 250 行预警，300 行上限；超过前先拆分。
@@ -60,12 +61,12 @@ Canonical docs 仍然是：
 | # | Harness | 当前阶段 | Canonical Docs | P0 重点 |
 |---|---------|----------|----------------|---------|
 | 1 | Product / PRD | Active | `PRD.md` | 问题、用户、五类节点、MoSCoW、用户故事、验收 |
-| 2 | Full-stack Architecture | Active | `ARCH.md` | Next.js + tldraw + Node Runtime + FastAPI boundary |
+| 2 | Full-stack Architecture | Active | `ARCH.md` | Next.js + tldraw + Node Runtime + Asset API seam + future FastAPI boundary |
 | 3 | UI / UX Design System | Active | `reference/design-system.md`, `reference/theme.ts`, PRD F03 | 白板、顶部工具栏、左侧 Inspector、右侧 AI Chat |
 | 4 | Auth / User Management | Later P0 | PRD F01, ARCH 1.3 / 8.1 / 10.2 | 登录、JWT/session、Board 权限 |
 | 5 | Payment / Credits | P1 | ARCH 1.4, cost plan | P0 只记录成本和限额，不做完整付费 |
 | 6 | Realtime / Collaboration | P0.5 | ARCH 7.1.1 | Presence / 协作文档 / 服务端权威分层 |
-| 7 | Database / API | Later P0 | ARCH 5 / 8 | Boards、Assets、AiRuns、Model Registry |
+| 7 | Database / API | Active | ARCH 5 / 8, `dev-plans/Asset-lod-roadmap.md` | Assets、Board save guard、future Boards/AiRuns/Model Registry |
 | 8 | Launch / Growth | P1 | cost plan, future launch plan | Alpha 手测、海外部署、社媒增长后置 |
 | 9 | QA / Test Suite | Active | PRD 9, ARCH 11.3 | 坐标、节点、数据流、图片压力、质量闸门 |
 | 10 | Admin / Analytics | P1/P2 | PRD 不做什么, ARCH 1.12 | P0 不做复杂 Admin；只保留 API logs |
@@ -145,14 +146,13 @@ Canonical docs 仍然是：
 
 ## 6. Current Priority
 
-当前只允许围绕 S1.5 做收口：
+当前只允许围绕 Slice E Real Asset Pipeline 做收口：
 
-1. Settings / Snap Alignment 手测。
-2. Node Runtime mock data flow 手测。
-3. 50-100 节点压力测试。
-4. 图片密集导入压力测试。
-5. Merge Capture 技术裁决。
-6. 通过后再进入 Model Registry 和真实 AI Runs。
+1. 完成 E-B request context + storage adapter seam 的本地手测和提交。
+2. 继续把本地 Asset API 合同迁移到带真实 Auth / Workspace 校验的 FastAPI + R2/S3 adapter。
+3. 保持 Board document save guard：任何持久化路径都不能写入 `data:` / `blob:` / Base64 图片 payload。
+4. 验证 refresh / local load 后图片、节点、runtime edges 和 camera 能恢复。
+5. Asset 边界稳定后，再进入 Model Registry、AI Runs、真实 Image Gen、Dashboard / Board persistence。
 
 ---
 
@@ -161,7 +161,7 @@ Canonical docs 仍然是：
 新对话建议直接粘贴：
 
 ```text
-先读项目根目录的 project_state.md、PRD.md、ARCH.md 和 HARNESS.md，再读当前 dev-plans/ 中相关切片计划。不要读 legacy，不要读 .env。然后继续做「具体任务」。
+先读项目根目录的 project_state.md、PRD.md、ARCH.md、HARNESS.md 和 dev-plans/README.md，再读当前 active slice plan。不要读 legacy，不要读 .env。然后继续做「具体任务」。
 ```
 
 ---
@@ -175,6 +175,8 @@ Canonical docs 仍然是：
 | `apps/web/src/components/canvas/CanvasSpikeStylePanel.tsx` | 约 290 行 | 拆 style section / control group |
 | `apps/web/src/components/canvas/CanvasSpikeToolbar.tsx` | 约 290 行 | 拆 toolbar category / popover |
 | `apps/web/src/app/styles/canvas-overlays.css` | 约 290 行 | 拆 connection / selection / minimap overlay CSS |
+| `apps/web/src/app/styles/node-card-content.css` | 约 298 行 | 再改节点内容样式前拆 prompt / image / port CSS |
+| `apps/web/src/features/assets/assetPreviewResolver.ts` | 约 266 行 | 新增 resolver 行为前拆 persisted thumbnail / local cache helper |
 | `apps/web/src/app/styles/canvas-settings.css` | 约 250 行 | 新增设置样式前拆 section CSS |
 | `apps/web/src/components/canvas/CanvasSettingsPanel.tsx` | 约 250 行 | 新增设置项前拆 setting row / section component |
 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { readLocalAssetFile } from '../../../_lib/localAssetStore'
+import { getApiRequestContext } from '../../../../_lib/apiRequestContext'
+import { getAssetStorageAdapter } from '../../../_lib/assetStorageAdapter'
 
 export const runtime = 'nodejs'
 
@@ -7,10 +8,10 @@ type AssetFileRouteContext = {
   params: Promise<{ assetId: string; fileName: string }>
 }
 
-export async function GET(_request: Request, context: AssetFileRouteContext) {
+export async function GET(request: Request, context: AssetFileRouteContext) {
   try {
     const { assetId, fileName } = await context.params
-    const { file, mime } = await readLocalAssetFile(assetId, fileName)
+    const { file, mime } = await getAssetStorageAdapter().readFile(assetId, fileName, getApiRequestContext(request))
     return new NextResponse(file, {
       headers: {
         'Cache-Control': 'private, max-age=31536000, immutable',

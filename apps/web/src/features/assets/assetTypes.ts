@@ -10,17 +10,19 @@ export type TangentAssetOrigin =
 export type TangentAssetRecord = {
   byteSize: number
   createdAt: string
+  createdBy: string
   height: number
   id: string
   mime: string
   origin: TangentAssetOrigin
   originalUrl: string
-  storage: 'local-dev'
+  storage: 'local-dev' | 's3-compatible'
   thumbnail1024Url?: string
   thumbnail256Url?: string
   thumbnail512Url?: string
   title: string
   width: number
+  workspaceId: string
 }
 
 export type TangentAssetThumbnailInput = {

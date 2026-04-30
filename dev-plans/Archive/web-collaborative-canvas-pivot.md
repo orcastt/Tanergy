@@ -1,7 +1,7 @@
 # Web AI Image Canvas Pivot Plan
 
 **日期**: 2026-04-29
-**状态**: Web-first pivot 历史基线；当前执行状态以 `project_state.md` 为准，Asset / Image / Node LOD 主线以 `dev-plans/Asset-lod-roadmap.md` 为准
+**状态**: Archived Web-first pivot 历史基线；当前执行状态以 `project_state.md` / `dev-plans/README.md` / `dev-plans/Asset-lod-roadmap.md` 为准
 **对应 PRD**: `PRD.md`
 **对应架构**: `ARCH.md`
 **详细执行计划**: `dev-plans/web-alpha-detailed-development-plan.md`
