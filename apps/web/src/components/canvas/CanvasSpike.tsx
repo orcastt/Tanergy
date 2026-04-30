@@ -11,6 +11,7 @@ import { createStep15MockGraph, createStep15StressNodes } from '@/features/node-
 import { useNodeConnectionValidation } from '@/features/node-runtime/useNodeConnectionValidation'
 import type { NodeType } from '@/types/nodeRuntime'
 import { AiCardShapeUtil } from './AiCardShape'
+import { CanvasImageShapeUtil } from './CanvasImageShapeUtil'
 import { CanvasArrowPortOverlay } from './CanvasArrowPortOverlay'
 import { CanvasConnectionCutOverlay } from './CanvasConnectionCutOverlay'
 import { CanvasConnectionLine } from './CanvasConnectionLine'
@@ -36,6 +37,7 @@ import { usePortConnectionCompletion } from './usePortConnectionCompletion'
 
 const shapeUtils = [
   AiCardShapeUtil,
+  CanvasImageShapeUtil,
   NodeCardShapeUtil,
   ArrowShapeUtil.configure({
     arcArrowCenterSnapDistance: 0,

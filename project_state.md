@@ -7,7 +7,7 @@
 
 ## 当前阶段
 
-**阶段**: Web AI 图像画布重启 — S1.5 复杂节点与架构裁决稳定快照；GLM 班次 2026-04-30 已修 Node Runtime fan-out 和 input auto-replacement；Codex 已补齐 runtime edge 断链、canvas image / Image Node 双向转换、本地导图、Merge Capture 预览，并完成低缩放 / 放大编辑多图性能第一轮降噪；当前已进入 Asset Pipeline + Image / Node LOD 架构主线，Slice A Image Node moving degrade、Slice B Node LOD shell、Slice C local thumbnail resolver 已本地落地，Mac 浏览器 25%-50% 多图缩放手测基本可用
+**阶段**: Web AI 图像画布重启 — S1.5 复杂节点与架构裁决稳定快照；GLM 班次 2026-04-30 已修 Node Runtime fan-out 和 input auto-replacement；Codex 已补齐 runtime edge 断链、canvas image / Image Node 双向转换、本地导图、Merge Capture 预览，并完成低缩放 / 放大编辑多图性能第一轮降噪；当前已进入 Asset Pipeline + Image / Node LOD 架构主线，Slice A Image Node moving degrade、Slice B Node LOD shell、Slice C local thumbnail resolver 已本地落地，Slice D 普通 canvas image LOD spike 已本地验收；Mac 浏览器多图缩放和移动手感已足够顺滑，下一道质量门是跨平台性能验证
 
 **核心目标**: 用全新、干净的 Web 项目重做 TANGENT。P0 只跑通：
 
@@ -19,7 +19,7 @@ Image Node → Canvas Markup → Merge Capture → New Image Node
 Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Image → 自动连线 → 用户确认后 Run
 ```
 
-**下一步**: 进入 Slice D 普通 canvas image LOD spike，并补一轮跨平台性能验收。原因：当前 Mac 浏览器上 25%-50% 多图缩放基本可用，但上线后真实 AI 输出图会更大，Windows Chrome / Edge、4K 屏、浏览器缩放比例、低端 GPU 和不同滚轮输入都可能改变阈值和卡顿感。短期下一刀优先让普通 tldraw canvas image 也复用 `assetPreviewResolver` 的 thumbnail LOD；同时建立 Windows Chrome / Edge、1080p / 2K / 4K、browser zoom 90% / 100% / 125% 的性能手测矩阵。中期做真实 Asset Pipeline / object storage / 多尺寸缩略图。P1 后续：区分 Screenshot（普通图片贴回画布）与 Merge / Convert to Image Node（截图变 Image Node）；Link Preview 需要后端 URL unfurl + image proxy / asset 化。
+**下一步**: 提交 Slice D 稳定快照后，补一轮跨平台性能验收。原因：当前 Mac 浏览器多图缩放和移动已足够顺滑，但上线后真实 AI 输出图会更大，Windows Chrome / Edge、4K 屏、浏览器缩放比例、低端 GPU 和不同滚轮输入都可能改变阈值和卡顿感。短期建立 Windows Chrome / Edge、1080p / 2K / 4K、browser zoom 90% / 100% / 125% 的性能手测矩阵。中期进入 Slice E Real Asset Pipeline / object storage / 多尺寸缩略图。P1 后续：区分 Screenshot（普通图片贴回画布）与 Merge / Convert to Image Node（截图变 Image Node）；Link Preview 需要后端 URL unfurl + image proxy / asset 化。
 
 ---
 
@@ -123,6 +123,8 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 - ✅ Codex 二十七次推进 2026-04-30：根据约 30 个 image/node 对象下仍有缩放和连线卡顿的手测反馈，启动 Asset LOD Slice B Node LOD；`canvasPerformanceStore` 新增本地 `nodeCardCount` / `nodeRenderMode`，低缩放、高密度或移动中将不可读 AI 节点切为 shell，只保留节点标题、状态和可点击端口，跳过完整表单、输入解析、footer 和图片/body 渲染；可读尺寸的 Image Node 仍保持 full 以避免隐藏用户正在看的图片。用户反馈 45% 左右过早降级影响交互后，已把常见 24-48 图片/节点规模的 reduce / shell 阈值调到约 25%，极高密度才更早降级。
 - ✅ Codex 二十八次推进 2026-04-30：启动 Asset LOD Slice C；新增本地 `assetPreviewResolver`，Image Node 预览从直接读取 tldraw asset 原图改为 resolver 输出 `full / thumbnail / placeholder`；本地导入、Merge Capture、Convert to Image Node 等由 `createLocalAsset()` 创建的图片会预热 256/512 thumbnail cache；`canvasPerformanceStore` 新增 `thumbnail` 模式，让 25%-50% 中等缩放区间显示真实缩略图而非高清原图或纯占位。该缓存仍为本地 UI 层，不写入 shape props / board document。
 - ✅ Codex 二十九次整理 2026-04-30：根据用户手测确认当前 Mac 浏览器 25%-50% 多图缩放基本可用；记录上线前风险为真实 AI 图片尺寸、Windows Chrome / Edge、不同屏幕分辨率、browser zoom 与低端 GPU 可能改变性能阈值。下一步明确为 Slice D 普通 canvas image LOD spike + 跨平台性能矩阵；Link card 预览问题后续走服务端 unfurl / image proxy / Asset 化，不在前端直接依赖第三方远程图。
+- ✅ Codex 三十次推进 2026-04-30：完成 Slice D 普通 canvas image LOD spike；新增 `CanvasImageShapeUtil` 继承 tldraw 默认 `ImageShapeUtil`，只覆盖屏幕 `component()` 渲染，resize / geometry / crop capability / SVG export 保持默认实现；普通 canvas image 屏幕渲染复用 `assetPreviewResolver`，full 模式用原图，thumbnail / reduced 模式优先使用本地缩略图；缩略图生成失败时回退原图，避免跨域/tainted canvas 导致图片消失。用户手测确认当前多图缩放和移动已明显更顺，暂未复现明显卡顿。
+- ✅ Codex 三十一次修复 2026-04-30：修复 Image Node → Image Node 的图片继承预览：下游 Image Node 有 image input 时优先显示并输出上游 asset，空 Image Node 不再默认带 `asset_mock_image_001` 假图，`To Canvas` 也复用同一 effective asset 规则。Slice D 已本地验收，lint / typecheck / build / git diff --check 全通过。
 
 ---
 
@@ -235,4 +237,4 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 
 ## 下一步
 
-提交当前 S1.5 稳定快照后，新建 Asset LOD 分支，编写正式 `Asset-lod-roadmap.md`。路线重点：1）Image Node camera moving 降级预览；2）低缩放 Node LOD；3）普通 canvas image thumbnail / LOD spike；4）统一 Asset Preview Resolver；5）真实 Asset Pipeline / object storage / 多尺寸缩略图；6）这些稳定后再进入多人协作。
+提交当前 Slice D 稳定快照；随后补 Windows Chrome / Edge、不同分辨率和 browser zoom 的性能矩阵。跨平台质量门通过后进入 Slice E Real Asset Pipeline：后端上传、object storage、多尺寸缩略图、asset metadata、权限 URL、保存前拒绝或迁移 `data:` / `blob:` 图片引用。真实 Asset Pipeline 稳定后，再接真实 Model Registry / AI Proxy / AI Run log、Dashboard / 保存 / 登录，以及 Link Preview 后端 unfurl + image proxy；多人协作仍在这些资产边界稳定后进入 P0.5。

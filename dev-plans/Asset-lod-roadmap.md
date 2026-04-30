@@ -3,7 +3,7 @@
 **Date**: 2026-04-30  
 **Branch**: `feature/asset-lod-roadmap`  
 **Base checkpoint**: `a6f20c1 checkpoint: stabilize s1.5 canvas runtime`  
-**Status**: Slices A-C implemented locally; next is Slice D ordinary canvas image LOD spike. Slice E remains the later production Asset Pipeline. Windows/browser validation is a quality gate, not a separate slice.
+**Status**: Slices A-D implemented and accepted locally. Slice E remains the later production Asset Pipeline. Windows/browser validation is the next quality gate, not a separate implementation slice.
 
 **Owner**: Codex / TANGENT
 
@@ -320,7 +320,7 @@ Risk:
 
 ---
 
-### Slice D — Ordinary Canvas Image LOD Spike ⏭️ Next
+### Slice D — Ordinary Canvas Image LOD Spike ✅ Accepted Locally
 
 Goal:
 
@@ -341,12 +341,27 @@ Boundary:
 
 Slice D is a frontend spike. It proves ordinary canvas images can use the same local resolver / thumbnail strategy as Image Node without breaking tldraw behavior. It does not build backend upload, object storage, asset tables, signed URLs, persistence migration or multiplayer-safe asset sync.
 
+Status:
+
+2026-04-30 Codex started the spike with the least invasive path: `CanvasImageShapeUtil` extends tldraw's default `ImageShapeUtil` and only overrides the runtime `component()` render path. Resize, geometry, cropping capability and SVG export stay on the default tldraw implementation. Ordinary canvas images now use `assetPreviewResolver` for screen rendering: full mode uses original asset URLs, and thumbnail / reduced modes use local thumbnails when available. The resolver now falls back to original image rendering if browser-side thumbnail generation fails, which protects cross-origin or tainted-canvas cases during the spike.
+
+2026-04-30 user test: after Slice D local rendering changes, multi-image zoom / move feels much smoother and obvious stutter was not reproduced in the tested Mac browser session. The remaining bug found in the same pass was Image Node -> Image Node inheritance: downstream Image Nodes received the upstream asset id but still rendered their own empty/default placeholder. Codex fixed this by adding one effective Image Node asset rule: connected image input wins over the node's own imported asset, and empty Image Nodes no longer default to `asset_mock_image_001`.
+
+2026-04-30 user accepted Slice D locally. The current state is good enough to checkpoint before cross-platform performance validation.
+
 Acceptance:
 
 - A pasted/imported canvas image can display a thumbnail at low zoom or camera movement.
 - Full image restores at high zoom / idle.
 - Export and Merge Capture still use correct fidelity or an explicitly chosen export source.
 - Copy/paste and Convert to Image Node still work.
+- Image Node -> Image Node pass-through displays the inherited upstream image and `To Canvas` uses the same effective asset.
+
+Current acceptance state:
+
+- Accepted in local Mac browser testing.
+- Multi-image zoom / move feels smooth enough to stop tuning thresholds for now.
+- Next validation is cross-platform performance, especially Windows Chrome / Edge and browser zoom settings.
 
 Risk:
 
@@ -420,7 +435,7 @@ Recommended order:
 1. ✅ Slice A — Image Node Moving Degrade
 2. ✅ Slice B — Node LOD
 3. ✅ Slice C — Local Asset Preview Resolver
-4. ⏭️ Slice D — Ordinary Canvas Image LOD Spike
+4. ✅ Slice D — Ordinary Canvas Image LOD Spike
 5. ⛳ Quality gate — Cross-platform performance pass: Windows Chrome / Edge, browser zoom, 1080p / 2K / 4K, lower-end GPU
 6. ⏭️ Slice E — Real Asset Pipeline
 7. Link preview backend unfurl + image proxy / asset path

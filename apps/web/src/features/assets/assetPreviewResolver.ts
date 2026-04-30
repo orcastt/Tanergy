@@ -34,6 +34,7 @@ type LocalImageAsset = {
 type ThumbnailSize = 256 | 512 | 1024
 
 type ThumbnailEntry = {
+  failed: Partial<Record<ThumbnailSize, boolean>>
   pending: Partial<Record<ThumbnailSize, Promise<void>>>
   source: string
   thumbnails: Partial<Record<ThumbnailSize, { height: number; src: string; width: number }>>
@@ -78,6 +79,17 @@ export function primeAssetPreviewThumbnails(input: {
   }, 0)
 }
 
+export function primeEditorAssetPreviewThumbnails(editor: Editor, assetId: string | null) {
+  const asset = getLocalImageAsset(editor, assetId)
+  if (!asset?.src) return
+  primeAssetPreviewThumbnails({
+    assetId: assetId ?? '',
+    height: asset.height ?? 0,
+    src: asset.src,
+    width: asset.width ?? 0,
+  })
+}
+
 function resolveAssetPreview(editor: Editor, intent: AssetPreviewIntent): AssetPreviewResult & {
   sourceForCache: string
   targetThumbnailSize: ThumbnailSize
@@ -114,6 +126,9 @@ function resolveAssetPreview(editor: Editor, intent: AssetPreviewIntent): AssetP
       width: thumbnail.width,
     }
   }
+  if (hasFailedThumbnail(intent.assetId, asset.src, targetThumbnailSize)) {
+    return { ...base, pending: false, quality: 'original', src: asset.src }
+  }
 
   return { ...base, pending: true, quality: 'placeholder', src: null }
 }
@@ -137,17 +152,25 @@ function getCachedThumbnail(assetId: string | null, src: string, size: Thumbnail
   return entry.thumbnails[size] ?? null
 }
 
+function hasFailedThumbnail(assetId: string | null, src: string, size: ThumbnailSize) {
+  if (!assetId) return false
+  return Boolean(getCacheEntry(assetId, src).failed[size])
+}
+
 function requestAssetThumbnail(assetId: string | null, src: string, size: ThumbnailSize) {
   if (!assetId || !src || typeof window === 'undefined') return
   const entry = getCacheEntry(assetId, src)
-  if (entry.thumbnails[size] || entry.pending[size]) return
+  if (entry.failed[size] || entry.thumbnails[size] || entry.pending[size]) return
 
   entry.pending[size] = createThumbnail(src, size)
     .then((thumbnail) => {
       entry.thumbnails[size] = thumbnail
       notifyAssetPreviewCache(assetId)
     })
-    .catch(() => undefined)
+    .catch(() => {
+      entry.failed[size] = true
+      notifyAssetPreviewCache(assetId)
+    })
     .finally(() => {
       delete entry.pending[size]
     })
@@ -156,7 +179,7 @@ function requestAssetThumbnail(assetId: string | null, src: string, size: Thumbn
 function getCacheEntry(assetId: string, src: string) {
   const current = thumbnailCache.get(assetId)
   if (current?.source === src) return current
-  const next: ThumbnailEntry = { pending: {}, source: src, thumbnails: {} }
+  const next: ThumbnailEntry = { failed: {}, pending: {}, source: src, thumbnails: {} }
   thumbnailCache.set(assetId, next)
   return next
 }

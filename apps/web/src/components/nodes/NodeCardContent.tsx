@@ -7,6 +7,7 @@ import type { JsonObject, NodeRuntimeSummary } from '@/types/nodeRuntime'
 import { useCanvasPerformanceStore } from '@/features/canvas-performance/canvasPerformanceStore'
 import { getNodeDefinition, getResolvedNodePorts } from '@/features/node-runtime/registry'
 import { createCanvasImageFromNode } from '@/features/node-runtime/imageNodeAssets'
+import { getImageNodeEffectiveAsset } from '@/features/node-runtime/imageNodeEffectiveAsset'
 import { auditNodePayload } from '@/features/node-runtime/payloadAudit'
 import { resolveNodeInputs } from '@/features/node-runtime/nodeDataFlow'
 import { useNodeEdgeStore } from '@/features/node-runtime/nodeEdges'
@@ -88,11 +89,7 @@ function NodeCardFullContent({
   useEditorRevision(editor, 'node-content')
   useNodeEdgeStore((state) => state.edges)
   const inputResolution = resolveNodeInputs(editor, shape)
-  const imageAssetId = shape.props.nodeType === 'image'
-    ? (typeof data.assetId === 'string' && data.assetId
-      ? data.assetId
-      : inputResolution.imageValues[0]?.assetId ?? null)
-    : null
+  const imageAsset = shape.props.nodeType === 'image' ? getImageNodeEffectiveAsset(data, inputResolution) : null
   const payloadAudit = auditNodePayload({
     data,
     nodeId: shape.props.nodeId,
@@ -110,24 +107,24 @@ function NodeCardFullContent({
           {shape.props.nodeType === 'image' ? (
             <button
               className="node-card__action-btn"
-              disabled={!imageAssetId}
+              disabled={!imageAsset}
               onMouseDown={stopNodeControlEvent}
               onPointerDown={stopNodeControlEvent}
               type="button"
               onClick={(event) => {
                 clearBrowserSelection()
                 event.stopPropagation()
-                if (!imageAssetId) return
+                if (!imageAsset) return
                 createCanvasImageFromNode(editor, {
-                  assetId: imageAssetId,
-                  imageHeight: typeof data.imageHeight === 'number' ? data.imageHeight : undefined,
-                  imageWidth: typeof data.imageWidth === 'number' ? data.imageWidth : undefined,
+                  assetId: imageAsset.assetId,
+                  imageHeight: imageAsset.imageHeight,
+                  imageWidth: imageAsset.imageWidth,
                   x: shape.x + shape.props.w + 40,
                   y: shape.y,
                 })
                 clearBrowserSelection()
               }}
-              title={imageAssetId ? 'Convert to canvas image' : 'Import or connect an image first.'}
+              title={imageAsset ? 'Convert to canvas image' : 'Import or connect an image first.'}
             >
               To Canvas
             </button>

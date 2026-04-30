@@ -1,10 +1,13 @@
 import type { Editor, TLShapeId } from 'tldraw'
 import type { NodeCardShape } from '@/types/nodeCardShape'
 import type { JsonObject, NodeRuntimeSummary } from '@/types/nodeRuntime'
+import { getOwnImageAssetId } from './imageNodeEffectiveAsset'
 import { getNodeEdgesSnapshot } from './nodeEdges'
 
 export type RuntimeImageValue = {
   assetId: string
+  imageHeight?: number
+  imageWidth?: number
   sourceNodeId: string
   title: string
 }
@@ -111,9 +114,13 @@ export function getNodeOutput(
   if (node.props.nodeType === 'image' && portId === 'image_out') {
     const incomingImages = getIncomingImages(editor, node, visited)
     if (incomingImages.length > 0) return { imageValues: incomingImages, textValues: [] }
+    const assetId = getOwnImageAssetId(data.assetId)
+    if (!assetId) return emptyOutput()
     return {
       imageValues: [{
-        assetId: String(data.assetId ?? 'asset_mock_image_001'),
+        assetId,
+        imageHeight: getNumber(data.imageHeight),
+        imageWidth: getNumber(data.imageWidth),
         sourceNodeId: node.props.nodeId,
         title: String(data.title ?? 'Image'),
       }],
@@ -168,6 +175,10 @@ function emptyOutput(): RuntimeOutput {
 
 function asJsonObject(value: unknown): JsonObject {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as JsonObject) : {}
+}
+
+function getNumber(value: unknown) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined
 }
 
 function asRuntimeSummary(value: unknown): NodeRuntimeSummary {

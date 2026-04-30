@@ -8,6 +8,7 @@
 @import './styles/canvas-style-panel.css';
 @import './styles/canvas-style-icons.css';
 @import './styles/canvas-action-icons.css';
+@import './styles/canvas-image-lod.css';
 @import './styles/ai-card.css';
 @import './styles/node-inspector.css';
 @import './styles/node-card-base.css';

@@ -8,6 +8,7 @@ import type { JsonObject } from '@/types/nodeRuntime'
 import { useAssetPreview, type AssetPreviewMode } from '@/features/assets/assetPreviewResolver'
 import { useCanvasPerformanceStore } from '@/features/canvas-performance/canvasPerformanceStore'
 import type { RuntimeInputResolution } from '@/features/node-runtime/nodeDataFlow'
+import { getImageNodeEffectiveAsset } from '@/features/node-runtime/imageNodeEffectiveAsset'
 import { importFileToImageNode } from '@/features/node-runtime/imageNodeAssets'
 
 type ImageNodePreviewProps = {
@@ -34,8 +35,8 @@ export function ImageNodePreview({ data, editor, inputResolution, shape }: Image
   const imagePreviewMode = useCanvasPerformanceStore((state) => state.imagePreviewMode)
   const zoom = useCanvasPerformanceStore((state) => state.zoom)
 
-  const incomingImage = inputResolution.imageValues[0]
-  const assetId = String(data.assetId ?? incomingImage?.assetId ?? '')
+  const effectiveImage = getImageNodeEffectiveAsset(data, inputResolution)
+  const assetId = effectiveImage?.assetId ?? ''
   const previewSize = getPreviewScreenSize(shape, zoom)
   const assetPreviewMode = getAssetPreviewMode(imagePreviewMode, previewSize.isReadable)
   const preview = useAssetPreview(editor, {
@@ -44,7 +45,7 @@ export function ImageNodePreview({ data, editor, inputResolution, shape }: Image
     screenHeight: previewSize.height,
     screenWidth: previewSize.width,
   })
-  const fallbackTitle = incomingImage?.title ?? String(data.title ?? 'Image')
+  const fallbackTitle = effectiveImage?.title ?? String(data.title ?? 'Image')
   const title = preview.title === 'Image' ? fallbackTitle : preview.title
   const shouldRenderImage = Boolean(preview.src)
 
@@ -124,7 +125,7 @@ export function ImageNodePreview({ data, editor, inputResolution, shape }: Image
           type="file"
         />
       </div>
-      <small>{error ?? incomingImage?.assetId ?? String(data.assetId ?? 'Double-click or drop an image')}</small>
+      <small>{error ?? effectiveImage?.assetId ?? 'Double-click or drop an image'}</small>
     </div>
   )
 }

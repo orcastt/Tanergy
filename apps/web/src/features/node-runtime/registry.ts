@@ -53,8 +53,7 @@ export const nodeDefinitions: Record<NodeType, NodeDefinition> = {
   },
   image: {
     defaultData: {
-      assetId: 'asset_mock_image_001',
-      title: 'Generated image',
+      title: 'Image',
     },
     displayName: 'Image',
     inspectorFields: [
