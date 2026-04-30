@@ -19,7 +19,7 @@ S1.5 仍是当前 blocker。未完成以下复测前，不进入真实 AI API：
 | Slice | Goal | Main Docs | Done Means |
 |-------|------|-----------|------------|
 | S1.5-A Canvas polish freeze | 只修阻塞级画布交互 | `PRD.md` F03/F03.5, `ARCH.md` 9.2 | 坐标、吸附、设置、导航、工具栏不阻塞节点开发 |
-| S1.5-B Node runtime data | 验证 text/image mock 数据流 | `dev-plans/node-runtime-data-transfer-slice-2026-04-30.md` | mock Run、fan-out、Gen4 四输出、删线同步通过 |
+| S1.5-B Node runtime data | 验证 text/image mock 数据流 | `dev-plans/Archive/node-runtime-data-transfer-slice-2026-04-30.md` | mock Run、fan-out、Gen4 四输出、删线同步通过；切片已归档 |
 | S1.5-C Payload/perf gate | 验证轻量 props 和压力 | `HARNESS.md` QA Harness | 50-100 节点无明显卡顿，document payload 可控 |
 | S2 Model Registry mock | 前端统一模型能力来源 | `ARCH.md` 4.10 / 8.4 | 节点和 AI Chat 不再硬编码模型参数 |
 | S3 Backend AI Runs skeleton | 后端 run API 和日志骨架 | `ARCH.md` 8.5 / 10.4 | 不暴露 key，有结构化 run/status/error |

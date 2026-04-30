@@ -56,7 +56,7 @@ Read these first, in this order:
 3. `ARCH.md`
 4. `dev-plans/web-alpha-detailed-development-plan.md`
 5. `dev-plans/web-collaborative-canvas-pivot.md`
-6. This file: `dev-plans/ai-shift-handoff-2026-04-29.md`
+6. This file: `dev-plans/Archive/ai-shift-handoff-2026-04-29.md`
 
 Do not read or modify:
 
@@ -449,7 +449,7 @@ The user should help GLM in these ways:
 Suggested initial prompt to GLM:
 
 ```text
-先读 project_state.md、PRD.md、ARCH.md、dev-plans/web-alpha-detailed-development-plan.md、dev-plans/ai-shift-handoff-2026-04-29.md。你现在是临时接班工程师，只做 S1.5 手测和阻塞修复，不做大重构、不接真实 AI API、不读 .env、不碰 legacy。先检查 git 状态和当前分支，然后按 handoff 的 Round 0-2 做基线验证和手测清单。任何代码改动前先说明计划。
+先读 project_state.md、PRD.md、ARCH.md、dev-plans/web-alpha-detailed-development-plan.md、dev-plans/Archive/ai-shift-handoff-2026-04-29.md。你现在是临时接班工程师，只做 S1.5 手测和阻塞修复，不做大重构、不接真实 AI API、不读 .env、不碰 legacy。先检查 git 状态和当前分支，然后按 handoff 的 Round 0-2 做基线验证和手测清单。任何代码改动前先说明计划。
 ```
 
 ---

@@ -34,10 +34,8 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 | 总开发路线 | `dev-plans/web-collaborative-canvas-pivot.md` | 当前 P0 分阶段路线图 |
 | 详细开发计划 | `dev-plans/web-alpha-detailed-development-plan.md` | Alpha 逐 Sprint 执行计划、分工、文件范围、验收标准 |
 | P0 Harness 路线 | `dev-plans/p0-development-harness-roadmap-2026-04-30.md` | 后续切片顺序、每个切片 Done 标准、交接模板 |
-| 文档 Harness 刷新 | `dev-plans/documentation-harness-refresh-2026-04-30.md` | 本轮 PRD/ARCH/README/HARNESS 补充记录 |
-| AI 接班交接 | `dev-plans/ai-shift-handoff-2026-04-29.md` | 半天接班计划、GLM 执行边界、手测清单、Codex 回来后的复核清单 |
-| GLM 交接笔记 | `dev-plans/glm-handback-2026-04-29.md` | GLM 班次完成内容、变更文件清单、复测要点、已知问题 |
-| GLM 下一班交接 | `dev-plans/glm-next-shift-handoff-2026-04-30.md` | 当前 P0 blocker、GLM 修复边界、fan-out/replacement 验收清单 |
+| Asset LOD 主线 | `dev-plans/Asset-lod-roadmap.md` | 当前下一阶段正式路线：Asset model、thumbnail cache、Image / Node LOD、协作前置资产管线 |
+| 已归档 dev-plans | `dev-plans/Archive/` | 已完成、已验收或废弃的切片计划、handoff、外部复核 brief |
 | 海外成本/增长预测 | `dev-plans/overseas-cost-growth-forecast.md` | 海外部署成本、用户量、社媒增长、AI 单位经济预测 |
 | 旧代码归档 | `legacy/old-tangent-desktop-2026-04-29/` | 旧桌面/Admin/backend/frontend 已隔离，默认不要读 |
 
@@ -105,7 +103,7 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 - ✅ Codex 十次推进 2026-04-30：新增 Canvas Settings 与对齐吸附切片；画布右下角齿轮可打开设置面板，支持 Grid Rendering、Grid Style、Grid Unit、Grid Color、Snap Alignment、Snap Distance、Zoom Sensitivity、Edge Color、AI Chat Style；设置使用 Zustand 本地 store，Save 后写入 localStorage；Snap Alignment 接 tldraw 原生 `isSnapMode`，Snap Distance 接 `snapThreshold`。
 - ✅ Codex 十一次文档刷新 2026-04-30：根据产品/架构/设计/认证/支付/协作/数据库/发布/测试/Admin/AI/运维 12 类范例，补充 `PRD.md` 的产品验证假设、MoSCoW、用户故事和 Alpha 指标；补充 `ARCH.md` 的 Harness 覆盖映射；扩展 `README.md`；新增 `HARNESS.md` 和 P0 Harness 路线图。未编造竞品评分/收入，后续需 sourced market research。
 - ✅ Codex 十二次文档复核 2026-04-30：补齐 `ARCH.md` 的 1K / 10K / 100K 用户扩展容量路线；补充 `HARNESS.md` 源码行数观察表，标记 `CanvasSpikeStylePanel.tsx`、`CanvasSpikeToolbar.tsx`、`canvas-overlays.css` 等接近 300 行文件，后续触碰要先拆分。
-- ✅ Codex 十三次交接整理 2026-04-30：根据用户手测，确认当前性能暂不卡顿；记录 P0 blocker 为 Node Runtime output fan-out 仍失败和已占用 input 不能直接替换；记录 P1 polish 为 Snap guide 透明度降到 20% 与 Screenshot / Merge to Image Node 行为区分；新增 `dev-plans/glm-next-shift-handoff-2026-04-30.md` 供 GLM 接班。
+- ✅ Codex 十三次交接整理 2026-04-30：根据用户手测，确认当前性能暂不卡顿；记录 P0 blocker 为 Node Runtime output fan-out 仍失败和已占用 input 不能直接替换；记录 P1 polish 为 Snap guide 透明度降到 20% 与 Screenshot / Merge to Image Node 行为区分；新增 `dev-plans/Archive/glm-next-shift-handoff-2026-04-30.md` 供 GLM 接班。
 - ✅ GLM 班次 2026-04-30：修 P0 blocker fan-out + input auto-replacement；`nodeEdges.ts` 的 `addEdge()` 改为按 `targetShapeId + targetPortId` 去重，新连接自动替换同一 target input 的旧 edge，同时保留同一 source output 到其他下游的 fan-out edges；`usePortConnectionCompletion.ts` 移除 `isInputPortOccupied` 阻断和 `findNearestInputPort` 占用过滤，允许连接到已占用 input 完成替换；修 P1 snap guide opacity 到 ~20%，覆盖 `.tl-snap-indicator` 和 `.tl-snap-point`。lint / typecheck / build / git diff --check 全通过，所有源码文件 < 300 行。
 - ✅ Codex 十四次修复 2026-04-30：根据密集连线手测反馈，runtime edge 断链不再依赖中点 hover；现在点击数据线会选中该 edge，选中线加粗，并在下游 target 端附近显示 `−` 断链按钮；hit 区只覆盖贝塞尔线中段，避免重新遮挡 source output / target input 端口。lint / typecheck / build / git diff --check 全通过，触碰源码文件 < 300 行。
 - ✅ Codex 十五次推进 2026-04-30：补齐 `canvas image -> Image Node` 和 `Image Node 本地导图` 最小闭环；选中画布 image shape 时顶部 toolbar 新增 `Convert to Image Node`，会复用当前 tldraw asset 创建可预览的 Image Node；Selection Toolbar 的 Screenshot / Merge Capture 现在会先创建本地 tldraw image asset，再创建 Image Node，修复“节点里看不见截图”；Image Node 预览区支持双击打开文件选择器和拖拽 PNG/JPEG/WebP 直接导入。lint / typecheck / build / git diff --check 全通过，触碰源码文件 < 300 行。
@@ -118,6 +116,7 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 - ✅ Codex 二十二次修复 2026-04-30：针对“低缩放不卡、放大后拖图片/加节点/画画仍卡”的手测反馈，继续收 edit-time 热路径；图片数量统计只在 image / Image Node 结构变化时重算，普通拖动和画笔更新不再全画布扫图；`NodeCardContent` / Inspector / Selection Toolbar / Style Panel / Navigator / Arrow Overlay / Node Edge Overlay 改用分层 editor 订阅，小地图在高密度或拖拽时采样更少，Selection Toolbar 和 Style Panel 在拖拽/移动视图时隐藏，减少放大编辑时的 React 浮层重算。lint / typecheck / build / git diff --check 全通过，触碰源码文件 < 300 行。
 - ✅ Codex 二十三次修复 2026-04-30：左下角 navigator 增加折叠按钮；展开态右上角可收起，折叠态只保留 42px 图标按钮，再点可展开。折叠态直接跳过小地图 bounds / shape rect 计算，减少高密度画布上的额外浮层工作。lint / typecheck / build / git diff --check 全通过，触碰源码文件 < 300 行。
 - ✅ Codex 二十四次架构确认 2026-04-30：根据用户多图多节点手测和 Gemini 复核思路，确认当前性能瓶颈已进入图片资产渲染层；保留 tldraw-first + Node Runtime，不推翻现有节点/连线/Image Node/Merge 链路；下一阶段在新分支规划 Asset LOD Roadmap，把 Asset model、thumbnail cache、Image Node moving degrade、普通 canvas image LOD、Node LOD 和真实 Asset Pipeline 作为多人协作前置主线。
+- ✅ Codex 二十五次文档整理 2026-04-30：将已完成、已验收或废弃的 dev-plan/handoff 切片移入 `dev-plans/Archive/`，保留 `dev-plans/Asset-lod-roadmap.md` 作为当前主线入口，并更新 README / P0 Harness / project_state 的索引路径。
 
 ---
 

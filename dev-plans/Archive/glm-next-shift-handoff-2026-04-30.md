@@ -14,8 +14,8 @@
 2. `PRD.md`
 3. `ARCH.md`
 4. `HARNESS.md`
-5. `dev-plans/node-runtime-data-transfer-slice-2026-04-30.md`
-6. `dev-plans/canvas-settings-snap-slice-2026-04-30.md`
+5. `dev-plans/Archive/node-runtime-data-transfer-slice-2026-04-30.md`
+6. `dev-plans/Archive/canvas-settings-snap-slice-2026-04-30.md`
 7. 本文件
 
 禁止：
@@ -246,8 +246,8 @@ GLM 2026-04-30 班次已完成全部 P0 和 P1 修复。用户手测确认通过
 | `apps/web/src/app/styles/node-edge-overlay.css` | 移除 `.node-edge-overlay__path-hit` 样式，新增 `.node-edge-overlay__svg:hover { pointer-events: auto }` |
 | `apps/web/src/app/styles/canvas-shell.css` | 新增 `.canvas-spike-stage .tl-snap-indicator` 和 `.tl-snap-point` opacity 0.2 覆盖 |
 | `project_state.md` | 更新阶段状态、已完成记录、风险表、下一步 |
-| `dev-plans/node-runtime-data-transfer-slice-2026-04-30.md` | 更新 Status 和 Open Blocker |
-| `dev-plans/canvas-settings-snap-slice-2026-04-30.md` | 更新 Open Polish |
+| `dev-plans/Archive/node-runtime-data-transfer-slice-2026-04-30.md` | 更新 Status 和 Open Blocker |
+| `dev-plans/Archive/canvas-settings-snap-slice-2026-04-30.md` | 更新 Open Polish |
 
 ### 7.2 Fan-out / Replacement 最终数据规则
 

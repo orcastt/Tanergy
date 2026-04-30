@@ -82,8 +82,8 @@ http://localhost:3000/spikes/canvas
 - `dev-plans/web-collaborative-canvas-pivot.md` — original pivot plan.
 - `dev-plans/web-alpha-detailed-development-plan.md` — Alpha sprint plan.
 - `dev-plans/p0-development-harness-roadmap-2026-04-30.md` — current P0 Harness roadmap.
-- `dev-plans/node-runtime-data-transfer-slice-2026-04-30.md` — runtime data flow slice.
-- `dev-plans/canvas-settings-snap-slice-2026-04-30.md` — settings and snap slice.
+- `dev-plans/Asset-lod-roadmap.md` — current Asset Pipeline + Image / Node LOD roadmap before multiplayer.
+- `dev-plans/Archive/` — completed, accepted, or deprecated dev-plan slices and handoff notes.
 
 ## Harness Coverage
 

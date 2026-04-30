@@ -8,7 +8,7 @@
 
 2026-04-30 Codex 已完成首轮实现，进入手测确认。
 
-2026-04-30 用户手测发现 P0 blocker：同一个 Prompt / Image output fan-out 到多个下游 input 仍失败；已占用 input 也不能直接被新连接替换。下一班次优先按 `dev-plans/glm-next-shift-handoff-2026-04-30.md` 修复。
+2026-04-30 用户手测发现 P0 blocker：同一个 Prompt / Image output fan-out 到多个下游 input 仍失败；已占用 input 也不能直接被新连接替换。下一班次优先按 `dev-plans/Archive/glm-next-shift-handoff-2026-04-30.md` 修复。
 
 2026-04-30 GLM 修复 fan-out + auto-replacement：`nodeEdges.ts` 的 `addEdge()` 改为按 `targetShapeId + targetPortId` 去重，新连接自动替换同一 target input 的旧 edge，同时保留同一 source output 到其他下游的 fan-out edges；`usePortConnectionCompletion.ts` 移除 `isInputPortOccupied` 阻断和 `findNearestInputPort` 占用过滤。质量闸门全通过。等待用户手测确认。
 
