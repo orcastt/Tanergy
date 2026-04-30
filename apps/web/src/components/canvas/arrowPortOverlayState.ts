@@ -176,13 +176,7 @@ function getPreviewTargetState(
   const target = getBindablePortTarget(editor, arrow, currentPoint, oppositeBinding)
   if (!target) return null
 
-  const oppositeTerminal = arrow && activeTerminal ? getOppositeTerminal(activeTerminal) : null
-  const bindings = arrow ? editor.getBindingsFromShape(arrow.id, 'arrow') : []
-  const referencePoint =
-    arrow && oppositeTerminal
-      ? getResolvedReferencePoint(editor, arrow, oppositeTerminal, bindings, currentPoint)
-      : currentPoint
-  const activeAnchor = getBestAnchorForReferencePoint(editor, target, referencePoint)
+  const activeAnchor = getBestAnchorForReferencePoint(editor, target, currentPoint)
   const role: 'source' | 'target' = arrow
     ? activeTerminal === 'start'
       ? 'source'
@@ -190,20 +184,6 @@ function getPreviewTargetState(
     : 'source'
 
   return { activeAnchor, role, target, terminal: activeTerminal }
-}
-
-function getResolvedReferencePoint(
-  editor: Editor,
-  arrow: TLArrowShape,
-  terminal: ArrowTerminal,
-  bindings: TLArrowBinding[],
-  fallback: VecLike
-) {
-  const binding = bindings.find((item) => item.props.terminal === terminal)
-  if (!binding) return fallback
-  const shape = editor.getShape(binding.toId)
-  if (!shape) return fallback
-  return getAnchorPagePoint(editor, shape, binding.props.normalizedAnchor) ?? fallback
 }
 
 function getNodePortDataType(shape: TLShape, anchor: Anchor) {

@@ -219,3 +219,31 @@ Unexpected property
 2. 移动 Prompt 或 Image Gen 后，连线必须保持在原 text 端口，不应跳到 image 端口。
 3. Image output → Image Gen image input 后，动态 image input 仍应新增一个空口。
 4. 连接中点击空白应取消；Esc 应取消。
+
+### 7.3 Codex Follow-up 4 — Simple arrow snapping stability
+
+用户复测发现普通形状的箭头吸附也有问题：
+
+- 第一条箭头能捕捉边中点。
+- 第二条箭头想连到目标形状另一个边中点时，候选点疯狂闪烁。
+- 最终经常又吸回上一条箭头使用过的边中点。
+
+根因：
+
+- `snapArrowBindings()` 会在每次 document store user change 后遍历所有 arrow 并重算 binding anchor。
+- 这会让已完成箭头、上一条 selected arrow、当前正在创建的新 arrow 互相抢 anchor。
+- `getActiveArrow()` 之前优先返回 selected arrow；创建第二条箭头时，如果上一条箭头仍 selected，就可能把上一条当作 active arrow。
+- 当前目标 anchor 原先按“对侧端点”计算，用户把鼠标移到另一个边中点时仍可能被强制吸回离对侧端点最近的边。
+
+已修复：
+
+- 移除全局 `snapArrowBindings()` 调度，只在正在绘制/拖动端点时更新当前 active arrow。
+- `getActiveArrow()` 在 `arrow.pointing` 时优先返回 topmost arrow，避免误拿上一条 selected arrow。
+- 当前目标 anchor 改为按鼠标当前位置选择，用户把鼠标靠近哪个边中点，就高亮/绑定哪个边中点。
+- `arrowSnapLogic.ts` 从 247 行降到 188 行，降低后续拆分压力。
+
+待手测：
+
+1. 普通矩形/圆形之间连续画两条箭头，第二条应可稳定吸到目标形状另一个边中点。
+2. 已完成箭头不应在移动其他对象或创建新箭头时闪烁/跳点。
+3. 拖动已完成箭头端点时，仍可按鼠标靠近的边中点重新吸附。

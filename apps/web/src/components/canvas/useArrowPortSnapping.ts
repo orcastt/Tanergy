@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import type { Editor } from 'tldraw'
-import { snapArrowBindings, updateActiveArrowPortSnap } from './arrowSnapLogic'
+import { updateActiveArrowPortSnap } from './arrowSnapLogic'
 
 export { getArrowTerminalPagePoint } from './arrowAnchorUtils'
 export { getArrowPortOverlayState } from './arrowPortOverlayState'
@@ -18,7 +18,6 @@ export function useArrowPortSnapping(editor: Editor | null) {
         frame = null
         editor.run(() => {
           updateActiveArrowPortSnap(editor)
-          snapArrowBindings(editor)
         })
       })
     }

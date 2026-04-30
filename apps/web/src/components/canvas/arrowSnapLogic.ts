@@ -3,7 +3,6 @@ import {
   getAnchorPagePoint,
   getBestAnchorForReferencePoint,
   getCandidateAnchors,
-  getResolvedTerminalPagePoint,
   getArrowTerminalPagePoint,
   isCleanTldrawAnchor,
   isSameAnchor,
@@ -13,46 +12,6 @@ import {
 } from './arrowAnchorUtils'
 
 const portSnapScreenDistance = 34
-
-export function snapArrowBindings(editor: Editor) {
-  const arrows = editor
-    .getCurrentPageShapes()
-    .filter((shape): shape is TLArrowShape => shape.type === 'arrow')
-
-  for (const arrow of arrows) {
-    for (const binding of editor.getBindingsFromShape(arrow.id, 'arrow')) {
-      if (isNodeCardBinding(editor, binding)) continue
-
-      const anchor = getBestAnchor(editor, binding)
-      if (!anchor) continue
-
-      if (
-        binding.props.isPrecise &&
-        !binding.props.isExact &&
-        binding.props.snap === 'edge-point' &&
-        isCleanTldrawAnchor(binding.props.normalizedAnchor) &&
-        isSameAnchor(binding.props.normalizedAnchor, anchor)
-      ) {
-        continue
-      }
-
-      editor.updateBinding({
-        ...binding,
-        props: {
-          ...binding.props,
-          isExact: false,
-          isPrecise: true,
-          normalizedAnchor: toTldrawAnchor(anchor),
-          snap: 'edge-point',
-        },
-      })
-    }
-  }
-}
-
-function isNodeCardBinding(editor: Editor, binding: TLArrowBinding) {
-  return editor.getShape(binding.toId)?.type === 'node_card'
-}
 
 export function updateActiveArrowPortSnap(editor: Editor) {
   if (!isArrowInteraction(editor)) return
@@ -73,22 +32,21 @@ export function updateActiveArrowPortSnap(editor: Editor) {
     return
   }
 
-  const referencePoint = getResolvedTerminalPagePoint(editor, arrow, oppositeTerminal, bindings) ?? currentPoint
-  const anchor = getBestAnchorForReferencePoint(editor, target, referencePoint)
+  const anchor = getBestAnchorForReferencePoint(editor, target, currentPoint)
   if (!anchor) return
 
   createOrUpdateArrowBinding(editor, arrow, target, activeTerminal, anchor)
 }
 
 export function getActiveArrow(editor: Editor) {
+  if (editor.isIn('arrow.pointing')) return getTopmostArrow(editor)
+
   const selectedArrow = editor
     .getSelectedShapes()
     .find((shape): shape is TLArrowShape => shape.type === 'arrow')
   if (selectedArrow) return selectedArrow
 
-  if (!isArrowCreationInteraction(editor)) return null
-
-  return getTopmostArrow(editor)
+  return null
 }
 
 export function isArrowCreationInteraction(editor: Editor) {
@@ -160,23 +118,6 @@ export function getBindablePortTarget(
   }
 
   return nearestShape
-}
-
-function getBestAnchor(editor: Editor, binding: TLArrowBinding): Anchor | null {
-  const arrow = editor.getShape<TLArrowShape>(binding.fromId)
-  const target = editor.getShape(binding.toId)
-  if (!arrow || arrow.type !== 'arrow' || !target) return null
-
-  const oppositeTerminal = binding.props.terminal === 'start' ? 'end' : 'start'
-  const oppositePoint = getResolvedTerminalPagePoint(
-    editor,
-    arrow,
-    oppositeTerminal,
-    editor.getBindingsFromShape(arrow.id, 'arrow')
-  )
-  if (!oppositePoint) return null
-
-  return getBestAnchorForReferencePoint(editor, target, oppositePoint)
 }
 
 function getTopmostArrow(editor: Editor) {
