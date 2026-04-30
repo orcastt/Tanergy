@@ -21,6 +21,8 @@ export function snapArrowBindings(editor: Editor) {
 
   for (const arrow of arrows) {
     for (const binding of editor.getBindingsFromShape(arrow.id, 'arrow')) {
+      if (isNodeCardBinding(editor, binding)) continue
+
       const anchor = getBestAnchor(editor, binding)
       if (!anchor) continue
 
@@ -46,6 +48,10 @@ export function snapArrowBindings(editor: Editor) {
       })
     }
   }
+}
+
+function isNodeCardBinding(editor: Editor, binding: TLArrowBinding) {
+  return editor.getShape(binding.toId)?.type === 'node_card'
 }
 
 export function updateActiveArrowPortSnap(editor: Editor) {

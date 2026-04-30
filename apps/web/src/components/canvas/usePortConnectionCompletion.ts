@@ -167,7 +167,7 @@ function findNearestInputPort(
   pointerPagePoint: { x: number; y: number },
   options: { sourceShapeId: string; sourceType: NodePortDataType }
 ): PortTarget | null {
-  const maxDistance = 40 / editor.getZoomLevel()
+  const maxDistance = 96 / editor.getZoomLevel()
   const maxDistanceSquared = maxDistance * maxDistance
   let bestTarget: PortTarget | null = null
   let bestDistance = Infinity
@@ -176,7 +176,9 @@ function findNearestInputPort(
     if (!isNodeCard(shape) || shape.id === options.sourceShapeId) continue
 
     const data = asJsonObject(shape.props.data)
-    const ports = getResolvedNodePorts(shape.props.nodeType, data).filter((port) => port.direction === 'in')
+    const ports = getResolvedNodePorts(shape.props.nodeType, data).filter((port) => (
+      port.direction === 'in' && port.dataType === options.sourceType
+    ))
     for (const port of ports) {
       const pagePoint = getPortPagePoint(editor, shape, port)
       if (!pagePoint) continue

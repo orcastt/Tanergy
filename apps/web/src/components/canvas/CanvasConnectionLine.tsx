@@ -28,6 +28,14 @@ export function CanvasConnectionLine({ editor }: CanvasConnectionLineProps) {
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target instanceof Element ? event.target : null
       if (target?.closest('[data-port-id]')) return
+      event.preventDefault()
+      event.stopPropagation()
+      window.dispatchEvent(new CustomEvent('port:complete', {
+        detail: {
+          from: usePortConnectionStore.getState().connectingFrom,
+          targetScreenPoint: { x: event.clientX, y: event.clientY },
+        },
+      }))
       cancel()
     }
 

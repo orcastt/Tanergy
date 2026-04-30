@@ -16,6 +16,12 @@ export function NodePortDot({ getEditorPagePoint, port, shape }: NodePortDotProp
   const connectingFrom = usePortConnectionStore((state) => state.connectingFrom)
   const storeStart = usePortConnectionStore((state) => state.start)
   const setMouseScreenPoint = usePortConnectionStore((state) => state.setMouseScreenPoint)
+  const isCompatibleTarget = Boolean(
+    connectingFrom &&
+    connectingFrom.shapeId !== shape.id &&
+    port.direction === 'in' &&
+    connectingFrom.portDataType === port.dataType
+  )
 
   const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     event.stopPropagation()
@@ -57,6 +63,7 @@ export function NodePortDot({ getEditorPagePoint, port, shape }: NodePortDotProp
     <div
       className="node-card__port"
       data-active={connectingFrom?.shapeId === shape.id && connectingFrom.portId === port.id ? 'true' : undefined}
+      data-compatible={isCompatibleTarget ? 'true' : undefined}
       data-direction={port.direction}
       data-port-direction={port.direction}
       data-port-id={port.id}

@@ -126,8 +126,8 @@
 
 .node-card__port {
   position: absolute;
-  width: 14px;
-  height: 14px;
+  width: 24px;
+  height: 24px;
   border: 2px solid white;
   border-radius: 999px;
   background: var(--node-accent);
@@ -149,11 +149,15 @@
 }
 
 .node-card__port[data-direction='in'] {
-  left: -7px;
+  left: -12px;
 }
 
 .node-card__port[data-direction='out'] {
-  right: -7px;
+  right: -12px;
+}
+
+.node-card__port[data-compatible='true'] {
+  transform: translateY(-50%) scale(1.25);
 }
 
 .node-card__port[data-type='text'] {

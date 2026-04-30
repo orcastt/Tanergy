@@ -190,3 +190,32 @@ Unexpected property
 注意：
 
 - 如果浏览器中已经存过旧的非法 binding，本地 tldraw 数据可能仍会报错；需要在错误弹窗中点击 `Reset data` 清掉本地旧画布数据后再测。
+
+### 7.2 Codex Follow-up 3 — Stable node-node bindings
+
+用户复测发现：
+
+- 幽灵线很难点中目标端口，容易出现一下就消失。
+- 偶尔连上后，只要稍微移动节点，连线就消失。
+- Inspector 显示 `Port type mismatch: text cannot connect to image`。
+
+根因：
+
+- 旧的 `snapArrowBindings()` 会在每次画布事件后重算所有 arrow binding 的最近 anchor。
+- 对 `node_card` 来说，端口不是普通几何吸附点，而是有 `text/image` 类型语义的数据端口。
+- 移动节点后，旧吸附可能把已连接的 text 线从 text input 重吸附到更近的 image input，随后连接校验判定类型不匹配并删除连线。
+- 端口视觉点和真实点击区域过小，用户必须点得非常精确。
+
+已修复：
+
+- `arrowSnapLogic.ts` 对已有 `node_card` binding 不再执行重吸附，保持用户连接时选中的端口语义。
+- `NodePortDot` 命中区域从 14px 增加到 24px，并在连接模式下高亮兼容目标端口。
+- `CanvasConnectionLine` 在连接模式下允许点击目标端口附近完成连接，不再必须精确命中 port DOM。
+- `usePortConnectionCompletion` 的几何兜底只选择同类型 input 端口，并把命中半径放宽到 96px。
+
+待手测：
+
+1. Prompt text output → Image Gen text input，点击目标端口附近也应能完成。
+2. 移动 Prompt 或 Image Gen 后，连线必须保持在原 text 端口，不应跳到 image 端口。
+3. Image output → Image Gen image input 后，动态 image input 仍应新增一个空口。
+4. 连接中点击空白应取消；Esc 应取消。
