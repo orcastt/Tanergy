@@ -5,8 +5,10 @@ import type { SyntheticEvent } from 'react'
 import type { Editor } from 'tldraw'
 import { auditNodePayload } from '@/features/node-runtime/payloadAudit'
 import { getNodeDefinition, getResolvedNodePorts } from '@/features/node-runtime/registry'
+import { resolveNodeInputs } from '@/features/node-runtime/nodeDataFlow'
+import { useNodeEdgeStore } from '@/features/node-runtime/nodeEdges'
 import type { NodeCardShape } from '@/types/nodeCardShape'
-import type { JsonObject, NodeInspectorField } from '@/types/nodeRuntime'
+import type { JsonObject, NodeInspectorField, NodeRuntimeSummary } from '@/types/nodeRuntime'
 import { useEditorRevision } from '../canvas/useEditorRevision'
 
 type CanvasNodeInspectorProps = {
@@ -19,7 +21,9 @@ function stopCanvasEvent(event: SyntheticEvent) {
 }
 
 export function CanvasNodeInspector({ connectionMessage, editor }: CanvasNodeInspectorProps) {
-  useEditorRevision(editor)
+  useEditorRevision(editor, 'selection')
+  useEditorRevision(editor, 'node-content')
+  useNodeEdgeStore((state) => state.edges)
 
   if (!editor) return null
 
@@ -29,6 +33,8 @@ export function CanvasNodeInspector({ connectionMessage, editor }: CanvasNodeIns
   const definition = getNodeDefinition(selectedNode.props.nodeType)
   const data = asJsonObject(selectedNode.props.data)
   const ports = getResolvedNodePorts(selectedNode.props.nodeType, data)
+  const inputResolution = resolveNodeInputs(editor, selectedNode)
+  const runtimeSummary = asRuntimeSummary(selectedNode.props.runtimeSummary)
   const audit = auditNodePayload({
     data,
     nodeId: selectedNode.props.nodeId,
@@ -71,6 +77,18 @@ export function CanvasNodeInspector({ connectionMessage, editor }: CanvasNodeIns
       </section>
 
       <section className="node-inspector__section">
+        <p>Runtime inputs</p>
+        <div className="node-inspector__runtime">
+          <span>{inputResolution.textValues.length} text</span>
+          <span>{inputResolution.imageValues.length} image</span>
+          <span>{inputResolution.incomingCount} edge</span>
+        </div>
+        <div className={inputResolution.canRun ? 'node-inspector__summary' : 'node-inspector__summary is-warning'}>
+          {inputResolution.runHint}
+        </div>
+      </section>
+
+      <section className="node-inspector__section">
         <p>Parameters</p>
         <div className="node-inspector__fields">
           {definition.inspectorFields.map((field) => (
@@ -81,6 +99,18 @@ export function CanvasNodeInspector({ connectionMessage, editor }: CanvasNodeIns
               value={data[field.name]}
             />
           ))}
+        </div>
+      </section>
+
+      <section className="node-inspector__section">
+        <p>Runtime output</p>
+        <div className="node-inspector__summary">
+          <strong>{runtimeSummary.status}</strong>
+          <span>{runtimeSummary.error || runtimeSummary.costHint || 'No run yet.'}</span>
+          {runtimeSummary.resultAssetIds.length > 0 ? (
+            <span>{runtimeSummary.resultAssetIds.length} mock asset id(s)</span>
+          ) : null}
+          {runtimeSummary.textOutput ? <span>{String(runtimeSummary.textOutput)}</span> : null}
         </div>
       </section>
 
@@ -150,6 +180,21 @@ function InspectorField({
 
 function asJsonObject(value: JsonValue): JsonObject {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as unknown as JsonObject) : {}
+}
+
+function asRuntimeSummary(value: JsonValue): NodeRuntimeSummary {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return { costHint: null, error: null, lastRunId: null, resultAssetIds: [], status: 'idle' }
+  }
+  const summary = value as Partial<NodeRuntimeSummary>
+  return {
+    ...(value as NodeRuntimeSummary),
+    costHint: summary.costHint ?? null,
+    error: summary.error ?? null,
+    lastRunId: summary.lastRunId ?? null,
+    resultAssetIds: summary.resultAssetIds ?? [],
+    status: summary.status ?? 'idle',
+  }
 }
 
 function isNodeCard(shape: unknown): shape is NodeCardShape {

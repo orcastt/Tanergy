@@ -8,6 +8,7 @@ import {
   type ToolAction,
 } from './canvasToolbarConfig'
 import { CanvasSpikeInsertMenu } from './CanvasSpikeInsertMenu'
+import { useEditorInteractionState } from './useEditorInteractionState'
 import { useEditorRevision } from './useEditorRevision'
 
 type CanvasSpikeToolbarProps = {
@@ -45,7 +46,8 @@ export function CanvasSpikeToolbar({
   onCreateStep15Graph,
   onCreateStressNodes,
 }: CanvasSpikeToolbarProps) {
-  useEditorRevision(editor)
+  const interaction = useEditorInteractionState(editor)
+  useEditorRevision(editor, 'style-panel')
 
   const continuousShapeIds = useRef<TLShapeId[]>([])
   const isContinuousDrawing = useRef(false)
@@ -54,7 +56,7 @@ export function CanvasSpikeToolbar({
   const [selectedShapeTool, setSelectedShapeTool] = useState(shapeTools[0])
 
   const disabled = editor === null
-  const currentToolId = editor?.getCurrentToolId() ?? 'select'
+  const currentToolId = interaction.currentToolId
   const currentGeo = editor?.getStyleForNextShape(GeoShapeGeoStyle)
   const isToolLocked = editor?.getInstanceState().isToolLocked ?? false
 

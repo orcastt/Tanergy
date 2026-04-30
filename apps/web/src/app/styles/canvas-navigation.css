@@ -14,6 +14,67 @@
   backdrop-filter: blur(18px);
 }
 
+.canvas-navigator--collapsed {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  place-items: center;
+  border-radius: 13px;
+}
+
+.canvas-navigator__collapse-btn,
+.canvas-navigator__expand-btn {
+  display: grid;
+  place-items: center;
+  border: 0;
+  color: #242424;
+  cursor: pointer;
+}
+
+.canvas-navigator__collapse-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.1);
+}
+
+.canvas-navigator__collapse-btn:hover,
+.canvas-navigator__expand-btn:hover {
+  background: #e9e9e9;
+}
+
+.canvas-navigator__collapse-btn span {
+  width: 10px;
+  height: 2px;
+  border-radius: 999px;
+  background: #64748b;
+}
+
+.canvas-navigator__expand-btn {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: transparent;
+}
+
+.canvas-navigator__mini-icon {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  gap: 3px;
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.canvas-navigator__mini-icon span {
+  border-radius: 3px;
+  background: #64748b;
+}
+
 .canvas-navigator__map {
   display: block;
   width: 100%;

@@ -25,8 +25,6 @@ export const useNodeEdgeStore = create<NodeEdgeState>((set) => ({
     set((state) => ({
       edges: [
         ...state.edges.filter((item) => !(
-          item.sourceShapeId === edge.sourceShapeId &&
-          item.sourcePortId === edge.sourcePortId &&
           item.targetShapeId === edge.targetShapeId &&
           item.targetPortId === edge.targetPortId
         )),

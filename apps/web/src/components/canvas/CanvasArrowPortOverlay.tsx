@@ -11,12 +11,15 @@ type CanvasArrowPortOverlayProps = {
 
 export function CanvasArrowPortOverlay({ editor }: CanvasArrowPortOverlayProps) {
   const [, bumpPointerRevision] = useReducer((revision: number) => revision + 1, 0)
-  useEditorRevision(editor)
+  useEditorRevision(editor, 'arrow-geometry')
 
   useEffect(() => {
     if (!editor) return
 
-    const updateOverlay = () => bumpPointerRevision()
+    const updateOverlay = () => {
+      if (!shouldRefreshArrowOverlay(editor)) return
+      bumpPointerRevision()
+    }
     editor.on('event', updateOverlay)
     editor.on('resize', updateOverlay)
 
@@ -68,5 +71,14 @@ export function CanvasArrowPortOverlay({ editor }: CanvasArrowPortOverlayProps) 
         )
       })}
     </div>
+  )
+}
+
+function shouldRefreshArrowOverlay(editor: Editor) {
+  return (
+    editor.getCurrentToolId() === 'arrow' ||
+    editor.isIn('arrow.pointing') ||
+    editor.isIn('select.dragging_handle') ||
+    editor.getSelectedShapes().some((shape) => shape.type === 'arrow')
   )
 }

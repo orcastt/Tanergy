@@ -1,8 +1,8 @@
 # TANGENT Web AI Image Canvas — Architecture Decision Document
 
-**版本**: v0.5
-**日期**: 2026-04-29
-**状态**: Web 重启方向正式架构草案，tldraw-first，P0 节点收敛为 Prompt / Image Gen / Image Gen 4 / Analysis / Image，新增动态 image 输入端口、类型连线颜色和轻量节点数据原则
+**版本**: v0.6
+**日期**: 2026-04-30
+**状态**: Web 重启方向正式架构草案，补齐 Harness 覆盖映射、文档入口、执行标准和 P0/P0.5/P1 架构边界
 **对应 PRD**: `PRD.md`
 
 ---
@@ -12,6 +12,7 @@
 本文件回答“怎么做、用什么做、边界在哪里、哪些安全底线不能破”。
 用户可见需求见 `PRD.md`。
 当前状态见 `project_state.md`。
+跨功能执行规范见 `HARNESS.md`。
 每次大改架构、换栈、换部署方式、改数据模型，都必须同步更新本文件。
 
 ---
@@ -376,6 +377,7 @@ TanvasAgent/
 - text 端口和连线使用黄色；image 端口和连线使用绿色。
 - Image Gen / Image Gen 4 的 image 输入端口是动态端口：每个已连接 image 后保留一个新的空 image 输入端口，P0 最大 6 个。
 - 节点连接规则。
+- 连接基数：output 端口允许 fan-out 到多个下游 input；input 端口默认只接一个上游，动态 image input 通过增加新端口承载多图。
 - 节点数据连线：runtime edge store 保存 `sourceNode/sourcePort/targetNode/targetPort/dataType`，由 SVG overlay 渲染曲线。
 - 非法连线即时断开和提示。
 - 鼠标靠近 node-node 连线时，中点显示 `−` 断开按钮。
@@ -632,7 +634,10 @@ P0 推荐至少包含：
       "ports": [
         { "id": "text_in", "direction": "in", "dataType": "text" },
         { "id": "image_in_1", "direction": "in", "dataType": "image" },
-        { "id": "image_out", "direction": "out", "dataType": "image" }
+        { "id": "image_out_1", "direction": "out", "dataType": "image" },
+        { "id": "image_out_2", "direction": "out", "dataType": "image" },
+        { "id": "image_out_3", "direction": "out", "dataType": "image" },
+        { "id": "image_out_4", "direction": "out", "dataType": "image" }
       ],
       "data": {
         "selected_model_id": "gpt-image-2",
@@ -1014,6 +1019,7 @@ POST /api/v1/boards/{board_id}/merge-captures
 - 节点卡片内部的输入框、下拉、按钮、滚轮必须阻止事件穿透，避免误触 pan/zoom/drag。
 - React 节点按组合模式拆成 `NodeContainer`、`NodeHeader`、`NodeBody`、`NodeFooter` 和可插拔功能组件，避免单个超级节点文件膨胀。
 - 画布库的视窗剔除只能降低不可见节点成本，不能替代图片压缩、懒加载、缩略图、生产构建压力测试和 document payload 控制。
+- 画布设置使用轻量 Zustand store 管理本地偏好；Snap Alignment 优先使用 tldraw 原生 `isSnapMode` 和 `snapThreshold`，Grid Unit 写入 document settings，Zoom Sensitivity 写入 camera options。
 
 ### 9.2 画布精度验收
 
@@ -1026,6 +1032,7 @@ POST /api/v1/boards/{board_id}/merge-captures
 | 外部图片粘贴 | 连续粘贴 5-10 张大图时有明确限制/提示，不导致页面长时间卡死 |
 | 工具栏行为 | 顶部图标工具栏保留完整基础白板入口；形状和插入类按类别收纳；箭头和直线使用独立图标，箭头入口只画箭头；左键单次绘制后回 Select，右键连续绘制，Esc 退出且不暴露需要手动解锁的状态 |
 | 导航地图 | 左下角导航地图显示内容缩略、当前 viewport、缩放百分比、加号/减号缩放；点击地图位置可 center 到对应画布区域 |
+| 画布设置 | Settings 面板可开关网格、调整网格样式/单位/颜色、开启对齐吸附、设置吸附距离、调整缩放灵敏度，并可保存刷新后恢复 |
 | 箭头吸附 | 矩形、圆形、Frame、图片、卡片吸附到边中点；三角形、菱形吸附到角点；箭头工具靠近对象时对象轮廓和候选捕捉点预高亮；source / target 捕捉点可见高亮；靠近形状边缘或端口时能灵敏吸附，不默认只吸附形状中心 |
 | 属性面板 | 左侧属性面板只在有选中对象且没有拖动画布时出现，跟随最后选中/最后创建图形，可用清晰图标控件编辑样式、线条风格、箭头类型、端点、透明度、对齐、图层和操作 |
 | 复杂节点内部交互 | 下拉、输入、按钮、滚轮不触发画布操作 |
@@ -1155,6 +1162,24 @@ pytest backend/tests
 - 检查触碰源码文件行数，接近或超过 300 行时先拆分；已知大文件必须在对应 dev-plan 标记拆分任务。
 - 更新 `project_state.md`
 
+### 11.4 扩展容量路线
+
+P0 先按 Alpha 小流量实现，不能为了 100K 用户提前微服务化；但每个阶段必须知道先爆哪里、怎么处理。
+
+| 阶段 | 规模假设 | 主要瓶颈 | 处理策略 |
+|------|----------|----------|----------|
+| Alpha | 20-50 CCU，数百注册用户 | AI 成本、图片粘贴卡顿、Board 保存频率 | 用户/模型限流，低成本默认参数，Asset 引用，debounced save |
+| 1K 用户 | 50-150 CCU | API 并发、PostgreSQL 索引、对象存储下行 | Managed Postgres，`board_id/user_id/status` 索引，R2/CDN，AI Run 异步队列预留 |
+| 10K 用户 | 300-1,000 CCU | AI worker、图片缩略图、日志表增长、成本风控 | API 与 AI worker 分离，队列/Redis，缩略图懒加载，ApiCallLog 分区或归档，预算熔断 |
+| 100K 用户 | 2K+ CCU，P0.5 协作可能常态化 | Realtime 长连接、跨区延迟、日志/Asset 生命周期、客服与滥用 | 独立协作服务集群，区域化部署，对象生命周期策略，Admin 风控面板，SLO/告警/事故手册 |
+
+扩展原则：
+
+- 扩展 AI 执行能力前，先扩展成本控制、限流、日志和熔断。
+- 扩展协作前，先验证协同文档、Presence、服务端权威状态边界。
+- 扩展存储前，先确保图片只以 Asset 引用进入 document state。
+- 扩展 Admin 前，先记录准确的 `AiRun` / `ApiCallLog` / `Asset` 数据。
+
 ---
 
 ## 12. 开发切片原则
@@ -1210,13 +1235,16 @@ pytest backend/tests
 
 ---
 
-## 14. 三份全局文档
+## 14. 全局文档入口
 
 本项目当前使用：
 
 - `PRD.md`：新 Web AI 图像画布 PRD。
 - `ARCH.md`：新 Web AI 图像画布架构。
 - `project_state.md`：当前状态和下一步。
+- `HARNESS.md`：跨功能开发索引、代码规范、验收标准和接班规则。
+- `README.md`：新接手开发者快速入口。
+- `dev-plans/p0-development-harness-roadmap-2026-04-30.md`：P0 后续开发 Harness 路线图。
 
 旧路线已归档：
 
@@ -1226,5 +1254,26 @@ pytest backend/tests
 每次新对话建议提示：
 
 ```text
-先读项目根目录的 project_state.md、PRD.md 和 ARCH.md，了解当前状态，然后我们来做「具体任务」。
+先读项目根目录的 project_state.md、PRD.md、ARCH.md 和 HARNESS.md，了解当前状态，然后我们来做「具体任务」。
 ```
+
+---
+
+## 15. 架构覆盖映射
+
+用户提供的 12 类应用开发范例在本项目中的落点如下。P0 只实现当前阶段必要部分，其余保持文档边界，避免范围回流。
+
+| 范例域 | 当前覆盖 | 后续补充 |
+|--------|----------|----------|
+| 应用想法验证 / PRD | `PRD.md` 1-2 章、用户故事、MoSCoW、验收清单 | sourced market research，竞品评分/收入必须联网查证 |
+| 全栈架构蓝图 | `ARCH.md` 2-8 章，Next.js / tldraw / Node Runtime / FastAPI / PostgreSQL / Assets | 真实后端迁移和部署配置 |
+| UI/UX 设计系统 | `reference/design-system.md`、`reference/theme.ts`、Canvas 设置和工具栏实现 | 右侧 AI Chat 完整设计、移动响应式 |
+| 认证与用户管理 | `ARCH.md` 1.3 / 8.1 / 10.2 | OAuth、密码重置、账户删除 |
+| 支付与订阅 | `ARCH.md` 1.4 | Stripe Checkout / Webhook / Credits 账本 |
+| 实时功能 | `ARCH.md` 7.1.1 | P0.5 Presence、软锁、协作文档层 |
+| 数据库与 API | `ARCH.md` 5 / 8 | SQL migration、API contract tests |
+| 发布策略 | 成本预测和 README | Alpha 发布手册、ASO/社媒模板 |
+| 测试与 QA | `PRD.md` 9、`ARCH.md` 11.3、`HARNESS.md` QA | Playwright E2E、API tests、性能基准 |
+| 管理仪表板 / 分析 | P0 只保留 API logs 和成本记录 | 用户管理、模型线路管理、漏斗和收入 dashboard |
+| AI 功能集成 | Model Registry / AI Runs / Planner 架构 | 真实 Provider 参数、Prompt 模板、缓存和熔断 |
+| 部署 / 监控 / 恢复 | `ARCH.md` 11 | staging/prod 配置、健康检查、告警和事故手册 |

@@ -67,15 +67,7 @@ function completeConnection(editor: Editor, detail: CompleteDetail, onEvent: (ev
     return
   }
 
-  const existingEdges = useNodeEdgeStore.getState().edges
-  if (existingEdges.some((edge) => (
-    edge.targetShapeId === target.shape.id &&
-    edge.targetPortId === target.port.id
-  ))) {
-    onEvent({ text: `Input already connected: ${target.port.label}`, tone: 'error' })
-    return
-  }
-
+  const wasReplaced = isInputPortOccupied(target.shape.id, target.port.id)
   useNodeEdgeStore.getState().addEdge({
     dataType: result.dataType,
     sourcePortId: sourcePort.id,
@@ -84,7 +76,8 @@ function completeConnection(editor: Editor, detail: CompleteDetail, onEvent: (ev
     targetShapeId: target.shape.id,
   })
   syncNodeEdgeInputCounts(editor)
-  onEvent({ text: result.reason, tone: 'success' })
+  const message = wasReplaced ? `Replaced: ${target.port.label}` : result.reason
+  onEvent({ text: message, tone: 'success' })
 }
 
 function getConnectionTarget(editor: Editor, detail: CompleteDetail, from: ConnectionFrom): PortTarget | null {
@@ -139,7 +132,8 @@ function findNearestInputPort(
 
     const data = asJsonObject(shape.props.data)
     const ports = getResolvedNodePorts(shape.props.nodeType, data).filter((port) => (
-      port.direction === 'in' && port.dataType === options.sourceType
+      port.direction === 'in' &&
+      port.dataType === options.sourceType
     ))
     for (const port of ports) {
       const pagePoint = getPortPagePoint(editor, shape, port)
@@ -156,6 +150,13 @@ function findNearestInputPort(
   }
 
   return bestTarget
+}
+
+function isInputPortOccupied(shapeId: string, portId: string) {
+  return useNodeEdgeStore.getState().edges.some((edge) => (
+    edge.targetShapeId === shapeId &&
+    edge.targetPortId === portId
+  ))
 }
 
 function getPortPagePoint(editor: Editor, shape: NodeCardShape, port: ResolvedNodePort) {

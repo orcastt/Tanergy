@@ -1,13 +1,20 @@
 'use client'
 
 import type { JsonValue } from '@tldraw/utils'
+import type { Editor } from 'tldraw'
 import type { NodeCardShape } from '@/types/nodeCardShape'
 import type { JsonObject, NodeRuntimeSummary } from '@/types/nodeRuntime'
 import { getNodeDefinition, getResolvedNodePorts } from '@/features/node-runtime/registry'
+import { createCanvasImageFromNode } from '@/features/node-runtime/imageNodeAssets'
 import { auditNodePayload } from '@/features/node-runtime/payloadAudit'
+import { resolveNodeInputs } from '@/features/node-runtime/nodeDataFlow'
+import { useNodeEdgeStore } from '@/features/node-runtime/nodeEdges'
+import { useEditorRevision } from '@/components/canvas/useEditorRevision'
 import { NodePortDot } from './NodePortDot'
+import { AnalysisPreview, ImageGeneratePreview, ImagePreview, PromptPreview } from './NodeCardPreviews'
 
 type NodeCardContentProps = {
+  editor: Editor
   getEditorPagePoint: (localX: number, localY: number) => { x: number; y: number } | null
   onDataChange: (data: JsonObject) => void
   onRunMock: () => void
@@ -15,14 +22,27 @@ type NodeCardContentProps = {
 }
 
 function stopNodeControlEvent(event: React.SyntheticEvent) {
+  event.preventDefault()
   event.stopPropagation()
 }
 
-export function NodeCardContent({ getEditorPagePoint, onDataChange, onRunMock, shape }: NodeCardContentProps) {
+function clearBrowserSelection() {
+  window.getSelection()?.removeAllRanges()
+}
+
+export function NodeCardContent({ editor, getEditorPagePoint, onDataChange, onRunMock, shape }: NodeCardContentProps) {
+  useEditorRevision(editor, 'node-content')
+  useNodeEdgeStore((state) => state.edges)
   const definition = getNodeDefinition(shape.props.nodeType)
   const data = asJsonObject(shape.props.data)
   const runtimeSummary = asRuntimeSummary(shape.props.runtimeSummary)
+  const inputResolution = resolveNodeInputs(editor, shape)
   const ports = getResolvedNodePorts(shape.props.nodeType, data)
+  const imageAssetId = shape.props.nodeType === 'image'
+    ? (typeof data.assetId === 'string' && data.assetId
+      ? data.assetId
+      : inputResolution.imageValues[0]?.assetId ?? null)
+    : null
   const payloadAudit = auditNodePayload({
     data,
     nodeId: shape.props.nodeId,
@@ -45,34 +65,82 @@ export function NodeCardContent({ getEditorPagePoint, onDataChange, onRunMock, s
 
       <header className="node-card__header">
         <h2>{definition.displayName}</h2>
-        {(shape.props.nodeType === 'image_gen' || shape.props.nodeType === 'image_gen_4' || shape.props.nodeType === 'analysis') ? (
-          <button
-            className={`node-card__run-btn ${runtimeSummary.status === 'running' ? 'node-card__run-btn--running' : ''}`}
-            onPointerDown={stopNodeControlEvent}
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onRunMock() }}
-          >
-            {runtimeSummary.status === 'running' ? '■ Stop' : '▶ Run'}
-          </button>
-        ) : null}
+        <div className="node-card__header-actions">
+          {shape.props.nodeType === 'image' ? (
+            <button
+              className="node-card__action-btn"
+              disabled={!imageAssetId}
+              onMouseDown={stopNodeControlEvent}
+              onPointerDown={stopNodeControlEvent}
+              type="button"
+              onClick={(event) => {
+                clearBrowserSelection()
+                event.stopPropagation()
+                if (!imageAssetId) return
+                createCanvasImageFromNode(editor, {
+                  assetId: imageAssetId,
+                  imageHeight: typeof data.imageHeight === 'number' ? data.imageHeight : undefined,
+                  imageWidth: typeof data.imageWidth === 'number' ? data.imageWidth : undefined,
+                  x: shape.x + shape.props.w + 40,
+                  y: shape.y,
+                })
+                clearBrowserSelection()
+              }}
+              title={imageAssetId ? 'Convert to canvas image' : 'Import or connect an image first.'}
+            >
+              To Canvas
+            </button>
+          ) : null}
+          {(shape.props.nodeType === 'image_gen' || shape.props.nodeType === 'image_gen_4' || shape.props.nodeType === 'analysis') ? (
+            <button
+              className={`node-card__run-btn ${runtimeSummary.status === 'running' ? 'node-card__run-btn--running' : ''}`}
+              disabled={!inputResolution.canRun}
+              onMouseDown={stopNodeControlEvent}
+              onPointerDown={stopNodeControlEvent}
+              type="button"
+              onClick={(e) => {
+                clearBrowserSelection()
+                e.stopPropagation()
+                onRunMock()
+                clearBrowserSelection()
+              }}
+              title={inputResolution.runHint}
+            >
+              {runtimeSummary.status === 'running' ? '■ Stop' : '▶ Run'}
+            </button>
+          ) : null}
+        </div>
       </header>
 
       <div className="node-card__body">
         {shape.props.nodeType === 'prompt' ? (
-          <PromptPreview data={data} onDataChange={onDataChange} />
+          <PromptPreview data={data} inputResolution={inputResolution} onDataChange={onDataChange} />
         ) : null}
         {shape.props.nodeType === 'image_gen' || shape.props.nodeType === 'image_gen_4' ? (
           <ImageGeneratePreview
             data={data}
             imageCount={shape.props.nodeType === 'image_gen_4' ? 4 : 1}
+            inputResolution={inputResolution}
             onDataChange={onDataChange}
             runtimeSummary={runtimeSummary}
           />
         ) : null}
         {shape.props.nodeType === 'analysis' ? (
-          <AnalysisPreview data={data} onDataChange={onDataChange} runtimeSummary={runtimeSummary} />
+          <AnalysisPreview
+            data={data}
+            inputResolution={inputResolution}
+            onDataChange={onDataChange}
+            runtimeSummary={runtimeSummary}
+          />
         ) : null}
-        {shape.props.nodeType === 'image' ? <ImagePreview data={data} /> : null}
+        {shape.props.nodeType === 'image' ? (
+          <ImagePreview
+            data={data}
+            editor={editor}
+            inputResolution={inputResolution}
+            shape={shape}
+          />
+        ) : null}
       </div>
 
       <footer className="node-card__footer">
@@ -87,117 +155,6 @@ export function NodeCardContent({ getEditorPagePoint, onDataChange, onRunMock, s
   )
 }
 
-function PromptPreview({
-  data,
-  onDataChange,
-}: {
-  data: JsonObject
-  onDataChange: (data: JsonObject) => void
-}) {
-  return (
-    <label className="node-card__prompt-field" onPointerDown={stopNodeControlEvent} onWheel={stopNodeControlEvent}>
-      <span>Prompt</span>
-      <textarea
-        value={String(data.prompt ?? '')}
-        onChange={(event) => onDataChange({ ...data, prompt: event.currentTarget.value })}
-      />
-    </label>
-  )
-}
-
-function ImageGeneratePreview({
-  data,
-  imageCount,
-  onDataChange,
-  runtimeSummary,
-}: {
-  data: JsonObject
-  imageCount: 1 | 4
-  onDataChange: (data: JsonObject) => void
-  runtimeSummary: NodeRuntimeSummary
-}) {
-  const modelId = String(data.modelId ?? 'gpt-image-2')
-  const aspectRatio = String(data.aspectRatio ?? 'auto')
-  const resolution = String(data.resolution ?? '1K')
-  const results = runtimeSummary.resultAssetIds ?? []
-
-  return (
-    <>
-      <div className="node-card__field-grid" onPointerDown={stopNodeControlEvent} onWheel={stopNodeControlEvent}>
-        <label>
-          <span>Model</span>
-          <select value={modelId} onChange={(event) => onDataChange({ ...data, modelId: event.currentTarget.value })}>
-            <option value="gpt-image-2">GPT Image 2</option>
-            <option value="gemini-3.1-flash-image-preview">Gemini 3.1 Flash</option>
-          </select>
-        </label>
-        <label>
-          <span>Aspect</span>
-          <select value={aspectRatio} onChange={(event) => onDataChange({ ...data, aspectRatio: event.currentTarget.value })}>
-            <option value="auto">Auto</option>
-            <option value="1:1">1:1</option>
-            <option value="4:3">4:3</option>
-            <option value="16:9">16:9</option>
-            <option value="3:2">3:2</option>
-          </select>
-        </label>
-        <label>
-          <span>Resolution</span>
-          <select value={resolution} onChange={(event) => onDataChange({ ...data, resolution: event.currentTarget.value })}>
-            <option value="0.5K">0.5K</option>
-            <option value="1K">1K</option>
-            <option value="2K">2K</option>
-            <option value="4K">4K</option>
-          </select>
-        </label>
-      </div>
-
-      <div className="node-card__result-grid">
-        {Array.from({ length: imageCount }).map((_, index) => (
-          <div className="node-card__mock-image" data-filled={results[index] ? 'true' : undefined} key={index}>
-            {results[index] ? `asset_${index + 1}` : index + 1}
-          </div>
-        ))}
-      </div>
-    </>
-  )
-}
-
-function AnalysisPreview({
-  data,
-  onDataChange,
-  runtimeSummary,
-}: {
-  data: JsonObject
-  onDataChange: (data: JsonObject) => void
-  runtimeSummary: NodeRuntimeSummary
-}) {
-  return (
-    <div className="node-card__analysis" onPointerDown={stopNodeControlEvent} onWheel={stopNodeControlEvent}>
-      <div className="node-card__thumb" data-type="image">img</div>
-      <label className="node-card__prompt-field node-card__prompt-field--compact">
-        <textarea
-          value={String(data.analysisPrompt ?? '')}
-          onChange={(event) => onDataChange({ ...data, analysisPrompt: event.currentTarget.value })}
-        />
-      </label>
-      <div className="node-card__analysis-output">
-        {runtimeSummary.status === 'succeeded' ? 'Analysis text output will become a text connection.' : ''}
-      </div>
-    </div>
-  )
-}
-
-function ImagePreview({ data }: { data: JsonObject }) {
-  return (
-    <div className="node-card__image-preview">
-      <div className="node-card__image-frame">
-        <span>{String(data.title ?? 'Image')}</span>
-      </div>
-    </div>
-  )
-}
-
 function asJsonObject(value: JsonValue): JsonObject {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as unknown as JsonObject) : {}
 }
@@ -208,6 +165,7 @@ function asRuntimeSummary(value: JsonValue): NodeRuntimeSummary {
   }
   const summary = value as Partial<NodeRuntimeSummary>
   return {
+    ...(value as NodeRuntimeSummary),
     costHint: summary.costHint ?? null,
     error: summary.error ?? null,
     lastRunId: summary.lastRunId ?? null,

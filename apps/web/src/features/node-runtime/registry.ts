@@ -100,7 +100,10 @@ export const nodeDefinitions: Record<NodeType, NodeDefinition> = {
     ports: [
       { dataType: 'text', direction: 'in', id: 'text_in', label: 'Text in', required: true },
       { dataType: 'image', direction: 'in', id: 'image_in', label: 'Image in', multiple: true },
-      { dataType: 'image', direction: 'out', id: 'image_out', label: 'Images out' },
+      { dataType: 'image', direction: 'out', id: 'image_out_1', label: 'Asset 1 out' },
+      { dataType: 'image', direction: 'out', id: 'image_out_2', label: 'Asset 2 out' },
+      { dataType: 'image', direction: 'out', id: 'image_out_3', label: 'Asset 3 out' },
+      { dataType: 'image', direction: 'out', id: 'image_out_4', label: 'Asset 4 out' },
     ],
     type: 'image_gen_4',
     version: 1,
@@ -144,7 +147,7 @@ export function getResolvedNodePorts(type: NodeType, data: JsonObject): Resolved
   if (type === 'image_gen' || type === 'image_gen_4') {
     const imageInputDefinition = definition.ports.find((port) => port.id === 'image_in')
     const textInputDefinition = definition.ports.find((port) => port.id === 'text_in')
-    const imageOutputDefinition = definition.ports.find((port) => port.id === 'image_out')
+    const imageOutputDefinitions = definition.ports.filter((port) => port.direction === 'out')
     const imageInputCount = clampPortCount(Number(data.imageInputCount ?? 1))
 
     return [
@@ -158,7 +161,10 @@ export function getResolvedNodePorts(type: NodeType, data: JsonObject): Resolved
             anchorY: getImageInputAnchorY(index),
           }))
         : []),
-      ...(imageOutputDefinition ? [{ ...imageOutputDefinition, anchorY: 0.5 }] : []),
+      ...imageOutputDefinitions.map((port, index) => ({
+        ...port,
+        anchorY: getImageOutputAnchorY(type, index),
+      })),
     ]
   }
 
@@ -186,6 +192,11 @@ export function isNodeType(value: string): value is NodeType {
 
 function getImageInputAnchorY(index: number) {
   return 0.42 + index * 0.09
+}
+
+function getImageOutputAnchorY(type: NodeType, index: number) {
+  if (type === 'image_gen_4') return 0.32 + index * 0.12
+  return 0.5
 }
 
 function clampPortCount(value: number) {

@@ -84,6 +84,41 @@
   color: #166534;
 }
 
+.node-inspector__runtime {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.node-inspector__runtime span {
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.node-inspector__summary {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.node-inspector__summary span {
+  overflow-wrap: anywhere;
+}
+
+.node-inspector__summary.is-warning {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
 .node-inspector__fields {
   display: grid;
   gap: 9px;

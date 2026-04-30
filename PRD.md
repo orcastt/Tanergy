@@ -1,8 +1,8 @@
 # TANGENT Web AI Image Canvas — PRD
 
-**版本**: v0.5
-**日期**: 2026-04-29
-**状态**: Web 重启方向正式 PRD 草案，tldraw-first，左侧 Inspector / 属性面板，右侧保留 AI Chat，P0 节点收敛为 Prompt / Image Gen / Image Gen 4 / Analysis / Image
+**版本**: v0.6
+**日期**: 2026-04-30
+**状态**: Web 重启方向正式 PRD 草案，补齐产品验证假设、MoSCoW、用户故事、Alpha 指标和开发 Harness 边界
 **当前优先级**: P0 最小图像链路；先验证五类轻量节点、动态端口、类型连线、自动布局和 Merge Capture，再进入真实 AI 调用
 **一句话定位**: TANGENT 是一个极简 Web AI 图像画布，主体验像 Miro/FigJam 一样自由涂画和摆放内容，同时把 AI 能力封装成可连接的节点卡片；用户可以手动连接 Prompt、生图、图片承接和 Analysis 节点，也可以在右侧 AI 对话栏里用自然语言让系统自动创建节点、连线和切换生图模型。
 
@@ -14,6 +14,7 @@
 工程实现细节见 `ARCH.md`。
 当前项目状态见 `project_state.md`。
 切片计划见 `dev-plans/web-collaborative-canvas-pivot.md`。
+跨功能执行规范见 `HARNESS.md`。
 
 每次开发前先读：
 
@@ -100,6 +101,37 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 10. **节点不是数据库**：节点可以像一个微型 React App，但只保存 id、短参数和运行摘要；图片、长文本、Provider 响应和日志必须外置。
 11. **先证明再扩展**：Step 1.5 必须先验证复杂节点、端口连线、自动布局和合并导出能否在 tldraw-first 架构里稳定成立。
 
+### 1.5 产品验证假设
+
+问题陈述：
+
+- AI 图像创作流程被割裂在 prompt、生图、参考图、手工标注、局部修改、结果管理之间，用户需要在多个工具和文件夹之间来回复制。
+- 复杂节点工具能做到强大，但学习成本高；设计白板工具能做到直观，但 AI 图像链路弱。
+- TANGENT 的机会是把“白板自由度”和“最小 AI 图像链路”合并，让结果天然可继续比较、连接、标注和导出。
+
+当前证据：
+
+- 用户已多轮反馈工具栏、端口连线、图像粘贴、设置吸附等细节，说明白板交互质量是采用前提。
+- S1.5 手测暴露 tldraw arrow 不适合做节点数据线，已转向 Node Runtime SVG edge，说明“节点数据线”和“白板箭头”必须产品上分离。
+- 市场竞品评分、收入估计、评论证据属于外部动态信息；进入正式商业 PRD 前必须单独做 sourced market research，禁止编造数字。
+
+核心价值主张：
+
+> 用一个干净白板，把 prompt、参考图、四图生成、图片分析、手工标注和合并导出串成可视化最短路径。
+
+### 1.6 Alpha 成功指标
+
+P0 Alpha 先验证“能不能用”和“用户是否理解”，不先追求收入最大化。
+
+| 指标 | Alpha 目标 | 说明 |
+|------|------------|------|
+| Activation | 60% 内测用户创建第一个 Board | 登录后能进入核心场景 |
+| First Value | 50% 内测用户跑通 Prompt → Image Gen / Image Gen 4 | 验证最小链路 |
+| Canvas Retention | 30% 内测用户次日重新打开 Board | 验证画布保存/继续编辑价值 |
+| AI Run Success | 90% P0 AI Run 返回结构化成功/失败 | 不要求全成功，但不能卡死 |
+| Cost Guard | Alpha AI 成本在预算熔断内 | 默认低成本参数 + 限流 |
+| UX Blockers | 每轮手测阻塞级问题 ≤ 3 个 | 阻塞定义：无法继续链路、卡死、坐标/连线严重错 |
+
 ---
 
 ## 2. 功能列表
@@ -142,6 +174,38 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 | 团队 Workspace | 多成员权限、团队计费 | P1 |
 | 移动端 | iOS / Android | P2 |
 | 桌面客户端 | Tauri app | 冻结，非本版本 |
+
+### 2.3 MoSCoW 优先级
+
+| Must | Should | Could | Won't in V1 |
+|------|--------|-------|-------------|
+| 登录 / Board / Canvas | Settings 面板和吸附偏好 | 个人素材库轻入口 | 桌面客户端 |
+| Prompt / Image Gen / Image Gen 4 / Analysis / Image | AI Chat 自动搭链 | 分享只读链接 | 公众号 Html Editor |
+| Node Runtime edge + 类型校验 | Analysis 结果接回 Prompt | 版本历史 | Writer / Knowledge Graph |
+| Asset 持久化，禁止 Base64 入文档 | Canvas Markup + Merge Capture | 简单 Admin 成本视图 | 复杂 Admin Analytics |
+| 后端 AI Proxy 和 API Logs | Model Registry 能力 schema | Stripe 测试购买 | 完整模型市场 |
+| 安全限流和成本熔断 | 图片压缩/缩略图/懒加载 | P0.5 Presence | 多人实时协作 P0 |
+
+### 2.4 用户故事
+
+1. 作为独立创作者，我想在画布中输入 prompt 并生成 4 张图，这样我能快速比较方向。
+2. 作为独立创作者，我想把满意结果变成 Image Node，这样我能继续编辑和复用。
+3. 作为设计师，我想把参考图连到 Image Gen，这样我能基于现有视觉做变体。
+4. 作为设计师，我想在生成图上画圈和标注，这样我能表达修改意见。
+5. 作为设计师，我想把图片和笔迹合并成新图，这样我能保存修改稿。
+6. 作为内容团队成员，我想用 Analysis 反推提示词，这样我能从好图得到可复用描述。
+7. 作为新用户，我想通过右侧 AI Chat 创建节点链路，这样我不用先学习节点系统。
+8. 作为新用户，我想看到非法连线被明确拒绝，这样我能理解 text/image 数据类型。
+9. 作为重度画布用户，我想调整吸附距离和网格大小，这样我能更快排版。
+10. 作为创作者，我想一个 prompt 同时连接多个生成节点，这样我能并行比较模型或参数。
+11. 作为创作者，我想 Image Gen 4 的 4 个结果各有输出端口，这样我能单独处理每张图。
+12. 作为用户，我想刷新后恢复 Board，这样我不会丢失创作过程。
+13. 作为用户，我想生成失败时看到可重试错误，这样我知道是模型、余额还是网络问题。
+14. 作为平台维护者，我想记录 AI Run 的模型、耗时、费用和状态，这样我能控制成本。
+15. 作为平台维护者，我想所有图片先变成 Asset 引用，这样协作和保存不会因为大文件卡死。
+16. 作为未来团队用户，我想看到他人光标和选区，这样我们能协作讨论同一个 Board。
+17. 作为管理员，我想能禁用昂贵或异常模型，这样 Alpha 成本不会失控。
+18. 作为开发者，我想每个切片有明确验收清单，这样接班 AI 不会把范围做散。
 
 ---
 
@@ -433,6 +497,7 @@ AI Chat 失败：
 - 工具入口不分散到默认左上/右上/底部多套 UI，优先使用统一、克制、接近 Excalidraw 的顶部图标工具栏。
 - 顶部工具栏按类别收纳：形状按钮默认使用上次选择的形状，点击弹出矩形、菱形、圆、三角、云等选择；箭头和直线必须是独立图标，箭头入口只负责画箭头；插入类入口收纳便签、Frame、图片、链接卡片和 AI 卡片。
 - 顶部工具栏必须保留基础白板能力：选择、平移、形状、箭头、线条、画笔、文本、橡皮、便签、Frame、图片、链接卡片和 AI 卡片入口。
+- 画布 Settings 面板可调整 Grid Rendering、Grid Style、Grid Unit、Grid Color、Snap Alignment、Snap Distance、Zoom Sensitivity、Edge Color 和 AI Chat Style；Snap Alignment 开启后对象拖拽应出现对齐吸附。
 - 左下角保留导航地图：显示当前画布缩略范围、viewport 框、缩放百分比、Zoom In / Zoom Out 控制，点击地图位置可跳转到对应画布区域。
 - 箭头连接吸附接近 Excalidraw：矩形、圆形、Frame、图片和卡片优先吸附到边的中点；三角形、菱形优先吸附到角点；箭头工具靠近对象时，对象轮廓和候选捕捉点要预高亮；拖拽时 source / target 的捕捉点要可见高亮；不能默认只吸到形状中心。
 - 左侧属性面板只在选中对象且没有拖动画布时出现，用于最后选中/最后创建图形的属性编辑，包含描边、填充、宽度、线型、线条风格、箭头类型、端点、字体、透明度、对齐、图层和基础操作；样式选项优先使用清晰图标，不用大段文字按钮。
@@ -465,6 +530,7 @@ AI Chat 失败：
 - 可添加到当前视野中央。
 - Prompt 输入可编辑、自动保存到画布状态。
 - 左侧有 text 输入端口，右侧有 text 输出端口。
+- text 输出端口允许 fan-out，可同时连接多个 Image Gen / Image Gen 4 / Prompt text 输入。
 - 空 prompt 时输出端仍存在，但连接到 Image Gen / Image Gen 4 后 Run 按钮不可用或显示提示。
 - 文本最长 4,000 字符，超过显示计数和错误。
 - 支持复制、删除、拖动和四角缩放。
@@ -476,6 +542,7 @@ AI Chat 失败：
 - 连接 Prompt Node 后读取 prompt。
 - 支持一个 text 输入端口和多个 image 输入端口；未连接 image 时按纯文生图处理。
 - 每连入一个 image 输入，就自动增加一个新的空 image 输入端口；P0 默认最多 6 个 image 输入。
+- image 输出端口允许 fan-out，可把同一张图作为多个下游节点的参考图。
 - image 输入用于参考图、编辑图或融合图，具体 API 请求体后续按 Provider 能力补齐；P0 由 prompt 和后端逻辑决定请求模式。
 - 未连接 text 或 prompt 为空时显示 `Connect a prompt first.`。
 - 节点内提供图片模型选择，下拉只展示 P0 可用图片模型。
@@ -494,6 +561,7 @@ AI Chat 失败：
 - 参数和端口规则与 Image Gen Node 一致。
 - 同一个 prompt 调用 4 次生成接口，返回 4 张图。
 - 成功后在节点内以 2×2 结果态显示 4 张图。
+- 右侧提供 4 个 image 输出端口：Asset 1 / Asset 2 / Asset 3 / Asset 4，每个端口只传对应结果。
 - 每张结果都可以创建独立 Image Node。
 - 失败时显示具体失败状态，已成功图片不被清空。
 

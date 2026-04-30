@@ -3,7 +3,7 @@
 **Date**: 2026-04-29  
 **Status**: Detailed execution plan for P0 Alpha  
 **Owner**: Codex implements; user validates product feel and provides API/runtime inputs  
-**Related docs**: `PRD.md`, `ARCH.md`, `project_state.md`, `dev-plans/web-collaborative-canvas-pivot.md`, `dev-plans/overseas-cost-growth-forecast.md`
+**Related docs**: `PRD.md`, `ARCH.md`, `HARNESS.md`, `project_state.md`, `dev-plans/web-collaborative-canvas-pivot.md`, `dev-plans/p0-development-harness-roadmap-2026-04-30.md`, `dev-plans/overseas-cost-growth-forecast.md`
 
 ---
 

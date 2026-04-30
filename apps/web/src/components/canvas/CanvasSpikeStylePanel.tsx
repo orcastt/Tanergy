@@ -17,6 +17,7 @@ import {
   styleProps,
 } from './canvasStyleControls'
 import { useEditorRevision } from './useEditorRevision'
+import { useEditorInteractionState } from './useEditorInteractionState'
 
 type CanvasSpikeStylePanelProps = {
   editor: Editor | null
@@ -57,14 +58,18 @@ function stopCanvasEvent(event: SyntheticEvent) {
 }
 
 export function CanvasSpikeStylePanel({ editor }: CanvasSpikeStylePanelProps) {
-  useEditorRevision(editor)
+  const interaction = useEditorInteractionState(editor)
+  useEditorRevision(editor, 'style-panel')
   const selectedIds = editor?.getSelectedShapeIds() ?? []
   const selectedShapes = editor?.getSelectedShapes() ?? []
   const selectedCount = selectedIds.length
   const hasSelection = selectedCount > 0
   const hasNodeCardSelection = selectedShapes.some((shape) => shape.type === 'node_card')
   const isPanningCanvas =
-    editor?.getCameraState() === 'moving' || editor?.getCurrentToolId() === 'hand'
+    interaction.cameraState === 'moving' ||
+    interaction.currentToolId === 'hand' ||
+    interaction.isDragging ||
+    interaction.isPanning
 
   if (!editor || !hasSelection || hasNodeCardSelection || isPanningCanvas) return null
 

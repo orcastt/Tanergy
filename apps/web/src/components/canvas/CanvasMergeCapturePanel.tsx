@@ -23,7 +23,7 @@ export function CanvasMergeCapturePanel({ editor }: CanvasMergeCapturePanelProps
   const [error, setError] = useState<string | null>(null)
   const [isCapturing, setIsCapturing] = useState(false)
   const [preview, setPreview] = useState<CapturePreview | null>(null)
-  useEditorRevision(editor)
+  useEditorRevision(editor, 'selection')
 
   const selectedIds = editor?.getSelectedShapeIds() ?? []
   if (!editor || selectedIds.length === 0) return null

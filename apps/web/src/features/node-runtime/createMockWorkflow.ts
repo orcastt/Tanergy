@@ -51,7 +51,7 @@ export function createStep15MockGraph(editor: Editor) {
   })
 
   createRuntimeEdge(promptId, 'text_out', multiGenId, 'text_in', 'text')
-  createRuntimeEdge(multiGenId, 'image_out', imageId, 'image_in', 'image')
+  createRuntimeEdge(multiGenId, 'image_out_1', imageId, 'image_in', 'image')
   createRuntimeEdge(imageId, 'image_out', analysisId, 'image_in', 'image')
   createRuntimeEdge(imageId, 'image_out', singleGenId, 'image_in_1', 'image')
   createRuntimeEdge(editPromptId, 'text_out', singleGenId, 'text_in', 'text')

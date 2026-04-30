@@ -3,7 +3,12 @@
 import { useState, type SyntheticEvent } from 'react'
 import type { Editor, TLShapeId } from 'tldraw'
 import { useEditorRevision } from './useEditorRevision'
-import { createNodeCard } from '@/features/node-runtime/createNodeCard'
+import { useEditorInteractionState } from './useEditorInteractionState'
+import {
+  createImageNodeFromCanvasImage,
+  createImageNodeFromDataUrl,
+  isCanvasImageShape,
+} from '@/features/node-runtime/imageNodeAssets'
 
 type CanvasSelectionToolbarProps = {
   editor: Editor | null
@@ -24,7 +29,12 @@ const alignOptions: AlignOption[] = [
 ]
 
 function stopEvent(event: SyntheticEvent) {
+  event.preventDefault()
   event.stopPropagation()
+}
+
+function clearBrowserSelection() {
+  window.getSelection()?.removeAllRanges()
 }
 
 function getPageBounds(editor: Editor, ids: TLShapeId[]) {
@@ -67,27 +77,41 @@ export function CanvasSelectionToolbar({ editor }: CanvasSelectionToolbarProps) 
   const [showAlign, setShowAlign] = useState(false)
   const [isCapturing, setIsCapturing] = useState(false)
   const [captureError, setCaptureError] = useState<string | null>(null)
-  useEditorRevision(editor)
+  const interaction = useEditorInteractionState(editor)
+  useEditorRevision(editor, 'selection')
 
   const selectedIds = editor?.getSelectedShapeIds() ?? []
-  if (!editor || selectedIds.length < 2) return null
+  if (!editor || selectedIds.length === 0) return null
+  if (interaction.isDragging || interaction.isPanning || interaction.cameraState === 'moving') return null
+
+  const selectedImageIds = selectedIds.filter((id) => isCanvasImageShape(editor.getShape(id)))
+  const canAlign = selectedIds.length >= 2
+  const canCapture = selectedIds.length >= 2
+  const canConvertToImageNode = selectedImageIds.length > 0
+  if (!canCapture && !canConvertToImageNode) return null
 
   const bounds = getPageBounds(editor, selectedIds)
   if (!bounds) return null
   const screenTopLeft = editor.pageToScreen({ x: bounds.minX, y: bounds.minY })
 
   const handleScreenshot = async () => {
+    if (!canCapture) return
+    clearBrowserSelection()
     setCaptureError(null)
     setIsCapturing(true)
     try {
-      await editor.toImageDataUrl(selectedIds, {
+      const result = await editor.toImageDataUrl(selectedIds, {
         background: false,
         format: 'png',
         padding: 0,
         pixelRatio: 1,
       })
-      createNodeCard(editor, {
-        type: 'image',
+      await createImageNodeFromDataUrl(editor, {
+        height: result.height,
+        source: 'merge_capture',
+        title: 'Merged selection',
+        url: result.url,
+        width: result.width,
         x: bounds.minX,
         y: bounds.minY + bounds.height + 30,
       })
@@ -95,6 +119,21 @@ export function CanvasSelectionToolbar({ editor }: CanvasSelectionToolbarProps) 
       setCaptureError('Capture failed.')
     } finally {
       setIsCapturing(false)
+      clearBrowserSelection()
+    }
+  }
+
+  const handleConvertToImageNode = async () => {
+    clearBrowserSelection()
+    setCaptureError(null)
+    try {
+      for (const shapeId of selectedImageIds) {
+        await createImageNodeFromCanvasImage(editor, shapeId)
+      }
+    } catch {
+      setCaptureError('Image node conversion failed.')
+    } finally {
+      clearBrowserSelection()
     }
   }
 
@@ -139,36 +178,73 @@ export function CanvasSelectionToolbar({ editor }: CanvasSelectionToolbarProps) 
     <div
       className="selection-toolbar"
       onDoubleClick={stopEvent}
+      onMouseDown={stopEvent}
       onPointerDown={stopEvent}
       onWheel={stopEvent}
       style={{ left: screenTopLeft.x, top: screenTopLeft.y - 44 }}
     >
-      <button className="selection-toolbar__btn" disabled={isCapturing} onClick={handleScreenshot} title="Screenshot" type="button">
-        📷
-      </button>
-
-      <div className="selection-toolbar__separator" />
-
-      <div className="selection-toolbar__align-wrapper">
-        <button className="selection-toolbar__btn" onClick={() => setShowAlign(!showAlign)} title="Align" type="button">
-          ⊞
+      {canConvertToImageNode ? (
+        <button
+          className="selection-toolbar__btn"
+          onClick={() => void handleConvertToImageNode()}
+          onMouseDown={stopEvent}
+          onPointerDown={stopEvent}
+          title="Convert to image node"
+          type="button"
+        >
+          ▣
         </button>
-        {showAlign ? (
-          <div className="selection-toolbar__align-dropdown">
-            {alignOptions.map((opt) => (
-              <button
-                className="selection-toolbar__align-item"
-                key={opt.value}
-                onClick={() => handleAlign(opt.value)}
-                title={opt.label}
-                type="button"
-              >
-                {opt.icon} <span>{opt.label}</span>
-              </button>
-            ))}
+      ) : null}
+
+      {canCapture ? (
+        <button
+          className="selection-toolbar__btn"
+          disabled={isCapturing}
+          onClick={() => void handleScreenshot()}
+          onMouseDown={stopEvent}
+          onPointerDown={stopEvent}
+          title="Screenshot"
+          type="button"
+        >
+          📷
+        </button>
+      ) : null}
+
+      {canAlign ? (
+        <>
+          <div className="selection-toolbar__separator" />
+
+          <div className="selection-toolbar__align-wrapper">
+            <button
+              className="selection-toolbar__btn"
+              onClick={() => setShowAlign(!showAlign)}
+              onMouseDown={stopEvent}
+              onPointerDown={stopEvent}
+              title="Align"
+              type="button"
+            >
+              ⊞
+            </button>
+            {showAlign ? (
+              <div className="selection-toolbar__align-dropdown">
+                {alignOptions.map((opt) => (
+                  <button
+                    className="selection-toolbar__align-item"
+                    key={opt.value}
+                    onClick={() => handleAlign(opt.value)}
+                    onMouseDown={stopEvent}
+                    onPointerDown={stopEvent}
+                    title={opt.label}
+                    type="button"
+                  >
+                    {opt.icon} <span>{opt.label}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
-        ) : null}
-      </div>
+        </>
+      ) : null}
 
       {captureError ? <span className="selection-toolbar__error">{captureError}</span> : null}
     </div>

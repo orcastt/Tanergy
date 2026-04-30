@@ -20,14 +20,23 @@ const cutHoverScreenDistance = 22
 
 export function CanvasConnectionCutOverlay({ editor }: CanvasConnectionCutOverlayProps) {
   const [, bumpPointerRevision] = useReducer((revision: number) => revision + 1, 0)
-  useEditorRevision(editor)
+  useEditorRevision(editor, 'arrow-geometry')
 
   useEffect(() => {
     if (!editor) return
-    const updateOverlay = () => bumpPointerRevision()
+    let frame = 0
+    const updateOverlay = () => {
+      if (!shouldRefreshCutOverlay(editor)) return
+      if (frame) return
+      frame = window.requestAnimationFrame(() => {
+        frame = 0
+        bumpPointerRevision()
+      })
+    }
     editor.on('event', updateOverlay)
     editor.on('resize', updateOverlay)
     return () => {
+      if (frame) window.cancelAnimationFrame(frame)
       editor.off('event', updateOverlay)
       editor.off('resize', updateOverlay)
     }
@@ -57,6 +66,11 @@ export function CanvasConnectionCutOverlay({ editor }: CanvasConnectionCutOverla
       ))}
     </div>
   )
+}
+
+function shouldRefreshCutOverlay(editor: Editor) {
+  if (editor.inputs.getIsDragging() || editor.inputs.getIsPanning()) return false
+  return editor.getSelectedShapes().some((shape) => shape.type === 'arrow')
 }
 
 function getConnectionCutButtons(editor: Editor): CutButton[] {

@@ -12,6 +12,7 @@ import {
 } from 'tldraw'
 import type { JsonObject, NodeRuntimeSummary } from '@/types/nodeRuntime'
 import type { NodeCardShape } from '@/types/nodeCardShape'
+import { resolveNodeInputs } from '@/features/node-runtime/nodeDataFlow'
 import { NodeCardContent } from './NodeCardContent'
 
 declare module '@tldraw/tlschema' {
@@ -72,7 +73,28 @@ export class NodeCardShapeUtil extends BaseBoxShapeUtil<NodeCardShape> {
 
     const runMock = () => {
       const runId = `run_mock_${Date.now()}`
-      const resultCount = shape.props.nodeType === 'image_gen_4' ? 4 : shape.props.nodeType === 'image_gen' ? 1 : 0
+      const currentShape = this.editor.getShape<NodeCardShape>(shape.id)
+      if (!currentShape) return
+
+      const inputResolution = resolveNodeInputs(this.editor, currentShape)
+      if (!inputResolution.canRun) {
+        this.editor.updateShape<NodeCardShape>({
+          id: shape.id,
+          props: {
+            runtimeSummary: {
+              costHint: null,
+              error: inputResolution.missingReasons[0] ?? 'Missing required input.',
+              lastRunId: runId,
+              resultAssetIds: [],
+              status: 'failed',
+            },
+          },
+          type: 'node_card',
+        })
+        return
+      }
+
+      const resultCount = currentShape.props.nodeType === 'image_gen_4' ? 4 : currentShape.props.nodeType === 'image_gen' ? 1 : 0
       const runningSummary: NodeRuntimeSummary = {
         costHint: 'Mock run · no credits charged',
         error: null,
@@ -89,15 +111,23 @@ export class NodeCardShapeUtil extends BaseBoxShapeUtil<NodeCardShape> {
       window.setTimeout(() => {
         const latest = this.editor.getShape<NodeCardShape>(shape.id)
         if (!latest) return
+        const latestInputs = resolveNodeInputs(this.editor, latest)
+        const latestData = asJsonObject(latest.props.data)
+        const resultAssetIds = Array.from({ length: resultCount }, (_, index) => (
+          createMockAssetId(runId, index, latestInputs)
+        ))
         this.editor.updateShape<NodeCardShape>({
           id: shape.id,
           props: {
             runtimeSummary: {
-              costHint: shape.props.nodeType === 'analysis' ? 'Mock analysis · text output only' : 'Mock run · asset ids only',
+              costHint: latest.props.nodeType === 'analysis' ? 'Mock analysis · text output only' : 'Mock run · asset ids only',
               error: null,
               lastRunId: runId,
-              resultAssetIds: Array.from({ length: resultCount }, (_, index) => `asset_mock_${index + 1}`),
+              resultAssetIds,
               status: 'succeeded',
+              textOutput: latest.props.nodeType === 'analysis'
+                ? createMockAnalysisText(latestData, latestInputs)
+                : '',
             },
           },
           type: 'node_card',
@@ -113,7 +143,13 @@ export class NodeCardShapeUtil extends BaseBoxShapeUtil<NodeCardShape> {
 
     return (
       <HTMLContainer className="node-card-shape">
-        <NodeCardContent getEditorPagePoint={getEditorPagePoint} onDataChange={updateData} onRunMock={runMock} shape={shape} />
+        <NodeCardContent
+          editor={this.editor}
+          getEditorPagePoint={getEditorPagePoint}
+          onDataChange={updateData}
+          onRunMock={runMock}
+          shape={shape}
+        />
       </HTMLContainer>
     )
   }
@@ -121,4 +157,30 @@ export class NodeCardShapeUtil extends BaseBoxShapeUtil<NodeCardShape> {
   override indicator(shape: NodeCardShape) {
     return <rect width={shape.props.w} height={shape.props.h} rx={16} ry={16} />
   }
+}
+
+function createMockAssetId(
+  runId: string,
+  index: number,
+  inputResolution: ReturnType<typeof resolveNodeInputs>
+) {
+  const promptSlug = slugify(inputResolution.primaryText ?? 'no-prompt')
+  return `asset_mock_${runId}_${index + 1}_${promptSlug}_refs${inputResolution.imageValues.length}`
+}
+
+function createMockAnalysisText(
+  data: JsonObject,
+  inputResolution: ReturnType<typeof resolveNodeInputs>
+) {
+  const instruction = inputResolution.primaryText || String(data.analysisPrompt ?? 'Reverse prompt from the image.')
+  const imageList = inputResolution.imageValues.map((image) => image.assetId).join(', ')
+  return `Mock analysis: read ${inputResolution.imageValues.length} image(s). Reverse prompt: ${instruction}. Source assets: ${imageList}`
+}
+
+function slugify(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 24) || 'prompt'
+}
+
+function asJsonObject(value: unknown): JsonObject {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as JsonObject) : {}
 }

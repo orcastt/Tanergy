@@ -204,6 +204,8 @@
   background: white;
   box-shadow: 0 2px 16px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.06);
   transform: translateX(0) translateY(-100%);
+  user-select: none;
+  -webkit-user-select: none;
   z-index: 21;
 }
 

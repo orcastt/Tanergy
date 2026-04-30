@@ -1,9 +1,15 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ArrowShapeUtil, Tldraw, type Editor, type TLAnyShapeUtilConstructor, type TLComponents } from 'tldraw'
 import { CanvasNodeInspector } from '@/components/inspector/CanvasNodeInspector'
 import { NodeCardShapeUtil } from '@/components/nodes/NodeCardShape'
+import { useCanvasPerformanceStore } from '@/features/canvas-performance/canvasPerformanceStore'
+import {
+  hasImageLikeStructureChange,
+  updateCanvasImagePerformanceMetrics,
+  updateCanvasViewPerformanceMetrics,
+} from '@/features/canvas-performance/editorPerformanceMetrics'
 import { createNodeCard } from '@/features/node-runtime/createNodeCard'
 import { createStep15MockGraph, createStep15StressNodes } from '@/features/node-runtime/createMockWorkflow'
 import { useNodeConnectionValidation } from '@/features/node-runtime/useNodeConnectionValidation'
@@ -12,9 +18,11 @@ import { AiCardShapeUtil } from './AiCardShape'
 import { CanvasArrowPortOverlay } from './CanvasArrowPortOverlay'
 import { CanvasConnectionCutOverlay } from './CanvasConnectionCutOverlay'
 import { CanvasConnectionLine } from './CanvasConnectionLine'
+import { CanvasGrid } from './CanvasGrid'
 import { CanvasNodeEdgeOverlay } from './CanvasNodeEdgeOverlay'
 import { CanvasNodePicker } from './CanvasNodePicker'
 import { CanvasSelectionToolbar } from './CanvasSelectionToolbar'
+import { CanvasSettingsControl } from './CanvasSettingsControl'
 import { CanvasSpikeNavigator } from './CanvasSpikeNavigator'
 import { CanvasSpikeStylePanel } from './CanvasSpikeStylePanel'
 import { CanvasSpikeToolbar } from './CanvasSpikeToolbar'
@@ -27,6 +35,7 @@ import {
   seedCanvasSpike,
 } from './canvasSeed'
 import { useArrowPortSnapping } from './useArrowPortSnapping'
+import { useCanvasSettings } from './useCanvasSettings'
 import { usePortConnectionCompletion } from './usePortConnectionCompletion'
 
 const shapeUtils = [
@@ -40,12 +49,13 @@ const shapeUtils = [
 ] satisfies TLAnyShapeUtilConstructor[]
 const spikeAcceptedImageMimeTypes = ['image/png', 'image/jpeg', 'image/webp']
 const spikeMaxAssetSizeBytes = 3 * 1024 * 1024
-const spikeMaxImageDimension = 1280
+const spikeMaxImageDimension = getAdaptiveImageMaxDimension()
 
 const tldrawComponents = {
   ActionsMenu: null,
   DebugMenu: null,
   DebugPanel: null,
+  Grid: CanvasGrid,
   HelpMenu: null,
   HelperButtons: null,
   ImageToolbar: null,
@@ -69,9 +79,68 @@ export function CanvasSpike() {
     text: string
     tone: 'error' | 'success'
   } | null>(null)
+  const imagePreviewMode = useCanvasPerformanceStore((state) => state.imagePreviewMode)
   useArrowPortSnapping(editor)
+  useCanvasSettings(editor)
   useNodeConnectionValidation(editor, setConnectionMessage)
   usePortConnectionCompletion(editor, setConnectionMessage)
+
+  useEffect(() => {
+    const clearUnexpectedSelection = () => {
+      const selection = window.getSelection()
+      if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return
+
+      const anchorElement = getSelectionElement(selection.anchorNode)
+      const focusElement = getSelectionElement(selection.focusNode)
+      if (!anchorElement || !focusElement) return
+      if (!anchorElement.closest('.canvas-spike-shell') && !focusElement.closest('.canvas-spike-shell')) return
+      if (isEditableSelectionTarget(anchorElement) || isEditableSelectionTarget(focusElement)) return
+
+      selection.removeAllRanges()
+    }
+
+    document.addEventListener('selectionchange', clearUnexpectedSelection)
+    return () => document.removeEventListener('selectionchange', clearUnexpectedSelection)
+  }, [])
+
+  useEffect(() => {
+    if (!editor) return
+    let imageFrame = 0
+    let viewFrame = 0
+    const updateImageMetrics = () => {
+      imageFrame = 0
+      updateCanvasImagePerformanceMetrics(editor)
+    }
+    const updateViewMetrics = () => {
+      viewFrame = 0
+      updateCanvasViewPerformanceMetrics(editor)
+    }
+    const scheduleImageMetricsUpdate = () => {
+      if (imageFrame) return
+      imageFrame = window.requestAnimationFrame(updateImageMetrics)
+    }
+    const scheduleViewMetricsUpdate = () => {
+      if (viewFrame) return
+      viewFrame = window.requestAnimationFrame(updateViewMetrics)
+    }
+
+    updateImageMetrics()
+    const stopStoreListen = editor.store.listen(({ changes }) => {
+      if (hasImageLikeStructureChange(changes)) scheduleImageMetricsUpdate()
+    }, { scope: 'document', source: 'all' })
+    editor.on('event', scheduleViewMetricsUpdate)
+    editor.on('resize', scheduleViewMetricsUpdate)
+    window.addEventListener('resize', scheduleImageMetricsUpdate)
+
+    return () => {
+      if (imageFrame) window.cancelAnimationFrame(imageFrame)
+      if (viewFrame) window.cancelAnimationFrame(viewFrame)
+      stopStoreListen()
+      editor.off('event', scheduleViewMetricsUpdate)
+      editor.off('resize', scheduleViewMetricsUpdate)
+      window.removeEventListener('resize', scheduleImageMetricsUpdate)
+    }
+  }, [editor])
 
   const handleMount = useCallback((mountedEditor: Editor) => {
     setEditor(mountedEditor)
@@ -109,7 +178,7 @@ export function CanvasSpike() {
   )
 
   return (
-    <div className="canvas-spike-shell">
+    <div className="canvas-spike-shell" data-image-preview-mode={imagePreviewMode}>
       <div className="canvas-spike-header">
         <div>
           <p className="eyebrow">Sprint S1 · Canvas coordinate spike</p>
@@ -160,8 +229,25 @@ export function CanvasSpike() {
         />
         <CanvasNodeInspector connectionMessage={connectionMessage} editor={editor} />
         <CanvasSelectionToolbar editor={editor} />
+        <CanvasSettingsControl />
         <CanvasSpikeStylePanel editor={editor} />
       </div>
     </div>
   )
+}
+
+function getSelectionElement(node: Node | null) {
+  if (!node) return null
+  return node instanceof Element ? node : node.parentElement
+}
+
+function isEditableSelectionTarget(element: Element) {
+  return Boolean(element.closest('input, textarea, select, [contenteditable="true"], [contenteditable="plaintext-only"]'))
+}
+
+function getAdaptiveImageMaxDimension() {
+  if (typeof window === 'undefined') return 960
+  if (window.innerWidth < 1200) return 768
+  if (window.innerWidth < 1800) return 960
+  return 1152
 }

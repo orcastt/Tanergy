@@ -10,6 +10,7 @@ import {
   useNodeEdgeStore,
   type NodeRuntimeEdge,
 } from '@/features/node-runtime/nodeEdges'
+import { useCanvasSettingsStore } from '@/features/canvas-settings/canvasSettingsStore'
 import { useEditorRevision } from './useEditorRevision'
 
 type CanvasNodeEdgeOverlayProps = {
@@ -17,30 +18,42 @@ type CanvasNodeEdgeOverlayProps = {
 }
 
 type EdgeView = {
+  actionPoint: { x: number; y: number }
   color: string
   edge: NodeRuntimeEdge
-  midpoint: { x: number; y: number }
+  hitPath: string
   path: string
   start: { x: number; y: number }
   target: { x: number; y: number }
 }
 
+type BezierControls = [
+  { x: number; y: number },
+  { x: number; y: number },
+  { x: number; y: number },
+  { x: number; y: number },
+]
+
 export function CanvasNodeEdgeOverlay({ editor }: CanvasNodeEdgeOverlayProps) {
   const edges = useNodeEdgeStore((state) => state.edges)
   const removeEdge = useNodeEdgeStore((state) => state.removeEdge)
-  const [hoverEdgeId, setHoverEdgeId] = useState<string | null>(null)
-  useEditorRevision(editor)
+  const edgeColorMode = useCanvasSettingsStore((state) => state.settings.edgeColorMode)
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
+  useEditorRevision(editor, 'node-geometry')
 
   if (!editor || edges.length === 0) return null
 
-  const edgeViews = getEdgeViews(editor, edges)
+  const edgeViews = getEdgeViews(editor, edges, edgeColorMode)
+  const activeSelectedEdgeId = selectedEdgeId && edges.some((edge) => edge.id === selectedEdgeId)
+    ? selectedEdgeId
+    : null
 
   return (
-    <div className="node-edge-overlay" aria-hidden>
+    <div className="node-edge-overlay">
       <svg className="node-edge-overlay__svg">
         {edgeViews.map((view) => (
           <path
-            className="node-edge-overlay__path"
+            className={`node-edge-overlay__path ${activeSelectedEdgeId === view.edge.id ? 'node-edge-overlay__path--selected' : ''}`}
             d={view.path}
             data-type={view.edge.dataType}
             key={view.edge.id}
@@ -50,59 +63,59 @@ export function CanvasNodeEdgeOverlay({ editor }: CanvasNodeEdgeOverlayProps) {
         {edgeViews.map((view) => (
           <path
             className="node-edge-overlay__path-hit"
-            d={view.path}
+            d={view.hitPath}
             key={`${view.edge.id}-hit`}
-            onPointerEnter={() => setHoverEdgeId(view.edge.id)}
-            onPointerLeave={() => setHoverEdgeId(null)}
+            onPointerDown={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              setSelectedEdgeId(view.edge.id)
+            }}
           />
         ))}
       </svg>
       {edgeViews.map((view) => (
-        <button
-          className="node-edge-overlay__hit"
-          key={view.edge.id}
-          onClick={(event) => {
-            event.stopPropagation()
-            removeEdge(view.edge.id)
-            syncNodeEdgeInputCounts(editor)
-          }}
-          onPointerEnter={() => setHoverEdgeId(view.edge.id)}
-          onPointerLeave={() => setHoverEdgeId(null)}
-          style={{
-            left: view.midpoint.x,
-            opacity: hoverEdgeId === view.edge.id ? 1 : 0,
-            pointerEvents: hoverEdgeId === view.edge.id ? 'auto' : 'none',
-            top: view.midpoint.y,
-          }}
-          title="Disconnect"
-          type="button"
-        >
-          −
-        </button>
+        activeSelectedEdgeId === view.edge.id ? (
+          <button
+            aria-label="Disconnect selected edge"
+            className="node-edge-overlay__hit"
+            key={view.edge.id}
+            onClick={(event) => {
+              event.stopPropagation()
+              removeEdge(view.edge.id)
+              setSelectedEdgeId(null)
+              syncNodeEdgeInputCounts(editor)
+            }}
+            onPointerDown={(event) => { event.stopPropagation() }}
+            style={{
+              left: view.actionPoint.x,
+              top: view.actionPoint.y,
+            }}
+            title="Disconnect"
+            type="button"
+          >
+            −
+          </button>
+        ) : null
       ))}
     </div>
   )
 }
 
-function getEdgeViews(editor: Editor, edges: NodeRuntimeEdge[]): EdgeView[] {
+function getEdgeViews(editor: Editor, edges: NodeRuntimeEdge[], edgeColorMode: 'follow-handle' | 'standard'): EdgeView[] {
   return edges.flatMap((edge) => {
     const sourcePoint = getPortScreenPoint(editor, edge.sourceShapeId, edge.sourcePortId)
     const targetPoint = getPortScreenPoint(editor, edge.targetShapeId, edge.targetPortId)
     if (!sourcePoint || !targetPoint) return []
 
     const curveOffset = Math.max(72, Math.abs(targetPoint.x - sourcePoint.x) * 0.45)
-    const path = [
-      `M ${sourcePoint.x} ${sourcePoint.y}`,
-      `C ${sourcePoint.x + curveOffset} ${sourcePoint.y}`,
-      `${targetPoint.x - curveOffset} ${targetPoint.y}`,
-      `${targetPoint.x} ${targetPoint.y}`,
-    ].join(' ')
+    const controls = getBezierControls(sourcePoint, targetPoint, curveOffset)
 
     return [{
-      color: edge.dataType === 'image' ? '#22c55e' : '#eab308',
+      actionPoint: getBezierPoint(controls, 0.88),
+      color: edgeColorMode === 'standard' ? '#64748b' : edge.dataType === 'image' ? '#22c55e' : '#eab308',
       edge,
-      midpoint: getBezierMidpoint(sourcePoint, targetPoint, curveOffset),
-      path,
+      hitPath: getBezierSamplePath(controls, 0.16, 0.84, 18),
+      path: getBezierPath(controls),
       start: sourcePoint,
       target: targetPoint,
     }]
@@ -126,10 +139,33 @@ function getPortScreenPoint(editor: Editor, shapeId: string, portId: string) {
   return editor.pageToScreen(pagePoint)
 }
 
-function getBezierMidpoint(start: { x: number; y: number }, target: { x: number; y: number }, offset: number) {
-  const first = { x: start.x + offset, y: start.y }
-  const second = { x: target.x - offset, y: target.y }
-  const t = 0.5
+function getBezierControls(start: { x: number; y: number }, target: { x: number; y: number }, offset: number): BezierControls {
+  return [
+    start,
+    { x: start.x + offset, y: start.y },
+    { x: target.x - offset, y: target.y },
+    target,
+  ]
+}
+
+function getBezierPath([start, first, second, target]: BezierControls) {
+  return [
+    `M ${start.x} ${start.y}`,
+    `C ${first.x} ${first.y}`,
+    `${second.x} ${second.y}`,
+    `${target.x} ${target.y}`,
+  ].join(' ')
+}
+
+function getBezierSamplePath(controls: BezierControls, startT: number, endT: number, steps: number) {
+  return Array.from({ length: steps + 1 }, (_, index) => {
+    const t = startT + ((endT - startT) * index) / steps
+    const point = getBezierPoint(controls, t)
+    return `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`
+  }).join(' ')
+}
+
+function getBezierPoint([start, first, second, target]: BezierControls, t: number) {
   const x =
     (1 - t) ** 3 * start.x +
     3 * (1 - t) ** 2 * t * first.x +
