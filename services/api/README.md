@@ -48,19 +48,21 @@ Implemented now:
 
 - `/health`
 - `POST /api/v1/boards/validate-document`
-- `POST /api/v1/boards` local file-backed save
-- `GET /api/v1/boards/{board_id}` local file-backed load
-- `POST /api/v1/assets/from-data-url` local file-backed asset create
-- `POST /api/v1/assets/upload` local file-backed upload
-- `GET /api/v1/assets/{asset_id}` local metadata read
-- `GET /api/v1/assets/files/{asset_id}/{file_name}` local file read
-- Asset storage adapter seam with `local-dev` and explicit `s3-compatible` placeholder driver
+- `POST /api/v1/boards` adapter-backed save
+- `GET /api/v1/boards/{board_id}` adapter-backed load
+- `POST /api/v1/assets/from-data-url` adapter-backed asset create
+- `POST /api/v1/assets/upload` adapter-backed upload
+- `GET /api/v1/assets/{asset_id}` adapter-backed metadata read
+- `GET /api/v1/assets/files/{asset_id}/{file_name}` adapter-backed file read
+- Asset storage adapter seam with `local-dev` and `s3-compatible`
+- Optional Postgres Board persistence via `TANGENT_BOARD_STORAGE_DRIVER=postgres`
+- Optional Postgres Asset metadata via `TANGENT_ASSET_METADATA_DRIVER=postgres`
+- CORS allowlist via `TANGENT_ALLOWED_ORIGINS`
 - Shared request context parsing for `x-tangent-user-id` / `x-tangent-workspace-id`
 - Board document guard parity with the current Next local bridge
 
 Explicitly not implemented yet:
 
-- Database-backed Board persistence
-- R2/S3-backed Asset storage; `TANGENT_ASSET_STORAGE_DRIVER=s3-compatible` currently fails with a configuration-aware 501
 - Auth/JWT/session validation
 - AI provider proxy and run logs
+- Production migration scripts and backup/restore automation

@@ -3,7 +3,7 @@
 **Date**: 2026-04-30  
 **Branch**: `feature/asset-lod-roadmap`  
 **Base checkpoint**: `a6f20c1 checkpoint: stabilize s1.5 canvas runtime`  
-**Status**: Slices A-D implemented. Cross-platform quality gate is `pass with notes` as of 2026-04-30. Windows dense-board stutter is a non-blocking performance follow-up. Slice E-A local Asset API bridge and Slice E-C board save guard / local save-restore are implemented. Slice E-B request context + storage adapter seam now covers FastAPI local-dev, real `s3-compatible` Asset storage, Postgres persistence and configurable Web-to-FastAPI upload/save/load; runtime smoke and Dashboard/Board entry remain next.
+**Status**: Slices A-D implemented. Cross-platform quality gate is `pass with notes` as of 2026-04-30. Windows dense-board stutter is a non-blocking performance follow-up. Slice E-A local Asset API bridge and Slice E-C board save guard / local save-restore are implemented. Slice E-B request context + storage adapter seam now covers FastAPI local-dev, real `s3-compatible` Asset storage, Postgres persistence and configurable Web-to-FastAPI upload/save/load; local FastAPI + Web runtime smoke has passed. Staging server config and Dashboard/Board entry remain next.
 
 **Owner**: Codex / TANGENT
 
@@ -600,6 +600,10 @@ Codex implemented a FastAPI Postgres persistence seam. `TANGENT_BOARD_STORAGE_DR
 2026-05-01 Web-to-FastAPI configurable switch note:
 
 Codex added `apps/web/src/features/api/persistenceApi.ts` and updated the Web Asset upload / Board save-load clients. If `NEXT_PUBLIC_API_BASE_URL` is unset, the canvas spike keeps using the existing Next local bridge. If it is set, Asset upload posts to FastAPI `/api/v1/assets/from-data-url`, Board save posts to `/api/v1/boards`, and Board load reads `/api/v1/boards/{board_id}`. FastAPI now has a `TANGENT_ALLOWED_ORIGINS` CORS allowlist, and the Asset client rewrites FastAPI relative file URLs to absolute API URLs before creating tldraw image assets. CORS preflight is covered by tests; `PYTHONPATH=services/api python3 -m pytest services/api/tests` reports 11 passed.
+
+2026-05-01 local runtime smoke note:
+
+Codex ran FastAPI on `127.0.0.1:8000` with local-dev storage directories and Next dev on `localhost:3000` with `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000`. Smoke verified FastAPI `/health`, CORS preflight from `http://localhost:3000`, Web `/spikes/canvas`, FastAPI Asset create / metadata / file read, Board save / load and Board guard rejection for runtime `data:` payloads. The Next dev bundle was also checked for the compiled API base URL and `/api/v1` client routes. Smoke artifacts were cleaned and both servers were stopped.
 
 ---
 
