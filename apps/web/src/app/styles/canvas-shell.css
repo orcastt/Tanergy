@@ -24,7 +24,47 @@
 .canvas-spike-header h1 {
   margin: 0;
   font-size: 26px;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
+}
+
+.canvas-board-title-button {
+  max-width: min(520px, 58vw);
+  border: 0;
+  padding: 0;
+  overflow: hidden;
+  background: transparent;
+  color: inherit;
+  cursor: text;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.canvas-board-title-form {
+  display: grid;
+  gap: 4px;
+}
+
+.canvas-board-title-form input {
+  width: min(520px, 58vw);
+  height: 36px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  padding: 0 10px;
+  background: white;
+  color: inherit;
+  font: inherit;
+  letter-spacing: 0;
+  outline: none;
+}
+
+.canvas-board-title-form small {
+  color: #b42318;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
 .canvas-spike-checklist {

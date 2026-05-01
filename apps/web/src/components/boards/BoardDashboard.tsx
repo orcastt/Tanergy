@@ -1,8 +1,7 @@
 'use client'
 
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { hasRemotePersistenceApi } from '@/features/api/persistenceApi'
 import {
   deleteLocalBoardDocument,
@@ -10,13 +9,15 @@ import {
   renameLocalBoardDocument,
 } from '@/features/boards/localBoardClient'
 import type { BoardPersistenceSummary } from '@/features/boards/boardTypes'
-import { BoardThumbnail } from './BoardThumbnail'
+import { BoardDashboardRow } from './BoardDashboardRow'
 
 const boardIdPattern = /^[a-zA-Z0-9._-]+$/
 const boardListLimit = 20
+const boardTitleOpenDelayMs = 180
 
 export function BoardDashboard() {
   const router = useRouter()
+  const openBoardClickTimer = useRef<number | null>(null)
   const [boards, setBoards] = useState<BoardPersistenceSummary[]>([])
   const [error, setError] = useState<string | null>(null)
   const [editingBoardId, setEditingBoardId] = useState<string | null>(null)
@@ -53,12 +54,20 @@ export function BoardDashboard() {
     }
   }, [])
 
+  const clearOpenBoardClickTimer = useCallback(() => {
+    if (openBoardClickTimer.current === null) return
+    window.clearTimeout(openBoardClickTimer.current)
+    openBoardClickTimer.current = null
+  }, [])
+
   useEffect(() => {
     const timeout = window.setTimeout(() => {
       void refreshBoards()
     }, 0)
     return () => window.clearTimeout(timeout)
   }, [refreshBoards])
+
+  useEffect(() => clearOpenBoardClickTimer, [clearOpenBoardClickTimer])
 
   const createBoard = () => {
     router.push(`/boards/${encodeURIComponent(createBoardId())}?new=1`)
@@ -68,6 +77,18 @@ export function BoardDashboard() {
     setEditingBoardId(board.id)
     setEditingTitle(board.title)
     setError(null)
+  }
+
+  const openBoardFromTitle = (board: BoardPersistenceSummary) => {
+    clearOpenBoardClickTimer()
+    openBoardClickTimer.current = window.setTimeout(() => {
+      router.push(`/boards/${encodeURIComponent(board.id)}`)
+    }, boardTitleOpenDelayMs)
+  }
+
+  const renameBoardFromTitle = (board: BoardPersistenceSummary) => {
+    clearOpenBoardClickTimer()
+    startRename(board)
   }
 
   const cancelRename = () => {
@@ -188,40 +209,20 @@ export function BoardDashboard() {
             <div className="boards-empty">No boards match your search.</div>
           ) : null}
           {!isLoading && visibleBoards.map((board) => (
-            <div className="boards-row" key={board.id}>
-              <div className="boards-title-cell">
-                <BoardThumbnail board={board} />
-                {editingBoardId === board.id ? (
-                  <form className="boards-rename-form" onSubmit={(event) => void renameBoard(event, board.id)}>
-                    <input
-                      aria-label="Board title"
-                      maxLength={80}
-                      onChange={(event) => setEditingTitle(event.target.value)}
-                      value={editingTitle}
-                    />
-                    <button disabled={pendingBoardId === board.id} type="submit">Save</button>
-                    <button disabled={pendingBoardId === board.id} onClick={cancelRename} type="button">Cancel</button>
-                  </form>
-                ) : (
-                  <Link className="boards-title-link" href={`/boards/${encodeURIComponent(board.id)}`}>
-                    <strong>{board.title}</strong>
-                    <small>{board.id}</small>
-                  </Link>
-                )}
-              </div>
-              <span className="boards-object-count">{formatObjectCount(board)}</span>
-              <time dateTime={board.savedAt}>{formatSavedAt(board.savedAt)}</time>
-              <span>{formatBytes(board.byteSize)}</span>
-              <span className="boards-row-actions">
-                <Link href={`/boards/${encodeURIComponent(board.id)}`}>Open</Link>
-                <button disabled={pendingBoardId === board.id} onClick={() => startRename(board)} type="button">
-                  Rename
-                </button>
-                <button disabled={pendingBoardId === board.id} onClick={() => void deleteBoard(board)} type="button">
-                  Delete
-                </button>
-              </span>
-            </div>
+            <BoardDashboardRow
+              board={board}
+              editingTitle={editingTitle}
+              isEditing={editingBoardId === board.id}
+              isPending={pendingBoardId === board.id}
+              key={board.id}
+              onCancelRename={cancelRename}
+              onDelete={(item) => void deleteBoard(item)}
+              onOpenTitle={openBoardFromTitle}
+              onRenameTitle={renameBoardFromTitle}
+              onStartRename={startRename}
+              onSubmitRename={(event, boardId) => void renameBoard(event, boardId)}
+              onTitleChange={setEditingTitle}
+            />
           ))}
         </section>
         {!isLoading && hiddenBoardCount > 0 ? (
@@ -263,22 +264,4 @@ function createBoardId() {
     ? globalThis.crypto.randomUUID()
     : Math.random().toString(36).slice(2)
   return `board_${randomId}`
-}
-
-function formatSavedAt(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(date)
-}
-
-function formatBytes(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`
-  return `${(bytes / 1024).toFixed(1)} KB`
-}
-
-function formatObjectCount(board: BoardPersistenceSummary) {
-  return `${board.shapeCount} shape${board.shapeCount === 1 ? '' : 's'} / ${board.assetCount} asset${board.assetCount === 1 ? '' : 's'}`
 }

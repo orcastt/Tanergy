@@ -1,5 +1,5 @@
 import { AssetRecordType, type Editor, type TLAssetId } from 'tldraw'
-import type { TangentAssetRecord } from './assetTypes'
+import { toSerializableTangentAssetRecord, type TangentAssetRecord } from './assetTypes'
 
 type ImageAssetRecord = {
   meta?: {
@@ -19,7 +19,7 @@ export function createEditorImageAsset(editor: Editor, asset: TangentAssetRecord
   editor.createAssets([
     {
       id: assetId,
-      meta: { tangentAsset: asset },
+      meta: { tangentAsset: toSerializableTangentAssetRecord(asset) },
       props: {
         h: asset.height,
         isAnimated: false,

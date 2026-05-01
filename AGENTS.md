@@ -7,10 +7,11 @@
 - Web-first AI image canvas，不做桌面客户端 P0。
 - P0 只打通最小图像链路：`Prompt Node → Image Gen / Image Gen 4 → Image Node`、`Image + Prompt → Image Gen / Analysis`、`Canvas Markup → Merge Capture → New Image Node`。
 - AI Chat 自动创建节点和连线保留为降低门槛入口。
+- 后续新增 AI 节点、AI Chat bot 或新模型能力，必须遵守 `ARCH.md` 4.4.1 AI Node Extension Contract：先扩展 Node Registry / Model Registry / AiRun 合同，节点 UI 不直接调用 Provider。
 - 多人协作后移到 P0.5。
 - S1.5 复杂节点、Asset LOD Slice A-D 和 Slice E 的本地 Asset / Board persistence 基线已通过。
-- 当前 Slice E 已完成：Next local Asset / Board bridge、request context、Board save guard、FastAPI local-dev、真实 `s3-compatible` Asset adapter、Postgres Board / Asset metadata persistence、Web-to-FastAPI switch、staging API package、`/boards` Dashboard / Board entry shell、Dashboard metadata first pass、Auth scaffold first pass。
-- 当前接手点：按 `ARCH.md` 11.5-11.7 的 0-to-1 路线推进真实 staging 基础设施、部署流水线、真实 Auth / Board CRUD 产品化；本地可继续做 AI contract scaffold、Board autosave regression 和 Model Registry / AI Proxy / AI Run 边界。
+- 当前 Slice E 已完成：Next local Asset / Board bridge、request context、Board save guard、FastAPI local-dev、真实 `s3-compatible` Asset adapter、Postgres Board / Asset metadata persistence、Web-to-FastAPI switch、staging API package、`/boards` Dashboard / Board entry shell、Dashboard metadata first pass、Auth scaffold first pass、AI contract scaffold first pass。
+- 当前接手点：按 `ARCH.md` 11.5-11.7 的 0-to-1 路线推进真实 staging 基础设施、部署流水线、真实 Auth / Board CRUD 产品化；本地可继续做 Board autosave regression、recent-open metadata 或真实 AI Provider 前的 polish。
 - 不做公众号 Html Editor、Writer、Personal Library、Knowledge Graph、复杂 Admin Analytics。
 - 前端视觉保持干净白板、小卡片、轻边框，不大换皮。
 
@@ -26,7 +27,8 @@
 6. 用户可见文案走 i18n；默认英文，中文环境不混杂英文业务文案。
 7. API Key 只在服务端环境变量，绝不进入前端代码。
 8. Board document / node props / 协作文档不得保存 `data:`、`blob:`、Base64 图片、Provider 原始响应、完整日志或长文本结果。
-9. 完成后更新 `project_state.md`、`dev-plans/README.md` 和对应计划。
+9. 新增 AI 节点时同步检查 Node type、Node Registry、Node card / Inspector、node data flow、`features/ai` run types、Next/FastAPI AI route、tests 和 Board guard。
+10. 完成后更新 `project_state.md`、`dev-plans/README.md` 和对应计划。
 
 ## 质量闸门
 

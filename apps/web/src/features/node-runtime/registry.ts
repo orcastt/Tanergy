@@ -6,11 +6,7 @@ import type {
   NodeType,
   ResolvedNodePort,
 } from '@/types/nodeRuntime'
-
-const modelOptions = [
-  { label: 'GPT Image 2', value: 'gpt-image-2' },
-  { label: 'Gemini 3.1 Flash Image Preview', value: 'gemini-3.1-flash-image-preview' },
-]
+import { getDefaultImageModelId, getImageModelSelectOptions } from '@/features/ai/mockAiContracts'
 
 const aspectRatioOptions = [
   { label: 'Auto', value: 'auto' },
@@ -28,7 +24,7 @@ const resolutionOptions = [
 ]
 
 const imageGenFields = [
-  { label: 'Model', name: 'modelId', options: modelOptions, type: 'select' as const },
+  { label: 'Model', name: 'modelId', options: getImageModelSelectOptions(), type: 'select' as const },
   { label: 'Aspect ratio', name: 'aspectRatio', options: aspectRatioOptions, type: 'select' as const },
   { label: 'Resolution', name: 'resolution', options: resolutionOptions, type: 'select' as const },
 ]
@@ -72,7 +68,7 @@ export const nodeDefinitions: Record<NodeType, NodeDefinition> = {
     defaultData: {
       aspectRatio: 'auto',
       imageInputCount: 1,
-      modelId: 'gpt-image-2',
+      modelId: getDefaultImageModelId(),
       resolution: '1K',
     },
     displayName: 'Image Gen',
@@ -90,7 +86,7 @@ export const nodeDefinitions: Record<NodeType, NodeDefinition> = {
     defaultData: {
       aspectRatio: 'auto',
       imageInputCount: 1,
-      modelId: 'gpt-image-2',
+      modelId: getDefaultImageModelId(),
       resolution: '1K',
     },
     displayName: 'Image Gen 4',

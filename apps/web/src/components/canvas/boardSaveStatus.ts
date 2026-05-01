@@ -1,6 +1,6 @@
 import type { SerializedBoardDocument } from '@/features/boards/boardDocumentSerializer'
 
-export const boardAutosaveDelayMs = 1600
+export const boardAutosaveDelayMs = 1200
 
 export type BoardSaveStatus = 'idle' | 'loading' | 'loaded' | 'dirty' | 'saving' | 'saved' | 'blocked' | 'error'
 export type BoardAction = 'audit' | 'load' | 'save'

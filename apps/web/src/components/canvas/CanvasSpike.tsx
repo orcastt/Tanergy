@@ -14,6 +14,7 @@ import type { NodeType } from '@/types/nodeRuntime'
 import { AiCardShapeUtil } from './AiCardShape'
 import { CanvasArrowPortOverlay } from './CanvasArrowPortOverlay'
 import { CanvasBoardSaveAudit } from './CanvasBoardSaveAudit'
+import { CanvasBoardTitle } from './CanvasBoardTitle'
 import { CanvasImageShapeUtil } from './CanvasImageShapeUtil'
 import { CanvasConnectionCutOverlay } from './CanvasConnectionCutOverlay'
 import { CanvasConnectionLine } from './CanvasConnectionLine'
@@ -82,6 +83,8 @@ type CanvasSpikeProps = {
   checklistItems?: string[]
   headerEyebrow?: string
   headerTitle?: string
+  onBoardLoaded?: (boardTitle: string) => void
+  onBoardTitleRename?: (title: string) => Promise<string | void> | string | void
   seedOnMount?: boolean
 }
 
@@ -94,6 +97,8 @@ export function CanvasSpike({
   checklistItems = defaultChecklistItems,
   headerEyebrow = 'Sprint S1 · Canvas coordinate spike',
   headerTitle = 'Whiteboard base + S1.5 node runtime spike',
+  onBoardLoaded,
+  onBoardTitleRename,
   seedOnMount = true,
 }: CanvasSpikeProps = {}) {
   const [editor, setEditor] = useState<Editor | null>(null)
@@ -179,7 +184,9 @@ export function CanvasSpike({
       <div className="canvas-spike-header">
         <div>
           <p className="eyebrow">{headerEyebrow}</p>
-          <h1>{headerTitle}</h1>
+          <h1>
+            <CanvasBoardTitle onRename={onBoardTitleRename} title={headerTitle} />
+          </h1>
         </div>
         <div className="canvas-spike-checklist">
           {checklistItems.map((item) => <span key={item}>{item}</span>)}
@@ -220,6 +227,7 @@ export function CanvasSpike({
           boardTitle={boardTitle}
           editor={editor}
           mode={boardId ? 'board' : 'dev'}
+          onBoardLoaded={(board) => onBoardLoaded?.(board.title)}
         />
         <CanvasSettingsControl />
         <CanvasSpikeStylePanel editor={editor} />

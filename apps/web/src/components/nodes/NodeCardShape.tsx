@@ -12,6 +12,8 @@ import {
 } from 'tldraw'
 import type { JsonObject, NodeRuntimeSummary } from '@/types/nodeRuntime'
 import type { NodeCardShape } from '@/types/nodeCardShape'
+import { createAiRun } from '@/features/ai/aiClient'
+import { getDefaultImageModelId } from '@/features/ai/mockAiContracts'
 import { resolveNodeInputs } from '@/features/node-runtime/nodeDataFlow'
 import { NodeCardContent } from './NodeCardContent'
 
@@ -113,24 +115,49 @@ export class NodeCardShapeUtil extends BaseBoxShapeUtil<NodeCardShape> {
         if (!latest) return
         const latestInputs = resolveNodeInputs(this.editor, latest)
         const latestData = asJsonObject(latest.props.data)
-        const resultAssetIds = Array.from({ length: resultCount }, (_, index) => (
-          createMockAssetId(runId, index, latestInputs)
-        ))
-        this.editor.updateShape<NodeCardShape>({
-          id: shape.id,
-          props: {
-            runtimeSummary: {
-              costHint: latest.props.nodeType === 'analysis' ? 'Mock analysis · text output only' : 'Mock run · asset ids only',
-              error: null,
-              lastRunId: runId,
-              resultAssetIds,
-              status: 'succeeded',
-              textOutput: latest.props.nodeType === 'analysis'
-                ? createMockAnalysisText(latestData, latestInputs)
-                : '',
-            },
+        void createAiRun({
+          boardId: null,
+          inputAssetIds: latestInputs.imageValues.map((image) => image.assetId),
+          nodeId: latest.props.nodeId,
+          nodeType: latest.props.nodeType,
+          params: {
+            aspectRatio: latestData.aspectRatio ?? 'auto',
+            count: resultCount,
+            resolution: latestData.resolution ?? '1K',
           },
-          type: 'node_card',
+          prompt: getRunPrompt(latestData, latestInputs),
+          runType: latest.props.nodeType === 'analysis' ? 'image_analysis' : 'image_generation',
+          selectedModelId: String(latestData.modelId ?? getDefaultImageModelId()),
+        }).then((run) => {
+          this.editor.updateShape<NodeCardShape>({
+            id: shape.id,
+            props: {
+              runtimeSummary: {
+                costHint: run.costHint,
+                error: null,
+                lastRunId: run.runId,
+                modelId: run.modelId,
+                resultAssetIds: run.outputAssetIds,
+                status: 'succeeded',
+                textOutput: run.textOutput ?? '',
+              },
+            },
+            type: 'node_card',
+          })
+        }).catch((error) => {
+          this.editor.updateShape<NodeCardShape>({
+            id: shape.id,
+            props: {
+              runtimeSummary: {
+                costHint: 'Mock AI run failed',
+                error: error instanceof Error ? error.message : 'AI run failed.',
+                lastRunId: runId,
+                resultAssetIds: [],
+                status: 'failed',
+              },
+            },
+            type: 'node_card',
+          })
         })
       }, 450)
     }
@@ -159,26 +186,11 @@ export class NodeCardShapeUtil extends BaseBoxShapeUtil<NodeCardShape> {
   }
 }
 
-function createMockAssetId(
-  runId: string,
-  index: number,
-  inputResolution: ReturnType<typeof resolveNodeInputs>
-) {
-  const promptSlug = slugify(inputResolution.primaryText ?? 'no-prompt')
-  return `asset_mock_${runId}_${index + 1}_${promptSlug}_refs${inputResolution.imageValues.length}`
-}
-
-function createMockAnalysisText(
+function getRunPrompt(
   data: JsonObject,
   inputResolution: ReturnType<typeof resolveNodeInputs>
 ) {
-  const instruction = inputResolution.primaryText || String(data.analysisPrompt ?? 'Reverse prompt from the image.')
-  const imageList = inputResolution.imageValues.map((image) => image.assetId).join(', ')
-  return `Mock analysis: read ${inputResolution.imageValues.length} image(s). Reverse prompt: ${instruction}. Source assets: ${imageList}`
-}
-
-function slugify(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 24) || 'prompt'
+  return inputResolution.primaryText || String(data.prompt ?? data.analysisPrompt ?? 'Reverse prompt from the image.')
 }
 
 function asJsonObject(value: unknown): JsonObject {

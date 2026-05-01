@@ -49,3 +49,24 @@ export type TangentAssetResponse = {
   asset?: TangentAssetRecord
   error?: string
 }
+
+export function toSerializableTangentAssetRecord(asset: TangentAssetRecord): TangentAssetRecord {
+  const record: TangentAssetRecord = {
+    byteSize: asset.byteSize,
+    createdAt: asset.createdAt,
+    createdBy: asset.createdBy,
+    height: asset.height,
+    id: asset.id,
+    mime: asset.mime,
+    origin: asset.origin,
+    originalUrl: asset.originalUrl,
+    storage: asset.storage,
+    title: asset.title,
+    width: asset.width,
+    workspaceId: asset.workspaceId,
+  }
+  if (asset.thumbnail256Url) record.thumbnail256Url = asset.thumbnail256Url
+  if (asset.thumbnail512Url) record.thumbnail512Url = asset.thumbnail512Url
+  if (asset.thumbnail1024Url) record.thumbnail1024Url = asset.thumbnail1024Url
+  return record
+}

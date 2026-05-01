@@ -8,6 +8,7 @@ import {
   saveLocalBoardDocument,
   type LocalBoardSaveResponse,
 } from '@/features/boards/localBoardClient'
+import type { BoardPersistenceRecord } from '@/features/boards/boardTypes'
 import { restoreBoardDocument } from '@/features/boards/boardDocumentRestore'
 import {
   createGuardedBoardDocument,
@@ -15,14 +16,13 @@ import {
 } from '@/features/boards/boardDocumentSerializer'
 import { useNodeEdgeStore } from '@/features/node-runtime/nodeEdges'
 import {
-  boardAutosaveDelayMs,
   getDocumentSignature,
   hasBoardDocumentChange,
-  shouldWarnBeforeUnload,
   type BoardAction,
   type BoardSaveStatus,
 } from './boardSaveStatus'
 import { BoardModeSaveStatus, DevBoardSaveControls } from './CanvasBoardSaveControls'
+import { useBoardAutosaveTimer, useBoardBeforeUnloadWarning } from './useBoardSaveLifecycle'
 
 type CanvasBoardSaveAuditProps = {
   autoLoad?: boolean
@@ -30,6 +30,7 @@ type CanvasBoardSaveAuditProps = {
   boardTitle?: string
   editor: Editor | null
   mode?: 'board' | 'dev'
+  onBoardLoaded?: (board: BoardPersistenceRecord) => void
 }
 
 const defaultBoardId = 'canvas-spike-local'
@@ -41,14 +42,13 @@ export function CanvasBoardSaveAudit({
   boardTitle = defaultBoardTitle,
   editor,
   mode = 'dev',
+  onBoardLoaded,
 }: CanvasBoardSaveAuditProps) {
   const autoLoadedBoardId = useRef<string | null>(null)
-  const autosaveTimer = useRef<number | null>(null)
   const isRestoring = useRef(false)
   const isSaving = useRef(false)
-  const lastActionRef = useRef<BoardAction | null>(null)
+  const lastSavedSignature = useRef<string | null>(null)
   const saveNowRef = useRef<(() => void) | null>(null)
-  const statusRef = useRef<BoardSaveStatus>('idle')
   const [isRunning, setIsRunning] = useState(false)
   const [lastAction, setLastAction] = useState<BoardAction | null>(null)
   const [migration, setMigration] = useState<RuntimeAssetMigrationResult | null>(null)
@@ -57,14 +57,8 @@ export function CanvasBoardSaveAudit({
   const [saveError, setSaveError] = useState<string | null>(null)
   const [status, setStatus] = useState<BoardSaveStatus>('idle')
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
-
-  useEffect(() => {
-    statusRef.current = status
-  }, [status])
-
-  useEffect(() => {
-    lastActionRef.current = lastAction
-  }, [lastAction])
+  const { clearAutosaveTimer, scheduleAutosave } = useBoardAutosaveTimer(mode, saveNowRef)
+  useBoardBeforeUnloadWarning(mode, status, isSaving, lastAction)
 
   const prepareDocument = useCallback(async () => {
     if (!editor) return
@@ -86,21 +80,6 @@ export function CanvasBoardSaveAudit({
     }
   }
 
-  const clearAutosaveTimer = useCallback(() => {
-    if (autosaveTimer.current === null) return
-    window.clearTimeout(autosaveTimer.current)
-    autosaveTimer.current = null
-  }, [])
-
-  const scheduleAutosave = useCallback(() => {
-    if (mode !== 'board') return
-    clearAutosaveTimer()
-    autosaveTimer.current = window.setTimeout(() => {
-      autosaveTimer.current = null
-      saveNowRef.current?.()
-    }, boardAutosaveDelayMs)
-  }, [clearAutosaveTimer, mode])
-
   const saveLocal = useCallback(async () => {
     if (!editor || isSaving.current) return
     clearAutosaveTimer()
@@ -115,6 +94,13 @@ export function CanvasBoardSaveAudit({
         setStatus('blocked')
         throw new Error(nextResult?.audit.issues[0]?.message ?? 'Board document is blocked.')
       }
+      const savedSignature = getDocumentSignature(nextResult.document)
+      if (lastSavedSignature.current === savedSignature) {
+        setLastAction('save')
+        setResult(nextResult)
+        setStatus('saved')
+        return
+      }
       const saved = await saveLocalBoardDocument({
         boardId,
         document: nextResult.document,
@@ -122,11 +108,11 @@ export function CanvasBoardSaveAudit({
       })
       const savedBoard = saved.board
       if (!savedBoard) throw new Error('Local board save failed.')
-      const savedSignature = getDocumentSignature(nextResult.document)
       const currentResult = createGuardedBoardDocument(editor)
       const currentSignature = getDocumentSignature(currentResult.document)
       const hasNewChanges = savedSignature !== currentSignature
 
+      lastSavedSignature.current = savedSignature
       setLastAction('save')
       setSaveResult(saved)
       setLastSavedAt(savedBoard.savedAt)
@@ -166,6 +152,7 @@ export function CanvasBoardSaveAudit({
       const board = loaded.board
       if (!board) throw new Error('Local board load failed.')
       const restore = restoreBoardDocument(editor, board.document)
+      onBoardLoaded?.(board)
       setSaveResult({
         board: {
           assetCount: board.assetCount ?? restore.assetCount,
@@ -181,7 +168,9 @@ export function CanvasBoardSaveAudit({
         ok: true,
       })
       setLastSavedAt(board.savedAt)
-      setResult(createGuardedBoardDocument(editor))
+      const restoredResult = createGuardedBoardDocument(editor)
+      lastSavedSignature.current = getDocumentSignature(restoredResult.document)
+      setResult(restoredResult)
       setStatus('loaded')
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Local board load failed.')
@@ -192,7 +181,7 @@ export function CanvasBoardSaveAudit({
         isRestoring.current = false
       })
     }
-  }, [boardId, clearAutosaveTimer, editor])
+  }, [boardId, clearAutosaveTimer, editor, onBoardLoaded])
 
   useEffect(() => {
     if (!autoLoad || !editor || autoLoadedBoardId.current === boardId) return
@@ -214,17 +203,6 @@ export function CanvasBoardSaveAudit({
       clearAutosaveTimer()
     }
   }, [clearAutosaveTimer, editor, markDirty, mode])
-
-  useEffect(() => {
-    if (mode !== 'board') return
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (!shouldWarnBeforeUnload(statusRef.current, isSaving.current, lastActionRef.current)) return
-      event.preventDefault()
-      event.returnValue = ''
-    }
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [mode])
 
   const issue = result?.audit.issues.find((item) => item.blocking)
   const auditStatus = !result

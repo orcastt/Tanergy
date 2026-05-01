@@ -54,6 +54,59 @@ class AuthSessionResponse(TangentApiModel):
     session: Optional[AuthSession] = None
 
 
+class AiModelOption(TangentApiModel):
+    capabilities: list[str]
+    cost_hint: str = Field(alias="costHint")
+    display_name: str = Field(alias="displayName")
+    estimated_latency: str = Field(alias="estimatedLatency")
+    id: str
+    is_default: bool = Field(alias="isDefault")
+    is_enabled: bool = Field(alias="isEnabled")
+    parameter_schema: dict[str, Any] = Field(alias="parameterSchema")
+    provider: str
+
+
+class AiModelsResponse(TangentApiModel):
+    error: Optional[str] = None
+    models: list[AiModelOption]
+    ok: bool
+
+
+class AiRunRequest(TangentApiModel):
+    board_id: Optional[str] = Field(default=None, alias="boardId")
+    input_asset_ids: list[str] = Field(default_factory=list, alias="inputAssetIds")
+    node_id: Optional[str] = Field(default=None, alias="nodeId")
+    node_type: Optional[str] = Field(default=None, alias="nodeType")
+    params: dict[str, Any] = Field(default_factory=dict)
+    prompt: Optional[str] = None
+    run_type: str = Field(alias="runType")
+    selected_model_id: Optional[str] = Field(default=None, alias="selectedModelId")
+
+
+class AiRunRecord(TangentApiModel):
+    board_id: Optional[str] = Field(default=None, alias="boardId")
+    cost_credits: float = Field(alias="costCredits")
+    cost_hint: str = Field(alias="costHint")
+    created_at: str = Field(alias="createdAt")
+    error: Optional[str] = None
+    input_asset_ids: list[str] = Field(alias="inputAssetIds")
+    latency_ms: int = Field(alias="latencyMs")
+    model_id: str = Field(alias="modelId")
+    node_id: Optional[str] = Field(default=None, alias="nodeId")
+    output_asset_ids: list[str] = Field(alias="outputAssetIds")
+    provider: str
+    run_id: str = Field(alias="runId")
+    run_type: str = Field(alias="runType")
+    status: str
+    text_output: Optional[str] = Field(default=None, alias="textOutput")
+
+
+class AiRunResponse(TangentApiModel):
+    error: Optional[str] = None
+    ok: bool
+    run: Optional[AiRunRecord] = None
+
+
 class BoardSaveRequest(TangentApiModel):
     board_id: Optional[str] = Field(default=None, alias="boardId")
     document: Any

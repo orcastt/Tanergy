@@ -39,6 +39,7 @@ Canonical docs 仍然是：
 - 不读取 `.env`，不把 API Key 写入前端或日志。
 - 不把真实 API Key、数据库 URL、R2/S3 secret、Email provider secret 写进文档、前端代码或日志。
 - Board document、节点 `shape.props`、未来协作文档都只能保存轻量状态和 Asset / Run 引用，不保存 `data:` / `blob:` / Base64 图片、Provider 原始响应、完整日志或长分析文本。
+- 新增 AI 节点、AI Chat bot 或新模型能力时，先执行 `ARCH.md` 4.4.1 AI Node Extension Contract：Node Registry、Model Registry、AiRun、route/test 和 Board guard 一起更新。
 - 源码文件 250 行预警，300 行上限；超过前先拆分。
 - 每个非简单功能先更新或确认 `dev-plans/`、`PRD.md` 功能状态和 `ARCH.md` 模块边界。
 - 每个切片只做当前目标，不顺手扩展未来功能。
@@ -56,7 +57,7 @@ Canonical docs 仍然是：
 - 已确认本切片 Scope / Non-goals / Acceptance。
 - 已确认本切片在 0-to-1 阶段中的位置：staging infra、deploy、Auth、Board CRUD、AI、Ops、Alpha 或 P0.5 collaboration。
 - 涉及外部资源时，已确认需要的 domain、Postgres、R2/S3、Email、Provider、tldraw license、secrets 和 rollback 路径。
-- 涉及 AI 时，已确认 Auth / Board / Asset 边界是否足够稳定；不得在无日志、无限流、无成本记录情况下接真实 provider。
+- 涉及 AI 时，已确认 Auth / Board / Asset 边界是否足够稳定；不得在无日志、无限流、无成本记录情况下接真实 provider；不得从节点 UI 直接调用 Provider。
 - 大范围修复或高风险重构前已按用户要求 checkpoint commit。
 
 ---
@@ -171,11 +172,14 @@ Canonical docs 仍然是：
 
 适用：Model Registry、AI Runs、Analysis、AI Chat Planner。
 
+- 新增 AI 节点必须先声明 node spec、端口、参数 schema、model capability、run type、result shape、preview UI、failure states 和 persistence constraints。
+- Node Registry、Model Registry、AiRun request/response、Next/FastAPI routes、tests、Board guard 必须一起更新，不能只改节点 UI。
 - 前端只传 `selected_model_id`，后端按 Model Registry 二次校验。
 - 真实 Provider 参数和费用只在后端处理。
 - Run 必须有 status、latency、cost、error_code、retryable。
 - 余额不足、模型不可用、内容违规都返回结构化错误。
 - 真实 AI 结果必须写 Asset / object storage 和 AiRun log，再回到 Image Node；不能直接把 provider URL / base64 写进 Board。
+- AI Chat / Planner 只能输出合法 graph spec，让 Node Runtime 应用节点和连线；不能绕过节点合同直接写 Provider 结果。
 - AI 接入顺序默认是 Model Registry / AiRun schema → provider proxy → Image Gen → Analysis → AI Chat planner。
 
 ### QA Harness
@@ -211,7 +215,7 @@ Canonical docs 仍然是：
 2. 建立推送 / 部署流水线：Git remote、Web deploy、VPS Docker deploy、env secret 管理和 rollback。
 3. 继续把 `/boards` Dashboard / Board entry 产品化；当前 shell 已支持 Board summary list、create/open/search/rename/delete、thumbnail placeholder、shape/asset count、list limit、基础空/错/加载状态、按 board id load 和 Board 模式 autosave/save indicator，下一步补 recent/opened metadata、richer pagination 和长时浏览器回归。
 4. Auth scaffold / 注册边界已有 first pass：typed session/user/workspace、Next/FastAPI session endpoint、route guard 形状和 dev auth-required smoke；真实 Email OTP 或 magic link、session/JWT、保护 `/boards` 和 API 需要外部资源后继续。
-5. 接下来进入 Model Registry、AI Runs、真实 Image Gen / Analysis、AI Chat planner 的本地 contract scaffold。
+5. AI contract scaffold 已有 first pass；下一步可做 Board save 长时回归、真实 staging wiring，或在外部资源就绪后进入真实 Model Registry / AI Proxy / Image Gen / Analysis。
 6. Alpha 前补安全/运维：rate limit、上传 abuse guard、AI budget kill switch、日志、备份恢复、CORS、Terms/Privacy 占位。
 7. 多人协作继续后置到 P0.5，必须等 Asset / Board / Auth / AI Run 边界稳定。
 
@@ -233,7 +237,7 @@ Canonical docs 仍然是：
 
 当前接手点：继续 Slice E Real Asset Pipeline / 0-to-1 staging path。已完成 local Asset/Board bridge、FastAPI local-dev、真实 s3-compatible Asset adapter、Postgres Board / Asset metadata persistence、Web-to-FastAPI switch、staging API package 和 /boards entry shell。
 
-下一步优先从真实 staging server / managed Postgres / R2 / staging Web origin smoke，或本地 AI contract scaffold 开始；/boards Dashboard metadata 和 Auth scaffold 已有 first pass，recent-open metadata / richer pagination 和 Board save 长时回归仍可并行补。
+下一步优先从真实 staging server / managed Postgres / R2 / staging Web origin smoke，或 Board save 长时浏览器回归开始；/boards Dashboard metadata、Auth scaffold 和 AI contract scaffold 已有 first pass，recent-open metadata / richer pagination 仍可并行补。
 ```
 
 ---
@@ -248,10 +252,11 @@ Canonical docs 仍然是：
 | `apps/web/src/app/styles/node-card-content.css` | 298 行 | 再改节点内容样式前拆 prompt / image / port CSS |
 | `apps/web/src/components/canvas/CanvasSpikeToolbar.tsx` | 294 行 | 拆 toolbar category / popover |
 | `apps/web/src/app/styles/canvas-overlays.css` | 292 行 | 拆 connection / selection / minimap overlay CSS |
-| `apps/web/src/components/canvas/CanvasBoardSaveAudit.tsx` | 275 行 | 如继续加保存行为，拆 autosave hook / save actions |
+| `apps/web/src/components/canvas/CanvasBoardSaveAudit.tsx` | 253 行 | 已拆 `useBoardSaveLifecycle.ts`；再加保存行为时继续拆 save actions |
+| `apps/web/src/components/canvas/CanvasSpike.tsx` | 254 行 | 再加 header/board behavior 前拆 shell header / board chrome |
 | `apps/web/src/components/canvas/useEditorRevision.ts` | 289 行 | 拆 editor revision helper / subscription helper |
 | `apps/web/src/features/assets/assetPreviewResolver.ts` | 266 行 | 新增 resolver 行为前拆 persisted thumbnail / local cache helper |
-| `apps/web/src/components/boards/BoardDashboard.tsx` | 284 行 | 再加 Dashboard 行为前拆 row / empty / loading helpers |
+| `apps/web/src/components/boards/BoardDashboard.tsx` | 267 行 | Row 已拆到 `BoardDashboardRow.tsx`；再加 Dashboard 行为前拆 empty / loading helpers |
 | `apps/web/src/app/styles/boards.css` | 已拆分 | Dashboard shell styles 保持在本文件，table/list styles 放 `boards-list.css` |
 | `apps/web/src/components/canvas/CanvasSelectionToolbar.tsx` | 252 行 | 拆 selection actions / merge controls |
 

@@ -1,4 +1,5 @@
 import type { Editor, TLAsset, TLAssetId, TLShapeId } from 'tldraw'
+import { toSerializableTangentAssetRecord } from '@/features/assets/assetTypes'
 import { setNodeEdgesSnapshot, syncNodeEdgeInputCounts } from '@/features/node-runtime/nodeEdges'
 import { auditBoardDocument } from './boardDocumentGuard'
 import type { SerializedBoardAsset, SerializedBoardDocument, SerializedBoardShape } from './boardDocumentSerializer'
@@ -42,7 +43,7 @@ function createTldrawAsset(asset: SerializedBoardAsset): TLAsset | null {
   if (asset.type !== 'image') return null
   return {
     id: asset.id as TLAssetId,
-    meta: asset.serverAsset ? { tangentAsset: asset.serverAsset } : {},
+    meta: asset.serverAsset ? { tangentAsset: toSerializableTangentAssetRecord(asset.serverAsset) } : {},
     props: {
       h: asset.height ?? asset.serverAsset?.height ?? 0,
       isAnimated: false,

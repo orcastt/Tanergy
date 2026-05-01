@@ -3,7 +3,7 @@
 **Date**: 2026-04-30  
 **Branch**: `feature/asset-lod-roadmap`  
 **Base checkpoint**: `a6f20c1 checkpoint: stabilize s1.5 canvas runtime`  
-**Status**: Slices A-D implemented. Cross-platform quality gate is `pass with notes` as of 2026-04-30. Windows dense-board stutter is a non-blocking performance follow-up. Slice E-A local Asset API bridge and Slice E-C board save guard / local save-restore are implemented. Slice E-B request context + storage adapter seam now covers FastAPI local-dev, real `s3-compatible` Asset storage, Postgres persistence and configurable Web-to-FastAPI upload/save/load; local FastAPI + Web runtime smoke and staging API Docker package smoke have passed. `/boards` Dashboard / Board entry now supports summary list, create/open, search, rename, delete, S0C summary metadata first pass, S0D Auth scaffold first pass and Board-mode autosave/save indicator across local/FastAPI Board contracts. After checkpoint `5ffed96`, near-term local work is coordinated with `dev-plans/p0-local-product-shell-and-slice-e-roadmap-2026-05-01.md`: Product Shell route skeletons, Board save UX, Dashboard metadata and Auth scaffold have first-pass local checkpoints, while AI contract scaffold and longer browser regression remain next. Real staging wiring, real Auth/email, real R2/Postgres credentials and real AI provider remain external-resource steps.
+**Status**: Slices A-D implemented. Cross-platform quality gate is `pass with notes` as of 2026-04-30. Windows dense-board stutter is a non-blocking performance follow-up. Slice E-A local Asset API bridge and Slice E-C board save guard / local save-restore are implemented. Slice E-B request context + storage adapter seam now covers FastAPI local-dev, real `s3-compatible` Asset storage, Postgres persistence and configurable Web-to-FastAPI upload/save/load; local FastAPI + Web runtime smoke and staging API Docker package smoke have passed. `/boards` Dashboard / Board entry now supports summary list, create/open, search, rename, delete, S0C summary metadata first pass, S0D Auth scaffold first pass, S0E AI contract first pass and Board-mode autosave/save indicator across local/FastAPI contracts. After checkpoint `eb9ddd6`, near-term local work is coordinated with `dev-plans/p0-local-product-shell-and-slice-e-roadmap-2026-05-01.md`: Product Shell route skeletons, Board save UX, Dashboard metadata, Auth scaffold and AI contract scaffold have first-pass local checkpoints. Real staging wiring, real Auth/email, real R2/Postgres credentials and real AI provider remain external-resource steps.
 
 **Owner**: Codex / TANGENT
 
@@ -627,7 +627,7 @@ Codex added lightweight Board summary metadata to the local/FastAPI persistence 
 
 2026-05-01 local product shell coordination note:
 
-Checkpoint `5ffed96 feat: productize board dashboard crud` is the baseline for the current local phase. Product Shell and Board save UX now have first-pass local checkpoints, but they are not product-complete. The next local work is not "full Auth" yet. Continue with Dashboard metadata polish, longer Board autosave browser regression, then Auth scaffold and AI contract scaffold using mock user/workspace boundaries only. Real email, OAuth, team permissions, billing, R2/Postgres credentials, public domains and AI provider calls stay behind the external-resource gate.
+Checkpoint `5ffed96 feat: productize board dashboard crud` was the baseline for the current local phase, and checkpoint `eb9ddd6 checkpoint: dashboard metadata and auth scaffold` captures the Dashboard metadata / Auth scaffold state. Product Shell, Board save UX, Dashboard metadata, Auth scaffold and AI contract scaffold now all have first-pass local checkpoints, but they are not product-complete. The next local work is not "full Auth" yet; continue with Board autosave long-browser regression or external-resource staging wiring. Real email, OAuth, team permissions, billing, R2/Postgres credentials, public domains and AI provider calls stay behind the external-resource gate.
 
 2026-05-01 Product Shell implementation note:
 
@@ -636,6 +636,22 @@ Codex added `reference/Design.md` as the active Product Shell design reference a
 2026-05-01 Auth scaffold first-pass note:
 
 Codex split `CanvasBoardSaveAudit.tsx` before continuing Board/Auth work, moving render-only save controls to `CanvasBoardSaveControls.tsx`. S0D Auth scaffold now has shared TypeScript session/user/workspace types, a centralized mock session snapshot, persistence request headers carrying the dev user/workspace, Next `GET /api/auth/session`, FastAPI `GET /api/v1/auth/session`, and a default-off Web Proxy route guard shape controlled by `TANGENT_REQUIRE_WEB_AUTH=1`. FastAPI tests cover dev fallback, explicit user/workspace context and `TANGENT_REQUIRE_API_AUTH=1` missing-context failure. This is still not real Auth: no email, OAuth, password storage, signed cookie, JWT, team permission model or production trust in frontend headers.
+
+2026-05-01 AI contract first-pass note:
+
+Codex added a mock, server-owned AI contract without real provider calls. Next local bridge now exposes `GET /api/ai/models`, `POST /api/ai/runs` and `GET /api/ai/runs/{runId}`; FastAPI exposes matching `/api/v1/ai/models` and `/api/v1/ai/runs` routes. The Web AI client switches between local bridge and FastAPI with the same `NEXT_PUBLIC_API_BASE_URL` rule used by Asset/Board persistence. Image Gen / Image Gen 4 model selectors read model options through `useAiModels()` with a shared mock registry fallback, and node Run creates a mock AiRun before writing returned `runId`, `modelId`, `outputAssetIds` and `textOutput` into runtime summary. Tests cover model registry, mock run round-trip and auth-required failure. This is still not real AI: no provider key, no cost charging, no Postgres AiRun table, no R2 result assets and no budget kill switch yet.
+
+2026-05-01 AI extension contract note:
+
+Future AI nodes and AI Chat bots must follow `ARCH.md` 4.4.1 rather than adding one-off frontend calls. A new node has to declare its node spec, ports, params schema, model capability, run type, result shape, preview UI, failure states and persistence constraints. Node Registry, Model Registry, AiRun request/response, local/FastAPI routes, tests and Board guard must be updated together. AI Chat / Planner may only emit graph specs for Node Runtime to apply; it must not bypass Asset / AiRun persistence or write Provider payloads into the Board document.
+
+2026-05-01 Board autosave hardening note:
+
+Codex split `CanvasBoardSaveAudit.tsx` by moving timer and before-unload lifecycle logic into `useBoardSaveLifecycle.ts`, bringing the save controller below the 250-line warning. Board-mode autosave now tracks a last-saved document signature, so long browser sessions that receive dirty events without serialized Board changes return to `Saved` without making duplicate save API calls. Edits that happen while a save is in flight are still detected by comparing the saved signature with the current serialized document and scheduling the next autosave when needed. Real browser long-form hand smoke remains the next validation step.
+
+2026-05-01 Board UX hand-test bugfix note:
+
+User hand testing found three Board product bugs. First, Dashboard rename worked locally but entering the canvas could overwrite the title with the URL-derived fallback; `/boards/:boardId` now reads the stored `board.title` after load, Dashboard title cells single-click open and double-click rename, the right-side Open / Rename actions remain available, and the canvas title can also be double-clicked to rename. Second, browser Back now gets the same unsaved-change confirmation as refresh/close while the Board is dirty, blocked, saving or save-failed; autosave debounce was also tightened from 1600ms to 1200ms while keeping document-signature dedupe. Third, runtime image asset migration now writes only sanitized JSON-safe `tangentAsset` metadata instead of spreading tldraw runtime `asset.meta`, fixing `asset(type = image).meta` validation failures after pasting many images. `BoardDashboardRow.tsx` was split out to keep Dashboard source below the 300-line limit.
 
 ---
 
@@ -662,7 +678,7 @@ Reason:
 - D is the risky tldraw integration spike.
 - Cross-platform validation was a release gate after D and is now pass with notes.
 - E is the next active slice and is required before collaboration.
-- Product Shell, Board save UX, Dashboard metadata and Auth scaffold can proceed locally before server/domain/email/provider resources are ready; they must remain mock/skeleton until real Auth and staging exist. Current Product Shell, Board save UX, Dashboard metadata and Auth scaffold first passes are checkpointed, not complete, so the next local emphasis is AI contract scaffold and Board save regression polish.
+- Product Shell, Board save UX, Dashboard metadata, Auth scaffold and AI contract scaffold can proceed locally before server/domain/email/provider resources are ready; they must remain mock/skeleton until real Auth, real AI and staging exist. Current first passes are checkpointed, not complete, so the next local emphasis is Board save regression polish or external-resource staging wiring.
 - Collaboration should not be built on a board document that can still carry heavy image payloads.
 - Windows/browser performance validation happened before real AI integration and produced non-blocking follow-up notes for dense boards.
 

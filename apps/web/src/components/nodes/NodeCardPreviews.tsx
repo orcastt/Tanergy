@@ -4,6 +4,8 @@ import type { Editor } from 'tldraw'
 import type { NodeCardShape } from '@/types/nodeCardShape'
 import type { JsonObject, NodeRuntimeSummary } from '@/types/nodeRuntime'
 import type { RuntimeInputResolution } from '@/features/node-runtime/nodeDataFlow'
+import { getDefaultImageModelId } from '@/features/ai/mockAiContracts'
+import { useAiModels } from '@/features/ai/useAiModels'
 import { ImageNodePreview } from './ImageNodePreview'
 
 type PreviewProps = {
@@ -43,10 +45,14 @@ export function ImageGeneratePreview({
   imageCount: 1 | 4
   runtimeSummary: NodeRuntimeSummary
 }) {
-  const modelId = String(data.modelId ?? 'gpt-image-2')
+  const models = useAiModels('image_generation')
+  const modelId = String(data.modelId ?? getDefaultImageModelId())
   const aspectRatio = String(data.aspectRatio ?? 'auto')
   const resolution = String(data.resolution ?? '1K')
   const results = runtimeSummary.resultAssetIds ?? []
+  const modelOptions = models.some((model) => model.id === modelId)
+    ? models
+    : [{ ...models[0], displayName: modelId, id: modelId, isEnabled: false }, ...models]
 
   return (
     <>
@@ -54,8 +60,11 @@ export function ImageGeneratePreview({
         <label>
           <span>Model</span>
           <select value={modelId} onChange={(event) => onDataChange({ ...data, modelId: event.currentTarget.value })}>
-            <option value="gpt-image-2">GPT Image 2</option>
-            <option value="gemini-3.1-flash-image-preview">Gemini 3.1 Flash</option>
+            {modelOptions.map((model) => (
+              <option disabled={!model.isEnabled} key={model.id} value={model.id}>
+                {model.displayName}
+              </option>
+            ))}
           </select>
         </label>
         <label>

@@ -59,26 +59,30 @@
   font-weight: 500;
 }
 
-.boards-title-link {
+.boards-title-button {
   min-width: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
   color: inherit;
-  text-decoration: none;
+  cursor: pointer;
+  text-align: left;
 }
 
-.boards-title-link strong,
-.boards-title-link small {
+.boards-title-button strong,
+.boards-title-button small {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.boards-title-link strong {
+.boards-title-button strong {
   margin-bottom: 4px;
   font-size: 14px;
 }
 
-.boards-title-link small,
+.boards-title-button small,
 .boards-object-count,
 .boards-row time,
 .boards-row > span:nth-child(4) {

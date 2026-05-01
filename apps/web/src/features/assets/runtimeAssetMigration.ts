@@ -1,7 +1,7 @@
 'use client'
 
 import type { Editor, TLAssetId, TLImageAsset } from 'tldraw'
-import type { TangentAssetRecord } from './assetTypes'
+import { toSerializableTangentAssetRecord, type TangentAssetRecord } from './assetTypes'
 import { uploadImageDataUrlAsset } from './assetUploadClient'
 import { acceptedImageMimeTypes } from './imageAssetInputs'
 
@@ -43,7 +43,7 @@ export async function migrateRuntimeImageAssets(editor: Editor): Promise<Runtime
     editor.updateAssets([
       {
         id: asset.id as TLAssetId,
-        meta: { ...asset.meta, tangentAsset: record },
+        meta: { tangentAsset: toSerializableTangentAssetRecord(record) },
         props: {
           fileSize: record.byteSize,
           h: record.height,
