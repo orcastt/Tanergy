@@ -6,7 +6,7 @@ import { useState, type ReactNode } from 'react'
 import { getCurrentSessionSnapshot } from '@/features/auth/mockSession'
 
 const topNavItems = [
-  { href: '/home', label: 'Home' },
+  { href: '/home', label: 'Landing page' },
   { href: '/workspaces', label: 'Workspace', match: ['/workspaces', '/boards'] },
   { href: '/collections', label: 'Collection' },
   { href: '/team', label: 'Team' },
@@ -17,7 +17,6 @@ type SideNavItem =
   | { href: string; icon: string; label: string; match?: string[]; type: 'link' }
 
 const sideNavItems = [
-  { href: '/home', icon: 'H', label: 'Home', type: 'link' },
   { href: '/workspaces', icon: 'W', label: 'Workspace', match: ['/boards', '/workspaces'], type: 'link' },
   { href: '/collections', icon: 'C', label: 'Collections', type: 'link' },
   { href: '/team', icon: 'T', label: 'Team', type: 'link' },

@@ -9,15 +9,15 @@ export default function HomePage() {
     <AppShell>
       <div className="product-page management-page">
         <section className="product-page-header">
-          <p className="product-kicker">Home</p>
-          <h1 className="product-page-title">Start from the active workspace.</h1>
+          <p className="product-kicker">Landing page</p>
+          <h1 className="product-page-title">A quiet landing page before the workspace.</h1>
           <p className="product-section-copy">
-            Home is the quiet app landing surface for the current local session. It points back
-            to the Board workspace while real onboarding, recents and account setup wait for Auth.
+            This local Landing page is the future public entry surface. It points back to the
+            Board workspace while real marketing, onboarding and account setup wait for Auth.
           </p>
         </section>
 
-        <section className="management-summary-grid" aria-label="Home summary">
+        <section className="management-summary-grid" aria-label="Landing page summary">
           <article className="management-callout mint">
             <span>Workspace</span>
             <h2>{session.activeWorkspace.name}</h2>
@@ -42,7 +42,7 @@ export default function HomePage() {
           <div>
             <h2>The Board workspace is still the main P0 surface.</h2>
             <p>
-              Use Home as an orientation page, then continue into Workspace for real Board
+              Use this Landing page as an orientation surface, then continue into Workspace for real Board
               gallery/list actions.
             </p>
           </div>

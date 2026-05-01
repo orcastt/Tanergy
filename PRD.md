@@ -2,7 +2,7 @@
 
 **版本**: v0.6
 **日期**: 2026-05-01
-**状态**: Web 重启方向正式 PRD；S1.5 复杂节点与 Asset LOD Slice A-D 已通过，当前主线是 Slice E Real Asset Pipeline + P0 Product Shell。FastAPI local-dev、真实 `s3-compatible` Asset adapter、Postgres Board / Asset metadata persistence、Web-to-FastAPI switch、staging API package、`/workspaces` Board gallery/list entry、Product Shell route skeleton、App Shell / Home / Account / Settings / Collection / Team / Subscription semantic cleanup、Board save UX 第一版、Workspace Board metadata first pass、Auth scaffold first pass 和 AI contract scaffold first pass 已落地。
+**状态**: Web 重启方向正式 PRD；S1.5 复杂节点与 Asset LOD Slice A-D 已通过，当前主线是 Slice E Real Asset Pipeline + P0 Product Shell。FastAPI local-dev、真实 `s3-compatible` Asset adapter、Postgres Board / Asset metadata persistence、Web-to-FastAPI switch、staging API package、`/workspaces` Board gallery/list entry、Product Shell route skeleton、App Shell / Landing page / Account / Settings / Collection / Team / Subscription semantic cleanup、Board save UX 第一版、Workspace Board metadata first pass、Auth scaffold first pass 和 AI contract scaffold first pass 已落地。
 **当前优先级**: P0 最小图像链路已在 canvas spike 中证明可行；当前从“本地可保存/加载 + staging package”进入“Board save regression / external-resource staging wiring”阶段。Workspace Board metadata、Auth scaffold 和 AI contract scaffold 已有 first pass；真实 staging 基础设施、正式 Auth、邮箱验证和真实 AI 生图仍在外部资源就绪后推进；多人协作继续后置到 P0.5。
 **一句话定位**: TANGENT 是一个极简 Web AI 图像画布，主体验像 Miro/FigJam 一样自由涂画和摆放内容，同时把 AI 能力封装成可连接的节点卡片；用户可以手动连接 Prompt、生图、图片承接和 Analysis 节点，也可以在右侧 AI 对话栏里用自然语言让系统自动创建节点、连线和切换生图模型。
 
@@ -36,7 +36,7 @@
 当前实现状态：
 
 - `/workspaces` Board gallery/list 和 `/boards/:boardId` 画布入口已是当前产品化入口的起点；`/`、`/dashboard` 和 `/boards` 列表入口都会回到 `/workspaces`，避免露出旧 table dashboard；`/spikes/canvas` 仍保留为技术验证入口。
-- Product Shell 已按 `reference/Design.md` 和 `reference/Design_reference.md` 新增 `/login`、`/signup`、`/forgot-password`、`/verify-email`、`/home`、`/workspaces`、`/dashboard` redirect、`/collections`、`/settings`、`/account`、`/team` 和 `/billing` route skeleton；Auth 页面已先切成 Quiet Editorial split-screen 表单，顶部导航为 Home / Workspace / Collection / Team / Subscription；`/workspaces` 已纠正为 active workspace 内的 Board gallery/list，读取 Board summary 并支持 Gallery/List、搜索、排序、新建、打开、重命名、删除；`/home`、`/collections`、`/account`、`/settings`、`/team`、`/billing` 语义已分开，Collection/Team/Subscription 明确是 placeholder。Auth scaffold first pass 已有 typed session/user/workspace、Next/FastAPI session endpoint、dev request headers 和默认关闭的 Proxy route guard，但这些页面仍使用 mock user/workspace 和本地表单校验，不代表真实 Auth、团队或计费已完成。
+- Product Shell 已按 `reference/Design.md` 和 `reference/Design_reference.md` 新增 `/login`、`/signup`、`/forgot-password`、`/verify-email`、`/home`、`/workspaces`、`/dashboard` redirect、`/collections`、`/settings`、`/account`、`/team` 和 `/billing` route skeleton；Auth 页面已先切成 Quiet Editorial split-screen 表单，顶部导航为 Landing page / Workspace / Collection / Team / Subscription，Landing page 不放入侧栏；`/workspaces` 已纠正为 active workspace 内的 Board gallery/list，读取 Board summary 并支持 Gallery/List、搜索、排序、新建、打开、重命名、删除；`/home` 是 Landing page 壳，`/collections`、`/account`、`/settings`、`/team`、`/billing` 语义已分开，Collection/Team/Subscription 明确是 placeholder。Auth scaffold first pass 已有 typed session/user/workspace、Next/FastAPI session endpoint、dev request headers 和默认关闭的 Proxy route guard，但这些页面仍使用 mock user/workspace 和本地表单校验，不代表真实 Auth、团队或计费已完成。
 - Workspace Board gallery 现在支持 Board summary list、New board、Open、Search、Sort、Rename、Delete、Refresh、缩略图占位、shape/asset 对象计数、loading/empty/error first pass；真实 captured thumbnail、recent/opened metadata 和更完整分页仍待产品化。
 - Image Node 导入、Screenshot / Merge Capture、runtime asset migration 已走 server-backed Asset URL；本地未设置 `NEXT_PUBLIC_API_BASE_URL` 时走 Next local bridge，设置后走 FastAPI `/api/v1`。
 - `/boards/:boardId` 已有 Board 模式保存状态条、autosave/debounce、dirty warning、load/save error fallback 和刷新/关闭/Back warning；autosave debounce 现在是 1200ms，并保留 no-op dirty 事件去重，避免序列化 document 未变化时重复调用保存 API；Workspace gallery 标题单击打开、双击重命名，画布标题支持双击重命名并使用持久化 `board.title`；`/spikes/canvas` 仍保留 `Save audit` / `Save local` / `Load local` 开发控件。
@@ -51,7 +51,7 @@
 | 1. 产品概述 | P0 定位仍正确：Web-first AI image canvas；当前实现已经证明白板 + 五类节点 + Asset/Board persistence 边界可行。 |
 | 2. 功能列表 | 已补当前实现状态；新增 F18 Asset / Board Persistence 作为 P0 blocker。 |
 | 3. 用户流程 | 目标流程保留；新增当前 dev/product shell 的偏差说明，尤其是 Auth、Dashboard CRUD、AI Chat 和真实 AI。 |
-| 4. 页面清单 | `/workspaces` 与 `/boards/:boardId` 已部分落地；Auth/Home/Collection/Settings/Account/Team/Subscription Product Shell route skeleton 已落地并完成语义分离；右侧 AI Chat、Image Editor modal、Preview 弹层仍待开发。 |
+| 4. 页面清单 | `/workspaces` 与 `/boards/:boardId` 已部分落地；Auth/Landing page/Collection/Settings/Account/Team/Subscription Product Shell route skeleton 已落地并完成语义分离；右侧 AI Chat、Image Editor modal、Preview 弹层仍待开发。 |
 | 5. 完成定义 | 保留最终 Done 标准，并补当前状态，避免把 spike/mock 当成 Alpha-ready。 |
 | 6. 数据字段与约束 | Board / Asset 已有 local/FastAPI/Postgres/S3-compatible 路径；User/Auth、AiRun、Model Option、Chat 仍是目标 schema。 |
 | 7. 错误、加载、空状态 | 作为目标体验保留；当前只覆盖部分 Dashboard、Board save/load、Asset 和 guard 错误。 |
@@ -1275,7 +1275,7 @@ P0 可默认每个用户一个 personal workspace。
 - [ ] Staging Web 可上传图片、保存/加载 Board，并在 R2/Postgres 中看到真实记录。
 - [x] `/workspaces` Board gallery/list 支持 search / sort / rename / delete。
 - [x] `/workspaces` 和 `/boards/:boardId` 支持 Board 标题双击重命名，并避免 autosave 把标题覆盖回 URL-derived fallback。
-- [x] Product Shell route skeleton 支持 `/login` / `/signup` / `/forgot-password` / `/verify-email` / `/home` / `/workspaces` / `/collections` / `/settings` / `/account` / `/team` / `/billing`，并按 `reference/Design.md` / `reference/Design_reference.md` 接入 mock user/workspace；Auth 页面已完成第一组 split-screen visual pass，`/workspaces` 已完成 Board gallery/list visual pass，Home/Collection/Account/Settings/Team/Subscription 已完成语义分离 placeholder pass。
+- [x] Product Shell route skeleton 支持 `/login` / `/signup` / `/forgot-password` / `/verify-email` / `/home` / `/workspaces` / `/collections` / `/settings` / `/account` / `/team` / `/billing`，并按 `reference/Design.md` / `reference/Design_reference.md` 接入 mock user/workspace；Auth 页面已完成第一组 split-screen visual pass，`/workspaces` 已完成 Board gallery/list visual pass，Landing page/Collection/Account/Settings/Team/Subscription 已完成语义分离 placeholder pass。
 - [x] `/workspaces` Board gallery/list 支持 thumbnail placeholder、shape/asset count 和 loading/empty/error first pass。
 - [ ] `/workspaces` Board gallery/list 支持 captured thumbnail / recent opened metadata / richer pagination。
 - [x] `/boards/:boardId` 有 autosave 或清晰 save indicator，保存失败不会丢失当前画布。

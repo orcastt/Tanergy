@@ -132,8 +132,8 @@ Canonical docs 仍然是：
 
 - UI 默认 English-first；中文开发备注不能混进正式业务文案。
 - Product Shell 页面以 `reference/Design.md` 为 canonical；Stitch 页面级参考提炼在 `reference/Design_reference.md`。
-- Top App Shell navigation 固定为 Home / Workspace / Collection / Team / Subscription；Account 和 Settings 保持侧栏入口。
-- Home / Collection / Account / Settings / Team / Subscription 必须保持清晰路由语义：Collection/Team/Subscription 不回指 `/workspaces`，不假装真实素材库、邀请、权限、订阅或支付已完成。
+- Top App Shell navigation 固定为 Landing page / Workspace / Collection / Team / Subscription；Landing page 只出现在顶部导航，不放入侧栏；Account 和 Settings 保持侧栏入口。
+- Landing page / Collection / Account / Settings / Team / Subscription 必须保持清晰路由语义：Collection/Team/Subscription 不回指 `/workspaces`，不假装真实素材库、邀请、权限、订阅或支付已完成。
 - 白板体验优先，不把产品改成纯工作流编辑器。
 - 右侧保留给 AI Chat；属性和节点 Inspector 放左侧。
 - 小 UI 可以后置；阻塞级问题优先：坐标、连线、性能、误触。
@@ -216,7 +216,7 @@ Canonical docs 仍然是：
 
 1. 把现有 staging API package 接到真实 server / managed Postgres / R2 / staging Web origin，并按 `deploy/staging/README.md` 跑 smoke。
 2. 建立推送 / 部署流水线：Git remote、Web deploy、VPS Docker deploy、env secret 管理和 rollback。
-3. 继续把 `/workspaces` Board gallery/list 和 `/boards/:boardId` Board entry 产品化；当前 shell 已支持 Board summary list、gallery/list、create/open/search/sort/rename/delete、thumbnail placeholder、shape/asset count、基础空/错/加载状态、按 board id load 和 Board 模式 autosave/save indicator；App Shell 顶部 5 标签与 Home / Collection / Account / Settings / Team / Subscription 语义已收口，下一步补 route/responsive smoke、recent/opened metadata、richer pagination 和长时浏览器回归。
+3. 继续把 `/workspaces` Board gallery/list 和 `/boards/:boardId` Board entry 产品化；当前 shell 已支持 Board summary list、gallery/list、create/open/search/sort/rename/delete、thumbnail placeholder、shape/asset count、基础空/错/加载状态、按 board id load 和 Board 模式 autosave/save indicator；App Shell 顶部 5 标签与 Landing page / Collection / Account / Settings / Team / Subscription 语义已收口，下一步补 route/responsive smoke、recent/opened metadata、richer pagination 和长时浏览器回归。
 4. Auth scaffold / 注册边界已有 first pass：typed session/user/workspace、Next/FastAPI session endpoint、route guard 形状和 dev auth-required smoke；真实 Email OTP 或 magic link、session/JWT、保护 `/workspaces` / `/boards/:boardId` 和 API 需要外部资源后继续。
 5. AI contract scaffold 已有 first pass；下一步可做 Board save 长时回归、真实 staging wiring，或在外部资源就绪后进入真实 Model Registry / AI Proxy / Image Gen / Analysis。
 6. Alpha 前补安全/运维：rate limit、上传 abuse guard、AI budget kill switch、日志、备份恢复、CORS、Terms/Privacy 占位。
@@ -240,7 +240,7 @@ Canonical docs 仍然是：
 
 当前接手点：继续 Slice E Real Asset Pipeline / 0-to-1 staging path。已完成 local Asset/Board bridge、FastAPI local-dev、真实 s3-compatible Asset adapter、Postgres Board / Asset metadata persistence、Web-to-FastAPI switch、staging API package 和 /workspaces Board gallery/list entry shell。
 
-下一步优先从真实 staging server / managed Postgres / R2 / staging Web origin smoke，或 App Shell route/responsive smoke + Board save 长时浏览器回归开始；/workspaces Board gallery/list metadata、Auth scaffold、AI contract scaffold 和 Home/Collection/Account/Settings/Team/Subscription semantic shell 已有 first pass，recent-open metadata / richer pagination 仍可并行补。
+下一步优先从真实 staging server / managed Postgres / R2 / staging Web origin smoke，或 App Shell route/responsive smoke + Board save 长时浏览器回归开始；/workspaces Board gallery/list metadata、Auth scaffold、AI contract scaffold 和 Landing page/Collection/Account/Settings/Team/Subscription semantic shell 已有 first pass，recent-open metadata / richer pagination 仍可并行补。
 ```
 
 ---
@@ -261,7 +261,7 @@ Canonical docs 仍然是：
 | `apps/web/src/features/assets/assetPreviewResolver.ts` | 266 行 | 新增 resolver 行为前拆 persisted thumbnail / local cache helper |
 | `apps/web/src/components/workspaces/WorkspaceBoardGallery.tsx` | 222 行 | 当前 Board entry surface；再加 Workspace 行为前拆 filters / empty helpers |
 | `apps/web/src/app/styles/product-workspaces-board.css` | 200 行 | 当前 Workspace Board card/list 样式；继续增长前按 toolbar/card/list 拆分 |
-| `apps/web/src/app/styles/product-management.css` | 246 行 | Home / Collection / Account / Settings / Team / Subscription shared styles；继续增长前拆 callout / panel / notice 样式 |
+| `apps/web/src/app/styles/product-management.css` | 246 行 | Landing page / Collection / Account / Settings / Team / Subscription shared styles；继续增长前拆 callout / panel / notice 样式 |
 | `apps/web/src/components/canvas/CanvasSelectionToolbar.tsx` | 252 行 | 拆 selection actions / merge controls |
 
 规则：
