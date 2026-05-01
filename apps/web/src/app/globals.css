@@ -1,5 +1,8 @@
 @import 'tldraw/tldraw.css';
 @import './styles/base.css';
+@import './styles/product-shell.css';
+@import './styles/product-cards.css';
+@import './styles/product-auth.css';
 @import './styles/boards.css';
 @import './styles/canvas-shell.css';
 @import './styles/canvas-overlays.css';

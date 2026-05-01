@@ -22,7 +22,7 @@
 2. 新功能、跨文件改动、阶段切换或外部资源接入先更新 `dev-plans/` 或确认 `ARCH.md` 11.5-11.7 / `PRD.md` 当前状态已覆盖。
 3. 只实现当前切片，不顺手重构无关逻辑。
 4. 源码单文件目标不超过 300 行；250 行开始预警，超过 300 行先拆模块再继续加功能。
-5. UI 改动遵守 `reference/design-system.md` 和 `reference/theme.ts`。
+5. UI 改动遵守 `reference/Design.md`；当前 Product Shell 不再引用旧 `reference/design-system.md` / `reference/theme.ts`。
 6. 用户可见文案走 i18n；默认英文，中文环境不混杂英文业务文案。
 7. API Key 只在服务端环境变量，绝不进入前端代码。
 8. Board document / node props / 协作文档不得保存 `data:`、`blob:`、Base64 图片、Provider 原始响应、完整日志或长文本结果。

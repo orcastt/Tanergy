@@ -122,10 +122,10 @@ export function BoardDashboard() {
   }
 
   return (
-    <main className="boards-shell">
+    <section className="boards-shell">
       <header className="boards-topbar">
         <div>
-          <p className="eyebrow">TANGENT P0</p>
+          <p className="product-kicker">TANGENT P0</p>
           <h1>Boards</h1>
         </div>
         <div className="boards-status">
@@ -206,7 +206,7 @@ export function BoardDashboard() {
           ))}
         </section>
       </section>
-    </main>
+    </section>
   )
 }
 

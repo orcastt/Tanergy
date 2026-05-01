@@ -1,0 +1,134 @@
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.product-card,
+.product-demo-card,
+.product-panel {
+  border-radius: var(--radius-md);
+  background: var(--color-canvas);
+}
+
+.product-card {
+  min-height: 190px;
+  padding: 24px;
+  border: 1px solid var(--color-hairline);
+}
+
+.product-card h2,
+.product-card h3,
+.product-panel h2,
+.product-panel h3,
+.product-demo-card h2,
+.product-demo-card h3 {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.product-card p,
+.product-panel p,
+.product-demo-card p {
+  margin: 12px 0 0;
+  color: var(--color-body);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.product-signature {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(280px, 1.05fr);
+  gap: 48px;
+  align-items: center;
+  margin: 0 0 96px;
+  padding: 48px;
+  border-radius: var(--radius-lg);
+  background: var(--color-signature-coral);
+  color: var(--color-on-primary);
+}
+
+.product-signature h2,
+.product-signature p {
+  color: inherit;
+}
+
+.product-signature h2 {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.product-signature p {
+  margin: 16px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.product-ui-fragment {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: var(--color-canvas);
+  color: var(--color-ink);
+}
+
+.product-ui-row {
+  display: grid;
+  grid-template-columns: 1fr 68px;
+  gap: 12px;
+  align-items: center;
+}
+
+.product-ui-line,
+.product-ui-chip {
+  min-height: 14px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-soft);
+}
+
+.product-ui-chip {
+  background: var(--color-signature-mint);
+}
+
+.product-demo-card {
+  min-height: 220px;
+  padding: 24px;
+}
+
+.product-demo-card.peach {
+  background: var(--color-signature-peach);
+}
+
+.product-demo-card.mint {
+  background: var(--color-signature-mint);
+}
+
+.product-demo-card.cream {
+  background: var(--color-signature-cream);
+}
+
+.product-panel {
+  padding: 32px;
+  border: 1px solid var(--color-hairline);
+  background: var(--color-surface-soft);
+}
+
+@media (max-width: 900px) {
+  .product-grid,
+  .product-signature {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .product-signature {
+    padding: 32px 24px;
+  }
+}

@@ -90,7 +90,7 @@ Canonical docs 仍然是：
 |---|---------|----------|----------------|---------|
 | 1 | Product / PRD | Active | `PRD.md` | P0 功能状态、F18 Asset / Board Persistence、Alpha acceptance gaps |
 | 2 | Full-stack Architecture | Active | `ARCH.md` | Next.js + tldraw + Node Runtime + FastAPI + S3-compatible + Postgres + deploy |
-| 3 | UI / UX Design System | Active | `reference/design-system.md`, `reference/theme.ts`, PRD F03 | 白板、顶部工具栏、左侧 Inspector、右侧 AI Chat |
+| 3 | UI / UX Design System | Active | `reference/Design.md`, PRD F03 | Product Shell、登录/注册/工作区/设置/账户页面、白板、顶部工具栏、左侧 Inspector、右侧 AI Chat |
 | 4 | Auth / User Management | Next P0 | PRD F01, ARCH 1.3 / 8.1 / 10.2, ARCH 11.5 S5-S7 | Email OTP/magic link、session/JWT、Board / Asset 权限 |
 | 5 | Payment / Credits | P1 | ARCH 1.4, cost plan | P0 只记录成本和限额，不做完整付费 |
 | 6 | Realtime / Collaboration | P0.5 | ARCH 7.1.1 | Presence / 协作文档 / 服务端权威分层 |
@@ -209,7 +209,7 @@ Canonical docs 仍然是：
 
 1. 把现有 staging API package 接到真实 server / managed Postgres / R2 / staging Web origin，并按 `deploy/staging/README.md` 跑 smoke。
 2. 建立推送 / 部署流水线：Git remote、Web deploy、VPS Docker deploy、env secret 管理和 rollback。
-3. 继续把 `/boards` Dashboard / Board entry 产品化；当前 shell 已支持 Board summary list、create/open/search/rename/delete、按 board id save/load，下一步补 thumbnail、recent/opened metadata、pagination 和 save indicator。
+3. 继续把 `/boards` Dashboard / Board entry 产品化；当前 shell 已支持 Board summary list、create/open/search/rename/delete、按 board id load 和 Board 模式 autosave/save indicator，下一步补 thumbnail、recent/opened metadata、pagination 和更完整空/错/加载状态。
 4. 接 Auth / 注册 / 邮箱验证：users/workspaces、Email OTP 或 magic link、session/JWT、保护 `/boards` 和 API。
 5. Auth / Board CRUD 稳定后，再进入 Model Registry、AI Runs、真实 Image Gen / Analysis、AI Chat planner。
 6. Alpha 前补安全/运维：rate limit、上传 abuse guard、AI budget kill switch、日志、备份恢复、CORS、Terms/Privacy 占位。
@@ -233,7 +233,7 @@ Canonical docs 仍然是：
 
 当前接手点：继续 Slice E Real Asset Pipeline / 0-to-1 staging path。已完成 local Asset/Board bridge、FastAPI local-dev、真实 s3-compatible Asset adapter、Postgres Board / Asset metadata persistence、Web-to-FastAPI switch、staging API package 和 /boards entry shell。
 
-下一步优先从真实 staging server / managed Postgres / R2 / staging Web origin smoke，或 /boards Dashboard thumbnail/recent metadata/save indicator 开始；Auth / AI Run 在 Board/Auth 边界稳定后再接。
+下一步优先从真实 staging server / managed Postgres / R2 / staging Web origin smoke，或 /boards Dashboard thumbnail/recent metadata/pagination 开始；Auth / AI Run 在 Board/Auth 边界稳定后再接。
 ```
 
 ---
@@ -248,9 +248,10 @@ Canonical docs 仍然是：
 | `apps/web/src/app/styles/node-card-content.css` | 298 行 | 再改节点内容样式前拆 prompt / image / port CSS |
 | `apps/web/src/components/canvas/CanvasSpikeToolbar.tsx` | 294 行 | 拆 toolbar category / popover |
 | `apps/web/src/app/styles/canvas-overlays.css` | 292 行 | 拆 connection / selection / minimap overlay CSS |
+| `apps/web/src/components/canvas/CanvasBoardSaveAudit.tsx` | 291 行 | 拆 board save actions / status display / autosave hooks |
 | `apps/web/src/components/canvas/useEditorRevision.ts` | 289 行 | 拆 editor revision helper / subscription helper |
 | `apps/web/src/features/assets/assetPreviewResolver.ts` | 266 行 | 新增 resolver 行为前拆 persisted thumbnail / local cache helper |
-| `apps/web/src/app/styles/boards.css` | 255 行 | 再改 Dashboard 行为样式前拆 table / actions CSS |
+| `apps/web/src/app/styles/boards.css` | 250 行 | 再改 Dashboard 行为样式前拆 table / actions CSS |
 | `apps/web/src/components/canvas/CanvasSelectionToolbar.tsx` | 252 行 | 拆 selection actions / merge controls |
 
 规则：

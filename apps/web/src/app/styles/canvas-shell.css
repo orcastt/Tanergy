@@ -141,3 +141,70 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.canvas-board-save-status {
+  position: absolute;
+  top: 18px;
+  right: 24px;
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 6px 8px;
+  border: 1px solid rgba(17, 24, 39, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow-ring);
+  color: var(--text-secondary);
+  font-size: 12px;
+  pointer-events: auto;
+  user-select: none;
+}
+
+.canvas-board-save-status__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #94a3b8;
+}
+
+.canvas-board-save-status__dot[data-state='dirty'],
+.canvas-board-save-status__dot[data-state='saving'],
+.canvas-board-save-status__dot[data-state='loading'] {
+  background: #d97706;
+}
+
+.canvas-board-save-status__dot[data-state='saved'],
+.canvas-board-save-status__dot[data-state='loaded'] {
+  background: #0f766e;
+}
+
+.canvas-board-save-status__dot[data-state='blocked'],
+.canvas-board-save-status__dot[data-state='error'] {
+  background: #b42318;
+}
+
+.canvas-board-save-status__label {
+  color: var(--text-primary);
+  font-weight: 800;
+}
+
+.canvas-board-save-status small {
+  max-width: 180px;
+  overflow: hidden;
+  color: var(--text-tertiary);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.canvas-board-save-status button {
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid rgba(17, 24, 39, 0.14);
+  border-radius: 6px;
+  background: white;
+  color: var(--text-primary);
+  font-weight: 800;
+}

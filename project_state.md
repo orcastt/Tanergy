@@ -7,7 +7,7 @@
 
 ## 当前阶段
 
-**阶段**: Web AI 图像画布重启 — S1.5 复杂节点与架构裁决已通过；Asset LOD 主线 Slice A Image Node moving degrade、Slice B Node LOD shell、Slice C local thumbnail resolver、Slice D 普通 canvas image LOD spike 已落地；Windows / Mac 跨平台质量门已按 `pass with notes` 收口。当前不再继续在 Cloudflare Tunnel + `next dev` 临时环境里追求完美，已进入 Slice E Real Asset Pipeline；Slice E-A 本地 server-backed Asset 合同已落地，Slice E-C Board save guard 已可本地保存/恢复，Slice E-B request context + storage adapter seam 已扩到 FastAPI local-dev、真实 `s3-compatible` Asset adapter、Postgres persistence adapter 和 Web-to-FastAPI configurable client switch；FastAPI + Web 本地 runtime smoke 已通过；staging API Docker / compose / env / runbook package 已准备并通过容器 smoke；`/boards` Dashboard / Board entry 已开始接到同一 persistence contract。
+**阶段**: Web AI 图像画布重启 — S1.5 复杂节点与架构裁决已通过；Asset LOD 主线 Slice A Image Node moving degrade、Slice B Node LOD shell、Slice C local thumbnail resolver、Slice D 普通 canvas image LOD spike 已落地；Windows / Mac 跨平台质量门已按 `pass with notes` 收口。当前不再继续在 Cloudflare Tunnel + `next dev` 临时环境里追求完美，已进入 Slice E Real Asset Pipeline + P0 产品壳收口；Slice E-A 本地 server-backed Asset 合同已落地，Slice E-C Board save guard 已可本地保存/恢复，Slice E-B request context + storage adapter seam 已扩到 FastAPI local-dev、真实 `s3-compatible` Asset adapter、Postgres persistence adapter 和 Web-to-FastAPI configurable client switch；FastAPI + Web 本地 runtime smoke 已通过；staging API Docker / compose / env / runbook package 已准备并通过容器 smoke；`/boards` Dashboard / Board entry 已接到同一 persistence contract，并支持 list/create/open/search/rename/delete；Product Shell route skeleton 已按 `reference/Design.md` 落地；`/boards/:boardId` 已有 Board 模式 autosave、save indicator、dirty warning 和 load/save error 状态。
 
 **核心目标**: 用全新、干净的 Web 项目重做 TANGENT。P0 只跑通：
 
@@ -19,15 +19,15 @@ Image Node → Canvas Markup → Merge Capture → New Image Node
 Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Image → 自动连线 → 用户确认后 Run
 ```
 
-**下一步**: 当前跨平台测试支架已收口为默认关闭的 dev-only 路径：`CanvasRuntimeDiagnostics` 只在 `NEXT_PUBLIC_CANVAS_RUNTIME_DIAGNOSTICS=1` 时启用，Cloudflare Tunnel allowlist 只通过 `NEXT_ALLOWED_DEV_ORIGINS` 临时注入。Slice E 下一步优先把 staging package 接到真实 server / managed Postgres / R2 / staging Web origin，并继续把 `/boards` Dashboard 补齐 thumbnail、recent/opened metadata、pagination、save indicator 和 Auth-required mode；本地开发默认 `dev-user` / `dev-workspace`，Asset metadata 已带 `createdBy` / `workspaceId`，Board record 已带 `ownerId` / `workspaceId`，Postgres driver 已可保存 Board document 和 S3 Asset metadata，Board rename/delete 已接 local/FastAPI/Postgres contract。真实 Asset Pipeline 稳定后，再接 Model Registry / AI Proxy / AI Run log、Dashboard / 保存 / 登录，以及 Link Preview 后端 unfurl + image proxy；多人协作仍后置到资产边界稳定之后。
+**下一步**: 已提交 checkpoint `5ffed96 feat: productize board dashboard crud`。当前本地 Product Shell 与 Board save UX 只有第一版 checkpoint，不是完整产品完成态：App Shell、`/login`、`/signup`、`/forgot-password`、`/verify-email`、`/workspaces`、`/dashboard` redirect、`/settings`、`/account` 使用 mock user/workspace；`/boards/:boardId` 在 Board 模式会监听画布 document / runtime edges 变化并 debounce 保存，显示 Ready / Unsaved changes / Saving / Saved / Load failed / Save failed 等状态，刷新或关闭时对未保存/保存失败状态给浏览器 warning。下一刀优先补 Dashboard thumbnail/recent metadata/pagination 和更完整空/错/加载状态，同时补 Board autosave 长时浏览器回归。真实邮箱验证、OAuth、团队权限、AI provider key、R2/Postgres/domain/staging server 仍等外部资源接入。当前本地开发默认 `dev-user` / `dev-workspace`，Asset metadata 已带 `createdBy` / `workspaceId`，Board record 已带 `ownerId` / `workspaceId`，Postgres driver 已可保存 Board document 和 S3 Asset metadata，Board rename/delete 已接 local/FastAPI/Postgres contract。
 
 **跨平台结论**: Slice D 跨平台门先记为 `pass with notes`。Windows 侧在 50+ 图片/节点、50%-100% 缩放、runtime edge 增长时仍可能出现轻微卡顿，但当前已可用，归档为 `non-blocking performance follow-up`。这类后续问题优先通过 Slice E 的真实缩略图、对象存储、多尺寸 Asset、viewport-aware 挂载继续解决。
 
 **临时测试支架**: Slice D 跨平台测试曾因家庭/企业共享 Wi-Fi 存在设备隔离而使用 Cloudflare Tunnel + `NEXT_ALLOWED_DEV_ORIGINS` 跑 `next dev`。此前 `next start` 白屏是 tldraw production license gate，不是 Windows 性能问题。`CanvasRuntimeDiagnostics` 红色诊断面板已挂到 `NEXT_PUBLIC_CANVAS_RUNTIME_DIAGNOSTICS=1`，默认关闭；tunnel 域名 allowlist 和 quick tunnel 都只用于 Windows 测试支架。正式上线必须使用真实部署域名和 tldraw production license，不依赖 tunnel。
 
-**当前运行进程记录**: Mac 上当前有 `node` 监听 `*:3000`（PID 62685），用于 `http://localhost:3000/spikes/canvas` 本地手测。当前未检测到 `cloudflared` 进程；如再次做 Windows 隧道测试，必须重新生成临时 tunnel URL，并通过 `NEXT_ALLOWED_DEV_ORIGINS` 注入。
+**当前运行进程记录**: Mac 上当前有 `node` 监听 `*:3000`（PID 31678），用于 `http://localhost:3000/boards` 和 `http://localhost:3000/spikes/canvas` 本地手测。当前未检测到 `cloudflared` 进程；如再次做 Windows 隧道测试，必须重新生成临时 tunnel URL，并通过 `NEXT_ALLOWED_DEV_ORIGINS` 注入。
 
-**0-to-1 总路线**: 详见 `ARCH.md` 11.5-11.7；Sprint 级任务拆分见 `ARCH.md` 11.5.1。当前从“本地可保存/加载 + staging package”进入“真实 staging 基础设施 + Auth/Board 产品化 + AI 生图”阶段；多人协作放到 P0.5，必须等 Asset / Board / Auth / AI Run 边界稳定。
+**0-to-1 总路线**: 详见 `ARCH.md` 11.5-11.7；Sprint 级任务拆分见 `ARCH.md` 11.5.1。当前已完成本地 Product Shell 和 Board save UX 第一版，下一步进入 Dashboard metadata 队列；外部资源就绪后再进入“真实 staging 基础设施 + Auth/Board 产品化 + AI 生图”。多人协作放到 P0.5，必须等 Asset / Board / Auth / AI Run 边界稳定。
 
 ---
 
@@ -42,6 +42,7 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 | Dev Plans 索引 | `dev-plans/README.md` | 当前活跃计划与归档计划入口 |
 | P0 Harness 路线 | `dev-plans/p0-development-harness-roadmap-2026-04-30.md` | 后续切片顺序、每个切片 Done 标准、交接模板 |
 | Asset LOD 主线 | `dev-plans/Asset-lod-roadmap.md` | 当前下一阶段正式路线：Asset model、thumbnail cache、Image / Node LOD、协作前置资产管线 |
+| 本地产品壳 + Slice E 收口 | `dev-plans/p0-local-product-shell-and-slice-e-roadmap-2026-05-01.md` | checkpoint `5ffed96` 后的近程队列：Product Shell、Board save UX、Dashboard metadata、Auth scaffold、AI contract scaffold |
 | 已归档 dev-plans | `dev-plans/Archive/` | 已完成、已验收或废弃的切片计划、handoff、外部复核 brief |
 | 海外成本/增长预测 | `dev-plans/overseas-cost-growth-forecast.md` | 海外部署成本、用户量、社媒增长、AI 单位经济预测 |
 | 旧代码归档 | `legacy/old-tangent-desktop-2026-04-29/` | 旧桌面/Admin/backend/frontend 已隔离，默认不要读 |
@@ -74,6 +75,8 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 - ✅ Mac 浏览器手感不能作为上线唯一性能口径；真实 AI 图、Windows Chrome / Edge、不同屏幕分辨率和浏览器缩放比例必须进入性能验收。
 - ✅ Link card 预览不能依赖前端直接加载第三方 preview 图；后续应走服务端 URL unfurl + image proxy / Asset 化，避免 CORS、防盗链和 bot protection 导致预览图失败。
 - ✅ 前端视觉保持干净白板、小卡片、轻边框，不大换皮。
+- ✅ 登录、注册、工作区、设置、个人账户页面现在先做 P0 产品壳、路由骨架、mock session/workspace 和表单校验；真实邮箱验证、OAuth、团队权限、计费和 Admin 后置到外部资源/后端边界就绪后。
+- ✅ Product Shell 前端页面按 `reference/Design.md` 执行，不再引用旧 `reference/design-system.md` / `reference/theme.ts`。
 - ✅ Tanva 只参考操作逻辑，不复制代码。
 
 ---
@@ -155,7 +158,11 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 - ✅ Codex 五十二次架构核对 2026-05-01：逐章更新 `ARCH.md`，同步当前真实目录结构、分层边界、FastAPI/S3/Postgres/Web-to-FastAPI/`/boards` entry 状态、Board/Asset API contract、部署推送流程、外部资源清单、0-to-1 阶段估时和当前源码 250 行以上 watchlist；同步刷新 `HARNESS.md` 当前优先级和 source size watchlist。
 - ✅ Codex 五十三次 PRD 核对 2026-05-01：逐章更新 `PRD.md`，同步当前 Slice E 进度、`/boards` Dashboard / Board entry shell、FastAPI local-dev、真实 `s3-compatible` Asset adapter、Postgres Board / Asset metadata persistence、Web-to-FastAPI switch、staging API package、P0 功能状态、F18 Asset / Board Persistence、数据约束和当前 Alpha 验收差距。
 - ✅ Codex 五十四次执行规则核对 2026-05-01：逐章更新 `AGENTS.md` 和 `HARNESS.md`，同步当前 Slice E / 0-to-1 接手点、真实 staging / deploy / Auth / Board CRUD / AI Run 顺序、前后端质量闸门、Asset / Board Persistence harness、Auth / Board CRUD harness、AI Integration harness、Ops harness、handoff prompt 和源码 size watchlist 执行要求。
-- ✅ Codex 五十五次推进 2026-05-01：继续 `/boards` Dashboard / Board CRUD 产品化；FastAPI 新增 `PATCH /api/v1/boards/{board_id}` 和 `DELETE /api/v1/boards/{board_id}`，local-dev / Postgres Board storage adapter 均支持 rename/delete，Next local bridge 新增 `local-rename` / `local-delete`；`BoardDashboard` 支持 search、inline rename、delete confirm，仍保持 Board list 只返回 summary、load 才返回 document。`pytest`、compileall、web lint/typecheck/build 已通过；`boards.css` 进入 255 行 watchlist。
+- ✅ Codex 五十五次推进 2026-05-01：继续 `/boards` Dashboard / Board CRUD 产品化；FastAPI 新增 `PATCH /api/v1/boards/{board_id}` 和 `DELETE /api/v1/boards/{board_id}`，local-dev / Postgres Board storage adapter 均支持 rename/delete，Next local bridge 新增 `local-rename` / `local-delete`；`BoardDashboard` 支持 search、inline rename、delete confirm，仍保持 Board list 只返回 summary、load 才返回 document。`pytest`、compileall、web lint/typecheck/build 已通过；`boards.css` 进入 250 行 watchlist。
+- ✅ Codex 五十六次规划同步 2026-05-01：已提交 checkpoint `5ffed96 feat: productize board dashboard crud`，并新增 `dev-plans/p0-local-product-shell-and-slice-e-roadmap-2026-05-01.md`；`ARCH.md` / `project_state.md` 同步记录当前本地可推进队列：Product Shell route skeleton、Board save UX、Dashboard metadata、Auth scaffold boundary 和 AI contract scaffold；真实 server、Postgres、R2、domain、Email provider、AI key 和 tldraw production license 仍列为外部资源阻塞。
+- ✅ Codex 五十七次推进 2026-05-01：按用户提供的新 `reference/Design.md` 实现 Product Shell 第一版；新增 App Shell navigation、mock session/workspace、`/login`、`/signup`、`/forgot-password`、`/verify-email`、`/workspaces`、`/dashboard` redirect、`/settings`、`/account`，并把 `/boards` 接入新壳。旧 `reference/design-system.md` / `reference/theme.ts` 不再作为 Product Shell 视觉依据；真实 Auth/email/session 仍待外部资源与后端边界。
+- ✅ Codex 五十八次推进 2026-05-01：完成 L2 Board save UX 第一版；`/boards/:boardId` 的 Board 模式隐藏开发式 `Save audit` 控件，改为产品化保存状态条；画布 document / runtime edge / resize 变化会标记 dirty 并 1600ms debounce autosave，保存前仍复用 runtime asset migration + Board guard + local/FastAPI persistence client；状态覆盖 Loading / Unsaved changes / Saving / Saved / Load failed / Save failed / Save blocked，未保存或保存失败时刷新/关闭页面会触发浏览器 warning。`/spikes/canvas` 继续保留 Save audit / Save local / Load local 开发控件。web lint / typecheck / build / `git diff --check` 已通过，`/boards/autosave-smoke?new=1`、`/spikes/canvas` 和 local Board save/load API smoke 返回 200。
+- ✅ Codex 五十九次 checkpoint 检查 2026-05-01：按用户提醒把 Product Shell / Board save UX 状态收紧为 first-pass checkpoint，而非完整完成；当前仍缺 Dashboard thumbnail/recent metadata/pagination、完整空/错/加载状态、真实 Auth/session/email 和 Board autosave 长时浏览器回归。质量闸门已通过：`PYTHONPATH=services/api python3 -m pytest services/api/tests` 11 passed、`python3 -m compileall services/api/tangent_api`、web typecheck、web lint、web build、`git diff --check`。`CanvasBoardSaveAudit.tsx` 进入 291 行 watchlist，后续继续加 Board save 行为前要先拆分。
 
 ---
 
@@ -268,7 +275,19 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 
 ## 下一步
 
-Slice D 跨平台质量门已 `pass with notes`，不再继续在 Cloudflare Tunnel + `next dev` 临时环境里追求完美。当前 Slice E 已完成本地 Asset / Board bridge、FastAPI local-dev、真实 `s3-compatible` Asset adapter、Postgres persistence adapter、Web-to-FastAPI switch、staging API package 和 `/boards` entry shell。下一步不再只是“继续写功能”，而是按 0-to-1 阶段推进：
+Slice D 跨平台质量门已 `pass with notes`，不再继续在 Cloudflare Tunnel + `next dev` 临时环境里追求完美。当前 Slice E 已完成本地 Asset / Board bridge、FastAPI local-dev、真实 `s3-compatible` Asset adapter、Postgres persistence adapter、Web-to-FastAPI switch、staging API package 和 `/boards` Dashboard CRUD。下一步分成“本地可继续做”和“外部资源就绪后做”两段推进。
+
+当前本地可做队列：
+
+| 顺序 | 阶段 | 状态 | 预计开发 | 预计测试 | 当前要做 |
+|------|------|------|----------|----------|----------|
+| L1 | Product Shell | 已完成第一版 | 已完成 | 待最终 smoke | App shell navigation；`/login`、`/signup`、`/forgot-password`、`/verify-email`、`/workspaces`、`/dashboard` redirect、`/settings`、`/account` route skeleton；mock user/workspace |
+| L2 | Board save UX | 已完成第一版 | 已完成 | 待长时浏览器手测 | `/boards/:boardId` autosave/debounce、save indicator、dirty warning、保存/加载失败状态、刷新/关闭 warning |
+| L3 | Dashboard metadata polish | 部分完成 | 1-2 天 | 0.5-1 天 | thumbnail placeholder/field、recent saved/opened metadata、pagination/list limit、空/错/加载状态 |
+| L4 | Auth scaffold boundary | 未开始 | 2-3 天 | 1 天 | session/workspace 类型、mock current-user boundary、route guard 形状、auth-required dev smoke |
+| L5 | AI contract scaffold | 未开始 | 2-3 天 | 1 天 | mock Model Registry、`AiRun` schema draft、server-only AI proxy stub、mock provider response；不接真实 key |
+
+外部资源就绪后继续：
 
 | 顺序 | 阶段 | 状态 | 预计开发 | 预计测试 | 当前要做 |
 |------|------|------|----------|----------|----------|
@@ -281,5 +300,7 @@ Slice D 跨平台质量门已 `pass with notes`，不再继续在 Cloudflare Tun
 | 7 | Alpha 前安全/运维 | 未开始 | 3-5 天 | 1-2 天 | rate limit、成本熔断、日志、备份恢复演练、CORS、错误页、Terms/Privacy 占位 |
 | 8 | Alpha 发布验收 | 未开始 | 2-3 天修复 | 3-5 天手测 | Windows/Mac/Chrome/Edge、真实 AI 成本、5-10 个用户端到端手测 |
 | 9 | P0.5 多人协作 | 后置 | 8-15 天 | 5-10 天 | 协作文档层、presence、软锁、snapshot/reconnect；不让 CRDT 接管 AI Run / Asset / 扣费 |
+
+当前推荐下一刀：做 L3 Dashboard metadata polish，也就是 `/boards` thumbnail placeholder/field、recent saved/opened metadata、pagination/list limit 和更完整空/错/加载状态；同时在真实浏览器里补一次 Board autosave 长时手测。
 
 隐性阻塞项已写入 `ARCH.md` 11.7：数据库 migration、备份恢复、R2 CORS/权限、Email SPF/DKIM/DMARC、tldraw production license、限流/成本熔断、Secrets 轮换、Legal 占位、最小 Ops 查询和未来 WebSocket/协作代理配置。
