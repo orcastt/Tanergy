@@ -315,7 +315,14 @@ TanvasAgent/
 │           └── types/
 ├── services/
 │   └── api/
-│       └── README.md
+│       ├── pyproject.toml
+│       ├── README.md
+│       └── tangent_api/
+│           ├── main.py
+│           ├── request_context.py
+│           ├── schemas.py
+│           ├── board_guard.py
+│           └── routers/
 ├── packages/
 │   └── shared/
 │       └── README.md
@@ -348,7 +355,7 @@ TanvasAgent/
 | `features/node-runtime` | 节点注册表、端口规则、参数校验、迁移 | 直接渲染大块 UI 或调用第三方 Provider |
 | `services` | HTTP 请求封装 | 存 React 状态 |
 | `store` | 前端状态 | 直接写复杂业务规则 |
-| `services/api` | 未来 FastAPI 后端位置，承接 Auth / Workspace / R2 / AI Run | 读取 legacy backend 或复制旧桌面服务代码 |
+| `services/api` | fresh FastAPI 服务边界、request context、Board guard、P0 route scaffold；未来承接 Auth / Workspace / R2 / AI Run | 读取 legacy backend 或复制旧桌面服务代码；假装已有生产 DB/R2/AI provider |
 | `packages/shared` | 前后端共享类型 / schema 的预留位置 | 放 UI 组件或平台密钥 |
 | `legacy/old-tangent-desktop-2026-04-29` | 旧项目归档，仅用户明确要求时参考 | 默认读取、构建、修改或从中恢复业务逻辑 |
 
@@ -909,6 +916,14 @@ P0 可先用 `from-data-url` 处理 editor export / merge capture，但服务端
 - `apps/web/src/app/api/_lib/apiRequestContext.ts` 解析 `x-tangent-user-id` / `x-tangent-workspace-id`，本地开发默认回退到 `dev-user` / `dev-workspace`。
 - `apps/web/src/app/api/assets/_lib/assetStorageAdapter.ts` 是可替换 storage seam；当前只支持 `TANGENT_ASSET_STORAGE_DRIVER=local-dev`，不支持的 driver 必须明确失败。
 - 该 bridge 不替代正式鉴权、workspace 权限和对象存储；`TANGENT_REQUIRE_API_AUTH=1` 只用于本地检查缺失 context，不等于生产认证。
+
+当前 FastAPI scaffold：
+
+- `services/api/tangent_api/main.py` 提供 `/health` 和 P0 router wiring。
+- `services/api/tangent_api/request_context.py` 复刻 Next bridge 的 `x-tangent-user-id` / `x-tangent-workspace-id` context 规则。
+- `services/api/tangent_api/board_guard.py` 复刻 Board document guard 的 runtime URL / large base64 / JSON serializable 检查。
+- `services/api/tangent_api/routers/boards.py` 当前实现 `POST /api/v1/boards/validate-document`、本地文件版 `POST /api/v1/boards` 和 `GET /api/v1/boards/{board_id}`；这仍是 local-dev persistence，不替代正式 DB。
+- `services/api/tangent_api/routers/assets.py` 当前提供 Asset route skeleton，storage adapter 先明确 501。
 
 ### 8.4 Model Registry
 

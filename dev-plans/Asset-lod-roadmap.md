@@ -569,6 +569,10 @@ Codex added `apps/web/src/app/api/boards/_lib/boardStorageAdapter.ts`, mirroring
 
 The Board validate route now also resolves request context before auditing, so future auth-required mode applies to the full Board persistence preflight, not only save/load.
 
+2026-05-01 FastAPI scaffold note:
+
+Codex added a minimal fresh FastAPI scaffold under `services/api/tangent_api/`. It includes `/health`, request context parsing, Python Board document guard parity and `POST /api/v1/boards/validate-document`. It also implements local file-backed `POST /api/v1/boards` and `GET /api/v1/boards/{board_id}` using the same guard/context/summary-load contract as the Next bridge. Asset storage routes remain explicit 501 placeholders. This is still an API boundary scaffold; it does not implement DB, R2/S3, Auth/JWT, AI proxy or run logs yet. `python3 -m compileall services/api/tangent_api`, web typecheck, web lint, web build and `git diff --check` passed.
+
 ---
 
 ## 6. Development Order

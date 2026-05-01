@@ -1,0 +1,31 @@
+[project]
+name = "tangent-api"
+version = "0.1.0"
+description = "Fresh FastAPI service scaffold for the TANGENT Web AI image canvas."
+requires-python = ">=3.9"
+dependencies = [
+  "fastapi>=0.110,<1",
+  "pydantic>=2,<3",
+  "python-multipart>=0.0.9,<1",
+  "uvicorn[standard]>=0.27,<1",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["tangent_api*"]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8,<9",
+  "ruff>=0.5,<1",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
