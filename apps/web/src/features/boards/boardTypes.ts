@@ -19,6 +19,15 @@ export type BoardSaveInput<Document = unknown> = {
   title?: string
 }
 
+export type BoardRenameInput = {
+  boardId: string
+  title: string
+}
+
+export type BoardDeleteInput = {
+  boardId: string
+}
+
 export type BoardSaveResponse = {
   audit?: BoardDocumentGuardResult
   board?: BoardPersistenceSummary
@@ -34,6 +43,18 @@ export type BoardLoadResponse = {
 
 export type BoardListResponse = {
   boards: BoardPersistenceSummary[]
+  error?: string
+  ok: boolean
+}
+
+export type BoardRenameResponse = {
+  board?: BoardPersistenceSummary
+  error?: string
+  ok: boolean
+}
+
+export type BoardDeleteResponse = {
+  boardId?: string
   error?: string
   ok: boolean
 }

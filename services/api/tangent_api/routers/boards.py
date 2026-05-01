@@ -5,8 +5,11 @@ from fastapi import APIRouter, Depends, Response, status
 from tangent_api.board_guard import audit_board_document
 from tangent_api.request_context import ApiRequestContext, get_request_context
 from tangent_api.schemas import (
+    BoardDeleteResponse,
     BoardListResponse,
     BoardLoadResponse,
+    BoardRenameRequest,
+    BoardRenameResponse,
     BoardSaveRequest,
     BoardSaveResponse,
     BoardValidateResponse,
@@ -55,3 +58,22 @@ def get_board(
     context: ApiRequestContext = Depends(get_request_context),
 ) -> BoardLoadResponse:
     return BoardLoadResponse(board=get_board_storage_adapter().load_board(board_id, context), ok=True)
+
+
+@router.patch("/{board_id}", response_model=BoardRenameResponse)
+def rename_board(
+    board_id: str,
+    payload: BoardRenameRequest,
+    context: ApiRequestContext = Depends(get_request_context),
+) -> BoardRenameResponse:
+    board = get_board_storage_adapter().rename_board(board_id, payload.title, context)
+    return BoardRenameResponse(board=board, ok=True)
+
+
+@router.delete("/{board_id}", response_model=BoardDeleteResponse)
+def delete_board(
+    board_id: str,
+    context: ApiRequestContext = Depends(get_request_context),
+) -> BoardDeleteResponse:
+    deleted_board_id = get_board_storage_adapter().delete_board(board_id, context)
+    return BoardDeleteResponse(boardId=deleted_board_id, ok=True)

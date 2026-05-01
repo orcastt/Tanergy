@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { Dirent } from 'node:fs'
-import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { auditBoardDocument } from '@/features/boards/boardDocumentGuard'
 import { summarizeBoardRecord, type BoardPersistenceRecord, type BoardSaveInput } from '@/features/boards/boardTypes'
@@ -62,6 +62,27 @@ export async function listLocalBoards(context: ApiRequestContext) {
   }
 
   return boards.sort((a, b) => Date.parse(b.savedAt) - Date.parse(a.savedAt))
+}
+
+export async function renameLocalBoard(boardId: string, title: string, context: ApiRequestContext) {
+  const board = await loadLocalBoard(boardId, context)
+  const nextTitle = title.trim()
+  if (!nextTitle) throw new Error('Board title is required.')
+  if (nextTitle.length > 80) throw new Error('Board title must be 80 characters or fewer.')
+
+  const updated: BoardPersistenceRecord = {
+    ...board,
+    savedAt: new Date().toISOString(),
+    title: nextTitle,
+  }
+  await writeFile(getBoardPath(updated.id), `${JSON.stringify(updated, null, 2)}\n`)
+  return summarizeBoardRecord(updated)
+}
+
+export async function deleteLocalBoard(boardId: string, context: ApiRequestContext) {
+  const board = await loadLocalBoard(boardId, context)
+  await unlink(getBoardPath(board.id))
+  return board.id
 }
 
 function getBoardPath(boardId: string) {

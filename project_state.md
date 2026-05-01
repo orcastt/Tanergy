@@ -19,13 +19,15 @@ Image Node → Canvas Markup → Merge Capture → New Image Node
 Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Image → 自动连线 → 用户确认后 Run
 ```
 
-**下一步**: 当前跨平台测试支架已收口为默认关闭的 dev-only 路径：`CanvasRuntimeDiagnostics` 只在 `NEXT_PUBLIC_CANVAS_RUNTIME_DIAGNOSTICS=1` 时启用，Cloudflare Tunnel allowlist 只通过 `NEXT_ALLOWED_DEV_ORIGINS` 临时注入。Slice E 下一步优先把 staging package 接到真实 server / managed Postgres / R2 / staging Web origin，并把 `/boards` Dashboard 补齐搜索、重命名和更完整的 Board CRUD；本地开发默认 `dev-user` / `dev-workspace`，Asset metadata 已带 `createdBy` / `workspaceId`，Board record 已带 `ownerId` / `workspaceId`，Postgres driver 已可保存 Board document 和 S3 Asset metadata。真实 Asset Pipeline 稳定后，再接 Model Registry / AI Proxy / AI Run log、Dashboard / 保存 / 登录，以及 Link Preview 后端 unfurl + image proxy；多人协作仍后置到资产边界稳定之后。
+**下一步**: 当前跨平台测试支架已收口为默认关闭的 dev-only 路径：`CanvasRuntimeDiagnostics` 只在 `NEXT_PUBLIC_CANVAS_RUNTIME_DIAGNOSTICS=1` 时启用，Cloudflare Tunnel allowlist 只通过 `NEXT_ALLOWED_DEV_ORIGINS` 临时注入。Slice E 下一步优先把 staging package 接到真实 server / managed Postgres / R2 / staging Web origin，并继续把 `/boards` Dashboard 补齐 thumbnail、recent/opened metadata、pagination、save indicator 和 Auth-required mode；本地开发默认 `dev-user` / `dev-workspace`，Asset metadata 已带 `createdBy` / `workspaceId`，Board record 已带 `ownerId` / `workspaceId`，Postgres driver 已可保存 Board document 和 S3 Asset metadata，Board rename/delete 已接 local/FastAPI/Postgres contract。真实 Asset Pipeline 稳定后，再接 Model Registry / AI Proxy / AI Run log、Dashboard / 保存 / 登录，以及 Link Preview 后端 unfurl + image proxy；多人协作仍后置到资产边界稳定之后。
 
 **跨平台结论**: Slice D 跨平台门先记为 `pass with notes`。Windows 侧在 50+ 图片/节点、50%-100% 缩放、runtime edge 增长时仍可能出现轻微卡顿，但当前已可用，归档为 `non-blocking performance follow-up`。这类后续问题优先通过 Slice E 的真实缩略图、对象存储、多尺寸 Asset、viewport-aware 挂载继续解决。
 
 **临时测试支架**: Slice D 跨平台测试曾因家庭/企业共享 Wi-Fi 存在设备隔离而使用 Cloudflare Tunnel + `NEXT_ALLOWED_DEV_ORIGINS` 跑 `next dev`。此前 `next start` 白屏是 tldraw production license gate，不是 Windows 性能问题。`CanvasRuntimeDiagnostics` 红色诊断面板已挂到 `NEXT_PUBLIC_CANVAS_RUNTIME_DIAGNOSTICS=1`，默认关闭；tunnel 域名 allowlist 和 quick tunnel 都只用于 Windows 测试支架。正式上线必须使用真实部署域名和 tldraw production license，不依赖 tunnel。
 
 **当前运行进程记录**: Mac 上当前有 `node` 监听 `*:3000`（PID 62685），用于 `http://localhost:3000/spikes/canvas` 本地手测。当前未检测到 `cloudflared` 进程；如再次做 Windows 隧道测试，必须重新生成临时 tunnel URL，并通过 `NEXT_ALLOWED_DEV_ORIGINS` 注入。
+
+**0-to-1 总路线**: 详见 `ARCH.md` 11.5-11.7；Sprint 级任务拆分见 `ARCH.md` 11.5.1。当前从“本地可保存/加载 + staging package”进入“真实 staging 基础设施 + Auth/Board 产品化 + AI 生图”阶段；多人协作放到 P0.5，必须等 Asset / Board / Auth / AI Run 边界稳定。
 
 ---
 
@@ -150,6 +152,10 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 - ✅ Codex 四十九次 runtime smoke 2026-05-01：本地同时启动 FastAPI `127.0.0.1:8000` 和 Next dev `localhost:3000`，Web 使用 `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000`。验证 `/health` 200、CORS preflight 200 且 allow-origin 为 `http://localhost:3000`、`/spikes/canvas` 200、FastAPI Asset create/metadata/file read 200、Board save/load 200、含 `data:image/...` 的 Board save 422；同时检查 Next dev bundle 已编入 `http://127.0.0.1:8000` 和 `/api/v1/assets/from-data-url` / `/api/v1/boards`。测试后已停止服务并清理 `.tangent-assets-smoke` / `.tangent-boards-smoke`。
 - ✅ Codex 五十次 staging prep 2026-05-01：新增 FastAPI staging deploy package：`services/api/Dockerfile`、`services/api/.dockerignore`、`deploy/staging/docker-compose.api.yml`、`deploy/staging/api.env.example` 和 `deploy/staging/README.md`；compose 默认把 API 绑定到 `127.0.0.1:8000`，env 模板指向 `s3-compatible` + Postgres persistence，runbook 记录 Web `NEXT_PUBLIC_API_BASE_URL`、CORS、R2/Postgres 变量和 smoke checklist。Docker image build、compose config、容器内 `/health`、Asset create / metadata / file read、Board save / load 和 guard 422 smoke 已通过，容器已停止。
 - ✅ Codex 五十一次推进 2026-05-01：新增 `/boards` Dashboard shell、`/boards/:boardId` 画布入口、Board list contract 和 local/FastAPI board list routes。`BoardDashboard` 可列出当前 workspace 的 Board summary、创建新 Board、按 board id 打开画布；`CanvasSpike` 现在可按 board id 自动加载/保存，并区分 dev spike 与 board 模式。`PYTHONPATH=services/api python3 -m pytest services/api/tests`、web typecheck、web lint、web build 和 `git diff --check` 已重新通过；下一步继续补 Dashboard 搜索/重命名和正式 Board CRUD。
+- ✅ Codex 五十二次架构核对 2026-05-01：逐章更新 `ARCH.md`，同步当前真实目录结构、分层边界、FastAPI/S3/Postgres/Web-to-FastAPI/`/boards` entry 状态、Board/Asset API contract、部署推送流程、外部资源清单、0-to-1 阶段估时和当前源码 250 行以上 watchlist；同步刷新 `HARNESS.md` 当前优先级和 source size watchlist。
+- ✅ Codex 五十三次 PRD 核对 2026-05-01：逐章更新 `PRD.md`，同步当前 Slice E 进度、`/boards` Dashboard / Board entry shell、FastAPI local-dev、真实 `s3-compatible` Asset adapter、Postgres Board / Asset metadata persistence、Web-to-FastAPI switch、staging API package、P0 功能状态、F18 Asset / Board Persistence、数据约束和当前 Alpha 验收差距。
+- ✅ Codex 五十四次执行规则核对 2026-05-01：逐章更新 `AGENTS.md` 和 `HARNESS.md`，同步当前 Slice E / 0-to-1 接手点、真实 staging / deploy / Auth / Board CRUD / AI Run 顺序、前后端质量闸门、Asset / Board Persistence harness、Auth / Board CRUD harness、AI Integration harness、Ops harness、handoff prompt 和源码 size watchlist 执行要求。
+- ✅ Codex 五十五次推进 2026-05-01：继续 `/boards` Dashboard / Board CRUD 产品化；FastAPI 新增 `PATCH /api/v1/boards/{board_id}` 和 `DELETE /api/v1/boards/{board_id}`，local-dev / Postgres Board storage adapter 均支持 rename/delete，Next local bridge 新增 `local-rename` / `local-delete`；`BoardDashboard` 支持 search、inline rename、delete confirm，仍保持 Board list 只返回 summary、load 才返回 document。`pytest`、compileall、web lint/typecheck/build 已通过；`boards.css` 进入 255 行 watchlist。
 
 ---
 
@@ -233,7 +239,7 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 | 旧代码污染新实现 | legacy archive 默认不读；只在用户明确要求时打开 |
 | 缩放/拖拽/选择偏移复发 | 第一切片先做坐标精度 spike |
 | 复杂节点越做越大 | Node Runtime + Node Registry + Inspector；节点卡片只显示摘要 |
-| Spike 源码文件变大 | 已拆分 `globals.css`、`useArrowPortSnapping.ts` 等；当前 `CanvasSpikeStylePanel.tsx`、`CanvasSpikeToolbar.tsx`、`canvas-overlays.css`、`node-card-content.css` 接近 300 行，`assetPreviewResolver.ts` 超过 250 行，后续触碰这些文件必须优先拆分 |
+| Spike 源码文件变大 | 已拆分 `globals.css`、`useArrowPortSnapping.ts` 等；当前 `CanvasSpikeStylePanel.tsx`、`CanvasSpikeToolbar.tsx`、`canvas-overlays.css`、`node-card-content.css` 接近 300 行，`useEditorRevision.ts`、`assetPreviewResolver.ts`、`boards.css`、`CanvasSelectionToolbar.tsx` 超过 250 行，后续触碰这些文件必须优先拆分 |
 | tldraw 端口/连线不足 | Step 1.5 先验证；失败再评估 tldraw + 独立节点层或 React Flow + Konva |
 | 动态 image 输入端口漂移 | 端口使用稳定 anchor；每连入一个 image 保留一个新空端口，P0 上限 6；复测旧线是否仍指向原端口 |
 | Output fan-out | GLM 2026-04-30 已修 `nodeEdges.ts` addEdge 按 target input 去重 + `usePortConnectionCompletion.ts` 移除 occupied 阻断；后续继续手测密集连接 |
@@ -262,4 +268,18 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 
 ## 下一步
 
-Slice D 跨平台质量门已 `pass with notes`，不再继续在 Cloudflare Tunnel + `next dev` 临时环境里追求完美。当前已进入 Slice E：本地 Next Asset API bridge 已建立 Image Node 导入和 Merge Capture 的 server-backed URL 路径，Board serializer + save guard 已能从当前 editor 生成候选 document，Save local 会先迁移 runtime image assets、挡住剩余 `data:` / `blob:` 和 base64 payload，再写入 `.tangent-boards/`；Load local 可恢复 assets / shapes / runtime edges / camera。当前 Slice E-B 已把 Asset / Board API 抽到 request context + storage adapter seam，FastAPI Asset path 已支持 local-dev 和真实 `s3-compatible` object storage，FastAPI Postgres adapter 已支持 Board records 和 S3 Asset metadata，Web Asset upload / Board save-load 已可通过 `NEXT_PUBLIC_API_BASE_URL` 指向 FastAPI contract，且本地 FastAPI + Web runtime smoke 已通过；staging API Docker / compose / env / runbook package 已完成并通过容器 smoke，`/boards` Dashboard / Board entry 已开始接入同一 persistence contract。下一步接真实 staging server、R2/Postgres 凭据、staging Web origin / CORS 和更完整的 Dashboard / Board CRUD。真实 Asset Pipeline 稳定后，再接真实 Model Registry / AI Proxy / AI Run log、Dashboard / 保存 / 登录，以及 Link Preview 后端 unfurl + image proxy；多人协作仍在这些资产边界稳定后进入 P0.5。
+Slice D 跨平台质量门已 `pass with notes`，不再继续在 Cloudflare Tunnel + `next dev` 临时环境里追求完美。当前 Slice E 已完成本地 Asset / Board bridge、FastAPI local-dev、真实 `s3-compatible` Asset adapter、Postgres persistence adapter、Web-to-FastAPI switch、staging API package 和 `/boards` entry shell。下一步不再只是“继续写功能”，而是按 0-to-1 阶段推进：
+
+| 顺序 | 阶段 | 状态 | 预计开发 | 预计测试 | 当前要做 |
+|------|------|------|----------|----------|----------|
+| 1 | Staging 基础设施 | 待接真实资源 | 1-2 天 | 0.5-1 天 | 建 managed Postgres、R2 bucket、staging API domain、staging Web env，跑 `deploy/staging/README.md` smoke |
+| 2 | 推送 / 部署流水线 | 待接远端和平台 | 1-2 天 | 0.5-1 天 | 明确 Git remote、Web deploy 平台、VPS Docker deploy、env secrets、rollback |
+| 3 | Auth / 注册 / 邮箱验证 | 未开始 | 3-5 天 | 1-2 天 | users/workspaces tables、Email OTP/magic link、session/JWT、保护 `/boards` 和 API |
+| 4 | Board CRUD 产品化 | search/rename/delete 已接 contract | 2-4 天 | 1-2 天 | `/boards` thumbnail、recent/opened metadata、空/错/加载 polish、save indicator、刷新恢复 |
+| 5 | AI 生图最小链路 | 未接真实 provider | 5-8 天 | 2-4 天 | Model Registry、AI Proxy、AiRun table、Prompt → Image Gen / Image Gen 4 → Asset → Image Node |
+| 6 | Analysis / AI Chat 自动搭线 | mock 基础已有 | 3-6 天 | 2-3 天 | Analysis provider path、Chat planner、自动建节点/连线、用户确认后 Run |
+| 7 | Alpha 前安全/运维 | 未开始 | 3-5 天 | 1-2 天 | rate limit、成本熔断、日志、备份恢复演练、CORS、错误页、Terms/Privacy 占位 |
+| 8 | Alpha 发布验收 | 未开始 | 2-3 天修复 | 3-5 天手测 | Windows/Mac/Chrome/Edge、真实 AI 成本、5-10 个用户端到端手测 |
+| 9 | P0.5 多人协作 | 后置 | 8-15 天 | 5-10 天 | 协作文档层、presence、软锁、snapshot/reconnect；不让 CRDT 接管 AI Run / Asset / 扣费 |
+
+隐性阻塞项已写入 `ARCH.md` 11.7：数据库 migration、备份恢复、R2 CORS/权限、Email SPF/DKIM/DMARC、tldraw production license、限流/成本熔断、Secrets 轮换、Legal 占位、最小 Ops 查询和未来 WebSocket/协作代理配置。

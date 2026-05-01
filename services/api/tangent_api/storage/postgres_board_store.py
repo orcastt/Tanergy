@@ -125,6 +125,45 @@ class PostgresBoardStore:
 
         return [summarize_board_record(_board_record_from_row(row)) for row in rows]
 
+    def rename_board(self, board_id: str, title: str, context: ApiRequestContext) -> BoardSummary:
+        record = self.load_board(board_id, context)
+        next_title = title.strip()
+        if not next_title:
+            raise HTTPException(status_code=400, detail="Board title is required.")
+        if len(next_title) > 80:
+            raise HTTPException(status_code=400, detail="Board title must be 80 characters or fewer.")
+
+        saved_at = datetime.now(timezone.utc).isoformat()
+        with connect_to_postgres() as connection:
+            with connection.cursor() as cursor:
+                self._ensure_schema(cursor)
+                cursor.execute(
+                    """
+                    UPDATE tangent_boards
+                    SET title = %s, saved_at = %s
+                    WHERE workspace_id = %s AND id = %s
+                    """,
+                    (next_title, saved_at, context.workspace_id, record.id),
+                )
+            connection.commit()
+
+        return summarize_board_record(record.model_copy(update={"title": next_title, "saved_at": saved_at}))
+
+    def delete_board(self, board_id: str, context: ApiRequestContext) -> str:
+        record = self.load_board(board_id, context)
+        with connect_to_postgres() as connection:
+            with connection.cursor() as cursor:
+                self._ensure_schema(cursor)
+                cursor.execute(
+                    """
+                    DELETE FROM tangent_boards
+                    WHERE workspace_id = %s AND id = %s
+                    """,
+                    (context.workspace_id, record.id),
+                )
+            connection.commit()
+        return record.id
+
     def _ensure_schema(self, cursor: Any) -> None:
         if not should_auto_create_tables():
             return

@@ -53,6 +53,13 @@ class FakePostgresCursor:
             self.rows.sort(key=lambda row: row[6], reverse=True)
         elif normalized.startswith("SELECT id, workspace_id, owner_id, title, document"):
             self.row = self.database.boards.get((params[0], params[1]))
+        elif normalized.startswith("UPDATE tangent_boards SET title"):
+            key = (params[2], params[3])
+            row = self.database.boards.get(key)
+            if row:
+                self.database.boards[key] = (row[0], row[1], row[2], params[0], row[4], row[5], params[1])
+        elif normalized.startswith("DELETE FROM tangent_boards"):
+            self.database.boards.pop((params[0], params[1]), None)
         elif normalized.startswith("INSERT INTO tangent_assets"):
             key = (params[1], params[0])
             self.database.assets[key] = params

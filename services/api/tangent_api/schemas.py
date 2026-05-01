@@ -31,6 +31,10 @@ class BoardSaveRequest(TangentApiModel):
     title: Optional[str] = None
 
 
+class BoardRenameRequest(TangentApiModel):
+    title: str
+
+
 class BoardSummary(TangentApiModel):
     byte_size: int = Field(alias="byteSize")
     id: str
@@ -59,6 +63,18 @@ class BoardLoadResponse(TangentApiModel):
 
 class BoardListResponse(TangentApiModel):
     boards: list[BoardSummary]
+    error: Optional[str] = None
+    ok: bool
+
+
+class BoardRenameResponse(TangentApiModel):
+    board: Optional[BoardSummary] = None
+    error: Optional[str] = None
+    ok: bool
+
+
+class BoardDeleteResponse(TangentApiModel):
+    board_id: Optional[str] = Field(default=None, alias="boardId")
     error: Optional[str] = None
     ok: bool
 

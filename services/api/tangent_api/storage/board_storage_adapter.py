@@ -24,6 +24,12 @@ class BoardStorageAdapter:
     def list_boards(self, context: ApiRequestContext) -> list[BoardSummary]:
         raise NotImplementedError
 
+    def rename_board(self, board_id: str, title: str, context: ApiRequestContext) -> BoardSummary:
+        raise NotImplementedError
+
+    def delete_board(self, board_id: str, context: ApiRequestContext) -> str:
+        raise NotImplementedError
+
 
 class LocalBoardStorageAdapter(BoardStorageAdapter):
     def save_board(
@@ -38,6 +44,16 @@ class LocalBoardStorageAdapter(BoardStorageAdapter):
 
     def list_boards(self, context: ApiRequestContext) -> list[BoardSummary]:
         return list_local_boards(context)
+
+    def rename_board(self, board_id: str, title: str, context: ApiRequestContext) -> BoardSummary:
+        from tangent_api.storage.local_board_store import rename_board as rename_local_board
+
+        return rename_local_board(board_id, title, context)
+
+    def delete_board(self, board_id: str, context: ApiRequestContext) -> str:
+        from tangent_api.storage.local_board_store import delete_board as delete_local_board
+
+        return delete_local_board(board_id, context)
 
 
 class PostgresBoardStorageAdapter(BoardStorageAdapter):
@@ -56,6 +72,12 @@ class PostgresBoardStorageAdapter(BoardStorageAdapter):
 
     def list_boards(self, context: ApiRequestContext) -> list[BoardSummary]:
         return self.store.list_boards(context)
+
+    def rename_board(self, board_id: str, title: str, context: ApiRequestContext) -> BoardSummary:
+        return self.store.rename_board(board_id, title, context)
+
+    def delete_board(self, board_id: str, context: ApiRequestContext) -> str:
+        return self.store.delete_board(board_id, context)
 
 
 def get_board_storage_adapter() -> BoardStorageAdapter:

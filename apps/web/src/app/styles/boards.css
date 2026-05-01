@@ -49,7 +49,10 @@
 
 .boards-primary-button,
 .boards-secondary-button,
-.boards-open-form button {
+.boards-open-form button,
+.boards-rename-form button,
+.boards-row-actions button,
+.boards-row-actions a {
   height: 36px;
   border: 1px solid rgba(15, 23, 42, 0.14);
   border-radius: 7px;
@@ -65,15 +68,30 @@
 }
 
 .boards-secondary-button,
-.boards-open-form button {
+.boards-open-form button,
+.boards-rename-form button,
+.boards-row-actions button,
+.boards-row-actions a {
   padding: 0 12px;
   background: #ffffff;
   color: var(--text-primary);
 }
 
-.boards-secondary-button:disabled {
+.boards-secondary-button:disabled,
+.boards-rename-form button:disabled,
+.boards-row-actions button:disabled {
   cursor: default;
   opacity: 0.55;
+}
+
+.boards-search-input {
+  width: min(260px, 52vw);
+  height: 36px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 8px;
+  padding: 0 11px;
+  background: #ffffff;
+  outline: none;
 }
 
 .boards-open-form {
@@ -116,7 +134,7 @@
 .boards-table-head,
 .boards-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 180px 92px;
+  grid-template-columns: minmax(0, 1fr) 180px 92px 220px;
   gap: 18px;
   align-items: center;
 }
@@ -137,7 +155,6 @@
   padding: 12px 16px;
   border-bottom: 1px solid rgba(15, 23, 42, 0.08);
   color: inherit;
-  text-decoration: none;
 }
 
 .boards-row:last-child {
@@ -148,25 +165,65 @@
   background: #fbfbf8;
 }
 
-.boards-row strong,
-.boards-row small {
+.boards-title-link {
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.boards-title-link strong,
+.boards-title-link small {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.boards-row strong {
+.boards-title-link strong {
   margin-bottom: 4px;
   font-size: 14px;
 }
 
-.boards-row small,
+.boards-title-link small,
 .boards-row time,
-.boards-row > span:last-child {
+.boards-row > span:nth-child(3) {
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 700;
+}
+
+.boards-row-actions,
+.boards-rename-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.boards-row-actions a {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.boards-row-actions button,
+.boards-row-actions a,
+.boards-rename-form button {
+  height: 30px;
+  font-size: 12px;
+}
+
+.boards-rename-form {
+  min-width: 0;
+}
+
+.boards-rename-form input {
+  min-width: 180px;
+  height: 32px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 7px;
+  padding: 0 9px;
+  outline: none;
 }
 
 .boards-empty {
@@ -190,5 +247,9 @@
   .boards-row {
     grid-template-columns: 1fr;
     gap: 6px;
+  }
+
+  .boards-row-actions {
+    margin-top: 4px;
   }
 }

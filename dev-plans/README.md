@@ -5,6 +5,10 @@
 
 Use this directory as a working plan layer, not as the canonical product or architecture source.
 
+The end-to-end 0-to-1 launch route, sprint breakdown, deployment flow, external resource checklist and rough phase estimates now live in `ARCH.md` sections 11.5-11.7. Keep active slice plans here focused on the next implementation cut.
+
+Product-level P0 scope, per-feature implementation status and Alpha acceptance gaps are now synced in `PRD.md` sections 0, 2, 5 and 9.
+
 Read order for active development:
 
 1. `project_state.md`
@@ -18,7 +22,7 @@ Read order for active development:
 
 | File | Status | Use |
 | --- | --- | --- |
-| `Asset-lod-roadmap.md` | Active | Current Slice E Real Asset Pipeline roadmap. E-A and E-C are implemented; E-B now covers FastAPI local-dev, real `s3-compatible` Asset storage, Postgres persistence and configurable Web-to-FastAPI upload/save/load. Local runtime smoke and staging API Docker package smoke have passed; `/boards` Dashboard / Board entry is in progress and real staging wiring remains next. |
+| `Asset-lod-roadmap.md` | Active | Current Slice E Real Asset Pipeline roadmap. E-A and E-C are implemented; E-B now covers FastAPI local-dev, real `s3-compatible` Asset storage, Postgres persistence and configurable Web-to-FastAPI upload/save/load. Local runtime smoke and staging API Docker package smoke have passed; `/boards` Dashboard / Board entry now supports list/create/open/search/rename/delete, while real staging wiring, thumbnails/recent metadata, save indicator and Auth remain next. |
 | `p0-development-harness-roadmap-2026-04-30.md` | Active | Current P0 slice order and handoff standard. |
 | `overseas-cost-growth-forecast.md` | Reference | Cost, growth and infrastructure planning reference. Keep synced when Asset / AI / deploy decisions change. |
 

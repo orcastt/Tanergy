@@ -1,15 +1,25 @@
 import type { ApiRequestContext } from '../../_lib/apiRequestContext'
-import { listLocalBoards, loadLocalBoard, saveLocalBoard } from './localBoardStore'
+import {
+  deleteLocalBoard,
+  listLocalBoards,
+  loadLocalBoard,
+  renameLocalBoard,
+  saveLocalBoard,
+} from './localBoardStore'
 
 export type BoardStorageAdapter = {
+  deleteLocalBoard: (boardId: string, context: ApiRequestContext) => ReturnType<typeof deleteLocalBoard>
   listLocalBoards: (context: ApiRequestContext) => ReturnType<typeof listLocalBoards>
   loadLocalBoard: (boardId: string, context: ApiRequestContext) => ReturnType<typeof loadLocalBoard>
+  renameLocalBoard: (boardId: string, title: string, context: ApiRequestContext) => ReturnType<typeof renameLocalBoard>
   saveLocalBoard: (input: Parameters<typeof saveLocalBoard>[0], context: ApiRequestContext) => ReturnType<typeof saveLocalBoard>
 }
 
 const localBoardAdapter: BoardStorageAdapter = {
+  deleteLocalBoard,
   listLocalBoards,
   loadLocalBoard,
+  renameLocalBoard,
   saveLocalBoard,
 }
 

@@ -3,7 +3,7 @@
 **Date**: 2026-04-30  
 **Branch**: `feature/asset-lod-roadmap`  
 **Base checkpoint**: `a6f20c1 checkpoint: stabilize s1.5 canvas runtime`  
-**Status**: Slices A-D implemented. Cross-platform quality gate is `pass with notes` as of 2026-04-30. Windows dense-board stutter is a non-blocking performance follow-up. Slice E-A local Asset API bridge and Slice E-C board save guard / local save-restore are implemented. Slice E-B request context + storage adapter seam now covers FastAPI local-dev, real `s3-compatible` Asset storage, Postgres persistence and configurable Web-to-FastAPI upload/save/load; local FastAPI + Web runtime smoke and staging API Docker package smoke have passed. `/boards` Dashboard / Board entry is in progress; real staging wiring and full Board CRUD remain next.
+**Status**: Slices A-D implemented. Cross-platform quality gate is `pass with notes` as of 2026-04-30. Windows dense-board stutter is a non-blocking performance follow-up. Slice E-A local Asset API bridge and Slice E-C board save guard / local save-restore are implemented. Slice E-B request context + storage adapter seam now covers FastAPI local-dev, real `s3-compatible` Asset storage, Postgres persistence and configurable Web-to-FastAPI upload/save/load; local FastAPI + Web runtime smoke and staging API Docker package smoke have passed. `/boards` Dashboard / Board entry now supports summary list, create/open, search, rename and delete across local/FastAPI Board contracts; real staging wiring, thumbnails/recent metadata, save indicator and Auth remain next.
 
 **Owner**: Codex / TANGENT
 
@@ -615,7 +615,11 @@ Codex added `services/api/Dockerfile`, `services/api/.dockerignore`, `deploy/sta
 
 2026-05-01 Dashboard / Board entry implementation note:
 
-Codex added a minimal product entry for Board persistence. `/` now redirects to `/boards`; `/boards` renders a dashboard shell that lists Board summaries from the same local or FastAPI persistence contract, creates a new board id and opens existing boards by id; `/boards/:boardId` renders the existing canvas with seed data disabled and saves/loads through that board id. FastAPI and the Next local bridge now both support Board list responses that return summaries only, preserving the save/load rule that full documents are only returned by explicit load. Tests cover local-dev and Postgres board listing plus workspace isolation. Remaining gaps: auth-required mode, rename/delete/search, thumbnails, recent-open metadata and real staging credentials.
+Codex added a minimal product entry for Board persistence. `/` now redirects to `/boards`; `/boards` renders a dashboard shell that lists Board summaries from the same local or FastAPI persistence contract, creates a new board id and opens existing boards by id; `/boards/:boardId` renders the existing canvas with seed data disabled and saves/loads through that board id. FastAPI and the Next local bridge now both support Board list responses that return summaries only, preserving the save/load rule that full documents are only returned by explicit load. Tests cover local-dev and Postgres board listing plus workspace isolation. This note was later extended by Dashboard CRUD work below.
+
+2026-05-01 Dashboard CRUD continuation note:
+
+Codex extended the Board contract with rename/delete. FastAPI now exposes `PATCH /api/v1/boards/{board_id}` and `DELETE /api/v1/boards/{board_id}` for both local-dev and Postgres drivers; the Next local bridge exposes matching `local-rename` / `local-delete` routes. `/boards` now has client-side search, inline rename and delete confirmation while still keeping list responses summary-only. Tests cover local-dev and fake Postgres rename/delete plus workspace isolation. Remaining gaps: auth-required mode, thumbnails, recent-open metadata, pagination, autosave/save indicator and real staging credentials.
 
 ---
 

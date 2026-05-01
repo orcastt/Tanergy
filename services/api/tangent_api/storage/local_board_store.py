@@ -76,6 +76,28 @@ def list_boards(context: ApiRequestContext) -> list[BoardSummary]:
     return sorted(summaries, key=lambda record: record.saved_at, reverse=True)
 
 
+def rename_board(board_id: str, title: str, context: ApiRequestContext) -> BoardSummary:
+    record = load_board(board_id, context)
+    next_title = title.strip()
+    if not next_title:
+        raise HTTPException(status_code=400, detail="Board title is required.")
+    if len(next_title) > 80:
+        raise HTTPException(status_code=400, detail="Board title must be 80 characters or fewer.")
+
+    updated = record.model_copy(update={"title": next_title, "saved_at": datetime.now(timezone.utc).isoformat()})
+    _board_path(updated.id).write_text(
+        json.dumps(updated.model_dump(by_alias=True), ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return summarize_board_record(updated)
+
+
+def delete_board(board_id: str, context: ApiRequestContext) -> str:
+    record = load_board(board_id, context)
+    _board_path(record.id).unlink()
+    return record.id
+
+
 def _storage_root() -> Path:
     return Path(os.getenv("TANGENT_BOARD_STORAGE_DIR", ".tangent-boards"))
 

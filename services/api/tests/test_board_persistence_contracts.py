@@ -30,6 +30,15 @@ def test_board_local_dev_contract(tmp_path, monkeypatch):
     assert [board["id"] for board in listed] == ["api-smoke-board"]
     assert "document" not in listed[0]
 
+    rename_response = client.patch("/api/v1/boards/api-smoke-board", json={"title": "Renamed Board"})
+    assert rename_response.status_code == 200
+    renamed = rename_response.json()["board"]
+    assert renamed["title"] == "Renamed Board"
+    assert "document" not in renamed
+
+    empty_rename = client.patch("/api/v1/boards/api-smoke-board", json={"title": " "})
+    assert empty_rename.status_code == 400
+
     blocked = client.get(
         "/api/v1/boards/api-smoke-board",
         headers={"x-tangent-user-id": "dev-user", "x-tangent-workspace-id": "other-workspace"},
@@ -42,6 +51,11 @@ def test_board_local_dev_contract(tmp_path, monkeypatch):
     )
     assert blocked_list.status_code == 200
     assert blocked_list.json()["boards"] == []
+
+    delete_response = client.delete("/api/v1/boards/api-smoke-board")
+    assert delete_response.status_code == 200
+    assert delete_response.json()["boardId"] == "api-smoke-board"
+    assert client.get("/api/v1/boards/api-smoke-board").status_code == 404
 
 
 def test_board_postgres_contract(monkeypatch):
@@ -80,6 +94,11 @@ def test_board_postgres_contract(monkeypatch):
     assert [board["id"] for board in listed] == ["api-postgres-board"]
     assert "document" not in listed[0]
 
+    rename_response = client.patch("/api/v1/boards/api-postgres-board", json={"title": "Renamed Postgres"})
+    assert rename_response.status_code == 200
+    assert rename_response.json()["board"]["title"] == "Renamed Postgres"
+    assert fake_db.boards[("dev-workspace", "api-postgres-board")][3] == "Renamed Postgres"
+
     blocked = client.get(
         "/api/v1/boards/api-postgres-board",
         headers={"x-tangent-user-id": "dev-user", "x-tangent-workspace-id": "other-workspace"},
@@ -92,6 +111,11 @@ def test_board_postgres_contract(monkeypatch):
     )
     assert blocked_list.status_code == 200
     assert blocked_list.json()["boards"] == []
+
+    delete_response = client.delete("/api/v1/boards/api-postgres-board")
+    assert delete_response.status_code == 200
+    assert delete_response.json()["boardId"] == "api-postgres-board"
+    assert ("dev-workspace", "api-postgres-board") not in fake_db.boards
 
 
 def test_board_postgres_requires_database_url(monkeypatch):
