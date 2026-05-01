@@ -577,6 +577,10 @@ Codex added a minimal fresh FastAPI scaffold under `services/api/tangent_api/`. 
 
 Codex implemented local file-backed FastAPI Asset routes: `POST /api/v1/assets/from-data-url`, `POST /api/v1/assets/upload`, `GET /api/v1/assets/{asset_id}` and `GET /api/v1/assets/files/{asset_id}/{file_name}`. The Python local store mirrors the Next bridge guardrails: PNG/JPEG/WebP only, 30MB maximum, metadata with `workspaceId` / `createdBy`, optional 256/512/1024 thumbnail files, workspace-checked metadata and file reads, and explicit 501 for unsupported asset/board storage drivers. R2/S3 is still not implemented. Added `services/api/tests/test_persistence_contracts.py` for the Asset/Board persistence contract; local `pytest` is not installed in the current machine environment, so equivalent direct FastAPI TestClient smoke was run. `python3 -m compileall services/api/tangent_api`, web typecheck, web lint, web build and `git diff --check` passed.
 
+2026-05-01 FastAPI asset adapter note:
+
+Codex added `services/api/tangent_api/storage/asset_storage_adapter.py`. FastAPI Asset routes now call the adapter instead of importing the local store directly. `local-dev` remains the working driver; `s3-compatible` is now a configuration-aware placeholder that returns 501 and lists missing `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` and `S3_PUBLIC_BASE_URL` values. Unknown drivers also fail explicitly. Direct TestClient smoke verified local asset create / metadata / file and `s3-compatible` / unknown-driver failures. `python3 -m compileall services/api/tangent_api`, web typecheck, web lint, web build and `git diff --check` passed.
+
 ---
 
 ## 6. Development Order

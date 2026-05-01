@@ -923,7 +923,8 @@ P0 可先用 `from-data-url` 处理 editor export / merge capture，但服务端
 - `services/api/tangent_api/request_context.py` 复刻 Next bridge 的 `x-tangent-user-id` / `x-tangent-workspace-id` context 规则。
 - `services/api/tangent_api/board_guard.py` 复刻 Board document guard 的 runtime URL / large base64 / JSON serializable 检查。
 - `services/api/tangent_api/routers/boards.py` 当前实现 `POST /api/v1/boards/validate-document`、本地文件版 `POST /api/v1/boards` 和 `GET /api/v1/boards/{board_id}`；这仍是 local-dev persistence，不替代正式 DB。
-- `services/api/tangent_api/routers/assets.py` 当前实现 local-dev `POST /api/v1/assets/from-data-url`、`POST /api/v1/assets/upload`、`GET /api/v1/assets/{asset_id}` 和 `GET /api/v1/assets/files/{asset_id}/{file_name}`；metadata 带 `workspaceId` / `createdBy`，文件读取会校验 workspace。R2/S3 adapter 尚未实现，不支持的 `TANGENT_ASSET_STORAGE_DRIVER` 会明确 501。
+- `services/api/tangent_api/storage/asset_storage_adapter.py` 是 FastAPI Asset storage seam；`local-dev` 走本地文件存储，`s3-compatible` 目前是配置感知的 501 placeholder，会提示缺失的 `S3_*` 配置。
+- `services/api/tangent_api/routers/assets.py` 当前实现 local-dev `POST /api/v1/assets/from-data-url`、`POST /api/v1/assets/upload`、`GET /api/v1/assets/{asset_id}` 和 `GET /api/v1/assets/files/{asset_id}/{file_name}`；metadata 带 `workspaceId` / `createdBy`，文件读取会校验 workspace。真实 R2/S3 adapter 尚未实现，不支持的 `TANGENT_ASSET_STORAGE_DRIVER` 会明确 501。
 
 ### 8.4 Model Registry
 

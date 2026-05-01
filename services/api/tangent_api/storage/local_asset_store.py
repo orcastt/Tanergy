@@ -28,7 +28,6 @@ def create_asset_from_data_url(
     input_data: AssetDataUrlRequest,
     context: ApiRequestContext,
 ) -> AssetRecord:
-    _assert_local_driver()
     original = _parse_image_data_url(input_data.data_url)
     _assert_image_mime(original.mime)
     _assert_asset_size(len(original.content))
@@ -68,7 +67,6 @@ async def create_asset_from_upload(
     width: int,
     height: int,
 ) -> AssetRecord:
-    _assert_local_driver()
     mime = file.content_type or ""
     _assert_image_mime(mime)
     content = await file.read()
@@ -100,7 +98,6 @@ async def create_asset_from_upload(
 
 
 def get_asset_record(asset_id: str, context: ApiRequestContext) -> AssetRecord:
-    _assert_local_driver()
     _assert_safe_path_segment(asset_id)
     path = _asset_dir(asset_id) / "metadata.json"
     if not path.exists():
@@ -111,7 +108,6 @@ def get_asset_record(asset_id: str, context: ApiRequestContext) -> AssetRecord:
 
 
 def get_asset_file_path(asset_id: str, file_name: str, context: ApiRequestContext) -> Path:
-    _assert_local_driver()
     _assert_safe_path_segment(asset_id)
     _assert_safe_path_segment(file_name)
     get_asset_record(asset_id, context)
@@ -159,15 +155,6 @@ def _write_asset_record(asset_dir: Path, record: AssetRecord) -> None:
 
 def _storage_root() -> Path:
     return Path(os.getenv("TANGENT_ASSET_STORAGE_DIR", ".tangent-assets"))
-
-
-def _assert_local_driver() -> None:
-    driver = os.getenv("TANGENT_ASSET_STORAGE_DRIVER", "local-dev")
-    if driver != "local-dev":
-        raise HTTPException(
-            status_code=501,
-            detail=f'Unsupported asset storage driver "{driver}". Supported driver: local-dev.',
-        )
 
 
 def _asset_dir(asset_id: str) -> Path:

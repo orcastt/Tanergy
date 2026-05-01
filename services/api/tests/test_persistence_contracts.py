@@ -60,8 +60,22 @@ def test_asset_upload_contract(tmp_path, monkeypatch):
     assert asset["originalUrl"].endswith("/original.png")
 
 
-def test_asset_unsupported_driver_fails(monkeypatch):
+def test_asset_s3_compatible_driver_is_explicit_placeholder(monkeypatch):
     monkeypatch.setenv("TANGENT_ASSET_STORAGE_DRIVER", "s3-compatible")
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/assets/from-data-url",
+        json={"dataUrl": "data:image/png;base64,AAAA", "height": 1, "origin": "upload", "width": 1},
+    )
+
+    assert response.status_code == 501
+    assert "S3-compatible asset storage driver is configured" in response.json()["detail"]
+    assert "S3_ENDPOINT" in response.json()["detail"]
+
+
+def test_asset_unknown_driver_fails(monkeypatch):
+    monkeypatch.setenv("TANGENT_ASSET_STORAGE_DRIVER", "unknown-driver")
     client = TestClient(app)
 
     response = client.post(
