@@ -3,7 +3,7 @@
 **Date**: 2026-04-30  
 **Branch**: `feature/asset-lod-roadmap`  
 **Base checkpoint**: `a6f20c1 checkpoint: stabilize s1.5 canvas runtime`  
-**Status**: Slices A-D implemented. Cross-platform quality gate is `pass with notes` as of 2026-04-30. Windows dense-board stutter is a non-blocking performance follow-up. Slice E-A local Asset API bridge and Slice E-C board save guard / local save-restore are implemented. Slice E-B request context + storage adapter seam now covers FastAPI local-dev, real `s3-compatible` Asset storage, Postgres persistence and configurable Web-to-FastAPI upload/save/load; local FastAPI + Web runtime smoke has passed. Staging server config and Dashboard/Board entry remain next.
+**Status**: Slices A-D implemented. Cross-platform quality gate is `pass with notes` as of 2026-04-30. Windows dense-board stutter is a non-blocking performance follow-up. Slice E-A local Asset API bridge and Slice E-C board save guard / local save-restore are implemented. Slice E-B request context + storage adapter seam now covers FastAPI local-dev, real `s3-compatible` Asset storage, Postgres persistence and configurable Web-to-FastAPI upload/save/load; local FastAPI + Web runtime smoke and staging API Docker package smoke have passed. Real staging wiring and Dashboard/Board entry remain next.
 
 **Owner**: Codex / TANGENT
 
@@ -604,6 +604,14 @@ Codex added `apps/web/src/features/api/persistenceApi.ts` and updated the Web As
 2026-05-01 local runtime smoke note:
 
 Codex ran FastAPI on `127.0.0.1:8000` with local-dev storage directories and Next dev on `localhost:3000` with `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000`. Smoke verified FastAPI `/health`, CORS preflight from `http://localhost:3000`, Web `/spikes/canvas`, FastAPI Asset create / metadata / file read, Board save / load and Board guard rejection for runtime `data:` payloads. The Next dev bundle was also checked for the compiled API base URL and `/api/v1` client routes. Smoke artifacts were cleaned and both servers were stopped.
+
+2026-05-01 staging prep start:
+
+The next sub-slice prepares a minimal staging deployment package, not a full production launch. Scope: containerize `services/api`, add staging env / compose templates, document Web `NEXT_PUBLIC_API_BASE_URL` wiring, list R2/Postgres required variables, and provide a repeatable runtime smoke checklist. Non-goals: provisioning a real VPS without credentials, production auth, AI proxy, billing or multiplayer.
+
+2026-05-01 staging prep implementation note:
+
+Codex added `services/api/Dockerfile`, `services/api/.dockerignore`, `deploy/staging/docker-compose.api.yml`, `deploy/staging/api.env.example` and `deploy/staging/README.md`. The staging compose template runs the FastAPI API container on `127.0.0.1:8000` for a VPS reverse proxy, uses Postgres persistence plus `s3-compatible` Asset storage by default, and documents Web `NEXT_PUBLIC_API_BASE_URL` / `TANGENT_ALLOWED_ORIGINS` wiring. Validation passed for `docker compose config`, Docker image build, container `/health`, Asset create / metadata / file read, Board save / load and Board guard rejection. The local smoke container was stopped after verification.
 
 ---
 

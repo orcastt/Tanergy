@@ -1,0 +1,9 @@
+.env
+.pytest_cache/
+.ruff_cache/
+.tangent-assets*/
+.tangent-boards*/
+.venv/
+__pycache__/
+*.pyc
+tests/

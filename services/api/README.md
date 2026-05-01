@@ -31,6 +31,19 @@ PYTHONPATH=. python3 -m pytest tests
 curl http://127.0.0.1:8000/health
 ```
 
+## Staging
+
+The first staging package lives in `deploy/staging/`.
+
+It includes:
+
+- `services/api/Dockerfile`
+- `deploy/staging/docker-compose.api.yml`
+- `deploy/staging/api.env.example`
+- `deploy/staging/README.md`
+
+Use it for a private VPS + managed Postgres + R2 smoke before production.
+
 ## P0 Persistence Contract
 
 The current Next.js local bridge in `apps/web/src/app/api` is a development harness for this future service. Keep these boundaries when replacing it with FastAPI:

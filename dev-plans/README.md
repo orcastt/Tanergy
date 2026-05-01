@@ -18,7 +18,7 @@ Read order for active development:
 
 | File | Status | Use |
 | --- | --- | --- |
-| `Asset-lod-roadmap.md` | Active | Current Slice E Real Asset Pipeline roadmap. E-A and E-C are implemented; E-B now covers FastAPI local-dev, real `s3-compatible` Asset storage, Postgres persistence and configurable Web-to-FastAPI upload/save/load. Local runtime smoke has passed; staging config and Dashboard/Board entry remain next. |
+| `Asset-lod-roadmap.md` | Active | Current Slice E Real Asset Pipeline roadmap. E-A and E-C are implemented; E-B now covers FastAPI local-dev, real `s3-compatible` Asset storage, Postgres persistence and configurable Web-to-FastAPI upload/save/load. Local runtime smoke and staging API Docker package smoke have passed; real staging wiring and Dashboard/Board entry remain next. |
 | `p0-development-harness-roadmap-2026-04-30.md` | Active | Current P0 slice order and handoff standard. |
 | `overseas-cost-growth-forecast.md` | Reference | Cost, growth and infrastructure planning reference. Keep synced when Asset / AI / deploy decisions change. |
 
