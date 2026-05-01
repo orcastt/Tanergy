@@ -3,7 +3,7 @@
 **Date**: 2026-04-30  
 **Branch**: `feature/asset-lod-roadmap`  
 **Base checkpoint**: `a6f20c1 checkpoint: stabilize s1.5 canvas runtime`  
-**Status**: Slices A-D implemented. Cross-platform quality gate is `pass with notes` as of 2026-04-30. Windows dense-board stutter is a non-blocking performance follow-up. Slice E-A local Asset API bridge and Slice E-C board save guard / local save-restore are implemented. Current active work is Slice E-B auth context + storage adapter seam before moving to FastAPI + R2/S3.
+**Status**: Slices A-D implemented. Cross-platform quality gate is `pass with notes` as of 2026-04-30. Windows dense-board stutter is a non-blocking performance follow-up. Slice E-A local Asset API bridge and Slice E-C board save guard / local save-restore are implemented. Slice E-B request context + storage adapter seam now covers FastAPI local-dev and real `s3-compatible` Asset storage; Postgres persistence and Web-to-FastAPI contract switch remain next.
 
 **Owner**: Codex / TANGENT
 
@@ -524,7 +524,7 @@ Prepare the local Asset API bridge for the production FastAPI / R2 path without 
 
 Boundary:
 
-This slice keeps the current Next.js local dev API working. It does not implement login UI, JWT validation, database tables or real R2/S3 writes yet. It adds the request-context and storage-driver seams that the production API will replace.
+This slice keeps the current Next.js local dev API working. It does not implement login UI, JWT validation or database tables yet. It adds the request-context and storage-driver seams that the production API will replace; the FastAPI side now includes a real `s3-compatible` Asset adapter, while Postgres persistence remains pending.
 
 Scope:
 
@@ -580,6 +580,14 @@ Codex implemented local file-backed FastAPI Asset routes: `POST /api/v1/assets/f
 2026-05-01 FastAPI asset adapter note:
 
 Codex added `services/api/tangent_api/storage/asset_storage_adapter.py`. FastAPI Asset routes now call the adapter instead of importing the local store directly. `local-dev` remains the working driver; `s3-compatible` is now a configuration-aware placeholder that returns 501 and lists missing `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` and `S3_PUBLIC_BASE_URL` values. Unknown drivers also fail explicitly. Direct TestClient smoke verified local asset create / metadata / file and `s3-compatible` / unknown-driver failures. `python3 -m compileall services/api/tangent_api`, web typecheck, web lint, web build and `git diff --check` passed.
+
+2026-05-01 R2/S3-compatible adapter implementation start:
+
+The next sub-slice replaces the FastAPI `s3-compatible` placeholder with a real object-store adapter. The initial production-shaped contract stores originals, thumbnails and `metadata.json` under workspace-scoped object keys, keeps `originalUrl` / thumbnail URLs on the FastAPI `/api/v1/assets/files/{asset_id}/{file_name}` path so file reads can still enforce request context, and leaves Postgres persistence for a later Slice E step.
+
+2026-05-01 R2/S3-compatible adapter implementation note:
+
+Codex implemented `services/api/tangent_api/storage/s3_asset_store.py` and routed the FastAPI `s3-compatible` driver through it. The adapter validates `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY`, uses boto3 with optional `S3_REGION` / `S3_ADDRESSING_STYLE`, writes original files, thumbnails and `metadata.json` under `workspaces/{workspace_id}/assets/{asset_id}/...`, and streams file reads through the FastAPI file route after workspace-checked metadata lookup. `local-dev` still works and now shares the same MIME / size / path / workspace helper logic. `pytest` is still unavailable in the current machine environment, so direct FastAPI TestClient smoke verified local-dev, fake S3 create/read, missing file, cross-workspace isolation, unknown driver and Board guard paths; `python3 -m compileall services/api/tangent_api` and `git diff --check` passed.
 
 ---
 

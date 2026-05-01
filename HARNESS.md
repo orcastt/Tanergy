@@ -149,7 +149,7 @@ Canonical docs 仍然是：
 当前只允许围绕 Slice E Real Asset Pipeline 做收口：
 
 1. 完成 E-B request context + asset/board storage adapter seam 的本地手测和提交。
-2. 继续把本地 Asset / Board API 合同迁移到带真实 Auth / Workspace 校验的 FastAPI + R2/S3 / DB adapter。
+2. 继续把本地 Asset / Board API 合同迁移到带真实 Auth / Workspace 校验的 FastAPI + R2/S3 / DB adapter；当前 FastAPI Asset path 已有真实 `s3-compatible` adapter，下一步重点是 Postgres persistence 和 Web-to-FastAPI contract switch。
 3. 保持 Board document save guard：任何持久化路径都不能写入 `data:` / `blob:` / Base64 图片 payload。
 4. 验证 refresh / local load 后图片、节点、runtime edges 和 camera 能恢复。
 5. Asset 边界稳定后，再进入 Model Registry、AI Runs、真实 Image Gen、Dashboard / Board persistence。

@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import HTTPException, UploadFile
+from fastapi.responses import FileResponse, Response
 
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.schemas import AssetDataUrlRequest, AssetRecord
@@ -13,14 +14,7 @@ from tangent_api.storage.local_asset_store import (
     create_asset_from_upload as create_local_asset_from_upload,
 )
 from tangent_api.storage.local_asset_store import get_asset_file_path, get_asset_record
-
-S3_COMPATIBLE_REQUIRED_ENV = (
-    "S3_ENDPOINT",
-    "S3_BUCKET",
-    "S3_ACCESS_KEY_ID",
-    "S3_SECRET_ACCESS_KEY",
-    "S3_PUBLIC_BASE_URL",
-)
+from tangent_api.storage.s3_asset_store import create_s3_asset_store
 
 
 class AssetStorageAdapter:
@@ -47,6 +41,14 @@ class AssetStorageAdapter:
 
     def get_file_path(self, asset_id: str, file_name: str, context: ApiRequestContext) -> Path:
         raise NotImplementedError
+
+    def get_file_response(
+        self,
+        asset_id: str,
+        file_name: str,
+        context: ApiRequestContext,
+    ) -> Response:
+        return FileResponse(self.get_file_path(asset_id, file_name, context))
 
 
 class LocalAssetStorageAdapter(AssetStorageAdapter):
@@ -77,20 +79,14 @@ class LocalAssetStorageAdapter(AssetStorageAdapter):
 
 class S3CompatibleAssetStorageAdapter(AssetStorageAdapter):
     def __init__(self) -> None:
-        missing = [name for name in S3_COMPATIBLE_REQUIRED_ENV if not os.getenv(name)]
-        missing_note = f" Missing config: {', '.join(missing)}." if missing else ""
-        self.detail = (
-            "S3-compatible asset storage driver is configured, but the upload/read adapter is "
-            f"not implemented yet.{missing_note}"
-        )
+        self.store = create_s3_asset_store()
 
     def create_from_data_url(
         self,
         input_data: AssetDataUrlRequest,
         context: ApiRequestContext,
     ) -> AssetRecord:
-        _ = (input_data, context)
-        self._raise_not_implemented()
+        return self.store.create_asset_from_data_url(input_data, context)
 
     async def create_from_upload(
         self,
@@ -101,19 +97,18 @@ class S3CompatibleAssetStorageAdapter(AssetStorageAdapter):
         width: int,
         height: int,
     ) -> AssetRecord:
-        _ = (file, context, origin, title, width, height)
-        self._raise_not_implemented()
+        return await self.store.create_asset_from_upload(file, context, origin, title, width, height)
 
     def get_record(self, asset_id: str, context: ApiRequestContext) -> AssetRecord:
-        _ = (asset_id, context)
-        self._raise_not_implemented()
+        return self.store.get_asset_record(asset_id, context)
 
-    def get_file_path(self, asset_id: str, file_name: str, context: ApiRequestContext) -> Path:
-        _ = (asset_id, file_name, context)
-        self._raise_not_implemented()
-
-    def _raise_not_implemented(self) -> None:
-        raise HTTPException(status_code=501, detail=self.detail)
+    def get_file_response(
+        self,
+        asset_id: str,
+        file_name: str,
+        context: ApiRequestContext,
+    ) -> Response:
+        return self.store.get_file_response(asset_id, file_name, context)
 
 
 def get_asset_storage_adapter() -> AssetStorageAdapter:

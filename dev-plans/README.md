@@ -18,7 +18,7 @@ Read order for active development:
 
 | File | Status | Use |
 | --- | --- | --- |
-| `Asset-lod-roadmap.md` | Active | Current Slice E Real Asset Pipeline roadmap. E-A and E-C are implemented; E-B request context + storage adapter seam is the current implementation focus. |
+| `Asset-lod-roadmap.md` | Active | Current Slice E Real Asset Pipeline roadmap. E-A and E-C are implemented; E-B request context + storage adapter seam now covers FastAPI local-dev and real `s3-compatible` Asset storage; Postgres persistence and Web-to-FastAPI contract switch remain next. |
 | `p0-development-harness-roadmap-2026-04-30.md` | Active | Current P0 slice order and handoff standard. |
 | `overseas-cost-growth-forecast.md` | Reference | Cost, growth and infrastructure planning reference. Keep synced when Asset / AI / deploy decisions change. |
 

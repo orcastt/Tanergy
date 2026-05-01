@@ -1,7 +1,7 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Form, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 from tangent_api.request_context import ApiRequestContext, get_request_context
 from tangent_api.schemas import AssetDataUrlRequest, AssetResponse
 from tangent_api.storage.asset_storage_adapter import get_asset_storage_adapter
@@ -35,9 +35,8 @@ def read_asset_file(
     asset_id: str,
     file_name: str,
     context: ApiRequestContext = Depends(get_request_context),
-) -> FileResponse:
-    path = get_asset_storage_adapter().get_file_path(asset_id, file_name, context)
-    return FileResponse(path)
+) -> Response:
+    return get_asset_storage_adapter().get_file_response(asset_id, file_name, context)
 
 
 @router.get("/{asset_id}", response_model=AssetResponse)

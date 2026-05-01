@@ -2,7 +2,7 @@
 
 **版本**: v0.6
 **日期**: 2026-05-01
-**状态**: Web 重启方向正式架构；S1.5 与 Asset LOD Slice A-D 已通过，当前主线是 Slice E Real Asset Pipeline，正在从本地 Asset / Board bridge 迁向 Auth context + storage adapter + future FastAPI/R2
+**状态**: Web 重启方向正式架构；S1.5 与 Asset LOD Slice A-D 已通过，当前主线是 Slice E Real Asset Pipeline，正在从本地 Asset / Board bridge 迁向 Auth context + storage adapter + FastAPI/R2/Postgres persistence
 **对应 PRD**: `PRD.md`
 
 ---
@@ -202,9 +202,9 @@ P0 只需要记录 API 成本和调用日志，避免先做复杂订阅系统。
 | Layout Engine | P0 手写 horizontal layout；后续 Dagre/ELK | AI Chat 自动创建节点时计算 x/y，避免重叠 |
 | 状态管理 | Zustand | 当前项目已使用，轻量，可控 |
 | UI | Tailwind CSS + Radix UI | 当前设计体系一致，易维护 |
-| 后端 | FastAPI planned under `services/api` | 当前 `services/api` 仍是新 Web 后端空壳；不要复用 legacy backend，下一步按 Auth / Workspace / Asset / AiRun 边界新建 |
+| 后端 | FastAPI under `services/api` | 当前 `services/api` 已有 request context、Board guard、local-dev Board/Asset routes 和 `s3-compatible` Asset adapter；不要复用 legacy backend，下一步补 Postgres persistence / Auth / AiRun |
 | 数据库 | PostgreSQL planned | 适合用户、Board、Asset、AI Log；当前 P0 spike 先用本地 `.tangent-boards/` 验证 document guard |
-| 图片存储 | Local dev bridge now; R2 / S3-compatible planned | 当前 Next local bridge 写 `.tangent-assets/`；生产迁到 R2/S3-compatible object storage |
+| 图片存储 | Local dev bridge now; R2 / S3-compatible adapter in FastAPI | 当前 Next local bridge 写 `.tangent-assets/`；FastAPI `s3-compatible` driver 可写 R2/S3-compatible object storage，下一步把 Web flow 切到 FastAPI contract |
 | AI Provider | GeekAI / model providers through future backend proxy | Key 不暴露前端；真实 AI Run 在 Asset Pipeline 稳定后接入 |
 | 测试 | Vitest / Playwright / pytest | 前端单测、端到端、后端 API 测试 |
 
@@ -485,7 +485,7 @@ TanvasAgent/
 - 保存生成图、编辑导出图、合并截图。
 - 返回可持久化 URL。
 - 禁止持久化 `blob:` / `data:`。
-- 当前 Slice E-A/E-B 在 `apps/web/src/app/api/assets/` 提供本地开发 Asset API bridge，文件写入 `.tangent-assets/`，用于验证前端 Asset 合同；当前 route 已经过 request context 和 storage adapter seam，metadata 带 `workspaceId` / `createdBy`，正式实现仍需迁移到带真实 Auth / Workspace 校验的 FastAPI + R2/S3 adapter。
+- 当前 Slice E-A/E-B 在 `apps/web/src/app/api/assets/` 提供本地开发 Asset API bridge，文件写入 `.tangent-assets/`，用于验证前端 Asset 合同；当前 route 已经过 request context 和 storage adapter seam，metadata 带 `workspaceId` / `createdBy`。FastAPI 侧已有 local-dev 与 `s3-compatible` Asset adapter，正式 Web flow 仍需迁移到带真实 Auth / Workspace 校验的 FastAPI contract。
 
 不负责：
 
@@ -923,8 +923,8 @@ P0 可先用 `from-data-url` 处理 editor export / merge capture，但服务端
 - `services/api/tangent_api/request_context.py` 复刻 Next bridge 的 `x-tangent-user-id` / `x-tangent-workspace-id` context 规则。
 - `services/api/tangent_api/board_guard.py` 复刻 Board document guard 的 runtime URL / large base64 / JSON serializable 检查。
 - `services/api/tangent_api/routers/boards.py` 当前实现 `POST /api/v1/boards/validate-document`、本地文件版 `POST /api/v1/boards` 和 `GET /api/v1/boards/{board_id}`；这仍是 local-dev persistence，不替代正式 DB。
-- `services/api/tangent_api/storage/asset_storage_adapter.py` 是 FastAPI Asset storage seam；`local-dev` 走本地文件存储，`s3-compatible` 目前是配置感知的 501 placeholder，会提示缺失的 `S3_*` 配置。
-- `services/api/tangent_api/routers/assets.py` 当前实现 local-dev `POST /api/v1/assets/from-data-url`、`POST /api/v1/assets/upload`、`GET /api/v1/assets/{asset_id}` 和 `GET /api/v1/assets/files/{asset_id}/{file_name}`；metadata 带 `workspaceId` / `createdBy`，文件读取会校验 workspace。真实 R2/S3 adapter 尚未实现，不支持的 `TANGENT_ASSET_STORAGE_DRIVER` 会明确 501。
+- `services/api/tangent_api/storage/asset_storage_adapter.py` 是 FastAPI Asset storage seam；`local-dev` 走本地文件存储，`s3-compatible` 走 `services/api/tangent_api/storage/s3_asset_store.py`，通过 boto3 写入 S3/R2-compatible object storage。
+- `services/api/tangent_api/routers/assets.py` 当前实现 `POST /api/v1/assets/from-data-url`、`POST /api/v1/assets/upload`、`GET /api/v1/assets/{asset_id}` 和 `GET /api/v1/assets/files/{asset_id}/{file_name}`；metadata 带 `workspaceId` / `createdBy`，文件读取会校验 workspace。S3 driver 将 original / thumbnails / `metadata.json` 写到 `workspaces/{workspace_id}/assets/{asset_id}/...`，Asset URL 仍返回 FastAPI file route，避免直接绕过 request context；不支持的 `TANGENT_ASSET_STORAGE_DRIVER` 会明确 501。
 
 ### 8.4 Model Registry
 

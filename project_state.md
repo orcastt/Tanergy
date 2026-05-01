@@ -7,7 +7,7 @@
 
 ## 当前阶段
 
-**阶段**: Web AI 图像画布重启 — S1.5 复杂节点与架构裁决已通过；Asset LOD 主线 Slice A Image Node moving degrade、Slice B Node LOD shell、Slice C local thumbnail resolver、Slice D 普通 canvas image LOD spike 已落地；Windows / Mac 跨平台质量门已按 `pass with notes` 收口。当前不再继续在 Cloudflare Tunnel + `next dev` 临时环境里追求完美，已进入 Slice E Real Asset Pipeline；Slice E-A 本地 server-backed Asset 合同已落地，Slice E-C Board save guard 已可本地保存/恢复，当前推进 Slice E-B Auth context + storage adapter seam。
+**阶段**: Web AI 图像画布重启 — S1.5 复杂节点与架构裁决已通过；Asset LOD 主线 Slice A Image Node moving degrade、Slice B Node LOD shell、Slice C local thumbnail resolver、Slice D 普通 canvas image LOD spike 已落地；Windows / Mac 跨平台质量门已按 `pass with notes` 收口。当前不再继续在 Cloudflare Tunnel + `next dev` 临时环境里追求完美，已进入 Slice E Real Asset Pipeline；Slice E-A 本地 server-backed Asset 合同已落地，Slice E-C Board save guard 已可本地保存/恢复，Slice E-B request context + storage adapter seam 已扩到 FastAPI local-dev 和真实 `s3-compatible` Asset adapter。
 
 **核心目标**: 用全新、干净的 Web 项目重做 TANGENT。P0 只跑通：
 
@@ -19,7 +19,7 @@ Image Node → Canvas Markup → Merge Capture → New Image Node
 Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Image → 自动连线 → 用户确认后 Run
 ```
 
-**下一步**: 当前跨平台测试支架已收口为默认关闭的 dev-only 路径：`CanvasRuntimeDiagnostics` 只在 `NEXT_PUBLIC_CANVAS_RUNTIME_DIAGNOSTICS=1` 时启用，Cloudflare Tunnel allowlist 只通过 `NEXT_ALLOWED_DEV_ORIGINS` 临时注入。Slice E-B 正在把本地 Asset / Board API bridge 抽成 request context + storage adapter 合同：本地开发默认 `dev-user` / `dev-workspace`，Asset metadata 已带 `createdBy` / `workspaceId`，Board local record 已带 `ownerId` / `workspaceId`，随后继续迁到 Authenticated FastAPI/R2/DB adapter。真实 Asset Pipeline 稳定后，再接 Model Registry / AI Proxy / AI Run log、Dashboard / 保存 / 登录，以及 Link Preview 后端 unfurl + image proxy；多人协作仍后置到资产边界稳定之后。
+**下一步**: 当前跨平台测试支架已收口为默认关闭的 dev-only 路径：`CanvasRuntimeDiagnostics` 只在 `NEXT_PUBLIC_CANVAS_RUNTIME_DIAGNOSTICS=1` 时启用，Cloudflare Tunnel allowlist 只通过 `NEXT_ALLOWED_DEV_ORIGINS` 临时注入。Slice E 下一步优先补 Postgres persistence adapter 或把 Web upload/save/load 流程切到 FastAPI contract；本地开发默认 `dev-user` / `dev-workspace`，Asset metadata 已带 `createdBy` / `workspaceId`，Board local record 已带 `ownerId` / `workspaceId`。真实 Asset Pipeline 稳定后，再接 Model Registry / AI Proxy / AI Run log、Dashboard / 保存 / 登录，以及 Link Preview 后端 unfurl + image proxy；多人协作仍后置到资产边界稳定之后。
 
 **跨平台结论**: Slice D 跨平台门先记为 `pass with notes`。Windows 侧在 50+ 图片/节点、50%-100% 缩放、runtime edge 增长时仍可能出现轻微卡顿，但当前已可用，归档为 `non-blocking performance follow-up`。这类后续问题优先通过 Slice E 的真实缩略图、对象存储、多尺寸 Asset、viewport-aware 挂载继续解决。
 
@@ -144,6 +144,7 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 - ✅ Codex 四十三次推进 2026-05-01：继续 R2/S3 adapter contract，新增 FastAPI `asset_storage_adapter.py`，Asset routes 不再直接 import local store；`local-dev` 继续走本地文件，`s3-compatible` 目前作为配置感知 placeholder 返回 501 并列出缺失 `S3_*` 配置，未知 driver 也明确失败。Direct TestClient smoke 已验证 local asset create / metadata / file、`s3-compatible` placeholder 和 unknown-driver failure；`python3 -m compileall services/api/tangent_api`、web typecheck、web lint、web build、`git diff --check` 已通过。
 - ✅ Codex 四十四次文档同步 2026-05-01：更新 `dev-plans/overseas-cost-growth-forecast.md`，把海外部署预算从旧 Render-heavy 口径同步到当前 P0 推荐路线：Vercel / Cloudflare Pages 前端、Hetzner US West / Hillsboro 单点 FastAPI + WebSocket、Neon/Supabase 托管 Postgres、Cloudflare R2 图片存储与 Cloudflare DNS/WAF；明确免费层只适合 demo，生产账本不建议放同机 Postgres，R2 免 egress 但 operations/reads 需要 cache、限流和防盗链，Fly.io multi-region 放到增长期多人协作延迟被验证后再评估。
 - ✅ Codex 四十五次交接 2026-05-01：新增 `dev-plans/Archive/codex-handoff-slice-e-continuation-2026-05-01.md`，记录当前 Slice E 完成度、已落地的 Next/FastAPI Asset + Board bridge、剩余 R2/S3 adapter / Postgres persistence / FastAPI contract 切换任务、质量闸门和新 Codex 接手提示。
+- ✅ Codex 四十六次推进 2026-05-01：实现真实 FastAPI `s3-compatible` Asset adapter；新增 `s3_asset_store.py`，通过 boto3 S3 client 写入 workspace-scoped original / thumbnail / `metadata.json` 对象，Asset URL 仍走 `/api/v1/assets/files/{asset_id}/{file_name}` 以便读取前执行 request context / workspace 校验；`local-dev` 与 S3 共用 MIME、大小、data URL 和 workspace guard helper。新增 fake S3 TestClient 覆盖缺配置 501、写入 metadata/original/thumb、metadata/file 读取、missing file 404、cross-workspace 404，`pytest` 当前环境仍未安装，已用 direct FastAPI smoke 验证；`python3 -m compileall services/api/tangent_api` 和 `git diff --check` 通过。
 
 ---
 
@@ -256,4 +257,4 @@ Right AI Chat → 自动创建 Prompt / Image Gen / Image Gen 4 / Analysis / Ima
 
 ## 下一步
 
-Slice D 跨平台质量门已 `pass with notes`，不再继续在 Cloudflare Tunnel + `next dev` 临时环境里追求完美。当前已进入 Slice E：本地 Next Asset API bridge 已建立 Image Node 导入和 Merge Capture 的 server-backed URL 路径，Board serializer + save guard 已能从当前 editor 生成候选 document，Save local 会先迁移 runtime image assets、挡住剩余 `data:` / `blob:` 和 base64 payload，再写入 `.tangent-boards/`；Load local 可恢复 assets / shapes / runtime edges / camera。当前 Slice E-B 已把 Asset / Board API 抽到 request context + storage adapter seam，下一步继续把本地合同迁移到带真实 Auth / Workspace 校验的 FastAPI + R2/S3 / DB adapter，并补正式 Dashboard / Board persistence。真实 Asset Pipeline 稳定后，再接真实 Model Registry / AI Proxy / AI Run log、Dashboard / 保存 / 登录，以及 Link Preview 后端 unfurl + image proxy；多人协作仍在这些资产边界稳定后进入 P0.5。
+Slice D 跨平台质量门已 `pass with notes`，不再继续在 Cloudflare Tunnel + `next dev` 临时环境里追求完美。当前已进入 Slice E：本地 Next Asset API bridge 已建立 Image Node 导入和 Merge Capture 的 server-backed URL 路径，Board serializer + save guard 已能从当前 editor 生成候选 document，Save local 会先迁移 runtime image assets、挡住剩余 `data:` / `blob:` 和 base64 payload，再写入 `.tangent-boards/`；Load local 可恢复 assets / shapes / runtime edges / camera。当前 Slice E-B 已把 Asset / Board API 抽到 request context + storage adapter seam，FastAPI Asset path 已支持 local-dev 和真实 `s3-compatible` object storage；下一步继续补 Postgres persistence adapter，或把 Web upload/save/load 流程切到 FastAPI contract，并补正式 Dashboard / Board persistence。真实 Asset Pipeline 稳定后，再接真实 Model Registry / AI Proxy / AI Run log、Dashboard / 保存 / 登录，以及 Link Preview 后端 unfurl + image proxy；多人协作仍在这些资产边界稳定后进入 P0.5。
