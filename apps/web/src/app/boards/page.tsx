@@ -1,10 +1,5 @@
-import { AppShell } from '@/components/app-shell/AppShell'
-import { BoardDashboard } from '@/components/boards/BoardDashboard'
+import { redirect } from 'next/navigation'
 
 export default function BoardsPage() {
-  return (
-    <AppShell>
-      <BoardDashboard />
-    </AppShell>
-  )
+  redirect('/workspaces')
 }

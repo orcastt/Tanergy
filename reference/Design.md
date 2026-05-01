@@ -1,15 +1,25 @@
-# Airtable-Inspired Product Shell Design
+# TANGENT Quiet Editorial Product Design
 
 ## Overview
 
-Airtable's marketing surfaces are quietly editorial. The base atmosphere is white canvas, dark ink type, generous whitespace, and a near-black pill CTA -- nothing is fighting for attention until a section needs to. The brand voltage doesn't come from gradient washes or accent walls; it comes from **full-bleed signature cards** in `{colors.signature-coral}`, `{colors.signature-forest}`, and `{colors.surface-dark}` that punctuate long-scroll explainer pages every two or three screens. Between those signature bands, the page reads like a print magazine: a headline, supporting copy, a small image cluster, then breathing room.
+This is the canonical implementation spec for current TANGENT Web UI. The active visual source is the new Stitch reference set in `reference/stitch_canvas_reference/`, extracted into `reference/Design_reference.md`. Older `reference/design-system.md` and `reference/theme.ts` have been moved to legacy and are not active Product Shell sources.
 
-Type voice is Haas Grotesk at modest weights (400 for display, 500 for sub-titles and buttons). Display headlines never go bolder than 500 -- emphasis comes from size and color contrast, not from weight. Body copy stays at 14px / 400 throughout. The pricing surface runs its own dialect: **Inter Display** at unusual mid-weights (475 / 575) and **pill-shaped buttons** (`{rounded.pill}`) that don't appear on any other page -- a deliberate sub-system signaling "this page is about commercial precision."
+TANGENT's product surfaces are quietly editorial. The base atmosphere is white canvas, dark ink type, generous whitespace, and a near-black primary CTA -- nothing is fighting for attention until a section needs to. Brand voltage comes from **full-bleed signature cards** and large pastel workspace cards in `{colors.signature-coral}`, `{colors.signature-forest}`, `{colors.signature-mint}`, `{colors.signature-cream}`, and `{colors.surface-dark}`.
+
+Type voice is Inter at modest weights. Display headlines never go bolder than 500 -- emphasis comes from size, rhythm, and color contrast, not from weight. Body copy stays at 14px / 400 throughout. The pricing surface runs its own dialect with mid-weights around 475 and **pill-shaped buttons** (`{rounded.pill}`) that do not appear on auth, dashboard, settings, account, board, or canvas pages.
+
+For page-specific extraction, use `reference/Design_reference.md`:
+
+- Auth pages use the split-screen mint/coral editorial form pattern.
+- Landing and pricing use the public marketing rhythm.
+- Workspaces, settings, account and future team/billing pages use the internal dashboard and management patterns.
+- Product pages use the reference top navigation plus the persistent left workspace sidebar; Auth pages remain focused full-screen surfaces.
+- Canvas and Board pages keep the whiteboard-first product behavior; borrow only restrained shell/list/card styling.
 
 **Key Characteristics:**
 
 - Primary CTA is `{colors.primary}` (near-black ink) with white text and a `{rounded.lg}` (12px) corner -- it reads as confident and final, never decorative.
-- Secondary CTA is a `{colors.canvas}` button with `{colors.ink}` text and a hairline outline. The two together form Airtable's signature button pair.
+- Secondary CTA is a `{colors.canvas}` button with `{colors.ink}` text and a hairline outline.
 - Hero is white canvas. There is no atmospheric gradient, no mesh, no background flourish. The brand strength comes from the type and the buttons sitting in clean whitespace.
 - Brand voltage lives in **signature surface cards**: `{colors.signature-coral}`, `{colors.signature-forest}`, and `{colors.surface-dark}` carry full-bleed product callouts every few screens.
 - Demo-card grids carry product UI fragments on `{colors.signature-peach}`, `{colors.signature-mint}`, `{colors.signature-cream}` and other warm pastel surfaces.
@@ -28,7 +38,7 @@ Type voice is Haas Grotesk at modest weights (400 for display, 500 for sub-title
 
 - **Canvas** (`{colors.canvas}` -- #ffffff): The default page surface; the floor of every editorial body.
 - **Surface Soft** (`{colors.surface-soft}` -- #f8fafc): Tabbed feature cards and the featured pricing tier.
-- **Surface Strong** (`{colors.surface-strong}` -- #e0e2e6): The light gray "Start building with Airtable" CTA banner near the footer.
+- **Surface Strong** (`{colors.surface-strong}` -- #e0e2e6): The light gray CTA banner near the footer.
 - **Surface Dark** (`{colors.surface-dark}` -- #181d26): The dark navy CTA cards used mid-page.
 - **Surface Dark Elevated** (`{colors.surface-dark-elevated}` -- #1d1f25): The articles-page hero base behind the rainbow-stripe overlay.
 - **Hairline** (`{colors.hairline}` -- #dddddd): The 1px border tone for input outlines, table dividers, secondary-button outlines.
@@ -43,7 +53,7 @@ Type voice is Haas Grotesk at modest weights (400 for display, 500 for sub-title
 
 ### Signature Card Surfaces
 
-These are the colors that carry Airtable's brand voltage. They appear as full-bleed, full-card surfaces -- never as accents on a small element.
+These are the colors that carry TANGENT's brand voltage. They appear as full-bleed, full-card surfaces or large dashboard cards -- never as tiny decoration.
 
 - **Coral** (`{colors.signature-coral}` -- #aa2d00): Full-bleed dark coral with white type.
 - **Forest** (`{colors.signature-forest}` -- #0a2e0e): A deep-green signature card used in demo-grid clusters.
@@ -60,9 +70,11 @@ These are the colors that carry Airtable's brand voltage. They appear as full-bl
 
 ### Font Family
 
-The system runs **Haas / Haas Groot Disp** where available. The fallback stack walks `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif`.
+The system runs **Inter / Inter Display** where available. The fallback stack walks `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif`.
 
-The pricing surface runs a separate **Inter Display** stack at mid-weights (475 / 575) -- a deliberate sub-system signaling commercial precision.
+Do not import page-local Google fonts in app code. Fonts must come from the global app stack.
+
+The pricing surface can use **Inter Display** at mid-weights (475 / 575) -- a deliberate sub-system signaling commercial precision.
 
 ### Hierarchy
 
@@ -85,11 +97,11 @@ The pricing surface runs a separate **Inter Display** stack at mid-weights (475 
 
 ### Principles
 
-The Haas system prefers weight 400 for display sizes -- a 40px h1 is not bold. Visual emphasis is delegated to size, color contrast, and the signature surface cards. Where the system does want weight, it pivots to 500 (sub-titles, buttons, article titles), never 600 or 700 in the editorial body. The only true bold (600) lives in `{typography.legal}`.
+The system prefers weight 400 for display sizes -- a 40px h1 is not bold. Visual emphasis is delegated to size, color contrast, and the signature surface cards. Where the system does want weight, it pivots to 500 (sub-titles, buttons, article titles), avoiding 600 or 700 in the editorial body unless a compact product label truly needs it.
 
 ### Note on Font Substitutes
 
-If Haas Groot Disp and Haas Grotesk are unavailable, **Inter Display** (variable) is the closest open-source substitute. On macOS / iOS, **system-ui** is sufficient; on Windows, the chain falls through to Segoe UI.
+If Inter Display is unavailable, **system-ui** is sufficient; on Windows, the chain falls through to Segoe UI.
 
 ## Layout
 

@@ -70,7 +70,7 @@ DNS / WAF: Cloudflare
 - Slice D 跨平台 Canvas 性能门为 `pass with notes`。
 - Windows 密集画布残余卡顿是 non-blocking performance follow-up，不阻塞 Slice E。
 - 当前不要继续在 Cloudflare Tunnel + `next dev` 临时测试环境里追求性能完美。
-- 当前是 Slice E Real Asset Pipeline：本地 Next Asset API bridge、Board save guard、local save/restore、request context 和 storage adapter seam 已开始落地；下一步迁到 Cloudflare R2 / S3-compatible storage、多尺寸缩略图、Asset metadata 和权限 URL。
+- 当前是 Slice E Real Asset Pipeline + P0 Product Shell 收口：本地 Next Asset API bridge、Board save guard、local save/restore、request context、FastAPI local-dev、真实 `s3-compatible` Asset adapter、Postgres persistence、Web-to-FastAPI switch 和 staging API Docker package 已落地；Product Shell 已有 Home / Workspace / Collection / Team / Subscription 顶部导航、`/workspaces` Board gallery/list 和语义 placeholder。下一步是把 staging package 接到真实 Cloudflare R2 / managed Postgres / domain，或继续做本地 route/responsive smoke 与 Board autosave 长时回归。
 - 本地 spike 图片入口已调到单图 30MB，但正式上线必须用服务端上传限制、缩略图和原图分层控制存储 / 带宽成本。
 - Canvas 最大缩放已从 800% 限到 500%，减少无产品意义的超高倍渲染成本。
 

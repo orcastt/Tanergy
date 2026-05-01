@@ -1,0 +1,106 @@
+.workspace-board-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 22px;
+  border-top: 1px solid rgba(24, 29, 38, 0.1);
+}
+
+.workspace-board-members,
+.workspace-board-actions {
+  display: flex;
+  align-items: center;
+}
+
+.workspace-board-members {
+  min-width: 72px;
+}
+
+.workspace-board-members span {
+  display: inline-grid;
+  width: 26px;
+  height: 26px;
+  margin-left: -7px;
+  place-items: center;
+  border: 2px solid rgba(255, 255, 255, 0.72);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.58);
+  color: var(--color-primary);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.workspace-board-members span:first-child {
+  margin-left: 0;
+}
+
+.workspace-board-actions {
+  position: relative;
+  gap: 8px;
+}
+
+.workspace-board-actions button,
+.workspace-board-menu-trigger {
+  display: inline-flex;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.56);
+  color: var(--color-primary);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0 10px;
+  text-transform: uppercase;
+}
+
+.workspace-board-menu {
+  position: relative;
+}
+
+.workspace-board-menu-trigger {
+  width: 34px;
+  flex-direction: column;
+  gap: 3px;
+  list-style: none;
+  padding: 0;
+}
+
+.workspace-board-menu-trigger span {
+  width: 14px;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+.workspace-board-menu-popover {
+  position: absolute;
+  z-index: 5;
+  right: 0;
+  bottom: 40px;
+  display: grid;
+  min-width: 132px;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-md);
+  background: var(--color-canvas);
+  box-shadow: 0 12px 28px rgba(24, 29, 38, 0.12);
+}
+
+.workspace-board-menu-popover button {
+  justify-content: flex-start;
+  width: 100%;
+  background: transparent;
+  color: var(--color-muted);
+}
+
+@media (max-width: 980px) {
+  .workspace-board-card.is-list .workspace-board-footer {
+    grid-column: 1 / -1;
+  }
+}

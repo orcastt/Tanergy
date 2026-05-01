@@ -11,7 +11,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 64px;
+  min-height: 76px;
   padding: 0 48px;
   border-bottom: 1px solid var(--color-hairline);
   background: var(--color-canvas);
@@ -28,52 +28,76 @@
 .product-wordmark {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  min-width: 132px;
   font-size: 18px;
-  font-weight: 500;
+  font-weight: 700;
   line-height: 1.4;
 }
 
 .product-wordmark-mark {
-  display: inline-grid;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  border-radius: var(--radius-sm);
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-  font-size: 13px;
-  font-weight: 500;
+  display: none;
 }
 
 .product-nav-links,
 .product-nav-actions {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 28px;
 }
 
 .product-nav-link,
 .product-text-link {
-  font-size: 14px;
-  font-weight: 400;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 600;
   line-height: 1.25;
 }
 
 .product-nav-link.is-active {
-  color: var(--color-link);
+  border-bottom: 2px solid var(--color-primary);
+  color: var(--color-primary);
+  padding-bottom: 9px;
+}
+
+.product-search-link {
+  position: relative;
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+}
+
+.product-search-link span {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--color-muted);
+  border-radius: 50%;
+}
+
+.product-search-link span::after {
+  position: absolute;
+  right: -6px;
+  bottom: -5px;
+  width: 8px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--color-muted);
+  content: '';
+  transform: rotate(45deg);
 }
 
 .product-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 48px;
+  min-height: 44px;
   padding: 0 24px;
   border: 1px solid transparent;
   border-radius: var(--radius-lg);
   cursor: pointer;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
   line-height: 1.4;
 }
@@ -94,13 +118,18 @@
   color: var(--color-ink);
 }
 
+.product-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 .product-mobile-menu {
   display: none;
 }
 
 .product-page {
-  width: min(1280px, 100%);
-  margin: 0 auto;
+  width: min(1120px, 100%);
+  margin: 0;
   padding: 0 48px 96px;
 }
 
@@ -165,7 +194,7 @@
 
   .product-nav-sheet {
     position: fixed;
-    inset: 64px 0 0;
+    inset: 76px 0 0;
     display: grid;
     align-content: start;
     gap: 16px;

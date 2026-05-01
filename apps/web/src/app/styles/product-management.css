@@ -1,0 +1,246 @@
+.management-page {
+  width: min(1280px, 100%);
+}
+
+.management-summary-grid,
+.management-section-grid {
+  display: grid;
+  gap: 24px;
+}
+
+.management-summary-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 32px;
+}
+
+.management-section-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 32px;
+}
+
+.management-profile-card,
+.management-callout,
+.management-panel,
+.management-notice {
+  border-radius: var(--radius-lg);
+}
+
+.management-profile-card,
+.management-callout {
+  min-height: 190px;
+  padding: 28px;
+  background: var(--color-canvas);
+}
+
+.management-profile-card {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  border: 1px solid var(--color-hairline);
+}
+
+.management-callout.mint {
+  background: var(--color-signature-mint);
+}
+
+.management-callout.cream {
+  background: var(--color-signature-cream);
+}
+
+.management-callout span,
+.management-definition-list dt,
+.management-table th {
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.management-profile-card h2,
+.management-callout h2,
+.management-panel h2,
+.management-notice h2 {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.management-callout h2 {
+  margin-top: 18px;
+}
+
+.management-profile-card p,
+.management-callout p,
+.management-panel p,
+.management-notice p {
+  margin: 12px 0 0;
+  color: var(--color-body);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.management-callout .product-text-link {
+  display: inline-flex;
+  margin-top: 22px;
+  color: var(--color-link);
+}
+
+.management-avatar {
+  display: inline-grid;
+  width: 58px;
+  height: 58px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.management-avatar.small {
+  width: 40px;
+  height: 40px;
+  font-size: 11px;
+}
+
+.management-panel {
+  padding: 28px;
+  border: 1px solid var(--color-hairline);
+  background: var(--color-canvas);
+}
+
+.management-panel-wide {
+  grid-column: 1 / -1;
+}
+
+.management-panel.is-warning {
+  background: var(--color-signature-cream);
+}
+
+.management-panel-heading,
+.management-notice,
+.management-actions,
+.management-badge-row {
+  display: flex;
+  align-items: center;
+}
+
+.management-panel-heading {
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 22px;
+}
+
+.management-definition-list {
+  display: grid;
+  gap: 0;
+  margin: 20px 0 0;
+}
+
+.management-definition-list div {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.45fr) minmax(0, 1fr);
+  gap: 24px;
+  padding: 16px 0;
+  border-top: 1px solid var(--color-hairline);
+}
+
+.management-definition-list dd {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.management-check-list {
+  display: grid;
+  gap: 12px;
+  margin: 20px 0 0;
+  padding: 0;
+  color: var(--color-body);
+  font-size: 14px;
+  line-height: 1.55;
+  list-style: none;
+}
+
+.management-check-list li {
+  padding-left: 22px;
+  position: relative;
+}
+
+.management-check-list li::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  color: var(--color-success);
+  content: '✓';
+}
+
+.management-badge-row {
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.management-badge-row span,
+.management-badge,
+.management-status {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-soft);
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0 10px;
+  text-transform: uppercase;
+}
+
+.management-status {
+  color: var(--color-success);
+}
+
+.management-notice {
+  justify-content: space-between;
+  gap: 32px;
+  margin-bottom: 96px;
+  padding: 32px;
+  border: 1px solid var(--color-hairline);
+  background: var(--color-canvas);
+}
+
+.management-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+@media (max-width: 980px) {
+  .management-summary-grid,
+  .management-section-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .management-panel-heading,
+  .management-notice {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .management-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .management-definition-list div {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}

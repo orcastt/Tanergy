@@ -1,8 +1,15 @@
 @import 'tldraw/tldraw.css';
 @import './styles/base.css';
 @import './styles/product-shell.css';
+@import './styles/product-sidebar.css';
 @import './styles/product-cards.css';
+@import './styles/product-management.css';
+@import './styles/product-management-table.css';
 @import './styles/product-auth.css';
+@import './styles/product-auth-form.css';
+@import './styles/product-workspaces.css';
+@import './styles/product-workspaces-board.css';
+@import './styles/product-workspaces-actions.css';
 @import './styles/boards.css';
 @import './styles/boards-list.css';
 @import './styles/canvas-shell.css';

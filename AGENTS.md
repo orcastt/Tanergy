@@ -10,8 +10,9 @@
 - 后续新增 AI 节点、AI Chat bot 或新模型能力，必须遵守 `ARCH.md` 4.4.1 AI Node Extension Contract：先扩展 Node Registry / Model Registry / AiRun 合同，节点 UI 不直接调用 Provider。
 - 多人协作后移到 P0.5。
 - S1.5 复杂节点、Asset LOD Slice A-D 和 Slice E 的本地 Asset / Board persistence 基线已通过。
-- 当前 Slice E 已完成：Next local Asset / Board bridge、request context、Board save guard、FastAPI local-dev、真实 `s3-compatible` Asset adapter、Postgres Board / Asset metadata persistence、Web-to-FastAPI switch、staging API package、`/boards` Dashboard / Board entry shell、Dashboard metadata first pass、Auth scaffold first pass、AI contract scaffold first pass。
-- 当前接手点：按 `ARCH.md` 11.5-11.7 的 0-to-1 路线推进真实 staging 基础设施、部署流水线、真实 Auth / Board CRUD 产品化；本地可继续做 Board autosave regression、recent-open metadata 或真实 AI Provider 前的 polish。
+- 当前 Slice E 已完成：Next local Asset / Board bridge、request context、Board save guard、FastAPI local-dev、真实 `s3-compatible` Asset adapter、Postgres Board / Asset metadata persistence、Web-to-FastAPI switch、staging API package、`/workspaces` Board gallery/list entry shell、Board metadata first pass、Auth scaffold first pass、AI contract scaffold first pass。
+- 当前 Product Shell 顶部导航固定为 `Home / Workspace / Collection / Team / Subscription`；Account 和 Settings 保留在侧栏。`/home`、`/collections`、`/team`、`/billing` 都是语义清晰的本地壳，不假装真实素材库、团队权限或订阅计费已完成。
+- 当前接手点：按 `ARCH.md` 11.5-11.7 的 0-to-1 路线推进真实 staging 基础设施、部署流水线、真实 Auth / Board CRUD 产品化；本地可继续做 App Shell route/responsive smoke、Board autosave regression、recent-open metadata 或真实 AI Provider 前的 polish。
 - 不做公众号 Html Editor、Writer、Personal Library、Knowledge Graph、复杂 Admin Analytics。
 - 前端视觉保持干净白板、小卡片、轻边框，不大换皮。
 
@@ -23,7 +24,7 @@
 2. 新功能、跨文件改动、阶段切换或外部资源接入先更新 `dev-plans/` 或确认 `ARCH.md` 11.5-11.7 / `PRD.md` 当前状态已覆盖。
 3. 只实现当前切片，不顺手重构无关逻辑。
 4. 源码单文件目标不超过 300 行；250 行开始预警，超过 300 行先拆模块再继续加功能。
-5. UI 改动遵守 `reference/Design.md`；当前 Product Shell 不再引用旧 `reference/design-system.md` / `reference/theme.ts`。
+5. UI 改动遵守 `reference/Design.md`；页面级 Stitch 参考看 `reference/Design_reference.md`；当前 Product Shell 不再引用旧 `reference/design-system.md` / `reference/theme.ts`。
 6. 用户可见文案走 i18n；默认英文，中文环境不混杂英文业务文案。
 7. API Key 只在服务端环境变量，绝不进入前端代码。
 8. Board document / node props / 协作文档不得保存 `data:`、`blob:`、Base64 图片、Provider 原始响应、完整日志或长文本结果。

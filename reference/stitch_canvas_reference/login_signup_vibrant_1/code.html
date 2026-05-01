@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TANGENT - Login / Sign Up</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-fixed-dim": "#a8d1a2",
+                    "surface-variant": "#e1e3e4",
+                    "on-tertiary-container": "#688e65",
+                    "secondary-fixed-dim": "#ffb5a0",
+                    "tertiary-fixed": "#c4eebd",
+                    "surface-container-low": "#f3f4f5",
+                    "error": "#ba1a1a",
+                    "on-surface": "#191c1d",
+                    "surface-bright": "#f8f9fa",
+                    "primary-container": "#181d26",
+                    "error-container": "#ffdad6",
+                    "on-surface-variant": "#45474b",
+                    "secondary": "#af3003",
+                    "inverse-on-surface": "#f0f1f2",
+                    "on-primary": "#ffffff",
+                    "tertiary": "#000300",
+                    "surface-container-highest": "#e1e3e4",
+                    "background": "#f8f9fa",
+                    "outline-variant": "#c6c6cc",
+                    "on-tertiary-fixed-variant": "#2b4f2b",
+                    "on-primary-fixed": "#171c25",
+                    "secondary-fixed": "#ffdbd1",
+                    "primary": "#000208",
+                    "tertiary-container": "#002305",
+                    "surface-container": "#edeeef",
+                    "secondary-container": "#ff693c",
+                    "primary-fixed": "#dee2ef",
+                    "on-error": "#ffffff",
+                    "on-background": "#191c1d",
+                    "on-primary-container": "#808590",
+                    "on-tertiary": "#ffffff",
+                    "primary-fixed-dim": "#c2c6d3",
+                    "on-secondary-fixed-variant": "#862200",
+                    "inverse-primary": "#c2c6d3",
+                    "surface-container-high": "#e7e8e9",
+                    "surface": "#f8f9fa",
+                    "on-secondary": "#ffffff",
+                    "on-error-container": "#93000a",
+                    "on-secondary-fixed": "#3b0900",
+                    "inverse-surface": "#2e3132",
+                    "on-secondary-container": "#601500",
+                    "on-primary-fixed-variant": "#424751",
+                    "surface-tint": "#5a5e69",
+                    "on-tertiary-fixed": "#002205",
+                    "outline": "#76777c",
+                    "surface-dim": "#d9dadb",
+                    "surface-container-lowest": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "32px",
+                    "stack-sm": "12px",
+                    "section-v-padding": "96px",
+                    "container-max-width": "1200px",
+                    "stack-md": "24px"
+            },
+            "fontFamily": {
+                    "body-base": [
+                            "Inter"
+                    ],
+                    "headline-md": [
+                            "Inter"
+                    ],
+                    "pricing-display": [
+                            "Inter"
+                    ],
+                    "label-caps": [
+                            "Inter"
+                    ],
+                    "headline-lg": [
+                            "Inter"
+                    ],
+                    "display-xl": [
+                            "Inter"
+                    ]
+            },
+            "fontSize": {
+                    "body-base": [
+                            "14px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "headline-md": [
+                            "32px",
+                            {
+                                    "lineHeight": "40px",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "pricing-display": [
+                            "40px",
+                            {
+                                    "lineHeight": "48px",
+                                    "fontWeight": "475"
+                            }
+                    ],
+                    "label-caps": [
+                            "12px",
+                            {
+                                    "lineHeight": "16px",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "headline-lg": [
+                            "48px",
+                            {
+                                    "lineHeight": "56px",
+                                    "letterSpacing": "-0.01em",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "display-xl": [
+                            "64px",
+                            {
+                                    "lineHeight": "72px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "400"
+                            }
+                    ]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-surface-container-lowest text-on-surface font-body-base min-h-screen flex selection:bg-primary-container selection:text-on-primary antialiased">
+<!-- Split Screen Layout -->
+<div class="flex w-full min-h-screen">
+<!-- Left Side: Vibrant Branding Surface -->
+<div class="hidden lg:flex w-1/2 bg-secondary-container flex-col justify-between p-12 relative overflow-hidden">
+<!-- Background Texture/Image (Abstract) -->
+<div class="absolute inset-0 z-0 opacity-20 bg-cover bg-center" data-alt="Abstract architectural rendering featuring vast, empty, minimalist geometric spaces bathed in warm, soft light. High contrast shadows create sharp lines across smooth, unmarked surfaces. The overall mood is serene, structural, and sophisticated, perfectly complementing a high-end, editorial design system." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCWNRTicH61pDJQMy9fPKSan9c32Ea88bXAgyrLVVBW-Ls8MM4QQ5Sc4XMtY5p6hdAgURZkwhs0X4gXVBDN6c-9Hs7grRf_ruCoUN1j84cpsx7r0oQygM2Oay97AFi-KT4W6ZJXadap--HniPp14wBBv3FtQ4KnUt0gdZu2LhTCvmOMHSmb03pbnPgXzhtdds4564shjtmrY2zwe8WuG23eVcPIK69GXEdKMLs1IOK9bET5hMZRG9VDLjW7DuUJ132lvuwoOHnEVHs');"></div>
+<div class="relative z-10">
+<a class="text-3xl font-black tracking-tighter text-on-secondary" href="#">TANGENT</a>
+</div>
+<div class="relative z-10 max-w-lg mb-24">
+<h1 class="font-headline-lg text-headline-lg text-on-secondary mb-stack-md">Quietly Editorial.</h1>
+<p class="font-body-base text-body-base text-secondary-fixed-dim">
+                    Experience a sophisticated structural organization designed for clarity and intentionality. Bridge the gap between high-utility tools and architectural publication layout.
+                </p>
+</div>
+</div>
+<!-- Right Side: White Canvas Forms -->
+<div class="w-full lg:w-1/2 bg-surface-container-lowest flex flex-col justify-center px-8 md:px-24 py-12">
+<!-- Mobile Logo -->
+<div class="lg:hidden mb-12">
+<a class="text-2xl font-black tracking-tighter text-primary" href="#">TANGENT</a>
+</div>
+<div class="max-w-md w-full mx-auto">
+<!-- Header -->
+<div class="mb-12">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-2">Welcome Back</h2>
+<p class="font-body-base text-body-base text-on-surface-variant">Log in to your workspace.</p>
+</div>
+<!-- Form -->
+<form class="space-y-6">
+<!-- Email Input -->
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-2" for="email">Email Address</label>
+<input class="w-full bg-transparent border-0 border-b border-outline-variant focus:border-primary focus:ring-0 px-0 py-3 text-on-surface font-body-base text-body-base transition-colors placeholder-outline" id="email" placeholder="name@company.com" type="email"/>
+</div>
+<!-- Password Input -->
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-2" for="password">Password</label>
+<input class="w-full bg-transparent border-0 border-b border-outline-variant focus:border-primary focus:ring-0 px-0 py-3 text-on-surface font-body-base text-body-base transition-colors" id="password" placeholder="••••••••" type="password"/>
+</div>
+<!-- Actions -->
+<div class="flex items-center justify-between pt-4">
+<label class="flex items-center gap-2 cursor-pointer group">
+<input class="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4 bg-transparent transition-colors" type="checkbox"/>
+<span class="font-body-base text-body-base text-on-surface-variant group-hover:text-on-surface transition-colors">Remember me</span>
+</label>
+<a class="font-body-base text-body-base text-on-surface hover:text-on-surface-variant transition-colors underline decoration-outline-variant underline-offset-4" href="#">Forgot password?</a>
+</div>
+<!-- Submit Button -->
+<div class="pt-8">
+<button class="w-full bg-primary-container text-on-primary font-body-base text-body-base font-medium py-4 px-6 rounded-lg hover:bg-surface-tint transition-colors flex justify-center items-center gap-2" type="submit">
+                            Sign In
+                            <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</form>
+<!-- Divider -->
+<div class="mt-12 mb-8 flex items-center gap-4">
+<div class="flex-1 h-px bg-surface-container-high"></div>
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Or</span>
+<div class="flex-1 h-px bg-surface-container-high"></div>
+</div>
+<!-- Secondary Action (Sign Up) -->
+<div class="text-center">
+<p class="font-body-base text-body-base text-on-surface-variant mb-4">Don't have an account?</p>
+<button class="w-full bg-surface-container-lowest text-on-surface font-body-base text-body-base font-medium py-4 px-6 rounded-lg border border-primary hover:bg-surface-bright transition-colors" type="button">
+                        Create an Account
+                    </button>
+</div>
+</div>
+<!-- Footer Small -->
+<div class="mt-auto pt-12 text-center">
+<p class="font-label-caps text-label-caps text-on-surface-variant uppercase">
+                    © 2024 TANGENT AI. Quietly Editorial.
+                </p>
+</div>
+</div>
+</div>
+</body></html>

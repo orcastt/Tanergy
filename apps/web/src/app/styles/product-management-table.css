@@ -1,0 +1,42 @@
+.management-table-wrap {
+  overflow-x: auto;
+}
+
+.management-table {
+  width: 100%;
+  min-width: 680px;
+  border-collapse: collapse;
+}
+
+.management-table th,
+.management-table td {
+  padding: 16px 12px;
+  border-top: 1px solid var(--color-hairline);
+  text-align: left;
+}
+
+.management-table td {
+  color: var(--color-body);
+  font-size: 14px;
+}
+
+.management-member {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.management-member strong,
+.management-member small {
+  display: block;
+}
+
+.management-member strong {
+  color: var(--color-ink);
+  font-weight: 500;
+}
+
+.management-member small {
+  margin-top: 2px;
+  color: var(--color-muted);
+}

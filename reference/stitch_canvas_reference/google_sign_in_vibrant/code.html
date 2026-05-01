@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Welcome to Tangent</title>
+<!-- Google Fonts: Inter -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;475;500&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Theme Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "background": "#f8f9fa",
+                        "tertiary": "#000300",
+                        "surface-container-highest": "#e1e3e4",
+                        "tertiary-container": "#002305",
+                        "surface-container": "#edeeef",
+                        "primary": "#000208",
+                        "secondary-container": "#ff693c",
+                        "primary-fixed": "#dee2ef",
+                        "on-error": "#ffffff",
+                        "on-background": "#191c1d",
+                        "secondary-fixed": "#ffdbd1",
+                        "outline-variant": "#c6c6cc",
+                        "on-tertiary-fixed-variant": "#2b4f2b",
+                        "on-primary-fixed": "#171c25",
+                        "tertiary-fixed": "#c4eebd",
+                        "surface-container-low": "#f3f4f5",
+                        "secondary-fixed-dim": "#ffb5a0",
+                        "on-surface": "#191c1d",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed-dim": "#a8d1a2",
+                        "surface-variant": "#e1e3e4",
+                        "on-tertiary-container": "#688e65",
+                        "inverse-on-surface": "#f0f1f2",
+                        "on-primary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "surface-bright": "#f8f9fa",
+                        "primary-container": "#181d26",
+                        "secondary": "#af3003",
+                        "on-surface-variant": "#45474b",
+                        "surface-tint": "#5a5e69",
+                        "on-tertiary-fixed": "#002205",
+                        "on-secondary-container": "#601500",
+                        "on-primary-fixed-variant": "#424751",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-dim": "#d9dadb",
+                        "outline": "#76777c",
+                        "primary-fixed-dim": "#c2c6d3",
+                        "on-secondary-fixed-variant": "#862200",
+                        "inverse-primary": "#c2c6d3",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-container": "#808590",
+                        "on-error-container": "#93000a",
+                        "on-secondary": "#ffffff",
+                        "on-secondary-fixed": "#3b0900",
+                        "inverse-surface": "#2e3132",
+                        "surface-container-high": "#e7e8e9",
+                        "surface": "#f8f9fa"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-md": "24px",
+                        "stack-sm": "12px",
+                        "section-v-padding": "96px",
+                        "container-max-width": "1200px",
+                        "gutter": "32px"
+                    },
+                    "fontFamily": {
+                        "body-base": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-xl": ["Inter"],
+                        "pricing-display": ["Inter"],
+                        "label-caps": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-base": ["14px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["32px", { "lineHeight": "40px", "fontWeight": "500" }],
+                        "headline-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.01em", "fontWeight": "400" }],
+                        "display-xl": ["64px", { "lineHeight": "72px", "letterSpacing": "-0.02em", "fontWeight": "400" }],
+                        "pricing-display": ["40px", { "lineHeight": "48px", "fontWeight": "475" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-base text-body-base antialiased min-h-screen flex selection:bg-tertiary-fixed selection:text-on-tertiary-fixed">
+<!-- Split Screen Container -->
+<main class="flex w-full min-h-screen flex-col md:flex-row">
+<!-- Left Panel: Mint Green Editorial Canvas -->
+<section class="hidden md:flex w-full md:w-1/2 bg-tertiary-fixed relative flex-col justify-between p-12 overflow-hidden">
+<!-- Background Texture/Image Overlay to enhance Editorial feel while maintaining the mint panel requirement -->
+<div class="absolute inset-0 z-0 opacity-40 mix-blend-multiply">
+<img alt="Architectural details" class="w-full h-full object-cover" data-alt="A minimalist, editorial-style photograph featuring architectural details of a modern, airy interior space. The scene is dominated by soft, diffused natural lighting that interacts beautifully with structured geometric shadows. The underlying mint green color palette of the container creates a quiet, sophisticated light-mode aesthetic, emphasizing generous negative space and structural organization to convey a sense of calm creative potential." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAoLjW6tRRUsV_jPI6ZpN0IXF2dNGX_JXXqpDxB4Y13CPnGD4KNj7ZbVYCdgOok8FPR28hrYliwX4x4ZqQxeaI9-4nOzOCyFSFvip4KxN1wem1qA_RUgCwFGuFAJZFkuDYUck44Nq3iK2qi3e0vvOyAD6AWrV05YYyHvQ0HFyWSh9k04TURbfgPAgVJTHd3sL6JLlOIEmevVoJj6NPqpILU-If7H0SV7ga_zsoHweUZoKXyNvZq1xlZGm0ksqZQI5dtdnbFfo7WHxI"/>
+</div>
+<!-- Content overlay to ensure the space doesn't feel empty and anchors the brand -->
+<div class="relative z-10">
+<div class="w-12 h-12 rounded-full bg-on-tertiary-fixed text-tertiary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">eco</span>
+</div>
+</div>
+<div class="relative z-10 max-w-md">
+<h2 class="font-headline-md text-headline-md text-on-tertiary-fixed mb-4">Crafting organized potential.</h2>
+<p class="font-body-base text-body-base text-on-tertiary-fixed-variant">Tangent provides the structural white canvas for your most critical editorial and structural endeavors.</p>
+</div>
+</section>
+<!-- Right Panel: White Canvas Registration Area -->
+<section class="w-full md:w-1/2 bg-surface-container-lowest flex items-center justify-center p-8 md:p-12 lg:p-24 relative z-10 shadow-[-10px_0_30px_-15px_rgba(0,0,0,0.05)] md:shadow-none">
+<div class="w-full max-w-md flex flex-col items-start">
+<!-- Mobile Only Logo/Icon -->
+<div class="md:hidden w-10 h-10 rounded-full bg-tertiary-fixed text-on-tertiary-fixed flex items-center justify-center mb-8">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">eco</span>
+</div>
+<!-- Header -->
+<header class="mb-12 w-full">
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight mb-2">Welcome to Tangent</h1>
+<p class="font-body-base text-body-base text-on-surface-variant">Sign in or create an account to continue to your workspace.</p>
+</header>
+<!-- Authentication Actions -->
+<div class="w-full flex flex-col gap-stack-sm mb-12">
+<!-- Primary Intent Action: Google Sign In -->
+<button class="w-full h-14 rounded-xl bg-surface-container-lowest border border-outline-variant text-on-surface flex items-center justify-center gap-3 hover:bg-surface-container-low transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-container focus:ring-offset-2">
+<svg class="w-5 h-5" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
+<path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
+<path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"></path>
+<path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"></path>
+</svg>
+<span class="font-body-base text-body-base font-medium">Continue with Google</span>
+</button>
+<!-- Secondary Intent Action: Email -->
+<!-- Utilizing the strict Brand Style Guidance for Secondary Buttons: White background with a 1px hairline outline in #181D26 (primary-container) -->
+<button class="w-full h-14 rounded-xl bg-surface-container-lowest border border-primary-container text-on-surface flex items-center justify-center gap-3 hover:bg-surface-container-low transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-container focus:ring-offset-2">
+<span class="material-symbols-outlined text-primary-container">mail</span>
+<span class="font-body-base text-body-base font-medium">Continue with Email</span>
+</button>
+</div>
+<!-- Legal / Footer Text -->
+<div class="w-full text-center mt-auto">
+<p class="font-label-caps text-label-caps text-on-surface-variant max-w-[280px] mx-auto opacity-70">
+                        BY CONTINUING, YOU AGREE TO OUR <a class="underline decoration-outline-variant hover:text-on-surface transition-colors" href="#">TERMS OF SERVICE</a> AND <a class="underline decoration-outline-variant hover:text-on-surface transition-colors" href="#">PRIVACY POLICY</a>.
+                    </p>
+</div>
+</div>
+</section>
+</main>
+</body></html>

@@ -8,7 +8,7 @@
 
 S1.5 和 Asset LOD Slice A-D 已通过。Slice D 跨平台 Canvas 性能门按 `pass with notes` 收口；Windows 密集画布卡顿记录为 non-blocking performance follow-up。
 
-当前进入 Slice E Real Asset Pipeline。Slice E-A 已落本地 server-backed Asset 合同；Slice E-C 已建立 Board save guard、local save 和 local restore 支架，先挡住 `data:` / `blob:` 和 base64 payload；Slice E-B 正在把 Asset API 抽成 request context + storage adapter seam，下一步迁到 Authenticated FastAPI + R2/S3 adapter。`CanvasRuntimeDiagnostics` 已默认关闭，仅 `NEXT_PUBLIC_CANVAS_RUNTIME_DIAGNOSTICS=1` 启用；Cloudflare Tunnel allowlist 仅通过 `NEXT_ALLOWED_DEV_ORIGINS` 临时注入，不能成为产品部署路径。
+当前进入 Slice E Real Asset Pipeline + P0 Product Shell 收口。Slice E-A 本地 server-backed Asset 合同、Slice E-C Board save guard / local save-restore、Slice E-B request context + storage adapter seam 已落地，并已扩到 FastAPI local-dev、真实 `s3-compatible` Asset adapter、Postgres persistence 和 Web-to-FastAPI switch。P0 Product Shell 已有 Home / Workspace / Collection / Team / Subscription 顶部导航、`/workspaces` Board gallery/list、Home/Collection/Account/Settings/Team/Subscription 语义壳、Auth scaffold first pass 和 AI contract first pass。下一步不再是“迁到 Authenticated FastAPI + R2/S3 adapter”，而是做 App Shell route/responsive smoke、Board autosave long-browser regression、recent-open metadata，或在外部资源就绪后接真实 staging server / managed Postgres / R2 / domain。`CanvasRuntimeDiagnostics` 已默认关闭，仅 `NEXT_PUBLIC_CANVAS_RUNTIME_DIAGNOSTICS=1` 启用；Cloudflare Tunnel allowlist 仅通过 `NEXT_ALLOWED_DEV_ORIGINS` 临时注入，不能成为产品部署路径。
 
 ## Slice Order
 
@@ -18,7 +18,8 @@ S1.5 和 Asset LOD Slice A-D 已通过。Slice D 跨平台 Canvas 性能门按 `
 | S1.5-B Node runtime data | 验证 text/image mock 数据流 | `dev-plans/Archive/node-runtime-data-transfer-slice-2026-04-30.md` | mock Run、fan-out、Gen4 四输出、删线同步通过；切片已归档 |
 | S1.5-C Payload/perf gate | 验证轻量 props 和压力 | `HARNESS.md` QA Harness | 50-100 节点和多图画布可用；Windows 遗留卡顿为 non-blocking follow-up |
 | S1.5-D Asset LOD + cross-platform | Image / Node / ordinary canvas image LOD，跨平台质量门 | `dev-plans/Asset-lod-roadmap.md`, `dev-plans/Archive/cross-platform-canvas-performance-test-2026-04-30.md` | Slice D pass with notes；diagnostics 默认关闭；quick tunnel 不进入产品部署路径；切片已归档 |
-| S1.5-E Real Asset Pipeline | 真实上传、对象存储、多尺寸缩略图、Asset metadata | `dev-plans/Asset-lod-roadmap.md`, `ARCH.md` 4.7 / 8.3 | E-A local API bridge 已落；E-C save guard + local save/restore 已落；E-B request context + storage adapter seam active；最终 Done 是 Board document 不持久化 `data:` / `blob:`，图片可刷新恢复 |
+| S1.5-E Real Asset Pipeline | 真实上传、对象存储、多尺寸缩略图、Asset metadata | `dev-plans/Asset-lod-roadmap.md`, `ARCH.md` 4.7 / 8.3 | E-A local API bridge 已落；E-C save guard + local save/restore 已落；E-B request context + storage adapter seam 已扩到 FastAPI / S3-compatible / Postgres / Web switch；最终 Done 是 Board document 不持久化 `data:` / `blob:`，图片可刷新恢复 |
+| S1.5-F Product Shell / Board entry | 本地产品壳、Workspace Board gallery/list、Auth/AI contract scaffold | `dev-plans/p0-local-product-shell-and-slice-e-roadmap-2026-05-01.md`, `ARCH.md` 11.5 | Home / Workspace / Collection / Team / Subscription 顶部导航、`/workspaces` Board gallery/list、Home/Collection/Account/Settings/Team/Subscription 语义壳、Board autosave first pass、Auth scaffold 和 AI contract first pass 已落；下一步 route/responsive smoke 或 staging wiring |
 | S2 Model Registry mock | 前端统一模型能力来源 | `ARCH.md` 4.10 / 8.4 | 节点和 AI Chat 不再硬编码模型参数 |
 | S3 Backend AI Runs skeleton | 后端 run API 和日志骨架 | `ARCH.md` 8.5 / 10.4 | 不暴露 key，有结构化 run/status/error |
 | S4 Real Image Gen | 接真实单图/四图生成 | `PRD.md` F12/F13/F15 | 低成本参数、日志、失败状态和限流跑通 |

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TANGENT Pro - Pricing</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;475;500;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed-dim": "#a8d1a2",
+                        "surface-variant": "#e1e3e4",
+                        "on-tertiary-container": "#688e65",
+                        "secondary-fixed-dim": "#ffb5a0",
+                        "tertiary-fixed": "#c4eebd",
+                        "surface-container-low": "#f3f4f5",
+                        "error": "#ba1a1a",
+                        "on-surface": "#191c1d",
+                        "surface-bright": "#f8f9fa",
+                        "primary-container": "#181d26",
+                        "error-container": "#ffdad6",
+                        "on-surface-variant": "#45474b",
+                        "secondary": "#af3003",
+                        "inverse-on-surface": "#f0f1f2",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#000300",
+                        "surface-container-highest": "#e1e3e4",
+                        "background": "#f8f9fa",
+                        "outline-variant": "#c6c6cc",
+                        "on-tertiary-fixed-variant": "#2b4f2b",
+                        "on-primary-fixed": "#171c25",
+                        "secondary-fixed": "#ffdbd1",
+                        "primary": "#000208",
+                        "tertiary-container": "#002305",
+                        "surface-container": "#edeeef",
+                        "secondary-container": "#ff693c",
+                        "primary-fixed": "#dee2ef",
+                        "on-error": "#ffffff",
+                        "on-background": "#191c1d",
+                        "on-primary-container": "#808590",
+                        "on-tertiary": "#ffffff",
+                        "primary-fixed-dim": "#c2c6d3",
+                        "on-secondary-fixed-variant": "#862200",
+                        "inverse-primary": "#c2c6d3",
+                        "surface-container-high": "#e7e8e9",
+                        "surface": "#f8f9fa",
+                        "on-secondary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed": "#3b0900",
+                        "inverse-surface": "#2e3132",
+                        "on-secondary-container": "#601500",
+                        "on-primary-fixed-variant": "#424751",
+                        "surface-tint": "#5a5e69",
+                        "on-tertiary-fixed": "#002205",
+                        "outline": "#76777c",
+                        "surface-dim": "#d9dadb",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "32px",
+                        "stack-sm": "12px",
+                        "section-v-padding": "96px",
+                        "container-max-width": "1200px",
+                        "stack-md": "24px"
+                    },
+                    "fontFamily": {
+                        "body-base": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "pricing-display": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-xl": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-base": ["14px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["32px", { "lineHeight": "40px", "fontWeight": "500" }],
+                        "pricing-display": ["40px", { "lineHeight": "48px", "fontWeight": "475" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.01em", "fontWeight": "400" }],
+                        "display-xl": ["64px", { "lineHeight": "72px", "letterSpacing": "-0.02em", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: theme('colors.background');
+            color: theme('colors.on-background');
+        }
+    </style>
+</head>
+<body class="antialiased flex flex-col min-h-screen">
+<!-- TopNavBar -->
+<nav class="bg-white/90 backdrop-blur-md dark:bg-zinc-950/90 text-zinc-900 dark:text-zinc-50 font-['Inter'] tracking-tight text-sm font-medium fixed top-0 w-full z-50 border-b border-zinc-100 dark:border-zinc-800 flat no shadows flex justify-between items-center h-20 px-8 md:px-12 w-full">
+<div class="text-2xl font-black tracking-tighter text-zinc-900 dark:text-zinc-50">
+            TANGENT
+        </div>
+<div class="hidden md:flex gap-8 items-center h-full">
+<a class="text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-all scale-95 duration-150 ease-in-out" href="#">Canvas</a>
+<a class="text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-all scale-95 duration-150 ease-in-out" href="#">Library</a>
+<a class="text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-all scale-95 duration-150 ease-in-out" href="#">Boards</a>
+<a class="text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-all scale-95 duration-150 ease-in-out" href="#">Team</a>
+</div>
+<div class="flex items-center gap-4">
+<button class="bg-primary-container text-on-primary font-label-caps text-label-caps px-4 py-2 rounded-lg hover:bg-zinc-800 transition-colors hidden md:block">
+                New Project
+            </button>
+<button class="md:hidden">
+<span class="material-symbols-outlined">menu</span>
+</button>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="flex-grow pt-[120px] pb-section-v-padding px-gutter max-w-container-max-width mx-auto w-full">
+<!-- Header -->
+<header class="text-center mb-24 max-w-3xl mx-auto">
+<h1 class="font-display-xl text-display-xl text-on-surface mb-6">Pricing for creative teams</h1>
+<p class="font-body-base text-body-base text-on-surface-variant max-w-xl mx-auto">
+                Simple, transparent pricing. Designed for editorial workflows, commercial precision, and teams that require a quiet, organized canvas.
+            </p>
+</header>
+<!-- Pricing Cards Bento -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-32">
+<!-- Basic Tier -->
+<div class="bg-secondary-fixed rounded-xl p-8 flex flex-col border border-outline-variant/30 relative overflow-hidden group">
+<div class="absolute inset-0 bg-white/40 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+<div class="relative z-10 flex flex-col h-full">
+<h3 class="font-label-caps text-label-caps text-on-surface uppercase mb-2">Starter</h3>
+<div class="mb-6 flex items-baseline gap-1">
+<span class="font-pricing-display text-pricing-display text-on-surface">$12</span>
+<span class="font-body-base text-body-base text-on-surface-variant">/mo</span>
+</div>
+<p class="font-body-base text-body-base text-on-surface-variant mb-8 flex-grow">
+                        Perfect for solo designers needing a clean canvas.
+                    </p>
+<button class="w-full bg-white border border-primary text-primary font-label-caps text-label-caps py-3 rounded-full hover:bg-surface-container-low transition-colors">
+                        Start Free Trial
+                    </button>
+</div>
+</div>
+<!-- Pro Tier (Mint Signature) -->
+<div class="bg-tertiary-fixed rounded-xl p-8 flex flex-col border border-on-tertiary-container/20 relative shadow-sm scale-105 z-10">
+<div class="absolute top-0 right-0 bg-on-tertiary-container text-on-primary font-label-caps text-[10px] px-3 py-1 rounded-bl-lg rounded-tr-xl">Most Popular</div>
+<div class="relative z-10 flex flex-col h-full">
+<h3 class="font-label-caps text-label-caps text-on-surface uppercase mb-2">Plus</h3>
+<div class="mb-6 flex items-baseline gap-1">
+<span class="font-pricing-display text-pricing-display text-on-surface">$29</span>
+<span class="font-body-base text-body-base text-on-surface-variant">/mo</span>
+</div>
+<p class="font-body-base text-body-base text-on-surface-variant mb-8 flex-grow">
+                        For small teams requiring commercial precision and shared boards.
+                    </p>
+<button class="w-full bg-primary text-on-primary font-label-caps text-label-caps py-3 rounded-full hover:bg-zinc-800 transition-colors">
+                        Upgrade to Plus
+                    </button>
+</div>
+</div>
+<!-- Enterprise Tier -->
+<div class="bg-surface-container rounded-xl p-8 flex flex-col border border-outline-variant/30 relative">
+<div class="relative z-10 flex flex-col h-full">
+<h3 class="font-label-caps text-label-caps text-on-surface uppercase mb-2">Enterprise</h3>
+<div class="mb-6 flex items-baseline gap-1">
+<span class="font-pricing-display text-pricing-display text-on-surface">Custom</span>
+</div>
+<p class="font-body-base text-body-base text-on-surface-variant mb-8 flex-grow">
+                        Advanced security, custom workflows, and dedicated support.
+                    </p>
+<button class="w-full bg-white border border-primary text-primary font-label-caps text-label-caps py-3 rounded-full hover:bg-surface-container-low transition-colors">
+                        Contact Sales
+                    </button>
+</div>
+</div>
+</div>
+<!-- Detailed Comparison Table -->
+<div class="max-w-4xl mx-auto">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-12 text-center">Compare features</h2>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-outline-variant/50">
+<th class="py-4 px-4 font-label-caps text-label-caps text-on-surface-variant w-1/3">Features</th>
+<th class="py-4 px-4 font-label-caps text-label-caps text-on-surface-variant text-center w-2/9">Starter</th>
+<th class="py-4 px-4 font-label-caps text-label-caps text-on-tertiary-container text-center w-2/9">Plus</th>
+<th class="py-4 px-4 font-label-caps text-label-caps text-on-surface-variant text-center w-2/9">Enterprise</th>
+</tr>
+</thead>
+<tbody class="font-body-base text-body-base">
+<tr class="border-b border-outline-variant/20 hover:bg-surface-container-lowest transition-colors">
+<td class="py-4 px-4 text-on-surface">Active Canvas Projects</td>
+<td class="py-4 px-4 text-center text-on-surface-variant">3</td>
+<td class="py-4 px-4 text-center text-on-surface">Unlimited</td>
+<td class="py-4 px-4 text-center text-on-surface-variant">Unlimited</td>
+</tr>
+<tr class="border-b border-outline-variant/20 hover:bg-surface-container-lowest transition-colors">
+<td class="py-4 px-4 text-on-surface">Team Members</td>
+<td class="py-4 px-4 text-center text-on-surface-variant">1</td>
+<td class="py-4 px-4 text-center text-on-surface">Up to 5</td>
+<td class="py-4 px-4 text-center text-on-surface-variant">Unlimited</td>
+</tr>
+<tr class="border-b border-outline-variant/20 hover:bg-surface-container-lowest transition-colors">
+<td class="py-4 px-4 text-on-surface">Asset Library Storage</td>
+<td class="py-4 px-4 text-center text-on-surface-variant">5 GB</td>
+<td class="py-4 px-4 text-center text-on-surface">50 GB</td>
+<td class="py-4 px-4 text-center text-on-surface-variant">500 GB</td>
+</tr>
+<tr class="border-b border-outline-variant/20 hover:bg-surface-container-lowest transition-colors">
+<td class="py-4 px-4 text-on-surface">Editorial Layout Templates</td>
+<td class="py-4 px-4 text-center text-on-surface-variant"><span class="material-symbols-outlined text-[18px]">check</span></td>
+<td class="py-4 px-4 text-center text-on-surface"><span class="material-symbols-outlined text-[18px]">check</span></td>
+<td class="py-4 px-4 text-center text-on-surface-variant"><span class="material-symbols-outlined text-[18px]">check</span></td>
+</tr>
+<tr class="border-b border-outline-variant/20 hover:bg-surface-container-lowest transition-colors">
+<td class="py-4 px-4 text-on-surface">Custom Brand Fonts</td>
+<td class="py-4 px-4 text-center text-on-surface-variant"><span class="material-symbols-outlined text-[18px] text-outline-variant">close</span></td>
+<td class="py-4 px-4 text-center text-on-surface"><span class="material-symbols-outlined text-[18px]">check</span></td>
+<td class="py-4 px-4 text-center text-on-surface-variant"><span class="material-symbols-outlined text-[18px]">check</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 font-['Inter'] text-xs tracking-wide border-t border-zinc-100 dark:border-zinc-800 flat no shadows w-full py-24 transition-opacity duration-300">
+<div class="max-w-7xl mx-auto px-12 flex flex-col md:flex-row justify-between items-center">
+<div class="mb-4 md:mb-0">
+<span class="font-bold text-zinc-900 dark:text-zinc-50 mr-4">TANGENT</span>
+<span class="text-zinc-400">© 2024 TANGENT AI. Quietly Editorial.</span>
+</div>
+<div class="flex gap-6">
+<a class="text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100" href="#">Privacy</a>
+<a class="text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100" href="#">Terms</a>
+<a class="text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100" href="#">API</a>
+<a class="text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100" href="#">Status</a>
+</div>
+</div>
+</footer>
+</body></html>
