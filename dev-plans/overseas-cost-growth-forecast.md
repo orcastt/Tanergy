@@ -1,7 +1,7 @@
 # Overseas Deployment Cost, User Growth, and Social Forecast
 
 **Date**: 2026-04-29  
-**Status**: Planning baseline for overseas Web launch; synced 2026-05-01 after Slice E local Asset / Board bridge progress
+**Status**: Planning baseline for overseas Web launch; synced 2026-05-01 after Slice E local Asset / Board bridge progress and deployment-cost review
 **Scope**: TANGENT Web AI Image Canvas P0 / P0.5  
 **Related docs**: `PRD.md`, `ARCH.md`, `project_state.md`, `dev-plans/README.md`, `dev-plans/Asset-lod-roadmap.md`, `dev-plans/Archive/cross-platform-canvas-performance-test-2026-04-30.md`
 
@@ -20,29 +20,47 @@
 | OSS 存储 | 估计 ¥30,000 / 10,000 并发使用量 | 可能包含出流量压力 |
 | AI 算力 | 估计 ¥120,000 / 10,000 用户首充 | 这是最大变量 |
 
-TANGENT 海外 P0 推荐从更轻的 Serverless / Managed stack 开始：
+TANGENT 海外 P0 推荐从一个更真实的低成本生产基线开始：
+
+```text
+Frontend: Vercel Pro or Cloudflare Pages
+Backend / WebSocket: Hetzner Cloud US West / Hillsboro single VPS
+Database: Neon Launch or Supabase Pro, not Postgres on the same VPS
+Object storage: Cloudflare R2 with cache / thumbnail discipline
+DNS / WAF: Cloudflare
+```
 
 | 阶段 | MAU 估计 | 海外基础设施 / 月 | AI 成本 / 月 | 总成本 / 月 | 总成本 / 年 |
 |------|----------|---------------------|-------------|-------------|-------------|
-| Alpha | 100-300 | $50-$120 | $5-$30 | $55-$150 | $660-$1,800 |
-| Beta | 1,000-3,000 | $120-$350 | $80-$300 | $200-$650 | $2,400-$7,800 |
-| Public launch | 10,000 | $300-$900 | $600-$1,500 | $900-$2,400 | $10,800-$28,800 |
-| Growth | 100,000 | $1,500-$6,000 | $5,000-$15,000+ | $6,500-$21,000+ | $78,000-$252,000+ |
+| Alpha / private beta | 100-300 | $35-$80 | $5-$30 | $40-$110 | $480-$1,320 |
+| Public MVP | 1,000-3,000 | $45-$120 | $80-$300 | $125-$420 | $1,500-$5,040 |
+| Public launch | 10,000 | $180-$600 | $600-$1,500 | $780-$2,100 | $9,360-$25,200 |
+| Growth | 100,000 | $1,000-$5,000 | $5,000-$15,000+ | $6,000-$20,000+ | $72,000-$240,000+ |
 
 按规划汇率 **1 USD ≈ ¥6.9 CNY** 粗算：
 
-- 10k MAU 海外年成本约 **¥75k-¥199k**。
-- 100k MAU 海外年成本约 **¥538k-¥1.74M+**。
+- 10k MAU 海外年成本约 **¥65k-¥174k**。
+- 100k MAU 海外年成本约 **¥497k-¥1.66M+**。
 - 如果默认开放高分辨率、Gemini 4K、GPT high quality，AI 成本可轻易放大 5-20 倍。
 
 我的建议：
 
-1. **P0 不买重服务器**，先用 Vercel / Render / Cloudflare R2 这类组合。
+1. **P0 不买重服务器，也不追求全球多区域后端**：先用 Vercel + Hetzner Hillsboro + Neon/Supabase + R2。
 2. **Slice E Real Asset Pipeline 先于真实 AI 放量**：对象存储、Asset metadata、多尺寸缩略图、权限 URL 和保存前拒绝 `data:` / `blob:` 是成本控制前置项。
 3. **P0 生图默认最低成本参数**：GPT Image 2 用 `low`；Gemini Image Preview 测试默认 `0.5K`。
 4. **免费用户必须有硬额度**，例如每人每月 3-10 次 4 图生成，不然社媒一波小爆就会烧钱。
 5. **增长先靠短视频和作品分享，不先重投广告**；广告在产品留存和付费验证后再开。
 6. **第一个上线目标不是 10k 并发，而是 1k-3k MAU 能稳定跑完核心链路。**
+
+### 0.1 Deployment Baseline Update — 2026-05-01
+
+刚刚重新核对海外部署方案后，当前推荐口径改成：
+
+- **P0 / MVP**：Vercel 或 Cloudflare Pages 交付前端；FastAPI / WebSocket 先放在 Hetzner US West / Hillsboro 单点；PostgreSQL 用 Neon Launch 或 Supabase Pro；图片进入 Cloudflare R2。
+- **不要把生产数据库和 VPS 绑死**：同机 Postgres 最便宜，但 Board / user / credit 是账本，早期直接上托管 Postgres 更稳，也方便以后把 API 从 VPS 迁到 Fly.io。
+- **不要把 Fly.io 当免费起点**：Fly.io 适合增长期的多区域 WebSocket，但当前没有真正的 free tier；P0 用固定月费 VPS 更可控。
+- **美西单点是 XHS + Instagram “全球盲盒流量”的合理折中**：亚洲、北美、欧洲都不是最低延迟，但都不至于差到不可用；真正多人协作放量后再做 room region assignment。
+- **R2 免 egress 不是免所有费用**：R2 仍按存储和 Class A/B operations 计费。图片必须用缩略图、Cache-Control / Cloudflare cache、访问限流和防盗链来控制 reads。
 
 ### 1.0 Current Engineering Sync — 2026-04-30
 
@@ -83,24 +101,30 @@ TANGENT 海外 P0 推荐从更轻的 Serverless / Managed stack 开始：
 
 ## 2. Pricing Baseline Checked
 
-以下价格是 2026-04-29 用公开页面重新核对的规划基线，正式采购前必须再查一次。
+以下价格是 2026-05-01 用官方页面重新核对的规划基线。正式采购前必须再查一次，尤其是 VPS 区域价格、数据库套餐和 usage-based 项目。
 
-| 服务 | 当前公开价格信号 | 用法 |
-|------|------------------|------|
-| Vercel Pro | $20/mo，含 $20 usage credit；可设置 spend management / hard limit | Next.js Web 前端部署 |
-| Render Web Service | Starter $7/mo；Standard $25/mo；Pro $85/mo | FastAPI 后端 / worker |
-| Render Postgres | Basic-1gb $19/mo；Pro-4gb $55/mo；可扩 storage | P0/P1 PostgreSQL |
-| Cloudflare R2 | 标准存储约 $0.015/GB-month；示例中 1,000GB 存储扣掉 10GB free 后 $14.85；R2 直出无 egress fee | 图片与导出资源存储 |
-| Cloudflare Workers | Paid plan $5/mo 起；包含更高 usage allotment；Workers 本身无数据传出带宽费 | 轻 API / edge helper / webhook |
-| Liveblocks | Free up to 500 monthly active rooms；Pro $30/mo + usage | P0.5 多人协作 |
+| 服务 | 当前公开价格信号 | 当前建议 |
+|------|------------------|----------|
+| Vercel Pro | $20/mo per developer seat；Pro 有 included credit，超出后 pay-as-you-go | 生产前端首选；Hobby 可做 demo，不作为商业生产预算 |
+| Cloudflare Pages | Free / Pro $25/mo；页面说明含 unlimited sites, seats, requests, bandwidth | Vercel 备选；如果前端静态化和 Cloudflare 生态更重要可选 |
+| Hetzner Cloud | 官方确认 Cloud servers 有 Hillsboro, Oregon / Ashburn / Singapore 等位置；CPX11/入门规格近期价格调整后大致落在个位数美元/月级别 | P0 FastAPI + WebSocket 单点首选；按 $6-$12/mo 做规划 |
+| Neon | Free 适合 hobby / prototype；Launch 为 usage-based，官方 typical spend 约 $15/mo | P0 托管 Postgres 候选，优先和后端同区域或低延迟区域 |
+| Supabase | Free 可做 demo；Pro plan 为 $25/mo | P0 托管 Postgres / Auth 候选；比 VPS 同机 DB 更稳 |
+| Cloudflare R2 | Standard storage $0.015/GB-month；Class A $4.50/million，Class B $0.36/million；10GB storage、1M Class A、10M Class B free tier；egress free | 图片 / thumbnail / export 存储首选，但必须缓存和限流 reads |
+| Cloudflare Workers | Paid plan minimum $5/mo；可做轻量 edge helper / cache / image proxy | 后续做 signed URL helper / image proxy / R2 cache layer |
+| Fly.io | Pay-as-you-go；无新用户永久免费大套餐；shared CPU 小机器约几美元到几十美元/月，跨区流量另计 | 增长期 multi-region WebSocket 候选，不作为 P0 默认 |
 
 Sources:
 
 - Vercel pricing: https://vercel.com/pricing
-- Render pricing: https://render.com/pricing
+- Cloudflare Pages pricing: https://www.cloudflare.com/developer-platform/products/pages/
+- Hetzner Cloud locations/pricing: https://www.hetzner.com/cloud/
+- Hetzner price adjustment note: https://docs.hetzner.com/general/infrastructure-and-availability/price-adjustment/
+- Neon pricing: https://neon.com/pricing
+- Supabase pricing: https://supabase.com/pricing
 - Cloudflare R2 pricing: https://developers.cloudflare.com/r2/pricing/
 - Cloudflare Workers pricing: https://developers.cloudflare.com/workers/platform/pricing/
-- Liveblocks pricing: https://liveblocks.io/pricing
+- Fly.io pricing: https://fly.io/docs/about/pricing/
 - USD/CNY reference search: https://www.exchange-rates.org/converter/usd-cny
 
 ---
@@ -113,16 +137,21 @@ Sources:
 
 | Component | 推荐 | 月成本 | 为什么 |
 |-----------|------|--------|--------|
-| Web | Vercel Pro 或 Cloudflare Pages | $0-$20 | 快速上线、CI/CD、全球 CDN |
-| Backend | Render Starter / Standard | $7-$25 | FastAPI 简单稳定，够 P0 |
-| DB | Render Postgres Basic-1gb 或 Neon/Supabase Pro | $19-$30 | 托管 Postgres，少运维 |
-| Storage | Cloudflare R2 | $0-$5 | 图片存储便宜，出流量友好 |
-| Queue / rate limit | Upstash / Render Key Value / simple DB queue | $0-$10 | 控制 AI 并发和防刷 |
+| Web | Vercel Pro；或 Cloudflare Pages | $0-$20 | 内测可临时免费层；商业生产按 Vercel Pro 预算 |
+| Backend / WebSocket | Hetzner Cloud US West / Hillsboro VPS | $6-$12 | 固定月费、Docker 直接跑 FastAPI；美西兼顾 XHS + Instagram 全球盲盒流量 |
+| DB | Neon Launch 或 Supabase Pro | $0-$25 | demo 可 free；生产账本不要和 VPS 绑死 |
+| Storage | Cloudflare R2 | $0-$5 | 图片存储便宜，egress free，但 reads 仍要算 operations |
+| Queue / rate limit | DB-backed queue / simple in-process gate；必要时 Upstash | $0-$10 | P0 先限流和排队，不急着买复杂队列 |
 | Analytics | PostHog free / Vercel Analytics / Plausible later | $0-$20 | 先看 funnel，不急着买大屏 |
 | Monitoring | Sentry free / provider logs | $0-$20 | P0 足够 |
 | Realtime collab | 不接 | $0 | P0 先单人 |
 
-**Estimated fixed cost**: $50-$120 / month.
+**Estimated fixed cost**: $35-$80 / month.
+
+备注：
+
+- Vercel Hobby / Neon Free / Supabase Free 可以用于 demo、内部测试和 waitlist，但不作为真实生产基线。
+- 如果预算极紧，可以临时用 Cloudflare Pages Free + Neon Free，把固定成本压到接近 VPS + 域名；但一旦对外开放真实用户，优先升级前端和数据库。
 
 ### 3.2 Stage B — Public Beta
 
@@ -130,15 +159,20 @@ Sources:
 
 | Component | 推荐 | 月成本 |
 |-----------|------|--------|
-| Web | Vercel Pro | $20-$60 |
-| Backend | Render Standard + small worker | $50-$110 |
-| DB | Render Postgres Pro-4gb or managed Postgres | $55-$120 |
-| Storage | R2 100-300GB retained | $2-$20 |
-| Queue / Redis | Managed Redis / Upstash | $10-$50 |
+| Web | Vercel Pro 或 Cloudflare Pages Pro | $20-$60 |
+| Backend / WebSocket | Hetzner Hillsboro VPS；必要时升一档或加 worker VPS | $10-$50 |
+| DB | Neon Launch / Supabase Pro | $15-$50 |
+| Storage | R2 100-300GB retained + cache rules | $2-$30 |
+| Queue / Redis | DB queue / Upstash / Redis only if needed | $0-$50 |
 | Analytics / monitoring | PostHog + Sentry | $0-$80 |
 | Email / auth / domains | Resend/Auth provider/domain | $10-$50 |
 
-**Estimated fixed cost**: $120-$350 / month.
+**Estimated fixed cost**: $45-$120 / month, before heavier observability and paid auth add-ons.
+
+重点：
+
+- 这个阶段仍不默认上 Fly.io multi-region。先确认真实多人协作是否已经成为付费用户核心需求。
+- R2 必须加 `Cache-Control`、thumbnail-first 渲染、反盗链/签名 URL 和读操作监控，防止“免流量但 reads 爆炸”。
 
 ### 3.3 Stage C — Public Launch
 
@@ -147,15 +181,21 @@ Sources:
 | Component | 推荐 | 月成本 |
 |-----------|------|--------|
 | Web | Vercel Pro + spend cap 或 Cloudflare stack | $50-$250 |
-| Backend API | 2-4 Render Standard/Pro instances 或 Fly.io multi-region | $150-$400 |
-| Worker queue | 独立 worker pool | $50-$250 |
-| DB | Postgres Pro 8GB+ / read replica later | $100-$300 |
-| Storage | R2 300GB-1TB retained | $5-$30 storage + reads |
+| Backend API / WebSocket | Larger Hetzner VPS 或 2 台 VPS；若协作延迟成为瓶颈再评估 Fly.io | $40-$200 |
+| Worker queue | 独立 worker / queue / scheduler | $20-$150 |
+| DB | Neon / Supabase paid tier，必要时更高规格和备份策略 | $50-$200 |
+| Storage | R2 300GB-1TB retained + CDN/cache/operations budget | $10-$80 |
 | Analytics / logs | PostHog / Sentry / log drains | $50-$200 |
 | Email / auth / security | Auth, email, WAF/basic bot protection | $20-$150 |
-| Realtime collab | 仍可不接；P0.5 才加 | $0-$100 |
+| Realtime collab | 如果 P0.5 已上线，开始 room region / sticky routing 设计 | $0-$150 |
 
-**Estimated fixed cost**: $300-$900 / month.
+**Estimated fixed cost**: $180-$600 / month.
+
+何时切 Fly.io：
+
+- 跨国多人同一 Board 协作已经是高频场景。
+- WebSocket 房间延迟影响留存或付费。
+- 已经有 room region assignment / sticky routing / DB single-writer 策略，而不是单纯复制后端实例。
 
 ### 3.4 Stage D — Growth
 
@@ -164,14 +204,14 @@ Sources:
 | Component | 推荐 | 月成本 |
 |-----------|------|--------|
 | Web | Vercel / Cloudflare scale plan | $300-$1,500 |
-| Backend | horizontal API + worker fleet | $600-$2,500 |
+| Backend | Fly.io multi-region or regional VPS fleet + load balancing | $500-$2,500 |
 | DB | Managed Postgres larger instance + replica + backups | $400-$2,000 |
 | Storage/CDN | R2 several TB + image transform/cache | $100-$800 |
 | Queue/realtime | Redis/queue + Liveblocks/PartyKit/Yjs infra | $100-$1,000 |
 | Analytics/logging | Product analytics, error tracking, logs | $200-$1,500 |
 | Security/compliance | WAF, abuse control, GDPR tooling | $100-$700 |
 
-**Estimated fixed cost**: $1,500-$6,000 / month, before AI.
+**Estimated fixed cost**: $1,000-$5,000 / month, before AI.
 
 ---
 
@@ -277,14 +317,20 @@ Using blended AI cost: **$0.036 / run**.
 
 | Scenario | Fixed infra | Total runs | AI variable cost | Total monthly cost |
 |----------|-------------|------------|------------------|--------------------|
-| Alpha | $50-$120 | 150 | ~$5 | $55-$125 |
-| Early beta | $120-$350 | 2,000 | ~$72 | $192-$422 |
-| Public beta | $300-$900 | 20,000 | ~$720 | $1,020-$1,620 |
-| Viral / scale | $1,500-$6,000 | 180,000 | ~$6,480 | $7,980-$12,480 |
+| Alpha | $35-$80 | 150 | ~$5 | $40-$85 |
+| Early beta | $45-$120 | 2,000 | ~$72 | $117-$192 |
+| Public beta | $180-$600 | 20,000 | ~$720 | $900-$1,320 |
+| Viral / scale | $1,000-$5,000 | 180,000 | ~$6,480 | $7,480-$11,480 |
 
 If average model mix shifts to Gemini 1K/2K or GPT Image 2 medium, multiply AI cost by **3x-8x**.
 
 If free users get unlimited generation, costs become unpredictable. Do not do this.
+
+Important interpretation:
+
+- These numbers are product-planning ranges, not procurement quotes.
+- The earliest production baseline should assume at least one paid frontend or database tier. Free tiers are excellent for demos but should not be the commercial reliability plan.
+- AI model mix dominates the bill much faster than web hosting. A single viral video with unrestricted free generations is a bigger risk than the first VPS choice.
 
 ---
 
@@ -316,6 +362,7 @@ Storage itself is not the scary part if using R2. The bigger storage risks are:
 1. **Read operations** if public images are viewed millions of times.
 2. **Image transform / thumbnail processing** if done through expensive serverless functions.
 3. **No retention policy** causing old generated assets to accumulate forever.
+4. **Hotlinked images** if asset URLs are easy to share or scrape outside the app.
 
 Recommended controls:
 
@@ -324,6 +371,9 @@ Recommended controls:
 - Generate WebP thumbnails for node previews.
 - Store original only once; thumbnails separately.
 - Track `asset_bytes_stored` by user and workspace.
+- Set cache headers for immutable thumbnails.
+- Prefer signed or unguessable asset paths for private boards.
+- Add per-IP and per-workspace read limits before public sharing.
 
 ---
 
@@ -498,7 +548,7 @@ Goal: 50-100 invited users generate real images.
 
 Budget:
 
-- Infra: $50-$120/month.
+- Infra: $35-$80/month.
 - AI: $50-$150/month cap.
 - Marketing: $0-$100/month, mostly content tools.
 
@@ -514,8 +564,8 @@ Goal: 1k-3k MAU with public landing and waitlist.
 
 Budget:
 
-- Infra: $120-$350/month.
-- AI: $300-$1,000/month hard cap.
+- Infra: $45-$120/month.
+- AI: $80-$300/month hard cap for conservative model mix; raise only after retention is proven.
 - Marketing: $300-$1,000/month max, mostly retargeting and creator tests.
 
 Decision gate:
@@ -530,8 +580,8 @@ Goal: 10k MAU.
 
 Budget:
 
-- Infra: $300-$900/month.
-- AI: $1,000-$3,000/month cap.
+- Infra: $180-$600/month.
+- AI: $600-$1,500/month cap for default low-cost generation; higher quality tiers must be paid or credit-multiplied.
 - Marketing: $1,000-$5,000/month only if CAC is measured.
 
 Decision gate:
@@ -575,17 +625,19 @@ Decision gate:
 
 Cost-wise, the next engineering priorities should be:
 
-1. **Model Registry first, not hardcoded models**.
-2. **Generation job logging from day one**: model, params, cost, status, latency, user.
-3. **Global and per-user AI budget caps** before public launch.
-4. **Asset storage accounting**: bytes per user/workspace.
-5. **Social source tracking** in landing/signup events.
-6. **Waitlist/invite gate** before any public viral push.
-7. **Asset reference model before collaboration**: nodes store `asset_id` / `run_id`, not Base64 or public image blobs.
-8. **Thumbnail pipeline before image-heavy boards**: node previews use compressed thumbnails; original assets load on demand.
+1. **Finish the R2/S3-compatible Asset adapter contract** before real AI image volume.
+2. **Move Board persistence to authenticated FastAPI + Postgres** with the existing save guard.
+3. **Asset storage accounting**: bytes, object count, read count and thumbnail count per user/workspace.
+4. **Model Registry next, not hardcoded models**.
+5. **Generation job logging from day one**: model, params, cost, status, latency, user.
+6. **Global and per-user AI budget caps** before public launch.
+7. **Social source tracking** in landing/signup events.
+8. **Waitlist/invite gate** before any public viral push.
+9. **Asset reference model before collaboration**: nodes store `asset_id` / `run_id`, not Base64 or public image blobs.
+10. **Thumbnail pipeline before image-heavy boards**: node previews use compressed thumbnails; original assets load on demand.
 
 This matches current P0 slice order:
 
 ```text
-Canvas spike → Step 1.5 complex node/data spike → four-node UI → Model Registry → real generation → image/editor/merge → AI Chat → growth gate
+Canvas spike → Step 1.5 complex node/data spike → Asset LOD A-D → Slice E Asset/Board persistence → Model Registry → real generation → Dashboard/Auth → AI Chat productization → growth gate
 ```
