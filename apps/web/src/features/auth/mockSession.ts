@@ -1,19 +1,6 @@
-export type MockWorkspace = {
-  id: string
-  name: string
-  role: 'owner' | 'editor' | 'viewer'
-  boardCount: number
-}
+import type { TangentSession, TangentUser, TangentWorkspace } from './sessionTypes'
 
-export type MockUser = {
-  id: string
-  displayName: string
-  email: string
-  emailVerified: boolean
-  avatarInitials: string
-}
-
-export const mockUser: MockUser = {
+export const mockUser: TangentUser = {
   id: 'dev-user',
   displayName: 'Dev User',
   email: 'dev@tangent.local',
@@ -21,7 +8,7 @@ export const mockUser: MockUser = {
   avatarInitials: 'DU',
 }
 
-export const mockWorkspaces: MockWorkspace[] = [
+export const mockWorkspaces: TangentWorkspace[] = [
   {
     id: 'dev-workspace',
     name: 'Personal workspace',
@@ -30,8 +17,21 @@ export const mockWorkspaces: MockWorkspace[] = [
   },
 ]
 
-export const mockSession = {
+export const mockSession: TangentSession = {
+  authMode: 'dev',
+  isDevFallback: true,
   user: mockUser,
   activeWorkspace: mockWorkspaces[0],
   workspaces: mockWorkspaces,
+}
+
+export function getCurrentSessionSnapshot() {
+  return mockSession
+}
+
+export function getSessionRequestHeaders(): Record<string, string> {
+  return {
+    'x-tangent-user-id': mockSession.user.id,
+    'x-tangent-workspace-id': mockSession.activeWorkspace.id,
+  }
 }

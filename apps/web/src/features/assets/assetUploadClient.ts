@@ -2,7 +2,7 @@
 
 import { createImageDataUrlThumbnails } from './assetClientThumbnails'
 import type { TangentAssetDataUrlInput, TangentAssetResponse } from './assetTypes'
-import { hasRemotePersistenceApi, persistenceApiUrl, persistenceAssetUrl } from '@/features/api/persistenceApi'
+import { hasRemotePersistenceApi, persistenceApiUrl, persistenceAssetUrl, persistenceJsonHeaders } from '@/features/api/persistenceApi'
 
 export async function uploadImageDataUrlAsset(input: Omit<TangentAssetDataUrlInput, 'thumbnails'>) {
   const thumbnails = await createImageDataUrlThumbnails(input.dataUrl)
@@ -10,7 +10,7 @@ export async function uploadImageDataUrlAsset(input: Omit<TangentAssetDataUrlInp
     hasRemotePersistenceApi() ? persistenceApiUrl('/api/v1/assets/from-data-url') : '/api/assets/from-data-url',
     {
       body: JSON.stringify({ ...input, thumbnails }),
-      headers: { 'Content-Type': 'application/json' },
+      headers: persistenceJsonHeaders(),
       method: 'POST',
     }
   )

@@ -8,7 +8,14 @@ from fastapi import HTTPException
 
 from tangent_api.board_guard import audit_board_document
 from tangent_api.request_context import ApiRequestContext
-from tangent_api.schemas import BoardRecord, BoardSaveRequest, BoardSaveResponse, BoardSummary, summarize_board_record
+from tangent_api.schemas import (
+    BoardRecord,
+    BoardSaveRequest,
+    BoardSaveResponse,
+    BoardSummary,
+    get_board_document_metrics,
+    summarize_board_record,
+)
 from tangent_api.storage.postgres_connection import connect_to_postgres, should_auto_create_tables
 
 BOARD_ID_PATTERN = re.compile(r"^[a-zA-Z0-9._-]+$")
@@ -26,12 +33,16 @@ class PostgresBoardStore:
 
         board_id = _sanitize_board_id(input_data.board_id) or f"board_{uuid4()}"
         saved_at = datetime.now(timezone.utc).isoformat()
+        metrics = get_board_document_metrics(input_data.document)
         record = BoardRecord(
+            assetCount=metrics["asset_count"],
             byteSize=audit.byte_size,
             document=input_data.document,
             id=board_id,
             ownerId=context.user_id,
             savedAt=saved_at,
+            shapeCount=metrics["shape_count"],
+            thumbnailUrl=None,
             title=(input_data.title or "Untitled Board").strip() or "Untitled Board",
             workspaceId=context.workspace_id,
         )
@@ -48,14 +59,20 @@ class PostgresBoardStore:
                         title,
                         document,
                         byte_size,
+                        asset_count,
+                        shape_count,
+                        thumbnail_url,
                         saved_at
                     )
-                    VALUES (%s, %s, %s, %s, %s::jsonb, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s::jsonb, %s, %s, %s, %s, %s)
                     ON CONFLICT (workspace_id, id) DO UPDATE SET
                         owner_id = EXCLUDED.owner_id,
                         title = EXCLUDED.title,
                         document = EXCLUDED.document,
                         byte_size = EXCLUDED.byte_size,
+                        asset_count = EXCLUDED.asset_count,
+                        shape_count = EXCLUDED.shape_count,
+                        thumbnail_url = EXCLUDED.thumbnail_url,
                         saved_at = EXCLUDED.saved_at
                     """,
                     (
@@ -65,6 +82,9 @@ class PostgresBoardStore:
                         record.title,
                         json.dumps(record.document),
                         record.byte_size,
+                        record.asset_count,
+                        record.shape_count,
+                        record.thumbnail_url,
                         record.saved_at,
                     ),
                 )
@@ -89,6 +109,9 @@ class PostgresBoardStore:
                         title,
                         document,
                         byte_size,
+                        asset_count,
+                        shape_count,
+                        thumbnail_url,
                         saved_at
                     FROM tangent_boards
                     WHERE workspace_id = %s AND id = %s
@@ -114,6 +137,9 @@ class PostgresBoardStore:
                         title,
                         document,
                         byte_size,
+                        asset_count,
+                        shape_count,
+                        thumbnail_url,
                         saved_at
                     FROM tangent_boards
                     WHERE workspace_id = %s
@@ -176,11 +202,17 @@ class PostgresBoardStore:
                 title TEXT NOT NULL,
                 document JSONB NOT NULL,
                 byte_size INTEGER NOT NULL,
+                asset_count INTEGER NOT NULL DEFAULT 0,
+                shape_count INTEGER NOT NULL DEFAULT 0,
+                thumbnail_url TEXT,
                 saved_at TIMESTAMPTZ NOT NULL,
                 PRIMARY KEY (workspace_id, id)
             )
             """
         )
+        cursor.execute("ALTER TABLE tangent_boards ADD COLUMN IF NOT EXISTS asset_count INTEGER NOT NULL DEFAULT 0")
+        cursor.execute("ALTER TABLE tangent_boards ADD COLUMN IF NOT EXISTS shape_count INTEGER NOT NULL DEFAULT 0")
+        cursor.execute("ALTER TABLE tangent_boards ADD COLUMN IF NOT EXISTS thumbnail_url TEXT")
         cursor.execute(
             """
             CREATE INDEX IF NOT EXISTS tangent_boards_owner_idx
@@ -190,14 +222,17 @@ class PostgresBoardStore:
 
 
 def _board_record_from_row(row: tuple[Any, ...]) -> BoardRecord:
-    saved_at = row[6].isoformat() if hasattr(row[6], "isoformat") else str(row[6])
+    saved_at = row[9].isoformat() if hasattr(row[9], "isoformat") else str(row[9])
     document = row[4] if not isinstance(row[4], str) else json.loads(row[4])
     return BoardRecord(
+        assetCount=row[6] or 0,
         byteSize=row[5],
         document=document,
         id=row[0],
         ownerId=row[2],
         savedAt=saved_at,
+        shapeCount=row[7] or 0,
+        thumbnailUrl=row[8],
         title=row[3],
         workspaceId=row[1],
     )

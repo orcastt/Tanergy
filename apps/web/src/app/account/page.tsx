@@ -1,8 +1,10 @@
 import Link from 'next/link'
 import { AppShell } from '@/components/app-shell/AppShell'
-import { mockSession } from '@/features/auth/mockSession'
+import { getCurrentSessionSnapshot } from '@/features/auth/mockSession'
 
 export default function AccountPage() {
+  const session = getCurrentSessionSnapshot()
+
   return (
     <AppShell>
       <div className="product-page">
@@ -17,16 +19,16 @@ export default function AccountPage() {
 
         <section className="product-grid" aria-label="Account details">
           <article className="product-demo-card peach">
-            <h2>{mockSession.user.displayName}</h2>
-            <p>{mockSession.user.email}</p>
+            <h2>{session.user.displayName}</h2>
+            <p>{session.user.email}</p>
           </article>
           <article className="product-demo-card mint">
             <h2>Email status</h2>
-            <p>{mockSession.user.emailVerified ? 'Verified' : 'Pending real provider setup'}</p>
+            <p>{session.user.emailVerified ? 'Verified' : 'Pending real provider setup'}</p>
           </article>
           <article className="product-demo-card cream">
             <h2>Workspace</h2>
-            <p>{mockSession.activeWorkspace.name}</p>
+            <p>{session.activeWorkspace.name}</p>
           </article>
         </section>
 

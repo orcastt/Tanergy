@@ -209,9 +209,9 @@ Canonical docs 仍然是：
 
 1. 把现有 staging API package 接到真实 server / managed Postgres / R2 / staging Web origin，并按 `deploy/staging/README.md` 跑 smoke。
 2. 建立推送 / 部署流水线：Git remote、Web deploy、VPS Docker deploy、env secret 管理和 rollback。
-3. 继续把 `/boards` Dashboard / Board entry 产品化；当前 shell 已支持 Board summary list、create/open/search/rename/delete、按 board id load 和 Board 模式 autosave/save indicator，下一步补 thumbnail、recent/opened metadata、pagination 和更完整空/错/加载状态。
-4. 接 Auth / 注册 / 邮箱验证：users/workspaces、Email OTP 或 magic link、session/JWT、保护 `/boards` 和 API。
-5. Auth / Board CRUD 稳定后，再进入 Model Registry、AI Runs、真实 Image Gen / Analysis、AI Chat planner。
+3. 继续把 `/boards` Dashboard / Board entry 产品化；当前 shell 已支持 Board summary list、create/open/search/rename/delete、thumbnail placeholder、shape/asset count、list limit、基础空/错/加载状态、按 board id load 和 Board 模式 autosave/save indicator，下一步补 recent/opened metadata、richer pagination 和长时浏览器回归。
+4. Auth scaffold / 注册边界已有 first pass：typed session/user/workspace、Next/FastAPI session endpoint、route guard 形状和 dev auth-required smoke；真实 Email OTP 或 magic link、session/JWT、保护 `/boards` 和 API 需要外部资源后继续。
+5. 接下来进入 Model Registry、AI Runs、真实 Image Gen / Analysis、AI Chat planner 的本地 contract scaffold。
 6. Alpha 前补安全/运维：rate limit、上传 abuse guard、AI budget kill switch、日志、备份恢复、CORS、Terms/Privacy 占位。
 7. 多人协作继续后置到 P0.5，必须等 Asset / Board / Auth / AI Run 边界稳定。
 
@@ -233,7 +233,7 @@ Canonical docs 仍然是：
 
 当前接手点：继续 Slice E Real Asset Pipeline / 0-to-1 staging path。已完成 local Asset/Board bridge、FastAPI local-dev、真实 s3-compatible Asset adapter、Postgres Board / Asset metadata persistence、Web-to-FastAPI switch、staging API package 和 /boards entry shell。
 
-下一步优先从真实 staging server / managed Postgres / R2 / staging Web origin smoke，或 /boards Dashboard thumbnail/recent metadata/pagination 开始；Auth / AI Run 在 Board/Auth 边界稳定后再接。
+下一步优先从真实 staging server / managed Postgres / R2 / staging Web origin smoke，或本地 AI contract scaffold 开始；/boards Dashboard metadata 和 Auth scaffold 已有 first pass，recent-open metadata / richer pagination 和 Board save 长时回归仍可并行补。
 ```
 
 ---
@@ -248,10 +248,11 @@ Canonical docs 仍然是：
 | `apps/web/src/app/styles/node-card-content.css` | 298 行 | 再改节点内容样式前拆 prompt / image / port CSS |
 | `apps/web/src/components/canvas/CanvasSpikeToolbar.tsx` | 294 行 | 拆 toolbar category / popover |
 | `apps/web/src/app/styles/canvas-overlays.css` | 292 行 | 拆 connection / selection / minimap overlay CSS |
-| `apps/web/src/components/canvas/CanvasBoardSaveAudit.tsx` | 291 行 | 拆 board save actions / status display / autosave hooks |
+| `apps/web/src/components/canvas/CanvasBoardSaveAudit.tsx` | 275 行 | 如继续加保存行为，拆 autosave hook / save actions |
 | `apps/web/src/components/canvas/useEditorRevision.ts` | 289 行 | 拆 editor revision helper / subscription helper |
 | `apps/web/src/features/assets/assetPreviewResolver.ts` | 266 行 | 新增 resolver 行为前拆 persisted thumbnail / local cache helper |
-| `apps/web/src/app/styles/boards.css` | 250 行 | 再改 Dashboard 行为样式前拆 table / actions CSS |
+| `apps/web/src/components/boards/BoardDashboard.tsx` | 284 行 | 再加 Dashboard 行为前拆 row / empty / loading helpers |
+| `apps/web/src/app/styles/boards.css` | 已拆分 | Dashboard shell styles 保持在本文件，table/list styles 放 `boards-list.css` |
 | `apps/web/src/components/canvas/CanvasSelectionToolbar.tsx` | 252 行 | 拆 selection actions / merge controls |
 
 规则：

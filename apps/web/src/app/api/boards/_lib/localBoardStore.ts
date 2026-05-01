@@ -3,7 +3,12 @@ import type { Dirent } from 'node:fs'
 import { mkdir, readdir, readFile, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { auditBoardDocument } from '@/features/boards/boardDocumentGuard'
-import { summarizeBoardRecord, type BoardPersistenceRecord, type BoardSaveInput } from '@/features/boards/boardTypes'
+import {
+  getBoardDocumentMetrics,
+  summarizeBoardRecord,
+  type BoardPersistenceRecord,
+  type BoardSaveInput,
+} from '@/features/boards/boardTypes'
 import type { ApiRequestContext } from '../../_lib/apiRequestContext'
 
 const storageRoot = process.env.TANGENT_BOARD_STORAGE_DIR ?? path.join(process.cwd(), '.tangent-boards')
@@ -16,12 +21,16 @@ export async function saveLocalBoard(input: BoardSaveInput, context: ApiRequestC
   }
 
   const boardId = sanitizeBoardId(input.boardId) ?? `board_${randomUUID()}`
+  const metrics = getBoardDocumentMetrics(input.document)
   const record: BoardPersistenceRecord = {
+    assetCount: metrics.assetCount,
     byteSize: audit.byteSize,
     document: input.document,
     id: boardId,
     ownerId: context.userId,
     savedAt: new Date().toISOString(),
+    shapeCount: metrics.shapeCount,
+    thumbnailUrl: null,
     title: input.title?.trim() || 'Untitled Board',
     workspaceId: context.workspaceId,
   }
@@ -98,12 +107,16 @@ function normalizeBoardRecord(
   record: Partial<BoardPersistenceRecord>,
   context: ApiRequestContext
 ): BoardPersistenceRecord {
+  const metrics = getBoardDocumentMetrics(record.document)
   return {
+    assetCount: record.assetCount ?? metrics.assetCount,
     byteSize: record.byteSize ?? 0,
     document: record.document ?? null,
     id: record.id ?? '',
     ownerId: record.ownerId ?? context.userId,
     savedAt: record.savedAt ?? new Date(0).toISOString(),
+    shapeCount: record.shapeCount ?? metrics.shapeCount,
+    thumbnailUrl: record.thumbnailUrl ?? null,
     title: record.title ?? 'Untitled Board',
     workspaceId: record.workspaceId ?? context.workspaceId,
   }

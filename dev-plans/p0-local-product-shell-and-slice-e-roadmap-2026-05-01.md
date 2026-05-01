@@ -3,7 +3,7 @@
 **Date**: 2026-05-01
 **Branch**: `feature/asset-lod-roadmap`
 **Base checkpoint**: `5ffed96 feat: productize board dashboard crud`
-**Status**: Active near-term coordination plan. L1 Product Shell skeleton and L2 Board save UX have first-pass local checkpoints, but they are not product-complete yet.
+**Status**: Active near-term coordination plan. L1 Product Shell skeleton, L2 Board save UX, L3 Dashboard metadata polish and L4 Auth scaffold boundary have first-pass local checkpoints, but they are not product-complete yet.
 
 This plan coordinates two near-term tracks:
 
@@ -19,6 +19,8 @@ The goal is to turn the current project from "working canvas and persistence sli
 Already checkpointed in `5ffed96`:
 
 - `/boards` Dashboard supports list, create/open, search, inline rename and delete confirmation.
+- S0C Dashboard metadata first pass is implemented after the checkpoint: Board summary carries `shapeCount`, `assetCount` and reserved `thumbnailUrl`; `/boards` shows thumbnail placeholders, object counts, a 20-board list limit, loading skeleton, empty CTA and error retry.
+- S0D Auth scaffold first pass is implemented: typed session/user/workspace contract, mock session snapshot, persistence request context headers, Next/FastAPI session endpoints, default-off Web Proxy route guard shape and FastAPI auth-required smoke tests.
 - `/boards/:boardId` opens the canvas with Board-mode save/load through the same local/FastAPI persistence contract.
 - Next local bridge and FastAPI both support Board validate/list/save/load/rename/delete.
 - FastAPI supports local-dev Asset/Board routes, real `s3-compatible` Asset storage, Postgres Board persistence, Postgres Asset metadata and CORS allowlist.
@@ -36,8 +38,8 @@ These items do not require a real server, domain, R2 bucket, managed database, e
 | --- | --- | --- | --- |
 | Product shell | App shell navigation, `/login`, `/signup`, `/forgot-password`, `/verify-email`, `/workspaces` or `/dashboard`, `/settings`, `/account` route skeletons with mock user/workspace state | Makes `/boards` stop feeling like an isolated spike; prepares Auth and workspace flows | First-pass routes render, navigation works, forms validate locally, no provider secrets in frontend |
 | Board save UX | Autosave/debounce, save indicator, dirty/clean state, leave-page warning, load error fallback, dev save controls demoted | First pass is implemented locally in Board mode; keep validating with current persistence contract | First-pass refresh/reopen path works; long browser regression and failure polish remain |
-| Dashboard polish | Thumbnail placeholder/field, recent saved/opened metadata, pagination/list limits, empty/loading/error states | Finishes the current Board CRUD product surface before Auth | Multiple Boards remain manageable and list response still returns summary only |
-| Auth scaffold | User/session/workspace TypeScript types, mock current-user endpoint or local store, route guard shape, Auth-required dev mode smoke | Lets UI and API agree on the future boundary before real email/session implementation | Dev fallback works; `TANGENT_REQUIRE_API_AUTH=1` style checks still fail loudly without context |
+| Dashboard polish | Thumbnail placeholder/field, object summary metadata, list limits, empty/loading/error states | First pass is implemented; finishes the current Board CRUD product surface before Auth | Multiple Boards remain manageable and list response still returns summary only |
+| Auth scaffold | User/session/workspace TypeScript types, mock current-user endpoint or local store, route guard shape, Auth-required dev mode smoke | First pass is implemented; lets UI and API agree on the future boundary before real email/session implementation | Dev fallback works; `TANGENT_REQUIRE_API_AUTH=1` checks fail loudly without context; real session/cookie/JWT still pending |
 | Asset/Board hardening | More persistence contract tests, object metadata edge cases, board thumbnail metadata, migration notes | Reduces staging surprises | Local/FastAPI tests cover workspace isolation and failure paths |
 | AI integration scaffold | Model Registry route with mock data, `AiRun` schema draft, server-only AI proxy stub, mock provider response shape | Lets Image Gen UI stop hardcoding final model truth while keeping keys server-side later | No real provider call; Image Gen can consume registry/mock contract |
 
@@ -45,8 +47,8 @@ Recommended local order:
 
 1. **App shell + route skeletons**: global navigation plus auth/workspace/settings/account mock pages.
 2. **Board save UX**: first pass is implemented; `/boards/:boardId` has autosave, save indicator and dirty warning, but long-form browser regression remains.
-3. **Dashboard polish**: thumbnails/recent metadata/pagination/empty and error states.
-4. **Auth scaffold**: typed session/workspace boundary and route guard shape.
+3. **Dashboard polish**: first pass is implemented; remaining work is recent opened metadata, richer pagination and longer browser regression.
+4. **Auth scaffold**: first pass is implemented; remaining work is real session/cookie/JWT after external resources.
 5. **AI scaffold**: Model Registry + mock `AiRun` contract, no real key yet.
 
 ---
@@ -75,8 +77,8 @@ These should be tracked as setup tasks, not faked as finished product behavior.
 | L0 | Document coordination and checkpoint | done | `5ffed96` committed; this roadmap, `ARCH.md` and `project_state.md` point to the same local plan |
 | L1 | Product shell skeleton | first-pass checkpoint | `/login`, `/signup`, `/forgot-password`, `/verify-email`, `/workspaces`, `/dashboard` redirect, `/settings`, `/account` render with mock state and connect to `/boards`; real Auth/session is not done |
 | L2 | Board save UX | first-pass checkpoint | Autosave/debounce, dirty indicator, save error state and leave warning work in `/boards/:boardId`; long-form browser regression and failure polish remain |
-| L3 | Dashboard metadata polish | 1-2 days | Board list shows thumbnail placeholder/summary metadata, recent opened/saved time and pagination or list limit |
-| L4 | Auth scaffold boundary | 2-3 days | Typed current-user/session/workspace boundary, route guard shape and dev auth-required mode smoke exist without real email |
+| L3 | Dashboard metadata polish | first-pass checkpoint | Board list shows thumbnail placeholder, shape/asset counts, list limit, loading skeleton, empty CTA and error retry; recent-open metadata and richer pagination remain later |
+| L4 | Auth scaffold boundary | first-pass checkpoint | Typed current-user/session/workspace boundary, Next/FastAPI session endpoints, default-off route guard shape and dev auth-required smoke exist without real email |
 | L5 | AI contract scaffold | 2-3 days | Mock Model Registry and `AiRun` contract are server-owned; frontend model selectors consume the contract |
 
 After L1-L5, switch to the external-resource stages in `ARCH.md` 11.5:
@@ -96,6 +98,7 @@ After L1-L5, switch to the external-resource stages in `ARCH.md` 11.5:
 - Use `reference/Design.md` as the Product Shell design source. Do not use the older `reference/design-system.md` or `reference/theme.ts` for this frontend page work.
 - Keep `/spikes/canvas` as a technical validation route, but make `/boards` and `/boards/:boardId` the product path.
 - Keep list responses summary-only; full Board document is only returned by explicit load.
-- `apps/web/src/components/canvas/CanvasBoardSaveAudit.tsx` is near the 300-line hard limit after autosave/status work. Split save actions / status UI before adding more behavior.
-- `apps/web/src/app/styles/boards.css` is at the 250-line warning threshold. Split CSS before adding substantial Dashboard styling.
+- `apps/web/src/components/canvas/CanvasBoardSaveAudit.tsx` has been split; keep save logic there and status/control rendering in `CanvasBoardSaveControls.tsx`.
+- `apps/web/src/components/boards/BoardDashboard.tsx` is under 300 lines but now in the watch zone after S0C; split row/empty/loading helpers before adding more dashboard behavior.
+- Dashboard CSS has been split into `boards.css` and `boards-list.css`; keep further table/list styling in the split list file or smaller modules.
 - Continue using the standard gates: `PYTHONPATH=services/api python3 -m pytest services/api/tests`, `python3 -m compileall services/api/tangent_api`, web lint/typecheck/build and `git diff --check`.

@@ -25,6 +25,35 @@ class BoardValidateResponse(TangentApiModel):
     ok: bool
 
 
+class AuthUser(TangentApiModel):
+    avatar_initials: str = Field(alias="avatarInitials")
+    display_name: str = Field(alias="displayName")
+    email: str
+    email_verified: bool = Field(alias="emailVerified")
+    id: str
+
+
+class AuthWorkspace(TangentApiModel):
+    board_count: int = Field(alias="boardCount")
+    id: str
+    name: str
+    role: str
+
+
+class AuthSession(TangentApiModel):
+    active_workspace: AuthWorkspace = Field(alias="activeWorkspace")
+    auth_mode: str = Field(alias="authMode")
+    is_dev_fallback: bool = Field(alias="isDevFallback")
+    user: AuthUser
+    workspaces: list[AuthWorkspace]
+
+
+class AuthSessionResponse(TangentApiModel):
+    error: Optional[str] = None
+    ok: bool
+    session: Optional[AuthSession] = None
+
+
 class BoardSaveRequest(TangentApiModel):
     board_id: Optional[str] = Field(default=None, alias="boardId")
     document: Any
@@ -36,10 +65,13 @@ class BoardRenameRequest(TangentApiModel):
 
 
 class BoardSummary(TangentApiModel):
+    asset_count: int = Field(default=0, alias="assetCount")
     byte_size: int = Field(alias="byteSize")
     id: str
     owner_id: str = Field(alias="ownerId")
     saved_at: str = Field(alias="savedAt")
+    shape_count: int = Field(default=0, alias="shapeCount")
+    thumbnail_url: Optional[str] = Field(default=None, alias="thumbnailUrl")
     title: str
     workspace_id: str = Field(alias="workspaceId")
 
@@ -119,11 +151,26 @@ class AssetResponse(TangentApiModel):
 
 
 def summarize_board_record(record: BoardRecord) -> BoardSummary:
+    metrics = get_board_document_metrics(record.document)
     return BoardSummary(
+        assetCount=record.asset_count or metrics["asset_count"],
         byteSize=record.byte_size,
         id=record.id,
         ownerId=record.owner_id,
         savedAt=record.saved_at,
+        shapeCount=record.shape_count or metrics["shape_count"],
+        thumbnailUrl=record.thumbnail_url,
         title=record.title,
         workspaceId=record.workspace_id,
     )
+
+
+def get_board_document_metrics(document: Any) -> dict[str, int]:
+    if not isinstance(document, dict):
+        return {"asset_count": 0, "shape_count": 0}
+    assets = document.get("assets")
+    shapes = document.get("shapes")
+    return {
+        "asset_count": len(assets) if isinstance(assets, list) else 0,
+        "shape_count": len(shapes) if isinstance(shapes, list) else 0,
+    }

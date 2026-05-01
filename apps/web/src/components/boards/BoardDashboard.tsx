@@ -10,8 +10,10 @@ import {
   renameLocalBoardDocument,
 } from '@/features/boards/localBoardClient'
 import type { BoardPersistenceSummary } from '@/features/boards/boardTypes'
+import { BoardThumbnail } from './BoardThumbnail'
 
 const boardIdPattern = /^[a-zA-Z0-9._-]+$/
+const boardListLimit = 20
 
 export function BoardDashboard() {
   const router = useRouter()
@@ -27,13 +29,16 @@ export function BoardDashboard() {
     () => hasRemotePersistenceApi() ? 'FastAPI persistence' : 'Local bridge',
     []
   )
-  const visibleBoards = useMemo(() => {
+  const filteredBoards = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
-    if (!query) return boards
-    return boards.filter((board) => (
+    return query ? boards.filter((board) => (
       board.title.toLowerCase().includes(query) || board.id.toLowerCase().includes(query)
-    ))
+    )) : boards
   }, [boards, searchQuery])
+  const visibleBoards = useMemo(() => {
+    return filteredBoards.slice(0, boardListLimit)
+  }, [filteredBoards])
+  const hiddenBoardCount = Math.max(filteredBoards.length - visibleBoards.length, 0)
 
   const refreshBoards = useCallback(async () => {
     setIsLoading(true)
@@ -160,37 +165,51 @@ export function BoardDashboard() {
           </button>
         </div>
 
-        {error ? <p className="boards-error">{error}</p> : null}
+        {error ? (
+          <div className="boards-error" role="alert">
+            <span>{error}</span>
+            <button onClick={() => void refreshBoards()} type="button">Retry</button>
+          </div>
+        ) : null}
 
         <section className="boards-table" aria-label="Recent boards">
           <div className="boards-table-head">
             <span>Board</span>
+            <span>Objects</span>
             <span>Saved</span>
             <span>Size</span>
             <span>Actions</span>
           </div>
-          {isLoading ? <div className="boards-empty">Loading boards</div> : null}
-          {!isLoading && boards.length === 0 ? <div className="boards-empty">No saved boards yet</div> : null}
-          {!isLoading && boards.length > 0 && visibleBoards.length === 0 ? <div className="boards-empty">No boards match your search</div> : null}
+          {isLoading ? <BoardLoadingState /> : null}
+          {!isLoading && boards.length === 0 ? (
+            <BoardEmptyState onCreate={createBoard} />
+          ) : null}
+          {!isLoading && boards.length > 0 && visibleBoards.length === 0 ? (
+            <div className="boards-empty">No boards match your search.</div>
+          ) : null}
           {!isLoading && visibleBoards.map((board) => (
             <div className="boards-row" key={board.id}>
-              {editingBoardId === board.id ? (
-                <form className="boards-rename-form" onSubmit={(event) => void renameBoard(event, board.id)}>
-                  <input
-                    aria-label="Board title"
-                    maxLength={80}
-                    onChange={(event) => setEditingTitle(event.target.value)}
-                    value={editingTitle}
-                  />
-                  <button disabled={pendingBoardId === board.id} type="submit">Save</button>
-                  <button disabled={pendingBoardId === board.id} onClick={cancelRename} type="button">Cancel</button>
-                </form>
-              ) : (
-                <Link className="boards-title-link" href={`/boards/${encodeURIComponent(board.id)}`}>
-                  <strong>{board.title}</strong>
-                  <small>{board.id}</small>
-                </Link>
-              )}
+              <div className="boards-title-cell">
+                <BoardThumbnail board={board} />
+                {editingBoardId === board.id ? (
+                  <form className="boards-rename-form" onSubmit={(event) => void renameBoard(event, board.id)}>
+                    <input
+                      aria-label="Board title"
+                      maxLength={80}
+                      onChange={(event) => setEditingTitle(event.target.value)}
+                      value={editingTitle}
+                    />
+                    <button disabled={pendingBoardId === board.id} type="submit">Save</button>
+                    <button disabled={pendingBoardId === board.id} onClick={cancelRename} type="button">Cancel</button>
+                  </form>
+                ) : (
+                  <Link className="boards-title-link" href={`/boards/${encodeURIComponent(board.id)}`}>
+                    <strong>{board.title}</strong>
+                    <small>{board.id}</small>
+                  </Link>
+                )}
+              </div>
+              <span className="boards-object-count">{formatObjectCount(board)}</span>
               <time dateTime={board.savedAt}>{formatSavedAt(board.savedAt)}</time>
               <span>{formatBytes(board.byteSize)}</span>
               <span className="boards-row-actions">
@@ -205,8 +224,37 @@ export function BoardDashboard() {
             </div>
           ))}
         </section>
+        {!isLoading && hiddenBoardCount > 0 ? (
+          <p className="boards-list-note">Showing the latest {visibleBoards.length} boards. Use search to narrow the list.</p>
+        ) : null}
       </section>
     </section>
+  )
+}
+
+function BoardLoadingState() {
+  return (
+    <>
+      {[0, 1, 2].map((item) => (
+        <div className="boards-row boards-row-skeleton" key={item}>
+          <span />
+          <span />
+          <span />
+          <span />
+          <span />
+        </div>
+      ))}
+    </>
+  )
+}
+
+function BoardEmptyState({ onCreate }: { onCreate: () => void }) {
+  return (
+    <div className="boards-empty boards-empty-hero">
+      <strong>No saved boards yet.</strong>
+      <span>Create your first local board, then return here to reopen it.</span>
+      <button className="boards-primary-button" onClick={onCreate} type="button">New board</button>
+    </div>
   )
 }
 
@@ -229,4 +277,8 @@ function formatSavedAt(value: string) {
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`
   return `${(bytes / 1024).toFixed(1)} KB`
+}
+
+function formatObjectCount(board: BoardPersistenceSummary) {
+  return `${board.shapeCount} shape${board.shapeCount === 1 ? '' : 's'} / ${board.assetCount} asset${board.assetCount === 1 ? '' : 's'}`
 }

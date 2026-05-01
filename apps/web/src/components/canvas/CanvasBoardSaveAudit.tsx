@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type SyntheticEvent } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Editor } from 'tldraw'
 import { migrateRuntimeImageAssets, type RuntimeAssetMigrationResult } from '@/features/assets/runtimeAssetMigration'
 import {
@@ -16,14 +16,13 @@ import {
 import { useNodeEdgeStore } from '@/features/node-runtime/nodeEdges'
 import {
   boardAutosaveDelayMs,
-  getBoardStatusDetail,
-  getBoardStatusLabel,
   getDocumentSignature,
   hasBoardDocumentChange,
   shouldWarnBeforeUnload,
   type BoardAction,
   type BoardSaveStatus,
 } from './boardSaveStatus'
+import { BoardModeSaveStatus, DevBoardSaveControls } from './CanvasBoardSaveControls'
 
 type CanvasBoardSaveAuditProps = {
   autoLoad?: boolean
@@ -35,10 +34,6 @@ type CanvasBoardSaveAuditProps = {
 
 const defaultBoardId = 'canvas-spike-local'
 const defaultBoardTitle = 'Canvas Spike Local'
-
-function stopCanvasEvent(event: SyntheticEvent) {
-  event.stopPropagation()
-}
 
 export function CanvasBoardSaveAudit({
   autoLoad = false,
@@ -173,10 +168,13 @@ export function CanvasBoardSaveAudit({
       const restore = restoreBoardDocument(editor, board.document)
       setSaveResult({
         board: {
+          assetCount: board.assetCount ?? restore.assetCount,
           byteSize: board.byteSize,
           id: board.id,
           ownerId: board.ownerId,
           savedAt: board.savedAt,
+          shapeCount: board.shapeCount ?? restore.shapeCount,
+          thumbnailUrl: board.thumbnailUrl ?? null,
           title: `${restore.shapeCount} shape(s) loaded from ${board.title}`,
           workspaceId: board.workspaceId,
         },
@@ -241,51 +239,37 @@ export function CanvasBoardSaveAudit({
   const loadLabel = mode === 'board' ? 'Load board' : 'Load local'
 
   if (mode === 'board') {
-    const boardStatusLabel = getBoardStatusLabel(status, lastAction)
-    const boardDetail = saveError ?? getBoardStatusDetail(status, lastSavedAt, migration, issue?.path)
-    const actionLabel = status === 'error' && lastAction === 'load' ? 'Retry load' : 'Save now'
-
     return (
-      <div
-        className="canvas-board-save-status"
-        onDoubleClick={stopCanvasEvent}
-        onPointerDown={stopCanvasEvent}
-        onWheel={stopCanvasEvent}
-      >
-        <span aria-hidden="true" className="canvas-board-save-status__dot" data-state={status} />
-        <span className="canvas-board-save-status__label">{boardStatusLabel}</span>
-        {boardDetail ? <small title={saveError ?? issue?.message}>{boardDetail}</small> : null}
-        {status === 'dirty' || status === 'blocked' || status === 'error' ? (
-          <button
-            disabled={!editor || isRunning}
-            onClick={() => void (status === 'error' && lastAction === 'load' ? loadLocal() : saveLocal())}
-            type="button"
-          >
-            {actionLabel}
-          </button>
-        ) : null}
-      </div>
+      <BoardModeSaveStatus
+        editorAvailable={Boolean(editor)}
+        isRunning={isRunning}
+        issueMessage={issue?.message}
+        issuePath={issue?.path}
+        lastAction={lastAction}
+        lastSavedAt={lastSavedAt}
+        migration={migration}
+        onLoad={() => void loadLocal()}
+        onSave={() => void saveLocal()}
+        saveError={saveError}
+        status={status}
+      />
     )
   }
 
   return (
-    <div
-      className="canvas-board-save-audit"
-      onDoubleClick={stopCanvasEvent}
-      onPointerDown={stopCanvasEvent}
-      onWheel={stopCanvasEvent}
-    >
-      <button disabled={!editor || isRunning} onClick={() => void runAudit()} type="button">
-        {isRunning ? 'Checking' : 'Save audit'}
-      </button>
-      <button disabled={!editor || isRunning} onClick={() => void saveLocal()} type="button">
-        {saveLabel}
-      </button>
-      <button disabled={!editor || isRunning} onClick={() => void loadLocal()} type="button">
-        {loadLabel}
-      </button>
-      <span data-state={result?.audit.ok ? 'ok' : result ? 'blocked' : 'idle'}>{auditStatus}</span>
-      {detail ? <small title={saveError ?? issue?.message}>{detail}</small> : null}
-    </div>
+    <DevBoardSaveControls
+      auditState={result?.audit.ok ? 'ok' : result ? 'blocked' : 'idle'}
+      auditStatus={auditStatus}
+      detail={detail}
+      editorAvailable={Boolean(editor)}
+      isRunning={isRunning}
+      issueMessage={issue?.message}
+      loadLabel={loadLabel}
+      onAudit={() => void runAudit()}
+      onLoad={() => void loadLocal()}
+      onSave={() => void saveLocal()}
+      saveError={saveError}
+      saveLabel={saveLabel}
+    />
   )
 }

@@ -10,24 +10,36 @@ def test_board_local_dev_contract(tmp_path, monkeypatch):
 
     save_response = client.post(
         "/api/v1/boards",
-        json={"boardId": "api-smoke-board", "document": {"shapes": []}, "title": "API Smoke Board"},
+        json={
+            "boardId": "api-smoke-board",
+            "document": {"assets": [{"id": "asset_1"}], "shapes": [{"id": "shape_1"}, {"id": "shape_2"}]},
+            "title": "API Smoke Board",
+        },
     )
 
     assert save_response.status_code == 200
     saved = save_response.json()["board"]
+    assert saved["assetCount"] == 1
+    assert saved["shapeCount"] == 2
+    assert saved["thumbnailUrl"] is None
     assert saved["workspaceId"] == "dev-workspace"
     assert "document" not in saved
 
     load_response = client.get("/api/v1/boards/api-smoke-board")
     assert load_response.status_code == 200
     loaded = load_response.json()["board"]
-    assert loaded["document"] == {"shapes": []}
+    assert loaded["assetCount"] == 1
+    assert loaded["document"] == {"assets": [{"id": "asset_1"}], "shapes": [{"id": "shape_1"}, {"id": "shape_2"}]}
+    assert loaded["shapeCount"] == 2
     assert loaded["workspaceId"] == "dev-workspace"
 
     list_response = client.get("/api/v1/boards")
     assert list_response.status_code == 200
     listed = list_response.json()["boards"]
     assert [board["id"] for board in listed] == ["api-smoke-board"]
+    assert listed[0]["assetCount"] == 1
+    assert listed[0]["shapeCount"] == 2
+    assert listed[0]["thumbnailUrl"] is None
     assert "document" not in listed[0]
 
     rename_response = client.patch("/api/v1/boards/api-smoke-board", json={"title": "Renamed Board"})
@@ -71,13 +83,16 @@ def test_board_postgres_contract(monkeypatch):
         "/api/v1/boards",
         json={
             "boardId": "api-postgres-board",
-            "document": {"shapes": [{"id": "shape_1"}]},
+            "document": {"assets": [{"id": "asset_1"}, {"id": "asset_2"}], "shapes": [{"id": "shape_1"}]},
             "title": "Postgres Board",
         },
     )
 
     assert save_response.status_code == 200
     saved = save_response.json()["board"]
+    assert saved["assetCount"] == 2
+    assert saved["shapeCount"] == 1
+    assert saved["thumbnailUrl"] is None
     assert saved["workspaceId"] == "dev-workspace"
     assert "document" not in saved
     assert ("dev-workspace", "api-postgres-board") in fake_db.boards
@@ -85,13 +100,18 @@ def test_board_postgres_contract(monkeypatch):
     load_response = client.get("/api/v1/boards/api-postgres-board")
     assert load_response.status_code == 200
     loaded = load_response.json()["board"]
-    assert loaded["document"] == {"shapes": [{"id": "shape_1"}]}
+    assert loaded["assetCount"] == 2
+    assert loaded["document"] == {"assets": [{"id": "asset_1"}, {"id": "asset_2"}], "shapes": [{"id": "shape_1"}]}
+    assert loaded["shapeCount"] == 1
     assert loaded["title"] == "Postgres Board"
 
     list_response = client.get("/api/v1/boards")
     assert list_response.status_code == 200
     listed = list_response.json()["boards"]
     assert [board["id"] for board in listed] == ["api-postgres-board"]
+    assert listed[0]["assetCount"] == 2
+    assert listed[0]["shapeCount"] == 1
+    assert listed[0]["thumbnailUrl"] is None
     assert "document" not in listed[0]
 
     rename_response = client.patch("/api/v1/boards/api-postgres-board", json={"title": "Renamed Postgres"})

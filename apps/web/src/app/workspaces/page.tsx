@@ -1,8 +1,10 @@
 import Link from 'next/link'
 import { AppShell } from '@/components/app-shell/AppShell'
-import { mockSession } from '@/features/auth/mockSession'
+import { getCurrentSessionSnapshot } from '@/features/auth/mockSession'
 
 export default function WorkspacesPage() {
+  const session = getCurrentSessionSnapshot()
+
   return (
     <AppShell>
       <div className="product-page">
@@ -26,7 +28,7 @@ export default function WorkspacesPage() {
 
         <section className="product-signature">
           <div>
-            <h2>{mockSession.activeWorkspace.name}</h2>
+            <h2>{session.activeWorkspace.name}</h2>
             <p>
               Mock owner workspace for local P0 testing. Future team roles and invites stay
               behind the Auth and workspace permission boundary.
@@ -51,11 +53,11 @@ export default function WorkspacesPage() {
         <section className="product-grid" aria-label="Workspace status">
           <article className="product-card">
             <h2>Role</h2>
-            <p>{mockSession.activeWorkspace.role}</p>
+            <p>{session.activeWorkspace.role}</p>
           </article>
           <article className="product-card">
             <h2>Boards</h2>
-            <p>{mockSession.activeWorkspace.boardCount} local board contract connected.</p>
+            <p>{session.activeWorkspace.boardCount} local board contract connected.</p>
           </article>
           <article className="product-card">
             <h2>Next boundary</h2>

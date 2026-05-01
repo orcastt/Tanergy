@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, type ReactNode } from 'react'
-import { mockSession } from '@/features/auth/mockSession'
+import { getCurrentSessionSnapshot } from '@/features/auth/mockSession'
 
 const navItems = [
   { href: '/boards', label: 'Boards' },
@@ -18,6 +18,7 @@ type AppShellProps = {
 
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname()
+  const session = getCurrentSessionSnapshot()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   return (
@@ -42,7 +43,7 @@ export function AppShell({ children }: AppShellProps) {
 
         <div className="product-nav-actions">
           <Link className="product-button product-button-secondary" href="/workspaces">
-            {mockSession.activeWorkspace.name}
+            {session.activeWorkspace.name}
           </Link>
           <Link className="product-button product-button-primary" href="/boards">
             Open boards

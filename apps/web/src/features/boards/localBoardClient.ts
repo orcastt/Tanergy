@@ -8,7 +8,12 @@ import type {
   BoardSaveResponse,
   SerializedBoardSaveInput,
 } from './boardTypes'
-import { hasRemotePersistenceApi, persistenceApiUrl } from '@/features/api/persistenceApi'
+import {
+  hasRemotePersistenceApi,
+  persistenceApiUrl,
+  persistenceAuthHeaders,
+  persistenceJsonHeaders,
+} from '@/features/api/persistenceApi'
 
 export type LocalBoardSaveResponse = BoardSaveResponse
 
@@ -25,7 +30,7 @@ export async function saveLocalBoardDocument(input: SerializedBoardSaveInput) {
     hasRemotePersistenceApi() ? persistenceApiUrl('/api/v1/boards') : '/api/boards/local-save',
     {
       body: JSON.stringify(input),
-      headers: { 'Content-Type': 'application/json' },
+      headers: persistenceJsonHeaders(),
       method: 'POST',
     }
   )
@@ -40,7 +45,8 @@ export async function loadLocalBoardDocument(boardId: string) {
   const response = await fetch(
     hasRemotePersistenceApi()
       ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(boardId)}`)
-      : `/api/boards/local-load?boardId=${encodeURIComponent(boardId)}`
+      : `/api/boards/local-load?boardId=${encodeURIComponent(boardId)}`,
+    { headers: persistenceAuthHeaders() }
   )
   const payload = await response.json() as LocalBoardLoadResponse
   if (!response.ok || !payload.ok || !payload.board) {
@@ -51,7 +57,8 @@ export async function loadLocalBoardDocument(boardId: string) {
 
 export async function listLocalBoardDocuments() {
   const response = await fetch(
-    hasRemotePersistenceApi() ? persistenceApiUrl('/api/v1/boards') : '/api/boards/local-list'
+    hasRemotePersistenceApi() ? persistenceApiUrl('/api/v1/boards') : '/api/boards/local-list',
+    { headers: persistenceAuthHeaders() }
   )
   const payload = await response.json() as LocalBoardListResponse
   if (!response.ok || !payload.ok) {
@@ -67,7 +74,7 @@ export async function renameLocalBoardDocument(boardId: string, title: string) {
       : '/api/boards/local-rename',
     {
       body: JSON.stringify({ boardId, title }),
-      headers: { 'Content-Type': 'application/json' },
+      headers: persistenceJsonHeaders(),
       method: hasRemotePersistenceApi() ? 'PATCH' : 'POST',
     }
   )
@@ -85,7 +92,7 @@ export async function deleteLocalBoardDocument(boardId: string) {
       : '/api/boards/local-delete',
     {
       body: hasRemotePersistenceApi() ? undefined : JSON.stringify({ boardId }),
-      headers: hasRemotePersistenceApi() ? undefined : { 'Content-Type': 'application/json' },
+      headers: hasRemotePersistenceApi() ? persistenceAuthHeaders() : persistenceJsonHeaders(),
       method: hasRemotePersistenceApi() ? 'DELETE' : 'POST',
     }
   )

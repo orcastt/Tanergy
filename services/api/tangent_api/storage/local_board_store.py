@@ -10,7 +10,14 @@ from fastapi import HTTPException
 
 from tangent_api.board_guard import audit_board_document
 from tangent_api.request_context import ApiRequestContext
-from tangent_api.schemas import BoardRecord, BoardSaveRequest, BoardSaveResponse, BoardSummary, summarize_board_record
+from tangent_api.schemas import (
+    BoardRecord,
+    BoardSaveRequest,
+    BoardSaveResponse,
+    BoardSummary,
+    get_board_document_metrics,
+    summarize_board_record,
+)
 
 BOARD_ID_PATTERN = re.compile(r"^[a-zA-Z0-9._-]+$")
 
@@ -22,12 +29,16 @@ def save_board(input_data: BoardSaveRequest, context: ApiRequestContext) -> Boar
         return BoardSaveResponse(audit=audit, error="Board document failed save guard.", ok=False)
 
     board_id = _sanitize_board_id(input_data.board_id) or f"board_{uuid4()}"
+    metrics = get_board_document_metrics(input_data.document)
     record = BoardRecord(
+        assetCount=metrics["asset_count"],
         byteSize=audit.byte_size,
         document=input_data.document,
         id=board_id,
         ownerId=context.user_id,
         savedAt=datetime.now(timezone.utc).isoformat(),
+        shapeCount=metrics["shape_count"],
+        thumbnailUrl=None,
         title=(input_data.title or "Untitled Board").strip() or "Untitled Board",
         workspaceId=context.workspace_id,
     )
