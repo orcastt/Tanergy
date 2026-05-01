@@ -202,9 +202,9 @@ P0 只需要记录 API 成本和调用日志，避免先做复杂订阅系统。
 | Layout Engine | P0 手写 horizontal layout；后续 Dagre/ELK | AI Chat 自动创建节点时计算 x/y，避免重叠 |
 | 状态管理 | Zustand | 当前项目已使用，轻量，可控 |
 | UI | Tailwind CSS + Radix UI | 当前设计体系一致，易维护 |
-| 后端 | FastAPI under `services/api` | 当前 `services/api` 已有 request context、Board guard、local-dev Board/Asset routes 和 `s3-compatible` Asset adapter；不要复用 legacy backend，下一步补 Postgres persistence / Auth / AiRun |
+| 后端 | FastAPI under `services/api` | 当前 `services/api` 已有 request context、Board guard、local-dev Board/Asset routes、`s3-compatible` Asset adapter、Postgres persistence adapter 和 CORS allowlist；不要复用 legacy backend，下一步补 runtime smoke / Dashboard / Auth / AiRun |
 | 数据库 | PostgreSQL planned | 适合用户、Board、Asset、AI Log；当前 P0 spike 先用本地 `.tangent-boards/` 验证 document guard |
-| 图片存储 | Local dev bridge now; R2 / S3-compatible adapter in FastAPI | 当前 Next local bridge 写 `.tangent-assets/`；FastAPI `s3-compatible` driver 可写 R2/S3-compatible object storage，下一步把 Web flow 切到 FastAPI contract |
+| 图片存储 | Local dev bridge now; R2 / S3-compatible adapter in FastAPI | 当前 Next local bridge 写 `.tangent-assets/`；FastAPI `s3-compatible` driver 可写 R2/S3-compatible object storage，Asset metadata 可选 Postgres；Web flow 可通过 `NEXT_PUBLIC_API_BASE_URL` 指向 FastAPI contract |
 | AI Provider | GeekAI / model providers through future backend proxy | Key 不暴露前端；真实 AI Run 在 Asset Pipeline 稳定后接入 |
 | 测试 | Vitest / Playwright / pytest | 前端单测、端到端、后端 API 测试 |
 
@@ -485,7 +485,7 @@ TanvasAgent/
 - 保存生成图、编辑导出图、合并截图。
 - 返回可持久化 URL。
 - 禁止持久化 `blob:` / `data:`。
-- 当前 Slice E-A/E-B 在 `apps/web/src/app/api/assets/` 提供本地开发 Asset API bridge，文件写入 `.tangent-assets/`，用于验证前端 Asset 合同；当前 route 已经过 request context 和 storage adapter seam，metadata 带 `workspaceId` / `createdBy`。FastAPI 侧已有 local-dev 与 `s3-compatible` Asset adapter，正式 Web flow 仍需迁移到带真实 Auth / Workspace 校验的 FastAPI contract。
+- 当前 Slice E-A/E-B 在 `apps/web/src/app/api/assets/` 提供本地开发 Asset API bridge，文件写入 `.tangent-assets/`，用于验证前端 Asset 合同；当前 route 已经过 request context 和 storage adapter seam，metadata 带 `workspaceId` / `createdBy`。FastAPI 侧已有 local-dev、`s3-compatible` Asset adapter 和 Postgres metadata adapter；Web clients 在 `NEXT_PUBLIC_API_BASE_URL` 存在时会指向 FastAPI contract，未设置时保留 Next local bridge fallback。
 
 不负责：
 
@@ -925,6 +925,9 @@ P0 可先用 `from-data-url` 处理 editor export / merge capture，但服务端
 - `services/api/tangent_api/routers/boards.py` 当前实现 `POST /api/v1/boards/validate-document`、本地文件版 `POST /api/v1/boards` 和 `GET /api/v1/boards/{board_id}`；这仍是 local-dev persistence，不替代正式 DB。
 - `services/api/tangent_api/storage/asset_storage_adapter.py` 是 FastAPI Asset storage seam；`local-dev` 走本地文件存储，`s3-compatible` 走 `services/api/tangent_api/storage/s3_asset_store.py`，通过 boto3 写入 S3/R2-compatible object storage。
 - `services/api/tangent_api/routers/assets.py` 当前实现 `POST /api/v1/assets/from-data-url`、`POST /api/v1/assets/upload`、`GET /api/v1/assets/{asset_id}` 和 `GET /api/v1/assets/files/{asset_id}/{file_name}`；metadata 带 `workspaceId` / `createdBy`，文件读取会校验 workspace。S3 driver 将 original / thumbnails / `metadata.json` 写到 `workspaces/{workspace_id}/assets/{asset_id}/...`，Asset URL 仍返回 FastAPI file route，避免直接绕过 request context；不支持的 `TANGENT_ASSET_STORAGE_DRIVER` 会明确 501。
+- `services/api/tangent_api/storage/board_storage_adapter.py` 支持 `TANGENT_BOARD_STORAGE_DRIVER=local-dev|postgres`；Postgres driver 写 `tangent_boards`，保存前仍复用 Board document guard，save response 只返回 summary。
+- `services/api/tangent_api/storage/asset_metadata_adapter.py` 支持 `TANGENT_ASSET_METADATA_DRIVER=object-storage|postgres`；`postgres` driver 写 `tangent_assets`，用于 `s3-compatible` object bytes + DB metadata 的生产形状。
+- `apps/web/src/features/api/persistenceApi.ts` 控制 Web persistence client：未设置 `NEXT_PUBLIC_API_BASE_URL` 时走 Next local bridge；设置后走 FastAPI `/api/v1`。FastAPI 的 `TANGENT_ALLOWED_ORIGINS` 负责本地 Web origin CORS allowlist。
 
 ### 8.4 Model Registry
 

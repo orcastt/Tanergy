@@ -3,7 +3,7 @@
 **Date**: 2026-04-30  
 **Branch**: `feature/asset-lod-roadmap`  
 **Base checkpoint**: `a6f20c1 checkpoint: stabilize s1.5 canvas runtime`  
-**Status**: Slices A-D implemented. Cross-platform quality gate is `pass with notes` as of 2026-04-30. Windows dense-board stutter is a non-blocking performance follow-up. Slice E-A local Asset API bridge and Slice E-C board save guard / local save-restore are implemented. Slice E-B request context + storage adapter seam now covers FastAPI local-dev and real `s3-compatible` Asset storage; Postgres persistence and Web-to-FastAPI contract switch remain next.
+**Status**: Slices A-D implemented. Cross-platform quality gate is `pass with notes` as of 2026-04-30. Windows dense-board stutter is a non-blocking performance follow-up. Slice E-A local Asset API bridge and Slice E-C board save guard / local save-restore are implemented. Slice E-B request context + storage adapter seam now covers FastAPI local-dev, real `s3-compatible` Asset storage, Postgres persistence and configurable Web-to-FastAPI upload/save/load; runtime smoke and Dashboard/Board entry remain next.
 
 **Owner**: Codex / TANGENT
 
@@ -588,6 +588,18 @@ The next sub-slice replaces the FastAPI `s3-compatible` placeholder with a real 
 2026-05-01 R2/S3-compatible adapter implementation note:
 
 Codex implemented `services/api/tangent_api/storage/s3_asset_store.py` and routed the FastAPI `s3-compatible` driver through it. The adapter validates `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY`, uses boto3 with optional `S3_REGION` / `S3_ADDRESSING_STYLE`, writes original files, thumbnails and `metadata.json` under `workspaces/{workspace_id}/assets/{asset_id}/...`, and streams file reads through the FastAPI file route after workspace-checked metadata lookup. `local-dev` still works and now shares the same MIME / size / path / workspace helper logic. `pytest` is still unavailable in the current machine environment, so direct FastAPI TestClient smoke verified local-dev, fake S3 create/read, missing file, cross-workspace isolation, unknown driver and Board guard paths; `python3 -m compileall services/api/tangent_api` and `git diff --check` passed.
+
+2026-05-01 Postgres persistence adapter start:
+
+The next sub-slice adds a real Postgres persistence option without switching the frontend yet. Board save/load gets a `postgres` storage driver behind the same FastAPI contract. S3-compatible Asset storage gets optional `TANGENT_ASSET_METADATA_DRIVER=postgres`, so original/thumbnail bytes stay in object storage while metadata and workspace checks come from Postgres. Local-dev remains the default fallback.
+
+2026-05-01 Postgres persistence adapter implementation note:
+
+Codex implemented a FastAPI Postgres persistence seam. `TANGENT_BOARD_STORAGE_DRIVER=postgres` now routes Board save/load through `postgres_board_store.py`, preserving the Board document guard and summary-vs-load contract. `TANGENT_ASSET_METADATA_DRIVER=postgres` can be paired with `TANGENT_ASSET_STORAGE_DRIVER=s3-compatible`, so asset bytes remain in object storage while metadata and workspace checks are persisted in Postgres. The adapters use `DATABASE_URL`, optional `TANGENT_POSTGRES_AUTO_CREATE_TABLES`, and table names `tangent_boards` / `tangent_assets`. Fake Postgres TestClient coverage was added for Board save/load, S3+Postgres Asset metadata, cross-workspace isolation and missing `DATABASE_URL`; `PYTHONPATH=services/api python3 -m pytest services/api/tests` now passes locally. Source files remain below 300 lines.
+
+2026-05-01 Web-to-FastAPI configurable switch note:
+
+Codex added `apps/web/src/features/api/persistenceApi.ts` and updated the Web Asset upload / Board save-load clients. If `NEXT_PUBLIC_API_BASE_URL` is unset, the canvas spike keeps using the existing Next local bridge. If it is set, Asset upload posts to FastAPI `/api/v1/assets/from-data-url`, Board save posts to `/api/v1/boards`, and Board load reads `/api/v1/boards/{board_id}`. FastAPI now has a `TANGENT_ALLOWED_ORIGINS` CORS allowlist, and the Asset client rewrites FastAPI relative file URLs to absolute API URLs before creating tldraw image assets. CORS preflight is covered by tests; `PYTHONPATH=services/api python3 -m pytest services/api/tests` reports 11 passed.
 
 ---
 

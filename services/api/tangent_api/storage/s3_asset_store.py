@@ -1,4 +1,3 @@
-import json
 from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import uuid4
@@ -7,11 +6,11 @@ from fastapi import HTTPException, Response, UploadFile
 
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.schemas import AssetDataUrlRequest, AssetRecord, AssetThumbnailInput
+from tangent_api.storage.asset_metadata_adapter import get_asset_metadata_adapter
 from tangent_api.storage.asset_store_common import (
     assert_asset_size,
     assert_image_mime,
     assert_safe_path_segment,
-    assert_workspace_access,
     extension_for_mime,
     file_url,
     mime_for_file_name,
@@ -98,13 +97,7 @@ class S3AssetStore:
 
     def get_asset_record(self, asset_id: str, context: ApiRequestContext) -> AssetRecord:
         assert_safe_path_segment(asset_id)
-        raw = self._get_object_bytes(
-            self._asset_key(context.workspace_id, asset_id, "metadata.json"),
-            "Asset not found.",
-        )
-        record = AssetRecord.model_validate(json.loads(raw.decode("utf-8")))
-        assert_workspace_access(record, context)
-        return record
+        return get_asset_metadata_adapter(self).get_record(asset_id, context)
 
     def get_file_response(
         self,
@@ -162,9 +155,21 @@ class S3AssetStore:
         asset_id: str,
         record: AssetRecord,
     ) -> None:
-        content = json.dumps(record.model_dump(by_alias=True), ensure_ascii=False, indent=2).encode(
-            "utf-8"
+        _ = asset_id
+        get_asset_metadata_adapter(self).save_record(record, context)
+
+    def read_asset_metadata(self, asset_id: str, context: ApiRequestContext) -> bytes:
+        return self._get_object_bytes(
+            self._asset_key(context.workspace_id, asset_id, "metadata.json"),
+            "Asset not found.",
         )
+
+    def write_asset_metadata(
+        self,
+        asset_id: str,
+        context: ApiRequestContext,
+        content: bytes,
+    ) -> None:
         self._put_object(
             self._asset_key(context.workspace_id, asset_id, "metadata.json"),
             content,

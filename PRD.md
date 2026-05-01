@@ -31,7 +31,7 @@
 - Slice D 跨平台 Canvas 性能门按 `pass with notes` 通过。
 - Windows 50+ 图片/节点密集场景仍可能有轻微卡顿，归档为 non-blocking performance follow-up。
 - 临时 Cloudflare Tunnel、`NEXT_ALLOWED_DEV_ORIGINS` 和 `CanvasRuntimeDiagnostics` 不是产品方案；`CanvasRuntimeDiagnostics` 默认关闭，仅 `NEXT_PUBLIC_CANVAS_RUNTIME_DIAGNOSTICS=1` 时启用。
-- 当前主线是 Slice E Real Asset Pipeline：E-A 本地 server-backed Asset API bridge 已落地，E-C Board save guard + local save/restore 已落地，E-B request context + storage adapter seam 已覆盖 FastAPI local-dev 和真实 `s3-compatible` Asset adapter。下一步迁到 Postgres persistence，并把 Web upload/save/load 流程切到 FastAPI contract。
+- 当前主线是 Slice E Real Asset Pipeline：E-A 本地 server-backed Asset API bridge 已落地，E-C Board save guard + local save/restore 已落地，E-B request context + storage adapter seam 已覆盖 FastAPI local-dev、真实 `s3-compatible` Asset adapter、Postgres persistence adapter 和可配置 Web-to-FastAPI upload/save/load。下一步做 runtime smoke，并补正式 Dashboard / Board persistence 入口。
 
 当前实现状态：
 
