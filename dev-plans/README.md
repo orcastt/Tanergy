@@ -28,6 +28,7 @@ Completed, accepted, handoff-only, or superseded plans live in `dev-plans/Archiv
 
 Recently archived:
 
+- `Archive/codex-handoff-slice-e-continuation-2026-05-01.md` — latest handoff for continuing Slice E Real Asset Pipeline from the FastAPI local-dev / S3 adapter seam.
 - `Archive/cross-platform-canvas-performance-test-2026-04-30.md` — Slice D cross-platform gate, now pass with notes.
 - `Archive/codex-handoff-slice-e-real-asset-pipeline-2026-04-30.md` — old handoff, superseded by `project_state.md` and this index.
 - `Archive/web-alpha-detailed-development-plan.md` — old detailed Alpha plan, superseded by P0 Harness and Asset LOD roadmap.
