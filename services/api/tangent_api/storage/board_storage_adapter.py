@@ -3,8 +3,9 @@ import os
 from fastapi import HTTPException
 
 from tangent_api.request_context import ApiRequestContext
-from tangent_api.schemas import BoardRecord, BoardSaveRequest, BoardSaveResponse
+from tangent_api.schemas import BoardRecord, BoardSaveRequest, BoardSaveResponse, BoardSummary
 from tangent_api.storage.local_board_store import load_board as load_local_board
+from tangent_api.storage.local_board_store import list_boards as list_local_boards
 from tangent_api.storage.local_board_store import save_board as save_local_board
 from tangent_api.storage.postgres_board_store import PostgresBoardStore
 
@@ -20,6 +21,9 @@ class BoardStorageAdapter:
     def load_board(self, board_id: str, context: ApiRequestContext) -> BoardRecord:
         raise NotImplementedError
 
+    def list_boards(self, context: ApiRequestContext) -> list[BoardSummary]:
+        raise NotImplementedError
+
 
 class LocalBoardStorageAdapter(BoardStorageAdapter):
     def save_board(
@@ -31,6 +35,9 @@ class LocalBoardStorageAdapter(BoardStorageAdapter):
 
     def load_board(self, board_id: str, context: ApiRequestContext) -> BoardRecord:
         return load_local_board(board_id, context)
+
+    def list_boards(self, context: ApiRequestContext) -> list[BoardSummary]:
+        return list_local_boards(context)
 
 
 class PostgresBoardStorageAdapter(BoardStorageAdapter):
@@ -46,6 +53,9 @@ class PostgresBoardStorageAdapter(BoardStorageAdapter):
 
     def load_board(self, board_id: str, context: ApiRequestContext) -> BoardRecord:
         return self.store.load_board(board_id, context)
+
+    def list_boards(self, context: ApiRequestContext) -> list[BoardSummary]:
+        return self.store.list_boards(context)
 
 
 def get_board_storage_adapter() -> BoardStorageAdapter:

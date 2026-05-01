@@ -26,6 +26,7 @@ class FakePostgresCursor:
     def __init__(self, database):
         self.database = database
         self.row = None
+        self.rows = []
 
     def __enter__(self):
         return self
@@ -46,6 +47,10 @@ class FakePostgresCursor:
                 params[5],
                 params[6],
             )
+        elif normalized.startswith("SELECT id, workspace_id, owner_id, title, document") and "ORDER BY saved_at DESC" in normalized:
+            workspace_id = params[0]
+            self.rows = [row for (workspace, _board_id), row in self.database.boards.items() if workspace == workspace_id]
+            self.rows.sort(key=lambda row: row[6], reverse=True)
         elif normalized.startswith("SELECT id, workspace_id, owner_id, title, document"):
             self.row = self.database.boards.get((params[0], params[1]))
         elif normalized.startswith("INSERT INTO tangent_assets"):
@@ -56,6 +61,9 @@ class FakePostgresCursor:
 
     def fetchone(self):
         return self.row
+
+    def fetchall(self):
+        return self.rows
 
 
 class FakePostgresConnection:

@@ -3,7 +3,7 @@
 **Date**: 2026-04-30  
 **Branch**: `feature/asset-lod-roadmap`  
 **Base checkpoint**: `a6f20c1 checkpoint: stabilize s1.5 canvas runtime`  
-**Status**: Slices A-D implemented. Cross-platform quality gate is `pass with notes` as of 2026-04-30. Windows dense-board stutter is a non-blocking performance follow-up. Slice E-A local Asset API bridge and Slice E-C board save guard / local save-restore are implemented. Slice E-B request context + storage adapter seam now covers FastAPI local-dev, real `s3-compatible` Asset storage, Postgres persistence and configurable Web-to-FastAPI upload/save/load; local FastAPI + Web runtime smoke and staging API Docker package smoke have passed. Real staging wiring and Dashboard/Board entry remain next.
+**Status**: Slices A-D implemented. Cross-platform quality gate is `pass with notes` as of 2026-04-30. Windows dense-board stutter is a non-blocking performance follow-up. Slice E-A local Asset API bridge and Slice E-C board save guard / local save-restore are implemented. Slice E-B request context + storage adapter seam now covers FastAPI local-dev, real `s3-compatible` Asset storage, Postgres persistence and configurable Web-to-FastAPI upload/save/load; local FastAPI + Web runtime smoke and staging API Docker package smoke have passed. `/boards` Dashboard / Board entry is in progress; real staging wiring and full Board CRUD remain next.
 
 **Owner**: Codex / TANGENT
 
@@ -612,6 +612,10 @@ The next sub-slice prepares a minimal staging deployment package, not a full pro
 2026-05-01 staging prep implementation note:
 
 Codex added `services/api/Dockerfile`, `services/api/.dockerignore`, `deploy/staging/docker-compose.api.yml`, `deploy/staging/api.env.example` and `deploy/staging/README.md`. The staging compose template runs the FastAPI API container on `127.0.0.1:8000` for a VPS reverse proxy, uses Postgres persistence plus `s3-compatible` Asset storage by default, and documents Web `NEXT_PUBLIC_API_BASE_URL` / `TANGENT_ALLOWED_ORIGINS` wiring. Validation passed for `docker compose config`, Docker image build, container `/health`, Asset create / metadata / file read, Board save / load and Board guard rejection. The local smoke container was stopped after verification.
+
+2026-05-01 Dashboard / Board entry implementation note:
+
+Codex added a minimal product entry for Board persistence. `/` now redirects to `/boards`; `/boards` renders a dashboard shell that lists Board summaries from the same local or FastAPI persistence contract, creates a new board id and opens existing boards by id; `/boards/:boardId` renders the existing canvas with seed data disabled and saves/loads through that board id. FastAPI and the Next local bridge now both support Board list responses that return summaries only, preserving the save/load rule that full documents are only returned by explicit load. Tests cover local-dev and Postgres board listing plus workspace isolation. Remaining gaps: auth-required mode, rename/delete/search, thumbnails, recent-open metadata and real staging credentials.
 
 ---
 

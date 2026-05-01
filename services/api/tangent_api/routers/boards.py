@@ -4,7 +4,13 @@ from fastapi import APIRouter, Depends, Response, status
 
 from tangent_api.board_guard import audit_board_document
 from tangent_api.request_context import ApiRequestContext, get_request_context
-from tangent_api.schemas import BoardLoadResponse, BoardSaveRequest, BoardSaveResponse, BoardValidateResponse
+from tangent_api.schemas import (
+    BoardListResponse,
+    BoardLoadResponse,
+    BoardSaveRequest,
+    BoardSaveResponse,
+    BoardValidateResponse,
+)
 from tangent_api.storage.board_storage_adapter import get_board_storage_adapter
 
 router = APIRouter(prefix="/api/v1/boards", tags=["boards"])
@@ -34,6 +40,13 @@ def create_board(
     if not result.ok:
         response.status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
     return result
+
+
+@router.get("", response_model=BoardListResponse)
+def list_boards(
+    context: ApiRequestContext = Depends(get_request_context),
+) -> BoardListResponse:
+    return BoardListResponse(boards=get_board_storage_adapter().list_boards(context), ok=True)
 
 
 @router.get("/{board_id}", response_model=BoardLoadResponse)

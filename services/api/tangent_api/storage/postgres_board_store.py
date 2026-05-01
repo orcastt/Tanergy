@@ -8,7 +8,7 @@ from fastapi import HTTPException
 
 from tangent_api.board_guard import audit_board_document
 from tangent_api.request_context import ApiRequestContext
-from tangent_api.schemas import BoardRecord, BoardSaveRequest, BoardSaveResponse, summarize_board_record
+from tangent_api.schemas import BoardRecord, BoardSaveRequest, BoardSaveResponse, BoardSummary, summarize_board_record
 from tangent_api.storage.postgres_connection import connect_to_postgres, should_auto_create_tables
 
 BOARD_ID_PATTERN = re.compile(r"^[a-zA-Z0-9._-]+$")
@@ -100,6 +100,30 @@ class PostgresBoardStore:
         if not row:
             raise HTTPException(status_code=404, detail="Board not found in workspace.")
         return _board_record_from_row(row)
+
+    def list_boards(self, context: ApiRequestContext) -> list[BoardSummary]:
+        with connect_to_postgres() as connection:
+            with connection.cursor() as cursor:
+                self._ensure_schema(cursor)
+                cursor.execute(
+                    """
+                    SELECT
+                        id,
+                        workspace_id,
+                        owner_id,
+                        title,
+                        document,
+                        byte_size,
+                        saved_at
+                    FROM tangent_boards
+                    WHERE workspace_id = %s
+                    ORDER BY saved_at DESC
+                    """,
+                    (context.workspace_id,),
+                )
+                rows = cursor.fetchall()
+
+        return [summarize_board_record(_board_record_from_row(row)) for row in rows]
 
     def _ensure_schema(self, cursor: Any) -> None:
         if not should_auto_create_tables():

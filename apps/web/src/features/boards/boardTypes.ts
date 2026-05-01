@@ -32,6 +32,12 @@ export type BoardLoadResponse = {
   ok: boolean
 }
 
+export type BoardListResponse = {
+  boards: BoardPersistenceSummary[]
+  error?: string
+  ok: boolean
+}
+
 export type SerializedBoardSaveInput = BoardSaveInput<SerializedBoardDocument>
 
 export function summarizeBoardRecord(record: BoardPersistenceRecord): BoardPersistenceSummary {

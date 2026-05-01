@@ -1,5 +1,6 @@
 @import 'tldraw/tldraw.css';
 @import './styles/base.css';
+@import './styles/boards.css';
 @import './styles/canvas-shell.css';
 @import './styles/canvas-overlays.css';
 @import './styles/canvas-navigation.css';

@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import type { Dirent } from 'node:fs'
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { auditBoardDocument } from '@/features/boards/boardDocumentGuard'
-import type { BoardPersistenceRecord, BoardSaveInput } from '@/features/boards/boardTypes'
+import { summarizeBoardRecord, type BoardPersistenceRecord, type BoardSaveInput } from '@/features/boards/boardTypes'
 import type { ApiRequestContext } from '../../_lib/apiRequestContext'
 
 const storageRoot = process.env.TANGENT_BOARD_STORAGE_DIR ?? path.join(process.cwd(), '.tangent-boards')
@@ -39,6 +40,30 @@ export async function loadLocalBoard(boardId: string, context: ApiRequestContext
   return board
 }
 
+export async function listLocalBoards(context: ApiRequestContext) {
+  let entries: Dirent[]
+  try {
+    entries = await readdir(boardsRoot, { withFileTypes: true })
+  } catch (error) {
+    if (isNodeError(error) && error.code === 'ENOENT') return []
+    throw error
+  }
+
+  const boards = []
+  for (const entry of entries) {
+    if (!entry.isFile() || !entry.name.endsWith('.json')) continue
+    try {
+      const raw = await readFile(path.join(boardsRoot, entry.name), 'utf8')
+      const board = normalizeBoardRecord(JSON.parse(raw) as Partial<BoardPersistenceRecord>, context)
+      if (board.workspaceId === context.workspaceId) boards.push(summarizeBoardRecord(board))
+    } catch {
+      continue
+    }
+  }
+
+  return boards.sort((a, b) => Date.parse(b.savedAt) - Date.parse(a.savedAt))
+}
+
 function getBoardPath(boardId: string) {
   return path.join(boardsRoot, `${boardId}.json`)
 }
@@ -67,4 +92,8 @@ function assertBoardAccess(board: BoardPersistenceRecord, context: ApiRequestCon
   if (board.workspaceId !== context.workspaceId) {
     throw new Error('Board not found in workspace.')
   }
+}
+
+function isNodeError(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error && 'code' in error
 }

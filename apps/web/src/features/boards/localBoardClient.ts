@@ -1,11 +1,13 @@
 'use client'
 
-import type { BoardLoadResponse, BoardSaveResponse, SerializedBoardSaveInput } from './boardTypes'
+import type { BoardListResponse, BoardLoadResponse, BoardSaveResponse, SerializedBoardSaveInput } from './boardTypes'
 import { hasRemotePersistenceApi, persistenceApiUrl } from '@/features/api/persistenceApi'
 
 export type LocalBoardSaveResponse = BoardSaveResponse
 
 export type LocalBoardLoadResponse = BoardLoadResponse
+
+export type LocalBoardListResponse = BoardListResponse
 
 export async function saveLocalBoardDocument(input: SerializedBoardSaveInput) {
   const response = await fetch(
@@ -32,6 +34,17 @@ export async function loadLocalBoardDocument(boardId: string) {
   const payload = await response.json() as LocalBoardLoadResponse
   if (!response.ok || !payload.ok || !payload.board) {
     throw new Error(payload.error || 'Local board load failed.')
+  }
+  return payload
+}
+
+export async function listLocalBoardDocuments() {
+  const response = await fetch(
+    hasRemotePersistenceApi() ? persistenceApiUrl('/api/v1/boards') : '/api/boards/local-list'
+  )
+  const payload = await response.json() as LocalBoardListResponse
+  if (!response.ok || !payload.ok) {
+    throw new Error(payload.error || 'Local board list failed.')
   }
   return payload
 }

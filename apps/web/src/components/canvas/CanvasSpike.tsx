@@ -75,7 +75,27 @@ const tldrawComponents = {
 
 const canvasRuntimeDiagnosticsEnabled = process.env.NEXT_PUBLIC_CANVAS_RUNTIME_DIAGNOSTICS === '1'
 
-export function CanvasSpike() {
+type CanvasSpikeProps = {
+  autoLoadBoard?: boolean
+  boardId?: string
+  boardTitle?: string
+  checklistItems?: string[]
+  headerEyebrow?: string
+  headerTitle?: string
+  seedOnMount?: boolean
+}
+
+const defaultChecklistItems = ['50%', '100%', '200%', 'Resize', 'Retina', 'Mixed select', 'S1.5 graph', 'Payload audit']
+
+export function CanvasSpike({
+  autoLoadBoard = false,
+  boardId,
+  boardTitle,
+  checklistItems = defaultChecklistItems,
+  headerEyebrow = 'Sprint S1 · Canvas coordinate spike',
+  headerTitle = 'Whiteboard base + S1.5 node runtime spike',
+  seedOnMount = true,
+}: CanvasSpikeProps = {}) {
   const [editor, setEditor] = useState<Editor | null>(null)
   const [connectionMessage, setConnectionMessage] = useState<{
     text: string
@@ -108,9 +128,9 @@ export function CanvasSpike() {
 
   const handleMount = useCallback((mountedEditor: Editor) => {
     setEditor(mountedEditor)
-    seedCanvasSpike(mountedEditor)
+    if (seedOnMount) seedCanvasSpike(mountedEditor)
     return () => setEditor(null)
-  }, [])
+  }, [seedOnMount])
 
   const createNodeAtViewport = useCallback((type: NodeType) => {
     if (!editor) return
@@ -158,18 +178,11 @@ export function CanvasSpike() {
     <div className="canvas-spike-shell" data-image-preview-mode={imagePreviewMode}>
       <div className="canvas-spike-header">
         <div>
-          <p className="eyebrow">Sprint S1 · Canvas coordinate spike</p>
-          <h1>Whiteboard base + S1.5 node runtime spike</h1>
+          <p className="eyebrow">{headerEyebrow}</p>
+          <h1>{headerTitle}</h1>
         </div>
         <div className="canvas-spike-checklist">
-          <span>50%</span>
-          <span>100%</span>
-          <span>200%</span>
-          <span>Resize</span>
-          <span>Retina</span>
-          <span>Mixed select</span>
-          <span>S1.5 graph</span>
-          <span>Payload audit</span>
+          {checklistItems.map((item) => <span key={item}>{item}</span>)}
         </div>
       </div>
       <div className="canvas-spike-stage">
@@ -201,7 +214,13 @@ export function CanvasSpike() {
         />
         <CanvasNodeInspector connectionMessage={connectionMessage} editor={editor} />
         <CanvasSelectionToolbar editor={editor} />
-        <CanvasBoardSaveAudit editor={editor} />
+        <CanvasBoardSaveAudit
+          autoLoad={autoLoadBoard}
+          boardId={boardId}
+          boardTitle={boardTitle}
+          editor={editor}
+          mode={boardId ? 'board' : 'dev'}
+        />
         <CanvasSettingsControl />
         <CanvasSpikeStylePanel editor={editor} />
         {canvasRuntimeDiagnosticsEnabled ? <CanvasRuntimeDiagnostics editorReady={editor !== null} /> : null}

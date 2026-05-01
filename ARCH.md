@@ -338,10 +338,12 @@ TanvasAgent/
 |----|------------|----------|
 | `app/api/_lib` | Next 本地 API 的 request context、通用 route helper | 写前端 UI 或吞掉鉴权错误 |
 | `app/api/assets` | 当前本地 Asset API bridge、storage adapter、local-dev 文件读写 | 绕过 request context 直接服务跨 workspace 文件；把 `data:` 当持久 URL 返回 |
-| `app/api/boards` | 当前 Board save guard、local save/load 开发路由、board storage adapter | 替代正式 Dashboard / DB persistence / 权限模型 |
+| `app/api/boards` | 当前 Board save guard、local save/load/list 开发路由、board storage adapter | 绕过 request context 或把完整 document 放进 list response |
+| `app/boards` | 当前 `/boards` Dashboard shell 和 `/boards/:boardId` 画布入口 | 替代 Auth、完整 Board CRUD 或权限模型 |
 | `app/spikes` | 技术验证入口，例如 `/spikes/canvas` | 成为产品 Dashboard 的长期入口 |
 | `app/styles` | 当前 spike 全局样式入口 | 继续膨胀成所有 feature 的垃圾桶；触碰 250 行以上文件先拆 |
 | `components/ui` | 通用按钮、输入框、弹窗 | 写业务请求 |
+| `components/boards` | Dashboard / Board list entry UI | 直接访问数据库或保存 Board document |
 | `components/canvas` | 画布渲染、工具栏、坐标交互 | 调 Provider API |
 | `components/chat` | 右侧 AI Chat 面板和 composer UI | 自主执行 Provider 调用 |
 | `components/inspector` | 选中节点的详细参数面板 | 保存 Provider Key 或直接扣费 |
@@ -878,6 +880,7 @@ GET /api/v1/boards/{board_id}
 PATCH /api/v1/boards/{board_id}
 DELETE /api/v1/boards/{board_id}
 POST /api/v1/boards/validate-document
+GET /api/boards/local-list
 POST /api/v1/boards/local-save
 GET /api/v1/boards/local-load?boardId=...
 ```
@@ -885,6 +888,7 @@ GET /api/v1/boards/local-load?boardId=...
 约束：
 
 - 所有接口必须校验 Board 属于当前用户或当前 workspace。
+- `GET /api/v1/boards` 和 `GET /api/boards/local-list` 只返回 Board summary，不返回完整 document。
 - `PATCH` 只允许更新 title、thumbnail、document_state 等白名单字段。
 - 写入 `document_state` 前必须通过 Board document guard，拒绝 `data:` / `blob:` 和大段 base64-like payload。
 - 当前本地开发 bridge 在 `apps/web/src/app/api/boards/validate-document/route.ts` 提供相同 guard contract；正式 FastAPI 保存接口必须复用同等规则。
@@ -893,7 +897,7 @@ GET /api/v1/boards/local-load?boardId=...
 - 当前 `Save audit` dev control 会先迁移可处理的 runtime image assets 到本地 Asset API，再执行 guard；不能迁移的 `data:` / `blob:` 仍会阻塞保存候选。
 - 当前 `Save local` dev control 会在 guard 通过后写入 `.tangent-boards/boards/canvas-spike-local.json`，并通过 `apiRequestContext` 给本地记录写入 `workspaceId` / `ownerId`；这是本地开发保存支架，不替代正式数据库、Auth 或 workspace 权限。
 - 当前 `Load local` dev control 会从 `.tangent-boards/` 读取同一 document，按 `workspaceId` 校验本地记录后重建 tldraw assets / shapes、runtime edges 和 camera；这是 restore 验证支架，不替代正式 Board load。
-- `apps/web/src/app/api/boards/_lib/boardStorageAdapter.ts` 是 Board persistence seam；当前只支持 `TANGENT_BOARD_STORAGE_DRIVER=local-dev`，不支持的 driver 必须明确失败。正式 Dashboard / Board CRUD 仍需迁移到带真实 Auth / Workspace 校验的数据库路径。
+- `apps/web/src/app/api/boards/_lib/boardStorageAdapter.ts` 是 Next local Board persistence seam；当前只支持 `TANGENT_BOARD_STORAGE_DRIVER=local-dev`，不支持的 driver 必须明确失败。正式 staging/production Dashboard 应优先通过 `NEXT_PUBLIC_API_BASE_URL` 走 FastAPI。
 - `apps/web/src/features/boards/boardTypes.ts` 是当前 Board persistence response contract。`local-save` 只返回 board summary，不回传完整 document；`local-load` 才返回 document，避免保存响应随着画布变大而膨胀。
 
 ### 8.3 Assets

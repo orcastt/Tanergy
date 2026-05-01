@@ -57,6 +57,12 @@ class BoardLoadResponse(TangentApiModel):
     ok: bool
 
 
+class BoardListResponse(TangentApiModel):
+    boards: list[BoardSummary]
+    error: Optional[str] = None
+    ok: bool
+
+
 class AssetRecord(TangentApiModel):
     byte_size: int = Field(alias="byteSize")
     created_at: str = Field(alias="createdAt")

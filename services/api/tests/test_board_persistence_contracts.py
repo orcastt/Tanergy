@@ -24,11 +24,24 @@ def test_board_local_dev_contract(tmp_path, monkeypatch):
     assert loaded["document"] == {"shapes": []}
     assert loaded["workspaceId"] == "dev-workspace"
 
+    list_response = client.get("/api/v1/boards")
+    assert list_response.status_code == 200
+    listed = list_response.json()["boards"]
+    assert [board["id"] for board in listed] == ["api-smoke-board"]
+    assert "document" not in listed[0]
+
     blocked = client.get(
         "/api/v1/boards/api-smoke-board",
         headers={"x-tangent-user-id": "dev-user", "x-tangent-workspace-id": "other-workspace"},
     )
     assert blocked.status_code == 404
+
+    blocked_list = client.get(
+        "/api/v1/boards",
+        headers={"x-tangent-user-id": "dev-user", "x-tangent-workspace-id": "other-workspace"},
+    )
+    assert blocked_list.status_code == 200
+    assert blocked_list.json()["boards"] == []
 
 
 def test_board_postgres_contract(monkeypatch):
@@ -61,11 +74,24 @@ def test_board_postgres_contract(monkeypatch):
     assert loaded["document"] == {"shapes": [{"id": "shape_1"}]}
     assert loaded["title"] == "Postgres Board"
 
+    list_response = client.get("/api/v1/boards")
+    assert list_response.status_code == 200
+    listed = list_response.json()["boards"]
+    assert [board["id"] for board in listed] == ["api-postgres-board"]
+    assert "document" not in listed[0]
+
     blocked = client.get(
         "/api/v1/boards/api-postgres-board",
         headers={"x-tangent-user-id": "dev-user", "x-tangent-workspace-id": "other-workspace"},
     )
     assert blocked.status_code == 404
+
+    blocked_list = client.get(
+        "/api/v1/boards",
+        headers={"x-tangent-user-id": "dev-user", "x-tangent-workspace-id": "other-workspace"},
+    )
+    assert blocked_list.status_code == 200
+    assert blocked_list.json()["boards"] == []
 
 
 def test_board_postgres_requires_database_url(monkeypatch):

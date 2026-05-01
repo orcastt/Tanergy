@@ -10,7 +10,7 @@ from fastapi import HTTPException
 
 from tangent_api.board_guard import audit_board_document
 from tangent_api.request_context import ApiRequestContext
-from tangent_api.schemas import BoardRecord, BoardSaveRequest, BoardSaveResponse, summarize_board_record
+from tangent_api.schemas import BoardRecord, BoardSaveRequest, BoardSaveResponse, BoardSummary, summarize_board_record
 
 BOARD_ID_PATTERN = re.compile(r"^[a-zA-Z0-9._-]+$")
 
@@ -55,6 +55,25 @@ def load_board(board_id: str, context: ApiRequestContext) -> BoardRecord:
     if record.workspace_id != context.workspace_id:
         raise HTTPException(status_code=404, detail="Board not found in workspace.")
     return record
+
+
+def list_boards(context: ApiRequestContext) -> list[BoardSummary]:
+    _assert_local_driver()
+    boards_root = _storage_root() / "boards"
+    if not boards_root.exists():
+        return []
+
+    summaries: list[BoardSummary] = []
+    for path in boards_root.glob("*.json"):
+        try:
+            record = BoardRecord.model_validate(json.loads(path.read_text(encoding="utf-8")))
+        except Exception:
+            continue
+        if record.workspace_id != context.workspace_id:
+            continue
+        summaries.append(summarize_board_record(record))
+
+    return sorted(summaries, key=lambda record: record.saved_at, reverse=True)
 
 
 def _storage_root() -> Path:
