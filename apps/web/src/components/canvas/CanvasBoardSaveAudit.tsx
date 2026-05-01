@@ -80,8 +80,10 @@ export function CanvasBoardSaveAudit({ editor }: CanvasBoardSaveAuditProps) {
         board: {
           byteSize: board.byteSize,
           id: board.id,
+          ownerId: board.ownerId,
           savedAt: board.savedAt,
           title: `${restore.shapeCount} shape(s) loaded`,
+          workspaceId: board.workspaceId,
         },
         ok: true,
       })

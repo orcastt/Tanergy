@@ -44,3 +44,8 @@ export type TangentAssetDataUrlInput = {
   title?: string
   width: number
 }
+
+export type TangentAssetResponse = {
+  asset?: TangentAssetRecord
+  error?: string
+}

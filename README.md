@@ -27,7 +27,7 @@ The project has passed S1.5 and Asset LOD Slice D with notes. Current focus is S
 
 - E-A local server-backed Asset API bridge is implemented.
 - E-C Board save guard + local save/restore is implemented for development validation.
-- E-B request context + storage adapter seam is active, preparing the move to authenticated FastAPI + R2/S3 storage.
+- E-B request context + asset/board storage adapter seams are active, preparing the move to authenticated FastAPI + R2/S3 / DB storage.
 - Real AI API work should wait until asset persistence and Board save boundaries are stable enough to keep generated images out of `data:` / `blob:` document state.
 
 ## Active Source

@@ -531,17 +531,20 @@ Scope:
 - Add an API request context helper that resolves `workspaceId` and `userId`.
 - Use explicit development fallback IDs for the local spike so current `/spikes/canvas` testing remains unblocked.
 - Add `workspaceId` and `createdBy` to `TangentAssetRecord`.
-- Add a storage adapter entry point for asset operations.
+- Add storage adapter entry points for asset and board operations.
 - Keep `local-dev` as the default storage driver, while making unsupported drivers fail loudly.
 - Route asset create / metadata / file reads through the adapter and request context.
-- Route local board save / load through the same request context and stamp saved board records with `workspaceId` / `ownerId`.
+- Route local board save / load through the same request context and board storage adapter, then stamp saved board records with `workspaceId` / `ownerId`.
+- Route Board validate-document through request context as the same persistence preflight boundary.
+- Centralize Board persistence response types so save returns summary while load returns the full document.
 
 Acceptance:
 
 - Existing Image Node import, Merge Capture, Screenshot and `Save local` continue to work without custom headers in local dev.
 - New asset metadata contains `workspaceId` and `createdBy`.
 - New local board records contain `workspaceId` and `ownerId`.
-- Unsupported `TANGENT_ASSET_STORAGE_DRIVER` values return a clear error instead of silently falling back.
+- `local-save` response does not echo the full Board document; `local-load` does.
+- Unsupported `TANGENT_ASSET_STORAGE_DRIVER` / `TANGENT_BOARD_STORAGE_DRIVER` values return a clear error instead of silently falling back.
 - The frontend asset upload client contract does not need to change when this local bridge later moves behind FastAPI.
 
 Manual test:
@@ -550,6 +553,7 @@ Manual test:
 - Fetch a created asset metadata record and verify it contains `workspaceId: "dev-workspace"` and `createdBy: "dev-user"` by default.
 - Call `GET /api/boards/local-load?boardId=canvas-spike-local` and verify the board metadata contains `workspaceId: "dev-workspace"` and `ownerId: "dev-user"` after saving.
 - Set `TANGENT_ASSET_STORAGE_DRIVER` to an unsupported value and confirm upload returns a clear configuration error.
+- Set `TANGENT_BOARD_STORAGE_DRIVER` to an unsupported value and confirm local save/load returns a clear configuration error.
 
 2026-05-01 implementation note:
 
@@ -558,6 +562,12 @@ Codex added `apps/web/src/app/api/_lib/apiRequestContext.ts` and `apps/web/src/a
 2026-05-01 continuation note:
 
 Local board save / load now also uses the same request context. `LocalBoardRecord` includes `workspaceId` and `ownerId`; `local-load` checks workspace access before returning a saved document. Smoke tests verified clean save/load returns `dev-workspace` / `dev-user`, while documents containing `data:` asset URLs still fail with 422.
+
+2026-05-01 board adapter note:
+
+Codex added `apps/web/src/app/api/boards/_lib/boardStorageAdapter.ts`, mirroring the Asset storage seam for local board persistence. Local board routes now go through `getBoardStorageAdapter()`, with `TANGENT_BOARD_STORAGE_DRIVER=local-dev` as the only supported driver for this spike and unsupported drivers failing explicitly. Board persistence response types are centralized in `apps/web/src/features/boards/boardTypes.ts`; `local-save` returns a board summary without the full document, while `local-load` returns the saved document for restore. Smoke tests verified local save/load still returns `dev-workspace` / `dev-user`, save no longer echoes `document`, load does return `document`, and invalid `data:` documents still fail with 422. lint / typecheck / build / git diff --check passed.
+
+The Board validate route now also resolves request context before auditing, so future auth-required mode applies to the full Board persistence preflight, not only save/load.
 
 ---
 

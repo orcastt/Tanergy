@@ -1,41 +1,12 @@
 'use client'
 
-import type { BoardDocumentGuardResult } from './boardDocumentGuard'
-import type { SerializedBoardDocument } from './boardDocumentSerializer'
+import type { BoardLoadResponse, BoardSaveResponse, SerializedBoardSaveInput } from './boardTypes'
 
-export type LocalBoardSaveResponse = {
-  audit?: BoardDocumentGuardResult
-  board?: {
-    byteSize: number
-    id: string
-    ownerId?: string
-    savedAt: string
-    title: string
-    workspaceId?: string
-  }
-  error?: string
-  ok: boolean
-}
+export type LocalBoardSaveResponse = BoardSaveResponse
 
-export type LocalBoardLoadResponse = {
-  board?: {
-    byteSize: number
-    document: unknown
-    id: string
-    ownerId?: string
-    savedAt: string
-    title: string
-    workspaceId?: string
-  }
-  error?: string
-  ok: boolean
-}
+export type LocalBoardLoadResponse = BoardLoadResponse
 
-export async function saveLocalBoardDocument(input: {
-  boardId?: string
-  document: SerializedBoardDocument
-  title?: string
-}) {
+export async function saveLocalBoardDocument(input: SerializedBoardSaveInput) {
   const response = await fetch('/api/boards/local-save', {
     body: JSON.stringify(input),
     headers: { 'Content-Type': 'application/json' },

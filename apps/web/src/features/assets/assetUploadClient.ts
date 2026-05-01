@@ -1,12 +1,7 @@
 'use client'
 
 import { createImageDataUrlThumbnails } from './assetClientThumbnails'
-import type { TangentAssetDataUrlInput, TangentAssetRecord } from './assetTypes'
-
-type AssetResponse = {
-  asset?: TangentAssetRecord
-  error?: string
-}
+import type { TangentAssetDataUrlInput, TangentAssetResponse } from './assetTypes'
 
 export async function uploadImageDataUrlAsset(input: Omit<TangentAssetDataUrlInput, 'thumbnails'>) {
   const thumbnails = await createImageDataUrlThumbnails(input.dataUrl)
@@ -15,7 +10,7 @@ export async function uploadImageDataUrlAsset(input: Omit<TangentAssetDataUrlInp
     headers: { 'Content-Type': 'application/json' },
     method: 'POST',
   })
-  const payload = await response.json() as AssetResponse
+  const payload = await response.json() as TangentAssetResponse
   if (!response.ok || !payload.asset) {
     throw new Error(payload.error || 'Asset upload failed.')
   }
