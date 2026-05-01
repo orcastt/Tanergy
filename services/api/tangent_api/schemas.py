@@ -75,12 +75,18 @@ class AssetRecord(TangentApiModel):
     workspace_id: str = Field(alias="workspaceId")
 
 
+class AssetThumbnailInput(TangentApiModel):
+    data_url: str = Field(alias="dataUrl")
+    height: int
+    width: int
+
+
 class AssetDataUrlRequest(TangentApiModel):
     data_url: str = Field(alias="dataUrl")
     file_name: Optional[str] = Field(default=None, alias="fileName")
     height: int
     origin: str
-    thumbnails: Optional[dict[int, dict[str, Any]]] = None
+    thumbnails: Optional[dict[int, AssetThumbnailInput]] = None
     title: Optional[str] = None
     width: int
 

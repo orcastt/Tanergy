@@ -571,7 +571,11 @@ The Board validate route now also resolves request context before auditing, so f
 
 2026-05-01 FastAPI scaffold note:
 
-Codex added a minimal fresh FastAPI scaffold under `services/api/tangent_api/`. It includes `/health`, request context parsing, Python Board document guard parity and `POST /api/v1/boards/validate-document`. It also implements local file-backed `POST /api/v1/boards` and `GET /api/v1/boards/{board_id}` using the same guard/context/summary-load contract as the Next bridge. Asset storage routes remain explicit 501 placeholders. This is still an API boundary scaffold; it does not implement DB, R2/S3, Auth/JWT, AI proxy or run logs yet. `python3 -m compileall services/api/tangent_api`, web typecheck, web lint, web build and `git diff --check` passed.
+Codex added a minimal fresh FastAPI scaffold under `services/api/tangent_api/`. It includes `/health`, request context parsing, Python Board document guard parity and `POST /api/v1/boards/validate-document`. It also implements local file-backed `POST /api/v1/boards` and `GET /api/v1/boards/{board_id}` using the same guard/context/summary-load contract as the Next bridge. At that moment Asset storage routes were still explicit 501 placeholders. This remains an API boundary scaffold; it does not implement DB, R2/S3, Auth/JWT, AI proxy or run logs yet. `python3 -m compileall services/api/tangent_api`, web typecheck, web lint, web build and `git diff --check` passed.
+
+2026-05-01 FastAPI asset local-dev note:
+
+Codex implemented local file-backed FastAPI Asset routes: `POST /api/v1/assets/from-data-url`, `POST /api/v1/assets/upload`, `GET /api/v1/assets/{asset_id}` and `GET /api/v1/assets/files/{asset_id}/{file_name}`. The Python local store mirrors the Next bridge guardrails: PNG/JPEG/WebP only, 30MB maximum, metadata with `workspaceId` / `createdBy`, optional 256/512/1024 thumbnail files, workspace-checked metadata and file reads, and explicit 501 for unsupported asset/board storage drivers. R2/S3 is still not implemented. Added `services/api/tests/test_persistence_contracts.py` for the Asset/Board persistence contract; local `pytest` is not installed in the current machine environment, so equivalent direct FastAPI TestClient smoke was run. `python3 -m compileall services/api/tangent_api`, web typecheck, web lint, web build and `git diff --check` passed.
 
 ---
 

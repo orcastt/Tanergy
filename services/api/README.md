@@ -27,6 +27,7 @@ Useful checks:
 
 ```bash
 python3 -m compileall tangent_api
+PYTHONPATH=. python3 -m pytest tests
 curl http://127.0.0.1:8000/health
 ```
 
@@ -49,12 +50,16 @@ Implemented now:
 - `POST /api/v1/boards/validate-document`
 - `POST /api/v1/boards` local file-backed save
 - `GET /api/v1/boards/{board_id}` local file-backed load
+- `POST /api/v1/assets/from-data-url` local file-backed asset create
+- `POST /api/v1/assets/upload` local file-backed upload
+- `GET /api/v1/assets/{asset_id}` local metadata read
+- `GET /api/v1/assets/files/{asset_id}/{file_name}` local file read
 - Shared request context parsing for `x-tangent-user-id` / `x-tangent-workspace-id`
 - Board document guard parity with the current Next local bridge
 
 Explicitly not implemented yet:
 
 - Database-backed Board persistence
-- R2/S3-backed Asset storage
+- R2/S3-backed Asset storage; unsupported `TANGENT_ASSET_STORAGE_DRIVER` values fail explicitly
 - Auth/JWT/session validation
 - AI provider proxy and run logs

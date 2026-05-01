@@ -16,6 +16,7 @@ BOARD_ID_PATTERN = re.compile(r"^[a-zA-Z0-9._-]+$")
 
 
 def save_board(input_data: BoardSaveRequest, context: ApiRequestContext) -> BoardSaveResponse:
+    _assert_local_driver()
     audit = audit_board_document(input_data.document)
     if not audit.ok:
         return BoardSaveResponse(audit=audit, error="Board document failed save guard.", ok=False)
@@ -41,6 +42,7 @@ def save_board(input_data: BoardSaveRequest, context: ApiRequestContext) -> Boar
 
 
 def load_board(board_id: str, context: ApiRequestContext) -> BoardRecord:
+    _assert_local_driver()
     safe_board_id = _sanitize_board_id(board_id)
     if not safe_board_id:
         raise HTTPException(status_code=400, detail="Invalid board id.")
@@ -57,6 +59,15 @@ def load_board(board_id: str, context: ApiRequestContext) -> BoardRecord:
 
 def _storage_root() -> Path:
     return Path(os.getenv("TANGENT_BOARD_STORAGE_DIR", ".tangent-boards"))
+
+
+def _assert_local_driver() -> None:
+    driver = os.getenv("TANGENT_BOARD_STORAGE_DRIVER", "local-dev")
+    if driver != "local-dev":
+        raise HTTPException(
+            status_code=501,
+            detail=f'Unsupported board storage driver "{driver}". Supported driver: local-dev.',
+        )
 
 
 def _board_path(board_id: str) -> Path:
