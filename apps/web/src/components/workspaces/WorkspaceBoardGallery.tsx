@@ -11,9 +11,13 @@ import {
   saveLocalBoardDocument,
 } from '@/features/boards/localBoardClient'
 import { WorkspaceBoardItem, type WorkspaceBoardViewMode } from './WorkspaceBoardItem'
+import { NewBoardTile, WorkspaceEmptyState, WorkspaceLoadingState } from './WorkspaceBoardStates'
+import { WorkspaceBoardToolbar, type WorkspaceBoardSortMode } from './WorkspaceBoardToolbar'
 
 type ViewMode = WorkspaceBoardViewMode
-type SortMode = 'recent' | 'title' | 'objects'
+type SortMode = WorkspaceBoardSortMode
+
+const boardPageSize = 12
 
 export function WorkspaceBoardGallery() {
   const router = useRouter()
@@ -24,7 +28,8 @@ export function WorkspaceBoardGallery() {
   const [isLoading, setIsLoading] = useState(true)
   const [pendingBoardId, setPendingBoardId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [sortMode, setSortMode] = useState<SortMode>('recent')
+  const [sortMode, setSortMode] = useState<SortMode>('opened')
+  const [visibleLimit, setVisibleLimit] = useState(boardPageSize)
   const [viewMode, setViewMode] = useState<ViewMode>('gallery')
 
   const filteredBoards = useMemo(() => {
@@ -36,9 +41,13 @@ export function WorkspaceBoardGallery() {
     return [...visibleBoards].sort((left, right) => {
       if (sortMode === 'title') return left.title.localeCompare(right.title)
       if (sortMode === 'objects') return getBoardObjectTotal(right) - getBoardObjectTotal(left)
-      return new Date(right.savedAt).getTime() - new Date(left.savedAt).getTime()
+      if (sortMode === 'saved') return getSavedTime(right) - getSavedTime(left)
+      return getActivityTime(right) - getActivityTime(left)
     })
   }, [boards, searchQuery, sortMode])
+
+  const visibleBoards = useMemo(() => filteredBoards.slice(0, visibleLimit), [filteredBoards, visibleLimit])
+  const hasMoreBoards = filteredBoards.length > visibleBoards.length
 
   const refreshBoards = useCallback(async () => {
     setIsLoading(true)
@@ -134,6 +143,21 @@ export function WorkspaceBoardGallery() {
     }
   }
 
+  const updateSearchQuery = (query: string) => {
+    setSearchQuery(query)
+    setVisibleLimit(boardPageSize)
+  }
+
+  const updateSortMode = (mode: SortMode) => {
+    setSortMode(mode)
+    setVisibleLimit(boardPageSize)
+  }
+
+  const updateViewMode = (mode: ViewMode) => {
+    setViewMode(mode)
+    setVisibleLimit(boardPageSize)
+  }
+
   return (
     <div className="workspace-page">
       <section className="workspace-header">
@@ -152,32 +176,14 @@ export function WorkspaceBoardGallery() {
         </div>
       </section>
 
-      <section className="workspace-toolbar" aria-label="Board gallery tools">
-        <input
-          aria-label="Search boards"
-          onChange={(event) => setSearchQuery(event.target.value)}
-          placeholder="Search boards"
-          value={searchQuery}
-        />
-        <div className="workspace-toolbar-controls">
-          <label className="workspace-sort-control">
-            <span>Sort</span>
-            <select aria-label="Sort boards" onChange={(event) => setSortMode(event.target.value as SortMode)} value={sortMode}>
-              <option value="recent">Recently saved</option>
-              <option value="title">Title A-Z</option>
-              <option value="objects">Most objects</option>
-            </select>
-          </label>
-          <div className="workspace-view-toggle" aria-label="View mode">
-            <button className={viewMode === 'gallery' ? 'is-active' : ''} onClick={() => setViewMode('gallery')} type="button">
-              Gallery
-            </button>
-            <button className={viewMode === 'list' ? 'is-active' : ''} onClick={() => setViewMode('list')} type="button">
-              List
-            </button>
-          </div>
-        </div>
-      </section>
+      <WorkspaceBoardToolbar
+        onSearchChange={updateSearchQuery}
+        onSortModeChange={updateSortMode}
+        onViewModeChange={updateViewMode}
+        searchQuery={searchQuery}
+        sortMode={sortMode}
+        viewMode={viewMode}
+      />
 
       {error ? <div className="workspace-error" role="alert">{error}</div> : null}
       {isLoading ? <WorkspaceLoadingState /> : null}
@@ -188,7 +194,7 @@ export function WorkspaceBoardGallery() {
       {!isLoading && filteredBoards.length > 0 ? (
         <section className={viewMode === 'gallery' ? 'workspace-board-grid' : 'workspace-board-list'} aria-label="Workspace boards">
           <NewBoardTile onCreate={createBoard} viewMode={viewMode} />
-          {filteredBoards.map((board) => (
+          {visibleBoards.map((board) => (
             <WorkspaceBoardItem
               board={board}
               editingTitle={editingTitle}
@@ -207,30 +213,16 @@ export function WorkspaceBoardGallery() {
           ))}
         </section>
       ) : null}
-    </div>
-  )
-}
-
-function NewBoardTile({ onCreate, viewMode }: { onCreate: () => void; viewMode: ViewMode }) {
-  return (
-    <button className={`workspace-new-card ${viewMode === 'list' ? 'is-list' : ''}`} onClick={onCreate} type="button">
-      <span aria-hidden="true">+</span>
-      <strong>New board</strong>
-      <p>Start a blank AI image canvas in this workspace.</p>
-    </button>
-  )
-}
-
-function WorkspaceLoadingState() {
-  return <div className="workspace-empty-inline">Loading workspace boards...</div>
-}
-
-function WorkspaceEmptyState({ onCreate }: { onCreate: () => void }) {
-  return (
-    <div className="workspace-empty-hero">
-      <strong>No boards yet.</strong>
-      <span>Create the first canvas in this workspace.</span>
-      <button className="product-button product-button-primary" onClick={onCreate} type="button">New board</button>
+      {!isLoading && filteredBoards.length > 0 ? (
+        <div className="workspace-pagination" aria-label="Board pagination">
+          <span>Showing {visibleBoards.length} of {filteredBoards.length} boards</span>
+          {hasMoreBoards ? (
+            <button className="product-button product-button-secondary" onClick={() => setVisibleLimit((value) => value + boardPageSize)} type="button">
+              Load more
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -241,4 +233,12 @@ function createBoardId() {
 
 function getBoardObjectTotal(board: BoardPersistenceSummary) {
   return board.shapeCount + board.assetCount
+}
+
+function getActivityTime(board: BoardPersistenceSummary) {
+  return Date.parse(board.lastOpenedAt || board.savedAt) || 0
+}
+
+function getSavedTime(board: BoardPersistenceSummary) {
+  return Date.parse(board.savedAt) || 0
 }

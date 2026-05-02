@@ -30,11 +30,13 @@ def save_board(input_data: BoardSaveRequest, context: ApiRequestContext) -> Boar
 
     board_id = _sanitize_board_id(input_data.board_id) or f"board_{uuid4()}"
     metrics = get_board_document_metrics(input_data.document)
+    existing = _read_existing_board(board_id, context)
     record = BoardRecord(
         assetCount=metrics["asset_count"],
         byteSize=audit.byte_size,
         document=input_data.document,
         id=board_id,
+        lastOpenedAt=existing.last_opened_at if existing else None,
         ownerId=context.user_id,
         savedAt=datetime.now(timezone.utc).isoformat(),
         shapeCount=metrics["shape_count"],
@@ -62,10 +64,12 @@ def load_board(board_id: str, context: ApiRequestContext) -> BoardRecord:
     if not path.exists():
         raise HTTPException(status_code=404, detail="Board not found.")
 
-    record = BoardRecord.model_validate(json.loads(path.read_text(encoding="utf-8")))
+    record = _read_board_record(safe_board_id)
     if record.workspace_id != context.workspace_id:
         raise HTTPException(status_code=404, detail="Board not found in workspace.")
-    return record
+    updated = record.model_copy(update={"last_opened_at": datetime.now(timezone.utc).isoformat()})
+    _write_board_record(updated)
+    return updated
 
 
 def list_boards(context: ApiRequestContext) -> list[BoardSummary]:
@@ -88,7 +92,7 @@ def list_boards(context: ApiRequestContext) -> list[BoardSummary]:
 
 
 def rename_board(board_id: str, title: str, context: ApiRequestContext) -> BoardSummary:
-    record = load_board(board_id, context)
+    record = _load_board_without_touch(board_id, context)
     next_title = title.strip()
     if not next_title:
         raise HTTPException(status_code=400, detail="Board title is required.")
@@ -104,7 +108,7 @@ def rename_board(board_id: str, title: str, context: ApiRequestContext) -> Board
 
 
 def delete_board(board_id: str, context: ApiRequestContext) -> str:
-    record = load_board(board_id, context)
+    record = _load_board_without_touch(board_id, context)
     _board_path(record.id).unlink()
     return record.id
 
@@ -124,6 +128,40 @@ def _assert_local_driver() -> None:
 
 def _board_path(board_id: str) -> Path:
     return _storage_root() / "boards" / f"{board_id}.json"
+
+
+def _read_existing_board(board_id: str, context: ApiRequestContext) -> Optional[BoardRecord]:
+    try:
+        record = _read_board_record(board_id)
+    except Exception:
+        return None
+    return record if record.workspace_id == context.workspace_id else None
+
+
+def _load_board_without_touch(board_id: str, context: ApiRequestContext) -> BoardRecord:
+    safe_board_id = _sanitize_board_id(board_id)
+    if not safe_board_id:
+        raise HTTPException(status_code=400, detail="Invalid board id.")
+    record = _read_board_record(safe_board_id)
+    if record.workspace_id != context.workspace_id:
+        raise HTTPException(status_code=404, detail="Board not found in workspace.")
+    return record
+
+
+def _read_board_record(board_id: str) -> BoardRecord:
+    path = _board_path(board_id)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Board not found.")
+    return BoardRecord.model_validate(json.loads(path.read_text(encoding="utf-8")))
+
+
+def _write_board_record(record: BoardRecord) -> None:
+    path = _board_path(record.id)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(record.model_dump(by_alias=True), ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
 
 
 def _sanitize_board_id(value: Optional[str]) -> Optional[str]:

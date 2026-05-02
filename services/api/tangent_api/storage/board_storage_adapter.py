@@ -3,10 +3,22 @@ import os
 from fastapi import HTTPException
 
 from tangent_api.request_context import ApiRequestContext
-from tangent_api.schemas import BoardRecord, BoardSaveRequest, BoardSaveResponse, BoardSummary
+from tangent_api.schemas import (
+    BoardRecord,
+    BoardSaveRequest,
+    BoardSaveResponse,
+    BoardSnapshotCreateRequest,
+    BoardSnapshotRecord,
+    BoardSnapshotSummary,
+    BoardSummary,
+)
+from tangent_api.storage.local_board_snapshot_store import create_board_snapshot as create_local_snapshot
+from tangent_api.storage.local_board_snapshot_store import list_board_snapshots as list_local_snapshots
+from tangent_api.storage.local_board_snapshot_store import load_board_snapshot as load_local_snapshot
 from tangent_api.storage.local_board_store import load_board as load_local_board
 from tangent_api.storage.local_board_store import list_boards as list_local_boards
 from tangent_api.storage.local_board_store import save_board as save_local_board
+from tangent_api.storage.postgres_board_snapshot_store import PostgresBoardSnapshotStore
 from tangent_api.storage.postgres_board_store import PostgresBoardStore
 
 
@@ -28,6 +40,25 @@ class BoardStorageAdapter:
         raise NotImplementedError
 
     def delete_board(self, board_id: str, context: ApiRequestContext) -> str:
+        raise NotImplementedError
+
+    def create_snapshot(
+        self,
+        board_id: str,
+        input_data: BoardSnapshotCreateRequest,
+        context: ApiRequestContext,
+    ) -> BoardSnapshotSummary:
+        raise NotImplementedError
+
+    def list_snapshots(self, board_id: str, context: ApiRequestContext) -> list[BoardSnapshotSummary]:
+        raise NotImplementedError
+
+    def load_snapshot(
+        self,
+        board_id: str,
+        snapshot_id: str,
+        context: ApiRequestContext,
+    ) -> BoardSnapshotRecord:
         raise NotImplementedError
 
 
@@ -55,10 +86,30 @@ class LocalBoardStorageAdapter(BoardStorageAdapter):
 
         return delete_local_board(board_id, context)
 
+    def create_snapshot(
+        self,
+        board_id: str,
+        input_data: BoardSnapshotCreateRequest,
+        context: ApiRequestContext,
+    ) -> BoardSnapshotSummary:
+        return create_local_snapshot(board_id, input_data, context)
+
+    def list_snapshots(self, board_id: str, context: ApiRequestContext) -> list[BoardSnapshotSummary]:
+        return list_local_snapshots(board_id, context)
+
+    def load_snapshot(
+        self,
+        board_id: str,
+        snapshot_id: str,
+        context: ApiRequestContext,
+    ) -> BoardSnapshotRecord:
+        return load_local_snapshot(board_id, snapshot_id, context)
+
 
 class PostgresBoardStorageAdapter(BoardStorageAdapter):
     def __init__(self) -> None:
         self.store = PostgresBoardStore()
+        self.snapshots = PostgresBoardSnapshotStore()
 
     def save_board(
         self,
@@ -78,6 +129,25 @@ class PostgresBoardStorageAdapter(BoardStorageAdapter):
 
     def delete_board(self, board_id: str, context: ApiRequestContext) -> str:
         return self.store.delete_board(board_id, context)
+
+    def create_snapshot(
+        self,
+        board_id: str,
+        input_data: BoardSnapshotCreateRequest,
+        context: ApiRequestContext,
+    ) -> BoardSnapshotSummary:
+        return self.snapshots.create_snapshot(board_id, input_data, context)
+
+    def list_snapshots(self, board_id: str, context: ApiRequestContext) -> list[BoardSnapshotSummary]:
+        return self.snapshots.list_snapshots(board_id, context)
+
+    def load_snapshot(
+        self,
+        board_id: str,
+        snapshot_id: str,
+        context: ApiRequestContext,
+    ) -> BoardSnapshotRecord:
+        return self.snapshots.load_snapshot(board_id, snapshot_id, context)
 
 
 def get_board_storage_adapter() -> BoardStorageAdapter:

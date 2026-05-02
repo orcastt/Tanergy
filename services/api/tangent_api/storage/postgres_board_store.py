@@ -62,9 +62,10 @@ class PostgresBoardStore:
                         asset_count,
                         shape_count,
                         thumbnail_url,
+                        last_opened_at,
                         saved_at
                     )
-                    VALUES (%s, %s, %s, %s, %s::jsonb, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s::jsonb, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (workspace_id, id) DO UPDATE SET
                         owner_id = EXCLUDED.owner_id,
                         title = EXCLUDED.title,
@@ -85,6 +86,7 @@ class PostgresBoardStore:
                         record.asset_count,
                         record.shape_count,
                         record.thumbnail_url,
+                        record.last_opened_at,
                         record.saved_at,
                     ),
                 )
@@ -97,32 +99,22 @@ class PostgresBoardStore:
         if not safe_board_id:
             raise HTTPException(status_code=400, detail="Invalid board id.")
 
+        record = self._load_board_without_touch(safe_board_id, context)
+        opened_at = datetime.now(timezone.utc).isoformat()
         with connect_to_postgres() as connection:
             with connection.cursor() as cursor:
                 self._ensure_schema(cursor)
                 cursor.execute(
                     """
-                    SELECT
-                        id,
-                        workspace_id,
-                        owner_id,
-                        title,
-                        document,
-                        byte_size,
-                        asset_count,
-                        shape_count,
-                        thumbnail_url,
-                        saved_at
-                    FROM tangent_boards
+                    UPDATE tangent_boards
+                    SET last_opened_at = %s
                     WHERE workspace_id = %s AND id = %s
                     """,
-                    (context.workspace_id, safe_board_id),
+                    (opened_at, context.workspace_id, safe_board_id),
                 )
-                row = cursor.fetchone()
+            connection.commit()
 
-        if not row:
-            raise HTTPException(status_code=404, detail="Board not found in workspace.")
-        return _board_record_from_row(row)
+        return record.model_copy(update={"last_opened_at": opened_at})
 
     def list_boards(self, context: ApiRequestContext) -> list[BoardSummary]:
         with connect_to_postgres() as connection:
@@ -140,6 +132,7 @@ class PostgresBoardStore:
                         asset_count,
                         shape_count,
                         thumbnail_url,
+                        last_opened_at,
                         saved_at
                     FROM tangent_boards
                     WHERE workspace_id = %s
@@ -152,7 +145,7 @@ class PostgresBoardStore:
         return [summarize_board_record(_board_record_from_row(row)) for row in rows]
 
     def rename_board(self, board_id: str, title: str, context: ApiRequestContext) -> BoardSummary:
-        record = self.load_board(board_id, context)
+        record = self._load_board_without_touch(board_id, context)
         next_title = title.strip()
         if not next_title:
             raise HTTPException(status_code=400, detail="Board title is required.")
@@ -176,7 +169,7 @@ class PostgresBoardStore:
         return summarize_board_record(record.model_copy(update={"title": next_title, "saved_at": saved_at}))
 
     def delete_board(self, board_id: str, context: ApiRequestContext) -> str:
-        record = self.load_board(board_id, context)
+        record = self._load_board_without_touch(board_id, context)
         with connect_to_postgres() as connection:
             with connection.cursor() as cursor:
                 self._ensure_schema(cursor)
@@ -205,6 +198,7 @@ class PostgresBoardStore:
                 asset_count INTEGER NOT NULL DEFAULT 0,
                 shape_count INTEGER NOT NULL DEFAULT 0,
                 thumbnail_url TEXT,
+                last_opened_at TIMESTAMPTZ,
                 saved_at TIMESTAMPTZ NOT NULL,
                 PRIMARY KEY (workspace_id, id)
             )
@@ -213,22 +207,64 @@ class PostgresBoardStore:
         cursor.execute("ALTER TABLE tangent_boards ADD COLUMN IF NOT EXISTS asset_count INTEGER NOT NULL DEFAULT 0")
         cursor.execute("ALTER TABLE tangent_boards ADD COLUMN IF NOT EXISTS shape_count INTEGER NOT NULL DEFAULT 0")
         cursor.execute("ALTER TABLE tangent_boards ADD COLUMN IF NOT EXISTS thumbnail_url TEXT")
+        cursor.execute("ALTER TABLE tangent_boards ADD COLUMN IF NOT EXISTS last_opened_at TIMESTAMPTZ")
         cursor.execute(
             """
             CREATE INDEX IF NOT EXISTS tangent_boards_owner_idx
             ON tangent_boards (workspace_id, owner_id, saved_at DESC)
             """
         )
+        cursor.execute(
+            """
+            CREATE INDEX IF NOT EXISTS tangent_boards_opened_idx
+            ON tangent_boards (workspace_id, last_opened_at DESC, saved_at DESC)
+            """
+        )
+
+    def _load_board_without_touch(self, board_id: str, context: ApiRequestContext) -> BoardRecord:
+        safe_board_id = _sanitize_board_id(board_id)
+        if not safe_board_id:
+            raise HTTPException(status_code=400, detail="Invalid board id.")
+
+        with connect_to_postgres() as connection:
+            with connection.cursor() as cursor:
+                self._ensure_schema(cursor)
+                cursor.execute(
+                    """
+                    SELECT
+                        id,
+                        workspace_id,
+                        owner_id,
+                        title,
+                        document,
+                        byte_size,
+                        asset_count,
+                        shape_count,
+                        thumbnail_url,
+                        last_opened_at,
+                        saved_at
+                    FROM tangent_boards
+                    WHERE workspace_id = %s AND id = %s
+                    """,
+                    (context.workspace_id, safe_board_id),
+                )
+                row = cursor.fetchone()
+
+        if not row:
+            raise HTTPException(status_code=404, detail="Board not found in workspace.")
+        return _board_record_from_row(row)
 
 
 def _board_record_from_row(row: tuple[Any, ...]) -> BoardRecord:
-    saved_at = row[9].isoformat() if hasattr(row[9], "isoformat") else str(row[9])
+    last_opened_at = row[9].isoformat() if hasattr(row[9], "isoformat") else row[9]
+    saved_at = row[10].isoformat() if hasattr(row[10], "isoformat") else str(row[10])
     document = row[4] if not isinstance(row[4], str) else json.loads(row[4])
     return BoardRecord(
         assetCount=row[6] or 0,
         byteSize=row[5],
         document=document,
         id=row[0],
+        lastOpenedAt=last_opened_at,
         ownerId=row[2],
         savedAt=saved_at,
         shapeCount=row[7] or 0,

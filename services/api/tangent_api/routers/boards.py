@@ -12,6 +12,10 @@ from tangent_api.schemas import (
     BoardRenameResponse,
     BoardSaveRequest,
     BoardSaveResponse,
+    BoardSnapshotCreateRequest,
+    BoardSnapshotCreateResponse,
+    BoardSnapshotListResponse,
+    BoardSnapshotLoadResponse,
     BoardValidateResponse,
 )
 from tangent_api.storage.board_storage_adapter import get_board_storage_adapter
@@ -77,3 +81,32 @@ def delete_board(
 ) -> BoardDeleteResponse:
     deleted_board_id = get_board_storage_adapter().delete_board(board_id, context)
     return BoardDeleteResponse(boardId=deleted_board_id, ok=True)
+
+
+@router.post("/{board_id}/snapshots", response_model=BoardSnapshotCreateResponse)
+def create_board_snapshot(
+    board_id: str,
+    payload: BoardSnapshotCreateRequest,
+    context: ApiRequestContext = Depends(get_request_context),
+) -> BoardSnapshotCreateResponse:
+    snapshot = get_board_storage_adapter().create_snapshot(board_id, payload, context)
+    return BoardSnapshotCreateResponse(ok=True, snapshot=snapshot)
+
+
+@router.get("/{board_id}/snapshots", response_model=BoardSnapshotListResponse)
+def list_board_snapshots(
+    board_id: str,
+    context: ApiRequestContext = Depends(get_request_context),
+) -> BoardSnapshotListResponse:
+    snapshots = get_board_storage_adapter().list_snapshots(board_id, context)
+    return BoardSnapshotListResponse(ok=True, snapshots=snapshots)
+
+
+@router.get("/{board_id}/snapshots/{snapshot_id}", response_model=BoardSnapshotLoadResponse)
+def get_board_snapshot(
+    board_id: str,
+    snapshot_id: str,
+    context: ApiRequestContext = Depends(get_request_context),
+) -> BoardSnapshotLoadResponse:
+    snapshot = get_board_storage_adapter().load_snapshot(board_id, snapshot_id, context)
+    return BoardSnapshotLoadResponse(ok=True, snapshot=snapshot)

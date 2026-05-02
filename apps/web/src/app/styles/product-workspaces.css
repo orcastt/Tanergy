@@ -140,6 +140,16 @@
   padding: 18px;
 }
 
+.workspace-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 24px;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
 .workspace-empty-hero {
   display: grid;
   gap: 12px;
@@ -166,6 +176,11 @@
 
   .workspace-toolbar-controls {
     justify-content: flex-start;
+  }
+
+  .workspace-pagination {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
 }

@@ -10,10 +10,10 @@
 - 后续新增 AI 节点、AI Chat bot 或新模型能力，必须遵守 `ARCH.md` 4.4.1 AI Node Extension Contract：先扩展 Node Registry / Model Registry / AiRun 合同，节点 UI 不直接调用 Provider。
 - 多人协作后移到 P0.5。
 - S1.5 复杂节点、Asset LOD Slice A-D 和 Slice E 的本地 Asset / Board persistence 基线已通过。
-- 当前 Slice E 已完成：Next local Asset / Board bridge、request context、Board save guard、FastAPI local-dev、真实 `s3-compatible` Asset adapter、Postgres Board / Asset metadata persistence、Web-to-FastAPI switch、staging API package、`/workspaces` Board gallery/list entry shell、Board metadata first pass、Auth scaffold first pass、AI contract scaffold first pass。
+- 当前 Slice E 已完成：Next local Asset / Board bridge、request context、Board save guard、FastAPI local-dev、真实 `s3-compatible` Asset adapter、Postgres Board / Asset metadata persistence、Alembic P0 migration scaffold、Board History first pass、Web-to-FastAPI switch、staging API package、`/workspaces` Board gallery/list entry shell、Board metadata first pass、Auth scaffold first pass、AI contract scaffold first pass。
 - 当前 Product Shell 顶部导航固定为 `Landing page / Workspace / Collection / Team / Subscription`；Landing page 只在顶部导航出现，不进入侧栏；Account 和 Settings 保留在侧栏。`/home`、`/collections`、`/team`、`/billing` 都是语义清晰的本地壳，不假装真实素材库、团队权限或订阅计费已完成。
-- 当前接手点：按 `ARCH.md` 11.5-11.7 的 0-to-1 路线推进真实 staging 基础设施、部署流水线、真实 Auth / Board CRUD 产品化；本地可继续做 App Shell route/responsive smoke、Board autosave regression、recent-open metadata 或真实 AI Provider 前的 polish。
-- 不做公众号 Html Editor、Writer、Personal Library、Knowledge Graph、复杂 Admin Analytics。
+- 当前接手点：按 `ARCH.md` 11.5-11.7 的 0-to-1 路线推进真实 staging 基础设施、部署流水线、真实 Auth / Board CRUD 产品化；本地可继续做 Board autosave / History browser regression、captured thumbnail、Board management Panel 或真实 AI Provider 前的 polish。
+- 不做公众号 Html Editor、Writer、Personal Library、Knowledge Graph、完整 Mixpanel 级 Admin Analytics。允许按 `ARCH.md` 4.11 做 Admin S0 schema/access/audit 边界规划或最小用户管理 MVP，但真实 Auth 前不得开放生产 `/admin`。
 - 前端视觉保持干净白板、小卡片、轻边框，不大换皮。
 
 ## 工作循环
@@ -27,9 +27,10 @@
 5. UI 改动遵守 `reference/Design.md`；页面级 Stitch 参考看 `reference/Design_reference.md`；当前 Product Shell 不再引用旧 `reference/design-system.md` / `reference/theme.ts`。
 6. 用户可见文案走 i18n；默认英文，中文环境不混杂英文业务文案。
 7. API Key 只在服务端环境变量，绝不进入前端代码。
-8. Board document / node props / 协作文档不得保存 `data:`、`blob:`、Base64 图片、Provider 原始响应、完整日志或长文本结果。
+8. Board document / Board History document / node props / 协作文档不得保存 `data:`、`blob:`、Base64 图片、Provider 原始响应、完整日志或长文本结果。
 9. 新增 AI 节点时同步检查 Node type、Node Registry、Node card / Inspector、node data flow、`features/ai` run types、Next/FastAPI AI route、tests 和 Board guard。
-10. 完成后更新 `project_state.md`、`dev-plans/README.md` 和对应计划。
+10. Admin 权限必须服务端校验 `admin_roles`，不能信任前端 role；所有后台写操作必须设计审计日志。
+11. 完成后更新 `project_state.md`、`dev-plans/README.md` 和对应计划。
 
 ## 质量闸门
 
@@ -46,7 +47,7 @@
 - `python3 -m compileall services/api/tangent_api`
 - `git diff --check`
 
-部署 / staging 改动还要按 `deploy/staging/README.md` 做最小 smoke，尤其是 `/health`、CORS、Asset upload/read、Board save/load 和 guard 422。纯文档改动可只跑 `git diff --check`，但最终回复要说明没有跑代码测试。
+部署 / staging 改动还要按 `deploy/staging/README.md` 做最小 smoke，尤其是 `/health`、CORS、Asset upload/read、Board save/load、Board history create/list/load 和 guard 422。纯文档改动可只跑 `git diff --check`，但最终回复要说明没有跑代码测试。
 
 ## Git
 

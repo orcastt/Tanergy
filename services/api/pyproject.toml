@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Fresh FastAPI service scaffold for the TANGENT Web AI image canvas."
 requires-python = ">=3.9"
 dependencies = [
+  "alembic>=1.13,<2",
   "boto3>=1.34,<2",
   "fastapi>=0.110,<1",
   "psycopg[binary]>=3.2,<4",

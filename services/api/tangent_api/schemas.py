@@ -121,6 +121,7 @@ class BoardSummary(TangentApiModel):
     asset_count: int = Field(default=0, alias="assetCount")
     byte_size: int = Field(alias="byteSize")
     id: str
+    last_opened_at: Optional[str] = Field(default=None, alias="lastOpenedAt")
     owner_id: str = Field(alias="ownerId")
     saved_at: str = Field(alias="savedAt")
     shape_count: int = Field(default=0, alias="shapeCount")
@@ -162,6 +163,51 @@ class BoardDeleteResponse(TangentApiModel):
     board_id: Optional[str] = Field(default=None, alias="boardId")
     error: Optional[str] = None
     ok: bool
+
+
+class BoardSnapshotCreateRequest(TangentApiModel):
+    document: Any
+    reason: str
+    title: Optional[str] = None
+
+
+class BoardSnapshotSummary(TangentApiModel):
+    asset_count: int = Field(default=0, alias="assetCount")
+    board_id: str = Field(alias="boardId")
+    byte_size: int = Field(alias="byteSize")
+    created_at: str = Field(alias="createdAt")
+    created_by: str = Field(alias="createdBy")
+    document_hash: str = Field(alias="documentHash")
+    expires_at: Optional[str] = Field(default=None, alias="expiresAt")
+    id: str
+    reason: str
+    retention_tier: str = Field(alias="retentionTier")
+    shape_count: int = Field(default=0, alias="shapeCount")
+    thumbnail_url: Optional[str] = Field(default=None, alias="thumbnailUrl")
+    title: str
+    workspace_id: str = Field(alias="workspaceId")
+
+
+class BoardSnapshotRecord(BoardSnapshotSummary):
+    document: Any
+
+
+class BoardSnapshotCreateResponse(TangentApiModel):
+    error: Optional[str] = None
+    ok: bool
+    snapshot: Optional[BoardSnapshotSummary] = None
+
+
+class BoardSnapshotListResponse(TangentApiModel):
+    error: Optional[str] = None
+    ok: bool
+    snapshots: list[BoardSnapshotSummary]
+
+
+class BoardSnapshotLoadResponse(TangentApiModel):
+    error: Optional[str] = None
+    ok: bool
+    snapshot: Optional[BoardSnapshotRecord] = None
 
 
 class AssetRecord(TangentApiModel):
@@ -209,6 +255,7 @@ def summarize_board_record(record: BoardRecord) -> BoardSummary:
         assetCount=record.asset_count or metrics["asset_count"],
         byteSize=record.byte_size,
         id=record.id,
+        lastOpenedAt=record.last_opened_at,
         ownerId=record.owner_id,
         savedAt=record.saved_at,
         shapeCount=record.shape_count or metrics["shape_count"],

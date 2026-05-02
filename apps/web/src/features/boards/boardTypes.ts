@@ -6,6 +6,7 @@ export type BoardPersistenceRecord = {
   byteSize: number
   document: unknown
   id: string
+  lastOpenedAt?: string | null
   ownerId: string
   savedAt: string
   shapeCount: number
@@ -29,6 +30,36 @@ export type BoardRenameInput = {
 
 export type BoardDeleteInput = {
   boardId: string
+}
+
+export type BoardSnapshotReason = 'autosave' | 'auto_interval' | 'keyboard' | 'manual' | 'manual_save' | 'pre_restore'
+
+export type BoardSnapshotSummary = {
+  assetCount: number
+  boardId: string
+  byteSize: number
+  createdAt: string
+  createdBy: string
+  documentHash: string
+  expiresAt?: string | null
+  id: string
+  reason: BoardSnapshotReason
+  retentionTier: string
+  shapeCount: number
+  thumbnailUrl?: string | null
+  title: string
+  workspaceId: string
+}
+
+export type BoardSnapshotRecord = BoardSnapshotSummary & {
+  document: unknown
+}
+
+export type BoardSnapshotCreateInput<Document = unknown> = {
+  boardId: string
+  document: Document
+  reason: BoardSnapshotReason
+  title?: string
 }
 
 export type BoardSaveResponse = {
@@ -62,7 +93,26 @@ export type BoardDeleteResponse = {
   ok: boolean
 }
 
+export type BoardSnapshotCreateResponse = {
+  error?: string
+  ok: boolean
+  snapshot?: BoardSnapshotSummary
+}
+
+export type BoardSnapshotListResponse = {
+  error?: string
+  ok: boolean
+  snapshots: BoardSnapshotSummary[]
+}
+
+export type BoardSnapshotLoadResponse = {
+  error?: string
+  ok: boolean
+  snapshot?: BoardSnapshotRecord
+}
+
 export type SerializedBoardSaveInput = BoardSaveInput<SerializedBoardDocument>
+export type SerializedBoardSnapshotCreateInput = BoardSnapshotCreateInput<SerializedBoardDocument>
 
 export function summarizeBoardRecord(record: BoardPersistenceRecord): BoardPersistenceSummary {
   const metrics = getBoardDocumentMetrics(record.document)
@@ -70,6 +120,7 @@ export function summarizeBoardRecord(record: BoardPersistenceRecord): BoardPersi
     assetCount: record.assetCount ?? metrics.assetCount,
     byteSize: record.byteSize,
     id: record.id,
+    lastOpenedAt: record.lastOpenedAt ?? null,
     ownerId: record.ownerId,
     savedAt: record.savedAt,
     shapeCount: record.shapeCount ?? metrics.shapeCount,

@@ -1,5 +1,10 @@
 import type { ApiRequestContext } from '../../_lib/apiRequestContext'
 import {
+  createLocalBoardSnapshot,
+  listLocalBoardSnapshots,
+  loadLocalBoardSnapshot,
+} from './localBoardSnapshotStore'
+import {
   deleteLocalBoard,
   listLocalBoards,
   loadLocalBoard,
@@ -8,16 +13,22 @@ import {
 } from './localBoardStore'
 
 export type BoardStorageAdapter = {
+  createLocalBoardSnapshot: (input: Parameters<typeof createLocalBoardSnapshot>[0], context: ApiRequestContext) => ReturnType<typeof createLocalBoardSnapshot>
   deleteLocalBoard: (boardId: string, context: ApiRequestContext) => ReturnType<typeof deleteLocalBoard>
+  listLocalBoardSnapshots: (boardId: string, context: ApiRequestContext) => ReturnType<typeof listLocalBoardSnapshots>
   listLocalBoards: (context: ApiRequestContext) => ReturnType<typeof listLocalBoards>
+  loadLocalBoardSnapshot: (boardId: string, snapshotId: string, context: ApiRequestContext) => ReturnType<typeof loadLocalBoardSnapshot>
   loadLocalBoard: (boardId: string, context: ApiRequestContext) => ReturnType<typeof loadLocalBoard>
   renameLocalBoard: (boardId: string, title: string, context: ApiRequestContext) => ReturnType<typeof renameLocalBoard>
   saveLocalBoard: (input: Parameters<typeof saveLocalBoard>[0], context: ApiRequestContext) => ReturnType<typeof saveLocalBoard>
 }
 
 const localBoardAdapter: BoardStorageAdapter = {
+  createLocalBoardSnapshot,
   deleteLocalBoard,
+  listLocalBoardSnapshots,
   listLocalBoards,
+  loadLocalBoardSnapshot,
   loadLocalBoard,
   renameLocalBoard,
   saveLocalBoard,

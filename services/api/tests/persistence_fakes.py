@@ -42,7 +42,7 @@ class FakePostgresCursor:
         elif normalized.startswith("SELECT id, workspace_id, owner_id, title, document") and "ORDER BY saved_at DESC" in normalized:
             workspace_id = params[0]
             self.rows = [row for (workspace, _board_id), row in self.database.boards.items() if workspace == workspace_id]
-            self.rows.sort(key=lambda row: row[9], reverse=True)
+            self.rows.sort(key=lambda row: row[10], reverse=True)
         elif normalized.startswith("SELECT id, workspace_id, owner_id, title, document"):
             self.row = self.database.boards.get((params[0], params[1]))
         elif normalized.startswith("UPDATE tangent_boards SET title"):
@@ -59,10 +59,50 @@ class FakePostgresCursor:
                     row[6],
                     row[7],
                     row[8],
+                    row[9],
                     params[1],
+                )
+        elif normalized.startswith("UPDATE tangent_boards SET last_opened_at"):
+            key = (params[1], params[2])
+            row = self.database.boards.get(key)
+            if row:
+                self.database.boards[key] = (
+                    row[0],
+                    row[1],
+                    row[2],
+                    row[3],
+                    row[4],
+                    row[5],
+                    row[6],
+                    row[7],
+                    row[8],
+                    params[0],
+                    row[10],
                 )
         elif normalized.startswith("DELETE FROM tangent_boards"):
             self.database.boards.pop((params[0], params[1]), None)
+        elif normalized.startswith("INSERT INTO tangent_board_snapshots"):
+            key = (params[1], params[2], params[0])
+            self.database.snapshots[key] = params
+        elif normalized.startswith("SELECT id, workspace_id, board_id, created_by") and "AND id = %s" in normalized:
+            self.row = self.database.snapshots.get((params[0], params[1], params[2]))
+        elif normalized.startswith("SELECT id, workspace_id, board_id, created_by"):
+            workspace_id, board_id = params
+            self.rows = [
+                row for (workspace, board, _snapshot_id), row in self.database.snapshots.items()
+                if workspace == workspace_id and board == board_id
+            ]
+            self.rows.sort(key=lambda row: row[14], reverse=True)
+        elif normalized.startswith("DELETE FROM tangent_board_snapshots"):
+            workspace_id, board_id = params[0], params[1]
+            limit = params[4] if len(params) > 4 else 10
+            rows = [
+                row for key, row in self.database.snapshots.items()
+                if key[0] == workspace_id and key[1] == board_id
+            ]
+            rows.sort(key=lambda row: row[14], reverse=True)
+            for row in rows[limit:]:
+                self.database.snapshots.pop((row[1], row[2], row[0]), None)
         elif normalized.startswith("INSERT INTO tangent_assets"):
             key = (params[1], params[0])
             self.database.assets[key] = params
@@ -98,6 +138,7 @@ class FakePostgresDatabase:
     def __init__(self):
         self.assets = {}
         self.boards = {}
+        self.snapshots = {}
 
     def connect(self):
         return FakePostgresConnection(self)

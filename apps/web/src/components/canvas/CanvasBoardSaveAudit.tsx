@@ -8,7 +8,7 @@ import {
   saveLocalBoardDocument,
   type LocalBoardSaveResponse,
 } from '@/features/boards/localBoardClient'
-import type { BoardPersistenceRecord } from '@/features/boards/boardTypes'
+import type { BoardPersistenceRecord, BoardSnapshotReason, BoardSnapshotRecord } from '@/features/boards/boardTypes'
 import { restoreBoardDocument } from '@/features/boards/boardDocumentRestore'
 import {
   createGuardedBoardDocument,
@@ -21,8 +21,11 @@ import {
   type BoardAction,
   type BoardSaveStatus,
 } from './boardSaveStatus'
-import { BoardModeSaveStatus, DevBoardSaveControls } from './CanvasBoardSaveControls'
+import { createLoadedBoardSaveResponse, createRestoredHistorySaveResponse } from './boardSaveResults'
+import { CanvasBoardModeControls } from './CanvasBoardModeControls'
+import { DevBoardSaveControls } from './CanvasBoardSaveControls'
 import { useBoardAutosaveTimer, useBoardBeforeUnloadWarning } from './useBoardSaveLifecycle'
+import { useBoardSnapshots } from './useBoardSnapshots'
 
 type CanvasBoardSaveAuditProps = {
   autoLoad?: boolean
@@ -48,7 +51,8 @@ export function CanvasBoardSaveAudit({
   const isRestoring = useRef(false)
   const isSaving = useRef(false)
   const lastSavedSignature = useRef<string | null>(null)
-  const saveNowRef = useRef<(() => void) | null>(null)
+  const recordHistoryRef = useRef<((result: BoardDocumentSerializationResult | undefined, reason: BoardSnapshotReason, options?: { silent?: boolean }) => Promise<void>) | null>(null)
+  const saveNowRef = useRef<((source: 'autosave') => void) | null>(null)
   const [isRunning, setIsRunning] = useState(false)
   const [lastAction, setLastAction] = useState<BoardAction | null>(null)
   const [migration, setMigration] = useState<RuntimeAssetMigrationResult | null>(null)
@@ -80,7 +84,7 @@ export function CanvasBoardSaveAudit({
     }
   }
 
-  const saveLocal = useCallback(async () => {
+  const saveLocal = useCallback(async (historyReason: BoardSnapshotReason = 'manual_save') => {
     if (!editor || isSaving.current) return
     clearAutosaveTimer()
     isSaving.current = true
@@ -118,6 +122,7 @@ export function CanvasBoardSaveAudit({
       setLastSavedAt(savedBoard.savedAt)
       setResult(hasNewChanges ? currentResult : nextResult)
       setStatus(hasNewChanges ? 'dirty' : 'saved')
+      await recordHistoryRef.current?.(nextResult, historyReason, { silent: historyReason === 'autosave' })
       if (hasNewChanges) scheduleAutosave()
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Local board save failed.')
@@ -129,8 +134,20 @@ export function CanvasBoardSaveAudit({
   }, [boardId, boardTitle, clearAutosaveTimer, editor, prepareDocument, scheduleAutosave])
 
   useEffect(() => {
-    saveNowRef.current = () => void saveLocal()
+    saveNowRef.current = (source) => void saveLocal(source)
   }, [saveLocal])
+
+  useEffect(() => {
+    if (mode !== 'board') return
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+        event.preventDefault()
+        void saveLocal('keyboard')
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [mode, saveLocal])
 
   const markDirty = useCallback(() => {
     if (mode !== 'board' || !editor || isRestoring.current) return
@@ -153,20 +170,7 @@ export function CanvasBoardSaveAudit({
       if (!board) throw new Error('Local board load failed.')
       const restore = restoreBoardDocument(editor, board.document)
       onBoardLoaded?.(board)
-      setSaveResult({
-        board: {
-          assetCount: board.assetCount ?? restore.assetCount,
-          byteSize: board.byteSize,
-          id: board.id,
-          ownerId: board.ownerId,
-          savedAt: board.savedAt,
-          shapeCount: board.shapeCount ?? restore.shapeCount,
-          thumbnailUrl: board.thumbnailUrl ?? null,
-          title: `${restore.shapeCount} shape(s) loaded from ${board.title}`,
-          workspaceId: board.workspaceId,
-        },
-        ok: true,
-      })
+      setSaveResult(createLoadedBoardSaveResponse(board, restore))
       setLastSavedAt(board.savedAt)
       const restoredResult = createGuardedBoardDocument(editor)
       lastSavedSignature.current = getDocumentSignature(restoredResult.document)
@@ -182,6 +186,39 @@ export function CanvasBoardSaveAudit({
       })
     }
   }, [boardId, clearAutosaveTimer, editor, onBoardLoaded])
+
+  const handleSnapshotRestored = useCallback((snapshot: BoardSnapshotRecord) => {
+    if (!editor) return
+    const restoredResult = createGuardedBoardDocument(editor)
+    setResult(restoredResult)
+    setSaveResult(createRestoredHistorySaveResponse(snapshot))
+    setLastAction('load')
+    setLastSavedAt(null)
+    setSaveError(null)
+    setStatus('dirty')
+    scheduleAutosave()
+  }, [editor, scheduleAutosave])
+
+  const snapshots = useBoardSnapshots({
+    boardId,
+    boardTitle,
+    editor,
+    mode,
+    onRestoreEnd: () => requestAnimationFrame(() => { isRestoring.current = false }),
+    onRestoreStart: () => {
+      clearAutosaveTimer()
+      isRestoring.current = true
+    },
+    onSnapshotRestored: handleSnapshotRestored,
+    prepareDocument,
+  })
+
+  useEffect(() => {
+    recordHistoryRef.current = snapshots.recordHistory
+    return () => {
+      recordHistoryRef.current = null
+    }
+  }, [snapshots.recordHistory])
 
   useEffect(() => {
     if (!autoLoad || !editor || autoLoadedBoardId.current === boardId) return
@@ -218,17 +255,21 @@ export function CanvasBoardSaveAudit({
 
   if (mode === 'board') {
     return (
-      <BoardModeSaveStatus
+      <CanvasBoardModeControls
         editorAvailable={Boolean(editor)}
-        isRunning={isRunning}
+        isRunning={isRunning || snapshots.isSnapshotRunning}
         issueMessage={issue?.message}
         issuePath={issue?.path}
         lastAction={lastAction}
         lastSavedAt={lastSavedAt}
         migration={migration}
+        onHistory={snapshots.openHistory}
         onLoad={() => void loadLocal()}
-        onSave={() => void saveLocal()}
-        saveError={saveError}
+        onSave={() => void saveLocal('manual_save')}
+        onSnapshot={() => void snapshots.saveSnapshot('manual')}
+        saveError={saveError ?? snapshots.snapshotError}
+        snapshotMessage={snapshots.snapshotMessage}
+        snapshots={snapshots}
         status={status}
       />
     )
@@ -245,7 +286,7 @@ export function CanvasBoardSaveAudit({
       loadLabel={loadLabel}
       onAudit={() => void runAudit()}
       onLoad={() => void loadLocal()}
-      onSave={() => void saveLocal()}
+      onSave={() => void saveLocal('manual_save')}
       saveError={saveError}
       saveLabel={saveLabel}
     />

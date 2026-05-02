@@ -10,7 +10,7 @@ import {
 
 export function useBoardAutosaveTimer(
   mode: 'board' | 'dev',
-  saveNowRef: MutableRefObject<(() => void) | null>
+  saveNowRef: MutableRefObject<((source: 'autosave') => void) | null>
 ) {
   const autosaveTimer = useRef<number | null>(null)
 
@@ -25,7 +25,7 @@ export function useBoardAutosaveTimer(
     clearAutosaveTimer()
     autosaveTimer.current = window.setTimeout(() => {
       autosaveTimer.current = null
-      saveNowRef.current?.()
+      saveNowRef.current?.('autosave')
     }, boardAutosaveDelayMs)
   }, [clearAutosaveTimer, mode, saveNowRef])
 

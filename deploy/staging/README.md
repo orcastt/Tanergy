@@ -34,7 +34,9 @@ Edit `deploy/staging/api.env` and fill:
 Start the API:
 
 ```bash
-docker compose -f deploy/staging/docker-compose.api.yml up -d --build
+docker compose -f deploy/staging/docker-compose.api.yml build
+docker compose -f deploy/staging/docker-compose.api.yml run --rm api alembic upgrade head
+docker compose -f deploy/staging/docker-compose.api.yml up -d
 docker compose -f deploy/staging/docker-compose.api.yml ps
 curl http://127.0.0.1:8000/health
 ```
@@ -113,7 +115,24 @@ curl -sS https://api-staging.example.com/api/v1/boards/staging-smoke-board
 Expected:
 
 - Save returns a board summary without `document`
-- Load returns the saved `document`
+- Load returns the saved `document` and stamps `lastOpenedAt`
+
+Board History create / list / load (snapshot-named API):
+
+```bash
+SNAPSHOT_JSON=$(curl -sS -X POST https://api-staging.example.com/api/v1/boards/staging-smoke-board/snapshots \
+  -H 'Content-Type: application/json' \
+  --data '{"document":{"shapes":[],"assets":[]},"reason":"manual","title":"Staging Smoke Snapshot"}')
+echo "$SNAPSHOT_JSON"
+SNAPSHOT_ID=$(printf '%s' "$SNAPSHOT_JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin)["snapshot"]["id"])')
+curl -sS https://api-staging.example.com/api/v1/boards/staging-smoke-board/snapshots
+curl -sS "https://api-staging.example.com/api/v1/boards/staging-smoke-board/snapshots/$SNAPSHOT_ID"
+```
+
+Expected:
+
+- Create/list return history summaries without `document`
+- Load returns the history `document`
 
 Guard rejection:
 
@@ -139,7 +158,7 @@ Web canvas:
 ## Current Gaps
 
 - Auth is still dev context based: `dev-user` / `dev-workspace`.
-- `TANGENT_POSTGRES_AUTO_CREATE_TABLES=1` is acceptable for staging, but production should use migrations.
+- `TANGENT_POSTGRES_AUTO_CREATE_TABLES=0` is the preferred staging/prod path after running Alembic migrations. Temporary staging smoke can still use `1` while debugging a fresh database.
 - No AI provider proxy, model registry, run logs or credits yet.
 - No backup / restore automation yet.
 - tldraw production deployment still needs the proper license path before public production.

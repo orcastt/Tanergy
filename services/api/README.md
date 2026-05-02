@@ -31,6 +31,17 @@ PYTHONPATH=. python3 -m pytest tests
 curl http://127.0.0.1:8000/health
 ```
 
+## Database Migrations
+
+Local smoke can still use adapter auto-create, but staging/production should run Alembic before API traffic:
+
+```bash
+cd services/api
+DATABASE_URL=postgresql://... alembic upgrade head
+```
+
+For staging/production, set `TANGENT_POSTGRES_AUTO_CREATE_TABLES=0` after migrations are in place so schema changes remain controlled.
+
 ## Staging
 
 The first staging package lives in `deploy/staging/`.
@@ -53,6 +64,7 @@ The current Next.js local bridge in `apps/web/src/app/api` is a development harn
 - Board save runs the Board document guard before persistence and rejects `data:`, `blob:` and base64 image payloads.
 - Board save returns a board summary, not the full document.
 - Board load checks workspace access and returns the saved document for restore.
+- Board History create also runs the guard; history list returns summaries only, while history load returns the saved document.
 - Object storage owns original images and thumbnails; Board documents only reference Asset URLs/ids and lightweight layout state.
 
 ## Current Scaffold
@@ -62,7 +74,13 @@ Implemented now:
 - `/health`
 - `POST /api/v1/boards/validate-document`
 - `POST /api/v1/boards` adapter-backed save
+- `GET /api/v1/boards` adapter-backed summary list
 - `GET /api/v1/boards/{board_id}` adapter-backed load
+- `PATCH /api/v1/boards/{board_id}` adapter-backed rename
+- `DELETE /api/v1/boards/{board_id}` adapter-backed delete
+- `POST /api/v1/boards/{board_id}/snapshots` adapter-backed history create
+- `GET /api/v1/boards/{board_id}/snapshots` adapter-backed history list
+- `GET /api/v1/boards/{board_id}/snapshots/{snapshot_id}` adapter-backed history load
 - `POST /api/v1/assets/from-data-url` adapter-backed asset create
 - `POST /api/v1/assets/upload` adapter-backed upload
 - `GET /api/v1/assets/{asset_id}` adapter-backed metadata read
@@ -70,6 +88,7 @@ Implemented now:
 - Asset storage adapter seam with `local-dev` and `s3-compatible`
 - Optional Postgres Board persistence via `TANGENT_BOARD_STORAGE_DRIVER=postgres`
 - Optional Postgres Asset metadata via `TANGENT_ASSET_METADATA_DRIVER=postgres`
+- Alembic scaffold with the P0 core schema migration
 - CORS allowlist via `TANGENT_ALLOWED_ORIGINS`
 - Shared request context parsing for `x-tangent-user-id` / `x-tangent-workspace-id`
 - Board document guard parity with the current Next local bridge
@@ -78,4 +97,4 @@ Explicitly not implemented yet:
 
 - Auth/JWT/session validation
 - AI provider proxy and run logs
-- Production migration scripts and backup/restore automation
+- Backup/restore automation

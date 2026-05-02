@@ -22,11 +22,13 @@ export async function saveLocalBoard(input: BoardSaveInput, context: ApiRequestC
 
   const boardId = sanitizeBoardId(input.boardId) ?? `board_${randomUUID()}`
   const metrics = getBoardDocumentMetrics(input.document)
+  const existing = await readLocalBoardRecord(boardId, context)
   const record: BoardPersistenceRecord = {
     assetCount: metrics.assetCount,
     byteSize: audit.byteSize,
     document: input.document,
     id: boardId,
+    lastOpenedAt: existing?.lastOpenedAt ?? null,
     ownerId: context.userId,
     savedAt: new Date().toISOString(),
     shapeCount: metrics.shapeCount,
@@ -43,10 +45,14 @@ export async function saveLocalBoard(input: BoardSaveInput, context: ApiRequestC
 export async function loadLocalBoard(boardId: string, context: ApiRequestContext) {
   const safeBoardId = sanitizeBoardId(boardId)
   if (!safeBoardId) throw new Error('Invalid board id.')
-  const raw = await readFile(getBoardPath(safeBoardId), 'utf8')
-  const board = normalizeBoardRecord(JSON.parse(raw) as Partial<BoardPersistenceRecord>, context)
+  const board = await readRequiredBoardRecord(safeBoardId, context)
   assertBoardAccess(board, context)
-  return board
+  const updated = {
+    ...board,
+    lastOpenedAt: new Date().toISOString(),
+  }
+  await writeBoardRecord(updated)
+  return updated
 }
 
 export async function listLocalBoards(context: ApiRequestContext) {
@@ -74,7 +80,8 @@ export async function listLocalBoards(context: ApiRequestContext) {
 }
 
 export async function renameLocalBoard(boardId: string, title: string, context: ApiRequestContext) {
-  const board = await loadLocalBoard(boardId, context)
+  const board = await readRequiredBoardRecord(boardId, context)
+  assertBoardAccess(board, context)
   const nextTitle = title.trim()
   if (!nextTitle) throw new Error('Board title is required.')
   if (nextTitle.length > 80) throw new Error('Board title must be 80 characters or fewer.')
@@ -84,12 +91,13 @@ export async function renameLocalBoard(boardId: string, title: string, context: 
     savedAt: new Date().toISOString(),
     title: nextTitle,
   }
-  await writeFile(getBoardPath(updated.id), `${JSON.stringify(updated, null, 2)}\n`)
+  await writeBoardRecord(updated)
   return summarizeBoardRecord(updated)
 }
 
 export async function deleteLocalBoard(boardId: string, context: ApiRequestContext) {
-  const board = await loadLocalBoard(boardId, context)
+  const board = await readRequiredBoardRecord(boardId, context)
+  assertBoardAccess(board, context)
   await unlink(getBoardPath(board.id))
   return board.id
 }
@@ -113,6 +121,7 @@ function normalizeBoardRecord(
     byteSize: record.byteSize ?? 0,
     document: record.document ?? null,
     id: record.id ?? '',
+    lastOpenedAt: record.lastOpenedAt ?? null,
     ownerId: record.ownerId ?? context.userId,
     savedAt: record.savedAt ?? new Date(0).toISOString(),
     shapeCount: record.shapeCount ?? metrics.shapeCount,
@@ -126,6 +135,27 @@ function assertBoardAccess(board: BoardPersistenceRecord, context: ApiRequestCon
   if (board.workspaceId !== context.workspaceId) {
     throw new Error('Board not found in workspace.')
   }
+}
+
+async function readLocalBoardRecord(boardId: string, context: ApiRequestContext) {
+  try {
+    const board = await readRequiredBoardRecord(boardId, context)
+    return board.workspaceId === context.workspaceId ? board : null
+  } catch {
+    return null
+  }
+}
+
+async function readRequiredBoardRecord(boardId: string, context: ApiRequestContext) {
+  const safeBoardId = sanitizeBoardId(boardId)
+  if (!safeBoardId) throw new Error('Invalid board id.')
+  const raw = await readFile(getBoardPath(safeBoardId), 'utf8')
+  return normalizeBoardRecord(JSON.parse(raw) as Partial<BoardPersistenceRecord>, context)
+}
+
+async function writeBoardRecord(record: BoardPersistenceRecord) {
+  await mkdir(boardsRoot, { recursive: true })
+  await writeFile(getBoardPath(record.id), `${JSON.stringify(record, null, 2)}\n`)
 }
 
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {

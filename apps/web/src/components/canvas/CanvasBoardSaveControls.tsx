@@ -9,7 +9,7 @@ import {
   type BoardSaveStatus,
 } from './boardSaveStatus'
 
-type BoardModeSaveStatusProps = {
+export type BoardModeSaveStatusProps = {
   editorAvailable: boolean
   isRunning: boolean
   issueMessage?: string
@@ -17,9 +17,12 @@ type BoardModeSaveStatusProps = {
   lastAction: BoardAction | null
   lastSavedAt: string | null
   migration: RuntimeAssetMigrationResult | null
+  onHistory: () => void
   onLoad: () => void
   onSave: () => void
+  onSnapshot: () => void
   saveError: string | null
+  snapshotMessage?: string | null
   status: BoardSaveStatus
 }
 
@@ -46,13 +49,16 @@ export function BoardModeSaveStatus({
   lastAction,
   lastSavedAt,
   migration,
+  onHistory,
   onLoad,
   onSave,
+  onSnapshot,
   saveError,
+  snapshotMessage,
   status,
 }: BoardModeSaveStatusProps) {
   const boardStatusLabel = getBoardStatusLabel(status, lastAction)
-  const boardDetail = saveError ?? getBoardStatusDetail(status, lastSavedAt, migration, issuePath)
+  const boardDetail = saveError ?? snapshotMessage ?? getBoardStatusDetail(status, lastSavedAt, migration, issuePath)
   const actionLabel = status === 'error' && lastAction === 'load' ? 'Retry load' : 'Save now'
   const action = status === 'error' && lastAction === 'load' ? onLoad : onSave
 
@@ -66,6 +72,12 @@ export function BoardModeSaveStatus({
           {actionLabel}
         </button>
       ) : null}
+      <button disabled={!editorAvailable || isRunning} onClick={onSnapshot} type="button">
+        Snapshot
+      </button>
+      <button disabled={!editorAvailable || isRunning} onClick={onHistory} type="button">
+        History
+      </button>
     </div>
   )
 }

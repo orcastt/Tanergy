@@ -115,7 +115,8 @@ export function WorkspaceBoardItem({
         )}
         <div className="workspace-board-meta">
           <span>{formatObjectCount(board)}</span>
-          <span>{formatSavedAt(board.savedAt)}</span>
+          <span>{formatActivityTime(board)}</span>
+          <span>Saved {formatDateTime(board.savedAt)}</span>
         </div>
       </div>
       <div className="workspace-board-footer">
@@ -155,7 +156,12 @@ function formatObjectCount(board: BoardPersistenceSummary) {
   return `${board.shapeCount} shape${board.shapeCount === 1 ? '' : 's'} / ${board.assetCount} asset${board.assetCount === 1 ? '' : 's'}`
 }
 
-function formatSavedAt(value: string) {
+function formatActivityTime(board: BoardPersistenceSummary) {
+  if (!board.lastOpenedAt) return 'Not opened yet'
+  return `Opened ${formatDateTime(board.lastOpenedAt)}`
+}
+
+function formatDateTime(value: string) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(date)

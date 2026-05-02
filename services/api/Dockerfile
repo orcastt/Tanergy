@@ -7,6 +7,8 @@ ENV PIP_NO_CACHE_DIR=1 \
 WORKDIR /app
 
 COPY pyproject.toml README.md ./
+COPY alembic.ini ./
+COPY migrations ./migrations
 COPY tangent_api ./tangent_api
 
 RUN python -m pip install --upgrade pip \

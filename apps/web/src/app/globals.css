@@ -13,6 +13,7 @@
 @import './styles/boards.css';
 @import './styles/boards-list.css';
 @import './styles/canvas-shell.css';
+@import './styles/canvas-board-history.css';
 @import './styles/canvas-overlays.css';
 @import './styles/canvas-navigation.css';
 @import './styles/canvas-toolbar.css';
