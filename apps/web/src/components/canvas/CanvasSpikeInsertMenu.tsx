@@ -76,7 +76,7 @@ function InsertButton({
   title: string
 }) {
   return (
-    <button disabled={disabled} onClick={onClick} title={title} type="button">
+    <button aria-label={title} data-tooltip={title} disabled={disabled} onClick={onClick} type="button">
       <span aria-hidden>{icon}</span>
     </button>
   )

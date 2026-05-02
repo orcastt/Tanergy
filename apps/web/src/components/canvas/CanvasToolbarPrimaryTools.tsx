@@ -1,5 +1,7 @@
 'use client'
 
+import { CanvasLineIcon } from './CanvasLineIcon'
+
 type CanvasToolbarPrimaryToolsProps = {
   currentToolId: string
   disabled: boolean
@@ -12,22 +14,22 @@ export function CanvasToolbarPrimaryTools({ currentToolId, disabled, onSelectToo
       <button
         aria-label="Pan"
         className={currentToolId === 'hand' ? 'is-active' : undefined}
+        data-tooltip="Pan"
         disabled={disabled}
         onClick={() => onSelectTool('hand')}
-        title="Pan"
         type="button"
       >
-        <span aria-hidden>✋</span>
+        <CanvasLineIcon name="hand" />
       </button>
       <button
         aria-label="Select"
         className={currentToolId === 'select' ? 'is-active' : undefined}
+        data-tooltip="Select"
         disabled={disabled}
         onClick={() => onSelectTool('select')}
-        title="Select"
         type="button"
       >
-        <span aria-hidden>↖</span>
+        <CanvasLineIcon name="select" />
       </button>
     </div>
   )

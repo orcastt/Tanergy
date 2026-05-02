@@ -52,6 +52,12 @@ export type SmartDrawingResult =
 
 const minStrokeLength = 28
 const minShapeSize = 18
+const closedEndpointToleranceRatio = 0.34
+const closedCornerToleranceRatio = 0.16
+const curveSimplifyToleranceRatio = 0.065
+const ellipseErrorTolerance = 0.36
+const lineConfidenceThreshold = 0.9
+const maxCurveTurn = Math.PI * 1.45
 
 export function recognizeSmartDrawing(shape: SmartDrawingInput): SmartDrawingResult | null {
   const points = getDrawPoints(shape)
@@ -65,23 +71,23 @@ export function recognizeSmartDrawing(shape: SmartDrawingInput): SmartDrawingRes
 
   const style = getStyle(shape)
   const lineConfidence = getLineConfidence(points, length)
-  if (lineConfidence > 0.92) {
+  if (lineConfidence > lineConfidenceThreshold) {
     return createLineResult([points[0], points[points.length - 1]], 'line', style)
   }
 
-  const closed = shape.props.isClosed || getDistance(points[0], points[points.length - 1]) < Math.max(18, Math.min(width, height) * 0.26)
+  const closed = shape.props.isClosed || getDistance(points[0], points[points.length - 1]) < Math.max(22, Math.min(width, height) * closedEndpointToleranceRatio)
   if (closed && width >= minShapeSize && height >= minShapeSize) {
-    const corners = simplifyClosedCorners(points, Math.max(8, Math.min(width, height) * 0.12))
+    const corners = simplifyClosedCorners(points, Math.max(10, Math.min(width, height) * closedCornerToleranceRatio))
     const ellipseError = getEllipseError(points, bounds)
     if (corners.length === 3) return createGeoResult(bounds, 'triangle', style)
     if (corners.length === 4 && getRectangleConfidence(corners, bounds) > 0.58) {
       return createGeoResult(bounds, 'rectangle', style)
     }
-    if (ellipseError < 0.28 && corners.length > 4) return createGeoResult(bounds, 'ellipse', style)
+    if (ellipseError < ellipseErrorTolerance && corners.length > 4) return createGeoResult(bounds, 'ellipse', style)
   }
 
-  const curve = simplifyOpenCurve(points, Math.max(10, length * 0.035))
-  if (curve.length >= 3 && curve.length <= 4 && getTotalTurn(points) < Math.PI * 1.2) {
+  const curve = simplifyOpenCurve(points, Math.max(14, length * curveSimplifyToleranceRatio))
+  if (curve.length >= 3 && curve.length <= 5 && getTotalTurn(points) < maxCurveTurn) {
     return createLineResult(curve, 'cubic', style)
   }
 

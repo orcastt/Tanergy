@@ -66,6 +66,13 @@
   line-height: 1;
 }
 
+.canvas-line-icon {
+  display: block;
+  width: 21px;
+  height: 21px;
+  overflow: visible;
+}
+
 .canvas-spike-toolbar button:hover:not(:disabled),
 .canvas-style-panel button:hover:not(:disabled) {
   background: #f1f1f1;

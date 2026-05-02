@@ -76,18 +76,18 @@ export function CanvasStylePanelSelectionActions({
       <div className="canvas-style-panel__icon-grid">
         <button
           aria-label="Convert selected image to Image Node"
+          data-tooltip="Convert to image node"
           disabled={!canConvertToImageNode || isCapturing}
           onClick={() => void handleConvertToImageNode()}
-          title="Convert to image node"
           type="button"
         >
           <span className="style-action-icon style-action-icon--image-node" aria-hidden />
         </button>
         <button
           aria-label="Capture selected objects to Image Node"
+          data-tooltip="Capture to image node"
           disabled={!canCapture || isCapturing}
           onClick={() => void handleScreenshot()}
-          title="Capture to image node"
           type="button"
         >
           <span className="style-action-icon style-action-icon--capture" aria-hidden />

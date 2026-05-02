@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { BoardThumbnail } from '@/components/boards/BoardThumbnail'
 import type { BoardPersistenceSummary } from '@/features/boards/boardTypes'
+import { WorkspaceBoardMenuAction } from './WorkspaceBoardMenuAction'
+import { getBoardDisplayCardColor } from './workspaceBoardUtils'
 
 export type WorkspaceBoardViewMode = 'gallery' | 'list'
 
@@ -114,7 +116,7 @@ export function WorkspaceBoardItem({
   return (
     <article
       className={`workspace-board-card ${viewMode === 'list' ? 'is-list' : ''}`}
-      data-card-color={board.cardColor ?? undefined}
+      data-card-color={getBoardDisplayCardColor(board)}
       data-pinned={board.isPinned ? 'true' : undefined}
     >
       <div className="workspace-board-status-badges" aria-label="Board status">
@@ -124,7 +126,9 @@ export function WorkspaceBoardItem({
           data-visibility={board.visibility === 'public' ? 'public' : 'private'}
           aria-label={board.visibility === 'public' ? 'Public board' : 'Private board'}
           title={board.visibility === 'public' ? 'Public' : 'Private'}
-        />
+        >
+          {board.visibility === 'public' ? <PublicBoardIcon /> : <PrivateBoardIcon />}
+        </span>
       </div>
       <button className="workspace-board-open" onClick={onOpen} type="button">
         <BoardThumbnail board={board} />
@@ -170,29 +174,49 @@ export function WorkspaceBoardItem({
             </button>
             {isMenuOpen ? (
               <div className="workspace-board-menu-popover">
-                <button disabled={isPending} onClick={() => runMenuAction(onShare)} type="button">Share link</button>
-                <button disabled={isPending} onClick={() => runMenuAction(openInNewTab)} type="button">Open in new tab</button>
-                <button disabled={isPending} onClick={() => runMenuAction(onToggleStar)} type="button">
+                <WorkspaceBoardMenuAction disabled={isPending} icon="share" onClick={() => runMenuAction(onShare)}>Share link</WorkspaceBoardMenuAction>
+                <WorkspaceBoardMenuAction disabled={isPending} icon="external" onClick={() => runMenuAction(openInNewTab)}>Open in new tab</WorkspaceBoardMenuAction>
+                <WorkspaceBoardMenuAction disabled={isPending} icon="star" onClick={() => runMenuAction(onToggleStar)}>
                   {board.isStarred ? 'Unstar board' : 'Star this board'}
-                </button>
-                <button disabled={isPending} onClick={() => runMenuAction(onTogglePin)} type="button">
+                </WorkspaceBoardMenuAction>
+                <WorkspaceBoardMenuAction disabled={isPending} icon="pin" onClick={() => runMenuAction(onTogglePin)}>
                   {board.isPinned ? 'Unpin board' : 'Pin board'}
-                </button>
-                <button disabled={isPending} onClick={() => runMenuAction(onRename)} type="button">Rename</button>
-                <button disabled={isPending} onClick={() => runMenuAction(onCopy)} type="button">Copy board</button>
-                <button disabled={isPending} onClick={() => runMenuAction(onOpenPanel)} type="button">Manage board</button>
+                </WorkspaceBoardMenuAction>
+                <WorkspaceBoardMenuAction disabled={isPending} icon="rename" onClick={() => runMenuAction(onRename)}>Rename</WorkspaceBoardMenuAction>
+                <WorkspaceBoardMenuAction disabled={isPending} icon="copy" onClick={() => runMenuAction(onCopy)}>Copy board</WorkspaceBoardMenuAction>
+                <WorkspaceBoardMenuAction disabled={isPending} icon="manage" onClick={() => runMenuAction(onOpenPanel)}>Manage board</WorkspaceBoardMenuAction>
                 {board.visibility === 'public' ? (
-                  <button disabled={isPending} onClick={() => runMenuAction(onMakePrivate)} type="button">Make board private</button>
+                  <WorkspaceBoardMenuAction disabled={isPending} icon="private" onClick={() => runMenuAction(onMakePrivate)}>Make board private</WorkspaceBoardMenuAction>
                 ) : (
-                  <button disabled={isPending} onClick={() => runMenuAction(onMakePublic)} type="button">Make board public</button>
+                  <WorkspaceBoardMenuAction disabled={isPending} icon="public" onClick={() => runMenuAction(onMakePublic)}>Make board public</WorkspaceBoardMenuAction>
                 )}
-                <button disabled={isPending} onClick={() => runMenuAction(onDelete)} type="button">Delete</button>
+                <WorkspaceBoardMenuAction disabled={isPending} icon="delete" onClick={() => runMenuAction(onDelete)} tone="danger">Delete</WorkspaceBoardMenuAction>
               </div>
             ) : null}
           </div>
         </div>
       </div>
     </article>
+  )
+}
+
+function PrivateBoardIcon() {
+  return (
+    <svg aria-hidden viewBox="0 0 20 20">
+      <circle cx="10" cy="7.1" r="2.35" />
+      <path d="M5.9 15.1c.7-2.45 2.1-3.65 4.1-3.65s3.4 1.2 4.1 3.65" />
+    </svg>
+  )
+}
+
+function PublicBoardIcon() {
+  return (
+    <svg aria-hidden viewBox="0 0 20 20">
+      <circle cx="7.8" cy="7.4" r="2.05" />
+      <path d="M4.1 15.15c.62-2.25 1.86-3.35 3.7-3.35 1.82 0 3.08 1.1 3.7 3.35" />
+      <circle cx="13.2" cy="7.9" r="1.75" />
+      <path d="M11.9 12.15c1.92.18 3.12 1.18 3.62 3" />
+    </svg>
   )
 }
 

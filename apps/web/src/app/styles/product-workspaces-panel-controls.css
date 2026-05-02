@@ -1,13 +1,13 @@
 .board-panel-form label {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .board-panel-form label span,
 .board-panel-form legend {
   color: #8aa0bd;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 400;
   text-transform: uppercase;
 }
 
@@ -21,7 +21,7 @@
 }
 
 .board-panel-form input {
-  height: 42px;
+  height: 38px;
   padding: 0 12px;
 }
 
@@ -32,7 +32,7 @@
 }
 
 .board-panel-form textarea {
-  min-height: 92px;
+  min-height: 76px;
 }
 
 .board-panel-form input:disabled,
@@ -46,24 +46,24 @@
 
 .board-panel-thumbnail {
   display: grid;
-  grid-template-columns: 132px minmax(0, 1fr);
-  gap: 16px;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 14px;
   align-items: start;
-  padding: 14px;
+  padding: 12px;
   border: 1px solid #dbe5f1;
   border-radius: 18px;
   background: #f8fafc;
 }
 
 .board-panel-thumbnail .boards-thumbnail {
-  width: 132px;
-  height: 98px;
-  border-radius: 14px;
+  width: 112px;
+  height: 84px;
+  border-radius: 12px;
 }
 
 .board-panel-thumbnail > div {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .board-panel-thumbnail-upload {
@@ -73,7 +73,7 @@
   gap: 10px !important;
   color: #172033;
   cursor: pointer;
-  font-weight: 800;
+  font-weight: 400;
   text-decoration: underline;
   text-underline-offset: 4px;
 }
@@ -89,7 +89,7 @@
 .board-panel-swatches {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 8px 10px;
 }
 
 .board-panel-swatches button,
@@ -100,14 +100,16 @@
   background: white;
   color: #172033;
   cursor: pointer;
-  font-weight: 800;
+  font-size: 12px;
+  font-weight: 400;
 }
 
 .board-panel-swatches button {
   display: flex;
-  height: 42px;
+  height: 34px;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  padding: 0 9px;
 }
 
 .board-panel-swatches button.is-active,
@@ -117,8 +119,8 @@
 }
 
 .board-panel-swatches span {
-  width: 20px;
-  height: 20px;
+  width: 14px;
+  height: 14px;
   border: 1px solid rgba(24, 29, 38, 0.16);
   border-radius: 50%;
   background: var(--color-surface-soft);
@@ -147,8 +149,8 @@
 }
 
 .board-panel-access button {
-  height: 36px;
-  padding: 0 12px;
+  height: 30px;
+  padding: 0 11px;
   color: #64748b;
 }
 
@@ -159,16 +161,22 @@
 .board-panel-toggles {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px 18px;
+  gap: 10px 18px;
   color: #172033;
-  font-size: 13px;
-  font-weight: 760;
+  font-size: 12px;
+  font-weight: 400;
 }
 
 .board-panel-toggles label {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+.board-panel-toggles input {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
 }
 
 .board-panel-footer {

@@ -5,7 +5,7 @@
 
 ## Scope
 
-Real staging infrastructure, persistent data, real Auth/session, and Auth-backed Board CRUD.
+Real staging infrastructure, persistent data, real Auth/session, and Auth-backed Board CRUD. S1 turns the local product shell into a multi-user staging product with server-side ownership and permission checks.
 
 ## Target Architecture
 
@@ -17,6 +17,20 @@ Next Web
       -> Postgres storage adapters
       -> R2/S3-compatible object storage
 ```
+
+## What S1 Builds
+
+```text
+User registers/logs in
+  -> server session/JWT
+  -> user row
+  -> default workspace
+  -> workspace membership
+  -> server-scoped Board list
+  -> server-scoped Board load/save/history/assets
+```
+
+S1 is the identity and ownership foundation. It should not implement every future business system, but its schema must leave clean joins for Admin, Billing, Credits, AI runs and Collaboration.
 
 ## Current State
 
@@ -118,6 +132,37 @@ email_otps
 oauth_accounts
 ```
 
+S1-compatible future tables, planned but not fully productized in this slice:
+
+```text
+admin_roles
+admin_audit_logs
+credit_accounts
+credit_ledger
+subscriptions
+ai_runs
+ai_api_calls
+analytics_events
+```
+
+## S1 Boundaries
+
+Included:
+
+- Formal Alembic migrations for users, workspaces, memberships, boards, assets and board snapshots.
+- Real registration/login/logout/session boundary.
+- Per-user default workspace creation.
+- Server-side Board CRUD scoped by `user_id`, `workspace_id` and membership role.
+- Server-side board/member role model needed by future sharing and collaboration.
+- Staging Postgres/R2/domain/CORS smoke.
+
+Deferred:
+
+- Real-time multiplayer collaboration. S1 only prepares `board_members`; live presence/CRDT belongs to S4.
+- Full Admin dashboard. S1 may create `admin_roles` compatibility, but production `/admin` belongs to S3.
+- Credit deduction and subscription enforcement. S1 may prepare user/account ids; credit ledger and team billing rules belong to S3 after Auth is real.
+- Real AI provider cost routing. AiRun/provider cost logs belong to S2.
+
 ## API Rules
 
 - Board list returns summaries only.
@@ -125,6 +170,15 @@ oauth_accounts
 - Board save/history writes must scope by user/workspace.
 - Upload/read must enforce MIME, size and storage key rules.
 - No client-provided user/workspace id is authority once real Auth exists.
+
+## Validation Target
+
+- Fresh user can register, verify/login, and land in `/workspaces`.
+- User receives one default workspace and owner membership.
+- Board create/open/rename/copy/delete/list/save/history works through FastAPI with staging Postgres/R2.
+- User A cannot list, load, save, delete or view History for User B's Board.
+- Editor/viewer role checks are enforced server-side for Board mutation.
+- `data:` / `blob:` documents still fail guard validation.
 
 ## Deployment Gates
 

@@ -9,6 +9,7 @@ import {
 } from '@/features/boards/boardTypes'
 import { BoardManagementMembers } from './BoardManagementMembers'
 import { BoardManagementThumbnailSection } from './BoardManagementThumbnailSection'
+import { getBoardDisplayCardColor } from './workspaceBoardUtils'
 
 type BoardManagementPanelProps = {
   board: BoardPersistenceSummary
@@ -49,7 +50,7 @@ export function BoardManagementPanel({
   onSave,
   onShare,
 }: BoardManagementPanelProps) {
-  const [cardColor, setCardColor] = useState<BoardCardColor>(board.cardColor ?? 'cream')
+  const [cardColor, setCardColor] = useState<BoardCardColor>(getBoardDisplayCardColor(board))
   const [description, setDescription] = useState(board.description ?? '')
   const [isPinned, setIsPinned] = useState(Boolean(board.isPinned))
   const [isStarred, setIsStarred] = useState(Boolean(board.isStarred))
@@ -84,7 +85,6 @@ export function BoardManagementPanel({
         <aside className="board-panel-sidebar">
           <p className="product-kicker">Board management</p>
           <h2>{board.title}</h2>
-          <p>Manage access, card appearance and workspace metadata for this board.</p>
           <dl>
             <div><dt>Owner</dt><dd>{formatOwner(board.ownerId)}</dd></div>
             <div><dt>Role</dt><dd>{canManageBoard ? 'Owner / Admin' : 'Editor / Viewer'}</dd></div>
@@ -101,7 +101,6 @@ export function BoardManagementPanel({
           <header className="board-panel-header">
             <div>
               <h2>Board Panel</h2>
-              <p>{canManageBoard ? 'Owner controls are available.' : 'Editor and viewer controls are read-only until permissions allow changes.'}</p>
             </div>
             <div className="board-panel-top-actions">
               <button className="product-button product-button-primary" disabled={editDisabled} form="board-management-form" type="submit">
@@ -127,21 +126,21 @@ export function BoardManagementPanel({
           ) : null}
 
           <div className="board-panel-content">
-            <form className="board-panel-form board-panel-identity" id="board-management-form" onSubmit={submit}>
+            <form className="board-panel-form board-panel-editor-column" id="board-management-form" onSubmit={submit}>
+              <BoardManagementThumbnailSection
+                board={board}
+                disabled={editDisabled}
+                onChange={setThumbnailUrl}
+                thumbnailUrl={thumbnailUrl}
+                title={title}
+              />
+
               <section className="board-panel-section">
                 <div className="board-panel-section-heading">
                   <div>
-                    <h3>Board Identity</h3>
-                    <p>Preview image, name and description.</p>
+                    <h3>Board profile</h3>
                   </div>
                 </div>
-                <BoardManagementThumbnailSection
-                  board={board}
-                  disabled={editDisabled}
-                  onChange={setThumbnailUrl}
-                  thumbnailUrl={thumbnailUrl}
-                  title={title}
-                />
                 <label>
                   <span>Board name</span>
                   <input disabled={editDisabled} maxLength={80} onChange={(event) => setTitle(event.target.value)} required value={title} />
@@ -153,69 +152,67 @@ export function BoardManagementPanel({
                     maxLength={280}
                     onChange={(event) => setDescription(event.target.value)}
                     placeholder="Add a short note for this board."
-                    rows={4}
+                    rows={3}
                     value={description}
                   />
                 </label>
               </section>
-            </form>
 
-            <div className="board-panel-side-column">
-              <section className="board-panel-section board-panel-side-card">
+              <section className="board-panel-section board-panel-customization">
                 <div className="board-panel-section-heading">
                   <div>
-                    <h3>Appearance & Access</h3>
-                    <p>Workspace card display and board access.</p>
+                    <h3>Appearance & access</h3>
                   </div>
                 </div>
-              <fieldset disabled={editDisabled}>
-                <legend>Card color</legend>
-                <div className="board-panel-swatches">
-                  {boardCardColorValues.map((value) => (
-                    <button
-                      aria-pressed={cardColor === value}
-                      className={cardColor === value ? 'is-active' : undefined}
-                      data-card-color={value}
-                      disabled={editDisabled}
-                      key={value}
-                      onClick={() => setCardColor(value)}
-                      type="button"
-                    >
-                      <span />
-                      {colorLabels[value]}
-                    </button>
-                  ))}
-                </div>
-              </fieldset>
 
-              <fieldset disabled={editDisabled}>
-                <legend>Board access</legend>
-                <div className="board-panel-access">
-                  {(['private', 'workspace', 'public'] satisfies BoardVisibility[]).map((value) => (
-                    <button
-                      aria-pressed={visibility === value}
-                      className={visibility === value ? 'is-active' : undefined}
-                      disabled={editDisabled}
-                      key={value}
-                      onClick={() => setVisibility(value)}
-                      type="button"
-                    >
-                      {getVisibilityLabel(value)}
-                    </button>
-                  ))}
-                </div>
-              </fieldset>
+                <fieldset disabled={editDisabled}>
+                  <legend>Card color</legend>
+                  <div className="board-panel-swatches">
+                    {boardCardColorValues.map((value) => (
+                      <button
+                        aria-pressed={cardColor === value}
+                        className={cardColor === value ? 'is-active' : undefined}
+                        data-card-color={value}
+                        disabled={editDisabled}
+                        key={value}
+                        onClick={() => setCardColor(value)}
+                        type="button"
+                      >
+                        <span />
+                        {colorLabels[value]}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
 
-              <div className="board-panel-toggles">
-                <label>
-                  <input checked={isStarred} disabled={editDisabled} onChange={(event) => setIsStarred(event.target.checked)} type="checkbox" />
-                  Star this board
-                </label>
-                <label>
-                  <input checked={isPinned} disabled={editDisabled} onChange={(event) => setIsPinned(event.target.checked)} type="checkbox" />
-                  Pin in workspace
-                </label>
-              </div>
+                <fieldset disabled={editDisabled}>
+                  <legend>Board access</legend>
+                  <div className="board-panel-access">
+                    {(['private', 'workspace', 'public'] satisfies BoardVisibility[]).map((value) => (
+                      <button
+                        aria-pressed={visibility === value}
+                        className={visibility === value ? 'is-active' : undefined}
+                        disabled={editDisabled}
+                        key={value}
+                        onClick={() => setVisibility(value)}
+                        type="button"
+                      >
+                        {getVisibilityLabel(value)}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+
+                <div className="board-panel-toggles">
+                  <label>
+                    <input checked={isStarred} disabled={editDisabled} onChange={(event) => setIsStarred(event.target.checked)} type="checkbox" />
+                    Star this board
+                  </label>
+                  <label>
+                    <input checked={isPinned} disabled={editDisabled} onChange={(event) => setIsPinned(event.target.checked)} type="checkbox" />
+                    Pin in workspace
+                  </label>
+                </div>
 
                 <div className="board-panel-inline-actions">
                   <button className="product-button product-button-secondary" disabled={isPending} onClick={onCopy} type="button">
@@ -226,7 +223,9 @@ export function BoardManagementPanel({
                   </button>
                 </div>
               </section>
+            </form>
 
+            <div className="board-panel-members-column">
               <BoardManagementMembers board={board} />
             </div>
           </div>

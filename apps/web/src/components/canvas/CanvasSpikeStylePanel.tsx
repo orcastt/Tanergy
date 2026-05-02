@@ -18,34 +18,20 @@ import {
 } from './canvasStyleControls'
 import { useEditorRevision } from './useEditorRevision'
 import { CanvasStylePanelSelectionActions } from './CanvasStylePanelSelectionActions'
-import { ActionButtonGroup, StyleButton, StyleButtonGroup, type SelectionAction } from './CanvasStylePanelGroups'
+import { ActionButtonGroup, StyleButton, StyleButtonGroup } from './CanvasStylePanelGroups'
+import {
+  alignActions,
+  getSelectionTool,
+  getToolLabel,
+  layerActions,
+  operationActions,
+  toolSupports,
+  useLastStylePanelTool,
+} from './canvasStylePanelModel'
 
 type CanvasSpikeStylePanelProps = {
   editor: Editor | null
 }
-
-const layerActions: SelectionAction[] = [
-  { icon: 'layer-back', label: 'Send to back', run: (editor, ids) => editor.sendToBack(ids) },
-  { icon: 'layer-down', label: 'Send backward', run: (editor, ids) => editor.sendBackward(ids) },
-  { icon: 'layer-up', label: 'Bring forward', run: (editor, ids) => editor.bringForward(ids) },
-  { icon: 'layer-front', label: 'Bring to front', run: (editor, ids) => editor.bringToFront(ids) },
-]
-
-const alignActions: SelectionAction[] = [
-  { icon: 'align-left', label: 'Align left', minSelected: 2, run: (editor, ids) => editor.alignShapes(ids, 'left') },
-  { icon: 'align-center-x', label: 'Align center', minSelected: 2, run: (editor, ids) => editor.alignShapes(ids, 'center-horizontal') },
-  { icon: 'align-right', label: 'Align right', minSelected: 2, run: (editor, ids) => editor.alignShapes(ids, 'right') },
-  { icon: 'align-top', label: 'Align top', minSelected: 2, run: (editor, ids) => editor.alignShapes(ids, 'top') },
-  { icon: 'align-center-y', label: 'Align middle', minSelected: 2, run: (editor, ids) => editor.alignShapes(ids, 'center-vertical') },
-  { icon: 'align-bottom', label: 'Align bottom', minSelected: 2, run: (editor, ids) => editor.alignShapes(ids, 'bottom') },
-]
-
-const operationActions: SelectionAction[] = [
-  { icon: 'duplicate', label: 'Duplicate', run: (editor, ids) => editor.duplicateShapes(ids, { x: 24, y: 24 }) },
-  { icon: 'delete', label: 'Delete', run: (editor, ids) => editor.deleteShapes(ids) },
-  { icon: 'stretch-x', label: 'Stretch horizontal', run: (editor, ids) => editor.stretchShapes(ids, 'horizontal') },
-  { icon: 'stretch-y', label: 'Stretch vertical', run: (editor, ids) => editor.stretchShapes(ids, 'vertical') },
-]
 
 function stopCanvasEvent(event: SyntheticEvent) {
   event.stopPropagation()
@@ -53,13 +39,19 @@ function stopCanvasEvent(event: SyntheticEvent) {
 
 export function CanvasSpikeStylePanel({ editor }: CanvasSpikeStylePanelProps) {
   const [isOpen, setIsOpen] = useState(true)
+  const lastStyleTool = useLastStylePanelTool(editor)
   useEditorRevision(editor, 'style-panel')
+
   const selectedIds = editor?.getSelectedShapeIds() ?? []
   const selectedShapes = editor?.getSelectedShapes() ?? []
   const selectedCount = selectedIds.length
   const hasSelection = selectedCount > 0
   const hasNodeCardSelection = selectedShapes.some((shape) => shape.type === 'node_card')
   const hasEditableStyleSelection = hasSelection && !hasNodeCardSelection
+  const activeTool = hasEditableStyleSelection
+    ? getSelectionTool(selectedShapes) ?? lastStyleTool
+    : lastStyleTool
+  const applyToSelection = hasEditableStyleSelection
   if (!editor) return null
 
   const drawerShell = (children: ReactNode) => (
@@ -75,7 +67,7 @@ export function CanvasSpikeStylePanel({ editor }: CanvasSpikeStylePanelProps) {
         aria-label={isOpen ? 'Collapse side properties' : 'Expand side properties'}
         className="canvas-style-drawer__handle"
         onClick={() => setIsOpen((open) => !open)}
-        title={isOpen ? 'Collapse properties' : 'Expand properties'}
+        data-tooltip={isOpen ? 'Collapse properties' : 'Expand properties'}
         type="button"
       >
         <span aria-hidden>{isOpen ? '‹' : '›'}</span>
@@ -84,151 +76,152 @@ export function CanvasSpikeStylePanel({ editor }: CanvasSpikeStylePanelProps) {
     </aside>
   )
 
-  if (!hasEditableStyleSelection) {
-    return drawerShell(
-      <div className="canvas-style-panel canvas-style-panel--empty">
-        <div className="canvas-style-panel__header">
-          <span>Properties</span>
-          <small>Drawing styles</small>
-        </div>
-        <p>Select a shape, arrow, text, image or markup to edit drawing styles.</p>
-      </div>
-    )
-  }
-
-  const color = getPanelStyleValue(editor, styleProps.color)
-  const fill = getPanelStyleValue(editor, styleProps.fill)
-  const size = getPanelStyleValue(editor, styleProps.size)
-  const dash = getPanelStyleValue(editor, styleProps.dash)
-  const font = getPanelStyleValue(editor, styleProps.font)
-  const spline = getPanelStyleValue(editor, styleProps.spline)
-  const arrowKind = getPanelStyleValue(editor, styleProps.arrowKind)
-  const arrowheadEnd = getPanelStyleValue(editor, styleProps.arrowheadEnd)
-  const arrowheadStart = getPanelStyleValue(editor, styleProps.arrowheadStart)
-  const opacity = editor.getSharedOpacity()
-  const opacityPercent = opacity?.type === 'shared' ? Math.round(opacity.value * 100) : 100
+  const styleValueOptions = { useSelection: applyToSelection }
+  const color = getPanelStyleValue(editor, styleProps.color, styleValueOptions)
+  const fill = getPanelStyleValue(editor, styleProps.fill, styleValueOptions)
+  const size = getPanelStyleValue(editor, styleProps.size, styleValueOptions)
+  const dash = getPanelStyleValue(editor, styleProps.dash, styleValueOptions)
+  const font = getPanelStyleValue(editor, styleProps.font, styleValueOptions)
+  const spline = getPanelStyleValue(editor, styleProps.spline, styleValueOptions)
+  const arrowKind = getPanelStyleValue(editor, styleProps.arrowKind, styleValueOptions)
+  const arrowheadEnd = getPanelStyleValue(editor, styleProps.arrowheadEnd, styleValueOptions)
+  const arrowheadStart = getPanelStyleValue(editor, styleProps.arrowheadStart, styleValueOptions)
+  const opacity = applyToSelection ? editor.getSharedOpacity() : { type: 'shared' as const, value: editor.getInstanceState().opacityForNextShape }
+  const opacityPercent = opacity.type === 'shared' ? Math.round(opacity.value * 100) : 100
 
   return drawerShell(
     <div className="canvas-style-panel" aria-label="Canvas style panel">
       <div className="canvas-style-panel__header">
-        <span>属性</span>
-        <small>已选 · {selectedCount}</small>
+        <span>Properties</span>
+        <small>{hasEditableStyleSelection ? `Selected · ${selectedCount}` : `${getToolLabel(activeTool)} styles`}</small>
       </div>
 
-      <CanvasStylePanelSelectionActions editor={editor} selectedIds={selectedIds} />
+      {hasEditableStyleSelection ? <CanvasStylePanelSelectionActions editor={editor} selectedIds={selectedIds} /> : null}
 
       <section className="canvas-style-panel__block">
-        <p>描边</p>
+        <p>Stroke</p>
         <div className="canvas-style-panel__swatches">
           {strokeColors.map((item) => (
             <button
               aria-label={item.label}
               className={color === item.value ? 'is-active' : undefined}
+              data-tooltip={item.label}
               key={item.value}
-              onClick={() => setPanelStyle(editor, styleProps.color, item.value)}
+              onClick={() => setPanelStyle(editor, styleProps.color, item.value, { applyToSelection })}
               style={{ '--swatch': item.swatch } as CSSProperties}
-              title={item.label}
               type="button"
             />
           ))}
         </div>
       </section>
 
-      <StyleButtonGroup label="填充">
-        {fillStyles.map((item) => (
-          <StyleButton
-            active={fill === item.value}
-            icon={`fill-${item.value}`}
-            key={item.value}
-            label={item.label}
-            onClick={() => setPanelStyle(editor, styleProps.fill, item.value)}
-          />
-        ))}
-      </StyleButtonGroup>
+      {toolSupports(activeTool, 'fill') ? (
+        <StyleButtonGroup label="Fill">
+          {fillStyles.map((item) => (
+            <StyleButton
+              active={fill === item.value}
+              icon={`fill-${item.value}`}
+              key={item.value}
+              label={item.label}
+              onClick={() => setPanelStyle(editor, styleProps.fill, item.value, { applyToSelection })}
+            />
+          ))}
+        </StyleButtonGroup>
+      ) : null}
 
-      <StyleButtonGroup label="描边宽度">
+      <StyleButtonGroup label="Width">
         {sizeStyles.map((item) => (
           <StyleButton
             active={size === item.value}
             icon={`size-${item.value}`}
             key={item.value}
             label={item.label}
-            onClick={() => setPanelStyle(editor, styleProps.size, item.value)}
+            onClick={() => setPanelStyle(editor, styleProps.size, item.value, { applyToSelection })}
           />
         ))}
       </StyleButtonGroup>
 
-      <StyleButtonGroup label="边框样式">
-        {dashStyles.map((item) => (
-          <StyleButton
-            active={dash === item.value}
-            icon={`dash-${item.value}`}
-            key={item.value}
-            label={item.label}
-            onClick={() => setPanelStyle(editor, styleProps.dash, item.value)}
-          />
-        ))}
-      </StyleButtonGroup>
+      {toolSupports(activeTool, 'dash') ? (
+        <StyleButtonGroup label="Dash">
+          {dashStyles.map((item) => (
+            <StyleButton
+              active={dash === item.value}
+              icon={`dash-${item.value}`}
+              key={item.value}
+              label={item.label}
+              onClick={() => setPanelStyle(editor, styleProps.dash, item.value, { applyToSelection })}
+            />
+          ))}
+        </StyleButtonGroup>
+      ) : null}
 
-      <StyleButtonGroup label="线条风格">
-        {splineStyles.map((item) => (
-          <StyleButton
-            active={spline === item.value}
-            icon={`spline-${item.value}`}
-            key={item.value}
-            label={item.label}
-            onClick={() => setPanelStyle(editor, styleProps.spline, item.value)}
-          />
-        ))}
-      </StyleButtonGroup>
+      {toolSupports(activeTool, 'spline') ? (
+        <StyleButtonGroup label="Line">
+          {splineStyles.map((item) => (
+            <StyleButton
+              active={spline === item.value}
+              icon={`spline-${item.value}`}
+              key={item.value}
+              label={item.label}
+              onClick={() => setPanelStyle(editor, styleProps.spline, item.value, { applyToSelection })}
+            />
+          ))}
+        </StyleButtonGroup>
+      ) : null}
 
-      <StyleButtonGroup label="箭头类型">
-        {arrowKindStyles.map((item) => (
-          <StyleButton
-            active={arrowKind === item.value}
-            icon={`arrow-kind-${item.value}`}
-            key={item.value}
-            label={item.label}
-            onClick={() => setPanelStyle(editor, styleProps.arrowKind, item.value)}
-          />
-        ))}
-      </StyleButtonGroup>
+      {toolSupports(activeTool, 'arrow') ? (
+        <StyleButtonGroup label="Arrow">
+          {arrowKindStyles.map((item) => (
+            <StyleButton
+              active={arrowKind === item.value}
+              icon={`arrow-kind-${item.value}`}
+              key={item.value}
+              label={item.label}
+              onClick={() => setPanelStyle(editor, styleProps.arrowKind, item.value, { applyToSelection })}
+            />
+          ))}
+        </StyleButtonGroup>
+      ) : null}
 
-      <StyleButtonGroup label="端点">
-        {arrowheadStartStyles.map((item) => (
-          <StyleButton
-            active={arrowheadStart === item.value}
-            icon={`arrow-start-${item.value}`}
-            key={`start-${item.value}`}
-            label={`Start ${item.label}`}
-            onClick={() => setPanelStyle(editor, styleProps.arrowheadStart, item.value)}
-          />
-        ))}
-        {arrowheadEndStyles.map((item) => (
-          <StyleButton
-            active={arrowheadEnd === item.value}
-            icon={`arrow-end-${item.value}`}
-            key={`end-${item.value}`}
-            label={`End ${item.label}`}
-            onClick={() => setPanelStyle(editor, styleProps.arrowheadEnd, item.value)}
-          />
-        ))}
-      </StyleButtonGroup>
+      {toolSupports(activeTool, 'arrow') ? (
+        <StyleButtonGroup label="Heads">
+          {arrowheadStartStyles.map((item) => (
+            <StyleButton
+              active={arrowheadStart === item.value}
+              icon={`arrow-start-${item.value}`}
+              key={`start-${item.value}`}
+              label={`Start ${item.label}`}
+              onClick={() => setPanelStyle(editor, styleProps.arrowheadStart, item.value, { applyToSelection })}
+            />
+          ))}
+          {arrowheadEndStyles.map((item) => (
+            <StyleButton
+              active={arrowheadEnd === item.value}
+              icon={`arrow-end-${item.value}`}
+              key={`end-${item.value}`}
+              label={`End ${item.label}`}
+              onClick={() => setPanelStyle(editor, styleProps.arrowheadEnd, item.value, { applyToSelection })}
+            />
+          ))}
+        </StyleButtonGroup>
+      ) : null}
 
-      <StyleButtonGroup label="字体">
-        {fontStyles.map((item) => (
-          <StyleButton
-            active={font === item.value}
-            icon={`font-${item.value}`}
-            key={item.value}
-            label={item.label}
-            onClick={() => setPanelStyle(editor, styleProps.font, item.value)}
-          />
-        ))}
-      </StyleButtonGroup>
+      {toolSupports(activeTool, 'font') ? (
+        <StyleButtonGroup label="Font">
+          {fontStyles.map((item) => (
+            <StyleButton
+              active={font === item.value}
+              icon={`font-${item.value}`}
+              key={item.value}
+              label={item.label}
+              onClick={() => setPanelStyle(editor, styleProps.font, item.value, { applyToSelection })}
+            />
+          ))}
+        </StyleButtonGroup>
+      ) : null}
 
       <section className="canvas-style-panel__block">
-        <p>透明度</p>
+        <p>Opacity</p>
         <div className="canvas-style-panel__range-row">
           <input
             max={100}
@@ -236,7 +229,7 @@ export function CanvasSpikeStylePanel({ editor }: CanvasSpikeStylePanelProps) {
             onChange={(event) => {
               const nextOpacity = Number(event.currentTarget.value) / 100
               editor.run(() => {
-                editor.setOpacityForSelectedShapes(nextOpacity)
+                if (applyToSelection) editor.setOpacityForSelectedShapes(nextOpacity)
                 editor.setOpacityForNextShapes(nextOpacity)
                 editor.updateInstanceState({ isChangingStyle: true })
               })
@@ -244,13 +237,17 @@ export function CanvasSpikeStylePanel({ editor }: CanvasSpikeStylePanelProps) {
             type="range"
             value={opacityPercent}
           />
-          <span>{opacity?.type === 'mixed' ? '混合' : opacityPercent}</span>
+          <span>{opacity.type === 'mixed' ? 'Mixed' : opacityPercent}</span>
         </div>
       </section>
 
-      <ActionButtonGroup actions={layerActions} editor={editor} label="图层" selectedCount={selectedCount} selectedIds={selectedIds} />
-      <ActionButtonGroup actions={alignActions} editor={editor} label="对齐" selectedCount={selectedCount} selectedIds={selectedIds} />
-      <ActionButtonGroup actions={operationActions} editor={editor} label="操作" selectedCount={selectedCount} selectedIds={selectedIds} />
+      {hasEditableStyleSelection ? (
+        <>
+          <ActionButtonGroup actions={layerActions} editor={editor} label="Layer" selectedCount={selectedCount} selectedIds={selectedIds} />
+          <ActionButtonGroup actions={alignActions} editor={editor} label="Align" selectedCount={selectedCount} selectedIds={selectedIds} />
+          <ActionButtonGroup actions={operationActions} editor={editor} label="Actions" selectedCount={selectedCount} selectedIds={selectedIds} />
+        </>
+      ) : null}
     </div>
   )
 }

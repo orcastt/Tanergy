@@ -7,6 +7,7 @@ import {
   shapeTools,
   type ToolAction,
 } from './canvasToolbarConfig'
+import { CanvasLineIcon } from './CanvasLineIcon'
 import { CanvasSpikeInsertMenu } from './CanvasSpikeInsertMenu'
 import { CanvasToolbarPrimaryTools } from './CanvasToolbarPrimaryTools'
 import { CanvasToolbarSettingsButton } from './CanvasToolbarSettingsButton'
@@ -166,6 +167,7 @@ export function CanvasSpikeToolbar({
   }
 
   const shapeActive = currentToolId === 'geo'
+  const shapeIcon = shapeActive ? shapeTools.find((tool) => tool.geo === currentGeo)?.icon ?? selectedShapeTool.icon : selectedShapeTool.icon
 
   return (
     <div
@@ -186,15 +188,15 @@ export function CanvasSpikeToolbar({
             aria-label="Shape"
             className={shapeActive ? 'is-active' : undefined}
             data-continuous={continuousToolId === selectedShapeTool.id && isToolLocked ? 'true' : undefined}
+            data-tooltip={`Shape: ${selectedShapeTool.label}`}
             disabled={disabled}
             onClick={() => {
               setOpenMenu(openMenu === 'shape' ? null : 'shape')
             }}
             onContextMenu={(event) => handleContinuousTool(event, selectedShapeTool)}
-            title="Shape · click to choose, right-click continuous"
             type="button"
           >
-            <span aria-hidden>{shapeActive ? shapeTools.find((tool) => tool.geo === currentGeo)?.icon : selectedShapeTool.icon}</span>
+            <CanvasLineIcon name={shapeIcon} />
           </button>
           {openMenu === 'shape' ? (
             <div className="canvas-spike-toolbar__popover" role="menu">
@@ -202,6 +204,7 @@ export function CanvasSpikeToolbar({
                 <button
                   aria-label={tool.label}
                   className={currentGeo === tool.geo ? 'is-active' : undefined}
+                  data-tooltip={tool.label}
                   disabled={disabled}
                   key={tool.id}
                   onClick={() => {
@@ -209,10 +212,9 @@ export function CanvasSpikeToolbar({
                     setDrawTool(tool, false)
                   }}
                   onContextMenu={(event) => handleContinuousTool(event, tool)}
-                  title={`${tool.label} · right-click continuous`}
                   type="button"
                 >
-                  <span aria-hidden>{tool.icon}</span>
+                  <CanvasLineIcon name={tool.icon} />
                 </button>
               ))}
             </div>
@@ -227,14 +229,14 @@ export function CanvasSpikeToolbar({
               aria-label={tool.label}
               className={isActive ? 'is-active' : undefined}
               data-continuous={isContinuous ? 'true' : undefined}
+              data-tooltip={tool.label}
               disabled={disabled}
               key={tool.id}
               onClick={() => setDrawTool(tool, false)}
               onContextMenu={(event) => handleContinuousTool(event, tool)}
-              title={`${tool.label} · right-click continuous`}
               type="button"
             >
-              <span aria-hidden>{tool.icon}</span>
+              <CanvasLineIcon name={tool.icon} />
             </button>
           )
         })}
@@ -245,12 +247,12 @@ export function CanvasSpikeToolbar({
       <div className="canvas-spike-toolbar__menu-wrap">
         <button
           aria-label="Insert"
+          data-tooltip="Insert"
           disabled={disabled}
           onClick={() => setOpenMenu(openMenu === 'insert' ? null : 'insert')}
-          title="Insert"
           type="button"
         >
-          <span aria-hidden>＋</span>
+          <CanvasLineIcon name="insert" />
         </button>
         {openMenu === 'insert' ? (
           <CanvasSpikeInsertMenu

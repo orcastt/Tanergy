@@ -1,0 +1,29 @@
+.canvas-tooltip-layer {
+  position: fixed;
+  z-index: 500;
+  max-width: min(240px, calc(100vw - 32px));
+  padding: 7px 9px;
+  border-radius: 6px;
+  background: #111827;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.2);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.2;
+  pointer-events: none;
+  text-align: center;
+  white-space: normal;
+}
+
+.canvas-tooltip-layer[data-placement='bottom'] {
+  transform: translateX(-50%);
+}
+
+.canvas-tooltip-layer[data-placement='right'] {
+  transform: translateY(-50%);
+}
+
+.canvas-tooltip-layer[data-placement='left'] {
+  transform: translate(-100%, -50%);
+}

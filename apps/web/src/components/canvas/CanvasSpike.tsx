@@ -1,11 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import Link from 'next/link'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ArrowShapeUtil, Tldraw, type Editor, type TLAnyShapeUtilConstructor, type TLComponents } from 'tldraw'
 import { NodeCardShapeUtil } from '@/components/nodes/NodeCardShape'
 import { useCanvasPerformanceStore } from '@/features/canvas-performance/canvasPerformanceStore'
 import { useCanvasPerformanceTracking } from '@/features/canvas-performance/useCanvasPerformanceTracking'
-import { useCanvasSettingsStore } from '@/features/canvas-settings/canvasSettingsStore'
 import { createNodeCard } from '@/features/node-runtime/createNodeCard'
 import { createStep15MockGraph, createStep15StressNodes } from '@/features/node-runtime/createMockWorkflow'
 import { spikeNodeImageMaxBytes } from '@/features/node-runtime/imageNodeAssets'
@@ -13,7 +13,9 @@ import { useNodeConnectionValidation } from '@/features/node-runtime/useNodeConn
 import type { NodeType } from '@/types/nodeRuntime'
 import { AiCardShapeUtil } from './AiCardShape'
 import { CanvasArrowPortOverlay } from './CanvasArrowPortOverlay'
+import { CanvasBackground } from './CanvasBackground'
 import { CanvasBoardSaveAudit } from './CanvasBoardSaveAudit'
+import { CanvasBoardSwitcher } from './CanvasBoardSwitcher'
 import { CanvasBoardTitle } from './CanvasBoardTitle'
 import { CanvasImageShapeUtil } from './CanvasImageShapeUtil'
 import { CanvasConnectionCutOverlay } from './CanvasConnectionCutOverlay'
@@ -22,10 +24,12 @@ import { CanvasGrid } from './CanvasGrid'
 import { CanvasNodeEdgeOverlay } from './CanvasNodeEdgeOverlay'
 import { CanvasNodePicker } from './CanvasNodePicker'
 import { CanvasRuntimeDiagnostics, CanvasRuntimeErrorBoundary } from './CanvasRuntimeDiagnostics'
+import { CanvasSelectionToolbar } from './CanvasSelectionToolbar'
 import { CanvasSettingsPanel } from './CanvasSettingsPanel'
 import { CanvasSpikeNavigator } from './CanvasSpikeNavigator'
 import { CanvasSpikeStylePanel } from './CanvasSpikeStylePanel'
 import { CanvasSpikeToolbar } from './CanvasSpikeToolbar'
+import { CanvasTooltipLayer } from './CanvasTooltipLayer'
 import {
   createAiCards,
   createBoardKit,
@@ -54,6 +58,7 @@ const spikeMaxImageDimension = getAdaptiveImageMaxDimension()
 
 const tldrawComponents = {
   ActionsMenu: null,
+  Background: CanvasBackground,
   DebugMenu: null,
   DebugPanel: null,
   Grid: CanvasGrid,
@@ -80,22 +85,16 @@ type CanvasSpikeProps = {
   autoLoadBoard?: boolean
   boardId?: string
   boardTitle?: string
-  checklistItems?: string[]
-  headerEyebrow?: string
   headerTitle?: string
   onBoardLoaded?: (boardTitle: string) => void
   onBoardTitleRename?: (title: string) => Promise<string | void> | string | void
   seedOnMount?: boolean
 }
 
-const defaultChecklistItems = ['50%', '100%', '200%', 'Resize', 'Retina', 'Mixed select', 'S1.5 graph', 'Payload audit']
-
 export function CanvasSpike({
   autoLoadBoard = false,
   boardId,
   boardTitle,
-  checklistItems = defaultChecklistItems,
-  headerEyebrow = 'Sprint S1 · Canvas coordinate spike',
   headerTitle = 'Whiteboard base + S1.5 node runtime spike',
   onBoardLoaded,
   onBoardTitleRename,
@@ -105,7 +104,6 @@ export function CanvasSpike({
   const [settingsOpen, setSettingsOpen] = useState(false)
   const ignoreConnectionEvent = useCallback(() => undefined, [])
   const imagePreviewMode = useCanvasPerformanceStore((state) => state.imagePreviewMode)
-  const backgroundColor = useCanvasSettingsStore((state) => state.settings.backgroundColor)
   useCanvasPerformanceTracking(editor)
   useArrowPortSnapping(editor)
   useCanvasSettings(editor)
@@ -182,20 +180,24 @@ export function CanvasSpike({
   return (
     <div className="canvas-spike-shell" data-image-preview-mode={imagePreviewMode}>
       <div className="canvas-spike-header">
-        <div>
-          <p className="eyebrow">{headerEyebrow}</p>
-          <h1>
-            <CanvasBoardTitle onRename={onBoardTitleRename} title={headerTitle} />
-          </h1>
-        </div>
-        <div className="canvas-spike-checklist">
-          {checklistItems.map((item) => <span key={item}>{item}</span>)}
+        <div className="canvas-spike-title-row">
+          <Link aria-label="Back to workspace" className="canvas-workspace-back" href="/workspaces" title="Back to workspace">
+            <span aria-hidden />
+          </Link>
+          <Link aria-label="TANGENT home" className="canvas-logo-link" href="/home" title="TANGENT home">
+            <span className="canvas-logo-link__mark" aria-hidden />
+            <span className="canvas-logo-link__wordmark">TANGENT</span>
+          </Link>
+          <div className="canvas-spike-board-heading">
+            {boardId ? (
+              <CanvasBoardSwitcher boardId={boardId} onRename={onBoardTitleRename} title={headerTitle} />
+            ) : (
+              <CanvasBoardTitle onRename={onBoardTitleRename} title={headerTitle} />
+            )}
+          </div>
         </div>
       </div>
-      <div
-        className="canvas-spike-stage"
-        style={{ '--canvas-background-color': backgroundColor } as CSSProperties}
-      >
+      <div className="canvas-spike-stage">
         {canvasRuntimeDiagnosticsEnabled ? (
           <CanvasRuntimeErrorBoundary>{tldrawCanvas}</CanvasRuntimeErrorBoundary>
         ) : (
@@ -206,6 +208,7 @@ export function CanvasSpike({
         <CanvasConnectionCutOverlay editor={editor} />
         <CanvasConnectionLine editor={editor} />
         <CanvasNodePicker editor={editor} onSelect={createNodeAtViewport} />
+        <CanvasSelectionToolbar editor={editor} />
         <CanvasSpikeNavigator editor={editor} />
         <CanvasSpikeToolbar
           editor={editor}
@@ -234,6 +237,7 @@ export function CanvasSpike({
         />
         {settingsOpen ? <CanvasSettingsPanel boardMode={Boolean(boardId)} onClose={() => setSettingsOpen(false)} /> : null}
         <CanvasSpikeStylePanel editor={editor} />
+        <CanvasTooltipLayer />
         {canvasRuntimeDiagnosticsEnabled ? <CanvasRuntimeDiagnostics editorReady={editor !== null} /> : null}
       </div>
     </div>

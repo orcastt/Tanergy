@@ -13,7 +13,7 @@
 
 .canvas-style-drawer__handle {
   position: absolute;
-  top: 12px;
+  top: 50%;
   right: -18px;
   z-index: 1;
   display: grid;
@@ -29,6 +29,7 @@
   cursor: pointer;
   font-size: 18px;
   font-weight: 900;
+  transform: translateY(-50%);
 }
 
 .canvas-style-panel {
@@ -225,6 +226,7 @@
 .canvas-style-panel__icon-grid button {
   display: grid;
   min-height: 36px;
+  overflow: hidden;
   place-items: center;
   padding: 7px;
   background: #f7f7f7;

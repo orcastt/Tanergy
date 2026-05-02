@@ -13,14 +13,14 @@
 .workspace-board-visibility-icon {
   position: relative;
   display: grid;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   place-items: center;
-  border: 1px solid rgba(24, 29, 38, 0.08);
+  border: 1px solid rgba(24, 29, 38, 0.07);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 3px 8px rgba(24, 29, 38, 0.1);
-  color: #111827;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 4px 10px rgba(24, 29, 38, 0.08);
+  color: #475569;
 }
 
 .workspace-board-pin-icon::before {
@@ -42,41 +42,23 @@
   transform: translateY(3px) rotate(45deg);
 }
 
-.workspace-board-visibility-icon::before {
-  position: absolute;
-  top: 5px;
-  left: 8px;
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: currentColor;
-  content: '';
+.workspace-board-visibility-icon svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.55px;
+  vector-effect: non-scaling-stroke;
 }
 
-.workspace-board-visibility-icon::after {
-  position: absolute;
-  left: 6px;
-  bottom: 4px;
-  width: 10px;
-  height: 7px;
-  border-radius: 999px 999px 5px 5px;
-  background: currentColor;
-  content: '';
+.workspace-board-visibility-icon[data-visibility='private'] {
+  background: rgba(248, 250, 252, 0.96);
+  color: #59677a;
 }
 
-.workspace-board-visibility-icon[data-visibility='public']::before {
-  left: 8px;
-  width: 5px;
-  height: 5px;
-  box-shadow:
-    -5px 3px 0 -1px currentColor,
-    5px 3px 0 -1px currentColor;
-}
-
-.workspace-board-visibility-icon[data-visibility='public']::after {
-  left: 5px;
-  bottom: 4px;
-  width: 12px;
-  height: 7px;
-  border-radius: 8px 8px 5px 5px;
+.workspace-board-visibility-icon[data-visibility='public'] {
+  background: rgba(239, 246, 255, 0.96);
+  color: #2563eb;
 }

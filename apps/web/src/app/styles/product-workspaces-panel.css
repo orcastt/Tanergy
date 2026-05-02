@@ -10,9 +10,9 @@
 
 .board-panel {
   display: grid;
-  width: min(1120px, calc(100vw - 40px));
-  max-height: min(760px, calc(100vh - 32px));
-  grid-template-columns: 250px minmax(0, 1fr);
+  width: min(1220px, calc(100vw - 56px));
+  max-height: min(860px, calc(100vh - 28px));
+  grid-template-columns: 280px minmax(0, 1fr);
   overflow: hidden;
   border: 1px solid rgba(148, 163, 184, 0.24);
   border-radius: 24px;
@@ -23,8 +23,8 @@
 .board-panel-sidebar {
   display: grid;
   align-content: start;
-  gap: 16px;
-  padding: 28px 22px;
+  gap: 18px;
+  padding: 28px 26px;
   border-right: 1px solid #edf2f7;
   background: #fbfcfe;
 }
@@ -38,7 +38,7 @@
 
 .board-panel-sidebar h2 {
   font-size: 24px;
-  font-weight: 520;
+  font-weight: 400;
   line-height: 1.14;
 }
 
@@ -49,7 +49,7 @@
   margin: 0;
   color: #8aa0bd;
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 400;
   line-height: 1.5;
 }
 
@@ -72,7 +72,7 @@
 
 .board-panel-sidebar dt {
   color: #8aa0bd;
-  font-weight: 800;
+  font-weight: 400;
   text-transform: uppercase;
 }
 
@@ -86,7 +86,7 @@
   gap: 18px;
   align-content: start;
   overflow: auto;
-  padding: 22px 24px 28px;
+  padding: 28px 32px 32px;
 }
 
 .board-panel-header,
@@ -99,7 +99,7 @@
 }
 
 .board-panel-header {
-  padding-bottom: 22px;
+  padding-bottom: 18px;
   border-bottom: 1px solid #edf2f7;
 }
 
@@ -110,6 +110,7 @@
 
 .board-panel-header h2 {
   font-size: 18px;
+  font-weight: 400;
 }
 
 .board-panel-top-actions {
@@ -138,37 +139,35 @@
   background: #fff8ef;
   color: #7c5a26;
   font-size: 12px;
-  font-weight: 720;
+  font-weight: 400;
 }
 
 .board-panel-content {
   display: grid;
-  grid-template-columns: minmax(360px, 1fr) minmax(300px, 0.82fr);
-  gap: 28px;
+  grid-template-columns: minmax(500px, 1fr) minmax(360px, 0.82fr);
+  gap: 32px;
   align-items: start;
 }
 
 .board-panel-form,
-.board-panel-side-column {
+.board-panel-editor-column,
+.board-panel-members-column {
   display: grid;
   align-content: start;
-  gap: 18px;
+  gap: 14px;
 }
 
 .board-panel-section,
 .board-panel-form fieldset {
   display: grid;
-  gap: 14px;
+  gap: 10px;
   margin: 0;
   padding: 0;
   border: 0;
 }
 
-.board-panel-side-card {
-  padding: 18px;
-  border: 1px solid #dbe5f1;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.92);
+.board-panel-customization {
+  padding-top: 0;
 }
 
 .board-panel-inline-actions {
@@ -198,7 +197,7 @@
 
   .board-panel {
     width: calc(100vw - 24px);
-    max-height: calc(100vh - 24px);
+    max-height: calc(100vh - 20px);
     border-radius: 18px;
   }
 

@@ -80,22 +80,6 @@
   background: var(--color-signature-cream);
 }
 
-.workspace-board-card:nth-child(5n+3) {
-  background: var(--color-signature-mint);
-}
-
-.workspace-board-card:nth-child(5n+4) {
-  background: var(--color-signature-peach);
-}
-
-.workspace-board-card:nth-child(5n+5) {
-  background: var(--color-signature-yellow);
-}
-
-.workspace-board-card:nth-child(5n+6) {
-  background: var(--color-surface-soft);
-}
-
 .workspace-board-card[data-card-color='cream'] {
   background: var(--color-signature-cream);
 }

@@ -21,6 +21,7 @@ import {
   createBoardId,
   createBoardShareId,
   getBoardShareUrl,
+  getBoardDisplayCardColor,
   filterAndSortBoards,
 } from './workspaceBoardUtils'
 
@@ -137,16 +138,27 @@ export function WorkspaceBoardGallery() {
     setError(null)
     try {
       const source = await loadLocalBoardDocument(board.id)
+      const nextBoardId = createBoardId()
       const response = await saveLocalBoardDocument({
-        boardId: createBoardId(),
-        cardColor: board.cardColor,
+        boardId: nextBoardId,
+        cardColor: getBoardDisplayCardColor(board),
         description: board.description,
         document: source.board!.document as SerializedBoardSaveInput['document'],
         thumbnailUrl: board.thumbnailUrl,
         title: `${board.title} copy`,
       })
       if (!response.board) throw new Error('Board copy failed.')
-      setBoards((current) => [response.board!, ...current])
+      const metadata = await updateLocalBoardMetadata({
+        boardId: nextBoardId,
+        cardColor: getBoardDisplayCardColor(board),
+        description: board.description,
+        isPinned: Boolean(board.isPinned),
+        isStarred: Boolean(board.isStarred),
+        thumbnailUrl: board.thumbnailUrl,
+        visibility: board.visibility ?? 'private',
+      })
+      const copiedBoard = metadata.board ?? response.board
+      setBoards((current) => [copiedBoard, ...current])
       setNotice(`Copied "${board.title}".`)
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : 'Board copy failed.')

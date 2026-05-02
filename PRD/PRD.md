@@ -24,8 +24,8 @@ P0 does not include production collaboration, a desktop app, full Mixpanel-grade
 
 | Slice | File | Owns | Current status |
 | --- | --- | --- | --- |
-| S0 Local Product Shell | `PRD_slice_S0_local_product_shell.md` | Local user-visible app shell, Workspace, Board canvas, Board History, Canvas Settings, Board Management, Smart Drawing | First pass mostly done; local polish continues |
-| S1 Staging/Auth/Board CRUD | `PRD_slice_S1_staging_auth_board.md` | Real staging infra, real Auth, real user/workspace/board ownership, production Board CRUD | Not started; waits on external resources |
+| S0 Local Product Shell | `PRD_slice_S0_local_product_shell.md` | Local user-visible app shell, Workspace, Board canvas, Board History, Canvas Settings, Board Management, Smart Drawing | Accepted for P0 alpha; checkpoint/regression only |
+| S1 Staging/Auth/Board CRUD | `PRD_slice_S1_staging_auth_board.md` | Real staging infra, real Auth, real user/workspace/board ownership, production Board CRUD | Recommended next architecture slice |
 | S2 AI Productization | `PRD_slice_S2_ai_productization.md` | Real AI provider path, Model Registry, AiRun, cost/credit logs, AI Chat planner | Contract scaffold only |
 | S3 Admin/Billing/Analytics | `PRD_slice_S3_admin_billing_analytics.md` | Admin access, user management, credits, subscriptions, analytics, moderation | Schema/access boundary only |
 | S4 Collaboration | `PRD_slice_S4_collaboration.md` | Multi-user Board collaboration, presence, roles, conflict boundaries | Deferred to P0.5 |
@@ -42,9 +42,10 @@ P0 does not include production collaboration, a desktop app, full Mixpanel-grade
 
 If external resources are not ready:
 
-1. Smart Drawing threshold tuning.
+1. Final S0 browser smoke and checkpoint commit.
 2. i18n and visible status polish.
 3. More realistic empty/error states for mocked production surfaces.
+4. Prepare S1 schema/migration and Auth API contracts locally.
 
 If external resources are ready:
 
@@ -52,3 +53,36 @@ If external resources are ready:
 2. Real Auth and workspace ownership.
 3. Auth-backed Board CRUD.
 4. Real AI provider path.
+
+## Product Stage Roadmap
+
+```text
+S0 Local Alpha accepted
+  - local workspace/board shell
+  - Board save/history/thumbnails
+  - Canvas Settings and Smart Drawing
+
+S1 Account + Ownership foundation
+  - register/login/logout/session
+  - user default workspace
+  - server-scoped Board CRUD and History
+  - owner/admin/editor/viewer permission checks
+
+S2 AI Productization
+  - real provider routes
+  - Model Registry and AiRun persistence
+  - per-user AI usage history and cost facts
+
+S3 Admin + Billing + Analytics
+  - admin roles and audit logs
+  - user management
+  - credits, subscriptions, team billing pools
+  - revenue/usage/retention analytics
+
+S4 Collaboration
+  - live presence
+  - multi-user Board editing
+  - member roles and conflict/history behavior
+```
+
+S1 deliberately does not finish Admin, credits, subscriptions or collaboration. It creates the user/workspace/board ownership facts those stages need.

@@ -1,9 +1,10 @@
 import type { TLGeoShapeGeoStyle } from 'tldraw'
+import type { CanvasLineIconName } from './CanvasLineIcon'
 
 export type ToolAction =
-  | { geo: TLGeoShapeGeoStyle; icon: string; id: string; kind: 'geo'; label: string }
+  | { geo: TLGeoShapeGeoStyle; icon: CanvasLineIconName; id: string; kind: 'geo'; label: string }
   | {
-      icon: string
+      icon: CanvasLineIconName
       id: string
       kind: 'tool'
       label: string
@@ -11,23 +12,23 @@ export type ToolAction =
     }
 
 export const shapeTools: Extract<ToolAction, { kind: 'geo' }>[] = [
-  { geo: 'rectangle', icon: '▭', id: 'rectangle', kind: 'geo', label: 'Rectangle' },
-  { geo: 'diamond', icon: '◇', id: 'diamond', kind: 'geo', label: 'Diamond' },
-  { geo: 'ellipse', icon: '○', id: 'ellipse', kind: 'geo', label: 'Ellipse' },
-  { geo: 'triangle', icon: '△', id: 'triangle', kind: 'geo', label: 'Triangle' },
-  { geo: 'cloud', icon: '☁', id: 'cloud', kind: 'geo', label: 'Cloud' },
+  { geo: 'rectangle', icon: 'rectangle', id: 'rectangle', kind: 'geo', label: 'Rectangle' },
+  { geo: 'diamond', icon: 'diamond', id: 'diamond', kind: 'geo', label: 'Diamond' },
+  { geo: 'ellipse', icon: 'ellipse', id: 'ellipse', kind: 'geo', label: 'Ellipse' },
+  { geo: 'triangle', icon: 'triangle', id: 'triangle', kind: 'geo', label: 'Triangle' },
+  { geo: 'cloud', icon: 'cloud', id: 'cloud', kind: 'geo', label: 'Cloud' },
 ]
 
 export const directTools: Extract<ToolAction, { kind: 'tool' }>[] = [
-  { icon: '→', id: 'arrow', kind: 'tool', label: 'Arrow', tool: 'arrow' },
-  { icon: '╱', id: 'line', kind: 'tool', label: 'Line', tool: 'line' },
-  { icon: '✎', id: 'draw', kind: 'tool', label: 'Draw', tool: 'draw' },
-  { icon: 'A', id: 'text', kind: 'tool', label: 'Text', tool: 'text' },
-  { icon: '⌫', id: 'eraser', kind: 'tool', label: 'Eraser', tool: 'eraser' },
+  { icon: 'arrow', id: 'arrow', kind: 'tool', label: 'Arrow', tool: 'arrow' },
+  { icon: 'line', id: 'line', kind: 'tool', label: 'Line', tool: 'line' },
+  { icon: 'draw', id: 'draw', kind: 'tool', label: 'Draw', tool: 'draw' },
+  { icon: 'text', id: 'text', kind: 'tool', label: 'Text', tool: 'text' },
+  { icon: 'eraser', id: 'eraser', kind: 'tool', label: 'Eraser', tool: 'eraser' },
 ]
 
 export const noteTool: ToolAction = {
-  icon: '▤',
+  icon: 'rectangle',
   id: 'note',
   kind: 'tool',
   label: 'Sticky note',
@@ -35,7 +36,7 @@ export const noteTool: ToolAction = {
 }
 
 export const frameTool: ToolAction = {
-  icon: '▣',
+  icon: 'rectangle',
   id: 'frame',
   kind: 'tool',
   label: 'Frame',

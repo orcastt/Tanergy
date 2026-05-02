@@ -5,7 +5,6 @@ export type CanvasSettings = {
   backgroundColor: string
   backgroundStyle: 'dots' | 'grid' | 'solid'
   edgeColorMode: 'follow-handle' | 'standard'
-  gridColor: string
   gridRendering: boolean
   gridUnit: number
   language: 'en' | 'zh'
@@ -32,7 +31,6 @@ export const defaultCanvasSettings: CanvasSettings = {
   backgroundColor: '#ffffff',
   backgroundStyle: 'dots',
   edgeColorMode: 'follow-handle',
-  gridColor: '#d7deea',
   gridRendering: true,
   gridUnit: 12,
   language: 'en',
@@ -60,7 +58,6 @@ export function normalizeCanvasSettings(settings: Partial<CanvasSettings> & { gr
     backgroundColor: normalizeHexColor(settings.backgroundColor, defaultCanvasSettings.backgroundColor),
     backgroundStyle,
     edgeColorMode: getChoice(settings.edgeColorMode, edgeColorModes, defaultCanvasSettings.edgeColorMode),
-    gridColor: normalizeHexColor(settings.gridColor, defaultCanvasSettings.gridColor),
     gridRendering: backgroundStyle !== 'solid',
     gridUnit: clampNumber(Number(settings.gridUnit ?? defaultCanvasSettings.gridUnit), 8, 128),
     language: getChoice(settings.language, languages, defaultCanvasSettings.language),

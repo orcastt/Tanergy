@@ -99,8 +99,10 @@ export const arrowheadStartStyles: Array<StyleOption<TLArrowShapeArrowheadStyle>
 
 export function getPanelStyleValue<S extends StyleProp<unknown>>(
   editor: Editor,
-  style: S
+  style: S,
+  options: { useSelection?: boolean } = {}
 ): StylePropValue<S> | 'mixed' {
+  if (options.useSelection === false) return editor.getStyleForNextShape(style) as StylePropValue<S>
   const shared = editor.getSharedStyles().get(style)
   if (shared?.type === 'shared') return shared.value as StylePropValue<S>
   if (shared?.type === 'mixed') return 'mixed'
@@ -110,11 +112,12 @@ export function getPanelStyleValue<S extends StyleProp<unknown>>(
 export function setPanelStyle<S extends StyleProp<unknown>>(
   editor: Editor | null,
   style: S,
-  value: StylePropValue<S>
+  value: StylePropValue<S>,
+  options: { applyToSelection?: boolean } = {}
 ) {
   if (!editor) return
   editor.run(() => {
-    editor.setStyleForSelectedShapes(style, value)
+    if (options.applyToSelection ?? true) editor.setStyleForSelectedShapes(style, value)
     editor.setStyleForNextShapes(style, value)
     editor.updateInstanceState({ isChangingStyle: true })
   })

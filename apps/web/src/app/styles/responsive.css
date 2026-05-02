@@ -4,8 +4,12 @@
     flex-direction: column;
   }
 
-  .canvas-spike-checklist {
-    justify-content: flex-start;
+  .canvas-spike-title-row {
+    width: 100%;
+  }
+
+  .canvas-board-switcher__control {
+    max-width: calc(100vw - 156px);
   }
 
   .canvas-spike-toolbar {

@@ -1,5 +1,7 @@
 'use client'
 
+import { CanvasLineIcon } from './CanvasLineIcon'
+
 type CanvasToolbarSettingsButtonProps = {
   disabled: boolean
   isOpen: boolean
@@ -11,12 +13,12 @@ export function CanvasToolbarSettingsButton({ disabled, isOpen, onOpen }: Canvas
     <button
       aria-label="Canvas settings"
       className={isOpen ? 'is-active' : undefined}
+      data-tooltip="Canvas settings"
       disabled={disabled}
       onClick={onOpen}
-      title="Canvas settings"
       type="button"
     >
-      <span aria-hidden>⚙</span>
+      <CanvasLineIcon name="settings" />
     </button>
   )
 }

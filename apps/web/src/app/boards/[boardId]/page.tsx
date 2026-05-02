@@ -41,8 +41,6 @@ export default function BoardCanvasPage() {
       autoLoadBoard={!isNewBoard}
       boardId={boardId}
       boardTitle={boardTitle}
-      checklistItems={['Asset-backed', 'Save guard', 'FastAPI-ready']}
-      headerEyebrow="TANGENT Board"
       headerTitle={boardTitle}
       onBoardLoaded={(title) => setBoardTitleOverride({ boardId, title })}
       onBoardTitleRename={renameBoardTitle}

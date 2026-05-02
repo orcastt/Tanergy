@@ -52,7 +52,6 @@ export function BoardManagementThumbnailSection({
       <div className="board-panel-section-heading">
         <div>
           <h3>Preview image</h3>
-          <p>Shown on the Workspace board card.</p>
         </div>
         <button disabled={disabled || !thumbnailUrl} onClick={() => onChange('')} type="button">
           Remove
@@ -78,7 +77,6 @@ export function BoardManagementThumbnailSection({
             placeholder="Optional thumbnail URL"
             value={thumbnailUrl}
           />
-          <small>{thumbnailUrl ? 'Remove restores the default generated card preview.' : 'Default preview is active.'}</small>
           {error ? <small className="board-panel-error" role="alert">{error}</small> : null}
         </div>
       </div>

@@ -56,12 +56,12 @@ dev-plans                 Active implementation plans and historical archive
 
 ## Parallel Development Lanes
 
-Percentages mean distance to local/P0 alpha usefulness, not final commercial completeness.
+Percentages mean distance to local/P0 alpha usefulness, not final commercial completeness. S0 local polish is accepted for P0 alpha; keep only regression fixes and shift new architecture work toward S1.
 
 ```text
                  +-----------------------------+
-                 | Current baseline / S0 polish|
-                 | Product shell + Board local |
+                 | Current baseline accepted   |
+                 | S0 Product shell + Board    |
                  +--------------+--------------+
                                 |
         +-----------------------+-----------------------+
@@ -71,13 +71,14 @@ Percentages mean distance to local/P0 alpha usefulness, not final commercial com
 | S0             |      | S1             |      | S2             |
 +-------+--------+      +-------+--------+      +-------+--------+
         |                       |                       |
-| Product shell [90%]   | Staging infra [0%]   | Model Registry [35%]
-| Board save UX [92%]   | Auth boundary [35%]  | AiRun/logs [20%]
-| Board History [94%]   | Board CRUD API [25%] | Provider route [0%]
-| Canvas Settings [92%] | Postgres/R2 [0%]     | AI Chat planner [10%]
-| Board Mgmt [86%]      |
-| Captured thumb [85%]  |
-| Smart Drawing [82%]   |
+| Product shell [95%]   | Staging infra [0%]   | Model Registry [35%]
+| Board save UX [94%]   | Auth boundary [35%]  | AiRun/logs [20%]
+| Board History [95%]   | Board CRUD API [25%] | Provider route [0%]
+| Canvas Settings [96%] | Postgres/R2 [0%]     | AI Chat planner [10%]
+| Board Mgmt [93%]      |
+| Canvas controls [96%] |
+| Captured thumb [91%]  |
+| Smart Drawing [95%]   |
         |                       |                       |
         +-----------+-----------+-----------+-----------+
                     |                       |
@@ -91,11 +92,51 @@ Percentages mean distance to local/P0 alpha usefulness, not final commercial com
 
 | Slice | File | Owns | Update when |
 | --- | --- | --- | --- |
-| S0 Local Polish | `ARCH_slice_S0_local_polish.md` | Product shell, Workspace, Board save/history, Canvas Settings, Smart Drawing, Board Management | Local UI/canvas/Board behavior changes |
-| S1 Persistence/Auth/Deploy | `ARCH_slice_S1_persistence_auth_deploy.md` | FastAPI, Postgres, R2/S3, migrations, Auth, real Board CRUD, deployment | Data/API/Auth/deploy changes |
+| S0 Local Polish | `ARCH_slice_S0_local_polish.md` | Product shell, Workspace, Board save/history, Canvas Settings, Smart Drawing, Board Management, Canvas controls | Accepted for P0 alpha; regression fixes only |
+| S1 Persistence/Auth/Deploy | `ARCH_slice_S1_persistence_auth_deploy.md` | FastAPI, Postgres, R2/S3, migrations, Auth, real Board CRUD, deployment | Next active architecture slice: data/API/Auth/deploy changes |
 | S2 AI Runtime | `ARCH_slice_S2_ai_runtime.md` | Node Registry, Model Registry, AiRun, provider routing, AI Chat planner | AI node/provider/model changes |
 | S3 Admin/Billing/Analytics | `ARCH_slice_S3_admin_billing_analytics.md` | Admin roles, audit, credits, subscriptions, analytics, moderation facts | Admin/billing/analytics schema changes |
 | S4 Collaboration | `ARCH_slice_S4_collaboration.md` | Multiplayer, presence, CRDT boundaries, roles | Collaboration work begins |
+
+## Stage Flow
+
+S1 is the next trunk. S2/S3/S4 can be designed in parallel, but implementation should not outrun the identity and ownership facts created in S1.
+
+```text
+S0 Accepted local alpha
+  |
+  v
+S1 Real Boundary: staging + Auth + ownership + Board CRUD
+  |
+  +--> S1A DB schema + Alembic migrations
+  |       users / workspaces / members / boards / snapshots / assets / auth facts
+  |
+  +--> S1B Staging infra smoke
+  |       FastAPI health / Postgres / R2 / domain / CORS / Web API base URL
+  |
+  +--> S1C Auth + request context
+  |       register / login / logout / session / default workspace
+  |
+  +--> S1D Auth-backed Board CRUD
+          list / open / save / history / copy / delete / role checks
+          |
+          +----------------------+----------------------+----------------------+
+                                 |                      |                      |
+                                 v                      v                      v
+                         S2 AI Runtime          S3 Admin/Billing        S4 Collaboration
+                         provider calls         users/credits/revenue   presence/roles/live sync
+                         AiRun/cost logs        analytics/moderation    conflict/history rules
+```
+
+Dependency rules:
+
+- S1A can start locally before external resources.
+- S1B needs staging Postgres/R2/domain/API resources.
+- S1C depends on S1A and an email/session strategy.
+- S1D depends on S1A/S1C and becomes the permission foundation for S2/S3/S4.
+- S2 should use real `user_id`, `workspace_id`, `board_id` from S1 before charging credits or writing provider logs.
+- S3 can prepare schemas early, but real Admin/Credits/Billing needs S1 identity and S2 cost facts.
+- S4 must wait for S1 permissions and stable Board/Asset/History contracts.
 
 ## Non-Negotiable Boundaries
 

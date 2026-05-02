@@ -18,7 +18,6 @@ export function BoardManagementMembers({ board }: BoardManagementMembersProps) {
       <div className="board-panel-section-heading">
         <div>
           <h3>Members</h3>
-          <p>Board-level access scaffold for the collaboration slice.</p>
         </div>
       </div>
       <div className="board-panel-members" role="table" aria-label="Board members">

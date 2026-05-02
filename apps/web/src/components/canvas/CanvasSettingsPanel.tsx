@@ -45,14 +45,6 @@ export function CanvasSettingsPanel({ boardMode = false, onClose }: CanvasSettin
         </div>
       </header>
 
-      <aside className="canvas-settings__sidebar" aria-label="Settings sections">
-        {['Canvas', 'Interaction', 'Display'].map((section) => (
-          <button className={section === 'Canvas' ? 'is-active' : undefined} key={section} type="button">
-            {section}
-          </button>
-        ))}
-      </aside>
-
       <main className="canvas-settings__main">
         <div className="canvas-settings__cards">
           <section className="canvas-settings__card">
@@ -66,9 +58,6 @@ export function CanvasSettingsPanel({ boardMode = false, onClose }: CanvasSettin
             </SettingRow>
             <SettingRow label="Background Color" subtitle="Base canvas surface">
               <ColorInput label="Background color" value={settings.backgroundColor} onChange={(backgroundColor) => update({ backgroundColor })} />
-            </SettingRow>
-            <SettingRow label="Pattern Color" subtitle="Dots and grid line color">
-              <ColorInput label="Pattern color" value={settings.gridColor} onChange={(gridColor) => update({ gridColor })} />
             </SettingRow>
             <SettingRow label="Spacing" subtitle={`${settings.gridUnit}px grid spacing`}>
               <NumberPill value={settings.gridUnit} unit="px" onChange={(value) => setNumber('gridUnit', value)} />
@@ -91,7 +80,7 @@ export function CanvasSettingsPanel({ boardMode = false, onClose }: CanvasSettin
             <SettingRange label="Zoom Sensitivity" max={3} min={0.25} step={0.25} value={settings.zoomSensitivity} onChange={(value) => setNumber('zoomSensitivity', value)} />
             <SettingRow label="Edge Color" subtitle="Standard with edge color">
               <Segmented
-                options={[['standard', 'Standard'], ['follow-handle', 'Follow Handle']]}
+                options={[['standard', 'Standard'], ['follow-handle', 'Color']]}
                 value={settings.edgeColorMode}
                 onChange={(edgeColorMode) => update({ edgeColorMode: edgeColorMode as CanvasSettings['edgeColorMode'] })}
               />

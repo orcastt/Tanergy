@@ -5,35 +5,39 @@ import type { TLGridProps } from 'tldraw'
 import { useCanvasSettingsStore } from '@/features/canvas-settings/canvasSettingsStore'
 
 export function CanvasGrid({ size, x, y, z }: TLGridProps) {
-  const id = useId().replace(/:/g, '')
-  const { backgroundStyle, gridColor } = useCanvasSettingsStore((state) => state.settings)
+  const patternId = useSafeSvgId('canvas-grid')
+  const backgroundStyle = useCanvasSettingsStore((state) => state.settings.backgroundStyle)
+
   if (backgroundStyle === 'solid') return null
 
-  const step = Math.max(4, size * z)
-  const offsetX = getOffset(x * z, step)
-  const offsetY = getOffset(y * z, step)
-  const opacity = backgroundStyle === 'dots'
-    ? Math.min(0.16, Math.max(0.04, z * 0.08))
-    : Math.min(0.22, Math.max(0.06, z * 0.14))
-  const dotRadius = Math.min(0.42, Math.max(0.24, z * 0.28))
+  const step = Math.max(6, size * z)
+  const offsetX = modulo(0.5 + x * z, step)
+  const offsetY = modulo(0.5 + y * z, step)
 
   return (
-    <svg className="canvas-grid" aria-hidden>
+    <svg className="tl-grid canvas-grid-surface" version="1.1" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <defs>
-        <pattern id={id} width={step} height={step} patternUnits="userSpaceOnUse">
-          {backgroundStyle === 'grid' ? (
-            <path d={`M ${offsetX} 0 V ${step} M 0 ${offsetY} H ${step}`} stroke={gridColor} strokeWidth={1} />
+        <pattern id={patternId} width={step} height={step} patternUnits="userSpaceOnUse">
+          {backgroundStyle === 'dots' ? (
+            <circle cx={offsetX} cy={offsetY} r={0.85} fill="rgba(88, 98, 112, 0.16)" />
           ) : (
-            <circle cx={offsetX} cy={offsetY} fill={gridColor} r={dotRadius} />
+            <>
+              <path d={`M ${offsetX} 0 V ${step}`} stroke="rgba(88, 98, 112, 0.08)" strokeWidth="1" />
+              <path d={`M 0 ${offsetY} H ${step}`} stroke="rgba(88, 98, 112, 0.08)" strokeWidth="1" />
+            </>
           )}
         </pattern>
       </defs>
-      <rect width="100%" height="100%" fill={`url(#${id})`} opacity={opacity} />
+      <rect width="100%" height="100%" fill={`url(#${patternId})`} />
     </svg>
   )
 }
 
-function getOffset(value: number, step: number) {
-  const offset = 0.5 + value
-  return offset > 0 ? offset % step : step + (offset % step)
+function useSafeSvgId(prefix: string) {
+  return `${prefix}-${useId().replace(/:/g, '')}`
+}
+
+function modulo(value: number, step: number) {
+  const remainder = value % step
+  return remainder >= 0 ? remainder : remainder + step
 }

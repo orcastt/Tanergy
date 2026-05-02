@@ -29,8 +29,8 @@ export function StyleButton({
   onClick: () => void
 }) {
   return (
-    <button aria-label={label} className={active ? 'is-active' : undefined} onClick={onClick} title={label} type="button">
-      <span className={`style-icon style-icon--${icon}`} aria-hidden />
+    <button aria-label={label} className={active ? 'is-active' : undefined} data-tooltip={label} onClick={onClick} type="button">
+      <span className={`style-icon style-icon--${icon}`} data-style-icon={icon} aria-hidden />
     </button>
   )
 }
@@ -55,10 +55,10 @@ export function ActionButtonGroup({
         {actions.map((action) => (
           <button
             aria-label={action.label}
+            data-tooltip={action.label}
             disabled={selectedCount < (action.minSelected ?? 1)}
             key={action.icon}
             onClick={() => action.run(editor, selectedIds)}
-            title={action.label}
             type="button"
           >
             <span className={`style-action-icon style-action-icon--${action.icon}`} aria-hidden />
