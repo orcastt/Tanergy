@@ -26,6 +26,10 @@ P0 does not include production collaboration, a desktop app, full Mixpanel-grade
 | --- | --- | --- | --- |
 | S0 Local Product Shell | `PRD_slice_S0_local_product_shell.md` | Local user-visible app shell, Workspace, Board canvas, Board History, Canvas Settings, Board Management, Smart Drawing | Accepted for P0 alpha; checkpoint/regression only |
 | S1 Staging/Auth/Board CRUD | `PRD_slice_S1_staging_auth_board.md` | Real staging infra, real Auth, real user/workspace/board ownership, production Board CRUD | Recommended next architecture slice |
+| S1A DB Schema | `PRD_slice_S1A_db_schema.md` | Product data model for accounts, workspaces, Boards, History, Assets and future billing/AI/admin joins | Implemented and locally smoke-tested; staging DB smoke pending S1B |
+| S1B Staging Infra | `PRD_slice_S1B_staging_infra.md` | Online staging Web/API, Postgres, R2, DNS and email readiness | Waiting on resources |
+| S1C Auth Context | `PRD_slice_S1C_auth_request_context.md` | Registration, login, logout, session and default workspace flow | After S1A |
+| S1D Board CRUD | `PRD_slice_S1D_auth_board_crud.md` | Auth-backed Board and History user workflows | After S1C |
 | S2 AI Productization | `PRD_slice_S2_ai_productization.md` | Real AI provider path, Model Registry, AiRun, cost/credit logs, AI Chat planner | Contract scaffold only |
 | S3 Admin/Billing/Analytics | `PRD_slice_S3_admin_billing_analytics.md` | Admin access, user management, credits, subscriptions, analytics, moderation | Schema/access boundary only |
 | S4 Collaboration | `PRD_slice_S4_collaboration.md` | Multi-user Board collaboration, presence, roles, conflict boundaries | Deferred to P0.5 |
@@ -45,7 +49,7 @@ If external resources are not ready:
 1. Final S0 browser smoke and checkpoint commit.
 2. i18n and visible status polish.
 3. More realistic empty/error states for mocked production surfaces.
-4. Prepare S1 schema/migration and Auth API contracts locally.
+4. Prepare S1 Auth API contracts locally.
 
 If external resources are ready:
 

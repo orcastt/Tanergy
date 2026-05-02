@@ -43,6 +43,17 @@ curl http://127.0.0.1:8000/health
 
 The compose file binds FastAPI to `127.0.0.1:8000`. Put Caddy, Nginx, or a platform proxy in front of it for HTTPS.
 
+For a disposable staging database, S1A migration smoke can run:
+
+```bash
+docker compose -f deploy/staging/docker-compose.api.yml run --rm \
+  -e S1A_SMOKE_DATABASE_URL="$DATABASE_URL" \
+  -e S1A_SMOKE_ALLOW_RESET=1 \
+  api python scripts/s1a_migration_smoke.py
+```
+
+Do not run this against production or any database you need to keep. It drops `tangent_%` tables and `alembic_version`.
+
 ## Web Wiring
 
 Set the Web app environment:

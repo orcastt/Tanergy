@@ -1,7 +1,7 @@
 # TANGENT Project State Index
 
 **Updated**: 2026-05-02
-**Branch**: `feature/local-polish-fast-slices`
+**Branch**: `feature/s1-staging-auth-board`
 **Latest local checkpoint**: latest commit on the active branch; keep detailed history in Git.
 
 This folder replaces the former root-level long project ledger and short mirror files. The root `project_state.md` is now only a pointer.
@@ -23,6 +23,7 @@ Done locally:
   Canvas Settings
   Canvas header/switcher/properties polish accepted
   Smart Drawing accepted for local P0 alpha
+  S1A DB schema/migrations
   Auth scaffold
   AI contract scaffold
   Alembic scaffold
@@ -43,6 +44,10 @@ Not production-complete:
 | --- | --- | --- |
 | S0 Local Polish | `project_state_slice_S0_local_polish.md` | Accepted for P0 alpha; checkpoint/regression only |
 | S1 Staging/Auth/Board | `project_state_slice_S1_staging_auth_board.md` | Recommended next architecture slice |
+| S1A DB Schema | `project_state_slice_S1A_db_schema.md` | Implemented and locally smoke-tested; staging DB smoke pending S1B |
+| S1B Staging Infra | `project_state_slice_S1B_staging_infra.md` | Waiting on external resources |
+| S1C Auth Context | `project_state_slice_S1C_auth_request_context.md` | After S1A |
+| S1D Board CRUD | `project_state_slice_S1D_auth_board_crud.md` | After S1C |
 | S2 AI/Admin Future | `project_state_slice_S2_ai_admin_future.md` | Planned |
 
 ## Current Next Fork
@@ -52,7 +57,7 @@ If external resources are not ready:
 1. Final S0 browser smoke and checkpoint commit.
 2. i18n/status polish and visible loading/error/copy feedback.
 3. More realistic empty/error states for mocked production surfaces.
-4. Prepare S1 schema/migration and Auth API contracts locally.
+4. Prepare S1 Auth API contracts locally.
 
 If external resources are ready:
 
@@ -67,7 +72,7 @@ If external resources are ready:
 Now: checkpoint S0 accepted state
   |
   v
-S1A local schema/contracts
+S1A local schema/contracts (implemented; real DB smoke pending)
   users, workspaces, members, boards, snapshots, assets, auth_sessions
   |
   v
@@ -87,7 +92,7 @@ S1D Auth-backed Board CRUD
   +--> S4 Collaboration
 ```
 
-Current recommendation: start with S1A after the S0 checkpoint. It is useful even before external resources arrive and prevents Admin, credits, team billing and collaboration from being built on mock identity.
+Current recommendation: continue to S1B resource prep or S1C Auth contracts. S1A schema is implemented and locally smoke-tested, but still needs Neon/staging Postgres smoke once S1B resources exist.
 
 ## Update Rules
 

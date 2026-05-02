@@ -71,11 +71,11 @@ Percentages mean distance to local/P0 alpha usefulness, not final commercial com
 | S0             |      | S1             |      | S2             |
 +-------+--------+      +-------+--------+      +-------+--------+
         |                       |                       |
-| Product shell [95%]   | Staging infra [0%]   | Model Registry [35%]
-| Board save UX [94%]   | Auth boundary [35%]  | AiRun/logs [20%]
-| Board History [95%]   | Board CRUD API [25%] | Provider route [0%]
-| Canvas Settings [96%] | Postgres/R2 [0%]     | AI Chat planner [10%]
-| Board Mgmt [93%]      |
+| Product shell [95%]   | DB schema [92%]      | Model Registry [35%]
+| Board save UX [94%]   | Staging infra [0%]   | AiRun/logs [20%]
+| Board History [95%]   | Auth boundary [35%]  | Provider route [0%]
+| Canvas Settings [96%] | Board CRUD API [25%] | AI Chat planner [10%]
+| Board Mgmt [93%]      | Postgres/R2 [0%]     |
 | Canvas controls [96%] |
 | Captured thumb [91%]  |
 | Smart Drawing [95%]   |
@@ -94,6 +94,10 @@ Percentages mean distance to local/P0 alpha usefulness, not final commercial com
 | --- | --- | --- | --- |
 | S0 Local Polish | `ARCH_slice_S0_local_polish.md` | Product shell, Workspace, Board save/history, Canvas Settings, Smart Drawing, Board Management, Canvas controls | Accepted for P0 alpha; regression fixes only |
 | S1 Persistence/Auth/Deploy | `ARCH_slice_S1_persistence_auth_deploy.md` | FastAPI, Postgres, R2/S3, migrations, Auth, real Board CRUD, deployment | Next active architecture slice: data/API/Auth/deploy changes |
+| S1A DB Schema | `ARCH_slice_S1A_db_schema.md` | Formal schema, Alembic migrations, constraints, indexes, future-compatible join points | Implemented and locally smoke-tested; staging DB smoke pending S1B |
+| S1B Staging Infra | `ARCH_slice_S1B_staging_infra.md` | Vercel, FastAPI host, Postgres, R2, domain, email provider, staging smoke | When preparing online resources |
+| S1C Auth Context | `ARCH_slice_S1C_auth_request_context.md` | Registration, login, sessions, request context, workspace membership authority | After S1A |
+| S1D Board CRUD | `ARCH_slice_S1D_auth_board_crud.md` | Permission-checked Board list/load/save/history/member APIs | After S1C |
 | S2 AI Runtime | `ARCH_slice_S2_ai_runtime.md` | Node Registry, Model Registry, AiRun, provider routing, AI Chat planner | AI node/provider/model changes |
 | S3 Admin/Billing/Analytics | `ARCH_slice_S3_admin_billing_analytics.md` | Admin roles, audit, credits, subscriptions, analytics, moderation facts | Admin/billing/analytics schema changes |
 | S4 Collaboration | `ARCH_slice_S4_collaboration.md` | Multiplayer, presence, CRDT boundaries, roles | Collaboration work begins |
@@ -130,7 +134,7 @@ S1 Real Boundary: staging + Auth + ownership + Board CRUD
 
 Dependency rules:
 
-- S1A can start locally before external resources.
+- S1A is implemented locally; validate it against real Postgres during S1B.
 - S1B needs staging Postgres/R2/domain/API resources.
 - S1C depends on S1A and an email/session strategy.
 - S1D depends on S1A/S1C and becomes the permission foundation for S2/S3/S4.

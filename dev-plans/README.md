@@ -14,6 +14,7 @@ Detailed product, architecture and state truth now lives in:
 
 | File | Status | Notes |
 | --- | --- | --- |
+| `s1b-staging-deployment-runbook-2026-05-02.md` | Active S1B runbook | Chinese beginner guide for domain, DNS, Vercel, Hetzner, Neon, R2, Clerk, Google OAuth and email setup. |
 | `overseas-cost-growth-forecast.md` | Active reference | Overseas cost and growth research note. |
 
 ## Archive

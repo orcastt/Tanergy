@@ -11,9 +11,10 @@ Real staging infrastructure, persistent data, real Auth/session, and Auth-backed
 
 ```text
 Next Web
+  -> Auth Provider UI/JWT: Clerk preferred, Supabase Auth acceptable
   -> NEXT_PUBLIC_API_BASE_URL
   -> FastAPI /api/v1
-      -> request context from session/JWT
+      -> request context from verified session/JWT
       -> Postgres storage adapters
       -> R2/S3-compatible object storage
 ```
@@ -22,7 +23,8 @@ Next Web
 
 ```text
 User registers/logs in
-  -> server session/JWT
+  -> email OTP/magic link or Google OAuth
+  -> provider/server session/JWT
   -> user row
   -> default workspace
   -> workspace membership
@@ -39,6 +41,7 @@ S1 is the identity and ownership foundation. It should not implement every futur
 - Postgres Board/Asset/History adapters exist.
 - S3-compatible Asset adapter exists.
 - Alembic P0 migration scaffold exists.
+- S1A formal schema migrations are implemented locally through revision `20260502_0006` and passed disposable Docker Postgres smoke.
 - Real staging server, managed Postgres, R2 bucket, domain, TLS and secrets are not connected.
 - Auth is still mock/dev scaffold.
 
@@ -155,6 +158,7 @@ Included:
 - Server-side Board CRUD scoped by `user_id`, `workspace_id` and membership role.
 - Server-side board/member role model needed by future sharing and collaboration.
 - Staging Postgres/R2/domain/CORS smoke.
+- Google OAuth through Auth provider, with FastAPI JWT verification and local user mapping.
 
 Deferred:
 
@@ -162,6 +166,15 @@ Deferred:
 - Full Admin dashboard. S1 may create `admin_roles` compatibility, but production `/admin` belongs to S3.
 - Credit deduction and subscription enforcement. S1 may prepare user/account ids; credit ledger and team billing rules belong to S3 after Auth is real.
 - Real AI provider cost routing. AiRun/provider cost logs belong to S2.
+
+## S1 Sub-Slices
+
+| Sub-slice | File | Status | Output |
+| --- | --- | --- | --- |
+| S1A DB schema + migrations | `ARCH_slice_S1A_db_schema.md` | Implemented and locally smoke-tested; staging DB smoke pending S1B | Formal schema, constraints, indexes and future-compatible join points. |
+| S1B staging infra smoke | `ARCH_slice_S1B_staging_infra.md` | Waiting on resources | Public Web/API, Postgres, R2, DNS/TLS and email provider smoke. |
+| S1C Auth/request context | `ARCH_slice_S1C_auth_request_context.md` | After S1A | Real sessions, default workspace and server-side request context. |
+| S1D Auth-backed Board CRUD | `ARCH_slice_S1D_auth_board_crud.md` | After S1C | Board/History/Asset APIs scoped by user, workspace and role. |
 
 ## API Rules
 
@@ -174,6 +187,7 @@ Deferred:
 ## Validation Target
 
 - Fresh user can register, verify/login, and land in `/workspaces`.
+- Fresh user can sign up/login with Google OAuth and land in `/workspaces`.
 - User receives one default workspace and owner membership.
 - Board create/open/rename/copy/delete/list/save/history works through FastAPI with staging Postgres/R2.
 - User A cannot list, load, save, delete or view History for User B's Board.

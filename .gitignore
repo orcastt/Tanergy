@@ -48,6 +48,7 @@ dump.rdb
 # Docker
 docker-compose.override.yml
 deploy/staging/api.env
+deploy/staging/*.local.md
 
 # Test
 coverage/

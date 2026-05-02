@@ -9,6 +9,7 @@ WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY alembic.ini ./
 COPY migrations ./migrations
+COPY scripts ./scripts
 COPY tangent_api ./tangent_api
 
 RUN python -m pip install --upgrade pip \
