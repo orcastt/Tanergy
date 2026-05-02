@@ -3,7 +3,7 @@
 **Date**: 2026-04-30  
 **Branch**: `feature/asset-lod-roadmap`  
 **Base checkpoint**: `a6f20c1 checkpoint: stabilize s1.5 canvas runtime`  
-**Status**: Slices A-D implemented. Cross-platform quality gate is `pass with notes` as of 2026-04-30. Windows dense-board stutter is a non-blocking performance follow-up. Slice E-A local Asset API bridge and Slice E-C board save guard / local save-restore are implemented. Slice E-B request context + storage adapter seam now covers FastAPI local-dev, real `s3-compatible` Asset storage, Postgres persistence and configurable Web-to-FastAPI upload/save/load; local FastAPI + Web runtime smoke and staging API Docker package smoke have passed. `/workspaces` is now the primary active-workspace Board gallery/list entry and supports summary list, create/open, search, sort, rename, delete and S0C summary metadata first pass; `/boards/:boardId` remains the Board canvas entry with autosave/save indicator across local/FastAPI contracts. S0D Auth scaffold first pass and S0E AI contract first pass are also landed. After checkpoint `eb9ddd6`, near-term local work is coordinated with `dev-plans/p0-local-product-shell-and-slice-e-roadmap-2026-05-01.md`: Product Shell route skeletons, App Shell 5-tab navigation, Home / Collection / Account / Settings / Team / Subscription semantic shells, Board save UX, Workspace Board metadata, Auth scaffold and AI contract scaffold have first-pass local checkpoints. Real staging wiring, real Auth/email, real R2/Postgres credentials and real AI provider remain external-resource steps.
+**Status**: Slices A-D implemented. Cross-platform quality gate is `pass with notes` as of 2026-04-30. Windows dense-board stutter is a non-blocking performance follow-up. Slice E-A local Asset API bridge and Slice E-C board save guard / local save-restore are implemented. Slice E-B request context + storage adapter seam now covers FastAPI local-dev, real `s3-compatible` Asset storage, Postgres persistence and configurable Web-to-FastAPI upload/save/load; local FastAPI + Web runtime smoke and staging API Docker package smoke have passed. `/workspaces` is now the primary active-workspace Board gallery/list entry and supports summary list, create/open, search, sort, rename, delete, recent-open, Load more and expanded Board Management metadata; `/boards/:boardId` remains the Board canvas entry with autosave/save indicator, per-board Canvas Settings and Board History across local/FastAPI contracts. S0D Auth scaffold first pass, S0E AI contract first pass, P0 Alembic scaffold and Admin S0 schema/access planning are also landed. Near-term local work is coordinated with `dev-plans/p0-local-product-shell-and-slice-e-roadmap-2026-05-01.md`: captured Board thumbnails, Smart Drawing, long-session regression and i18n/status polish are the remaining local candidates. Real staging wiring, real Auth/email, real R2/Postgres credentials and real AI provider remain external-resource steps.
 
 **Owner**: Codex / TANGENT
 
@@ -53,8 +53,8 @@ Already improved:
 Still unresolved / next:
 
 - Slice D cross-platform validation passed with notes; Windows dense boards remain a non-blocking follow-up.
-- Local spike assets still rely on tldraw local asset URLs / data URLs / blob URLs.
-- Collaboration cannot safely sync or persist heavy image data in the board document.
+- Runtime image sources can still originate as browser `data:` / `blob:` during paste/import, but save paths now migrate supported images through Asset APIs and the Board/History guard blocks heavy payloads.
+- Collaboration cannot safely begin until real staging Asset/Board/Auth/AI Run boundaries have been smoke-tested with R2/Postgres and server-side permissions.
 - Link preview cards still need a server-side URL unfurl + image proxy / asset path; direct remote preview images can fail due to CORS, hotlinking or bot protection.
 
 Main conclusion:
@@ -682,10 +682,12 @@ Recommended order:
 5. ✅ Quality gate — Cross-platform performance pass with notes: Windows Chrome / Edge via temporary tunnel, browser zoom, dense boards
 6. ✅ Slice E-A — Local Server-Backed Asset Contract
 7. ✅ Slice E-C — Board save guard / data URL migration
-8. ▶️ Slice E-B — Auth context + storage adapter contract
-9. ▶️ Local P0 Auth scaffold + AI contract follow-up
-10. Link preview backend unfurl + image proxy / asset path
-11. Multiplayer collaboration
+8. ✅ Slice E-B — Auth context + storage adapter contract first pass
+9. ✅ Local P0 Product Shell / Board save UX / Board History / Board Management / Canvas Settings first passes
+10. ▶️ Local polish if external resources are not ready — captured Board thumbnail, Smart Drawing, long-session regression, i18n/status cleanup
+11. ▶️ Real staging wiring — Postgres/R2/domain/TLS/Web-to-FastAPI smoke
+12. Link preview backend unfurl + image proxy / asset path
+13. Multiplayer collaboration
 
 Reason:
 
@@ -693,8 +695,8 @@ Reason:
 - C creates a stable abstraction before touching ordinary canvas image rendering.
 - D is the risky tldraw integration spike.
 - Cross-platform validation was a release gate after D and is now pass with notes.
-- E is the next active slice and is required before collaboration.
-- Product Shell, Board save UX, Workspace Board metadata, Auth scaffold and AI contract scaffold can proceed locally before server/domain/email/provider resources are ready; they must remain mock/skeleton until real Auth, real AI and staging exist. Current first passes are checkpointed, not complete, so the next local emphasis is App Shell route/responsive smoke, Board save regression polish or external-resource staging wiring.
+- E remains the active architecture roadmap because real staging R2/Postgres/Auth/AI are not done yet.
+- Product Shell, Board save UX, Workspace Board metadata, Board History, Board Management metadata, Canvas Settings, Auth scaffold and AI contract scaffold can proceed locally before server/domain/email/provider resources are ready; they must remain mock/skeleton until real Auth, real AI and staging exist. Current first passes are checkpointed or locally implemented, not complete product claims, so the next local emphasis is captured thumbnail / Smart Drawing / regression polish or external-resource staging wiring.
 - Collaboration should not be built on a board document that can still carry heavy image payloads.
 - Windows/browser performance validation happened before real AI integration and produced non-blocking follow-up notes for dense boards.
 

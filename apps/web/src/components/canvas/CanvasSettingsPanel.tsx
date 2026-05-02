@@ -1,19 +1,20 @@
 'use client'
 
-import type { SyntheticEvent } from 'react'
+import type { CSSProperties, ReactNode, SyntheticEvent } from 'react'
 import { useCanvasSettingsStore, type CanvasSettings } from '@/features/canvas-settings/canvasSettingsStore'
 
 type CanvasSettingsPanelProps = {
+  boardMode?: boolean
   onClose: () => void
 }
 
-const sections = ['Settings', 'Workspace', 'Referral', 'Appearance', 'AI Settings', 'Advanced']
+const sections = ['Canvas', 'Interaction', 'Display']
 
 function stopCanvasEvent(event: SyntheticEvent) {
   event.stopPropagation()
 }
 
-export function CanvasSettingsPanel({ onClose }: CanvasSettingsPanelProps) {
+export function CanvasSettingsPanel({ boardMode = false, onClose }: CanvasSettingsPanelProps) {
   const save = useCanvasSettingsStore((state) => state.save)
   const settings = useCanvasSettingsStore((state) => state.settings)
   const update = useCanvasSettingsStore((state) => state.update)
@@ -31,7 +32,7 @@ export function CanvasSettingsPanel({ onClose }: CanvasSettingsPanelProps) {
     >
       <aside className="canvas-settings__sidebar">
         {sections.map((section) => (
-          <button className={section === 'Settings' ? 'is-active' : undefined} key={section} type="button">
+          <button className={section === 'Canvas' ? 'is-active' : undefined} key={section} type="button">
             <span aria-hidden>{getSectionIcon(section)}</span>
             {section}
           </button>
@@ -45,18 +46,18 @@ export function CanvasSettingsPanel({ onClose }: CanvasSettingsPanelProps) {
       <main className="canvas-settings__main">
         <header className="canvas-settings__header">
           <div>
-            <h2>Save View</h2>
-            <p>Save current grid style and colors, and keep them after refresh.</p>
+            <h2>Canvas Settings</h2>
+            <p>{boardMode ? 'Board-specific canvas background and alignment.' : 'Local canvas defaults for this browser.'}</p>
           </div>
           <button
             className="canvas-settings__save"
             onClick={() => {
-              save()
+              if (!boardMode) save()
               onClose()
             }}
             type="button"
           >
-            Save Settings
+            {boardMode ? 'Done' : 'Save Settings'}
           </button>
           <button aria-label="Close settings" className="canvas-settings__close" onClick={onClose} type="button">
             ×
@@ -75,20 +76,31 @@ export function CanvasSettingsPanel({ onClose }: CanvasSettingsPanelProps) {
           />
         </section>
 
+        <section className="canvas-settings__preview" data-background-style={settings.backgroundStyle}>
+          <div
+            style={{
+              '--canvas-preview-background': settings.backgroundColor,
+              '--canvas-preview-grid': settings.gridColor,
+              '--canvas-preview-unit': `${settings.gridUnit}px`,
+            } as CSSProperties}
+          />
+          <strong>{getBackgroundLabel(settings.backgroundStyle)}</strong>
+        </section>
+
         <section className="canvas-settings__grid">
-          <SettingTitle title="Grid Rendering" subtitle="Show background reference lines" />
-          <Toggle checked={settings.gridRendering} onChange={(gridRendering) => update({ gridRendering })} />
+          <SettingTitle title="Background" subtitle="Canvas surface pattern" />
+          <Segmented
+            options={[['dots', 'Dots'], ['grid', 'Grid'], ['solid', 'Solid']]}
+            value={settings.backgroundStyle}
+            onChange={(backgroundStyle) => update({ backgroundStyle: backgroundStyle as CanvasSettings['backgroundStyle'] })}
+          />
           <SettingTitle title="Snap Alignment" subtitle="Intelligently align elements" />
           <Toggle checked={settings.snapAlignment} onChange={(snapAlignment) => update({ snapAlignment })} />
 
-          <SettingTitle title="Style" />
-          <Segmented
-            options={[['grid', 'Grid'], ['solid', 'Solid']]}
-            value={settings.gridStyle}
-            onChange={(gridStyle) => update({ gridStyle: gridStyle as CanvasSettings['gridStyle'] })}
-          />
-          <SettingTitle title="Grid Unit" />
+          <SettingTitle title="Spacing" />
           <NumberPill value={settings.gridUnit} unit="px" onChange={(value) => setNumber('gridUnit', value)} />
+          <SettingTitle title="Surface" />
+          <ColorInput label="Background color" value={settings.backgroundColor} onChange={(backgroundColor) => update({ backgroundColor })} />
         </section>
 
         <SettingRange
@@ -105,19 +117,13 @@ export function CanvasSettingsPanel({ onClose }: CanvasSettingsPanelProps) {
           max={48}
           min={2}
           step={1}
-          subtitle="Distance in screen pixels before alignment guides catch"
+          subtitle={`Strength: ${getSnapStrength(settings.snapDistance)}`}
           value={settings.snapDistance}
           onChange={(value) => setNumber('snapDistance', value)}
         />
 
-        <SettingRow label="Grid Color">
-          <input
-            aria-label="Grid color"
-            className="canvas-settings__color"
-            type="color"
-            value={settings.gridColor}
-            onChange={(event) => update({ gridColor: event.currentTarget.value })}
-          />
+        <SettingRow label="Pattern Color">
+          <ColorInput label="Pattern color" value={settings.gridColor} onChange={(gridColor) => update({ gridColor })} />
         </SettingRow>
 
         <SettingRow label="Edge Color" subtitle="Set how flow edge colors are displayed">
@@ -176,7 +182,7 @@ function SettingRange({
   )
 }
 
-function SettingRow({ children, label, subtitle }: { children: React.ReactNode; label: string; subtitle?: string }) {
+function SettingRow({ children, label, subtitle }: { children: ReactNode; label: string; subtitle?: string }) {
   return (
     <section className="canvas-settings__row">
       <SettingTitle title={label} subtitle={subtitle} />
@@ -196,6 +202,18 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (checked: b
     >
       <span />
     </button>
+  )
+}
+
+function ColorInput({ label, onChange, value }: { label: string; onChange: (value: string) => void; value: string }) {
+  return (
+    <input
+      aria-label={label}
+      className="canvas-settings__color"
+      type="color"
+      value={value}
+      onChange={(event) => onChange(event.currentTarget.value)}
+    />
   )
 }
 
@@ -235,12 +253,21 @@ function NumberPill({ onChange, unit, value }: { onChange: (value: string) => vo
 
 function getSectionIcon(section: string) {
   const icons: Record<string, string> = {
-    Advanced: '⚡',
-    Appearance: '◉',
-    'AI Settings': '✣',
-    Referral: '♧',
-    Settings: '⚙',
-    Workspace: '□',
+    Canvas: '□',
+    Display: '◉',
+    Interaction: '⌁',
   }
   return icons[section] ?? '•'
+}
+
+function getBackgroundLabel(style: CanvasSettings['backgroundStyle']) {
+  if (style === 'grid') return 'Fine grid background'
+  if (style === 'solid') return 'Solid background'
+  return 'Subtle dot background'
+}
+
+function getSnapStrength(value: number) {
+  if (value < 10) return 'Soft'
+  if (value > 28) return 'Strong'
+  return 'Normal'
 }

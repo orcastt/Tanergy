@@ -70,7 +70,18 @@ def rename_board(
     payload: BoardRenameRequest,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> BoardRenameResponse:
-    board = get_board_storage_adapter().rename_board(board_id, payload.title, context)
+    board = get_board_storage_adapter().update_board_metadata(
+        board_id,
+        payload.title,
+        payload.description,
+        payload.card_color,
+        payload.thumbnail_url,
+        payload.is_starred,
+        payload.is_pinned,
+        payload.visibility,
+        payload.share_id,
+        context,
+    )
     return BoardRenameResponse(board=board, ok=True)
 
 

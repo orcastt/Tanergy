@@ -1,0 +1,223 @@
+.board-panel-backdrop {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(24, 29, 38, 0.18);
+}
+
+.board-panel {
+  display: grid;
+  width: min(560px, 100%);
+  height: 100%;
+  grid-template-rows: auto 1fr auto;
+  gap: 22px;
+  padding: 28px;
+  border-left: 1px solid var(--color-hairline);
+  background: var(--color-canvas);
+  box-shadow: -16px 0 40px rgba(24, 29, 38, 0.12);
+  overflow-y: auto;
+}
+
+.board-panel-header,
+.board-panel-footer,
+.board-panel-danger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.board-panel-header h2 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.15;
+}
+
+.board-panel-header button,
+.board-panel-danger button {
+  border: 0;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.board-panel-form {
+  display: grid;
+  align-content: start;
+  gap: 22px;
+}
+
+.board-panel-thumbnail {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.board-panel-thumbnail .boards-thumbnail {
+  width: 132px;
+  height: 104px;
+  border-radius: var(--radius-md);
+}
+
+.board-panel-thumbnail > div {
+  display: grid;
+  gap: 10px;
+}
+
+.board-panel-thumbnail-upload {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 10px !important;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.board-panel-thumbnail-upload input {
+  display: none;
+}
+
+.board-panel-thumbnail small {
+  color: var(--color-signature-coral);
+  font-size: 12px;
+}
+
+.board-panel-form label,
+.board-panel-form fieldset {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.board-panel-form label span,
+.board-panel-form legend {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.board-panel-form input,
+.board-panel-form textarea {
+  width: 100%;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-canvas);
+  color: var(--color-ink);
+}
+
+.board-panel-form input {
+  height: 42px;
+  padding: 0 12px;
+}
+
+.board-panel-form textarea {
+  resize: vertical;
+  padding: 11px 12px;
+  line-height: 1.5;
+}
+
+.board-panel-swatches {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.board-panel-swatches button {
+  display: flex;
+  min-width: 0;
+  height: 42px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+.board-panel-swatches button.is-active {
+  border-color: var(--color-primary);
+  box-shadow: inset 0 0 0 1px var(--color-primary);
+}
+
+.board-panel-swatches span {
+  width: 20px;
+  height: 20px;
+  border: 1px solid rgba(24, 29, 38, 0.18);
+  border-radius: 50%;
+  background: var(--color-surface-soft);
+}
+
+.board-panel-swatches [data-card-color='cream'] span {
+  background: var(--color-signature-cream);
+}
+
+.board-panel-swatches [data-card-color='mint'] span {
+  background: var(--color-signature-mint);
+}
+
+.board-panel-swatches [data-card-color='peach'] span {
+  background: var(--color-signature-peach);
+}
+
+.board-panel-swatches [data-card-color='yellow'] span {
+  background: var(--color-signature-yellow);
+}
+
+.board-panel-access {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.board-panel-access button {
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--color-canvas);
+  color: var(--color-muted);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.board-panel-access button.is-active {
+  border-color: var(--color-primary);
+  color: var(--color-ink);
+}
+
+.board-panel-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  color: var(--color-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.board-panel-toggles label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .board-panel {
+    width: 100%;
+  }
+
+  .board-panel-thumbnail,
+  .board-panel-details div {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,7 +1,7 @@
 'use client'
 
 import type { CSSProperties, SyntheticEvent } from 'react'
-import type { Editor, TLShapeId } from 'tldraw'
+import type { Editor } from 'tldraw'
 import {
   arrowheadEndStyles,
   arrowheadStartStyles,
@@ -18,16 +18,11 @@ import {
 } from './canvasStyleControls'
 import { useEditorRevision } from './useEditorRevision'
 import { useEditorInteractionState } from './useEditorInteractionState'
+import { CanvasStylePanelSelectionActions } from './CanvasStylePanelSelectionActions'
+import { ActionButtonGroup, StyleButton, StyleButtonGroup, type SelectionAction } from './CanvasStylePanelGroups'
 
 type CanvasSpikeStylePanelProps = {
   editor: Editor | null
-}
-
-type SelectionAction = {
-  icon: string
-  label: string
-  minSelected?: number
-  run: (editor: Editor, ids: TLShapeId[]) => void
 }
 
 const layerActions: SelectionAction[] = [
@@ -68,7 +63,6 @@ export function CanvasSpikeStylePanel({ editor }: CanvasSpikeStylePanelProps) {
   const isPanningCanvas =
     interaction.cameraState === 'moving' ||
     interaction.currentToolId === 'hand' ||
-    interaction.isDragging ||
     interaction.isPanning
 
   if (!editor || !hasSelection || hasNodeCardSelection || isPanningCanvas) return null
@@ -97,6 +91,8 @@ export function CanvasSpikeStylePanel({ editor }: CanvasSpikeStylePanelProps) {
         <span>属性</span>
         <small>已选 · {selectedCount}</small>
       </div>
+
+      <CanvasStylePanelSelectionActions editor={editor} selectedIds={selectedIds} />
 
       <section className="canvas-style-panel__block">
         <p>描边</p>
@@ -233,66 +229,5 @@ export function CanvasSpikeStylePanel({ editor }: CanvasSpikeStylePanelProps) {
       <ActionButtonGroup actions={alignActions} editor={editor} label="对齐" selectedCount={selectedCount} selectedIds={selectedIds} />
       <ActionButtonGroup actions={operationActions} editor={editor} label="操作" selectedCount={selectedCount} selectedIds={selectedIds} />
     </aside>
-  )
-}
-
-function StyleButtonGroup({ children, label }: { children: React.ReactNode; label: string }) {
-  return (
-    <section className="canvas-style-panel__block">
-      <p>{label}</p>
-      <div className="canvas-style-panel__segmented">{children}</div>
-    </section>
-  )
-}
-
-function StyleButton({
-  active,
-  icon,
-  label,
-  onClick,
-}: {
-  active: boolean
-  icon: string
-  label: string
-  onClick: () => void
-}) {
-  return (
-    <button aria-label={label} className={active ? 'is-active' : undefined} onClick={onClick} title={label} type="button">
-      <span className={`style-icon style-icon--${icon}`} aria-hidden />
-    </button>
-  )
-}
-
-function ActionButtonGroup({
-  actions,
-  editor,
-  label,
-  selectedCount,
-  selectedIds,
-}: {
-  actions: SelectionAction[]
-  editor: Editor
-  label: string
-  selectedCount: number
-  selectedIds: TLShapeId[]
-}) {
-  return (
-    <section className="canvas-style-panel__block">
-      <p>{label}</p>
-      <div className="canvas-style-panel__icon-grid">
-        {actions.map((action) => (
-          <button
-            aria-label={action.label}
-            disabled={selectedCount < (action.minSelected ?? 1)}
-            key={action.icon}
-            onClick={() => action.run(editor, selectedIds)}
-            title={action.label}
-            type="button"
-          >
-            <span className={`style-action-icon style-action-icon--${action.icon}`} aria-hidden />
-          </button>
-        ))}
-      </div>
-    </section>
   )
 }

@@ -1,11 +1,13 @@
 import type { Editor } from 'tldraw'
 import type { TangentAssetRecord } from '@/features/assets/assetTypes'
+import { getSerializableCanvasSettings, type CanvasSettings } from '@/features/canvas-settings/canvasSettingsStore'
 import { getNodeEdgesSnapshot, type NodeRuntimeEdge } from '@/features/node-runtime/nodeEdges'
 import { auditBoardDocument, type BoardDocumentGuardResult } from './boardDocumentGuard'
 
 export type SerializedBoardDocument = {
   assets: SerializedBoardAsset[]
   camera: { x: number; y: number; z: number }
+  canvasSettings?: CanvasSettings
   pageId: string
   runtimeEdges: NodeRuntimeEdge[]
   serializedAt: string
@@ -66,6 +68,7 @@ export function serializeBoardDocument(editor: Editor): SerializedBoardDocument 
   return {
     assets: editor.getAssets().map((asset) => serializeAsset(asset as EditorAssetRecord)),
     camera: { x: camera.x, y: camera.y, z: camera.z },
+    canvasSettings: getSerializableCanvasSettings(),
     pageId: String(editor.getCurrentPageId()),
     runtimeEdges: getNodeEdgesSnapshot(),
     serializedAt: new Date().toISOString(),

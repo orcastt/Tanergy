@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 
 from fastapi import HTTPException
 
@@ -37,6 +38,21 @@ class BoardStorageAdapter:
         raise NotImplementedError
 
     def rename_board(self, board_id: str, title: str, context: ApiRequestContext) -> BoardSummary:
+        raise NotImplementedError
+
+    def update_board_metadata(
+        self,
+        board_id: str,
+        title: Optional[str],
+        description: Optional[str],
+        card_color: Optional[str],
+        thumbnail_url: Optional[str],
+        is_starred: Optional[bool],
+        is_pinned: Optional[bool],
+        visibility: Optional[str],
+        share_id: Optional[str],
+        context: ApiRequestContext,
+    ) -> BoardSummary:
         raise NotImplementedError
 
     def delete_board(self, board_id: str, context: ApiRequestContext) -> str:
@@ -80,6 +96,25 @@ class LocalBoardStorageAdapter(BoardStorageAdapter):
         from tangent_api.storage.local_board_store import rename_board as rename_local_board
 
         return rename_local_board(board_id, title, context)
+
+    def update_board_metadata(
+        self,
+        board_id: str,
+        title: Optional[str],
+        description: Optional[str],
+        card_color: Optional[str],
+        thumbnail_url: Optional[str],
+        is_starred: Optional[bool],
+        is_pinned: Optional[bool],
+        visibility: Optional[str],
+        share_id: Optional[str],
+        context: ApiRequestContext,
+    ) -> BoardSummary:
+        from tangent_api.storage.local_board_store import update_board_metadata
+
+        return update_board_metadata(
+            board_id, title, description, card_color, thumbnail_url, is_starred, is_pinned, visibility, share_id, context
+        )
 
     def delete_board(self, board_id: str, context: ApiRequestContext) -> str:
         from tangent_api.storage.local_board_store import delete_board as delete_local_board
@@ -126,6 +161,23 @@ class PostgresBoardStorageAdapter(BoardStorageAdapter):
 
     def rename_board(self, board_id: str, title: str, context: ApiRequestContext) -> BoardSummary:
         return self.store.rename_board(board_id, title, context)
+
+    def update_board_metadata(
+        self,
+        board_id: str,
+        title: Optional[str],
+        description: Optional[str],
+        card_color: Optional[str],
+        thumbnail_url: Optional[str],
+        is_starred: Optional[bool],
+        is_pinned: Optional[bool],
+        visibility: Optional[str],
+        share_id: Optional[str],
+        context: ApiRequestContext,
+    ) -> BoardSummary:
+        return self.store.update_board_metadata(
+            board_id, title, description, card_color, thumbnail_url, is_starred, is_pinned, visibility, share_id, context
+        )
 
     def delete_board(self, board_id: str, context: ApiRequestContext) -> str:
         return self.store.delete_board(board_id, context)

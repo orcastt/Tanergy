@@ -42,11 +42,11 @@ class FakePostgresCursor:
         elif normalized.startswith("SELECT id, workspace_id, owner_id, title, document") and "ORDER BY saved_at DESC" in normalized:
             workspace_id = params[0]
             self.rows = [row for (workspace, _board_id), row in self.database.boards.items() if workspace == workspace_id]
-            self.rows.sort(key=lambda row: row[10], reverse=True)
+            self.rows.sort(key=lambda row: row[12], reverse=True)
         elif normalized.startswith("SELECT id, workspace_id, owner_id, title, document"):
             self.row = self.database.boards.get((params[0], params[1]))
         elif normalized.startswith("UPDATE tangent_boards SET title"):
-            key = (params[2], params[3])
+            key = (params[9], params[10])
             row = self.database.boards.get(key)
             if row:
                 self.database.boards[key] = (
@@ -58,9 +58,16 @@ class FakePostgresCursor:
                     row[5],
                     row[6],
                     row[7],
-                    row[8],
-                    row[9],
                     params[1],
+                    params[2],
+                    params[3],
+                    row[11],
+                    params[8],
+                    row[13],
+                    params[4],
+                    params[5],
+                    params[6],
+                    params[7],
                 )
         elif normalized.startswith("UPDATE tangent_boards SET last_opened_at"):
             key = (params[1], params[2])
@@ -76,8 +83,15 @@ class FakePostgresCursor:
                     row[6],
                     row[7],
                     row[8],
-                    params[0],
+                    row[9],
                     row[10],
+                    params[0],
+                    row[12],
+                    row[13],
+                    row[14],
+                    row[15],
+                    row[16],
+                    row[17],
                 )
         elif normalized.startswith("DELETE FROM tangent_boards"):
             self.database.boards.pop((params[0], params[1]), None)

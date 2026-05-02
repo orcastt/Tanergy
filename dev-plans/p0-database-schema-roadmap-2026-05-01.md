@@ -1,8 +1,8 @@
 # P0 Database Schema Roadmap
 
-**Date**: 2026-05-01
+**Date**: 2026-05-02
 **Branch**: `feature/asset-lod-roadmap`
-**Status**: Active local production-readiness slice. Board / Board Snapshot / Asset Postgres adapters exist; this plan formalizes the P0 schema, introduces Alembic migrations without removing local-dev auto-create fallback yet, and records Admin S0 / Analytics / Credits / Board membership fact-source targets for later migrations.
+**Status**: Active local production-readiness slice. Board / Board Snapshot / Asset Postgres adapters exist; Alembic scaffold and Board metadata migrations exist; this plan formalizes the P0 schema without removing local-dev auto-create fallback yet, and records Admin S0 / Analytics / Credits / Board membership fact-source targets for later migrations.
 
 ---
 
@@ -37,8 +37,15 @@ document JSONB
 byte_size
 asset_count
 shape_count
+description
+card_color
 thumbnail_url
 last_opened_at
+created_at
+is_starred
+is_pinned
+visibility
+share_id
 saved_at
 ```
 
@@ -47,6 +54,8 @@ Notes:
 - `document` must pass the Board document guard before write.
 - List/save responses return summary only; load returns the document.
 - `last_opened_at` is summary metadata for Workspace recency and can later be replaced or complemented by per-user recents.
+- `description`, `card_color`, `is_starred`, `is_pinned`, `visibility`, `share_id` and editable `thumbnail_url` are lightweight Board management metadata used by the Workspace card / Panel UI; they stay outside the Board document.
+- Board member nicknames / roles in the current Panel are UI scaffold only; real membership belongs in `tangent_board_members`.
 
 ### `tangent_assets`
 
@@ -271,6 +280,7 @@ Rules:
 Migration note:
 
 - The first migration `20260501_0001` creates P0 core tables and does not yet create every Admin S0 / Analytics / Billing target table.
+- Board metadata follow-up migrations `20260502_0002` and `20260502_0003` add Workspace Board Management fields such as description, card color, created/opened times, star/pin, visibility and share id.
 - When Admin S0 is selected as an implementation slice, add a new Alembic revision instead of mutating the already-created baseline.
 
 ---
@@ -313,6 +323,7 @@ DATABASE_URL=postgresql://... alembic downgrade -1
 - Workspace Board list can use `lastOpenedAt` for recency without returning full Board documents.
 - Board history create/list/load works through local-dev and Postgres adapters; history list does not return document bodies.
 - Free-tier history retention keeps only the latest 100 records per Board by default.
+- Board Management metadata migrations are present for description/card color/created/opened/star/pin/visibility/share id without moving those fields into the Board document.
 
 ---
 

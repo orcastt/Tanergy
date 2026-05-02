@@ -2,22 +2,30 @@
 
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
-import type { BoardPersistenceSummary, SerializedBoardSaveInput } from '@/features/boards/boardTypes'
+import type { BoardMetadataUpdateInput, BoardPersistenceSummary, SerializedBoardSaveInput } from '@/features/boards/boardTypes'
 import {
   deleteLocalBoardDocument,
   listLocalBoardDocuments,
   loadLocalBoardDocument,
   renameLocalBoardDocument,
   saveLocalBoardDocument,
+  updateLocalBoardMetadata,
 } from '@/features/boards/localBoardClient'
-import { WorkspaceBoardItem, type WorkspaceBoardViewMode } from './WorkspaceBoardItem'
-import { NewBoardTile, WorkspaceEmptyState, WorkspaceLoadingState } from './WorkspaceBoardStates'
+import { WorkspaceBoardHeader } from './WorkspaceBoardHeader'
+import { WorkspaceBoardPanelHost } from './WorkspaceBoardPanelHost'
+import { WorkspaceBoardResults } from './WorkspaceBoardResults'
+import type { WorkspaceBoardViewMode } from './WorkspaceBoardItem'
 import { WorkspaceBoardToolbar, type WorkspaceBoardSortMode } from './WorkspaceBoardToolbar'
+import {
+  boardPageSize,
+  createBoardId,
+  createBoardShareId,
+  getBoardShareUrl,
+  filterAndSortBoards,
+} from './workspaceBoardUtils'
 
 type ViewMode = WorkspaceBoardViewMode
 type SortMode = WorkspaceBoardSortMode
-
-const boardPageSize = 12
 
 export function WorkspaceBoardGallery() {
   const router = useRouter()
@@ -27,27 +35,20 @@ export function WorkspaceBoardGallery() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [pendingBoardId, setPendingBoardId] = useState<string | null>(null)
+  const [panelBoardId, setPanelBoardId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortMode, setSortMode] = useState<SortMode>('opened')
   const [visibleLimit, setVisibleLimit] = useState(boardPageSize)
   const [viewMode, setViewMode] = useState<ViewMode>('gallery')
 
-  const filteredBoards = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase()
-    const visibleBoards = query ? boards.filter((board) => (
-      board.title.toLowerCase().includes(query) || board.id.toLowerCase().includes(query)
-    )) : boards
-
-    return [...visibleBoards].sort((left, right) => {
-      if (sortMode === 'title') return left.title.localeCompare(right.title)
-      if (sortMode === 'objects') return getBoardObjectTotal(right) - getBoardObjectTotal(left)
-      if (sortMode === 'saved') return getSavedTime(right) - getSavedTime(left)
-      return getActivityTime(right) - getActivityTime(left)
-    })
-  }, [boards, searchQuery, sortMode])
+  const filteredBoards = useMemo(() => filterAndSortBoards(boards, searchQuery, sortMode), [boards, searchQuery, sortMode])
 
   const visibleBoards = useMemo(() => filteredBoards.slice(0, visibleLimit), [filteredBoards, visibleLimit])
   const hasMoreBoards = filteredBoards.length > visibleBoards.length
+  const panelBoard = useMemo(
+    () => boards.find((board) => board.id === panelBoardId) ?? null,
+    [boards, panelBoardId]
+  )
 
   const refreshBoards = useCallback(async () => {
     setIsLoading(true)
@@ -131,7 +132,10 @@ export function WorkspaceBoardGallery() {
       const source = await loadLocalBoardDocument(board.id)
       const response = await saveLocalBoardDocument({
         boardId: createBoardId(),
+        cardColor: board.cardColor,
+        description: board.description,
         document: source.board!.document as SerializedBoardSaveInput['document'],
+        thumbnailUrl: board.thumbnailUrl,
         title: `${board.title} copy`,
       })
       if (!response.board) throw new Error('Board copy failed.')
@@ -140,6 +144,32 @@ export function WorkspaceBoardGallery() {
       setError(nextError instanceof Error ? nextError.message : 'Board copy failed.')
     } finally {
       setPendingBoardId(null)
+    }
+  }
+
+  const updateBoardMetadata = async (input: BoardMetadataUpdateInput) => {
+    setPendingBoardId(input.boardId)
+    setError(null)
+    try {
+      const response = await updateLocalBoardMetadata(input)
+      if (!response.board) throw new Error('Board update failed.')
+      setBoards((current) => current.map((board) => board.id === input.boardId ? response.board! : board))
+      return response.board
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : 'Board update failed.')
+      return null
+    } finally {
+      setPendingBoardId(null)
+    }
+  }
+
+  const shareBoard = async (board: BoardPersistenceSummary) => {
+    const updated = board.shareId ? board : await updateBoardMetadata({ boardId: board.id, shareId: createBoardShareId() })
+    const shareBoardRecord = updated ?? board
+    try {
+      await navigator.clipboard?.writeText(getBoardShareUrl(shareBoardRecord))
+    } catch {
+      setError('Share link is ready, but the browser blocked clipboard access.')
     }
   }
 
@@ -160,21 +190,7 @@ export function WorkspaceBoardGallery() {
 
   return (
     <div className="workspace-page">
-      <section className="workspace-header">
-        <div>
-          <p className="product-kicker">Workspace</p>
-          <h1>Boards in this workspace.</h1>
-          <p>Open a saved canvas, create a new board, or switch between gallery and list scanning.</p>
-        </div>
-        <div className="workspace-header-actions" aria-label="Workspace board controls">
-          <button className="product-button product-button-primary" onClick={createBoard} type="button">
-            New board
-          </button>
-          <button className="product-button product-button-secondary" disabled={isLoading} onClick={() => void refreshBoards()} type="button">
-            Refresh
-          </button>
-        </div>
-      </section>
+      <WorkspaceBoardHeader isLoading={isLoading} onCreate={createBoard} onRefresh={() => void refreshBoards()} />
 
       <WorkspaceBoardToolbar
         onSearchChange={updateSearchQuery}
@@ -186,59 +202,44 @@ export function WorkspaceBoardGallery() {
       />
 
       {error ? <div className="workspace-error" role="alert">{error}</div> : null}
-      {isLoading ? <WorkspaceLoadingState /> : null}
-      {!isLoading && boards.length === 0 ? <WorkspaceEmptyState onCreate={createBoard} /> : null}
-      {!isLoading && boards.length > 0 && filteredBoards.length === 0 ? (
-        <div className="workspace-empty-inline">No boards match your search.</div>
-      ) : null}
-      {!isLoading && filteredBoards.length > 0 ? (
-        <section className={viewMode === 'gallery' ? 'workspace-board-grid' : 'workspace-board-list'} aria-label="Workspace boards">
-          <NewBoardTile onCreate={createBoard} viewMode={viewMode} />
-          {visibleBoards.map((board) => (
-            <WorkspaceBoardItem
-              board={board}
-              editingTitle={editingTitle}
-              isEditing={editingBoardId === board.id}
-              isPending={pendingBoardId === board.id}
-              key={board.id}
-              onCancelRename={cancelRename}
-              onCopy={() => void copyBoard(board)}
-              onDelete={() => void deleteBoard(board)}
-              onOpen={() => openBoard(board.id)}
-              onRename={() => startRename(board)}
-              onSubmitRename={(event) => void renameBoard(event, board.id)}
-              onTitleChange={setEditingTitle}
-              viewMode={viewMode}
-            />
-          ))}
-        </section>
-      ) : null}
-      {!isLoading && filteredBoards.length > 0 ? (
-        <div className="workspace-pagination" aria-label="Board pagination">
-          <span>Showing {visibleBoards.length} of {filteredBoards.length} boards</span>
-          {hasMoreBoards ? (
-            <button className="product-button product-button-secondary" onClick={() => setVisibleLimit((value) => value + boardPageSize)} type="button">
-              Load more
-            </button>
-          ) : null}
-        </div>
-      ) : null}
+      <WorkspaceBoardResults
+        boards={boards}
+        editingBoardId={editingBoardId}
+        editingTitle={editingTitle}
+        filteredBoards={filteredBoards}
+        hasMoreBoards={hasMoreBoards}
+        isLoading={isLoading}
+        onCancelRename={cancelRename}
+        onCopy={(board) => void copyBoard(board)}
+        onCreate={createBoard}
+        onDelete={(board) => void deleteBoard(board)}
+        onLoadMore={() => setVisibleLimit((value) => value + boardPageSize)}
+        onMakePrivate={(board) => void updateBoardMetadata({ boardId: board.id, visibility: 'private' })}
+        onMakePublic={(board) => void updateBoardMetadata({ boardId: board.id, visibility: 'public' })}
+        onOpen={openBoard}
+        onOpenPanel={setPanelBoardId}
+        onRename={startRename}
+        onShare={(board) => void shareBoard(board)}
+        onSubmitRename={(event, boardId) => void renameBoard(event, boardId)}
+        onTitleChange={setEditingTitle}
+        onTogglePin={(board) => void updateBoardMetadata({ boardId: board.id, isPinned: !board.isPinned })}
+        onToggleStar={(board) => void updateBoardMetadata({ boardId: board.id, isStarred: !board.isStarred })}
+        pendingBoardId={pendingBoardId}
+        viewMode={viewMode}
+        visibleBoards={visibleBoards}
+      />
+      <WorkspaceBoardPanelHost
+        board={panelBoard}
+        isPending={panelBoard ? pendingBoardId === panelBoard.id : false}
+        onBoardUpdated={(board) => setBoards((current) => current.map((item) => item.id === board.id ? board : item))}
+        onClose={() => setPanelBoardId(null)}
+        onCopy={(board) => void copyBoard(board)}
+        onDelete={(board) => void deleteBoard(board)}
+        onOpen={openBoard}
+        onShare={(board) => void shareBoard(board)}
+        setError={setError}
+        setPendingBoardId={setPendingBoardId}
+      />
     </div>
   )
-}
-
-function createBoardId() {
-  return `board-${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}`
-}
-
-function getBoardObjectTotal(board: BoardPersistenceSummary) {
-  return board.shapeCount + board.assetCount
-}
-
-function getActivityTime(board: BoardPersistenceSummary) {
-  return Date.parse(board.lastOpenedAt || board.savedAt) || 0
-}
-
-function getSavedTime(board: BoardPersistenceSummary) {
-  return Date.parse(board.savedAt) || 0
 }

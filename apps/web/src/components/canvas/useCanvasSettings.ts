@@ -17,7 +17,7 @@ export function useCanvasSettings(editor: Editor | null) {
   useEffect(() => {
     if (!editor) return
 
-    editor.updateInstanceState({ isGridMode: settings.gridRendering })
+    editor.updateInstanceState({ isGridMode: settings.backgroundStyle !== 'solid' })
     editor.updateDocumentSettings({ gridSize: settings.gridUnit })
     editor.user.updateUserPreferences({ isSnapMode: settings.snapAlignment })
     setSnapThreshold(editor, settings.snapDistance)
@@ -27,7 +27,7 @@ export function useCanvasSettings(editor: Editor | null) {
     })
   }, [
     editor,
-    settings.gridRendering,
+    settings.backgroundStyle,
     settings.gridUnit,
     settings.snapAlignment,
     settings.snapDistance,

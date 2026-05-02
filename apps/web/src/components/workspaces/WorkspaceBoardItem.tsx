@@ -14,10 +14,16 @@ type WorkspaceBoardItemProps = {
   onCancelRename: () => void
   onCopy: () => void
   onDelete: () => void
+  onMakePrivate: () => void
+  onMakePublic: () => void
   onOpen: () => void
+  onOpenPanel: () => void
   onRename: () => void
+  onShare: () => void
   onSubmitRename: (event: FormEvent<HTMLFormElement>) => void
   onTitleChange: (title: string) => void
+  onTogglePin: () => void
+  onToggleStar: () => void
   viewMode: WorkspaceBoardViewMode
 }
 
@@ -29,10 +35,16 @@ export function WorkspaceBoardItem({
   onCancelRename,
   onCopy,
   onDelete,
+  onMakePrivate,
+  onMakePublic,
   onOpen,
+  onOpenPanel,
   onRename,
+  onShare,
   onSubmitRename,
   onTitleChange,
+  onTogglePin,
+  onToggleStar,
   viewMode,
 }: WorkspaceBoardItemProps) {
   const collaborators = getCollaborators(board.id)
@@ -74,6 +86,10 @@ export function WorkspaceBoardItem({
     action()
   }
 
+  const openInNewTab = () => {
+    window.open(`/boards/${encodeURIComponent(board.id)}`, '_blank', 'noopener,noreferrer')
+  }
+
   const openAfterSingleClick = () => {
     if (openTimerRef.current !== null) {
       window.clearTimeout(openTimerRef.current)
@@ -96,7 +112,11 @@ export function WorkspaceBoardItem({
   }
 
   return (
-    <article className={`workspace-board-card ${viewMode === 'list' ? 'is-list' : ''}`}>
+    <article
+      className={`workspace-board-card ${viewMode === 'list' ? 'is-list' : ''}`}
+      data-card-color={board.cardColor ?? undefined}
+      data-pinned={board.isPinned ? 'true' : undefined}
+    >
       <button className="workspace-board-open" onClick={onOpen} type="button">
         <BoardThumbnail board={board} />
       </button>
@@ -109,11 +129,16 @@ export function WorkspaceBoardItem({
           </form>
         ) : (
           <button className="workspace-board-title" onClick={openAfterSingleClick} onDoubleClick={renameFromDoubleClick} type="button">
-            <strong>{board.title}</strong>
+            <strong>
+              {board.isPinned ? <span aria-label="Pinned board" title="Pinned">Pinned</span> : null}
+              {board.isStarred ? <span aria-label="Starred board" title="Starred">Starred</span> : null}
+              {board.title}
+            </strong>
             <small>{board.id}</small>
           </button>
         )}
         <div className="workspace-board-meta">
+          {board.description ? <span>{board.description}</span> : null}
           <span>{formatObjectCount(board)}</span>
           <span>{formatActivityTime(board)}</span>
           <span>Saved {formatDateTime(board.savedAt)}</span>
@@ -125,7 +150,7 @@ export function WorkspaceBoardItem({
           <span>+2</span>
         </div>
         <div className="workspace-board-actions">
-          <button aria-label="Open panel settings" onClick={onOpen} title="Panel settings" type="button">Panel</button>
+          <button aria-label="Open panel settings" onClick={onOpenPanel} title="Panel settings" type="button">Panel</button>
           <div className="workspace-board-menu" ref={menuRef}>
             <button
               aria-expanded={isMenuOpen}
@@ -140,8 +165,19 @@ export function WorkspaceBoardItem({
             </button>
             {isMenuOpen ? (
               <div className="workspace-board-menu-popover">
+                <button disabled={isPending} onClick={() => runMenuAction(onShare)} type="button">Share link</button>
+                <button disabled={isPending} onClick={() => runMenuAction(openInNewTab)} type="button">Open in new tab</button>
+                <button disabled={isPending} onClick={() => runMenuAction(onToggleStar)} type="button">
+                  {board.isStarred ? 'Unstar board' : 'Star this board'}
+                </button>
+                <button disabled={isPending} onClick={() => runMenuAction(onTogglePin)} type="button">
+                  {board.isPinned ? 'Unpin board' : 'Pin board'}
+                </button>
                 <button disabled={isPending} onClick={() => runMenuAction(onRename)} type="button">Rename</button>
                 <button disabled={isPending} onClick={() => runMenuAction(onCopy)} type="button">Copy board</button>
+                <button disabled={isPending} onClick={() => runMenuAction(onOpenPanel)} type="button">Board details</button>
+                <button disabled={isPending} onClick={() => runMenuAction(onMakePrivate)} type="button">Make board private</button>
+                <button disabled={isPending} onClick={() => runMenuAction(onMakePublic)} type="button">Make board public</button>
                 <button disabled={isPending} onClick={() => runMenuAction(onDelete)} type="button">Delete</button>
               </div>
             ) : null}

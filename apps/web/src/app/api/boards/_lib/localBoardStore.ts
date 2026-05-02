@@ -5,7 +5,13 @@ import path from 'node:path'
 import { auditBoardDocument } from '@/features/boards/boardDocumentGuard'
 import {
   getBoardDocumentMetrics,
+  normalizeBoardCardColor,
+  normalizeBoardDescription,
+  normalizeBoardShareId,
+  normalizeBoardThumbnailUrl,
+  normalizeBoardVisibility,
   summarizeBoardRecord,
+  type BoardMetadataUpdateInput,
   type BoardPersistenceRecord,
   type BoardSaveInput,
 } from '@/features/boards/boardTypes'
@@ -23,17 +29,25 @@ export async function saveLocalBoard(input: BoardSaveInput, context: ApiRequestC
   const boardId = sanitizeBoardId(input.boardId) ?? `board_${randomUUID()}`
   const metrics = getBoardDocumentMetrics(input.document)
   const existing = await readLocalBoardRecord(boardId, context)
+  const savedAt = new Date().toISOString()
   const record: BoardPersistenceRecord = {
     assetCount: metrics.assetCount,
     byteSize: audit.byteSize,
+    cardColor: normalizeBoardCardColor(input.cardColor ?? existing?.cardColor),
+    createdAt: existing?.createdAt ?? savedAt,
+    description: normalizeBoardDescription(input.description ?? existing?.description),
     document: input.document,
     id: boardId,
+    isPinned: existing?.isPinned ?? false,
+    isStarred: existing?.isStarred ?? false,
     lastOpenedAt: existing?.lastOpenedAt ?? null,
     ownerId: context.userId,
-    savedAt: new Date().toISOString(),
+    savedAt,
     shapeCount: metrics.shapeCount,
-    thumbnailUrl: null,
+    shareId: normalizeBoardShareId(existing?.shareId),
+    thumbnailUrl: normalizeBoardThumbnailUrl(input.thumbnailUrl ?? existing?.thumbnailUrl),
     title: input.title?.trim() || 'Untitled Board',
+    visibility: normalizeBoardVisibility(existing?.visibility),
     workspaceId: context.workspaceId,
   }
 
@@ -80,16 +94,42 @@ export async function listLocalBoards(context: ApiRequestContext) {
 }
 
 export async function renameLocalBoard(boardId: string, title: string, context: ApiRequestContext) {
-  const board = await readRequiredBoardRecord(boardId, context)
+  return updateLocalBoardMetadata({ boardId, title }, context)
+}
+
+export async function updateLocalBoardMetadata(input: BoardMetadataUpdateInput, context: ApiRequestContext) {
+  const board = await readRequiredBoardRecord(input.boardId, context)
   assertBoardAccess(board, context)
-  const nextTitle = title.trim()
+  const hasTitle = Object.prototype.hasOwnProperty.call(input, 'title')
+  const nextTitle = hasTitle ? input.title?.trim() : board.title
   if (!nextTitle) throw new Error('Board title is required.')
   if (nextTitle.length > 80) throw new Error('Board title must be 80 characters or fewer.')
 
   const updated: BoardPersistenceRecord = {
     ...board,
+    cardColor: Object.prototype.hasOwnProperty.call(input, 'cardColor')
+      ? normalizeBoardCardColor(input.cardColor)
+      : board.cardColor,
+    description: Object.prototype.hasOwnProperty.call(input, 'description')
+      ? normalizeBoardDescription(input.description)
+      : board.description,
+    isPinned: Object.prototype.hasOwnProperty.call(input, 'isPinned')
+      ? Boolean(input.isPinned)
+      : Boolean(board.isPinned),
+    isStarred: Object.prototype.hasOwnProperty.call(input, 'isStarred')
+      ? Boolean(input.isStarred)
+      : Boolean(board.isStarred),
     savedAt: new Date().toISOString(),
+    shareId: Object.prototype.hasOwnProperty.call(input, 'shareId')
+      ? normalizeBoardShareId(input.shareId)
+      : normalizeBoardShareId(board.shareId),
+    thumbnailUrl: Object.prototype.hasOwnProperty.call(input, 'thumbnailUrl')
+      ? normalizeBoardThumbnailUrl(input.thumbnailUrl)
+      : normalizeBoardThumbnailUrl(board.thumbnailUrl),
     title: nextTitle,
+    visibility: Object.prototype.hasOwnProperty.call(input, 'visibility')
+      ? normalizeBoardVisibility(input.visibility)
+      : normalizeBoardVisibility(board.visibility),
   }
   await writeBoardRecord(updated)
   return summarizeBoardRecord(updated)
@@ -119,14 +159,21 @@ function normalizeBoardRecord(
   return {
     assetCount: record.assetCount ?? metrics.assetCount,
     byteSize: record.byteSize ?? 0,
+    cardColor: normalizeBoardCardColor(record.cardColor),
+    createdAt: record.createdAt ?? record.savedAt ?? new Date(0).toISOString(),
+    description: normalizeBoardDescription(record.description),
     document: record.document ?? null,
     id: record.id ?? '',
+    isPinned: Boolean(record.isPinned),
+    isStarred: Boolean(record.isStarred),
     lastOpenedAt: record.lastOpenedAt ?? null,
     ownerId: record.ownerId ?? context.userId,
     savedAt: record.savedAt ?? new Date(0).toISOString(),
     shapeCount: record.shapeCount ?? metrics.shapeCount,
-    thumbnailUrl: record.thumbnailUrl ?? null,
+    shareId: normalizeBoardShareId(record.shareId),
+    thumbnailUrl: normalizeBoardThumbnailUrl(record.thumbnailUrl),
     title: record.title ?? 'Untitled Board',
+    visibility: normalizeBoardVisibility(record.visibility),
     workspaceId: record.workspaceId ?? context.workspaceId,
   }
 }

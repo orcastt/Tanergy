@@ -90,6 +90,11 @@
   position: relative;
   flex: 1;
   min-height: 0;
+  background: var(--canvas-background-color, #ffffff);
+}
+
+.canvas-spike-stage .tl-background {
+  background: var(--canvas-background-color, #ffffff) !important;
 }
 
 .canvas-spike-stage .tl-snap-indicator,

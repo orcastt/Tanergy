@@ -4,6 +4,7 @@ import type {
   BoardDeleteResponse,
   BoardListResponse,
   BoardLoadResponse,
+  BoardMetadataUpdateInput,
   BoardRenameResponse,
   BoardSaveResponse,
   BoardSnapshotCreateResponse,
@@ -75,19 +76,23 @@ export async function listLocalBoardDocuments() {
 }
 
 export async function renameLocalBoardDocument(boardId: string, title: string) {
+  return updateLocalBoardMetadata({ boardId, title })
+}
+
+export async function updateLocalBoardMetadata(input: BoardMetadataUpdateInput) {
   const response = await fetch(
     hasRemotePersistenceApi()
-      ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(boardId)}`)
-      : '/api/boards/local-rename',
+      ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(input.boardId)}`)
+      : '/api/boards/local-update',
     {
-      body: JSON.stringify({ boardId, title }),
+      body: JSON.stringify(input),
       headers: persistenceJsonHeaders(),
       method: hasRemotePersistenceApi() ? 'PATCH' : 'POST',
     }
   )
   const payload = await response.json() as LocalBoardRenameResponse
   if (!response.ok || !payload.ok || !payload.board) {
-    throw new Error(payload.error || 'Local board rename failed.')
+    throw new Error(payload.error || 'Local board update failed.')
   }
   return payload
 }

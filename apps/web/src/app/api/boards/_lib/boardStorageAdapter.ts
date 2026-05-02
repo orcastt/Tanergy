@@ -10,6 +10,7 @@ import {
   loadLocalBoard,
   renameLocalBoard,
   saveLocalBoard,
+  updateLocalBoardMetadata,
 } from './localBoardStore'
 
 export type BoardStorageAdapter = {
@@ -21,6 +22,7 @@ export type BoardStorageAdapter = {
   loadLocalBoard: (boardId: string, context: ApiRequestContext) => ReturnType<typeof loadLocalBoard>
   renameLocalBoard: (boardId: string, title: string, context: ApiRequestContext) => ReturnType<typeof renameLocalBoard>
   saveLocalBoard: (input: Parameters<typeof saveLocalBoard>[0], context: ApiRequestContext) => ReturnType<typeof saveLocalBoard>
+  updateLocalBoardMetadata: (input: Parameters<typeof updateLocalBoardMetadata>[0], context: ApiRequestContext) => ReturnType<typeof updateLocalBoardMetadata>
 }
 
 const localBoardAdapter: BoardStorageAdapter = {
@@ -32,6 +34,7 @@ const localBoardAdapter: BoardStorageAdapter = {
   loadLocalBoard,
   renameLocalBoard,
   saveLocalBoard,
+  updateLocalBoardMetadata,
 }
 
 export function getBoardStorageAdapter(): BoardStorageAdapter {

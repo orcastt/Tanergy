@@ -24,7 +24,7 @@ import {
 import { createLoadedBoardSaveResponse, createRestoredHistorySaveResponse } from './boardSaveResults'
 import { CanvasBoardModeControls } from './CanvasBoardModeControls'
 import { DevBoardSaveControls } from './CanvasBoardSaveControls'
-import { useBoardAutosaveTimer, useBoardBeforeUnloadWarning } from './useBoardSaveLifecycle'
+import { useBoardAutosaveTimer, useBoardBeforeUnloadWarning, useBoardSettingsDirtyTracking } from './useBoardSaveLifecycle'
 import { useBoardSnapshots } from './useBoardSnapshots'
 
 type CanvasBoardSaveAuditProps = {
@@ -155,6 +155,7 @@ export function CanvasBoardSaveAudit({
     setSaveError(null)
     if (!isSaving.current) scheduleAutosave()
   }, [editor, mode, scheduleAutosave])
+  useBoardSettingsDirtyTracking(mode, markDirty)
 
   const loadLocal = useCallback(async () => {
     if (!editor) return

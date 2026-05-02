@@ -10,6 +10,9 @@
 @import './styles/product-workspaces.css';
 @import './styles/product-workspaces-board.css';
 @import './styles/product-workspaces-actions.css';
+@import './styles/product-workspaces-panel.css';
+@import './styles/product-workspaces-panel-details.css';
+@import './styles/product-workspaces-members.css';
 @import './styles/boards.css';
 @import './styles/boards-list.css';
 @import './styles/canvas-shell.css';

@@ -1,5 +1,6 @@
 import type { Editor, TLAsset, TLAssetId, TLShapeId } from 'tldraw'
 import { toSerializableTangentAssetRecord } from '@/features/assets/assetTypes'
+import { defaultCanvasSettings, useCanvasSettingsStore } from '@/features/canvas-settings/canvasSettingsStore'
 import { setNodeEdgesSnapshot, syncNodeEdgeInputCounts } from '@/features/node-runtime/nodeEdges'
 import { auditBoardDocument } from './boardDocumentGuard'
 import type { SerializedBoardAsset, SerializedBoardDocument, SerializedBoardShape } from './boardDocumentSerializer'
@@ -29,6 +30,7 @@ export function restoreBoardDocument(editor: Editor, document: unknown): Restore
   if (shapes.length > 0) editor.createShapes(shapes)
 
   setNodeEdgesSnapshot(document.runtimeEdges)
+  useCanvasSettingsStore.getState().replace(document.canvasSettings ?? defaultCanvasSettings)
   syncNodeEdgeInputCounts(editor)
   editor.setCamera(document.camera)
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, type MutableRefObject } from 'react'
+import { useCanvasSettingsStore } from '@/features/canvas-settings/canvasSettingsStore'
 import {
   boardAutosaveDelayMs,
   shouldWarnBeforeUnload,
@@ -32,6 +33,15 @@ export function useBoardAutosaveTimer(
   useEffect(() => clearAutosaveTimer, [clearAutosaveTimer])
 
   return { clearAutosaveTimer, scheduleAutosave }
+}
+
+export function useBoardSettingsDirtyTracking(mode: 'board' | 'dev', markDirty: () => void) {
+  useEffect(() => {
+    if (mode !== 'board') return
+    return useCanvasSettingsStore.subscribe((state, previousState) => {
+      if (state.settings !== previousState.settings) markDirty()
+    })
+  }, [markDirty, mode])
 }
 
 export function useBoardBeforeUnloadWarning(

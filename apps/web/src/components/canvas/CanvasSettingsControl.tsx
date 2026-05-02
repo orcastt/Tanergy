@@ -7,7 +7,7 @@ function stopCanvasEvent(event: SyntheticEvent) {
   event.stopPropagation()
 }
 
-export function CanvasSettingsControl() {
+export function CanvasSettingsControl({ boardMode = false }: { boardMode?: boolean }) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -24,7 +24,7 @@ export function CanvasSettingsControl() {
       >
         ⚙
       </button>
-      {open ? <CanvasSettingsPanel onClose={() => setOpen(false)} /> : null}
+      {open ? <CanvasSettingsPanel boardMode={boardMode} onClose={() => setOpen(false)} /> : null}
     </>
   )
 }

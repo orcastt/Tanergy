@@ -1,11 +1,12 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { ArrowShapeUtil, Tldraw, type Editor, type TLAnyShapeUtilConstructor, type TLComponents } from 'tldraw'
 import { CanvasNodeInspector } from '@/components/inspector/CanvasNodeInspector'
 import { NodeCardShapeUtil } from '@/components/nodes/NodeCardShape'
 import { useCanvasPerformanceStore } from '@/features/canvas-performance/canvasPerformanceStore'
 import { useCanvasPerformanceTracking } from '@/features/canvas-performance/useCanvasPerformanceTracking'
+import { useCanvasSettingsStore } from '@/features/canvas-settings/canvasSettingsStore'
 import { createNodeCard } from '@/features/node-runtime/createNodeCard'
 import { createStep15MockGraph, createStep15StressNodes } from '@/features/node-runtime/createMockWorkflow'
 import { spikeNodeImageMaxBytes } from '@/features/node-runtime/imageNodeAssets'
@@ -22,7 +23,6 @@ import { CanvasGrid } from './CanvasGrid'
 import { CanvasNodeEdgeOverlay } from './CanvasNodeEdgeOverlay'
 import { CanvasNodePicker } from './CanvasNodePicker'
 import { CanvasRuntimeDiagnostics, CanvasRuntimeErrorBoundary } from './CanvasRuntimeDiagnostics'
-import { CanvasSelectionToolbar } from './CanvasSelectionToolbar'
 import { CanvasSettingsControl } from './CanvasSettingsControl'
 import { CanvasSpikeNavigator } from './CanvasSpikeNavigator'
 import { CanvasSpikeStylePanel } from './CanvasSpikeStylePanel'
@@ -107,6 +107,7 @@ export function CanvasSpike({
     tone: 'error' | 'success'
   } | null>(null)
   const imagePreviewMode = useCanvasPerformanceStore((state) => state.imagePreviewMode)
+  const backgroundColor = useCanvasSettingsStore((state) => state.settings.backgroundColor)
   useCanvasPerformanceTracking(editor)
   useArrowPortSnapping(editor)
   useCanvasSettings(editor)
@@ -192,7 +193,10 @@ export function CanvasSpike({
           {checklistItems.map((item) => <span key={item}>{item}</span>)}
         </div>
       </div>
-      <div className="canvas-spike-stage">
+      <div
+        className="canvas-spike-stage"
+        style={{ '--canvas-background-color': backgroundColor } as CSSProperties}
+      >
         {canvasRuntimeDiagnosticsEnabled ? (
           <CanvasRuntimeErrorBoundary>{tldrawCanvas}</CanvasRuntimeErrorBoundary>
         ) : (
@@ -220,7 +224,6 @@ export function CanvasSpike({
           onCreateStressNodes={toolbarActions.createStressNodes}
         />
         <CanvasNodeInspector connectionMessage={connectionMessage} editor={editor} />
-        <CanvasSelectionToolbar editor={editor} />
         <CanvasBoardSaveAudit
           autoLoad={autoLoadBoard}
           boardId={boardId}
@@ -229,7 +232,7 @@ export function CanvasSpike({
           mode={boardId ? 'board' : 'dev'}
           onBoardLoaded={(board) => onBoardLoaded?.(board.title)}
         />
-        <CanvasSettingsControl />
+        <CanvasSettingsControl boardMode={Boolean(boardId)} />
         <CanvasSpikeStylePanel editor={editor} />
         {canvasRuntimeDiagnosticsEnabled ? <CanvasRuntimeDiagnostics editorReady={editor !== null} /> : null}
       </div>

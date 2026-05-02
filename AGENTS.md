@@ -10,9 +10,9 @@
 - 后续新增 AI 节点、AI Chat bot 或新模型能力，必须遵守 `ARCH.md` 4.4.1 AI Node Extension Contract：先扩展 Node Registry / Model Registry / AiRun 合同，节点 UI 不直接调用 Provider。
 - 多人协作后移到 P0.5。
 - S1.5 复杂节点、Asset LOD Slice A-D 和 Slice E 的本地 Asset / Board persistence 基线已通过。
-- 当前 Slice E 已完成：Next local Asset / Board bridge、request context、Board save guard、FastAPI local-dev、真实 `s3-compatible` Asset adapter、Postgres Board / Asset metadata persistence、Alembic P0 migration scaffold、Board History first pass、Web-to-FastAPI switch、staging API package、`/workspaces` Board gallery/list entry shell、Board metadata first pass、Auth scaffold first pass、AI contract scaffold first pass。
+- 当前 Slice E 已完成：Next local Asset / Board bridge、request context、Board save guard、FastAPI local-dev、真实 `s3-compatible` Asset adapter、Postgres Board / Asset metadata persistence、Alembic P0 migration scaffold、Board History first pass、per-board Canvas Settings、Web-to-FastAPI switch、staging API package、`/workspaces` Board gallery/list entry shell、expanded Board management metadata first pass、Auth scaffold first pass、AI contract scaffold first pass。
 - 当前 Product Shell 顶部导航固定为 `Landing page / Workspace / Collection / Team / Subscription`；Landing page 只在顶部导航出现，不进入侧栏；Account 和 Settings 保留在侧栏。`/home`、`/collections`、`/team`、`/billing` 都是语义清晰的本地壳，不假装真实素材库、团队权限或订阅计费已完成。
-- 当前接手点：按 `ARCH.md` 11.5-11.7 的 0-to-1 路线推进真实 staging 基础设施、部署流水线、真实 Auth / Board CRUD 产品化；本地可继续做 Board autosave / History browser regression、captured thumbnail、Board management Panel 或真实 AI Provider 前的 polish。
+- 当前接手点：按 `ARCH.md` 11.5-11.7 的 0-to-1 路线推进真实 staging 基础设施、部署流水线、真实 Auth / Board CRUD 产品化；本地可继续做 Board autosave / History browser regression、真实 captured thumbnail、Smart Drawing 或真实 AI Provider 前的 polish。Board management Panel 已有 metadata/member scaffold first pass，Canvas Settings 已有 per-board first pass，真实 share/member permission 仍等 Auth/collab。
 - 不做公众号 Html Editor、Writer、Personal Library、Knowledge Graph、完整 Mixpanel 级 Admin Analytics。允许按 `ARCH.md` 4.11 做 Admin S0 schema/access/audit 边界规划或最小用户管理 MVP，但真实 Auth 前不得开放生产 `/admin`。
 - 前端视觉保持干净白板、小卡片、轻边框，不大换皮。
 

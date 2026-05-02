@@ -16,6 +16,11 @@ from tangent_api.schemas import (
     BoardSaveResponse,
     BoardSummary,
     get_board_document_metrics,
+    normalize_board_card_color,
+    normalize_board_description,
+    normalize_board_share_id,
+    normalize_board_thumbnail_url,
+    normalize_board_visibility,
     summarize_board_record,
 )
 
@@ -31,17 +36,25 @@ def save_board(input_data: BoardSaveRequest, context: ApiRequestContext) -> Boar
     board_id = _sanitize_board_id(input_data.board_id) or f"board_{uuid4()}"
     metrics = get_board_document_metrics(input_data.document)
     existing = _read_existing_board(board_id, context)
+    saved_at = datetime.now(timezone.utc).isoformat()
     record = BoardRecord(
         assetCount=metrics["asset_count"],
         byteSize=audit.byte_size,
+        cardColor=normalize_board_card_color(input_data.card_color or (existing.card_color if existing else None)),
+        createdAt=existing.created_at if existing else saved_at,
+        description=normalize_board_description(input_data.description or (existing.description if existing else None)),
         document=input_data.document,
         id=board_id,
+        isPinned=existing.is_pinned if existing else False,
+        isStarred=existing.is_starred if existing else False,
         lastOpenedAt=existing.last_opened_at if existing else None,
         ownerId=context.user_id,
-        savedAt=datetime.now(timezone.utc).isoformat(),
+        savedAt=saved_at,
         shapeCount=metrics["shape_count"],
-        thumbnailUrl=None,
+        shareId=normalize_board_share_id(existing.share_id if existing else None),
+        thumbnailUrl=normalize_board_thumbnail_url(input_data.thumbnail_url or (existing.thumbnail_url if existing else None)),
         title=(input_data.title or "Untitled Board").strip() or "Untitled Board",
+        visibility=normalize_board_visibility(existing.visibility if existing else None),
         workspaceId=context.workspace_id,
     )
 
@@ -91,19 +104,47 @@ def list_boards(context: ApiRequestContext) -> list[BoardSummary]:
     return sorted(summaries, key=lambda record: record.saved_at, reverse=True)
 
 
-def rename_board(board_id: str, title: str, context: ApiRequestContext) -> BoardSummary:
+def rename_board(board_id: str, title: Optional[str], context: ApiRequestContext) -> BoardSummary:
+    return update_board_metadata(board_id, title, None, None, None, None, None, None, None, context)
+
+
+def update_board_metadata(
+    board_id: str,
+    title: Optional[str],
+    description: Optional[str],
+    card_color: Optional[str],
+    thumbnail_url: Optional[str],
+    is_starred: Optional[bool],
+    is_pinned: Optional[bool],
+    visibility: Optional[str],
+    share_id: Optional[str],
+    context: ApiRequestContext,
+) -> BoardSummary:
     record = _load_board_without_touch(board_id, context)
-    next_title = title.strip()
+    next_title = title.strip() if title is not None else record.title
     if not next_title:
         raise HTTPException(status_code=400, detail="Board title is required.")
     if len(next_title) > 80:
         raise HTTPException(status_code=400, detail="Board title must be 80 characters or fewer.")
 
-    updated = record.model_copy(update={"title": next_title, "saved_at": datetime.now(timezone.utc).isoformat()})
-    _board_path(updated.id).write_text(
-        json.dumps(updated.model_dump(by_alias=True), ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
+    update_data = {"title": next_title, "saved_at": datetime.now(timezone.utc).isoformat()}
+    if description is not None:
+        update_data["description"] = normalize_board_description(description)
+    if card_color is not None:
+        update_data["card_color"] = normalize_board_card_color(card_color)
+    if thumbnail_url is not None:
+        update_data["thumbnail_url"] = normalize_board_thumbnail_url(thumbnail_url)
+    if is_starred is not None:
+        update_data["is_starred"] = bool(is_starred)
+    if is_pinned is not None:
+        update_data["is_pinned"] = bool(is_pinned)
+    if visibility is not None:
+        update_data["visibility"] = normalize_board_visibility(visibility)
+    if share_id is not None:
+        update_data["share_id"] = normalize_board_share_id(share_id)
+
+    updated = record.model_copy(update=update_data)
+    _write_board_record(updated)
     return summarize_board_record(updated)
 
 

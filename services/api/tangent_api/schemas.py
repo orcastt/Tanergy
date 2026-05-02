@@ -1,28 +1,37 @@
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
-
-class TangentApiModel(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
-
-
-class BoardDocumentGuardIssue(TangentApiModel):
-    blocking: bool
-    code: str
-    message: str
-    path: str
-
-
-class BoardDocumentGuardResult(TangentApiModel):
-    byte_size: int = Field(alias="byteSize")
-    issues: list[BoardDocumentGuardIssue]
-    ok: bool
-
-
-class BoardValidateResponse(TangentApiModel):
-    audit: BoardDocumentGuardResult
-    ok: bool
+from tangent_api.board_metadata import (
+    get_board_document_metrics,
+    normalize_board_card_color,
+    normalize_board_description,
+    normalize_board_share_id,
+    normalize_board_thumbnail_url,
+    normalize_board_visibility,
+)
+from tangent_api.board_schemas import (
+    BoardDeleteResponse,
+    BoardDocumentGuardIssue,
+    BoardDocumentGuardResult,
+    BoardListResponse,
+    BoardLoadResponse,
+    BoardRecord,
+    BoardRenameRequest,
+    BoardRenameResponse,
+    BoardSaveRequest,
+    BoardSaveResponse,
+    BoardSnapshotCreateRequest,
+    BoardSnapshotCreateResponse,
+    BoardSnapshotListResponse,
+    BoardSnapshotLoadResponse,
+    BoardSnapshotRecord,
+    BoardSnapshotSummary,
+    BoardSummary,
+    BoardValidateResponse,
+    summarize_board_record,
+)
+from tangent_api.schema_base import TangentApiModel
 
 
 class AuthUser(TangentApiModel):
@@ -107,109 +116,6 @@ class AiRunResponse(TangentApiModel):
     run: Optional[AiRunRecord] = None
 
 
-class BoardSaveRequest(TangentApiModel):
-    board_id: Optional[str] = Field(default=None, alias="boardId")
-    document: Any
-    title: Optional[str] = None
-
-
-class BoardRenameRequest(TangentApiModel):
-    title: str
-
-
-class BoardSummary(TangentApiModel):
-    asset_count: int = Field(default=0, alias="assetCount")
-    byte_size: int = Field(alias="byteSize")
-    id: str
-    last_opened_at: Optional[str] = Field(default=None, alias="lastOpenedAt")
-    owner_id: str = Field(alias="ownerId")
-    saved_at: str = Field(alias="savedAt")
-    shape_count: int = Field(default=0, alias="shapeCount")
-    thumbnail_url: Optional[str] = Field(default=None, alias="thumbnailUrl")
-    title: str
-    workspace_id: str = Field(alias="workspaceId")
-
-
-class BoardRecord(BoardSummary):
-    document: Any
-
-
-class BoardSaveResponse(TangentApiModel):
-    audit: Optional[BoardDocumentGuardResult] = None
-    board: Optional[BoardSummary] = None
-    error: Optional[str] = None
-    ok: bool
-
-
-class BoardLoadResponse(TangentApiModel):
-    board: Optional[BoardRecord] = None
-    error: Optional[str] = None
-    ok: bool
-
-
-class BoardListResponse(TangentApiModel):
-    boards: list[BoardSummary]
-    error: Optional[str] = None
-    ok: bool
-
-
-class BoardRenameResponse(TangentApiModel):
-    board: Optional[BoardSummary] = None
-    error: Optional[str] = None
-    ok: bool
-
-
-class BoardDeleteResponse(TangentApiModel):
-    board_id: Optional[str] = Field(default=None, alias="boardId")
-    error: Optional[str] = None
-    ok: bool
-
-
-class BoardSnapshotCreateRequest(TangentApiModel):
-    document: Any
-    reason: str
-    title: Optional[str] = None
-
-
-class BoardSnapshotSummary(TangentApiModel):
-    asset_count: int = Field(default=0, alias="assetCount")
-    board_id: str = Field(alias="boardId")
-    byte_size: int = Field(alias="byteSize")
-    created_at: str = Field(alias="createdAt")
-    created_by: str = Field(alias="createdBy")
-    document_hash: str = Field(alias="documentHash")
-    expires_at: Optional[str] = Field(default=None, alias="expiresAt")
-    id: str
-    reason: str
-    retention_tier: str = Field(alias="retentionTier")
-    shape_count: int = Field(default=0, alias="shapeCount")
-    thumbnail_url: Optional[str] = Field(default=None, alias="thumbnailUrl")
-    title: str
-    workspace_id: str = Field(alias="workspaceId")
-
-
-class BoardSnapshotRecord(BoardSnapshotSummary):
-    document: Any
-
-
-class BoardSnapshotCreateResponse(TangentApiModel):
-    error: Optional[str] = None
-    ok: bool
-    snapshot: Optional[BoardSnapshotSummary] = None
-
-
-class BoardSnapshotListResponse(TangentApiModel):
-    error: Optional[str] = None
-    ok: bool
-    snapshots: list[BoardSnapshotSummary]
-
-
-class BoardSnapshotLoadResponse(TangentApiModel):
-    error: Optional[str] = None
-    ok: bool
-    snapshot: Optional[BoardSnapshotRecord] = None
-
-
 class AssetRecord(TangentApiModel):
     byte_size: int = Field(alias="byteSize")
     created_at: str = Field(alias="createdAt")
@@ -247,30 +153,3 @@ class AssetDataUrlRequest(TangentApiModel):
 class AssetResponse(TangentApiModel):
     asset: Optional[AssetRecord] = None
     error: Optional[str] = None
-
-
-def summarize_board_record(record: BoardRecord) -> BoardSummary:
-    metrics = get_board_document_metrics(record.document)
-    return BoardSummary(
-        assetCount=record.asset_count or metrics["asset_count"],
-        byteSize=record.byte_size,
-        id=record.id,
-        lastOpenedAt=record.last_opened_at,
-        ownerId=record.owner_id,
-        savedAt=record.saved_at,
-        shapeCount=record.shape_count or metrics["shape_count"],
-        thumbnailUrl=record.thumbnail_url,
-        title=record.title,
-        workspaceId=record.workspace_id,
-    )
-
-
-def get_board_document_metrics(document: Any) -> dict[str, int]:
-    if not isinstance(document, dict):
-        return {"asset_count": 0, "shape_count": 0}
-    assets = document.get("assets")
-    shapes = document.get("shapes")
-    return {
-        "asset_count": len(assets) if isinstance(assets, list) else 0,
-        "shape_count": len(shapes) if isinstance(shapes, list) else 0,
-    }

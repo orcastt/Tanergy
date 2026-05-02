@@ -20,9 +20,13 @@ def test_board_local_dev_contract(tmp_path, monkeypatch):
     assert save_response.status_code == 200
     saved = save_response.json()["board"]
     assert saved["assetCount"] == 1
+    assert saved["createdAt"] is not None
+    assert saved["isPinned"] is False
+    assert saved["isStarred"] is False
     assert saved["lastOpenedAt"] is None
     assert saved["shapeCount"] == 2
     assert saved["thumbnailUrl"] is None
+    assert saved["visibility"] == "private"
     assert saved["workspaceId"] == "dev-workspace"
     assert "document" not in saved
 
@@ -86,6 +90,29 @@ def test_board_local_dev_contract(tmp_path, monkeypatch):
     assert renamed["title"] == "Renamed Board"
     assert "document" not in renamed
 
+    metadata_response = client.patch(
+        "/api/v1/boards/api-smoke-board",
+        json={
+            "cardColor": "mint",
+            "description": "  Campaign concepts  ",
+            "isPinned": True,
+            "isStarred": True,
+            "shareId": "share_test_123",
+            "thumbnailUrl": "https://example.com/thumb.webp",
+            "visibility": "public",
+        },
+    )
+    assert metadata_response.status_code == 200
+    metadata = metadata_response.json()["board"]
+    assert metadata["cardColor"] == "mint"
+    assert metadata["description"] == "Campaign concepts"
+    assert metadata["isPinned"] is True
+    assert metadata["isStarred"] is True
+    assert metadata["shareId"] == "share_test_123"
+    assert metadata["thumbnailUrl"] == "https://example.com/thumb.webp"
+    assert metadata["title"] == "Renamed Board"
+    assert metadata["visibility"] == "public"
+
     empty_rename = client.patch("/api/v1/boards/api-smoke-board", json={"title": " "})
     assert empty_rename.status_code == 400
 
@@ -139,9 +166,13 @@ def test_board_postgres_contract(monkeypatch):
     assert save_response.status_code == 200
     saved = save_response.json()["board"]
     assert saved["assetCount"] == 2
+    assert saved["createdAt"] is not None
+    assert saved["isPinned"] is False
+    assert saved["isStarred"] is False
     assert saved["lastOpenedAt"] is None
     assert saved["shapeCount"] == 1
     assert saved["thumbnailUrl"] is None
+    assert saved["visibility"] == "private"
     assert saved["workspaceId"] == "dev-workspace"
     assert "document" not in saved
     assert ("dev-workspace", "api-postgres-board") in fake_db.boards
@@ -202,6 +233,33 @@ def test_board_postgres_contract(monkeypatch):
     assert rename_response.status_code == 200
     assert rename_response.json()["board"]["title"] == "Renamed Postgres"
     assert fake_db.boards[("dev-workspace", "api-postgres-board")][3] == "Renamed Postgres"
+
+    metadata_response = client.patch(
+        "/api/v1/boards/api-postgres-board",
+        json={
+            "cardColor": "peach",
+            "description": "Launch wall",
+            "isPinned": True,
+            "isStarred": True,
+            "shareId": "share_pg_123",
+            "thumbnailUrl": "https://example.com/pg-thumb.webp",
+            "visibility": "workspace",
+        },
+    )
+    assert metadata_response.status_code == 200
+    metadata = metadata_response.json()["board"]
+    assert metadata["cardColor"] == "peach"
+    assert metadata["description"] == "Launch wall"
+    assert metadata["isPinned"] is True
+    assert metadata["isStarred"] is True
+    assert metadata["shareId"] == "share_pg_123"
+    assert metadata["thumbnailUrl"] == "https://example.com/pg-thumb.webp"
+    assert metadata["title"] == "Renamed Postgres"
+    assert metadata["visibility"] == "workspace"
+    assert fake_db.boards[("dev-workspace", "api-postgres-board")][8] == "Launch wall"
+    assert fake_db.boards[("dev-workspace", "api-postgres-board")][9] == "peach"
+    assert fake_db.boards[("dev-workspace", "api-postgres-board")][14] is True
+    assert fake_db.boards[("dev-workspace", "api-postgres-board")][15] is True
 
     blocked = client.get(
         "/api/v1/boards/api-postgres-board",

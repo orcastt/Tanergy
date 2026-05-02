@@ -17,7 +17,7 @@ Canonical docs 仍然是：
 
 | 章节 | 核对结论 |
 |------|----------|
-| 1. Global Rules | 已同步当前 Slice E 状态：FastAPI / S3-compatible / Postgres / Web-to-FastAPI / staging package / `/workspaces` Board gallery/list shell 已落地。 |
+| 1. Global Rules | 已同步当前 Slice E 状态：FastAPI / S3-compatible / Postgres / Web-to-FastAPI / staging package / `/workspaces` Board gallery/list shell、Board History、Board Management metadata 和 per-board Canvas Settings 已落地。 |
 | 2. Definition Of Ready | 已补 0-to-1 阶段、外部资源、Auth/AI 前置条件。 |
 | 3. Definition Of Done | 已补后端 pytest / compileall、staging smoke、docs-only 验证口径。 |
 | 4. Workstream Harnesses | 已按当前优先级重排：Staging / Database / Board CRUD / Auth / AI / Ops 是 P0 主线，Collaboration 仍 P0.5；Admin S0 只做 schema/access/audit 边界，完整 analytics 后置。 |
@@ -32,8 +32,8 @@ Canonical docs 仍然是：
 
 - P0 是 Web-first AI image canvas，不做桌面端。
 - S1.5、Asset LOD Slice A-D 和 Slice E 的本地 Asset / Board persistence baseline 已通过。
-- 当前已完成：Next local Asset / Board bridge、FastAPI local-dev、真实 `s3-compatible` Asset adapter、Postgres Board / Asset metadata adapter、Board History first pass、Web-to-FastAPI switch、staging API Docker package 和 `/workspaces` Board gallery/list entry shell。
-- 当前 blocker 不再是“有没有 Asset/Board persistence seam”，而是把 staging package 接到真实 server / managed Postgres / R2 / staging Web origin，并把 Workspace Board CRUD / Auth / AI Run 依序产品化。
+- 当前已完成：Next local Asset / Board bridge、FastAPI local-dev、真实 `s3-compatible` Asset adapter、Postgres Board / Asset metadata adapter、Board History first pass、per-board Canvas Settings、expanded Board Management metadata first pass、Web-to-FastAPI switch、staging API Docker package 和 `/workspaces` Board gallery/list entry shell。
+- 当前 blocker 不再是“有没有 Asset/Board persistence seam”，而是把 staging package 接到真实 server / managed Postgres / R2 / staging Web origin，并把 Workspace Board CRUD / Auth / AI Run 依序产品化；外部资源未就绪时，本地优先 captured thumbnail、Smart Drawing、长时回归和 i18n/status polish。
 - 0-to-1 总路线以 `ARCH.md` 11.5-11.7 为准；Sprint 级任务拆分见 `ARCH.md` 11.5.1。
 - 不读不改 `legacy/old-tangent-desktop-2026-04-29/`，除非用户明确要求。
 - 不读取 `.env`，不把 API Key 写入前端或日志。
@@ -136,7 +136,9 @@ Canonical docs 仍然是：
 - Top App Shell navigation 固定为 Landing page / Workspace / Collection / Team / Subscription；Landing page 只出现在顶部导航，不放入侧栏；Account 和 Settings 保持侧栏入口。
 - Landing page / Collection / Account / Settings / Team / Subscription 必须保持清晰路由语义：Collection/Team/Subscription 不回指 `/workspaces`，不假装真实素材库、邀请、权限、订阅或支付已完成。
 - 白板体验优先，不把产品改成纯工作流编辑器。
+- Per-board Canvas Settings 可以保存为 Board document 的轻量 `canvasSettings`：background style/color、pattern color、spacing、snap preference/strength、zoom sensitivity；Dots 背景必须保持细小、低对比度、接近 Stitch 参考，不做重装饰。
 - 右侧保留给 AI Chat；属性和节点 Inspector 放左侧。
+- Smart Drawing 属于本地画布工具增强：只能把用户自己的 draw stroke 拟合成普通 line/geo/draw shape；不调用 AI provider，不改变 Board/Asset/AiRun 边界。
 - 小 UI 可以后置；阻塞级问题优先：坐标、连线、性能、误触。
 - `/workspaces` 是当前 Board gallery/list 产品入口 shell；`/spikes/canvas` 仍可作为技术验证入口，但新产品体验要优先落到 `/workspaces` / `/boards/:boardId`。
 
@@ -160,6 +162,7 @@ Canonical docs 仍然是：
 - Board list 只返回 summary，不返回 document。
 - Board load 才返回 document，并按 workspace/user 校验。
 - Board History document 也必须通过 guard；history list 只返回 summary，history load 才返回 document。
+- Board document 可包含轻量 `canvasSettings`，但仍不得包含图片数据、笔迹采样大 payload、Provider 原始响应或日志。
 - P0 History retention 默认免费层每个 Board 最近 100 条；Pro/Enterprise 长期历史只写 schema/roadmap，不假装已完成。
 - Web persistence client 必须能在未设置 `NEXT_PUBLIC_API_BASE_URL` 时走 Next local bridge，设置后走 FastAPI `/api/v1`。
 - Staging smoke 必须检查 R2/S3 object、Postgres rows、CORS 和 workspace isolation。
@@ -210,6 +213,7 @@ Canonical docs 仍然是：
 - Canvas 必测 50% / 100% / 200%、resize、Retina、高 DPI。
 - 节点必测连接、删除、移动、fan-out、非法类型、Run disabled。
 - 图片必测 MIME、大小、长边、5-10 张导入压力。
+- Smart Drawing 必测近似直线、圆/椭圆、矩形、三角形、不可识别涂鸦保留原样、undo、保存/刷新/History restore。
 - Merge 必测“不截 UI、网格、选择框”。
 - Persistence 必测保存、刷新、重开、workspace isolation、guard bad case 和对象存储/数据库真实记录。
 - Windows dense-board stutter 目前是 non-blocking follow-up，但 Alpha 前仍要进入回归矩阵。
@@ -233,7 +237,7 @@ Canonical docs 仍然是：
 
 1. 把现有 staging API package 接到真实 server / managed Postgres / R2 / staging Web origin，并按 `deploy/staging/README.md` 跑 smoke。
 2. 建立推送 / 部署流水线：Git remote、Web deploy、VPS Docker deploy、env secret 管理和 rollback。
-3. 继续把 `/workspaces` Board gallery/list 和 `/boards/:boardId` Board entry 产品化；当前 shell 已支持 Board summary list、gallery/list、create/open/search/sort/rename/delete、thumbnail placeholder、shape/asset count、`lastOpenedAt`、Recently opened / Recently saved sorting、client-side Load more、基础空/错/加载状态、按 board id load、Board 模式 autosave/save indicator 和 Board History first pass；App Shell 顶部 5 标签与 Landing page / Collection / Account / Settings / Team / Subscription 语义已收口，下一步补 captured thumbnail、Board management Panel 或真实 staging wiring。
+3. 继续把 `/workspaces` Board gallery/list 和 `/boards/:boardId` Board entry 产品化；当前 shell 已支持 Board summary list、gallery/list、create/open/search/sort/rename/copy/delete、expanded Board Panel metadata、thumbnail placeholder/URL/upload、star/pin/share/visibility menu actions、member scaffold、shape/asset count、`lastOpenedAt`、Recently opened / Recently saved sorting、client-side Load more、基础空/错/加载状态、按 board id load、Board 模式 autosave/save indicator 和 Board History first pass；App Shell 顶部 5 标签与 Landing page / Collection / Account / Settings / Team / Subscription 语义已收口，下一步补真实 captured thumbnail、Smart Drawing 实现或真实 staging wiring。
 4. Auth scaffold / 注册边界已有 first pass：typed session/user/workspace、Next/FastAPI session endpoint、route guard 形状和 dev auth-required smoke；真实 Email OTP 或 magic link、session/JWT、保护 `/workspaces` / `/boards/:boardId` 和 API 需要外部资源后继续。
 5. AI contract scaffold 已有 first pass；下一步可做 Board save/History 长时回归、真实 staging wiring，或在外部资源就绪后进入真实 Model Registry / AI Proxy / Image Gen / Analysis。
 6. Alpha 前补安全/运维：rate limit、上传 abuse guard、AI budget kill switch、日志、备份恢复、CORS、Terms/Privacy 占位。
@@ -259,7 +263,7 @@ Canonical docs 仍然是：
 
 当前接手点：继续 Slice E Real Asset Pipeline / 0-to-1 staging path。已完成 local Asset/Board bridge、FastAPI local-dev、真实 s3-compatible Asset adapter、Postgres Board / Asset metadata persistence、Board History first pass、Web-to-FastAPI switch、staging API package 和 /workspaces Board gallery/list entry shell。
 
-下一步优先从真实 staging server / managed Postgres / R2 / staging Web origin smoke，或 Board save + History 长时浏览器回归开始；/workspaces Board gallery/list metadata、Auth scaffold、AI contract scaffold、Board History 和 Landing page/Collection/Account/Settings/Team/Subscription semantic shell 已有 first pass，captured thumbnail / Board management Panel 仍可并行补。
+下一步优先从真实 staging server / managed Postgres / R2 / staging Web origin smoke，或 Board save + History 长时浏览器回归开始；/workspaces Board gallery/list metadata、expanded Board Panel metadata、Auth scaffold、AI contract scaffold、Board History 和 Landing page/Collection/Account/Settings/Team/Subscription semantic shell 已有 first pass，真实 captured thumbnail / Smart Drawing 仍可并行补。
 ```
 
 ---
@@ -270,21 +274,19 @@ Canonical docs 仍然是：
 
 | File | Current Risk | Next Split Direction |
 |------|--------------|----------------------|
-| `apps/web/src/components/canvas/CanvasSpikeStylePanel.tsx` | 298 行 | 拆 style section / control group |
 | `apps/web/src/app/styles/node-card-content.css` | 298 行 | 再改节点内容样式前拆 prompt / image / port CSS |
 | `apps/web/src/components/canvas/CanvasSpikeToolbar.tsx` | 294 行 | 拆 toolbar category / popover |
-| `apps/web/src/app/styles/canvas-overlays.css` | 292 行 | 拆 connection / selection / minimap overlay CSS |
 | `apps/web/src/components/canvas/CanvasBoardSaveAudit.tsx` | 294 行 | 已拆 `useBoardSaveLifecycle.ts` / history controls；再加保存或历史行为前继续拆 orchestration |
-| `apps/web/src/components/canvas/CanvasSpike.tsx` | 254 行 | 再加 header/board behavior 前拆 shell header / board chrome |
+| `apps/web/src/app/styles/canvas-action-icons.css` | 272 行 | 继续加图标前拆 selection / layer / align icons |
+| `apps/web/src/components/canvas/CanvasSpike.tsx` | 252 行 | 再加 header/board behavior 前拆 shell header / board chrome |
 | `apps/web/src/components/canvas/useEditorRevision.ts` | 289 行 | 拆 editor revision helper / subscription helper |
 | `apps/web/src/features/assets/assetPreviewResolver.ts` | 266 行 | 新增 resolver 行为前拆 persisted thumbnail / local cache helper |
-| `services/api/tangent_api/storage/postgres_board_store.py` | 282 行 | 再加 Board storage 行为前拆 SQL row mapping / query helpers |
-| `services/api/tangent_api/schemas.py` | 276 行 | 继续加 API schema 前拆 board / asset / AI schema modules |
+| `services/api/tangent_api/storage/postgres_board_store.py` | 263 行 | 再加 Board storage 行为前继续拆 SQL writer / metadata update helpers |
+| `services/api/tangent_api/schemas.py` | 155 行 | Board schemas 已拆到 `board_schemas.py`；继续加 API schema 前按 domain 拆模块 |
 | `services/api/tangent_api/storage/postgres_board_snapshot_store.py` | 256 行 | 继续加 retention tier 前拆 SQL helpers |
-| `apps/web/src/components/workspaces/WorkspaceBoardGallery.tsx` | 244 行 | 已拆 toolbar / state helpers；再加 Workspace 行为前拆 actions hook |
-| `apps/web/src/app/styles/product-workspaces-board.css` | 200 行 | 当前 Workspace Board card/list 样式；继续增长前按 toolbar/card/list 拆分 |
+| `apps/web/src/components/workspaces/WorkspaceBoardGallery.tsx` | 245 行 | 已拆 header / results / toolbar / state helpers；再加 Workspace 行为前拆 actions hook |
+| `apps/web/src/app/styles/product-workspaces-board.css` | 236 行 | 当前 Workspace Board card/list 样式；继续增长前按 toolbar/card/list 拆分 |
 | `apps/web/src/app/styles/product-management.css` | 246 行 | Landing page / Collection / Account / Settings / Team / Subscription shared styles；继续增长前拆 callout / panel / notice 样式 |
-| `apps/web/src/components/canvas/CanvasSelectionToolbar.tsx` | 252 行 | 拆 selection actions / merge controls |
 
 规则：
 
