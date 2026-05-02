@@ -35,6 +35,7 @@ Local UI and canvas productization while external staging resources are not read
 - Captured Board thumbnails and manual Refresh preview.
 - Per-board Canvas Settings: subtle dots/grid/solid backgrounds, spacing, snap, zoom.
 - Smart Drawing: line/rectangle/ellipse/triangle/doodle and immediate undo browser smoke passed.
+- Long-session Board autosave / History browser regression passed: sequential autosave, debounced autosave, manual Snapshot, Cmd/Ctrl+S, reload, restore and filters.
 - Independent Node Inspector removed from P0 path; node controls stay inside node cards.
 
 ## Current Progress
@@ -42,8 +43,8 @@ Local UI and canvas productization while external staging resources are not read
 | Track | Progress |
 | --- | ---: |
 | Product Shell | 90% |
-| Board Save UX | 90% |
-| Board History | 92% |
+| Board Save UX | 92% |
+| Board History | 94% |
 | Canvas Settings | 92% |
 | Board Management | 86% |
 | Captured Thumbnail | 85% |
@@ -51,9 +52,9 @@ Local UI and canvas productization while external staging resources are not read
 
 ## Remaining Local Work
 
-1. Long-session Board autosave / History regression.
-2. Smart Drawing threshold tuning.
-3. i18n/status polish.
+1. Smart Drawing threshold tuning.
+2. i18n/status polish.
+3. More realistic empty/error states for mocked production surfaces.
 
 ## Key Files
 

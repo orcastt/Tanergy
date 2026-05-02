@@ -25,15 +25,15 @@ Make the local app feel like a coherent P0 alpha surface without pretending that
 - Route/responsive smoke for product shell.
 - Board autosave / rename / Back warning / multi-image paste regression.
 - Board History autosave / Snapshot / Cmd/Ctrl+S / Restore-dirty-autosave smoke.
+- Long-session Board autosave / History regression: sequential autosaves, debounced quick edits, manual save, keyboard save, reload consistency and History filters.
 - Refresh preview / Workspace card / History thumbnail smoke.
 - Smart Drawing line / rectangle / ellipse / triangle / doodle and immediate undo smoke.
 
 ## Remaining Local Acceptance
 
-- Long-session Board autosave / History regression.
-- Smart Drawing threshold tuning and optional strength setting.
-- i18n/status polish for visible product strings.
-- More realistic empty/error states where production data is still mocked.
+1. Smart Drawing threshold tuning and optional strength setting.
+2. i18n/status polish for visible product strings.
+3. More realistic empty/error states where production data is still mocked.
 
 ## Non-Goals
 

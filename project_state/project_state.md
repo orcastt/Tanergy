@@ -2,7 +2,7 @@
 
 **Updated**: 2026-05-02
 **Branch**: `feature/local-polish-fast-slices`
-**Latest local checkpoint before this documentation restructure**: `1a12d86 checkpoint: thumbnail history smoke and arch slice sync`
+**Latest local checkpoint**: `30858c4 docs: restructure canonical slice docs`
 
 This folder replaces the former root-level long project ledger and short mirror files. The root `project_state.md` is now only a pointer.
 
@@ -15,7 +15,7 @@ Done locally:
   Product Shell
   Workspace Board gallery/list
   Board save/autosave
-  Board History
+  Board History long-session regression
   Board Management metadata
   Captured thumbnails
   Canvas Settings
@@ -46,9 +46,9 @@ Not production-complete:
 
 If external resources are not ready:
 
-1. Long-session Board autosave / History regression.
-2. Smart Drawing threshold tuning.
-3. i18n/status polish.
+1. Smart Drawing threshold tuning.
+2. i18n/status polish.
+3. More realistic empty/error states for mocked production surfaces.
 
 If external resources are ready:
 

@@ -50,7 +50,7 @@ services/api
 
 PRD                       Product requirement slices
 ARCH                      Architecture slices
-Project_state             Current progress and handoff slices
+project_state             Current progress and handoff slices
 dev-plans                 Active implementation plans and historical archive
 ```
 
@@ -72,8 +72,8 @@ Percentages mean distance to local/P0 alpha usefulness, not final commercial com
 +-------+--------+      +-------+--------+      +-------+--------+
         |                       |                       |
 | Product shell [90%]   | Staging infra [0%]   | Model Registry [35%]
-| Board save UX [90%]   | Auth boundary [35%]  | AiRun/logs [20%]
-| Board History [92%]   | Board CRUD API [25%] | Provider route [0%]
+| Board save UX [92%]   | Auth boundary [35%]  | AiRun/logs [20%]
+| Board History [94%]   | Board CRUD API [25%] | Provider route [0%]
 | Canvas Settings [92%] | Postgres/R2 [0%]     | AI Chat planner [10%]
 | Board Mgmt [86%]      |
 | Captured thumb [85%]  |

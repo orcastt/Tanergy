@@ -9,25 +9,25 @@
 | --- | ---: | --- |
 | Product Shell | 90% | Route semantics and five-tab navigation are coherent. |
 | Workspace Board gallery/list | 88% | Search, sort, Load more, create/open/rename/copy/delete and Manage exist. |
-| Board Save UX | 90% | Autosave, title sync, dirty/back warnings and save indicator exist. |
-| Board History | 92% | Autosave/manual/keyboard timeline, filters, author display, thumbnails and restore exist. |
+| Board Save UX | 92% | Autosave, title sync, dirty/back warnings, save indicator and long-session regression passed. |
+| Board History | 94% | Autosave/manual/keyboard timeline, filters, author display, thumbnails, restore and reload regression passed. |
 | Board Management | 86% | Metadata/member scaffold, thumbnail remove/default and permission states exist. |
 | Canvas Settings | 92% | Per-board dots/grid/solid backgrounds and settings panel exist. |
 | Captured Thumbnail | 85% | Refresh preview, Workspace card preview and History thumbnails passed smoke. |
 | Smart Drawing | 82% | Line/rectangle/ellipse/triangle/doodle and immediate undo browser smoke passed. |
 
-## Current Uncommitted Work
+## Latest Regression
 
-- Documentation restructure into `PRD/`, `ARCH/` and `project_state/` canonical folder indexes.
-- Old duplicate short mirror files removed.
-- Superseded active `dev-plans/` roadmaps moved to `dev-plans/Archive/`.
-- Root `PRD.md`, `ARCH.md` and `project_state.md` have been reduced to pointers.
+- `2026-05-02`: real browser long-session Board autosave / History regression passed on `regression-autosave-long`.
+- Covered 6 sequential autosaves, one debounced quick-edit autosave, manual Snapshot, Cmd/Ctrl+S, reload load consistency and History filters.
+- API counts after reload: 9 history entries, 7 autosaves, 2 user saves.
+- Restore follow-up passed separately on `regression-autosave-history`, including restore-to-5-shapes and follow-up autosave.
 
 ## Next Local Work
 
-1. Long-session Board autosave / History regression.
-2. Smart Drawing threshold tuning.
-3. i18n/status polish.
+1. Smart Drawing threshold tuning.
+2. i18n/status polish.
+3. More realistic empty/error states for mocked production surfaces.
 
 ## Validation Commands
 

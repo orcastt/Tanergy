@@ -41,9 +41,9 @@ Architecture/API/Auth/AI/Admin/Billing/Deploy/Collaboration:
 
 If external resources are not ready:
 
-1. Long-session Board autosave / History regression.
-2. Smart Drawing threshold tuning.
-3. i18n/status polish.
+1. Smart Drawing threshold tuning.
+2. i18n/status polish.
+3. More realistic empty/error states for mocked production surfaces.
 
 If external resources are ready:
 
