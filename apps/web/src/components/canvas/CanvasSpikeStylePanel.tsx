@@ -1,6 +1,6 @@
 'use client'
 
-import type { CSSProperties, SyntheticEvent } from 'react'
+import { useState, type CSSProperties, type ReactNode, type SyntheticEvent } from 'react'
 import type { Editor } from 'tldraw'
 import {
   arrowheadEndStyles,
@@ -17,7 +17,6 @@ import {
   styleProps,
 } from './canvasStyleControls'
 import { useEditorRevision } from './useEditorRevision'
-import { useEditorInteractionState } from './useEditorInteractionState'
 import { CanvasStylePanelSelectionActions } from './CanvasStylePanelSelectionActions'
 import { ActionButtonGroup, StyleButton, StyleButtonGroup, type SelectionAction } from './CanvasStylePanelGroups'
 
@@ -53,19 +52,49 @@ function stopCanvasEvent(event: SyntheticEvent) {
 }
 
 export function CanvasSpikeStylePanel({ editor }: CanvasSpikeStylePanelProps) {
-  const interaction = useEditorInteractionState(editor)
+  const [isOpen, setIsOpen] = useState(true)
   useEditorRevision(editor, 'style-panel')
   const selectedIds = editor?.getSelectedShapeIds() ?? []
   const selectedShapes = editor?.getSelectedShapes() ?? []
   const selectedCount = selectedIds.length
   const hasSelection = selectedCount > 0
   const hasNodeCardSelection = selectedShapes.some((shape) => shape.type === 'node_card')
-  const isPanningCanvas =
-    interaction.cameraState === 'moving' ||
-    interaction.currentToolId === 'hand' ||
-    interaction.isPanning
+  const hasEditableStyleSelection = hasSelection && !hasNodeCardSelection
+  if (!editor) return null
 
-  if (!editor || !hasSelection || hasNodeCardSelection || isPanningCanvas) return null
+  const drawerShell = (children: ReactNode) => (
+    <aside
+      className="canvas-style-drawer"
+      aria-label="Canvas side properties"
+      data-open={isOpen ? 'true' : 'false'}
+      onDoubleClick={stopCanvasEvent}
+      onPointerDown={stopCanvasEvent}
+      onWheel={stopCanvasEvent}
+    >
+      <button
+        aria-label={isOpen ? 'Collapse side properties' : 'Expand side properties'}
+        className="canvas-style-drawer__handle"
+        onClick={() => setIsOpen((open) => !open)}
+        title={isOpen ? 'Collapse properties' : 'Expand properties'}
+        type="button"
+      >
+        <span aria-hidden>{isOpen ? '‹' : '›'}</span>
+      </button>
+      {isOpen ? children : null}
+    </aside>
+  )
+
+  if (!hasEditableStyleSelection) {
+    return drawerShell(
+      <div className="canvas-style-panel canvas-style-panel--empty">
+        <div className="canvas-style-panel__header">
+          <span>Properties</span>
+          <small>Drawing styles</small>
+        </div>
+        <p>Select a shape, arrow, text, image or markup to edit drawing styles.</p>
+      </div>
+    )
+  }
 
   const color = getPanelStyleValue(editor, styleProps.color)
   const fill = getPanelStyleValue(editor, styleProps.fill)
@@ -79,14 +108,8 @@ export function CanvasSpikeStylePanel({ editor }: CanvasSpikeStylePanelProps) {
   const opacity = editor.getSharedOpacity()
   const opacityPercent = opacity?.type === 'shared' ? Math.round(opacity.value * 100) : 100
 
-  return (
-    <aside
-      className="canvas-style-panel"
-      aria-label="Canvas style panel"
-      onDoubleClick={stopCanvasEvent}
-      onPointerDown={stopCanvasEvent}
-      onWheel={stopCanvasEvent}
-    >
+  return drawerShell(
+    <div className="canvas-style-panel" aria-label="Canvas style panel">
       <div className="canvas-style-panel__header">
         <span>属性</span>
         <small>已选 · {selectedCount}</small>
@@ -228,6 +251,6 @@ export function CanvasSpikeStylePanel({ editor }: CanvasSpikeStylePanelProps) {
       <ActionButtonGroup actions={layerActions} editor={editor} label="图层" selectedCount={selectedCount} selectedIds={selectedIds} />
       <ActionButtonGroup actions={alignActions} editor={editor} label="对齐" selectedCount={selectedCount} selectedIds={selectedIds} />
       <ActionButtonGroup actions={operationActions} editor={editor} label="操作" selectedCount={selectedCount} selectedIds={selectedIds} />
-    </aside>
+    </div>
   )
 }

@@ -24,13 +24,6 @@
     max-height: max(220px, calc(100% - 250px));
   }
 
-  .node-inspector {
-    top: 72px;
-    left: 12px;
-    width: 256px;
-    max-height: max(220px, calc(100% - 250px));
-  }
-
   .merge-capture-panel {
     right: 12px;
     bottom: 12px;
@@ -38,8 +31,7 @@
 }
 
 @media (max-width: 560px) {
-  .canvas-style-panel,
-  .node-inspector {
+  .canvas-style-panel {
     right: 12px;
     left: 12px;
     width: auto;

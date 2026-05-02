@@ -15,9 +15,18 @@ Right AI Chat → auto-create nodes → auto-wire → user reviews and runs
 
 Read in this order before development:
 
-1. `project_state.md` — current phase, completed work, next action.
+For fast local UI polish:
+
+1. `Project_state/current-slice.md` — short current context, key files, next action.
+2. `ARCH/README.md` — architecture slice index.
+3. Relevant `ARCH/*.md` slice file.
+4. `dev-plans/README.md` and the current active slice plan.
+
+For architecture/API/Auth/AI/Admin/Billing/Deploy/collaboration work:
+
+1. `project_state.md` — canonical current phase, completed work, next action.
 2. `PRD.md` — user-visible product requirements and acceptance.
-3. `ARCH.md` — technical decisions, boundaries, data/API/security.
+3. `ARCH.md` — canonical technical decisions, boundaries, data/API/security.
 4. `HARNESS.md` — cross-functional development rules and handoff standards.
 5. `dev-plans/README.md` and the current active slice plan.
 
@@ -72,8 +81,10 @@ http://localhost:3000/spikes/canvas
 
 ## Planning Docs
 
+- `ARCH/README.md` — short architecture index for faster handoffs.
+- `Project_state/current-slice.md` — compact current slice state and validation commands.
 - `dev-plans/README.md` — active/archived plan index.
-- `dev-plans/p0-development-harness-roadmap-2026-04-30.md` — current P0 Harness roadmap.
+- `HARNESS.md` — current P0 Harness roadmap and workstream rules.
 - `dev-plans/Asset-lod-roadmap.md` — current Asset Pipeline + Image / Node LOD roadmap before multiplayer.
 - `dev-plans/overseas-cost-growth-forecast.md` — cost and growth planning reference.
 - `dev-plans/Archive/` — completed, accepted, or deprecated dev-plan slices and handoff notes.

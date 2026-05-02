@@ -9,6 +9,7 @@ import {
   type LocalBoardSaveResponse,
 } from '@/features/boards/localBoardClient'
 import type { BoardPersistenceRecord, BoardSnapshotReason, BoardSnapshotRecord } from '@/features/boards/boardTypes'
+import { captureBoardThumbnailUrl } from '@/features/boards/boardThumbnailCapture'
 import { restoreBoardDocument } from '@/features/boards/boardDocumentRestore'
 import {
   createGuardedBoardDocument,
@@ -22,9 +23,15 @@ import {
   type BoardSaveStatus,
 } from './boardSaveStatus'
 import { createLoadedBoardSaveResponse, createRestoredHistorySaveResponse } from './boardSaveResults'
+import { getBoardSaveAuditSummary } from './boardSaveAuditSummary'
 import { CanvasBoardModeControls } from './CanvasBoardModeControls'
 import { DevBoardSaveControls } from './CanvasBoardSaveControls'
-import { useBoardAutosaveTimer, useBoardBeforeUnloadWarning, useBoardSettingsDirtyTracking } from './useBoardSaveLifecycle'
+import {
+  useBoardAutosaveTimer,
+  useBoardBeforeUnloadWarning,
+  useBoardKeyboardSaveShortcut,
+  useBoardSettingsDirtyTracking,
+} from './useBoardSaveLifecycle'
 import { useBoardSnapshots } from './useBoardSnapshots'
 
 type CanvasBoardSaveAuditProps = {
@@ -99,15 +106,21 @@ export function CanvasBoardSaveAudit({
         throw new Error(nextResult?.audit.issues[0]?.message ?? 'Board document is blocked.')
       }
       const savedSignature = getDocumentSignature(nextResult.document)
-      if (lastSavedSignature.current === savedSignature) {
+      const currentThumbnailUrl = saveResult?.board?.thumbnailUrl ?? null
+      const needsThumbnail = mode === 'board' && !currentThumbnailUrl
+      if (lastSavedSignature.current === savedSignature && !needsThumbnail) {
         setLastAction('save')
         setResult(nextResult)
         setStatus('saved')
         return
       }
+      const thumbnailUrl = needsThumbnail
+        ? await captureBoardThumbnailUrl(editor, boardTitle).catch(() => currentThumbnailUrl)
+        : currentThumbnailUrl
       const saved = await saveLocalBoardDocument({
         boardId,
         document: nextResult.document,
+        thumbnailUrl,
         title: boardTitle,
       })
       const savedBoard = saved.board
@@ -131,23 +144,13 @@ export function CanvasBoardSaveAudit({
       isSaving.current = false
       setIsRunning(false)
     }
-  }, [boardId, boardTitle, clearAutosaveTimer, editor, prepareDocument, scheduleAutosave])
+  }, [boardId, boardTitle, clearAutosaveTimer, editor, mode, prepareDocument, saveResult, scheduleAutosave])
 
   useEffect(() => {
     saveNowRef.current = (source) => void saveLocal(source)
   }, [saveLocal])
 
-  useEffect(() => {
-    if (mode !== 'board') return
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
-        event.preventDefault()
-        void saveLocal('keyboard')
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [mode, saveLocal])
+  useBoardKeyboardSaveShortcut(mode, saveLocal)
 
   const markDirty = useCallback(() => {
     if (mode !== 'board' || !editor || isRestoring.current) return
@@ -242,17 +245,14 @@ export function CanvasBoardSaveAudit({
     }
   }, [clearAutosaveTimer, editor, markDirty, mode])
 
-  const issue = result?.audit.issues.find((item) => item.blocking)
-  const auditStatus = !result
-    ? 'Not checked'
-    : saveResult?.board
-      ? `${lastAction === 'load' ? 'Loaded' : 'Saved'} ${saveResult.board.byteSize} bytes`
-    : result.audit.ok
-      ? `${result.audit.byteSize} bytes`
-      : issue?.code ?? 'Blocked'
-  const detail = saveError ?? (migration?.migrated ? `${migration.migrated} asset(s) migrated` : issue?.path)
-  const saveLabel = mode === 'board' ? 'Save board' : 'Save local'
-  const loadLabel = mode === 'board' ? 'Load board' : 'Load local'
+  const { auditStatus, detail, issue, loadLabel, saveLabel } = getBoardSaveAuditSummary({
+    lastAction,
+    migration,
+    mode,
+    result,
+    saveError,
+    saveResult,
+  })
 
   if (mode === 'board') {
     return (

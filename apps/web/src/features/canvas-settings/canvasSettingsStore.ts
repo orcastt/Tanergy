@@ -11,6 +11,7 @@ export type CanvasSettings = {
   language: 'en' | 'zh'
   snapAlignment: boolean
   snapDistance: number
+  smartDrawing: boolean
   zoomSensitivity: number
 }
 
@@ -37,6 +38,7 @@ export const defaultCanvasSettings: CanvasSettings = {
   language: 'en',
   snapAlignment: true,
   snapDistance: 12,
+  smartDrawing: true,
   zoomSensitivity: 1,
 }
 
@@ -64,6 +66,7 @@ export function normalizeCanvasSettings(settings: Partial<CanvasSettings> & { gr
     language: getChoice(settings.language, languages, defaultCanvasSettings.language),
     snapAlignment: typeof settings.snapAlignment === 'boolean' ? settings.snapAlignment : defaultCanvasSettings.snapAlignment,
     snapDistance: clampNumber(Number(settings.snapDistance ?? defaultCanvasSettings.snapDistance), 2, 48),
+    smartDrawing: typeof settings.smartDrawing === 'boolean' ? settings.smartDrawing : defaultCanvasSettings.smartDrawing,
     zoomSensitivity: clampNumber(Number(settings.zoomSensitivity ?? defaultCanvasSettings.zoomSensitivity), 0.25, 3),
   }
   return normalized

@@ -1,6 +1,6 @@
 'use client'
 
-import type { SyntheticEvent } from 'react'
+import { useMemo, useState, type SyntheticEvent } from 'react'
 import type { BoardSnapshotSummary } from '@/features/boards/boardTypes'
 
 type CanvasBoardHistoryPanelProps = {
@@ -20,25 +20,47 @@ export function CanvasBoardHistoryPanel({
   onRestore,
   snapshots,
 }: CanvasBoardHistoryPanelProps) {
+  const [filter, setFilter] = useState<'all' | 'autosave' | 'user'>('all')
+  const visibleSnapshots = useMemo(() => snapshots.filter((snapshot) => {
+    if (filter === 'all') return true
+    return getSnapshotKind(snapshot.reason) === filter
+  }), [filter, snapshots])
+
   return (
     <aside className="canvas-board-history" aria-label="Board history" {...canvasEventProps}>
       <header>
         <div>
           <strong>Board history</strong>
-          <span>{snapshots.length} entr{snapshots.length === 1 ? 'y' : 'ies'}</span>
+          <span>{visibleSnapshots.length} of {snapshots.length} entr{snapshots.length === 1 ? 'y' : 'ies'}</span>
         </div>
         <button aria-label="Close board history" onClick={onClose} type="button">Close</button>
       </header>
+      <div className="canvas-board-history__filters" aria-label="History filters">
+        {(['all', 'autosave', 'user'] as const).map((value) => (
+          <button
+            className={filter === value ? 'is-active' : undefined}
+            key={value}
+            onClick={() => setFilter(value)}
+            type="button"
+          >
+            {getFilterLabel(value)}
+          </button>
+        ))}
+      </div>
       {error ? <div className="canvas-board-history__error" role="alert">{error}</div> : null}
       <div className="canvas-board-history__list">
-        {snapshots.length === 0 ? (
+        {visibleSnapshots.length === 0 ? (
           <p>No history yet. Autosave and Snapshot entries will appear here.</p>
-        ) : snapshots.map((snapshot) => (
-          <article key={snapshot.id} className="canvas-board-history__item">
+        ) : visibleSnapshots.map((snapshot) => (
+          <article key={snapshot.id} className="canvas-board-history__item" data-kind={getSnapshotKind(snapshot.reason)}>
             <div>
               <strong>{snapshot.title}</strong>
               <span>{formatDate(snapshot.createdAt)} · {formatReason(snapshot.reason)}</span>
               <small>{snapshot.shapeCount} shapes / {snapshot.assetCount} assets · {formatBytes(snapshot.byteSize)}</small>
+              <span className="canvas-board-history__author">
+                <span>{getInitials(snapshot.createdBy)}</span>
+                Saved by {formatUser(snapshot.createdBy)}
+              </span>
             </div>
             <button
               disabled={isRunning}
@@ -55,7 +77,7 @@ export function CanvasBoardHistoryPanel({
         ))}
       </div>
       <footer>
-        <span>Free retention: latest 100 history entries per board.</span>
+        <span>Free retention target: latest 100 autosaves + 100 user saves per board.</span>
         <button disabled={isRunning} onClick={onRefresh} type="button">Refresh</button>
       </footer>
     </aside>
@@ -85,6 +107,25 @@ function formatReason(value: string) {
   if (value === 'auto_interval') return 'Timed snapshot'
   if (value === 'pre_restore') return 'Pre-restore'
   return 'Snapshot'
+}
+
+function getSnapshotKind(value: string) {
+  return value === 'autosave' || value === 'auto_interval' ? 'autosave' : 'user'
+}
+
+function getFilterLabel(value: 'all' | 'autosave' | 'user') {
+  if (value === 'autosave') return 'Autosave'
+  if (value === 'user') return 'User saves'
+  return 'All'
+}
+
+function formatUser(value: string) {
+  return value === 'dev-user' ? 'Dev User' : value
+}
+
+function getInitials(value: string) {
+  const label = formatUser(value)
+  return label.split(/[\s._-]+/).map((part) => part[0]?.toUpperCase()).filter(Boolean).slice(0, 2).join('') || 'U'
 }
 
 function formatBytes(value: number) {

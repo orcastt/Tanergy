@@ -20,9 +20,6 @@ export function BoardManagementMembers({ board }: BoardManagementMembersProps) {
           <h3>Members</h3>
           <p>Board-level access scaffold for the collaboration slice.</p>
         </div>
-        <button disabled title="Real invitations wait for Auth and team roles." type="button">
-          Invite people
-        </button>
       </div>
       <div className="board-panel-members" role="table" aria-label="Board members">
         {members.map((member) => (

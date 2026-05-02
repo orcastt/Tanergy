@@ -85,8 +85,14 @@ function summarizeSnapshot(snapshot: BoardSnapshotRecord) {
 async function enforceSnapshotLimit(context: ApiRequestContext, boardId: string) {
   const limit = Number.isFinite(snapshotLimit) && snapshotLimit > 0 ? snapshotLimit : 100
   const snapshots = await listLocalBoardSnapshots(boardId, context)
-  const expired = snapshots.slice(limit)
+  const autosaves = snapshots.filter((snapshot) => getSnapshotRetentionKind(snapshot.reason) === 'autosave')
+  const userSaves = snapshots.filter((snapshot) => getSnapshotRetentionKind(snapshot.reason) === 'user')
+  const expired = [...autosaves.slice(limit), ...userSaves.slice(limit)]
   await Promise.all(expired.map((snapshot) => rm(getSnapshotPath(context.workspaceId, boardId, snapshot.id), { force: true })))
+}
+
+function getSnapshotRetentionKind(reason: BoardSnapshotRecord['reason']) {
+  return reason === 'autosave' || reason === 'auto_interval' ? 'autosave' : 'user'
 }
 
 async function readSnapshot(workspaceId: string, boardId: string, snapshotId: string) {

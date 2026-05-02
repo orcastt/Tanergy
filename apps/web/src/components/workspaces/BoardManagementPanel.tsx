@@ -1,9 +1,6 @@
 'use client'
 
 import { useEffect, useState, type FormEvent } from 'react'
-import { BoardThumbnail } from '@/components/boards/BoardThumbnail'
-import { readImageFileAsDataUrl, validateImageFile } from '@/features/assets/imageAssetInputs'
-import { uploadImageDataUrlAsset } from '@/features/assets/assetUploadClient'
 import {
   boardCardColorValues,
   type BoardCardColor,
@@ -11,9 +8,11 @@ import {
   type BoardVisibility,
 } from '@/features/boards/boardTypes'
 import { BoardManagementMembers } from './BoardManagementMembers'
+import { BoardManagementThumbnailSection } from './BoardManagementThumbnailSection'
 
 type BoardManagementPanelProps = {
   board: BoardPersistenceSummary
+  canManageBoard: boolean
   isPending: boolean
   onClose: () => void
   onCopy: () => void
@@ -41,6 +40,7 @@ const colorLabels: Record<BoardCardColor, string> = {
 
 export function BoardManagementPanel({
   board,
+  canManageBoard,
   isPending,
   onClose,
   onCopy,
@@ -53,11 +53,10 @@ export function BoardManagementPanel({
   const [description, setDescription] = useState(board.description ?? '')
   const [isPinned, setIsPinned] = useState(Boolean(board.isPinned))
   const [isStarred, setIsStarred] = useState(Boolean(board.isStarred))
-  const [thumbnailError, setThumbnailError] = useState<string | null>(null)
   const [thumbnailUrl, setThumbnailUrl] = useState(board.thumbnailUrl ?? '')
   const [title, setTitle] = useState(board.title)
-  const [uploadingThumbnail, setUploadingThumbnail] = useState(false)
   const [visibility, setVisibility] = useState<BoardVisibility>(board.visibility ?? 'private')
+  const editDisabled = !canManageBoard || isPending
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -69,161 +68,170 @@ export function BoardManagementPanel({
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (editDisabled) return
     onSave({ cardColor, description, isPinned, isStarred, thumbnailUrl, title, visibility })
-  }
-
-  const uploadThumbnail = async (file: File | undefined) => {
-    if (!file) return
-    setThumbnailError(null)
-    setUploadingThumbnail(true)
-    try {
-      validateImageFile(file)
-      const image = await readImageFileAsDataUrl(file)
-      const asset = await uploadImageDataUrlAsset({
-        dataUrl: image.url,
-        fileName: file.name,
-        height: image.height,
-        origin: 'upload',
-        title: `${title || board.title} thumbnail`,
-        width: image.width,
-      })
-      setThumbnailUrl(asset.thumbnail512Url ?? asset.thumbnail256Url ?? asset.originalUrl)
-    } catch (error) {
-      setThumbnailError(error instanceof Error ? error.message : 'Thumbnail upload failed.')
-    } finally {
-      setUploadingThumbnail(false)
-    }
   }
 
   return (
     <div className="board-panel-backdrop" onMouseDown={onClose} role="presentation">
-      <aside
+      <section
         aria-label="Board management"
         aria-modal="true"
         className="board-panel"
         onMouseDown={(event) => event.stopPropagation()}
         role="dialog"
       >
-        <header className="board-panel-header">
-          <div>
-            <p className="product-kicker">Board panel</p>
-            <h2>Manage board</h2>
-          </div>
-          <button aria-label="Close board panel" onClick={onClose} type="button">Close</button>
-        </header>
-
-        <form className="board-panel-form" onSubmit={submit}>
-          <section className="board-panel-thumbnail">
-            <BoardThumbnail board={{ ...board, thumbnailUrl: thumbnailUrl || null }} />
-            <div>
-              <label className="board-panel-thumbnail-upload">
-                <span>Change thumbnail</span>
-                <input
-                  accept="image/png,image/jpeg,image/webp"
-                  disabled={uploadingThumbnail || isPending}
-                  onChange={(event) => void uploadThumbnail(event.target.files?.[0])}
-                  type="file"
-                />
-              </label>
-              <input
-                aria-label="Thumbnail URL"
-                maxLength={512}
-                onChange={(event) => setThumbnailUrl(event.target.value)}
-                placeholder="Paste thumbnail URL"
-                value={thumbnailUrl}
-              />
-              {thumbnailError ? <small role="alert">{thumbnailError}</small> : null}
-            </div>
-          </section>
-
-          <label>
-            <span>Board name</span>
-            <input maxLength={80} onChange={(event) => setTitle(event.target.value)} required value={title} />
-          </label>
-          <label>
-            <span>Description</span>
-            <textarea
-              maxLength={280}
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder="Add a short note for this board."
-              rows={4}
-              value={description}
-            />
-          </label>
-          <fieldset>
-            <legend>Card color</legend>
-            <div className="board-panel-swatches">
-              {boardCardColorValues.map((value) => (
-                <button
-                  aria-pressed={cardColor === value}
-                  className={cardColor === value ? 'is-active' : undefined}
-                  data-card-color={value}
-                  key={value}
-                  onClick={() => setCardColor(value)}
-                  type="button"
-                >
-                  <span />
-                  {colorLabels[value]}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-
-          <fieldset>
-            <legend>Board access</legend>
-            <div className="board-panel-access">
-              {(['private', 'workspace', 'public'] satisfies BoardVisibility[]).map((value) => (
-                <button
-                  aria-pressed={visibility === value}
-                  className={visibility === value ? 'is-active' : undefined}
-                  key={value}
-                  onClick={() => setVisibility(value)}
-                  type="button"
-                >
-                  {getVisibilityLabel(value)}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-
-          <div className="board-panel-toggles">
-            <label>
-              <input checked={isStarred} onChange={(event) => setIsStarred(event.target.checked)} type="checkbox" />
-              Star this board
-            </label>
-            <label>
-              <input checked={isPinned} onChange={(event) => setIsPinned(event.target.checked)} type="checkbox" />
-              Pin in workspace
-            </label>
-          </div>
-
-          <dl className="board-panel-details">
+        <aside className="board-panel-sidebar">
+          <p className="product-kicker">Board management</p>
+          <h2>{board.title}</h2>
+          <p>Manage access, card appearance and workspace metadata for this board.</p>
+          <dl>
             <div><dt>Owner</dt><dd>{formatOwner(board.ownerId)}</dd></div>
+            <div><dt>Role</dt><dd>{canManageBoard ? 'Owner / Admin' : 'Editor / Viewer'}</dd></div>
+            <div><dt>Visibility</dt><dd>{getVisibilityLabel(board.visibility ?? 'private')}</dd></div>
             <div><dt>Created</dt><dd>{formatDate(board.createdAt ?? board.savedAt)}</dd></div>
             <div><dt>Last modified</dt><dd>{formatDate(board.savedAt)}</dd></div>
             <div><dt>Last opened</dt><dd>{board.lastOpenedAt ? formatDate(board.lastOpenedAt) : 'Not opened yet'}</dd></div>
             <div><dt>Location</dt><dd>{board.workspaceId}</dd></div>
             <div><dt>Objects</dt><dd>{board.shapeCount} shapes / {board.assetCount} assets</dd></div>
           </dl>
+        </aside>
 
-          <footer className="board-panel-footer">
-            <button className="product-button product-button-primary" disabled={isPending} type="submit">
-              Save changes
-            </button>
-            <button className="product-button product-button-secondary" onClick={onOpen} type="button">
-              Open board
-            </button>
-          </footer>
-        </form>
+        <main className="board-panel-main">
+          <header className="board-panel-header">
+            <div>
+              <h2>Board Panel</h2>
+              <p>{canManageBoard ? 'Owner controls are available.' : 'Editor and viewer controls are read-only until permissions allow changes.'}</p>
+            </div>
+            <div className="board-panel-top-actions">
+              <button className="product-button product-button-primary" disabled={editDisabled} form="board-management-form" type="submit">
+                Save
+              </button>
+              <button className="product-button product-button-secondary" disabled={isPending || (!canManageBoard && !board.shareId)} onClick={onShare} type="button">
+                Copy link
+              </button>
+              <button className="product-button product-button-secondary" disabled title="Real invitations wait for Auth and team roles." type="button">
+                Invite
+              </button>
+              <button className="product-button product-button-secondary" onClick={onOpen} type="button">
+                Open
+              </button>
+              <button aria-label="Close board panel" className="board-panel-close" onClick={onClose} type="button">×</button>
+            </div>
+          </header>
 
-        <BoardManagementMembers board={board} />
+          {!canManageBoard ? (
+            <p className="board-panel-permission-note">
+              Only a board owner or workspace admin can rename the board, change the preview image, edit the description or choose the card color.
+            </p>
+          ) : null}
 
-        <section className="board-panel-danger" aria-label="Board actions">
-          <button disabled={isPending} onClick={onCopy} type="button">Copy board</button>
-          <button disabled={isPending} onClick={onShare} type="button">Share link</button>
-          <button disabled={isPending} onClick={onDelete} type="button">Delete board</button>
-        </section>
-      </aside>
+          <div className="board-panel-content">
+            <form className="board-panel-form board-panel-identity" id="board-management-form" onSubmit={submit}>
+              <section className="board-panel-section">
+                <div className="board-panel-section-heading">
+                  <div>
+                    <h3>Board Identity</h3>
+                    <p>Preview image, name and description.</p>
+                  </div>
+                </div>
+                <BoardManagementThumbnailSection
+                  board={board}
+                  disabled={editDisabled}
+                  onChange={setThumbnailUrl}
+                  thumbnailUrl={thumbnailUrl}
+                  title={title}
+                />
+                <label>
+                  <span>Board name</span>
+                  <input disabled={editDisabled} maxLength={80} onChange={(event) => setTitle(event.target.value)} required value={title} />
+                </label>
+                <label>
+                  <span>Description</span>
+                  <textarea
+                    disabled={editDisabled}
+                    maxLength={280}
+                    onChange={(event) => setDescription(event.target.value)}
+                    placeholder="Add a short note for this board."
+                    rows={4}
+                    value={description}
+                  />
+                </label>
+              </section>
+            </form>
+
+            <div className="board-panel-side-column">
+              <section className="board-panel-section board-panel-side-card">
+                <div className="board-panel-section-heading">
+                  <div>
+                    <h3>Appearance & Access</h3>
+                    <p>Workspace card display and board access.</p>
+                  </div>
+                </div>
+              <fieldset disabled={editDisabled}>
+                <legend>Card color</legend>
+                <div className="board-panel-swatches">
+                  {boardCardColorValues.map((value) => (
+                    <button
+                      aria-pressed={cardColor === value}
+                      className={cardColor === value ? 'is-active' : undefined}
+                      data-card-color={value}
+                      disabled={editDisabled}
+                      key={value}
+                      onClick={() => setCardColor(value)}
+                      type="button"
+                    >
+                      <span />
+                      {colorLabels[value]}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+
+              <fieldset disabled={editDisabled}>
+                <legend>Board access</legend>
+                <div className="board-panel-access">
+                  {(['private', 'workspace', 'public'] satisfies BoardVisibility[]).map((value) => (
+                    <button
+                      aria-pressed={visibility === value}
+                      className={visibility === value ? 'is-active' : undefined}
+                      disabled={editDisabled}
+                      key={value}
+                      onClick={() => setVisibility(value)}
+                      type="button"
+                    >
+                      {getVisibilityLabel(value)}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+
+              <div className="board-panel-toggles">
+                <label>
+                  <input checked={isStarred} disabled={editDisabled} onChange={(event) => setIsStarred(event.target.checked)} type="checkbox" />
+                  Star this board
+                </label>
+                <label>
+                  <input checked={isPinned} disabled={editDisabled} onChange={(event) => setIsPinned(event.target.checked)} type="checkbox" />
+                  Pin in workspace
+                </label>
+              </div>
+
+                <div className="board-panel-inline-actions">
+                  <button className="product-button product-button-secondary" disabled={isPending} onClick={onCopy} type="button">
+                    Copy board
+                  </button>
+                  <button className="product-button product-button-secondary" disabled={editDisabled} onClick={onDelete} type="button">
+                    Delete
+                  </button>
+                </div>
+              </section>
+
+              <BoardManagementMembers board={board} />
+            </div>
+          </div>
+        </main>
+      </section>
     </div>
   )
 }

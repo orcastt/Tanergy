@@ -114,9 +114,14 @@ class FakePostgresCursor:
                 row for key, row in self.database.snapshots.items()
                 if key[0] == workspace_id and key[1] == board_id
             ]
-            rows.sort(key=lambda row: row[14], reverse=True)
-            for row in rows[limit:]:
-                self.database.snapshots.pop((row[1], row[2], row[0]), None)
+            buckets = {
+                "autosave": [row for row in rows if row[11] in {"autosave", "auto_interval"}],
+                "user": [row for row in rows if row[11] not in {"autosave", "auto_interval"}],
+            }
+            for bucket_rows in buckets.values():
+                bucket_rows.sort(key=lambda row: row[14], reverse=True)
+                for row in bucket_rows[limit:]:
+                    self.database.snapshots.pop((row[1], row[2], row[0]), None)
         elif normalized.startswith("INSERT INTO tangent_assets"):
             key = (params[1], params[0])
             self.database.assets[key] = params

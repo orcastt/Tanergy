@@ -1,6 +1,7 @@
 'use client'
 
 import type { Dispatch, SetStateAction } from 'react'
+import { getCurrentSessionSnapshot } from '@/features/auth/mockSession'
 import type { BoardPersistenceSummary } from '@/features/boards/boardTypes'
 import { updateLocalBoardMetadata } from '@/features/boards/localBoardClient'
 import { BoardManagementPanel } from './BoardManagementPanel'
@@ -31,6 +32,8 @@ export function WorkspaceBoardPanelHost({
   setPendingBoardId,
 }: WorkspaceBoardPanelHostProps) {
   if (!board) return null
+  const session = getCurrentSessionSnapshot()
+  const canManageBoard = board.ownerId === session.user.id || ['admin', 'owner'].includes(session.activeWorkspace.role)
 
   const saveMetadata = async (input: {
     cardColor: BoardPersistenceSummary['cardColor']
@@ -67,6 +70,7 @@ export function WorkspaceBoardPanelHost({
   return (
     <BoardManagementPanel
       board={board}
+      canManageBoard={canManageBoard}
       isPending={isPending}
       key={board.id}
       onClose={onClose}

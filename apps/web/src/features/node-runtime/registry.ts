@@ -37,7 +37,7 @@ export const nodeDefinitions: Record<NodeType, NodeDefinition> = {
       analysisPrompt: '分析这张图片内容，尽可能描述场景中的物体和特征，并输出一段提示词。',
     },
     displayName: 'Analysis',
-    inspectorFields: [{ label: 'Analysis Prompt', name: 'analysisPrompt', type: 'textarea' }],
+    cardFields: [{ label: 'Analysis Prompt', name: 'analysisPrompt', type: 'textarea' }],
     outputSummary: 'Text prompt from image analysis',
     ports: [
       { dataType: 'image', direction: 'in', id: 'image_in', label: 'Image in', required: true },
@@ -52,7 +52,7 @@ export const nodeDefinitions: Record<NodeType, NodeDefinition> = {
       title: 'Image',
     },
     displayName: 'Image',
-    inspectorFields: [
+    cardFields: [
       { label: 'Asset ID', name: 'assetId', type: 'text' },
       { label: 'Title', name: 'title', type: 'text' },
     ],
@@ -72,7 +72,7 @@ export const nodeDefinitions: Record<NodeType, NodeDefinition> = {
       resolution: '1K',
     },
     displayName: 'Image Gen',
-    inspectorFields: imageGenFields,
+    cardFields: imageGenFields,
     outputSummary: 'One generated image asset',
     ports: [
       { dataType: 'text', direction: 'in', id: 'text_in', label: 'Text in', required: true },
@@ -90,7 +90,7 @@ export const nodeDefinitions: Record<NodeType, NodeDefinition> = {
       resolution: '1K',
     },
     displayName: 'Image Gen 4',
-    inspectorFields: imageGenFields,
+    cardFields: imageGenFields,
     outputSummary: 'Four image assets from four calls',
     ports: [
       { dataType: 'text', direction: 'in', id: 'text_in', label: 'Text in', required: true },
@@ -108,7 +108,7 @@ export const nodeDefinitions: Record<NodeType, NodeDefinition> = {
       prompt: 'DRAW a cat',
     },
     displayName: 'Prompt',
-    inspectorFields: [{ label: 'Prompt', name: 'prompt', type: 'textarea' }],
+    cardFields: [{ label: 'Prompt', name: 'prompt', type: 'textarea' }],
     outputSummary: 'Text prompt',
     ports: [
       { dataType: 'text', direction: 'in', id: 'text_in', label: 'Text in' },

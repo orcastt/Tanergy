@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { ArrowShapeUtil, Tldraw, type Editor, type TLAnyShapeUtilConstructor, type TLComponents } from 'tldraw'
-import { CanvasNodeInspector } from '@/components/inspector/CanvasNodeInspector'
 import { NodeCardShapeUtil } from '@/components/nodes/NodeCardShape'
 import { useCanvasPerformanceStore } from '@/features/canvas-performance/canvasPerformanceStore'
 import { useCanvasPerformanceTracking } from '@/features/canvas-performance/useCanvasPerformanceTracking'
@@ -23,7 +22,7 @@ import { CanvasGrid } from './CanvasGrid'
 import { CanvasNodeEdgeOverlay } from './CanvasNodeEdgeOverlay'
 import { CanvasNodePicker } from './CanvasNodePicker'
 import { CanvasRuntimeDiagnostics, CanvasRuntimeErrorBoundary } from './CanvasRuntimeDiagnostics'
-import { CanvasSettingsControl } from './CanvasSettingsControl'
+import { CanvasSettingsPanel } from './CanvasSettingsPanel'
 import { CanvasSpikeNavigator } from './CanvasSpikeNavigator'
 import { CanvasSpikeStylePanel } from './CanvasSpikeStylePanel'
 import { CanvasSpikeToolbar } from './CanvasSpikeToolbar'
@@ -38,6 +37,7 @@ import {
 import { useArrowPortSnapping } from './useArrowPortSnapping'
 import { useCanvasSettings } from './useCanvasSettings'
 import { usePortConnectionCompletion } from './usePortConnectionCompletion'
+import { useSmartDrawing } from './useSmartDrawing'
 
 const shapeUtils = [
   AiCardShapeUtil,
@@ -102,17 +102,16 @@ export function CanvasSpike({
   seedOnMount = true,
 }: CanvasSpikeProps = {}) {
   const [editor, setEditor] = useState<Editor | null>(null)
-  const [connectionMessage, setConnectionMessage] = useState<{
-    text: string
-    tone: 'error' | 'success'
-  } | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const ignoreConnectionEvent = useCallback(() => undefined, [])
   const imagePreviewMode = useCanvasPerformanceStore((state) => state.imagePreviewMode)
   const backgroundColor = useCanvasSettingsStore((state) => state.settings.backgroundColor)
   useCanvasPerformanceTracking(editor)
   useArrowPortSnapping(editor)
   useCanvasSettings(editor)
-  useNodeConnectionValidation(editor, setConnectionMessage)
-  usePortConnectionCompletion(editor, setConnectionMessage)
+  useNodeConnectionValidation(editor, ignoreConnectionEvent)
+  usePortConnectionCompletion(editor, ignoreConnectionEvent)
+  useSmartDrawing(editor)
 
   useEffect(() => {
     const clearUnexpectedSelection = () => {
@@ -210,6 +209,7 @@ export function CanvasSpike({
         <CanvasSpikeNavigator editor={editor} />
         <CanvasSpikeToolbar
           editor={editor}
+          isSettingsOpen={settingsOpen}
           onCreateAiCards={toolbarActions.createAiCards}
           onCreateBoardKit={toolbarActions.createBoardKit}
           onCreateImage={toolbarActions.createImage}
@@ -222,8 +222,8 @@ export function CanvasSpike({
           onCreateShapeSet={toolbarActions.createShapeSet}
           onCreateStep15Graph={toolbarActions.createStep15Graph}
           onCreateStressNodes={toolbarActions.createStressNodes}
+          onOpenSettings={() => setSettingsOpen((open) => !open)}
         />
-        <CanvasNodeInspector connectionMessage={connectionMessage} editor={editor} />
         <CanvasBoardSaveAudit
           autoLoad={autoLoadBoard}
           boardId={boardId}
@@ -232,7 +232,7 @@ export function CanvasSpike({
           mode={boardId ? 'board' : 'dev'}
           onBoardLoaded={(board) => onBoardLoaded?.(board.title)}
         />
-        <CanvasSettingsControl boardMode={Boolean(boardId)} />
+        {settingsOpen ? <CanvasSettingsPanel boardMode={Boolean(boardId)} onClose={() => setSettingsOpen(false)} /> : null}
         <CanvasSpikeStylePanel editor={editor} />
         {canvasRuntimeDiagnosticsEnabled ? <CanvasRuntimeDiagnostics editorReady={editor !== null} /> : null}
       </div>

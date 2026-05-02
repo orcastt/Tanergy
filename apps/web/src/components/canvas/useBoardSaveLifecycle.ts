@@ -44,6 +44,23 @@ export function useBoardSettingsDirtyTracking(mode: 'board' | 'dev', markDirty: 
   }, [markDirty, mode])
 }
 
+export function useBoardKeyboardSaveShortcut(
+  mode: 'board' | 'dev',
+  saveLocal: (source: 'keyboard') => void
+) {
+  useEffect(() => {
+    if (mode !== 'board') return
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+        event.preventDefault()
+        saveLocal('keyboard')
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [mode, saveLocal])
+}
+
 export function useBoardBeforeUnloadWarning(
   mode: 'board' | 'dev',
   status: BoardSaveStatus,

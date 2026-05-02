@@ -108,6 +108,10 @@ export function CanvasSpikeNavigator({ editor }: CanvasSpikeNavigatorProps) {
     )
   }
 
+  const resetZoomToCurrentView = () => {
+    editor.resetZoom(editor.getViewportScreenCenter(), { animation: { duration: 140 } })
+  }
+
   return (
     <aside
       aria-label="Navigation map"
@@ -172,7 +176,16 @@ export function CanvasSpikeNavigator({ editor }: CanvasSpikeNavigatorProps) {
         >
           −
         </button>
-        <span>{zoomPercent}%</span>
+        <button
+          aria-label="Reset zoom to 100%"
+          className="canvas-navigator__zoom-reset"
+          disabled={zoomPercent === 100}
+          onClick={resetZoomToCurrentView}
+          title="Reset to 100%"
+          type="button"
+        >
+          {zoomPercent}%
+        </button>
         <button
           aria-label="Zoom in"
           disabled={zoomLevel >= canvasMaxZoom}

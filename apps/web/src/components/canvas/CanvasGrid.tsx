@@ -13,9 +13,9 @@ export function CanvasGrid({ size, x, y, z }: TLGridProps) {
   const offsetX = getOffset(x * z, step)
   const offsetY = getOffset(y * z, step)
   const opacity = backgroundStyle === 'dots'
-    ? Math.min(0.36, Math.max(0.14, z * 0.18))
-    : Math.min(0.46, Math.max(0.16, z * 0.28))
-  const dotRadius = Math.min(0.62, Math.max(0.38, z * 0.48))
+    ? Math.min(0.16, Math.max(0.04, z * 0.08))
+    : Math.min(0.22, Math.max(0.06, z * 0.14))
+  const dotRadius = Math.min(0.42, Math.max(0.24, z * 0.28))
 
   return (
     <svg className="canvas-grid" aria-hidden>

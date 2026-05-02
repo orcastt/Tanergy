@@ -126,6 +126,17 @@
   opacity: 0.45;
 }
 
+.canvas-navigator__controls .canvas-navigator__zoom-reset {
+  width: 100%;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+.canvas-navigator__controls .canvas-navigator__zoom-reset:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
 .canvas-navigator__controls span {
   color: var(--text-primary);
   font-size: 12px;

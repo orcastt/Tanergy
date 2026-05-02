@@ -81,8 +81,10 @@ def test_board_local_dev_contract(tmp_path, monkeypatch):
         assert response.status_code == 200
     snapshot_list = client.get("/api/v1/boards/api-smoke-board/snapshots")
     assert snapshot_list.status_code == 200
-    assert len(snapshot_list.json()["snapshots"]) == 2
-    assert snapshot_list.json()["snapshots"][0]["reason"] == "autosave"
+    snapshots = snapshot_list.json()["snapshots"]
+    assert len(snapshots) == 3
+    assert [item["reason"] for item in snapshots].count("autosave") == 2
+    assert [item["reason"] for item in snapshots].count("manual_save") == 1
 
     rename_response = client.patch("/api/v1/boards/api-smoke-board", json={"title": "Renamed Board"})
     assert rename_response.status_code == 200
@@ -226,8 +228,10 @@ def test_board_postgres_contract(monkeypatch):
         assert response.status_code == 200
     snapshot_list = client.get("/api/v1/boards/api-postgres-board/snapshots")
     assert snapshot_list.status_code == 200
-    assert len(snapshot_list.json()["snapshots"]) == 2
-    assert snapshot_list.json()["snapshots"][0]["reason"] == "autosave"
+    snapshots = snapshot_list.json()["snapshots"]
+    assert len(snapshots) == 3
+    assert [item["reason"] for item in snapshots].count("autosave") == 2
+    assert [item["reason"] for item in snapshots].count("keyboard") == 1
 
     rename_response = client.patch("/api/v1/boards/api-postgres-board", json={"title": "Renamed Postgres"})
     assert rename_response.status_code == 200

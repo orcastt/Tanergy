@@ -8,8 +8,6 @@ type CanvasSettingsPanelProps = {
   onClose: () => void
 }
 
-const sections = ['Canvas', 'Interaction', 'Display']
-
 function stopCanvasEvent(event: SyntheticEvent) {
   event.stopPropagation()
 }
@@ -30,25 +28,9 @@ export function CanvasSettingsPanel({ boardMode = false, onClose }: CanvasSettin
       onPointerDown={stopCanvasEvent}
       onWheel={stopCanvasEvent}
     >
-      <aside className="canvas-settings__sidebar">
-        {sections.map((section) => (
-          <button className={section === 'Canvas' ? 'is-active' : undefined} key={section} type="button">
-            <span aria-hidden>{getSectionIcon(section)}</span>
-            {section}
-          </button>
-        ))}
-        <div className="canvas-settings__user">
-          <span>0</span>
-          <strong>0657</strong>
-        </div>
-      </aside>
-
-      <main className="canvas-settings__main">
-        <header className="canvas-settings__header">
-          <div>
-            <h2>Canvas Settings</h2>
-            <p>{boardMode ? 'Board-specific canvas background and alignment.' : 'Local canvas defaults for this browser.'}</p>
-          </div>
+      <header className="canvas-settings__header">
+        <h2>Canvas Settings</h2>
+        <div className="canvas-settings__actions">
           <button
             className="canvas-settings__save"
             onClick={() => {
@@ -57,90 +39,75 @@ export function CanvasSettingsPanel({ boardMode = false, onClose }: CanvasSettin
             }}
             type="button"
           >
-            {boardMode ? 'Done' : 'Save Settings'}
+            Done
           </button>
-          <button aria-label="Close settings" className="canvas-settings__close" onClick={onClose} type="button">
-            ×
+          <button aria-label="Close settings" className="canvas-settings__close" onClick={onClose} type="button">×</button>
+        </div>
+      </header>
+
+      <aside className="canvas-settings__sidebar" aria-label="Settings sections">
+        {['Canvas', 'Interaction', 'Display'].map((section) => (
+          <button className={section === 'Canvas' ? 'is-active' : undefined} key={section} type="button">
+            {section}
           </button>
-        </header>
+        ))}
+      </aside>
 
-        <section className="canvas-settings__language">
-          <div>
-            <strong>Interface Language</strong>
-            <span>Switch between Chinese and English</span>
-          </div>
-          <Segmented
-            options={[['zh', 'ZH'], ['en', 'EN']]}
-            value={settings.language}
-            onChange={(language) => update({ language: language as CanvasSettings['language'] })}
-          />
-        </section>
+      <main className="canvas-settings__main">
+        <div className="canvas-settings__cards">
+          <section className="canvas-settings__card">
+            <h3>Background Settings</h3>
+            <SettingRow label="Pattern" subtitle="Canvas surface pattern">
+              <Segmented
+                options={[['dots', 'Dots'], ['grid', 'Grid'], ['solid', 'Solid']]}
+                value={settings.backgroundStyle}
+                onChange={(backgroundStyle) => update({ backgroundStyle: backgroundStyle as CanvasSettings['backgroundStyle'] })}
+              />
+            </SettingRow>
+            <SettingRow label="Background Color" subtitle="Base canvas surface">
+              <ColorInput label="Background color" value={settings.backgroundColor} onChange={(backgroundColor) => update({ backgroundColor })} />
+            </SettingRow>
+            <SettingRow label="Pattern Color" subtitle="Dots and grid line color">
+              <ColorInput label="Pattern color" value={settings.gridColor} onChange={(gridColor) => update({ gridColor })} />
+            </SettingRow>
+            <SettingRow label="Spacing" subtitle={`${settings.gridUnit}px grid spacing`}>
+              <NumberPill value={settings.gridUnit} unit="px" onChange={(value) => setNumber('gridUnit', value)} />
+            </SettingRow>
+          </section>
 
-        <section className="canvas-settings__preview" data-background-style={settings.backgroundStyle}>
-          <div
-            style={{
-              '--canvas-preview-background': settings.backgroundColor,
-              '--canvas-preview-grid': settings.gridColor,
-              '--canvas-preview-unit': `${settings.gridUnit}px`,
-            } as CSSProperties}
-          />
-          <strong>{getBackgroundLabel(settings.backgroundStyle)}</strong>
-        </section>
+          <section className="canvas-settings__card">
+            <h3>Editor Behavior</h3>
+            <SettingRow label="Snap Alignment" subtitle="Snap alignment in the canvas.">
+              <Toggle checked={settings.snapAlignment} onChange={(snapAlignment) => update({ snapAlignment })} />
+            </SettingRow>
+            <SettingRange label="Snap Distance" max={48} min={2} step={1} value={settings.snapDistance} onChange={(value) => setNumber('snapDistance', value)} />
+            <SettingRow label="Smart Drawing" subtitle="Clean up simple strokes.">
+              <Toggle checked={settings.smartDrawing} onChange={(smartDrawing) => update({ smartDrawing })} />
+            </SettingRow>
+          </section>
 
-        <section className="canvas-settings__grid">
-          <SettingTitle title="Background" subtitle="Canvas surface pattern" />
-          <Segmented
-            options={[['dots', 'Dots'], ['grid', 'Grid'], ['solid', 'Solid']]}
-            value={settings.backgroundStyle}
-            onChange={(backgroundStyle) => update({ backgroundStyle: backgroundStyle as CanvasSettings['backgroundStyle'] })}
-          />
-          <SettingTitle title="Snap Alignment" subtitle="Intelligently align elements" />
-          <Toggle checked={settings.snapAlignment} onChange={(snapAlignment) => update({ snapAlignment })} />
+          <section className="canvas-settings__card">
+            <h3>View Controls</h3>
+            <SettingRange label="Zoom Sensitivity" max={3} min={0.25} step={0.25} value={settings.zoomSensitivity} onChange={(value) => setNumber('zoomSensitivity', value)} />
+            <SettingRow label="Edge Color" subtitle="Standard with edge color">
+              <Segmented
+                options={[['standard', 'Standard'], ['follow-handle', 'Follow Handle']]}
+                value={settings.edgeColorMode}
+                onChange={(edgeColorMode) => update({ edgeColorMode: edgeColorMode as CanvasSettings['edgeColorMode'] })}
+              />
+            </SettingRow>
+          </section>
 
-          <SettingTitle title="Spacing" />
-          <NumberPill value={settings.gridUnit} unit="px" onChange={(value) => setNumber('gridUnit', value)} />
-          <SettingTitle title="Surface" />
-          <ColorInput label="Background color" value={settings.backgroundColor} onChange={(backgroundColor) => update({ backgroundColor })} />
-        </section>
-
-        <SettingRange
-          label="Zoom Sensitivity"
-          max={3}
-          min={0.25}
-          step={0.25}
-          subtitle="Adjust damping feel"
-          value={settings.zoomSensitivity}
-          onChange={(value) => setNumber('zoomSensitivity', value)}
-        />
-        <SettingRange
-          label="Snap Distance"
-          max={48}
-          min={2}
-          step={1}
-          subtitle={`Strength: ${getSnapStrength(settings.snapDistance)}`}
-          value={settings.snapDistance}
-          onChange={(value) => setNumber('snapDistance', value)}
-        />
-
-        <SettingRow label="Pattern Color">
-          <ColorInput label="Pattern color" value={settings.gridColor} onChange={(gridColor) => update({ gridColor })} />
-        </SettingRow>
-
-        <SettingRow label="Edge Color" subtitle="Set how flow edge colors are displayed">
-          <Segmented
-            options={[['standard', 'Standard'], ['follow-handle', 'Follow Handle']]}
-            value={settings.edgeColorMode}
-            onChange={(edgeColorMode) => update({ edgeColorMode: edgeColorMode as CanvasSettings['edgeColorMode'] })}
-          />
-        </SettingRow>
-
-        <SettingRow label="AI Chat Style">
-          <Segmented
-            options={[['transparent', 'Transparent'], ['solid', 'Solid']]}
-            value={settings.aiChatStyle}
-            onChange={(aiChatStyle) => update({ aiChatStyle: aiChatStyle as CanvasSettings['aiChatStyle'] })}
-          />
-        </SettingRow>
+          <section className="canvas-settings__card">
+            <h3>Interface</h3>
+            <SettingRow label="Language" subtitle="Language interface control">
+              <Segmented options={[['en', 'EN'], ['zh', 'ZH']]} value={settings.language} onChange={(language) => update({ language: language as CanvasSettings['language'] })} />
+            </SettingRow>
+            <SettingRow label="AI Chat Style" subtitle="AI Chat control style">
+              <Segmented options={[['transparent', 'Transparent'], ['solid', 'Solid']]} value={settings.aiChatStyle} onChange={(aiChatStyle) => update({ aiChatStyle: aiChatStyle as CanvasSettings['aiChatStyle'] })} />
+            </SettingRow>
+          </section>
+        </div>
       </main>
     </div>
   )
@@ -155,25 +122,16 @@ function SettingTitle({ subtitle, title }: { subtitle?: string; title: string })
   )
 }
 
-function SettingRange({
-  label,
-  max,
-  min,
-  onChange,
-  step,
-  subtitle,
-  value,
-}: {
+function SettingRange({ label, max, min, onChange, step, value }: {
   label: string
   max: number
   min: number
   onChange: (value: string) => void
   step: number
-  subtitle: string
   value: number
 }) {
   return (
-    <SettingRow label={label} subtitle={subtitle}>
+    <SettingRow label={label}>
       <div className="canvas-settings__range">
         <input max={max} min={min} step={step} type="range" value={value} onChange={(event) => onChange(event.currentTarget.value)} />
         <span>{value}</span>
@@ -207,13 +165,15 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (checked: b
 
 function ColorInput({ label, onChange, value }: { label: string; onChange: (value: string) => void; value: string }) {
   return (
-    <input
-      aria-label={label}
-      className="canvas-settings__color"
-      type="color"
-      value={value}
-      onChange={(event) => onChange(event.currentTarget.value)}
-    />
+    <label className="canvas-settings__color" title={`${label}: ${value}`}>
+      <span style={{ '--canvas-settings-color': value } as CSSProperties} />
+      <input
+        aria-label={label}
+        type="color"
+        value={value}
+        onChange={(event) => onChange(event.currentTarget.value)}
+      />
+    </label>
   )
 }
 
@@ -249,25 +209,4 @@ function NumberPill({ onChange, unit, value }: { onChange: (value: string) => vo
       <span>{unit}</span>
     </label>
   )
-}
-
-function getSectionIcon(section: string) {
-  const icons: Record<string, string> = {
-    Canvas: '□',
-    Display: '◉',
-    Interaction: '⌁',
-  }
-  return icons[section] ?? '•'
-}
-
-function getBackgroundLabel(style: CanvasSettings['backgroundStyle']) {
-  if (style === 'grid') return 'Fine grid background'
-  if (style === 'solid') return 'Solid background'
-  return 'Subtle dot background'
-}
-
-function getSnapStrength(value: number) {
-  if (value < 10) return 'Soft'
-  if (value > 28) return 'Strong'
-  return 'Normal'
 }

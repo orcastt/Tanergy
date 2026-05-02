@@ -8,11 +8,14 @@ import {
   type ToolAction,
 } from './canvasToolbarConfig'
 import { CanvasSpikeInsertMenu } from './CanvasSpikeInsertMenu'
+import { CanvasToolbarPrimaryTools } from './CanvasToolbarPrimaryTools'
+import { CanvasToolbarSettingsButton } from './CanvasToolbarSettingsButton'
 import { useEditorInteractionState } from './useEditorInteractionState'
 import { useEditorRevision } from './useEditorRevision'
 
 type CanvasSpikeToolbarProps = {
   editor: Editor | null
+  isSettingsOpen?: boolean
   onCreateAiCards: () => void
   onCreateAnalysisNode: () => void
   onCreateBoardKit: () => void
@@ -25,6 +28,7 @@ type CanvasSpikeToolbarProps = {
   onCreateShapeSet: () => void
   onCreateStep15Graph: () => void
   onCreateStressNodes: () => void
+  onOpenSettings: () => void
 }
 
 function stopCanvasEvent(event: SyntheticEvent) {
@@ -33,6 +37,7 @@ function stopCanvasEvent(event: SyntheticEvent) {
 
 export function CanvasSpikeToolbar({
   editor,
+  isSettingsOpen = false,
   onCreateAiCards,
   onCreateAnalysisNode,
   onCreateBoardKit,
@@ -45,6 +50,7 @@ export function CanvasSpikeToolbar({
   onCreateShapeSet,
   onCreateStep15Graph,
   onCreateStressNodes,
+  onOpenSettings,
 }: CanvasSpikeToolbarProps) {
   const interaction = useEditorInteractionState(editor)
   useEditorRevision(editor, 'style-panel')
@@ -170,28 +176,7 @@ export function CanvasSpikeToolbar({
       onPointerDown={stopCanvasEvent}
       onWheel={stopCanvasEvent}
     >
-      <div className="canvas-spike-toolbar__group" aria-label="Primary tools">
-        <button
-          aria-label="Pan"
-          className={currentToolId === 'hand' ? 'is-active' : undefined}
-          disabled={disabled}
-          onClick={() => setPrimaryTool('hand')}
-          title="Pan"
-          type="button"
-        >
-          <span aria-hidden>✋</span>
-        </button>
-        <button
-          aria-label="Select"
-          className={currentToolId === 'select' ? 'is-active' : undefined}
-          disabled={disabled}
-          onClick={() => setPrimaryTool('select')}
-          title="Select"
-          type="button"
-        >
-          <span aria-hidden>↖</span>
-        </button>
-      </div>
+      <CanvasToolbarPrimaryTools currentToolId={currentToolId} disabled={disabled} onSelectTool={setPrimaryTool} />
 
       <div className="canvas-spike-toolbar__divider" />
 
@@ -287,6 +272,18 @@ export function CanvasSpikeToolbar({
           />
         ) : null}
       </div>
+
+      <div className="canvas-spike-toolbar__divider" />
+
+      <CanvasToolbarSettingsButton
+        disabled={disabled}
+        isOpen={isSettingsOpen}
+        onOpen={() => {
+          clearContinuousSession()
+          setOpenMenu(null)
+          onOpenSettings()
+        }}
+      />
 
       {continuousToolId ? <div className="canvas-spike-toolbar__mode">连续绘制 · Esc</div> : null}
     </div>

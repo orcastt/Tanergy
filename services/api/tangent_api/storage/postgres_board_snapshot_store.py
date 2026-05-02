@@ -200,13 +200,20 @@ class PostgresBoardSnapshotStore:
         limit = _snapshot_limit()
         cursor.execute(
             """
-            DELETE FROM tangent_board_snapshots
-            WHERE workspace_id = %s AND board_id = %s AND id IN (
-                SELECT id FROM tangent_board_snapshots
+            WITH ranked AS (
+                SELECT
+                    id,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY CASE WHEN reason IN ('autosave', 'auto_interval') THEN 'autosave' ELSE 'user' END
+                        ORDER BY created_at DESC
+                    ) AS retention_rank
+                FROM tangent_board_snapshots
                 WHERE workspace_id = %s AND board_id = %s
-                ORDER BY created_at DESC
-                OFFSET %s
             )
+            DELETE FROM tangent_board_snapshots
+            WHERE workspace_id = %s
+              AND board_id = %s
+              AND id IN (SELECT id FROM ranked WHERE retention_rank > %s)
             """,
             (workspace_id, board_id, workspace_id, board_id, limit),
         )

@@ -11,6 +11,16 @@ Product-level P0 scope, per-feature implementation status and Alpha acceptance g
 
 Read order for active development:
 
+For fast local UI/product polish:
+
+1. `Project_state/current-slice.md`
+2. `ARCH/README.md`
+3. Relevant `ARCH/Slice-*.md`
+4. This file
+5. The active slice plan below
+
+For architecture, API, database, Auth, AI, Admin, Billing, Deploy or collaboration changes:
+
 1. `project_state.md`
 2. `PRD.md`
 3. `ARCH.md`
@@ -22,8 +32,10 @@ Read order for active development:
 
 | File | Status | Use |
 | --- | --- | --- |
-| `Asset-lod-roadmap.md` | Active architecture roadmap | Current Slice E Real Asset Pipeline roadmap. E-A and E-C are implemented; E-B now covers FastAPI local-dev, real `s3-compatible` Asset storage, Postgres persistence and configurable Web-to-FastAPI upload/save/load. Local runtime smoke and staging API Docker package smoke have passed; `/workspaces` Board gallery/list is now the primary Board entry and supports list/create/open/search/sort/rename/delete/recent-open/Load more/expanded Board Management metadata, while `/boards/:boardId` remains the canvas entry with autosave/save indicator hardening, title rename sync, Back warning, JSON-safe image asset migration, per-board Canvas Settings and Board History first pass. S0D Auth scaffold first pass, S0E AI contract first pass, P0 database migration scaffold, Admin S0 boundary and AI node extension contract documentation are recorded; real staging wiring, captured thumbnails, real Auth and real AI provider remain next. |
-| `p0-local-product-shell-and-slice-e-roadmap-2026-05-01.md` | Active local backlog | Near-term local coordination plan after checkpoint `5760541`: Product Shell route skeletons, Auth split-screen visual pass, Workspaces Board gallery/list pass, App Shell 5-tab nav plus Landing page / Collection / Account / Settings / Team / Subscription semantic cleanup, Board save UX, Board History, Workspace Board metadata polish, Board Management Panel, per-board Canvas Settings, Auth scaffold boundary, AI contract scaffold, database migration scaffold, Admin S0 planning, Smart Drawing planning and AI node extension guardrails now have first-pass local checkpoints or documented boundaries, but are not product-complete. Route/responsive browser smoke, Board autosave / rename / Back warning / multi-image paste browser regression and Board History autosave/Snapshot/Cmd+S/Restore smoke have passed; remaining local candidates are captured Board thumbnails, Smart Drawing, long-session regression and i18n/status polish. |
+| `../ARCH/README.md` | Architecture short index | Short architecture entry point. Use it before opening root `ARCH.md` for fast UI polish. |
+| `../Project_state/current-slice.md` | Current short state | Compact handoff, key files, next local work and validation commands. |
+| `Asset-lod-roadmap.md` | Active architecture roadmap | Current Slice E Real Asset Pipeline roadmap. E-A and E-C are implemented; E-B now covers FastAPI local-dev, real `s3-compatible` Asset storage, Postgres persistence and configurable Web-to-FastAPI upload/save/load. Local runtime smoke and staging API Docker package smoke have passed; `/workspaces` Board gallery/list is now the primary Board entry and supports list/create/open/search/sort/rename/delete/recent-open/Load more/expanded Board Management metadata, while `/boards/:boardId` remains the canvas entry with autosave/save indicator hardening, title rename sync, Back warning, JSON-safe image asset migration, per-board Canvas Settings, Board History, captured thumbnail first pass and Smart Drawing first pass. S0D Auth scaffold first pass, S0E AI contract first pass, P0 database migration scaffold, Admin S0 boundary and AI node extension contract documentation are recorded; real staging wiring, real Auth, real AI provider, manual thumbnail refresh, History thumbnails and Smart Drawing tuning remain next. |
+| `p0-local-product-shell-and-slice-e-roadmap-2026-05-01.md` | Active local backlog | Near-term local coordination plan after checkpoint `47d6d0f` and the current context-index split: Product Shell route skeletons, Auth split-screen visual pass, Workspaces Board gallery/list pass, App Shell 5-tab nav plus Landing page / Collection / Account / Settings / Team / Subscription semantic cleanup, Board save UX, Board History, Workspace Board metadata polish, settings-like Board Management Panel with owner/admin edit guard, thumbnail Remove-to-default, right-corner pin/visibility badges, copied toast, public/private confirm and History filter/author UI, per-board Canvas Settings reference-style compact panel, captured Board thumbnail, Smart Drawing first pass, Auth scaffold boundary, AI contract scaffold, database migration scaffold, Admin S0 planning and AI node extension guardrails now have first-pass local checkpoints or documented boundaries, but are not product-complete. Route/responsive browser smoke, Board autosave / rename / Back warning / multi-image paste browser regression, Board History autosave/Snapshot/Cmd+S/Restore smoke, and Smart Drawing front-end gates / recognizer smoke have passed; remaining local candidates are long-session regression, manual/History thumbnail polish, Smart Drawing browser tuning and i18n/status polish. |
 | `p0-database-schema-roadmap-2026-05-01.md` | Active schema roadmap | P0 database schema and migration plan. Captures current `tangent_boards` / `tangent_board_snapshots` / `tangent_assets`, Board Management metadata migrations, target Auth / Workspace / AI Run / API log tables, Admin S0 / Board membership / Credits / Billing / Analytics / Moderation fact-source planning, local-dev auto-create compatibility and staging/production Alembic migration policy. |
 | `overseas-cost-growth-forecast.md` | Reference | Cost, growth and infrastructure planning reference. Keep synced when Asset / AI / deploy decisions change. |
 

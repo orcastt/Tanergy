@@ -1,4 +1,4 @@
-export type WorkspaceRole = 'editor' | 'owner' | 'viewer'
+export type WorkspaceRole = 'admin' | 'editor' | 'owner' | 'viewer'
 
 export type TangentUser = {
   avatarInitials: string

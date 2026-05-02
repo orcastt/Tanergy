@@ -24,16 +24,16 @@ export type ResolvedNodePort = NodePortDefinition & {
 }
 
 export type NodeDefinition = {
+  cardFields: NodeCardField[]
   defaultData: JsonObject
   displayName: string
-  inspectorFields: NodeInspectorField[]
   outputSummary: string
   ports: NodePortDefinition[]
   type: NodeType
   version: number
 }
 
-export type NodeInspectorField = {
+export type NodeCardField = {
   label: string
   name: string
   options?: { label: string; value: string | number }[]

@@ -101,7 +101,9 @@ def _write_snapshot(snapshot: BoardSnapshotRecord) -> None:
 def _enforce_snapshot_limit(context: ApiRequestContext, board_id: str) -> None:
     limit = _snapshot_limit()
     snapshots = list_board_snapshots(board_id, context)
-    for snapshot in snapshots[limit:]:
+    autosaves = [snapshot for snapshot in snapshots if _snapshot_retention_kind(snapshot.reason) == "autosave"]
+    user_saves = [snapshot for snapshot in snapshots if _snapshot_retention_kind(snapshot.reason) == "user"]
+    for snapshot in [*autosaves[limit:], *user_saves[limit:]]:
         _snapshot_path(context.workspace_id, board_id, snapshot.id).unlink(missing_ok=True)
 
 
@@ -128,6 +130,10 @@ def _hash_document(document: object) -> str:
 def _normalize_reason(value: str) -> str:
     reasons = {"autosave", "auto_interval", "keyboard", "manual", "manual_save", "pre_restore"}
     return value if value in reasons else "manual"
+
+
+def _snapshot_retention_kind(reason: str) -> str:
+    return "autosave" if reason in {"autosave", "auto_interval"} else "user"
 
 
 def _snapshot_limit() -> int:

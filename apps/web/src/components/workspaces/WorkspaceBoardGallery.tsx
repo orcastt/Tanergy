@@ -36,6 +36,7 @@ export function WorkspaceBoardGallery() {
   const [isLoading, setIsLoading] = useState(true)
   const [pendingBoardId, setPendingBoardId] = useState<string | null>(null)
   const [panelBoardId, setPanelBoardId] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortMode, setSortMode] = useState<SortMode>('opened')
   const [visibleLimit, setVisibleLimit] = useState(boardPageSize)
@@ -69,6 +70,12 @@ export function WorkspaceBoardGallery() {
     }, 0)
     return () => window.clearTimeout(timeout)
   }, [refreshBoards])
+
+  useEffect(() => {
+    if (!notice) return
+    const timeout = window.setTimeout(() => setNotice(null), 2400)
+    return () => window.clearTimeout(timeout)
+  }, [notice])
 
   const createBoard = () => {
     router.push(`/boards/${encodeURIComponent(createBoardId())}?new=1`)
@@ -140,6 +147,7 @@ export function WorkspaceBoardGallery() {
       })
       if (!response.board) throw new Error('Board copy failed.')
       setBoards((current) => [response.board!, ...current])
+      setNotice(`Copied "${board.title}".`)
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : 'Board copy failed.')
     } finally {
@@ -168,9 +176,20 @@ export function WorkspaceBoardGallery() {
     const shareBoardRecord = updated ?? board
     try {
       await navigator.clipboard?.writeText(getBoardShareUrl(shareBoardRecord))
+      setNotice('Link has been copied.')
     } catch {
       setError('Share link is ready, but the browser blocked clipboard access.')
     }
+  }
+
+  const makeBoardPrivate = (board: BoardPersistenceSummary) => {
+    if (!window.confirm('Are you sure to make this board private? Only you will be able to use it until team permissions are enabled.')) return
+    void updateBoardMetadata({ boardId: board.id, visibility: 'private' })
+  }
+
+  const makeBoardPublic = (board: BoardPersistenceSummary) => {
+    if (!window.confirm('Are you sure to make this board public? Team members will be able to access it once real permissions are enabled.')) return
+    void updateBoardMetadata({ boardId: board.id, visibility: 'public' })
   }
 
   const updateSearchQuery = (query: string) => {
@@ -202,6 +221,7 @@ export function WorkspaceBoardGallery() {
       />
 
       {error ? <div className="workspace-error" role="alert">{error}</div> : null}
+      {notice ? <div className="workspace-toast" role="status">{notice}</div> : null}
       <WorkspaceBoardResults
         boards={boards}
         editingBoardId={editingBoardId}
@@ -214,8 +234,8 @@ export function WorkspaceBoardGallery() {
         onCreate={createBoard}
         onDelete={(board) => void deleteBoard(board)}
         onLoadMore={() => setVisibleLimit((value) => value + boardPageSize)}
-        onMakePrivate={(board) => void updateBoardMetadata({ boardId: board.id, visibility: 'private' })}
-        onMakePublic={(board) => void updateBoardMetadata({ boardId: board.id, visibility: 'public' })}
+        onMakePrivate={makeBoardPrivate}
+        onMakePublic={makeBoardPublic}
         onOpen={openBoard}
         onOpenPanel={setPanelBoardId}
         onRename={startRename}

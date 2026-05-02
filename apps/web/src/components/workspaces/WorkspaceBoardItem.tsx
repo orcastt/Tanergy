@@ -117,6 +117,15 @@ export function WorkspaceBoardItem({
       data-card-color={board.cardColor ?? undefined}
       data-pinned={board.isPinned ? 'true' : undefined}
     >
+      <div className="workspace-board-status-badges" aria-label="Board status">
+        {board.isPinned ? <span className="workspace-board-pin-icon" aria-label="Pinned" title="Pinned" /> : null}
+        <span
+          className="workspace-board-visibility-icon"
+          data-visibility={board.visibility === 'public' ? 'public' : 'private'}
+          aria-label={board.visibility === 'public' ? 'Public board' : 'Private board'}
+          title={board.visibility === 'public' ? 'Public' : 'Private'}
+        />
+      </div>
       <button className="workspace-board-open" onClick={onOpen} type="button">
         <BoardThumbnail board={board} />
       </button>
@@ -129,11 +138,7 @@ export function WorkspaceBoardItem({
           </form>
         ) : (
           <button className="workspace-board-title" onClick={openAfterSingleClick} onDoubleClick={renameFromDoubleClick} type="button">
-            <strong>
-              {board.isPinned ? <span aria-label="Pinned board" title="Pinned">Pinned</span> : null}
-              {board.isStarred ? <span aria-label="Starred board" title="Starred">Starred</span> : null}
-              {board.title}
-            </strong>
+            <strong>{board.title}</strong>
             <small>{board.id}</small>
           </button>
         )}
@@ -150,7 +155,7 @@ export function WorkspaceBoardItem({
           <span>+2</span>
         </div>
         <div className="workspace-board-actions">
-          <button aria-label="Open panel settings" onClick={onOpenPanel} title="Panel settings" type="button">Panel</button>
+          <button aria-label="Open board management" onClick={onOpenPanel} title="Board management" type="button">Manage</button>
           <div className="workspace-board-menu" ref={menuRef}>
             <button
               aria-expanded={isMenuOpen}
@@ -175,9 +180,12 @@ export function WorkspaceBoardItem({
                 </button>
                 <button disabled={isPending} onClick={() => runMenuAction(onRename)} type="button">Rename</button>
                 <button disabled={isPending} onClick={() => runMenuAction(onCopy)} type="button">Copy board</button>
-                <button disabled={isPending} onClick={() => runMenuAction(onOpenPanel)} type="button">Board details</button>
-                <button disabled={isPending} onClick={() => runMenuAction(onMakePrivate)} type="button">Make board private</button>
-                <button disabled={isPending} onClick={() => runMenuAction(onMakePublic)} type="button">Make board public</button>
+                <button disabled={isPending} onClick={() => runMenuAction(onOpenPanel)} type="button">Manage board</button>
+                {board.visibility === 'public' ? (
+                  <button disabled={isPending} onClick={() => runMenuAction(onMakePrivate)} type="button">Make board private</button>
+                ) : (
+                  <button disabled={isPending} onClick={() => runMenuAction(onMakePublic)} type="button">Make board public</button>
+                )}
                 <button disabled={isPending} onClick={() => runMenuAction(onDelete)} type="button">Delete</button>
               </div>
             ) : null}

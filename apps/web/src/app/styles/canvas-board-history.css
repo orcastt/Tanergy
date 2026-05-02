@@ -6,7 +6,7 @@
   display: grid;
   width: min(360px, calc(100vw - 48px));
   max-height: min(560px, calc(100vh - 112px));
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto auto auto 1fr auto;
   overflow: hidden;
   border: 1px solid rgba(17, 24, 39, 0.12);
   border-radius: 8px;
@@ -63,6 +63,25 @@
   font-weight: 700;
 }
 
+.canvas-board-history__filters {
+  display: flex;
+  gap: 6px;
+  padding: 10px 12px 0;
+}
+
+.canvas-board-history__filters button {
+  height: 28px;
+  padding: 0 10px;
+  border-color: rgba(17, 24, 39, 0.1);
+  color: var(--text-tertiary);
+}
+
+.canvas-board-history__filters button.is-active {
+  border-color: rgba(17, 24, 39, 0.28);
+  background: #f8fafc;
+  color: var(--text-primary);
+}
+
 .canvas-board-history__list {
   display: grid;
   gap: 8px;
@@ -88,6 +107,15 @@
   background: rgba(248, 250, 252, 0.86);
 }
 
+.canvas-board-history__item[data-kind='autosave'] {
+  border-left: 4px solid #cbd5e1;
+}
+
+.canvas-board-history__item[data-kind='user'] {
+  border-left: 4px solid #e7ad3c;
+  background: rgba(255, 251, 235, 0.86);
+}
+
 .canvas-board-history__item span,
 .canvas-board-history__item small,
 .canvas-board-history header span {
@@ -95,4 +123,27 @@
   font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.canvas-board-history__author {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-tertiary);
+}
+
+.canvas-board-history__author span {
+  display: inline-grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border-radius: 999px;
+  background: #e7ad3c;
+  color: #111827;
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.canvas-board-history__item[data-kind='autosave'] .canvas-board-history__author span {
+  background: #cbd5e1;
 }
