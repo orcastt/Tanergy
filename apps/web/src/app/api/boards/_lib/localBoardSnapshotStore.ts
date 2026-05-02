@@ -3,7 +3,12 @@ import type { Dirent } from 'node:fs'
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { auditBoardDocument } from '@/features/boards/boardDocumentGuard'
-import { getBoardDocumentMetrics, type BoardSnapshotCreateInput, type BoardSnapshotRecord } from '@/features/boards/boardTypes'
+import {
+  getBoardDocumentMetrics,
+  normalizeBoardThumbnailUrl,
+  type BoardSnapshotCreateInput,
+  type BoardSnapshotRecord,
+} from '@/features/boards/boardTypes'
 import type { ApiRequestContext } from '../../_lib/apiRequestContext'
 
 const storageRoot = process.env.TANGENT_BOARD_STORAGE_DIR ?? path.join(process.cwd(), '.tangent-boards')
@@ -30,7 +35,7 @@ export async function createLocalBoardSnapshot(input: BoardSnapshotCreateInput, 
     reason: input.reason,
     retentionTier: 'free',
     shapeCount: metrics.shapeCount,
-    thumbnailUrl: null,
+    thumbnailUrl: normalizeBoardThumbnailUrl(input.thumbnailUrl),
     title: input.title?.trim() || 'Untitled snapshot',
     workspaceId: context.workspaceId,
   }

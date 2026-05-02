@@ -54,6 +54,7 @@ def test_board_local_dev_contract(tmp_path, monkeypatch):
         json={
             "document": {"assets": [{"id": "asset_1"}], "shapes": [{"id": "shape_1"}]},
             "reason": "manual_save",
+            "thumbnailUrl": "https://example.com/history-thumb.webp",
             "title": "Manual save",
         },
     )
@@ -62,6 +63,7 @@ def test_board_local_dev_contract(tmp_path, monkeypatch):
     assert snapshot["assetCount"] == 1
     assert snapshot["boardId"] == "api-smoke-board"
     assert snapshot["reason"] == "manual_save"
+    assert snapshot["thumbnailUrl"] == "https://example.com/history-thumb.webp"
     assert "document" not in snapshot
 
     snapshot_list = client.get("/api/v1/boards/api-smoke-board/snapshots")
@@ -71,6 +73,7 @@ def test_board_local_dev_contract(tmp_path, monkeypatch):
     snapshot_load = client.get(f"/api/v1/boards/api-smoke-board/snapshots/{snapshot['id']}")
     assert snapshot_load.status_code == 200
     assert snapshot_load.json()["snapshot"]["document"] == {"assets": [{"id": "asset_1"}], "shapes": [{"id": "shape_1"}]}
+    assert snapshot_load.json()["snapshot"]["thumbnailUrl"] == "https://example.com/history-thumb.webp"
 
     monkeypatch.setenv("TANGENT_FREE_BOARD_SNAPSHOT_LIMIT", "2")
     for index in range(2):
@@ -203,12 +206,14 @@ def test_board_postgres_contract(monkeypatch):
         json={
             "document": {"assets": [{"id": "asset_1"}], "shapes": [{"id": "shape_1"}]},
             "reason": "keyboard",
+            "thumbnailUrl": "https://example.com/keyboard-history.webp",
             "title": "Keyboard snapshot",
         },
     )
     assert snapshot_response.status_code == 200
     snapshot = snapshot_response.json()["snapshot"]
     assert snapshot["reason"] == "keyboard"
+    assert snapshot["thumbnailUrl"] == "https://example.com/keyboard-history.webp"
     assert ("dev-workspace", "api-postgres-board", snapshot["id"]) in fake_db.snapshots
 
     snapshot_list = client.get("/api/v1/boards/api-postgres-board/snapshots")
@@ -218,6 +223,7 @@ def test_board_postgres_contract(monkeypatch):
     snapshot_load = client.get(f"/api/v1/boards/api-postgres-board/snapshots/{snapshot['id']}")
     assert snapshot_load.status_code == 200
     assert snapshot_load.json()["snapshot"]["document"] == {"assets": [{"id": "asset_1"}], "shapes": [{"id": "shape_1"}]}
+    assert snapshot_load.json()["snapshot"]["thumbnailUrl"] == "https://example.com/keyboard-history.webp"
 
     monkeypatch.setenv("TANGENT_FREE_BOARD_SNAPSHOT_LIMIT", "2")
     for index in range(2):

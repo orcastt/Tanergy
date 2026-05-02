@@ -17,6 +17,7 @@ from tangent_api.schemas import (
     BoardSnapshotSummary,
     get_board_document_metrics,
 )
+from tangent_api.board_metadata import normalize_board_thumbnail_url
 
 BOARD_ID_PATTERN = re.compile(r"^[a-zA-Z0-9._-]+$")
 
@@ -48,7 +49,7 @@ def create_board_snapshot(
         reason=_normalize_reason(input_data.reason),
         retentionTier="free",
         shapeCount=metrics["shape_count"],
-        thumbnailUrl=None,
+        thumbnailUrl=normalize_board_thumbnail_url(input_data.thumbnail_url),
         title=(input_data.title or "Untitled snapshot").strip() or "Untitled snapshot",
         workspaceId=context.workspace_id,
     )

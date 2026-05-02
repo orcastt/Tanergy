@@ -1,5 +1,6 @@
 'use client'
 
+/* eslint-disable @next/next/no-img-element -- History preview URLs can come from local API, FastAPI, or R2. */
 import { useMemo, useState, type SyntheticEvent } from 'react'
 import type { BoardSnapshotSummary } from '@/features/boards/boardTypes'
 
@@ -53,6 +54,9 @@ export function CanvasBoardHistoryPanel({
           <p>No history yet. Autosave and Snapshot entries will appear here.</p>
         ) : visibleSnapshots.map((snapshot) => (
           <article key={snapshot.id} className="canvas-board-history__item" data-kind={getSnapshotKind(snapshot.reason)}>
+            <div className="canvas-board-history__preview" aria-hidden="true">
+              {snapshot.thumbnailUrl ? <img alt="" src={snapshot.thumbnailUrl} /> : <span>{getInitials(snapshot.title)}</span>}
+            </div>
             <div>
               <strong>{snapshot.title}</strong>
               <span>{formatDate(snapshot.createdAt)} · {formatReason(snapshot.reason)}</span>

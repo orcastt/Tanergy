@@ -7,6 +7,7 @@ import {
   listBoardSnapshots,
   loadBoardSnapshot,
 } from '@/features/boards/localBoardClient'
+import { captureBoardThumbnailUrl } from '@/features/boards/boardThumbnailCapture'
 import { restoreBoardDocument } from '@/features/boards/boardDocumentRestore'
 import type {
   BoardSnapshotReason,
@@ -29,6 +30,7 @@ type UseBoardSnapshotsArgs = {
 
 type RecordHistoryOptions = {
   silent?: boolean
+  thumbnailUrl?: string | null
 }
 
 export function useBoardSnapshots({
@@ -83,6 +85,7 @@ export function useBoardSnapshots({
         boardId,
         document: result.document,
         reason,
+        thumbnailUrl: options.thumbnailUrl ?? null,
         title: boardTitle,
       })
       const snapshot = response.snapshot
@@ -100,8 +103,9 @@ export function useBoardSnapshots({
   const saveSnapshot = useCallback(async (reason: BoardSnapshotReason) => {
     if (!editor || mode !== 'board') return
     const result = await prepareDocument()
-    await recordHistory(result, reason)
-  }, [editor, mode, prepareDocument, recordHistory])
+    const thumbnailUrl = await captureBoardThumbnailUrl(editor, boardTitle).catch(() => null)
+    await recordHistory(result, reason, { thumbnailUrl })
+  }, [boardTitle, editor, mode, prepareDocument, recordHistory])
 
   const restoreSnapshot = useCallback(async (snapshotId: string) => {
     if (!editor || mode !== 'board') return

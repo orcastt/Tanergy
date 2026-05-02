@@ -8,6 +8,7 @@ from uuid import uuid4
 from fastapi import HTTPException
 
 from tangent_api.board_guard import audit_board_document
+from tangent_api.board_metadata import normalize_board_thumbnail_url
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.schemas import (
     BoardSnapshotCreateRequest,
@@ -45,7 +46,7 @@ class PostgresBoardSnapshotStore:
             reason=_normalize_reason(input_data.reason),
             retentionTier="free",
             shapeCount=metrics["shape_count"],
-            thumbnailUrl=None,
+            thumbnailUrl=normalize_board_thumbnail_url(input_data.thumbnail_url),
             title=(input_data.title or "Untitled snapshot").strip() or "Untitled snapshot",
             workspaceId=context.workspace_id,
         )

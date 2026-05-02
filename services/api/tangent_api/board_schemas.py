@@ -109,6 +109,7 @@ class BoardDeleteResponse(TangentApiModel):
 class BoardSnapshotCreateRequest(TangentApiModel):
     document: Any
     reason: str
+    thumbnail_url: Optional[str] = Field(default=None, alias="thumbnailUrl")
     title: Optional[str] = None
 
 

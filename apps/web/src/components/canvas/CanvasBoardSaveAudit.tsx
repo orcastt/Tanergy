@@ -45,6 +45,7 @@ type CanvasBoardSaveAuditProps = {
 
 const defaultBoardId = 'canvas-spike-local'
 const defaultBoardTitle = 'Canvas Spike Local'
+type SaveLocalOptions = { refreshThumbnail?: boolean }
 
 export function CanvasBoardSaveAudit({
   autoLoad = false,
@@ -58,7 +59,7 @@ export function CanvasBoardSaveAudit({
   const isRestoring = useRef(false)
   const isSaving = useRef(false)
   const lastSavedSignature = useRef<string | null>(null)
-  const recordHistoryRef = useRef<((result: BoardDocumentSerializationResult | undefined, reason: BoardSnapshotReason, options?: { silent?: boolean }) => Promise<void>) | null>(null)
+  const recordHistoryRef = useRef<((result: BoardDocumentSerializationResult | undefined, reason: BoardSnapshotReason, options?: { silent?: boolean; thumbnailUrl?: string | null }) => Promise<void>) | null>(null)
   const saveNowRef = useRef<((source: 'autosave') => void) | null>(null)
   const [isRunning, setIsRunning] = useState(false)
   const [lastAction, setLastAction] = useState<BoardAction | null>(null)
@@ -91,7 +92,7 @@ export function CanvasBoardSaveAudit({
     }
   }
 
-  const saveLocal = useCallback(async (historyReason: BoardSnapshotReason = 'manual_save') => {
+  const saveLocal = useCallback(async (historyReason: BoardSnapshotReason = 'manual_save', options: SaveLocalOptions = {}) => {
     if (!editor || isSaving.current) return
     clearAutosaveTimer()
     isSaving.current = true
@@ -107,16 +108,17 @@ export function CanvasBoardSaveAudit({
       }
       const savedSignature = getDocumentSignature(nextResult.document)
       const currentThumbnailUrl = saveResult?.board?.thumbnailUrl ?? null
-      const needsThumbnail = mode === 'board' && !currentThumbnailUrl
+      const needsThumbnail = mode === 'board' && (!currentThumbnailUrl || options.refreshThumbnail)
       if (lastSavedSignature.current === savedSignature && !needsThumbnail) {
         setLastAction('save')
         setResult(nextResult)
         setStatus('saved')
         return
       }
-      const thumbnailUrl = needsThumbnail
+      const capturedThumbnailUrl = needsThumbnail
         ? await captureBoardThumbnailUrl(editor, boardTitle).catch(() => currentThumbnailUrl)
         : currentThumbnailUrl
+      const thumbnailUrl = capturedThumbnailUrl ?? currentThumbnailUrl
       const saved = await saveLocalBoardDocument({
         boardId,
         document: nextResult.document,
@@ -135,7 +137,7 @@ export function CanvasBoardSaveAudit({
       setLastSavedAt(savedBoard.savedAt)
       setResult(hasNewChanges ? currentResult : nextResult)
       setStatus(hasNewChanges ? 'dirty' : 'saved')
-      await recordHistoryRef.current?.(nextResult, historyReason, { silent: historyReason === 'autosave' })
+      await recordHistoryRef.current?.(nextResult, historyReason, { silent: historyReason === 'autosave', thumbnailUrl: savedBoard.thumbnailUrl ?? thumbnailUrl })
       if (hasNewChanges) scheduleAutosave()
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Local board save failed.')
@@ -267,6 +269,7 @@ export function CanvasBoardSaveAudit({
         onHistory={snapshots.openHistory}
         onLoad={() => void loadLocal()}
         onSave={() => void saveLocal('manual_save')}
+        onRefreshPreview={() => void saveLocal('manual_save', { refreshThumbnail: true })}
         onSnapshot={() => void snapshots.saveSnapshot('manual')}
         saveError={saveError ?? snapshots.snapshotError}
         snapshotMessage={snapshots.snapshotMessage}

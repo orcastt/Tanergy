@@ -14,14 +14,15 @@ Canonical docs 仍然是：
 短上下文入口是：
 
 1. `Project_state/current-slice.md`
-2. `ARCH/README.md`
-3. 相关 `ARCH/*.md` slice file
+2. `Project_state/00-current-progress.md`
+3. `ARCH/README.md`
+4. 相关 `ARCH/*.md` slice file
 
 `HARNESS.md` 只回答：**做某一类功能时，先读哪里、边界是什么、怎么验收。**
 
 开发模式分两类：
 
-- `Fast UI polish`：只改本地 UI、布局、响应式、状态文案、图标、菜单或浏览器 smoke follow-up。优先读短上下文，通常只更新 `Project_state/current-slice.md`、active dev-plan 或相关 `ARCH/Slice-*.md`。
+- `Fast UI polish`：只改本地 UI、布局、响应式、状态文案、图标、菜单或浏览器 smoke follow-up。优先读短上下文，通常只更新 `Project_state/current-slice.md`、必要时更新 `Project_state/00-current-progress.md`、active dev-plan 或相关 `ARCH/Slice-*.md`。
 - `Architecture slice`：涉及数据模型、API、权限、Auth、AI、Admin、Billing、Deploy、协作或长期产品边界。必须读并同步 canonical docs。
 
 当前核对快照：
@@ -43,8 +44,8 @@ Canonical docs 仍然是：
 
 - P0 是 Web-first AI image canvas，不做桌面端。
 - S1.5、Asset LOD Slice A-D 和 Slice E 的本地 Asset / Board persistence baseline 已通过。
-- 当前已完成：Next local Asset / Board bridge、FastAPI local-dev、真实 `s3-compatible` Asset adapter、Postgres Board / Asset metadata adapter、Board History first pass、captured Board thumbnail first pass、per-board Canvas Settings、Smart Drawing first pass、expanded Board Management metadata first pass、Web-to-FastAPI switch、staging API Docker package 和 `/workspaces` Board gallery/list entry shell。
-- 当前 blocker 不再是“有没有 Asset/Board persistence seam”，而是把 staging package 接到真实 server / managed Postgres / R2 / staging Web origin，并把 Workspace Board CRUD / Auth / AI Run 依序产品化；外部资源未就绪时，本地优先 captured thumbnail 手动/History polish、长时回归、Smart Drawing 阈值调参和 i18n/status polish。
+- 当前已完成：Next local Asset / Board bridge、FastAPI local-dev、真实 `s3-compatible` Asset adapter、Postgres Board / Asset metadata adapter、Board History first pass、captured Board thumbnail first pass、manual Refresh preview、History preview thumbnails、per-board Canvas Settings、Smart Drawing first pass、expanded Board Management metadata first pass、Web-to-FastAPI switch、staging API Docker package 和 `/workspaces` Board gallery/list entry shell。
+- 当前 blocker 不再是“有没有 Asset/Board persistence seam”，而是把 staging package 接到真实 server / managed Postgres / R2 / staging Web origin，并把 Workspace Board CRUD / Auth / AI Run 依序产品化；外部资源未就绪时，本地优先 thumbnail 浏览器视觉 smoke、长时回归、Smart Drawing 阈值调参和 i18n/status polish。
 - 0-to-1 总路线以 `ARCH.md` 11.5-11.7 为准；Sprint 级任务拆分见 `ARCH.md` 11.5.1。
 - 不读不改 `legacy/old-tangent-desktop-2026-04-29/`，除非用户明确要求。
 - 不读取 `.env`，不把 API Key 写入前端或日志。
@@ -64,7 +65,7 @@ Canonical docs 仍然是：
 开工前必须满足：
 
 - 已判断本次是 `Fast UI polish` 还是 `Architecture slice`。
-- Fast UI polish 已读 `Project_state/current-slice.md`、`ARCH/README.md` 和相关 slice 文件。
+- Fast UI polish 已读 `Project_state/current-slice.md`、必要时读 `Project_state/00-current-progress.md`、`ARCH/README.md` 和相关 slice 文件。
 - Architecture slice 已读 `project_state.md`，知道当前阶段和下一步。
 - Architecture slice 已读 `PRD.md` 2.1 当前状态、5 功能完成定义和 9 验收清单。
 - Architecture slice 已读 `ARCH.md` 相关模块边界；如果涉及上线/资源/部署，还要读 11.5-11.7。
@@ -250,7 +251,7 @@ Canonical docs 仍然是：
 
 1. 把现有 staging API package 接到真实 server / managed Postgres / R2 / staging Web origin，并按 `deploy/staging/README.md` 跑 smoke。
 2. 建立推送 / 部署流水线：Git remote、Web deploy、VPS Docker deploy、env secret 管理和 rollback。
-3. 继续把 `/workspaces` Board gallery/list 和 `/boards/:boardId` Board entry 产品化；当前 shell 已支持 Board summary list、gallery/list、create/open/search/sort/rename/copy/delete、settings-like Board Panel metadata、top Copy link / Invite、thumbnail placeholder/URL/upload/captured preview/remove default、owner/admin editable guard、star/pin/share/visibility menu actions、member scaffold、shape/asset count、`lastOpenedAt`、Recently opened / Recently saved sorting、client-side Load more、基础空/错/加载状态、按 board id load、Board 模式 autosave/save indicator、Board History first pass 和 Smart Drawing first pass；Smart Drawing 已过前端闸门和 recognizer smoke。App Shell 顶部 5 标签与 Landing page / Collection / Account / Settings / Team / Subscription 语义已收口，下一步补 manual/History thumbnail polish、Smart Drawing browser tuning 或真实 staging wiring。
+3. 继续把 `/workspaces` Board gallery/list 和 `/boards/:boardId` Board entry 产品化；当前 shell 已支持 Board summary list、gallery/list、create/open/search/sort/rename/copy/delete、settings-like Board Panel metadata、top Copy link / Invite、thumbnail placeholder/URL/upload/captured preview/remove default、manual Refresh preview、History preview thumbnails、owner/admin editable guard、star/pin/share/visibility menu actions、member scaffold、shape/asset count、`lastOpenedAt`、Recently opened / Recently saved sorting、client-side Load more、基础空/错/加载状态、按 board id load、Board 模式 autosave/save indicator、Board History first pass 和 Smart Drawing first pass；Refresh preview / Workspace card / History thumbnail browser smoke 已通过，Smart Drawing 已过前端闸门和 recognizer smoke。App Shell 顶部 5 标签与 Landing page / Collection / Account / Settings / Team / Subscription 语义已收口，下一步补 Smart Drawing browser tuning、long-session regression 或真实 staging wiring。
 4. Auth scaffold / 注册边界已有 first pass：typed session/user/workspace、Next/FastAPI session endpoint、route guard 形状和 dev auth-required smoke；真实 Email OTP 或 magic link、session/JWT、保护 `/workspaces` / `/boards/:boardId` 和 API 需要外部资源后继续。
 5. AI contract scaffold 已有 first pass；下一步可做 Board save/History 长时回归、真实 staging wiring，或在外部资源就绪后进入真实 Model Registry / AI Proxy / Image Gen / Analysis。
 6. Alpha 前补安全/运维：rate limit、上传 abuse guard、AI budget kill switch、日志、备份恢复、CORS、Terms/Privacy 占位。
@@ -272,11 +273,11 @@ Canonical docs 仍然是：
 新对话建议直接粘贴：
 
 ```text
-如果只是小 UI polish，先读 AGENTS.md、Project_state/current-slice.md、ARCH/README.md、ARCH/Slice-S0-local-polish.md 和 active dev-plan。若涉及数据/API/Auth/AI/Admin/Billing/Deploy/协作，先读 project_state.md、PRD.md、ARCH.md、HARNESS.md 和 dev-plans/README.md。不要读 legacy，不要读 .env。
+如果只是小 UI polish，先读 AGENTS.md、Project_state/current-slice.md、Project_state/00-current-progress.md、ARCH/README.md、ARCH/Slice-S0-local-polish.md 和 active dev-plan。若涉及数据/API/Auth/AI/Admin/Billing/Deploy/协作，先读 project_state.md、PRD.md、ARCH.md、HARNESS.md、ARCH/05-data-model-and-api.md 和 dev-plans/README.md。不要读 legacy，不要读 .env。
 
 当前接手点：继续 Slice E Real Asset Pipeline / 0-to-1 staging path。已完成 local Asset/Board bridge、FastAPI local-dev、真实 s3-compatible Asset adapter、Postgres Board / Asset metadata persistence、Board History first pass、Web-to-FastAPI switch、staging API package 和 /workspaces Board gallery/list entry shell。
 
-下一步优先从真实 staging server / managed Postgres / R2 / staging Web origin smoke，或 Board save + History 长时浏览器回归开始；/workspaces Board gallery/list metadata、expanded Board Panel metadata、captured thumbnail first pass、Smart Drawing first pass、Auth scaffold、AI contract scaffold、Board History 和 Landing page/Collection/Account/Settings/Team/Subscription semantic shell 已有 first pass，manual thumbnail refresh / History thumbnails / Smart Drawing tuning 仍可并行补。
+下一步优先从真实 staging server / managed Postgres / R2 / staging Web origin smoke，或 Board save + History 长时浏览器回归开始；/workspaces Board gallery/list metadata、expanded Board Panel metadata、captured thumbnail first pass、manual Refresh preview、History preview thumbnails、Smart Drawing first pass、Auth scaffold、AI contract scaffold、Board History 和 Landing page/Collection/Account/Settings/Team/Subscription semantic shell 已有 first pass，Refresh preview / Workspace card / History thumbnail browser smoke 已通过，Smart Drawing tuning 仍可并行补。
 ```
 
 ---

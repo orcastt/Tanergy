@@ -30,8 +30,10 @@ This checkpoint adds the context-management split:
 - `ARCH/02-board-asset-persistence.md`
 - `ARCH/03-ai-node-contract.md`
 - `ARCH/04-product-shell-auth-admin-deploy.md`
+- `ARCH/05-data-model-and-api.md`
 - `ARCH/Slice-S0-local-polish.md`
 - `Project_state/README.md`
+- `Project_state/00-current-progress.md`
 - `Project_state/current-slice.md`
 - `Project_state/handoff-2026-05-02-fast-slices.md`
 
@@ -41,10 +43,11 @@ For small local UI polish, read:
 
 1. `AGENTS.md`
 2. `Project_state/current-slice.md`
-3. `ARCH/README.md`
-4. `ARCH/Slice-S0-local-polish.md`
-5. Relevant focused `ARCH/*.md`
-6. Active `dev-plans/` plan
+3. `Project_state/00-current-progress.md`
+4. `ARCH/README.md`
+5. `ARCH/Slice-S0-local-polish.md`
+6. Relevant focused `ARCH/*.md`
+7. Active `dev-plans/` plan
 
 For architecture/API/Auth/AI/deploy/database/Admin changes, read the full canonical set:
 
@@ -58,11 +61,9 @@ For architecture/API/Auth/AI/deploy/database/Admin changes, read the full canoni
 
 If no external resources are ready:
 
-1. Manual thumbnail refresh for Board cards.
-2. History entry thumbnail preview.
-3. Smart Drawing browser smoke and threshold tuning.
-4. Long-session Board autosave/History regression.
-5. i18n/status polish.
+1. Smart Drawing browser smoke and threshold tuning.
+2. Long-session Board autosave/History regression.
+3. i18n/status polish.
 
 If external resources are ready:
 

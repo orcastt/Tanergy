@@ -17,9 +17,9 @@ Turn the local app into a coherent P0 alpha surface without pretending productio
 | Workspace Board gallery/list | 88% | Gallery/list, search, sort, Load more, create/open/rename/copy/delete and metadata controls exist. |
 | Board Management Panel | 86% | Settings-like panel with title, description, color, thumbnail, pin/star/visibility/share/member scaffold. |
 | Board Canvas save UX | 90% | Autosave, title sync, dirty/back warnings and save indicator are in place. |
-| Board History | 90% | Autosave/manual/keyboard history, filters, author display and restore are in place. |
+| Board History | 92% | Autosave/manual/keyboard history, filters, author display, preview thumbnails and restore are in place. |
 | Canvas Settings | 92% | Compact settings panel and subtle board-level dots/grid/solid backgrounds are in place. |
-| Captured thumbnails | 65% | Save-time captured preview works when no custom thumbnail exists. |
+| Captured thumbnails | 85% | Save-time captured preview, manual Refresh preview, Workspace card preview and History preview thumbnails passed browser smoke. |
 | Smart Drawing | 60% | Local recognizer and hook are implemented; browser tuning remains. |
 | Node Inspector removal | 100% | Independent left Node Inspector is removed from P0 product path. |
 
@@ -44,8 +44,9 @@ Use this mode for small visual/layout/product behavior fixes that do not change 
 Required docs:
 
 1. `Project_state/current-slice.md`
-2. This file if progress or acceptance changes
-3. Active `dev-plans/` file if the item affects backlog status
+2. `Project_state/00-current-progress.md` if progress or next fork changes
+3. This file if progress or acceptance changes
+4. Active `dev-plans/` file if the item affects backlog status
 
 Root `ARCH.md` / `PRD.md` / `HARNESS.md` do not need to change for every small CSS/layout fix.
 
@@ -64,16 +65,14 @@ Switch out of fast UI polish and update root canonical docs when a change touche
 
 ## Next Local Candidates
 
-1. Manual thumbnail refresh for Board cards.
-2. History entry thumbnail preview.
-3. Smart Drawing browser smoke and threshold tuning.
-4. Long-session autosave/history regression.
-5. i18n/status polish for visible product strings.
+1. Smart Drawing browser smoke and threshold tuning.
+2. Long-session autosave/history regression.
+3. i18n/status polish for visible product strings.
 
 ## Quick Validation
 
 - `/workspaces`: gallery/list, search, sort, Load more, card menu outside-click close, pin/visibility badges.
 - Board Manage: Copy link toast, Save visible, thumbnail upload/remove/default, owner/admin edit controls, editor/viewer disabled state.
-- `/boards/:boardId`: autosave, Cmd/Ctrl+S history, Snapshot history, Restore marks dirty then autosaves.
+- `/boards/:boardId`: autosave, Refresh preview, Cmd/Ctrl+S history, Snapshot history, preview thumbnails, Restore marks dirty then autosaves.
 - Canvas Settings: dots/grid/solid are behind drawings and subtle.
 - Node selection: no independent Node Inspector appears.

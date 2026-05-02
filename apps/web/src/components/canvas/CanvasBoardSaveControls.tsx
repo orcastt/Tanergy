@@ -19,6 +19,7 @@ export type BoardModeSaveStatusProps = {
   migration: RuntimeAssetMigrationResult | null
   onHistory: () => void
   onLoad: () => void
+  onRefreshPreview: () => void
   onSave: () => void
   onSnapshot: () => void
   saveError: string | null
@@ -51,6 +52,7 @@ export function BoardModeSaveStatus({
   migration,
   onHistory,
   onLoad,
+  onRefreshPreview,
   onSave,
   onSnapshot,
   saveError,
@@ -74,6 +76,9 @@ export function BoardModeSaveStatus({
       ) : null}
       <button disabled={!editorAvailable || isRunning} onClick={onSnapshot} type="button">
         Snapshot
+      </button>
+      <button disabled={!editorAvailable || isRunning} onClick={onRefreshPreview} type="button">
+        Refresh preview
       </button>
       <button disabled={!editorAvailable || isRunning} onClick={onHistory} type="button">
         History

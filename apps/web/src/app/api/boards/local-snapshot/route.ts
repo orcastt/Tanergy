@@ -10,6 +10,7 @@ export async function POST(request: Request) {
       boardId?: string
       document?: unknown
       reason?: string
+      thumbnailUrl?: string | null
       title?: string
     }
     if (!body.boardId) throw new Error('Missing boardId.')
@@ -25,6 +26,7 @@ export async function POST(request: Request) {
       boardId: body.boardId,
       document: body.document,
       reason,
+      thumbnailUrl: body.thumbnailUrl,
       title: body.title,
     }, getApiRequestContext(request))
     return NextResponse.json({ ok: true, snapshot })

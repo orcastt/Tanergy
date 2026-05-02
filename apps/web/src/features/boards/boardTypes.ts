@@ -89,6 +89,7 @@ export type BoardSnapshotCreateInput<Document = unknown> = {
   boardId: string
   document: Document
   reason: BoardSnapshotReason
+  thumbnailUrl?: string | null
   title?: string
 }
 

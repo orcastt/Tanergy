@@ -21,7 +21,7 @@
 每次非简单改动按顺序推进：
 
 1. 先判断本次属于 `Fast UI polish` 还是 `Architecture slice`。
-2. `Fast UI polish` 只改本地 UI、布局、响应式、文案状态、菜单/图标行为或浏览器 smoke follow-up 时，先读 `Project_state/current-slice.md`、`ARCH/README.md`、相关 `ARCH/Slice-*.md` 和 active dev-plan；完成后通常只更新 `Project_state/current-slice.md`、active dev-plan 或相关 slice index。
+2. `Fast UI polish` 只改本地 UI、布局、响应式、文案状态、菜单/图标行为或浏览器 smoke follow-up 时，先读 `Project_state/current-slice.md`、必要时读 `Project_state/00-current-progress.md`、`ARCH/README.md`、相关 `ARCH/Slice-*.md` 和 active dev-plan；完成后通常只更新 `Project_state/current-slice.md`、必要时更新 `Project_state/00-current-progress.md`、active dev-plan 或相关 slice index。
 3. `Architecture slice` 涉及数据模型、API、权限、Auth、AI、Admin、Billing、Deploy、协作、外部资源或长期产品边界时，仍按完整顺序读 `project_state.md`、`PRD.md`、`ARCH.md`、`HARNESS.md`、`dev-plans/README.md` 和相关 active slice plan。
 4. 新功能、跨文件改动、阶段切换或外部资源接入先更新 `dev-plans/` 或确认 `ARCH.md` 11.5-11.7 / `PRD.md` 当前状态已覆盖。
 5. 只实现当前切片，不顺手重构无关逻辑。
@@ -37,8 +37,8 @@
 ## 上下文加速规则
 
 - 根目录 `ARCH.md`、`PRD.md`、`project_state.md` 和 `HARNESS.md` 仍是 canonical truth。
-- `ARCH/` 是架构短索引，每个主题或切片一个文件；优先读 `ARCH/README.md` 再打开相关 slice。
-- `Project_state/` 是短状态和交接层；优先读 `Project_state/current-slice.md` 获取当前 5-10 个关键文件、下一步和测试命令。
+- `ARCH/` 是架构短索引，每个主题或切片一个文件；优先读 `ARCH/README.md` 再打开相关 slice；`ARCH/00-current-map.md` 和 `ARCH/05-data-model-and-api.md` 分别承接根 `ARCH.md` 的总图/路线与数据/API 总览。
+- `Project_state/` 是短状态和交接层；优先读 `Project_state/current-slice.md` 获取当前关键文件、下一步和测试命令；需要 broader state 时读 `Project_state/00-current-progress.md`。
 - `ARCH.md` 只保留稳定架构、总图、关键进度和不可破坏规则；易变 UI 验收项、手测清单、当前文件列表放到 `Project_state/current-slice.md` 或 active dev-plan。
 - 每 1-2 个小功能尽量 checkpoint commit，保持 diff 小而可回滚。
 
