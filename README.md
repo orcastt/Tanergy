@@ -1,57 +1,53 @@
 # TANGENT — Web AI Image Canvas
 
-TANGENT is restarting as a clean Web-first AI image canvas.
-
-P0 is intentionally small:
+TANGENT is a clean Web-first AI image canvas.
 
 ```text
-Prompt Node → Image Gen / Image Gen 4 → Image Node
-Image Node + Prompt Node → Image Gen or Analysis → Image / Prompt Node
-Image Node → Canvas Markup → Merge Capture → New Image Node
-Right AI Chat → auto-create nodes → auto-wire → user reviews and runs
+Prompt Node -> Image Gen / Image Gen 4 -> Image Node
+Image Node + Prompt Node -> Image Gen or Analysis -> Image / Prompt Node
+Image Node -> Canvas Markup -> Merge Capture -> New Image Node
+AI Chat -> create allowed nodes -> auto-wire -> user reviews and runs
 ```
 
 ## Start Here
 
-Read in this order before development:
+Root `PRD.md`, `ARCH.md` and `project_state.md` are pointers only.
 
-For fast local UI polish:
+| Need | Read |
+| --- | --- |
+| Current state | `project_state/project_state.md` |
+| Active local slice | `project_state/project_state_slice_S0_local_polish.md` |
+| Product requirements | `PRD/PRD.md` |
+| Architecture map | `ARCH/ARCH.md` |
+| Execution rules | `AGENTS.md`, `HARNESS.md` |
+| Tactical plans | `dev-plans/README.md` |
 
-1. `Project_state/current-slice.md` — short current context, key files, next action.
-2. `ARCH/README.md` — architecture slice index.
-3. Relevant `ARCH/*.md` slice file.
-4. `dev-plans/README.md` and the current active slice plan.
+For small UI polish, start with:
 
-For architecture/API/Auth/AI/Admin/Billing/Deploy/collaboration work:
+```text
+AGENTS.md
+project_state/project_state_slice_S0_local_polish.md
+PRD/PRD_slice_S0_local_product_shell.md
+ARCH/ARCH_slice_S0_local_polish.md
+```
 
-1. `project_state.md` — canonical current phase, completed work, next action.
-2. `PRD.md` — user-visible product requirements and acceptance.
-3. `ARCH.md` — canonical technical decisions, boundaries, data/API/security.
-4. `HARNESS.md` — cross-functional development rules and handoff standards.
-5. `dev-plans/README.md` and the current active slice plan.
+For architecture/API/Auth/AI/Admin/Billing/Deploy/Collaboration, start with:
 
-## Current Focus
-
-The project has passed S1.5 and Asset LOD Slice D with notes. Current focus is Slice E Real Asset Pipeline:
-
-- E-A local server-backed Asset API bridge is implemented.
-- E-C Board save guard + local save/restore is implemented for development validation.
-- E-B request context + asset/board storage adapter seams are active, preparing the move to authenticated FastAPI + R2/S3 / DB storage.
-- Real AI API work should wait until asset persistence and Board save boundaries are stable enough to keep generated images out of `data:` / `blob:` document state.
+```text
+AGENTS.md
+project_state/project_state.md
+PRD/PRD.md
+ARCH/ARCH.md
+HARNESS.md
+relevant slice files
+```
 
 ## Active Source
 
-Fresh implementation starts under:
-
-- `apps/web/` — Next.js web app and tldraw spike.
-- `services/api/` — future fresh API service if needed.
-- `packages/shared/` — shared types/helpers.
-
-Legacy code is isolated under:
-
-- `legacy/old-tangent-desktop-2026-04-29/`
-
-Do not read or modify legacy unless the user explicitly asks.
+- `apps/web/` — Next.js web app and tldraw canvas.
+- `services/api/` — FastAPI service, storage adapters and migrations.
+- `packages/shared/` — shared packages if needed.
+- `legacy/old-tangent-desktop-2026-04-29/` — archived old app; do not read or edit unless explicitly asked.
 
 ## Local Commands
 
@@ -60,39 +56,22 @@ npm -C apps/web run dev
 npm -C apps/web run lint
 npm -C apps/web run typecheck
 npm -C apps/web run build
+PYTHONPATH=services/api python3 -m pytest services/api/tests
+python3 -m compileall services/api/tangent_api services/api/migrations
 git diff --check
 ```
 
-Open the current spike at:
+## Current Next Work
 
-```text
-http://localhost:3000/spikes/canvas
-```
+If external resources are not ready:
 
-## Development Rules
+1. Long-session Board autosave / History regression.
+2. Smart Drawing threshold tuning.
+3. i18n/status polish.
 
-- Keep source files under 300 lines; 250 lines is a warning.
-- Create or update `dev-plans/` before non-trivial feature work.
-- Update `project_state.md` before handoff or commit.
-- Never put Provider API keys in frontend code.
-- Do not persist `blob:` / `data:` / Base64 images in Board document state.
-- Node props stay light: ids, short params, layout, ports, summaries, Asset references.
-- Run quality gates after frontend changes.
+If external resources are ready:
 
-## Planning Docs
-
-- `ARCH/README.md` — short architecture index for faster handoffs.
-- `Project_state/current-slice.md` — compact current slice state and validation commands.
-- `dev-plans/README.md` — active/archived plan index.
-- `HARNESS.md` — current P0 Harness roadmap and workstream rules.
-- `dev-plans/Asset-lod-roadmap.md` — current Asset Pipeline + Image / Node LOD roadmap before multiplayer.
-- `dev-plans/overseas-cost-growth-forecast.md` — cost and growth planning reference.
-- `dev-plans/Archive/` — completed, accepted, or deprecated dev-plan slices and handoff notes.
-
-## Harness Coverage
-
-`HARNESS.md` maps the 12 recurring workstreams: Product, Architecture, UI/UX, Auth, Payments, Realtime, Database/API, Launch, QA, Admin, AI Integration, and Ops.
-
-Dynamic market numbers such as competitor ratings, revenue estimates, and current pricing must be researched with sources before being added to PRD.
-
-Archived pivot mirrors live under `docs/archive/pivot-docs-2026-04-29/`; do not use them as active development context.
+1. Staging Postgres/R2/domain smoke.
+2. Real Auth and workspace ownership.
+3. Auth-backed Board CRUD.
+4. Real AI provider path.

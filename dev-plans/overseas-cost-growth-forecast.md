@@ -1,9 +1,9 @@
 # Overseas Deployment Cost, User Growth, and Social Forecast
 
-**Date**: 2026-04-29  
+**Date**: 2026-04-29
 **Status**: Planning baseline for overseas Web launch; synced 2026-05-01 after Slice E local Asset / Board bridge progress and deployment-cost review
-**Scope**: TANGENT Web AI Image Canvas P0 / P0.5  
-**Related docs**: `PRD.md`, `ARCH.md`, `project_state.md`, `dev-plans/README.md`, `dev-plans/Asset-lod-roadmap.md`, `dev-plans/Archive/cross-platform-canvas-performance-test-2026-04-30.md`
+**Scope**: TANGENT Web AI Image Canvas P0 / P0.5
+**Related docs**: `PRD/PRD.md`, `ARCH/ARCH.md`, `ARCH/ARCH_slice_S1_persistence_auth_deploy.md`, `project_state/project_state.md`, `dev-plans/README.md`, `dev-plans/Archive/cross-platform-canvas-performance-test-2026-04-30.md`
 
 ---
 

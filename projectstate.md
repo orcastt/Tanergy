@@ -1,5 +1,5 @@
 # Project State Alias
 
-Canonical project state lives in `project_state.md`.
+Canonical project state lives in [`project_state/project_state.md`](project_state/project_state.md).
 
-This file exists only as a typo-friendly pointer for agents and handoffs. Do not maintain separate status here.
+This typo-friendly pointer intentionally has no separate status.
