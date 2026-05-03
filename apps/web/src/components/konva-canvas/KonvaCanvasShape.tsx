@@ -1,7 +1,8 @@
 import { memo, useMemo } from 'react'
 import { Ellipse, Group, Line, Path, Rect, Text } from 'react-konva'
 import type { CanvasShape } from '@/features/canvas-engine'
-import { getPatternImage, getStrokeDash, resolveKonvaShapeStyle } from './konvaCanvasStyle'
+import { getStrokeDash, resolveKonvaShapeStyle } from './konvaCanvasStyle'
+import { getPatternTile } from './konvaPatternUtils'
 import { getArrowHeadPoints, getCloudPath, getFreehandPath } from './konvaPathUtils'
 
 type KonvaCanvasShapeProps = {
@@ -131,9 +132,14 @@ function renderShape(shape: CanvasShape, style: ReturnType<typeof resolveKonvaSh
 }
 
 function getClosedFillProps(fill: string, fillStyle: ReturnType<typeof resolveKonvaShapeStyle>['fillStyle'], stroke: string) {
-  const patternImage = fillStyle === 'pattern' ? getPatternImage(stroke) : undefined
-  return patternImage
-    ? { fillPatternImage: patternImage as unknown as HTMLImageElement, fillPatternRepeat: 'repeat' as const }
+  const patternTile = fillStyle === 'pattern' ? getPatternTile(stroke) : undefined
+  return patternTile
+    ? {
+        fillPatternImage: patternTile.image as unknown as HTMLImageElement,
+        fillPatternRepeat: 'repeat' as const,
+        fillPatternScaleX: patternTile.scale,
+        fillPatternScaleY: patternTile.scale,
+      }
     : { fill }
 }
 

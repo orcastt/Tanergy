@@ -1,4 +1,5 @@
 import type { CanvasDocument, CanvasShape, CanvasShapeStyle } from '@/features/canvas-engine'
+import { colorWithOpacity } from './konvaPatternUtils'
 
 export type KonvaCanvasDashStyle = NonNullable<CanvasShapeStyle['dash']>
 export type KonvaCanvasFillStyle = NonNullable<CanvasShapeStyle['fillStyle']>
@@ -113,31 +114,6 @@ export function getStrokeDash(style: KonvaCanvasDashStyle, strokeWidth: number):
   if (style === 'dashed') return [strokeWidth * 4.5, strokeWidth * 3]
   if (style === 'dotted') return [0.1, strokeWidth * 3.2]
   return undefined
-}
-
-export function getPatternImage(stroke: string): HTMLCanvasElement | undefined {
-  if (typeof document === 'undefined') return undefined
-  const key = normalizeColor(stroke)
-  const cached = patternImageCache.get(key)
-  if (cached) return cached
-  const canvas = document.createElement('canvas')
-  canvas.width = 12
-  canvas.height = 12
-  const context = canvas.getContext('2d')
-  if (!context) return undefined
-  context.fillStyle = 'rgba(255, 255, 255, 0.86)'
-  context.fillRect(0, 0, canvas.width, canvas.height)
-  context.strokeStyle = colorWithOpacity(stroke, 0.72)
-  context.lineCap = 'round'
-  context.lineWidth = 1.4
-  context.beginPath()
-  context.moveTo(-2, 10)
-  context.lineTo(10, -2)
-  context.moveTo(3, 15)
-  context.lineTo(15, 3)
-  context.stroke()
-  patternImageCache.set(key, canvas)
-  return canvas
 }
 
 export function applyKonvaStylePatch(document: CanvasDocument, shapeIds: string[], patch: CanvasShapeStyle): CanvasDocument {
@@ -270,30 +246,4 @@ function swapShapes(shapes: CanvasShape[], a: number, b: number) {
 
 function createShapeId(prefix: string) {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
-}
-
-const patternImageCache = new Map<string, HTMLCanvasElement>()
-
-function colorWithOpacity(color: string, opacity: number) {
-  const rgb = hexToRgb(color)
-  if (!rgb) return color
-  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`
-}
-
-function hexToRgb(color: string) {
-  const normalized = normalizeColor(color)
-  const match = /^#([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(normalized)
-  if (!match) return null
-  return {
-    b: Number.parseInt(match[3], 16),
-    g: Number.parseInt(match[2], 16),
-    r: Number.parseInt(match[1], 16),
-  }
-}
-
-function normalizeColor(color: string) {
-  if (/^#[a-f\d]{3}$/i.test(color)) {
-    return `#${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}`.toLowerCase()
-  }
-  return color.toLowerCase()
 }
