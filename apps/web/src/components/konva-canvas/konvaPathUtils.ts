@@ -6,32 +6,18 @@ export function getFreehandPath(points: StrokePoint[], width = 4): string {
 
   const outline = getStroke(points.map((point) => [point.x, point.y, point.pressure ?? 0.5]), {
     easing: (value) => value,
-    end: {
-      cap: false,
-      easing: (value) => value,
-      taper: width * 3.2,
-    },
     last: true,
     simulatePressure: false,
     size: width,
-    smoothing: 0.34,
-    start: {
-      cap: false,
-      easing: (value) => value,
-      taper: width * 1.8,
-    },
-    streamline: 0.12,
-    thinning: 0.56,
+    smoothing: 0.26,
+    streamline: 0.1,
+    thinning: 0.62,
   })
 
   if (outline.length < 2) return ''
 
   const [first, ...rest] = outline
-  const commands = rest.map(([x, y], index) => {
-    const [nextX, nextY] = outline[(index + 2) % outline.length] ?? first
-    return `Q${x.toFixed(1)} ${y.toFixed(1)} ${((x + nextX) / 2).toFixed(1)} ${((y + nextY) / 2).toFixed(1)}`
-  })
-
+  const commands = rest.map(([x, y]) => `L${x.toFixed(1)} ${y.toFixed(1)}`)
   return `M${first[0].toFixed(1)} ${first[1].toFixed(1)} ${commands.join(' ')} Z`
 }
 

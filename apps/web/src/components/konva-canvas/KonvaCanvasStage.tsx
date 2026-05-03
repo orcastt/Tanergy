@@ -14,7 +14,14 @@ import {
   type CanvasShape,
 } from '@/features/canvas-engine'
 import { KonvaCanvasShape } from './KonvaCanvasShape'
-import { createDraftShape, createStrokePoint, createTextShape, finalizeDraft, updateStrokeDraft } from './konvaDraftShapes'
+import {
+  createDraftShape,
+  createStrokeEndPoint,
+  createStrokePoint,
+  createTextShape,
+  finalizeDraft,
+  updateStrokeDraft,
+} from './konvaDraftShapes'
 import type { KonvaCanvasTool, KonvaToolSession } from './konvaCanvasTypes'
 
 type KonvaCanvasStageProps = {
@@ -129,8 +136,13 @@ export function KonvaCanvasStage({
     scheduleDraft(nextDraft)
   }
 
-  const handlePointerUp = () => {
+  const handlePointerUp = (event: KonvaEventObject<PointerEvent>) => {
     const session = sessionRef.current
+    const screenPoint = getStagePointer(stageRef.current)
+    if (session?.type === 'create' && activeTool === 'draw' && screenPoint) {
+      const worldPoint = pointerToWorld({ ...screenPoint, pressure: event.evt.pressure }, camera)
+      session.draft = updateStrokeDraft(session, createStrokeEndPoint(worldPoint, event.evt))
+    }
     sessionRef.current = null
     const nextDraft = session?.type === 'create' ? finalizeDraft(session.draft) : null
     pendingDraftRef.current = null

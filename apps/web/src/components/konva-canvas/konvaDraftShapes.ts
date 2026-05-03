@@ -13,7 +13,7 @@ const boxTools = new Set<KonvaCanvasTool>(['rect', 'diamond', 'ellipse', 'triang
 
 export function updateStrokeDraft(session: Extract<KonvaToolSession, { type: 'create' }>, point: StrokePoint): CanvasShape {
   if (session.draft.type !== 'stroke') return session.draft
-  const rawPoints: StrokePoint[] = session.rawPoints ?? [{ ...session.origin, pressure: 0.62 }]
+  const rawPoints: StrokePoint[] = session.rawPoints ?? [{ ...session.origin, pressure: 0.82 }]
   const previous = rawPoints[rawPoints.length - 1]
   if (distanceBetweenPoints(previous, point) > 1.5) rawPoints.push(point)
   session.rawPoints = rawPoints
@@ -43,7 +43,7 @@ export function finalizeDraft(shape: CanvasShape): CanvasShape | null {
 
 export function createDraftShape(tool: KonvaCanvasTool, origin: CanvasPoint, point: CanvasPoint): CanvasShape | null {
   if (tool === 'draw') {
-    return { id: createShapeId('stroke'), props: { points: [{ x: 0, y: 0, pressure: 0.62 } as StrokePoint] }, style: baseStyle(2), type: 'stroke', x: origin.x, y: origin.y }
+    return { id: createShapeId('stroke'), props: { points: [{ x: 0, y: 0, pressure: 0.82 } as StrokePoint] }, style: baseStyle(2), type: 'stroke', x: origin.x, y: origin.y }
   }
   if (tool === 'line' || tool === 'arrow') {
     return { id: createShapeId(tool), props: { end: { x: point.x - origin.x, y: point.y - origin.y } }, style: baseStyle(2), type: tool, x: origin.x, y: origin.y }
@@ -65,8 +65,12 @@ export function createStrokePoint(point: CanvasPoint, event: PointerEvent, previ
     return { ...point, pressure: event.pressure, time: event.timeStamp }
   }
 
-  const pressure = previous ? getVelocityPressure(previous, { ...point, time: event.timeStamp }) : 0.62
+  const pressure = previous ? getVelocityPressure(previous, { ...point, time: event.timeStamp }) : 0.82
   return { ...point, pressure, time: event.timeStamp }
+}
+
+export function createStrokeEndPoint(point: CanvasPoint, event: PointerEvent): StrokePoint {
+  return { ...point, pressure: event.pointerType === 'pen' && event.pressure > 0 ? Math.max(0.78, event.pressure) : 0.84, time: event.timeStamp }
 }
 
 function baseStyle(strokeWidth: number) {
@@ -77,7 +81,7 @@ function getVelocityPressure(previous: StrokePoint, point: StrokePoint): number 
   const elapsed = Math.max(8, (point.time ?? 0) - (previous.time ?? 0))
   const speed = distanceBetweenPoints(previous, point) / elapsed
   const normalizedSpeed = clamp(speed / 1.2, 0, 1)
-  return clamp(0.76 - normalizedSpeed * 0.42, 0.34, 0.76)
+  return clamp(0.84 - normalizedSpeed * 0.5, 0.34, 0.84)
 }
 
 function clamp(value: number, min: number, max: number) {
