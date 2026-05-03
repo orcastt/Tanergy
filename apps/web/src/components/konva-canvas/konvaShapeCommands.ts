@@ -27,7 +27,7 @@ export function appendShapes(document: CanvasDocument, shapes: CanvasShape[]) {
 
 export function updateTextShape(document: CanvasDocument, shapeId: string, text: string): CanvasDocument {
   return withCanvasShapes(document, document.shapes.map((shape) => (
-    shape.id === shapeId && shape.type === 'text'
+    shape.id === shapeId && (shape.type === 'text' || shape.type === 'sticky')
       ? { ...shape, props: { ...shape.props, text } }
       : shape
   )))

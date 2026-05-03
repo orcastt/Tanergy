@@ -25,12 +25,13 @@ keep Board/API/storage contracts stable
 - Browser text-selection guards prevent drag/draw gestures from selecting toolbar or diagnostics text.
 - Phase 2A accepted baseline: fixed left Properties panel supports Stroke, Fill, Width, Dash, Opacity, Layer order, Duplicate, Delete and collapse/expand.
 - Style changes now update selected shapes and the next-shape style, so newly drawn shapes inherit the panel settings.
-- Pattern fill now uses crisp high-DPR generated hatching instead of a blurry low-resolution tile.
+- Fill no longer relies on lowering opacity for `solid` / `pattern`; it uses opaque lighter tints of the stroke color, with crisp high-DPR generated hatching for pattern.
 - Phase 3.1 started: interaction logic split out of the Stage, box-select marquee added, single-shape corner resize handles added, and undo/redo history now snapshots shapes plus selection without undoing camera pan/zoom.
 - Phase 3.1 also has first-pass single-shape rotation: an offset rotate handle writes `rotation` and renders box-like shapes around their center point.
-- Phase 3.1 object commands now cover keyboard Copy/Paste/Select all/Duplicate/Delete, Alt-drag duplicate, text double-click editing and a first-pass right-click menu for the same core commands.
+- Phase 3.1 object commands now cover keyboard Copy/Paste/Select all/Duplicate/Delete, Alt-drag duplicate, text double-click editing and a first-pass right-click menu for the same core commands. Alt-drag keeps the source object fixed while moving the new copy; Text is one-shot and returns to Select after inserting a text box.
+- First-pass Frame and Sticky tools are now in the spike: Frame draws a labeled outline container, Sticky draws a resizable note and supports double-click text editing.
 
-Next development focus: finish Phase 3 object editing foundation with copy/paste, Alt-drag duplicate, text editing and command-system cleanup. Right-click menu, image/node conversion and alignment actions should sit on that shared command system rather than be built as separate one-off UI.
+Next development focus: Phase 3B editing depth, especially line/arrow endpoint controls, multi-selection rotation, frame containment semantics, sticky text polish and later image/node conversion commands on the shared command system.
 
 ## tldraw Behavior Inventory
 
@@ -40,10 +41,10 @@ Current user-facing behavior to match:
 - Toolbar above the canvas.
 - Fixed left properties drawer that does not disappear on blank canvas clicks.
 - Drawing tools: hand, select, shapes, arrow, line, draw, text, eraser.
-- Shape menu: rectangle, diamond, ellipse, triangle and cloud.
+- Shape menu: rectangle, diamond, ellipse, triangle, cloud and frame.
 - Context/right-click continuous drawing behavior.
 - Escape exits continuous drawing and can select created shapes.
-- Style controls: stroke, fill, width, dash, line spline, arrow type/heads, font, opacity, layer, align and actions.
+- Style controls: stroke, opaque tint fill, width, dash, line spline, arrow type/heads, font, opacity, layer, align and actions.
 - Board header with Workspace back, home/logo and Board switcher.
 - Canvas Settings gear and panel.
 - Board save controls: unsaved/saved states, Save now, Snapshot, Refresh preview and History.
@@ -127,7 +128,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | 2.8 | selection properties | 选中普通图形时显示 selected 样式 | selection style aggregation | `getSelectionTool` | 单选/多选显示正确 |
 | 2.9 | node selection | node card 不显示普通图形属性 | node card selection guard | `hasNodeCardSelection` | 选节点不出现无意义样式 |
 | 2.10 | stroke color | black/red/green/blue/orange/violet/grey | 映射为 engine style token | `strokeColors` | 新旧颜色接近 |
-| 2.11 | fill | none/semi/solid/pattern | Konva fill/pattern 或降级规则 | `fillStyles` | semi/solid 清晰，pattern 有方案 |
+| 2.11 | fill | none/semi/solid/pattern | `solid` 和 `pattern` 不能靠透明度变淡；fill 用比 stroke 明度更高的不透明同色系，pattern 用高 DPR 生成的清晰斜线 | `fillStyles` | semi/solid/pattern 都不糊、不透，stroke/fill 区分明确 |
 | 2.12 | width/dash/font | s/m/l/xl，draw/solid/dashed/dotted，font 选项 | engine style tokens | `sizeStyles`, `dashStyles`, `fontStyles` | 图标不溢出，样式可保存 |
 | 2.13 | arrow style | arc/elbow，start/end heads | edge renderer 支持箭头头部 | `arrowKindStyles`, `arrowhead*` | 箭头视觉接近 |
 | 2.14 | opacity | selection/next shape opacity | selection 和 next tool 双写 | `CanvasSpikeStylePanel.tsx` | 新对象继承 opacity |
@@ -183,23 +184,28 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | 3B.3 | Circle/Ellipse | 圆/椭圆 shape | Konva Ellipse，拖拽时从 bbox 生成 | 圆形/椭圆可保持比例/自由缩放 |
 | 3B.4 | Triangle | 三角形 shape | Konva RegularPolygon/Line path，支持 resize | 三角边框/fill 正常 |
 | 3B.5 | Cloud | 云朵 shape 是截图重点；tldraw/CAD cloud 是根据拖拽矩形四边分段切弧，不是固定云朵轮廓缩放 | 自定义 path 基于 bbox 四边按边长生成 revision-cloud scallop arcs；横条/竖条/大矩形都要自然分段 | cloud 视觉和选择框接近 tldraw，不像固定图标拉伸 |
-| 3B.6 | Shape active preview | shape popover hover tooltip，如 Cloud | shape menu active/hover tooltip 黑底白字 | hover cloud 显示 tooltip，popover 不乱跳 |
-| 3B.7 | Line straight | 直线工具生成两端控制点 | line shape 保存 start/end/control points | 端点可拖拽 |
-| 3B.8 | Line midpoint curve | 截图里中点拖拽后线变曲线 | line 有 midpoint/control handle；拖中点生成 quadratic/cubic curve | 拖中点变曲线，曲率保存恢复 |
-| 3B.9 | Arrow straight | arrow 两端，默认箭头头部 | edge/arrow visual 支持 start/end 和 arrowhead | 箭头终点头部方向正确 |
-| 3B.10 | Arrow curve edit | arrow 中点/控制点可拖成曲线 | arrow 与 line 共用 curve control model | 曲线 arrow 拖动后自然跟随 |
-| 3B.11 | Arrow bound to ports | arrow/edge 可吸附 node ports | port anchor + snap + edge data 分离 | 移动 node 后 arrow 跟随 port |
-| 3B.12 | Draw pencil | 铅笔自由画线，保留手绘质感 | perfect-freehand stroke shape，样式可调 | 快慢线接近 tldraw |
-| 3B.13 | Eraser 质感 | eraser 不只是 delete，拖过笔画有擦除感 | 第一版可整条 stroke hit delete；第二版支持 stroke segmentation erase | 擦除响应跟手，不误删远处图形 |
-| 3B.14 | Text tool | `T` 工具插入文字 | HTML input overlay 编辑，提交为 text shape | 双击/输入/中文 IME 正常 |
-| 3B.15 | Shape handles | 选中形状显示蓝色 bbox/handles | selection layer 绘制 handles，handles 尺寸随 zoom 稳定 | zoom 后 handle 不巨大/过小 |
-| 3B.16 | Rotation/resize cursor | handle hover 显示正确反馈 | cursor manager 根据 handle/tool 更新 | 鼠标移到 handle 有专业反馈 |
-| 3B.17 | Minimap overview | 左下角 mini map 显示对象分布和当前视口紫框 | 根据 document bounds 绘制 mini map，节流更新 | 大 Board 中能看见当前位置 |
-| 3B.18 | Minimap collapse | 左下角可折叠/展开 | collapse state 不影响画布事件 | 折叠后只留小控制 |
-| 3B.19 | Zoom buttons | - / + 按钮 | camera zoom steps，动画短且不晕 | 点击 -/+ 缩放稳定 |
-| 3B.20 | 100% reset | 中间 `100%` 按钮回归 100% | reset zoom to 1，优先以当前视角中心定位 | 点击后回 100%，对象不跳到奇怪位置 |
-| 3B.21 | Fit/定位策略 | tldraw 可 zoomToFit/selection | 后续支持 zoom to selection / fit board | 多选后可定位选区，作为后续增强 |
-| 3B.22 | Grid under navigator | navigator 悬浮不影响 dot grid | navigator 是 UI overlay，背景仍在 canvas layer | 左下 UI 不遮挡关键操作过多 |
+| 3B.6 | Frame | tldraw frame 可作为视觉容器和后续页面/区域组织 | 第一版有可绘制、可 resize/rotate 的 labeled frame；后续补 frame containment、拖入/拖出、导出边界 | Frame 可创建/选中/移动/resize；后续语义不丢 |
+| 3B.7 | Sticky / note | tldraw sticky note / 便利贴 | 第一版有可绘制、可 resize、可双击编辑文本的 sticky；后续补文字排版、快捷创建、颜色预设 | Sticky 可创建、编辑、改样式、保存恢复 |
+| 3B.8 | Shape active preview | shape popover hover tooltip，如 Cloud | shape menu active/hover tooltip 黑底白字 | hover cloud 显示 tooltip，popover 不乱跳 |
+| 3B.9 | Line straight | 直线工具生成两端控制点 | line shape 保存 start/end/control points | 端点可拖拽 |
+| 3B.10 | Line midpoint curve | 截图里中点拖拽后线变曲线 | line 有 midpoint/control handle；拖中点生成 quadratic/cubic curve | 拖中点变曲线，曲率保存恢复 |
+| 3B.11 | Line endpoint edit | line/arrow 选中后可编辑端点 | line 端点 handle 可拖拽，端点移动后更新 start/end 并保持样式 | 拖动任一端点，线段端点准确跟随 |
+| 3B.12 | Line/arrow endpoint rotate | 线/箭头不是 bbox 旋转，而是通过端点方向变化形成旋转效果 | 端点拖拽时围绕另一端改变方向/长度；必要时支持 Shift 锁定角度 | 线和箭头可以通过端点自然改变角度 |
+| 3B.13 | Arrow straight | arrow 两端，默认箭头头部 | edge/arrow visual 支持 start/end 和 arrowhead | 箭头终点头部方向正确 |
+| 3B.14 | Arrow curve edit | arrow 中点/控制点可拖成曲线 | arrow 与 line 共用 curve control model | 曲线 arrow 拖动后自然跟随 |
+| 3B.15 | Arrow bound to ports | arrow/edge 可吸附 node ports | port anchor + snap + edge data 分离 | 移动 node 后 arrow 跟随 port |
+| 3B.16 | Multi-selection rotate | tldraw 多选外侧 boundary 可整体旋转 | 多选 union boundary 增加 rotate handle；按 group center 旋转并为每个 shape 写入新的 x/y/rotation | 多选多个形状旋转后相对位置保持，保存/undo 正常 |
+| 3B.17 | Draw pencil | 铅笔自由画线，保留手绘质感 | perfect-freehand stroke shape，样式可调 | 快慢线接近 tldraw |
+| 3B.18 | Eraser 质感 | eraser 不只是 delete，拖过笔画有擦除感 | 第一版可整条 stroke hit delete；第二版支持 stroke segmentation erase | 擦除响应跟手，不误删远处图形 |
+| 3B.19 | Text tool | `T` 工具插入文字 | HTML input overlay 编辑，提交为 text shape | 双击/输入/中文 IME 正常 |
+| 3B.20 | Shape handles | 选中形状显示蓝色 bbox/handles | selection layer 绘制 handles，handles 尺寸随 zoom 稳定 | zoom 后 handle 不巨大/过小 |
+| 3B.21 | Rotation/resize cursor | handle hover 显示正确反馈 | cursor manager 根据 handle/tool 更新；rotate handle 离角点一定距离显示旋转 cursor | 鼠标移到 handle 有专业反馈 |
+| 3B.22 | Minimap overview | 左下角 mini map 显示对象分布和当前视口紫框 | 根据 document bounds 绘制 mini map，节流更新 | 大 Board 中能看见当前位置 |
+| 3B.23 | Minimap collapse | 左下角可折叠/展开 | collapse state 不影响画布事件 | 折叠后只留小控制 |
+| 3B.24 | Zoom buttons | - / + 按钮 | camera zoom steps，动画短且不晕 | 点击 -/+ 缩放稳定 |
+| 3B.25 | 100% reset | 中间 `100%` 按钮回归 100% | reset zoom to 1，优先以当前视角中心定位 | 点击后回 100%，对象不跳到奇怪位置 |
+| 3B.26 | Fit/定位策略 | tldraw 可 zoomToFit/selection | 后续支持 zoom to selection / fit board | 多选后可定位选区，作为后续增强 |
+| 3B.27 | Grid under navigator | navigator 悬浮不影响 dot grid | navigator 是 UI overlay，背景仍在 canvas layer | 左下 UI 不遮挡关键操作过多 |
 
 ### Phase 3A：右键菜单和子菜单
 

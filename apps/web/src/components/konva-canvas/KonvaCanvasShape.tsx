@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react'
+import { memo, useMemo, useRef } from 'react'
 import { Ellipse, Group, Line, Path, Rect, Text } from 'react-konva'
 import type { CanvasShape } from '@/features/canvas-engine'
 import { getStrokeDash, resolveKonvaShapeStyle } from './konvaCanvasStyle'
@@ -14,7 +14,7 @@ type KonvaCanvasShapeProps = {
   toolAllowsDrag: boolean
   zoom: number
   onDragMove: (shapeId: string, x: number, y: number) => void
-  onDragStart: (shapeId: string, config?: { duplicate?: boolean }) => void
+  onDragStart: (shapeId: string, config?: { duplicate?: boolean }) => { lockSource?: boolean } | void
   onDragEnd: (shapeId: string, x: number, y: number) => void
   onDoubleClick: (shapeId: string) => void
   onSelect: (shapeId: string, options?: { additive?: boolean }) => void
@@ -40,6 +40,8 @@ function KonvaCanvasShapeComponent({
   )
   const canInteract = interactive && !panMode
   const transform = getGroupTransform(shape)
+  const lockDragSourceRef = useRef(false)
+  const lastLockedDragPointRef = useRef<{ x: number; y: number } | null>(null)
 
   return (
     <Group
@@ -51,9 +53,24 @@ function KonvaCanvasShapeComponent({
         event.cancelBubble = true
         onSelect(shape.id, { additive: event.evt.shiftKey })
       } : undefined}
-      onDragMove={canInteract ? (event) => onDragMove(shape.id, event.target.x() - transform.offsetX, event.target.y() - transform.offsetY) : undefined}
-      onDragStart={canInteract ? (event) => onDragStart(shape.id, { duplicate: event.evt.altKey }) : undefined}
-      onDragEnd={canInteract ? (event) => onDragEnd(shape.id, event.target.x() - transform.offsetX, event.target.y() - transform.offsetY) : undefined}
+      onDragMove={canInteract ? (event) => {
+        const point = getDragPoint(event.target, transform)
+        if (lockDragSourceRef.current) lastLockedDragPointRef.current = point
+        onDragMove(shape.id, point.x, point.y)
+        if (lockDragSourceRef.current) resetDragSource(event.target, transform)
+      } : undefined}
+      onDragStart={canInteract ? (event) => {
+        lockDragSourceRef.current = Boolean(onDragStart(shape.id, { duplicate: event.evt.altKey })?.lockSource)
+        lastLockedDragPointRef.current = null
+        if (lockDragSourceRef.current) resetDragSource(event.target, transform)
+      } : undefined}
+      onDragEnd={canInteract ? (event) => {
+        const point = lockDragSourceRef.current ? lastLockedDragPointRef.current ?? getDragPoint(event.target, transform) : getDragPoint(event.target, transform)
+        onDragEnd(shape.id, point.x, point.y)
+        if (lockDragSourceRef.current) resetDragSource(event.target, transform)
+        lockDragSourceRef.current = false
+        lastLockedDragPointRef.current = null
+      } : undefined}
       onDblClick={canInteract ? (event) => {
         event.cancelBubble = true
         onDoubleClick(shape.id)
@@ -111,6 +128,22 @@ function renderShape(shape: CanvasShape, style: ReturnType<typeof resolveKonvaSh
   if (shape.type === 'cloud') {
     return <Path {...closedFillProps} dash={strokeDash} data={getCloudPath(shape.props.width, shape.props.height)} opacity={opacity} stroke={stroke} strokeWidth={strokeWidth} />
   }
+  if (shape.type === 'frame') {
+    return (
+      <>
+        <Rect dash={strokeDash} fill="transparent" height={shape.props.height} hitStrokeWidth={16} opacity={opacity} stroke={stroke} strokeWidth={strokeWidth} width={shape.props.width} />
+        <Text fill={stroke} fontFamily="Inter, system-ui, sans-serif" fontSize={14} fontStyle="600" listening={false} opacity={opacity} text={shape.props.title ?? 'Frame'} width={shape.props.width} x={10} y={-22} />
+      </>
+    )
+  }
+  if (shape.type === 'sticky') {
+    return (
+      <>
+        <Rect {...closedFillProps} cornerRadius={6} dash={strokeDash} height={shape.props.height} opacity={opacity} shadowBlur={4} shadowColor="rgba(36, 49, 66, 0.14)" shadowOffsetY={2} stroke={stroke} strokeWidth={strokeWidth} width={shape.props.width} />
+        <Text fill="#2f2a1f" fontFamily="Inter, system-ui, sans-serif" fontSize={18} height={Math.max(24, shape.props.height - 24)} listening={false} opacity={opacity} padding={12} text={shape.props.text} width={shape.props.width} y={6} />
+      </>
+    )
+  }
   if (shape.type === 'line') {
     const points = [0, 0, shape.props.end.x, shape.props.end.y]
     return (
@@ -143,7 +176,7 @@ function renderShape(shape: CanvasShape, style: ReturnType<typeof resolveKonvaSh
     return <Text fill={stroke} fontFamily="Inter, system-ui, sans-serif" fontSize={18} height={shape.props.height} opacity={opacity} text={shape.props.text} width={shape.props.width} />
   }
   if (shape.type === 'image') {
-    return <Rect dash={strokeDash} fill="rgba(102, 122, 144, 0.12)" height={shape.props.height} opacity={opacity} stroke={stroke} strokeWidth={strokeWidth} width={shape.props.width} />
+    return <Rect dash={strokeDash} fill="#eef2f7" height={shape.props.height} opacity={opacity} stroke={stroke} strokeWidth={strokeWidth} width={shape.props.width} />
   }
   return null
 }
@@ -159,6 +192,14 @@ function getGroupTransform(shape: CanvasShape) {
     x: shape.x + offsetX,
     y: shape.y + offsetY,
   }
+}
+
+function getDragPoint(target: { x: () => number; y: () => number }, transform: ReturnType<typeof getGroupTransform>) {
+  return { x: target.x() - transform.offsetX, y: target.y() - transform.offsetY }
+}
+
+function resetDragSource(target: { position: (point: { x: number; y: number }) => void }, transform: ReturnType<typeof getGroupTransform>) {
+  target.position({ x: transform.x, y: transform.y })
 }
 
 function getClosedFillProps(fill: string, fillStyle: ReturnType<typeof resolveKonvaShapeStyle>['fillStyle'], stroke: string) {

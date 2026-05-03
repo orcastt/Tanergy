@@ -23,6 +23,7 @@ type KonvaCanvasStageProps = {
   onHistoryCheckpoint: (document: CanvasDocument) => void
   onSelectionChange: (shapeIds: string[]) => void
   onTextEditStart: (shapeId: string) => void
+  onToolChange: (tool: KonvaCanvasTool) => void
 }
 
 export function KonvaCanvasStage(props: KonvaCanvasStageProps) {

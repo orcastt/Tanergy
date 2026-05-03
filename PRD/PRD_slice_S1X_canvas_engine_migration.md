@@ -24,7 +24,7 @@ The first accepted prototype must let a user:
 1. Open a Board-like canvas. Current route: `/spikes/konva-canvas`.
 2. Pan and zoom smoothly.
 3. Draw freehand lines that feel close to current tldraw.
-4. Create basic shapes, line/arrow, text and use a first-pass eraser.
+4. Create basic shapes, frame, sticky note, line/arrow, text and use a first-pass eraser.
 5. Add prompt/image/AI node cards.
 6. Connect node ports with typed edges.
 7. Save and reload the Board document.
@@ -36,10 +36,11 @@ Current accepted subset:
 - `/spikes/konva-canvas` opens in Select mode.
 - Drawing tools stay active for continuous drawing until the user switches tool or presses Escape.
 - Pan/zoom should stay responsive with the 1k strokes stress button.
-- Properties stays fixed on the left and edits selected-shape or next-shape Stroke, Fill, Width, Dash and Opacity.
+- Properties stays fixed on the left and edits selected-shape or next-shape Stroke, opaque Fill, Width, Dash and Opacity.
 - Selected shapes support basic Layer order, Duplicate and Delete actions.
-- Pattern fill is crisp enough for product review and follows the selected stroke color.
+- Solid and pattern fill are opaque lighter tints of the selected stroke color; pattern fill is crisp enough for product review.
 - Phase 3.1 adds first-pass box select, single-shape resize handles and undo/redo for shape/selection changes without undoing camera pan/zoom.
+- Frame and Sticky tools exist in the spike; Sticky supports double-click text editing.
 
 ## Handfeel Acceptance
 
@@ -69,7 +70,7 @@ Target: user accepts the Konva prototype as at least 80% of current tldraw feel 
 
 - Workspace Board entry and Board route.
 - Canvas header with Workspace back, logo/home and Board switcher.
-- Top toolbar with select/hand/shape/arrow/line/draw/text/eraser.
+- Top toolbar with select/hand/shape/frame/sticky/arrow/line/draw/text/eraser.
 - Fixed left properties drawer.
 - Canvas Settings gear and per-board background/snap options.
 - Save now, Snapshot, Refresh preview and History.

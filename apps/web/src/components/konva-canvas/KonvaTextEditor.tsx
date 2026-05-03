@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { type CanvasCamera, type CanvasTextShape } from '@/features/canvas-engine'
+import { type CanvasCamera, type CanvasStickyShape, type CanvasTextShape } from '@/features/canvas-engine'
 
 type KonvaTextEditorProps = {
   camera: CanvasCamera
-  shape: CanvasTextShape
+  shape: CanvasTextShape | CanvasStickyShape
   onCancel: () => void
   onCommit: (text: string) => void
 }
@@ -19,7 +19,7 @@ export function KonvaTextEditor({ camera, onCancel, onCommit, shape }: KonvaText
   }, [])
 
   const commit = () => {
-    if (!canceledRef.current) onCommit(value.trim() || 'Text')
+    if (!canceledRef.current) onCommit(value.trim() || (shape.type === 'sticky' ? 'Sticky' : 'Text'))
   }
   const zoom = camera.zoom
   return (

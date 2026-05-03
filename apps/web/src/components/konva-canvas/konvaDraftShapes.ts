@@ -11,7 +11,7 @@ import {
 import type { KonvaCanvasTool, KonvaToolSession } from './konvaCanvasTypes'
 import { resolveKonvaShapeStyle } from './konvaCanvasStyle'
 
-const boxTools = new Set<KonvaCanvasTool>(['rect', 'diamond', 'ellipse', 'triangle', 'cloud'])
+const boxTools = new Set<KonvaCanvasTool>(['rect', 'diamond', 'ellipse', 'triangle', 'cloud', 'frame', 'sticky'])
 
 export function updateStrokeDraft(session: Extract<KonvaToolSession, { type: 'create' }>, point: StrokePoint): CanvasShape {
   if (session.draft.type !== 'stroke') return session.draft
@@ -61,6 +61,8 @@ export function createDraftShape(
   const y = Math.min(origin.y, end.y)
   const width = Math.abs(end.x - origin.x)
   const height = Math.abs(end.y - origin.y)
+  if (tool === 'frame') return { id: createShapeId('frame'), props: { height, title: 'Frame', width }, style: frameStyle(options.style), type: 'frame', x, y }
+  if (tool === 'sticky') return { id: createShapeId('sticky'), props: { height, text: 'Sticky', width }, style: stickyStyle(options.style), type: 'sticky', x, y }
   return { id: createShapeId(tool), props: { height, width }, style: baseStyle(options.style), type: tool, x, y } as CanvasShape
 }
 
@@ -83,6 +85,14 @@ export function createStrokeEndPoint(point: CanvasPoint, event: PointerEvent): S
 
 function baseStyle(style?: CanvasShapeStyle) {
   return resolveKonvaShapeStyle(style)
+}
+
+function frameStyle(style?: CanvasShapeStyle) {
+  return { ...baseStyle(style), dash: 'solid' as const, fillStyle: 'none' as const }
+}
+
+function stickyStyle(style?: CanvasShapeStyle) {
+  return { ...baseStyle({ ...style, fillStyle: 'solid', stroke: style?.stroke ?? '#d6a20b' }) }
 }
 
 function constrainToSquare(origin: CanvasPoint, point: CanvasPoint): CanvasPoint {

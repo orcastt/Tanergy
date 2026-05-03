@@ -21,9 +21,9 @@ export function getPatternTile(stroke: string): KonvaPatternTile | undefined {
 
   context.scale(pixelRatio, pixelRatio)
   context.imageSmoothingEnabled = false
-  context.fillStyle = colorWithOpacity(stroke, 0.08)
+  context.fillStyle = mixColorWithWhite(stroke, 0.88)
   context.fillRect(0, 0, tileSize, tileSize)
-  context.strokeStyle = colorWithOpacity(stroke, 0.38)
+  context.strokeStyle = mixColorWithWhite(stroke, 0.48)
   context.lineCap = 'butt'
   context.lineWidth = 0.7
 
@@ -39,10 +39,15 @@ export function getPatternTile(stroke: string): KonvaPatternTile | undefined {
   return tile
 }
 
-export function colorWithOpacity(color: string, opacity: number) {
+export function mixColorWithWhite(color: string, whiteAmount: number) {
   const rgb = hexToRgb(color)
   if (!rgb) return color
-  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`
+  const ratio = Math.min(1, Math.max(0, whiteAmount))
+  return rgbToHex({
+    b: mixChannel(rgb.b, ratio),
+    g: mixChannel(rgb.g, ratio),
+    r: mixChannel(rgb.r, ratio),
+  })
 }
 
 function getPatternPixelRatio() {
@@ -59,6 +64,18 @@ function hexToRgb(color: string) {
     g: Number.parseInt(match[2], 16),
     r: Number.parseInt(match[1], 16),
   }
+}
+
+function rgbToHex(rgb: { b: number; g: number; r: number }) {
+  return `#${toHex(rgb.r)}${toHex(rgb.g)}${toHex(rgb.b)}`
+}
+
+function mixChannel(channel: number, whiteAmount: number) {
+  return Math.round(channel * (1 - whiteAmount) + 255 * whiteAmount)
+}
+
+function toHex(value: number) {
+  return value.toString(16).padStart(2, '0')
 }
 
 function normalizeColor(color: string) {

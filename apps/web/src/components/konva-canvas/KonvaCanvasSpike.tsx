@@ -16,6 +16,7 @@ import {
   type CanvasDocument,
   type CanvasShape,
   type CanvasShapeStyle,
+  type CanvasStickyShape,
   type CanvasTextShape,
 } from '@/features/canvas-engine'
 import { CanvasTooltipLayer } from '@/components/canvas/CanvasTooltipLayer'
@@ -28,6 +29,7 @@ import { KonvaTextEditor } from './KonvaTextEditor'
 import { KonvaCanvasToolbar } from './KonvaCanvasToolbar'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
 import { deleteKonvaShapes, duplicateKonvaShapes, konvaDefaultShapeStyle, reorderKonvaShapes } from './konvaCanvasStyle'
+import { createSeedShapes, createStressStrokes } from './konvaSeedShapes'
 import { copyKonvaShapes, pasteKonvaShapes, updateTextShape } from './konvaShapeCommands'
 import { useKonvaCanvasHistory } from './useKonvaCanvasHistory'
 import { useKonvaCanvasShortcuts } from './useKonvaCanvasShortcuts'
@@ -138,7 +140,9 @@ export function KonvaCanvasSpike() {
     setDocument((current) => withCanvasShapes(current, []))
     setSelectedIds([])
   }, [history])
-  const editingTextShape = document.shapes.find((shape): shape is CanvasTextShape => shape.id === editingTextId && shape.type === 'text')
+  const editingTextShape = document.shapes.find((shape): shape is CanvasTextShape | CanvasStickyShape => (
+    shape.id === editingTextId && (shape.type === 'text' || shape.type === 'sticky')
+  ))
   const runContextAction = (action: KonvaContextMenuAction) => {
     setContextMenu(null)
     if (action === 'select-all') {
@@ -215,22 +219,26 @@ export function KonvaCanvasSpike() {
           onSelectionChange={setSelectedIds}
           onTextEditStart={(shapeId) => {
             const shape = document.shapes.find((item) => item.id === shapeId)
-            if (shape?.type === 'text') setEditingTextId(shapeId)
+            if (shape?.type === 'text' || shape?.type === 'sticky') setEditingTextId(shapeId)
           }}
+          onToolChange={setActiveTool}
           selectedIds={selectedIds}
           width={size.width}
         />
         {editingTextShape ? (
-          <KonvaTextEditor
-            camera={camera}
-            onCancel={() => setEditingTextId(null)}
-            onCommit={(text) => {
-              history.checkpoint(document)
-              setDocument((current) => updateTextShape(current, editingTextShape.id, text))
-              setEditingTextId(null)
-            }}
-            shape={editingTextShape}
-          />
+          <>
+            <button aria-label="Finish text editing" className="konva-canvas-text-editor-backdrop" onClick={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()} type="button" />
+            <KonvaTextEditor
+              camera={camera}
+              onCancel={() => setEditingTextId(null)}
+              onCommit={(text) => {
+                history.checkpoint(document)
+                setDocument((current) => updateTextShape(current, editingTextShape.id, text))
+                setEditingTextId(null)
+              }}
+              shape={editingTextShape}
+            />
+          </>
         ) : null}
         <KonvaCanvasProperties
           activeTool={activeTool}
@@ -266,35 +274,4 @@ export function KonvaCanvasSpike() {
       </section>
     </main>
   )
-}
-
-function createSeedShapes(): CanvasShape[] {
-  return [
-    { id: 'seed-rect', props: { height: 128, width: 188 }, style: { fill: '#ffffff', stroke: '#263342', strokeWidth: 2 }, type: 'rect', x: 80, y: 80 },
-    { id: 'seed-cloud', props: { height: 124, width: 216 }, style: { fill: 'rgba(238, 243, 255, 0.9)', stroke: '#6b5cff', strokeWidth: 2 }, type: 'cloud', x: 340, y: 120 },
-    { id: 'seed-arrow', props: { end: { x: 180, y: 80 } }, style: { stroke: '#243142', strokeWidth: 2 }, type: 'arrow', x: 610, y: 170 },
-    { id: 'seed-text', props: { height: 80, text: 'Draw here', width: 220 }, style: { stroke: '#243142', strokeWidth: 2 }, type: 'text', x: 860, y: 160 },
-  ]
-}
-
-function createStressStrokes(offset: number): CanvasShape[] {
-  return Array.from({ length: 1000 }, (_, index) => {
-    const x = 80 + (index % 50) * 28
-    const y = 380 + Math.floor(index / 50) * 16
-    return {
-      id: `stress-${offset}-${index}`,
-      props: {
-        points: [
-          { x: 0, y: 0, pressure: 0.42 },
-          { x: 8, y: Math.sin(index) * 5, pressure: 0.56 },
-          { x: 18, y: Math.cos(index * 0.6) * 7, pressure: 0.52 },
-          { x: 32, y: Math.sin(index * 0.3) * 4, pressure: 0.46 },
-        ],
-      },
-      style: { opacity: 0.82, stroke: index % 3 === 0 ? '#6b5cff' : '#243142', strokeWidth: 1.6 },
-      type: 'stroke' as const,
-      x,
-      y,
-    }
-  })
 }

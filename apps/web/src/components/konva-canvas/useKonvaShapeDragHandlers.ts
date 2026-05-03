@@ -41,6 +41,7 @@ export function useKonvaShapeDragHandlers(options: UseKonvaShapeDragHandlersOpti
       onSelectionChange(duplicateShapes.map((shape) => shape.id))
     }
     dragRef.current = preview
+    return { lockSource: Boolean(duplicateShapes) }
   }, [activeTool, documentRef, onDocumentPreview, onHistoryCheckpoint, onSelectionChange, selectedIds])
 
   const handleShapeDragMove = useCallback((shapeId: string, x: number, y: number) => {

@@ -1,5 +1,5 @@
 import type { CanvasDocument, CanvasShape, CanvasShapeStyle } from '@/features/canvas-engine'
-import { colorWithOpacity } from './konvaPatternUtils'
+import { mixColorWithWhite } from './konvaPatternUtils'
 
 export type KonvaCanvasDashStyle = NonNullable<CanvasShapeStyle['dash']>
 export type KonvaCanvasFillStyle = NonNullable<CanvasShapeStyle['fillStyle']>
@@ -106,8 +106,7 @@ export function getWidthStyleToken(width: number | undefined): KonvaCanvasWidthS
 
 export function getFillColor(stroke: string, fillStyle: KonvaCanvasFillStyle): string {
   if (fillStyle === 'none' || fillStyle === 'pattern') return 'transparent'
-  const opacity = fillStyle === 'solid' ? 0.22 : 0.11
-  return colorWithOpacity(stroke, opacity)
+  return mixColorWithWhite(stroke, fillStyle === 'solid' ? 0.72 : 0.88)
 }
 
 export function getStrokeDash(style: KonvaCanvasDashStyle, strokeWidth: number): number[] | undefined {
@@ -183,11 +182,11 @@ export function reorderKonvaShapes(document: CanvasDocument, shapeIds: string[],
 }
 
 export function isKonvaFillShape(shape: CanvasShape) {
-  return shape.type === 'rect' || shape.type === 'diamond' || shape.type === 'ellipse' || shape.type === 'triangle' || shape.type === 'cloud'
+  return shape.type === 'rect' || shape.type === 'diamond' || shape.type === 'ellipse' || shape.type === 'triangle' || shape.type === 'cloud' || shape.type === 'sticky'
 }
 
 export function isKonvaStrokeShape(shape: CanvasShape) {
-  return shape.type === 'rect' || shape.type === 'diamond' || shape.type === 'ellipse' || shape.type === 'triangle' || shape.type === 'cloud' || shape.type === 'line' || shape.type === 'arrow' || shape.type === 'stroke' || shape.type === 'image'
+  return shape.type === 'rect' || shape.type === 'diamond' || shape.type === 'ellipse' || shape.type === 'triangle' || shape.type === 'cloud' || shape.type === 'frame' || shape.type === 'sticky' || shape.type === 'line' || shape.type === 'arrow' || shape.type === 'stroke' || shape.type === 'image'
 }
 
 export function isKonvaDashShape(shape: CanvasShape) {

@@ -17,9 +17,11 @@ export type CanvasObjectCounts = {
   cloudCount: number
   diamondCount: number
   ellipseCount: number
+  frameCount: number
   imageCount: number
   lineCount: number
   rectCount: number
+  stickyCount: number
   shapeCount: number
   strokeCount: number
   textCount: number
@@ -83,9 +85,11 @@ export function getShapeObjectCounts(shapes: CanvasShape[]): CanvasObjectCounts 
     if (shape.type === 'cloud') counts.cloudCount += 1
     if (shape.type === 'diamond') counts.diamondCount += 1
     if (shape.type === 'ellipse') counts.ellipseCount += 1
+    if (shape.type === 'frame') counts.frameCount += 1
     if (shape.type === 'image') counts.imageCount += 1
     if (shape.type === 'line') counts.lineCount += 1
     if (shape.type === 'rect') counts.rectCount += 1
+    if (shape.type === 'sticky') counts.stickyCount += 1
     if (shape.type === 'stroke') counts.strokeCount += 1
     if (shape.type === 'text') counts.textCount += 1
     if (shape.type === 'triangle') counts.triangleCount += 1
@@ -95,10 +99,12 @@ export function getShapeObjectCounts(shapes: CanvasShape[]): CanvasObjectCounts 
     cloudCount: 0,
     diamondCount: 0,
     ellipseCount: 0,
+    frameCount: 0,
     imageCount: 0,
     lineCount: 0,
     rectCount: 0,
     shapeCount: 0,
+    stickyCount: 0,
     strokeCount: 0,
     textCount: 0,
     triangleCount: 0,

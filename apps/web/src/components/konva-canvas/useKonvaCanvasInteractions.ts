@@ -49,6 +49,7 @@ type UseKonvaCanvasInteractionsOptions = {
   onDocumentPreview: Dispatch<SetStateAction<CanvasDocument>>
   onHistoryCheckpoint: (document: CanvasDocument) => void
   onSelectionChange: (shapeIds: string[]) => void
+  onToolChange: (tool: KonvaCanvasTool) => void
 }
 export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOptions) {
   const stageRef = useRef<Konva.Stage | null>(null)
@@ -121,10 +122,8 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       sessionRef.current = { origin: screenPoint, pointerId: event.evt.pointerId, type: 'pan' }
       return
     }
-
     if (!isStageTarget(event)) return
     const worldPoint = pointerToWorld({ ...screenPoint, pressure: event.evt.pressure }, cameraRef.current)
-
     if (options.activeTool === 'select') {
       setSelectionBox(boundsFromPoints(worldPoint, worldPoint))
       sessionRef.current = {
@@ -148,6 +147,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       const shape = createTextShape(worldPoint, options.nextStyle)
       options.onDocumentChange((current) => appendCanvasShape(current, shape))
       options.onSelectionChange([shape.id])
+      options.onToolChange('select')
       return
     }
 

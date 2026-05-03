@@ -15,7 +15,7 @@ Detailed product, architecture and state truth now lives in:
 | File | Status | Notes |
 | --- | --- | --- |
 | `s1b-staging-deployment-runbook-2026-05-02.md` | Active S1B runbook | Chinese beginner guide for domain, DNS, Vercel, Hetzner, Neon, R2, Clerk, Google OAuth and email setup. |
-| `s1x-canvas-engine-migration-reference-2026-05-03.md` | Active S1X migration reference | First `/spikes/konva-canvas` handfeel route is ready for user review; continue parity checklist only after acceptance. |
+| `s1x-canvas-engine-migration-reference-2026-05-03.md` | Active S1X migration reference | Phase 3 parity work is active; Frame/Sticky first pass and opaque fill fix are documented. |
 | `overseas-cost-growth-forecast.md` | Active reference | Overseas cost and growth research note. |
 
 ## Archive

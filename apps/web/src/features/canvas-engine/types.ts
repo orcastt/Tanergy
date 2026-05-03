@@ -57,6 +57,10 @@ export type CanvasTriangleShape = CanvasShapeBase<'triangle', CanvasSize>
 
 export type CanvasCloudShape = CanvasShapeBase<'cloud', CanvasSize>
 
+export type CanvasFrameShape = CanvasShapeBase<'frame', CanvasSize & {
+  title?: string
+}>
+
 export type CanvasLineShape = CanvasShapeBase<'line', {
   control?: CanvasPoint | null
   end: CanvasPoint
@@ -76,6 +80,10 @@ export type CanvasTextShape = CanvasShapeBase<'text', CanvasSize & {
   text: string
 }>
 
+export type CanvasStickyShape = CanvasShapeBase<'sticky', CanvasSize & {
+  text: string
+}>
+
 export type CanvasStrokeShape = CanvasShapeBase<'stroke', {
   points: StrokePoint[]
 }>
@@ -85,9 +93,11 @@ export type CanvasShape =
   | CanvasCloudShape
   | CanvasDiamondShape
   | CanvasEllipseShape
+  | CanvasFrameShape
   | CanvasImageShape
   | CanvasLineShape
   | CanvasRectShape
+  | CanvasStickyShape
   | CanvasStrokeShape
   | CanvasTextShape
   | CanvasTriangleShape

@@ -107,13 +107,19 @@ function RotateHandle({
   y: number
   zoom: number
 }) {
-  const hitRadius = Math.max(11, 15 / zoom)
-  const size = 15 / zoom
+  const hitRadius = Math.max(14, 18 / zoom)
+  const radius = 9 / zoom
+  const gap = 2 / zoom
+  const arrow = 5.5 / zoom
+  const strokeWidth = 2.4 / zoom
   return (
     <Group x={x} y={y}>
       <Circle fill="rgba(107, 92, 255, 0.001)" onPointerDown={onRotateStart} radius={hitRadius} />
-      <Path data={`M ${-size / 2} 0 A ${size / 2} ${size / 2} 0 1 1 ${size / 4} ${-size / 2}`} listening={false} stroke="#6b5cff" strokeLinecap="round" strokeWidth={1.4 / zoom} />
-      <Line closed fill="#6b5cff" listening={false} points={[size / 4, -size / 2, size / 2, -size / 2, size / 2, -size / 4]} />
+      <Circle fill="#ffffff" listening={false} radius={13 / zoom} stroke="rgba(107, 92, 255, 0.2)" strokeWidth={1 / zoom} />
+      <Path data={`M ${-radius} ${-gap} A ${radius} ${radius} 0 0 1 ${radius} ${-gap}`} listening={false} stroke="#5b4bdb" strokeLinecap="round" strokeWidth={strokeWidth} />
+      <Path data={`M ${radius} ${gap} A ${radius} ${radius} 0 0 1 ${-radius} ${gap}`} listening={false} stroke="#5b4bdb" strokeLinecap="round" strokeWidth={strokeWidth} />
+      <Line closed fill="#5b4bdb" listening={false} points={[radius, -gap, radius - arrow, -gap - arrow * 0.65, radius - arrow * 0.2, -gap + arrow]} />
+      <Line closed fill="#5b4bdb" listening={false} points={[-radius, gap, -radius + arrow, gap + arrow * 0.65, -radius + arrow * 0.2, gap - arrow]} />
     </Group>
   )
 }

@@ -60,9 +60,11 @@ function ToolGlyph({ tool }: { tool: KonvaCanvasTool }) {
       {tool === 'ellipse' ? <ellipse cx="12" cy="12" rx="7.5" ry="5.5" /> : null}
       {tool === 'triangle' ? <path d="M12 4.5l8 15H4z" /> : null}
       {tool === 'cloud' ? <path d="M7.2 17.5h9.3a4 4 0 0 0 .5-8 5.2 5.2 0 0 0-9.8-1.8A4.9 4.9 0 0 0 7.2 17.5z" /> : null}
+      {tool === 'frame' ? <path d="M5 6.5h14v12H5zM8 4.5h8" /> : null}
       {tool === 'arrow' ? <path d="M5 19L18 6M11 5h8v8" /> : null}
       {tool === 'line' ? <path d="M5 19L19 5" /> : null}
       {tool === 'draw' ? <path d="M4 16c3-7 6 3 9-4 1.5-3.5 4-3 7-1" /> : null}
+      {tool === 'sticky' ? <path d="M6 5h12v10.5L14.5 19H6zM14.5 19v-3.5H18M9 9h6M9 12h4" /> : null}
       {tool === 'text' ? <path d="M6 6h12M12 6v12M9 18h6" /> : null}
       {tool === 'eraser' ? <path d="M5 15l8-8a2 2 0 0 1 2.8 0l3.2 3.2a2 2 0 0 1 0 2.8l-5 5H8zM3 21h18" /> : null}
     </svg>

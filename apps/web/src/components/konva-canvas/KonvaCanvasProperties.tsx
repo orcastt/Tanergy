@@ -260,7 +260,7 @@ function IconButton({
 }
 
 function toolUsesFill(tool: KonvaCanvasTool) {
-  return tool === 'rect' || tool === 'diamond' || tool === 'ellipse' || tool === 'triangle' || tool === 'cloud'
+  return tool === 'rect' || tool === 'diamond' || tool === 'ellipse' || tool === 'triangle' || tool === 'cloud' || tool === 'sticky'
 }
 
 function toolUsesStroke(tool: KonvaCanvasTool) {

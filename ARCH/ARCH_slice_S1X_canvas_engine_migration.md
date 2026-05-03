@@ -28,7 +28,7 @@ The first isolated renderer route is:
 /spikes/konva-canvas
 ```
 
-It includes Konva/react-konva, Yjs document initialization, freehand smoothing via `perfect-freehand`, basic pan/zoom, faint dot background, rectangle/diamond/ellipse/triangle/cloud, line/arrow/text/eraser, minimap zoom controls, an in-browser diagnostics panel and a first fixed Properties panel.
+It includes Konva/react-konva, Yjs document initialization, freehand smoothing via `perfect-freehand`, basic pan/zoom, faint dot background, rectangle/diamond/ellipse/triangle/cloud/frame/sticky, line/arrow/text/eraser, minimap zoom controls, an in-browser diagnostics panel and a fixed Properties panel.
 
 Current Phase 1A implementation:
 
@@ -50,7 +50,10 @@ selected style patch
 document.shapes order
   -> layer front/back actions
 generated pattern tile
-  -> high-DPR hatch fill follows stroke color
+  -> high-DPR opaque hatch fill follows stroke color
+
+solid/pattern fill
+  -> opaque lighter tint of stroke color, not alpha fade
 ```
 
 Current Phase 3.1 boundary:
@@ -60,7 +63,7 @@ KonvaCanvasStage
   -> thin Stage/Layer composer
 
 useKonvaCanvasInteractions
-  -> pointer sessions for pan/create/erase/box-select/resize
+  -> pointer sessions for pan/create/erase/box-select/resize/rotate
 
 KonvaSelectionOverlay
   -> marquee + single-shape resize handles
@@ -81,6 +84,7 @@ The replacement engine must preserve these current product behaviors unless a de
 - Board route loads `/boards/[boardId]` into the product canvas.
 - Header provides Workspace back, TANGENT home/logo, Board switcher and recent Board affordances.
 - Top toolbar stays above the canvas with hand/select, shape, arrow, line, draw, text and eraser tools.
+- Frame and Sticky are first-class canvas tools; Frame starts as a labeled outline container, Sticky starts as a resizable editable note.
 - Left properties drawer is fixed and decoupled from canvas pointer events; it keeps the last selected drawing tool properties until another tool is chosen.
 - Canvas Settings panel opens from a gear icon and controls per-board background/grid/snap behavior.
 - Board Save/History controls remain visible and support Save now, Snapshot, Refresh preview and History.
@@ -307,6 +311,7 @@ Current properties:
 ```text
 stroke color: black / red / green / blue / orange / violet / grey
 fill: none / semi / solid / pattern
+fill rendering: solid / pattern use opaque lighter tints, not transparent alpha
 width: s / m / l / xl
 dash: draw / solid / dashed / dotted
 line spline: straight / curve

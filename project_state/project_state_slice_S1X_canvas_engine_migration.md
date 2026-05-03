@@ -88,6 +88,8 @@ The migration is therefore a renderer engine migration, not a small library swap
 - [x] Add accepted Konva Properties baseline for selected and next-shape style edits.
 - [x] Add fill/dash styles, crisp pattern fill, collapsible Properties drawer and line-like selection polish.
 - [x] Start Phase 3.1 object editing foundation with box select, single-shape resize handles and shape/selection undo-redo checkpoints.
+- [x] Fix fill rendering so solid/pattern use opaque lighter same-hue fills instead of lowered opacity.
+- [x] Add first-pass Frame and Sticky tools to the Konva spike.
 - [ ] Add production-quality rectangle/text/image/node-card renderers.
 - [ ] Save/load a renderer-neutral document.
 - [ ] Run two-tab Yjs sync with cursor/presence.
@@ -101,7 +103,7 @@ Files: apps/web/src/components/konva-canvas/*
 Engine helpers: apps/web/src/features/canvas-engine/*
 ```
 
-Included now: full-screen Konva stage, faint dot background, top tool bar, hand/select/draw/basic shapes/line/arrow/text/eraser, minimap with zoom controls, Yjs document initialization, diagnostics and a fixed left Properties panel.
+Included now: full-screen Konva stage, faint dot background, top tool bar, hand/select/draw/basic shapes/frame/sticky/line/arrow/text/eraser, minimap with zoom controls, Yjs document initialization, diagnostics and a fixed left Properties panel.
 
 Phase 1A current performance work:
 
@@ -115,7 +117,7 @@ Phase 2A accepted Properties baseline:
 - Stroke, Fill, Width, Dash and Opacity update selected shapes and next-shape defaults
 - Layer actions support send back, send backward, bring forward and bring front
 - Actions support Duplicate and Delete
-- Pattern fill is generated as crisp high-DPR hatching and follows stroke color
+- Solid/pattern fill is generated from opaque lighter tints of the stroke color; pattern uses crisp high-DPR hatching and does not rely on alpha transparency
 - Properties can collapse/expand from the side handle
 - Fill is shown only for closed shapes; line/arrow/stroke do not show Fill
 
@@ -127,13 +129,22 @@ Phase 3.1 object editing foundation started:
 - single box-like shapes now have a rotate handle offset from the top-right corner and rotate around their center point
 - multi-selection shows a union boundary; dragging a selected member now moves the selected set together
 - continuous drawing tools can still point-select an existing object and drag it as a single object without switching to Select
-- keyboard/object editing now covers Copy, Paste, Select All, Duplicate, Delete and Alt-drag duplicate
-- text shapes support double-click editing through an HTML textarea overlay
+- keyboard/object editing now covers Copy, Paste, Select All, Duplicate, Delete and Alt-drag duplicate; Alt-drag keeps the source object fixed and moves only the new copy
+- Text tool is one-shot: click creates/selects one text box then returns to Select; text shapes support double-click editing through an HTML textarea overlay, and clicking canvas space exits editing while keeping the selected transform controls
 - right-click menu first pass exposes Copy, Paste, Duplicate, Layer front/back, Select all and Delete
+- Frame tool creates a labeled outline container shape; Sticky tool creates a resizable note and supports double-click text editing through the same overlay as Text
 - undo/redo restores shapes plus selection only, so pan/zoom is not part of command history
 - create, drag, resize, eraser, Properties style edits, layer actions, duplicate/delete, stress strokes and clear all now create history checkpoints
 
-Not included yet: node cards, image paste/drop, image-to-node/to-canvas conversion, save/history integration, right-click menu, real Yjs provider sync and Board route migration.
+Not included yet: node cards, image paste/drop, image-to-node/to-canvas conversion, save/history integration, frame containment semantics, real Yjs provider sync and Board route migration.
+
+Explicit Phase 3B follow-ups now tracked in the migration plan:
+
+- multi-selection group rotate from the union boundary around group center
+- line/arrow endpoint handles, including endpoint-drag angle/length editing
+- frame containment, drag-in/drag-out behavior and export boundary semantics
+- sticky text layout polish, shortcut creation behavior and note color presets
+- cursor polish for resize/rotate handles
 
 ## User Review Notes
 
@@ -146,7 +157,7 @@ Not included yet: node cards, image paste/drop, image-to-node/to-canvas conversi
 - `Escape` exits continuous drawing and returns to Select. Cloud visual path should fill its bbox so selection handles hug the cloud boundary more like tldraw.
 - Cloud must be generated from the user-drawn rectangle perimeter: split each side into revision-cloud/CAD-style scallop arcs based on side length, not a fixed normalized cloud shape scaled to fit.
 - Line, arrow and freehand stroke selection should highlight the line itself, not show a rectangular selection box. They still need wider hit targets. Eraser needs a tldraw-like cursor silhouette/trail while moving. Tooltips use English `Tool: Shortcut` labels.
-- Shape shortcuts: Select `V`, Rectangle `R`, Diamond `D`, Circle `C`, Arrow `A`; additional spike shortcuts include Hand `H`, Triangle `G`, Cloud `U`, Line `L`, Draw `P`, Text `T`, Eraser `E`. Holding Shift while drawing shape tools constrains proportions.
+- Shape shortcuts: Select `V`, Rectangle `R`, Diamond `D`, Circle `C`, Arrow `A`; additional spike shortcuts include Hand `H`, Triangle `G`, Cloud `U`, Frame `F`, Sticky `N`, Line `L`, Draw `P`, Text `T`, Eraser `E`. Holding Shift while drawing shape tools constrains proportions.
 - Creating draw/line/arrow/shape objects must not auto-select or show highlight controls during continuous drawing; selection visuals appear only after explicit point-select or future box-select.
 - Properties should stay fixed when clicking blank canvas. Changing Properties with no selection updates the next drawing style; changing Properties with a selection also writes to selected shapes.
 
@@ -172,10 +183,10 @@ Large Miro-scale collaboration: later multi-month S4 track
 Continue with Phase 3 object editing foundation before any `/boards/[boardId]` migration:
 
 ```text
-copy/paste and Alt duplicate
-text editing overlay
-right-click command menu
 line/arrow midpoint controls
+line/arrow endpoint handles
+multi-selection rotate
+frame/sticky behavior polish
 ```
 
-After that, add Phase 3A right-click menu and Phase 3B line/arrow/eraser/detail controls on top of the same command system.
+After that, continue Phase 3A/3B alignment, snapping, eraser segmentation and image/node conversion controls on top of the same command system.

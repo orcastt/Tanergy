@@ -9,8 +9,10 @@ export type KonvaCanvasTool =
   | 'ellipse'
   | 'triangle'
   | 'cloud'
+  | 'frame'
   | 'line'
   | 'arrow'
+  | 'sticky'
   | 'text'
   | 'eraser'
 
@@ -69,10 +71,12 @@ export const konvaToolLabels: Record<KonvaCanvasTool, string> = {
   draw: 'Draw',
   ellipse: 'Circle',
   eraser: 'Eraser',
+  frame: 'Frame',
   hand: 'Hand',
   line: 'Line',
   rect: 'Rectangle',
   select: 'Select',
+  sticky: 'Sticky',
   text: 'Text',
   triangle: 'Triangle',
 }
@@ -84,17 +88,19 @@ export const konvaToolShortcuts: Partial<Record<KonvaCanvasTool, string>> = {
   draw: 'P',
   ellipse: 'C',
   eraser: 'E',
+  frame: 'F',
   hand: 'H',
   line: 'L',
   rect: 'R',
   select: 'V',
+  sticky: 'N',
   text: 'T',
   triangle: 'G',
 }
 
 export const konvaToolGroups: KonvaToolGroup[] = [
   { label: 'Move', tools: ['hand', 'select'] },
-  { label: 'Shapes', tools: ['rect', 'diamond', 'ellipse', 'triangle', 'cloud'] },
+  { label: 'Shapes', tools: ['rect', 'diamond', 'ellipse', 'triangle', 'cloud', 'frame'] },
   { label: 'Lines', tools: ['arrow', 'line', 'draw'] },
-  { label: 'Content', tools: ['text', 'eraser'] },
+  { label: 'Content', tools: ['sticky', 'text', 'eraser'] },
 ]

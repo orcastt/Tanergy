@@ -27,14 +27,14 @@
 .style-icon--fill-solid {
   border: 2px solid currentColor;
   border-radius: 5px;
-  background: currentColor;
+  background: color-mix(in srgb, currentColor 28%, white);
 }
 
 .style-icon--fill-pattern {
   border: 2px solid currentColor;
   border-radius: 5px;
   background:
-    repeating-linear-gradient(135deg, color-mix(in srgb, currentColor 42%, transparent) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(135deg, color-mix(in srgb, currentColor 52%, white) 0 1px, color-mix(in srgb, currentColor 10%, white) 1px 5px),
     color-mix(in srgb, currentColor 8%, white);
 }
 
