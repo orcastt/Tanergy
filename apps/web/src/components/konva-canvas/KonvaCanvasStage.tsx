@@ -33,13 +33,18 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
     handlePointerMove,
     handlePointerUp,
     handleResizeStart,
+    handleShapeDragMove,
     handleShapeDragEnd,
+    handleShapeDragStart,
     handleShapeSelect,
     handleWheel,
+    selectedBoundsOverride,
     selectionBox,
     stageRef,
   } = useKonvaCanvasInteractions(props)
   const renderCamera = props.camera
+  const shapesAreInteractive = props.activeTool !== 'hand' && props.activeTool !== 'eraser'
+  const singleSelectionDrag = props.activeTool === 'select' && !props.isSpacePanning && props.selectedIds.length <= 1
 
   return (
     <Stage
@@ -65,14 +70,16 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
       <Layer>
         {props.document.shapes.map((shape) => (
           <KonvaCanvasShape
-            interactive={props.activeTool === 'select'}
-            isSelected={props.selectedIds.includes(shape.id)}
+            interactive={shapesAreInteractive}
+            isSelected={props.selectedIds.length === 1 && props.selectedIds.includes(shape.id)}
             key={shape.id}
+            onDragMove={handleShapeDragMove}
             onDragEnd={handleShapeDragEnd}
+            onDragStart={handleShapeDragStart}
             onSelect={handleShapeSelect}
             panMode={props.isSpacePanning}
             shape={shape}
-            toolAllowsDrag={props.activeTool === 'select' && !props.isSpacePanning}
+            toolAllowsDrag={singleSelectionDrag}
             zoom={renderCamera.zoom}
           />
         ))}
@@ -83,7 +90,9 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
           <KonvaCanvasShape
             interactive={false}
             isSelected={false}
+            onDragMove={handleShapeDragMove}
             onDragEnd={handleShapeDragEnd}
+            onDragStart={handleShapeDragStart}
             onSelect={handleShapeSelect}
             panMode={props.isSpacePanning}
             shape={draft}
@@ -96,6 +105,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
       <Layer>
         <KonvaSelectionOverlay
           onResizeStart={handleResizeStart}
+          selectedBoundsOverride={selectedBoundsOverride}
           selectedIds={props.selectedIds}
           selectionBox={selectionBox}
           shapes={props.document.shapes}

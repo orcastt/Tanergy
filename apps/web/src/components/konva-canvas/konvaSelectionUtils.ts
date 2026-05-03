@@ -8,6 +8,7 @@ import {
 import type { KonvaResizeHandle } from './konvaCanvasTypes'
 
 const minResizeSize = 12
+type ResizableCanvasShape = Extract<CanvasShape, { props: { height: number; width: number } }>
 
 export function getSelectedShapeBounds(shapes: CanvasShape[], selectedIds: string[]): CanvasBounds | null {
   const selected = new Set(selectedIds)
@@ -27,6 +28,16 @@ export function getBoxSelectedIds(shapes: CanvasShape[], bounds: CanvasBounds) {
     .map((shape) => shape.id)
 }
 
+export function getMarqueeSelectionIds(shapes: CanvasShape[], bounds: CanvasBounds, currentIds: string[], additive: boolean) {
+  if (isTinyBounds(bounds)) return additive ? currentIds : []
+  const selected = getBoxSelectedIds(shapes, bounds)
+  return additive ? mergeSelectedIds(currentIds, selected) : selected
+}
+
+export function getShapesAfterBoundsErase(shapes: CanvasShape[], point: CanvasPoint, radius: number) {
+  return shapes.filter((shape) => !boundsContainPoint(getShapeBounds(shape), point, radius))
+}
+
 export function boundsFromPoints(a: CanvasPoint, b: CanvasPoint): CanvasBounds {
   return {
     maxX: Math.max(a.x, b.x),
@@ -41,8 +52,21 @@ export function isTinyBounds(bounds: CanvasBounds) {
   return rect.width < 4 && rect.height < 4
 }
 
-export function isResizableShape(shape: CanvasShape) {
+export function isResizableShape(shape: CanvasShape): shape is ResizableCanvasShape {
   return 'width' in shape.props && 'height' in shape.props
+}
+
+export function getShapesByIds(shapes: CanvasShape[], shapeIds: string[]) {
+  const selected = new Set(shapeIds)
+  return shapes.filter((shape) => selected.has(shape.id))
+}
+
+export function toggleSelectedId(ids: string[], id: string) {
+  return ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id]
+}
+
+export function mergeSelectedIds(current: string[], next: string[]) {
+  return Array.from(new Set([...current, ...next]))
 }
 
 export function resizeShapeToBounds(shape: CanvasShape, bounds: CanvasBounds): CanvasShape {
@@ -60,6 +84,19 @@ export function resizeShapeToBounds(shape: CanvasShape, bounds: CanvasBounds): C
   } as CanvasShape
 }
 
+export function resizeShapesFromBounds(
+  shapes: CanvasShape[],
+  originShapes: CanvasShape[],
+  originBounds: CanvasBounds,
+  nextBounds: CanvasBounds
+): CanvasShape[] {
+  const originals = new Map(originShapes.map((shape) => [shape.id, shape]))
+  return shapes.map((shape) => {
+    const original = originals.get(shape.id)
+    return original ? transformShapeFromBounds(original, originBounds, nextBounds) : shape
+  })
+}
+
 export function resizeBoundsFromHandle(
   originBounds: CanvasBounds,
   handle: KonvaResizeHandle,
@@ -71,8 +108,21 @@ export function resizeBoundsFromHandle(
   return normalizeResizeBounds(boundsFromPoints(anchor, nextPoint))
 }
 
+export function moveBounds(bounds: CanvasBounds, delta: CanvasPoint): CanvasBounds {
+  return {
+    maxX: bounds.maxX + delta.x,
+    maxY: bounds.maxY + delta.y,
+    minX: bounds.minX + delta.x,
+    minY: bounds.minY + delta.y,
+  }
+}
+
 function boundsIntersect(a: CanvasBounds, b: CanvasBounds) {
   return a.minX <= b.maxX && a.maxX >= b.minX && a.minY <= b.maxY && a.maxY >= b.minY
+}
+
+function boundsContainPoint(bounds: CanvasBounds, point: CanvasPoint, padding: number) {
+  return point.x >= bounds.minX - padding && point.x <= bounds.maxX + padding && point.y >= bounds.minY - padding && point.y <= bounds.maxY + padding
 }
 
 function getOppositeCorner(bounds: CanvasBounds, handle: KonvaResizeHandle): CanvasPoint {
@@ -103,4 +153,45 @@ function preserveAspectPoint(anchor: CanvasPoint, point: CanvasPoint, bounds: Ca
     return { x: point.x, y: anchor.y + Math.sign(dy || 1) * Math.abs(dx) / aspect }
   }
   return { x: anchor.x + Math.sign(dx || 1) * Math.abs(dy) * aspect, y: point.y }
+}
+
+function transformShapeFromBounds(shape: CanvasShape, originBounds: CanvasBounds, nextBounds: CanvasBounds): CanvasShape {
+  const scaleX = (nextBounds.maxX - nextBounds.minX) / Math.max(1, originBounds.maxX - originBounds.minX)
+  const scaleY = (nextBounds.maxY - nextBounds.minY) / Math.max(1, originBounds.maxY - originBounds.minY)
+  const nextPoint = (point: CanvasPoint): CanvasPoint => ({
+    x: nextBounds.minX + (point.x - originBounds.minX) * scaleX,
+    y: nextBounds.minY + (point.y - originBounds.minY) * scaleY,
+  })
+  const nextOrigin = nextPoint({ x: shape.x, y: shape.y })
+
+  if (isResizableShape(shape)) {
+    return {
+      ...shape,
+      props: {
+        ...shape.props,
+        height: Math.max(minResizeSize, shape.props.height * scaleY),
+        width: Math.max(minResizeSize, shape.props.width * scaleX),
+      },
+      x: nextOrigin.x,
+      y: nextOrigin.y,
+    } as CanvasShape
+  }
+
+  if (shape.type === 'line' || shape.type === 'arrow') {
+    const end = nextPoint({ x: shape.x + shape.props.end.x, y: shape.y + shape.props.end.y })
+    return { ...shape, props: { ...shape.props, end: { x: end.x - nextOrigin.x, y: end.y - nextOrigin.y } }, x: nextOrigin.x, y: nextOrigin.y }
+  }
+
+  if (shape.type === 'stroke') {
+    return {
+      ...shape,
+      props: {
+        points: shape.props.points.map((point) => ({ ...point, x: point.x * scaleX, y: point.y * scaleY })),
+      },
+      x: nextOrigin.x,
+      y: nextOrigin.y,
+    }
+  }
+
+  return shape
 }

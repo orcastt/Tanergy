@@ -12,6 +12,8 @@ type KonvaCanvasShapeProps = {
   shape: CanvasShape
   toolAllowsDrag: boolean
   zoom: number
+  onDragMove: (shapeId: string, x: number, y: number) => void
+  onDragStart: (shapeId: string) => void
   onDragEnd: (shapeId: string, x: number, y: number) => void
   onSelect: (shapeId: string, options?: { additive?: boolean }) => void
 }
@@ -19,6 +21,8 @@ type KonvaCanvasShapeProps = {
 function KonvaCanvasShapeComponent({
   interactive = true,
   isSelected,
+  onDragMove,
+  onDragStart,
   onDragEnd,
   onSelect,
   panMode,
@@ -43,6 +47,8 @@ function KonvaCanvasShapeComponent({
         event.cancelBubble = true
         onSelect(shape.id, { additive: event.evt.shiftKey })
       } : undefined}
+      onDragMove={canInteract ? (event) => onDragMove(shape.id, event.target.x(), event.target.y()) : undefined}
+      onDragStart={canInteract ? () => onDragStart(shape.id) : undefined}
       onDragEnd={canInteract ? (event) => onDragEnd(shape.id, event.target.x(), event.target.y()) : undefined}
       onPointerDown={canInteract ? (event) => {
         if (event.evt.button === 1) return

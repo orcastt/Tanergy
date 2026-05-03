@@ -48,8 +48,9 @@ export type KonvaToolSession =
   | {
       handle: KonvaResizeHandle
       originBounds: CanvasBounds
+      originShapes: CanvasShape[]
       pointerId?: number
-      shapeId: string
+      shapeIds: string[]
       type: 'resize'
     }
 
