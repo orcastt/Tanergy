@@ -19,7 +19,7 @@ export function CanvasTooltipLayer() {
       const label = target.dataset.tooltip?.trim()
       if (!label) return
       const rect = target.getBoundingClientRect()
-      const preferSide = Boolean(target.closest('.canvas-style-panel, .canvas-style-drawer'))
+      const preferSide = Boolean(target.closest('.canvas-style-panel, .canvas-style-drawer, .konva-canvas-properties-drawer'))
       if (preferSide) {
         const placement: TooltipPlacement = rect.right + 230 < window.innerWidth ? 'right' : 'left'
         setTooltip({

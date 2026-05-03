@@ -16,6 +16,7 @@ import {
   type CanvasShape,
   type CanvasShapeStyle,
 } from '@/features/canvas-engine'
+import { CanvasTooltipLayer } from '@/components/canvas/CanvasTooltipLayer'
 import { KonvaCanvasDiagnostics } from './KonvaCanvasDiagnostics'
 import { KonvaCanvasNavigator } from './KonvaCanvasNavigator'
 import { KonvaCanvasProperties } from './KonvaCanvasProperties'
@@ -191,6 +192,7 @@ export function KonvaCanvasSpike() {
           stageWidth={size.width}
         />
         <KonvaCanvasDiagnostics diagnostics={diagnostics} pointCount={pointCount} zoom={camera.zoom} />
+        <CanvasTooltipLayer />
       </section>
     </main>
   )
