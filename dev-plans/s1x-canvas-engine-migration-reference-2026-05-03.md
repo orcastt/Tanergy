@@ -64,7 +64,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 
 ### Phase 1：手感和画布基础
 
-当前 checkpoint：`/spikes/konva-canvas` 已经具备 first-pass Konva Stage、freehand smoothing、pan/zoom、基础形状、minimap 和 diagnostics。用户喜欢当前“左键连续绘制，直到手动切换工具”的交互，后续不要退回必须右键锁定才连续绘制的模式。Draw 默认只做轻微平滑，不做明显直线/形状拟合；当前偏建筑师钢笔感，慢线略重、快线略轻、起收笔轻微 taper。基础快捷键合同：`V` 选择，按住 `Space` 临时平移且不改变当前工具，鼠标中键拖拽平移。下一步先手测“画线和缩放是否值得继续”，再补选区、Properties、图片和节点链路。
+当前 checkpoint：`/spikes/konva-canvas` 已经具备 first-pass Konva Stage、freehand smoothing、pan/zoom、基础形状、minimap 和 diagnostics。用户进入画布默认是 Select；用户喜欢“选择绘制工具后左键连续绘制，直到手动切换工具”的交互，后续不要退回必须右键锁定才连续绘制的模式。Draw 默认只做轻微平滑，不做明显直线/形状拟合；当前偏建筑师钢笔感，慢线略重、快线略轻、起收笔轻微 taper。基础快捷键合同：`V` 选择，按住 `Space` 临时平移且不改变当前工具，鼠标中键拖拽平移。下一步先手测“画线和缩放是否值得继续”，再补选区、Properties、图片和节点链路。
 
 | 序号 | 功能/交互 | 当前 tldraw 参考 | Konva/Yjs 复刻要求 | 参考文件 | 验收方式 |
 | --- | --- | --- | --- | --- | --- |
@@ -102,7 +102,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | 序号 | 功能/交互 | 当前 tldraw 参考 | Konva/Yjs 复刻要求 | 参考文件 | 验收方式 |
 | --- | --- | --- | --- | --- | --- |
 | 2.1 | 顶部工具栏位置 | toolbar 固定在上方，不放左侧 | 复刻当前布局和 tooltip | `CanvasSpikeToolbar.tsx` | 页面刷新后位置一致 |
-| 2.2 | hand/select | 切换 hand/select，状态高亮 | engine activeTool state | `CanvasToolbarPrimaryTools.tsx` | 当前工具高亮正确 |
+| 2.2 | hand/select | 切换 hand/select，状态高亮 | engine activeTool state；进入画布默认 Select | `CanvasToolbarPrimaryTools.tsx` | 当前工具高亮正确 |
 | 2.3 | shape 菜单 | rectangle/diamond/ellipse/triangle/cloud | Konva shape tool + popover | `canvasToolbarConfig.ts` | 形状菜单和图标一致 |
 | 2.4 | direct tools | arrow/line/draw/text/eraser | 对应 Konva tools | `canvasToolbarConfig.ts` | 每个按钮能创建/操作正确对象 |
 | 2.5 | 连续绘制 | tldraw 需要右键工具进入 continuous | TANGENT 新引擎采用用户认可的新规则：左键绘制后保持当前工具，直到用户切换工具；ESC 可回 select | `CanvasSpikeToolbar.tsx` | 连画多个形状不中断，切换工具才结束 |

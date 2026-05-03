@@ -31,7 +31,7 @@ export function KonvaCanvasSpike() {
     shapes: createSeedShapes(),
   }))
   const [camera, setCamera] = useState<CanvasCamera>(document.camera)
-  const [activeTool, setActiveTool] = useState<KonvaCanvasTool>('draw')
+  const [activeTool, setActiveTool] = useState<KonvaCanvasTool>('select')
   const [isSpacePanning, setIsSpacePanning] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [diagnostics, setDiagnostics] = useState<CanvasDiagnosticsSnapshot>(() => getCanvasDiagnosticsSnapshot(document))
