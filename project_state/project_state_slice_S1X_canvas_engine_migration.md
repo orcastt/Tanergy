@@ -1,6 +1,6 @@
 # Project State Slice S1X: Canvas Engine Migration
 
-**Status**: Phase 1A performance pass and first Properties baseline ready for user review.
+**Status**: Phase 1A handfeel/performance and Phase 2A Properties baseline accepted for the spike.
 **Branch**: `feature/s1x-konva-handfeel-spike`
 **Started**: 2026-05-03
 
@@ -85,7 +85,8 @@ The migration is therefore a renderer engine migration, not a small library swap
 - [x] Implement first-pass pan/zoom and 100% navigator reset.
 - [x] Add 1,000 stroke performance test button and diagnostics panel.
 - [x] Move pan/zoom camera updates out of the React hot path for the spike.
-- [x] Add first Konva Properties panel for selected and next-shape style edits.
+- [x] Add accepted Konva Properties baseline for selected and next-shape style edits.
+- [x] Add fill/dash styles, crisp pattern fill, collapsible Properties drawer and line-like selection polish.
 - [ ] Add production-quality rectangle/text/image/node-card renderers.
 - [ ] Save/load a renderer-neutral document.
 - [ ] Run two-tab Yjs sync with cursor/presence.
@@ -108,11 +109,13 @@ Phase 1A current performance work:
 - draft drawing and eraser visuals render in their own layers
 - drag/draw gestures clear browser text selection and prevent accidental toolbar text selection
 
-Phase 2A first Properties baseline:
+Phase 2A accepted Properties baseline:
 
-- Stroke, Fill, Width and Opacity update selected shapes and next-shape defaults
+- Stroke, Fill, Width, Dash and Opacity update selected shapes and next-shape defaults
 - Layer actions support send back, send backward, bring forward and bring front
 - Actions support Duplicate and Delete
+- Pattern fill is generated as crisp high-DPR hatching and follows stroke color
+- Properties can collapse/expand from the side handle
 - Fill is shown only for closed shapes; line/arrow/stroke do not show Fill
 
 Not included yet: node cards, image paste/drop, image-to-node/to-canvas conversion, save/history integration, right-click menu, real Yjs provider sync and Board route migration.
@@ -151,4 +154,15 @@ Large Miro-scale collaboration: later multi-month S4 track
 
 ## Next Action
 
-Ask the user to hand-test `/spikes/konva-canvas` for 1k-stroke pan/zoom and Properties inheritance. If accepted, continue with box select, resize handles, dash styles and text editing before any `/boards/[boardId]` migration.
+Continue with Phase 3 object editing foundation before any `/boards/[boardId]` migration:
+
+```text
+box select
+resize handles
+drag command batching
+undo/redo command stack
+copy/paste and Alt duplicate
+text editing overlay
+```
+
+After that, add Phase 3A right-click menu and Phase 3B line/arrow/eraser/detail controls on top of the same command system.

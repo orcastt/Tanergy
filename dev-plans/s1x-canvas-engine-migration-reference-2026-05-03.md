@@ -1,6 +1,6 @@
 # S1X Canvas Engine Migration Reference
 
-**Status**: Active tactical plan; Phase 1A performance and first Properties baseline ready for review.
+**Status**: Active tactical plan; Phase 1A handfeel/performance and Phase 2A Properties baseline accepted for the spike.
 **Branch**: `feature/s1x-konva-handfeel-spike`
 
 ## Principle
@@ -23,10 +23,11 @@ keep Board/API/storage contracts stable
 - Phase 1A first pass: pan/zoom applies directly to the Konva Stage, while React receives throttled camera previews and committed document camera snapshots.
 - Draft drawing and eraser visuals are split away from the stable shape layer, so live drawing does not merge the draft into the 1k existing-shape list.
 - Browser text-selection guards prevent drag/draw gestures from selecting toolbar or diagnostics text.
-- Phase 2A first pass: fixed left Properties panel supports Stroke, Fill, Width, Opacity, Layer order, Duplicate and Delete.
+- Phase 2A accepted baseline: fixed left Properties panel supports Stroke, Fill, Width, Dash, Opacity, Layer order, Duplicate, Delete and collapse/expand.
 - Style changes now update selected shapes and the next-shape style, so newly drawn shapes inherit the panel settings.
+- Pattern fill now uses crisp high-DPR generated hatching instead of a blurry low-resolution tile.
 
-Still pending for later Phase 2A/3: dash styles, mixed-selection polish, align/stretch grids, text editing, right-click menu, box select, resize handles, image/node conversion actions and full command history.
+Next development focus: Phase 3 object editing foundation, starting with box select, resize handles, drag command batching, undo/redo, copy/paste and text editing. Right-click menu, image/node conversion and alignment actions should sit on that shared command system rather than be built as separate one-off UI.
 
 ## tldraw Behavior Inventory
 

@@ -51,7 +51,7 @@ Not production-complete:
 | S1B Staging Infra | `project_state_slice_S1B_staging_infra.md` | In progress; FastAPI/Neon/R2 smoke passed |
 | S1C Auth Context | `project_state_slice_S1C_auth_request_context.md` | After S1A |
 | S1D Board CRUD | `project_state_slice_S1D_auth_board_crud.md` | After S1C |
-| S1X Canvas Engine Migration | `project_state_slice_S1X_canvas_engine_migration.md` | First Konva handfeel route ready for user review |
+| S1X Canvas Engine Migration | `project_state_slice_S1X_canvas_engine_migration.md` | Phase 1A handfeel/performance and Phase 2A Properties baseline accepted; Phase 3 object editing next |
 | S2 AI/Admin Future | `project_state_slice_S2_ai_admin_future.md` | Planned |
 
 ## Current Next Fork
@@ -66,8 +66,8 @@ If external resources are not ready:
 If external resources are ready:
 
 1. Finish recording S1B staging smoke status.
-2. Review S1X Konva handfeel spike at `/spikes/konva-canvas`.
-3. Decide whether Phase 1 handfeel is close enough to continue toward node/image migration.
+2. Continue S1X Phase 3 object editing foundation at `/spikes/konva-canvas`.
+3. Add selection, resize, command history and clipboard before node/image migration.
 4. Continue S1C Auth if the canvas engine decision is accepted.
 
 ## Next Slice Order

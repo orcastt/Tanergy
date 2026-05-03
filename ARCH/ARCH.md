@@ -78,7 +78,7 @@ Percentages mean distance to local/P0 alpha usefulness, not final commercial com
 | Board History [95%]   | Auth boundary [35%]  | Provider route [0%]
 | Canvas Settings [96%] | Board CRUD API [25%] | AI Chat planner [10%]
 | Board Mgmt [93%]      | Postgres/R2 [90%]    |
-| Canvas controls [96%] | Canvas Engine S1X [12%] |
+| Canvas controls [96%] | Canvas Engine S1X [22%] |
 | Captured thumb [91%]  |
 | Smart Drawing [95%]   |
         |                       |                       |
@@ -100,7 +100,7 @@ Percentages mean distance to local/P0 alpha usefulness, not final commercial com
 | S1B Staging Infra | `ARCH_slice_S1B_staging_infra.md` | Vercel, FastAPI host, Postgres, R2, domain, email provider, staging smoke | When preparing online resources |
 | S1C Auth Context | `ARCH_slice_S1C_auth_request_context.md` | Registration, login, sessions, request context, workspace membership authority | After S1A |
 | S1D Board CRUD | `ARCH_slice_S1D_auth_board_crud.md` | Permission-checked Board list/load/save/history/member APIs | After S1C |
-| S1X Canvas Engine Migration | `ARCH_slice_S1X_canvas_engine_migration.md` | tldraw license risk, current canvas reference contract, Konva/Yjs replacement path | Konva handfeel route scaffolded at `/spikes/konva-canvas`; user handfeel review next |
+| S1X Canvas Engine Migration | `ARCH_slice_S1X_canvas_engine_migration.md` | tldraw license risk, current canvas reference contract, Konva/Yjs replacement path | Phase 1A handfeel/performance and Phase 2A Properties baseline accepted; Phase 3 object editing next |
 | S2 AI Runtime | `ARCH_slice_S2_ai_runtime.md` | Node Registry, Model Registry, AiRun, provider routing, AI Chat planner | AI node/provider/model changes |
 | S3 Admin/Billing/Analytics | `ARCH_slice_S3_admin_billing_analytics.md` | Admin roles, audit, credits, subscriptions, analytics, moderation facts | Admin/billing/analytics schema changes |
 | S4 Collaboration | `ARCH_slice_S4_collaboration.md` | Multiplayer, presence, CRDT boundaries, roles | Collaboration work begins |

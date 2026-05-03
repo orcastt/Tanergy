@@ -1,6 +1,6 @@
 # PRD Slice S1X: Canvas Engine Migration
 
-**Status**: Active risk-mitigation spike; isolated Konva route has Phase 1A performance and first Properties baseline ready for review.
+**Status**: Active risk-mitigation spike; isolated Konva route has Phase 1A handfeel/performance and Phase 2A Properties baseline accepted for the spike.
 **Product reason**: The current public staging canvas depends on tldraw, which requires a production license. TANGENT needs a long-term canvas path that can support commercial use and collaboration without a paid canvas SDK lock-in.
 
 ## Product Goal
@@ -31,13 +31,14 @@ The first accepted prototype must let a user:
 8. Create a History snapshot and restore it.
 9. See another browser session's cursor and edits in the collaboration prototype.
 
-Current accepted-for-review subset:
+Current accepted subset:
 
 - `/spikes/konva-canvas` opens in Select mode.
 - Drawing tools stay active for continuous drawing until the user switches tool or presses Escape.
 - Pan/zoom should stay responsive with the 1k strokes stress button.
-- Properties stays fixed on the left and edits selected-shape or next-shape Stroke, Fill, Width and Opacity.
+- Properties stays fixed on the left and edits selected-shape or next-shape Stroke, Fill, Width, Dash and Opacity.
 - Selected shapes support basic Layer order, Duplicate and Delete actions.
+- Pattern fill is crisp enough for product review and follows the selected stroke color.
 
 ## Handfeel Acceptance
 
