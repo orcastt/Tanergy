@@ -97,7 +97,7 @@ export function KonvaCanvasStage({
       draft: draftShape,
       origin: worldPoint,
       pointerId: event.evt.pointerId,
-      rawPoints: activeTool === 'draw' ? [worldPoint] : undefined,
+      rawPoints: activeTool === 'draw' ? [createStrokePoint(worldPoint, event.evt)] : undefined,
       type: 'create',
     }
     scheduleDraft(draftShape)
@@ -123,7 +123,7 @@ export function KonvaCanvasStage({
     if (session.type !== 'create') return
 
     const nextDraft = activeTool === 'draw'
-      ? updateStrokeDraft(session, worldPoint)
+      ? updateStrokeDraft(session, createStrokePoint(worldPoint, event.evt, session.rawPoints?.at(-1)))
       : createDraftShape(activeTool, session.origin, worldPoint)
     if (!nextDraft) return
 
@@ -201,9 +201,9 @@ export function KonvaCanvasStage({
   }
 }
 
-function updateStrokeDraft(session: Extract<KonvaToolSession, { type: 'create' }>, point: CanvasPoint): CanvasShape {
+function updateStrokeDraft(session: Extract<KonvaToolSession, { type: 'create' }>, point: StrokePoint): CanvasShape {
   if (session.draft.type !== 'stroke') return session.draft
-  const rawPoints: StrokePoint[] = session.rawPoints ?? [{ ...session.origin, pressure: 0.5 }]
+  const rawPoints: StrokePoint[] = session.rawPoints ?? [{ ...session.origin, pressure: 0.62 }]
   const previous = rawPoints[rawPoints.length - 1]
   if (distanceBetweenPoints(previous, point) > 1.5) rawPoints.push(point)
   session.rawPoints = rawPoints
@@ -222,7 +222,8 @@ function updateStrokeDraft(session: Extract<KonvaToolSession, { type: 'create' }
 function finalizeDraft(shape: CanvasShape): CanvasShape | null {
   if (shape.type === 'stroke') {
     if (shape.props.points.length < 2) return null
-    const points = simplifyStrokePoints(smoothStrokePoints(shape.props.points, { radius: 2 }), { minDistance: 0.9, tolerance: 1.2 })
+    const smoothed = smoothStrokePoints(shape.props.points, { pressureWeight: 0.25, radius: 1 })
+    const points = simplifyStrokePoints(smoothed, { minDistance: 0.45, tolerance: 0.35 })
     return { ...shape, props: { points } }
   }
   if ('width' in shape.props && 'height' in shape.props && (shape.props.width < 6 || shape.props.height < 6)) return null
@@ -232,7 +233,7 @@ function finalizeDraft(shape: CanvasShape): CanvasShape | null {
 
 function createDraftShape(tool: KonvaCanvasTool, origin: CanvasPoint, point: CanvasPoint): CanvasShape | null {
   if (tool === 'draw') {
-    return { id: createShapeId('stroke'), props: { points: [{ x: 0, y: 0, pressure: 0.5 } as StrokePoint] }, style: baseStyle(2), type: 'stroke', x: origin.x, y: origin.y }
+    return { id: createShapeId('stroke'), props: { points: [{ x: 0, y: 0, pressure: 0.62 } as StrokePoint] }, style: baseStyle(2), type: 'stroke', x: origin.x, y: origin.y }
   }
   if (tool === 'line' || tool === 'arrow') {
     return { id: createShapeId(tool), props: { end: { x: point.x - origin.x, y: point.y - origin.y } }, style: baseStyle(2), type: tool, x: origin.x, y: origin.y }
@@ -264,6 +265,26 @@ function isStageTarget(event: KonvaEventObject<PointerEvent>) {
 
 function boundsContainPoint(bounds: ReturnType<typeof getShapeBounds>, point: CanvasPoint, padding: number) {
   return point.x >= bounds.minX - padding && point.x <= bounds.maxX + padding && point.y >= bounds.minY - padding && point.y <= bounds.maxY + padding
+}
+
+function createStrokePoint(point: CanvasPoint, event: PointerEvent, previous?: StrokePoint): StrokePoint {
+  if (event.pointerType === 'pen' && event.pressure > 0) {
+    return { ...point, pressure: event.pressure, time: event.timeStamp }
+  }
+
+  const pressure = previous ? getVelocityPressure(previous, { ...point, time: event.timeStamp }) : 0.62
+  return { ...point, pressure, time: event.timeStamp }
+}
+
+function getVelocityPressure(previous: StrokePoint, point: StrokePoint): number {
+  const elapsed = Math.max(8, (point.time ?? 0) - (previous.time ?? 0))
+  const speed = distanceBetweenPoints(previous, point) / elapsed
+  const normalizedSpeed = clamp(speed / 1.2, 0, 1)
+  return clamp(0.76 - normalizedSpeed * 0.42, 0.34, 0.76)
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
 }
 
 function createShapeId(prefix: string) {

@@ -64,7 +64,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 
 ### Phase 1：手感和画布基础
 
-当前 checkpoint：`/spikes/konva-canvas` 已经具备 first-pass Konva Stage、freehand smoothing、pan/zoom、基础形状、minimap 和 diagnostics。用户喜欢当前“左键连续绘制，直到手动切换工具”的交互，后续不要退回必须右键锁定才连续绘制的模式。下一步先手测“画线和缩放是否值得继续”，再补选区、Properties、图片和节点链路。
+当前 checkpoint：`/spikes/konva-canvas` 已经具备 first-pass Konva Stage、freehand smoothing、pan/zoom、基础形状、minimap 和 diagnostics。用户喜欢当前“左键连续绘制，直到手动切换工具”的交互，后续不要退回必须右键锁定才连续绘制的模式。Draw 默认只做轻微平滑，不做明显直线/形状拟合；当前偏建筑师钢笔感，慢线略重、快线略轻、起收笔轻微 taper。下一步先手测“画线和缩放是否值得继续”，再补选区、Properties、图片和节点链路。
 
 | 序号 | 功能/交互 | 当前 tldraw 参考 | Konva/Yjs 复刻要求 | 参考文件 | 验收方式 |
 | --- | --- | --- | --- | --- | --- |
@@ -74,7 +74,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | 1.4 | 100% 缩放 | 左下角数字点击回到 100% | Konva navigator 保留 zoom reset | `CanvasSpikeNavigator.tsx` | 点击百分比回 100% |
 | 1.5 | 背景 | dot/grid/solid，dot 非常淡且在元素下方 | 背景单独 layer，永远低于 shapes/nodes | `CanvasBackground.tsx`, `CanvasGrid.tsx` | dot 不盖住任何绘图元素 |
 | 1.6 | 自由画线采样 | 慢画不抖，快画不断 | pointer capture + RAF batching + smoothing | tldraw draw tool | 慢线、快线、曲线手测通过 |
-| 1.7 | 笔触外观 | tldraw draw 风格有自然手感 | `perfect-freehand` 或等价 outline stroke | `canvasStyleControls.ts` | 用户接受达到当前 80% 手感 |
+| 1.7 | 笔触外观 | tldraw draw 风格有自然手感 | `perfect-freehand` 或等价 outline stroke；普通 Draw 只轻微平滑，慢速更有墨、快速更轻、轻微收头 | `canvasStyleControls.ts` | 用户接受达到当前 80% 手感 |
 | 1.8 | 性能基准 | 当前混合节点/图形可交互 | 1,000 strokes、100 nodes、20 images 基准 | `features/canvas-performance` | staging 浏览器无明显卡死 |
 | 1.9 | 事件隔离 | 点击 UI 不影响画布工具 | overlay UI stop propagation，wheel 不穿透 | 多个 canvas panel | 点 toolbar/properties 不误画线 |
 
@@ -85,7 +85,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | 1A.1 | React 不进热路径 | pointermove 触发 React 会卡；1k strokes pan/zoom 已反馈轻微卡顿 | pointer buffer + mutable tool session + RAF 直接更新 Konva node；shape render memo 化，后续把 camera transform 移出 React 热路径 | React Profiler 看不到每帧重渲染 |
 | 1A.2 | 分层渲染 | 背景、图片、节点、选区一起重绘会卡 | Background/Image/Stroke/Node/Edge/Selection/Presence 分 layer | 画线时只 Stroke/Selection 层高频 redraw |
 | 1A.3 | pointer 采样 | 快速画线可能断，慢线可能抖 | 原始点保留，距离/时间阈值采样，RAF 批处理 | 快慢线手测都自然 |
-| 1A.4 | 笔触平滑 | Konva Line 原生手感可能不够 | `perfect-freehand` outline + 曲线简化 + final stroke simplify | 用户认可接近 tldraw 80% |
+| 1A.4 | 笔触平滑 | Konva Line 原生手感可能不够；过度 streamline 会像直线拟合 | `perfect-freehand` outline + 轻量 smooth + 低 tolerance simplify；Smart Drawing 另设模式 | 用户认可接近 tldraw 80% |
 | 1A.5 | 坐标转换 | zoom/pan 后画线漂移 | screen/world transform 单一来源，pointer anchored zoom | zoom 后笔尖落点准确 |
 | 1A.6 | hit test | 大 Board 精确 hit test 昂贵 | bbox 粗筛 + precise hit + bounds cache + viewport filter | 1,000 strokes 框选不明显卡 |
 | 1A.7 | drag/resize | 每帧 commit 文档会卡 | dragging 时更新 visual，pointerup 单 transaction commit | 拖动时流畅，undo 只产生一组操作 |
@@ -127,7 +127,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | 2A.3 | Stroke swatches | 黑、红、绿、蓝、橙、紫、灰；active 有紫色描边 | token 映射到 selected shapes 和 next shape | 选中图形改色立即生效 |
 | 2A.4 | Fill buttons | none / semi / solid / pattern | 按钮图标和当前 active 状态接近截图 | fill 状态保存/恢复 |
 | 2A.5 | Width buttons | s/m/l/xl 图标线宽不同 | 图标不溢出按钮边框，实际 strokeWidth 改变 | 四档线宽可见差异 |
-| 2A.6 | Dash buttons | draw/solid/dashed/dotted | draw 不是普通实线，要保留手绘/曲线语义 | dash 样式保存/恢复 |
+| 2A.6 | Dash buttons | draw/solid/dashed/dotted | draw 不是普通实线，要保留手绘/曲线语义；后续 Properties 需可选钢笔 taper、等宽平滑、dash、dot 和宽度 | dash 样式保存/恢复 |
 | 2A.7 | Opacity slider | 紫色 slider，右侧显示 0-100 | selection opacity 和 next opacity 都支持 | 多选 mixed 状态可处理 |
 | 2A.8 | Layer grid | 置底/下移/上移/置顶图标 | 操作 z-order，disabled 状态合理 | 层级顺序变化可见并持久化 |
 | 2A.9 | Align grid | 左/中/右/顶/中/底等对齐 | 至少 2 个对象才启用 | 多选对齐符合截图菜单逻辑 |
