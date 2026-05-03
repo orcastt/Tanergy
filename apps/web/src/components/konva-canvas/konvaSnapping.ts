@@ -25,11 +25,14 @@ export function snapBoundsToShapes(
   movingShapeIds: string[],
   bounds: CanvasBounds,
   threshold: number,
-  options: { sourceKeys?: { x?: AxisKey[]; y?: AxisKey[] } } = {}
+  options: { ignoredTargetBounds?: CanvasBounds[]; sourceKeys?: { x?: AxisKey[]; y?: AxisKey[] } } = {}
 ): SnapBoundsResult {
   if (threshold <= 0) return { bounds, guides: [] }
   const ignored = new Set(movingShapeIds)
-  const targets = shapes.filter((shape) => !ignored.has(shape.id)).map(getShapeBounds)
+  const targets = shapes
+    .filter((shape) => !ignored.has(shape.id))
+    .map(getShapeBounds)
+    .filter((target) => !options.ignoredTargetBounds?.some((ignoredBounds) => boundsNearlyEqual(target, ignoredBounds)))
   const xSnap = findAxisSnap(getAxisPoints(bounds, 'x', options.sourceKeys?.x), targets, 'x', threshold)
   const ySnap = findAxisSnap(getAxisPoints(bounds, 'y', options.sourceKeys?.y), targets, 'y', threshold)
   const snapped = moveBounds(bounds, { x: xSnap?.delta ?? 0, y: ySnap?.delta ?? 0 })
@@ -129,4 +132,11 @@ function moveBounds(bounds: CanvasBounds, delta: { x: number; y: number }): Canv
     minX: bounds.minX + delta.x,
     minY: bounds.minY + delta.y,
   }
+}
+
+function boundsNearlyEqual(a: CanvasBounds, b: CanvasBounds, epsilon = 0.5) {
+  return Math.abs(a.minX - b.minX) <= epsilon
+    && Math.abs(a.minY - b.minY) <= epsilon
+    && Math.abs(a.maxX - b.maxX) <= epsilon
+    && Math.abs(a.maxY - b.maxY) <= epsilon
 }

@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import {
+  getShapeBounds,
   withCanvasShapes,
   type CanvasBounds,
   type CanvasCamera,
@@ -38,7 +39,7 @@ export function useKonvaShapeDragHandlers(options: UseKonvaShapeDragHandlersOpti
     }
     const rawBounds = getShapeDragPreviewBounds(drag, x, y)
     const threshold = snapDistance / Math.max(0.1, camera.zoom)
-    const result = snapBoundsToShapes(documentRef.current.shapes, drag.ignoredSnapIds, rawBounds, threshold)
+    const result = snapBoundsToShapes(documentRef.current.shapes, drag.ignoredSnapIds, rawBounds, threshold, { ignoredTargetBounds: drag.ignoredSnapBounds })
     setSnapGuides(result.guides)
     return {
       x: x + result.bounds.minX - rawBounds.minX,
@@ -57,6 +58,7 @@ export function useKonvaShapeDragHandlers(options: UseKonvaShapeDragHandlersOpti
     const preview = duplicateShapes
       ? (originShape ? createShapeDragPreviewFromOrigins(originShape, duplicateShapes, shapeId, {
           baseShapes: nextDocument.shapes,
+          ignoredSnapBounds: [...sourceShapes, ...duplicateShapes].map(getShapeBounds),
           ignoredSnapIds: [...dragShapeIds, ...duplicateShapes.map((shape) => shape.id)],
           selectOnEndIds: duplicateShapes.map((shape) => shape.id),
         }) : null)

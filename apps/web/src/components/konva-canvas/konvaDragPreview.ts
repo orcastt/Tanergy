@@ -4,6 +4,7 @@ import { getSelectedShapeBounds, getShapesByIds, moveBounds, moveShapesFromOrigi
 export type KonvaShapeDragPreview = {
   baseShapes: CanvasShape[]
   ignoredSnapIds: string[]
+  ignoredSnapBounds?: CanvasBounds[]
   lastPoint?: CanvasPoint
   originBounds: CanvasBounds
   originShape: CanvasShape
@@ -23,12 +24,12 @@ export function createShapeDragPreviewFromOrigins(
   originShape: CanvasShape,
   originShapes: CanvasShape[],
   shapeId: string,
-  options: { baseShapes: CanvasShape[]; ignoredSnapIds: string[]; selectOnEndIds?: string[] }
+  options: { baseShapes: CanvasShape[]; ignoredSnapBounds?: CanvasBounds[]; ignoredSnapIds: string[]; selectOnEndIds?: string[] }
 ): KonvaShapeDragPreview | null {
   const shapeIds = originShapes.map((shape) => shape.id)
   const originBounds = getSelectedShapeBounds(originShapes, shapeIds)
   return originShape && originBounds && originShapes.length > 0
-    ? { baseShapes: options.baseShapes, ignoredSnapIds: options.ignoredSnapIds, originBounds, originShape, originShapes, selectOnEndIds: options.selectOnEndIds, shapeId }
+    ? { baseShapes: options.baseShapes, ignoredSnapBounds: options.ignoredSnapBounds, ignoredSnapIds: options.ignoredSnapIds, originBounds, originShape, originShapes, selectOnEndIds: options.selectOnEndIds, shapeId }
     : null
 }
 
