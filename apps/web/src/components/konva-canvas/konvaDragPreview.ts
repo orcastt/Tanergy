@@ -2,25 +2,33 @@ import type { CanvasBounds, CanvasPoint, CanvasShape } from '@/features/canvas-e
 import { getSelectedShapeBounds, getShapesByIds, moveBounds, moveShapesFromOrigins } from './konvaSelectionUtils'
 
 export type KonvaShapeDragPreview = {
+  baseShapes: CanvasShape[]
+  ignoredSnapIds: string[]
+  lastPoint?: CanvasPoint
   originBounds: CanvasBounds
   originShape: CanvasShape
   originShapes: CanvasShape[]
+  selectOnEndIds?: string[]
   shapeId: string
-  previewShapes?: CanvasShape[]
 }
 
 export function createShapeDragPreview(shapes: CanvasShape[], selectedIds: string[], shapeId: string): KonvaShapeDragPreview | null {
   const shapeIds = selectedIds.includes(shapeId) ? selectedIds : [shapeId]
   const originShape = shapes.find((shape) => shape.id === shapeId)
   const originShapes = getShapesByIds(shapes, shapeIds)
-  return originShape ? createShapeDragPreviewFromOrigins(originShape, originShapes, shapeId) : null
+  return originShape ? createShapeDragPreviewFromOrigins(originShape, originShapes, shapeId, { baseShapes: shapes, ignoredSnapIds: shapeIds }) : null
 }
 
-export function createShapeDragPreviewFromOrigins(originShape: CanvasShape, originShapes: CanvasShape[], shapeId: string): KonvaShapeDragPreview | null {
+export function createShapeDragPreviewFromOrigins(
+  originShape: CanvasShape,
+  originShapes: CanvasShape[],
+  shapeId: string,
+  options: { baseShapes: CanvasShape[]; ignoredSnapIds: string[]; selectOnEndIds?: string[] }
+): KonvaShapeDragPreview | null {
   const shapeIds = originShapes.map((shape) => shape.id)
   const originBounds = getSelectedShapeBounds(originShapes, shapeIds)
   return originShape && originBounds && originShapes.length > 0
-    ? { originBounds, originShape, originShapes, shapeId }
+    ? { baseShapes: options.baseShapes, ignoredSnapIds: options.ignoredSnapIds, originBounds, originShape, originShapes, selectOnEndIds: options.selectOnEndIds, shapeId }
     : null
 }
 
@@ -35,6 +43,6 @@ export function getShapeDragPreviewBounds(preview: KonvaShapeDragPreview, x: num
   return moveBounds(preview.originBounds, getShapeDragDelta(preview, x, y))
 }
 
-export function getShapeDragPreviewShapes(shapes: CanvasShape[], preview: KonvaShapeDragPreview, x: number, y: number): CanvasShape[] {
-  return moveShapesFromOrigins(shapes, preview.originShapes, getShapeDragDelta(preview, x, y))
+export function getShapeDragPreviewShapes(preview: KonvaShapeDragPreview, x: number, y: number): CanvasShape[] {
+  return moveShapesFromOrigins(preview.baseShapes, preview.originShapes, getShapeDragDelta(preview, x, y))
 }

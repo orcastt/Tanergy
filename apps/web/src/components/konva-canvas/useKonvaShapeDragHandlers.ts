@@ -38,8 +38,7 @@ export function useKonvaShapeDragHandlers(options: UseKonvaShapeDragHandlersOpti
     }
     const rawBounds = getShapeDragPreviewBounds(drag, x, y)
     const threshold = snapDistance / Math.max(0.1, camera.zoom)
-    const movingIds = drag.originShapes.map((shape) => shape.id)
-    const result = snapBoundsToShapes(documentRef.current.shapes, movingIds, rawBounds, threshold)
+    const result = snapBoundsToShapes(documentRef.current.shapes, drag.ignoredSnapIds, rawBounds, threshold)
     setSnapGuides(result.guides)
     return {
       x: x + result.bounds.minX - rawBounds.minX,
@@ -56,26 +55,29 @@ export function useKonvaShapeDragHandlers(options: UseKonvaShapeDragHandlersOpti
     const nextDocument = duplicateShapes ? appendShapes(current, duplicateShapes).document : current
     const originShape = current.shapes.find((shape) => shape.id === shapeId)
     const preview = duplicateShapes
-      ? (originShape ? createShapeDragPreviewFromOrigins(originShape, duplicateShapes, shapeId) : null)
+      ? (originShape ? createShapeDragPreviewFromOrigins(originShape, duplicateShapes, shapeId, {
+          baseShapes: nextDocument.shapes,
+          ignoredSnapIds: [...dragShapeIds, ...duplicateShapes.map((shape) => shape.id)],
+          selectOnEndIds: duplicateShapes.map((shape) => shape.id),
+        }) : null)
       : createShapeDragPreview(current.shapes, dragShapeIds, shapeId)
     if (!preview) return
     onHistoryCheckpoint(current)
     if (duplicateShapes) {
       documentRef.current = nextDocument
       onDocumentPreview(nextDocument)
-      onSelectionChange(duplicateShapes.map((shape) => shape.id))
     }
     dragRef.current = preview
     return { lockSource: Boolean(duplicateShapes) }
-  }, [activeTool, documentRef, onDocumentPreview, onHistoryCheckpoint, onSelectionChange, selectedIds])
+  }, [activeTool, documentRef, onDocumentPreview, onHistoryCheckpoint, selectedIds])
 
   const handleShapeDragMove = useCallback((shapeId: string, x: number, y: number) => {
     const drag = dragRef.current
     if (!drag || drag.shapeId !== shapeId) return
     const nextPoint = getSnappedDragPoint(drag, x, y)
     setSelectedBoundsOverride(getShapeDragPreviewBounds(drag, nextPoint.x, nextPoint.y))
-    const previewShapes = getShapeDragPreviewShapes(documentRef.current.shapes, drag, nextPoint.x, nextPoint.y)
-    dragRef.current = { ...drag, previewShapes }
+    const previewShapes = getShapeDragPreviewShapes(drag, nextPoint.x, nextPoint.y)
+    dragRef.current = { ...drag, lastPoint: nextPoint }
     const nextDocument = withCanvasShapes(documentRef.current, previewShapes)
     documentRef.current = nextDocument
     onDocumentPreview(nextDocument)
@@ -88,13 +90,14 @@ export function useKonvaShapeDragHandlers(options: UseKonvaShapeDragHandlersOpti
     setSnapGuides([])
     if (!drag || (drag.shapeId !== shapeId && !drag.originShapes.some((shape) => shape.id === shapeId))) return
     const movedShapeIds = drag.originShapes.map((shape) => shape.id)
-    const finalPoint = drag.previewShapes ? { x, y } : getSnappedDragPoint(drag, x, y)
-    const previewShapes = drag.previewShapes ?? getShapeDragPreviewShapes(documentRef.current.shapes, drag, finalPoint.x, finalPoint.y)
+    const finalPoint = drag.lastPoint ?? getSnappedDragPoint(drag, x, y)
+    const previewShapes = getShapeDragPreviewShapes(drag, finalPoint.x, finalPoint.y)
     const finalShapes = applyFrameContainment(previewShapes, movedShapeIds)
     const finalDocument = withCanvasShapes(documentRef.current, finalShapes)
     documentRef.current = finalDocument
     onDocumentChange(finalDocument)
-  }, [documentRef, getSnappedDragPoint, onDocumentChange])
+    if (drag.selectOnEndIds) onSelectionChange(drag.selectOnEndIds)
+  }, [documentRef, getSnappedDragPoint, onDocumentChange, onSelectionChange])
 
   return {
     handleShapeDragEnd,
