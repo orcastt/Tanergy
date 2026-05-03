@@ -1,5 +1,5 @@
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
-import { konvaToolGroups, konvaToolLabels } from './konvaCanvasTypes'
+import { konvaToolGroups, konvaToolLabels, konvaToolShortcuts } from './konvaCanvasTypes'
 
 type KonvaCanvasToolbarProps = {
   activeTool: KonvaCanvasTool
@@ -23,9 +23,9 @@ export function KonvaCanvasToolbar({
               aria-label={konvaToolLabels[tool]}
               className="konva-canvas-tool"
               data-active={activeTool === tool}
+              data-tooltip={getToolTooltip(tool)}
               key={tool}
               onClick={() => onToolChange(tool)}
-              title={konvaToolLabels[tool]}
               type="button"
             >
               <ToolGlyph tool={tool} />
@@ -43,6 +43,11 @@ export function KonvaCanvasToolbar({
       </div>
     </div>
   )
+}
+
+function getToolTooltip(tool: KonvaCanvasTool) {
+  const shortcut = konvaToolShortcuts[tool]
+  return shortcut ? `${konvaToolLabels[tool]}: ${shortcut}` : konvaToolLabels[tool]
 }
 
 function ToolGlyph({ tool }: { tool: KonvaCanvasTool }) {

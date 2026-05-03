@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react'
 import { Ellipse, Group, Line, Path, Rect, Text } from 'react-konva'
-import type { CanvasShape } from '@/features/canvas-engine'
+import { getPointsBounds, type CanvasPoint, type CanvasShape } from '@/features/canvas-engine'
 import { getArrowHeadPoints, getCloudPath, getFreehandPath } from './konvaPathUtils'
 
 type KonvaCanvasShapeProps = {
@@ -85,18 +85,18 @@ function renderShape(shape: CanvasShape, stroke: string, fill: string, strokeWid
     return <Path data={getCloudPath(shape.props.width, shape.props.height)} fill={fill} opacity={opacity} stroke={stroke} strokeWidth={strokeWidth} />
   }
   if (shape.type === 'line') {
-    return <Line lineCap="round" points={[0, 0, shape.props.end.x, shape.props.end.y]} stroke={stroke} strokeWidth={strokeWidth} />
+    return <Line hitStrokeWidth={16} lineCap="round" points={[0, 0, shape.props.end.x, shape.props.end.y]} stroke={stroke} strokeWidth={strokeWidth} />
   }
   if (shape.type === 'arrow') {
     return (
       <>
-        <Line lineCap="round" points={[0, 0, shape.props.end.x, shape.props.end.y]} stroke={stroke} strokeWidth={strokeWidth} />
+        <Line hitStrokeWidth={16} lineCap="round" points={[0, 0, shape.props.end.x, shape.props.end.y]} stroke={stroke} strokeWidth={strokeWidth} />
         <Line closed fill={stroke} points={getArrowHeadPoints(shape.props.end, { x: 0, y: 0 }, Math.max(12, strokeWidth * 5))} />
       </>
     )
   }
   if (shape.type === 'stroke') {
-    return <Path data={getFreehandPath(shape.props.points, strokeWidth * 2.2)} fill={stroke} opacity={opacity} />
+    return <Path data={getFreehandPath(shape.props.points, strokeWidth * 2.2)} fill={stroke} hitStrokeWidth={16} opacity={opacity} />
   }
   if (shape.type === 'text') {
     return <Text fill={stroke} fontFamily="Inter, system-ui, sans-serif" fontSize={18} height={shape.props.height} text={shape.props.text} width={shape.props.width} />
@@ -108,13 +108,12 @@ function renderShape(shape: CanvasShape, stroke: string, fill: string, strokeWid
 }
 
 function SelectionBox({ shape, zoom }: { shape: CanvasShape; zoom: number }) {
-  if (shape.type === 'stroke' || shape.type === 'line' || shape.type === 'arrow') return null
-  const { height, width } = shape.props
+  const rect = getLocalSelectionRect(shape)
   const handleSize = Math.max(5, 7 / zoom)
   return (
     <>
-      <Rect dash={[5 / zoom, 4 / zoom]} height={height} listening={false} stroke="#6b5cff" strokeWidth={1.2 / zoom} width={width} />
-      {[0, width].flatMap((x) => [0, height].map((y) => (
+      <Rect dash={[5 / zoom, 4 / zoom]} height={rect.height} listening={false} stroke="#6b5cff" strokeWidth={1.2 / zoom} width={rect.width} x={rect.x} y={rect.y} />
+      {[rect.x, rect.x + rect.width].flatMap((x) => [rect.y, rect.y + rect.height].map((y) => (
         <Rect
           fill="#ffffff"
           height={handleSize}
@@ -131,4 +130,32 @@ function SelectionBox({ shape, zoom }: { shape: CanvasShape; zoom: number }) {
       )))}
     </>
   )
+}
+
+function getLocalSelectionRect(shape: CanvasShape) {
+  if (shape.type === 'stroke') {
+    return expandRect(boundsToLocalRect(getPointsBounds(shape.props.points as CanvasPoint[])), 6)
+  }
+  if (shape.type === 'line' || shape.type === 'arrow') {
+    return expandRect(boundsToLocalRect(getPointsBounds([{ x: 0, y: 0 }, shape.props.end])), 6)
+  }
+  return { height: shape.props.height, width: shape.props.width, x: 0, y: 0 }
+}
+
+function boundsToLocalRect(bounds: { maxX: number; maxY: number; minX: number; minY: number }) {
+  return {
+    height: Math.max(1, bounds.maxY - bounds.minY),
+    width: Math.max(1, bounds.maxX - bounds.minX),
+    x: bounds.minX,
+    y: bounds.minY,
+  }
+}
+
+function expandRect(rect: { height: number; width: number; x: number; y: number }, padding: number) {
+  return {
+    height: rect.height + padding * 2,
+    width: rect.width + padding * 2,
+    x: rect.x - padding,
+    y: rect.y - padding,
+  }
 }

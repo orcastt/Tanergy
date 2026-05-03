@@ -42,7 +42,7 @@ export const konvaToolLabels: Record<KonvaCanvasTool, string> = {
   cloud: 'Cloud',
   diamond: 'Diamond',
   draw: 'Draw',
-  ellipse: 'Ellipse',
+  ellipse: 'Circle',
   eraser: 'Eraser',
   hand: 'Hand',
   line: 'Line',
@@ -50,6 +50,21 @@ export const konvaToolLabels: Record<KonvaCanvasTool, string> = {
   select: 'Select',
   text: 'Text',
   triangle: 'Triangle',
+}
+
+export const konvaToolShortcuts: Partial<Record<KonvaCanvasTool, string>> = {
+  arrow: 'A',
+  cloud: 'U',
+  diamond: 'D',
+  draw: 'P',
+  ellipse: 'C',
+  eraser: 'E',
+  hand: 'H',
+  line: 'L',
+  rect: 'R',
+  select: 'V',
+  text: 'T',
+  triangle: 'G',
 }
 
 export const konvaToolGroups: KonvaToolGroup[] = [

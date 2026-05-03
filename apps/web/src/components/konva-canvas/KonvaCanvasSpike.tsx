@@ -19,7 +19,7 @@ import { KonvaCanvasDiagnostics } from './KonvaCanvasDiagnostics'
 import { KonvaCanvasNavigator } from './KonvaCanvasNavigator'
 import { KonvaCanvasStage } from './KonvaCanvasStage'
 import { KonvaCanvasToolbar } from './KonvaCanvasToolbar'
-import type { KonvaCanvasTool } from './konvaCanvasTypes'
+import { konvaToolShortcuts, type KonvaCanvasTool } from './konvaCanvasTypes'
 
 export function KonvaCanvasSpike() {
   const shellRef = useRef<HTMLDivElement | null>(null)
@@ -85,8 +85,10 @@ export function KonvaCanvasSpike() {
         setIsSpacePanning(false)
         return
       }
-      if (event.key.toLowerCase() === 'v' && !event.metaKey && !event.ctrlKey && !event.altKey) {
-        setActiveTool('select')
+      const tool = getShortcutTool(event.key)
+      if (tool && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        event.preventDefault()
+        setActiveTool(tool)
       }
     }
 
@@ -173,6 +175,11 @@ export function KonvaCanvasSpike() {
       </section>
     </main>
   )
+}
+
+function getShortcutTool(key: string): KonvaCanvasTool | null {
+  const normalizedKey = key.toUpperCase()
+  return (Object.keys(konvaToolShortcuts) as KonvaCanvasTool[]).find((tool) => konvaToolShortcuts[tool] === normalizedKey) ?? null
 }
 
 function isEditableTarget(target: EventTarget | null) {

@@ -1,7 +1,7 @@
 import type Konva from 'konva'
 import type { KonvaEventObject } from 'konva/lib/Node'
 import { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, useState } from 'react'
-import { Layer, Rect, Stage } from 'react-konva'
+import { Circle, Layer, Line, Rect, Stage } from 'react-konva'
 import {
   appendCanvasShape,
   getShapeBounds,
@@ -54,6 +54,7 @@ export function KonvaCanvasStage({
   const rafRef = useRef<number | null>(null)
   const pendingDraftRef = useRef<CanvasShape | null>(null)
   const [draft, setDraft] = useState<CanvasShape | null>(null)
+  const [eraserTrail, setEraserTrail] = useState<CanvasPoint[]>([])
 
   const handleShapeDragEnd = useCallback((shapeId: string, x: number, y: number) => {
     onDocumentChange((current) => withCanvasShapes(
@@ -86,6 +87,7 @@ export function KonvaCanvasStage({
     }
     if (activeTool === 'eraser') {
       sessionRef.current = { pointerId: event.evt.pointerId, type: 'erase' }
+      updateEraserTrail(worldPoint)
       eraseAtPoint(worldPoint)
       return
     }
@@ -96,7 +98,7 @@ export function KonvaCanvasStage({
       return
     }
 
-    const draftShape = createDraftShape(activeTool, worldPoint, worldPoint)
+    const draftShape = createDraftShape(activeTool, worldPoint, worldPoint, { constrainProportions: event.evt.shiftKey })
     if (!draftShape) return
     sessionRef.current = {
       draft: draftShape,
@@ -111,7 +113,13 @@ export function KonvaCanvasStage({
   const handlePointerMove = (event: KonvaEventObject<PointerEvent>) => {
     const session = sessionRef.current
     const screenPoint = getStagePointer(stageRef.current)
-    if (!session || !screenPoint) return
+    if (!screenPoint) return
+
+    const worldPoint = pointerToWorld({ ...screenPoint, pressure: event.evt.pressure }, camera)
+    if (!session) {
+      if (activeTool === 'eraser') updateEraserTrail(worldPoint)
+      return
+    }
 
     if (session.type === 'pan') {
       const delta = { x: screenPoint.x - session.origin.x, y: screenPoint.y - session.origin.y }
@@ -120,8 +128,8 @@ export function KonvaCanvasStage({
       return
     }
 
-    const worldPoint = pointerToWorld({ ...screenPoint, pressure: event.evt.pressure }, camera)
     if (session.type === 'erase') {
+      updateEraserTrail(worldPoint)
       eraseAtPoint(worldPoint)
       return
     }
@@ -129,7 +137,7 @@ export function KonvaCanvasStage({
 
     const nextDraft = activeTool === 'draw'
       ? updateStrokeDraft(session, createStrokePoint(worldPoint, event.evt, session.rawPoints?.at(-1)))
-      : createDraftShape(activeTool, session.origin, worldPoint)
+      : createDraftShape(activeTool, session.origin, worldPoint, { constrainProportions: event.evt.shiftKey })
     if (!nextDraft) return
 
     session.draft = nextDraft
@@ -144,6 +152,9 @@ export function KonvaCanvasStage({
       session.draft = updateStrokeDraft(session, createStrokeEndPoint(worldPoint, event.evt))
     }
     sessionRef.current = null
+    if (session?.type === 'erase') {
+      window.setTimeout(() => setEraserTrail([]), 120)
+    }
     const nextDraft = session?.type === 'create' ? finalizeDraft(session.draft) : null
     pendingDraftRef.current = null
     setDraft(null)
@@ -167,6 +178,7 @@ export function KonvaCanvasStage({
   }
 
   const allShapes = draft ? [...document.shapes, draft] : document.shapes
+  const eraserRadius = 11 / camera.zoom
 
   return (
     <Stage
@@ -174,6 +186,7 @@ export function KonvaCanvasStage({
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
+      onPointerLeave={() => setEraserTrail([])}
       onWheel={handleWheel}
       ref={stageRef}
       scaleX={camera.zoom}
@@ -198,6 +211,28 @@ export function KonvaCanvasStage({
             zoom={camera.zoom}
           />
         ))}
+        {eraserTrail.length > 0 ? (
+          <>
+            <Line
+              lineCap="round"
+              lineJoin="round"
+              listening={false}
+              opacity={0.3}
+              points={eraserTrail.flatMap((point) => [point.x, point.y])}
+              stroke="#5f6f85"
+              strokeWidth={eraserRadius * 1.2}
+            />
+            <Circle
+              fill="rgba(95, 111, 133, 0.12)"
+              listening={false}
+              radius={eraserRadius}
+              stroke="rgba(95, 111, 133, 0.78)"
+              strokeWidth={1.2 / camera.zoom}
+              x={eraserTrail[eraserTrail.length - 1].x}
+              y={eraserTrail[eraserTrail.length - 1].y}
+            />
+          </>
+        ) : null}
       </Layer>
     </Stage>
   )
@@ -209,6 +244,10 @@ export function KonvaCanvasStage({
       rafRef.current = null
       setDraft(pendingDraftRef.current)
     })
+  }
+
+  function updateEraserTrail(point: CanvasPoint) {
+    setEraserTrail((trail) => [...trail.slice(-7), point])
   }
 }
 

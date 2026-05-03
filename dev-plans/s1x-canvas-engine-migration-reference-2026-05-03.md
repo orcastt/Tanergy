@@ -64,7 +64,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 
 ### Phase 1：手感和画布基础
 
-当前 checkpoint：`/spikes/konva-canvas` 已经具备 first-pass Konva Stage、freehand smoothing、pan/zoom、基础形状、minimap 和 diagnostics。用户进入画布默认是 Select；用户喜欢“选择绘制工具后左键连续绘制，直到手动切换工具”的交互，后续不要退回必须右键锁定才连续绘制的模式。Draw 默认只做轻微平滑，不做明显直线/形状拟合；当前偏建筑师钢笔感，慢线略重、快线略轻、起收笔轻微 taper。基础快捷键合同：`V` 选择，按住 `Space` 临时平移且不改变当前工具，鼠标中键拖拽平移。下一步先手测“画线和缩放是否值得继续”，再补选区、Properties、图片和节点链路。
+当前 checkpoint：`/spikes/konva-canvas` 已经具备 first-pass Konva Stage、freehand smoothing、pan/zoom、基础形状、minimap 和 diagnostics。用户进入画布默认是 Select；用户喜欢“选择绘制工具后左键连续绘制，直到手动切换工具”的交互，后续不要退回必须右键锁定才连续绘制的模式。Draw 默认只做轻微平滑，不做明显直线/形状拟合；当前偏建筑师钢笔感，慢线略重、快线略轻、起收笔轻微 taper。基础快捷键合同：`V` 选择，按住 `Space` 临时平移且不改变当前工具，鼠标中键拖拽平移。工具 tooltip 使用英文 `Tool: Shortcut`，Shift 绘制 shape 时锁定长宽比例。下一步先手测“画线和缩放是否值得继续”，再补选区、Properties、图片和节点链路。
 
 | 序号 | 功能/交互 | 当前 tldraw 参考 | Konva/Yjs 复刻要求 | 参考文件 | 验收方式 |
 | --- | --- | --- | --- | --- | --- |
@@ -103,10 +103,10 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | --- | --- | --- | --- | --- | --- |
 | 2.1 | 顶部工具栏位置 | toolbar 固定在上方，不放左侧 | 复刻当前布局和 tooltip | `CanvasSpikeToolbar.tsx` | 页面刷新后位置一致 |
 | 2.2 | hand/select | 切换 hand/select，状态高亮 | engine activeTool state；进入画布默认 Select | `CanvasToolbarPrimaryTools.tsx` | 当前工具高亮正确 |
-| 2.3 | shape 菜单 | rectangle/diamond/ellipse/triangle/cloud | Konva shape tool + popover | `canvasToolbarConfig.ts` | 形状菜单和图标一致 |
+| 2.3 | shape 菜单 | rectangle/diamond/ellipse/triangle/cloud | Konva shape tool + popover；Shift 绘制时等比约束 | `canvasToolbarConfig.ts` | 形状菜单和图标一致，Shift 画正形 |
 | 2.4 | direct tools | arrow/line/draw/text/eraser | 对应 Konva tools | `canvasToolbarConfig.ts` | 每个按钮能创建/操作正确对象 |
 | 2.5 | 连续绘制 | tldraw 需要右键工具进入 continuous | TANGENT 新引擎采用用户认可的新规则：左键绘制后保持当前工具，直到用户切换工具；ESC 回 Select | `CanvasSpikeToolbar.tsx` | 连画多个形状不中断，ESC 后回选择模式 |
-| 2.6 | tooltip | 黑底白字，长文字不被裁切 | 全局 tooltip layer 保留 | `CanvasTooltipLayer.tsx` | toolbar/properties tooltip 可见 |
+| 2.6 | tooltip | 黑底白字，长文字不被裁切 | 工具 tooltip 显示英文 `Tool: Shortcut`；后续全局 tooltip layer 保留 | `CanvasTooltipLayer.tsx` | toolbar/properties tooltip 可见 |
 | 2.7 | fixed properties | 点击空白不切换/消失，保持最后工具属性 | style panel state 与 selection 解耦 | `CanvasSpikeStylePanel.tsx` | 空白点击后 panel 不变 |
 | 2.8 | selection properties | 选中普通图形时显示 selected 样式 | selection style aggregation | `getSelectionTool` | 单选/多选显示正确 |
 | 2.9 | node selection | node card 不显示普通图形属性 | node card selection guard | `hasNodeCardSelection` | 选节点不出现无意义样式 |
@@ -142,7 +142,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | 序号 | 功能/交互 | 当前 tldraw 参考 | Konva/Yjs 复刻要求 | 参考文件 | 验收方式 |
 | --- | --- | --- | --- | --- | --- |
 | 3.1 | 对象模型 | TLShape 承载 x/y/rotation/props/index | `TangentShape` 承载 id/type/x/y/w/h/rotation/style/props | `boardDocumentSerializer.ts` | JSON 可读、可迁移 |
-| 3.2 | 多选 | 框选/shift 选中多个对象 | selection rectangle + hit testing | tldraw select | 框选复杂对象准确 |
+| 3.2 | 多选 | 框选/shift 选中多个对象 | selection rectangle + hit testing；line/arrow/stroke 要有可见选择框和宽 hit target | tldraw select | 框选复杂对象准确 |
 | 3.3 | 拖拽 | 选中对象拖动丝滑 | pointer move 批处理，commit to store | tldraw select dragging | 拖动无跳变 |
 | 3.4 | resize | 图形和 node card 可 resize | handles + constraints | `NodeCardShape.tsx`, `AiCardShape.tsx` | resize 后内容不坏 |
 | 3.5 | rotate | 当前 tldraw shape 支持 rotation 字段 | 先支持基础 rotation，复杂节点可后置 | serializer rotation | 保存/恢复 rotation |
@@ -152,7 +152,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | 3.9 | Alt 拖拽复制 | tldraw 交互习惯 | drag start 检查 Alt/Option 并 duplicate selection | tldraw select | Alt 拖拽产生副本 |
 | 3.10 | z-order | index 控制层级 | array order / zIndex model | shape index | bring/send 操作持久化 |
 | 3.11 | text edit | text/note 可输入，不抢画布快捷键 | HTML overlay 或 Konva.Text + input overlay | tldraw text/note | 输入中 Cmd+S 不误触，中文输入正常 |
-| 3.12 | eraser | 橡皮擦删除 draw/shape | hit test stroke/shape，拖动擦除 | direct eraser | 擦除不误删远处对象 |
+| 3.12 | eraser | 橡皮擦删除 draw/shape | hit test stroke/shape，拖动擦除；鼠标移动时有 tldraw-like eraser silhouette/trail | direct eraser | 擦除不误删远处对象，拖尾跟手 |
 | 3.13 | snapping | snap alignment/distance | snap guides + configurable threshold | `CanvasSettingsPanel.tsx` | 开关和距离生效 |
 | 3.14 | browser selection 清理 | 避免画布中误选中文本 | selectionchange guard | `CanvasSpike.tsx` | 拖动画布不出现蓝色文字选区 |
 

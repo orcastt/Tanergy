@@ -109,7 +109,31 @@
 .konva-canvas-tool {
   height: 32px;
   padding: 0;
+  position: relative;
   width: 32px;
+}
+
+.konva-canvas-tool::after {
+  background: rgba(17, 24, 39, 0.94);
+  border-radius: 6px;
+  bottom: -34px;
+  color: #fff;
+  content: attr(data-tooltip);
+  font-size: 11px;
+  left: 50%;
+  opacity: 0;
+  padding: 5px 7px;
+  pointer-events: none;
+  position: absolute;
+  transform: translateX(-50%) translateY(-2px);
+  transition: opacity 120ms ease, transform 120ms ease;
+  white-space: nowrap;
+  z-index: 30;
+}
+
+.konva-canvas-tool:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 
 .konva-canvas-tool svg {

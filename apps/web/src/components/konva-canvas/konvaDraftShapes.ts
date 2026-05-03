@@ -41,7 +41,12 @@ export function finalizeDraft(shape: CanvasShape): CanvasShape | null {
   return shape
 }
 
-export function createDraftShape(tool: KonvaCanvasTool, origin: CanvasPoint, point: CanvasPoint): CanvasShape | null {
+export function createDraftShape(
+  tool: KonvaCanvasTool,
+  origin: CanvasPoint,
+  point: CanvasPoint,
+  options: { constrainProportions?: boolean } = {}
+): CanvasShape | null {
   if (tool === 'draw') {
     return { id: createShapeId('stroke'), props: { points: [{ x: 0, y: 0, pressure: 0.82 } as StrokePoint] }, style: baseStyle(2), type: 'stroke', x: origin.x, y: origin.y }
   }
@@ -49,10 +54,11 @@ export function createDraftShape(tool: KonvaCanvasTool, origin: CanvasPoint, poi
     return { id: createShapeId(tool), props: { end: { x: point.x - origin.x, y: point.y - origin.y } }, style: baseStyle(2), type: tool, x: origin.x, y: origin.y }
   }
   if (!boxTools.has(tool)) return null
-  const x = Math.min(origin.x, point.x)
-  const y = Math.min(origin.y, point.y)
-  const width = Math.abs(point.x - origin.x)
-  const height = Math.abs(point.y - origin.y)
+  const end = options.constrainProportions ? constrainToSquare(origin, point) : point
+  const x = Math.min(origin.x, end.x)
+  const y = Math.min(origin.y, end.y)
+  const width = Math.abs(end.x - origin.x)
+  const height = Math.abs(end.y - origin.y)
   return { id: createShapeId(tool), props: { height, width }, style: baseStyle(2), type: tool, x, y } as CanvasShape
 }
 
@@ -75,6 +81,16 @@ export function createStrokeEndPoint(point: CanvasPoint, event: PointerEvent): S
 
 function baseStyle(strokeWidth: number) {
   return { fill: 'rgba(255, 255, 255, 0.82)', opacity: 1, stroke: '#243142', strokeWidth }
+}
+
+function constrainToSquare(origin: CanvasPoint, point: CanvasPoint): CanvasPoint {
+  const width = point.x - origin.x
+  const height = point.y - origin.y
+  const size = Math.max(Math.abs(width), Math.abs(height))
+  return {
+    x: origin.x + Math.sign(width || 1) * size,
+    y: origin.y + Math.sign(height || 1) * size,
+  }
 }
 
 function getVelocityPressure(previous: StrokePoint, point: StrokePoint): number {
