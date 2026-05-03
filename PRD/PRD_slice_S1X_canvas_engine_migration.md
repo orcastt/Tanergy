@@ -1,6 +1,6 @@
 # PRD Slice S1X: Canvas Engine Migration
 
-**Status**: Active risk-mitigation spike; isolated Konva route has Phase 1A handfeel/performance and Phase 2A Properties baseline accepted for the spike.
+**Status**: Active risk-mitigation spike; isolated Konva route has Phase 3 object editing foundation in progress after accepted handfeel/properties baselines.
 **Product reason**: The current public staging canvas depends on tldraw, which requires a production license. TANGENT needs a long-term canvas path that can support commercial use and collaboration without a paid canvas SDK lock-in.
 
 ## Product Goal
@@ -39,6 +39,7 @@ Current accepted subset:
 - Properties stays fixed on the left and edits selected-shape or next-shape Stroke, Fill, Width, Dash and Opacity.
 - Selected shapes support basic Layer order, Duplicate and Delete actions.
 - Pattern fill is crisp enough for product review and follows the selected stroke color.
+- Phase 3.1 adds first-pass box select, single-shape resize handles and undo/redo for shape/selection changes without undoing camera pan/zoom.
 
 ## Handfeel Acceptance
 

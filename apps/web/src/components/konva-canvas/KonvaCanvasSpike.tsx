@@ -24,6 +24,7 @@ import { KonvaCanvasStage } from './KonvaCanvasStage'
 import { KonvaCanvasToolbar } from './KonvaCanvasToolbar'
 import { konvaToolShortcuts, type KonvaCanvasTool } from './konvaCanvasTypes'
 import { konvaDefaultShapeStyle } from './konvaCanvasStyle'
+import { useKonvaCanvasHistory } from './useKonvaCanvasHistory'
 
 export function KonvaCanvasSpike() {
   const shellRef = useRef<HTMLDivElement | null>(null)
@@ -42,6 +43,12 @@ export function KonvaCanvasSpike() {
   const [diagnostics, setDiagnostics] = useState<CanvasDiagnosticsSnapshot>(() => getCanvasDiagnosticsSnapshot(document))
   const frameSamplesRef = useRef<ReturnType<typeof appendFrameSample>>([])
   const lastFrameRef = useRef(0)
+  const history = useKonvaCanvasHistory({
+    document,
+    onDocumentChange: setDocument,
+    onSelectionChange: setSelectedIds,
+    selectedIds,
+  })
 
   useEffect(() => {
     const element = shellRef.current
@@ -90,6 +97,12 @@ export function KonvaCanvasSpike() {
         setIsSpacePanning(false)
         return
       }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') {
+        event.preventDefault()
+        if (event.shiftKey) history.redo()
+        else history.undo()
+        return
+      }
       const tool = getShortcutTool(event.key)
       if (tool && !event.metaKey && !event.ctrlKey && !event.altKey) {
         event.preventDefault()
@@ -110,7 +123,7 @@ export function KonvaCanvasSpike() {
       window.removeEventListener('keyup', handleKeyUp)
       window.removeEventListener('blur', handleBlur)
     }
-  }, [])
+  }, [history])
 
   const pointCount = useMemo(() => (
     document.shapes.reduce((total, shape) => total + (shape.type === 'stroke' ? shape.props.points.length : 0), 0)
@@ -134,13 +147,15 @@ export function KonvaCanvasSpike() {
   }, [camera, handleCameraCommit, size.height, size.width])
 
   const addStressStrokes = useCallback(() => {
+    history.checkpoint()
     setDocument((current) => withCanvasShapes(current, [...current.shapes, ...createStressStrokes(current.shapes.length)]))
-  }, [])
+  }, [history])
 
   const clearCanvas = useCallback(() => {
+    history.checkpoint()
     setDocument((current) => withCanvasShapes(current, []))
     setSelectedIds([])
-  }, [])
+  }, [history])
 
   return (
     <main className="konva-canvas-shell">
@@ -169,6 +184,8 @@ export function KonvaCanvasSpike() {
           onCameraCommit={handleCameraCommit}
           onCameraPreview={handleCameraPreview}
           onDocumentChange={setDocument}
+          onDocumentPreview={setDocument}
+          onHistoryCheckpoint={history.checkpoint}
           onSelectionChange={setSelectedIds}
           selectedIds={selectedIds}
           width={size.width}
@@ -178,6 +195,7 @@ export function KonvaCanvasSpike() {
           document={document}
           nextStyle={nextStyle}
           onDocumentChange={setDocument}
+          onHistoryCheckpoint={history.checkpoint}
           onNextStyleChange={setNextStyle}
           onSelectionChange={setSelectedIds}
           selectedIds={selectedIds}

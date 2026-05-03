@@ -1,6 +1,6 @@
 # S1X Canvas Engine Migration Reference
 
-**Status**: Active tactical plan; Phase 1A handfeel/performance and Phase 2A Properties baseline accepted for the spike.
+**Status**: Active tactical plan; Phase 3 object editing foundation is in progress after accepted handfeel/properties baselines.
 **Branch**: `feature/s1x-konva-handfeel-spike`
 
 ## Principle
@@ -26,8 +26,9 @@ keep Board/API/storage contracts stable
 - Phase 2A accepted baseline: fixed left Properties panel supports Stroke, Fill, Width, Dash, Opacity, Layer order, Duplicate, Delete and collapse/expand.
 - Style changes now update selected shapes and the next-shape style, so newly drawn shapes inherit the panel settings.
 - Pattern fill now uses crisp high-DPR generated hatching instead of a blurry low-resolution tile.
+- Phase 3.1 started: interaction logic split out of the Stage, box-select marquee added, single-shape corner resize handles added, and undo/redo history now snapshots shapes plus selection without undoing camera pan/zoom.
 
-Next development focus: Phase 3 object editing foundation, starting with box select, resize handles, drag command batching, undo/redo, copy/paste and text editing. Right-click menu, image/node conversion and alignment actions should sit on that shared command system rather than be built as separate one-off UI.
+Next development focus: finish Phase 3 object editing foundation with copy/paste, Alt-drag duplicate, text editing and command-system cleanup. Right-click menu, image/node conversion and alignment actions should sit on that shared command system rather than be built as separate one-off UI.
 
 ## tldraw Behavior Inventory
 

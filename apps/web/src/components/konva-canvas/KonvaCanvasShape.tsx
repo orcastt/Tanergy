@@ -13,7 +13,7 @@ type KonvaCanvasShapeProps = {
   toolAllowsDrag: boolean
   zoom: number
   onDragEnd: (shapeId: string, x: number, y: number) => void
-  onSelect: (shapeId: string) => void
+  onSelect: (shapeId: string, options?: { additive?: boolean }) => void
 }
 
 function KonvaCanvasShapeComponent({
@@ -41,13 +41,13 @@ function KonvaCanvasShapeComponent({
       onClick={canInteract ? (event) => {
         if (event.evt.button === 1) return
         event.cancelBubble = true
-        onSelect(shape.id)
+        onSelect(shape.id, { additive: event.evt.shiftKey })
       } : undefined}
       onDragEnd={canInteract ? (event) => onDragEnd(shape.id, event.target.x(), event.target.y()) : undefined}
       onPointerDown={canInteract ? (event) => {
         if (event.evt.button === 1) return
         event.cancelBubble = true
-        onSelect(shape.id)
+        onSelect(shape.id, { additive: event.evt.shiftKey })
       } : undefined}
       x={shape.x}
       y={shape.y}
@@ -145,27 +145,9 @@ function getClosedFillProps(fill: string, fillStyle: ReturnType<typeof resolveKo
 
 function SelectionBox({ shape, zoom }: { shape: CanvasShape; zoom: number }) {
   if (isLineLikeShape(shape)) return null
-  const handleSize = Math.max(5, 7 / zoom)
   const rect = { height: shape.props.height, width: shape.props.width, x: 0, y: 0 }
   return (
-    <>
-      <Rect dash={[5 / zoom, 4 / zoom]} height={rect.height} listening={false} stroke="#6b5cff" strokeWidth={1.2 / zoom} width={rect.width} x={rect.x} y={rect.y} />
-      {[rect.x, rect.x + rect.width].flatMap((x) => [rect.y, rect.y + rect.height].map((y) => (
-        <Rect
-          fill="#ffffff"
-          height={handleSize}
-          key={`${x}-${y}`}
-          listening={false}
-          offsetX={handleSize / 2}
-          offsetY={handleSize / 2}
-          stroke="#6b5cff"
-          strokeWidth={1 / zoom}
-          width={handleSize}
-          x={x}
-          y={y}
-        />
-      )))}
-    </>
+    <Rect dash={[5 / zoom, 4 / zoom]} height={rect.height} listening={false} stroke="#6b5cff" strokeWidth={1.2 / zoom} width={rect.width} x={rect.x} y={rect.y} />
   )
 }
 

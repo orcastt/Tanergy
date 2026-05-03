@@ -1,6 +1,6 @@
 # Project State Slice S1X: Canvas Engine Migration
 
-**Status**: Phase 1A handfeel/performance and Phase 2A Properties baseline accepted for the spike.
+**Status**: Phase 3 object editing foundation in progress after accepted Phase 1A/2A spike baselines.
 **Branch**: `feature/s1x-konva-handfeel-spike`
 **Started**: 2026-05-03
 
@@ -87,6 +87,7 @@ The migration is therefore a renderer engine migration, not a small library swap
 - [x] Move pan/zoom camera updates out of the React hot path for the spike.
 - [x] Add accepted Konva Properties baseline for selected and next-shape style edits.
 - [x] Add fill/dash styles, crisp pattern fill, collapsible Properties drawer and line-like selection polish.
+- [x] Start Phase 3.1 object editing foundation with box select, single-shape resize handles and shape/selection undo-redo checkpoints.
 - [ ] Add production-quality rectangle/text/image/node-card renderers.
 - [ ] Save/load a renderer-neutral document.
 - [ ] Run two-tab Yjs sync with cursor/presence.
@@ -117,6 +118,14 @@ Phase 2A accepted Properties baseline:
 - Pattern fill is generated as crisp high-DPR hatching and follows stroke color
 - Properties can collapse/expand from the side handle
 - Fill is shown only for closed shapes; line/arrow/stroke do not show Fill
+
+Phase 3.1 object editing foundation started:
+
+- `KonvaCanvasStage` is now a thin layer composer; hot pointer/session logic lives in `useKonvaCanvasInteractions`
+- box-select marquee can select multiple objects without affecting camera history
+- single closed-shape selection shows corner resize handles; Shift while resizing preserves aspect ratio
+- undo/redo restores shapes plus selection only, so pan/zoom is not part of command history
+- create, drag, resize, eraser, Properties style edits, layer actions, duplicate/delete, stress strokes and clear all now create history checkpoints
 
 Not included yet: node cards, image paste/drop, image-to-node/to-canvas conversion, save/history integration, right-click menu, real Yjs provider sync and Board route migration.
 
@@ -157,12 +166,10 @@ Large Miro-scale collaboration: later multi-month S4 track
 Continue with Phase 3 object editing foundation before any `/boards/[boardId]` migration:
 
 ```text
-box select
-resize handles
-drag command batching
-undo/redo command stack
 copy/paste and Alt duplicate
 text editing overlay
+right-click command menu
+line/arrow midpoint controls
 ```
 
 After that, add Phase 3A right-click menu and Phase 3B line/arrow/eraser/detail controls on top of the same command system.

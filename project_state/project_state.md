@@ -51,7 +51,7 @@ Not production-complete:
 | S1B Staging Infra | `project_state_slice_S1B_staging_infra.md` | In progress; FastAPI/Neon/R2 smoke passed |
 | S1C Auth Context | `project_state_slice_S1C_auth_request_context.md` | After S1A |
 | S1D Board CRUD | `project_state_slice_S1D_auth_board_crud.md` | After S1C |
-| S1X Canvas Engine Migration | `project_state_slice_S1X_canvas_engine_migration.md` | Phase 1A handfeel/performance and Phase 2A Properties baseline accepted; Phase 3 object editing next |
+| S1X Canvas Engine Migration | `project_state_slice_S1X_canvas_engine_migration.md` | Phase 3 object editing foundation in progress; box select, resize and undo/redo first pass |
 | S2 AI/Admin Future | `project_state_slice_S2_ai_admin_future.md` | Planned |
 
 ## Current Next Fork

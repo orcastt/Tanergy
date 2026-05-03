@@ -26,6 +26,7 @@ type KonvaCanvasPropertiesProps = {
   nextStyle: CanvasShapeStyle
   selectedIds: string[]
   onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
+  onHistoryCheckpoint: (document: CanvasDocument) => void
   onNextStyleChange: Dispatch<SetStateAction<CanvasShapeStyle>>
   onSelectionChange: (shapeIds: string[]) => void
 }
@@ -40,6 +41,7 @@ const widthValueByStyle: Record<KonvaCanvasWidthStyle, number> = {
 export function KonvaCanvasProperties({
   activeTool,
   document,
+  onHistoryCheckpoint,
   nextStyle,
   onDocumentChange,
   onNextStyleChange,
@@ -63,12 +65,14 @@ export function KonvaCanvasProperties({
   const applyStyle = (patch: CanvasShapeStyle) => {
     onNextStyleChange((current) => ({ ...current, ...patch }))
     if (selectedIds.length > 0) {
+      onHistoryCheckpoint(document)
       onDocumentChange((current) => applyKonvaStylePatch(current, selectedIds, patch))
     }
   }
 
   const runDocumentAction = (action: 'delete' | 'duplicate' | 'layer-back' | 'layer-backward' | 'layer-forward' | 'layer-front') => {
     if (selectedIds.length === 0) return
+    onHistoryCheckpoint(document)
     if (action === 'duplicate') {
       const result = duplicateKonvaShapes(document, selectedIds)
       onDocumentChange(result.document)

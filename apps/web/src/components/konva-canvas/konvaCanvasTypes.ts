@@ -1,4 +1,4 @@
-import type { CanvasPoint, CanvasShape, StrokePoint } from '@/features/canvas-engine'
+import type { CanvasBounds, CanvasPoint, CanvasShape, StrokePoint } from '@/features/canvas-engine'
 
 export type KonvaCanvasTool =
   | 'hand'
@@ -13,6 +13,8 @@ export type KonvaCanvasTool =
   | 'arrow'
   | 'text'
   | 'eraser'
+
+export type KonvaResizeHandle = 'ne' | 'nw' | 'se' | 'sw'
 
 export type KonvaToolGroup = {
   label: string
@@ -35,6 +37,20 @@ export type KonvaToolSession =
   | {
       pointerId?: number
       type: 'erase'
+    }
+  | {
+      additive: boolean
+      current: CanvasPoint
+      origin: CanvasPoint
+      pointerId?: number
+      type: 'select-box'
+    }
+  | {
+      handle: KonvaResizeHandle
+      originBounds: CanvasBounds
+      pointerId?: number
+      shapeId: string
+      type: 'resize'
     }
 
 export const konvaToolLabels: Record<KonvaCanvasTool, string> = {

@@ -1,6 +1,6 @@
 # ARCH Slice S1X: Canvas Engine Migration
 
-**Status**: Active risk-mitigation spike; Phase 1A handfeel/performance and Phase 2A Properties baseline are accepted for the spike.
+**Status**: Active risk-mitigation spike; Phase 3 object editing foundation is in progress after accepted Phase 1A/2A baselines.
 **Branch**: `feature/s1x-konva-handfeel-spike`
 **Reason**: Public staging exposed the tldraw production license requirement. TANGENT should not make the paid SDK the long-term core canvas dependency unless the business explicitly accepts that cost.
 
@@ -51,6 +51,23 @@ document.shapes order
   -> layer front/back actions
 generated pattern tile
   -> high-DPR hatch fill follows stroke color
+```
+
+Current Phase 3.1 boundary:
+
+```text
+KonvaCanvasStage
+  -> thin Stage/Layer composer
+
+useKonvaCanvasInteractions
+  -> pointer sessions for pan/create/erase/box-select/resize
+
+KonvaSelectionOverlay
+  -> marquee + single-shape resize handles
+
+useKonvaCanvasHistory
+  -> undo/redo snapshots shapes + selectedIds only
+  -> camera pan/zoom excluded from command history
 ```
 
 It does not replace `/boards/[boardId]` and does not remove any tldraw reference code.
