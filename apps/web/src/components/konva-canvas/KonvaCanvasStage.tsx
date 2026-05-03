@@ -44,7 +44,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
   } = useKonvaCanvasInteractions(props)
   const renderCamera = props.camera
   const shapesAreInteractive = props.activeTool !== 'hand' && props.activeTool !== 'eraser'
-  const canDragShape = props.activeTool === 'select' && !props.isSpacePanning
+  const canDragShape = shapesAreInteractive && !props.isSpacePanning
 
   return (
     <Stage

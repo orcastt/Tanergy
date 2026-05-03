@@ -125,6 +125,7 @@ Phase 3.1 object editing foundation started:
 - box-select marquee can select multiple objects without affecting camera history
 - single closed-shape selection shows corner resize handles; Shift while resizing preserves aspect ratio
 - multi-selection shows a union boundary; dragging a selected member now moves the selected set together
+- continuous drawing tools can still point-select an existing object and drag it as a single object without switching to Select
 - undo/redo restores shapes plus selection only, so pan/zoom is not part of command history
 - create, drag, resize, eraser, Properties style edits, layer actions, duplicate/delete, stress strokes and clear all now create history checkpoints
 

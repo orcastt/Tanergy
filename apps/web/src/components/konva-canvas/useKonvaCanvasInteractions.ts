@@ -74,7 +74,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
   }, [])
   const handleShapeDragStart = useCallback((shapeId: string) => {
     const current = documentRef.current
-    const preview = createShapeDragPreview(current.shapes, options.selectedIds, shapeId)
+    const preview = createShapeDragPreview(current.shapes, options.activeTool === 'select' ? options.selectedIds : [shapeId], shapeId)
     if (!preview) return
     options.onHistoryCheckpoint(current)
     dragRef.current = preview
