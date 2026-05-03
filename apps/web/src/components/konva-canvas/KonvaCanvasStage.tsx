@@ -71,9 +71,10 @@ export function KonvaCanvasStage({
   const handlePointerDown = (event: KonvaEventObject<PointerEvent>) => {
     const screenPoint = getStagePointer(stageRef.current)
     if (!screenPoint) return
+    clearBrowserSelection()
+    event.evt.preventDefault()
     const shouldPan = isSpacePanning || event.evt.button === 1 || activeTool === 'hand'
     if (shouldPan) {
-      event.evt.preventDefault()
       sessionRef.current = { origin: screenPoint, pointerId: event.evt.pointerId, type: 'pan' }
       return
     }
@@ -114,6 +115,10 @@ export function KonvaCanvasStage({
     const session = sessionRef.current
     const screenPoint = getStagePointer(stageRef.current)
     if (!screenPoint) return
+    if (session) {
+      clearBrowserSelection()
+      event.evt.preventDefault()
+    }
 
     const worldPoint = pointerToWorld({ ...screenPoint, pressure: event.evt.pressure }, camera)
     if (!session) {
@@ -261,4 +266,8 @@ function isStageTarget(event: KonvaEventObject<PointerEvent>) {
 
 function boundsContainPoint(bounds: ReturnType<typeof getShapeBounds>, point: CanvasPoint, padding: number) {
   return point.x >= bounds.minX - padding && point.x <= bounds.maxX + padding && point.y >= bounds.minY - padding && point.y <= bounds.maxY + padding
+}
+
+function clearBrowserSelection() {
+  window.getSelection()?.removeAllRanges()
 }

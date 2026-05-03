@@ -6,6 +6,8 @@
   height: 100vh;
   min-height: 620px;
   overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .konva-canvas-header {
@@ -75,6 +77,8 @@
   position: absolute;
   top: 64px;
   transform: translateX(-50%);
+  -webkit-user-select: none;
+  user-select: none;
   z-index: 20;
 }
 
@@ -104,6 +108,8 @@
   font: inherit;
   justify-content: center;
   min-height: 32px;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .konva-canvas-tool {
@@ -167,6 +173,9 @@
   flex: 1;
   min-height: 0;
   position: relative;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .konva-canvas-stage-wrap[data-space-panning='true'] {
@@ -186,6 +195,8 @@
   left: 18px;
   padding: 8px;
   position: absolute;
+  -webkit-user-select: none;
+  user-select: none;
   z-index: 14;
 }
 
@@ -218,6 +229,8 @@
   padding: 10px;
   position: absolute;
   right: 18px;
+  -webkit-user-select: none;
+  user-select: none;
   z-index: 14;
 }
 
