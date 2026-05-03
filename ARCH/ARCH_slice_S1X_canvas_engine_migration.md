@@ -1,0 +1,398 @@
+# ARCH Slice S1X: Canvas Engine Migration
+
+**Status**: Active risk-mitigation spike; first Konva handfeel route is ready for user review.
+**Branch**: `feature/s1x-konva-handfeel-spike`
+**Reason**: Public staging exposed the tldraw production license requirement. TANGENT should not make the paid SDK the long-term core canvas dependency unless the business explicitly accepts that cost.
+
+## Decision
+
+Treat the current tldraw implementation as the reference implementation, not as discarded work.
+
+The migration target is:
+
+```text
+Konva / react-konva          Canvas rendering and pointer interaction
+Yjs                          Collaborative board document
+y-websocket or Hocuspocus    Self-hosted collaboration room transport
+FastAPI + Postgres           Board metadata, snapshots, permissions, audit facts
+R2/S3-compatible storage     Images, thumbnails and future capture artifacts
+```
+
+tldraw remains available locally as the baseline for parity testing until the replacement reaches acceptance.
+
+## Current Implementation Checkpoint
+
+The first isolated renderer route is:
+
+```text
+/spikes/konva-canvas
+```
+
+It includes Konva/react-konva, Yjs document initialization, freehand smoothing via `perfect-freehand`, basic pan/zoom, faint dot background, rectangle/diamond/ellipse/triangle/cloud, line/arrow/text/eraser, minimap zoom controls and an in-browser diagnostics panel.
+
+It does not replace `/boards/[boardId]` and does not remove any tldraw reference code.
+
+## Current tldraw Reference Contract
+
+The replacement engine must preserve these current product behaviors unless a deliberate product decision changes them.
+
+### Shell and Layout
+
+- Board route loads `/boards/[boardId]` into the product canvas.
+- Header provides Workspace back, TANGENT home/logo, Board switcher and recent Board affordances.
+- Top toolbar stays above the canvas with hand/select, shape, arrow, line, draw, text and eraser tools.
+- Left properties drawer is fixed and decoupled from canvas pointer events; it keeps the last selected drawing tool properties until another tool is chosen.
+- Canvas Settings panel opens from a gear icon and controls per-board background/grid/snap behavior.
+- Board Save/History controls remain visible and support Save now, Snapshot, Refresh preview and History.
+- Selection toolbar for generated node/capture/alignment actions is part of the current experience and must be reintroduced before tldraw removal.
+
+### Drawing Handfeel
+
+The first Konva spike is judged by handfeel, not feature count.
+
+- Slow lines should not jitter.
+- Fast lines should not break or visibly undersample.
+- Curves should feel natural and not mechanical.
+- Pan/zoom must stay under the pointer without drift.
+- Drawing after zoom/pan must land exactly under the cursor.
+- Continuous drawing should not cause tool panels to flicker or reset.
+- 1,000 strokes and mixed nodes should remain interactive on staging hardware.
+- Target acceptance: at least 80% of the current tldraw handfeel before migrating node/business logic.
+
+Likely implementation building blocks:
+
+```text
+pointer event sampling
+requestAnimationFrame batching
+perfect-freehand or equivalent stroke outline smoothing
+Catmull-Rom / Bezier curve fitting
+Konva layer separation for background, strokes, nodes, overlays and UI handles
+viewport transform stored outside React render loops
+```
+
+## Smooth Canvas Performance Architecture
+
+The Konva replacement must be designed for smoothness from the first spike. The goal is not only "same features as tldraw", but the same feeling: pointer input should be immediate, React UI should not re-render on every pointer event, and collaboration updates should not interrupt local drawing.
+
+### Performance Principles
+
+```text
+local pointer input first
+React outside the hot path
+Konva layers by update frequency
+viewport transform in mutable engine state
+document commits batched
+Yjs updates throttled/transactional
+image rendering uses LOD and cache
+expensive export/history work happens outside drawing frames
+```
+
+### Layer Model
+
+Use separate layers so fast-changing elements do not force expensive redraws of everything:
+
+```text
+Stage
+  BackgroundLayer      grid/dots/solid; redraw only when camera/settings change
+  ImageLayer           images/thumbnails; cached and LOD-aware
+  StrokeLayer          freehand strokes and simple shapes
+  NodeLayer            node card shells and non-editing node visuals
+  EdgeLayer            node edges/arrows
+  SelectionLayer       selection boxes, handles, snap guides
+  PresenceLayer        remote cursors/selections; throttled
+  HtmlOverlay          text inputs, node controls, toolbar/properties outside Konva hot path
+```
+
+### Input Pipeline
+
+Do not send every pointer event through React state.
+
+```text
+pointerdown
+  -> capture pointer
+  -> initialize mutable tool session
+
+pointermove
+  -> append raw points to mutable buffer
+  -> schedule one requestAnimationFrame
+
+animation frame
+  -> smooth/fit points
+  -> update active Konva node directly
+  -> draw only affected layer
+
+pointerup
+  -> finalize stroke/shape
+  -> commit a single document transaction
+  -> push undo entry
+  -> enqueue save/dirty/Yjs update
+```
+
+This is the difference between "canvas feels native" and "canvas feels like React dragging a thousand components."
+
+### Freehand Stroke Strategy
+
+For tldraw-like drawing feel:
+
+- keep raw pointer points for replay/editing
+- render a simplified/smoothed preview while drawing
+- use `perfect-freehand` or equivalent outline generation for final stroke shape
+- reduce points with distance/time thresholds so fast strokes do not create excessive nodes
+- preserve enough points so slow curves do not become angular
+- store pressure/velocity-compatible fields even if pressure is unavailable on mouse
+- simplify final stroke for storage, but never during the live pointer frame if it causes lag
+
+### Viewport And Camera
+
+- Keep camera `{ x, y, z }` in a mutable engine store.
+- Apply pan/zoom to the Konva stage or root group directly.
+- Zoom around pointer position using world/screen coordinate conversion.
+- Only publish camera snapshots to React for UI labels like `100%`.
+- Throttle minimap/navigator updates.
+- Prevent UI wheel/pointer events from bubbling into the stage.
+
+### React Boundary
+
+React should render:
+
+- toolbar
+- properties drawer
+- settings/history panels
+- node HTML controls when editing
+- status toasts and save state
+
+React should not render on every:
+
+- pointer move
+- stroke point addition
+- drag frame
+- remote cursor packet
+- camera pixel movement
+
+React state receives coarse events:
+
+```text
+tool changed
+selection changed
+transaction committed
+save status changed
+history loaded
+active edit session opened/closed
+```
+
+### Object Count And Hit Testing
+
+- Use spatial indexing or viewport filtering before full hit testing.
+- Prefer simple bounding-box checks first, then precise hit tests.
+- Keep hit regions separate from visual stroke complexity when needed.
+- Cache expensive shape bounds.
+- Batch select/drag updates into one transaction per frame.
+- For very large Boards, introduce viewport culling before S4 collaboration scale work.
+
+### Images And Nodes
+
+- Keep full image binaries out of Board documents.
+- Render images from R2 thumbnails first; upgrade to larger previews when zoomed in.
+- Cache image nodes in Konva when they are static.
+- Avoid re-rendering React node controls unless a node is selected/editing/running.
+- Large image decode/upload/capture should not happen in the drawing frame.
+
+### Yjs Collaboration Smoothness
+
+Local user interaction must not wait for the network.
+
+```text
+local commit -> local render immediately
+local commit -> Yjs transaction after/batched
+remote update -> merge into store
+remote update -> skip if local tool session owns the same object
+presence -> throttle to 15-30 fps
+history -> use user-origin scoped undo manager
+```
+
+For collaboration:
+
+- group drag/stroke operations into transactions
+- send live cursor/presence separately from persisted document data
+- compact or snapshot long-running Yjs updates before they become too large
+- do not write every remote cursor move to Postgres
+- save Board snapshots from stable document states, not every live packet
+
+### Measurement Gates
+
+The spike should add simple in-browser diagnostics:
+
+```text
+frame time p95
+pointer-to-render latency estimate
+stroke point count before/after simplification
+visible object count
+total object count
+image count and decoded image count
+Yjs update count/second
+last save/export duration
+```
+
+Minimum acceptance targets for the first serious spike:
+
+```text
+60 fps target for normal Boards
+p95 frame time under 24ms while drawing on a medium Board
+no visible pointer lag on fast strokes
+1,000 strokes remain selectable/pannable
+100 node cards remain draggable
+20 images do not freeze pan/zoom
+remote cursor updates do not interrupt local drawing
+```
+
+These numbers are gates for continuing the migration, not final commercial guarantees.
+
+### Tools and Styles
+
+Current tldraw tool set:
+
+```text
+hand
+select
+rectangle / diamond / ellipse / triangle / cloud
+arrow
+line
+draw
+text
+eraser
+```
+
+Current properties:
+
+```text
+stroke color: black / red / green / blue / orange / violet / grey
+fill: none / semi / solid / pattern
+width: s / m / l / xl
+dash: draw / solid / dashed / dotted
+line spline: straight / curve
+arrow kind: arc / elbow
+arrow heads: start/end arrow/triangle/none
+font: draw / sans / serif / mono
+opacity
+layer / align / action commands for editable selections
+```
+
+The Konva engine may store style names differently, but the UI contract and visual result should stay close.
+
+### Node Runtime
+
+Preserve current node/product logic:
+
+- Node types: prompt, image, image_gen, image_gen_4, analysis.
+- Node cards contain self-contained controls and runtime summaries.
+- Ports expose typed text/image inputs and outputs.
+- Edges are stored as explicit runtime edges, not only visual arrows.
+- `resolveNodeInputs` behavior remains the AI run input source of truth.
+- Image nodes reference Asset ids/URLs, never Base64 payloads in Board documents.
+- AI run UI still writes summary status: idle/running/succeeded/failed, cost hint, result asset ids and optional text output.
+
+### Board Document and Persistence
+
+The current serializer already separates product facts from tldraw enough to migrate incrementally.
+
+Current save document contains:
+
+```text
+version
+pageId
+camera
+viewport
+canvasSettings
+runtimeEdges
+assets
+shapes
+serializedAt
+```
+
+S1X should introduce a renderer-neutral `TangentBoardDocument` and adapters:
+
+```text
+tldraw document adapter      current reference reader/writer
+konva document adapter       new runtime reader/writer
+board guard                  shared validation
+history/snapshot API         unchanged
+thumbnail capture            reimplemented against Konva stage export
+```
+
+### Smart Drawing
+
+Current smart drawing recognizes:
+
+- straight lines
+- cubic curves
+- rectangles
+- triangles
+- ellipses
+
+The recognizer logic is reusable, but the tldraw-specific `b64Vecs` decoding and output shape creation must be replaced with renderer-neutral point input and Konva shape output.
+
+## Migration Architecture
+
+Do not rewrite `/boards/[boardId]` in one pass. Add a parallel engine and contract layer first.
+
+```text
+apps/web/src/features/canvas-engine
+  document.ts              TangentBoardDocument types
+  store.ts                 shape/asset/edge commands
+  viewport.ts              camera transform model
+  history.ts               undo/redo command stack
+  tools.ts                 active tool/style state
+
+apps/web/src/components/konva-canvas
+  KonvaCanvasSpike.tsx     isolated prototype route
+  layers/*                 background, strokes, shapes, nodes, overlays
+  tools/*                  draw, select, pan, resize, text, erase
+
+apps/web/src/features/collaboration
+  ydoc.ts                  Yjs document mapping
+  provider.ts              room transport wrapper
+  awareness.ts             cursor/selection/presence state
+```
+
+## Parity Gates
+
+S1X is not accepted until these gates pass:
+
+1. Handfeel spike passes user drawing test.
+2. Renderer-neutral document can save/load strokes, shapes, text, image nodes, prompt/AI nodes and edges.
+3. Existing Workspace and Board API paths do not change.
+4. Board History can create/list/load snapshots from the new document.
+5. Captured thumbnail works from Konva export.
+6. Two browser tabs can edit the same prototype Board with Yjs and show cursor/selection presence.
+7. tldraw route can remain as fallback until the Konva route passes staging smoke.
+
+## Detailed Parity Matrix
+
+The detailed Chinese feature-by-feature replication matrix lives in:
+
+```text
+dev-plans/s1x-canvas-engine-migration-reference-2026-05-03.md
+```
+
+That tactical plan is the working checklist for matching the current tldraw behavior across:
+
+- handfeel and pan/zoom
+- toolbar and fixed properties drawer
+- properties panel selection/style/layer/align/action controls
+- context menu and submenus for edit/arrange/reorder/copy/export commands
+- detailed shape parity: rectangle, diamond, circle/ellipse, triangle, cloud, line/arrow curve handles, pencil/eraser feel and navigator/minimap zoom controls
+- shapes, text, draw, eraser and selection details
+- undo/redo, copy/paste and Alt-drag duplicate
+- node cards, ports, typed edges and AI runtime summaries
+- Canvas/Image/Node conversion paths: selected image to Image Node, Image Node to Canvas, selection capture to Image Node, Canvas markup to merged image
+- image paste/copy/Alt-drag and placement rules: web image paste to pointer, image-to-node on the right, screenshot/capture node below the selected bounds, To Canvas image on the right
+- save/autosave/snapshot/history/thumbnail
+- Yjs collaboration proof
+- final dual-engine replacement and tldraw removal gates
+
+## Freeze Rules
+
+- No new tldraw-only feature work except emergency regression fixes.
+- No deletion of tldraw reference code until Konva parity is accepted.
+- Any new Board/Node/Asset product logic must land in renderer-neutral modules first.
+- Do not add another paid/proprietary canvas or collaboration SDK as a core dependency.

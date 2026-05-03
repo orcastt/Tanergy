@@ -1,6 +1,6 @@
 # TANGENT Architecture Index
 
-**Updated**: 2026-05-02
+**Updated**: 2026-05-03
 **Status**: Canonical architecture overview and slice index.
 
 This file replaces the former duplicated `ARCH/00-current-map.md` plus the long root `ARCH.md`. The root `ARCH.md` is now only a pointer.
@@ -13,7 +13,9 @@ Browser
   v
 Next.js Web App
   |-- Product Shell routes
-  |-- tldraw Canvas Runtime
+  |-- Canvas Runtime
+  |     |-- tldraw current reference implementation
+  |     |-- Konva/Yjs migration spike for long-term engine
   |-- Board / Asset / AI clients
   |
   +-- local Next API bridge --------------+
@@ -72,11 +74,11 @@ Percentages mean distance to local/P0 alpha usefulness, not final commercial com
 +-------+--------+      +-------+--------+      +-------+--------+
         |                       |                       |
 | Product shell [95%]   | DB schema [92%]      | Model Registry [35%]
-| Board save UX [94%]   | Staging infra [0%]   | AiRun/logs [20%]
+| Board save UX [94%]   | Staging infra [85%]  | AiRun/logs [20%]
 | Board History [95%]   | Auth boundary [35%]  | Provider route [0%]
 | Canvas Settings [96%] | Board CRUD API [25%] | AI Chat planner [10%]
-| Board Mgmt [93%]      | Postgres/R2 [0%]     |
-| Canvas controls [96%] |
+| Board Mgmt [93%]      | Postgres/R2 [90%]    |
+| Canvas controls [96%] | Canvas Engine S1X [12%] |
 | Captured thumb [91%]  |
 | Smart Drawing [95%]   |
         |                       |                       |
@@ -98,6 +100,7 @@ Percentages mean distance to local/P0 alpha usefulness, not final commercial com
 | S1B Staging Infra | `ARCH_slice_S1B_staging_infra.md` | Vercel, FastAPI host, Postgres, R2, domain, email provider, staging smoke | When preparing online resources |
 | S1C Auth Context | `ARCH_slice_S1C_auth_request_context.md` | Registration, login, sessions, request context, workspace membership authority | After S1A |
 | S1D Board CRUD | `ARCH_slice_S1D_auth_board_crud.md` | Permission-checked Board list/load/save/history/member APIs | After S1C |
+| S1X Canvas Engine Migration | `ARCH_slice_S1X_canvas_engine_migration.md` | tldraw license risk, current canvas reference contract, Konva/Yjs replacement path | Konva handfeel route scaffolded at `/spikes/konva-canvas`; user handfeel review next |
 | S2 AI Runtime | `ARCH_slice_S2_ai_runtime.md` | Node Registry, Model Registry, AiRun, provider routing, AI Chat planner | AI node/provider/model changes |
 | S3 Admin/Billing/Analytics | `ARCH_slice_S3_admin_billing_analytics.md` | Admin roles, audit, credits, subscriptions, analytics, moderation facts | Admin/billing/analytics schema changes |
 | S4 Collaboration | `ARCH_slice_S4_collaboration.md` | Multiplayer, presence, CRDT boundaries, roles | Collaboration work begins |
@@ -117,6 +120,9 @@ S1 Real Boundary: staging + Auth + ownership + Board CRUD
   |
   +--> S1B Staging infra smoke
   |       FastAPI health / Postgres / R2 / domain / CORS / Web API base URL
+  |
+  +--> S1X Canvas engine migration spike
+  |       preserve tldraw behavior as reference, test Konva handfeel, prove Yjs path
   |
   +--> S1C Auth + request context
   |       register / login / logout / session / default workspace

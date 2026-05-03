@@ -1,7 +1,7 @@
 # Project State Slice S1B: Staging Infrastructure And Online Prep
 
-**Updated**: 2026-05-02
-**Status**: Waiting on external resources.
+**Updated**: 2026-05-03
+**Status**: In progress; staging Web/API/Neon/R2 smoke passed, tldraw production license exposed.
 
 ## Objective
 
@@ -15,11 +15,11 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 
 ## Resources To Prepare
 
-- [ ] Domain under Cloudflare DNS.
-- [ ] Vercel project connected to GitHub.
-- [ ] FastAPI host, likely Hetzner VPS or equivalent.
-- [ ] Managed Postgres project, Supabase or Neon acceptable for staging.
-- [ ] Cloudflare R2 bucket and S3 credentials.
+- [x] Domain under Cloudflare DNS.
+- [x] Vercel project connected to GitHub.
+- [x] FastAPI host, likely Hetzner VPS or equivalent.
+- [x] Managed Postgres project, Supabase or Neon acceptable for staging.
+- [x] Cloudflare R2 bucket and S3 credentials.
 - [ ] Email provider account and verified sending domain.
 - [ ] Clerk or Supabase Auth staging project.
 - [ ] Google social login enabled in Auth provider.
@@ -36,14 +36,26 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 
 ## Smoke Tests
 
-- [ ] `/health` over HTTPS.
-- [ ] CORS from staging Web origin.
-- [ ] Alembic migration against staging DB.
-- [ ] Asset upload/read through R2.
-- [ ] Board save/load/history through staging API.
+- [x] `/health` over HTTPS.
+- [x] CORS from staging Web origin.
+- [x] Alembic migration against staging DB.
+- [x] Asset upload/read through R2.
+- [x] Board save/load/history through staging API.
+- [x] Vercel Web domain opens Workspace/Board routes.
 - [ ] OTP email delivered to test inbox.
 - [ ] Google OAuth login on staging returns provider session/JWT.
 - [ ] FastAPI rejects invalid/expired provider JWT.
+
+## Current Staging Result
+
+- FastAPI is deployed on the Hetzner staging host behind Caddy.
+- Public API health is live at the staging API domain.
+- Neon migration reached S1A head.
+- Temporary dev user/workspace seed exists for pre-Auth smoke.
+- Board save/load/history, guard rejection and R2 asset upload/read passed.
+- Vercel staging domain opens the Web app and calls the staging FastAPI origin.
+- Public Board route now exposes the tldraw production license requirement; S1X covers the long-term replacement evaluation.
+- `TANGENT_REQUIRE_API_AUTH=0` remains intentional until S1C Clerk/JWT verification lands.
 
 ## Handoff Notes
 

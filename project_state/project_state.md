@@ -1,7 +1,7 @@
 # TANGENT Project State Index
 
-**Updated**: 2026-05-02
-**Branch**: `feature/s1-staging-auth-board`
+**Updated**: 2026-05-03
+**Branch**: `feature/s1x-konva-handfeel-spike`
 **Latest local checkpoint**: latest commit on the active branch; keep detailed history in Git.
 
 This folder replaces the former root-level long project ledger and short mirror files. The root `project_state.md` is now only a pointer.
@@ -9,6 +9,8 @@ This folder replaces the former root-level long project ledger and short mirror 
 ## Current Phase
 
 TANGENT has accepted S0 local polish after Slice E persistence foundations. The canvas interaction pass and Smart Drawing are good enough for P0 alpha; keep only regression fixes and move new architecture work to S1.
+
+Public staging is now live enough to expose a production tldraw license requirement. S1X is the active risk-mitigation spike: keep current tldraw as the reference implementation, but evaluate Konva + Yjs before adding more tldraw-only product work.
 
 ```text
 Done locally:
@@ -32,7 +34,8 @@ Done locally:
 Not production-complete:
   real Auth/email/session
   real team/share permissions
-  real staging Postgres/R2/domain
+  staging auth/email/license hardening
+  long-term non-tldraw canvas engine
   real AI provider/cost logs
   full Admin/Billing/Analytics
   collaboration
@@ -45,9 +48,10 @@ Not production-complete:
 | S0 Local Polish | `project_state_slice_S0_local_polish.md` | Accepted for P0 alpha; checkpoint/regression only |
 | S1 Staging/Auth/Board | `project_state_slice_S1_staging_auth_board.md` | Recommended next architecture slice |
 | S1A DB Schema | `project_state_slice_S1A_db_schema.md` | Implemented and locally smoke-tested; staging DB smoke pending S1B |
-| S1B Staging Infra | `project_state_slice_S1B_staging_infra.md` | Waiting on external resources |
+| S1B Staging Infra | `project_state_slice_S1B_staging_infra.md` | In progress; FastAPI/Neon/R2 smoke passed |
 | S1C Auth Context | `project_state_slice_S1C_auth_request_context.md` | After S1A |
 | S1D Board CRUD | `project_state_slice_S1D_auth_board_crud.md` | After S1C |
+| S1X Canvas Engine Migration | `project_state_slice_S1X_canvas_engine_migration.md` | First Konva handfeel route ready for user review |
 | S2 AI/Admin Future | `project_state_slice_S2_ai_admin_future.md` | Planned |
 
 ## Current Next Fork
@@ -61,10 +65,10 @@ If external resources are not ready:
 
 If external resources are ready:
 
-1. Staging Postgres migration smoke.
-2. R2/S3-compatible Asset upload/read smoke.
-3. FastAPI CORS/domain smoke.
-4. Web `NEXT_PUBLIC_API_BASE_URL` staging wiring.
+1. Finish recording S1B staging smoke status.
+2. Review S1X Konva handfeel spike at `/spikes/konva-canvas`.
+3. Decide whether Phase 1 handfeel is close enough to continue toward node/image migration.
+4. Continue S1C Auth if the canvas engine decision is accepted.
 
 ## Next Slice Order
 
@@ -80,6 +84,10 @@ S1B staging smoke
   Postgres, R2, FastAPI health, domain, CORS, Web API base URL
   |
   v
+S1X canvas engine migration spike
+  tldraw reference contract, Konva handfeel, Yjs viability
+  |
+  v
 S1C real Auth
   register, login, logout, session, default workspace
   |
@@ -92,7 +100,7 @@ S1D Auth-backed Board CRUD
   +--> S4 Collaboration
 ```
 
-Current recommendation: continue to S1B resource prep or S1C Auth contracts. S1A schema is implemented and locally smoke-tested, but still needs Neon/staging Postgres smoke once S1B resources exist.
+Current recommendation: pause deeper tldraw work and run S1X handfeel/collaboration spike before S1C Auth deepens canvas product coupling. S1A is implemented and S1B staging Web/API/Postgres/R2 smoke is mostly through, with tldraw license as the newly exposed frontend blocker.
 
 ## Update Rules
 
