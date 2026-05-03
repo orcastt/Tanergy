@@ -5,7 +5,6 @@ import {
   appendCanvasShape,
   pointerToWorld,
   withCanvasShapes,
-  zoomCameraAtScreenPoint,
   type CanvasBounds,
   type CanvasCamera,
   type CanvasDocument,
@@ -31,12 +30,15 @@ import {
   toggleSelectedId,
 } from './konvaSelectionUtils'
 import { clearBrowserSelection, getStagePointer, isStageTarget } from './konvaStageHelpers'
+import { updateLineEndpointShapes } from './konvaLineEndpointUtils'
 import { getPointAngle, getRotatedShapes, getShapeRotationCenter } from './konvaRotationUtils'
 import { getResizeSnapSourceKeys, getRotationSnapGuides, snapResizeBoundsToShapes, snapRotationAngle, type KonvaSnapGuide } from './konvaSnapping'
 import { useKonvaDraftPreview } from './useKonvaDraftPreview'
 import { useKonvaEraserSession } from './useKonvaEraserSession'
+import { useKonvaLineEndpointHandlers } from './useKonvaLineEndpointHandlers'
 import { useKonvaShapeDragHandlers } from './useKonvaShapeDragHandlers'
 import { useKonvaStageCamera } from './useKonvaStageCamera'
+import { useKonvaWheelHandler } from './useKonvaWheelHandler'
 import type { KonvaCanvasTool, KonvaResizeHandle, KonvaToolSession } from './konvaCanvasTypes'
 type UseKonvaCanvasInteractionsOptions = {
   activeTool: KonvaCanvasTool
@@ -72,6 +74,17 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     cameraRef,
     documentRef,
     onDocumentPreview: options.onDocumentPreview,
+  })
+  const handleLineEndpointStart = useKonvaLineEndpointHandlers({
+    documentRef,
+    onHistoryCheckpoint: options.onHistoryCheckpoint,
+    sessionRef,
+  })
+  const handleWheel = useKonvaWheelHandler({
+    applyCamera,
+    cameraRef,
+    scheduleCameraCommit,
+    stageRef,
   })
   const { handleShapeDragEnd, handleShapeDragMove, handleShapeDragStart, selectedBoundsOverride, setSelectedBoundsOverride, snapGuides } = useKonvaShapeDragHandlers({
     activeTool: options.activeTool,
@@ -224,6 +237,10 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       previewDocument(withCanvasShapes(documentRef.current, getRotatedShapes(documentRef.current.shapes, session.shapeId, rotation)))
       return
     }
+    if (session.type === 'line-endpoint') {
+      previewDocument(withCanvasShapes(documentRef.current, updateLineEndpointShapes(documentRef.current.shapes, session.originShape, session.endpoint, worldPoint, { lockAngle: event.evt.shiftKey })))
+      return
+    }
     updateCreateDraft(session, worldPoint, event)
   }
   const handlePointerUp = (event: KonvaEventObject<PointerEvent>) => {
@@ -237,42 +254,19 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     if (session?.type === 'pan') scheduleCameraCommit(0)
     if (session?.type === 'erase') clearEraserTrail(120)
     if (session?.type === 'select-box') finishBoxSelection(session)
-    if (session?.type === 'resize') {
-      setResizeSnapGuides([])
-      setSelectedBoundsOverride(null)
-    }
+    if (session?.type === 'resize') { setResizeSnapGuides([]); setSelectedBoundsOverride(null) }
     if (session?.type === 'rotate') setResizeSnapGuides([])
     const nextDraft = session?.type === 'create' ? finalizeDraft(session.draft) : null
     clearDraft()
     if (nextDraft) options.onDocumentChange((current) => appendCanvasShape(current, nextDraft))
   }
 
-  const handleWheel = (event: KonvaEventObject<WheelEvent>) => {
-    event.evt.preventDefault()
-    const screenPoint = getStagePointer(stageRef.current)
-    if (!screenPoint) return
-    const currentCamera = cameraRef.current
-    const nextZoom = currentCamera.zoom * (event.evt.deltaY > 0 ? 0.9 : 1.1)
-    applyCamera(zoomCameraAtScreenPoint(currentCamera, screenPoint, nextZoom, 0.2, 4))
-    scheduleCameraCommit()
-  }
-
   return {
-    draft,
-    eraserTrail,
-    handlePointerDown,
+    draft, eraserTrail, handleLineEndpointStart, handlePointerDown,
     handlePointerLeave: () => clearEraserTrail(),
-    handlePointerMove,
-    handlePointerUp,
-    handleResizeStart,
-    handleRotateStart,
-    handleShapeDragMove,
-    handleShapeDragEnd,
-    handleShapeDragStart,
-    handleShapeSelect,
-    handleWheel,
-    selectedBoundsOverride,
-    selectionBox,
+    handlePointerMove, handlePointerUp, handleResizeStart, handleRotateStart,
+    handleShapeDragEnd, handleShapeDragMove, handleShapeDragStart, handleShapeSelect, handleWheel,
+    selectedBoundsOverride, selectionBox,
     snapGuides: snapGuides.length > 0 ? snapGuides : resizeSnapGuides,
     stageRef,
   }

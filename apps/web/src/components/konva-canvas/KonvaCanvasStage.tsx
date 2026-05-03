@@ -35,6 +35,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
     handlePointerLeave,
     handlePointerMove,
     handlePointerUp,
+    handleLineEndpointStart,
     handleResizeStart,
     handleRotateStart,
     handleShapeDragMove,
@@ -129,6 +130,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
 
       <Layer>
         <KonvaSelectionOverlay
+          onLineEndpointStart={handleLineEndpointStart}
           onResizeStart={handleResizeStart}
           onRotateStart={handleRotateStart}
           selectedBoundsOverride={selectedBoundsOverride}

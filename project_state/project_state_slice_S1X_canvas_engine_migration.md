@@ -142,6 +142,7 @@ Phase 3.1 object editing foundation started:
 - Drag and resize now use shared canvas snap settings (`snapAlignment`, `snapDistance`) and render cyan guides for edge/center alignment.
 - Snap correction after user review: Alt/Option drag commits from the final preview document to prevent the copied object jumping back; resize snap now only moves the dragged edge/corner so the fixed anchor side does not show the wrong guide; rotate snaps to 15-degree increments and shows a radial guide.
 - Alt/Option drag rewrite: duplicate/move drag now uses a clean `KonvaShapeDragSession`; moving shapes and snap target bounds are frozen at dragStart, and locked-source copy coordinates come from pointer delta instead of the reset Konva node position. User validation passed for snap-on Alt/Option copy near the source object.
+- Phase 3B has started with line/arrow endpoint handles: selected line-like objects no longer show bbox resize handles, and dragging either endpoint updates direction/length with optional Shift 15-degree angle lock.
 - A Konva shell `selectionchange` guard clears accidental browser text selection while preserving normal textarea/input selection during editing.
 - Frame movement now expands the drag set to include direct/nested frame children, so moving a frame carries contained shapes with it.
 - Copy/paste/duplicate/Alt-drag clone logic now rewrites cloned `parentId` through an old-id to new-id map; cloned children no longer point at an old frame. Deleting a frame explicitly releases unselected children instead of leaving stale parent ids.
