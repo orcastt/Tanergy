@@ -114,6 +114,7 @@ export function KonvaCanvasStage({
 
     const draftShape = createDraftShape(activeTool, worldPoint, worldPoint, { constrainProportions: event.evt.shiftKey, style: nextStyle })
     if (!draftShape) return
+    if (selectedIds.length > 0) onSelectionChange([])
     sessionRef.current = {
       draft: draftShape,
       origin: worldPoint,

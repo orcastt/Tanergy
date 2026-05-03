@@ -98,7 +98,7 @@ function renderShape(shape: CanvasShape, style: ReturnType<typeof resolveKonvaSh
     return (
       <>
         {isSelected ? <Line hitStrokeWidth={16} lineCap="round" listening={false} opacity={0.28} points={points} stroke={highlightStroke} strokeWidth={highlightWidth} /> : null}
-        <Line dash={strokeDash} hitStrokeWidth={16} lineCap="round" opacity={opacity} points={points} stroke={isSelected ? highlightStroke : stroke} strokeWidth={strokeWidth} />
+        <Line dash={strokeDash} hitStrokeWidth={16} lineCap="round" opacity={opacity} points={points} stroke={stroke} strokeWidth={strokeWidth} />
       </>
     )
   }
@@ -107,8 +107,8 @@ function renderShape(shape: CanvasShape, style: ReturnType<typeof resolveKonvaSh
     return (
       <>
         {isSelected ? <Line hitStrokeWidth={16} lineCap="round" listening={false} opacity={0.28} points={points} stroke={highlightStroke} strokeWidth={highlightWidth} /> : null}
-        <Line dash={strokeDash} hitStrokeWidth={16} lineCap="round" opacity={opacity} points={points} stroke={isSelected ? highlightStroke : stroke} strokeWidth={strokeWidth} />
-        <Line closed fill={isSelected ? highlightStroke : stroke} opacity={opacity} points={getArrowHeadPoints(shape.props.end, { x: 0, y: 0 }, Math.max(12, strokeWidth * 5))} />
+        <Line dash={strokeDash} hitStrokeWidth={16} lineCap="round" opacity={opacity} points={points} stroke={stroke} strokeWidth={strokeWidth} />
+        <Line closed fill={stroke} opacity={opacity} points={getArrowHeadPoints(shape.props.end, { x: 0, y: 0 }, Math.max(12, strokeWidth * 5))} />
       </>
     )
   }
@@ -116,8 +116,8 @@ function renderShape(shape: CanvasShape, style: ReturnType<typeof resolveKonvaSh
     const path = getFreehandPath(shape.props.points, strokeWidth * 2.2)
     return (
       <>
-        {isSelected ? <Path data={path} fill={highlightStroke} listening={false} opacity={0.22} scaleX={1.08} scaleY={1.08} /> : null}
-        <Path data={path} fill={isSelected ? highlightStroke : stroke} hitStrokeWidth={16} opacity={opacity} />
+        {isSelected ? <Path data={path} fill={highlightStroke} listening={false} opacity={0.18} scaleX={1.04} scaleY={1.04} /> : null}
+        <Path data={path} fill={stroke} hitStrokeWidth={16} opacity={opacity} />
       </>
     )
   }
