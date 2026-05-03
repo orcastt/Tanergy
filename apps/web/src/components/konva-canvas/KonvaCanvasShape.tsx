@@ -1,4 +1,5 @@
 import { memo, useMemo, useRef } from 'react'
+import type Konva from 'konva'
 import { Ellipse, Group, Line, Path, Rect, Text } from 'react-konva'
 import type { CanvasShape } from '@/features/canvas-engine'
 import { getStickyFillColor, getStrokeDash, resolveKonvaShapeStyle } from './konvaCanvasStyle'
@@ -41,7 +42,7 @@ function KonvaCanvasShapeComponent({
   const canInteract = interactive && !panMode
   const transform = getGroupTransform(shape)
   const lockDragSourceRef = useRef(false)
-  const lastLockedDragPointRef = useRef<{ x: number; y: number } | null>(null)
+  const lockedDragRef = useRef<LockedDragState | null>(null)
 
   return (
     <Group
@@ -54,22 +55,26 @@ function KonvaCanvasShapeComponent({
         onSelect(shape.id, { additive: event.evt.shiftKey })
       } : undefined}
       onDragMove={canInteract ? (event) => {
-        const point = getDragPoint(event.target, transform)
-        if (lockDragSourceRef.current) lastLockedDragPointRef.current = point
+        const point = lockDragSourceRef.current
+          ? getLockedDragPoint(event.target, lockedDragRef.current) ?? getDragPoint(event.target, transform)
+          : getDragPoint(event.target, transform)
+        if (lockDragSourceRef.current && lockedDragRef.current) lockedDragRef.current.lastPoint = point
         onDragMove(shape.id, point.x, point.y)
         if (lockDragSourceRef.current) resetDragSource(event.target, transform)
       } : undefined}
       onDragStart={canInteract ? (event) => {
         lockDragSourceRef.current = Boolean(onDragStart(shape.id, { duplicate: event.evt.altKey })?.lockSource)
-        lastLockedDragPointRef.current = null
+        lockedDragRef.current = lockDragSourceRef.current ? createLockedDragState(event.target, shape) : null
         if (lockDragSourceRef.current) resetDragSource(event.target, transform)
       } : undefined}
       onDragEnd={canInteract ? (event) => {
-        const point = lockDragSourceRef.current ? lastLockedDragPointRef.current ?? getDragPoint(event.target, transform) : getDragPoint(event.target, transform)
+        const point = lockDragSourceRef.current
+          ? lockedDragRef.current?.lastPoint ?? getLockedDragPoint(event.target, lockedDragRef.current) ?? getDragPoint(event.target, transform)
+          : getDragPoint(event.target, transform)
         onDragEnd(shape.id, point.x, point.y)
         if (lockDragSourceRef.current) resetDragSource(event.target, transform)
         lockDragSourceRef.current = false
-        lastLockedDragPointRef.current = null
+        lockedDragRef.current = null
       } : undefined}
       onDblClick={canInteract ? (event) => {
         event.cancelBubble = true
@@ -242,6 +247,27 @@ function getGroupTransform(shape: CanvasShape) {
 
 function getDragPoint(target: { x: () => number; y: () => number }, transform: ReturnType<typeof getGroupTransform>) {
   return { x: target.x() - transform.offsetX, y: target.y() - transform.offsetY }
+}
+
+type LockedDragState = {
+  lastPoint?: { x: number; y: number }
+  startPointer: { x: number; y: number }
+  startShape: { x: number; y: number }
+}
+
+function createLockedDragState(target: Konva.Node, shape: CanvasShape): LockedDragState | null {
+  const pointer = target.getStage()?.getPointerPosition()
+  return pointer ? { startPointer: { x: pointer.x, y: pointer.y }, startShape: { x: shape.x, y: shape.y } } : null
+}
+
+function getLockedDragPoint(target: Konva.Node, state: LockedDragState | null) {
+  const pointer = target.getStage()?.getPointerPosition()
+  const zoom = target.getStage()?.scaleX() ?? 1
+  if (!pointer || !state) return null
+  return {
+    x: state.startShape.x + (pointer.x - state.startPointer.x) / Math.max(0.1, zoom),
+    y: state.startShape.y + (pointer.y - state.startPointer.y) / Math.max(0.1, zoom),
+  }
 }
 
 function resetDragSource(target: { position: (point: { x: number; y: number }) => void }, transform: ReturnType<typeof getGroupTransform>) {
