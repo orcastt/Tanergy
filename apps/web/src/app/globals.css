@@ -31,6 +31,7 @@
 @import './styles/canvas-action-icons.css';
 @import './styles/canvas-image-lod.css';
 @import './styles/konva-canvas.css';
+@import './styles/konva-canvas-properties.css';
 @import './styles/ai-card.css';
 @import './styles/node-card-base.css';
 @import './styles/node-card-content.css';

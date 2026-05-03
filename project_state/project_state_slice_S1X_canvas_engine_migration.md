@@ -1,6 +1,6 @@
 # Project State Slice S1X: Canvas Engine Migration
 
-**Status**: First Konva handfeel route ready for user review.
+**Status**: Phase 1A performance pass and first Properties baseline ready for user review.
 **Branch**: `feature/s1x-konva-handfeel-spike`
 **Started**: 2026-05-03
 
@@ -84,6 +84,8 @@ The migration is therefore a renderer engine migration, not a small library swap
 - [x] Implement first-pass freehand drawing with smoothing.
 - [x] Implement first-pass pan/zoom and 100% navigator reset.
 - [x] Add 1,000 stroke performance test button and diagnostics panel.
+- [x] Move pan/zoom camera updates out of the React hot path for the spike.
+- [x] Add first Konva Properties panel for selected and next-shape style edits.
 - [ ] Add production-quality rectangle/text/image/node-card renderers.
 - [ ] Save/load a renderer-neutral document.
 - [ ] Run two-tab Yjs sync with cursor/presence.
@@ -97,7 +99,21 @@ Files: apps/web/src/components/konva-canvas/*
 Engine helpers: apps/web/src/features/canvas-engine/*
 ```
 
-Included now: full-screen Konva stage, faint dot background, top tool bar, hand/select/draw/basic shapes/line/arrow/text/eraser, minimap with zoom controls, Yjs document initialization and diagnostics.
+Included now: full-screen Konva stage, faint dot background, top tool bar, hand/select/draw/basic shapes/line/arrow/text/eraser, minimap with zoom controls, Yjs document initialization, diagnostics and a fixed left Properties panel.
+
+Phase 1A current performance work:
+
+- pan/zoom mutates the Konva Stage directly during the gesture
+- React receives throttled camera previews and committed document camera snapshots
+- draft drawing and eraser visuals render in their own layers
+- drag/draw gestures clear browser text selection and prevent accidental toolbar text selection
+
+Phase 2A first Properties baseline:
+
+- Stroke, Fill, Width and Opacity update selected shapes and next-shape defaults
+- Layer actions support send back, send backward, bring forward and bring front
+- Actions support Duplicate and Delete
+- Fill is shown only for closed shapes; line/arrow/stroke do not show Fill
 
 Not included yet: node cards, image paste/drop, image-to-node/to-canvas conversion, save/history integration, right-click menu, real Yjs provider sync and Board route migration.
 
@@ -105,7 +121,7 @@ Not included yet: node cards, image paste/drop, image-to-node/to-canvas conversi
 
 - Continuous drawing is preferred: left-click creates one object and keeps the same tool active until the user chooses another tool. Do not regress to requiring right-click lock for normal repeated drawing.
 - Properties remains required: final engine needs a fixed properties panel for style changes across stroke/fill/width/dash/opacity/layer/actions.
-- 1,000 stroke pan/zoom initially felt a bit laggy; first optimization memoizes shape rendering and caps minimap item rendering, but Phase 1A still needs deeper hot-path work before Board migration.
+- 1,000 stroke pan/zoom initially felt a bit laggy; current Phase 1A moves camera updates off the React hot path, splits draft/eraser layers and throttles camera previews. User still needs to hand-test whether this is enough.
 - Freehand smoothing should stay light in normal Draw mode. Current preference is architect-pen style: slow strokes can feel slightly inkier, fast strokes lighter, with subtle taper; stronger Smart Drawing recognition belongs in a separate mode.
 - Canvas navigation shortcuts are part of the handfeel contract: `V` switches to Select, holding `Space` temporarily pans without changing the active tool, and middle-mouse drag pans the canvas.
 - Canvas opens in Select by default. Continuous drawing starts only after the user explicitly chooses Draw/shape/line/arrow.
@@ -114,6 +130,7 @@ Not included yet: node cards, image paste/drop, image-to-node/to-canvas conversi
 - Line, arrow and freehand stroke selection should highlight the line itself, not show a rectangular selection box. They still need wider hit targets. Eraser needs a tldraw-like cursor silhouette/trail while moving. Tooltips use English `Tool: Shortcut` labels.
 - Shape shortcuts: Select `V`, Rectangle `R`, Diamond `D`, Circle `C`, Arrow `A`; additional spike shortcuts include Hand `H`, Triangle `G`, Cloud `U`, Line `L`, Draw `P`, Text `T`, Eraser `E`. Holding Shift while drawing shape tools constrains proportions.
 - Creating draw/line/arrow/shape objects must not auto-select or show highlight controls during continuous drawing; selection visuals appear only after explicit point-select or future box-select.
+- Properties should stay fixed when clicking blank canvas. Changing Properties with no selection updates the next drawing style; changing Properties with a selection also writes to selected shapes.
 
 ## Estimate
 
@@ -134,4 +151,4 @@ Large Miro-scale collaboration: later multi-month S4 track
 
 ## Next Action
 
-Ask the user to hand-test `/spikes/konva-canvas`. If the freehand/pan/zoom baseline is acceptable, continue Phase 1 toward better selection/resize and image paste/drop before any `/boards/[boardId]` migration.
+Ask the user to hand-test `/spikes/konva-canvas` for 1k-stroke pan/zoom and Properties inheritance. If accepted, continue with box select, resize handles, dash styles and text editing before any `/boards/[boardId]` migration.

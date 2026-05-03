@@ -12,6 +12,7 @@ import {
   type CanvasDocument,
   type CanvasPoint,
   type CanvasShape,
+  type CanvasShapeStyle,
 } from '@/features/canvas-engine'
 import { KonvaCanvasShape } from './KonvaCanvasShape'
 import {
@@ -22,6 +23,7 @@ import {
   finalizeDraft,
   updateStrokeDraft,
 } from './konvaDraftShapes'
+import { boundsContainPoint, clearBrowserSelection, getStagePointer, isStageTarget } from './konvaStageHelpers'
 import { useKonvaStageCamera } from './useKonvaStageCamera'
 import type { KonvaCanvasTool, KonvaToolSession } from './konvaCanvasTypes'
 
@@ -31,6 +33,7 @@ type KonvaCanvasStageProps = {
   document: CanvasDocument
   height: number
   isSpacePanning: boolean
+  nextStyle: CanvasShapeStyle
   selectedIds: string[]
   width: number
   onCameraCommit: (camera: CanvasCamera) => void
@@ -45,6 +48,7 @@ export function KonvaCanvasStage({
   document,
   height,
   isSpacePanning,
+  nextStyle,
   onCameraCommit,
   onCameraPreview,
   onDocumentChange,
@@ -102,13 +106,13 @@ export function KonvaCanvasStage({
       return
     }
     if (activeTool === 'text') {
-      const shape = createTextShape(worldPoint)
+      const shape = createTextShape(worldPoint, nextStyle)
       onDocumentChange((current) => appendCanvasShape(current, shape))
       onSelectionChange([shape.id])
       return
     }
 
-    const draftShape = createDraftShape(activeTool, worldPoint, worldPoint, { constrainProportions: event.evt.shiftKey })
+    const draftShape = createDraftShape(activeTool, worldPoint, worldPoint, { constrainProportions: event.evt.shiftKey, style: nextStyle })
     if (!draftShape) return
     sessionRef.current = {
       draft: draftShape,
@@ -152,7 +156,7 @@ export function KonvaCanvasStage({
 
     const nextDraft = activeTool === 'draw'
       ? updateStrokeDraft(session, createStrokePoint(worldPoint, event.evt, session.rawPoints?.at(-1)))
-      : createDraftShape(activeTool, session.origin, worldPoint, { constrainProportions: event.evt.shiftKey })
+      : createDraftShape(activeTool, session.origin, worldPoint, { constrainProportions: event.evt.shiftKey, style: nextStyle })
     if (!nextDraft) return
 
     session.draft = nextDraft
@@ -280,21 +284,4 @@ export function KonvaCanvasStage({
   function updateEraserTrail(point: CanvasPoint) {
     setEraserTrail((trail) => [...trail.slice(-7), point])
   }
-}
-
-function getStagePointer(stage: Konva.Stage | null): CanvasPoint | null {
-  const pointer = stage?.getPointerPosition()
-  return pointer ? { x: pointer.x, y: pointer.y } : null
-}
-
-function isStageTarget(event: KonvaEventObject<PointerEvent>) {
-  return event.target === event.target.getStage()
-}
-
-function boundsContainPoint(bounds: ReturnType<typeof getShapeBounds>, point: CanvasPoint, padding: number) {
-  return point.x >= bounds.minX - padding && point.x <= bounds.maxX + padding && point.y >= bounds.minY - padding && point.y <= bounds.maxY + padding
-}
-
-function clearBrowserSelection() {
-  window.getSelection()?.removeAllRanges()
 }

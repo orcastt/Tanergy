@@ -1,6 +1,6 @@
 # ARCH Slice S1X: Canvas Engine Migration
 
-**Status**: Active risk-mitigation spike; first Konva handfeel route is ready for user review.
+**Status**: Active risk-mitigation spike; Phase 1A performance pass and first Properties baseline are ready for user review.
 **Branch**: `feature/s1x-konva-handfeel-spike`
 **Reason**: Public staging exposed the tldraw production license requirement. TANGENT should not make the paid SDK the long-term core canvas dependency unless the business explicitly accepts that cost.
 
@@ -28,7 +28,28 @@ The first isolated renderer route is:
 /spikes/konva-canvas
 ```
 
-It includes Konva/react-konva, Yjs document initialization, freehand smoothing via `perfect-freehand`, basic pan/zoom, faint dot background, rectangle/diamond/ellipse/triangle/cloud, line/arrow/text/eraser, minimap zoom controls and an in-browser diagnostics panel.
+It includes Konva/react-konva, Yjs document initialization, freehand smoothing via `perfect-freehand`, basic pan/zoom, faint dot background, rectangle/diamond/ellipse/triangle/cloud, line/arrow/text/eraser, minimap zoom controls, an in-browser diagnostics panel and a first fixed Properties panel.
+
+Current Phase 1A implementation:
+
+```text
+pointer pan/zoom -> mutate Konva Stage transform directly
+React camera state -> throttled preview for navigator/labels
+document camera -> committed snapshot after pan/wheel settles
+stable shapes -> main layer
+draft drawing + eraser trail -> separate transient layers
+```
+
+Current Properties baseline:
+
+```text
+next style state
+  -> new draw/shape/line/text defaults
+selected style patch
+  -> selected shape style update
+document.shapes order
+  -> layer front/back actions
+```
 
 It does not replace `/boards/[boardId]` and does not remove any tldraw reference code.
 

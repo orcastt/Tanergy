@@ -14,12 +14,15 @@ import {
   type CanvasDiagnosticsSnapshot,
   type CanvasDocument,
   type CanvasShape,
+  type CanvasShapeStyle,
 } from '@/features/canvas-engine'
 import { KonvaCanvasDiagnostics } from './KonvaCanvasDiagnostics'
 import { KonvaCanvasNavigator } from './KonvaCanvasNavigator'
+import { KonvaCanvasProperties } from './KonvaCanvasProperties'
 import { KonvaCanvasStage } from './KonvaCanvasStage'
 import { KonvaCanvasToolbar } from './KonvaCanvasToolbar'
 import { konvaToolShortcuts, type KonvaCanvasTool } from './konvaCanvasTypes'
+import { konvaDefaultShapeStyle } from './konvaCanvasStyle'
 
 export function KonvaCanvasSpike() {
   const shellRef = useRef<HTMLDivElement | null>(null)
@@ -33,6 +36,7 @@ export function KonvaCanvasSpike() {
   const [camera, setCamera] = useState<CanvasCamera>(document.camera)
   const [activeTool, setActiveTool] = useState<KonvaCanvasTool>('select')
   const [isSpacePanning, setIsSpacePanning] = useState(false)
+  const [nextStyle, setNextStyle] = useState<CanvasShapeStyle>(konvaDefaultShapeStyle)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [diagnostics, setDiagnostics] = useState<CanvasDiagnosticsSnapshot>(() => getCanvasDiagnosticsSnapshot(document))
   const frameSamplesRef = useRef<ReturnType<typeof appendFrameSample>>([])
@@ -160,12 +164,22 @@ export function KonvaCanvasSpike() {
           document={document}
           height={size.height}
           isSpacePanning={isSpacePanning}
+          nextStyle={nextStyle}
           onCameraCommit={handleCameraCommit}
           onCameraPreview={handleCameraPreview}
           onDocumentChange={setDocument}
           onSelectionChange={setSelectedIds}
           selectedIds={selectedIds}
           width={size.width}
+        />
+        <KonvaCanvasProperties
+          activeTool={activeTool}
+          document={document}
+          nextStyle={nextStyle}
+          onDocumentChange={setDocument}
+          onNextStyleChange={setNextStyle}
+          onSelectionChange={setSelectedIds}
+          selectedIds={selectedIds}
         />
         <KonvaCanvasNavigator
           camera={camera}

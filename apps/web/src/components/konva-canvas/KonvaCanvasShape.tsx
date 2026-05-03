@@ -96,7 +96,7 @@ function renderShape(shape: CanvasShape, stroke: string, fill: string, strokeWid
     return (
       <>
         {isSelected ? <Line hitStrokeWidth={16} lineCap="round" listening={false} opacity={0.28} points={points} stroke={highlightStroke} strokeWidth={highlightWidth} /> : null}
-        <Line hitStrokeWidth={16} lineCap="round" points={points} stroke={isSelected ? highlightStroke : stroke} strokeWidth={strokeWidth} />
+        <Line hitStrokeWidth={16} lineCap="round" opacity={opacity} points={points} stroke={isSelected ? highlightStroke : stroke} strokeWidth={strokeWidth} />
       </>
     )
   }
@@ -105,8 +105,8 @@ function renderShape(shape: CanvasShape, stroke: string, fill: string, strokeWid
     return (
       <>
         {isSelected ? <Line hitStrokeWidth={16} lineCap="round" listening={false} opacity={0.28} points={points} stroke={highlightStroke} strokeWidth={highlightWidth} /> : null}
-        <Line hitStrokeWidth={16} lineCap="round" points={points} stroke={isSelected ? highlightStroke : stroke} strokeWidth={strokeWidth} />
-        <Line closed fill={isSelected ? highlightStroke : stroke} points={getArrowHeadPoints(shape.props.end, { x: 0, y: 0 }, Math.max(12, strokeWidth * 5))} />
+        <Line hitStrokeWidth={16} lineCap="round" opacity={opacity} points={points} stroke={isSelected ? highlightStroke : stroke} strokeWidth={strokeWidth} />
+        <Line closed fill={isSelected ? highlightStroke : stroke} opacity={opacity} points={getArrowHeadPoints(shape.props.end, { x: 0, y: 0 }, Math.max(12, strokeWidth * 5))} />
       </>
     )
   }
@@ -120,10 +120,10 @@ function renderShape(shape: CanvasShape, stroke: string, fill: string, strokeWid
     )
   }
   if (shape.type === 'text') {
-    return <Text fill={stroke} fontFamily="Inter, system-ui, sans-serif" fontSize={18} height={shape.props.height} text={shape.props.text} width={shape.props.width} />
+    return <Text fill={stroke} fontFamily="Inter, system-ui, sans-serif" fontSize={18} height={shape.props.height} opacity={opacity} text={shape.props.text} width={shape.props.width} />
   }
   if (shape.type === 'image') {
-    return <Rect fill="rgba(102, 122, 144, 0.12)" height={shape.props.height} stroke={stroke} strokeWidth={strokeWidth} width={shape.props.width} />
+    return <Rect fill="rgba(102, 122, 144, 0.12)" height={shape.props.height} opacity={opacity} stroke={stroke} strokeWidth={strokeWidth} width={shape.props.width} />
   }
   return null
 }

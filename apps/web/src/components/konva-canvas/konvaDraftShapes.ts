@@ -5,9 +5,11 @@ import {
   smoothStrokePoints,
   type CanvasPoint,
   type CanvasShape,
+  type CanvasShapeStyle,
   type StrokePoint,
 } from '@/features/canvas-engine'
 import type { KonvaCanvasTool, KonvaToolSession } from './konvaCanvasTypes'
+import { resolveKonvaShapeStyle } from './konvaCanvasStyle'
 
 const boxTools = new Set<KonvaCanvasTool>(['rect', 'diamond', 'ellipse', 'triangle', 'cloud'])
 
@@ -45,13 +47,13 @@ export function createDraftShape(
   tool: KonvaCanvasTool,
   origin: CanvasPoint,
   point: CanvasPoint,
-  options: { constrainProportions?: boolean } = {}
+  options: { constrainProportions?: boolean; style?: CanvasShapeStyle } = {}
 ): CanvasShape | null {
   if (tool === 'draw') {
-    return { id: createShapeId('stroke'), props: { points: [{ x: 0, y: 0, pressure: 0.82 } as StrokePoint] }, style: baseStyle(2), type: 'stroke', x: origin.x, y: origin.y }
+    return { id: createShapeId('stroke'), props: { points: [{ x: 0, y: 0, pressure: 0.82 } as StrokePoint] }, style: baseStyle(options.style), type: 'stroke', x: origin.x, y: origin.y }
   }
   if (tool === 'line' || tool === 'arrow') {
-    return { id: createShapeId(tool), props: { end: { x: point.x - origin.x, y: point.y - origin.y } }, style: baseStyle(2), type: tool, x: origin.x, y: origin.y }
+    return { id: createShapeId(tool), props: { end: { x: point.x - origin.x, y: point.y - origin.y } }, style: baseStyle(options.style), type: tool, x: origin.x, y: origin.y }
   }
   if (!boxTools.has(tool)) return null
   const end = options.constrainProportions ? constrainToSquare(origin, point) : point
@@ -59,11 +61,11 @@ export function createDraftShape(
   const y = Math.min(origin.y, end.y)
   const width = Math.abs(end.x - origin.x)
   const height = Math.abs(end.y - origin.y)
-  return { id: createShapeId(tool), props: { height, width }, style: baseStyle(2), type: tool, x, y } as CanvasShape
+  return { id: createShapeId(tool), props: { height, width }, style: baseStyle(options.style), type: tool, x, y } as CanvasShape
 }
 
-export function createTextShape(point: CanvasPoint): CanvasShape {
-  return { id: createShapeId('text'), props: { height: 56, text: 'Text', width: 180 }, style: baseStyle(2), type: 'text', x: point.x, y: point.y }
+export function createTextShape(point: CanvasPoint, style?: CanvasShapeStyle): CanvasShape {
+  return { id: createShapeId('text'), props: { height: 56, text: 'Text', width: 180 }, style: baseStyle(style), type: 'text', x: point.x, y: point.y }
 }
 
 export function createStrokePoint(point: CanvasPoint, event: PointerEvent, previous?: StrokePoint): StrokePoint {
@@ -79,8 +81,8 @@ export function createStrokeEndPoint(point: CanvasPoint, event: PointerEvent): S
   return { ...point, pressure: event.pointerType === 'pen' && event.pressure > 0 ? Math.max(0.78, event.pressure) : 0.84, time: event.timeStamp }
 }
 
-function baseStyle(strokeWidth: number) {
-  return { fill: 'rgba(255, 255, 255, 0.82)', opacity: 1, stroke: '#243142', strokeWidth }
+function baseStyle(style?: CanvasShapeStyle) {
+  return resolveKonvaShapeStyle(style)
 }
 
 function constrainToSquare(origin: CanvasPoint, point: CanvasPoint): CanvasPoint {
