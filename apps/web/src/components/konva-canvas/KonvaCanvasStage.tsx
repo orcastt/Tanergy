@@ -1,6 +1,6 @@
 import type Konva from 'konva'
 import type { KonvaEventObject } from 'konva/lib/Node'
-import { useEffect, useRef, useState } from 'react'
+import { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, useState } from 'react'
 import { Layer, Rect, Stage } from 'react-konva'
 import {
   appendCanvasShape,
@@ -29,7 +29,7 @@ type KonvaCanvasStageProps = {
   selectedIds: string[]
   width: number
   onCameraChange: (camera: CanvasCamera) => void
-  onDocumentChange: (document: CanvasDocument) => void
+  onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
   onSelectionChange: (shapeIds: string[]) => void
 }
 
@@ -51,6 +51,14 @@ export function KonvaCanvasStage({
   const rafRef = useRef<number | null>(null)
   const pendingDraftRef = useRef<CanvasShape | null>(null)
   const [draft, setDraft] = useState<CanvasShape | null>(null)
+
+  const handleShapeDragEnd = useCallback((shapeId: string, x: number, y: number) => {
+    onDocumentChange((current) => withCanvasShapes(
+      current,
+      current.shapes.map((item) => item.id === shapeId ? { ...item, x, y } : item)
+    ))
+  }, [onDocumentChange])
+  const handleShapeSelect = useCallback((shapeId: string) => onSelectionChange([shapeId]), [onSelectionChange])
 
   useEffect(() => () => {
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
@@ -78,7 +86,7 @@ export function KonvaCanvasStage({
     }
     if (activeTool === 'text') {
       const shape = createTextShape(worldPoint)
-      onDocumentChange(appendCanvasShape(document, shape))
+      onDocumentChange((current) => appendCanvasShape(current, shape))
       onSelectionChange([shape.id])
       return
     }
@@ -130,7 +138,7 @@ export function KonvaCanvasStage({
     pendingDraftRef.current = null
     setDraft(null)
     if (!nextDraft) return
-    onDocumentChange(appendCanvasShape(document, nextDraft))
+    onDocumentChange((current) => appendCanvasShape(current, nextDraft))
     onSelectionChange([nextDraft.id])
   }
 
@@ -172,8 +180,8 @@ export function KonvaCanvasStage({
           <KonvaCanvasShape
             isSelected={selectedIds.includes(shape.id)}
             key={shape.id}
-            onDragEnd={(shapeId, x, y) => onDocumentChange(withCanvasShapes(document, document.shapes.map((item) => item.id === shapeId ? { ...item, x, y } : item)))}
-            onSelect={(shapeId) => onSelectionChange([shapeId])}
+            onDragEnd={handleShapeDragEnd}
+            onSelect={handleShapeSelect}
             shape={shape}
             toolAllowsDrag={activeTool === 'select'}
             zoom={camera.zoom}

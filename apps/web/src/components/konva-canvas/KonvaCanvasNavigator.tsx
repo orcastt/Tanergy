@@ -61,7 +61,8 @@ export function KonvaCanvasNavigator({
 function getNavigatorModel(document: CanvasDocument, camera: CanvasCamera, stageWidth: number, stageHeight: number) {
   const mapWidth = 168
   const mapHeight = 104
-  const bounds = document.shapes.map((shape) => getShapeBounds(shape))
+  const sampledShapes = getSampledShapes(document.shapes)
+  const bounds = sampledShapes.map((shape) => getShapeBounds(shape))
   const viewportBounds = {
     maxX: screenToWorld({ x: stageWidth, y: stageHeight }, camera).x,
     maxY: screenToWorld({ x: stageWidth, y: stageHeight }, camera).y,
@@ -87,8 +88,15 @@ function getNavigatorModel(document: CanvasDocument, camera: CanvasCamera, stage
 
   return {
     height: mapHeight,
-    items: document.shapes.map((shape) => ({ id: shape.id, ...project(boundsToRect(getShapeBounds(shape))) })),
+    items: sampledShapes.map((shape) => ({ id: shape.id, ...project(boundsToRect(getShapeBounds(shape))) })),
     viewport: project(boundsToRect(viewportBounds)),
     width: mapWidth,
   }
+}
+
+function getSampledShapes(shapes: CanvasDocument['shapes']) {
+  const maxNavigatorItems = 260
+  if (shapes.length <= maxNavigatorItems) return shapes
+  const step = Math.ceil(shapes.length / maxNavigatorItems)
+  return shapes.filter((_, index) => index % step === 0)
 }

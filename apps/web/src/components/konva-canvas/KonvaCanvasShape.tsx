@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react'
 import { Ellipse, Group, Line, Path, Rect, Text } from 'react-konva'
 import type { CanvasShape } from '@/features/canvas-engine'
 import { getArrowHeadPoints, getCloudPath, getFreehandPath } from './konvaPathUtils'
@@ -11,7 +12,7 @@ type KonvaCanvasShapeProps = {
   onSelect: (shapeId: string) => void
 }
 
-export function KonvaCanvasShape({
+function KonvaCanvasShapeComponent({
   isSelected,
   onDragEnd,
   onSelect,
@@ -23,6 +24,10 @@ export function KonvaCanvasShape({
   const fill = shape.style?.fill ?? 'rgba(255, 255, 255, 0.78)'
   const strokeWidth = shape.style?.strokeWidth ?? 2
   const opacity = shape.style?.opacity ?? 1
+  const renderedShape = useMemo(
+    () => renderShape(shape, stroke, fill, strokeWidth, opacity),
+    [fill, opacity, shape, stroke, strokeWidth]
+  )
 
   return (
     <Group
@@ -40,10 +45,20 @@ export function KonvaCanvasShape({
       x={shape.x}
       y={shape.y}
     >
-      {renderShape(shape, stroke, fill, strokeWidth, opacity)}
+      {renderedShape}
       {isSelected ? <SelectionBox shape={shape} zoom={zoom} /> : null}
     </Group>
   )
+}
+
+export const KonvaCanvasShape = memo(KonvaCanvasShapeComponent, areShapePropsEqual)
+
+function areShapePropsEqual(previous: KonvaCanvasShapeProps, next: KonvaCanvasShapeProps) {
+  if (previous.shape !== next.shape) return false
+  if (previous.isSelected !== next.isSelected) return false
+  if (previous.toolAllowsDrag !== next.toolAllowsDrag) return false
+  if (next.isSelected && previous.zoom !== next.zoom) return false
+  return true
 }
 
 function renderShape(shape: CanvasShape, stroke: string, fill: string, strokeWidth: number, opacity: number) {

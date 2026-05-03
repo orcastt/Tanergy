@@ -101,6 +101,12 @@ Included now: full-screen Konva stage, faint dot background, top tool bar, hand/
 
 Not included yet: node cards, image paste/drop, image-to-node/to-canvas conversion, save/history integration, right-click menu, real Yjs provider sync and Board route migration.
 
+## User Review Notes
+
+- Continuous drawing is preferred: left-click creates one object and keeps the same tool active until the user chooses another tool. Do not regress to requiring right-click lock for normal repeated drawing.
+- Properties remains required: final engine needs a fixed properties panel for style changes across stroke/fill/width/dash/opacity/layer/actions.
+- 1,000 stroke pan/zoom initially felt a bit laggy; first optimization memoizes shape rendering and caps minimap item rendering, but Phase 1A still needs deeper hot-path work before Board migration.
+
 ## Estimate
 
 ```text

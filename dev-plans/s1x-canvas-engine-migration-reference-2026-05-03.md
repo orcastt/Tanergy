@@ -64,7 +64,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 
 ### Phase 1：手感和画布基础
 
-当前 checkpoint：`/spikes/konva-canvas` 已经具备 first-pass Konva Stage、freehand smoothing、pan/zoom、基础形状、minimap 和 diagnostics。下一步先手测“画线和缩放是否值得继续”，再补选区、图片和节点链路。
+当前 checkpoint：`/spikes/konva-canvas` 已经具备 first-pass Konva Stage、freehand smoothing、pan/zoom、基础形状、minimap 和 diagnostics。用户喜欢当前“左键连续绘制，直到手动切换工具”的交互，后续不要退回必须右键锁定才连续绘制的模式。下一步先手测“画线和缩放是否值得继续”，再补选区、Properties、图片和节点链路。
 
 | 序号 | 功能/交互 | 当前 tldraw 参考 | Konva/Yjs 复刻要求 | 参考文件 | 验收方式 |
 | --- | --- | --- | --- | --- | --- |
@@ -82,7 +82,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 
 | 序号 | 性能点 | 当前风险 | 复刻/实现策略 | 验收方式 |
 | --- | --- | --- | --- | --- |
-| 1A.1 | React 不进热路径 | pointermove 触发 React 会卡 | pointer buffer + mutable tool session + RAF 直接更新 Konva node | React Profiler 看不到每帧重渲染 |
+| 1A.1 | React 不进热路径 | pointermove 触发 React 会卡；1k strokes pan/zoom 已反馈轻微卡顿 | pointer buffer + mutable tool session + RAF 直接更新 Konva node；shape render memo 化，后续把 camera transform 移出 React 热路径 | React Profiler 看不到每帧重渲染 |
 | 1A.2 | 分层渲染 | 背景、图片、节点、选区一起重绘会卡 | Background/Image/Stroke/Node/Edge/Selection/Presence 分 layer | 画线时只 Stroke/Selection 层高频 redraw |
 | 1A.3 | pointer 采样 | 快速画线可能断，慢线可能抖 | 原始点保留，距离/时间阈值采样，RAF 批处理 | 快慢线手测都自然 |
 | 1A.4 | 笔触平滑 | Konva Line 原生手感可能不够 | `perfect-freehand` outline + 曲线简化 + final stroke simplify | 用户认可接近 tldraw 80% |
@@ -94,7 +94,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | 1A.10 | Yjs 本地优先 | 网络同步阻塞本地绘制 | local render 立即完成，Yjs transaction 后送 | 断网/慢网不影响本地画线 |
 | 1A.11 | presence 节流 | 光标同步太频繁会卡 | awareness 15-30fps，和 document updates 分离 | 两 tab 光标顺滑但不抢帧 |
 | 1A.12 | export 隔离 | thumbnail/capture 卡住绘图 | export 只在保存/手动触发，必要时 idle/worker 化 | 保存时可显示 loading，不影响普通绘制 |
-| 1A.13 | 指标面板 | 没指标容易凭感觉误判 | frame p95、object count、point count、Yjs update/s、export ms | spike 页面能看到诊断值 |
+| 1A.13 | 指标面板 | 没指标容易凭感觉误判 | frame p95、object count、point count、Yjs update/s、export ms；1k strokes 下重点看 pan/zoom | spike 页面能看到诊断值 |
 
 ### Phase 2：工具栏和 Properties
 
@@ -104,7 +104,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | 2.2 | hand/select | 切换 hand/select，状态高亮 | engine activeTool state | `CanvasToolbarPrimaryTools.tsx` | 当前工具高亮正确 |
 | 2.3 | shape 菜单 | rectangle/diamond/ellipse/triangle/cloud | Konva shape tool + popover | `canvasToolbarConfig.ts` | 形状菜单和图标一致 |
 | 2.4 | direct tools | arrow/line/draw/text/eraser | 对应 Konva tools | `canvasToolbarConfig.ts` | 每个按钮能创建/操作正确对象 |
-| 2.5 | 连续绘制 | 右键工具进入 continuous，ESC 结束并选中新对象 | `isToolLocked` 等价状态 | `CanvasSpikeToolbar.tsx` | 连画多个形状不中断，ESC 后选中 |
+| 2.5 | 连续绘制 | tldraw 需要右键工具进入 continuous | TANGENT 新引擎采用用户认可的新规则：左键绘制后保持当前工具，直到用户切换工具；ESC 可回 select | `CanvasSpikeToolbar.tsx` | 连画多个形状不中断，切换工具才结束 |
 | 2.6 | tooltip | 黑底白字，长文字不被裁切 | 全局 tooltip layer 保留 | `CanvasTooltipLayer.tsx` | toolbar/properties tooltip 可见 |
 | 2.7 | fixed properties | 点击空白不切换/消失，保持最后工具属性 | style panel state 与 selection 解耦 | `CanvasSpikeStylePanel.tsx` | 空白点击后 panel 不变 |
 | 2.8 | selection properties | 选中普通图形时显示 selected 样式 | selection style aggregation | `getSelectionTool` | 单选/多选显示正确 |
