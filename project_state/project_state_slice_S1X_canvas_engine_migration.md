@@ -113,6 +113,7 @@ Not included yet: node cards, image paste/drop, image-to-node/to-canvas conversi
 - Cloud must be generated from the user-drawn rectangle perimeter: split each side into revision-cloud/CAD-style scallop arcs based on side length, not a fixed normalized cloud shape scaled to fit.
 - Line, arrow and freehand stroke selection should highlight the line itself, not show a rectangular selection box. They still need wider hit targets. Eraser needs a tldraw-like cursor silhouette/trail while moving. Tooltips use English `Tool: Shortcut` labels.
 - Shape shortcuts: Select `V`, Rectangle `R`, Diamond `D`, Circle `C`, Arrow `A`; additional spike shortcuts include Hand `H`, Triangle `G`, Cloud `U`, Line `L`, Draw `P`, Text `T`, Eraser `E`. Holding Shift while drawing shape tools constrains proportions.
+- Creating draw/line/arrow/shape objects must not auto-select or show highlight controls during continuous drawing; selection visuals appear only after explicit point-select or future box-select.
 
 ## Estimate
 

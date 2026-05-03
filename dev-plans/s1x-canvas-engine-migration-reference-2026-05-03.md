@@ -105,7 +105,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | 2.2 | hand/select | 切换 hand/select，状态高亮 | engine activeTool state；进入画布默认 Select | `CanvasToolbarPrimaryTools.tsx` | 当前工具高亮正确 |
 | 2.3 | shape 菜单 | rectangle/diamond/ellipse/triangle/cloud | Konva shape tool + popover；Shift 绘制时等比约束 | `canvasToolbarConfig.ts` | 形状菜单和图标一致，Shift 画正形 |
 | 2.4 | direct tools | arrow/line/draw/text/eraser | 对应 Konva tools | `canvasToolbarConfig.ts` | 每个按钮能创建/操作正确对象 |
-| 2.5 | 连续绘制 | tldraw 需要右键工具进入 continuous | TANGENT 新引擎采用用户认可的新规则：左键绘制后保持当前工具，直到用户切换工具；ESC 回 Select | `CanvasSpikeToolbar.tsx` | 连画多个形状不中断，ESC 后回选择模式 |
+| 2.5 | 连续绘制 | tldraw 需要右键工具进入 continuous | TANGENT 新引擎采用用户认可的新规则：左键绘制后保持当前工具，直到用户切换工具；创建对象后不自动选中；ESC 回 Select | `CanvasSpikeToolbar.tsx` | 连画多个形状不中断，不弹出选中高亮；ESC 后回选择模式 |
 | 2.6 | tooltip | 黑底白字，长文字不被裁切 | 工具 tooltip 显示英文 `Tool: Shortcut`；后续全局 tooltip layer 保留 | `CanvasTooltipLayer.tsx` | toolbar/properties tooltip 可见 |
 | 2.7 | fixed properties | 点击空白不切换/消失，保持最后工具属性 | style panel state 与 selection 解耦 | `CanvasSpikeStylePanel.tsx` | 空白点击后 panel 不变 |
 | 2.8 | selection properties | 选中普通图形时显示 selected 样式 | selection style aggregation | `getSelectionTool` | 单选/多选显示正确 |

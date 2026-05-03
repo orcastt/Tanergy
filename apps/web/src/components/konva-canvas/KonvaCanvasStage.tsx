@@ -160,7 +160,6 @@ export function KonvaCanvasStage({
     setDraft(null)
     if (!nextDraft) return
     onDocumentChange((current) => appendCanvasShape(current, nextDraft))
-    onSelectionChange([nextDraft.id])
   }
 
   const handleWheel = (event: KonvaEventObject<WheelEvent>) => {
