@@ -117,6 +117,14 @@ export function moveBounds(bounds: CanvasBounds, delta: CanvasPoint): CanvasBoun
   }
 }
 
+export function moveShapesFromOrigins(shapes: CanvasShape[], originShapes: CanvasShape[], delta: CanvasPoint): CanvasShape[] {
+  const originals = new Map(originShapes.map((shape) => [shape.id, shape]))
+  return shapes.map((shape) => {
+    const original = originals.get(shape.id)
+    return original ? { ...original, x: original.x + delta.x, y: original.y + delta.y } : shape
+  })
+}
+
 function boundsIntersect(a: CanvasBounds, b: CanvasBounds) {
   return a.minX <= b.maxX && a.maxX >= b.minX && a.minY <= b.maxY && a.maxY >= b.minY
 }

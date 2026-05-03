@@ -32,7 +32,7 @@ import {
   toggleSelectedId,
 } from './konvaSelectionUtils'
 import { clearBrowserSelection, getStagePointer, isStageTarget } from './konvaStageHelpers'
-import { createShapeDragPreview, getShapeDragPreviewBounds, type KonvaShapeDragPreview } from './konvaDragPreview'
+import { createShapeDragPreview, getShapeDragPreviewBounds, getShapeDragPreviewShapes, type KonvaShapeDragPreview } from './konvaDragPreview'
 import { useKonvaStageCamera } from './useKonvaStageCamera'
 import type { KonvaCanvasTool, KonvaResizeHandle, KonvaToolSession } from './konvaCanvasTypes'
 type UseKonvaCanvasInteractionsOptions = {
@@ -74,7 +74,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
   }, [])
   const handleShapeDragStart = useCallback((shapeId: string) => {
     const current = documentRef.current
-    const preview = createShapeDragPreview(current.shapes, shapeId)
+    const preview = createShapeDragPreview(current.shapes, options.selectedIds, shapeId)
     if (!preview) return
     options.onHistoryCheckpoint(current)
     dragRef.current = preview
@@ -83,18 +83,20 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     const drag = dragRef.current
     if (!drag || drag.shapeId !== shapeId) return
     setSelectedBoundsOverride(getShapeDragPreviewBounds(drag, x, y))
-  }, [])
+    const nextDocument = withCanvasShapes(documentRef.current, getShapeDragPreviewShapes(documentRef.current.shapes, drag, x, y))
+    documentRef.current = nextDocument
+    options.onDocumentPreview(nextDocument)
+  }, [options])
   const handleShapeDragEnd = useCallback((shapeId: string, x: number, y: number) => {
+    const drag = dragRef.current
     dragRef.current = null
     setSelectedBoundsOverride(null)
-    options.onHistoryCheckpoint(documentRef.current)
-    options.onDocumentChange((current) => withCanvasShapes(
-      current,
-      current.shapes.map((item) => item.id === shapeId ? { ...item, x, y } : item)
-    ))
+    if (!drag || drag.shapeId !== shapeId) return
+    options.onDocumentChange((current) => withCanvasShapes(current, getShapeDragPreviewShapes(current.shapes, drag, x, y)))
   }, [options])
   const handleShapeSelect = useCallback((shapeId: string, config: { additive?: boolean } = {}) => {
     const additive = options.activeTool === 'select' && config.additive
+    if (!additive && options.activeTool === 'select' && options.selectedIds.length > 1 && options.selectedIds.includes(shapeId)) return
     options.onSelectionChange(additive ? toggleSelectedId(options.selectedIds, shapeId) : [shapeId])
   }, [options])
   const handleResizeStart = useCallback((shapeIds: string[], handle: KonvaResizeHandle, event: KonvaEventObject<PointerEvent>) => {

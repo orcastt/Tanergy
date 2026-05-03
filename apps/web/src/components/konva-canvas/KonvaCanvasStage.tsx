@@ -44,7 +44,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
   } = useKonvaCanvasInteractions(props)
   const renderCamera = props.camera
   const shapesAreInteractive = props.activeTool !== 'hand' && props.activeTool !== 'eraser'
-  const singleSelectionDrag = props.activeTool === 'select' && !props.isSpacePanning && props.selectedIds.length <= 1
+  const canDragShape = props.activeTool === 'select' && !props.isSpacePanning
 
   return (
     <Stage
@@ -79,7 +79,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
             onSelect={handleShapeSelect}
             panMode={props.isSpacePanning}
             shape={shape}
-            toolAllowsDrag={singleSelectionDrag}
+            toolAllowsDrag={canDragShape}
             zoom={renderCamera.zoom}
           />
         ))}
