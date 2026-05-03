@@ -1,10 +1,21 @@
 import type { CanvasDocument, CanvasShape, CanvasShapeStyle } from '@/features/canvas-engine'
 
-export type KonvaCanvasFillStyle = 'none' | 'semi' | 'solid'
+export type KonvaCanvasDashStyle = NonNullable<CanvasShapeStyle['dash']>
+export type KonvaCanvasFillStyle = NonNullable<CanvasShapeStyle['fillStyle']>
 export type KonvaCanvasWidthStyle = 's' | 'm' | 'l' | 'xl'
 
+export type KonvaCanvasResolvedShapeStyle = {
+  dash: KonvaCanvasDashStyle
+  fill: string
+  fillStyle: KonvaCanvasFillStyle
+  opacity: number
+  stroke: string
+  strokeWidth: number
+}
+
 export type KonvaCanvasStyleSnapshot = {
-  fill: CanvasShapeStyle['fill'] | 'mixed'
+  dash: CanvasShapeStyle['dash'] | 'mixed'
+  fillStyle: CanvasShapeStyle['fillStyle'] | 'mixed'
   opacity: number | 'mixed'
   stroke: CanvasShapeStyle['stroke'] | 'mixed'
   strokeWidth: number | 'mixed'
@@ -24,6 +35,14 @@ export const konvaFillStyles: Array<{ label: string; value: KonvaCanvasFillStyle
   { label: 'None', value: 'none' },
   { label: 'Semi', value: 'semi' },
   { label: 'Solid', value: 'solid' },
+  { label: 'Pattern', value: 'pattern' },
+]
+
+export const konvaDashStyles: Array<{ label: string; value: KonvaCanvasDashStyle }> = [
+  { label: 'Draw', value: 'draw' },
+  { label: 'Solid', value: 'solid' },
+  { label: 'Dash', value: 'dashed' },
+  { label: 'Dot', value: 'dotted' },
 ]
 
 export const konvaWidthStyles: Array<{ label: string; value: KonvaCanvasWidthStyle }> = [
@@ -34,17 +53,22 @@ export const konvaWidthStyles: Array<{ label: string; value: KonvaCanvasWidthSty
 ]
 
 export const konvaDefaultShapeStyle: CanvasShapeStyle = {
-  fill: 'rgba(255, 255, 255, 0.82)',
+  dash: 'draw',
+  fillStyle: 'semi',
   opacity: 1,
   stroke: '#243142',
   strokeWidth: 2,
 }
 
-export function resolveKonvaShapeStyle(style?: CanvasShapeStyle): Required<CanvasShapeStyle> {
+export function resolveKonvaShapeStyle(style?: CanvasShapeStyle): KonvaCanvasResolvedShapeStyle {
+  const stroke = style?.stroke ?? konvaDefaultShapeStyle.stroke!
+  const fillStyle = style?.fillStyle ?? getFillStyleToken(style?.fill) ?? konvaDefaultShapeStyle.fillStyle!
   return {
-    fill: style?.fill ?? konvaDefaultShapeStyle.fill!,
+    dash: style?.dash ?? konvaDefaultShapeStyle.dash!,
+    fill: getFillColor(stroke, fillStyle),
+    fillStyle,
     opacity: style?.opacity ?? konvaDefaultShapeStyle.opacity!,
-    stroke: style?.stroke ?? konvaDefaultShapeStyle.stroke!,
+    stroke,
     strokeWidth: style?.strokeWidth ?? konvaDefaultShapeStyle.strokeWidth!,
   }
 }
@@ -55,10 +79,11 @@ export function getKonvaSelectionStyleSnapshot(
 ): KonvaCanvasStyleSnapshot {
   const fallback = resolveKonvaShapeStyle(nextStyle)
   return {
-    fill: getSharedShapeStyleValue(shapes, 'fill', fallback.fill),
-    opacity: getSharedShapeStyleValue(shapes, 'opacity', fallback.opacity),
-    stroke: getSharedShapeStyleValue(shapes, 'stroke', fallback.stroke),
-    strokeWidth: getSharedShapeStyleValue(shapes, 'strokeWidth', fallback.strokeWidth),
+    dash: getSharedResolvedStyleValue(shapes, fallback.dash, (shape) => resolveKonvaShapeStyle(shape.style).dash),
+    fillStyle: getSharedResolvedStyleValue(shapes, fallback.fillStyle, (shape) => resolveKonvaShapeStyle(shape.style).fillStyle),
+    opacity: getSharedResolvedStyleValue(shapes, fallback.opacity, (shape) => resolveKonvaShapeStyle(shape.style).opacity),
+    stroke: getSharedResolvedStyleValue(shapes, fallback.stroke, (shape) => resolveKonvaShapeStyle(shape.style).stroke),
+    strokeWidth: getSharedResolvedStyleValue(shapes, fallback.strokeWidth, (shape) => resolveKonvaShapeStyle(shape.style).strokeWidth),
   }
 }
 
@@ -76,6 +101,43 @@ export function getWidthStyleToken(width: number | undefined): KonvaCanvasWidthS
   if (width <= 2.5) return 'm'
   if (width <= 4) return 'l'
   return 'xl'
+}
+
+export function getFillColor(stroke: string, fillStyle: KonvaCanvasFillStyle): string {
+  if (fillStyle === 'none' || fillStyle === 'pattern') return 'transparent'
+  const opacity = fillStyle === 'solid' ? 0.22 : 0.11
+  return colorWithOpacity(stroke, opacity)
+}
+
+export function getStrokeDash(style: KonvaCanvasDashStyle, strokeWidth: number): number[] | undefined {
+  if (style === 'dashed') return [strokeWidth * 4.5, strokeWidth * 3]
+  if (style === 'dotted') return [0.1, strokeWidth * 3.2]
+  return undefined
+}
+
+export function getPatternImage(stroke: string): HTMLCanvasElement | undefined {
+  if (typeof document === 'undefined') return undefined
+  const key = normalizeColor(stroke)
+  const cached = patternImageCache.get(key)
+  if (cached) return cached
+  const canvas = document.createElement('canvas')
+  canvas.width = 12
+  canvas.height = 12
+  const context = canvas.getContext('2d')
+  if (!context) return undefined
+  context.fillStyle = 'rgba(255, 255, 255, 0.86)'
+  context.fillRect(0, 0, canvas.width, canvas.height)
+  context.strokeStyle = colorWithOpacity(stroke, 0.72)
+  context.lineCap = 'round'
+  context.lineWidth = 1.4
+  context.beginPath()
+  context.moveTo(-2, 10)
+  context.lineTo(10, -2)
+  context.moveTo(3, 15)
+  context.lineTo(15, 3)
+  context.stroke()
+  patternImageCache.set(key, canvas)
+  return canvas
 }
 
 export function applyKonvaStylePatch(document: CanvasDocument, shapeIds: string[], patch: CanvasShapeStyle): CanvasDocument {
@@ -152,6 +214,10 @@ export function isKonvaStrokeShape(shape: CanvasShape) {
   return shape.type === 'rect' || shape.type === 'diamond' || shape.type === 'ellipse' || shape.type === 'triangle' || shape.type === 'cloud' || shape.type === 'line' || shape.type === 'arrow' || shape.type === 'stroke' || shape.type === 'image'
 }
 
+export function isKonvaDashShape(shape: CanvasShape) {
+  return isKonvaStrokeShape(shape) && shape.type !== 'stroke'
+}
+
 export function isKonvaWidthShape(shape: CanvasShape) {
   return shape.type !== 'text'
 }
@@ -169,20 +235,19 @@ function duplicateShape(shape: CanvasShape): CanvasShape {
 function applyStylePatchToShape(shape: CanvasShape, patch: CanvasShapeStyle): CanvasShape {
   const nextStyle = { ...shape.style }
   if (patch.stroke !== undefined && isKonvaStrokeShape(shape)) nextStyle.stroke = patch.stroke
-  if (patch.fill !== undefined && isKonvaFillShape(shape)) nextStyle.fill = patch.fill
+  if (patch.fillStyle !== undefined && isKonvaFillShape(shape)) nextStyle.fillStyle = patch.fillStyle
+  if (patch.dash !== undefined && isKonvaStrokeShape(shape)) nextStyle.dash = patch.dash
   if (patch.strokeWidth !== undefined && isKonvaWidthShape(shape)) nextStyle.strokeWidth = patch.strokeWidth
   if (patch.opacity !== undefined) nextStyle.opacity = patch.opacity
   return { ...shape, style: nextStyle }
 }
 
-function getSharedShapeStyleValue<T extends keyof CanvasShapeStyle>(
+function getSharedResolvedStyleValue<T>(
   shapes: CanvasShape[],
-  key: T,
-  fallback: NonNullable<CanvasShapeStyle[T]>
-): NonNullable<CanvasShapeStyle[T]> | 'mixed' {
-  const values = shapes
-    .map((shape) => shape.style?.[key])
-    .filter((value): value is NonNullable<CanvasShapeStyle[T]> => value !== undefined)
+  fallback: T,
+  getValue: (shape: CanvasShape) => T
+): T | 'mixed' {
+  const values = shapes.map(getValue)
   if (values.length === 0) return fallback
   const first = values[0]
   if (values.every((value) => value === first)) return first
@@ -205,4 +270,30 @@ function swapShapes(shapes: CanvasShape[], a: number, b: number) {
 
 function createShapeId(prefix: string) {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+const patternImageCache = new Map<string, HTMLCanvasElement>()
+
+function colorWithOpacity(color: string, opacity: number) {
+  const rgb = hexToRgb(color)
+  if (!rgb) return color
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`
+}
+
+function hexToRgb(color: string) {
+  const normalized = normalizeColor(color)
+  const match = /^#([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(normalized)
+  if (!match) return null
+  return {
+    b: Number.parseInt(match[3], 16),
+    g: Number.parseInt(match[2], 16),
+    r: Number.parseInt(match[1], 16),
+  }
+}
+
+function normalizeColor(color: string) {
+  if (/^#[a-f\d]{3}$/i.test(color)) {
+    return `#${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}`.toLowerCase()
+  }
+  return color.toLowerCase()
 }

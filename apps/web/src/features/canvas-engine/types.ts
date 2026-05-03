@@ -27,7 +27,9 @@ export type StrokePoint = CanvasPoint & {
 }
 
 export type CanvasShapeStyle = {
+  dash?: 'draw' | 'solid' | 'dashed' | 'dotted'
   fill?: string
+  fillStyle?: 'none' | 'semi' | 'solid' | 'pattern'
   opacity?: number
   stroke?: string
   strokeWidth?: number

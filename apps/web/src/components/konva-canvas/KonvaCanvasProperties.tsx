@@ -6,17 +6,17 @@ import {
   applyKonvaStylePatch,
   deleteKonvaShapes,
   duplicateKonvaShapes,
-  getFillStyleToken,
   getKonvaSelectionStyleSnapshot,
   getWidthStyleToken,
+  isKonvaDashShape,
   isKonvaFillShape,
   isKonvaStrokeShape,
   isKonvaWidthShape,
+  konvaDashStyles,
   konvaFillStyles,
   konvaStrokeColors,
   konvaWidthStyles,
   reorderKonvaShapes,
-  type KonvaCanvasFillStyle,
   type KonvaCanvasWidthStyle,
 } from './konvaCanvasStyle'
 
@@ -28,12 +28,6 @@ type KonvaCanvasPropertiesProps = {
   onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
   onNextStyleChange: Dispatch<SetStateAction<CanvasShapeStyle>>
   onSelectionChange: (shapeIds: string[]) => void
-}
-
-const fillValueByStyle: Record<KonvaCanvasFillStyle, string> = {
-  none: 'transparent',
-  semi: 'rgba(255, 255, 255, 0.82)',
-  solid: '#ffffff',
 }
 
 const widthValueByStyle: Record<KonvaCanvasWidthStyle, number> = {
@@ -57,9 +51,11 @@ export function KonvaCanvasProperties({
   const styleSnapshot = getKonvaSelectionStyleSnapshot(selectedShapes, nextStyle)
   const showStroke = hasSelection ? selectedShapes.some(isKonvaStrokeShape) : toolUsesStroke(activeTool)
   const showFill = hasSelection ? selectedShapes.some(isKonvaFillShape) : toolUsesFill(activeTool)
+  const showDash = hasSelection ? selectedShapes.some(isKonvaDashShape) : toolUsesDash(activeTool)
   const showWidth = hasSelection ? selectedShapes.some(isKonvaWidthShape) : toolUsesWidth(activeTool)
   const headerNote = hasSelection ? `Selected · ${selectedShapes.length}` : `${konvaToolLabels[activeTool]} styles`
-  const fillToken = styleSnapshot.fill === 'mixed' ? null : getFillStyleToken(styleSnapshot.fill)
+  const fillToken = styleSnapshot.fillStyle === 'mixed' ? null : styleSnapshot.fillStyle
+  const dashToken = styleSnapshot.dash === 'mixed' ? null : styleSnapshot.dash
   const widthToken = styleSnapshot.strokeWidth === 'mixed' ? null : getWidthStyleToken(styleSnapshot.strokeWidth)
   const opacity = styleSnapshot.opacity === 'mixed' ? 100 : Math.round((styleSnapshot.opacity ?? 1) * 100)
 
@@ -129,7 +125,7 @@ export function KonvaCanvasProperties({
                 icon={`style-icon style-icon--fill-${item.value}`}
                 key={item.value}
                 label={item.label}
-                onClick={() => applyStyle({ fill: fillValueByStyle[item.value] })}
+                onClick={() => applyStyle({ fillStyle: item.value })}
               />
             ))}
           </SegmentedButtons>
@@ -147,6 +143,23 @@ export function KonvaCanvasProperties({
                 key={item.value}
                 label={item.label}
                 onClick={() => applyStyle({ strokeWidth: widthValueByStyle[item.value] })}
+              />
+            ))}
+          </SegmentedButtons>
+        </PropertyBlock>
+      ) : null}
+
+      {showDash ? (
+        <PropertyBlock label="Dash">
+          <SegmentedButtons>
+            {konvaDashStyles.map((item) => (
+              <IconButton
+                active={dashToken === item.value}
+                icon="style-icon"
+                iconData={`dash-${item.value}`}
+                key={item.value}
+                label={item.label}
+                onClick={() => applyStyle({ dash: item.value })}
               />
             ))}
           </SegmentedButtons>
@@ -237,6 +250,10 @@ function toolUsesStroke(tool: KonvaCanvasTool) {
 
 function toolUsesWidth(tool: KonvaCanvasTool) {
   return toolUsesStroke(tool) && tool !== 'text'
+}
+
+function toolUsesDash(tool: KonvaCanvasTool) {
+  return toolUsesWidth(tool) && tool !== 'draw'
 }
 
 function stopCanvasEvent(event: SyntheticEvent) {

@@ -1,6 +1,7 @@
 import { memo, useMemo } from 'react'
 import { Ellipse, Group, Line, Path, Rect, Text } from 'react-konva'
 import type { CanvasShape } from '@/features/canvas-engine'
+import { getPatternImage, getStrokeDash, resolveKonvaShapeStyle } from './konvaCanvasStyle'
 import { getArrowHeadPoints, getCloudPath, getFreehandPath } from './konvaPathUtils'
 
 type KonvaCanvasShapeProps = {
@@ -24,13 +25,10 @@ function KonvaCanvasShapeComponent({
   toolAllowsDrag,
   zoom,
 }: KonvaCanvasShapeProps) {
-  const stroke = shape.style?.stroke ?? '#233142'
-  const fill = shape.style?.fill ?? 'rgba(255, 255, 255, 0.78)'
-  const strokeWidth = shape.style?.strokeWidth ?? 2
-  const opacity = shape.style?.opacity ?? 1
+  const style = useMemo(() => resolveKonvaShapeStyle(shape.style), [shape.style])
   const renderedShape = useMemo(
-    () => renderShape(shape, stroke, fill, strokeWidth, opacity, isSelected, zoom),
-    [fill, isSelected, opacity, shape, stroke, strokeWidth, zoom]
+    () => renderShape(shape, style, isSelected, zoom),
+    [isSelected, shape, style, zoom]
   )
   const canInteract = interactive && !panMode
 
@@ -71,32 +69,36 @@ function areShapePropsEqual(previous: KonvaCanvasShapeProps, next: KonvaCanvasSh
   return true
 }
 
-function renderShape(shape: CanvasShape, stroke: string, fill: string, strokeWidth: number, opacity: number, isSelected: boolean, zoom: number) {
+function renderShape(shape: CanvasShape, style: ReturnType<typeof resolveKonvaShapeStyle>, isSelected: boolean, zoom: number) {
   const highlightStroke = '#6b5cff'
+  const { dash, fill, fillStyle, opacity, stroke, strokeWidth } = style
+  const strokeDash = getStrokeDash(dash, strokeWidth)
   const highlightWidth = Math.max(strokeWidth + 4 / zoom, strokeWidth * 2.4)
+  const closedFillProps = getClosedFillProps(fill, fillStyle, stroke)
+  const strokeLineCap = dash === 'dotted' ? 'round' : 'butt'
   if (shape.type === 'rect') {
-    return <Rect height={shape.props.height} opacity={opacity} stroke={stroke} strokeWidth={strokeWidth} width={shape.props.width} fill={fill} cornerRadius={10} />
+    return <Rect {...closedFillProps} cornerRadius={10} dash={strokeDash} height={shape.props.height} opacity={opacity} stroke={stroke} strokeWidth={strokeWidth} width={shape.props.width} />
   }
   if (shape.type === 'ellipse') {
-    return <Ellipse fill={fill} opacity={opacity} radiusX={shape.props.width / 2} radiusY={shape.props.height / 2} stroke={stroke} strokeWidth={strokeWidth} x={shape.props.width / 2} y={shape.props.height / 2} />
+    return <Ellipse {...closedFillProps} dash={strokeDash} opacity={opacity} radiusX={shape.props.width / 2} radiusY={shape.props.height / 2} stroke={stroke} strokeWidth={strokeWidth} x={shape.props.width / 2} y={shape.props.height / 2} />
   }
   if (shape.type === 'diamond') {
     const { height, width } = shape.props
-    return <Line closed fill={fill} opacity={opacity} points={[width / 2, 0, width, height / 2, width / 2, height, 0, height / 2]} stroke={stroke} strokeWidth={strokeWidth} />
+    return <Line {...closedFillProps} closed dash={strokeDash} lineCap={strokeLineCap} opacity={opacity} points={[width / 2, 0, width, height / 2, width / 2, height, 0, height / 2]} stroke={stroke} strokeWidth={strokeWidth} />
   }
   if (shape.type === 'triangle') {
     const { height, width } = shape.props
-    return <Line closed fill={fill} opacity={opacity} points={[width / 2, 0, width, height, 0, height]} stroke={stroke} strokeWidth={strokeWidth} />
+    return <Line {...closedFillProps} closed dash={strokeDash} lineCap={strokeLineCap} opacity={opacity} points={[width / 2, 0, width, height, 0, height]} stroke={stroke} strokeWidth={strokeWidth} />
   }
   if (shape.type === 'cloud') {
-    return <Path data={getCloudPath(shape.props.width, shape.props.height)} fill={fill} opacity={opacity} stroke={stroke} strokeWidth={strokeWidth} />
+    return <Path {...closedFillProps} dash={strokeDash} data={getCloudPath(shape.props.width, shape.props.height)} opacity={opacity} stroke={stroke} strokeWidth={strokeWidth} />
   }
   if (shape.type === 'line') {
     const points = [0, 0, shape.props.end.x, shape.props.end.y]
     return (
       <>
         {isSelected ? <Line hitStrokeWidth={16} lineCap="round" listening={false} opacity={0.28} points={points} stroke={highlightStroke} strokeWidth={highlightWidth} /> : null}
-        <Line hitStrokeWidth={16} lineCap="round" opacity={opacity} points={points} stroke={isSelected ? highlightStroke : stroke} strokeWidth={strokeWidth} />
+        <Line dash={strokeDash} hitStrokeWidth={16} lineCap="round" opacity={opacity} points={points} stroke={isSelected ? highlightStroke : stroke} strokeWidth={strokeWidth} />
       </>
     )
   }
@@ -105,7 +107,7 @@ function renderShape(shape: CanvasShape, stroke: string, fill: string, strokeWid
     return (
       <>
         {isSelected ? <Line hitStrokeWidth={16} lineCap="round" listening={false} opacity={0.28} points={points} stroke={highlightStroke} strokeWidth={highlightWidth} /> : null}
-        <Line hitStrokeWidth={16} lineCap="round" opacity={opacity} points={points} stroke={isSelected ? highlightStroke : stroke} strokeWidth={strokeWidth} />
+        <Line dash={strokeDash} hitStrokeWidth={16} lineCap="round" opacity={opacity} points={points} stroke={isSelected ? highlightStroke : stroke} strokeWidth={strokeWidth} />
         <Line closed fill={isSelected ? highlightStroke : stroke} opacity={opacity} points={getArrowHeadPoints(shape.props.end, { x: 0, y: 0 }, Math.max(12, strokeWidth * 5))} />
       </>
     )
@@ -123,9 +125,16 @@ function renderShape(shape: CanvasShape, stroke: string, fill: string, strokeWid
     return <Text fill={stroke} fontFamily="Inter, system-ui, sans-serif" fontSize={18} height={shape.props.height} opacity={opacity} text={shape.props.text} width={shape.props.width} />
   }
   if (shape.type === 'image') {
-    return <Rect fill="rgba(102, 122, 144, 0.12)" height={shape.props.height} opacity={opacity} stroke={stroke} strokeWidth={strokeWidth} width={shape.props.width} />
+    return <Rect dash={strokeDash} fill="rgba(102, 122, 144, 0.12)" height={shape.props.height} opacity={opacity} stroke={stroke} strokeWidth={strokeWidth} width={shape.props.width} />
   }
   return null
+}
+
+function getClosedFillProps(fill: string, fillStyle: ReturnType<typeof resolveKonvaShapeStyle>['fillStyle'], stroke: string) {
+  const patternImage = fillStyle === 'pattern' ? getPatternImage(stroke) : undefined
+  return patternImage
+    ? { fillPatternImage: patternImage as unknown as HTMLImageElement, fillPatternRepeat: 'repeat' as const }
+    : { fill }
 }
 
 function SelectionBox({ shape, zoom }: { shape: CanvasShape; zoom: number }) {
