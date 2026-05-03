@@ -166,7 +166,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | 3B.2 | Diamond | 菱形 shape | Konva Line/Path polygon，bbox resize 后保持菱形 | resize 后四角不畸形 |
 | 3B.3 | Circle/Ellipse | 圆/椭圆 shape | Konva Ellipse，拖拽时从 bbox 生成 | 圆形/椭圆可保持比例/自由缩放 |
 | 3B.4 | Triangle | 三角形 shape | Konva RegularPolygon/Line path，支持 resize | 三角边框/fill 正常 |
-| 3B.5 | Cloud | 云朵 shape 是截图重点 | 自定义 SVG path/Canvas path，支持 bbox resize，视觉轮廓贴近 bbox selection，边缘 scallop 数量自然 | cloud 视觉和选择框接近 tldraw，不像普通圆角矩形 |
+| 3B.5 | Cloud | 云朵 shape 是截图重点；tldraw/CAD cloud 是根据拖拽矩形四边分段切弧，不是固定云朵轮廓缩放 | 自定义 path 基于 bbox 四边按边长生成 revision-cloud scallop arcs；横条/竖条/大矩形都要自然分段 | cloud 视觉和选择框接近 tldraw，不像固定图标拉伸 |
 | 3B.6 | Shape active preview | shape popover hover tooltip，如 Cloud | shape menu active/hover tooltip 黑底白字 | hover cloud 显示 tooltip，popover 不乱跳 |
 | 3B.7 | Line straight | 直线工具生成两端控制点 | line shape 保存 start/end/control points | 端点可拖拽 |
 | 3B.8 | Line midpoint curve | 截图里中点拖拽后线变曲线 | line 有 midpoint/control handle；拖中点生成 quadratic/cubic curve | 拖中点变曲线，曲率保存恢复 |

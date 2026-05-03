@@ -24,38 +24,57 @@ export function getFreehandPath(points: StrokePoint[], width = 4): string {
 export function getCloudPath(width: number, height: number): string {
   const w = Math.max(32, width)
   const h = Math.max(24, height)
-  const dents = [
-    { x: 0.14, y: 0.2 },
-    { x: 0.28, y: 0.04 },
-    { x: 0.42, y: 0.11 },
-    { x: 0.55, y: 0.03 },
-    { x: 0.69, y: 0.12 },
-    { x: 0.84, y: 0.18 },
-    { x: 0.98, y: 0.38 },
-    { x: 0.91, y: 0.62 },
-    { x: 0.79, y: 0.82 },
-    { x: 0.62, y: 0.86 },
-    { x: 0.49, y: 0.8 },
-    { x: 0.36, y: 0.9 },
-    { x: 0.2, y: 0.82 },
-    { x: 0.04, y: 0.62 },
-    { x: 0.03, y: 0.36 },
-  ].map((point) => ({ x: point.x * w, y: point.y * h }))
+  const inset = clamp(Math.min(w, h) * 0.18, 5, 22)
+  const left = inset
+  const right = w - inset
+  const top = inset
+  const bottom = h - inset
+  const arcSpan = clamp(Math.min(w, h) * 0.46, 22, 54)
+  const commands = [
+    ...createCloudSide({ fixed: top, from: left, length: right - left, outward: 0, side: 'top' }, arcSpan),
+    ...createCloudSide({ fixed: right, from: top, length: bottom - top, outward: w, side: 'right' }, arcSpan),
+    ...createCloudSide({ fixed: bottom, from: right, length: left - right, outward: h, side: 'bottom' }, arcSpan),
+    ...createCloudSide({ fixed: left, from: bottom, length: top - bottom, outward: 0, side: 'left' }, arcSpan),
+  ]
 
-  const commands = dents.map((point, index) => {
-    const nextPoint = dents[(index + 1) % dents.length]
-    const controlPoint = {
-      x: ((point.x + nextPoint.x) / 2) + (w / 2 - (point.x + nextPoint.x) / 2) * -0.08,
-      y: ((point.y + nextPoint.y) / 2) + (h / 2 - (point.y + nextPoint.y) / 2) * -0.18,
+  return [`M ${left.toFixed(1)} ${top.toFixed(1)}`, ...commands, 'Z'].join(' ')
+}
+
+type CloudSide = {
+  fixed: number
+  from: number
+  length: number
+  outward: number
+  side: 'bottom' | 'left' | 'right' | 'top'
+}
+
+function createCloudSide(side: CloudSide, arcSpan: number): string[] {
+  const count = Math.max(1, Math.round(Math.abs(side.length) / arcSpan))
+  const step = side.length / count
+  return Array.from({ length: count }, (_, index) => {
+    const start = side.from + step * index
+    const end = index === count - 1 ? side.from + side.length : start + step
+    const mid = (start + end) / 2
+    const drift = Math.sin((index + 1) * 1.7) * Math.min(Math.abs(step) * 0.09, 7)
+
+    if (side.side === 'top' || side.side === 'bottom') {
+      const control = { x: mid + drift, y: side.outward }
+      const point = { x: end, y: side.fixed }
+      return formatQuadratic(control, point)
     }
-    return `Q ${controlPoint.x.toFixed(1)} ${controlPoint.y.toFixed(1)} ${nextPoint.x.toFixed(1)} ${nextPoint.y.toFixed(1)}`
-  })
 
-  return [
-    `M ${dents[0].x.toFixed(1)} ${dents[0].y.toFixed(1)}`,
-    ...commands,
-    'Z',
-  ].join(' ')
+    const control = { x: side.outward, y: mid + drift }
+    const point = { x: side.fixed, y: end }
+    return formatQuadratic(control, point)
+  })
+}
+
+function formatQuadratic(control: CanvasPoint, point: CanvasPoint): string {
+  return `Q ${control.x.toFixed(1)} ${control.y.toFixed(1)} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value))
 }
 
 export function getArrowHeadPoints(end: CanvasPoint, start: CanvasPoint, size = 16): number[] {
