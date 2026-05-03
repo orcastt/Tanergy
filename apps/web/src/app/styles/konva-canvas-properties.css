@@ -52,17 +52,6 @@
   gap: 8px;
 }
 
-.konva-canvas-properties__swatches button {
-  background: var(--swatch);
-  border: 2px solid #fff;
-  border-radius: 8px;
-  box-shadow: 0 0 0 1px rgba(31, 42, 55, 0.12);
-  height: 26px;
-  padding: 0;
-  position: relative;
-  width: 26px;
-}
-
 .konva-canvas-properties__segmented,
 .konva-canvas-properties__icon-grid {
   display: grid;
@@ -97,7 +86,24 @@
   color: #312e81;
 }
 
+.konva-canvas-properties__swatches button {
+  background: var(--swatch);
+  border: 2px solid #fff;
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px rgba(31, 42, 55, 0.12);
+  height: 26px;
+  padding: 0;
+  position: relative;
+  width: 26px;
+}
+
+.konva-canvas-properties__swatches button:hover:not(:disabled) {
+  background: var(--swatch);
+  color: inherit;
+}
+
 .konva-canvas-properties__swatches button.is-active {
+  background: var(--swatch);
   box-shadow:
     0 0 0 2px #8b5cf6,
     0 0 0 1px rgba(31, 42, 55, 0.12);
