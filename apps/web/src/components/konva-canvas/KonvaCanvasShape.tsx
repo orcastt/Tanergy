@@ -4,6 +4,7 @@ import type { CanvasShape } from '@/features/canvas-engine'
 import { getStrokeDash, resolveKonvaShapeStyle } from './konvaCanvasStyle'
 import { getPatternTile } from './konvaPatternUtils'
 import { getArrowHeadPoints, getCloudPath, getFreehandPath } from './konvaPathUtils'
+import { isBoxCanvasShape } from './konvaRotationUtils'
 
 type KonvaCanvasShapeProps = {
   interactive?: boolean
@@ -36,6 +37,7 @@ function KonvaCanvasShapeComponent({
     [isSelected, shape, style, zoom]
   )
   const canInteract = interactive && !panMode
+  const transform = getGroupTransform(shape)
 
   return (
     <Group
@@ -47,19 +49,21 @@ function KonvaCanvasShapeComponent({
         event.cancelBubble = true
         onSelect(shape.id, { additive: event.evt.shiftKey })
       } : undefined}
-      onDragMove={canInteract ? (event) => onDragMove(shape.id, event.target.x(), event.target.y()) : undefined}
+      onDragMove={canInteract ? (event) => onDragMove(shape.id, event.target.x() - transform.offsetX, event.target.y() - transform.offsetY) : undefined}
       onDragStart={canInteract ? () => onDragStart(shape.id) : undefined}
-      onDragEnd={canInteract ? (event) => onDragEnd(shape.id, event.target.x(), event.target.y()) : undefined}
+      onDragEnd={canInteract ? (event) => onDragEnd(shape.id, event.target.x() - transform.offsetX, event.target.y() - transform.offsetY) : undefined}
       onPointerDown={canInteract ? (event) => {
         if (event.evt.button === 1) return
         event.cancelBubble = true
         onSelect(shape.id, { additive: event.evt.shiftKey })
       } : undefined}
-      x={shape.x}
-      y={shape.y}
+      offsetX={transform.offsetX}
+      offsetY={transform.offsetY}
+      rotation={transform.rotation}
+      x={transform.x}
+      y={transform.y}
     >
       {renderedShape}
-      {isSelected && !isLineLikeShape(shape) ? <SelectionBox shape={shape} zoom={zoom} /> : null}
     </Group>
   )
 }
@@ -137,6 +141,19 @@ function renderShape(shape: CanvasShape, style: ReturnType<typeof resolveKonvaSh
   return null
 }
 
+function getGroupTransform(shape: CanvasShape) {
+  if (!isBoxCanvasShape(shape)) return { offsetX: 0, offsetY: 0, rotation: 0, x: shape.x, y: shape.y }
+  const offsetX = shape.props.width / 2
+  const offsetY = shape.props.height / 2
+  return {
+    offsetX,
+    offsetY,
+    rotation: shape.rotation ?? 0,
+    x: shape.x + offsetX,
+    y: shape.y + offsetY,
+  }
+}
+
 function getClosedFillProps(fill: string, fillStyle: ReturnType<typeof resolveKonvaShapeStyle>['fillStyle'], stroke: string) {
   const patternTile = fillStyle === 'pattern' ? getPatternTile(stroke) : undefined
   return patternTile
@@ -147,16 +164,4 @@ function getClosedFillProps(fill: string, fillStyle: ReturnType<typeof resolveKo
         fillPatternScaleY: patternTile.scale,
       }
     : { fill }
-}
-
-function SelectionBox({ shape, zoom }: { shape: CanvasShape; zoom: number }) {
-  if (isLineLikeShape(shape)) return null
-  const rect = { height: shape.props.height, width: shape.props.width, x: 0, y: 0 }
-  return (
-    <Rect dash={[5 / zoom, 4 / zoom]} height={rect.height} listening={false} stroke="#6b5cff" strokeWidth={1.2 / zoom} width={rect.width} x={rect.x} y={rect.y} />
-  )
-}
-
-function isLineLikeShape(shape: CanvasShape) {
-  return shape.type === 'arrow' || shape.type === 'line' || shape.type === 'stroke'
 }

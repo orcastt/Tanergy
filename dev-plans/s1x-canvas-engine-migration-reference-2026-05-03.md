@@ -27,6 +27,7 @@ keep Board/API/storage contracts stable
 - Style changes now update selected shapes and the next-shape style, so newly drawn shapes inherit the panel settings.
 - Pattern fill now uses crisp high-DPR generated hatching instead of a blurry low-resolution tile.
 - Phase 3.1 started: interaction logic split out of the Stage, box-select marquee added, single-shape corner resize handles added, and undo/redo history now snapshots shapes plus selection without undoing camera pan/zoom.
+- Phase 3.1 also has first-pass single-shape rotation: an offset rotate handle writes `rotation` and renders box-like shapes around their center point.
 
 Next development focus: finish Phase 3 object editing foundation with copy/paste, Alt-drag duplicate, text editing and command-system cleanup. Right-click menu, image/node conversion and alignment actions should sit on that shared command system rather than be built as separate one-off UI.
 

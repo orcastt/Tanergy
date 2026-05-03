@@ -1,8 +1,9 @@
 import type { KonvaEventObject } from 'konva/lib/Node'
 import { Fragment } from 'react'
-import { Circle, Rect } from 'react-konva'
+import { Circle, Group, Line, Path, Rect } from 'react-konva'
 import { boundsToRect, type CanvasBounds, type CanvasShape } from '@/features/canvas-engine'
 import type { KonvaResizeHandle } from './konvaCanvasTypes'
+import { isBoxCanvasShape } from './konvaRotationUtils'
 import { getSelectedShapeBounds } from './konvaSelectionUtils'
 
 type KonvaSelectionOverlayProps = {
@@ -12,10 +13,12 @@ type KonvaSelectionOverlayProps = {
   shapes: CanvasShape[]
   zoom: number
   onResizeStart: (shapeIds: string[], handle: KonvaResizeHandle, event: KonvaEventObject<PointerEvent>) => void
+  onRotateStart: (shapeId: string, event: KonvaEventObject<PointerEvent>) => void
 }
 
 export function KonvaSelectionOverlay({
   onResizeStart,
+  onRotateStart,
   selectedBoundsOverride,
   selectedIds,
   selectionBox,
@@ -25,6 +28,8 @@ export function KonvaSelectionOverlay({
   const selectedShapes = shapes.filter((shape) => selectedIds.includes(shape.id))
   const selectedBounds = selectedBoundsOverride ?? (selectedShapes.length > 0 ? getSelectedShapeBounds(shapes, selectedIds) : null)
   const canResize = selectedShapes.length > 0
+  const onlySelectedShape = selectedShapes.length === 1 ? selectedShapes[0] : null
+  const singleBoxShape = onlySelectedShape && isBoxCanvasShape(onlySelectedShape) && !selectedBoundsOverride ? onlySelectedShape : null
   const showUnionBox = Boolean(selectedBoundsOverride) || selectedIds.length > 1
 
   return (
@@ -33,7 +38,14 @@ export function KonvaSelectionOverlay({
       {selectedBounds && showUnionBox ? (
         <SelectionRect bounds={selectedBounds} isSelection zoom={zoom} />
       ) : null}
-      {selectedBounds && canResize ? (
+      {singleBoxShape ? (
+        <SingleShapeControls
+          onResizeStart={(handle, event) => onResizeStart(selectedIds, handle, event)}
+          onRotateStart={(event) => onRotateStart(singleBoxShape.id, event)}
+          shape={singleBoxShape}
+          zoom={zoom}
+        />
+      ) : selectedBounds && canResize ? (
         <ResizeHandles
           bounds={selectedBounds}
           onResizeStart={(handle, event) => onResizeStart(selectedIds, handle, event)}
@@ -41,6 +53,29 @@ export function KonvaSelectionOverlay({
         />
       ) : null}
     </>
+  )
+}
+
+function SingleShapeControls({
+  onResizeStart,
+  onRotateStart,
+  shape,
+  zoom,
+}: {
+  shape: Extract<CanvasShape, { props: { height: number; width: number } }>
+  onResizeStart: (handle: KonvaResizeHandle, event: KonvaEventObject<PointerEvent>) => void
+  onRotateStart: (event: KonvaEventObject<PointerEvent>) => void
+  zoom: number
+}) {
+  const width = shape.props.width
+  const height = shape.props.height
+  const bounds = { maxX: width / 2, maxY: height / 2, minX: -width / 2, minY: -height / 2 }
+  return (
+    <Group rotation={shape.rotation ?? 0} x={shape.x + width / 2} y={shape.y + height / 2}>
+      <SelectionRect bounds={bounds} isSelection zoom={zoom} />
+      <ResizeHandles bounds={bounds} onResizeStart={onResizeStart} zoom={zoom} />
+      <RotateHandle onRotateStart={onRotateStart} x={width / 2 + 24 / zoom} y={-height / 2 - 24 / zoom} zoom={zoom} />
+    </Group>
   )
 }
 
@@ -58,6 +93,28 @@ function SelectionRect({ bounds, isSelection = false, zoom }: { bounds: CanvasBo
       x={rect.x}
       y={rect.y}
     />
+  )
+}
+
+function RotateHandle({
+  onRotateStart,
+  x,
+  y,
+  zoom,
+}: {
+  onRotateStart: (event: KonvaEventObject<PointerEvent>) => void
+  x: number
+  y: number
+  zoom: number
+}) {
+  const hitRadius = Math.max(11, 15 / zoom)
+  const size = 15 / zoom
+  return (
+    <Group x={x} y={y}>
+      <Circle fill="rgba(107, 92, 255, 0.001)" onPointerDown={onRotateStart} radius={hitRadius} />
+      <Path data={`M ${-size / 2} 0 A ${size / 2} ${size / 2} 0 1 1 ${size / 4} ${-size / 2}`} listening={false} stroke="#6b5cff" strokeLinecap="round" strokeWidth={1.4 / zoom} />
+      <Line closed fill="#6b5cff" listening={false} points={[size / 4, -size / 2, size / 2, -size / 2, size / 2, -size / 4]} />
+    </Group>
   )
 }
 

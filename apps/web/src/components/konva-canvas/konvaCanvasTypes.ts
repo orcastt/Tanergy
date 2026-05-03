@@ -53,6 +53,14 @@ export type KonvaToolSession =
       shapeIds: string[]
       type: 'resize'
     }
+  | {
+      center: CanvasPoint
+      originRotation: number
+      pointerId?: number
+      shapeId: string
+      startAngle: number
+      type: 'rotate'
+    }
 
 export const konvaToolLabels: Record<KonvaCanvasTool, string> = {
   arrow: 'Arrow',

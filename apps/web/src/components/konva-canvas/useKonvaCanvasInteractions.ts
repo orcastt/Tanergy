@@ -32,7 +32,8 @@ import {
   toggleSelectedId,
 } from './konvaSelectionUtils'
 import { clearBrowserSelection, getStagePointer, isStageTarget } from './konvaStageHelpers'
-import { createShapeDragPreview, getShapeDragPreviewBounds, getShapeDragPreviewShapes, type KonvaShapeDragPreview } from './konvaDragPreview'
+import { getPointAngle, getRotatedShapes, getShapeRotationCenter } from './konvaRotationUtils'
+import { useKonvaShapeDragHandlers } from './useKonvaShapeDragHandlers'
 import { useKonvaStageCamera } from './useKonvaStageCamera'
 import type { KonvaCanvasTool, KonvaResizeHandle, KonvaToolSession } from './konvaCanvasTypes'
 type UseKonvaCanvasInteractionsOptions = {
@@ -63,37 +64,21 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
   })
   const [draft, setDraft] = useState<CanvasShape | null>(null)
   const [eraserTrail, setEraserTrail] = useState<CanvasPoint[]>([])
-  const [selectedBoundsOverride, setSelectedBoundsOverride] = useState<CanvasBounds | null>(null)
   const [selectionBox, setSelectionBox] = useState<CanvasBounds | null>(null)
-  const dragRef = useRef<KonvaShapeDragPreview | null>(null)
+  const { handleShapeDragEnd, handleShapeDragMove, handleShapeDragStart, selectedBoundsOverride, setSelectedBoundsOverride } = useKonvaShapeDragHandlers({
+    activeTool: options.activeTool,
+    documentRef,
+    onDocumentChange: options.onDocumentChange,
+    onDocumentPreview: options.onDocumentPreview,
+    onHistoryCheckpoint: options.onHistoryCheckpoint,
+    selectedIds: options.selectedIds,
+  })
   useEffect(() => {
     documentRef.current = options.document
   }, [options.document])
   useEffect(() => () => {
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
   }, [])
-  const handleShapeDragStart = useCallback((shapeId: string) => {
-    const current = documentRef.current
-    const preview = createShapeDragPreview(current.shapes, options.activeTool === 'select' ? options.selectedIds : [shapeId], shapeId)
-    if (!preview) return
-    options.onHistoryCheckpoint(current)
-    dragRef.current = preview
-  }, [options])
-  const handleShapeDragMove = useCallback((shapeId: string, x: number, y: number) => {
-    const drag = dragRef.current
-    if (!drag || drag.shapeId !== shapeId) return
-    setSelectedBoundsOverride(getShapeDragPreviewBounds(drag, x, y))
-    const nextDocument = withCanvasShapes(documentRef.current, getShapeDragPreviewShapes(documentRef.current.shapes, drag, x, y))
-    documentRef.current = nextDocument
-    options.onDocumentPreview(nextDocument)
-  }, [options])
-  const handleShapeDragEnd = useCallback((shapeId: string, x: number, y: number) => {
-    const drag = dragRef.current
-    dragRef.current = null
-    setSelectedBoundsOverride(null)
-    if (!drag || drag.shapeId !== shapeId) return
-    options.onDocumentChange((current) => withCanvasShapes(current, getShapeDragPreviewShapes(current.shapes, drag, x, y)))
-  }, [options])
   const handleShapeSelect = useCallback((shapeId: string, config: { additive?: boolean } = {}) => {
     const additive = options.activeTool === 'select' && config.additive
     if (!additive && options.activeTool === 'select' && options.selectedIds.length > 1 && options.selectedIds.includes(shapeId)) return
@@ -115,7 +100,17 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       type: 'resize',
     }
   }, [options])
-
+  const handleRotateStart = useCallback((shapeId: string, event: KonvaEventObject<PointerEvent>) => {
+    event.cancelBubble = true
+    event.evt.preventDefault()
+    const shape = documentRef.current.shapes.find((item) => item.id === shapeId)
+    const screenPoint = getStagePointer(stageRef.current)
+    if (!shape || !screenPoint) return
+    const worldPoint = pointerToWorld({ ...screenPoint, pressure: event.evt.pressure }, cameraRef.current)
+    const center = getShapeRotationCenter(shape)
+    options.onHistoryCheckpoint(documentRef.current)
+    sessionRef.current = { center, originRotation: shape.rotation ?? 0, pointerId: event.evt.pointerId, shapeId, startAngle: getPointAngle(center, worldPoint), type: 'rotate' }
+  }, [cameraRef, options])
   const handlePointerDown = (event: KonvaEventObject<PointerEvent>) => {
     const screenPoint = getStagePointer(stageRef.current)
     if (!screenPoint) return
@@ -140,7 +135,6 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       }
       return
     }
-
     if (options.activeTool === 'eraser') {
       options.onHistoryCheckpoint(documentRef.current)
       sessionRef.current = { pointerId: event.evt.pointerId, type: 'erase' }
@@ -148,7 +142,6 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       eraseAtPoint(worldPoint)
       return
     }
-
     if (options.activeTool === 'text') {
       options.onHistoryCheckpoint(documentRef.current)
       const shape = createTextShape(worldPoint, options.nextStyle)
@@ -208,6 +201,11 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       previewDocument(withCanvasShapes(documentRef.current, resizeShapesFromBounds(documentRef.current.shapes, session.originShapes, session.originBounds, bounds)))
       return
     }
+    if (session.type === 'rotate') {
+      const rotation = session.originRotation + getPointAngle(session.center, worldPoint) - session.startAngle
+      previewDocument(withCanvasShapes(documentRef.current, getRotatedShapes(documentRef.current.shapes, session.shapeId, rotation)))
+      return
+    }
     updateCreateDraft(session, worldPoint, event)
   }
 
@@ -247,6 +245,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     handlePointerMove,
     handlePointerUp,
     handleResizeStart,
+    handleRotateStart,
     handleShapeDragMove,
     handleShapeDragEnd,
     handleShapeDragStart,
