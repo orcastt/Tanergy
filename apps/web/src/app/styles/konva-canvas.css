@@ -163,6 +163,21 @@
   cursor: inherit;
 }
 
+.konva-canvas-text-editor {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid #6b5cff;
+  border-radius: 4px;
+  box-shadow: 0 10px 30px rgba(36, 49, 66, 0.16);
+  color: #243142;
+  font-family: Inter, system-ui, sans-serif;
+  outline: none;
+  padding: 2px 4px;
+  position: absolute;
+  resize: none;
+  transform-origin: center;
+  z-index: 35;
+}
+
 .konva-canvas-navigator {
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(31, 42, 55, 0.1);

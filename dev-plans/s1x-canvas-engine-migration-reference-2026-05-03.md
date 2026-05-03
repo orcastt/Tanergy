@@ -28,6 +28,7 @@ keep Board/API/storage contracts stable
 - Pattern fill now uses crisp high-DPR generated hatching instead of a blurry low-resolution tile.
 - Phase 3.1 started: interaction logic split out of the Stage, box-select marquee added, single-shape corner resize handles added, and undo/redo history now snapshots shapes plus selection without undoing camera pan/zoom.
 - Phase 3.1 also has first-pass single-shape rotation: an offset rotate handle writes `rotation` and renders box-like shapes around their center point.
+- Phase 3.1 object commands now cover keyboard Copy/Paste/Select all/Duplicate/Delete, Alt-drag duplicate, text double-click editing and a first-pass right-click menu for the same core commands.
 
 Next development focus: finish Phase 3 object editing foundation with copy/paste, Alt-drag duplicate, text editing and command-system cleanup. Right-click menu, image/node conversion and alignment actions should sit on that shared command system rather than be built as separate one-off UI.
 

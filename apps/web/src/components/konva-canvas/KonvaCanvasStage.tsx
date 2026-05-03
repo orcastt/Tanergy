@@ -22,6 +22,7 @@ type KonvaCanvasStageProps = {
   onDocumentPreview: Dispatch<SetStateAction<CanvasDocument>>
   onHistoryCheckpoint: (document: CanvasDocument) => void
   onSelectionChange: (shapeIds: string[]) => void
+  onTextEditStart: (shapeId: string) => void
 }
 
 export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
@@ -77,6 +78,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
             onDragMove={handleShapeDragMove}
             onDragEnd={handleShapeDragEnd}
             onDragStart={handleShapeDragStart}
+            onDoubleClick={props.onTextEditStart}
             onSelect={handleShapeSelect}
             panMode={props.isSpacePanning}
             shape={shape}
@@ -94,6 +96,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
             onDragMove={handleShapeDragMove}
             onDragEnd={handleShapeDragEnd}
             onDragStart={handleShapeDragStart}
+            onDoubleClick={props.onTextEditStart}
             onSelect={handleShapeSelect}
             panMode={props.isSpacePanning}
             shape={draft}

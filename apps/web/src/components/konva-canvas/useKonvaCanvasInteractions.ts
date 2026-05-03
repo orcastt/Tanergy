@@ -71,6 +71,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     onDocumentChange: options.onDocumentChange,
     onDocumentPreview: options.onDocumentPreview,
     onHistoryCheckpoint: options.onHistoryCheckpoint,
+    onSelectionChange: options.onSelectionChange,
     selectedIds: options.selectedIds,
   })
   useEffect(() => {

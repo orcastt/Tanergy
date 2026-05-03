@@ -14,8 +14,9 @@ type KonvaCanvasShapeProps = {
   toolAllowsDrag: boolean
   zoom: number
   onDragMove: (shapeId: string, x: number, y: number) => void
-  onDragStart: (shapeId: string) => void
+  onDragStart: (shapeId: string, config?: { duplicate?: boolean }) => void
   onDragEnd: (shapeId: string, x: number, y: number) => void
+  onDoubleClick: (shapeId: string) => void
   onSelect: (shapeId: string, options?: { additive?: boolean }) => void
 }
 
@@ -25,6 +26,7 @@ function KonvaCanvasShapeComponent({
   onDragMove,
   onDragStart,
   onDragEnd,
+  onDoubleClick,
   onSelect,
   panMode,
   shape,
@@ -50,8 +52,12 @@ function KonvaCanvasShapeComponent({
         onSelect(shape.id, { additive: event.evt.shiftKey })
       } : undefined}
       onDragMove={canInteract ? (event) => onDragMove(shape.id, event.target.x() - transform.offsetX, event.target.y() - transform.offsetY) : undefined}
-      onDragStart={canInteract ? () => onDragStart(shape.id) : undefined}
+      onDragStart={canInteract ? (event) => onDragStart(shape.id, { duplicate: event.evt.altKey }) : undefined}
       onDragEnd={canInteract ? (event) => onDragEnd(shape.id, event.target.x() - transform.offsetX, event.target.y() - transform.offsetY) : undefined}
+      onDblClick={canInteract ? (event) => {
+        event.cancelBubble = true
+        onDoubleClick(shape.id)
+      } : undefined}
       onPointerDown={canInteract ? (event) => {
         if (event.evt.button === 1) return
         event.cancelBubble = true
@@ -76,6 +82,7 @@ function areShapePropsEqual(previous: KonvaCanvasShapeProps, next: KonvaCanvasSh
   if (previous.isSelected !== next.isSelected) return false
   if (previous.panMode !== next.panMode) return false
   if (previous.toolAllowsDrag !== next.toolAllowsDrag) return false
+  if (previous.onDoubleClick !== next.onDoubleClick) return false
   if (next.isSelected && previous.zoom !== next.zoom) return false
   return true
 }

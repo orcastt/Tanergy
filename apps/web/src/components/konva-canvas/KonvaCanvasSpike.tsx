@@ -8,6 +8,7 @@ import {
   createEmptyCanvasDocument,
   createFrameSample,
   getCanvasDiagnosticsSnapshot,
+  screenToWorld,
   withCanvasShapes,
   zoomCameraAtScreenPoint,
   type CanvasCamera,
@@ -15,17 +16,21 @@ import {
   type CanvasDocument,
   type CanvasShape,
   type CanvasShapeStyle,
+  type CanvasTextShape,
 } from '@/features/canvas-engine'
 import { CanvasTooltipLayer } from '@/components/canvas/CanvasTooltipLayer'
 import { KonvaCanvasDiagnostics } from './KonvaCanvasDiagnostics'
+import { KonvaContextMenu, type KonvaContextMenuAction } from './KonvaContextMenu'
 import { KonvaCanvasNavigator } from './KonvaCanvasNavigator'
 import { KonvaCanvasProperties } from './KonvaCanvasProperties'
 import { KonvaCanvasStage } from './KonvaCanvasStage'
+import { KonvaTextEditor } from './KonvaTextEditor'
 import { KonvaCanvasToolbar } from './KonvaCanvasToolbar'
-import { konvaToolShortcuts, type KonvaCanvasTool } from './konvaCanvasTypes'
-import { konvaDefaultShapeStyle } from './konvaCanvasStyle'
+import type { KonvaCanvasTool } from './konvaCanvasTypes'
+import { deleteKonvaShapes, duplicateKonvaShapes, konvaDefaultShapeStyle, reorderKonvaShapes } from './konvaCanvasStyle'
+import { copyKonvaShapes, pasteKonvaShapes, updateTextShape } from './konvaShapeCommands'
 import { useKonvaCanvasHistory } from './useKonvaCanvasHistory'
-
+import { useKonvaCanvasShortcuts } from './useKonvaCanvasShortcuts'
 export function KonvaCanvasSpike() {
   const shellRef = useRef<HTMLDivElement | null>(null)
   const [ydoc] = useState(() => new Y.Doc())
@@ -40,7 +45,11 @@ export function KonvaCanvasSpike() {
   const [isSpacePanning, setIsSpacePanning] = useState(false)
   const [nextStyle, setNextStyle] = useState<CanvasShapeStyle>(konvaDefaultShapeStyle)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [editingTextId, setEditingTextId] = useState<string | null>(null)
+  const [contextMenu, setContextMenu] = useState<{ worldX: number; worldY: number; x: number; y: number } | null>(null)
+  const [clipboardShapeCount, setClipboardShapeCount] = useState(0)
   const [diagnostics, setDiagnostics] = useState<CanvasDiagnosticsSnapshot>(() => getCanvasDiagnosticsSnapshot(document))
+  const clipboardRef = useRef<CanvasShape[]>([])
   const frameSamplesRef = useRef<ReturnType<typeof appendFrameSample>>([])
   const lastFrameRef = useRef(0)
   const history = useKonvaCanvasHistory({
@@ -84,46 +93,19 @@ export function KonvaCanvasSpike() {
     return () => window.clearInterval(timer)
   }, [document, ydoc])
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (isEditableTarget(event.target)) return
-      if (event.code === 'Space') {
-        event.preventDefault()
-        setIsSpacePanning(true)
-        return
-      }
-      if (event.key === 'Escape') {
-        setActiveTool('select')
-        setIsSpacePanning(false)
-        return
-      }
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') {
-        event.preventDefault()
-        if (event.shiftKey) history.redo()
-        else history.undo()
-        return
-      }
-      const tool = getShortcutTool(event.key)
-      if (tool && !event.metaKey && !event.ctrlKey && !event.altKey) {
-        event.preventDefault()
-        setActiveTool(tool)
-      }
-    }
-
-    const handleKeyUp = (event: KeyboardEvent) => {
-      if (event.code === 'Space') setIsSpacePanning(false)
-    }
-    const handleBlur = () => setIsSpacePanning(false)
-
-    window.addEventListener('keydown', handleKeyDown)
-    window.addEventListener('keyup', handleKeyUp)
-    window.addEventListener('blur', handleBlur)
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-      window.removeEventListener('keyup', handleKeyUp)
-      window.removeEventListener('blur', handleBlur)
-    }
-  }, [history])
+  useKonvaCanvasShortcuts({
+    camera,
+    clipboardRef,
+    document,
+    history,
+    onClipboardChange: setClipboardShapeCount,
+    onDocumentChange: setDocument,
+    onPanningChange: setIsSpacePanning,
+    onSelectionChange: setSelectedIds,
+    onToolChange: setActiveTool,
+    selectedIds,
+    size,
+  })
 
   const pointCount = useMemo(() => (
     document.shapes.reduce((total, shape) => total + (shape.type === 'stroke' ? shape.props.points.length : 0), 0)
@@ -156,6 +138,39 @@ export function KonvaCanvasSpike() {
     setDocument((current) => withCanvasShapes(current, []))
     setSelectedIds([])
   }, [history])
+  const editingTextShape = document.shapes.find((shape): shape is CanvasTextShape => shape.id === editingTextId && shape.type === 'text')
+  const runContextAction = (action: KonvaContextMenuAction) => {
+    setContextMenu(null)
+    if (action === 'select-all') {
+      setSelectedIds(document.shapes.map((shape) => shape.id))
+      return
+    }
+    if (action === 'copy') {
+      clipboardRef.current = copyKonvaShapes(document, selectedIds)
+      setClipboardShapeCount(clipboardRef.current.length)
+      return
+    }
+    if (action === 'paste') {
+      history.checkpoint(document)
+      const result = pasteKonvaShapes(document, clipboardRef.current, contextMenu ? { x: contextMenu.worldX, y: contextMenu.worldY } : undefined)
+      setDocument(result.document)
+      setSelectedIds(result.selectedIds)
+      return
+    }
+    if (selectedIds.length === 0) return
+    history.checkpoint(document)
+    if (action === 'delete') {
+      const result = deleteKonvaShapes(document, selectedIds)
+      setDocument(result.document)
+      setSelectedIds(result.selectedIds)
+    } else if (action === 'duplicate') {
+      const result = duplicateKonvaShapes(document, selectedIds)
+      setDocument(result.document)
+      setSelectedIds(result.selectedIds)
+    } else {
+      setDocument(reorderKonvaShapes(document, selectedIds, action === 'layer-front' ? 'front' : 'back'))
+    }
+  }
 
   return (
     <main className="konva-canvas-shell">
@@ -173,7 +188,18 @@ export function KonvaCanvasSpike() {
         onClear={clearCanvas}
         onToolChange={setActiveTool}
       />
-      <section className="konva-canvas-stage-wrap" data-space-panning={isSpacePanning} ref={shellRef}>
+      <section
+        className="konva-canvas-stage-wrap"
+        data-space-panning={isSpacePanning}
+        onContextMenu={(event) => {
+          event.preventDefault()
+          const rect = event.currentTarget.getBoundingClientRect()
+          const point = { x: event.clientX - rect.left, y: event.clientY - rect.top }
+          const world = screenToWorld(point, camera)
+          setContextMenu({ worldX: world.x, worldY: world.y, x: point.x, y: point.y })
+        }}
+        ref={shellRef}
+      >
         <KonvaCanvasStage
           activeTool={activeTool}
           camera={camera}
@@ -187,9 +213,25 @@ export function KonvaCanvasSpike() {
           onDocumentPreview={setDocument}
           onHistoryCheckpoint={history.checkpoint}
           onSelectionChange={setSelectedIds}
+          onTextEditStart={(shapeId) => {
+            const shape = document.shapes.find((item) => item.id === shapeId)
+            if (shape?.type === 'text') setEditingTextId(shapeId)
+          }}
           selectedIds={selectedIds}
           width={size.width}
         />
+        {editingTextShape ? (
+          <KonvaTextEditor
+            camera={camera}
+            onCancel={() => setEditingTextId(null)}
+            onCommit={(text) => {
+              history.checkpoint(document)
+              setDocument((current) => updateTextShape(current, editingTextShape.id, text))
+              setEditingTextId(null)
+            }}
+            shape={editingTextShape}
+          />
+        ) : null}
         <KonvaCanvasProperties
           activeTool={activeTool}
           document={document}
@@ -210,20 +252,20 @@ export function KonvaCanvasSpike() {
           stageWidth={size.width}
         />
         <KonvaCanvasDiagnostics diagnostics={diagnostics} pointCount={pointCount} zoom={camera.zoom} />
+        {contextMenu ? (
+          <KonvaContextMenu
+            canPaste={clipboardShapeCount > 0}
+            hasSelection={selectedIds.length > 0}
+            onAction={runContextAction}
+            onClose={() => setContextMenu(null)}
+            x={contextMenu.x}
+            y={contextMenu.y}
+          />
+        ) : null}
         <CanvasTooltipLayer />
       </section>
     </main>
   )
-}
-
-function getShortcutTool(key: string): KonvaCanvasTool | null {
-  const normalizedKey = key.toUpperCase()
-  return (Object.keys(konvaToolShortcuts) as KonvaCanvasTool[]).find((tool) => konvaToolShortcuts[tool] === normalizedKey) ?? null
-}
-
-function isEditableTarget(target: EventTarget | null) {
-  if (!(target instanceof Element)) return false
-  return Boolean(target.closest('input, textarea, select, [contenteditable="true"], [contenteditable="plaintext-only"]'))
 }
 
 function createSeedShapes(): CanvasShape[] {

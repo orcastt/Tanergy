@@ -127,6 +127,9 @@ Phase 3.1 object editing foundation started:
 - single box-like shapes now have a rotate handle offset from the top-right corner and rotate around their center point
 - multi-selection shows a union boundary; dragging a selected member now moves the selected set together
 - continuous drawing tools can still point-select an existing object and drag it as a single object without switching to Select
+- keyboard/object editing now covers Copy, Paste, Select All, Duplicate, Delete and Alt-drag duplicate
+- text shapes support double-click editing through an HTML textarea overlay
+- right-click menu first pass exposes Copy, Paste, Duplicate, Layer front/back, Select all and Delete
 - undo/redo restores shapes plus selection only, so pan/zoom is not part of command history
 - create, drag, resize, eraser, Properties style edits, layer actions, duplicate/delete, stress strokes and clear all now create history checkpoints
 

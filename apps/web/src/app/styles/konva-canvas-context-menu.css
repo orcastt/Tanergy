@@ -1,0 +1,62 @@
+.konva-context-menu-backdrop {
+  background: transparent;
+  border: 0;
+  inset: 0;
+  padding: 0;
+  position: absolute;
+  z-index: 39;
+}
+
+.konva-context-menu {
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(31, 42, 55, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 20px 48px rgba(31, 42, 55, 0.18);
+  display: grid;
+  gap: 2px;
+  min-width: 190px;
+  padding: 6px;
+  position: absolute;
+  z-index: 40;
+}
+
+.konva-context-menu button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  color: #243142;
+  display: flex;
+  font: inherit;
+  font-size: 12px;
+  height: 30px;
+  justify-content: space-between;
+  padding: 0 9px;
+  text-align: left;
+}
+
+.konva-context-menu button:hover:not(:disabled) {
+  background: #f0efff;
+  color: #5b4bdb;
+}
+
+.konva-context-menu button:disabled {
+  color: rgba(36, 49, 66, 0.34);
+}
+
+.konva-context-menu button[data-danger='true']:hover:not(:disabled) {
+  background: #fff1f2;
+  color: #dc2626;
+}
+
+.konva-context-menu kbd {
+  color: rgba(36, 49, 66, 0.48);
+  font: inherit;
+  font-size: 11px;
+}
+
+.konva-context-menu__divider {
+  background: rgba(31, 42, 55, 0.1);
+  height: 1px;
+  margin: 4px 2px;
+}

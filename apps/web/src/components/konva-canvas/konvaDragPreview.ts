@@ -12,7 +12,12 @@ export function createShapeDragPreview(shapes: CanvasShape[], selectedIds: strin
   const shapeIds = selectedIds.includes(shapeId) ? selectedIds : [shapeId]
   const originShape = shapes.find((shape) => shape.id === shapeId)
   const originShapes = getShapesByIds(shapes, shapeIds)
-  const originBounds = getSelectedShapeBounds(shapes, shapeIds)
+  return originShape ? createShapeDragPreviewFromOrigins(originShape, originShapes, shapeId) : null
+}
+
+export function createShapeDragPreviewFromOrigins(originShape: CanvasShape, originShapes: CanvasShape[], shapeId: string): KonvaShapeDragPreview | null {
+  const shapeIds = originShapes.map((shape) => shape.id)
+  const originBounds = getSelectedShapeBounds(originShapes, shapeIds)
   return originShape && originBounds && originShapes.length > 0
     ? { originBounds, originShape, originShapes, shapeId }
     : null
