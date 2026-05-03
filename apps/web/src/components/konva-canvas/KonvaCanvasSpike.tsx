@@ -80,6 +80,11 @@ export function KonvaCanvasSpike() {
         setIsSpacePanning(true)
         return
       }
+      if (event.key === 'Escape') {
+        setActiveTool('select')
+        setIsSpacePanning(false)
+        return
+      }
       if (event.key.toLowerCase() === 'v' && !event.metaKey && !event.ctrlKey && !event.altKey) {
         setActiveTool('select')
       }

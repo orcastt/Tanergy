@@ -24,14 +24,36 @@ export function getFreehandPath(points: StrokePoint[], width = 4): string {
 export function getCloudPath(width: number, height: number): string {
   const w = Math.max(32, width)
   const h = Math.max(24, height)
+  const dents = [
+    { x: 0.14, y: 0.2 },
+    { x: 0.28, y: 0.04 },
+    { x: 0.42, y: 0.11 },
+    { x: 0.55, y: 0.03 },
+    { x: 0.69, y: 0.12 },
+    { x: 0.84, y: 0.18 },
+    { x: 0.98, y: 0.38 },
+    { x: 0.91, y: 0.62 },
+    { x: 0.79, y: 0.82 },
+    { x: 0.62, y: 0.86 },
+    { x: 0.49, y: 0.8 },
+    { x: 0.36, y: 0.9 },
+    { x: 0.2, y: 0.82 },
+    { x: 0.04, y: 0.62 },
+    { x: 0.03, y: 0.36 },
+  ].map((point) => ({ x: point.x * w, y: point.y * h }))
+
+  const commands = dents.map((point, index) => {
+    const nextPoint = dents[(index + 1) % dents.length]
+    const controlPoint = {
+      x: ((point.x + nextPoint.x) / 2) + (w / 2 - (point.x + nextPoint.x) / 2) * -0.08,
+      y: ((point.y + nextPoint.y) / 2) + (h / 2 - (point.y + nextPoint.y) / 2) * -0.18,
+    }
+    return `Q ${controlPoint.x.toFixed(1)} ${controlPoint.y.toFixed(1)} ${nextPoint.x.toFixed(1)} ${nextPoint.y.toFixed(1)}`
+  })
+
   return [
-    `M ${w * 0.2} ${h * 0.62}`,
-    `C ${w * 0.06} ${h * 0.62}, ${w * 0.04} ${h * 0.42}, ${w * 0.2} ${h * 0.38}`,
-    `C ${w * 0.18} ${h * 0.2}, ${w * 0.38} ${h * 0.12}, ${w * 0.5} ${h * 0.25}`,
-    `C ${w * 0.64} ${h * 0.08}, ${w * 0.86} ${h * 0.2}, ${w * 0.82} ${h * 0.4}`,
-    `C ${w * 0.98} ${h * 0.42}, ${w * 0.94} ${h * 0.66}, ${w * 0.8} ${h * 0.64}`,
-    `C ${w * 0.76} ${h * 0.82}, ${w * 0.52} ${h * 0.86}, ${w * 0.44} ${h * 0.72}`,
-    `C ${w * 0.34} ${h * 0.86}, ${w * 0.16} ${h * 0.78}, ${w * 0.2} ${h * 0.62}`,
+    `M ${dents[0].x.toFixed(1)} ${dents[0].y.toFixed(1)}`,
+    ...commands,
     'Z',
   ].join(' ')
 }

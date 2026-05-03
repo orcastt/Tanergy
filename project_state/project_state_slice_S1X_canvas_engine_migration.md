@@ -109,6 +109,7 @@ Not included yet: node cards, image paste/drop, image-to-node/to-canvas conversi
 - Freehand smoothing should stay light in normal Draw mode. Current preference is architect-pen style: slow strokes can feel slightly inkier, fast strokes lighter, with subtle taper; stronger Smart Drawing recognition belongs in a separate mode.
 - Canvas navigation shortcuts are part of the handfeel contract: `V` switches to Select, holding `Space` temporarily pans without changing the active tool, and middle-mouse drag pans the canvas.
 - Canvas opens in Select by default. Continuous drawing starts only after the user explicitly chooses Draw/shape/line/arrow.
+- `Escape` exits continuous drawing and returns to Select. Cloud visual path should fill its bbox so selection handles hug the cloud boundary more like tldraw.
 
 ## Estimate
 

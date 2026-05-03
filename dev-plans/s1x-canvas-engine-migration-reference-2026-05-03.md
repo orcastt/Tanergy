@@ -105,7 +105,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | 2.2 | hand/select | 切换 hand/select，状态高亮 | engine activeTool state；进入画布默认 Select | `CanvasToolbarPrimaryTools.tsx` | 当前工具高亮正确 |
 | 2.3 | shape 菜单 | rectangle/diamond/ellipse/triangle/cloud | Konva shape tool + popover | `canvasToolbarConfig.ts` | 形状菜单和图标一致 |
 | 2.4 | direct tools | arrow/line/draw/text/eraser | 对应 Konva tools | `canvasToolbarConfig.ts` | 每个按钮能创建/操作正确对象 |
-| 2.5 | 连续绘制 | tldraw 需要右键工具进入 continuous | TANGENT 新引擎采用用户认可的新规则：左键绘制后保持当前工具，直到用户切换工具；ESC 可回 select | `CanvasSpikeToolbar.tsx` | 连画多个形状不中断，切换工具才结束 |
+| 2.5 | 连续绘制 | tldraw 需要右键工具进入 continuous | TANGENT 新引擎采用用户认可的新规则：左键绘制后保持当前工具，直到用户切换工具；ESC 回 Select | `CanvasSpikeToolbar.tsx` | 连画多个形状不中断，ESC 后回选择模式 |
 | 2.6 | tooltip | 黑底白字，长文字不被裁切 | 全局 tooltip layer 保留 | `CanvasTooltipLayer.tsx` | toolbar/properties tooltip 可见 |
 | 2.7 | fixed properties | 点击空白不切换/消失，保持最后工具属性 | style panel state 与 selection 解耦 | `CanvasSpikeStylePanel.tsx` | 空白点击后 panel 不变 |
 | 2.8 | selection properties | 选中普通图形时显示 selected 样式 | selection style aggregation | `getSelectionTool` | 单选/多选显示正确 |
@@ -166,7 +166,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | 3B.2 | Diamond | 菱形 shape | Konva Line/Path polygon，bbox resize 后保持菱形 | resize 后四角不畸形 |
 | 3B.3 | Circle/Ellipse | 圆/椭圆 shape | Konva Ellipse，拖拽时从 bbox 生成 | 圆形/椭圆可保持比例/自由缩放 |
 | 3B.4 | Triangle | 三角形 shape | Konva RegularPolygon/Line path，支持 resize | 三角边框/fill 正常 |
-| 3B.5 | Cloud | 云朵 shape 是截图重点 | 自定义 SVG path/Canvas path，支持 bbox resize，边缘 scallop 数量自然 | cloud 视觉接近 tldraw，不像普通圆角矩形 |
+| 3B.5 | Cloud | 云朵 shape 是截图重点 | 自定义 SVG path/Canvas path，支持 bbox resize，视觉轮廓贴近 bbox selection，边缘 scallop 数量自然 | cloud 视觉和选择框接近 tldraw，不像普通圆角矩形 |
 | 3B.6 | Shape active preview | shape popover hover tooltip，如 Cloud | shape menu active/hover tooltip 黑底白字 | hover cloud 显示 tooltip，popover 不乱跳 |
 | 3B.7 | Line straight | 直线工具生成两端控制点 | line shape 保存 start/end/control points | 端点可拖拽 |
 | 3B.8 | Line midpoint curve | 截图里中点拖拽后线变曲线 | line 有 midpoint/control handle；拖中点生成 quadratic/cubic curve | 拖中点变曲线，曲率保存恢复 |
