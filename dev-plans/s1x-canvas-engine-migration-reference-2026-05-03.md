@@ -64,7 +64,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 
 ### Phase 1：手感和画布基础
 
-当前 checkpoint：`/spikes/konva-canvas` 已经具备 first-pass Konva Stage、freehand smoothing、pan/zoom、基础形状、minimap 和 diagnostics。用户喜欢当前“左键连续绘制，直到手动切换工具”的交互，后续不要退回必须右键锁定才连续绘制的模式。Draw 默认只做轻微平滑，不做明显直线/形状拟合；当前偏建筑师钢笔感，慢线略重、快线略轻、起收笔轻微 taper。下一步先手测“画线和缩放是否值得继续”，再补选区、Properties、图片和节点链路。
+当前 checkpoint：`/spikes/konva-canvas` 已经具备 first-pass Konva Stage、freehand smoothing、pan/zoom、基础形状、minimap 和 diagnostics。用户喜欢当前“左键连续绘制，直到手动切换工具”的交互，后续不要退回必须右键锁定才连续绘制的模式。Draw 默认只做轻微平滑，不做明显直线/形状拟合；当前偏建筑师钢笔感，慢线略重、快线略轻、起收笔轻微 taper。基础快捷键合同：`V` 选择，按住 `Space` 临时平移且不改变当前工具，鼠标中键拖拽平移。下一步先手测“画线和缩放是否值得继续”，再补选区、Properties、图片和节点链路。
 
 | 序号 | 功能/交互 | 当前 tldraw 参考 | Konva/Yjs 复刻要求 | 参考文件 | 验收方式 |
 | --- | --- | --- | --- | --- | --- |
@@ -72,6 +72,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | 1.2 | 平移 pan | hand 工具和触控板拖动稳定 | camera transform 独立 store，拖动不触发 React 重渲染抖动 | `useEditorInteractionState.ts` | 拖动画布不飘、不丢帧 |
 | 1.3 | 滚轮/触控板缩放 | 缩放围绕当前视角/鼠标位置 | pointer anchored zoom，支持 zoom sensitivity | `useCanvasSettings.ts`, `CanvasSpikeNavigator.tsx` | 缩放后光标下对象位置不明显漂移 |
 | 1.4 | 100% 缩放 | 左下角数字点击回到 100% | Konva navigator 保留 zoom reset | `CanvasSpikeNavigator.tsx` | 点击百分比回 100% |
+| 1.4A | 快捷平移 | tldraw/Miro 类画布常用 Space 临时 hand、中键平移 | `V` 切 Select；按住 `Space` 临时平移但不改变 active tool；中键拖拽平移 | input layer | 松开 Space 后恢复原绘制工具 |
 | 1.5 | 背景 | dot/grid/solid，dot 非常淡且在元素下方 | 背景单独 layer，永远低于 shapes/nodes | `CanvasBackground.tsx`, `CanvasGrid.tsx` | dot 不盖住任何绘图元素 |
 | 1.6 | 自由画线采样 | 慢画不抖，快画不断 | pointer capture + RAF batching + smoothing | tldraw draw tool | 慢线、快线、曲线手测通过 |
 | 1.7 | 笔触外观 | tldraw draw 风格有自然手感 | `perfect-freehand` 或等价 outline stroke；普通 Draw 只轻微平滑，慢速更有墨、快速更轻、轻微收头 | `canvasStyleControls.ts` | 用户接受达到当前 80% 手感 |

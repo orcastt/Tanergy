@@ -5,6 +5,7 @@ import { getArrowHeadPoints, getCloudPath, getFreehandPath } from './konvaPathUt
 
 type KonvaCanvasShapeProps = {
   isSelected: boolean
+  panMode: boolean
   shape: CanvasShape
   toolAllowsDrag: boolean
   zoom: number
@@ -16,6 +17,7 @@ function KonvaCanvasShapeComponent({
   isSelected,
   onDragEnd,
   onSelect,
+  panMode,
   shape,
   toolAllowsDrag,
   zoom,
@@ -31,14 +33,16 @@ function KonvaCanvasShapeComponent({
 
   return (
     <Group
-      draggable={toolAllowsDrag}
+      draggable={toolAllowsDrag && !panMode}
       key={shape.id}
       onClick={(event) => {
+        if (panMode || event.evt.button === 1) return
         event.cancelBubble = true
         onSelect(shape.id)
       }}
       onDragEnd={(event) => onDragEnd(shape.id, event.target.x(), event.target.y())}
       onPointerDown={(event) => {
+        if (panMode || event.evt.button === 1) return
         event.cancelBubble = true
         onSelect(shape.id)
       }}
@@ -56,6 +60,7 @@ export const KonvaCanvasShape = memo(KonvaCanvasShapeComponent, areShapePropsEqu
 function areShapePropsEqual(previous: KonvaCanvasShapeProps, next: KonvaCanvasShapeProps) {
   if (previous.shape !== next.shape) return false
   if (previous.isSelected !== next.isSelected) return false
+  if (previous.panMode !== next.panMode) return false
   if (previous.toolAllowsDrag !== next.toolAllowsDrag) return false
   if (next.isSelected && previous.zoom !== next.zoom) return false
   return true

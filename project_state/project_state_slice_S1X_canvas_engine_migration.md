@@ -107,6 +107,7 @@ Not included yet: node cards, image paste/drop, image-to-node/to-canvas conversi
 - Properties remains required: final engine needs a fixed properties panel for style changes across stroke/fill/width/dash/opacity/layer/actions.
 - 1,000 stroke pan/zoom initially felt a bit laggy; first optimization memoizes shape rendering and caps minimap item rendering, but Phase 1A still needs deeper hot-path work before Board migration.
 - Freehand smoothing should stay light in normal Draw mode. Current preference is architect-pen style: slow strokes can feel slightly inkier, fast strokes lighter, with subtle taper; stronger Smart Drawing recognition belongs in a separate mode.
+- Canvas navigation shortcuts are part of the handfeel contract: `V` switches to Select, holding `Space` temporarily pans without changing the active tool, and middle-mouse drag pans the canvas.
 
 ## Estimate
 

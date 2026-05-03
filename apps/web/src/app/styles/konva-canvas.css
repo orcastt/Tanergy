@@ -145,6 +145,14 @@
   position: relative;
 }
 
+.konva-canvas-stage-wrap[data-space-panning='true'] {
+  cursor: grabbing;
+}
+
+.konva-canvas-stage-wrap canvas {
+  cursor: inherit;
+}
+
 .konva-canvas-navigator {
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(31, 42, 55, 0.1);

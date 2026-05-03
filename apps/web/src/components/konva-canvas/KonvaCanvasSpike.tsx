@@ -32,6 +32,7 @@ export function KonvaCanvasSpike() {
   }))
   const [camera, setCamera] = useState<CanvasCamera>(document.camera)
   const [activeTool, setActiveTool] = useState<KonvaCanvasTool>('draw')
+  const [isSpacePanning, setIsSpacePanning] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [diagnostics, setDiagnostics] = useState<CanvasDiagnosticsSnapshot>(() => getCanvasDiagnosticsSnapshot(document))
   const frameSamplesRef = useRef<ReturnType<typeof appendFrameSample>>([])
@@ -70,6 +71,34 @@ export function KonvaCanvasSpike() {
     }, 500)
     return () => window.clearInterval(timer)
   }, [document, ydoc])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target)) return
+      if (event.code === 'Space') {
+        event.preventDefault()
+        setIsSpacePanning(true)
+        return
+      }
+      if (event.key.toLowerCase() === 'v' && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        setActiveTool('select')
+      }
+    }
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.code === 'Space') setIsSpacePanning(false)
+    }
+    const handleBlur = () => setIsSpacePanning(false)
+
+    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keyup', handleKeyUp)
+    window.addEventListener('blur', handleBlur)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+      window.removeEventListener('blur', handleBlur)
+    }
+  }, [])
 
   const pointCount = useMemo(() => (
     document.shapes.reduce((total, shape) => total + (shape.type === 'stroke' ? shape.props.points.length : 0), 0)
@@ -113,12 +142,13 @@ export function KonvaCanvasSpike() {
         onClear={clearCanvas}
         onToolChange={setActiveTool}
       />
-      <section className="konva-canvas-stage-wrap" ref={shellRef}>
+      <section className="konva-canvas-stage-wrap" data-space-panning={isSpacePanning} ref={shellRef}>
         <KonvaCanvasStage
           activeTool={activeTool}
           camera={camera}
           document={document}
           height={size.height}
+          isSpacePanning={isSpacePanning}
           onCameraChange={handleCameraChange}
           onDocumentChange={setDocument}
           onSelectionChange={setSelectedIds}
@@ -138,6 +168,11 @@ export function KonvaCanvasSpike() {
       </section>
     </main>
   )
+}
+
+function isEditableTarget(target: EventTarget | null) {
+  if (!(target instanceof Element)) return false
+  return Boolean(target.closest('input, textarea, select, [contenteditable="true"], [contenteditable="plaintext-only"]'))
 }
 
 function createSeedShapes(): CanvasShape[] {
