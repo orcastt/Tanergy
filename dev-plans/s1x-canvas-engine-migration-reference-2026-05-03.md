@@ -142,7 +142,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | 序号 | 功能/交互 | 当前 tldraw 参考 | Konva/Yjs 复刻要求 | 参考文件 | 验收方式 |
 | --- | --- | --- | --- | --- | --- |
 | 3.1 | 对象模型 | TLShape 承载 x/y/rotation/props/index | `TangentShape` 承载 id/type/x/y/w/h/rotation/style/props | `boardDocumentSerializer.ts` | JSON 可读、可迁移 |
-| 3.2 | 多选 | 框选/shift 选中多个对象 | selection rectangle + hit testing；line/arrow/stroke 要有可见选择框和宽 hit target | tldraw select | 框选复杂对象准确 |
+| 3.2 | 多选 | 框选/shift 选中多个对象 | selection rectangle + hit testing；line/arrow/stroke 选中时高亮线本身，不显示矩形框，但要有宽 hit target | tldraw select | 框选复杂对象准确 |
 | 3.3 | 拖拽 | 选中对象拖动丝滑 | pointer move 批处理，commit to store | tldraw select dragging | 拖动无跳变 |
 | 3.4 | resize | 图形和 node card 可 resize | handles + constraints | `NodeCardShape.tsx`, `AiCardShape.tsx` | resize 后内容不坏 |
 | 3.5 | rotate | 当前 tldraw shape 支持 rotation 字段 | 先支持基础 rotation，复杂节点可后置 | serializer rotation | 保存/恢复 rotation |

@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react'
 import { Ellipse, Group, Line, Path, Rect, Text } from 'react-konva'
-import { getPointsBounds, type CanvasPoint, type CanvasShape } from '@/features/canvas-engine'
+import type { CanvasShape } from '@/features/canvas-engine'
 import { getArrowHeadPoints, getCloudPath, getFreehandPath } from './konvaPathUtils'
 
 type KonvaCanvasShapeProps = {
@@ -27,8 +27,8 @@ function KonvaCanvasShapeComponent({
   const strokeWidth = shape.style?.strokeWidth ?? 2
   const opacity = shape.style?.opacity ?? 1
   const renderedShape = useMemo(
-    () => renderShape(shape, stroke, fill, strokeWidth, opacity),
-    [fill, opacity, shape, stroke, strokeWidth]
+    () => renderShape(shape, stroke, fill, strokeWidth, opacity, isSelected, zoom),
+    [fill, isSelected, opacity, shape, stroke, strokeWidth, zoom]
   )
 
   return (
@@ -50,7 +50,7 @@ function KonvaCanvasShapeComponent({
       y={shape.y}
     >
       {renderedShape}
-      {isSelected ? <SelectionBox shape={shape} zoom={zoom} /> : null}
+      {isSelected && !isLineLikeShape(shape) ? <SelectionBox shape={shape} zoom={zoom} /> : null}
     </Group>
   )
 }
@@ -66,7 +66,9 @@ function areShapePropsEqual(previous: KonvaCanvasShapeProps, next: KonvaCanvasSh
   return true
 }
 
-function renderShape(shape: CanvasShape, stroke: string, fill: string, strokeWidth: number, opacity: number) {
+function renderShape(shape: CanvasShape, stroke: string, fill: string, strokeWidth: number, opacity: number, isSelected: boolean, zoom: number) {
+  const highlightStroke = '#6b5cff'
+  const highlightWidth = Math.max(strokeWidth + 4 / zoom, strokeWidth * 2.4)
   if (shape.type === 'rect') {
     return <Rect height={shape.props.height} opacity={opacity} stroke={stroke} strokeWidth={strokeWidth} width={shape.props.width} fill={fill} cornerRadius={10} />
   }
@@ -85,18 +87,32 @@ function renderShape(shape: CanvasShape, stroke: string, fill: string, strokeWid
     return <Path data={getCloudPath(shape.props.width, shape.props.height)} fill={fill} opacity={opacity} stroke={stroke} strokeWidth={strokeWidth} />
   }
   if (shape.type === 'line') {
-    return <Line hitStrokeWidth={16} lineCap="round" points={[0, 0, shape.props.end.x, shape.props.end.y]} stroke={stroke} strokeWidth={strokeWidth} />
-  }
-  if (shape.type === 'arrow') {
+    const points = [0, 0, shape.props.end.x, shape.props.end.y]
     return (
       <>
-        <Line hitStrokeWidth={16} lineCap="round" points={[0, 0, shape.props.end.x, shape.props.end.y]} stroke={stroke} strokeWidth={strokeWidth} />
-        <Line closed fill={stroke} points={getArrowHeadPoints(shape.props.end, { x: 0, y: 0 }, Math.max(12, strokeWidth * 5))} />
+        {isSelected ? <Line hitStrokeWidth={16} lineCap="round" listening={false} opacity={0.28} points={points} stroke={highlightStroke} strokeWidth={highlightWidth} /> : null}
+        <Line hitStrokeWidth={16} lineCap="round" points={points} stroke={isSelected ? highlightStroke : stroke} strokeWidth={strokeWidth} />
+      </>
+    )
+  }
+  if (shape.type === 'arrow') {
+    const points = [0, 0, shape.props.end.x, shape.props.end.y]
+    return (
+      <>
+        {isSelected ? <Line hitStrokeWidth={16} lineCap="round" listening={false} opacity={0.28} points={points} stroke={highlightStroke} strokeWidth={highlightWidth} /> : null}
+        <Line hitStrokeWidth={16} lineCap="round" points={points} stroke={isSelected ? highlightStroke : stroke} strokeWidth={strokeWidth} />
+        <Line closed fill={isSelected ? highlightStroke : stroke} points={getArrowHeadPoints(shape.props.end, { x: 0, y: 0 }, Math.max(12, strokeWidth * 5))} />
       </>
     )
   }
   if (shape.type === 'stroke') {
-    return <Path data={getFreehandPath(shape.props.points, strokeWidth * 2.2)} fill={stroke} hitStrokeWidth={16} opacity={opacity} />
+    const path = getFreehandPath(shape.props.points, strokeWidth * 2.2)
+    return (
+      <>
+        {isSelected ? <Path data={path} fill={highlightStroke} listening={false} opacity={0.22} scaleX={1.08} scaleY={1.08} /> : null}
+        <Path data={path} fill={isSelected ? highlightStroke : stroke} hitStrokeWidth={16} opacity={opacity} />
+      </>
+    )
   }
   if (shape.type === 'text') {
     return <Text fill={stroke} fontFamily="Inter, system-ui, sans-serif" fontSize={18} height={shape.props.height} text={shape.props.text} width={shape.props.width} />
@@ -108,8 +124,9 @@ function renderShape(shape: CanvasShape, stroke: string, fill: string, strokeWid
 }
 
 function SelectionBox({ shape, zoom }: { shape: CanvasShape; zoom: number }) {
-  const rect = getLocalSelectionRect(shape)
+  if (isLineLikeShape(shape)) return null
   const handleSize = Math.max(5, 7 / zoom)
+  const rect = { height: shape.props.height, width: shape.props.width, x: 0, y: 0 }
   return (
     <>
       <Rect dash={[5 / zoom, 4 / zoom]} height={rect.height} listening={false} stroke="#6b5cff" strokeWidth={1.2 / zoom} width={rect.width} x={rect.x} y={rect.y} />
@@ -132,30 +149,6 @@ function SelectionBox({ shape, zoom }: { shape: CanvasShape; zoom: number }) {
   )
 }
 
-function getLocalSelectionRect(shape: CanvasShape) {
-  if (shape.type === 'stroke') {
-    return expandRect(boundsToLocalRect(getPointsBounds(shape.props.points as CanvasPoint[])), 6)
-  }
-  if (shape.type === 'line' || shape.type === 'arrow') {
-    return expandRect(boundsToLocalRect(getPointsBounds([{ x: 0, y: 0 }, shape.props.end])), 6)
-  }
-  return { height: shape.props.height, width: shape.props.width, x: 0, y: 0 }
-}
-
-function boundsToLocalRect(bounds: { maxX: number; maxY: number; minX: number; minY: number }) {
-  return {
-    height: Math.max(1, bounds.maxY - bounds.minY),
-    width: Math.max(1, bounds.maxX - bounds.minX),
-    x: bounds.minX,
-    y: bounds.minY,
-  }
-}
-
-function expandRect(rect: { height: number; width: number; x: number; y: number }, padding: number) {
-  return {
-    height: rect.height + padding * 2,
-    width: rect.width + padding * 2,
-    x: rect.x - padding,
-    y: rect.y - padding,
-  }
+function isLineLikeShape(shape: CanvasShape) {
+  return shape.type === 'arrow' || shape.type === 'line' || shape.type === 'stroke'
 }
