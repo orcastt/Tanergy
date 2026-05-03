@@ -40,7 +40,8 @@ Current accepted subset:
 - Selected shapes support basic Layer order, Duplicate and Delete actions.
 - Solid and pattern fill are opaque lighter tints of the selected stroke color; pattern fill is crisp enough for product review.
 - Phase 3.1 adds first-pass box select, single-shape resize handles and undo/redo for shape/selection changes without undoing camera pan/zoom.
-- Frame and Sticky tools exist in the spike; Sticky supports double-click text editing.
+- Frame is a white clipped container with editable label; dragged-in shapes are masked by its bounds.
+- Sticky note shows an author label, raised shadow and centered editable text; Properties expose note color and opacity only, not pattern/dash/width.
 
 ## Handfeel Acceptance
 

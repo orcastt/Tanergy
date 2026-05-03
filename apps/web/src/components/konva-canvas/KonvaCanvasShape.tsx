@@ -1,7 +1,7 @@
 import { memo, useMemo, useRef } from 'react'
 import { Ellipse, Group, Line, Path, Rect, Text } from 'react-konva'
 import type { CanvasShape } from '@/features/canvas-engine'
-import { getStrokeDash, resolveKonvaShapeStyle } from './konvaCanvasStyle'
+import { getStickyFillColor, getStrokeDash, resolveKonvaShapeStyle } from './konvaCanvasStyle'
 import { getPatternTile } from './konvaPatternUtils'
 import { getArrowHeadPoints, getCloudPath, getFreehandPath } from './konvaPathUtils'
 import { isBoxCanvasShape } from './konvaRotationUtils'
@@ -131,16 +131,18 @@ function renderShape(shape: CanvasShape, style: ReturnType<typeof resolveKonvaSh
   if (shape.type === 'frame') {
     return (
       <>
-        <Rect dash={strokeDash} fill="transparent" height={shape.props.height} hitStrokeWidth={16} opacity={opacity} stroke={stroke} strokeWidth={strokeWidth} width={shape.props.width} />
-        <Text fill={stroke} fontFamily="Inter, system-ui, sans-serif" fontSize={14} fontStyle="600" listening={false} opacity={opacity} text={shape.props.title ?? 'Frame'} width={shape.props.width} x={10} y={-22} />
+        <Rect dash={strokeDash} fill="#ffffff" height={shape.props.height} hitStrokeWidth={16} opacity={opacity} stroke={stroke} strokeWidth={strokeWidth} width={shape.props.width} />
+        <Text fill="#111827" fontFamily="Inter, system-ui, sans-serif" fontSize={14} fontStyle="500" opacity={opacity} text={shape.props.title ?? 'Frame'} width={shape.props.width} y={-22} />
       </>
     )
   }
   if (shape.type === 'sticky') {
+    const fillColor = shape.style?.fill ?? getStickyFillColor(stroke)
     return (
       <>
-        <Rect {...closedFillProps} cornerRadius={6} dash={strokeDash} height={shape.props.height} opacity={opacity} shadowBlur={4} shadowColor="rgba(36, 49, 66, 0.14)" shadowOffsetY={2} stroke={stroke} strokeWidth={strokeWidth} width={shape.props.width} />
-        <Text fill="#2f2a1f" fontFamily="Inter, system-ui, sans-serif" fontSize={18} height={Math.max(24, shape.props.height - 24)} listening={false} opacity={opacity} padding={12} text={shape.props.text} width={shape.props.width} y={6} />
+        <Text fill="#6b7280" fontFamily="Inter, system-ui, sans-serif" fontSize={12} listening={false} opacity={opacity} text={shape.props.authorName ?? 'You'} width={shape.props.width} y={-20} />
+        <Rect cornerRadius={2} fill={fillColor} height={shape.props.height} opacity={opacity} shadowBlur={10} shadowColor="rgba(36, 49, 66, 0.22)" shadowOffsetY={4} stroke="rgba(31, 42, 55, 0.12)" strokeWidth={1} width={shape.props.width} />
+        <Text align="center" fill="#2f2a1f" fontFamily="Inter, system-ui, sans-serif" fontSize={18} height={shape.props.height} listening={false} opacity={opacity} padding={14} text={shape.props.text} verticalAlign="middle" width={shape.props.width} />
       </>
     )
   }

@@ -29,9 +29,9 @@ keep Board/API/storage contracts stable
 - Phase 3.1 started: interaction logic split out of the Stage, box-select marquee added, single-shape corner resize handles added, and undo/redo history now snapshots shapes plus selection without undoing camera pan/zoom.
 - Phase 3.1 also has first-pass single-shape rotation: an offset rotate handle writes `rotation` and renders box-like shapes around their center point.
 - Phase 3.1 object commands now cover keyboard Copy/Paste/Select all/Duplicate/Delete, Alt-drag duplicate, text double-click editing and a first-pass right-click menu for the same core commands. Alt-drag keeps the source object fixed while moving the new copy; Text is one-shot and returns to Select after inserting a text box.
-- First-pass Frame and Sticky tools are now in the spike: Frame draws a labeled outline container, Sticky draws a resizable note and supports double-click text editing.
+- Frame and Sticky are closer to their reference behavior: Frame is a white clipped container with a top label and editable name; dragged-in shapes get `parentId` and are masked by the frame bounds. Sticky shows an author label, raised note shadow and centered editable text, with Properties limited to color and opacity.
 
-Next development focus: Phase 3B editing depth, especially line/arrow endpoint controls, multi-selection rotation, frame containment semantics, sticky text polish and later image/node conversion commands on the shared command system.
+Next development focus: Phase 3B editing depth, especially line/arrow endpoint controls, multi-selection rotation, deeper frame containment behavior, Auth-backed sticky authors and later image/node conversion commands on the shared command system.
 
 ## tldraw Behavior Inventory
 
@@ -122,7 +122,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | 2.2 | hand/select | 切换 hand/select，状态高亮 | engine activeTool state；进入画布默认 Select | `CanvasToolbarPrimaryTools.tsx` | 当前工具高亮正确 |
 | 2.3 | shape 菜单 | rectangle/diamond/ellipse/triangle/cloud | Konva shape tool + popover；Shift 绘制时等比约束 | `canvasToolbarConfig.ts` | 形状菜单和图标一致，Shift 画正形 |
 | 2.4 | direct tools | arrow/line/draw/text/eraser | 对应 Konva tools | `canvasToolbarConfig.ts` | 每个按钮能创建/操作正确对象 |
-| 2.5 | 连续绘制 | tldraw 需要右键工具进入 continuous | TANGENT 新引擎采用用户认可的新规则：左键绘制后保持当前工具，直到用户切换工具；创建对象后不自动选中；ESC 回 Select | `CanvasSpikeToolbar.tsx` | 连画多个形状不中断，不弹出选中高亮；ESC 后回选择模式 |
+| 2.5 | 连续绘制 | tldraw 需要右键工具进入 continuous | TANGENT 新引擎采用用户认可的新规则：左键绘制后保持当前工具，直到用户切换工具；创建对象后不自动选中；ESC 或画布右键回 Select；右键 pointer 不允许启动框选/绘制 session | `CanvasSpikeToolbar.tsx` | 连画多个形状不中断，不弹出选中高亮；ESC/右键后回选择模式，右键菜单后不出现框选虚线 |
 | 2.6 | tooltip | 黑底白字，长文字不被裁切 | 工具 tooltip 显示英文 `Tool: Shortcut`；后续全局 tooltip layer 保留 | `CanvasTooltipLayer.tsx` | toolbar/properties tooltip 可见 |
 | 2.7 | fixed properties | 点击空白不切换/消失，保持最后工具属性 | style panel state 与 selection 解耦 | `CanvasSpikeStylePanel.tsx` | 空白点击后 panel 不变 |
 | 2.8 | selection properties | 选中普通图形时显示 selected 样式 | selection style aggregation | `getSelectionTool` | 单选/多选显示正确 |
@@ -166,7 +166,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | 3.6 | 删除 | Delete/Backspace 和面板 delete | keyboard command + selection delete | operationActions | 删除对象和 edges 清理一致 |
 | 3.7 | undo/redo | tldraw 内置历史 | command stack，支持 batch transaction | tldraw editor history | Ctrl/Cmd+Z/Shift+Z 正常 |
 | 3.8 | copy/paste | 浏览器/内部 clipboard | 自定义 clipboard JSON，图片只复制 asset ref | tldraw clipboard | 复制节点/shape/edge 后位置偏移 |
-| 3.9 | Alt 拖拽复制 | tldraw 交互习惯 | drag start 检查 Alt/Option 并 duplicate selection | tldraw select | Alt 拖拽产生副本 |
+| 3.9 | Alt 拖拽复制 | tldraw 交互习惯 | drag start 检查 Alt/Option 并 duplicate selection；source 锁原地，副本跟随；pointerup 提交最后一帧 preview shapes，不能用 reset 后的 source 坐标 | tldraw select | Alt 拖拽产生副本，松手不跳回原位 |
 | 3.10 | z-order | index 控制层级 | array order / zIndex model | shape index | bring/send 操作持久化 |
 | 3.11 | text edit | text/note 可输入，不抢画布快捷键 | HTML overlay 或 Konva.Text + input overlay | tldraw text/note | 输入中 Cmd+S 不误触，中文输入正常 |
 | 3.12 | eraser | 橡皮擦删除 draw/shape | hit test stroke/shape，拖动擦除；鼠标移动时有 tldraw-like eraser silhouette/trail | direct eraser | 擦除不误删远处对象，拖尾跟手 |
@@ -184,8 +184,8 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | 3B.3 | Circle/Ellipse | 圆/椭圆 shape | Konva Ellipse，拖拽时从 bbox 生成 | 圆形/椭圆可保持比例/自由缩放 |
 | 3B.4 | Triangle | 三角形 shape | Konva RegularPolygon/Line path，支持 resize | 三角边框/fill 正常 |
 | 3B.5 | Cloud | 云朵 shape 是截图重点；tldraw/CAD cloud 是根据拖拽矩形四边分段切弧，不是固定云朵轮廓缩放 | 自定义 path 基于 bbox 四边按边长生成 revision-cloud scallop arcs；横条/竖条/大矩形都要自然分段 | cloud 视觉和选择框接近 tldraw，不像固定图标拉伸 |
-| 3B.6 | Frame | tldraw frame 可作为视觉容器和后续页面/区域组织 | 第一版有可绘制、可 resize/rotate 的 labeled frame；后续补 frame containment、拖入/拖出、导出边界 | Frame 可创建/选中/移动/resize；后续语义不丢 |
-| 3B.7 | Sticky / note | tldraw sticky note / 便利贴 | 第一版有可绘制、可 resize、可双击编辑文本的 sticky；后续补文字排版、快捷创建、颜色预设 | Sticky 可创建、编辑、改样式、保存恢复 |
+| 3B.6 | Frame | tldraw frame 是白底黑框的视觉容器，框外内容被裁切，顶部显示 frame 名 | Frame 默认黑框白底；拖入对象后写 `parentId` 并按 frame bounds clip；双击 frame 可改名；后续补 move-with-children、drag-out、nested-frame、导出边界 | 拖入对象后超出 frame 的部分被蒙住，双击可改名 |
+| 3B.7 | Sticky / note | Miro-like sticky note：作者在上方，note 有阴影和立体感 | Sticky 显示 author label、raised shadow、居中文本；双击编辑正文；Properties 只允许颜色/透明度，支持 resize/rotate，不显示 pattern/dash/width | Sticky 可创建、改色、改透明度、resize/rotate、双击中间文字编辑 |
 | 3B.8 | Shape active preview | shape popover hover tooltip，如 Cloud | shape menu active/hover tooltip 黑底白字 | hover cloud 显示 tooltip，popover 不乱跳 |
 | 3B.9 | Line straight | 直线工具生成两端控制点 | line shape 保存 start/end/control points | 端点可拖拽 |
 | 3B.10 | Line midpoint curve | 截图里中点拖拽后线变曲线 | line 有 midpoint/control handle；拖中点生成 quadratic/cubic curve | 拖中点变曲线，曲率保存恢复 |
@@ -213,7 +213,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 
 | 序号 | 菜单项 | 当前参考/快捷键 | Konva/Yjs 复刻要求 | 验收方式 |
 | --- | --- | --- | --- | --- |
-| 3A.1 | 右键打开位置 | 鼠标位置打开，子菜单向右展开 | 菜单定位避免超出视口，支持滚动画布坐标 | 画布边缘右键不被裁切 |
+| 3A.1 | 右键打开位置 | 鼠标位置打开，子菜单向右展开 | 菜单定位避免超出视口，支持滚动画布坐标；右键 pointerdown 不触发 marquee selection | 画布边缘右键不被裁切，Copy/Paste 后不残留框选 |
 | 3A.2 | 编辑 > 分组 | `⌘G` | group selected shapes，生成 group/container 或 group id | 多选后 group，可一起拖动 |
 | 3A.3 | 编辑 > 展开/取消分组 | `⇧F` reference | ungroup/group expand command | group 后可拆回独立对象 |
 | 3A.4 | 编辑 > 锁定/解锁 | `⇧L` reference | locked shape 不可拖/resize，但可选择查看 | locked 对象不误移动 |

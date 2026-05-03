@@ -61,6 +61,7 @@ export function KonvaCanvasProperties({
   const dashToken = styleSnapshot.dash === 'mixed' ? null : styleSnapshot.dash
   const widthToken = styleSnapshot.strokeWidth === 'mixed' ? null : getWidthStyleToken(styleSnapshot.strokeWidth)
   const opacity = styleSnapshot.opacity === 'mixed' ? 100 : Math.round((styleSnapshot.opacity ?? 1) * 100)
+  const strokeLabel = hasSelection && selectedShapes.every((shape) => shape.type === 'sticky') ? 'Color' : 'Stroke'
 
   const applyStyle = (patch: CanvasShapeStyle) => {
     onNextStyleChange((current) => ({ ...current, ...patch }))
@@ -116,7 +117,7 @@ export function KonvaCanvasProperties({
           </div>
 
           {showStroke ? (
-            <PropertyBlock label="Stroke">
+            <PropertyBlock label={strokeLabel}>
               <div className="konva-canvas-properties__swatches">
                 {konvaStrokeColors.map((item) => (
                   <button
@@ -260,7 +261,7 @@ function IconButton({
 }
 
 function toolUsesFill(tool: KonvaCanvasTool) {
-  return tool === 'rect' || tool === 'diamond' || tool === 'ellipse' || tool === 'triangle' || tool === 'cloud' || tool === 'sticky'
+  return tool === 'rect' || tool === 'diamond' || tool === 'ellipse' || tool === 'triangle' || tool === 'cloud'
 }
 
 function toolUsesStroke(tool: KonvaCanvasTool) {
@@ -268,7 +269,7 @@ function toolUsesStroke(tool: KonvaCanvasTool) {
 }
 
 function toolUsesWidth(tool: KonvaCanvasTool) {
-  return toolUsesStroke(tool) && tool !== 'text'
+  return toolUsesStroke(tool) && tool !== 'text' && tool !== 'sticky'
 }
 
 function toolUsesDash(tool: KonvaCanvasTool) {

@@ -1,8 +1,9 @@
 import { type Dispatch, type SetStateAction } from 'react'
-import { Layer, Rect, Stage } from 'react-konva'
-import type { CanvasCamera, CanvasDocument, CanvasShapeStyle } from '@/features/canvas-engine'
+import { Group, Layer, Rect, Stage } from 'react-konva'
+import type { CanvasCamera, CanvasDocument, CanvasShape, CanvasShapeStyle } from '@/features/canvas-engine'
 import { KonvaCanvasShape } from './KonvaCanvasShape'
 import { KonvaEraserTrail } from './KonvaEraserTrail'
+import { KonvaFrameChrome } from './KonvaFrameChrome'
 import { KonvaSelectionOverlay } from './KonvaSelectionOverlay'
 import { useKonvaCanvasInteractions } from './useKonvaCanvasInteractions'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
@@ -48,6 +49,25 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
   const renderCamera = props.camera
   const shapesAreInteractive = props.activeTool !== 'hand' && props.activeTool !== 'eraser'
   const canDragShape = shapesAreInteractive && !props.isSpacePanning
+  const frameIds = new Set(props.document.shapes.filter((shape) => shape.type === 'frame').map((shape) => shape.id))
+  const frameChildren = getFrameChildren(props.document.shapes, frameIds)
+
+  const renderShapeNode = (shape: CanvasShape) => (
+    <KonvaCanvasShape
+      interactive={shapesAreInteractive}
+      isSelected={props.selectedIds.length === 1 && props.selectedIds.includes(shape.id)}
+      key={shape.id}
+      onDragMove={handleShapeDragMove}
+      onDragEnd={handleShapeDragEnd}
+      onDragStart={handleShapeDragStart}
+      onDoubleClick={props.onTextEditStart}
+      onSelect={handleShapeSelect}
+      panMode={props.isSpacePanning}
+      shape={shape}
+      toolAllowsDrag={canDragShape}
+      zoom={renderCamera.zoom}
+    />
+  )
 
   return (
     <Stage
@@ -71,22 +91,21 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
       </Layer>
 
       <Layer>
-        {props.document.shapes.map((shape) => (
-          <KonvaCanvasShape
-            interactive={shapesAreInteractive}
-            isSelected={props.selectedIds.length === 1 && props.selectedIds.includes(shape.id)}
-            key={shape.id}
-            onDragMove={handleShapeDragMove}
-            onDragEnd={handleShapeDragEnd}
-            onDragStart={handleShapeDragStart}
-            onDoubleClick={props.onTextEditStart}
-            onSelect={handleShapeSelect}
-            panMode={props.isSpacePanning}
-            shape={shape}
-            toolAllowsDrag={canDragShape}
-            zoom={renderCamera.zoom}
-          />
-        ))}
+        {props.document.shapes.map((shape) => {
+          if (shape.parentId && frameIds.has(shape.parentId)) return null
+          if (shape.type !== 'frame') return renderShapeNode(shape)
+          return (
+            <Group key={shape.id}>
+              {renderShapeNode(shape)}
+              <Group clipFunc={(context) => {
+                context.rect(shape.x, shape.y, shape.props.width, shape.props.height)
+              }}>
+                {(frameChildren.get(shape.id) ?? []).map(renderShapeNode)}
+              </Group>
+              <KonvaFrameChrome frame={shape} />
+            </Group>
+          )
+        })}
       </Layer>
 
       {draft ? (
@@ -124,4 +143,15 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
       </Layer>
     </Stage>
   )
+}
+
+function getFrameChildren(shapes: CanvasShape[], frameIds: Set<string>) {
+  const children = new Map<string, CanvasShape[]>()
+  for (const shape of shapes) {
+    if (!shape.parentId || !frameIds.has(shape.parentId)) continue
+    const current = children.get(shape.parentId) ?? []
+    current.push(shape)
+    children.set(shape.parentId, current)
+  }
+  return children
 }

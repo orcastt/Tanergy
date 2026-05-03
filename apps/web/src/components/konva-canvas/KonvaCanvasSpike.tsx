@@ -14,6 +14,7 @@ import {
   type CanvasCamera,
   type CanvasDiagnosticsSnapshot,
   type CanvasDocument,
+  type CanvasFrameShape,
   type CanvasShape,
   type CanvasShapeStyle,
   type CanvasStickyShape,
@@ -140,8 +141,8 @@ export function KonvaCanvasSpike() {
     setDocument((current) => withCanvasShapes(current, []))
     setSelectedIds([])
   }, [history])
-  const editingTextShape = document.shapes.find((shape): shape is CanvasTextShape | CanvasStickyShape => (
-    shape.id === editingTextId && (shape.type === 'text' || shape.type === 'sticky')
+  const editingTextShape = document.shapes.find((shape): shape is CanvasFrameShape | CanvasStickyShape | CanvasTextShape => (
+    shape.id === editingTextId && (shape.type === 'text' || shape.type === 'sticky' || shape.type === 'frame')
   ))
   const runContextAction = (action: KonvaContextMenuAction) => {
     setContextMenu(null)
@@ -197,6 +198,7 @@ export function KonvaCanvasSpike() {
         data-space-panning={isSpacePanning}
         onContextMenu={(event) => {
           event.preventDefault()
+          setActiveTool('select')
           const rect = event.currentTarget.getBoundingClientRect()
           const point = { x: event.clientX - rect.left, y: event.clientY - rect.top }
           const world = screenToWorld(point, camera)
@@ -219,7 +221,7 @@ export function KonvaCanvasSpike() {
           onSelectionChange={setSelectedIds}
           onTextEditStart={(shapeId) => {
             const shape = document.shapes.find((item) => item.id === shapeId)
-            if (shape?.type === 'text' || shape?.type === 'sticky') setEditingTextId(shapeId)
+            if (shape?.type === 'text' || shape?.type === 'sticky' || shape?.type === 'frame') setEditingTextId(shapeId)
           }}
           onToolChange={setActiveTool}
           selectedIds={selectedIds}

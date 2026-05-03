@@ -85,6 +85,8 @@ The replacement engine must preserve these current product behaviors unless a de
 - Header provides Workspace back, TANGENT home/logo, Board switcher and recent Board affordances.
 - Top toolbar stays above the canvas with hand/select, shape, arrow, line, draw, text and eraser tools.
 - Frame and Sticky are first-class canvas tools; Frame starts as a labeled outline container, Sticky starts as a resizable editable note.
+- Frame containment is represented with `parentId=frame.id` and rendered through a Konva clip group, so child shapes are visible only inside the frame bounds.
+- Sticky stores note text plus a provisional `authorName`; Auth-backed author identity remains for the real Board migration.
 - Left properties drawer is fixed and decoupled from canvas pointer events; it keeps the last selected drawing tool properties until another tool is chosen.
 - Canvas Settings panel opens from a gear icon and controls per-board background/grid/snap behavior.
 - Board Save/History controls remain visible and support Save now, Snapshot, Refresh preview and History.

@@ -61,8 +61,8 @@ export function createDraftShape(
   const y = Math.min(origin.y, end.y)
   const width = Math.abs(end.x - origin.x)
   const height = Math.abs(end.y - origin.y)
-  if (tool === 'frame') return { id: createShapeId('frame'), props: { height, title: 'Frame', width }, style: frameStyle(options.style), type: 'frame', x, y }
-  if (tool === 'sticky') return { id: createShapeId('sticky'), props: { height, text: 'Sticky', width }, style: stickyStyle(options.style), type: 'sticky', x, y }
+  if (tool === 'frame') return { id: createShapeId('frame'), props: { height, title: 'Frame', width }, style: frameStyle(), type: 'frame', x, y }
+  if (tool === 'sticky') return { id: createShapeId('sticky'), props: { authorName: 'You', height, text: 'Sticky', width }, style: stickyStyle(options.style), type: 'sticky', x, y }
   return { id: createShapeId(tool), props: { height, width }, style: baseStyle(options.style), type: tool, x, y } as CanvasShape
 }
 
@@ -87,12 +87,13 @@ function baseStyle(style?: CanvasShapeStyle) {
   return resolveKonvaShapeStyle(style)
 }
 
-function frameStyle(style?: CanvasShapeStyle) {
-  return { ...baseStyle(style), dash: 'solid' as const, fillStyle: 'none' as const }
+function frameStyle() {
+  return { dash: 'solid' as const, fillStyle: 'solid' as const, opacity: 1, stroke: '#1f1f1f', strokeWidth: 1 }
 }
 
 function stickyStyle(style?: CanvasShapeStyle) {
-  return { ...baseStyle({ ...style, fillStyle: 'solid', stroke: style?.stroke ?? '#d6a20b' }) }
+  const stroke = style?.stroke && style.stroke !== '#243142' ? style.stroke : '#c084fc'
+  return { ...baseStyle({ ...style, fillStyle: 'solid', stroke }) }
 }
 
 function constrainToSquare(origin: CanvasPoint, point: CanvasPoint): CanvasPoint {

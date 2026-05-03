@@ -6,6 +6,7 @@ export type KonvaShapeDragPreview = {
   originShape: CanvasShape
   originShapes: CanvasShape[]
   shapeId: string
+  previewShapes?: CanvasShape[]
 }
 
 export function createShapeDragPreview(shapes: CanvasShape[], selectedIds: string[], shapeId: string): KonvaShapeDragPreview | null {

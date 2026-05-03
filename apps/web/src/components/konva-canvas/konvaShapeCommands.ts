@@ -29,6 +29,8 @@ export function updateTextShape(document: CanvasDocument, shapeId: string, text:
   return withCanvasShapes(document, document.shapes.map((shape) => (
     shape.id === shapeId && (shape.type === 'text' || shape.type === 'sticky')
       ? { ...shape, props: { ...shape.props, text } }
+      : shape.id === shapeId && shape.type === 'frame'
+        ? { ...shape, props: { ...shape.props, title: text } }
       : shape
   )))
 }

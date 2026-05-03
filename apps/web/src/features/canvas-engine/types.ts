@@ -81,6 +81,7 @@ export type CanvasTextShape = CanvasShapeBase<'text', CanvasSize & {
 }>
 
 export type CanvasStickyShape = CanvasShapeBase<'sticky', CanvasSize & {
+  authorName?: string
   text: string
 }>
 

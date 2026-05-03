@@ -118,6 +118,13 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     if (!screenPoint) return
     clearBrowserSelection()
     event.evt.preventDefault()
+    if (event.evt.button === 2) {
+      sessionRef.current = null
+      pendingDraftRef.current = null
+      setDraft(null)
+      setSelectionBox(null)
+      return
+    }
     if (options.isSpacePanning || event.evt.button === 1 || options.activeTool === 'hand') {
       sessionRef.current = { origin: screenPoint, pointerId: event.evt.pointerId, type: 'pan' }
       return

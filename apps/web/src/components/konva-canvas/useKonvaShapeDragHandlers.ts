@@ -6,6 +6,7 @@ import {
 } from '@/features/canvas-engine'
 import { createShapeDragPreview, createShapeDragPreviewFromOrigins, getShapeDragPreviewBounds, getShapeDragPreviewShapes, type KonvaShapeDragPreview } from './konvaDragPreview'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
+import { applyFrameContainment } from './konvaFrameContainment'
 import { appendShapes, cloneKonvaShapes } from './konvaShapeCommands'
 
 type UseKonvaShapeDragHandlersOptions = {
@@ -48,7 +49,9 @@ export function useKonvaShapeDragHandlers(options: UseKonvaShapeDragHandlersOpti
     const drag = dragRef.current
     if (!drag || drag.shapeId !== shapeId) return
     setSelectedBoundsOverride(getShapeDragPreviewBounds(drag, x, y))
-    const nextDocument = withCanvasShapes(documentRef.current, getShapeDragPreviewShapes(documentRef.current.shapes, drag, x, y))
+    const previewShapes = getShapeDragPreviewShapes(documentRef.current.shapes, drag, x, y)
+    dragRef.current = { ...drag, previewShapes }
+    const nextDocument = withCanvasShapes(documentRef.current, previewShapes)
     documentRef.current = nextDocument
     onDocumentPreview(nextDocument)
   }, [documentRef, onDocumentPreview])
@@ -58,8 +61,11 @@ export function useKonvaShapeDragHandlers(options: UseKonvaShapeDragHandlersOpti
     dragRef.current = null
     setSelectedBoundsOverride(null)
     if (!drag || drag.shapeId !== shapeId) return
-    onDocumentChange((current) => withCanvasShapes(current, getShapeDragPreviewShapes(current.shapes, drag, x, y)))
-  }, [onDocumentChange])
+    const movedShapeIds = drag.originShapes.map((shape) => shape.id)
+    const previewShapes = drag.previewShapes ?? getShapeDragPreviewShapes(documentRef.current.shapes, drag, x, y)
+    const finalShapes = applyFrameContainment(previewShapes, movedShapeIds)
+    onDocumentChange((current) => withCanvasShapes(current, finalShapes))
+  }, [documentRef, onDocumentChange])
 
   return {
     handleShapeDragEnd,

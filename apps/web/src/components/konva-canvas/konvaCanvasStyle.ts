@@ -109,6 +109,10 @@ export function getFillColor(stroke: string, fillStyle: KonvaCanvasFillStyle): s
   return mixColorWithWhite(stroke, fillStyle === 'solid' ? 0.72 : 0.88)
 }
 
+export function getStickyFillColor(stroke: string): string {
+  return mixColorWithWhite(stroke, 0.35)
+}
+
 export function getStrokeDash(style: KonvaCanvasDashStyle, strokeWidth: number): number[] | undefined {
   if (style === 'dashed') return [strokeWidth * 4.5, strokeWidth * 3]
   if (style === 'dotted') return [0.1, strokeWidth * 3.2]
@@ -182,7 +186,7 @@ export function reorderKonvaShapes(document: CanvasDocument, shapeIds: string[],
 }
 
 export function isKonvaFillShape(shape: CanvasShape) {
-  return shape.type === 'rect' || shape.type === 'diamond' || shape.type === 'ellipse' || shape.type === 'triangle' || shape.type === 'cloud' || shape.type === 'sticky'
+  return shape.type === 'rect' || shape.type === 'diamond' || shape.type === 'ellipse' || shape.type === 'triangle' || shape.type === 'cloud'
 }
 
 export function isKonvaStrokeShape(shape: CanvasShape) {
@@ -190,11 +194,11 @@ export function isKonvaStrokeShape(shape: CanvasShape) {
 }
 
 export function isKonvaDashShape(shape: CanvasShape) {
-  return isKonvaStrokeShape(shape) && shape.type !== 'stroke'
+  return isKonvaStrokeShape(shape) && shape.type !== 'stroke' && shape.type !== 'sticky'
 }
 
 export function isKonvaWidthShape(shape: CanvasShape) {
-  return shape.type !== 'text'
+  return shape.type !== 'text' && shape.type !== 'sticky'
 }
 
 function duplicateShape(shape: CanvasShape): CanvasShape {

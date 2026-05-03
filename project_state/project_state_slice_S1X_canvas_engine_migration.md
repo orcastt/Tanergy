@@ -129,32 +129,33 @@ Phase 3.1 object editing foundation started:
 - single box-like shapes now have a rotate handle offset from the top-right corner and rotate around their center point
 - multi-selection shows a union boundary; dragging a selected member now moves the selected set together
 - continuous drawing tools can still point-select an existing object and drag it as a single object without switching to Select
-- keyboard/object editing now covers Copy, Paste, Select All, Duplicate, Delete and Alt-drag duplicate; Alt-drag keeps the source object fixed and moves only the new copy
+- keyboard/object editing now covers Copy, Paste, Select All, Duplicate, Delete and Alt-drag duplicate; Alt-drag keeps the source object fixed, moves only the new copy and commits the cached preview shapes on pointerup so the copy does not jump back
 - Text tool is one-shot: click creates/selects one text box then returns to Select; text shapes support double-click editing through an HTML textarea overlay, and clicking canvas space exits editing while keeping the selected transform controls
 - right-click menu first pass exposes Copy, Paste, Duplicate, Layer front/back, Select all and Delete
-- Frame tool creates a labeled outline container shape; Sticky tool creates a resizable note and supports double-click text editing through the same overlay as Text
+- Frame now renders as a white mask/container with black outline and label; dragging a shape into a frame sets `parentId=frame.id` and clips the child to the frame bounds. Frame double-click edits the label.
+- Sticky now renders closer to a Miro note: author label above, raised shadow, centered note text and double-click body editing. Properties for Sticky are intentionally limited to color and opacity; no fill pattern, dash or width controls.
 - undo/redo restores shapes plus selection only, so pan/zoom is not part of command history
 - create, drag, resize, eraser, Properties style edits, layer actions, duplicate/delete, stress strokes and clear all now create history checkpoints
 
-Not included yet: node cards, image paste/drop, image-to-node/to-canvas conversion, save/history integration, frame containment semantics, real Yjs provider sync and Board route migration.
+Not included yet: node cards, image paste/drop, image-to-node/to-canvas conversion, save/history integration, full frame drag-out/nested-frame semantics, real Yjs provider sync and Board route migration.
 
 Explicit Phase 3B follow-ups now tracked in the migration plan:
 
 - multi-selection group rotate from the union boundary around group center
 - line/arrow endpoint handles, including endpoint-drag angle/length editing
-- frame containment, drag-in/drag-out behavior and export boundary semantics
-- sticky text layout polish, shortcut creation behavior and note color presets
+- deeper frame containment: frame move-with-children, drag-out affordance, nested-frame policy and export boundary semantics
+- sticky author identity from Auth, shortcut creation behavior and richer note color presets
 - cursor polish for resize/rotate handles
 
 ## User Review Notes
 
-- Continuous drawing is preferred: left-click creates one object and keeps the same tool active until the user chooses another tool. Do not regress to requiring right-click lock for normal repeated drawing.
+- Continuous drawing is preferred: left-click creates one object and keeps the same tool active until the user chooses another tool. Do not regress to requiring right-click lock for normal repeated drawing. Canvas right-click is an explicit command-menu gesture, switches back to Select and must not start a marquee selection session.
 - Properties remains required: final engine needs a fixed properties panel for style changes across stroke/fill/width/dash/opacity/layer/actions.
 - 1,000 stroke pan/zoom initially felt a bit laggy; current Phase 1A moves camera updates off the React hot path, splits draft/eraser layers and throttles camera previews. User still needs to hand-test whether this is enough.
 - Freehand smoothing should stay light in normal Draw mode. Current preference is architect-pen style: slow strokes can feel slightly inkier, fast strokes lighter, with subtle taper; stronger Smart Drawing recognition belongs in a separate mode.
 - Canvas navigation shortcuts are part of the handfeel contract: `V` switches to Select, holding `Space` temporarily pans without changing the active tool, and middle-mouse drag pans the canvas.
 - Canvas opens in Select by default. Continuous drawing starts only after the user explicitly chooses Draw/shape/line/arrow.
-- `Escape` exits continuous drawing and returns to Select. Cloud visual path should fill its bbox so selection handles hug the cloud boundary more like tldraw.
+- `Escape` and canvas right-click exit continuous drawing and return to Select. Cloud visual path should fill its bbox so selection handles hug the cloud boundary more like tldraw.
 - Cloud must be generated from the user-drawn rectangle perimeter: split each side into revision-cloud/CAD-style scallop arcs based on side length, not a fixed normalized cloud shape scaled to fit.
 - Line, arrow and freehand stroke selection should highlight the line itself, not show a rectangular selection box. They still need wider hit targets. Eraser needs a tldraw-like cursor silhouette/trail while moving. Tooltips use English `Tool: Shortcut` labels.
 - Shape shortcuts: Select `V`, Rectangle `R`, Diamond `D`, Circle `C`, Arrow `A`; additional spike shortcuts include Hand `H`, Triangle `G`, Cloud `U`, Frame `F`, Sticky `N`, Line `L`, Draw `P`, Text `T`, Eraser `E`. Holding Shift while drawing shape tools constrains proportions.
