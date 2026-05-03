@@ -47,15 +47,19 @@ export type CanvasShapeBase<Type extends string, Props extends object = object> 
   y: number
 }
 
-export type CanvasRectShape = CanvasShapeBase<'rect', CanvasSize>
+export type CanvasTextContainerProps = CanvasSize & {
+  text?: string
+}
 
-export type CanvasDiamondShape = CanvasShapeBase<'diamond', CanvasSize>
+export type CanvasRectShape = CanvasShapeBase<'rect', CanvasTextContainerProps>
 
-export type CanvasEllipseShape = CanvasShapeBase<'ellipse', CanvasSize>
+export type CanvasDiamondShape = CanvasShapeBase<'diamond', CanvasTextContainerProps>
 
-export type CanvasTriangleShape = CanvasShapeBase<'triangle', CanvasSize>
+export type CanvasEllipseShape = CanvasShapeBase<'ellipse', CanvasTextContainerProps>
 
-export type CanvasCloudShape = CanvasShapeBase<'cloud', CanvasSize>
+export type CanvasTriangleShape = CanvasShapeBase<'triangle', CanvasTextContainerProps>
+
+export type CanvasCloudShape = CanvasShapeBase<'cloud', CanvasTextContainerProps>
 
 export type CanvasFrameShape = CanvasShapeBase<'frame', CanvasSize & {
   title?: string

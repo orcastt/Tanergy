@@ -132,9 +132,10 @@ Phase 3.1 object editing foundation started:
 - continuous drawing tools can still point-select an existing object and drag it as a single object without switching to Select
 - keyboard/object editing now covers Copy, Paste, Select All, Duplicate, Delete and Alt-drag duplicate; Alt-drag keeps the source object fixed, moves only the new copy and commits the cached preview shapes on pointerup so the copy does not jump back
 - Text tool is one-shot: click creates/selects one text box then returns to Select; text shapes support double-click editing through an HTML textarea overlay, and clicking canvas space exits editing while keeping the selected transform controls
+- Rect, diamond, circle/ellipse, cloud and triangle now support double-click in-shape label editing. The label is stored on the shape props and rendered centered, so movement, drag copy, resize, rotation, stroke color and opacity apply with the container.
 - right-click menu first pass exposes Copy, Paste, Duplicate, Layer front/back, Select all and Delete
 - Frame now renders as a white mask/container with black outline and label; dragging a shape into a frame sets `parentId=frame.id` and clips the child to the frame bounds. Frame double-click edits the label.
-- Sticky now renders closer to a Miro note: author label above, raised shadow, centered note text and double-click body editing. Properties for Sticky are intentionally limited to color and opacity; no fill pattern, dash or width controls.
+- Sticky now renders closer to a Miro note: author label above, raised shadow, centered note text and double-click body editing. Its text-edit overlay starts centered instead of top-aligned. Properties for Sticky are intentionally limited to color and opacity; no fill pattern, dash or width controls.
 - Layer actions now support all four operations from Properties, right-click menu and keyboard: bring front `]`, bring forward `Alt/Option+]`, send backward `Alt/Option+[`, send back `[`.
 - Text/sticky/frame editing guards canvas shortcuts while typing; Cmd/Ctrl+S is swallowed inside the editor so it does not trigger browser save or canvas commands.
 - Eraser now uses geometric distance hit testing for line/arrow/freehand strokes instead of deleting by the whole bbox; the existing eraser silhouette/trail remains.

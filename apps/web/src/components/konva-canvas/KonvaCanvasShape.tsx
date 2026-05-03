@@ -112,21 +112,46 @@ function renderShape(shape: CanvasShape, style: ReturnType<typeof resolveKonvaSh
   const closedFillProps = getClosedFillProps(fill, fillStyle, stroke)
   const strokeLineCap = dash === 'dotted' ? 'round' : 'butt'
   if (shape.type === 'rect') {
-    return <Rect {...closedFillProps} cornerRadius={10} dash={strokeDash} height={shape.props.height} opacity={opacity} stroke={stroke} strokeWidth={strokeWidth} width={shape.props.width} />
+    return (
+      <>
+        <Rect {...closedFillProps} cornerRadius={10} dash={strokeDash} height={shape.props.height} opacity={opacity} stroke={stroke} strokeWidth={strokeWidth} width={shape.props.width} />
+        <ShapeLabel fill={stroke} opacity={opacity} text={shape.props.text} width={shape.props.width} height={shape.props.height} />
+      </>
+    )
   }
   if (shape.type === 'ellipse') {
-    return <Ellipse {...closedFillProps} dash={strokeDash} opacity={opacity} radiusX={shape.props.width / 2} radiusY={shape.props.height / 2} stroke={stroke} strokeWidth={strokeWidth} x={shape.props.width / 2} y={shape.props.height / 2} />
+    return (
+      <>
+        <Ellipse {...closedFillProps} dash={strokeDash} opacity={opacity} radiusX={shape.props.width / 2} radiusY={shape.props.height / 2} stroke={stroke} strokeWidth={strokeWidth} x={shape.props.width / 2} y={shape.props.height / 2} />
+        <ShapeLabel fill={stroke} opacity={opacity} text={shape.props.text} width={shape.props.width} height={shape.props.height} />
+      </>
+    )
   }
   if (shape.type === 'diamond') {
     const { height, width } = shape.props
-    return <Line {...closedFillProps} closed dash={strokeDash} lineCap={strokeLineCap} opacity={opacity} points={[width / 2, 0, width, height / 2, width / 2, height, 0, height / 2]} stroke={stroke} strokeWidth={strokeWidth} />
+    return (
+      <>
+        <Line {...closedFillProps} closed dash={strokeDash} lineCap={strokeLineCap} opacity={opacity} points={[width / 2, 0, width, height / 2, width / 2, height, 0, height / 2]} stroke={stroke} strokeWidth={strokeWidth} />
+        <ShapeLabel fill={stroke} opacity={opacity} text={shape.props.text} width={width} height={height} />
+      </>
+    )
   }
   if (shape.type === 'triangle') {
     const { height, width } = shape.props
-    return <Line {...closedFillProps} closed dash={strokeDash} lineCap={strokeLineCap} opacity={opacity} points={[width / 2, 0, width, height, 0, height]} stroke={stroke} strokeWidth={strokeWidth} />
+    return (
+      <>
+        <Line {...closedFillProps} closed dash={strokeDash} lineCap={strokeLineCap} opacity={opacity} points={[width / 2, 0, width, height, 0, height]} stroke={stroke} strokeWidth={strokeWidth} />
+        <ShapeLabel fill={stroke} opacity={opacity} text={shape.props.text} width={width} height={height} />
+      </>
+    )
   }
   if (shape.type === 'cloud') {
-    return <Path {...closedFillProps} dash={strokeDash} data={getCloudPath(shape.props.width, shape.props.height)} opacity={opacity} stroke={stroke} strokeWidth={strokeWidth} />
+    return (
+      <>
+        <Path {...closedFillProps} dash={strokeDash} data={getCloudPath(shape.props.width, shape.props.height)} opacity={opacity} stroke={stroke} strokeWidth={strokeWidth} />
+        <ShapeLabel fill={stroke} opacity={opacity} text={shape.props.text} width={shape.props.width} height={shape.props.height} />
+      </>
+    )
   }
   if (shape.type === 'frame') {
     return (
@@ -181,6 +206,25 @@ function renderShape(shape: CanvasShape, style: ReturnType<typeof resolveKonvaSh
     return <Rect dash={strokeDash} fill="#eef2f7" height={shape.props.height} opacity={opacity} stroke={stroke} strokeWidth={strokeWidth} width={shape.props.width} />
   }
   return null
+}
+
+function ShapeLabel({ fill, height, opacity, text, width }: { fill: string; height: number; opacity: number; text?: string; width: number }) {
+  if (!text?.trim()) return null
+  return (
+    <Text
+      align="center"
+      fill={fill}
+      fontFamily="Inter, system-ui, sans-serif"
+      fontSize={18}
+      height={height}
+      listening={false}
+      opacity={opacity}
+      padding={10}
+      text={text}
+      verticalAlign="middle"
+      width={width}
+    />
+  )
 }
 
 function getGroupTransform(shape: CanvasShape) {

@@ -32,6 +32,7 @@ keep Board/API/storage contracts stable
 - Frame and Sticky are closer to their reference behavior: Frame is a white clipped container with a top label and editable name; dragged-in shapes get `parentId` and are masked by the frame bounds. Sticky shows an author label, raised note shadow and centered editable text, with Properties limited to color and opacity.
 - Phase 3.10-3.14 first pass is now implemented: right-click/properties/keyboard layer actions support front/forward/backward/back; text editing guards Cmd/Ctrl+S; eraser uses line/stroke geometric hit testing instead of bbox-only deletion; drag/resize snapping reads the shared canvas snap settings and renders guides; a DOM `selectionchange` guard clears accidental browser text selection inside the Konva shell.
 - Phase 3 snap/duplicate correction: Alt/Option drag now commits from the final preview document so copied objects should not jump back to the source position; resize snap uses a resize-specific path that only snaps the dragged edge/corner, not the fixed anchor side; rotate now snaps to 15-degree increments and shows a radial guide when snap is active.
+- Shape text correction: double-clicking rect/diamond/ellipse/cloud/triangle opens centered in-shape text editing. The text is stored on the shape props, so move/drag/resize/rotate/stroke color/opacity naturally apply with the container. Sticky editing overlay now starts centered instead of top-aligned.
 - Cleanup checkpoint: draft preview, eraser session, browser selection guard and snapping math were split into small helpers so `useKonvaCanvasInteractions.ts` stays under the 300-line source target.
 
 Next development focus: Phase 3B editing depth, especially line/arrow endpoint/control handles, multi-selection rotation, deeper frame drag-out/nested containment behavior, Auth-backed sticky authors and later image/node conversion commands on the shared command system.
@@ -182,13 +183,13 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 
 | 序号 | 功能/交互 | 当前 tldraw 参考 | Konva/Yjs 复刻要求 | 验收方式 |
 | --- | --- | --- | --- | --- |
-| 3B.1 | Rectangle | 工具栏 shape 菜单第一个，圆角/边框风格轻 | Konva Rect，支持 stroke/fill/dash/opacity/resize | 画出、选中、resize、保存恢复 |
-| 3B.2 | Diamond | 菱形 shape | Konva Line/Path polygon，bbox resize 后保持菱形 | resize 后四角不畸形 |
-| 3B.3 | Circle/Ellipse | 圆/椭圆 shape | Konva Ellipse，拖拽时从 bbox 生成 | 圆形/椭圆可保持比例/自由缩放 |
-| 3B.4 | Triangle | 三角形 shape | Konva RegularPolygon/Line path，支持 resize | 三角边框/fill 正常 |
-| 3B.5 | Cloud | 云朵 shape 是截图重点；tldraw/CAD cloud 是根据拖拽矩形四边分段切弧，不是固定云朵轮廓缩放 | 自定义 path 基于 bbox 四边按边长生成 revision-cloud scallop arcs；横条/竖条/大矩形都要自然分段 | cloud 视觉和选择框接近 tldraw，不像固定图标拉伸 |
+| 3B.1 | Rectangle | 工具栏 shape 菜单第一个，圆角/边框风格轻 | Konva Rect，支持 stroke/fill/dash/opacity/resize；双击进入居中文字编辑，文字跟随容器样式/transform | 画出、选中、resize、保存恢复 |
+| 3B.2 | Diamond | 菱形 shape | Konva Line/Path polygon，bbox resize 后保持菱形；双击可编辑居中文字 | resize 后四角不畸形 |
+| 3B.3 | Circle/Ellipse | 圆/椭圆 shape | Konva Ellipse，拖拽时从 bbox 生成；双击可编辑居中文字 | 圆形/椭圆可保持比例/自由缩放 |
+| 3B.4 | Triangle | 三角形 shape | Konva RegularPolygon/Line path，支持 resize；双击可编辑居中文字 | 三角边框/fill 正常 |
+| 3B.5 | Cloud | 云朵 shape 是截图重点；tldraw/CAD cloud 是根据拖拽矩形四边分段切弧，不是固定云朵轮廓缩放 | 自定义 path 基于 bbox 四边按边长生成 revision-cloud scallop arcs；横条/竖条/大矩形都要自然分段；双击可编辑居中文字 | cloud 视觉和选择框接近 tldraw，不像固定图标拉伸 |
 | 3B.6 | Frame | tldraw frame 是白底黑框的视觉容器，框外内容被裁切，顶部显示 frame 名 | Frame 默认黑框白底；拖入对象后写 `parentId` 并按 frame bounds clip；双击 frame 可改名；拖动 frame 会带 direct children 一起移动；后续补 drag-out、nested-frame、导出边界 | 拖入对象后超出 frame 的部分被蒙住，双击可改名 |
-| 3B.7 | Sticky / note | Miro-like sticky note：作者在上方，note 有阴影和立体感 | Sticky 显示 author label、raised shadow、居中文本；双击编辑正文；Properties 只允许颜色/透明度，支持 resize/rotate，不显示 pattern/dash/width | Sticky 可创建、改色、改透明度、resize/rotate、双击中间文字编辑 |
+| 3B.7 | Sticky / note | Miro-like sticky note：作者在上方，note 有阴影和立体感 | Sticky 显示 author label、raised shadow、居中文本；双击编辑正文；编辑 overlay 也从中间开始；Properties 只允许颜色/透明度，支持 resize/rotate，不显示 pattern/dash/width | Sticky 可创建、改色、改透明度、resize/rotate、双击中间文字编辑 |
 | 3B.8 | Shape active preview | shape popover hover tooltip，如 Cloud | shape menu active/hover tooltip 黑底白字 | hover cloud 显示 tooltip，popover 不乱跳 |
 | 3B.9 | Line straight | 直线工具生成两端控制点 | line shape 保存 start/end/control points | 端点可拖拽 |
 | 3B.10 | Line midpoint curve | 截图里中点拖拽后线变曲线 | line 有 midpoint/control handle；拖中点生成 quadratic/cubic curve | 拖中点变曲线，曲率保存恢复 |

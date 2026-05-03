@@ -1,9 +1,29 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { type CanvasCamera, type CanvasFrameShape, type CanvasStickyShape, type CanvasTextShape } from '@/features/canvas-engine'
+import {
+  type CanvasCamera,
+  type CanvasCloudShape,
+  type CanvasDiamondShape,
+  type CanvasEllipseShape,
+  type CanvasFrameShape,
+  type CanvasRectShape,
+  type CanvasStickyShape,
+  type CanvasTextShape,
+  type CanvasTriangleShape,
+} from '@/features/canvas-engine'
+
+export type KonvaEditableTextShape =
+  | CanvasCloudShape
+  | CanvasDiamondShape
+  | CanvasEllipseShape
+  | CanvasFrameShape
+  | CanvasRectShape
+  | CanvasStickyShape
+  | CanvasTextShape
+  | CanvasTriangleShape
 
 type KonvaTextEditorProps = {
   camera: CanvasCamera
-  shape: CanvasFrameShape | CanvasStickyShape | CanvasTextShape
+  shape: KonvaEditableTextShape
   onCancel: () => void
   onCommit: (text: string) => void
 }
@@ -19,7 +39,7 @@ export function KonvaTextEditor({ camera, onCancel, onCommit, shape }: KonvaText
   }, [])
 
   const commit = () => {
-    if (!canceledRef.current) onCommit(value.trim() || getFallbackText(shape))
+    if (!canceledRef.current) onCommit(getCommittedText(shape, value))
   }
   return (
     <textarea
@@ -52,17 +72,22 @@ export function KonvaTextEditor({ camera, onCancel, onCommit, shape }: KonvaText
   )
 }
 
-function getEditableText(shape: CanvasFrameShape | CanvasStickyShape | CanvasTextShape) {
-  return shape.type === 'frame' ? shape.props.title ?? 'Frame' : shape.props.text
+function getEditableText(shape: KonvaEditableTextShape) {
+  return shape.type === 'frame' ? shape.props.title ?? 'Frame' : shape.props.text ?? ''
 }
 
-function getFallbackText(shape: CanvasFrameShape | CanvasStickyShape | CanvasTextShape) {
+function getCommittedText(shape: KonvaEditableTextShape, value: string) {
+  const trimmed = value.trim()
+  return isTextContainerShape(shape) ? trimmed : trimmed || getFallbackText(shape)
+}
+
+function getFallbackText(shape: KonvaEditableTextShape) {
   if (shape.type === 'frame') return 'Frame'
   if (shape.type === 'sticky') return 'Sticky'
   return 'Text'
 }
 
-function getEditorStyle(shape: CanvasFrameShape | CanvasStickyShape | CanvasTextShape, camera: CanvasCamera): CSSProperties {
+function getEditorStyle(shape: KonvaEditableTextShape, camera: CanvasCamera): CSSProperties {
   const zoom = camera.zoom
   if (shape.type === 'frame') {
     return {
@@ -74,14 +99,27 @@ function getEditorStyle(shape: CanvasFrameShape | CanvasStickyShape | CanvasText
       width: `${Math.max(90, shape.props.width) * zoom}px`,
     }
   }
+  const centered = shape.type === 'sticky' || isTextContainerShape(shape)
+  const height = shape.props.height * zoom
+  const verticalPadding = centered ? Math.max(10, (height - 24 * zoom) / 2) : 2
   return {
+    boxSizing: 'border-box',
     fontSize: `${18 * zoom}px`,
-    height: `${shape.props.height * zoom}px`,
+    height: `${height}px`,
     left: `${shape.x * zoom + camera.x}px`,
     lineHeight: `${24 * zoom}px`,
-    textAlign: shape.type === 'sticky' ? 'center' : 'left',
+    padding: `${verticalPadding}px ${centered ? 14 : 4}px 2px`,
+    textAlign: centered ? 'center' : 'left',
     top: `${shape.y * zoom + camera.y}px`,
     transform: `rotate(${shape.rotation ?? 0}deg)`,
     width: `${shape.props.width * zoom}px`,
   }
+}
+
+export function isKonvaEditableTextShape(shape: { type: string }): shape is KonvaEditableTextShape {
+  return shape.type === 'text' || shape.type === 'sticky' || shape.type === 'frame' || isTextContainerShape(shape)
+}
+
+function isTextContainerShape(shape: { type: string }): shape is CanvasCloudShape | CanvasDiamondShape | CanvasEllipseShape | CanvasRectShape | CanvasTriangleShape {
+  return shape.type === 'rect' || shape.type === 'diamond' || shape.type === 'ellipse' || shape.type === 'triangle' || shape.type === 'cloud'
 }

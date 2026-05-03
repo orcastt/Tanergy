@@ -14,11 +14,8 @@ import {
   type CanvasCamera,
   type CanvasDiagnosticsSnapshot,
   type CanvasDocument,
-  type CanvasFrameShape,
   type CanvasShape,
   type CanvasShapeStyle,
-  type CanvasStickyShape,
-  type CanvasTextShape,
 } from '@/features/canvas-engine'
 import { CanvasTooltipLayer } from '@/components/canvas/CanvasTooltipLayer'
 import { KonvaCanvasDiagnostics } from './KonvaCanvasDiagnostics'
@@ -26,7 +23,7 @@ import { KonvaContextMenu, type KonvaContextMenuAction } from './KonvaContextMen
 import { KonvaCanvasNavigator } from './KonvaCanvasNavigator'
 import { KonvaCanvasProperties } from './KonvaCanvasProperties'
 import { KonvaCanvasStage } from './KonvaCanvasStage'
-import { KonvaTextEditor } from './KonvaTextEditor'
+import { isKonvaEditableTextShape, KonvaTextEditor, type KonvaEditableTextShape } from './KonvaTextEditor'
 import { KonvaCanvasToolbar } from './KonvaCanvasToolbar'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
 import { deleteKonvaShapes, duplicateKonvaShapes, konvaDefaultShapeStyle, reorderKonvaShapes } from './konvaCanvasStyle'
@@ -143,9 +140,7 @@ export function KonvaCanvasSpike() {
     setDocument((current) => withCanvasShapes(current, []))
     setSelectedIds([])
   }, [history])
-  const editingTextShape = document.shapes.find((shape): shape is CanvasFrameShape | CanvasStickyShape | CanvasTextShape => (
-    shape.id === editingTextId && (shape.type === 'text' || shape.type === 'sticky' || shape.type === 'frame')
-  ))
+  const editingTextShape = document.shapes.find((shape): shape is KonvaEditableTextShape => shape.id === editingTextId && isKonvaEditableTextShape(shape))
   const runContextAction = (action: KonvaContextMenuAction) => {
     setContextMenu(null)
     if (action === 'select-all') {
@@ -224,7 +219,7 @@ export function KonvaCanvasSpike() {
           onSelectionChange={setSelectedIds}
           onTextEditStart={(shapeId) => {
             const shape = document.shapes.find((item) => item.id === shapeId)
-            if (shape?.type === 'text' || shape?.type === 'sticky' || shape?.type === 'frame') setEditingTextId(shapeId)
+            if (shape && isKonvaEditableTextShape(shape)) setEditingTextId(shapeId)
           }}
           onToolChange={setActiveTool}
           selectedIds={selectedIds}

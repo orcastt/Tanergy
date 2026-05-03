@@ -89,6 +89,7 @@ Current Phase 3 command/data notes:
 - Deleting a frame releases unselected children by setting `parentId=null`; it does not rely on missing-parent fallback behavior.
 - Frame dragging expands the moved set to include contained children so a frame behaves like a container in first-pass editing.
 - Text editing uses an HTML textarea overlay and blocks canvas shortcuts while typing; Cmd/Ctrl+S is swallowed inside the editor.
+- Basic closed shapes (`rect`, `diamond`, `ellipse`, `cloud`, `triangle`) can store an optional `props.text` label. Double-click opens the same text overlay centered over the shape; the rendered label is part of the shape renderer, so style and transform changes follow the container without a separate child transform sync.
 - Snap alignment reads `CanvasSettingsStore.snapAlignment/snapDistance`; drag/Alt-copy apply edge/center snapping, resize uses a separate dragged-edge snap path, rotate snaps to 15-degree increments, and selection overlay draws cyan/radial guides.
 - Browser text-selection cleanup is isolated in `useKonvaBrowserSelectionGuard`, and it skips active input/textarea/contenteditable elements.
 

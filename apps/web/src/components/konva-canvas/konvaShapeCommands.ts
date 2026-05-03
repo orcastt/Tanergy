@@ -27,12 +27,16 @@ export function appendShapes(document: CanvasDocument, shapes: CanvasShape[]) {
 
 export function updateTextShape(document: CanvasDocument, shapeId: string, text: string): CanvasDocument {
   return withCanvasShapes(document, document.shapes.map((shape) => (
-    shape.id === shapeId && (shape.type === 'text' || shape.type === 'sticky')
+    shape.id === shapeId && (shape.type === 'text' || shape.type === 'sticky' || isTextContainerShape(shape))
       ? { ...shape, props: { ...shape.props, text } }
       : shape.id === shapeId && shape.type === 'frame'
         ? { ...shape, props: { ...shape.props, title: text } }
       : shape
   )))
+}
+
+export function isTextContainerShape(shape: CanvasShape) {
+  return shape.type === 'rect' || shape.type === 'diamond' || shape.type === 'ellipse' || shape.type === 'triangle' || shape.type === 'cloud'
 }
 
 function cloneShapes(shapes: CanvasShape[], options: { offset?: CanvasPoint; preserveIds?: boolean }): CanvasShape[] {

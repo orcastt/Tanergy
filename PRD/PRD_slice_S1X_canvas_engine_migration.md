@@ -42,6 +42,7 @@ Current accepted subset:
 - Phase 3.1 adds first-pass box select, single-shape resize handles and undo/redo for shape/selection changes without undoing camera pan/zoom.
 - Frame is a white clipped container with editable label; dragged-in shapes are masked by its bounds.
 - Sticky note shows an author label, raised shadow and centered editable text; Properties expose note color and opacity only, not pattern/dash/width.
+- Basic closed shapes support double-click centered text labels that move, resize, rotate and inherit stroke/opacity with the shape container; Sticky note editing also starts centered.
 - Phase 3 object editing now includes four-way layer order from Properties/right-click/keyboard, Alt/Option one-step layer shortcuts, text editing that does not trigger canvas/browser shortcuts, geometric eraser hits for line/arrow/freehand, visible snap guides tied to snap settings for drag/copy/resize/rotate, and a browser-selection guard for accidental blue text selection.
 - Frame drag carries contained shapes, and clone operations rewrite frame `parentId` relationships so copies do not stay attached to old containers.
 
