@@ -111,18 +111,22 @@ export function KonvaCanvasSpike() {
     document.shapes.reduce((total, shape) => total + (shape.type === 'stroke' ? shape.props.points.length : 0), 0)
   ), [document.shapes])
 
-  const handleCameraChange = useCallback((nextCamera: CanvasCamera) => {
+  const handleCameraPreview = useCallback((nextCamera: CanvasCamera) => {
+    setCamera(nextCamera)
+  }, [])
+
+  const handleCameraCommit = useCallback((nextCamera: CanvasCamera) => {
     setCamera(nextCamera)
     setDocument((current) => ({ ...current, camera: nextCamera }))
   }, [])
 
   const zoomAtCenter = useCallback((factor: number) => {
-    handleCameraChange(zoomCameraAtScreenPoint(camera, { x: size.width / 2, y: size.height / 2 }, camera.zoom * factor, 0.2, 4))
-  }, [camera, handleCameraChange, size.height, size.width])
+    handleCameraCommit(zoomCameraAtScreenPoint(camera, { x: size.width / 2, y: size.height / 2 }, camera.zoom * factor, 0.2, 4))
+  }, [camera, handleCameraCommit, size.height, size.width])
 
   const resetZoom = useCallback(() => {
-    handleCameraChange(zoomCameraAtScreenPoint(camera, { x: size.width / 2, y: size.height / 2 }, 1, 0.2, 4))
-  }, [camera, handleCameraChange, size.height, size.width])
+    handleCameraCommit(zoomCameraAtScreenPoint(camera, { x: size.width / 2, y: size.height / 2 }, 1, 0.2, 4))
+  }, [camera, handleCameraCommit, size.height, size.width])
 
   const addStressStrokes = useCallback(() => {
     setDocument((current) => withCanvasShapes(current, [...current.shapes, ...createStressStrokes(current.shapes.length)]))
@@ -156,7 +160,8 @@ export function KonvaCanvasSpike() {
           document={document}
           height={size.height}
           isSpacePanning={isSpacePanning}
-          onCameraChange={handleCameraChange}
+          onCameraCommit={handleCameraCommit}
+          onCameraPreview={handleCameraPreview}
           onDocumentChange={setDocument}
           onSelectionChange={setSelectedIds}
           selectedIds={selectedIds}

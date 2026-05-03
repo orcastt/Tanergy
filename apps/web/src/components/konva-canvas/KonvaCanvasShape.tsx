@@ -4,6 +4,7 @@ import type { CanvasShape } from '@/features/canvas-engine'
 import { getArrowHeadPoints, getCloudPath, getFreehandPath } from './konvaPathUtils'
 
 type KonvaCanvasShapeProps = {
+  interactive?: boolean
   isSelected: boolean
   panMode: boolean
   shape: CanvasShape
@@ -14,6 +15,7 @@ type KonvaCanvasShapeProps = {
 }
 
 function KonvaCanvasShapeComponent({
+  interactive = true,
   isSelected,
   onDragEnd,
   onSelect,
@@ -30,22 +32,24 @@ function KonvaCanvasShapeComponent({
     () => renderShape(shape, stroke, fill, strokeWidth, opacity, isSelected, zoom),
     [fill, isSelected, opacity, shape, stroke, strokeWidth, zoom]
   )
+  const canInteract = interactive && !panMode
 
   return (
     <Group
-      draggable={toolAllowsDrag && !panMode}
+      draggable={canInteract && toolAllowsDrag}
       key={shape.id}
-      onClick={(event) => {
-        if (panMode || event.evt.button === 1) return
+      listening={interactive}
+      onClick={canInteract ? (event) => {
+        if (event.evt.button === 1) return
         event.cancelBubble = true
         onSelect(shape.id)
-      }}
-      onDragEnd={(event) => onDragEnd(shape.id, event.target.x(), event.target.y())}
-      onPointerDown={(event) => {
-        if (panMode || event.evt.button === 1) return
+      } : undefined}
+      onDragEnd={canInteract ? (event) => onDragEnd(shape.id, event.target.x(), event.target.y()) : undefined}
+      onPointerDown={canInteract ? (event) => {
+        if (event.evt.button === 1) return
         event.cancelBubble = true
         onSelect(shape.id)
-      }}
+      } : undefined}
       x={shape.x}
       y={shape.y}
     >
@@ -58,6 +62,7 @@ function KonvaCanvasShapeComponent({
 export const KonvaCanvasShape = memo(KonvaCanvasShapeComponent, areShapePropsEqual)
 
 function areShapePropsEqual(previous: KonvaCanvasShapeProps, next: KonvaCanvasShapeProps) {
+  if (previous.interactive !== next.interactive) return false
   if (previous.shape !== next.shape) return false
   if (previous.isSelected !== next.isSelected) return false
   if (previous.panMode !== next.panMode) return false

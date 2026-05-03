@@ -22,6 +22,7 @@ import {
   finalizeDraft,
   updateStrokeDraft,
 } from './konvaDraftShapes'
+import { useKonvaStageCamera } from './useKonvaStageCamera'
 import type { KonvaCanvasTool, KonvaToolSession } from './konvaCanvasTypes'
 
 type KonvaCanvasStageProps = {
@@ -32,7 +33,8 @@ type KonvaCanvasStageProps = {
   isSpacePanning: boolean
   selectedIds: string[]
   width: number
-  onCameraChange: (camera: CanvasCamera) => void
+  onCameraCommit: (camera: CanvasCamera) => void
+  onCameraPreview: (camera: CanvasCamera) => void
   onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
   onSelectionChange: (shapeIds: string[]) => void
 }
@@ -43,7 +45,8 @@ export function KonvaCanvasStage({
   document,
   height,
   isSpacePanning,
-  onCameraChange,
+  onCameraCommit,
+  onCameraPreview,
   onDocumentChange,
   onSelectionChange,
   selectedIds,
@@ -53,6 +56,12 @@ export function KonvaCanvasStage({
   const sessionRef = useRef<KonvaToolSession | null>(null)
   const rafRef = useRef<number | null>(null)
   const pendingDraftRef = useRef<CanvasShape | null>(null)
+  const { applyCamera, cameraRef, scheduleCameraCommit } = useKonvaStageCamera({
+    camera,
+    onCameraCommit,
+    onCameraPreview,
+    stageRef,
+  })
   const [draft, setDraft] = useState<CanvasShape | null>(null)
   const [eraserTrail, setEraserTrail] = useState<CanvasPoint[]>([])
 
@@ -80,7 +89,7 @@ export function KonvaCanvasStage({
     }
 
     if (!isStageTarget(event)) return
-    const worldPoint = pointerToWorld({ ...screenPoint, pressure: event.evt.pressure }, camera)
+    const worldPoint = pointerToWorld({ ...screenPoint, pressure: event.evt.pressure }, cameraRef.current)
 
     if (activeTool === 'select') {
       onSelectionChange([])
@@ -120,7 +129,7 @@ export function KonvaCanvasStage({
       event.evt.preventDefault()
     }
 
-    const worldPoint = pointerToWorld({ ...screenPoint, pressure: event.evt.pressure }, camera)
+    const worldPoint = pointerToWorld({ ...screenPoint, pressure: event.evt.pressure }, cameraRef.current)
     if (!session) {
       if (activeTool === 'eraser') updateEraserTrail(worldPoint)
       return
@@ -128,7 +137,8 @@ export function KonvaCanvasStage({
 
     if (session.type === 'pan') {
       const delta = { x: screenPoint.x - session.origin.x, y: screenPoint.y - session.origin.y }
-      onCameraChange({ ...camera, x: camera.x + delta.x, y: camera.y + delta.y })
+      applyCamera({ ...cameraRef.current, x: cameraRef.current.x + delta.x, y: cameraRef.current.y + delta.y })
+      scheduleCameraCommit()
       session.origin = screenPoint
       return
     }
@@ -153,10 +163,13 @@ export function KonvaCanvasStage({
     const session = sessionRef.current
     const screenPoint = getStagePointer(stageRef.current)
     if (session?.type === 'create' && activeTool === 'draw' && screenPoint) {
-      const worldPoint = pointerToWorld({ ...screenPoint, pressure: event.evt.pressure }, camera)
+      const worldPoint = pointerToWorld({ ...screenPoint, pressure: event.evt.pressure }, cameraRef.current)
       session.draft = updateStrokeDraft(session, createStrokeEndPoint(worldPoint, event.evt))
     }
     sessionRef.current = null
+    if (session?.type === 'pan') {
+      scheduleCameraCommit(0)
+    }
     if (session?.type === 'erase') {
       window.setTimeout(() => setEraserTrail([]), 120)
     }
@@ -171,18 +184,20 @@ export function KonvaCanvasStage({
     event.evt.preventDefault()
     const screenPoint = getStagePointer(stageRef.current)
     if (!screenPoint) return
-    const nextZoom = camera.zoom * (event.evt.deltaY > 0 ? 0.9 : 1.1)
-    onCameraChange(zoomCameraAtScreenPoint(camera, screenPoint, nextZoom, 0.2, 4))
+    const currentCamera = cameraRef.current
+    const nextZoom = currentCamera.zoom * (event.evt.deltaY > 0 ? 0.9 : 1.1)
+    applyCamera(zoomCameraAtScreenPoint(currentCamera, screenPoint, nextZoom, 0.2, 4))
+    scheduleCameraCommit()
   }
 
   const eraseAtPoint = (point: CanvasPoint) => {
-    const radius = 10 / camera.zoom
+    const radius = 10 / cameraRef.current.zoom
     const nextShapes = document.shapes.filter((shape) => !boundsContainPoint(getShapeBounds(shape), point, radius))
     if (nextShapes.length !== document.shapes.length) onDocumentChange(withCanvasShapes(document, nextShapes))
   }
 
-  const allShapes = draft ? [...document.shapes, draft] : document.shapes
-  const eraserRadius = 11 / camera.zoom
+  const renderCamera = camera
+  const eraserRadius = 11 / renderCamera.zoom
 
   return (
     <Stage
@@ -193,17 +208,13 @@ export function KonvaCanvasStage({
       onPointerLeave={() => setEraserTrail([])}
       onWheel={handleWheel}
       ref={stageRef}
-      scaleX={camera.zoom}
-      scaleY={camera.zoom}
       width={width}
-      x={camera.x}
-      y={camera.y}
     >
       <Layer listening={false}>
-        <Rect fill="rgba(255,255,255,0.01)" height={height / camera.zoom} width={width / camera.zoom} x={-camera.x / camera.zoom} y={-camera.y / camera.zoom} />
+        <Rect fill="rgba(255,255,255,0.01)" height={height / renderCamera.zoom} width={width / renderCamera.zoom} x={-renderCamera.x / renderCamera.zoom} y={-renderCamera.y / renderCamera.zoom} />
       </Layer>
       <Layer>
-        {allShapes.map((shape) => (
+        {document.shapes.map((shape) => (
           <KonvaCanvasShape
             isSelected={selectedIds.includes(shape.id)}
             key={shape.id}
@@ -212,9 +223,25 @@ export function KonvaCanvasStage({
             panMode={isSpacePanning}
             shape={shape}
             toolAllowsDrag={activeTool === 'select' && !isSpacePanning}
-            zoom={camera.zoom}
+            zoom={renderCamera.zoom}
           />
         ))}
+      </Layer>
+      {draft ? (
+        <Layer listening={false}>
+          <KonvaCanvasShape
+            interactive={false}
+            isSelected={false}
+            onDragEnd={handleShapeDragEnd}
+            onSelect={handleShapeSelect}
+            panMode={isSpacePanning}
+            shape={draft}
+            toolAllowsDrag={false}
+            zoom={renderCamera.zoom}
+          />
+        </Layer>
+      ) : null}
+      <Layer listening={false}>
         {eraserTrail.length > 0 ? (
           <>
             <Line
@@ -231,7 +258,7 @@ export function KonvaCanvasStage({
               listening={false}
               radius={eraserRadius}
               stroke="rgba(95, 111, 133, 0.78)"
-              strokeWidth={1.2 / camera.zoom}
+              strokeWidth={1.2 / renderCamera.zoom}
               x={eraserTrail[eraserTrail.length - 1].x}
               y={eraserTrail[eraserTrail.length - 1].y}
             />
