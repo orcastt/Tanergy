@@ -3,6 +3,7 @@ import type Konva from 'konva'
 import { Ellipse, Group, Line, Path, Rect, Text } from 'react-konva'
 import type { CanvasShape } from '@/features/canvas-engine'
 import { getStickyFillColor, getStrokeDash, resolveKonvaShapeStyle } from './konvaCanvasStyle'
+import { getLineArrowHeadAnchor, getLinePathData, type KonvaLineShape } from './konvaLineRouteUtils'
 import { getPatternTile } from './konvaPatternUtils'
 import { getArrowHeadPoints, getCloudPath, getFreehandPath } from './konvaPathUtils'
 import { isBoxCanvasShape } from './konvaRotationUtils'
@@ -177,23 +178,10 @@ function renderShape(shape: CanvasShape, style: ReturnType<typeof resolveKonvaSh
     )
   }
   if (shape.type === 'line') {
-    const points = [0, 0, shape.props.end.x, shape.props.end.y]
-    return (
-      <>
-        {isSelected ? <Line hitStrokeWidth={16} lineCap="round" listening={false} opacity={0.28} points={points} stroke={highlightStroke} strokeWidth={highlightWidth} /> : null}
-        <Line dash={strokeDash} hitStrokeWidth={16} lineCap="round" opacity={opacity} points={points} stroke={stroke} strokeWidth={strokeWidth} />
-      </>
-    )
+    return renderLineLikeShape(shape, { dash: strokeDash, highlightStroke, highlightWidth, isSelected, opacity, stroke, strokeWidth })
   }
   if (shape.type === 'arrow') {
-    const points = [0, 0, shape.props.end.x, shape.props.end.y]
-    return (
-      <>
-        {isSelected ? <Line hitStrokeWidth={16} lineCap="round" listening={false} opacity={0.28} points={points} stroke={highlightStroke} strokeWidth={highlightWidth} /> : null}
-        <Line dash={strokeDash} hitStrokeWidth={16} lineCap="round" opacity={opacity} points={points} stroke={stroke} strokeWidth={strokeWidth} />
-        <Line closed fill={stroke} opacity={opacity} points={getArrowHeadPoints(shape.props.end, { x: 0, y: 0 }, Math.max(12, strokeWidth * 5))} />
-      </>
-    )
+    return renderLineLikeShape(shape, { dash: strokeDash, highlightStroke, highlightWidth, isSelected, opacity, stroke, strokeWidth })
   }
   if (shape.type === 'stroke') {
     const path = getFreehandPath(shape.props.points, strokeWidth * 2.2)
@@ -211,6 +199,29 @@ function renderShape(shape: CanvasShape, style: ReturnType<typeof resolveKonvaSh
     return <Rect dash={strokeDash} fill="#eef2f7" height={shape.props.height} opacity={opacity} stroke={stroke} strokeWidth={strokeWidth} width={shape.props.width} />
   }
   return null
+}
+
+function renderLineLikeShape(
+  shape: KonvaLineShape,
+  style: {
+    dash?: number[]
+    highlightStroke: string
+    highlightWidth: number
+    isSelected: boolean
+    opacity: number
+    stroke: string
+    strokeWidth: number
+  }
+) {
+  const path = getLinePathData(shape)
+  const arrowAnchor = getLineArrowHeadAnchor(shape)
+  return (
+    <>
+      {style.isSelected ? <Path data={path} hitStrokeWidth={16} lineCap="round" lineJoin="round" listening={false} opacity={0.28} stroke={style.highlightStroke} strokeWidth={style.highlightWidth} /> : null}
+      <Path dash={style.dash} data={path} hitStrokeWidth={16} lineCap="round" lineJoin="round" opacity={style.opacity} stroke={style.stroke} strokeWidth={style.strokeWidth} />
+      {shape.type === 'arrow' ? <Line closed fill={style.stroke} opacity={style.opacity} points={getArrowHeadPoints(shape.props.end, arrowAnchor, Math.max(12, style.strokeWidth * 5))} /> : null}
+    </>
+  )
 }
 
 function ShapeLabel({ fill, height, opacity, text, width }: { fill: string; height: number; opacity: number; text?: string; width: number }) {

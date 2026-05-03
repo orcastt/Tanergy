@@ -2,7 +2,8 @@ import type { KonvaEventObject } from 'konva/lib/Node'
 import { Fragment } from 'react'
 import { Circle, Group, Line, Path, Rect } from 'react-konva'
 import { boundsToRect, type CanvasBounds, type CanvasShape } from '@/features/canvas-engine'
-import type { KonvaLineEndpointHandle, KonvaResizeHandle } from './konvaCanvasTypes'
+import type { KonvaLineEndpointHandle, KonvaLineRouteHandle, KonvaResizeHandle } from './konvaCanvasTypes'
+import { KonvaLineControls } from './KonvaLineControls'
 import { isBoxCanvasShape } from './konvaRotationUtils'
 import { getSelectedShapeBounds } from './konvaSelectionUtils'
 import type { KonvaSnapGuide } from './konvaSnapping'
@@ -15,12 +16,14 @@ type KonvaSelectionOverlayProps = {
   snapGuides: KonvaSnapGuide[]
   zoom: number
   onLineEndpointStart: (shapeId: string, endpoint: KonvaLineEndpointHandle, event: KonvaEventObject<PointerEvent>) => void
+  onLineRouteHandleStart: (shapeId: string, handle: KonvaLineRouteHandle, event: KonvaEventObject<PointerEvent>) => void
   onResizeStart: (shapeIds: string[], handle: KonvaResizeHandle, event: KonvaEventObject<PointerEvent>) => void
   onRotateStart: (shapeId: string, event: KonvaEventObject<PointerEvent>) => void
 }
 
 export function KonvaSelectionOverlay({
   onLineEndpointStart,
+  onLineRouteHandleStart,
   onResizeStart,
   onRotateStart,
   selectedBoundsOverride,
@@ -46,8 +49,9 @@ export function KonvaSelectionOverlay({
         <SelectionRect bounds={selectedBounds} isSelection zoom={zoom} />
       ) : null}
       {singleLineShape && !selectedBoundsOverride ? (
-        <LineEndpointControls
+        <KonvaLineControls
           onEndpointStart={(endpoint, event) => onLineEndpointStart(singleLineShape.id, endpoint, event)}
+          onRouteHandleStart={(handle, event) => onLineRouteHandleStart(singleLineShape.id, handle, event)}
           shape={singleLineShape}
           zoom={zoom}
         />
@@ -65,47 +69,6 @@ export function KonvaSelectionOverlay({
           zoom={zoom}
         />
       ) : null}
-    </>
-  )
-}
-
-function LineEndpointControls({
-  onEndpointStart,
-  shape,
-  zoom,
-}: {
-  shape: Extract<CanvasShape, { type: 'arrow' | 'line' }>
-  onEndpointStart: (endpoint: KonvaLineEndpointHandle, event: KonvaEventObject<PointerEvent>) => void
-  zoom: number
-}) {
-  const points = [
-    { endpoint: 'start' as const, x: shape.x, y: shape.y },
-    { endpoint: 'end' as const, x: shape.x + shape.props.end.x, y: shape.y + shape.props.end.y },
-  ]
-  const visibleRadius = Math.max(4.8, 5.8 / zoom)
-  const hitRadius = Math.max(12, 14 / zoom)
-  return (
-    <>
-      {points.map((point) => (
-        <Fragment key={point.endpoint}>
-          <Circle
-            fill="rgba(107, 92, 255, 0.001)"
-            onPointerDown={(event) => onEndpointStart(point.endpoint, event)}
-            radius={hitRadius}
-            x={point.x}
-            y={point.y}
-          />
-          <Circle
-            fill="#ffffff"
-            listening={false}
-            radius={visibleRadius}
-            stroke="#6b5cff"
-            strokeWidth={1.3 / zoom}
-            x={point.x}
-            y={point.y}
-          />
-        </Fragment>
-      ))}
     </>
   )
 }

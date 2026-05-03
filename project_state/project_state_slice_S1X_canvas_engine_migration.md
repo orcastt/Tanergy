@@ -143,6 +143,7 @@ Phase 3.1 object editing foundation started:
 - Snap correction after user review: Alt/Option drag commits from the final preview document to prevent the copied object jumping back; resize snap now only moves the dragged edge/corner so the fixed anchor side does not show the wrong guide; rotate snaps to 15-degree increments and shows a radial guide.
 - Alt/Option drag rewrite: duplicate/move drag now uses a clean `KonvaShapeDragSession`; moving shapes and snap target bounds are frozen at dragStart, and locked-source copy coordinates come from pointer delta instead of the reset Konva node position. User validation passed for snap-on Alt/Option copy near the source object.
 - Phase 3B has started with line/arrow endpoint handles: selected line-like objects no longer show bbox resize handles, and dragging either endpoint updates direction/length with optional Shift 15-degree angle lock.
+- Phase 3B route model first pass is in place: line/arrow support Straight, Curve and Elbow route properties; dragging the midpoint/control handle converts to curve, and Elbow shows two bend handles for an H-V-H orthogonal connector.
 - A Konva shell `selectionchange` guard clears accidental browser text selection while preserving normal textarea/input selection during editing.
 - Frame movement now expands the drag set to include direct/nested frame children, so moving a frame carries contained shapes with it.
 - Copy/paste/duplicate/Alt-drag clone logic now rewrites cloned `parentId` through an old-id to new-id map; cloned children no longer point at an old frame. Deleting a frame explicitly releases unselected children instead of leaving stale parent ids.
@@ -155,7 +156,7 @@ Not included yet: node cards, image paste/drop, image-to-node/to-canvas conversi
 Explicit Phase 3B follow-ups now tracked in the migration plan:
 
 - multi-selection group rotate from the union boundary around group center
-- line/arrow endpoint handles, including endpoint-drag angle/length editing
+- line/arrow route polish after the first pass: smoother curve affordance, V-H-V or direction-aware orthogonal connectors, per-segment cursor feedback and later node-port snapping
 - deeper frame containment: drag-out affordance, nested-frame policy and export boundary semantics
 - sticky author identity from Auth, shortcut creation behavior and richer note color presets
 - cursor polish for resize/rotate handles

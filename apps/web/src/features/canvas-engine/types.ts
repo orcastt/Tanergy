@@ -66,13 +66,17 @@ export type CanvasFrameShape = CanvasShapeBase<'frame', CanvasSize & {
 }>
 
 export type CanvasLineShape = CanvasShapeBase<'line', {
+  bends?: CanvasPoint[]
   control?: CanvasPoint | null
   end: CanvasPoint
+  route?: 'curve' | 'orthogonal' | 'straight'
 }>
 
 export type CanvasArrowShape = CanvasShapeBase<'arrow', {
+  bends?: CanvasPoint[]
   control?: CanvasPoint | null
   end: CanvasPoint
+  route?: 'curve' | 'orthogonal' | 'straight'
 }>
 
 export type CanvasImageShape = CanvasShapeBase<'image', CanvasSize & {

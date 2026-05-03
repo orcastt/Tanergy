@@ -1,4 +1,5 @@
 import { getShapeBounds, type CanvasPoint, type CanvasShape } from '@/features/canvas-engine'
+import { getLineRoute, getOrthogonalBends } from './konvaLineRouteUtils'
 
 export function getShapesAfterPreciseErase(shapes: CanvasShape[], point: CanvasPoint, radius: number) {
   return shapes.filter((shape) => !shapeContainsErasePoint(shape, point, radius))
@@ -9,8 +10,13 @@ function shapeContainsErasePoint(shape: CanvasShape, point: CanvasPoint, radius:
   if (shape.type === 'line' || shape.type === 'arrow') {
     const start = { x: shape.x, y: shape.y }
     const end = { x: shape.x + shape.props.end.x, y: shape.y + shape.props.end.y }
-    if (!shape.props.control) return distanceToSegment(point, start, end) <= strokePadding
-    return sampledQuadraticHit(point, start, { x: shape.x + shape.props.control.x, y: shape.y + shape.props.control.y }, end, strokePadding)
+    if (getLineRoute(shape) === 'orthogonal') {
+      const points = [start, ...getOrthogonalBends(shape).map((bend) => ({ x: shape.x + bend.x, y: shape.y + bend.y })), end]
+      return points.some((current, index) => index > 0 && distanceToSegment(point, points[index - 1], current) <= strokePadding)
+    }
+    if (getLineRoute(shape) !== 'curve') return distanceToSegment(point, start, end) <= strokePadding
+    const control = shape.props.control ?? { x: shape.props.end.x / 2, y: shape.props.end.y / 2 }
+    return sampledQuadraticHit(point, start, { x: shape.x + control.x, y: shape.y + control.y }, end, strokePadding)
   }
 
   if (shape.type === 'stroke') {

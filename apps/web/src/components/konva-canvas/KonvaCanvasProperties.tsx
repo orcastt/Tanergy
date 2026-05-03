@@ -19,6 +19,7 @@ import {
   reorderKonvaShapes,
   type KonvaCanvasWidthStyle,
 } from './konvaCanvasStyle'
+import { applyKonvaLineRoute, getKonvaLineRouteSnapshot, isKonvaLineShape, konvaLineRoutes, type KonvaLineRoute } from './konvaLineRouteUtils'
 
 type KonvaCanvasPropertiesProps = {
   activeTool: KonvaCanvasTool
@@ -62,6 +63,8 @@ export function KonvaCanvasProperties({
   const widthToken = styleSnapshot.strokeWidth === 'mixed' ? null : getWidthStyleToken(styleSnapshot.strokeWidth)
   const opacity = styleSnapshot.opacity === 'mixed' ? 100 : Math.round((styleSnapshot.opacity ?? 1) * 100)
   const strokeLabel = hasSelection && selectedShapes.every((shape) => shape.type === 'sticky') ? 'Color' : 'Stroke'
+  const routeSnapshot = getKonvaLineRouteSnapshot(selectedShapes)
+  const showRoute = hasSelection && selectedShapes.some(isKonvaLineShape)
 
   const applyStyle = (patch: CanvasShapeStyle) => {
     onNextStyleChange((current) => ({ ...current, ...patch }))
@@ -88,6 +91,12 @@ export function KonvaCanvasProperties({
     }
     const layerAction = action.replace('layer-', '') as 'back' | 'backward' | 'forward' | 'front'
     onDocumentChange((current) => reorderKonvaShapes(current, selectedIds, layerAction))
+  }
+
+  const applyRoute = (route: KonvaLineRoute) => {
+    if (selectedIds.length === 0) return
+    onHistoryCheckpoint(document)
+    onDocumentChange((current) => applyKonvaLineRoute(current, selectedIds, route))
   }
 
   return (
@@ -184,6 +193,22 @@ export function KonvaCanvasProperties({
             </PropertyBlock>
           ) : null}
 
+          {showRoute ? (
+            <PropertyBlock label="Route">
+              <SegmentedButtons>
+                {konvaLineRoutes.map((item) => (
+                  <IconButton
+                    active={routeSnapshot === item.value}
+                    icon={`style-icon ${item.icon}`}
+                    key={item.value}
+                    label={item.label}
+                    onClick={() => applyRoute(item.value)}
+                  />
+                ))}
+              </SegmentedButtons>
+            </PropertyBlock>
+          ) : null}
+
           <PropertyBlock label="Opacity">
             <div className="konva-canvas-properties__range-row">
               <input
@@ -240,13 +265,7 @@ function IconGrid({ children }: { children: ReactNode }) {
   return <div className="konva-canvas-properties__icon-grid">{children}</div>
 }
 
-function IconButton({
-  active,
-  icon,
-  iconData,
-  label,
-  onClick,
-}: {
+function IconButton({ active, icon, iconData, label, onClick }: {
   active?: boolean
   icon: string
   iconData?: string
@@ -260,21 +279,13 @@ function IconButton({
   )
 }
 
-function toolUsesFill(tool: KonvaCanvasTool) {
-  return tool === 'rect' || tool === 'diamond' || tool === 'ellipse' || tool === 'triangle' || tool === 'cloud'
-}
+function toolUsesFill(tool: KonvaCanvasTool) { return tool === 'rect' || tool === 'diamond' || tool === 'ellipse' || tool === 'triangle' || tool === 'cloud' }
 
-function toolUsesStroke(tool: KonvaCanvasTool) {
-  return tool !== 'hand' && tool !== 'select' && tool !== 'eraser'
-}
+function toolUsesStroke(tool: KonvaCanvasTool) { return tool !== 'hand' && tool !== 'select' && tool !== 'eraser' }
 
-function toolUsesWidth(tool: KonvaCanvasTool) {
-  return toolUsesStroke(tool) && tool !== 'text' && tool !== 'sticky'
-}
+function toolUsesWidth(tool: KonvaCanvasTool) { return toolUsesStroke(tool) && tool !== 'text' && tool !== 'sticky' }
 
-function toolUsesDash(tool: KonvaCanvasTool) {
-  return toolUsesWidth(tool) && tool !== 'draw'
-}
+function toolUsesDash(tool: KonvaCanvasTool) { return toolUsesWidth(tool) && tool !== 'draw' }
 
 function stopCanvasEvent(event: SyntheticEvent) {
   event.stopPropagation()

@@ -30,7 +30,7 @@ import {
   toggleSelectedId,
 } from './konvaSelectionUtils'
 import { clearBrowserSelection, getStagePointer, isStageTarget } from './konvaStageHelpers'
-import { updateLineEndpointShapes } from './konvaLineEndpointUtils'
+import { updateLineEndpointShapes, updateLineRouteHandleShapes } from './konvaLineEndpointUtils'
 import { getPointAngle, getRotatedShapes, getShapeRotationCenter } from './konvaRotationUtils'
 import { getResizeSnapSourceKeys, getRotationSnapGuides, snapResizeBoundsToShapes, snapRotationAngle, type KonvaSnapGuide } from './konvaSnapping'
 import { useKonvaDraftPreview } from './useKonvaDraftPreview'
@@ -75,7 +75,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     documentRef,
     onDocumentPreview: options.onDocumentPreview,
   })
-  const handleLineEndpointStart = useKonvaLineEndpointHandlers({
+  const { handleLineEndpointStart, handleLineRouteHandleStart } = useKonvaLineEndpointHandlers({
     documentRef,
     onHistoryCheckpoint: options.onHistoryCheckpoint,
     sessionRef,
@@ -241,6 +241,10 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       previewDocument(withCanvasShapes(documentRef.current, updateLineEndpointShapes(documentRef.current.shapes, session.originShape, session.endpoint, worldPoint, { lockAngle: event.evt.shiftKey })))
       return
     }
+    if (session.type === 'line-route-handle') {
+      previewDocument(withCanvasShapes(documentRef.current, updateLineRouteHandleShapes(documentRef.current.shapes, session.originShape, session.handle, worldPoint)))
+      return
+    }
     updateCreateDraft(session, worldPoint, event)
   }
   const handlePointerUp = (event: KonvaEventObject<PointerEvent>) => {
@@ -262,7 +266,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
   }
 
   return {
-    draft, eraserTrail, handleLineEndpointStart, handlePointerDown,
+    draft, eraserTrail, handleLineEndpointStart, handleLineRouteHandleStart, handlePointerDown,
     handlePointerLeave: () => clearEraserTrail(),
     handlePointerMove, handlePointerUp, handleResizeStart, handleRotateStart,
     handleShapeDragEnd, handleShapeDragMove, handleShapeDragStart, handleShapeSelect, handleWheel,

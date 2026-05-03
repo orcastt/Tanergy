@@ -106,6 +106,7 @@ export function getShapeBounds(shape: CanvasShape): CanvasBounds {
   if (shape.type === 'line' || shape.type === 'arrow') {
     const points = [createPoint(), shape.props.end]
     if (shape.props.control) points.push(shape.props.control)
+    if (shape.props.bends) points.push(...shape.props.bends)
     return getPointsBounds(points, { x: shape.x, y: shape.y })
   }
 

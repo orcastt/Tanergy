@@ -19,6 +19,7 @@ export type KonvaCanvasTool =
 export type KonvaResizeHandle = 'ne' | 'nw' | 'se' | 'sw'
 
 export type KonvaLineEndpointHandle = 'end' | 'start'
+export type KonvaLineRouteHandle = 'bend-0' | 'bend-1' | 'control'
 
 export type KonvaToolGroup = {
   label: string
@@ -72,6 +73,13 @@ export type KonvaToolSession =
       pointerId?: number
       shapeId: string
       type: 'line-endpoint'
+    }
+  | {
+      handle: KonvaLineRouteHandle
+      originShape: Extract<CanvasShape, { type: 'arrow' | 'line' }>
+      pointerId?: number
+      shapeId: string
+      type: 'line-route-handle'
     }
 
 export const konvaToolLabels: Record<KonvaCanvasTool, string> = {
