@@ -37,7 +37,7 @@ export function KonvaSelectionOverlay({
 
   return (
     <>
-      {snapGuides.map((guide, index) => <SnapGuide guide={guide} key={`${guide.orientation}-${guide.position}-${index}`} zoom={zoom} />)}
+      {snapGuides.map((guide, index) => <SnapGuide guide={guide} key={getSnapGuideKey(guide, index)} zoom={zoom} />)}
       {selectionBox ? <SelectionRect bounds={selectionBox} zoom={zoom} /> : null}
       {selectedBounds && showUnionBox ? (
         <SelectionRect bounds={selectedBounds} isSelection zoom={zoom} />
@@ -60,7 +60,29 @@ export function KonvaSelectionOverlay({
   )
 }
 
+function getSnapGuideKey(guide: KonvaSnapGuide, index: number) {
+  return guide.orientation === 'rotation'
+    ? `rotation-${guide.angle}-${index}`
+    : `${guide.orientation}-${guide.position}-${index}`
+}
+
 function SnapGuide({ guide, zoom }: { guide: KonvaSnapGuide; zoom: number }) {
+  if (guide.orientation === 'rotation') {
+    const angle = guide.angle * Math.PI / 180
+    const end = {
+      x: guide.center.x + Math.cos(angle) * guide.radius,
+      y: guide.center.y + Math.sin(angle) * guide.radius,
+    }
+    return (
+      <Line
+        dash={[5 / zoom, 5 / zoom]}
+        listening={false}
+        points={[guide.center.x, guide.center.y, end.x, end.y]}
+        stroke="#0ea5e9"
+        strokeWidth={1.4 / zoom}
+      />
+    )
+  }
   const points = guide.orientation === 'vertical'
     ? [guide.position, guide.min, guide.position, guide.max]
     : [guide.min, guide.position, guide.max, guide.position]

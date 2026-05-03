@@ -57,6 +57,7 @@ export type KonvaToolSession =
     }
   | {
       center: CanvasPoint
+      guideRadius: number
       originRotation: number
       pointerId?: number
       shapeId: string

@@ -86,12 +86,15 @@ export function useKonvaShapeDragHandlers(options: UseKonvaShapeDragHandlersOpti
     dragRef.current = null
     setSelectedBoundsOverride(null)
     setSnapGuides([])
-    if (!drag || drag.shapeId !== shapeId) return
+    if (!drag || (drag.shapeId !== shapeId && !drag.originShapes.some((shape) => shape.id === shapeId))) return
     const movedShapeIds = drag.originShapes.map((shape) => shape.id)
-    const previewShapes = drag.previewShapes ?? getShapeDragPreviewShapes(documentRef.current.shapes, drag, x, y)
+    const finalPoint = drag.previewShapes ? { x, y } : getSnappedDragPoint(drag, x, y)
+    const previewShapes = drag.previewShapes ?? getShapeDragPreviewShapes(documentRef.current.shapes, drag, finalPoint.x, finalPoint.y)
     const finalShapes = applyFrameContainment(previewShapes, movedShapeIds)
-    onDocumentChange((current) => withCanvasShapes(current, finalShapes))
-  }, [documentRef, onDocumentChange])
+    const finalDocument = withCanvasShapes(documentRef.current, finalShapes)
+    documentRef.current = finalDocument
+    onDocumentChange(finalDocument)
+  }, [documentRef, getSnappedDragPoint, onDocumentChange])
 
   return {
     handleShapeDragEnd,

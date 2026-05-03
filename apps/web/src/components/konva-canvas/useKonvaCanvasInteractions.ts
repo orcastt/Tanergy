@@ -32,7 +32,7 @@ import {
 } from './konvaSelectionUtils'
 import { clearBrowserSelection, getStagePointer, isStageTarget } from './konvaStageHelpers'
 import { getPointAngle, getRotatedShapes, getShapeRotationCenter } from './konvaRotationUtils'
-import { snapBoundsToShapes, type KonvaSnapGuide } from './konvaSnapping'
+import { getResizeSnapSourceKeys, getRotationSnapGuides, snapResizeBoundsToShapes, snapRotationAngle, type KonvaSnapGuide } from './konvaSnapping'
 import { useKonvaDraftPreview } from './useKonvaDraftPreview'
 import { useKonvaEraserSession } from './useKonvaEraserSession'
 import { useKonvaShapeDragHandlers } from './useKonvaShapeDragHandlers'
@@ -115,8 +115,10 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     if (!shape || !screenPoint) return
     const worldPoint = pointerToWorld({ ...screenPoint, pressure: event.evt.pressure }, cameraRef.current)
     const center = getShapeRotationCenter(shape)
+    const bounds = getSelectedShapeBounds(documentRef.current.shapes, [shapeId])
+    const guideRadius = bounds ? Math.max(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY) / 2 + 42 / cameraRef.current.zoom : 64 / cameraRef.current.zoom
     options.onHistoryCheckpoint(documentRef.current)
-    sessionRef.current = { center, originRotation: shape.rotation ?? 0, pointerId: event.evt.pointerId, shapeId, startAngle: getPointAngle(center, worldPoint), type: 'rotate' }
+    sessionRef.current = { center, guideRadius, originRotation: shape.rotation ?? 0, pointerId: event.evt.pointerId, shapeId, startAngle: getPointAngle(center, worldPoint), type: 'rotate' }
   }, [cameraRef, options])
   const handlePointerDown = (event: KonvaEventObject<PointerEvent>) => {
     const screenPoint = getStagePointer(stageRef.current)
@@ -175,7 +177,6 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     }
     scheduleDraft(draftShape)
   }
-
   const handlePointerMove = (event: KonvaEventObject<PointerEvent>) => {
     const session = sessionRef.current
     const screenPoint = getStagePointer(stageRef.current)
@@ -184,13 +185,11 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       clearBrowserSelection()
       event.evt.preventDefault()
     }
-
     const worldPoint = pointerToWorld({ ...screenPoint, pressure: event.evt.pressure }, cameraRef.current)
     if (!session) {
       if (options.activeTool === 'eraser') updateEraserTrail(worldPoint)
       return
     }
-
     if (session.type === 'pan') {
       const delta = { x: screenPoint.x - session.origin.x, y: screenPoint.y - session.origin.y }
       applyCamera({ ...cameraRef.current, x: cameraRef.current.x + delta.x, y: cameraRef.current.y + delta.y })
@@ -211,7 +210,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     if (session.type === 'resize') {
       let bounds = resizeBoundsFromHandle(session.originBounds, session.handle, worldPoint, { preserveAspect: event.evt.shiftKey })
       if (snapAlignment) {
-        const snapped = snapBoundsToShapes(documentRef.current.shapes, session.shapeIds, bounds, snapDistance / cameraRef.current.zoom)
+        const snapped = snapResizeBoundsToShapes(documentRef.current.shapes, session.shapeIds, bounds, snapDistance / cameraRef.current.zoom, getResizeSnapSourceKeys(session.handle))
         bounds = snapped.bounds
         setResizeSnapGuides(snapped.guides)
       }
@@ -219,13 +218,14 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       return
     }
     if (session.type === 'rotate') {
-      const rotation = session.originRotation + getPointAngle(session.center, worldPoint) - session.startAngle
+      const rawRotation = session.originRotation + getPointAngle(session.center, worldPoint) - session.startAngle
+      const rotation = snapAlignment ? snapRotationAngle(rawRotation, Math.min(7.5, Math.max(2, snapDistance / 2))) : rawRotation
+      setResizeSnapGuides(getRotationSnapGuides(rawRotation, rotation, session.center, session.guideRadius))
       previewDocument(withCanvasShapes(documentRef.current, getRotatedShapes(documentRef.current.shapes, session.shapeId, rotation)))
       return
     }
     updateCreateDraft(session, worldPoint, event)
   }
-
   const handlePointerUp = (event: KonvaEventObject<PointerEvent>) => {
     const session = sessionRef.current
     const screenPoint = getStagePointer(stageRef.current)
@@ -241,6 +241,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       setResizeSnapGuides([])
       setSelectedBoundsOverride(null)
     }
+    if (session?.type === 'rotate') setResizeSnapGuides([])
     const nextDraft = session?.type === 'create' ? finalizeDraft(session.draft) : null
     clearDraft()
     if (nextDraft) options.onDocumentChange((current) => appendCanvasShape(current, nextDraft))

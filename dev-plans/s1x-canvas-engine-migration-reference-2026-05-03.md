@@ -31,6 +31,7 @@ keep Board/API/storage contracts stable
 - Phase 3.1 object commands now cover keyboard Copy/Paste/Select all/Duplicate/Delete, Alt-drag duplicate, text double-click editing and a first-pass right-click menu for the same core commands. Alt-drag keeps the source object fixed while moving the new copy; Text is one-shot and returns to Select after inserting a text box.
 - Frame and Sticky are closer to their reference behavior: Frame is a white clipped container with a top label and editable name; dragged-in shapes get `parentId` and are masked by the frame bounds. Sticky shows an author label, raised note shadow and centered editable text, with Properties limited to color and opacity.
 - Phase 3.10-3.14 first pass is now implemented: right-click/properties/keyboard layer actions support front/forward/backward/back; text editing guards Cmd/Ctrl+S; eraser uses line/stroke geometric hit testing instead of bbox-only deletion; drag/resize snapping reads the shared canvas snap settings and renders guides; a DOM `selectionchange` guard clears accidental browser text selection inside the Konva shell.
+- Phase 3 snap/duplicate correction: Alt/Option drag now commits from the final preview document so copied objects should not jump back to the source position; resize snap uses a resize-specific path that only snaps the dragged edge/corner, not the fixed anchor side; rotate now snaps to 15-degree increments and shows a radial guide when snap is active.
 - Cleanup checkpoint: draft preview, eraser session, browser selection guard and snapping math were split into small helpers so `useKonvaCanvasInteractions.ts` stays under the 300-line source target.
 
 Next development focus: Phase 3B editing depth, especially line/arrow endpoint/control handles, multi-selection rotation, deeper frame drag-out/nested containment behavior, Auth-backed sticky authors and later image/node conversion commands on the shared command system.
@@ -168,11 +169,11 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | 3.6 | 删除 | Delete/Backspace 和面板 delete | keyboard command + selection delete | operationActions | 删除对象和 edges 清理一致 |
 | 3.7 | undo/redo | tldraw 内置历史 | command stack，支持 batch transaction | tldraw editor history | Ctrl/Cmd+Z/Shift+Z 正常 |
 | 3.8 | copy/paste | 浏览器/内部 clipboard | 自定义 clipboard JSON，图片只复制 asset ref | tldraw clipboard | 复制节点/shape/edge 后位置偏移 |
-| 3.9 | Alt 拖拽复制 | tldraw 交互习惯 | drag start 检查 Alt/Option 并 duplicate selection；source 锁原地，副本跟随；pointerup 提交最后一帧 preview shapes，不能用 reset 后的 source 坐标 | tldraw select | Alt 拖拽产生副本，松手不跳回原位 |
+| 3.9 | Alt 拖拽复制 | tldraw 交互习惯 | drag start 检查 Alt/Option 并 duplicate selection；source 锁原地，副本跟随；pointerup 从 final preview document 提交，不能用 reset 后的 source 坐标 | tldraw select | Alt 拖拽产生副本，松手不跳回原位 |
 | 3.10 | z-order | index 控制层级 | array order / zIndex model；右键、Properties、快捷键共用 `reorderKonvaShapes` 的四档 action | shape index | bring/send 操作持久化 |
 | 3.11 | text edit | text/note 可输入，不抢画布快捷键 | HTML textarea overlay；输入中阻止画布快捷键，Cmd/Ctrl+S 只阻止浏览器保存，不提交文本 | tldraw text/note | 输入中 Cmd+S 不误触，中文输入正常 |
 | 3.12 | eraser | 橡皮擦删除 draw/shape | line/arrow/stroke 用几何距离 hit test；闭合 shape 仍用 bbox/inside 第一版；拖尾 silhouette 保留 | direct eraser | 擦除不误删远处对象，拖尾跟手 |
-| 3.13 | snapping | snap alignment/distance | drag/resize 根据 shared `CanvasSettingsStore.snapAlignment/snapDistance` 吸附边/中心，并显示 guide | `CanvasSettingsPanel.tsx` | 开关和距离生效 |
+| 3.13 | snapping | snap alignment/distance | drag/Alt-copy 根据 shared `CanvasSettingsStore.snapAlignment/snapDistance` 吸附边/中心；resize 只吸附正在拖动的边/角；rotate 15-degree angle snap；显示 guide | `CanvasSettingsPanel.tsx` | 开关和距离生效，固定 resize anchor 不乱跳 |
 | 3.14 | browser selection 清理 | 避免画布中误选中文本 | Konva shell `selectionchange` guard，编辑 textarea/input 里保留正常选区 | `CanvasSpike.tsx` | 拖动画布不出现蓝色文字选区 |
 
 ### Phase 3B：Shape / Line / Arrow / Eraser / Navigator 细则
