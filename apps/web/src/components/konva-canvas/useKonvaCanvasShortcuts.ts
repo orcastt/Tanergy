@@ -5,7 +5,7 @@ import {
   type CanvasDocument,
   type CanvasShape,
 } from '@/features/canvas-engine'
-import { deleteKonvaShapes, duplicateKonvaShapes } from './konvaCanvasStyle'
+import { deleteKonvaShapes, duplicateKonvaShapes, reorderKonvaShapes } from './konvaCanvasStyle'
 import { konvaToolShortcuts, type KonvaCanvasTool } from './konvaCanvasTypes'
 import { copyKonvaShapes, pasteKonvaShapes } from './konvaShapeCommands'
 
@@ -79,6 +79,13 @@ export function useKonvaCanvasShortcuts(options: UseKonvaCanvasShortcutsOptions)
         runDelete(options)
         return
       }
+      if (!command && (event.key === '[' || event.key === ']')) {
+        event.preventDefault()
+        runLayerAction(options, event.key === ']'
+          ? event.altKey ? 'forward' : 'front'
+          : event.altKey ? 'backward' : 'back')
+        return
+      }
       const tool = getShortcutTool(event.key)
       if (tool && !command && !event.altKey) {
         event.preventDefault()
@@ -116,6 +123,12 @@ function runDuplicate(options: UseKonvaCanvasShortcutsOptions) {
   const result = duplicateKonvaShapes(options.document, options.selectedIds)
   options.onDocumentChange(result.document)
   options.onSelectionChange(result.selectedIds)
+}
+
+function runLayerAction(options: UseKonvaCanvasShortcutsOptions, action: Parameters<typeof reorderKonvaShapes>[2]) {
+  if (options.selectedIds.length === 0) return
+  options.history.checkpoint(options.document)
+  options.onDocumentChange(reorderKonvaShapes(options.document, options.selectedIds, action))
 }
 
 async function pasteFromClipboard(options: UseKonvaCanvasShortcutsOptions) {

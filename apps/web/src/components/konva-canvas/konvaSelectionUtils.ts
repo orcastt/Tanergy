@@ -34,10 +34,6 @@ export function getMarqueeSelectionIds(shapes: CanvasShape[], bounds: CanvasBoun
   return additive ? mergeSelectedIds(currentIds, selected) : selected
 }
 
-export function getShapesAfterBoundsErase(shapes: CanvasShape[], point: CanvasPoint, radius: number) {
-  return shapes.filter((shape) => !boundsContainPoint(getShapeBounds(shape), point, radius))
-}
-
 export function boundsFromPoints(a: CanvasPoint, b: CanvasPoint): CanvasBounds {
   return {
     maxX: Math.max(a.x, b.x),
@@ -127,10 +123,6 @@ export function moveShapesFromOrigins(shapes: CanvasShape[], originShapes: Canva
 
 function boundsIntersect(a: CanvasBounds, b: CanvasBounds) {
   return a.minX <= b.maxX && a.maxX >= b.minX && a.minY <= b.maxY && a.maxY >= b.minY
-}
-
-function boundsContainPoint(bounds: CanvasBounds, point: CanvasPoint, padding: number) {
-  return point.x >= bounds.minX - padding && point.x <= bounds.maxX + padding && point.y >= bounds.minY - padding && point.y <= bounds.maxY + padding
 }
 
 function getOppositeCorner(bounds: CanvasBounds, handle: KonvaResizeHandle): CanvasPoint {

@@ -30,6 +30,10 @@ export function KonvaTextEditor({ camera, onCancel, onCommit, shape }: KonvaText
       onContextMenu={(event) => event.stopPropagation()}
       onKeyDown={(event) => {
         event.stopPropagation()
+        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+          event.preventDefault()
+          return
+        }
         if (event.key === 'Escape') {
           event.preventDefault()
           canceledRef.current = true

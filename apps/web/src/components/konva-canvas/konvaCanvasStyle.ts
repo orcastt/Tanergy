@@ -1,5 +1,6 @@
 import type { CanvasDocument, CanvasShape, CanvasShapeStyle } from '@/features/canvas-engine'
 import { mixColorWithWhite } from './konvaPatternUtils'
+import { cloneKonvaShapes } from './konvaShapeCommands'
 
 export type KonvaCanvasDashStyle = NonNullable<CanvasShapeStyle['dash']>
 export type KonvaCanvasFillStyle = NonNullable<CanvasShapeStyle['fillStyle']>
@@ -130,9 +131,7 @@ export function applyKonvaStylePatch(document: CanvasDocument, shapeIds: string[
 
 export function duplicateKonvaShapes(document: CanvasDocument, shapeIds: string[]) {
   const selected = new Set(shapeIds)
-  const copies = document.shapes
-    .filter((shape) => selected.has(shape.id))
-    .map((shape) => duplicateShape(shape))
+  const copies = cloneKonvaShapes(document.shapes.filter((shape) => selected.has(shape.id)))
   const shapes = [...document.shapes, ...copies]
   return {
     document: {
@@ -150,7 +149,9 @@ export function deleteKonvaShapes(document: CanvasDocument, shapeIds: string[]) 
     document: {
       ...document,
       metadata: { ...document.metadata, updatedAt: new Date().toISOString() },
-      shapes: document.shapes.filter((shape) => !selected.has(shape.id)),
+      shapes: document.shapes
+        .filter((shape) => !selected.has(shape.id))
+        .map((shape) => shape.parentId && selected.has(shape.parentId) ? { ...shape, parentId: null } : shape),
     },
     selectedIds: [] as string[],
   }
@@ -201,16 +202,6 @@ export function isKonvaWidthShape(shape: CanvasShape) {
   return shape.type !== 'text' && shape.type !== 'sticky'
 }
 
-function duplicateShape(shape: CanvasShape): CanvasShape {
-  const copy = typeof structuredClone === 'function'
-    ? structuredClone(shape)
-    : JSON.parse(JSON.stringify(shape)) as CanvasShape
-  copy.id = createShapeId(shape.type)
-  copy.x += 24
-  copy.y += 24
-  return copy
-}
-
 function applyStylePatchToShape(shape: CanvasShape, patch: CanvasShapeStyle): CanvasShape {
   const nextStyle = { ...shape.style }
   if (patch.stroke !== undefined && isKonvaStrokeShape(shape)) nextStyle.stroke = patch.stroke
@@ -245,8 +236,4 @@ function swapShapes(shapes: CanvasShape[], a: number, b: number) {
   const previous = shapes[a]
   shapes[a] = shapes[b]
   shapes[b] = previous
-}
-
-function createShapeId(prefix: string) {
-  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 }

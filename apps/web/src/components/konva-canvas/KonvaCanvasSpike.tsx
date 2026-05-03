@@ -32,6 +32,7 @@ import type { KonvaCanvasTool } from './konvaCanvasTypes'
 import { deleteKonvaShapes, duplicateKonvaShapes, konvaDefaultShapeStyle, reorderKonvaShapes } from './konvaCanvasStyle'
 import { createSeedShapes, createStressStrokes } from './konvaSeedShapes'
 import { copyKonvaShapes, pasteKonvaShapes, updateTextShape } from './konvaShapeCommands'
+import { useKonvaBrowserSelectionGuard } from './useKonvaBrowserSelectionGuard'
 import { useKonvaCanvasHistory } from './useKonvaCanvasHistory'
 import { useKonvaCanvasShortcuts } from './useKonvaCanvasShortcuts'
 export function KonvaCanvasSpike() {
@@ -55,6 +56,7 @@ export function KonvaCanvasSpike() {
   const clipboardRef = useRef<CanvasShape[]>([])
   const frameSamplesRef = useRef<ReturnType<typeof appendFrameSample>>([])
   const lastFrameRef = useRef(0)
+  useKonvaBrowserSelectionGuard(shellRef)
   const history = useKonvaCanvasHistory({
     document,
     onDocumentChange: setDocument,
@@ -173,7 +175,8 @@ export function KonvaCanvasSpike() {
       setDocument(result.document)
       setSelectedIds(result.selectedIds)
     } else {
-      setDocument(reorderKonvaShapes(document, selectedIds, action === 'layer-front' ? 'front' : 'back'))
+      const layerAction = getContextLayerAction(action)
+      if (layerAction) setDocument(reorderKonvaShapes(document, selectedIds, layerAction))
     }
   }
 
@@ -276,4 +279,12 @@ export function KonvaCanvasSpike() {
       </section>
     </main>
   )
+}
+
+function getContextLayerAction(action: KonvaContextMenuAction): Parameters<typeof reorderKonvaShapes>[2] | null {
+  if (action === 'layer-back') return 'back'
+  if (action === 'layer-backward') return 'backward'
+  if (action === 'layer-forward') return 'forward'
+  if (action === 'layer-front') return 'front'
+  return null
 }

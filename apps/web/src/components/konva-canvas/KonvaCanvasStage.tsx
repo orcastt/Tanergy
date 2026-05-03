@@ -44,6 +44,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
     handleWheel,
     selectedBoundsOverride,
     selectionBox,
+    snapGuides,
     stageRef,
   } = useKonvaCanvasInteractions(props)
   const renderCamera = props.camera
@@ -134,6 +135,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
           selectedIds={props.selectedIds}
           selectionBox={selectionBox}
           shapes={props.document.shapes}
+          snapGuides={snapGuides}
           zoom={renderCamera.zoom}
         />
       </Layer>

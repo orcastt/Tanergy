@@ -5,12 +5,14 @@ import { boundsToRect, type CanvasBounds, type CanvasShape } from '@/features/ca
 import type { KonvaResizeHandle } from './konvaCanvasTypes'
 import { isBoxCanvasShape } from './konvaRotationUtils'
 import { getSelectedShapeBounds } from './konvaSelectionUtils'
+import type { KonvaSnapGuide } from './konvaSnapping'
 
 type KonvaSelectionOverlayProps = {
   selectedBoundsOverride?: CanvasBounds | null
   selectionBox: CanvasBounds | null
   selectedIds: string[]
   shapes: CanvasShape[]
+  snapGuides: KonvaSnapGuide[]
   zoom: number
   onResizeStart: (shapeIds: string[], handle: KonvaResizeHandle, event: KonvaEventObject<PointerEvent>) => void
   onRotateStart: (shapeId: string, event: KonvaEventObject<PointerEvent>) => void
@@ -23,6 +25,7 @@ export function KonvaSelectionOverlay({
   selectedIds,
   selectionBox,
   shapes,
+  snapGuides,
   zoom,
 }: KonvaSelectionOverlayProps) {
   const selectedShapes = shapes.filter((shape) => selectedIds.includes(shape.id))
@@ -34,6 +37,7 @@ export function KonvaSelectionOverlay({
 
   return (
     <>
+      {snapGuides.map((guide, index) => <SnapGuide guide={guide} key={`${guide.orientation}-${guide.position}-${index}`} zoom={zoom} />)}
       {selectionBox ? <SelectionRect bounds={selectionBox} zoom={zoom} /> : null}
       {selectedBounds && showUnionBox ? (
         <SelectionRect bounds={selectedBounds} isSelection zoom={zoom} />
@@ -53,6 +57,21 @@ export function KonvaSelectionOverlay({
         />
       ) : null}
     </>
+  )
+}
+
+function SnapGuide({ guide, zoom }: { guide: KonvaSnapGuide; zoom: number }) {
+  const points = guide.orientation === 'vertical'
+    ? [guide.position, guide.min, guide.position, guide.max]
+    : [guide.min, guide.position, guide.max, guide.position]
+  return (
+    <Line
+      dash={[6 / zoom, 5 / zoom]}
+      listening={false}
+      points={points}
+      stroke="#0ea5e9"
+      strokeWidth={1.4 / zoom}
+    />
   )
 }
 

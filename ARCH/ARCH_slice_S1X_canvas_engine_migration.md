@@ -65,13 +65,32 @@ KonvaCanvasStage
 useKonvaCanvasInteractions
   -> pointer sessions for pan/create/erase/box-select/resize/rotate
 
+useKonvaShapeDragHandlers
+  -> drag preview, Alt/Option duplicate, frame-child drag expansion, snap guides
+
+useKonvaEraserSession + konvaEraserHitTest
+  -> eraser trail state and geometric line/stroke hit testing
+
+konvaSnapping
+  -> edge/center snap calculation from shared canvas snap settings
+
 KonvaSelectionOverlay
-  -> marquee + single-shape resize handles
+  -> marquee + single-shape resize handles + snap guide rendering
 
 useKonvaCanvasHistory
   -> undo/redo snapshots shapes + selectedIds only
   -> camera pan/zoom excluded from command history
 ```
+
+Current Phase 3 command/data notes:
+
+- `document.shapes` array order remains the z-order source of truth. `reorderKonvaShapes` supports `back`, `backward`, `forward` and `front`; Properties, right-click menu and bracket shortcuts call the same action enum.
+- Clone commands build an old-id to new-id map and rewrite cloned `parentId` relationships. If a copied child’s parent is not part of the copied set, the pasted child is detached instead of pointing to an old frame.
+- Deleting a frame releases unselected children by setting `parentId=null`; it does not rely on missing-parent fallback behavior.
+- Frame dragging expands the moved set to include contained children so a frame behaves like a container in first-pass editing.
+- Text editing uses an HTML textarea overlay and blocks canvas shortcuts while typing; Cmd/Ctrl+S is swallowed inside the editor.
+- Snap alignment reads `CanvasSettingsStore.snapAlignment/snapDistance`; drag/resize apply edge/center snapping and selection overlay draws cyan guides.
+- Browser text-selection cleanup is isolated in `useKonvaBrowserSelectionGuard`, and it skips active input/textarea/contenteditable elements.
 
 It does not replace `/boards/[boardId]` and does not remove any tldraw reference code.
 

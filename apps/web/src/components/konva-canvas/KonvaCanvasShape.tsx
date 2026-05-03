@@ -49,7 +49,7 @@ function KonvaCanvasShapeComponent({
       key={shape.id}
       listening={interactive}
       onClick={canInteract ? (event) => {
-        if (event.evt.button === 1) return
+        if (event.evt.button !== 0) return
         event.cancelBubble = true
         onSelect(shape.id, { additive: event.evt.shiftKey })
       } : undefined}
@@ -76,7 +76,7 @@ function KonvaCanvasShapeComponent({
         onDoubleClick(shape.id)
       } : undefined}
       onPointerDown={canInteract ? (event) => {
-        if (event.evt.button === 1) return
+        if (event.evt.button !== 0) return
         event.cancelBubble = true
         onSelect(shape.id, { additive: event.evt.shiftKey })
       } : undefined}

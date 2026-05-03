@@ -36,11 +36,13 @@ export function updateTextShape(document: CanvasDocument, shapeId: string, text:
 }
 
 function cloneShapes(shapes: CanvasShape[], options: { offset?: CanvasPoint; preserveIds?: boolean }): CanvasShape[] {
+  const idMap = new Map(shapes.map((shape) => [shape.id, options.preserveIds ? shape.id : createShapeId(shape.type)]))
   return shapes.map((shape) => {
     const copy = typeof structuredClone === 'function'
       ? structuredClone(shape) as CanvasShape
       : JSON.parse(JSON.stringify(shape)) as CanvasShape
-    if (!options.preserveIds) copy.id = createShapeId(shape.type)
+    copy.id = idMap.get(shape.id) ?? copy.id
+    copy.parentId = shape.parentId ? idMap.get(shape.parentId) ?? null : shape.parentId
     copy.x += options.offset?.x ?? 0
     copy.y += options.offset?.y ?? 0
     return copy

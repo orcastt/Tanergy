@@ -10,9 +10,9 @@ import {
   type CanvasCamera,
   type CanvasDocument,
   type CanvasPoint,
-  type CanvasShape,
   type CanvasShapeStyle,
 } from '@/features/canvas-engine'
+import { useCanvasSettingsStore } from '@/features/canvas-settings/canvasSettingsStore'
 import {
   createDraftShape,
   createStrokeEndPoint,
@@ -25,7 +25,6 @@ import {
   boundsFromPoints,
   getMarqueeSelectionIds,
   getSelectedShapeBounds,
-  getShapesAfterBoundsErase,
   getShapesByIds,
   resizeBoundsFromHandle,
   resizeShapesFromBounds,
@@ -33,6 +32,9 @@ import {
 } from './konvaSelectionUtils'
 import { clearBrowserSelection, getStagePointer, isStageTarget } from './konvaStageHelpers'
 import { getPointAngle, getRotatedShapes, getShapeRotationCenter } from './konvaRotationUtils'
+import { snapBoundsToShapes, type KonvaSnapGuide } from './konvaSnapping'
+import { useKonvaDraftPreview } from './useKonvaDraftPreview'
+import { useKonvaEraserSession } from './useKonvaEraserSession'
 import { useKonvaShapeDragHandlers } from './useKonvaShapeDragHandlers'
 import { useKonvaStageCamera } from './useKonvaStageCamera'
 import type { KonvaCanvasTool, KonvaResizeHandle, KonvaToolSession } from './konvaCanvasTypes'
@@ -54,20 +56,26 @@ type UseKonvaCanvasInteractionsOptions = {
 export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOptions) {
   const stageRef = useRef<Konva.Stage | null>(null)
   const sessionRef = useRef<KonvaToolSession | null>(null)
-  const rafRef = useRef<number | null>(null)
-  const pendingDraftRef = useRef<CanvasShape | null>(null)
   const documentRef = useRef(options.document)
+  const snapAlignment = useCanvasSettingsStore((state) => state.settings.snapAlignment)
+  const snapDistance = useCanvasSettingsStore((state) => state.settings.snapDistance)
   const { applyCamera, cameraRef, scheduleCameraCommit } = useKonvaStageCamera({
     camera: options.camera,
     onCameraCommit: options.onCameraCommit,
     onCameraPreview: options.onCameraPreview,
     stageRef,
   })
-  const [draft, setDraft] = useState<CanvasShape | null>(null)
-  const [eraserTrail, setEraserTrail] = useState<CanvasPoint[]>([])
+  const { clearDraft, draft, scheduleDraft } = useKonvaDraftPreview()
+  const [resizeSnapGuides, setResizeSnapGuides] = useState<KonvaSnapGuide[]>([])
   const [selectionBox, setSelectionBox] = useState<CanvasBounds | null>(null)
-  const { handleShapeDragEnd, handleShapeDragMove, handleShapeDragStart, selectedBoundsOverride, setSelectedBoundsOverride } = useKonvaShapeDragHandlers({
+  const { clearEraserTrail, eraseAtPoint, eraserTrail, updateEraserTrail } = useKonvaEraserSession({
+    cameraRef,
+    documentRef,
+    onDocumentPreview: options.onDocumentPreview,
+  })
+  const { handleShapeDragEnd, handleShapeDragMove, handleShapeDragStart, selectedBoundsOverride, setSelectedBoundsOverride, snapGuides } = useKonvaShapeDragHandlers({
     activeTool: options.activeTool,
+    camera: options.camera,
     documentRef,
     onDocumentChange: options.onDocumentChange,
     onDocumentPreview: options.onDocumentPreview,
@@ -78,9 +86,6 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
   useEffect(() => {
     documentRef.current = options.document
   }, [options.document])
-  useEffect(() => () => {
-    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
-  }, [])
   const handleShapeSelect = useCallback((shapeId: string, config: { additive?: boolean } = {}) => {
     const additive = options.activeTool === 'select' && config.additive
     if (!additive && options.activeTool === 'select' && options.selectedIds.length > 1 && options.selectedIds.includes(shapeId)) return
@@ -120,8 +125,8 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     event.evt.preventDefault()
     if (event.evt.button === 2) {
       sessionRef.current = null
-      pendingDraftRef.current = null
-      setDraft(null)
+      clearDraft()
+      setResizeSnapGuides([])
       setSelectionBox(null)
       return
     }
@@ -157,7 +162,6 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       options.onToolChange('select')
       return
     }
-
     const draftShape = createDraftShape(options.activeTool, worldPoint, worldPoint, { constrainProportions: event.evt.shiftKey, style: options.nextStyle })
     if (!draftShape) return
     options.onHistoryCheckpoint(documentRef.current)
@@ -205,7 +209,12 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       return
     }
     if (session.type === 'resize') {
-      const bounds = resizeBoundsFromHandle(session.originBounds, session.handle, worldPoint, { preserveAspect: event.evt.shiftKey })
+      let bounds = resizeBoundsFromHandle(session.originBounds, session.handle, worldPoint, { preserveAspect: event.evt.shiftKey })
+      if (snapAlignment) {
+        const snapped = snapBoundsToShapes(documentRef.current.shapes, session.shapeIds, bounds, snapDistance / cameraRef.current.zoom)
+        bounds = snapped.bounds
+        setResizeSnapGuides(snapped.guides)
+      }
       previewDocument(withCanvasShapes(documentRef.current, resizeShapesFromBounds(documentRef.current.shapes, session.originShapes, session.originBounds, bounds)))
       return
     }
@@ -226,12 +235,14 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     }
     sessionRef.current = null
     if (session?.type === 'pan') scheduleCameraCommit(0)
-    if (session?.type === 'erase') window.setTimeout(() => setEraserTrail([]), 120)
+    if (session?.type === 'erase') clearEraserTrail(120)
     if (session?.type === 'select-box') finishBoxSelection(session)
-    if (session?.type === 'resize') setSelectedBoundsOverride(null)
+    if (session?.type === 'resize') {
+      setResizeSnapGuides([])
+      setSelectedBoundsOverride(null)
+    }
     const nextDraft = session?.type === 'create' ? finalizeDraft(session.draft) : null
-    pendingDraftRef.current = null
-    setDraft(null)
+    clearDraft()
     if (nextDraft) options.onDocumentChange((current) => appendCanvasShape(current, nextDraft))
   }
 
@@ -249,7 +260,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     draft,
     eraserTrail,
     handlePointerDown,
-    handlePointerLeave: () => setEraserTrail([]),
+    handlePointerLeave: () => clearEraserTrail(),
     handlePointerMove,
     handlePointerUp,
     handleResizeStart,
@@ -261,6 +272,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     handleWheel,
     selectedBoundsOverride,
     selectionBox,
+    snapGuides: snapGuides.length > 0 ? snapGuides : resizeSnapGuides,
     stageRef,
   }
 
@@ -279,29 +291,8 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     options.onSelectionChange(getMarqueeSelectionIds(documentRef.current.shapes, bounds, options.selectedIds, session.additive))
   }
 
-  function scheduleDraft(shape: CanvasShape) {
-    pendingDraftRef.current = shape
-    if (rafRef.current !== null) return
-    rafRef.current = requestAnimationFrame(() => {
-      rafRef.current = null
-      setDraft(pendingDraftRef.current)
-    })
-  }
-
-  function eraseAtPoint(point: CanvasPoint) {
-    const radius = 10 / cameraRef.current.zoom
-    const current = documentRef.current
-    const nextShapes = getShapesAfterBoundsErase(current.shapes, point, radius)
-    if (nextShapes.length === current.shapes.length) return
-    previewDocument(withCanvasShapes(current, nextShapes))
-  }
-
   function previewDocument(document: CanvasDocument) {
     documentRef.current = document
     options.onDocumentPreview(document)
-  }
-
-  function updateEraserTrail(point: CanvasPoint) {
-    setEraserTrail((trail) => [...trail.slice(-7), point])
   }
 }

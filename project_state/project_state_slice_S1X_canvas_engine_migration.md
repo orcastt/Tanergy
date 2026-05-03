@@ -90,6 +90,7 @@ The migration is therefore a renderer engine migration, not a small library swap
 - [x] Start Phase 3.1 object editing foundation with box select, single-shape resize handles and shape/selection undo-redo checkpoints.
 - [x] Fix fill rendering so solid/pattern use opaque lighter same-hue fills instead of lowered opacity.
 - [x] Add first-pass Frame and Sticky tools to the Konva spike.
+- [x] Complete Phase 3.10-3.14 first pass: z-order actions, text edit shortcut guard, precise eraser hit testing, snap guides and browser selection cleanup.
 - [ ] Add production-quality rectangle/text/image/node-card renderers.
 - [ ] Save/load a renderer-neutral document.
 - [ ] Run two-tab Yjs sync with cursor/presence.
@@ -134,6 +135,14 @@ Phase 3.1 object editing foundation started:
 - right-click menu first pass exposes Copy, Paste, Duplicate, Layer front/back, Select all and Delete
 - Frame now renders as a white mask/container with black outline and label; dragging a shape into a frame sets `parentId=frame.id` and clips the child to the frame bounds. Frame double-click edits the label.
 - Sticky now renders closer to a Miro note: author label above, raised shadow, centered note text and double-click body editing. Properties for Sticky are intentionally limited to color and opacity; no fill pattern, dash or width controls.
+- Layer actions now support all four operations from Properties, right-click menu and keyboard: bring front `]`, bring forward `Alt/Option+]`, send backward `Alt/Option+[`, send back `[`.
+- Text/sticky/frame editing guards canvas shortcuts while typing; Cmd/Ctrl+S is swallowed inside the editor so it does not trigger browser save or canvas commands.
+- Eraser now uses geometric distance hit testing for line/arrow/freehand strokes instead of deleting by the whole bbox; the existing eraser silhouette/trail remains.
+- Drag and resize now use shared canvas snap settings (`snapAlignment`, `snapDistance`) and render cyan guides for edge/center alignment.
+- A Konva shell `selectionchange` guard clears accidental browser text selection while preserving normal textarea/input selection during editing.
+- Frame movement now expands the drag set to include direct/nested frame children, so moving a frame carries contained shapes with it.
+- Copy/paste/duplicate/Alt-drag clone logic now rewrites cloned `parentId` through an old-id to new-id map; cloned children no longer point at an old frame. Deleting a frame explicitly releases unselected children instead of leaving stale parent ids.
+- Draft preview, eraser session, browser selection guard and snapping math are split into focused helper hooks/modules; `useKonvaCanvasInteractions.ts` is back under the 300-line target.
 - undo/redo restores shapes plus selection only, so pan/zoom is not part of command history
 - create, drag, resize, eraser, Properties style edits, layer actions, duplicate/delete, stress strokes and clear all now create history checkpoints
 
@@ -143,9 +152,10 @@ Explicit Phase 3B follow-ups now tracked in the migration plan:
 
 - multi-selection group rotate from the union boundary around group center
 - line/arrow endpoint handles, including endpoint-drag angle/length editing
-- deeper frame containment: frame move-with-children, drag-out affordance, nested-frame policy and export boundary semantics
+- deeper frame containment: drag-out affordance, nested-frame policy and export boundary semantics
 - sticky author identity from Auth, shortcut creation behavior and richer note color presets
 - cursor polish for resize/rotate handles
+- rotation geometry follow-up: current rotated box visuals render correctly, but selection hit testing, frame containment and eraser still mostly use axis-aligned bounds. Phase 3B should introduce shared transformed bounds/hit-test helpers before deeper rotate behavior.
 
 ## User Review Notes
 
@@ -190,4 +200,4 @@ multi-selection rotate
 frame/sticky behavior polish
 ```
 
-After that, continue Phase 3A/3B alignment, snapping, eraser segmentation and image/node conversion controls on top of the same command system.
+After that, continue Phase 3A/3B context-menu depth, eraser segmentation and image/node conversion controls on top of the same command system.
