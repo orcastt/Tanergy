@@ -36,6 +36,7 @@ keep Board/API/storage contracts stable
 - Alt/Option drag rewrite: drag now uses a clean `KonvaShapeDragSession`; move/duplicate sessions freeze moving shapes and snap target bounds at dragStart, and locked-source copy coordinates come from pointer delta instead of the reset Konva node position. User validation passed for snap-on Alt/Option copy near the source object.
 - Phase 3B started: selected line/arrow now show endpoint handles instead of bbox resize handles; dragging either endpoint updates direction/length, with Shift locking to 15-degree increments.
 - Phase 3B route model first pass: line/arrow now support Route properties for Straight, Curve and Elbow. Dragging the midpoint/control handle converts to curve; Elbow uses a first-pass H-V-H orthogonal connector with two visible bend handles.
+- Phase 3B curve handle correction: the curve handle is displayed on the line body/curve midpoint, then converted internally to the quadratic control point so users drag the visible line instead of an off-line Bezier handle.
 - Cleanup checkpoint: draft preview, eraser session, browser selection guard and snapping math were split into small helpers so `useKonvaCanvasInteractions.ts` stays under the 300-line source target.
 
 Next development focus: Phase 3B editing depth, especially line/arrow endpoint/control handles, multi-selection rotation, deeper frame drag-out/nested containment behavior, Auth-backed sticky authors and later image/node conversion commands on the shared command system.

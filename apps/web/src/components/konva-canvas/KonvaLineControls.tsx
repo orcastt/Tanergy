@@ -3,7 +3,7 @@ import { Fragment } from 'react'
 import { Circle } from 'react-konva'
 import type { CanvasShape } from '@/features/canvas-engine'
 import type { KonvaLineEndpointHandle, KonvaLineRouteHandle } from './konvaCanvasTypes'
-import { getLineControlPoint, getLineRoute, getOrthogonalBends } from './konvaLineRouteUtils'
+import { getLineCurveHandlePoint, getLineRoute, getOrthogonalBends } from './konvaLineRouteUtils'
 
 type KonvaLineShape = Extract<CanvasShape, { type: 'arrow' | 'line' }>
 
@@ -44,10 +44,10 @@ function LineRouteHandles({
   zoom: number
 }) {
   const route = getLineRoute(shape)
-  const controlPoint = route === 'straight' ? { x: shape.props.end.x / 2, y: shape.props.end.y / 2 } : getLineControlPoint(shape)
+  const curveHandlePoint = getLineCurveHandlePoint(shape)
   const handles = route === 'orthogonal'
     ? getOrthogonalBends(shape).map((bend, index) => ({ handle: `bend-${index}` as KonvaLineRouteHandle, x: shape.x + bend.x, y: shape.y + bend.y }))
-    : [{ handle: 'control' as const, x: shape.x + controlPoint.x, y: shape.y + controlPoint.y }]
+    : [{ handle: 'control' as const, x: shape.x + curveHandlePoint.x, y: shape.y + curveHandlePoint.y }]
   const visibleRadius = Math.max(4.2, 5 / zoom)
   const hitRadius = Math.max(12, 14 / zoom)
   return (

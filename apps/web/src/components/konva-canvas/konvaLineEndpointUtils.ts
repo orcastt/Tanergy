@@ -1,6 +1,6 @@
 import type { CanvasDocument, CanvasPoint, CanvasShape } from '@/features/canvas-engine'
 import type { KonvaLineEndpointHandle, KonvaLineRouteHandle } from './konvaCanvasTypes'
-import { getLineRoute, getOrthogonalBends, normalizeOrthogonalBends } from './konvaLineRouteUtils'
+import { getCurveControlFromHandlePoint, getLineRoute, getOrthogonalBends, normalizeOrthogonalBends } from './konvaLineRouteUtils'
 
 export function updateLineEndpointShapes(
   shapes: CanvasDocument['shapes'],
@@ -54,12 +54,13 @@ export function updateLineRouteHandleShapes(
   return shapes.map((shape) => {
     if (shape.id !== originShape.id || (shape.type !== 'line' && shape.type !== 'arrow')) return shape
     if (handle === 'control') {
+      const handlePoint = { x: point.x - originShape.x, y: point.y - originShape.y }
       return {
         ...shape,
         props: {
           ...shape.props,
           bends: undefined,
-          control: { x: point.x - originShape.x, y: point.y - originShape.y },
+          control: getCurveControlFromHandlePoint(originShape.props.end, handlePoint),
           route: 'curve' as const,
         },
       }

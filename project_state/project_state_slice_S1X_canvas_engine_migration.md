@@ -144,6 +144,7 @@ Phase 3.1 object editing foundation started:
 - Alt/Option drag rewrite: duplicate/move drag now uses a clean `KonvaShapeDragSession`; moving shapes and snap target bounds are frozen at dragStart, and locked-source copy coordinates come from pointer delta instead of the reset Konva node position. User validation passed for snap-on Alt/Option copy near the source object.
 - Phase 3B has started with line/arrow endpoint handles: selected line-like objects no longer show bbox resize handles, and dragging either endpoint updates direction/length with optional Shift 15-degree angle lock.
 - Phase 3B route model first pass is in place: line/arrow support Straight, Curve and Elbow route properties; dragging the midpoint/control handle converts to curve, and Elbow shows two bend handles for an H-V-H orthogonal connector.
+- Curve handle correction: the visible curve handle now sits on the line body/curve midpoint and is converted internally to the quadratic control point, avoiding an off-line Bezier control handle.
 - A Konva shell `selectionchange` guard clears accidental browser text selection while preserving normal textarea/input selection during editing.
 - Frame movement now expands the drag set to include direct/nested frame children, so moving a frame carries contained shapes with it.
 - Copy/paste/duplicate/Alt-drag clone logic now rewrites cloned `parentId` through an old-id to new-id map; cloned children no longer point at an old frame. Deleting a frame explicitly releases unselected children instead of leaving stale parent ids.

@@ -71,6 +71,22 @@ export function getLineControlPoint(shape: KonvaLineShape): CanvasPoint {
   return shape.props.control ?? getDefaultCurveControl(shape.props.end)
 }
 
+export function getLineCurveHandlePoint(shape: KonvaLineShape): CanvasPoint {
+  if (getLineRoute(shape) !== 'curve') return { x: shape.props.end.x / 2, y: shape.props.end.y / 2 }
+  const control = getLineControlPoint(shape)
+  return {
+    x: control.x / 2 + shape.props.end.x / 4,
+    y: control.y / 2 + shape.props.end.y / 4,
+  }
+}
+
+export function getCurveControlFromHandlePoint(end: CanvasPoint, handlePoint: CanvasPoint): CanvasPoint {
+  return {
+    x: handlePoint.x * 2 - end.x / 2,
+    y: handlePoint.y * 2 - end.y / 2,
+  }
+}
+
 export function getOrthogonalBends(shape: KonvaLineShape): [CanvasPoint, CanvasPoint] {
   const bends = shape.props.bends
   if (bends && bends.length >= 2) return normalizeOrthogonalBends(shape.props.end, bends[0].x)
