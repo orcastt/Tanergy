@@ -1,11 +1,29 @@
 export type TangentAssetOrigin =
   | 'ai_run'
+  | 'background_removal'
+  | 'board_thumbnail'
   | 'editor_export'
   | 'generated'
   | 'merge_capture'
+  | 'object_cutout'
   | 'paste'
+  | 'remote_import'
   | 'screenshot'
   | 'upload'
+
+export const tangentAssetOrigins = [
+  'ai_run',
+  'background_removal',
+  'board_thumbnail',
+  'editor_export',
+  'generated',
+  'merge_capture',
+  'object_cutout',
+  'paste',
+  'remote_import',
+  'screenshot',
+  'upload',
+] as const
 
 export type TangentAssetRecord = {
   byteSize: number
@@ -48,6 +66,10 @@ export type TangentAssetDataUrlInput = {
 export type TangentAssetResponse = {
   asset?: TangentAssetRecord
   error?: string
+}
+
+export function isTangentAssetOrigin(value: unknown): value is TangentAssetOrigin {
+  return typeof value === 'string' && (tangentAssetOrigins as readonly string[]).includes(value)
 }
 
 export function toSerializableTangentAssetRecord(asset: TangentAssetRecord): TangentAssetRecord {

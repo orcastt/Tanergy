@@ -27,6 +27,7 @@ import { useKonvaCanvasControls } from './useKonvaCanvasControls'
 import { useKonvaCanvasHistory } from './useKonvaCanvasHistory'
 import { useKonvaCanvasMetrics } from './useKonvaCanvasMetrics'
 import { useKonvaCanvasShortcuts } from './useKonvaCanvasShortcuts'
+import { useKonvaImageOpsActions } from './useKonvaImageOpsActions'
 import { useKonvaImageNodeActions } from './useKonvaImageNodeActions'
 import { useKonvaImageNodeUpload } from './useKonvaImageNodeUpload'
 import { useKonvaNodeCreationMenu } from './useKonvaNodeCreationMenu'
@@ -114,6 +115,13 @@ export function KonvaCanvasSpike() {
   const canLockSelection = selectedShapes.some((shape) => !shape.isLocked)
   const canUnlockSelection = selectedShapes.some((shape) => shape.isLocked)
   const { canConvertImageToNode, convertImageToNode, sendImageNodeToCanvas } = useKonvaImageNodeActions({
+    document,
+    history,
+    onDocumentChange: setDocument,
+    onSelectionChange: handleSelectionChange,
+    selectedIds,
+  })
+  const imageOps = useKonvaImageOpsActions({
     document,
     history,
     onDocumentChange: setDocument,
@@ -315,11 +323,15 @@ export function KonvaCanvasSpike() {
           canCaptureSelection={selectionExport.canCaptureSelection}
           canConvertImageToNode={canConvertImageToNode}
           canCropImage={canCropImage}
+          canRemoveBackground={imageOps.canRemoveBackground}
+          canStartObjectCutout={imageOps.canStartObjectCutout}
           document={document}
           isCapturingSelection={selectionExport.isCapturingSelection}
+          isRemovingBackground={imageOps.isRemovingBackground}
           onCaptureSelection={() => { void selectionExport.handleCaptureSelectionToImageNode() }}
           onConvertImageToNode={convertImageToNode}
           onCropImage={cropImage}
+          onRemoveBackground={imageOps.removeBackground}
           selectedIds={selectedIds}
           shellRect={shellRect}
         />

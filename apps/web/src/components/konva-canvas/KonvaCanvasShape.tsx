@@ -127,9 +127,22 @@ function areShapePropsEqual(previous: KonvaCanvasShapeProps, next: KonvaCanvasSh
   if (previous.onImageNodeToCanvas !== next.onImageNodeToCanvas) return false
   if (previous.onNodePortPointerDown !== next.onNodePortPointerDown) return false
   if (previous.onNodeRunToggle !== next.onNodeRunToggle) return false
+  if (usesZoomPreviewTier(next.shape) && getZoomPreviewTier(previous.zoom) !== getZoomPreviewTier(next.zoom)) return false
   if (next.isSelected && previous.zoom !== next.zoom) return false
   return true
 }
+
+function usesZoomPreviewTier(shape: CanvasShape) {
+  return shape.type === 'image' || shape.type === 'node_card'
+}
+
+function getZoomPreviewTier(zoom: number) {
+  if (zoom <= 0.25) return 'tiny'
+  if (zoom <= 0.5) return 'small'
+  if (zoom <= 1) return 'medium'
+  return 'full'
+}
+
 function renderShape(
   shape: CanvasShape,
   style: ReturnType<typeof resolveKonvaShapeStyle>,
@@ -230,7 +243,7 @@ function renderShape(
     return <KonvaImageShape opacity={opacity} shape={shape} zoom={zoom} />
   }
   if (shape.type === 'node_card') {
-    return <KonvaNodeCardShape onFieldChange={onNodeFieldChange} onImageNodeToCanvas={onImageNodeToCanvas} onPortPointerDown={onNodePortPointerDown} onRunToggle={onNodeRunToggle} opacity={opacity} shape={shape} />
+    return <KonvaNodeCardShape onFieldChange={onNodeFieldChange} onImageNodeToCanvas={onImageNodeToCanvas} onPortPointerDown={onNodePortPointerDown} onRunToggle={onNodeRunToggle} opacity={opacity} shape={shape} zoom={zoom} />
   }
   return null
 }

@@ -93,6 +93,43 @@ async def create_asset_from_upload(
     return record
 
 
+def create_asset_from_bytes(
+    content: bytes,
+    mime: str,
+    context: ApiRequestContext,
+    origin: str,
+    title: Optional[str],
+    width: int,
+    height: int,
+) -> AssetRecord:
+    assert_image_mime(mime)
+    assert_asset_size(len(content))
+
+    asset_id = f"asset_{uuid4()}"
+    asset_dir = _asset_dir(asset_id)
+    asset_dir.mkdir(parents=True, exist_ok=True)
+
+    original_file_name = f"original.{extension_for_mime(mime)}"
+    (asset_dir / original_file_name).write_bytes(content)
+
+    record = AssetRecord(
+        byteSize=len(content),
+        createdAt=datetime.now(timezone.utc).isoformat(),
+        createdBy=context.user_id,
+        height=height,
+        id=asset_id,
+        mime=mime,
+        origin=origin,
+        originalUrl=file_url(asset_id, original_file_name),
+        storage="local-dev",
+        title=title or "Image",
+        width=width,
+        workspaceId=context.workspace_id,
+    )
+    _write_asset_record(asset_dir, record)
+    return record
+
+
 def get_asset_record(asset_id: str, context: ApiRequestContext) -> AssetRecord:
     assert_safe_path_segment(asset_id)
     path = _asset_dir(asset_id) / "metadata.json"

@@ -13,6 +13,7 @@ from tangent_api.storage.local_asset_store import (
 from tangent_api.storage.local_asset_store import (
     create_asset_from_upload as create_local_asset_from_upload,
 )
+from tangent_api.storage.local_asset_store import create_asset_from_bytes as create_local_asset_from_bytes
 from tangent_api.storage.local_asset_store import get_asset_file_path, get_asset_record
 from tangent_api.storage.s3_asset_store import create_s3_asset_store
 
@@ -36,11 +37,26 @@ class AssetStorageAdapter:
     ) -> AssetRecord:
         raise NotImplementedError
 
+    def create_from_bytes(
+        self,
+        content: bytes,
+        mime: str,
+        context: ApiRequestContext,
+        origin: str,
+        title: Optional[str],
+        width: int,
+        height: int,
+    ) -> AssetRecord:
+        raise NotImplementedError
+
     def get_record(self, asset_id: str, context: ApiRequestContext) -> AssetRecord:
         raise NotImplementedError
 
     def get_file_path(self, asset_id: str, file_name: str, context: ApiRequestContext) -> Path:
         raise NotImplementedError
+
+    def get_file_bytes(self, asset_id: str, file_name: str, context: ApiRequestContext) -> bytes:
+        return self.get_file_path(asset_id, file_name, context).read_bytes()
 
     def get_file_response(
         self,
@@ -69,6 +85,18 @@ class LocalAssetStorageAdapter(AssetStorageAdapter):
         height: int,
     ) -> AssetRecord:
         return await create_local_asset_from_upload(file, context, origin, title, width, height)
+
+    def create_from_bytes(
+        self,
+        content: bytes,
+        mime: str,
+        context: ApiRequestContext,
+        origin: str,
+        title: Optional[str],
+        width: int,
+        height: int,
+    ) -> AssetRecord:
+        return create_local_asset_from_bytes(content, mime, context, origin, title, width, height)
 
     def get_record(self, asset_id: str, context: ApiRequestContext) -> AssetRecord:
         return get_asset_record(asset_id, context)
@@ -99,8 +127,23 @@ class S3CompatibleAssetStorageAdapter(AssetStorageAdapter):
     ) -> AssetRecord:
         return await self.store.create_asset_from_upload(file, context, origin, title, width, height)
 
+    def create_from_bytes(
+        self,
+        content: bytes,
+        mime: str,
+        context: ApiRequestContext,
+        origin: str,
+        title: Optional[str],
+        width: int,
+        height: int,
+    ) -> AssetRecord:
+        return self.store.create_asset_from_bytes(content, mime, context, origin, title, width, height)
+
     def get_record(self, asset_id: str, context: ApiRequestContext) -> AssetRecord:
         return self.store.get_asset_record(asset_id, context)
+
+    def get_file_bytes(self, asset_id: str, file_name: str, context: ApiRequestContext) -> bytes:
+        return self.store.get_file_bytes(asset_id, file_name, context)
 
     def get_file_response(
         self,

@@ -113,9 +113,9 @@ Current Phase 4A image/node boundary:
 - Konva Image Node first pass renders a lightweight card with ports derived from `node-runtime/registry.ts`; runtime edge storage is still intentionally separate and not represented as visual `arrow` shapes.
 - Canvas Image → Image Node creates a `node_card` image node beside the image. Node data stores `assetId`, dimensions, preview asset URLs, optional crop-ratio metadata, `source` and a stable `Image` title; it does not store `data:`, `blob:`, Base64 or provider raw payloads. Multi-image conversion maps each selected image to its own node. Mixed image+markup selections still expose Convert, but the conversion command filters to image shapes only and leaves other selected markup untouched. Image Node → Canvas restores the crop metadata onto the new `CanvasImageShape`; local Image Node upload and upstream mirror replacement clear stale crop metadata when the new asset has none.
 - Image Node → Canvas Image fetches the asset record by `assetId` through the existing Asset API, then creates a `CanvasImageShape` beside the node with display URLs on the image shape. The action lives in the Image Node header `To Canvas` control, not in the canvas-image floating toolbar.
-- Selection capture/export is now a first-pass Konva boundary: actions take `selectedIds`, compute a single export bounds rect from selected shape/node geometry in `konvaSelectionExport.ts`, render only those ids with selection overlays hidden, and never infer capture scope from the current viewport.
+- Selection capture/export is now a first-pass Konva boundary: actions take `selectedIds`, compute a single export bounds rect from selected shape/node geometry in `konvaSelectionExport.ts`, clone the visible Konva stage into an offscreen hidden container, render only those ids with capture-excluded chrome hidden, and never infer capture scope from the current viewport. The offscreen clone rehydrates selected image/image-node previews from original asset URLs before PNG export so LOD thumbnails are display-only.
 - Copy as PNG writes a transparent PNG clipboard item where supported; Export as PNG downloads the same selectedIds render result as a file. Copy/Export as SVG uses `konvaSelectionSvgExport.ts` for a limited vector serializer. Canvas images and Image Nodes render via asset URLs, while unsupported non-image node internals are simplified without embedding raw image bytes.
-- Capture selection to Image Node uploads the selectedIds PNG through the Asset API with `origin=merge_capture` before creating the Image Node below the selection bounds. Copy/export assets use `origin=editor_export` if a future persisted-export path is added. Board documents and node props must store only asset refs/metadata, not `data:`, `blob:`, Base64 images or raw render payloads.
+- Capture selection to Image Node uploads the selectedIds PNG through the Asset API with `origin=merge_capture` before creating the Image Node below the selection bounds. Copy/export assets use `origin=editor_export` if a future persisted-export path is added. Board thumbnails use `origin=board_thumbnail`; pasted remote URLs use `origin=remote_import`; image operations use `origin=background_removal` or `origin=object_cutout`. Board documents and node props must store only asset refs/metadata, not `data:`, `blob:`, Base64 images or raw render payloads.
 - Frame visible-bounds helpers are available, but rotated/precise clipped export semantics are still follow-up work.
 
 Current Phase 4 Node/Port/Edge foundation boundary:
@@ -422,16 +422,16 @@ Konva Phase 4 current boundary:
 
 ### Image Operations
 
-Image operations are server-side first. The browser sends an existing image asset reference plus operation parameters; FastAPI downloads/reads the asset, runs the algorithm, uploads the transparent PNG result to R2 and returns a new asset reference. Canvas creates a new image shape near the source image. Board documents must never store raw image bytes, masks, `data:`, `blob:` or Base64 payloads.
+Image operations are server-side first. The browser sends an existing image asset reference plus operation parameters; FastAPI reads the source asset through the Asset storage adapter, runs the algorithm, uploads the transparent PNG result to R2/local storage and returns a new asset reference. Canvas creates a new image shape near the source image. Board documents must never store raw image bytes, masks, `data:`, `blob:` or Base64 payloads.
 
 Planned algorithms:
 
-- `rembg`: one-click background removal. Current upstream repo is MIT-licensed; use for `Remove BG`.
-- `facebookresearch/segment-anything`: point/box object cutout. Current upstream repo/model are Apache-2.0; use for `Object Cutout` after adding image-local point/box interaction.
+- `rembg`: one-click background removal. Current upstream repo is MIT-licensed; implemented as optional `services/api[image-ops]` dependency for `Remove BG`.
+- `facebookresearch/segment-anything`: point/box object cutout. Current upstream repo/model are Apache-2.0; use for `Object Cutout` after adding image-local point/box interaction. The SA-1B dataset license is separate and is not a runtime dependency.
 
 Implementation boundary:
 
-- Operation inputs: `assetId` or trusted asset URL, source image display bounds, optional point/box prompt for SAM.
+- Operation inputs: trusted `assetId`, source image display bounds on the client, optional point/box prompt for SAM. Raw remote URLs should first pass through `/assets/from-url` and become `remote_import` assets.
 - Operation outputs: new asset id/URLs/dimensions, `origin=background_removal` or `origin=object_cutout`, source asset id, algorithm id/version.
 - Canvas placement: create a new image shape at roughly `source.x + 24`, `source.y + 24`, preserve visual size/proportion where practical, select the new result.
 - History: creating the result is one canvas checkpoint; undo removes the new shape but does not delete the remote asset.

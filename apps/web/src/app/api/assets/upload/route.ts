@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import type { TangentAssetOrigin } from '@/features/assets/assetTypes'
+import { isTangentAssetOrigin, type TangentAssetOrigin } from '@/features/assets/assetTypes'
 import { getApiRequestContext } from '../../_lib/apiRequestContext'
 import { getAssetStorageAdapter } from '../_lib/assetStorageAdapter'
 
@@ -40,9 +40,5 @@ function getOptionalString(value: FormDataEntryValue | null) {
 }
 
 function getOrigin(value: FormDataEntryValue | null): TangentAssetOrigin | undefined {
-  if (typeof value !== 'string') return undefined
-  if (['ai_run', 'editor_export', 'generated', 'merge_capture', 'paste', 'screenshot', 'upload'].includes(value)) {
-    return value as TangentAssetOrigin
-  }
-  return undefined
+  return isTangentAssetOrigin(value) ? value : undefined
 }

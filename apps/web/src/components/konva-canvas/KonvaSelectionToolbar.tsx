@@ -13,12 +13,16 @@ type KonvaSelectionToolbarProps = {
   canCaptureSelection: boolean
   canConvertImageToNode: boolean
   canCropImage: boolean
+  canRemoveBackground: boolean
+  canStartObjectCutout: boolean
   isCapturingSelection?: boolean
+  isRemovingBackground?: boolean
   selectedIds: string[]
   shellRect: DOMRect | null
   onCaptureSelection: () => void
   onConvertImageToNode: () => void
   onCropImage: () => void
+  onRemoveBackground: () => void
 }
 
 export function KonvaSelectionToolbar({
@@ -26,11 +30,15 @@ export function KonvaSelectionToolbar({
   canCaptureSelection,
   canConvertImageToNode,
   canCropImage,
+  canRemoveBackground,
+  canStartObjectCutout,
   document,
   isCapturingSelection,
+  isRemovingBackground,
   onCaptureSelection,
   onConvertImageToNode,
   onCropImage,
+  onRemoveBackground,
   selectedIds,
   shellRect,
 }: KonvaSelectionToolbarProps) {
@@ -69,6 +77,29 @@ export function KonvaSelectionToolbar({
         >
           <span aria-hidden className="style-action-icon style-action-icon--crop" />
         </button>
+      ) : null}
+      {canCropImage || canRemoveBackground || canStartObjectCutout ? (
+        <>
+          <button
+            aria-label="Remove background"
+            className="selection-toolbar__btn"
+            data-tooltip={isRemovingBackground ? 'Removing background' : 'Remove background'}
+            disabled={!canRemoveBackground || isRemovingBackground}
+            onClick={onRemoveBackground}
+            type="button"
+          >
+            <span aria-hidden className="style-action-icon style-action-icon--remove-bg" />
+          </button>
+          <button
+            aria-label="Object cutout"
+            className="selection-toolbar__btn"
+            data-tooltip="Object cutout"
+            disabled
+            type="button"
+          >
+            <span aria-hidden className="style-action-icon style-action-icon--object-cutout" />
+          </button>
+        </>
       ) : null}
       <button
         aria-label="Capture selection to image node"

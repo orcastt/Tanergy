@@ -1,6 +1,7 @@
 import { Group, Rect } from 'react-konva'
 import type { CanvasFrameShape } from '@/features/canvas-engine'
 import { getStrokeDash, resolveKonvaShapeStyle } from './konvaCanvasStyle'
+import { konvaCaptureExcludeName } from './konvaSelectionExport'
 
 type KonvaFrameChromeProps = {
   frame: CanvasFrameShape
@@ -13,7 +14,7 @@ export function KonvaFrameChrome({ frame }: KonvaFrameChromeProps) {
     y: frame.y + frame.props.height / 2,
   }
   return (
-    <Group listening={false} rotation={frame.rotation ?? 0} x={center.x} y={center.y}>
+    <Group listening={false} name={konvaCaptureExcludeName} rotation={frame.rotation ?? 0} x={center.x} y={center.y}>
       <Rect
         dash={getStrokeDash(style.dash, style.strokeWidth)}
         fill="transparent"

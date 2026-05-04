@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from tangent_api.main import app
+from tangent_api.remote_image_import import RemoteImageImport
 from tests.persistence_fakes import FakePostgresDatabase, FakeS3Client
 
 
@@ -59,6 +60,54 @@ def test_asset_upload_contract(tmp_path, monkeypatch):
     assert asset["createdBy"] == "dev-user"
     assert asset["workspaceId"] == "dev-workspace"
     assert asset["originalUrl"].endswith("/original.png")
+
+
+def test_asset_from_url_contract(tmp_path, monkeypatch):
+    monkeypatch.setenv("TANGENT_ASSET_STORAGE_DIR", str(tmp_path / "assets"))
+    monkeypatch.setattr(
+        "tangent_api.routers.assets.fetch_remote_image",
+        lambda url: RemoteImageImport(
+            content=b"\x00\x00\x00",
+            file_name="remote.png",
+            height=4,
+            mime="image/png",
+            width=6,
+        ),
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/assets/from-url",
+        json={"origin": "remote_import", "title": "Remote import", "url": "https://example.com/image.png"},
+    )
+
+    assert response.status_code == 200
+    asset = response.json()["asset"]
+    assert asset["origin"] == "remote_import"
+    assert asset["title"] == "Remote import"
+    assert asset["width"] == 6
+    assert asset["height"] == 4
+
+
+def test_remove_background_contract(tmp_path, monkeypatch):
+    monkeypatch.setenv("TANGENT_ASSET_STORAGE_DIR", str(tmp_path / "assets"))
+    monkeypatch.setattr("tangent_api.image_ops._run_rembg", lambda content: content)
+    client = TestClient(app)
+
+    upload = client.post(
+        "/api/v1/assets/upload",
+        data={"height": "8", "origin": "upload", "title": "Source image", "width": "8"},
+        files={"file": ("source.png", b"\x00\x00\x00", "image/png")},
+    )
+    asset_id = upload.json()["asset"]["id"]
+
+    response = client.post("/api/v1/image-ops/remove-background", json={"assetId": asset_id})
+
+    assert response.status_code == 200
+    asset = response.json()["asset"]
+    assert asset["origin"] == "background_removal"
+    assert asset["mime"] == "image/png"
+    assert asset["id"] != asset_id
 
 
 def test_asset_s3_compatible_driver_requires_config(monkeypatch):

@@ -27,9 +27,10 @@ type KonvaNodeCardShapeProps = {
   onRunToggle?: (shapeId: string) => void
   opacity: number
   shape: CanvasNodeShape
+  zoom: number
 }
 
-export function KonvaNodeCardShape({ onFieldChange, onImageNodeToCanvas, onPortPointerDown, onRunToggle, opacity, shape }: KonvaNodeCardShapeProps) {
+export function KonvaNodeCardShape({ onFieldChange, onImageNodeToCanvas, onPortPointerDown, onRunToggle, opacity, shape, zoom }: KonvaNodeCardShapeProps) {
   const [hoveredPort, setHoveredPort] = useState<ResolvedNodePort | null>(null)
   const [openFieldName, setOpenFieldName] = useState<string | null>(null)
   const definition = getNodeDefinition(shape.props.nodeType)
@@ -75,6 +76,7 @@ export function KonvaNodeCardShape({ onFieldChange, onImageNodeToCanvas, onPortP
         openFieldName={openFieldName}
         setOpenFieldName={setOpenFieldName}
         shape={shape}
+        zoom={zoom}
       />
       {ports.map((port) => {
         const isInput = port.direction === 'in'
@@ -147,6 +149,7 @@ function NodeBody({
   openFieldName,
   setOpenFieldName,
   shape,
+  zoom,
 }: {
   accent: string
   fields: NodeCardField[]
@@ -154,11 +157,12 @@ function NodeBody({
   openFieldName: string | null
   setOpenFieldName: (fieldName: string | null) => void
   shape: CanvasNodeShape
+  zoom: number
 }) {
   if (shape.props.nodeType === 'prompt') return <PromptBody shape={shape} />
-  if (shape.props.nodeType === 'image') return <ImageBody accent={accent} shape={shape} />
+  if (shape.props.nodeType === 'image') return <ImageBody accent={accent} shape={shape} zoom={zoom} />
   if (shape.props.nodeType === 'analysis') return <AnalysisBody shape={shape} />
-  return <GenerationBody fields={fields} onFieldChange={onFieldChange} openFieldName={openFieldName} setOpenFieldName={setOpenFieldName} shape={shape} />
+  return <GenerationBody fields={fields} onFieldChange={onFieldChange} openFieldName={openFieldName} setOpenFieldName={setOpenFieldName} shape={shape} zoom={zoom} />
 }
 
 function PromptBody({ shape }: { shape: CanvasNodeShape }) {
@@ -180,12 +184,13 @@ function AnalysisBody({ shape }: { shape: CanvasNodeShape }) {
   )
 }
 
-function GenerationBody({ fields, onFieldChange, openFieldName, setOpenFieldName, shape }: {
+function GenerationBody({ fields, onFieldChange, openFieldName, setOpenFieldName, shape, zoom }: {
   fields: NodeCardField[]
   onFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
   openFieldName: string | null
   setOpenFieldName: (fieldName: string | null) => void
   shape: CanvasNodeShape
+  zoom: number
 }) {
   const imageOutputs = shape.props.nodeType === 'image_gen_4' ? 4 : 1
   const slotY = 184
@@ -196,7 +201,7 @@ function GenerationBody({ fields, onFieldChange, openFieldName, setOpenFieldName
   return (
     <>
       <NodeCardImageSlots count={imageOutputs} height={slotHeight} shape={shape} y={slotY} />
-      <GeneratedOutputPreviews count={imageOutputs} height={slotHeight} shape={shape} y={slotY} />
+      <GeneratedOutputPreviews count={imageOutputs} height={slotHeight} shape={shape} y={slotY} zoom={zoom} />
       {status === 'succeeded' ? null : (
         <>
           <Rect cornerRadius={8} fill={status === 'failed' ? '#fff1f2' : '#f8fafc'} height={28} width={shape.props.width - 28} x={14} y={shape.props.height - 44} />
@@ -208,10 +213,10 @@ function GenerationBody({ fields, onFieldChange, openFieldName, setOpenFieldName
   )
 }
 
-function ImageBody({ accent, shape }: { accent: string; shape: CanvasNodeShape }) {
+function ImageBody({ accent, shape, zoom }: { accent: string; shape: CanvasNodeShape; zoom: number }) {
   const bounds = { height: shape.props.height - 88, width: shape.props.width - 28, x: 14, y: 54 }
   const imageCrop = getNodeImageCrop(shape.props.data)
-  const imageSource = getNodeImageSource(shape.props.data)
+  const imageSource = getNodeImageSource(shape.props.data, zoom)
   return (
     <>
       <Rect cornerRadius={12} fill="#eef4fb" height={bounds.height} width={bounds.width} x={bounds.x} y={bounds.y} />
@@ -239,7 +244,7 @@ function PortTooltip({ port, shape }: { port: ResolvedNodePort; shape: CanvasNod
   )
 }
 
-function GeneratedOutputPreviews({ count, height, shape, y }: { count: number; height: number; shape: CanvasNodeShape; y: number }) {
+function GeneratedOutputPreviews({ count, height, shape, y, zoom }: { count: number; height: number; shape: CanvasNodeShape; y: number; zoom: number }) {
   const refs = getRuntimeGraphGeneratedOutputRefs(shape.props.data)
   const slotWidth = count === 4 ? (shape.props.width - 38) / 2 : shape.props.width - 28
   const slotHeight = count === 4 ? (height - 8) / 2 : height
@@ -253,7 +258,7 @@ function GeneratedOutputPreviews({ count, height, shape, y }: { count: number; h
           x: 14 + (index % 2) * (slotWidth + 10),
           y: y + Math.floor(index / 2) * (slotHeight + 8),
         }
-        return ref ? <NodeImagePreview bounds={bounds} key={index} source={getGeneratedOutputSource(ref)} /> : null
+        return ref ? <NodeImagePreview bounds={bounds} key={index} source={getGeneratedOutputSource(ref, zoom)} /> : null
       })}
     </>
   )

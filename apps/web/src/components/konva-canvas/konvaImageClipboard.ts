@@ -2,7 +2,7 @@ import {
   readImageFileAsDataUrl,
   validateImageFile,
 } from '@/features/assets/imageAssetInputs'
-import { uploadImageDataUrlAsset } from '@/features/assets/assetUploadClient'
+import { importRemoteImageAsset, uploadImageDataUrlAsset } from '@/features/assets/assetUploadClient'
 import type { CanvasImageShape, CanvasPoint } from '@/features/canvas-engine'
 
 const maxPlacedImageEdge = 420
@@ -84,13 +84,20 @@ async function createKonvaImageShapeFromUrl(url: string, center: CanvasPoint): P
     const file = dataUrlToFile(url)
     return file ? createKonvaImageShapeFromFile(file, center) : null
   }
-  const dimensions = await decodeImageDimensions(url)
+  const asset = await importRemoteImageAsset({ origin: 'remote_import', title: 'Image', url })
+  const dimensions = asset.width > 0 && asset.height > 0
+    ? { height: asset.height, width: asset.width }
+    : await decodeImageDimensions(asset.originalUrl)
   return createImageShapeFromAsset({
-    assetId: `remote-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+    assetId: asset.id,
     center,
     height: dimensions.height,
-    originalUrl: url,
-    title: 'Remote image',
+    mime: asset.mime,
+    originalUrl: asset.originalUrl,
+    thumbnail1024Url: asset.thumbnail1024Url,
+    thumbnail256Url: asset.thumbnail256Url,
+    thumbnail512Url: asset.thumbnail512Url,
+    title: asset.title,
     width: dimensions.width,
   })
 }

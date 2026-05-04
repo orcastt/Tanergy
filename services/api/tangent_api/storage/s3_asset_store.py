@@ -95,6 +95,40 @@ class S3AssetStore:
         self._write_asset_record(context, asset_id, record)
         return record
 
+    def create_asset_from_bytes(
+        self,
+        content: bytes,
+        mime: str,
+        context: ApiRequestContext,
+        origin: str,
+        title: Optional[str],
+        width: int,
+        height: int,
+    ) -> AssetRecord:
+        assert_image_mime(mime)
+        assert_asset_size(len(content))
+
+        asset_id = f"asset_{uuid4()}"
+        original_file_name = f"original.{extension_for_mime(mime)}"
+        self._put_asset_file(context, asset_id, original_file_name, content, mime)
+
+        record = AssetRecord(
+            byteSize=len(content),
+            createdAt=datetime.now(timezone.utc).isoformat(),
+            createdBy=context.user_id,
+            height=height,
+            id=asset_id,
+            mime=mime,
+            origin=origin,
+            originalUrl=file_url(asset_id, original_file_name),
+            storage="s3-compatible",
+            title=title or "Image",
+            width=width,
+            workspaceId=context.workspace_id,
+        )
+        self._write_asset_record(context, asset_id, record)
+        return record
+
     def get_asset_record(self, asset_id: str, context: ApiRequestContext) -> AssetRecord:
         assert_safe_path_segment(asset_id)
         return get_asset_metadata_adapter(self).get_record(asset_id, context)
@@ -118,6 +152,15 @@ class S3AssetStore:
             content=content,
             headers={"Cache-Control": "private, max-age=3600"},
             media_type=media_type,
+        )
+
+    def get_file_bytes(self, asset_id: str, file_name: str, context: ApiRequestContext) -> bytes:
+        assert_safe_path_segment(asset_id)
+        assert_safe_path_segment(file_name)
+        self.get_asset_record(asset_id, context)
+        return self._get_object_bytes(
+            self._asset_key(context.workspace_id, asset_id, file_name),
+            "Asset file not found.",
         )
 
     def _put_thumbnails(

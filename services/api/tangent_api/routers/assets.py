@@ -3,7 +3,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Form, UploadFile
 from fastapi.responses import Response
 from tangent_api.request_context import ApiRequestContext, get_request_context
-from tangent_api.schemas import AssetDataUrlRequest, AssetResponse
+from tangent_api.remote_image_import import fetch_remote_image
+from tangent_api.schemas import AssetDataUrlRequest, AssetFromUrlRequest, AssetResponse
 from tangent_api.storage.asset_storage_adapter import get_asset_storage_adapter
 
 router = APIRouter(prefix="/api/v1/assets", tags=["assets"])
@@ -15,6 +16,24 @@ def create_asset_from_data_url(
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AssetResponse:
     return AssetResponse(asset=get_asset_storage_adapter().create_from_data_url(payload, context))
+
+
+@router.post("/from-url", response_model=AssetResponse)
+def create_asset_from_url(
+    payload: AssetFromUrlRequest,
+    context: ApiRequestContext = Depends(get_request_context),
+) -> AssetResponse:
+    remote = fetch_remote_image(payload.url)
+    asset = get_asset_storage_adapter().create_from_bytes(
+        remote.content,
+        remote.mime,
+        context,
+        payload.origin or "remote_import",
+        payload.title or "Image",
+        remote.width,
+        remote.height,
+    )
+    return AssetResponse(asset=asset)
 
 
 @router.post("/upload", response_model=AssetResponse)

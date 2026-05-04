@@ -9,6 +9,7 @@ import { KonvaNodeEdgeLayer } from './KonvaNodeEdgeLayer'
 import { KonvaSelectionOverlay } from './KonvaSelectionOverlay'
 import { useKonvaCanvasInteractions } from './useKonvaCanvasInteractions'
 import { canKonvaShapeDragWithTool, canKonvaShapeSelectWithTool } from './konvaShapeCapabilities'
+import { konvaCaptureExcludeName } from './konvaSelectionExport'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
 
 type KonvaCanvasStageProps = {
@@ -114,7 +115,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
       width={props.width}
     >
       {props.captureMode ? null : (
-        <Layer listening={false}>
+        <Layer listening={false} name={konvaCaptureExcludeName}>
           <Rect
             fill="rgba(255,255,255,0.01)"
             height={props.height / renderCamera.zoom}
@@ -126,7 +127,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
       )}
 
       {props.captureMode ? null : (
-        <Layer>
+        <Layer name={konvaCaptureExcludeName}>
           <KonvaNodeEdgeLayer
             edges={props.document.runtimeEdges}
             onEdgeDisconnect={props.onEdgeDisconnect}
@@ -158,7 +159,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
       </Layer>
 
       {draft && !props.captureMode ? (
-        <Layer listening={false}>
+        <Layer listening={false} name={konvaCaptureExcludeName}>
           <KonvaCanvasShape
             interactive={false}
             isSelected={false}
@@ -180,7 +181,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
       ) : null}
 
       {props.captureMode ? null : (
-        <Layer>
+        <Layer name={konvaCaptureExcludeName}>
           <KonvaSelectionOverlay
             cropEditingImageId={props.cropEditingImageId}
             onImageCropStart={handleImageCropStart}
@@ -199,7 +200,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
       )}
 
       {props.captureMode ? null : (
-        <Layer listening={false}>
+        <Layer listening={false} name={konvaCaptureExcludeName}>
           <KonvaEraserTrail points={eraserTrail} zoom={renderCamera.zoom} />
         </Layer>
       )}

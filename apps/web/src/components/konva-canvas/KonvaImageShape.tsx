@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { Image as KonvaImage, Rect } from 'react-konva'
 import type { CanvasImageShape } from '@/features/canvas-engine'
 
+const loadedCanvasImageCache = new Map<string, HTMLImageElement>()
+const maxLoadedCanvasImages = 160
+
 type KonvaImageShapeProps = {
   opacity: number
   shape: CanvasImageShape
@@ -55,12 +58,18 @@ function useLoadedImage(src: string | null) {
 
   useEffect(() => {
     if (!src) return
+    const cached = loadedCanvasImageCache.get(src)
+    if (cached?.complete && cached.naturalWidth > 0) {
+      return
+    }
     let cancelled = false
     const nextImage = new window.Image()
     nextImage.decoding = 'async'
     if (src.startsWith('/') || src.startsWith(window.location.origin)) nextImage.crossOrigin = 'anonymous'
     nextImage.onload = () => {
-      if (!cancelled) setLoaded({ image: nextImage, src })
+      if (cancelled) return
+      rememberLoadedCanvasImage(src, nextImage)
+      setLoaded({ image: nextImage, src })
     }
     nextImage.onerror = () => {
       if (!cancelled) setLoaded(null)
@@ -71,14 +80,26 @@ function useLoadedImage(src: string | null) {
     }
   }, [src])
 
+  const cached = src ? loadedCanvasImageCache.get(src) : null
+  if (cached?.complete && cached.naturalWidth > 0) return cached
   return loaded?.src === src ? loaded.image : null
+}
+
+function rememberLoadedCanvasImage(src: string, image: HTMLImageElement) {
+  loadedCanvasImageCache.delete(src)
+  loadedCanvasImageCache.set(src, image)
+  while (loadedCanvasImageCache.size > maxLoadedCanvasImages) {
+    const oldest = loadedCanvasImageCache.keys().next().value
+    if (!oldest) break
+    loadedCanvasImageCache.delete(oldest)
+  }
 }
 
 function useKonvaImageSource(shape: CanvasImageShape, zoom: number) {
   return useMemo(() => {
     const props = shape.props
     if (zoom <= 0.25) {
-      return props.thumbnail256Url ?? props.thumbnail512Url ?? props.thumbnail1024Url ?? props.originalUrl ?? null
+      return props.thumbnail256Url ?? props.thumbnail512Url ?? props.thumbnail1024Url ?? null
     }
     if (zoom <= 0.5) {
       return props.thumbnail512Url ?? props.thumbnail1024Url ?? props.thumbnail256Url ?? props.originalUrl ?? null

@@ -22,7 +22,7 @@ export async function captureBoardThumbnailUrl(editor: Editor, boardTitle: strin
     dataUrl: result.url,
     fileName: `${toFileStem(boardTitle)}-thumbnail.webp`,
     height: result.height,
-    origin: 'editor_export',
+    origin: 'board_thumbnail',
     title: `${boardTitle.trim() || 'Untitled board'} thumbnail`,
     width: result.width,
   })

@@ -150,6 +150,22 @@ class AssetDataUrlRequest(TangentApiModel):
     width: int
 
 
+class AssetFromUrlRequest(TangentApiModel):
+    origin: str = "remote_import"
+    title: Optional[str] = None
+    url: str
+
+
 class AssetResponse(TangentApiModel):
     asset: Optional[AssetRecord] = None
     error: Optional[str] = None
+
+
+class ImageOpAssetRequest(TangentApiModel):
+    asset_id: str = Field(alias="assetId")
+
+
+class ImageOpResponse(TangentApiModel):
+    asset: Optional[AssetRecord] = None
+    error: Optional[str] = None
+    ok: bool

@@ -3,7 +3,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from tangent_api.routers import ai, assets, auth, boards
+from tangent_api.routers import ai, assets, auth, boards, image_ops
 
 app = FastAPI(title="TANGENT API", version="0.1.0")
 
@@ -26,6 +26,7 @@ app.include_router(ai.router)
 app.include_router(assets.router)
 app.include_router(auth.router)
 app.include_router(boards.router)
+app.include_router(image_ops.router)
 
 
 @app.get("/health")

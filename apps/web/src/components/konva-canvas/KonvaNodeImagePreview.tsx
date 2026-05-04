@@ -4,6 +4,7 @@ import type { JsonObject } from '@/types/nodeRuntime'
 import { getRuntimeGraphImageCrop, type RuntimeGraphImageAssetRef, type RuntimeGraphImageCrop } from '@/features/node-runtime/runtimeGraphAssets'
 
 const loadedNodeImageCache = new Map<string, HTMLImageElement>()
+const maxLoadedNodeImages = 160
 
 export function NodeImagePreview({
   bounds,
@@ -20,16 +21,22 @@ export function NodeImagePreview({
   return fit && image ? <KonvaImage crop={cropRect} image={image} {...fit} /> : null
 }
 
-export function getNodeImageSource(data: JsonObject) {
-  return getStringValue(data.thumbnail512Url) ?? getStringValue(data.thumbnail1024Url) ?? getStringValue(data.originalUrl) ?? null
+export function getNodeImageSource(data: JsonObject, zoom: number) {
+  if (zoom <= 0.25) return getStringValue(data.thumbnail256Url) ?? getStringValue(data.thumbnail512Url) ?? getStringValue(data.thumbnail1024Url) ?? null
+  if (zoom <= 0.5) return getStringValue(data.thumbnail512Url) ?? getStringValue(data.thumbnail1024Url) ?? getStringValue(data.thumbnail256Url) ?? getStringValue(data.originalUrl) ?? null
+  if (zoom <= 1) return getStringValue(data.thumbnail1024Url) ?? getStringValue(data.thumbnail512Url) ?? getStringValue(data.originalUrl) ?? getStringValue(data.thumbnail256Url) ?? null
+  return getStringValue(data.originalUrl) ?? getStringValue(data.thumbnail1024Url) ?? getStringValue(data.thumbnail512Url) ?? getStringValue(data.thumbnail256Url) ?? null
 }
 
 export function getNodeImageCrop(data: JsonObject) {
   return getRuntimeGraphImageCrop(data.crop)
 }
 
-export function getGeneratedOutputSource(ref: RuntimeGraphImageAssetRef) {
-  return ref.thumbnail256Url ?? ref.thumbnail512Url ?? ref.thumbnail1024Url ?? ref.originalUrl ?? null
+export function getGeneratedOutputSource(ref: RuntimeGraphImageAssetRef, zoom: number) {
+  if (zoom <= 0.25) return ref.thumbnail256Url ?? ref.thumbnail512Url ?? ref.thumbnail1024Url ?? null
+  if (zoom <= 0.5) return ref.thumbnail512Url ?? ref.thumbnail256Url ?? ref.thumbnail1024Url ?? ref.originalUrl ?? null
+  if (zoom <= 1) return ref.thumbnail1024Url ?? ref.thumbnail512Url ?? ref.thumbnail256Url ?? ref.originalUrl ?? null
+  return ref.originalUrl ?? ref.thumbnail1024Url ?? ref.thumbnail512Url ?? ref.thumbnail256Url ?? null
 }
 
 function useLoadedNodeImage(src: string | null) {
@@ -45,7 +52,7 @@ function useLoadedNodeImage(src: string | null) {
     if (src.startsWith('/') || src.startsWith(window.location.origin)) nextImage.crossOrigin = 'anonymous'
     nextImage.onload = () => {
       if (cancelled) return
-      loadedNodeImageCache.set(src, nextImage)
+      rememberLoadedNodeImage(src, nextImage)
       setLoadedImage({ image: nextImage, src })
     }
     nextImage.onerror = () => { if (!cancelled) setLoadedImage(null) }
@@ -55,6 +62,16 @@ function useLoadedNodeImage(src: string | null) {
   const cached = src ? loadedNodeImageCache.get(src) : null
   if (cached?.complete && cached.naturalWidth > 0) return cached
   return loadedImage?.src === src ? loadedImage.image : null
+}
+
+function rememberLoadedNodeImage(src: string, image: HTMLImageElement) {
+  loadedNodeImageCache.delete(src)
+  loadedNodeImageCache.set(src, image)
+  while (loadedNodeImageCache.size > maxLoadedNodeImages) {
+    const oldest = loadedNodeImageCache.keys().next().value
+    if (!oldest) break
+    loadedNodeImageCache.delete(oldest)
+  }
 }
 
 function getStringValue(value: unknown) {

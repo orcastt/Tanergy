@@ -32,24 +32,13 @@ export function useKonvaSelectionExportActions({
   selectedIds,
 }: UseKonvaSelectionExportActionsOptions) {
   const stageRef = useRef<Konva.Stage | null>(null)
-  const [captureMode, setCaptureMode] = useState(false)
   const [isCapturingSelection, setIsCapturingSelection] = useState(false)
-
-  const runWithCaptureMode = useCallback(async <T,>(task: () => Promise<T>) => {
-    setCaptureMode(true)
-    await waitForCapturePaint()
-    try {
-      return await task()
-    } finally {
-      setCaptureMode(false)
-    }
-  }, [])
 
   const captureSelectionPng = useCallback(async () => {
     const stage = stageRef.current
     if (!stage) throw new Error('Canvas stage is not ready.')
-    return runWithCaptureMode(() => captureKonvaSelectionPng({ document, selectedIds, stage }))
-  }, [document, runWithCaptureMode, selectedIds])
+    return captureKonvaSelectionPng({ document, selectedIds, stage })
+  }, [document, selectedIds])
 
   const handleCaptureSelectionToImageNode = useCallback(async () => {
     if (selectedIds.length === 0 || isCapturingSelection) return
@@ -124,7 +113,7 @@ export function useKonvaSelectionExportActions({
 
   return {
     canCaptureSelection: selectedIds.length > 0,
-    captureMode,
+    captureMode: false,
     handleCaptureSelectionToImageNode,
     handleCopySelectionPng,
     handleCopySelectionSvg,
@@ -133,11 +122,6 @@ export function useKonvaSelectionExportActions({
     handleStageReady,
     isCapturingSelection,
   }
-}
-
-async function waitForCapturePaint() {
-  await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()))
-  await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()))
 }
 
 function getSelectionExportFileName(document: CanvasDocument, extension: 'png' | 'svg') {
