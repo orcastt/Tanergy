@@ -1,6 +1,9 @@
+import { auditKonvaBoardDocumentSchema } from './boardKonvaDocumentGuard'
+
 export type BoardDocumentGuardIssueCode =
   | 'document-not-json'
   | 'document-too-large'
+  | 'konva-v2-invalid'
   | 'large-base64-string'
   | 'runtime-url'
 
@@ -48,6 +51,7 @@ export function auditBoardDocument(
   }
 
   walkDocument(document, [], issues, resolvedOptions)
+  issues.push(...auditKonvaBoardDocumentSchema(document))
 
   return {
     byteSize,

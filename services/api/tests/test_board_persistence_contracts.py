@@ -335,14 +335,14 @@ def test_board_metrics_support_konva_v2_document(tmp_path, monkeypatch):
     monkeypatch.setenv("TANGENT_BOARD_STORAGE_DIR", str(tmp_path / "boards"))
     client = TestClient(app)
     document = {
-        "assets": [{"id": "asset_1"}, {"id": "asset_2"}],
+        "assets": [{"id": "asset_1", "type": "image"}, {"id": "asset_2", "type": "image"}],
         "canvasDocument": {
             "camera": {"x": 0, "y": 0, "zoom": 1},
             "id": "canvas-document-test",
             "metadata": {"createdAt": "2026-05-04T00:00:00Z", "updatedAt": "2026-05-04T00:00:00Z"},
             "runtimeEdges": [],
             "schemaVersion": 1,
-            "shapes": [{"id": "shape_1", "props": {}, "type": "rect", "x": 0, "y": 0}],
+            "shapes": [{"id": "shape_1", "props": {"height": 80, "width": 120}, "type": "rect", "x": 0, "y": 0}],
         },
         "renderer": "konva",
         "serializedAt": "2026-05-04T00:00:00Z",
@@ -368,3 +368,46 @@ def test_board_metrics_support_konva_v2_document(tmp_path, monkeypatch):
     snapshot = snapshot_response.json()["snapshot"]
     assert snapshot["assetCount"] == 2
     assert snapshot["shapeCount"] == 1
+
+
+def test_board_guard_rejects_invalid_konva_v2_document(tmp_path, monkeypatch):
+    monkeypatch.setenv("TANGENT_BOARD_STORAGE_DIR", str(tmp_path / "boards"))
+    client = TestClient(app)
+    invalid_document = {
+        "assets": [{"id": "asset_1", "type": "image"}],
+        "canvasDocument": {
+            "camera": {"x": 0, "y": 0, "zoom": 1},
+            "id": "canvas-document-invalid",
+            "metadata": {"createdAt": "2026-05-05T00:00:00Z", "updatedAt": "2026-05-05T00:00:00Z"},
+            "runtimeEdges": [
+                {
+                    "dataType": "image",
+                    "id": "edge_1",
+                    "sourcePortId": "image_out",
+                    "sourceShapeId": "missing_source",
+                    "targetPortId": "image_in_1",
+                    "targetShapeId": "shape_1",
+                }
+            ],
+            "schemaVersion": 1,
+            "shapes": [{"id": "shape_1", "props": {"height": 0, "width": 120}, "type": "rect", "x": 0, "y": 0}],
+        },
+        "renderer": "konva",
+        "serializedAt": "2026-05-05T00:00:00Z",
+        "version": 2,
+    }
+
+    validate_response = client.post("/api/v1/boards/validate-document", json={"document": invalid_document})
+
+    assert validate_response.status_code == 422
+    issues = validate_response.json()["audit"]["issues"]
+    assert any(issue["code"] == "konva-v2-invalid" and issue["path"].endswith(".height") for issue in issues)
+    assert any(issue["code"] == "konva-v2-invalid" and issue["path"].endswith(".sourceShapeId") for issue in issues)
+
+    save_response = client.post(
+        "/api/v1/boards",
+        json={"boardId": "api-invalid-konva-board", "document": invalid_document, "title": "Invalid Konva"},
+    )
+
+    assert save_response.status_code == 422
+    assert save_response.json()["audit"]["ok"] is False

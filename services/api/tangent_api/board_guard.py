@@ -2,6 +2,7 @@ import json
 import re
 from typing import Any
 
+from tangent_api.board_konva_guard import audit_konva_board_document_schema
 from tangent_api.schemas import BoardDocumentGuardIssue, BoardDocumentGuardResult
 
 DEFAULT_MAX_BASE64_STRING_LENGTH = 2_048
@@ -29,6 +30,7 @@ def audit_board_document(document: Any) -> BoardDocumentGuardResult:
         )
 
     _walk_document(document, [], issues)
+    issues.extend(audit_konva_board_document_schema(document))
     return BoardDocumentGuardResult(byteSize=byte_size, issues=issues, ok=_is_ok(issues))
 
 

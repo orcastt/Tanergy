@@ -91,8 +91,9 @@ keep Board/API/storage contracts stable
 - 2026-05-04 Phase 4A polish checkpoint: user accepted the 57% capture sharpness and small-node content containment pass. Checkpoint file scope is limited to S1X docs plus Konva canvas selection/image-node/export/action files.
 - 2026-05-04 Phase 5A Konva persistence first pass: `/spikes/konva-canvas` now runs in board mode with `KonvaBoardSaveAudit`, serializes a v2 `{ renderer: 'konva', version: 2, canvasDocument }` envelope, saves/loads through the existing Board API, creates board thumbnails from an offscreen Konva capture, and reuses Board autosave, Cmd/Ctrl+S, Snapshot/History and before-unload guards. Backend/frontend metrics now count `canvasDocument.shapes` for Konva v2 docs.
 - 2026-05-05 Board History clean + resize correction: shared Board History now has a confirmed Clean action that deletes all snapshots for the current board through both local Next and FastAPI Board APIs. Shift proportional resize now flushes resize previews immediately and keeps post-snap bounds on one aspect-ratio scale so width/height do not appear to step independently.
+- 2026-05-05 Phase 5A schema guard first pass: frontend and FastAPI Board guards now recognize Konva v2 `{ renderer: 'konva', version: 2 }` envelopes and validate required canvas document shape, camera, metadata, asset refs, shape ids/types/props and runtime edge references before save/snapshot. Invalid v2 docs now fail `validate-document` and Board save with `konva-v2-invalid` issues instead of passing the generic JSON guard.
 
-Next development focus: hand-test Phase 5A Save/Load/Autosave/Snapshot/History/Clean on `/spikes/konva-canvas`, then tighten schema-aware Konva Board guard and decide whether to start `/boards/[boardId]` dual-engine integration.
+Next development focus: hand-test Phase 5A Save/Load/Autosave/Snapshot/History/Clean on `/spikes/konva-canvas`, then prepare `/boards/[boardId]` dual-engine integration.
 
 ## tldraw Behavior Inventory
 
@@ -369,7 +370,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 
 | 状态 | 序号 | 功能/交互 | 当前 tldraw 参考 | Konva/Yjs 复刻要求 | 参考文件 | 验收方式 |
 | --- | --- | --- | --- | --- | --- | --- |
-| ◐ | 5.1 | document guard | 禁止 data/blob/base64/长日志 | Konva v2 保存 envelope 已走现有 Board guard；generic guard 继续阻止 `data:`/`blob:`/large Base64；backend/frontend metrics 已识别 `canvasDocument.shapes`。更严格的 schema-aware key policy 仍是 follow-up | `konvaBoardDocument.ts`, `boardDocumentGuard.ts`, `board_metadata.py`, `boardTypes.ts` | data/blob/base64 被拦；Konva v2 summary shape/asset count 正确 |
+| ✅ | 5.1 | document guard | 禁止 data/blob/base64/长日志 | Konva v2 保存 envelope 已走现有 Board guard；generic guard 继续阻止 `data:`/`blob:`/large Base64；frontend/FastAPI schema guard 验证 v2 envelope、camera、metadata、asset refs、shape ids/types/props 和 runtime edge shape refs；backend/frontend metrics 已识别 `canvasDocument.shapes` | `konvaBoardDocument.ts`, `boardDocumentGuard.ts`, `boardKonvaDocumentGuard.ts`, `board_konva_guard.py`, `board_metadata.py`, `boardTypes.ts` | data/blob/base64 被拦；非法 Konva v2 doc 被 `konva-v2-invalid` 拦；shape/asset count 正确 |
 | ◐ | 5.2 | save now | 保存 Board document + thumbnail | `/spikes/konva-canvas` 已接 `KonvaBoardSaveAudit`；Save Now 序列化 `CanvasDocument` + settings + asset refs，走现有 Board API，并可手动 Load 恢复 | `KonvaBoardSaveAudit.tsx`, `konvaBoardDocument.ts`, `localBoardClient.ts` | Save now 后点击 Load/刷新再加载可恢复 shapes/nodes/runtimeEdges/camera |
 | ◐ | 5.3 | autosave | dirty 后延迟保存 | Konva document/camera signature 变化会进入 dirty 并复用 `useBoardAutosaveTimer`；settings dirty tracking 已复用 | `KonvaBoardSaveAudit.tsx`, `useBoardSaveLifecycle.ts` | 修改后状态变 dirty，并自动创建 autosave/history |
 | ◐ | 5.4 | Cmd/Ctrl+S | keyboard save reason | Konva board mode 复用 `useBoardKeyboardSaveShortcut`，写 `keyboard` reason；文本编辑目标仍会跳过全局保存快捷键 | `KonvaBoardSaveAudit.tsx`, `useBoardKeyboardSaveShortcut` | Cmd/Ctrl+S 保存；编辑 textarea 中不误触 |
