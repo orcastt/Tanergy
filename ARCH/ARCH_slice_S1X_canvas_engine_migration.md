@@ -118,13 +118,17 @@ Current Phase 4A image/node boundary:
 Current Phase 4 Node/Port/Edge foundation boundary:
 
 - `node_card` is the renderer-neutral canvas node carrier. Konva can render a lightweight card in the canvas layer, while heavier React/HTML controls should only mount for selected, editing or running nodes.
+- Node creation and display must stay registry-driven. `node-runtime/registry.ts` owns display name, palette label/order, default card size, accent color, default data, fields, output summary and port definitions. Future text optimizer, multi-text merge, perspective image generation or other AI nodes should not require changes in `KonvaCanvasStage`, `KonvaNodeEdgeLayer` or generic port rendering.
+- `node_card` is not a normal drawing shape for transform purposes. Selection overlay, rotate sessions, group rotation utilities, render transforms, port coordinate math, Properties actions and context-menu commands must ignore node-card rotation/flip. Node cards may move/select/connect/edit, but they should not expose rotate or flip affordances.
 - Ports are UI affordances derived from node registry metadata. Their screen/world anchors and hit targets must be stable under pan/zoom, but a visible port dot by itself is not a runtime connection.
 - `CanvasDocument.runtimeEdges` is the local first-pass runtime edge store. A runtime edge references source node/port and target node/port ids plus `dataType`; it is not serialized as a visual `arrow` or `line`.
-- `KonvaNodeEdgeLayer` renders runtime edges from `runtimeEdges` and node port world coordinates. It is a visual projection of runtime data, not the source of truth.
-- `useKonvaNodeConnectionSession` owns output-port drag, preview curve and compatible input-port commit. It uses registry-derived ports and zoom-aware hit radius from `konvaNodePorts.ts`.
+- `KonvaNodeEdgeLayer` renders runtime edges from `runtimeEdges` and node port world coordinates. It is a visual projection of runtime data, not the source of truth. It must render below node cards so existing edge curves never cover a source output port hit target; this preserves output fan-out after the first connection.
+- `useKonvaNodeConnectionSession` owns output-port drag, preview curve and compatible input-port commit. It uses registry-derived ports and zoom-aware hit radius from `konvaNodePorts.ts`; while dragging, a compatible input within range becomes the preview target so the endpoint snaps to the port center and `KonvaNodeEdgeLayer` can render a stronger snap affordance.
+- Prompt/Analysis card text is a targeted hybrid path: the lightweight Konva card draws the card shell and the non-editing long-text preview inside the node's own Konva group with clip + local scroll offset + self-drawn scrollbar. This keeps text preview relative to the node and preserves canvas z-order; it must not be a global DOM overlay above later shapes/lines. Double-clicking mounts the same-bounds HTML textarea editor (`KonvaNodeTextEditor`) and commits back into node `props.data`.
+- Node/image cards separate body pass-through from port interactivity: drawing tools can start markup over the card body, while port hit targets still receive pointer events and may start runtime edge drags.
 - Visual arrows/lines stay normal canvas geometry unless an explicit binding/edge contract creates a runtime edge. This keeps annotation arrows separate from AI dataflow edges.
-- Deleting a node now cleans connected runtime edges in the same local command/history transaction. Direct edge hit/select/delete remains a follow-up.
-- `resolveNodeInputs` remains the AI run input source of truth. Konva should provide an engine query adapter for node data, asset refs and runtime edges rather than duplicating input resolution logic in the renderer.
+- Deleting a node now cleans connected runtime edges in the same local command/history transaction. Direct edge hit/select has a first-pass near-input disconnect control; keyboard Delete/Cut for selected runtime edges remains a follow-up.
+- `resolveNodeInputs` remains the AI run input source of truth. Konva should provide an engine query adapter for node data, asset refs and runtime edges rather than duplicating input resolution logic in the renderer. The current Konva Run/Stop is only a local `runtimeSummary.status` toggle; generated assets and downstream propagation are still future adapter work.
 - Board documents, node props and runtime edge payloads must not persist `data:`, `blob:`, Base64 images, provider raw responses, complete logs or long generated text. Store Asset ids/URLs, compact runtime summaries and references to AiRun records instead.
 
 It does not replace `/boards/[boardId]` and does not remove any tldraw reference code.
@@ -392,6 +396,38 @@ Preserve current node/product logic:
 - Image nodes reference Asset ids/URLs, never Base64 payloads in Board documents.
 - AI run UI still writes summary status: idle/running/succeeded/failed, cost hint, result asset ids and optional text output.
 
+Konva Phase 4 current boundary:
+
+- Node creation is registry-driven through `features/node-runtime/registry.ts`; the canvas toolbar, blank-canvas double-click menu, default card size, accent color, field metadata, port metadata and AI-facing registry entries should derive from `nodeDefinitions`.
+- Node runtime affordances should read node definition capabilities. `runnable` is registry-owned; card Run/Stop UI and run commands must not duplicate node-type lists.
+- Blank-canvas double-click is handled at the DOM canvas wrapper level with a world-space blank hit check. This avoids depending on Konva Stage blank-target double-click delivery while preserving shape/node double-click edit handlers.
+- Future nodes such as text optimization, multi-text merge and perspective image generation should add a node definition plus runtime resolver/AiRun adapter. Canvas core should not add one-off toolbar/stage/edge special cases per node.
+- Runtime edges are dataflow edges in `CanvasDocument.runtimeEdges`, separate from visual arrows and lines. Output ports may fan out to multiple downstream inputs; each input port accepts one upstream edge and reconnecting it replaces the previous edge.
+- Image Gen/Image Gen 4 support dynamic image input ports by storing `imageInputCount` on node data. The renderer keeps one spare image input after the current connected inputs, capped by the registry limit.
+- Image Node upload/mirroring stores only asset refs/URLs/dimensions/title. Local file upload uses the Asset API; upstream Image Node mirroring marks derived data with `inputSourceEdgeId` so disconnect can clear inherited preview data without deleting a local upload.
+- Image/node canvas shapes are body-transparent while drawing tools are active, so users can draw markup and place shapes over images/nodes. Node port drag remains active through dedicated port hit targets; shape selection/drag/editing still requires Select mode except for the targeted Prompt/Analysis textarea overlay once opened.
+- Prompt/Analysis long text must stay inside the node field bounds in both preview and edit states. Preview scrolling is node-local Konva state; edit scrolling is DOM textarea state. Neither path may break normal canvas z-order.
+- Run/Stop on Analysis/Image Gen/Image Gen 4 is currently a renderer-local status toggle on `runtimeSummary.status`; the later AiRun adapter must replace that toggle with server-side run lifecycle and upstream input resolution.
+- Shape transform affordances should read `features/canvas-engine/shapeCapabilities.ts` and the Konva wrapper `konvaShapeCapabilities.ts`; `node_card` rotate/flip exclusions must not be reimplemented per component.
+- Tool hit policy is explicit for continuous line tools: Arrow, Line and Draw do not select or drag existing shapes while active. Object selection and Properties edits require Select/V; this avoids accidental selection while repeatedly drawing lines/strokes.
+- Cleanup warning from the Phase 4 audit: edge add/remove helpers should not keep growing into a renderer-local dataflow engine. The next boundary should split a renderer-neutral runtimeGraph/input adapter from Konva edge visuals before connecting real `resolveNodeInputs`, mock generated assets and AiRun.
+
+### Image Operations
+
+Image operations are server-side first. The browser sends an existing image asset reference plus operation parameters; FastAPI downloads/reads the asset, runs the algorithm, uploads the transparent PNG result to R2 and returns a new asset reference. Canvas creates a new image shape near the source image. Board documents must never store raw image bytes, masks, `data:`, `blob:` or Base64 payloads.
+
+Planned algorithms:
+
+- `rembg`: one-click background removal. Current upstream repo is MIT-licensed; use for `Remove BG`.
+- `facebookresearch/segment-anything`: point/box object cutout. Current upstream repo/model are Apache-2.0; use for `Object Cutout` after adding image-local point/box interaction.
+
+Implementation boundary:
+
+- Operation inputs: `assetId` or trusted asset URL, source image display bounds, optional point/box prompt for SAM.
+- Operation outputs: new asset id/URLs/dimensions, `origin=background_removal` or `origin=object_cutout`, source asset id, algorithm id/version.
+- Canvas placement: create a new image shape at roughly `source.x + 24`, `source.y + 24`, preserve visual size/proportion where practical, select the new result.
+- History: creating the result is one canvas checkpoint; undo removes the new shape but does not delete the remote asset.
+
 ### Board Document and Persistence
 
 The current serializer already separates product facts from tldraw enough to migrate incrementally.
@@ -452,7 +488,7 @@ apps/web/src/components/konva-canvas
   konvaImageClipboard.ts   clipboard image import through Asset API, no data URL persistence
   KonvaImageShape.tsx      image renderer with thumbnail/original zoom LOD
   KonvaNodeCardShape.tsx   lightweight node-card shell, registry-derived ports
-  KonvaNodeEdgeOverlay.tsx runtime edge visuals/hit targets, separate from annotation arrows
+  KonvaNodeEdgeLayer.tsx runtime edge visuals/hit targets, separate from annotation arrows
   KonvaContextMenu.tsx     hover submenu shell; unsupported schema/export commands stay disabled
 
 apps/web/src/features/collaboration

@@ -8,8 +8,11 @@ import type { KonvaRuntimeConnectionPreview, KonvaRuntimeEdge } from './konvaRun
 type KonvaNodeEdgeLayerProps = {
   edges: KonvaRuntimeEdge[]
   preview?: KonvaRuntimeConnectionPreview | null
+  selectedEdgeId?: string | null
   shapes: CanvasNodeShape[]
   zoom: number
+  onEdgeDisconnect?: (edgeId: string) => void
+  onEdgeSelect?: (edgeId: string) => void
 }
 
 type EdgeView = {
@@ -24,7 +27,10 @@ type BezierControls = [CanvasPoint, CanvasPoint, CanvasPoint, CanvasPoint]
 
 export const KonvaNodeEdgeLayer = memo(function KonvaNodeEdgeLayer({
   edges,
+  onEdgeDisconnect,
+  onEdgeSelect,
   preview,
+  selectedEdgeId,
   shapes,
   zoom,
 }: KonvaNodeEdgeLayerProps) {
@@ -35,9 +41,10 @@ export const KonvaNodeEdgeLayer = memo(function KonvaNodeEdgeLayer({
   const strokeWidth = Math.max(2, 2.5 / getSafeZoom(zoom))
   const hitStrokeWidth = Math.max(14, 18 / getSafeZoom(zoom))
   const endpointRadius = Math.max(3, 4 / getSafeZoom(zoom))
+  const previewSnapped = Boolean(preview?.target)
 
   return (
-    <Group listening={false}>
+    <Group>
       {edgeViews.map((view) => (
         <Path
           data={view.path}
@@ -45,11 +52,18 @@ export const KonvaNodeEdgeLayer = memo(function KonvaNodeEdgeLayer({
           key={view.edgeId}
           lineCap="round"
           lineJoin="round"
+          onClick={(event) => {
+            event.cancelBubble = true
+            onEdgeSelect?.(view.edgeId)
+          }}
+          onPointerDown={(event) => {
+            event.cancelBubble = true
+          }}
           shadowBlur={2 / getSafeZoom(zoom)}
           shadowColor="rgba(15, 23, 42, 0.16)"
           shadowOpacity={0.55}
           stroke={view.color}
-          strokeWidth={strokeWidth}
+          strokeWidth={view.edgeId === selectedEdgeId ? strokeWidth * 1.7 : strokeWidth}
         />
       ))}
       {edgeViews.map((view) => (
@@ -63,16 +77,45 @@ export const KonvaNodeEdgeLayer = memo(function KonvaNodeEdgeLayer({
           y={view.target.y}
         />
       ))}
+      {edgeViews.map((view) => {
+        if (view.edgeId !== selectedEdgeId) return null
+        const actionPoint = getDisconnectPoint(view.start, view.target)
+        const size = Math.max(16, 18 / getSafeZoom(zoom))
+        return (
+          <Group key={`${view.edgeId}:disconnect`}>
+            <Circle
+              fill="#111827"
+              onClick={(event) => {
+                event.cancelBubble = true
+                onEdgeDisconnect?.(view.edgeId)
+              }}
+              onPointerDown={(event) => {
+                event.cancelBubble = true
+              }}
+              radius={size / 2}
+              x={actionPoint.x}
+              y={actionPoint.y}
+            />
+            <Path
+              data={`M ${format(actionPoint.x - size * 0.22)} ${format(actionPoint.y)} L ${format(actionPoint.x + size * 0.22)} ${format(actionPoint.y)}`}
+              lineCap="round"
+              listening={false}
+              stroke="#ffffff"
+              strokeWidth={Math.max(2, 2 / getSafeZoom(zoom))}
+            />
+          </Group>
+        )
+      })}
       {previewView ? (
         <>
           <Path
-            dash={[8 / getSafeZoom(zoom), 7 / getSafeZoom(zoom)]}
+            dash={previewSnapped ? undefined : [8 / getSafeZoom(zoom), 7 / getSafeZoom(zoom)]}
             data={previewView.path}
             lineCap="round"
             lineJoin="round"
-            opacity={0.72}
+            opacity={previewSnapped ? 0.95 : 0.72}
             stroke={previewView.color}
-            strokeWidth={strokeWidth}
+            strokeWidth={previewSnapped ? strokeWidth * 1.3 : strokeWidth}
           />
           <Circle
             fill={previewView.color}
@@ -81,6 +124,25 @@ export const KonvaNodeEdgeLayer = memo(function KonvaNodeEdgeLayer({
             x={previewView.start.x}
             y={previewView.start.y}
           />
+          {previewSnapped ? (
+            <>
+              <Circle
+                fill={previewView.color}
+                opacity={0.12}
+                radius={Math.max(16, 18 / getSafeZoom(zoom))}
+                x={previewView.target.x}
+                y={previewView.target.y}
+              />
+              <Circle
+                fill="#ffffff"
+                radius={Math.max(7, 8 / getSafeZoom(zoom))}
+                stroke={previewView.color}
+                strokeWidth={Math.max(2, 2.5 / getSafeZoom(zoom))}
+                x={previewView.target.x}
+                y={previewView.target.y}
+              />
+            </>
+          ) : null}
         </>
       ) : null}
     </Group>
@@ -145,6 +207,13 @@ function getKonvaRuntimeEdgeControls(start: CanvasPoint, target: CanvasPoint): B
     { x: target.x - offset, y: target.y },
     target,
   ]
+}
+
+function getDisconnectPoint(start: CanvasPoint, target: CanvasPoint): CanvasPoint {
+  return {
+    x: target.x * 0.78 + start.x * 0.22,
+    y: target.y * 0.78 + start.y * 0.22,
+  }
 }
 
 function getBezierPath([start, first, second, target]: BezierControls) {

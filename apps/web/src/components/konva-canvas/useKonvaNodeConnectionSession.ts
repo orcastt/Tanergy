@@ -58,21 +58,23 @@ export function useKonvaNodeConnectionSession({
   }, [cameraRef, documentRef, stageRef])
 
   const updateNodeConnectionPreview = useCallback((session: NodeConnectionSession, worldPoint: CanvasPoint) => {
+    const target = getCompatibleTarget(documentRef.current.shapes, session, worldPoint, cameraRef.current.zoom)
     setRuntimeConnectionPreview({
       dataType: session.dataType,
-      pointer: worldPoint,
+      pointer: target?.world ?? worldPoint,
       source: { portId: session.sourcePortId, shapeId: session.sourceShapeId },
+      target: target ? {
+        point: target.world,
+        portId: target.id,
+        shapeId: target.shapeId,
+      } : undefined,
     })
-  }, [])
+  }, [cameraRef, documentRef])
 
   const finishNodeConnection = useCallback((session: NodeConnectionSession, worldPoint: CanvasPoint | null) => {
     setRuntimeConnectionPreview(null)
     if (!worldPoint) return
-    const target = hitTestKonvaNodePort(getNodeShapes(documentRef.current.shapes), worldPoint, cameraRef.current.zoom, {
-      dataType: session.dataType,
-      direction: 'in',
-      excludeShapeId: session.sourceShapeId,
-    })
+    const target = getCompatibleTarget(documentRef.current.shapes, session, worldPoint, cameraRef.current.zoom)
     if (!target) return
     onHistoryCheckpoint(documentRef.current)
     const nextDocument = addKonvaRuntimeEdge(documentRef.current, {
@@ -104,4 +106,17 @@ function getNodeShape(shapes: CanvasDocument['shapes'], shapeId: string): Canvas
 
 function getNodeShapes(shapes: CanvasDocument['shapes']): CanvasNodeShape[] {
   return shapes.filter((shape): shape is CanvasNodeShape => shape.type === 'node_card')
+}
+
+function getCompatibleTarget(
+  shapes: CanvasDocument['shapes'],
+  session: NodeConnectionSession,
+  worldPoint: CanvasPoint,
+  zoom: number
+) {
+  return hitTestKonvaNodePort(getNodeShapes(shapes), worldPoint, zoom, {
+    dataType: session.dataType,
+    direction: 'in',
+    excludeShapeId: session.sourceShapeId,
+  })
 }

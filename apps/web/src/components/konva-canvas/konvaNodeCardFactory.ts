@@ -3,6 +3,7 @@ import type { JsonObject, NodeType } from '@/types/nodeRuntime'
 import {
   createDefaultNodeData,
   createDefaultRuntimeSummary,
+  getDefaultNodeCardSize,
   getNodeDefinition,
 } from '@/features/node-runtime/registry'
 
@@ -18,8 +19,7 @@ type NodeJsonValue = JsonObject[string]
 export function createKonvaNodeCardShape(input: CreateKonvaNodeCardInput): CanvasNodeShape {
   const definition = getNodeDefinition(input.type)
   const id = createKonvaNodeCardId(input.type, input.idHint)
-  const width = getDefaultNodeWidth(input.type)
-  const height = getDefaultNodeHeight(input.type)
+  const { height, width } = getDefaultNodeCardSize(input.type)
 
   return {
     id,
@@ -88,19 +88,4 @@ function isSafeNodeDataEntry(key: string, value: unknown) {
     return false
   }
   return value !== undefined
-}
-
-function getDefaultNodeWidth(type: NodeType) {
-  if (type === 'image') return 420
-  if (type === 'image_gen' || type === 'image_gen_4') return 330
-  if (type === 'analysis') return 330
-  return 300
-}
-
-function getDefaultNodeHeight(type: NodeType) {
-  if (type === 'image') return 240
-  if (type === 'image_gen_4') return 350
-  if (type === 'image_gen') return 320
-  if (type === 'analysis') return 340
-  return 220
 }

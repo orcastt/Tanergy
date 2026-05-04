@@ -25,7 +25,7 @@ type HitTestOptions = {
   maxScreenDistance?: number
 }
 
-const defaultMaxScreenDistance = 28
+const defaultMaxScreenDistance = 44
 
 export function getKonvaNodePorts(shape: CanvasNodeShape): KonvaNodePortAnchor[] {
   const data = asJsonObject(shape.props.data)
@@ -91,24 +91,9 @@ export function getKonvaNodePortHitWorldRadius(zoom: number, maxScreenDistance =
 }
 
 export function localNodePointToWorld(shape: CanvasNodeShape, point: CanvasPoint): CanvasPoint {
-  const center = {
-    x: shape.x + shape.props.width / 2,
-    y: shape.y + shape.props.height / 2,
-  }
-  const localFromCenter = {
-    x: point.x - shape.props.width / 2,
-    y: point.y - shape.props.height / 2,
-  }
-  const flipped = {
-    x: (shape.flipX ? -localFromCenter.x : localFromCenter.x),
-    y: (shape.flipY ? -localFromCenter.y : localFromCenter.y),
-  }
-  const radians = ((shape.rotation ?? 0) * Math.PI) / 180
-  const cos = Math.cos(radians)
-  const sin = Math.sin(radians)
   return {
-    x: center.x + flipped.x * cos - flipped.y * sin,
-    y: center.y + flipped.x * sin + flipped.y * cos,
+    x: shape.x + point.x,
+    y: shape.y + point.y,
   }
 }
 

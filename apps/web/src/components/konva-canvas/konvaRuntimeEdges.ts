@@ -1,7 +1,7 @@
-import type { CanvasDocument, CanvasRuntimeEdge } from '@/features/canvas-engine'
+import type { CanvasDocument, CanvasPoint, CanvasRuntimeEdge } from '@/features/canvas-engine'
 import { withCanvasRuntimeEdges, withCanvasShapes } from '@/features/canvas-engine'
 import { maxImageInputPorts } from '@/features/node-runtime/registry'
-import type { NodePortDataType } from '@/types/nodeRuntime'
+import type { JsonObject, NodePortDataType } from '@/types/nodeRuntime'
 
 export type KonvaRuntimeEdge = CanvasRuntimeEdge
 
@@ -14,6 +14,9 @@ export type KonvaRuntimeConnectionPreview = {
   dataType: NodePortDataType
   pointer: { x: number; y: number }
   source: KonvaRuntimeConnectionEndpoint
+  target?: KonvaRuntimeConnectionEndpoint & {
+    point: CanvasPoint
+  }
 }
 
 export function addKonvaRuntimeEdge(
@@ -28,14 +31,18 @@ export function addKonvaRuntimeEdge(
     )),
     runtimeEdge,
   ]
-  return syncKonvaImageInputCounts(withCanvasRuntimeEdges(document, runtimeEdges))
+  return syncKonvaNodeInputs(syncKonvaImageInputCounts(withCanvasRuntimeEdges(document, runtimeEdges)))
 }
 
 export function removeKonvaRuntimeEdgesForShapes(document: CanvasDocument, shapeIds: string[]) {
   const selected = new Set(shapeIds)
-  return withCanvasRuntimeEdges(document, document.runtimeEdges.filter((edge) => (
+  return syncKonvaNodeInputs(syncKonvaImageInputCounts(withCanvasRuntimeEdges(document, document.runtimeEdges.filter((edge) => (
     !selected.has(edge.sourceShapeId) && !selected.has(edge.targetShapeId)
-  )))
+  )))))
+}
+
+export function removeKonvaRuntimeEdge(document: CanvasDocument, edgeId: string) {
+  return syncKonvaNodeInputs(syncKonvaImageInputCounts(withCanvasRuntimeEdges(document, document.runtimeEdges.filter((edge) => edge.id !== edgeId))))
 }
 
 function syncKonvaImageInputCounts(document: CanvasDocument): CanvasDocument {
@@ -61,6 +68,82 @@ function syncKonvaImageInputCounts(document: CanvasDocument): CanvasDocument {
       },
     }
   }))
+}
+
+function syncKonvaNodeInputs(document: CanvasDocument): CanvasDocument {
+  const shapeById = new Map(document.shapes.map((shape) => [shape.id, shape]))
+  return withCanvasShapes(document, document.shapes.map((shape) => {
+    if (shape.type !== 'node_card' || shape.props.nodeType !== 'image') return shape
+    const input = document.runtimeEdges.find((edge) => edge.targetShapeId === shape.id && edge.targetPortId === 'image_in' && edge.dataType === 'image')
+    const source = input ? shapeById.get(input.sourceShapeId) : null
+    if (!input || !source || source.type !== 'node_card') {
+      return hasUpstreamImageData(shape.props.data) ? {
+        ...shape,
+        props: {
+          ...shape.props,
+          data: clearUpstreamImageData(shape.props.data),
+        },
+      } : shape
+    }
+    const payload = getImageNodePayload(source.props.data)
+    if (!payload) {
+      return hasUpstreamImageData(shape.props.data) ? {
+        ...shape,
+        props: {
+          ...shape.props,
+          data: clearUpstreamImageData(shape.props.data),
+        },
+      } : shape
+    }
+    return {
+      ...shape,
+      props: {
+        ...shape.props,
+        data: pruneUndefined({
+          ...shape.props.data,
+          ...payload,
+          inputSourceEdgeId: input.id,
+        }),
+      },
+    }
+  }))
+}
+
+function hasUpstreamImageData(data: JsonObject) {
+  return typeof data.inputSourceEdgeId === 'string'
+}
+
+function clearUpstreamImageData(data: JsonObject): JsonObject {
+  return pruneUndefined({
+    ...data,
+    assetId: undefined,
+    imageHeight: undefined,
+    imageWidth: undefined,
+    inputSourceEdgeId: undefined,
+    originalUrl: undefined,
+    thumbnail1024Url: undefined,
+    thumbnail256Url: undefined,
+    thumbnail512Url: undefined,
+    title: undefined,
+  })
+}
+
+function getImageNodePayload(data: JsonObject): JsonObject | null {
+  if (typeof data.assetId !== 'string' && typeof data.originalUrl !== 'string' && typeof data.thumbnail512Url !== 'string') return null
+  return pruneUndefined({
+    assetId: data.assetId,
+    imageHeight: data.imageHeight,
+    imageWidth: data.imageWidth,
+    originalUrl: data.originalUrl,
+    thumbnail1024Url: data.thumbnail1024Url,
+    thumbnail256Url: data.thumbnail256Url,
+    thumbnail512Url: data.thumbnail512Url,
+    title: data.title,
+  })
+}
+
+function pruneUndefined<T extends Record<string, unknown>>(value: T): JsonObject {
+  return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined)) as JsonObject
 }
 
 function createKonvaRuntimeEdgeId(dataType: NodePortDataType) {

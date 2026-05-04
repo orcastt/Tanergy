@@ -1,5 +1,6 @@
 import { getShapeBounds, withCanvasShapes, type CanvasDocument, type CanvasPoint, type CanvasShape } from '@/features/canvas-engine'
 import { resizeShapesFromBounds } from './konvaSelectionUtils'
+import { canKonvaShapeFlip } from './konvaShapeCapabilities'
 
 export type KonvaAlignAction = 'bottom' | 'center-x' | 'center-y' | 'left' | 'right' | 'top'
 export type KonvaDistributeAction = 'horizontal' | 'vertical'
@@ -65,7 +66,7 @@ export function stretchKonvaShapes(document: CanvasDocument, shapeIds: string[],
 }
 
 export function flipKonvaShapes(document: CanvasDocument, shapeIds: string[], action: KonvaFlipAction): CanvasDocument {
-  const selectedShapes = getSelectedShapes(document.shapes, shapeIds)
+  const selectedShapes = getSelectedShapes(document.shapes, shapeIds).filter(canKonvaShapeFlip)
   if (selectedShapes.length === 0) return document
   const targetBounds = mergeShapeBounds(selectedShapes)
   const center = {
@@ -160,6 +161,7 @@ function moveShape(shape: CanvasShape, delta: CanvasPoint): CanvasShape {
 }
 
 function flipShape(shape: CanvasShape, center: CanvasPoint, action: KonvaFlipAction): CanvasShape {
+  if (!canKonvaShapeFlip(shape)) return shape
   if (shape.type === 'line' || shape.type === 'arrow') return flipLineLikeShape(shape, center, action)
   if (shape.type === 'stroke') return flipStrokeShape(shape, center, action)
   const shapeCenter = getShapeCenter(shape)

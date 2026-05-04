@@ -1,6 +1,6 @@
 # PRD Slice S1X: Canvas Engine Migration
 
-**Status**: Active risk-mitigation spike; isolated Konva route has Phase 4 Node/Port/Edge foundation first pass after accepted handfeel/properties/object-editing baselines.
+**Status**: Active risk-mitigation spike; isolated Konva route has Phase 4 Node/Port/Edge/Image Node UX first pass after accepted handfeel/properties/object-editing baselines.
 **Product reason**: The current public staging canvas depends on tldraw, which requires a production license. TANGENT needs a long-term canvas path that can support commercial use and collaboration without a paid canvas SDK lock-in.
 
 ## Product Goal
@@ -34,7 +34,7 @@ The first accepted prototype must let a user:
 Current accepted subset:
 
 - `/spikes/konva-canvas` opens in Select mode.
-- Drawing tools stay active for continuous drawing until the user switches tool or presses Escape.
+- Drawing tools stay active for continuous drawing until the user switches tool or presses Escape. In Arrow, Line and Draw tools, clicking an existing object creates the next line/stroke instead of selecting or moving that object; users switch back to Select/V to edit Properties.
 - Pan/zoom should stay responsive with the 1k strokes stress button.
 - Properties stays fixed on the left and edits selected-shape or next-shape Stroke, opaque Fill, Width, Dash and Opacity.
 - Selected shapes support basic Layer order, Duplicate and Delete actions.
@@ -49,7 +49,12 @@ Current accepted subset:
 - Pasted images from browser copy or OS screenshot clipboard create real canvas image shapes through the Asset API, with no Base64 stored in the canvas document. Image shapes render with zoom-based thumbnail/original LOD and reuse the same resize, rotate, copy and Alt-drag interactions as other box-like elements.
 - Properties now exposes multi-selection Align, Layer and Actions grids plus first-pass font size/text alignment controls for text, sticky notes and basic shape labels.
 - Konva Image Node first pass supports Canvas Image → Image Node and Image Node → Canvas Image from the selection toolbar. Image Nodes store asset refs and dimensions, not Base64 or provider payloads. Selection capture to Image Node remains disabled until export/upload contracts are ready.
-- Phase 4 Node/Port/Edge first pass lets users create Prompt, Image, Image Gen, Image Gen 4 and Analysis node cards from the Konva toolbar. Output ports can be dragged to compatible input ports, creating typed runtime edges that render separately from ordinary visual arrows/lines.
+- Phase 4 Node/Port/Edge first pass lets users create Prompt, Image, Image Gen, Image Gen 4 and Analysis node cards from a single toolbar Node dropdown or by double-clicking blank canvas to open the node panel above the cursor. Output ports can be dragged to compatible input ports, creating typed runtime edges that render separately from ordinary visual arrows/lines. Outputs can feed multiple downstream inputs, while each input accepts only one upstream edge. Selecting an edge shows a near-input `-` disconnect control.
+- Node cards are intentionally compact: port types are shown on hover as black text/image tooltips instead of permanent internal labels; Prompt and Analysis preset text boxes wrap and scroll long content inside the node without a global overlay, so normal canvas z-order still decides whether later lines/shapes cover the node; text is then edited in-place through a focused textarea overlay; Image Gen/Image Gen 4 expose first-pass model, aspect ratio and resolution controls; Image Gen 4 exposes four image outputs. Image Gen/Image Gen 4 dynamically add image input ports as image references are connected and shrink them when disconnected.
+- Node port connection should feel generous and obvious: compatible input ports have a larger hit range, the preview endpoint snaps to the port center when in range, and a visible target halo confirms the connection target. Node cards are not drawing shapes and do not expose rotate/flip behavior.
+- Image Node can import local files by double-click upload or drag/drop, previews images with contain-fit instead of crop, and can mirror an upstream Image Node through a runtime image edge. The node palette and AI-facing metadata are registry-driven so future AI text optimization, multi-text merge, perspective image generation and similar nodes can be added without redesigning the canvas core.
+- Drawing tools can draw over canvas images and node cards without those objects stealing drag focus, while node ports remain usable for runtime edge drag/fan-out. Single selected nodes do not show image conversion/capture actions; those actions are reserved for image selection or future multi-selection flows. Analysis/Image Gen/Image Gen 4 show a Run button that toggles to Stop while running.
+- Phase 4A image operations should add selected-image actions for `Remove BG` and `Object Cutout`. `Remove BG` uses a server-side `rembg` path; `Object Cutout` uses a future point/box prompt with `facebookresearch/segment-anything`. Both produce a new transparent image asset placed slightly down-right from the source image, preserving the original and supporting undo.
 - Frame containment first pass supports dragging children out of frames and intentionally blocks nested frame parenting for now.
 
 ## Handfeel Acceptance

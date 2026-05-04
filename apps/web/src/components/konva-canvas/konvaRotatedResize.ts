@@ -1,4 +1,4 @@
-import { type CanvasBounds, type CanvasPoint, type CanvasShape } from '@/features/canvas-engine'
+import { canCanvasShapeRotate, type CanvasBounds, type CanvasPoint, type CanvasShape } from '@/features/canvas-engine'
 import type { KonvaResizeHandle } from './konvaCanvasTypes'
 import { isBoxCanvasShape } from './konvaRotationUtils'
 import { getKonvaOrientedBounds } from './konvaOrientedBounds'
@@ -15,7 +15,7 @@ export type KonvaRotatedResizeBox = {
 export function createRotatedResizeBox(shapes: CanvasShape[]): KonvaRotatedResizeBox | null {
   if (shapes.length !== 1) return getKonvaOrientedBounds(shapes)
   const shape = shapes[0]
-  if (!shape || !isBoxCanvasShape(shape) || Math.abs(shape.rotation ?? 0) < rotatedResizeThreshold) return null
+  if (!shape || !canCanvasShapeRotate(shape) || !isBoxCanvasShape(shape) || Math.abs(shape.rotation ?? 0) < rotatedResizeThreshold) return null
   return {
     center: { x: shape.x + shape.props.width / 2, y: shape.y + shape.props.height / 2 },
     localBounds: {

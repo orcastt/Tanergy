@@ -1,6 +1,6 @@
 # Project State Slice S1X: Canvas Engine Migration
 
-**Status**: Phase 4 Node/Port/Edge foundation first pass in progress after accepted Phase 1A/2A/3 spike baselines.
+**Status**: Phase 4 Node/Port/Edge/Image Node UX first pass in progress after accepted Phase 1A/2A/3 spike baselines.
 **Branch**: `feature/s1x-konva-handfeel-spike`
 **Started**: 2026-05-03
 
@@ -163,6 +163,23 @@ Phase 3.1 object editing foundation started:
 - 2026-05-04 Konva Image Node first pass is implemented: Canvas Image → Image Node creates a lightweight `node_card` image node on the right side of the image; Image Node → Canvas Image fetches the asset record by `assetId` and creates an image on the node's right. Node data stores asset refs, dimensions, source and title only.
 - 2026-05-04 Frame containment first pass now supports drag-out: moving a child outside all frame bounds clears `parentId`, and frame nesting is intentionally disabled. Helper functions now expose frame/child visible bounds for future capture/export.
 - 2026-05-04 Phase 4 Node/Port/Edge foundation first pass is implemented: toolbar buttons create Prompt/Image/Image Gen/Image Gen 4/Analysis `node_card` shapes from registry defaults; node cards show status/fields/summary/port labels; output ports drag-connect to compatible input ports with a preview curve; `CanvasDocument.runtimeEdges` stores runtime dataflow edges separately from visual arrow/line shapes, and undo/redo plus node deletion include runtime edge cleanup.
+- 2026-05-04 Node extensibility guard is in place: node creation palette, card default size, accent color, card fields, output summary, port metadata and `isNodeType` derive from `node-runtime/registry.ts`. Future nodes such as text AI optimizer, multi-text merge and perspective image generation should extend registry + runtime resolver/AiRun adapter instead of adding canvas-core special cases.
+- 2026-05-04 Phase 4 node UX pass is implemented: blank-canvas double-click opens the node create menu above the pointer; the top toolbar now exposes one Node main icon/dropdown; node create grouping is registry-driven so future categories can appear without hardcoding menu sections.
+- 2026-05-04 Node cards were simplified for the Konva route: node internals now show compact fields/previews rather than long descriptions, port labels moved out of the card body, and port hover shows a black text/image tooltip. Image Gen/Image Gen 4 model, aspect ratio and resolution fields can be cycled in the first-pass card UI.
+- 2026-05-04 Runtime edge UX pass is implemented: output ports can connect to multiple downstream inputs, each input port keeps only one upstream edge, and selected runtime edges show a near-input `-` disconnect affordance. Image Gen/Image Gen 4 image input ports grow/shrink with connected image refs; Image Gen 4 exposes four image output ports.
+- 2026-05-04 Image Node upload/mirror pass is implemented: double-clicking an Image Node opens local upload, dragging an image file onto an Image Node uploads through the Asset API, and the node preview uses contain-fit rendering. Image Node can mirror an upstream Image Node asset via runtime edge; disconnect clears only upstream-derived preview data and preserves local uploads.
+- 2026-05-04 image cutout plan added to Phase 4A: `rembg` is the planned one-click background-removal path, and `facebookresearch/segment-anything` is the planned point/box object-cutout path. Both are planned as server-side image operations that create new transparent image assets placed slightly down-right from the source image; Board documents still store only asset refs/metadata.
+- 2026-05-04 node UX correction pass is implemented: blank-canvas double-click opens the node menu, image/node cards no longer steal Draw/shape gestures when a drawing tool is active, and single-node selection no longer shows the Image Node conversion/capture toolbar.
+- 2026-05-04 node control pass is implemented: Image Node upload keeps title `Image`; Image Gen/Image Gen 4 model/aspect/resolution controls are first-pass dropdowns with improved spacing; single Image Gen output preview fills the card body width; Analysis/Image Gen/Image Gen 4 expose Run/Stop first pass through `runtimeSummary.status`.
+- 2026-05-04 node text/port regression fix is implemented: Prompt and Analysis preset text boxes now open a focused HTML textarea overlay on double-click and write back to node `props.data`; node/image bodies remain drawable-over in drawing tools while node ports stay interactive, preserving output fan-out without forcing a tool switch.
+- 2026-05-04 blank-canvas double-click regression fix is implemented: opening the node create menu now uses a DOM-level canvas double-click handler with world-space blank hit detection, so empty-canvas double-click reliably opens the menu above the pointer while double-clicking existing objects still edits/uploads as before.
+- 2026-05-04 runtime edge fan-out/node transform correction is implemented: runtime edge curves render below node cards so an existing edge cannot steal repeated output-port drags; `node_card` is now excluded from rotate handles/sessions, render rotation/flip, geometry rotation, Properties flip actions and context-menu flip commands.
+- 2026-05-04 Image Gen dropdown layering fix is implemented: Image Gen/Image Gen 4 model/aspect/resolution dropdowns render after the preview/output container and warning strip, so open menus are visually above card body content.
+- 2026-05-04 port snap affordance fix is implemented: node port hit radius is larger, port dots have a larger pointer target, and runtime connection previews visibly snap to compatible input ports with a solid line and target halo.
+- 2026-05-04 Phase 4 cleanup first pass is implemented: shape/node rotate and flip capabilities are centralized in `shapeCapabilities` / `konvaShapeCapabilities`, node-port coordinate math no longer keeps dead rotation/flip branches, and runnable node capability is registry-owned instead of duplicated in the card and menu hooks.
+- 2026-05-04 subagent Phase 4 audit says the remaining risky area is not another UI patch: `konvaRuntimeEdges.ts` currently mixes edge mutation, image input count sync and Image Node asset mirroring. The next cleanup should introduce a renderer-neutral runtimeGraph/input adapter before wiring real `resolveNodeInputs` and generated asset propagation.
+- 2026-05-04 continuous line tool selection rule is implemented: Arrow, Line and Draw no longer select or drag existing objects while active, so clicking over an object starts the next line/stroke. Users must switch to Select/V to edit object Properties.
+- 2026-05-04 Prompt/Analysis long-text containment correction is implemented: non-editing node text now scrolls inside the node's own Konva group with clip + local scroll offset + self-drawn scrollbar, so it obeys canvas z-order and no longer floats as a global DOM overlay above later shapes/lines. The HTML textarea editor still uses the same bounds and overflow behavior.
 - Phase 4 storage guard remains explicit: Board documents, node props and runtime edge data must not persist `data:`, `blob:`, Base64 images, provider raw payloads, complete logs or long generated text. Image Node first pass stores only Asset references, dimensions, title/source metadata and runtime summary placeholders.
 - A Konva shell `selectionchange` guard clears accidental browser text selection while preserving normal textarea/input selection during editing.
 - Frame movement now expands the drag set to include direct/nested frame children, so moving a frame carries contained shapes with it.
@@ -171,7 +188,7 @@ Phase 3.1 object editing foundation started:
 - undo/redo restores shapes plus selection only, so pan/zoom is not part of command history
 - create, drag, resize, eraser, Properties style edits, layer actions, duplicate/delete, stress strokes and clear all now create history checkpoints
 
-Not included yet: full node card controls, edge hit/select/delete UI, Konva `resolveNodeInputs` adapter, AiRun execution UI, image drop into Image Node, selection capture/export to Image Node, save/history integration, nested-frame/export semantics, real Yjs provider sync and Board route migration.
+Not included yet: runtimeGraph/input adapter cleanup, full HTML node card controls beyond targeted Prompt/Analysis text preview/editing, keyboard edge delete/cut, Konva `resolveNodeInputs` adapter, extensible node run adapter registry, mock/real Image Gen result asset propagation, AiRun execution UI, paste-directly-into-Image-Node behavior, selection capture/export to Image Node, save/history integration, nested-frame/export semantics, real Yjs provider sync and Board route migration.
 
 Explicit Phase 3B follow-ups now tracked in the migration plan:
 
@@ -218,8 +235,9 @@ Large Miro-scale collaboration: later multi-month S4 track
 Continue with Phase 3 object editing foundation before any `/boards/[boardId]` migration:
 
 ```text
-Phase 4 node creation and port-connection hand-test
-Phase 4 edge hit/delete and Konva resolveNodeInputs adapter
+Phase 4 node creation, Prompt/Analysis long-text scroll/editing and port fan-out hand-test
+Phase 4 runtimeGraph cleanup before Konva resolveNodeInputs adapter
+Phase 4 edge keyboard Delete/Cut behavior
 Phase 4A selection capture/export contract before Copy as / Export as
 ```
 

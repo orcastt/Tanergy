@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
 import type { NodeType } from '@/types/nodeRuntime'
+import { KonvaNodeCreateMenu } from './KonvaNodeCreateMenu'
 import { konvaToolGroups, konvaToolLabels, konvaToolShortcuts } from './konvaCanvasTypes'
 
 type KonvaCanvasToolbarProps = {
@@ -17,6 +19,12 @@ export function KonvaCanvasToolbar({
   onClear,
   onToolChange,
 }: KonvaCanvasToolbarProps) {
+  const [nodeMenuOpen, setNodeMenuOpen] = useState(false)
+  const createNode = (type: NodeType) => {
+    onCreateNode(type)
+    setNodeMenuOpen(false)
+  }
+
   return (
     <div className="konva-canvas-toolbar" aria-label="Konva canvas tools">
       {konvaToolGroups.map((group) => (
@@ -37,19 +45,17 @@ export function KonvaCanvasToolbar({
         </div>
       ))}
       <div className="konva-canvas-toolbar__group konva-canvas-toolbar__node-group" aria-label="Create nodes">
-        {nodeCreateOptions.map((option) => (
-          <button
-            aria-label={`Create ${option.label} node`}
-            className="konva-canvas-node-create"
-            data-node-type={option.type}
-            key={option.type}
-            onClick={() => onCreateNode(option.type)}
-            title={`Create ${option.label}`}
-            type="button"
-          >
-            {option.shortLabel}
-          </button>
-        ))}
+        <button
+          aria-label="Create node"
+          className="konva-canvas-tool"
+          data-active={nodeMenuOpen}
+          data-tooltip="Node"
+          onClick={() => setNodeMenuOpen((open) => !open)}
+          type="button"
+        >
+          <ToolGlyph tool="node" />
+        </button>
+        {nodeMenuOpen ? <KonvaNodeCreateMenu onCreateNode={createNode} variant="toolbar" /> : null}
       </div>
       <div className="konva-canvas-toolbar__group">
         <button className="konva-canvas-action" onClick={onAddStressStrokes} type="button">
@@ -63,22 +69,15 @@ export function KonvaCanvasToolbar({
   )
 }
 
-const nodeCreateOptions: { label: string; shortLabel: string; type: NodeType }[] = [
-  { label: 'Prompt', shortLabel: 'Pr', type: 'prompt' },
-  { label: 'Image', shortLabel: 'Im', type: 'image' },
-  { label: 'Image Gen', shortLabel: 'Gen', type: 'image_gen' },
-  { label: 'Image Gen 4', shortLabel: '4x', type: 'image_gen_4' },
-  { label: 'Analysis', shortLabel: 'An', type: 'analysis' },
-]
-
 function getToolTooltip(tool: KonvaCanvasTool) {
   const shortcut = konvaToolShortcuts[tool]
   return shortcut ? `${konvaToolLabels[tool]}: ${shortcut}` : konvaToolLabels[tool]
 }
 
-function ToolGlyph({ tool }: { tool: KonvaCanvasTool }) {
+function ToolGlyph({ tool }: { tool: KonvaCanvasTool | 'node' }) {
   return (
     <svg aria-hidden viewBox="0 0 24 24">
+      {tool === 'node' ? <path d="M6 7.5h5v4H6zM13 12.5h5v4h-5zM11 9.5h2.2c1.2 0 1.8.6 1.8 1.8v1.2" /> : null}
       {tool === 'hand' ? <path d="M8 12V6.5a1.5 1.5 0 0 1 3 0V11M11 11V5.5a1.5 1.5 0 0 1 3 0V11M14 11V7a1.5 1.5 0 0 1 3 0v8.2c0 3-2 5.3-5.2 5.3H10c-2.2 0-3.8-1-5-3l-1.2-2.1a1.5 1.5 0 0 1 2.5-1.6L8 16" /> : null}
       {tool === 'select' ? <path d="M6 4l10 8-5 1.2 3 5.4-2.2 1.2-3-5.5L5 18z" /> : null}
       {tool === 'rect' ? <rect height="13" rx="2" width="15" x="4.5" y="5.5" /> : null}

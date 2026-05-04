@@ -13,6 +13,7 @@ import {
   type KonvaTidyAction,
 } from './konvaArrangeCommands'
 import { deleteKonvaShapes, duplicateKonvaShapes, reorderKonvaShapes } from './konvaCanvasStyle'
+import { canKonvaSelectionFlip } from './konvaShapeCapabilities'
 import { IconButton, IconGrid, PropertyBlock } from './KonvaPropertiesPrimitives'
 
 type KonvaPropertiesSelectionActionsProps = {
@@ -72,6 +73,9 @@ export function KonvaPropertiesSelectionActions({
 }: KonvaPropertiesSelectionActionsProps) {
   const selectedCount = selectedShapes.length
   if (selectedCount === 0) return null
+  const actions = !canKonvaSelectionFlip(selectedShapes)
+    ? operationActions.filter((action) => action.action !== 'flip')
+    : operationActions
 
   const runAction = (action: SelectionAction) => {
     if (!canRunAction(action, selectedCount)) return
@@ -109,7 +113,7 @@ export function KonvaPropertiesSelectionActions({
         <IconGrid>{layerActions.map((action) => renderActionButton(action, selectedCount, runAction))}</IconGrid>
       </PropertyBlock>
       <PropertyBlock label="Actions">
-        <IconGrid>{operationActions.map((action) => renderActionButton(action, selectedCount, runAction))}</IconGrid>
+        <IconGrid>{actions.map((action) => renderActionButton(action, selectedCount, runAction))}</IconGrid>
       </PropertyBlock>
     </>
   )

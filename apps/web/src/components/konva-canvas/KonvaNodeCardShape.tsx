@@ -1,30 +1,39 @@
-import { Circle, Group, Rect, Text } from 'react-konva'
+import { useEffect, useMemo, useState } from 'react'
+import { Circle, Group, Image as KonvaImage, Rect, Text } from 'react-konva'
 import type { KonvaEventObject } from 'konva/lib/Node'
 import type { CanvasNodeShape } from '@/features/canvas-engine'
-import type { NodeCardField } from '@/types/nodeRuntime'
+import type { JsonObject, NodeCardField, ResolvedNodePort } from '@/types/nodeRuntime'
 import {
   getNodeDefinition,
   getPortColorName,
   getResolvedNodePorts,
 } from '@/features/node-runtime/registry'
+import {
+  canRunNode,
+  NodeCardFieldGrid,
+  NodeCardImageSlots,
+  NodeCardRunButton,
+  NodeCardStatusBadge,
+  NodeCardTextBox,
+} from './KonvaNodeCardParts'
 
 type KonvaNodeCardShapeProps = {
+  onFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
   onPortPointerDown?: (shapeId: string, portId: string, event: KonvaEventObject<PointerEvent>) => void
+  onRunToggle?: (shapeId: string) => void
   opacity: number
   shape: CanvasNodeShape
 }
 
-export function KonvaNodeCardShape({ onPortPointerDown, opacity, shape }: KonvaNodeCardShapeProps) {
+export function KonvaNodeCardShape({ onFieldChange, onPortPointerDown, onRunToggle, opacity, shape }: KonvaNodeCardShapeProps) {
+  const [hoveredPort, setHoveredPort] = useState<ResolvedNodePort | null>(null)
+  const [openFieldName, setOpenFieldName] = useState<string | null>(null)
   const definition = getNodeDefinition(shape.props.nodeType)
-  const accent = getNodeAccent(shape.props.nodeType)
+  const accent = definition.accentColor
   const title = getStringValue(shape.props.data.title) || definition.displayName
   const status = getStringValue(shape.props.runtimeSummary.status) || 'idle'
   const ports = getResolvedNodePorts(shape.props.nodeType, shape.props.data)
-  const fieldLines = getFieldLines(definition.cardFields, shape)
-  const summaryLines = getSummaryLines(shape, definition.outputSummary)
-  const bodyText = [...fieldLines, ...summaryLines].slice(0, 7).join('\n')
   const statusTone = getStatusTone(status)
-  const bodyHeight = shape.props.height - 100
 
   return (
     <Group opacity={opacity}>
@@ -39,13 +48,6 @@ export function KonvaNodeCardShape({ onPortPointerDown, opacity, shape }: KonvaN
         strokeWidth={1}
         width={shape.props.width}
       />
-      <Rect
-        cornerRadius={12}
-        fill={accent}
-        height={10}
-        opacity={0.9}
-        width={shape.props.width}
-      />
       <Text
         fill="#0f172a"
         fontFamily="Inter, system-ui, sans-serif"
@@ -55,72 +57,16 @@ export function KonvaNodeCardShape({ onPortPointerDown, opacity, shape }: KonvaN
         text={title}
         width={shape.props.width - 116}
         x={14}
-        y={18}
+        y={16}
       />
-      <Rect
-        cornerRadius={10}
-        fill={statusTone.fill}
-        height={20}
-        stroke={statusTone.stroke}
-        strokeWidth={1}
-        width={82}
-        x={shape.props.width - 96}
-        y={17}
-      />
-      <Text
-        align="center"
-        fill={statusTone.text}
-        fontFamily="Inter, system-ui, sans-serif"
-        fontSize={10}
-        fontStyle="bold"
-        height={20}
-        text={status.toUpperCase()}
-        verticalAlign="middle"
-        width={82}
-        x={shape.props.width - 96}
-        y={17}
-      />
-      <Text
-        fill="#64748b"
-        fontFamily="Inter, system-ui, sans-serif"
-        fontSize={10}
-        height={14}
-        text={shape.props.nodeType.replaceAll('_', ' ')}
-        width={shape.props.width - 28}
-        x={14}
-        y={42}
-      />
-      <Group clipFunc={(context) => roundedRectClip(context, 14, 66, shape.props.width - 28, shape.props.height - 92, 10)}>
-        <Rect
-          cornerRadius={10}
-          fill="rgba(248, 250, 252, 0.96)"
-          height={bodyHeight}
-          stroke="rgba(148, 163, 184, 0.22)"
-          strokeWidth={1}
-          width={shape.props.width - 28}
-          x={14}
-          y={66}
-        />
-        <Text
-          fill="#334155"
-          fontFamily="Inter, system-ui, sans-serif"
-          fontSize={11}
-          height={bodyHeight - 20}
-          lineHeight={1.32}
-          text={bodyText}
-          width={shape.props.width - 52}
-          x={26}
-          y={76}
-        />
-      </Group>
-      <Text
-        fill="#64748b"
-        fontFamily="Inter, system-ui, sans-serif"
-        fontSize={10}
-        text={shape.props.nodeId}
-        width={shape.props.width - 28}
-        x={14}
-        y={shape.props.height - 20}
+      {canRunNode(shape) ? <NodeCardRunButton onRunToggle={onRunToggle} shape={shape} status={status} /> : <NodeCardStatusBadge shape={shape} status={status} tone={statusTone} />}
+      <NodeBody
+        accent={accent}
+        fields={definition.cardFields}
+        onFieldChange={onFieldChange}
+        openFieldName={openFieldName}
+        setOpenFieldName={setOpenFieldName}
+        shape={shape}
       />
       {ports.map((port) => {
         const isInput = port.direction === 'in'
@@ -129,84 +75,34 @@ export function KonvaNodeCardShape({ onPortPointerDown, opacity, shape }: KonvaN
           <Group key={`${port.direction}:${port.id}`}>
             <Circle
               fill="rgba(255, 255, 255, 0.01)"
+              onMouseEnter={() => setHoveredPort(port)}
+              onMouseLeave={() => setHoveredPort(null)}
               onPointerDown={onPortPointerDown ? (event) => onPortPointerDown(shape.id, port.id, event) : undefined}
-              radius={13}
+              radius={17}
               x={isInput ? 0 : shape.props.width}
               y={y}
             />
             <Circle
               fill={getPortColorName(port.dataType) === 'green' ? '#22c55e' : '#facc15'}
+              onMouseEnter={() => setHoveredPort(port)}
+              onMouseLeave={() => setHoveredPort(null)}
               onPointerDown={onPortPointerDown ? (event) => onPortPointerDown(shape.id, port.id, event) : undefined}
-              radius={5}
+              radius={10}
               stroke="#ffffff"
-              strokeWidth={2}
+              strokeWidth={2.5}
               x={isInput ? 0 : shape.props.width}
               y={y}
-            />
-            <Text
-              align={isInput ? 'left' : 'right'}
-              fill="#64748b"
-              fontFamily="Inter, system-ui, sans-serif"
-              fontSize={9}
-              height={12}
-              text={port.label}
-              width={72}
-              x={isInput ? 12 : shape.props.width - 84}
-              y={y - 6}
             />
           </Group>
         )
       })}
+      {hoveredPort ? <PortTooltip port={hoveredPort} shape={shape} /> : null}
     </Group>
   )
 }
 
 function getStringValue(value: unknown) {
   return typeof value === 'string' ? value : undefined
-}
-
-function getFieldLines(fields: NodeCardField[], shape: CanvasNodeShape) {
-  return fields
-    .map((field) => {
-      const value = getDisplayValue(shape.props.data[field.name])
-      return value ? `${field.label}: ${value}` : `${field.label}: -`
-    })
-}
-
-function getSummaryLines(shape: CanvasNodeShape, outputSummary: string) {
-  const resultCount = Array.isArray(shape.props.runtimeSummary.resultAssetIds)
-    ? shape.props.runtimeSummary.resultAssetIds.length
-    : 0
-  const lines = [`Output: ${outputSummary}`]
-  if (shape.props.runtimeSummary.costHint) lines.push(`Run: ${shape.props.runtimeSummary.costHint}`)
-  if (resultCount > 0) lines.push(`Results: ${resultCount} asset${resultCount === 1 ? '' : 's'}`)
-  if (shape.props.runtimeSummary.error) lines.push(`Error: ${shape.props.runtimeSummary.error}`)
-  if (shape.props.nodeType === 'image') lines.push(getImageNodeSummary(shape))
-  return lines.filter(Boolean)
-}
-
-function getImageNodeSummary(shape: CanvasNodeShape) {
-  const assetId = getStringValue(shape.props.data.assetId)
-  const width = typeof shape.props.data.imageWidth === 'number' ? shape.props.data.imageWidth : null
-  const height = typeof shape.props.data.imageHeight === 'number' ? shape.props.data.imageHeight : null
-  return [`Asset: ${assetId ?? 'No asset'}`, width && height ? `Size: ${width} x ${height}` : null].filter(Boolean).join('\n')
-}
-
-function getDisplayValue(value: unknown) {
-  if (typeof value === 'string') {
-    const trimmed = value.trim()
-    if (!trimmed || trimmed.toLowerCase().startsWith('data:') || trimmed.toLowerCase().startsWith('blob:')) return ''
-    return trimmed.length > 58 ? `${trimmed.slice(0, 55)}...` : trimmed
-  }
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
-  return ''
-}
-
-function getNodeAccent(type: CanvasNodeShape['props']['nodeType']) {
-  if (type === 'image') return '#f97316'
-  if (type === 'analysis') return '#16a34a'
-  if (type === 'prompt') return '#8b5cf6'
-  return '#2563eb'
 }
 
 function getStatusTone(status: string) {
@@ -216,24 +112,120 @@ function getStatusTone(status: string) {
   return { fill: '#f8fafc', stroke: '#e2e8f0', text: '#475569' }
 }
 
-type ClipContext = Pick<CanvasRenderingContext2D,
-  | 'beginPath'
-  | 'closePath'
-  | 'lineTo'
-  | 'moveTo'
-  | 'quadraticCurveTo'
->
+function NodeBody({
+  accent,
+  fields,
+  onFieldChange,
+  openFieldName,
+  setOpenFieldName,
+  shape,
+}: {
+  accent: string
+  fields: NodeCardField[]
+  onFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
+  openFieldName: string | null
+  setOpenFieldName: (fieldName: string | null) => void
+  shape: CanvasNodeShape
+}) {
+  if (shape.props.nodeType === 'prompt') return <PromptBody shape={shape} />
+  if (shape.props.nodeType === 'image') return <ImageBody accent={accent} shape={shape} />
+  if (shape.props.nodeType === 'analysis') return <AnalysisBody shape={shape} />
+  return <GenerationBody fields={fields} onFieldChange={onFieldChange} openFieldName={openFieldName} setOpenFieldName={setOpenFieldName} shape={shape} />
+}
 
-function roundedRectClip(context: ClipContext, x: number, y: number, width: number, height: number, radius: number) {
-  context.beginPath()
-  context.moveTo(x + radius, y)
-  context.lineTo(x + width - radius, y)
-  context.quadraticCurveTo(x + width, y, x + width, y + radius)
-  context.lineTo(x + width, y + height - radius)
-  context.quadraticCurveTo(x + width, y + height, x + width - radius, y + height)
-  context.lineTo(x + radius, y + height)
-  context.quadraticCurveTo(x, y + height, x, y + height - radius)
-  context.lineTo(x, y + radius)
-  context.quadraticCurveTo(x, y, x + radius, y)
-  context.closePath()
+function PromptBody({ shape }: { shape: CanvasNodeShape }) {
+  return <NodeCardTextBox height={shape.props.height - 78} text={getStringValue(shape.props.data.prompt) ?? ''} width={shape.props.width - 28} x={14} y={54} />
+}
+
+function AnalysisBody({ shape }: { shape: CanvasNodeShape }) {
+  return (
+    <>
+      <NodeCardTextBox height={64} text={getStringValue(shape.props.data.analysisPrompt) ?? ''} width={shape.props.width - 28} x={14} y={58} />
+      <Rect cornerRadius={10} fill="#f8fafc" height={shape.props.height - 142} width={shape.props.width - 28} x={14} y={132} />
+      <Text fill="#94a3b8" fontFamily="Inter, system-ui, sans-serif" fontSize={12} fontStyle="bold" text="Connect an image first." width={shape.props.width - 52} x={26} y={148} />
+    </>
+  )
+}
+
+function GenerationBody({ fields, onFieldChange, openFieldName, setOpenFieldName, shape }: {
+  fields: NodeCardField[]
+  onFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
+  openFieldName: string | null
+  setOpenFieldName: (fieldName: string | null) => void
+  shape: CanvasNodeShape
+}) {
+  const imageOutputs = shape.props.nodeType === 'image_gen_4' ? 4 : 1
+  const slotY = 184
+  const slotHeight = shape.props.nodeType === 'image_gen_4' ? 104 : 88
+  return (
+    <>
+      <NodeCardImageSlots count={imageOutputs} height={slotHeight} shape={shape} y={slotY} />
+      <Rect cornerRadius={8} fill="#fff1f2" height={28} width={shape.props.width - 28} x={14} y={shape.props.height - 44} />
+      <Text fill="#a11222" fontFamily="Inter, system-ui, sans-serif" fontSize={12} fontStyle="bold" text="Connect a prompt first." width={shape.props.width - 52} x={26} y={shape.props.height - 36} />
+      <NodeCardFieldGrid fields={fields} onFieldChange={onFieldChange} openFieldName={openFieldName} setOpenFieldName={setOpenFieldName} shape={shape} y={54} />
+    </>
+  )
+}
+
+function ImageBody({ accent, shape }: { accent: string; shape: CanvasNodeShape }) {
+  const bounds = { height: shape.props.height - 88, width: shape.props.width - 28, x: 14, y: 54 }
+  const imageSource = getNodeImageSource(shape.props.data)
+  return (
+    <>
+      <Rect cornerRadius={12} fill="#eef4fb" height={bounds.height} width={bounds.width} x={bounds.x} y={bounds.y} />
+      <NodeImagePreview bounds={bounds} source={imageSource} />
+      {imageSource ? null : (
+        <>
+          <Text align="center" fill="#ffffff" fontFamily="Inter, system-ui, sans-serif" fontSize={12} fontStyle="bold" text="Image" width={70} x={shape.props.width / 2 - 35} y={bounds.y + bounds.height / 2 - 8} />
+          <Text fill={accent} fontFamily="Inter, system-ui, sans-serif" fontSize={11} fontStyle="bold" text="Double-click / Drop" width={shape.props.width - 28} x={14} y={shape.props.height - 26} />
+        </>
+      )}
+    </>
+  )
+}
+
+function PortTooltip({ port, shape }: { port: ResolvedNodePort; shape: CanvasNodeShape }) {
+  const text = port.dataType
+  const width = text.length * 8 + 14
+  const x = port.direction === 'in' ? 8 : shape.props.width - width - 8
+  const y = shape.props.height * port.anchorY - 24
+  return (
+    <>
+      <Rect cornerRadius={6} fill="#111827" height={22} width={width} x={x} y={y} />
+      <Text align="center" fill="#ffffff" fontFamily="Inter, system-ui, sans-serif" fontSize={12} fontStyle="bold" height={22} text={text} verticalAlign="middle" width={width} x={x} y={y} />
+    </>
+  )
+}
+
+function NodeImagePreview({ bounds, source }: { bounds: { height: number; width: number; x: number; y: number }; source: string | null }) {
+  const image = useLoadedNodeImage(source)
+  const fit = useMemo(() => image ? getContainRect(image, bounds) : null, [bounds, image])
+  return fit && image ? <KonvaImage image={image} {...fit} /> : null
+}
+
+function useLoadedNodeImage(src: string | null) {
+  const [loadedImage, setLoadedImage] = useState<{ image: HTMLImageElement; src: string } | null>(null)
+  useEffect(() => {
+    if (!src) return
+    let cancelled = false
+    const nextImage = new window.Image()
+    nextImage.decoding = 'async'
+    if (src.startsWith('/') || src.startsWith(window.location.origin)) nextImage.crossOrigin = 'anonymous'
+    nextImage.onload = () => { if (!cancelled) setLoadedImage({ image: nextImage, src }) }
+    nextImage.onerror = () => { if (!cancelled) setLoadedImage(null) }
+    nextImage.src = src
+    return () => { cancelled = true }
+  }, [src])
+  return loadedImage?.src === src ? loadedImage.image : null
+}
+
+function getNodeImageSource(data: JsonObject) {
+  return getStringValue(data.thumbnail512Url) ?? getStringValue(data.thumbnail1024Url) ?? getStringValue(data.originalUrl) ?? null
+}
+
+function getContainRect(image: HTMLImageElement, bounds: { height: number; width: number; x: number; y: number }) {
+  const scale = Math.min(bounds.width / Math.max(1, image.naturalWidth), bounds.height / Math.max(1, image.naturalHeight))
+  const width = image.naturalWidth * scale
+  const height = image.naturalHeight * scale
+  return { height, width, x: bounds.x + (bounds.width - width) / 2, y: bounds.y + (bounds.height - height) / 2 }
 }

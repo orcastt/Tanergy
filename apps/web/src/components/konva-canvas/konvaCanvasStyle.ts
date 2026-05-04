@@ -1,5 +1,6 @@
 import type { CanvasDocument, CanvasShape, CanvasShapeStyle } from '@/features/canvas-engine'
 import { mixColorWithWhite } from './konvaPatternUtils'
+import { removeKonvaRuntimeEdgesForShapes } from './konvaRuntimeEdges'
 import { cloneKonvaShapes } from './konvaShapeCommands'
 
 export type KonvaCanvasDashStyle = NonNullable<CanvasShapeStyle['dash']>
@@ -151,12 +152,12 @@ export function duplicateKonvaShapes(document: CanvasDocument, shapeIds: string[
 
 export function deleteKonvaShapes(document: CanvasDocument, shapeIds: string[]) {
   const selected = new Set(shapeIds)
+  const documentWithoutEdges = removeKonvaRuntimeEdgesForShapes(document, shapeIds)
   return {
     document: {
-      ...document,
-      metadata: { ...document.metadata, updatedAt: new Date().toISOString() },
-      runtimeEdges: document.runtimeEdges.filter((edge) => !selected.has(edge.sourceShapeId) && !selected.has(edge.targetShapeId)),
-      shapes: document.shapes
+      ...documentWithoutEdges,
+      metadata: { ...documentWithoutEdges.metadata, updatedAt: new Date().toISOString() },
+      shapes: documentWithoutEdges.shapes
         .filter((shape) => !selected.has(shape.id))
         .map((shape) => shape.parentId && selected.has(shape.parentId) ? { ...shape, parentId: null } : shape),
     },

@@ -139,9 +139,10 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       sessionRef.current = { origin: screenPoint, pointerId: event.evt.pointerId, type: 'pan' }
       return
     }
-    if (!isStageTarget(event)) return
+    const startedOnStage = isStageTarget(event)
     const worldPoint = pointerToWorld({ ...screenPoint, pressure: event.evt.pressure }, cameraRef.current)
     if (options.activeTool === 'select') {
+      if (!startedOnStage) return
       setSelectionBox(boundsFromPoints(worldPoint, worldPoint))
       sessionRef.current = {
         additive: event.evt.shiftKey,

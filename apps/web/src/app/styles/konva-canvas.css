@@ -145,36 +145,87 @@
 }
 
 .konva-canvas-toolbar__node-group {
-  gap: 3px;
+  position: relative;
 }
 
-.konva-canvas-node-create {
-  background: #f8fafc;
-  border: 1px solid rgba(31, 42, 55, 0.1);
-  color: #243142;
+.konva-node-create-menu {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(31, 42, 55, 0.12);
+  border-radius: 12px;
+  box-shadow: 0 18px 42px rgba(31, 42, 55, 0.16);
+  display: grid;
+  gap: 12px;
+  min-width: 310px;
+  padding: 14px 16px;
+  position: absolute;
+  -webkit-user-select: none;
+  user-select: none;
+  z-index: 38;
+}
+
+.konva-node-create-menu[data-variant="canvas"] {
+  transform: translate(-50%, -100%);
+}
+
+.konva-node-create-menu[data-variant="toolbar"] {
+  left: 50%;
+  top: 42px;
+  transform: translateX(-50%);
+}
+
+.konva-node-create-menu__label {
+  color: #94a3b8;
   font-size: 11px;
-  font-weight: 700;
-  height: 32px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.konva-node-create-menu__row {
+  border-bottom: 1px solid rgba(148, 163, 184, 0.26);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 10px;
+}
+
+.konva-node-create-menu__section:last-child .konva-node-create-menu__row {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.konva-node-create-menu__item {
+  --node-accent: #64748b;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid color-mix(in srgb, var(--node-accent), transparent 72%);
+  border-radius: 9px;
+  color: #243142;
+  cursor: pointer;
+  display: inline-flex;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 800;
+  height: 34px;
   letter-spacing: 0;
-  min-width: 32px;
-  padding: 0 8px;
+  padding: 0 12px 0 8px;
 }
 
-.konva-canvas-node-create[data-node-type="prompt"] {
-  border-color: rgba(139, 92, 246, 0.28);
+.konva-node-create-menu__item:hover {
+  background: #f8fafc;
 }
 
-.konva-canvas-node-create[data-node-type="image"] {
-  border-color: rgba(249, 115, 22, 0.28);
-}
-
-.konva-canvas-node-create[data-node-type="analysis"] {
-  border-color: rgba(22, 163, 74, 0.28);
-}
-
-.konva-canvas-node-create[data-node-type="image_gen"],
-.konva-canvas-node-create[data-node-type="image_gen_4"] {
-  border-color: rgba(37, 99, 235, 0.28);
+.konva-node-create-menu__badge {
+  align-items: center;
+  background: #111827;
+  border-radius: 6px;
+  color: #ffffff;
+  display: inline-flex;
+  font-size: 10px;
+  height: 20px;
+  justify-content: center;
+  min-width: 24px;
+  padding: 0 5px;
 }
 
 .konva-canvas-stage-wrap {
@@ -198,6 +249,21 @@
   cursor: inherit;
 }
 
+.konva-canvas-file-input {
+  display: none;
+}
+
+.konva-canvas-node-text-editor::-webkit-scrollbar {
+  width: 8px;
+}
+
+.konva-canvas-node-text-editor::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
 .konva-canvas-text-editor {
   background: rgba(255, 255, 255, 0.94);
   border: 1px solid #6b5cff;
@@ -210,7 +276,22 @@
   position: absolute;
   resize: none;
   transform-origin: center;
+  -webkit-user-select: text;
+  user-select: text;
   z-index: 35;
+}
+
+.konva-canvas-node-text-editor {
+  background: #f8fafc;
+  border-color: #8b5cf6;
+  border-radius: 10px;
+  overflow-wrap: anywhere;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  white-space: pre-wrap;
 }
 
 .konva-canvas-text-editor-backdrop {

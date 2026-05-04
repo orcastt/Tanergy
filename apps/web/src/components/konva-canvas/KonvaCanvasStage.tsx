@@ -7,6 +7,7 @@ import { KonvaFrameChrome } from './KonvaFrameChrome'
 import { KonvaNodeEdgeLayer } from './KonvaNodeEdgeLayer'
 import { KonvaSelectionOverlay } from './KonvaSelectionOverlay'
 import { useKonvaCanvasInteractions } from './useKonvaCanvasInteractions'
+import { canKonvaShapeDragWithTool, canKonvaShapeSelectWithTool } from './konvaShapeCapabilities'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
 
 type KonvaCanvasStageProps = {
@@ -16,13 +17,18 @@ type KonvaCanvasStageProps = {
   height: number
   isSpacePanning: boolean
   nextStyle: CanvasShapeStyle
+  selectedEdgeId: string | null
   selectedIds: string[]
   width: number
   onCameraCommit: (camera: CanvasCamera) => void
   onCameraPreview: (camera: CanvasCamera) => void
   onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
   onDocumentPreview: Dispatch<SetStateAction<CanvasDocument>>
+  onEdgeDisconnect: (edgeId: string) => void
+  onEdgeSelect: (edgeId: string | null) => void
   onHistoryCheckpoint: (document: CanvasDocument) => void
+  onNodeFieldChange: (shapeId: string, fieldName: string, value: string | number) => void
+  onNodeRunToggle: (shapeId: string) => void
   onSelectionChange: (shapeIds: string[]) => void
   onTextEditStart: (shapeId: string) => void
   onToolChange: (tool: KonvaCanvasTool) => void
@@ -65,18 +71,21 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
 
   const renderShapeNode = (shape: CanvasShape) => (
     <KonvaCanvasShape
-      interactive={shapesAreInteractive}
+      interactive={canInteractWithShape(shape, props.activeTool, shapesAreInteractive)}
       isSelected={props.selectedIds.length === 1 && props.selectedIds.includes(shape.id)}
       key={shape.id}
       onDragMove={handleShapeDragMove}
       onDragEnd={handleShapeDragEnd}
       onDragStart={handleShapeDragStart}
       onDoubleClick={props.onTextEditStart}
+      onNodeFieldChange={props.onNodeFieldChange}
       onNodePortPointerDown={handleNodePortPointerDown}
+      onNodeRunToggle={props.onNodeRunToggle}
       onSelect={handleShapeSelect}
       panMode={props.isSpacePanning}
+      selectable={canSelectShapeWithTool(shape, props.activeTool)}
       shape={shape}
-      toolAllowsDrag={canDragShape}
+      toolAllowsDrag={canDragShape && canDragShapeWithTool(shape, props.activeTool)}
       zoom={renderCamera.zoom}
     />
   )
@@ -103,6 +112,18 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
       </Layer>
 
       <Layer>
+        <KonvaNodeEdgeLayer
+          edges={props.document.runtimeEdges}
+          onEdgeDisconnect={props.onEdgeDisconnect}
+          onEdgeSelect={props.onEdgeSelect}
+          preview={runtimeConnectionPreview}
+          selectedEdgeId={props.selectedEdgeId}
+          shapes={nodeShapes}
+          zoom={renderCamera.zoom}
+        />
+      </Layer>
+
+      <Layer>
         {props.document.shapes.map((shape) => {
           if (shape.parentId && frameIds.has(shape.parentId)) return null
           if (shape.type !== 'frame') return renderShapeNode(shape)
@@ -120,15 +141,6 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
         })}
       </Layer>
 
-      <Layer listening={false}>
-        <KonvaNodeEdgeLayer
-          edges={props.document.runtimeEdges}
-          preview={runtimeConnectionPreview}
-          shapes={nodeShapes}
-          zoom={renderCamera.zoom}
-        />
-      </Layer>
-
       {draft ? (
         <Layer listening={false}>
           <KonvaCanvasShape
@@ -138,8 +150,11 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
             onDragEnd={handleShapeDragEnd}
             onDragStart={handleShapeDragStart}
             onDoubleClick={props.onTextEditStart}
+            onNodeFieldChange={props.onNodeFieldChange}
             onSelect={handleShapeSelect}
+            onNodeRunToggle={props.onNodeRunToggle}
             panMode={props.isSpacePanning}
+            selectable={false}
             shape={draft}
             toolAllowsDrag={false}
             zoom={renderCamera.zoom}
@@ -167,6 +182,19 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
       </Layer>
     </Stage>
   )
+}
+
+function canInteractWithShape(shape: CanvasShape, activeTool: KonvaCanvasTool, defaultInteractive: boolean) {
+  if (!defaultInteractive) return false
+  return true
+}
+
+function canSelectShapeWithTool(shape: CanvasShape, activeTool: KonvaCanvasTool) {
+  return canKonvaShapeSelectWithTool(shape, activeTool)
+}
+
+function canDragShapeWithTool(shape: CanvasShape, activeTool: KonvaCanvasTool) {
+  return canKonvaShapeDragWithTool(shape, activeTool)
 }
 
 function mergeShapes(shapes: CanvasShape[], previewShapes: CanvasShape[]) {

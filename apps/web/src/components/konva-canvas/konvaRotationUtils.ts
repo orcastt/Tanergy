@@ -1,4 +1,5 @@
 import type { CanvasPoint, CanvasShape } from '@/features/canvas-engine'
+import { canCanvasShapeRotate } from '@/features/canvas-engine'
 
 type BoxCanvasShape = Extract<CanvasShape, { props: { height: number; width: number } }>
 
@@ -42,6 +43,7 @@ export function rotatePointAroundCenter(point: CanvasPoint, center: CanvasPoint,
 }
 
 function rotateShapeAroundCenter(shape: CanvasShape, center: CanvasPoint, deltaRotation: number): CanvasShape {
+  if (!canCanvasShapeRotate(shape)) return shape
   if (isBoxCanvasShape(shape)) {
     const nextCenter = rotatePointAroundCenter(getShapeRotationCenter(shape), center, deltaRotation)
     return {

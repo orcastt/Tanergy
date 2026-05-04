@@ -5,6 +5,7 @@ import { pointerToWorld, type CanvasCamera, type CanvasDocument } from '@/featur
 import { createRotatedResizeBox } from './konvaRotatedResize'
 import { getPointAngle } from './konvaRotationUtils'
 import { getSelectedShapeBounds, getShapesByIds } from './konvaSelectionUtils'
+import { canKonvaSelectionRotate } from './konvaShapeCapabilities'
 import { getStagePointer } from './konvaStageHelpers'
 import type { KonvaResizeHandle, KonvaToolSession } from './konvaCanvasTypes'
 
@@ -47,6 +48,7 @@ export function useKonvaTransformStartHandlers({
     const screenPoint = getStagePointer(stageRef.current)
     const originShapes = getShapesByIds(documentRef.current.shapes, shapeIds)
     const bounds = getSelectedShapeBounds(documentRef.current.shapes, shapeIds)
+    if (!canKonvaSelectionRotate(originShapes)) return
     if (originShapes.length === 0 || originShapes.some((shape) => shape.isLocked) || !bounds || !screenPoint) return
     const worldPoint = pointerToWorld({ ...screenPoint, pressure: event.evt.pressure }, cameraRef.current)
     const center = { x: (bounds.minX + bounds.maxX) / 2, y: (bounds.minY + bounds.maxY) / 2 }

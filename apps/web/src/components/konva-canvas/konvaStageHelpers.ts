@@ -7,7 +7,7 @@ export function getStagePointer(stage: Konva.Stage | null): CanvasPoint | null {
   return pointer ? { x: pointer.x, y: pointer.y } : null
 }
 
-export function isStageTarget(event: KonvaEventObject<PointerEvent>) {
+export function isStageTarget(event: KonvaEventObject<Event>) {
   return event.target === event.target.getStage()
 }
 

@@ -8,6 +8,7 @@ import { KonvaLineControls } from './KonvaLineControls'
 import { getKonvaOrientedBounds } from './konvaOrientedBounds'
 import { isBoxCanvasShape } from './konvaRotationUtils'
 import { getSelectedShapeBounds } from './konvaSelectionUtils'
+import { canKonvaSelectionRotate, canKonvaShapeRotate } from './konvaShapeCapabilities'
 import type { KonvaSnapGuide } from './konvaSnapping'
 
 type KonvaSelectionOverlayProps = {
@@ -37,11 +38,12 @@ export function KonvaSelectionOverlay({
 }: KonvaSelectionOverlayProps) {
   const selectedShapes = shapes.filter((shape) => selectedIds.includes(shape.id))
   const selectedBounds = selectedBoundsOverride ?? (selectedShapes.length > 0 ? getSelectedShapeBounds(shapes, selectedIds) : null)
+  const selectionCanRotate = canKonvaSelectionRotate(selectedShapes)
   const canResize = selectedShapes.length > 0
   const onlySelectedShape = selectedShapes.length === 1 ? selectedShapes[0] : null
   const singleLineShape = onlySelectedShape && (onlySelectedShape.type === 'line' || onlySelectedShape.type === 'arrow') ? onlySelectedShape : null
-  const singleBoxShape = onlySelectedShape && isBoxCanvasShape(onlySelectedShape) && !selectedBoundsOverride ? onlySelectedShape : null
-  const orientedSelectionBounds = selectedShapes.length > 1 ? getKonvaOrientedBounds(selectedShapes) : null
+  const singleBoxShape = onlySelectedShape && canKonvaShapeRotate(onlySelectedShape) && isBoxCanvasShape(onlySelectedShape) && !selectedBoundsOverride ? onlySelectedShape : null
+  const orientedSelectionBounds = selectedShapes.length > 1 && selectionCanRotate ? getKonvaOrientedBounds(selectedShapes) : null
   const showUnionBox = Boolean(selectedBoundsOverride) || selectedIds.length > 1
 
   return (
@@ -80,7 +82,7 @@ export function KonvaSelectionOverlay({
             onResizeStart={(handle, event) => onResizeStart(selectedIds, handle, event)}
             zoom={zoom}
           />
-          {selectedIds.length > 1 ? (
+          {selectedIds.length > 1 && selectionCanRotate ? (
             <RotateHandle
               onRotateStart={(event) => onRotateStart(selectedIds, event)}
               x={selectedBounds.maxX + 24 / zoom}

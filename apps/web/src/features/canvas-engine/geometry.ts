@@ -1,4 +1,5 @@
 import type { CanvasBounds, CanvasCamera, CanvasPoint, CanvasPointer, CanvasRect, CanvasShape } from './types'
+import { canCanvasShapeRotate } from './shapeCapabilities'
 
 export const defaultCanvasCamera: CanvasCamera = {
   x: 0,
@@ -110,7 +111,7 @@ export function getShapeBounds(shape: CanvasShape): CanvasBounds {
     return getPointsBounds(points, { x: shape.x, y: shape.y })
   }
 
-  if (shape.rotation) {
+  if (canCanvasShapeRotate(shape) && shape.rotation) {
     const center = { x: shape.x + shape.props.width / 2, y: shape.y + shape.props.height / 2 }
     return getPointsBounds([
       rotatePoint({ x: shape.x, y: shape.y }, center, shape.rotation),

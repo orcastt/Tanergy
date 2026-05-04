@@ -1,6 +1,7 @@
 import type { CanvasDocument } from '@/features/canvas-engine'
 import { KonvaContextMenu, type KonvaContextMenuAction } from './KonvaContextMenu'
 import { hasKonvaGroupedSelection } from './konvaGroupCommands'
+import { canKonvaSelectionFlip } from './konvaShapeCapabilities'
 
 type KonvaContextMenuHostProps = {
   canLockSelection: boolean
@@ -26,9 +27,11 @@ export function KonvaContextMenuHost({
   width,
 }: KonvaContextMenuHostProps) {
   if (!contextMenu) return null
+  const selectedShapes = document.shapes.filter((shape) => selectedIds.includes(shape.id))
   return (
     <KonvaContextMenu
       canDistribute={selectedIds.length > 2}
+      canFlip={canKonvaSelectionFlip(selectedShapes)}
       canGroup={selectedIds.length > 1}
       canLock={canLockSelection}
       canPaste

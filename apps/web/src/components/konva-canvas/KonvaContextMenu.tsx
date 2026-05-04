@@ -33,6 +33,7 @@ export type KonvaContextMenuAction =
 type KonvaContextMenuProps = {
   canDistribute: boolean
   canGroup: boolean
+  canFlip: boolean
   canLock: boolean
   canPaste: boolean
   canTidy: boolean
@@ -55,6 +56,7 @@ const viewportPadding = 8
 export function KonvaContextMenu({
   canDistribute,
   canGroup,
+  canFlip,
   canLock,
   canPaste,
   canTidy,
@@ -112,8 +114,8 @@ export function KonvaContextMenu({
           <MenuButton disabled={!multipleSelection} label="Stretch vertically" onClick={() => onAction('stretch-vertical')} />
           <MenuDivider />
           <MenuSectionLabel label="Transform" />
-          <MenuButton disabled={!hasSelection} label="Flip horizontal" onClick={() => onAction('flip-horizontal')} />
-          <MenuButton disabled={!hasSelection} label="Flip vertical" onClick={() => onAction('flip-vertical')} />
+          <MenuButton disabled={!canFlip} label="Flip horizontal" onClick={() => onAction('flip-horizontal')} />
+          <MenuButton disabled={!canFlip} label="Flip vertical" onClick={() => onAction('flip-vertical')} />
           <MenuButton disabled label="Pack" />
           <MenuButton disabled={!canTidy} label="Arrange in row" onClick={() => onAction('tidy-row')} />
           <MenuButton disabled={!canTidy} label="Arrange in column" onClick={() => onAction('tidy-column')} />
