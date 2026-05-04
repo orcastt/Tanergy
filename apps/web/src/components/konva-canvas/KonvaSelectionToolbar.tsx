@@ -15,6 +15,7 @@ type KonvaSelectionToolbarProps = {
   canCropImage: boolean
   canRemoveBackground: boolean
   canStartObjectCutout: boolean
+  actionError?: string | null
   isCapturingSelection?: boolean
   isRemovingBackground?: boolean
   selectedIds: string[]
@@ -27,6 +28,7 @@ type KonvaSelectionToolbarProps = {
 
 export function KonvaSelectionToolbar({
   camera,
+  actionError,
   canCaptureSelection,
   canConvertImageToNode,
   canCropImage,
@@ -111,6 +113,11 @@ export function KonvaSelectionToolbar({
       >
         <span aria-hidden className="style-action-icon style-action-icon--capture" />
       </button>
+      {actionError ? (
+        <span className="selection-toolbar__error" role="status">
+          {actionError}
+        </span>
+      ) : null}
     </div>
   )
 }

@@ -56,6 +56,7 @@ export async function runKonvaContextAction(options: RunKonvaContextActionOption
       onDocumentChange,
       onSelectionChange,
       point: pastePoint ?? { x: 0, y: 0 },
+      selectedIds,
     })
     return
   }

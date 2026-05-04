@@ -1,5 +1,7 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
-import type { CanvasDocument, CanvasPoint, CanvasShape } from '@/features/canvas-engine'
+import { getShapeBounds, type CanvasDocument, type CanvasImageShape, type CanvasNodeShape, type CanvasPoint, type CanvasShape } from '@/features/canvas-engine'
+import { setRuntimeGraphImageNodeOwnData } from '@/features/node-runtime/runtimeGraph'
+import type { JsonObject } from '@/types/nodeRuntime'
 import { appendShapes, pasteKonvaShapes } from './konvaShapeCommands'
 import { readKonvaImageShapeFromClipboard, readKonvaImageShapeFromClipboardData } from './konvaImageClipboard'
 
@@ -12,6 +14,7 @@ type PasteKonvaClipboardOptions = {
   document: CanvasDocument
   history: KonvaCanvasHistory
   point: CanvasPoint
+  selectedIds: string[]
   onClipboardChange?: (shapeCount: number) => void
   onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
   onSelectionChange: (shapeIds: string[]) => void
@@ -63,7 +66,14 @@ async function readKonvaShapesFromSystemClipboard(): Promise<CanvasShape[] | nul
   }
 }
 
-function pasteImageShape(options: PasteKonvaClipboardOptions, imageShape: CanvasShape) {
+function pasteImageShape(options: PasteKonvaClipboardOptions, imageShape: CanvasImageShape) {
+  const target = getImageNodePasteTarget(options.document, options.selectedIds, options.point)
+  if (target) {
+    options.history.checkpoint(options.document)
+    options.onDocumentChange((current) => setRuntimeGraphImageNodeOwnData(current, target.id, createImageNodeData(imageShape.props)))
+    options.onSelectionChange([target.id])
+    return true
+  }
   options.history.checkpoint(options.document)
   const result = appendShapes(options.document, [imageShape])
   options.onDocumentChange(result.document)
@@ -86,4 +96,40 @@ function readKonvaShapesFromClipboardText(text: string): CanvasShape[] {
   } catch {
     return []
   }
+}
+
+function getImageNodePasteTarget(document: CanvasDocument, selectedIds: string[], point: CanvasPoint): CanvasNodeShape | null {
+  const selected = new Set(selectedIds)
+  const nodes = document.shapes.filter((shape): shape is CanvasNodeShape => shape.type === 'node_card' && shape.props.nodeType === 'image')
+  return nodes.find((shape) => selected.has(shape.id)) ?? nodes.find((shape) => {
+    const bounds = getShapeBounds(shape)
+    return point.x >= bounds.minX && point.x <= bounds.maxX && point.y >= bounds.minY && point.y <= bounds.maxY
+  }) ?? null
+}
+
+function createImageNodeData(image: {
+  assetId: string
+  height: number
+  originalUrl?: string
+  thumbnail1024Url?: string
+  thumbnail256Url?: string
+  thumbnail512Url?: string
+  width: number
+}): JsonObject {
+  return pruneUndefined({
+    assetId: image.assetId,
+    crop: undefined,
+    imageHeight: image.height,
+    imageWidth: image.width,
+    inputSourceEdgeId: undefined,
+    originalUrl: image.originalUrl,
+    thumbnail1024Url: image.thumbnail1024Url,
+    thumbnail256Url: image.thumbnail256Url,
+    thumbnail512Url: image.thumbnail512Url,
+    title: 'Image',
+  })
+}
+
+function pruneUndefined<T extends Record<string, unknown>>(value: T): JsonObject {
+  return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined)) as JsonObject
 }

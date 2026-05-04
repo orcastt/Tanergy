@@ -10,6 +10,7 @@ type UseKonvaImageOpsActionsOptions = {
   document: CanvasDocument
   history: KonvaHistory
   selectedIds: string[]
+  onActionError?: (message: string | null) => void
   onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
   onSelectionChange: (shapeIds: string[]) => void
 }
@@ -17,6 +18,7 @@ type UseKonvaImageOpsActionsOptions = {
 export function useKonvaImageOpsActions({
   document,
   history,
+  onActionError,
   onDocumentChange,
   onSelectionChange,
   selectedIds,
@@ -27,6 +29,7 @@ export function useKonvaImageOpsActions({
   const removeBackground = useCallback(() => {
     const image = getSingleImageSelection(document, selectedIds)
     if (!image || isRemovingBackground) return
+    onActionError?.(null)
     setIsRemovingBackground(true)
     void removeBackgroundAsset(image.props.assetId)
       .then((asset) => {
@@ -36,10 +39,10 @@ export function useKonvaImageOpsActions({
         onSelectionChange([result.id])
       })
       .catch((error) => {
-        console.warn(error instanceof Error ? error.message : 'Remove background failed.')
+        reportActionError(error, 'Remove background failed.', onActionError)
       })
       .finally(() => setIsRemovingBackground(false))
-  }, [document, history, isRemovingBackground, onDocumentChange, onSelectionChange, selectedIds])
+  }, [document, history, isRemovingBackground, onActionError, onDocumentChange, onSelectionChange, selectedIds])
 
   return {
     canRemoveBackground: Boolean(selectedImage) && !isRemovingBackground,
@@ -47,6 +50,12 @@ export function useKonvaImageOpsActions({
     isRemovingBackground,
     removeBackground,
   }
+}
+
+function reportActionError(error: unknown, fallback: string, onActionError?: (message: string | null) => void) {
+  const message = error instanceof Error && error.message ? error.message : fallback
+  console.warn(message)
+  onActionError?.(message)
 }
 
 function getSingleImageSelection(document: CanvasDocument, selectedIds: string[]) {

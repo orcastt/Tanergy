@@ -17,8 +17,8 @@ export type KonvaSelectionCaptureOptions = {
 }
 
 const defaultPadding = 24
-const defaultPixelRatio = 2
-const defaultMaxPixelEdge = 4096
+const defaultPixelRatio = 3
+const defaultMaxPixelEdge = 8192
 export const konvaCaptureExcludeName = 'konva-capture-exclude'
 const shapeNodeName = 'konva-canvas-shape'
 const shapeNodeIdPrefix = 'shape:'

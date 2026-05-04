@@ -20,6 +20,7 @@ type UseKonvaSelectionExportActionsOptions = {
   document: CanvasDocument
   history: KonvaCanvasHistory
   selectedIds: string[]
+  onActionError?: (message: string | null) => void
   onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
   onSelectionChange: (shapeIds: string[]) => void
 }
@@ -27,6 +28,7 @@ type UseKonvaSelectionExportActionsOptions = {
 export function useKonvaSelectionExportActions({
   document,
   history,
+  onActionError,
   onDocumentChange,
   onSelectionChange,
   selectedIds,
@@ -43,6 +45,7 @@ export function useKonvaSelectionExportActions({
   const handleCaptureSelectionToImageNode = useCallback(async () => {
     if (selectedIds.length === 0 || isCapturingSelection) return
     setIsCapturingSelection(true)
+    onActionError?.(null)
     try {
       const capture = await captureSelectionPng()
       const asset = await uploadImageDataUrlAsset({
@@ -61,51 +64,55 @@ export function useKonvaSelectionExportActions({
       onDocumentChange(result.document)
       onSelectionChange(result.selectedIds)
     } catch (error) {
-      console.warn(error instanceof Error ? error.message : 'Selection capture failed.')
+      reportActionError(error, 'Selection capture failed.', onActionError)
     } finally {
       setIsCapturingSelection(false)
     }
-  }, [captureSelectionPng, document, history, isCapturingSelection, onDocumentChange, onSelectionChange, selectedIds.length])
+  }, [captureSelectionPng, document, history, isCapturingSelection, onActionError, onDocumentChange, onSelectionChange, selectedIds.length])
 
   const handleCopySelectionPng = useCallback(async () => {
     if (selectedIds.length === 0) return
+    onActionError?.(null)
     try {
       const capture = await captureSelectionPng()
       await copyKonvaPngDataUrlToClipboard(capture.dataUrl)
     } catch (error) {
-      console.warn(error instanceof Error ? error.message : 'Copy as PNG failed.')
+      reportActionError(error, 'Copy as PNG failed.', onActionError)
     }
-  }, [captureSelectionPng, selectedIds.length])
+  }, [captureSelectionPng, onActionError, selectedIds.length])
 
   const handleExportSelectionPng = useCallback(async () => {
     if (selectedIds.length === 0) return
+    onActionError?.(null)
     try {
       const capture = await captureSelectionPng()
       downloadKonvaDataUrl(capture.dataUrl, getSelectionExportFileName(document, 'png'))
     } catch (error) {
-      console.warn(error instanceof Error ? error.message : 'Export as PNG failed.')
+      reportActionError(error, 'Export as PNG failed.', onActionError)
     }
-  }, [captureSelectionPng, document, selectedIds.length])
+  }, [captureSelectionPng, document, onActionError, selectedIds.length])
 
   const handleCopySelectionSvg = useCallback(async () => {
     if (selectedIds.length === 0) return
+    onActionError?.(null)
     try {
       const result = exportKonvaSelectionToSvg(document, selectedIds)
       await copyKonvaSvgToClipboard(result.svg)
     } catch (error) {
-      console.warn(error instanceof Error ? error.message : 'Copy as SVG failed.')
+      reportActionError(error, 'Copy as SVG failed.', onActionError)
     }
-  }, [document, selectedIds])
+  }, [document, onActionError, selectedIds])
 
   const handleExportSelectionSvg = useCallback(() => {
     if (selectedIds.length === 0) return
+    onActionError?.(null)
     try {
       const result = exportKonvaSelectionToSvg(document, selectedIds)
       downloadKonvaBlob(createKonvaSelectionSvgBlob(result.svg), getSelectionExportFileName(document, 'svg'))
     } catch (error) {
-      console.warn(error instanceof Error ? error.message : 'Export as SVG failed.')
+      reportActionError(error, 'Export as SVG failed.', onActionError)
     }
-  }, [document, selectedIds])
+  }, [document, onActionError, selectedIds])
 
   const handleStageReady = useCallback((stage: Konva.Stage | null) => {
     stageRef.current = stage
@@ -122,6 +129,12 @@ export function useKonvaSelectionExportActions({
     handleStageReady,
     isCapturingSelection,
   }
+}
+
+function reportActionError(error: unknown, fallback: string, onActionError?: (message: string | null) => void) {
+  const message = error instanceof Error && error.message ? error.message : fallback
+  console.warn(message)
+  onActionError?.(message)
 }
 
 function getSelectionExportFileName(document: CanvasDocument, extension: 'png' | 'svg') {

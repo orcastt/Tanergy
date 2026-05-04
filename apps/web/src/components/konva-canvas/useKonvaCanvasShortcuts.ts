@@ -208,6 +208,7 @@ async function pasteFromClipboardData(options: UseKonvaCanvasShortcutsOptions, d
     onDocumentChange: options.onDocumentChange,
     onSelectionChange: options.onSelectionChange,
     point: options.getPastePoint(),
+    selectedIds: options.selectedIds,
   }, data)
 }
 

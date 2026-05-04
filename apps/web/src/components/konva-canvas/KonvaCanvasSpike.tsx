@@ -51,12 +51,14 @@ export function KonvaCanvasSpike() {
   const [cropEditingImageId, setCropEditingImageId] = useState<string | null>(null)
   const [editingTextId, setEditingTextId] = useState<string | null>(null)
   const [editingNodeText, setEditingNodeText] = useState<{ fieldName: KonvaNodeTextFieldName; shapeId: string } | null>(null)
+  const [selectionActionError, setSelectionActionError] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<{ worldX: number; worldY: number; x: number; y: number } | null>(null)
   const [, setClipboardShapeCount] = useState(0)
   const clipboardRef = useRef<CanvasShape[]>([])
   const lastPastePointRef = useRef<CanvasPoint | null>(null)
   const handleSelectionChange = useCallback((shapeIds: string[]) => {
     setSelectedIds(shapeIds)
+    setSelectionActionError(null)
     if (shapeIds.length > 0) setSelectedEdgeId(null)
     setCropEditingImageId((current) => (shapeIds.length === 1 && shapeIds[0] === current ? current : null))
   }, [])
@@ -124,6 +126,7 @@ export function KonvaCanvasSpike() {
   const imageOps = useKonvaImageOpsActions({
     document,
     history,
+    onActionError: setSelectionActionError,
     onDocumentChange: setDocument,
     onSelectionChange: handleSelectionChange,
     selectedIds,
@@ -152,6 +155,7 @@ export function KonvaCanvasSpike() {
   const selectionExport = useKonvaSelectionExportActions({
     document,
     history,
+    onActionError: setSelectionActionError,
     onDocumentChange: setDocument,
     onSelectionChange: handleSelectionChange,
     selectedIds,
@@ -319,6 +323,7 @@ export function KonvaCanvasSpike() {
           selectedIds={selectedIds}
         />
         <KonvaSelectionToolbar
+          actionError={selectionActionError}
           camera={camera}
           canCaptureSelection={selectionExport.canCaptureSelection}
           canConvertImageToNode={canConvertImageToNode}

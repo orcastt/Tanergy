@@ -39,6 +39,8 @@ export function KonvaNodeCardShape({ onFieldChange, onImageNodeToCanvas, onPortP
   const status = getStringValue(shape.props.runtimeSummary.status) || 'idle'
   const ports = getResolvedNodePorts(shape.props.nodeType, shape.props.data)
   const statusTone = getStatusTone(status)
+  const contentScale = getNodeContentScale(shape, definition.defaultCardSize)
+  const contentShape = getNodeContentShape(shape, contentScale)
 
   return (
     <Group opacity={opacity}>
@@ -53,31 +55,35 @@ export function KonvaNodeCardShape({ onFieldChange, onImageNodeToCanvas, onPortP
         strokeWidth={1}
         width={shape.props.width}
       />
-      <Text
-        fill="#0f172a"
-        fontFamily="Inter, system-ui, sans-serif"
-        fontSize={15}
-        fontStyle="bold"
-        height={22}
-        text={title}
-        width={shape.props.width - 116}
-        x={14}
-        y={16}
-      />
-      {shape.props.nodeType === 'image'
-        ? <ImageNodeToCanvasButton onImageNodeToCanvas={onImageNodeToCanvas} shape={shape} />
-        : canRunNode(shape)
-          ? <NodeCardRunButton onRunToggle={onRunToggle} shape={shape} status={status} />
-          : <NodeCardStatusBadge shape={shape} status={status} tone={statusTone} />}
-      <NodeBody
-        accent={accent}
-        fields={definition.cardFields}
-        onFieldChange={onFieldChange}
-        openFieldName={openFieldName}
-        setOpenFieldName={setOpenFieldName}
-        shape={shape}
-        zoom={zoom}
-      />
+      <Group clipHeight={shape.props.height} clipWidth={shape.props.width}>
+        <Group scaleX={contentScale} scaleY={contentScale}>
+          <Text
+            fill="#0f172a"
+            fontFamily="Inter, system-ui, sans-serif"
+            fontSize={15}
+            fontStyle="bold"
+            height={22}
+            text={title}
+            width={contentShape.props.width - 116}
+            x={14}
+            y={16}
+          />
+          {contentShape.props.nodeType === 'image'
+            ? <ImageNodeToCanvasButton onImageNodeToCanvas={onImageNodeToCanvas} shape={contentShape} />
+            : canRunNode(contentShape)
+              ? <NodeCardRunButton onRunToggle={onRunToggle} shape={contentShape} status={status} />
+              : <NodeCardStatusBadge shape={contentShape} status={status} tone={statusTone} />}
+          <NodeBody
+            accent={accent}
+            fields={definition.cardFields}
+            onFieldChange={onFieldChange}
+            openFieldName={openFieldName}
+            setOpenFieldName={setOpenFieldName}
+            shape={contentShape}
+            zoom={zoom}
+          />
+        </Group>
+      </Group>
       {ports.map((port) => {
         const isInput = port.direction === 'in'
         const y = shape.props.height * port.anchorY
@@ -109,6 +115,27 @@ export function KonvaNodeCardShape({ onFieldChange, onImageNodeToCanvas, onPortP
       {hoveredPort ? <PortTooltip port={hoveredPort} shape={shape} /> : null}
     </Group>
   )
+}
+
+function getNodeContentScale(shape: CanvasNodeShape, defaultSize: { height: number; width: number }) {
+  const scale = Math.min(
+    1,
+    shape.props.width / Math.max(1, defaultSize.width),
+    shape.props.height / Math.max(1, defaultSize.height)
+  )
+  return Number.isFinite(scale) && scale > 0 ? scale : 1
+}
+
+function getNodeContentShape(shape: CanvasNodeShape, scale: number): CanvasNodeShape {
+  if (scale >= 1) return shape
+  return {
+    ...shape,
+    props: {
+      ...shape.props,
+      height: shape.props.height / scale,
+      width: shape.props.width / scale,
+    },
+  }
 }
 
 function ImageNodeToCanvasButton({ onImageNodeToCanvas, shape }: { onImageNodeToCanvas?: (shapeId: string) => void; shape: CanvasNodeShape }) {

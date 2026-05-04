@@ -22,6 +22,8 @@ export function NodeImagePreview({
 }
 
 export function getNodeImageSource(data: JsonObject, zoom: number) {
+  const original = getStringValue(data.originalUrl)
+  if (data.source === 'merge_capture' && zoom > 0.5 && original) return original
   if (zoom <= 0.25) return getStringValue(data.thumbnail256Url) ?? getStringValue(data.thumbnail512Url) ?? getStringValue(data.thumbnail1024Url) ?? null
   if (zoom <= 0.5) return getStringValue(data.thumbnail512Url) ?? getStringValue(data.thumbnail1024Url) ?? getStringValue(data.thumbnail256Url) ?? getStringValue(data.originalUrl) ?? null
   if (zoom <= 1) return getStringValue(data.thumbnail1024Url) ?? getStringValue(data.thumbnail512Url) ?? getStringValue(data.originalUrl) ?? getStringValue(data.thumbnail256Url) ?? null
