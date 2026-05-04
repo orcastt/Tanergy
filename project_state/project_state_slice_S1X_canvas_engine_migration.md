@@ -151,6 +151,7 @@ Phase 3.1 object editing foundation started:
 - Image clipboard first pass is implemented for the Konva route: Cmd/Ctrl+V can read native clipboard image files/items from browser copies or OS screenshots, right-click Paste can read async clipboard image blobs, and pasted images upload through the existing Asset API before creating a canvas image shape. Image shapes store asset ids/URLs rather than data URLs, render real images, use zoom LOD thumbnails and reuse existing resize/rotate/copy/Alt-drag behavior.
 - Rotation/resize correction: single rotated objects no longer use the axis-aligned drag override, so transform controls keep their rotation during normal drag and Alt/Option duplicate drag. Rotated corner resize now converts pointer movement into the shape's local rotated coordinate system before changing width/height. Konva min zoom is now 5%.
 - Multi-selection rotate first pass is implemented: the union boundary has a rotate handle, group rotation uses the selection center plus origin-shape snapshots, and rotated bounds now account for box-shape rotation. Shift proportional resize uses a single projected scale so width/height preview together instead of appearing staggered.
+- Phase 3A command depth first pass is implemented: right-click Edit now supports Group/Ungroup and Lock/Unlock; Arrange now supports Distribute, Stretch, Flip and row/column tidy. Group membership is stored as `groupId`; locked shapes block drag/resize/rotate/line endpoint edits; group selection expands through click-select, drag, Alt/Option copy and clipboard clone.
 - A Konva shell `selectionchange` guard clears accidental browser text selection while preserving normal textarea/input selection during editing.
 - Frame movement now expands the drag set to include direct/nested frame children, so moving a frame carries contained shapes with it.
 - Copy/paste/duplicate/Alt-drag clone logic now rewrites cloned `parentId` through an old-id to new-id map; cloned children no longer point at an old frame. Deleting a frame explicitly releases unselected children instead of leaving stale parent ids.
@@ -205,9 +206,9 @@ Large Miro-scale collaboration: later multi-month S4 track
 Continue with Phase 3 object editing foundation before any `/boards/[boardId]` migration:
 
 ```text
-line/arrow route polish
-frame/sticky behavior polish
-right-click command depth
+Phase 3A command hand-test
+Phase 3B route/frame/navigator polish
+capture/export contract before Copy as / Export as
 ```
 
-After this checkpoint, hand-test Phase 3A right-click behavior and multi-selection rotation, then continue the disabled menu items in contract order: group/lock first, distribute/stretch/row-column next, export/copy-as after capture bounds are defined. Phase 3B follow-ups stay tracked for port-bound arrows, deeper frame containment and navigator polish.
+After this checkpoint, hand-test Phase 3A right-click behavior: group/ungroup, lock/unlock, distribute/stretch/flip/tidy, grouped Alt/Option copy and locked-object transforms. Export/copy-as/page commands stay disabled until capture bounds and multi-page contracts are defined. Phase 3B follow-ups stay tracked for port-bound arrows, deeper frame containment and navigator polish.

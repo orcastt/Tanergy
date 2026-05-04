@@ -36,6 +36,9 @@ export type CanvasShapeStyle = {
 }
 
 export type CanvasShapeBase<Type extends string, Props extends object = object> = {
+  flipX?: boolean
+  flipY?: boolean
+  groupId?: string | null
   id: string
   isLocked?: boolean
   parentId?: string | null

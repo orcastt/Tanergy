@@ -44,8 +44,9 @@ keep Board/API/storage contracts stable
 - Image paste first pass: external clipboard images and OS screenshots can be pasted into the Konva canvas via Cmd/Ctrl+V or right-click Paste. The flow uploads clipboard image data through the existing Asset API and stores only asset ids/URLs on the image shape; image render uses zoom LOD tiers: 10-25% `thumb-256`, 25-50% `thumb-512`, 50-100% `thumb-1024`, and above 100% original.
 - Rotation interaction fix: single rotated objects now keep their rotated transform controls during normal drag and Alt/Option copy drag. Rotated corner resize computes in the object's local rotated coordinate system instead of using the unrotated axis-aligned bbox. Konva min zoom is now 5%.
 - Multi-selection rotate first pass: the union selection boundary now has a rotate handle. Rotation uses the group center and an origin-shape snapshot, so rectangles/images/text/sticky/frame rotate by updating x/y/rotation, while line/arrow/stroke points rotate around the same center. Shift proportional resize now uses one projected scale value so width and height preview in the same frame instead of visually stepping one after the other.
+- Phase 3A command depth now wires previously disabled context-menu actions: Group/Ungroup, Lock/Unlock, Distribute, Stretch, Flip and Arrange row/column. Group membership uses lightweight `groupId`, lock blocks drag/resize/rotate/line endpoint edits, and grouped selections expand for click-select, drag, Alt/Option copy and clipboard clone.
 
-Next development focus: Phase 3A command depth, then return to Phase 3B follow-ups that require deeper geometry contracts: direction-aware orthogonal connectors, port binding and frame export/drag-out semantics.
+Next development focus: Phase 3A hand-test and command polish, then return to Phase 3B follow-ups that require deeper geometry contracts: direction-aware orthogonal connectors, port binding and frame export/drag-out semantics.
 
 ## tldraw Behavior Inventory
 
@@ -148,7 +149,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | ◐ | 2.12 | width/dash/font | s/m/l/xl，draw/solid/dashed/dotted，font 选项 | width/dash 已有；font controls 尚未做 | `KonvaCanvasProperties.tsx`, `konvaCanvasStyle.ts` | 图标不溢出，样式可保存 |
 | ✅ | 2.13 | arrow style | arc/elbow，start/end heads | line/arrow Route + Start/End Head properties 已接入 | `KonvaLineProperties.tsx`, `konvaLineRouteUtils.ts` | 箭头视觉接近 |
 | ✅ | 2.14 | opacity | selection/next shape opacity | selection 和 next tool 双写已接入 | `KonvaCanvasProperties.tsx` | 新对象继承 opacity |
-| ◐ | 2.15 | layer/align/actions | send/back/bring/align/stretch/duplicate/delete | layer/duplicate/delete 完成；right-click Align first pass 完成；stretch 未做，Properties align 未接 | `konvaCanvasStyle.ts`, `konvaArrangeCommands.ts`, `KonvaContextMenu.tsx` | 多选对齐和层级可用 |
+| ◐ | 2.15 | layer/align/actions | send/back/bring/align/stretch/duplicate/delete | layer/duplicate/delete 完成；right-click Align/Distribute/Stretch/Flip/Tidy first pass 完成；Properties align/action grid 仍未接全 | `konvaCanvasStyle.ts`, `konvaArrangeCommands.ts`, `KonvaContextMenu.tsx` | 多选对齐和层级可用 |
 
 ### Phase 2A：Properties 面板完整对照
 
@@ -165,7 +166,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | ✅ | 2A.7 | Opacity slider | 紫色 slider，右侧显示 0-100 | selection opacity 和 next opacity 都支持，mixed 显示 `Mixed` | 多选 mixed 状态可处理 |
 | ✅ | 2A.8 | Layer grid | 置底/下移/上移/置顶图标 | 四档 z-order 已持久化，Properties/右键/快捷键同源 | 层级顺序变化可见并持久化 |
 | ◐ | 2A.9 | Align grid | 左/中/右/顶/中/底等对齐 | right-click Arrange > Align 已完成；Properties align grid 未接 | 多选对齐符合截图菜单逻辑 |
-| ◐ | 2A.10 | Actions grid | duplicate/delete/stretch 等 | duplicate/delete 已与右键/快捷键共用 command；stretch 未做 | 点击 actions 和右键菜单结果一致 |
+| ◐ | 2A.10 | Actions grid | duplicate/delete/stretch 等 | duplicate/delete 已与右键/快捷键共用 command；stretch/distribute/flip/tidy 已在右键命令层完成，Properties grid 尚未接全 | 点击 actions 和右键菜单结果一致 |
 | ☐ | 2A.11 | Node card selection | 选 node 时不出现普通图形 stroke/fill 噪音 | node card selection 尚未进入 Konva route | 选节点不会让用户误改无效样式 |
 | ✅ | 2A.12 | Mixed selection | 多选不同样式 | style snapshot 支持 mixed；点击某值后统一应用到 selection | 多选不同颜色后能统一设置 |
 | ✅ | 2A.13 | Pointer isolation | properties 点击不触发画布选择/画线 | properties 已 stop pointer/wheel/context menu bubbling | 在 panel 上滚轮/点击不影响画布 |
@@ -227,20 +228,20 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 
 参考用户截图：右键菜单是专业画布工具的重要入口。它必须与 toolbar/properties/快捷键共享同一套 command system，不能做成只显示的假菜单。
 
-当前第一批实现原则：先把菜单结构、可用/不可用状态和低风险共享命令跑通。涉及新 schema 或导出边界的 Group、Lock、Move to page、Copy as、Export as 暂时显示 disabled，不伪装成已完成。
+当前第一批实现原则：菜单结构、可用/不可用状态和共享命令已经跑通。Group/Lock 使用轻量 shape 字段承载；Move to page、Copy as、Export as 仍保持 disabled，等 capture/export 边界明确后再接。
 
 | 状态 | 序号 | 菜单项 | 当前参考/快捷键 | Konva/Yjs 复刻要求 | 验收方式 |
 | --- | --- | --- | --- | --- | --- |
 | ✅ | 3A.1 | 右键打开位置 | 鼠标位置打开，子菜单向右展开 | 菜单 edge clamp、右侧空间不足时子菜单向左展开；右键 pointerdown 不触发 marquee selection | 画布边缘右键不被裁切，Copy/Paste 后不残留框选 |
-| ◐ | 3A.2 | 编辑 > 分组 | `⌘G` | 菜单已有 disabled 占位；group shape/schema 未做 | 多选后 group，可一起拖动 |
-| ◐ | 3A.3 | 编辑 > 展开/取消分组 | `⇧F` reference | 菜单已有 disabled 占位；ungroup/group expand command 未做 | group 后可拆回独立对象 |
-| ◐ | 3A.4 | 编辑 > 锁定/解锁 | `⇧L` reference | 菜单已有 disabled 占位；locked shape 行为未做 | locked 对象不误移动 |
+| ✅ | 3A.2 | 编辑 > 分组 | `⌘G` / `Ctrl+G` | 多选写入同一个 `groupId`；点选 group 成员会选中整组；拖动/Alt-copy/复制会按组扩展 | 多选后 group，可一起拖动和复制 |
+| ✅ | 3A.3 | 编辑 > 展开/取消分组 | `⇧⌘G` / `Shift+Ctrl+G` | Ungroup 清空所选 group 的 `groupId`；保留原 shape 顺序和选中对象 | group 后可拆回独立对象 |
+| ✅ | 3A.4 | 编辑 > 锁定/解锁 | `⇧L` | `isLocked` 已接菜单和快捷键；locked shape 阻止 drag/resize/rotate/line endpoint edits | locked 对象不误移动 |
 | ✅ | 3A.5 | 排列 > 对齐 | 左/水平/右/顶/垂直/底 | 右键 Arrange > Align 命令已做，移动 shape bounds；后续接 Properties align 同源入口 | 多选后对齐准确 |
-| ◐ | 3A.6 | 排列 > 分布 | 横向分布 / 纵向分布 | 菜单已有 disabled 占位；equal spacing distribute 未做 | 三个以上对象分布正确 |
-| ◐ | 3A.7 | 排列 > 拉伸 | 水平拉伸 / 垂直拉伸 | 菜单已有 disabled 占位；stretch to shared bounds 未做 | 多选对象尺寸变化符合预期 |
-| ◐ | 3A.8 | 排列 > 翻转 | 水平翻转 / 垂直翻转 | 菜单已有 disabled 占位；shape/image flip 未做 | 翻转后保存恢复 |
+| ✅ | 3A.6 | 排列 > 分布 | 横向分布 / 纵向分布 | 3 个以上对象按选区 span 计算等间距；locked 对象不参与变换 | 三个以上对象分布正确 |
+| ✅ | 3A.7 | 排列 > 拉伸 | 水平拉伸 / 垂直拉伸 | 多选对象拉伸到 shared selection bounds；locked 对象不参与变换 | 多选对象尺寸变化符合预期 |
+| ✅ | 3A.8 | 排列 > 翻转 | 水平翻转 / 垂直翻转 | box/image/sticky/text/frame 写 `flipX/flipY` 并镜像位置；line/arrow/stroke 镜像点位 | 翻转后保存恢复 |
 | ◐ | 3A.9 | 排列 > 打包 | pack selected shapes | 菜单位置已保留 disabled；pack command 未做 | 不支持时明确 disabled |
-| ◐ | 3A.10 | 排列 > 横排/竖排 | arrange selected in row/column | 菜单已有 disabled 占位；row/column helper 未做 | 多选重排成行/列 |
+| ✅ | 3A.10 | 排列 > 横排/竖排 | arrange selected in row/column | Row/Column tidy first pass：按当前位置排序、统一 cross-axis center、使用固定 spacing | 多选重排成行/列 |
 | ✅ | 3A.11 | 重新排序 > 置顶 | `]` reference | bring to front 已接右键/Properties/快捷键 | 与 properties layer 一致 |
 | ✅ | 3A.12 | 重新排序 > 上移一层 | `⌥]` reference | bring forward 已接右键/Properties/快捷键 | 层级只移动一层 |
 | ✅ | 3A.13 | 重新排序 > 下移一层 | `⌥[` reference | send backward 已接右键/Properties/快捷键 | 层级只移动一层 |
@@ -258,7 +259,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | ◐ | 3A.25 | 导出为 > PNG | export file | 菜单已有 disabled 占位；selection/board PNG export 未做 | PNG 尺寸和 bounds 正确 |
 | ◐ | 3A.26 | 导出为 > 透明 | toggle | 菜单已有 disabled 占位；export options state 未做 | 状态在菜单中可见 |
 | ✅ | 3A.27 | 选中全部 | `⌘A` | Select all visible/page objects 已接右键/快捷键 | 不选中 locked hidden internals |
-| ✅ | 3A.28 | 菜单 disabled | 无 selection 时部分禁用 | 无 selection 禁用 Cut/Copy/Duplicate/Reorder/Copy as/Delete；Align 需要多选 | 空白右键只显示可用项 |
+| ✅ | 3A.28 | 菜单 disabled | 无 selection 时部分禁用 | 无 selection 禁用 Cut/Copy/Duplicate/Reorder/Copy as/Delete；Group/Align/Stretch/Distribute/Tidy 按 selection count 启用；Lock/Unlock 按当前锁定状态启用 | 空白右键只显示可用项 |
 | ✅ | 3A.29 | 子菜单 hover | hover 展开，鼠标可进入子菜单 | CSS hover/focus-within 展开，支持嵌套 submenu 和 edge side flip | 和截图体验接近 |
 | ✅ | 3A.30 | 键盘快捷键显示 | 右侧显示 `⌘C` 等 | 根据平台显示 Mac `⌘` 或 Windows/Linux `Ctrl+` | Mac 显示 ⌘，Windows 显示 Ctrl |
 

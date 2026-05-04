@@ -48,7 +48,7 @@ function KonvaCanvasShapeComponent({
 
   return (
     <Group
-      draggable={canInteract && toolAllowsDrag}
+      draggable={canInteract && toolAllowsDrag && !shape.isLocked}
       key={shape.id}
       listening={interactive}
       onClick={canInteract ? (event) => {
@@ -90,6 +90,8 @@ function KonvaCanvasShapeComponent({
       offsetX={transform.offsetX}
       offsetY={transform.offsetY}
       rotation={transform.rotation}
+      scaleX={transform.scaleX}
+      scaleY={transform.scaleY}
       x={transform.x}
       y={transform.y}
     >
@@ -242,13 +244,15 @@ function ShapeLabel({ fill, height, opacity, text, width }: { fill: string; heig
 }
 
 function getGroupTransform(shape: CanvasShape) {
-  if (!isBoxCanvasShape(shape)) return { offsetX: 0, offsetY: 0, rotation: 0, x: shape.x, y: shape.y }
+  if (!isBoxCanvasShape(shape)) return { offsetX: 0, offsetY: 0, rotation: 0, scaleX: 1, scaleY: 1, x: shape.x, y: shape.y }
   const offsetX = shape.props.width / 2
   const offsetY = shape.props.height / 2
   return {
     offsetX,
     offsetY,
     rotation: shape.rotation ?? 0,
+    scaleX: shape.flipX ? -1 : 1,
+    scaleY: shape.flipY ? -1 : 1,
     x: shape.x + offsetX,
     y: shape.y + offsetY,
   }

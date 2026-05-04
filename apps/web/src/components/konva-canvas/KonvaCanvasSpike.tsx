@@ -29,6 +29,7 @@ import { KonvaCanvasToolbar } from './KonvaCanvasToolbar'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
 import { konvaDefaultShapeStyle } from './konvaCanvasStyle'
 import { runKonvaContextAction } from './konvaContextActions'
+import { hasKonvaGroupedSelection } from './konvaGroupCommands'
 import { createSeedShapes, createStressStrokes } from './konvaSeedShapes'
 import { updateTextShape } from './konvaShapeCommands'
 import { useKonvaBrowserSelectionGuard } from './useKonvaBrowserSelectionGuard'
@@ -115,6 +116,12 @@ export function KonvaCanvasSpike() {
   const pointCount = useMemo(() => (
     document.shapes.reduce((total, shape) => total + (shape.type === 'stroke' ? shape.props.points.length : 0), 0)
   ), [document.shapes])
+  const selectedShapes = useMemo(() => {
+    const selected = new Set(selectedIds)
+    return document.shapes.filter((shape) => selected.has(shape.id))
+  }, [document.shapes, selectedIds])
+  const canLockSelection = selectedShapes.some((shape) => !shape.isLocked)
+  const canUnlockSelection = selectedShapes.some((shape) => shape.isLocked)
 
   const handleCameraPreview = useCallback((nextCamera: CanvasCamera) => {
     setCamera(nextCamera)
@@ -252,7 +259,13 @@ export function KonvaCanvasSpike() {
         <KonvaCanvasDiagnostics diagnostics={diagnostics} pointCount={pointCount} zoom={camera.zoom} />
         {contextMenu ? (
           <KonvaContextMenu
+            canDistribute={selectedIds.length > 2}
+            canGroup={selectedIds.length > 1}
+            canLock={canLockSelection}
             canPaste
+            canTidy={selectedIds.length > 1}
+            canUnlock={canUnlockSelection}
+            canUngroup={hasKonvaGroupedSelection(document.shapes, selectedIds)}
             containerHeight={size.height}
             containerWidth={size.width}
             hasSelection={selectedIds.length > 0}

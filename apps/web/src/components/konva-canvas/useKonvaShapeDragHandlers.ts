@@ -9,6 +9,7 @@ import { useCanvasSettingsStore } from '@/features/canvas-settings/canvasSetting
 import { createDuplicateDragSession, createMoveDragSession, getShapeDragSessionBounds, getShapeDragSessionShapes, type KonvaShapeDragSession } from './konvaDragSession'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
 import { applyFrameContainment } from './konvaFrameContainment'
+import { expandKonvaGroupedShapeIds } from './konvaGroupCommands'
 import { appendShapes, cloneKonvaShapes } from './konvaShapeCommands'
 import { snapBoundsToTargetBounds, type KonvaSnapGuide } from './konvaSnapping'
 
@@ -24,7 +25,7 @@ type UseKonvaShapeDragHandlersOptions = {
 }
 
 export function useKonvaShapeDragHandlers(options: UseKonvaShapeDragHandlersOptions) {
-  const { activeTool, camera, documentRef, onDocumentChange, onDocumentPreview, onHistoryCheckpoint, onSelectionChange, selectedIds } = options
+  const { camera, documentRef, onDocumentChange, onDocumentPreview, onHistoryCheckpoint, onSelectionChange, selectedIds } = options
   const snapAlignment = useCanvasSettingsStore((state) => state.settings.snapAlignment)
   const snapDistance = useCanvasSettingsStore((state) => state.settings.snapDistance)
   const dragRef = useRef<KonvaShapeDragSession | null>(null)
@@ -48,9 +49,11 @@ export function useKonvaShapeDragHandlers(options: UseKonvaShapeDragHandlersOpti
 
   const handleShapeDragStart = useCallback((shapeId: string, config: { duplicate?: boolean } = {}) => {
     const current = documentRef.current
-    const baseDragShapeIds = activeTool === 'select' && selectedIds.includes(shapeId) ? selectedIds : [shapeId]
-    const dragShapeIds = expandFrameChildren(current.shapes, baseDragShapeIds)
+    const baseDragShapeIds = selectedIds.includes(shapeId) ? selectedIds : [shapeId]
+    const groupedShapeIds = expandKonvaGroupedShapeIds(current.shapes, baseDragShapeIds)
+    const dragShapeIds = expandKonvaGroupedShapeIds(current.shapes, expandFrameChildren(current.shapes, groupedShapeIds))
     const sourceShapes = current.shapes.filter((shape) => dragShapeIds.includes(shape.id))
+    if (sourceShapes.some((shape) => shape.isLocked)) return { lockSource: true }
     const duplicateShapes = config.duplicate ? cloneKonvaShapes(sourceShapes, { x: 0, y: 0 }) : null
     const nextDocument = duplicateShapes ? appendShapes(current, duplicateShapes).document : current
     const session = duplicateShapes
@@ -71,7 +74,7 @@ export function useKonvaShapeDragHandlers(options: UseKonvaShapeDragHandlersOpti
     }
     dragRef.current = session
     return { lockSource: Boolean(duplicateShapes) }
-  }, [activeTool, documentRef, onDocumentPreview, onHistoryCheckpoint, onSelectionChange, selectedIds])
+  }, [documentRef, onDocumentPreview, onHistoryCheckpoint, onSelectionChange, selectedIds])
 
   const handleShapeDragMove = useCallback((shapeId: string, x: number, y: number) => {
     const drag = dragRef.current

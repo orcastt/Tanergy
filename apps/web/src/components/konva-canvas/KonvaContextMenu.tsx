@@ -10,16 +10,34 @@ export type KonvaContextMenuAction =
   | 'copy'
   | 'cut'
   | 'delete'
+  | 'distribute-horizontal'
+  | 'distribute-vertical'
   | 'duplicate'
+  | 'flip-horizontal'
+  | 'flip-vertical'
+  | 'group'
   | 'layer-back'
   | 'layer-backward'
   | 'layer-forward'
   | 'layer-front'
+  | 'lock'
   | 'paste'
   | 'select-all'
+  | 'stretch-horizontal'
+  | 'stretch-vertical'
+  | 'tidy-column'
+  | 'tidy-row'
+  | 'ungroup'
+  | 'unlock'
 
 type KonvaContextMenuProps = {
+  canDistribute: boolean
+  canGroup: boolean
+  canLock: boolean
   canPaste: boolean
+  canTidy: boolean
+  canUnlock: boolean
+  canUngroup: boolean
   containerHeight: number
   containerWidth: number
   hasSelection: boolean
@@ -35,7 +53,13 @@ const menuWidth = 232
 const viewportPadding = 8
 
 export function KonvaContextMenu({
+  canDistribute,
+  canGroup,
+  canLock,
   canPaste,
+  canTidy,
+  canUnlock,
+  canUngroup,
   containerHeight,
   containerWidth,
   hasSelection,
@@ -67,9 +91,10 @@ export function KonvaContextMenu({
         <MenuDivider />
 
         <MenuSubmenu label="Edit">
-          <MenuButton disabled label="Group" shortcut={`${shortcutMod}G`} />
-          <MenuButton disabled label="Ungroup" shortcut={`⇧${shortcutMod}G`} />
-          <MenuButton disabled label="Lock" shortcut="⇧L" />
+          <MenuButton disabled={!canGroup} label="Group" shortcut={`${shortcutMod}G`} onClick={() => onAction('group')} />
+          <MenuButton disabled={!canUngroup} label="Ungroup" shortcut={`⇧${shortcutMod}G`} onClick={() => onAction('ungroup')} />
+          <MenuButton disabled={!canLock} label="Lock" shortcut="⇧L" onClick={() => onAction('lock')} />
+          <MenuButton disabled={!canUnlock} label="Unlock" shortcut="⇧L" onClick={() => onAction('unlock')} />
         </MenuSubmenu>
         <MenuSubmenu label="Arrange">
           <MenuSubmenu disabled={!multipleSelection} label="Align">
@@ -81,21 +106,21 @@ export function KonvaContextMenu({
             <MenuButton disabled={!multipleSelection} label="Center vertically" onClick={() => onAction('align-center-y')} />
             <MenuButton disabled={!multipleSelection} label="Bottom" onClick={() => onAction('align-bottom')} />
           </MenuSubmenu>
-          <MenuSubmenu disabled label="Distribute">
-            <MenuButton disabled label="Horizontally" />
-            <MenuButton disabled label="Vertically" />
+          <MenuSubmenu disabled={!canDistribute} label="Distribute">
+            <MenuButton disabled={!canDistribute} label="Horizontally" onClick={() => onAction('distribute-horizontal')} />
+            <MenuButton disabled={!canDistribute} label="Vertically" onClick={() => onAction('distribute-vertical')} />
           </MenuSubmenu>
-          <MenuSubmenu disabled label="Stretch">
-            <MenuButton disabled label="Horizontally" />
-            <MenuButton disabled label="Vertically" />
+          <MenuSubmenu disabled={!multipleSelection} label="Stretch">
+            <MenuButton disabled={!multipleSelection} label="Horizontally" onClick={() => onAction('stretch-horizontal')} />
+            <MenuButton disabled={!multipleSelection} label="Vertically" onClick={() => onAction('stretch-vertical')} />
           </MenuSubmenu>
-          <MenuSubmenu disabled label="Flip">
-            <MenuButton disabled label="Horizontal" />
-            <MenuButton disabled label="Vertical" />
+          <MenuSubmenu disabled={!hasSelection} label="Flip">
+            <MenuButton disabled={!hasSelection} label="Horizontal" onClick={() => onAction('flip-horizontal')} />
+            <MenuButton disabled={!hasSelection} label="Vertical" onClick={() => onAction('flip-vertical')} />
           </MenuSubmenu>
           <MenuButton disabled label="Pack" />
-          <MenuButton disabled label="Arrange in row" />
-          <MenuButton disabled label="Arrange in column" />
+          <MenuButton disabled={!canTidy} label="Arrange in row" onClick={() => onAction('tidy-row')} />
+          <MenuButton disabled={!canTidy} label="Arrange in column" onClick={() => onAction('tidy-column')} />
         </MenuSubmenu>
         <MenuSubmenu label="Reorder">
           <MenuButton disabled={!hasSelection} label="Bring to front" shortcut="]" onClick={() => onAction('layer-front')} />

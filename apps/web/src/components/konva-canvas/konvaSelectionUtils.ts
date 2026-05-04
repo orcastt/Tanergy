@@ -181,8 +181,21 @@ function transformShapeFromBounds(shape: CanvasShape, originBounds: CanvasBounds
   }
 
   if (shape.type === 'line' || shape.type === 'arrow') {
-    const end = nextPoint({ x: shape.x + shape.props.end.x, y: shape.y + shape.props.end.y })
-    return { ...shape, props: { ...shape.props, end: { x: end.x - nextOrigin.x, y: end.y - nextOrigin.y } }, x: nextOrigin.x, y: nextOrigin.y }
+    const toLocalPoint = (point: CanvasPoint) => {
+      const next = nextPoint({ x: shape.x + point.x, y: shape.y + point.y })
+      return { x: next.x - nextOrigin.x, y: next.y - nextOrigin.y }
+    }
+    return {
+      ...shape,
+      props: {
+        ...shape.props,
+        bends: shape.props.bends?.map(toLocalPoint),
+        control: shape.props.control ? toLocalPoint(shape.props.control) : shape.props.control,
+        end: toLocalPoint(shape.props.end),
+      },
+      x: nextOrigin.x,
+      y: nextOrigin.y,
+    }
   }
 
   if (shape.type === 'stroke') {

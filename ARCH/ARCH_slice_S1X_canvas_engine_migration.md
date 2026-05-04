@@ -89,6 +89,9 @@ useKonvaCanvasHistory
 Current Phase 3 command/data notes:
 
 - `document.shapes` array order remains the z-order source of truth. `reorderKonvaShapes` supports `back`, `backward`, `forward` and `front`; Properties, right-click menu and bracket shortcuts call the same action enum.
+- Grouping is represented with a lightweight `groupId` on member shapes rather than a wrapper shape. Selection, drag, Alt/Option duplicate and clipboard clone expand grouped ids; clone commands remap copied group ids so pasted groups stay together without sharing the source group id.
+- Locking is represented with optional `isLocked`; locked shapes may remain selectable, but transform entry points block drag, resize, rotation and line endpoint/route edits.
+- Flip commands use optional `flipX` / `flipY` for box-like shapes and mirror line/arrow/stroke points directly for path-like shapes.
 - Clone commands build an old-id to new-id map and rewrite cloned `parentId` relationships. If a copied child’s parent is not part of the copied set, the pasted child is detached instead of pointing to an old frame.
 - Deleting a frame releases unselected children by setting `parentId=null`; it does not rely on missing-parent fallback behavior.
 - Frame dragging expands the moved set to include contained children so a frame behaves like a container in first-pass editing.

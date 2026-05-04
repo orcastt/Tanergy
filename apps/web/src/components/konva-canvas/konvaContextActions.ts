@@ -1,9 +1,21 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import type { CanvasDocument, CanvasShape } from '@/features/canvas-engine'
-import { alignKonvaShapes, type KonvaAlignAction } from './konvaArrangeCommands'
+import {
+  alignKonvaShapes,
+  distributeKonvaShapes,
+  flipKonvaShapes,
+  stretchKonvaShapes,
+  tidyKonvaShapes,
+  type KonvaAlignAction,
+  type KonvaDistributeAction,
+  type KonvaFlipAction,
+  type KonvaStretchAction,
+  type KonvaTidyAction,
+} from './konvaArrangeCommands'
 import { deleteKonvaShapes, duplicateKonvaShapes, reorderKonvaShapes } from './konvaCanvasStyle'
 import { pasteKonvaClipboard, writeKonvaShapesToSystemClipboard } from './konvaClipboardCommands'
 import type { KonvaContextMenuAction } from './KonvaContextMenu'
+import { groupKonvaShapes, setKonvaShapesLocked, ungroupKonvaShapes } from './konvaGroupCommands'
 import { copyKonvaShapes } from './konvaShapeCommands'
 
 type KonvaCanvasHistory = {
@@ -71,6 +83,24 @@ export async function runKonvaContextAction(options: RunKonvaContextActionOption
     onSelectionChange(result.selectedIds)
     return
   }
+  if (action === 'group') {
+    const result = groupKonvaShapes(document, selectedIds)
+    onDocumentChange(result.document)
+    onSelectionChange(result.selectedIds)
+    return
+  }
+  if (action === 'ungroup') {
+    const result = ungroupKonvaShapes(document, selectedIds)
+    onDocumentChange(result.document)
+    onSelectionChange(result.selectedIds)
+    return
+  }
+  if (action === 'lock' || action === 'unlock') {
+    const result = setKonvaShapesLocked(document, selectedIds, action === 'lock')
+    onDocumentChange(result.document)
+    onSelectionChange(result.selectedIds)
+    return
+  }
 
   const layerAction = getContextLayerAction(action)
   if (layerAction) {
@@ -79,7 +109,31 @@ export async function runKonvaContextAction(options: RunKonvaContextActionOption
   }
 
   const alignAction = getContextAlignAction(action)
-  if (alignAction) onDocumentChange(alignKonvaShapes(document, selectedIds, alignAction))
+  if (alignAction) {
+    onDocumentChange(alignKonvaShapes(document, selectedIds, alignAction))
+    return
+  }
+
+  const distributeAction = getContextDistributeAction(action)
+  if (distributeAction) {
+    onDocumentChange(distributeKonvaShapes(document, selectedIds, distributeAction))
+    return
+  }
+
+  const stretchAction = getContextStretchAction(action)
+  if (stretchAction) {
+    onDocumentChange(stretchKonvaShapes(document, selectedIds, stretchAction))
+    return
+  }
+
+  const flipAction = getContextFlipAction(action)
+  if (flipAction) {
+    onDocumentChange(flipKonvaShapes(document, selectedIds, flipAction))
+    return
+  }
+
+  const tidyAction = getContextTidyAction(action)
+  if (tidyAction) onDocumentChange(tidyKonvaShapes(document, selectedIds, tidyAction))
 }
 
 function getContextLayerAction(action: KonvaContextMenuAction): Parameters<typeof reorderKonvaShapes>[2] | null {
@@ -97,5 +151,29 @@ function getContextAlignAction(action: KonvaContextMenuAction): KonvaAlignAction
   if (action === 'align-left') return 'left'
   if (action === 'align-right') return 'right'
   if (action === 'align-top') return 'top'
+  return null
+}
+
+function getContextDistributeAction(action: KonvaContextMenuAction): KonvaDistributeAction | null {
+  if (action === 'distribute-horizontal') return 'horizontal'
+  if (action === 'distribute-vertical') return 'vertical'
+  return null
+}
+
+function getContextStretchAction(action: KonvaContextMenuAction): KonvaStretchAction | null {
+  if (action === 'stretch-horizontal') return 'horizontal'
+  if (action === 'stretch-vertical') return 'vertical'
+  return null
+}
+
+function getContextFlipAction(action: KonvaContextMenuAction): KonvaFlipAction | null {
+  if (action === 'flip-horizontal') return 'horizontal'
+  if (action === 'flip-vertical') return 'vertical'
+  return null
+}
+
+function getContextTidyAction(action: KonvaContextMenuAction): KonvaTidyAction | null {
+  if (action === 'tidy-column') return 'column'
+  if (action === 'tidy-row') return 'row'
   return null
 }

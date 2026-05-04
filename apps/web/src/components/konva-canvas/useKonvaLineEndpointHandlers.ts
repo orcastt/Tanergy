@@ -21,7 +21,7 @@ export function useKonvaLineEndpointHandlers({
     const shape = current.shapes.find((item): item is Extract<CanvasShape, { type: 'arrow' | 'line' }> => (
       item.id === shapeId && (item.type === 'line' || item.type === 'arrow')
     ))
-    if (!shape) return
+    if (!shape || shape.isLocked) return
     onHistoryCheckpoint(current)
     sessionRef.current = { endpoint, originShape: shape, pointerId: event.evt.pointerId, shapeId, type: 'line-endpoint' }
   }, [documentRef, onHistoryCheckpoint, sessionRef])
@@ -33,7 +33,7 @@ export function useKonvaLineEndpointHandlers({
     const shape = current.shapes.find((item): item is Extract<CanvasShape, { type: 'arrow' | 'line' }> => (
       item.id === shapeId && (item.type === 'line' || item.type === 'arrow')
     ))
-    if (!shape) return
+    if (!shape || shape.isLocked) return
     onHistoryCheckpoint(current)
     sessionRef.current = { handle, originShape: shape, pointerId: event.evt.pointerId, shapeId, type: 'line-route-handle' }
   }, [documentRef, onHistoryCheckpoint, sessionRef])

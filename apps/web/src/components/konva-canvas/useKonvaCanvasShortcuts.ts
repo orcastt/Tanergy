@@ -7,6 +7,7 @@ import {
 import { deleteKonvaShapes, duplicateKonvaShapes, reorderKonvaShapes } from './konvaCanvasStyle'
 import { pasteKonvaClipboardData, writeKonvaShapesToSystemClipboard } from './konvaClipboardCommands'
 import { konvaToolShortcuts, type KonvaCanvasTool } from './konvaCanvasTypes'
+import { groupKonvaShapes, setKonvaShapesLocked, ungroupKonvaShapes } from './konvaGroupCommands'
 import { copyKonvaShapes } from './konvaShapeCommands'
 
 type KonvaCanvasHistory = {
@@ -68,9 +69,19 @@ export function useKonvaCanvasShortcuts(options: UseKonvaCanvasShortcutsOptions)
         runDuplicate(options)
         return
       }
+      if (command && key === 'g') {
+        event.preventDefault()
+        runGroupAction(options, event.shiftKey ? 'ungroup' : 'group')
+        return
+      }
       if (command && key === 'a') {
         event.preventDefault()
         options.onSelectionChange(options.document.shapes.map((shape) => shape.id))
+        return
+      }
+      if (!command && event.shiftKey && key === 'l') {
+        event.preventDefault()
+        runLockToggle(options)
         return
       }
       if (event.key === 'Delete' || event.key === 'Backspace') {
@@ -135,6 +146,27 @@ function runDuplicate(options: UseKonvaCanvasShortcutsOptions) {
   if (options.selectedIds.length === 0) return
   options.history.checkpoint(options.document)
   const result = duplicateKonvaShapes(options.document, options.selectedIds)
+  options.onDocumentChange(result.document)
+  options.onSelectionChange(result.selectedIds)
+}
+
+function runGroupAction(options: UseKonvaCanvasShortcutsOptions, action: 'group' | 'ungroup') {
+  if (options.selectedIds.length === 0) return
+  options.history.checkpoint(options.document)
+  const result = action === 'group'
+    ? groupKonvaShapes(options.document, options.selectedIds)
+    : ungroupKonvaShapes(options.document, options.selectedIds)
+  options.onDocumentChange(result.document)
+  options.onSelectionChange(result.selectedIds)
+}
+
+function runLockToggle(options: UseKonvaCanvasShortcutsOptions) {
+  if (options.selectedIds.length === 0) return
+  const selected = new Set(options.selectedIds)
+  const selectedShapes = options.document.shapes.filter((shape) => selected.has(shape.id))
+  const shouldLock = selectedShapes.some((shape) => !shape.isLocked)
+  options.history.checkpoint(options.document)
+  const result = setKonvaShapesLocked(options.document, options.selectedIds, shouldLock)
   options.onDocumentChange(result.document)
   options.onSelectionChange(result.selectedIds)
 }

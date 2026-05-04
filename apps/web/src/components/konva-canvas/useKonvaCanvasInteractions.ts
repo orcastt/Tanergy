@@ -32,6 +32,7 @@ import { updateLineEndpointShapes, updateLineRouteHandleShapes } from './konvaLi
 import { getPointAngle, rotateShapesAroundCenter } from './konvaRotationUtils'
 import { createRotatedResizeBox, resizeShapesFromRotatedBox } from './konvaRotatedResize'
 import { getResizeSnapSourceKeys, getRotationSnapGuides, snapResizeBoundsToShapes, snapRotationAngle, type KonvaSnapGuide } from './konvaSnapping'
+import { getKonvaGroupMemberIds } from './konvaGroupCommands'
 import { useKonvaDraftPreview } from './useKonvaDraftPreview'
 import { useKonvaEraserSession } from './useKonvaEraserSession'
 import { useKonvaLineEndpointHandlers } from './useKonvaLineEndpointHandlers'
@@ -85,16 +86,24 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     documentRef.current = options.document
   }, [options.document])
   const handleShapeSelect = useCallback((shapeId: string, config: { additive?: boolean } = {}) => {
+    const scopeIds = getKonvaGroupMemberIds(documentRef.current.shapes, shapeId)
     const additive = options.activeTool === 'select' && config.additive
-    if (!additive && options.activeTool === 'select' && options.selectedIds.length > 1 && options.selectedIds.includes(shapeId)) return
-    options.onSelectionChange(additive ? toggleSelectedId(options.selectedIds, shapeId) : [shapeId])
+    if (!additive && options.activeTool === 'select' && options.selectedIds.length > 1 && scopeIds.some((id) => options.selectedIds.includes(id))) return
+    if (!additive) {
+      options.onSelectionChange(scopeIds)
+      return
+    }
+    const removing = scopeIds.every((id) => options.selectedIds.includes(id))
+    options.onSelectionChange(removing
+      ? options.selectedIds.filter((id) => !scopeIds.includes(id))
+      : scopeIds.reduce((ids, id) => toggleSelectedId(ids, id), options.selectedIds))
   }, [options])
   const handleResizeStart = useCallback((shapeIds: string[], handle: KonvaResizeHandle, event: KonvaEventObject<PointerEvent>) => {
     event.cancelBubble = true
     event.evt.preventDefault()
     const originShapes = getShapesByIds(documentRef.current.shapes, shapeIds)
     const originBounds = getSelectedShapeBounds(documentRef.current.shapes, shapeIds)
-    if (originShapes.length === 0 || !originBounds) return
+    if (originShapes.length === 0 || originShapes.some((shape) => shape.isLocked) || !originBounds) return
     options.onHistoryCheckpoint(documentRef.current)
     sessionRef.current = {
       handle,
@@ -112,7 +121,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     const screenPoint = getStagePointer(stageRef.current)
     const originShapes = getShapesByIds(documentRef.current.shapes, shapeIds)
     const bounds = getSelectedShapeBounds(documentRef.current.shapes, shapeIds)
-    if (originShapes.length === 0 || !bounds || !screenPoint) return
+    if (originShapes.length === 0 || originShapes.some((shape) => shape.isLocked) || !bounds || !screenPoint) return
     const worldPoint = pointerToWorld({ ...screenPoint, pressure: event.evt.pressure }, cameraRef.current)
     const center = { x: (bounds.minX + bounds.maxX) / 2, y: (bounds.minY + bounds.maxY) / 2 }
     const guideRadius = Math.max(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY) / 2 + 42 / cameraRef.current.zoom
