@@ -72,7 +72,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     scheduleCameraCommit,
     stageRef,
   })
-  const { handleShapeDragEnd, handleShapeDragMove, handleShapeDragStart, selectedBoundsOverride, setSelectedBoundsOverride, snapGuides } = useKonvaShapeDragHandlers({
+  const { dragPreviewShapes, draggingShapeIds, handleShapeDragEnd, handleShapeDragMove, handleShapeDragStart, selectedBoundsOverride, setSelectedBoundsOverride, snapGuides } = useKonvaShapeDragHandlers({
     activeTool: options.activeTool,
     camera: options.camera,
     documentRef,
@@ -266,7 +266,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     if (nextDraft) options.onDocumentChange((current) => appendCanvasShape(current, nextDraft))
   }
   return {
-    draft, eraserTrail, handleLineEndpointStart, handleLineRouteHandleStart, handlePointerDown,
+    draft, dragPreviewShapes, draggingShapeIds, eraserTrail, handleLineEndpointStart, handleLineRouteHandleStart, handlePointerDown,
     handlePointerLeave: () => clearEraserTrail(),
     handlePointerMove, handlePointerUp, handleResizeStart, handleRotateStart,
     handleShapeDragEnd, handleShapeDragMove, handleShapeDragStart, handleShapeSelect, handleWheel,

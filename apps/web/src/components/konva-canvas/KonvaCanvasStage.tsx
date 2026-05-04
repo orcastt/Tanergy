@@ -44,6 +44,8 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
     handleShapeDragStart,
     handleShapeSelect,
     handleWheel,
+    dragPreviewShapes,
+    draggingShapeIds,
     selectedBoundsOverride,
     selectionBox,
     snapGuides,
@@ -54,6 +56,8 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
   const canDragShape = shapesAreInteractive && !props.isSpacePanning
   const frameIds = new Set(props.document.shapes.filter((shape) => shape.type === 'frame').map((shape) => shape.id))
   const frameChildren = getFrameChildren(props.document.shapes, frameIds)
+  const draggingIds = new Set(draggingShapeIds)
+  const overlayShapes = dragPreviewShapes ? mergeShapes(props.document.shapes, dragPreviewShapes) : props.document.shapes
 
   const renderShapeNode = (shape: CanvasShape) => (
     <KonvaCanvasShape
@@ -105,7 +109,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
               }}>
                 {(frameChildren.get(shape.id) ?? []).map(renderShapeNode)}
               </Group>
-              <KonvaFrameChrome frame={shape} />
+              {draggingIds.has(shape.id) ? null : <KonvaFrameChrome frame={shape} />}
             </Group>
           )
         })}
@@ -138,7 +142,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
           selectedBoundsOverride={selectedBoundsOverride}
           selectedIds={props.selectedIds}
           selectionBox={selectionBox}
-          shapes={props.document.shapes}
+          shapes={overlayShapes}
           snapGuides={snapGuides}
           zoom={renderCamera.zoom}
         />
@@ -149,6 +153,13 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
       </Layer>
     </Stage>
   )
+}
+
+function mergeShapes(shapes: CanvasShape[], previewShapes: CanvasShape[]) {
+  const preview = new Map(previewShapes.map((shape) => [shape.id, shape]))
+  const merged = shapes.map((shape) => preview.get(shape.id) ?? shape)
+  const existing = new Set(shapes.map((shape) => shape.id))
+  return [...merged, ...previewShapes.filter((shape) => !existing.has(shape.id))]
 }
 
 function getFrameChildren(shapes: CanvasShape[], frameIds: Set<string>) {
