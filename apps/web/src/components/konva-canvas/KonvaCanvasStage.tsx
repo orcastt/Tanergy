@@ -10,6 +10,7 @@ import { KonvaSelectionOverlay } from './KonvaSelectionOverlay'
 import { useKonvaCanvasInteractions } from './useKonvaCanvasInteractions'
 import { canKonvaShapeDragWithTool, canKonvaShapeSelectWithTool } from './konvaShapeCapabilities'
 import { konvaCaptureExcludeName } from './konvaSelectionExport'
+import { getVisibleKonvaShapes } from './konvaViewportCulling'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
 
 type KonvaCanvasStageProps = {
@@ -70,11 +71,21 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
   const renderCamera = props.camera
   const shapesAreInteractive = !props.captureMode && props.activeTool !== 'hand' && props.activeTool !== 'eraser'
   const canDragShape = shapesAreInteractive && !props.isSpacePanning
-  const frameIds = new Set(props.document.shapes.filter((shape) => shape.type === 'frame').map((shape) => shape.id))
-  const frameChildren = getFrameChildren(props.document.shapes, frameIds)
+  const sourceShapes = dragPreviewShapes ?? props.document.shapes
+  const renderShapes = getVisibleKonvaShapes({
+    camera: renderCamera,
+    captureMode: props.captureMode,
+    cropEditingImageId: props.cropEditingImageId,
+    draggingShapeIds,
+    height: props.height,
+    selectedIds: props.selectedIds,
+    shapes: sourceShapes,
+    width: props.width,
+  })
+  const frameIds = new Set(renderShapes.filter((shape) => shape.type === 'frame').map((shape) => shape.id))
+  const frameChildren = getFrameChildren(renderShapes, frameIds)
   const draggingIds = new Set(draggingShapeIds)
-  const overlayShapes = dragPreviewShapes ? mergeShapes(props.document.shapes, dragPreviewShapes) : props.document.shapes
-  const nodeShapes = overlayShapes.filter((shape): shape is CanvasNodeShape => shape.type === 'node_card')
+  const nodeShapes = renderShapes.filter((shape): shape is CanvasNodeShape => shape.type === 'node_card')
 
   const renderShapeNode = (shape: CanvasShape) => (
     <KonvaCanvasShape
@@ -141,7 +152,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
       )}
 
       <Layer>
-        {props.document.shapes.map((shape) => {
+        {renderShapes.map((shape) => {
           if (shape.parentId && frameIds.has(shape.parentId)) return null
           if (shape.type !== 'frame') return renderShapeNode(shape)
           return (
@@ -192,7 +203,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
             selectedBoundsOverride={selectedBoundsOverride}
             selectedIds={props.selectedIds}
             selectionBox={selectionBox}
-            shapes={overlayShapes}
+            shapes={renderShapes}
             snapGuides={snapGuides}
             zoom={renderCamera.zoom}
           />
@@ -210,6 +221,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
 
 function canInteractWithShape(shape: CanvasShape, activeTool: KonvaCanvasTool, defaultInteractive: boolean) {
   if (!defaultInteractive) return false
+  if (activeTool !== 'select') return shape.type === 'node_card'
   return true
 }
 
@@ -219,13 +231,6 @@ function canSelectShapeWithTool(shape: CanvasShape, activeTool: KonvaCanvasTool)
 
 function canDragShapeWithTool(shape: CanvasShape, activeTool: KonvaCanvasTool) {
   return canKonvaShapeDragWithTool(shape, activeTool)
-}
-
-function mergeShapes(shapes: CanvasShape[], previewShapes: CanvasShape[]) {
-  const preview = new Map(previewShapes.map((shape) => [shape.id, shape]))
-  const merged = shapes.map((shape) => preview.get(shape.id) ?? shape)
-  const existing = new Set(shapes.map((shape) => shape.id))
-  return [...merged, ...previewShapes.filter((shape) => !existing.has(shape.id))]
 }
 
 function getFrameChildren(shapes: CanvasShape[], frameIds: Set<string>) {

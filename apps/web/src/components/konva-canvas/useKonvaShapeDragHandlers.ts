@@ -20,13 +20,12 @@ type UseKonvaShapeDragHandlersOptions = {
   documentRef: { current: CanvasDocument }
   selectedIds: string[]
   onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
-  onDocumentPreview: Dispatch<SetStateAction<CanvasDocument>>
   onHistoryCheckpoint: (document: CanvasDocument) => void
   onSelectionChange: (shapeIds: string[]) => void
 }
 
 export function useKonvaShapeDragHandlers(options: UseKonvaShapeDragHandlersOptions) {
-  const { camera, documentRef, onDocumentChange, onDocumentPreview, onHistoryCheckpoint, onSelectionChange, selectedIds } = options
+  const { camera, documentRef, onDocumentChange, onHistoryCheckpoint, onSelectionChange, selectedIds } = options
   const snapAlignment = useCanvasSettingsStore((state) => state.settings.snapAlignment)
   const snapDistance = useCanvasSettingsStore((state) => state.settings.snapDistance)
   const dragRef = useRef<KonvaShapeDragSession | null>(null)
@@ -70,16 +69,12 @@ export function useKonvaShapeDragHandlers(options: UseKonvaShapeDragHandlersOpti
       : createMoveDragSession(current.shapes, dragShapeIds, shapeId)
     if (!session) return
     onHistoryCheckpoint(current)
-    if (duplicateShapes) {
-      documentRef.current = nextDocument
-      onDocumentPreview(nextDocument)
-      onSelectionChange(duplicateShapes.map((shape) => shape.id))
-    }
+    if (duplicateShapes) onSelectionChange(duplicateShapes.map((shape) => shape.id))
     dragRef.current = session
     setDraggingShapeIds(session.movingShapeIds)
-    setDragPreviewShapes(session.movingShapes)
+    setDragPreviewShapes(getShapeDragSessionShapes(session, session.anchorShape.x, session.anchorShape.y))
     return { lockSource: true }
-  }, [documentRef, onDocumentPreview, onHistoryCheckpoint, onSelectionChange, selectedIds])
+  }, [documentRef, onHistoryCheckpoint, onSelectionChange, selectedIds])
 
   const handleShapeDragMove = useCallback((shapeId: string, x: number, y: number) => {
     const drag = dragRef.current
@@ -89,10 +84,7 @@ export function useKonvaShapeDragHandlers(options: UseKonvaShapeDragHandlersOpti
     const previewShapes = getShapeDragSessionShapes(drag, nextPoint.x, nextPoint.y)
     setDragPreviewShapes(previewShapes)
     dragRef.current = { ...drag, lastPoint: nextPoint }
-    const nextDocument = withCanvasShapes(documentRef.current, previewShapes)
-    documentRef.current = nextDocument
-    onDocumentPreview(nextDocument)
-  }, [documentRef, getSnappedDragPoint, onDocumentPreview])
+  }, [getSnappedDragPoint])
 
   const handleShapeDragEnd = useCallback((shapeId: string, x: number, y: number) => {
     const drag = dragRef.current

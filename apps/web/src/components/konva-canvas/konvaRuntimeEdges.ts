@@ -1,6 +1,7 @@
 import type { CanvasDocument, CanvasPoint } from '@/features/canvas-engine'
 import {
   addRuntimeGraphEdge,
+  addRuntimeGraphEdges,
   removeRuntimeGraphEdge,
   removeRuntimeGraphEdgesForShapes,
   type RuntimeGraphEdge,
@@ -18,6 +19,7 @@ export type KonvaRuntimeConnectionPreview = {
   dataType: NodePortDataType
   pointer: { x: number; y: number }
   source: KonvaRuntimeConnectionEndpoint
+  sources?: KonvaRuntimeConnectionEndpoint[]
   target?: KonvaRuntimeConnectionEndpoint & {
     point: CanvasPoint
   }
@@ -28,6 +30,13 @@ export function addKonvaRuntimeEdge(
   edge: Omit<KonvaRuntimeEdge, 'id'>
 ): CanvasDocument {
   return addRuntimeGraphEdge(document, edge)
+}
+
+export function addKonvaRuntimeEdges(
+  document: CanvasDocument,
+  edges: Omit<KonvaRuntimeEdge, 'id'>[]
+): CanvasDocument {
+  return addRuntimeGraphEdges(document, edges)
 }
 
 export function removeKonvaRuntimeEdgesForShapes(document: CanvasDocument, shapeIds: string[]) {

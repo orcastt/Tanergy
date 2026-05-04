@@ -35,8 +35,8 @@ export const KonvaNodeEdgeLayer = memo(function KonvaNodeEdgeLayer({
   zoom,
 }: KonvaNodeEdgeLayerProps) {
   const edgeViews = useMemo(() => getKonvaRuntimeEdgeViews(shapes, edges), [edges, shapes])
-  const previewView = useMemo(() => (
-    preview ? getKonvaRuntimePreviewView(shapes, preview) : null
+  const previewViews = useMemo(() => (
+    preview ? getKonvaRuntimePreviewViews(shapes, preview) : []
   ), [preview, shapes])
   const strokeWidth = Math.max(2, 2.5 / getSafeZoom(zoom))
   const hitStrokeWidth = Math.max(14, 18 / getSafeZoom(zoom))
@@ -106,8 +106,8 @@ export const KonvaNodeEdgeLayer = memo(function KonvaNodeEdgeLayer({
           </Group>
         )
       })}
-      {previewView ? (
-        <>
+      {previewViews.map((previewView) => (
+        <Group key={previewView.edgeId}>
           <Path
             dash={previewSnapped ? undefined : [8 / getSafeZoom(zoom), 7 / getSafeZoom(zoom)]}
             data={previewView.path}
@@ -143,8 +143,8 @@ export const KonvaNodeEdgeLayer = memo(function KonvaNodeEdgeLayer({
               />
             </>
           ) : null}
-        </>
-      ) : null}
+        </Group>
+      ))}
     </Group>
   )
 })
@@ -170,23 +170,25 @@ export function getKonvaRuntimeEdgeViews(shapes: CanvasNodeShape[], edges: Konva
   })
 }
 
-export function getKonvaRuntimePreviewView(
+export function getKonvaRuntimePreviewViews(
   shapes: CanvasNodeShape[],
   preview: KonvaRuntimeConnectionPreview
-): EdgeView | null {
-  const sourceShape = shapes.find((shape) => shape.id === preview.source.shapeId)
-  if (!sourceShape) return null
-
-  const start = getKonvaNodePortWorldPoint(sourceShape, preview.source.portId)
-  if (!start) return null
-
-  return {
-    color: getKonvaRuntimeEdgeColor(preview.dataType),
-    edgeId: 'preview',
-    path: getKonvaRuntimeEdgePath(start, preview.pointer),
-    start,
-    target: preview.pointer,
-  }
+): EdgeView[] {
+  const shapeById = new Map(shapes.map((shape) => [shape.id, shape]))
+  const sources = preview.sources?.length ? preview.sources : [preview.source]
+  return sources.flatMap((source, index) => {
+    const sourceShape = shapeById.get(source.shapeId)
+    if (!sourceShape) return []
+    const start = getKonvaNodePortWorldPoint(sourceShape, source.portId)
+    if (!start) return []
+    return [{
+      color: getKonvaRuntimeEdgeColor(preview.dataType),
+      edgeId: `preview:${index}`,
+      path: getKonvaRuntimeEdgePath(start, preview.pointer),
+      start,
+      target: preview.pointer,
+    }]
+  })
 }
 
 export function getKonvaRuntimeEdgeColor(dataType: NodePortDataType) {

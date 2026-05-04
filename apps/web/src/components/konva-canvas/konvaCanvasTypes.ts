@@ -92,6 +92,10 @@ export type KonvaToolSession =
   | {
       dataType: NodePortDataType
       pointerId?: number
+      sourceEndpoints?: {
+        portId: string
+        shapeId: string
+      }[]
       sourcePortId: string
       sourceShapeId: string
       type: 'node-connection'

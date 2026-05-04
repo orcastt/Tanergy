@@ -15,10 +15,23 @@ export function addRuntimeGraphEdge(
   document: CanvasDocument,
   edge: Omit<RuntimeGraphEdge, 'id'>
 ): CanvasDocument {
-  if (!validateRuntimeGraphConnection(document, edge).valid) return document
-  return reconcileRuntimeGraphDocument(withCanvasRuntimeEdges(document, [
-    ...document.runtimeEdges.filter((item) => !targetsSameInput(item, edge)),
-    { ...edge, id: createRuntimeGraphEdgeId(edge.dataType) },
+  const preparedDocument = prepareDocumentForRuntimeGraphEdges(document, [edge])
+  if (!validateRuntimeGraphConnection(preparedDocument, edge).valid) return document
+  return addRuntimeGraphEdges(preparedDocument, [edge])
+}
+
+export function addRuntimeGraphEdges(
+  document: CanvasDocument,
+  edges: Omit<RuntimeGraphEdge, 'id'>[]
+): CanvasDocument {
+  if (edges.length === 0) return document
+  const preparedDocument = prepareDocumentForRuntimeGraphEdges(document, edges)
+  const validEdges = edges.filter((edge) => validateRuntimeGraphConnection(preparedDocument, edge).valid)
+  if (validEdges.length === 0) return document
+  const replacedInputs = new Set(validEdges.map(getTargetInputKey))
+  return reconcileRuntimeGraphDocument(withCanvasRuntimeEdges(preparedDocument, [
+    ...preparedDocument.runtimeEdges.filter((item) => !replacedInputs.has(getTargetInputKey(item))),
+    ...validEdges.map((edge) => ({ ...edge, id: createRuntimeGraphEdgeId(edge.dataType) })),
   ]))
 }
 
@@ -94,14 +107,35 @@ export function getOutgoingRuntimeGraphEdges(document: CanvasDocument, shapeId: 
 
 function syncDynamicImageInputCounts(document: CanvasDocument): CanvasDocument {
   const imageInputCounts = new Map<string, number>()
+  const maxImageInputIndexes = new Map<string, number>()
   for (const edge of document.runtimeEdges) {
     if (edge.dataType !== 'image') continue
     imageInputCounts.set(edge.targetShapeId, (imageInputCounts.get(edge.targetShapeId) ?? 0) + 1)
+    maxImageInputIndexes.set(edge.targetShapeId, Math.max(maxImageInputIndexes.get(edge.targetShapeId) ?? 0, getDynamicImageInputIndex(edge.targetPortId)))
   }
 
   return mapRuntimeGraphShapes(document, (shape) => {
     if (!isImageInputCountNode(shape)) return shape
-    const nextCount = Math.min(Math.max((imageInputCounts.get(shape.id) ?? 0) + 1, 1), maxImageInputPorts)
+    const nextCount = Math.min(Math.max((imageInputCounts.get(shape.id) ?? 0) + 1, (maxImageInputIndexes.get(shape.id) ?? 0) + 1, 1), maxImageInputPorts)
+    if (Number(shape.props.data.imageInputCount ?? 1) === nextCount) return shape
+    return updateNodeData(shape, { ...shape.props.data, imageInputCount: nextCount })
+  })
+}
+
+function prepareDocumentForRuntimeGraphEdges(document: CanvasDocument, edges: Omit<RuntimeGraphEdge, 'id'>[]): CanvasDocument {
+  const requiredImageInputCounts = new Map<string, number>()
+  for (const edge of edges) {
+    if (edge.dataType !== 'image') continue
+    const index = getDynamicImageInputIndex(edge.targetPortId)
+    if (!index) continue
+    requiredImageInputCounts.set(edge.targetShapeId, Math.max(requiredImageInputCounts.get(edge.targetShapeId) ?? 1, index))
+  }
+  if (requiredImageInputCounts.size === 0) return document
+  return mapRuntimeGraphShapes(document, (shape) => {
+    if (!isImageInputCountNode(shape)) return shape
+    const requiredCount = requiredImageInputCounts.get(shape.id)
+    if (!requiredCount) return shape
+    const nextCount = Math.min(Math.max(requiredCount, Number(shape.props.data.imageInputCount ?? 1), 1), maxImageInputPorts)
     if (Number(shape.props.data.imageInputCount ?? 1) === nextCount) return shape
     return updateNodeData(shape, { ...shape.props.data, imageInputCount: nextCount })
   })
@@ -151,8 +185,15 @@ function mapRuntimeGraphShapes(
   return changed ? withCanvasShapes(document, shapes) : document
 }
 
-function targetsSameInput(edge: Pick<RuntimeGraphEdge, 'targetPortId' | 'targetShapeId'>, other: Pick<RuntimeGraphEdge, 'targetPortId' | 'targetShapeId'>) {
-  return edge.targetShapeId === other.targetShapeId && edge.targetPortId === other.targetPortId
+function getTargetInputKey(edge: Pick<RuntimeGraphEdge, 'targetPortId' | 'targetShapeId'>) {
+  return `${edge.targetShapeId}:${edge.targetPortId}`
+}
+
+function getDynamicImageInputIndex(portId: string) {
+  const match = /^image_in_(\d+)$/.exec(portId)
+  if (!match) return 0
+  const index = Number(match[1])
+  return Number.isFinite(index) && index > 0 ? index : 0
 }
 
 function getNodeShape(document: CanvasDocument, shapeId: string): CanvasNodeShape | null {

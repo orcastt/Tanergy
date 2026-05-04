@@ -8,8 +8,9 @@ import {
   type CanvasNodeShape,
   type CanvasPoint,
 } from '@/features/canvas-engine'
+import { maxImageInputPorts } from '@/features/node-runtime/registry'
 import { getKonvaNodePort, hitTestKonvaNodePort } from './konvaNodePorts'
-import { addKonvaRuntimeEdge, type KonvaRuntimeConnectionPreview } from './konvaRuntimeEdges'
+import { addKonvaRuntimeEdge, addKonvaRuntimeEdges, type KonvaRuntimeConnectionEndpoint, type KonvaRuntimeConnectionPreview } from './konvaRuntimeEdges'
 import type { KonvaToolSession } from './konvaCanvasTypes'
 import { getStagePointer } from './konvaStageHelpers'
 
@@ -20,6 +21,7 @@ type UseKonvaNodeConnectionSessionOptions = {
   onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
   onHistoryCheckpoint: (document: CanvasDocument) => void
   onSelectionChange: (shapeIds: string[]) => void
+  selectedIds: string[]
 }
 
 export function useKonvaNodeConnectionSession({
@@ -28,6 +30,7 @@ export function useKonvaNodeConnectionSession({
   onDocumentChange,
   onHistoryCheckpoint,
   onSelectionChange,
+  selectedIds,
   stageRef,
 }: UseKonvaNodeConnectionSessionOptions) {
   const [runtimeConnectionPreview, setRuntimeConnectionPreview] = useState<KonvaRuntimeConnectionPreview | null>(null)
@@ -43,19 +46,22 @@ export function useKonvaNodeConnectionSession({
     const screenPoint = getStagePointer(stageRef.current)
     if (!screenPoint) return null
     const worldPoint = pointerToWorld({ ...screenPoint, pressure: event.evt.pressure }, cameraRef.current)
+    const sourceEndpoints = getBatchSourceEndpoints(documentRef.current.shapes, selectedIds, nodeShape, port.id)
     setRuntimeConnectionPreview({
       dataType: port.dataType,
       pointer: worldPoint,
       source: { portId: port.id, shapeId },
+      sources: sourceEndpoints,
     })
     return {
       dataType: port.dataType,
       pointerId: event.evt.pointerId,
+      sourceEndpoints,
       sourcePortId: port.id,
       sourceShapeId: shapeId,
       type: 'node-connection' as const,
     }
-  }, [cameraRef, documentRef, stageRef])
+  }, [cameraRef, documentRef, selectedIds, stageRef])
 
   const updateNodeConnectionPreview = useCallback((session: NodeConnectionSession, worldPoint: CanvasPoint) => {
     const target = getCompatibleTarget(documentRef.current.shapes, session, worldPoint, cameraRef.current.zoom)
@@ -63,6 +69,7 @@ export function useKonvaNodeConnectionSession({
       dataType: session.dataType,
       pointer: target?.world ?? worldPoint,
       source: { portId: session.sourcePortId, shapeId: session.sourceShapeId },
+      sources: session.sourceEndpoints,
       target: target ? {
         point: target.world,
         portId: target.id,
@@ -77,13 +84,16 @@ export function useKonvaNodeConnectionSession({
     const target = getCompatibleTarget(documentRef.current.shapes, session, worldPoint, cameraRef.current.zoom)
     if (!target) return
     onHistoryCheckpoint(documentRef.current)
-    const nextDocument = addKonvaRuntimeEdge(documentRef.current, {
-      dataType: session.dataType,
-      sourcePortId: session.sourcePortId,
-      sourceShapeId: session.sourceShapeId,
-      targetPortId: target.id,
-      targetShapeId: target.shapeId,
-    })
+    const batchEdges = getBatchRuntimeEdges(documentRef.current.shapes, session, target)
+    const nextDocument = batchEdges.length > 0
+      ? addKonvaRuntimeEdges(documentRef.current, batchEdges)
+      : addKonvaRuntimeEdge(documentRef.current, {
+          dataType: session.dataType,
+          sourcePortId: session.sourcePortId,
+          sourceShapeId: session.sourceShapeId,
+          targetPortId: target.id,
+          targetShapeId: target.shapeId,
+        })
     documentRef.current = nextDocument
     onDocumentChange(nextDocument)
     onSelectionChange([target.shapeId])
@@ -119,4 +129,58 @@ function getCompatibleTarget(
     direction: 'in',
     excludeShapeId: session.sourceShapeId,
   })
+}
+
+function getBatchSourceEndpoints(
+  shapes: CanvasDocument['shapes'],
+  selectedIds: string[],
+  clickedShape: CanvasNodeShape,
+  clickedPortId: string
+): KonvaRuntimeConnectionEndpoint[] {
+  const clickedEndpoint = { portId: clickedPortId, shapeId: clickedShape.id }
+  if (clickedShape.props.nodeType !== 'image' || clickedPortId !== 'image_out' || !selectedIds.includes(clickedShape.id)) {
+    return [clickedEndpoint]
+  }
+  const selected = new Set(selectedIds)
+  const imageNodes = shapes
+    .filter((shape): shape is CanvasNodeShape => (
+      selected.has(shape.id) &&
+      shape.type === 'node_card' &&
+      shape.props.nodeType === 'image' &&
+      !shape.isLocked &&
+      Boolean(getKonvaNodePort(shape, 'image_out'))
+    ))
+    .sort((a, b) => Math.abs(a.y - b.y) > 8 ? a.y - b.y : a.x - b.x)
+
+  return imageNodes.length > 1
+    ? imageNodes.map((shape) => ({ portId: 'image_out', shapeId: shape.id }))
+    : [clickedEndpoint]
+}
+
+function getBatchRuntimeEdges(
+  shapes: CanvasDocument['shapes'],
+  session: NodeConnectionSession,
+  target: NonNullable<ReturnType<typeof getCompatibleTarget>>
+) {
+  const sources = session.sourceEndpoints?.length ? session.sourceEndpoints : [{ portId: session.sourcePortId, shapeId: session.sourceShapeId }]
+  if (sources.length <= 1) return []
+  const targetShape = getNodeShape(shapes, target.shapeId)
+  if (!targetShape || (targetShape.props.nodeType !== 'image_gen' && targetShape.props.nodeType !== 'image_gen_4') || target.dataType !== 'image') return []
+  const startIndex = getImageInputPortIndex(target.id)
+  if (!startIndex) return []
+  const capacity = Math.max(0, maxImageInputPorts - startIndex + 1)
+  return sources.slice(0, capacity).map((source, index) => ({
+    dataType: session.dataType,
+    sourcePortId: source.portId,
+    sourceShapeId: source.shapeId,
+    targetPortId: `image_in_${startIndex + index}`,
+    targetShapeId: target.shapeId,
+  }))
+}
+
+function getImageInputPortIndex(portId: string) {
+  const match = /^image_in_(\d+)$/.exec(portId)
+  if (!match) return 0
+  const index = Number(match[1])
+  return Number.isFinite(index) && index > 0 ? index : 0
 }
