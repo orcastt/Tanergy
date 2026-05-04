@@ -51,6 +51,8 @@ keep Board/API/storage contracts stable
 - 2026-05-04 multi-selection right-click priority: once a multi-selection boundary exists, right-click keeps that boundary as the command target even if the pointer is over a selected member, another group member or another shape. Hit-target selection only runs when there is no active multi-selection.
 - 2026-05-04 oriented group boundary: rotated group/multi-selection now computes an oriented selection box from member geometry, so the blue boundary/resize handles follow group rotation instead of falling back to an axis-aligned union. The rotated box resize path now supports multi-selection first pass. Frame top chrome also rotates with the frame, removing the old unrotated black outline.
 - 2026-05-04 Properties parity pass: Properties now has Align, Stretch, Distribute, Flip, Row/Column arrange and text font/alignment controls. Node card selection no longer shows ordinary stroke/fill/width noise.
+- 2026-05-04 Properties action icon redraw: action icons now use explicit mask SVG line art per command. Align, Layer, Duplicate/Delete, Stretch, Distribute, Flip, Row/Column, Image Node, To Canvas and Capture no longer reuse misleading near-match icons.
+- 2026-05-04 Sticky color fix: sticky note fill now derives from the current Color/stroke token during render, so editing note text no longer leaves a stale `style.fill` that blocks later color changes.
 - 2026-05-04 Phase 4A image-node first pass: Canvas image selection can create a lightweight Konva `node_card` Image Node placed to the image's right. The node stores asset refs and dimensions only; To Canvas fetches the asset record and creates a canvas image to the node's right. Capture selection remains disabled until export bounds/upload are implemented.
 - 2026-05-04 Frame containment first pass: dragged children can leave a frame and clear `parentId`; frame nesting is intentionally disabled for now. Frame visible bounds helpers are in place for later capture/export semantics.
 
@@ -148,7 +150,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | ✅ | 2.3 | shape 菜单 | rectangle/diamond/ellipse/triangle/cloud | 基础 shape tools 已展开在 toolbar；Shift 绘制和 resize 支持等比约束 | `konvaCanvasTypes.ts`, `konvaDraftShapes.ts` | 形状菜单和图标一致，Shift 画正形 |
 | ✅ | 2.4 | direct tools | arrow/line/draw/text/eraser | arrow/line/draw/text/eraser 均已接入 Konva tools | `KonvaCanvasToolbar.tsx` | 每个按钮能创建/操作正确对象 |
 | ✅ | 2.5 | 连续绘制 | tldraw 需要右键工具进入 continuous | 已采用用户认可规则：左键连续绘制；ESC/右键回 Select；右键不启动框选/绘制 session | `useKonvaCanvasInteractions.ts`, `useKonvaCanvasShortcuts.ts` | 连画多个形状不中断，不弹出选中高亮；ESC/右键后回选择模式，右键菜单后不出现框选虚线 |
-| ✅ | 2.6 | tooltip | 黑底白字，长文字不被裁切 | 工具 tooltip 显示英文 `Tool: Shortcut`，全局 tooltip layer 已接入 | `CanvasTooltipLayer.tsx`, `KonvaCanvasToolbar.tsx` | toolbar/properties tooltip 可见 |
+| ✅ | 2.6 | tooltip / icons | 黑底白字，长文字不被裁切；图标要和动作语义对应 | 工具 tooltip 显示英文 `Tool: Shortcut`，Properties action icons 已重绘为每个 command 独立线稿 | `CanvasTooltipLayer.tsx`, `KonvaCanvasToolbar.tsx`, `canvas-action-icons.css` | toolbar/properties tooltip 可见；图标不误导 |
 | ✅ | 2.7 | fixed properties | 点击空白不切换/消失，保持最后工具属性 | style panel state 与 selection 解耦；无 selection 时改 next shape style | `KonvaCanvasProperties.tsx` | 空白点击后 panel 不变 |
 | ✅ | 2.8 | selection properties | 选中普通图形时显示 selected 样式 | selection style snapshot 已支持 shared/mixed 状态 | `konvaCanvasStyle.ts`, `KonvaCanvasProperties.tsx` | 单选/多选显示正确 |
 | ✅ | 2.9 | node selection | node card 不显示普通图形属性 | Konva `node_card` first pass 已接入，选中 node 不显示普通 stroke/fill/width 噪音 | `KonvaNodeCardShape.tsx`, `konvaCanvasStyle.ts` | 选节点不出现无意义样式 |
@@ -174,7 +176,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | ✅ | 2A.7 | Opacity slider | 紫色 slider，右侧显示 0-100 | selection opacity 和 next opacity 都支持，mixed 显示 `Mixed` | 多选 mixed 状态可处理 |
 | ✅ | 2A.8 | Layer grid | 置底/下移/上移/置顶图标 | 四档 z-order 已持久化，Properties/右键/快捷键同源 | 层级顺序变化可见并持久化 |
 | ✅ | 2A.9 | Align grid | 左/中/右/顶/中/底等对齐 | Properties align grid 已接 `alignKonvaShapes`，与右键 Arrange > Align 同源 | 多选对齐符合截图菜单逻辑 |
-| ✅ | 2A.10 | Actions grid | duplicate/delete/stretch 等 | Duplicate/Delete/Stretch/Distribute/Flip/Row/Column 已接入 Properties actions grid | 点击 actions 和右键菜单结果一致 |
+| ✅ | 2A.10 | Actions grid | duplicate/delete/stretch 等 | Duplicate/Delete/Stretch/Distribute/Flip/Row/Column 已接入 Properties actions grid；图标已按动作语义独立重绘，不再复用 align/stretch 近似图标 | 点击 actions 和右键菜单结果一致 |
 | ✅ | 2A.11 | Node card selection | 选 node 时不出现普通图形 stroke/fill 噪音 | Konva `node_card` first pass 已进入 route；普通 stroke/fill/width 面板对 node selection 隐藏 | 选节点不会让用户误改无效样式 |
 | ✅ | 2A.12 | Mixed selection | 多选不同样式 | style snapshot 支持 mixed；点击某值后统一应用到 selection | 多选不同颜色后能统一设置 |
 | ✅ | 2A.13 | Pointer isolation | properties 点击不触发画布选择/画线 | properties 已 stop pointer/wheel/context menu bubbling | 在 panel 上滚轮/点击不影响画布 |

@@ -175,7 +175,7 @@ function renderShape(shape: CanvasShape, style: ReturnType<typeof resolveKonvaSh
     )
   }
   if (shape.type === 'sticky') {
-    const fillColor = shape.style?.fill ?? getStickyFillColor(stroke)
+    const fillColor = getStickyFillColor(stroke)
     return (
       <>
         <Text fill="#6b7280" fontFamily="Inter, system-ui, sans-serif" fontSize={12} listening={false} opacity={opacity} text={shape.props.authorName ?? 'You'} width={shape.props.width} y={-20} />

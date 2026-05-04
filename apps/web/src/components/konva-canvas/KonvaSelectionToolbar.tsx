@@ -61,7 +61,7 @@ export function KonvaSelectionToolbar({
         onClick={onNodeToCanvas}
         type="button"
       >
-        <span aria-hidden className="style-action-icon style-action-icon--duplicate" />
+        <span aria-hidden className="style-action-icon style-action-icon--node-to-canvas" />
       </button>
       <button
         aria-label="Capture selection to image node"

@@ -54,12 +54,12 @@ const operationActions: SelectionAction[] = [
   { action: 'delete', icon: 'style-action-icon style-action-icon--delete', label: 'Delete' },
   { action: 'stretch', icon: 'style-action-icon style-action-icon--stretch-x', label: 'Stretch horizontally', minSelected: 2, stretch: 'horizontal' },
   { action: 'stretch', icon: 'style-action-icon style-action-icon--stretch-y', label: 'Stretch vertically', minSelected: 2, stretch: 'vertical' },
-  { action: 'distribute', distribute: 'horizontal', icon: 'style-action-icon style-action-icon--align-center-x', label: 'Distribute horizontally', minSelected: 3 },
-  { action: 'distribute', distribute: 'vertical', icon: 'style-action-icon style-action-icon--align-center-y', label: 'Distribute vertically', minSelected: 3 },
-  { action: 'flip', flip: 'horizontal', icon: 'style-action-icon style-action-icon--stretch-x', label: 'Flip horizontal', minSelected: 1 },
-  { action: 'flip', flip: 'vertical', icon: 'style-action-icon style-action-icon--stretch-y', label: 'Flip vertical', minSelected: 1 },
-  { action: 'tidy', icon: 'style-action-icon style-action-icon--align-center-x', label: 'Arrange in row', minSelected: 2, tidy: 'row' },
-  { action: 'tidy', icon: 'style-action-icon style-action-icon--align-center-y', label: 'Arrange in column', minSelected: 2, tidy: 'column' },
+  { action: 'distribute', distribute: 'horizontal', icon: 'style-action-icon style-action-icon--distribute-x', label: 'Distribute horizontally', minSelected: 3 },
+  { action: 'distribute', distribute: 'vertical', icon: 'style-action-icon style-action-icon--distribute-y', label: 'Distribute vertically', minSelected: 3 },
+  { action: 'flip', flip: 'horizontal', icon: 'style-action-icon style-action-icon--flip-x', label: 'Flip horizontal', minSelected: 1 },
+  { action: 'flip', flip: 'vertical', icon: 'style-action-icon style-action-icon--flip-y', label: 'Flip vertical', minSelected: 1 },
+  { action: 'tidy', icon: 'style-action-icon style-action-icon--tidy-row', label: 'Arrange in row', minSelected: 2, tidy: 'row' },
+  { action: 'tidy', icon: 'style-action-icon style-action-icon--tidy-column', label: 'Arrange in column', minSelected: 2, tidy: 'column' },
 ]
 
 export function KonvaPropertiesSelectionActions({
