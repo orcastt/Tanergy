@@ -202,6 +202,8 @@ Phase 3.1 object editing foundation started:
 - 2026-05-04 Phase 5A Konva Board persistence first pass is implemented in the spike route: `/spikes/konva-canvas` now mounts `KonvaBoardSaveAudit` in board mode, serializes a v2 `{ renderer: 'konva', version: 2, canvasDocument }` envelope with canvas settings and compact asset refs, saves/loads through the existing Board API, captures board thumbnails through an offscreen Konva stage, and reuses autosave, Cmd/Ctrl+S, Snapshot/History and before-unload guards. Backend/frontend document metrics now count Konva `canvasDocument.shapes`; targeted backend Board persistence tests pass.
 - 2026-05-05 Board History Clean is implemented: shared History panel has a confirmed Clean action, frontend local/remote clients call `DELETE` snapshot endpoints, local Next/FastAPI local/Postgres stores clear all current-workspace snapshots for the board, and snapshot signatures reset so a later autosave is not skipped. Shift proportional resize now uses immediate resize preview and preserves one aspect-ratio scale after resize snapping, so snap should not make width/height appear to update separately.
 - 2026-05-05 Phase 5A Konva v2 schema guard first pass is implemented: frontend and FastAPI Board guards now add `konva-v2-invalid` issues for malformed v2 envelopes, missing camera/metadata arrays, invalid shape ids/types/props, non-image asset refs and runtime edges that point at missing shapes. This guard runs before Board save/snapshot persistence and is covered by backend validation/save tests.
+- 2026-05-05 `/boards/[boardId]` dual-engine first pass is implemented: the formal Board route now preloads an existing Board once, detects saved document engine and mounts either current tldraw v1 or Konva v2. New/missing Boards default to Konva, existing v1 Boards remain on tldraw, and unknown saved documents show an unsupported state instead of opening a blank default engine. Konva formal route reuses Board switcher/rename in the header.
+- 2026-05-05 dual-engine migration hand-test checkpoint: user confirmed old tldraw reference route `/spikes/canvas` still works after the formal Board route migration, so the tldraw fallback/reference path is still reachable while Konva Boards can use the v2 detector.
 - Phase 4 storage guard remains explicit: Board documents, node props and runtime edge data must not persist `data:`, `blob:`, Base64 images, provider raw payloads, complete logs or long generated text. Image Node first pass stores only Asset references, dimensions, title/source metadata and runtime summary placeholders.
 - A Konva shell `selectionchange` guard clears accidental browser text selection while preserving normal textarea/input selection during editing.
 - Frame movement now expands the drag set to include direct/nested frame children, so moving a frame carries contained shapes with it.
@@ -210,13 +212,14 @@ Phase 3.1 object editing foundation started:
 - undo/redo restores shapes plus selection only, so pan/zoom is not part of command history
 - create, drag, resize, eraser, Properties style edits, layer actions, duplicate/delete, stress strokes and clear all now create history checkpoints
 
-Not included yet: full HTML node card controls beyond targeted Prompt/Analysis text preview/editing, extensible server-backed node run adapter registry, real Image Gen result asset propagation, AiRun polling/cancel execution UI, crop reset/explicit commit UI, `/boards/[boardId]` Konva engine route migration, nested-frame/export semantics and real Yjs provider sync.
+Not included yet: full HTML node card controls beyond targeted Prompt/Analysis text preview/editing, extensible server-backed node run adapter registry, real Image Gen result asset propagation, AiRun polling/cancel execution UI, crop reset/explicit commit UI, explicit v1-to-v2 migration/copy tooling, nested-frame/export semantics and real Yjs provider sync.
 
 Current hand-test queue:
 
 - Select 3 Image Nodes, drag from any selected `image_out` to Image Gen/Image Gen 4 `image_in_1`, and confirm 3 edges appear, image input ports expand, Run resolves 3 image refs, Undo removes the whole batch, and disconnecting one edge updates input counts/mirrors.
 - Recheck 50/100 image pressure at 5/15/25/50/100% zoom on macOS and Windows, including pan/zoom, drawing over images, drag/Alt-drag, resize/rotate, crop, runtime edge drag and node Run. Capture selection / Copy PNG / Export PNG flash is accepted as fixed.
 - Phase 5A hand-test: open `/spikes/konva-canvas`, draw shapes/images/nodes/runtime edges, confirm Save now writes a thumbnail, Load restores document/camera/settings, Cmd/Ctrl+S creates a keyboard save, Snapshot appears in History, Restore replaces the canvas, Clean clears all History entries after confirmation, and autosave/Snapshot can recreate history afterward.
+- Formal Board route hand-test: open a new `/boards/<id>?new=1` Board and confirm Konva opens blank, save/load/history work; reopen that Board without `new=1` and confirm it detects Konva v2; open an existing tldraw v1 Board and confirm it still renders in tldraw instead of being overwritten.
 
 Explicit Phase 3B follow-ups now tracked in the migration plan:
 
@@ -260,15 +263,4 @@ Large Miro-scale collaboration: later multi-month S4 track
 
 ## Next Action
 
-Continue with Phase 3 object editing foundation before any `/boards/[boardId]` migration:
-
-```text
-Phase 4 node creation, Prompt/Analysis long-text scroll/editing and port fan-out hand-test
-Phase 4 mock Run chain hand-test for Prompt→Gen→Image and Image→Analysis
-Phase 4 edge keyboard Delete/Cut behavior
-Phase 4A selection capture/export hand-test: Capture to Image Node, Copy as PNG/SVG and Export as PNG/SVG from selectedIds bounds, confirming no visible capture flash
-Phase 4A image ops hand-test: remote image paste/import, Remove BG with services/api[image-ops] installed, and Object Cutout disabled state
-Phase 4A pressure hand-test: 50-100 canvas images/nodes at 5%, 15%, 25%, 50% and 100% zoom
-```
-
-After this checkpoint, hand-test Capture selection → Image Node on shape/image/markup selections, Copy as PNG into an external app, Export as PNG/SVG file downloads, remote URL image paste/import and Remove BG in an environment with `services/api[image-ops]`. Move to page, transparent background toggle, merge capture preview, full viewport culling/RAF transform previews, SAM Object Cutout UX, multi-page contracts, real AiRun execution and Board/Yjs persistence remain follow-up work.
+Commit the accepted `/boards/[boardId]` dual-engine migration checkpoint. Next whole blocks are explicit v1-to-v2 copy/migration tooling, page/multi-board document contracts, transparent-background/export polish, real AiRun execution, and then Phase 6 Yjs collaboration.

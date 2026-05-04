@@ -43,6 +43,8 @@ type KonvaCanvasSpikeProps = {
   boardTitle?: string
   mode?: 'board' | 'dev'
   onBoardLoaded?: (title: string) => void
+  onBoardTitleRename?: (title: string) => Promise<string | void> | string | void
+  seedOnMount?: boolean
 }
 
 export function KonvaCanvasSpike({
@@ -51,13 +53,15 @@ export function KonvaCanvasSpike({
   boardTitle = 'Konva Spike Local',
   mode = 'dev',
   onBoardLoaded,
+  onBoardTitleRename,
+  seedOnMount = true,
 }: KonvaCanvasSpikeProps = {}) {
   const shellRef = useRef<HTMLDivElement | null>(null)
   const [ydoc] = useState(() => new Y.Doc())
   const [document, setDocument] = useState<CanvasDocument>(() => createEmptyCanvasDocument({
     camera: { x: 120, y: 112, zoom: 1 },
-    name: 'Konva handfeel spike',
-    shapes: createSeedShapes(),
+    name: boardTitle,
+    shapes: seedOnMount ? createSeedShapes() : [],
   }))
   const [camera, setCamera] = useState<CanvasCamera>(document.camera)
   const [activeTool, setActiveTool] = useState<KonvaCanvasTool>('select')
@@ -243,7 +247,13 @@ export function KonvaCanvasSpike({
 
   return (
     <main className="konva-canvas-shell">
-      <KonvaCanvasHeader boardTitle={boardTitle} mode={mode} ydocId={ydoc.guid.slice(0, 8)} />
+      <KonvaCanvasHeader
+        boardId={mode === 'board' ? boardId : undefined}
+        boardTitle={boardTitle}
+        mode={mode}
+        onBoardTitleRename={onBoardTitleRename}
+        ydocId={ydoc.guid.slice(0, 8)}
+      />
       <KonvaCanvasToolbar
         activeTool={activeTool}
         onAddStressStrokes={addStressStrokes}

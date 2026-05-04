@@ -7,6 +7,25 @@
   background: var(--surface);
 }
 
+.canvas-board-route-state {
+  display: grid;
+  height: 100vh;
+  place-content: center;
+  gap: 8px;
+  background: #f7f8fb;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.canvas-board-route-state strong {
+  color: var(--text-primary);
+  font-size: 15px;
+}
+
+.canvas-board-route-state span {
+  font-size: 12px;
+}
+
 .canvas-spike-stage {
   position: relative;
   flex: 1;
