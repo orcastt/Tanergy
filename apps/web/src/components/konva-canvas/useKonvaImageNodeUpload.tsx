@@ -1,5 +1,6 @@
 import { useCallback, useRef, type Dispatch, type SetStateAction } from 'react'
-import { getShapeBounds, withCanvasShapes, type CanvasDocument, type CanvasNodeShape, type CanvasPoint } from '@/features/canvas-engine'
+import { getShapeBounds, type CanvasDocument, type CanvasNodeShape, type CanvasPoint } from '@/features/canvas-engine'
+import { setRuntimeGraphImageNodeOwnData } from '@/features/node-runtime/runtimeGraph'
 import type { JsonObject } from '@/types/nodeRuntime'
 import { createKonvaImageShapeFromFile } from './konvaImageClipboard'
 
@@ -33,11 +34,11 @@ export function useKonvaImageNodeUpload({
       y: target.y + target.props.height / 2,
     })
     history.checkpoint(document)
-    onDocumentChange((current) => withCanvasShapes(current, current.shapes.map((shape) => (
-      shape.id === shapeId && shape.type === 'node_card'
-        ? { ...shape, props: { ...shape.props, data: createImageNodeData(shape.props.data, imageShape.props) } }
-        : shape
-    ))))
+    onDocumentChange((current) => setRuntimeGraphImageNodeOwnData(
+      current,
+      shapeId,
+      createImageNodeData(imageShape.props)
+    ))
     onSelectionChange([shapeId])
   }, [document, history, onDocumentChange, onSelectionChange])
 
@@ -70,7 +71,7 @@ export function useKonvaImageNodeUpload({
   return { fileInput, promptImageNodeUpload, uploadDropFileAtPoint }
 }
 
-function createImageNodeData(current: JsonObject, image: {
+function createImageNodeData(image: {
   alt?: string
   assetId: string
   height: number
@@ -82,7 +83,6 @@ function createImageNodeData(current: JsonObject, image: {
   width: number
 }): JsonObject {
   return pruneUndefined({
-    ...current,
     assetId: image.assetId,
     imageHeight: image.height,
     imageWidth: image.width,

@@ -1,6 +1,6 @@
 # ARCH Slice S1X: Canvas Engine Migration
 
-**Status**: Active risk-mitigation spike; Phase 4 Node/Port/Edge foundation first pass is in progress after accepted Phase 1A/2A/3 baselines.
+**Status**: Active risk-mitigation spike; Phase 4 runtimeGraph cleanup first pass is in progress after accepted Phase 1A/2A/3 baselines.
 **Branch**: `feature/s1x-konva-handfeel-spike`
 **Reason**: Public staging exposed the tldraw production license requirement. TANGENT should not make the paid SDK the long-term core canvas dependency unless the business explicitly accepts that cost.
 
@@ -122,13 +122,15 @@ Current Phase 4 Node/Port/Edge foundation boundary:
 - `node_card` is not a normal drawing shape for transform purposes. Selection overlay, rotate sessions, group rotation utilities, render transforms, port coordinate math, Properties actions and context-menu commands must ignore node-card rotation/flip. Node cards may move/select/connect/edit, but they should not expose rotate or flip affordances.
 - Ports are UI affordances derived from node registry metadata. Their screen/world anchors and hit targets must be stable under pan/zoom, but a visible port dot by itself is not a runtime connection.
 - `CanvasDocument.runtimeEdges` is the local first-pass runtime edge store. A runtime edge references source node/port and target node/port ids plus `dataType`; it is not serialized as a visual `arrow` or `line`.
+- `features/node-runtime/runtimeGraph.ts` owns renderer-neutral runtime edge mutation and reconciliation: add/remove/reconnect, input uniqueness, output fan-out, invalid-edge pruning, dynamic Image Gen/Image Gen 4 image input counts and Image Node upstream preview mirroring. Local Image Node upload clears the incoming `image_in` edge before writing own asset refs so upstream mirrors cannot overwrite user-uploaded images. Konva wrappers must call this layer instead of duplicating runtime dataflow rules.
+- `features/node-runtime/runtimeGraphResolution.ts` is the prepared renderer-neutral input/output resolver for mock Run and future AiRun adapters. It returns prompt text, short analysis text and image asset references only, with a compatibility fallback for legacy `image_gen_4:image_out` aggregate edges; raw images, provider payloads and full logs remain outside Board documents.
 - `KonvaNodeEdgeLayer` renders runtime edges from `runtimeEdges` and node port world coordinates. It is a visual projection of runtime data, not the source of truth. It must render below node cards so existing edge curves never cover a source output port hit target; this preserves output fan-out after the first connection.
 - `useKonvaNodeConnectionSession` owns output-port drag, preview curve and compatible input-port commit. It uses registry-derived ports and zoom-aware hit radius from `konvaNodePorts.ts`; while dragging, a compatible input within range becomes the preview target so the endpoint snaps to the port center and `KonvaNodeEdgeLayer` can render a stronger snap affordance.
 - Prompt/Analysis card text is a targeted hybrid path: the lightweight Konva card draws the card shell and the non-editing long-text preview inside the node's own Konva group with clip + local scroll offset + self-drawn scrollbar. This keeps text preview relative to the node and preserves canvas z-order; it must not be a global DOM overlay above later shapes/lines. Double-clicking mounts the same-bounds HTML textarea editor (`KonvaNodeTextEditor`) and commits back into node `props.data`.
 - Node/image cards separate body pass-through from port interactivity: drawing tools can start markup over the card body, while port hit targets still receive pointer events and may start runtime edge drags.
 - Visual arrows/lines stay normal canvas geometry unless an explicit binding/edge contract creates a runtime edge. This keeps annotation arrows separate from AI dataflow edges.
 - Deleting a node now cleans connected runtime edges in the same local command/history transaction. Direct edge hit/select has a first-pass near-input disconnect control; keyboard Delete/Cut for selected runtime edges remains a follow-up.
-- `resolveNodeInputs` remains the AI run input source of truth. Konva should provide an engine query adapter for node data, asset refs and runtime edges rather than duplicating input resolution logic in the renderer. The current Konva Run/Stop is only a local `runtimeSummary.status` toggle; generated assets and downstream propagation are still future adapter work.
+- `resolveNodeInputs` remains the AI run input source of truth. Konva should wire `runtimeGraphResolution.ts` into a mock Run adapter first, then replace that with the server-side AiRun lifecycle. The current Konva Run/Stop is only a local `runtimeSummary.status` toggle; generated assets and downstream propagation are still future adapter work.
 - Board documents, node props and runtime edge payloads must not persist `data:`, `blob:`, Base64 images, provider raw responses, complete logs or long generated text. Store Asset ids/URLs, compact runtime summaries and references to AiRun records instead.
 
 It does not replace `/boards/[boardId]` and does not remove any tldraw reference code.
@@ -410,7 +412,7 @@ Konva Phase 4 current boundary:
 - Run/Stop on Analysis/Image Gen/Image Gen 4 is currently a renderer-local status toggle on `runtimeSummary.status`; the later AiRun adapter must replace that toggle with server-side run lifecycle and upstream input resolution.
 - Shape transform affordances should read `features/canvas-engine/shapeCapabilities.ts` and the Konva wrapper `konvaShapeCapabilities.ts`; `node_card` rotate/flip exclusions must not be reimplemented per component.
 - Tool hit policy is explicit for continuous line tools: Arrow, Line and Draw do not select or drag existing shapes while active. Object selection and Properties edits require Select/V; this avoids accidental selection while repeatedly drawing lines/strokes.
-- Cleanup warning from the Phase 4 audit: edge add/remove helpers should not keep growing into a renderer-local dataflow engine. The next boundary should split a renderer-neutral runtimeGraph/input adapter from Konva edge visuals before connecting real `resolveNodeInputs`, mock generated assets and AiRun.
+- Phase 4 cleanup checkpoint: edge add/remove helpers no longer own renderer-local dataflow. Konva edge helpers are a thin shell over renderer-neutral `runtimeGraph.ts`; the remaining boundary work is to wire `runtimeGraphResolution.ts` into mock generated assets and then the real AiRun adapter.
 
 ### Image Operations
 
