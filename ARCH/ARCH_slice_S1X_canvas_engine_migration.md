@@ -75,7 +75,11 @@ konvaSnapping
   -> edge/center snap calculation from shared canvas snap settings
 
 KonvaSelectionOverlay
-  -> marquee + single-shape resize handles + snap guide rendering
+  -> marquee + single-shape resize handles + multi-select rotate handle + snap guide rendering
+
+konvaRotationUtils
+  -> single/group rotation from origin-shape snapshots
+  -> box shapes update x/y/rotation; line/arrow/stroke update rotated points
 
 useKonvaCanvasHistory
   -> undo/redo snapshots shapes + selectedIds only
@@ -91,6 +95,7 @@ Current Phase 3 command/data notes:
 - Text editing uses an HTML textarea overlay and blocks canvas shortcuts while typing; Cmd/Ctrl+S is swallowed inside the editor.
 - Basic closed shapes (`rect`, `diamond`, `ellipse`, `cloud`, `triangle`) can store an optional `props.text` label. Double-click opens the same text overlay centered over the shape; the rendered label is part of the shape renderer, so style and transform changes follow the container without a separate child transform sync.
 - Snap alignment reads `CanvasSettingsStore.snapAlignment/snapDistance`; drag/Alt-copy apply edge/center snapping, resize uses a separate dragged-edge snap path, rotate snaps to 15-degree increments, and selection overlay draws cyan/radial guides.
+- Multi-selection rotation is first-pass supported from the union boundary. The session stores origin shapes and rotates around the group center; transformed box bounds are included in shared canvas geometry so selection/snapping bounds follow rotated closed shapes more closely.
 - Browser text-selection cleanup is isolated in `useKonvaBrowserSelectionGuard`, and it skips active input/textarea/contenteditable elements.
 
 It does not replace `/boards/[boardId]` and does not remove any tldraw reference code.

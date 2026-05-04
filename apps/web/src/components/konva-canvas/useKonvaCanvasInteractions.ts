@@ -1,15 +1,13 @@
 import type Konva from 'konva'
 import type { KonvaEventObject } from 'konva/lib/Node'
-import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   appendCanvasShape,
   pointerToWorld,
   withCanvasShapes,
   type CanvasBounds,
-  type CanvasCamera,
   type CanvasDocument,
   type CanvasPoint,
-  type CanvasShapeStyle,
 } from '@/features/canvas-engine'
 import { useCanvasSettingsStore } from '@/features/canvas-settings/canvasSettingsStore'
 import {
@@ -31,7 +29,8 @@ import {
 } from './konvaSelectionUtils'
 import { clearBrowserSelection, getStagePointer, isStageTarget } from './konvaStageHelpers'
 import { updateLineEndpointShapes, updateLineRouteHandleShapes } from './konvaLineEndpointUtils'
-import { getPointAngle, getRotatedShapes, getShapeRotationCenter } from './konvaRotationUtils'
+import { getPointAngle, rotateShapesAroundCenter } from './konvaRotationUtils'
+import { createRotatedResizeBox, resizeShapesFromRotatedBox } from './konvaRotatedResize'
 import { getResizeSnapSourceKeys, getRotationSnapGuides, snapResizeBoundsToShapes, snapRotationAngle, type KonvaSnapGuide } from './konvaSnapping'
 import { useKonvaDraftPreview } from './useKonvaDraftPreview'
 import { useKonvaEraserSession } from './useKonvaEraserSession'
@@ -39,22 +38,8 @@ import { useKonvaLineEndpointHandlers } from './useKonvaLineEndpointHandlers'
 import { useKonvaShapeDragHandlers } from './useKonvaShapeDragHandlers'
 import { useKonvaStageCamera } from './useKonvaStageCamera'
 import { useKonvaWheelHandler } from './useKonvaWheelHandler'
-import type { KonvaCanvasTool, KonvaResizeHandle, KonvaToolSession } from './konvaCanvasTypes'
-type UseKonvaCanvasInteractionsOptions = {
-  activeTool: KonvaCanvasTool
-  camera: CanvasCamera
-  document: CanvasDocument
-  isSpacePanning: boolean
-  nextStyle: CanvasShapeStyle
-  selectedIds: string[]
-  onCameraCommit: (camera: CanvasCamera) => void
-  onCameraPreview: (camera: CanvasCamera) => void
-  onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
-  onDocumentPreview: Dispatch<SetStateAction<CanvasDocument>>
-  onHistoryCheckpoint: (document: CanvasDocument) => void
-  onSelectionChange: (shapeIds: string[]) => void
-  onToolChange: (tool: KonvaCanvasTool) => void
-}
+import type { KonvaResizeHandle, KonvaToolSession } from './konvaCanvasTypes'
+import type { UseKonvaCanvasInteractionsOptions } from './konvaCanvasInteractionTypes'
 export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOptions) {
   const stageRef = useRef<Konva.Stage | null>(null)
   const sessionRef = useRef<KonvaToolSession | null>(null)
@@ -116,22 +101,24 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       originBounds,
       originShapes,
       pointerId: event.evt.pointerId,
+      rotatedBox: createRotatedResizeBox(originShapes),
       shapeIds,
       type: 'resize',
     }
   }, [options])
-  const handleRotateStart = useCallback((shapeId: string, event: KonvaEventObject<PointerEvent>) => {
+  const handleRotateStart = useCallback((shapeIds: string[], event: KonvaEventObject<PointerEvent>) => {
     event.cancelBubble = true
     event.evt.preventDefault()
-    const shape = documentRef.current.shapes.find((item) => item.id === shapeId)
     const screenPoint = getStagePointer(stageRef.current)
-    if (!shape || !screenPoint) return
+    const originShapes = getShapesByIds(documentRef.current.shapes, shapeIds)
+    const bounds = getSelectedShapeBounds(documentRef.current.shapes, shapeIds)
+    if (originShapes.length === 0 || !bounds || !screenPoint) return
     const worldPoint = pointerToWorld({ ...screenPoint, pressure: event.evt.pressure }, cameraRef.current)
-    const center = getShapeRotationCenter(shape)
-    const bounds = getSelectedShapeBounds(documentRef.current.shapes, [shapeId])
-    const guideRadius = bounds ? Math.max(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY) / 2 + 42 / cameraRef.current.zoom : 64 / cameraRef.current.zoom
+    const center = { x: (bounds.minX + bounds.maxX) / 2, y: (bounds.minY + bounds.maxY) / 2 }
+    const guideRadius = Math.max(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY) / 2 + 42 / cameraRef.current.zoom
+    const originRotation = originShapes.length === 1 ? originShapes[0]?.rotation ?? 0 : 0
     options.onHistoryCheckpoint(documentRef.current)
-    sessionRef.current = { center, guideRadius, originRotation: shape.rotation ?? 0, pointerId: event.evt.pointerId, shapeId, startAngle: getPointAngle(center, worldPoint), type: 'rotate' }
+    sessionRef.current = { center, guideRadius, originRotation, originShapes, pointerId: event.evt.pointerId, shapeIds, startAngle: getPointAngle(center, worldPoint), type: 'rotate' }
   }, [cameraRef, options])
   const handlePointerDown = (event: KonvaEventObject<PointerEvent>) => {
     const screenPoint = getStagePointer(stageRef.current)
@@ -221,6 +208,11 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       return
     }
     if (session.type === 'resize') {
+      if (session.rotatedBox) {
+        setResizeSnapGuides([])
+        previewDocument(withCanvasShapes(documentRef.current, resizeShapesFromRotatedBox(documentRef.current.shapes, session.originShapes[0], session.rotatedBox, session.handle, worldPoint, { preserveAspect: event.evt.shiftKey })))
+        return
+      }
       let bounds = resizeBoundsFromHandle(session.originBounds, session.handle, worldPoint, { preserveAspect: event.evt.shiftKey })
       if (snapAlignment) {
         const snapped = snapResizeBoundsToShapes(documentRef.current.shapes, session.shapeIds, bounds, snapDistance / cameraRef.current.zoom, getResizeSnapSourceKeys(session.handle))
@@ -234,7 +226,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       const rawRotation = session.originRotation + getPointAngle(session.center, worldPoint) - session.startAngle
       const rotation = snapAlignment ? snapRotationAngle(rawRotation, Math.min(7.5, Math.max(2, snapDistance / 2))) : rawRotation
       setResizeSnapGuides(getRotationSnapGuides(rawRotation, rotation, session.center, session.guideRadius))
-      previewDocument(withCanvasShapes(documentRef.current, getRotatedShapes(documentRef.current.shapes, session.shapeId, rotation)))
+      previewDocument(withCanvasShapes(documentRef.current, rotateShapesAroundCenter(documentRef.current.shapes, session.originShapes, session.center, rotation - session.originRotation)))
       return
     }
     if (session.type === 'line-endpoint') {
@@ -264,7 +256,6 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     clearDraft()
     if (nextDraft) options.onDocumentChange((current) => appendCanvasShape(current, nextDraft))
   }
-
   return {
     draft, eraserTrail, handleLineEndpointStart, handleLineRouteHandleStart, handlePointerDown,
     handlePointerLeave: () => clearEraserTrail(),
@@ -274,7 +265,6 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     snapGuides: snapGuides.length > 0 ? snapGuides : resizeSnapGuides,
     stageRef,
   }
-
   function updateCreateDraft(session: Extract<KonvaToolSession, { type: 'create' }>, worldPoint: CanvasPoint, event: KonvaEventObject<PointerEvent>) {
     const nextDraft = options.activeTool === 'draw'
       ? updateStrokeDraft(session, createStrokePoint(worldPoint, event.evt, session.rawPoints?.at(-1)))
@@ -283,13 +273,11 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     session.draft = nextDraft
     scheduleDraft(nextDraft)
   }
-
   function finishBoxSelection(session: Extract<KonvaToolSession, { type: 'select-box' }>) {
     const bounds = boundsFromPoints(session.origin, session.current)
     setSelectionBox(null)
     options.onSelectionChange(getMarqueeSelectionIds(documentRef.current.shapes, bounds, options.selectedIds, session.additive))
   }
-
   function previewDocument(document: CanvasDocument) {
     documentRef.current = document
     options.onDocumentPreview(document)

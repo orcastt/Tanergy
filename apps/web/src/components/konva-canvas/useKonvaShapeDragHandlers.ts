@@ -67,16 +67,17 @@ export function useKonvaShapeDragHandlers(options: UseKonvaShapeDragHandlersOpti
     if (duplicateShapes) {
       documentRef.current = nextDocument
       onDocumentPreview(nextDocument)
+      onSelectionChange(duplicateShapes.map((shape) => shape.id))
     }
     dragRef.current = session
     return { lockSource: Boolean(duplicateShapes) }
-  }, [activeTool, documentRef, onDocumentPreview, onHistoryCheckpoint, selectedIds])
+  }, [activeTool, documentRef, onDocumentPreview, onHistoryCheckpoint, onSelectionChange, selectedIds])
 
   const handleShapeDragMove = useCallback((shapeId: string, x: number, y: number) => {
     const drag = dragRef.current
     if (!drag || drag.shapeId !== shapeId) return
     const nextPoint = getSnappedDragPoint(drag, x, y)
-    setSelectedBoundsOverride(getShapeDragSessionBounds(drag, nextPoint.x, nextPoint.y))
+    setSelectedBoundsOverride(drag.movingShapeIds.length > 1 ? getShapeDragSessionBounds(drag, nextPoint.x, nextPoint.y) : null)
     const previewShapes = getShapeDragSessionShapes(drag, nextPoint.x, nextPoint.y)
     dragRef.current = { ...drag, lastPoint: nextPoint }
     const nextDocument = withCanvasShapes(documentRef.current, previewShapes)

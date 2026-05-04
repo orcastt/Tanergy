@@ -3,6 +3,7 @@ import type Konva from 'konva'
 import type { KonvaEventObject } from 'konva/lib/Node'
 import { zoomCameraAtScreenPoint, type CanvasCamera } from '@/features/canvas-engine'
 import { getStagePointer } from './konvaStageHelpers'
+import { konvaMaxZoom, konvaMinZoom } from './konvaZoomLimits'
 
 type UseKonvaWheelHandlerOptions = {
   applyCamera: (camera: CanvasCamera) => void
@@ -23,7 +24,7 @@ export function useKonvaWheelHandler({
     if (!screenPoint) return
     const currentCamera = cameraRef.current
     const nextZoom = currentCamera.zoom * (event.evt.deltaY > 0 ? 0.9 : 1.1)
-    applyCamera(zoomCameraAtScreenPoint(currentCamera, screenPoint, nextZoom, 0.2, 4))
+    applyCamera(zoomCameraAtScreenPoint(currentCamera, screenPoint, nextZoom, konvaMinZoom, konvaMaxZoom))
     scheduleCameraCommit()
   }, [applyCamera, cameraRef, scheduleCameraCommit, stageRef])
 }

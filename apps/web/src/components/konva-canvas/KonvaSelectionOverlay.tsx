@@ -18,7 +18,7 @@ type KonvaSelectionOverlayProps = {
   onLineEndpointStart: (shapeId: string, endpoint: KonvaLineEndpointHandle, event: KonvaEventObject<PointerEvent>) => void
   onLineRouteHandleStart: (shapeId: string, handle: KonvaLineRouteHandle, event: KonvaEventObject<PointerEvent>) => void
   onResizeStart: (shapeIds: string[], handle: KonvaResizeHandle, event: KonvaEventObject<PointerEvent>) => void
-  onRotateStart: (shapeId: string, event: KonvaEventObject<PointerEvent>) => void
+  onRotateStart: (shapeIds: string[], event: KonvaEventObject<PointerEvent>) => void
 }
 
 export function KonvaSelectionOverlay({
@@ -58,16 +58,26 @@ export function KonvaSelectionOverlay({
       ) : singleBoxShape ? (
         <SingleShapeControls
           onResizeStart={(handle, event) => onResizeStart(selectedIds, handle, event)}
-          onRotateStart={(event) => onRotateStart(singleBoxShape.id, event)}
+          onRotateStart={(event) => onRotateStart([singleBoxShape.id], event)}
           shape={singleBoxShape}
           zoom={zoom}
         />
       ) : selectedBounds && canResize ? (
-        <ResizeHandles
-          bounds={selectedBounds}
-          onResizeStart={(handle, event) => onResizeStart(selectedIds, handle, event)}
-          zoom={zoom}
-        />
+        <>
+          <ResizeHandles
+            bounds={selectedBounds}
+            onResizeStart={(handle, event) => onResizeStart(selectedIds, handle, event)}
+            zoom={zoom}
+          />
+          {selectedIds.length > 1 ? (
+            <RotateHandle
+              onRotateStart={(event) => onRotateStart(selectedIds, event)}
+              x={selectedBounds.maxX + 24 / zoom}
+              y={selectedBounds.minY - 24 / zoom}
+              zoom={zoom}
+            />
+          ) : null}
+        </>
       ) : null}
     </>
   )

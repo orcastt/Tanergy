@@ -110,6 +110,16 @@ export function getShapeBounds(shape: CanvasShape): CanvasBounds {
     return getPointsBounds(points, { x: shape.x, y: shape.y })
   }
 
+  if (shape.rotation) {
+    const center = { x: shape.x + shape.props.width / 2, y: shape.y + shape.props.height / 2 }
+    return getPointsBounds([
+      rotatePoint({ x: shape.x, y: shape.y }, center, shape.rotation),
+      rotatePoint({ x: shape.x + shape.props.width, y: shape.y }, center, shape.rotation),
+      rotatePoint({ x: shape.x + shape.props.width, y: shape.y + shape.props.height }, center, shape.rotation),
+      rotatePoint({ x: shape.x, y: shape.y + shape.props.height }, center, shape.rotation),
+    ])
+  }
+
   return getRectBounds({
     height: shape.props.height,
     width: shape.props.width,
@@ -169,4 +179,16 @@ function clamp(value: number, min: number, max: number): number {
 
 function normalizeZoom(zoom: number): number {
   return Number.isFinite(zoom) && zoom > 0 ? zoom : 1
+}
+
+function rotatePoint(point: CanvasPoint, center: CanvasPoint, rotation: number): CanvasPoint {
+  const radians = rotation * Math.PI / 180
+  const cos = Math.cos(radians)
+  const sin = Math.sin(radians)
+  const dx = point.x - center.x
+  const dy = point.y - center.y
+  return {
+    x: center.x + dx * cos - dy * sin,
+    y: center.y + dx * sin + dy * cos,
+  }
 }

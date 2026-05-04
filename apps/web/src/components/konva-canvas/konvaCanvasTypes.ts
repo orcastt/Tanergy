@@ -55,15 +55,21 @@ export type KonvaToolSession =
       originBounds: CanvasBounds
       originShapes: CanvasShape[]
       pointerId?: number
+      rotatedBox?: {
+        center: CanvasPoint
+        localBounds: CanvasBounds
+        rotation: number
+      } | null
       shapeIds: string[]
       type: 'resize'
     }
   | {
       center: CanvasPoint
       guideRadius: number
+      originShapes: CanvasShape[]
       originRotation: number
       pointerId?: number
-      shapeId: string
+      shapeIds: string[]
       startAngle: number
       type: 'rotate'
     }

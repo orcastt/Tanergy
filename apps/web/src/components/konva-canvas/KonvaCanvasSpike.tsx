@@ -34,6 +34,7 @@ import { updateTextShape } from './konvaShapeCommands'
 import { useKonvaBrowserSelectionGuard } from './useKonvaBrowserSelectionGuard'
 import { useKonvaCanvasHistory } from './useKonvaCanvasHistory'
 import { useKonvaCanvasShortcuts } from './useKonvaCanvasShortcuts'
+import { konvaMaxZoom, konvaMinZoom } from './konvaZoomLimits'
 export function KonvaCanvasSpike() {
   const shellRef = useRef<HTMLDivElement | null>(null)
   const [ydoc] = useState(() => new Y.Doc())
@@ -125,11 +126,11 @@ export function KonvaCanvasSpike() {
   }, [])
 
   const zoomAtCenter = useCallback((factor: number) => {
-    handleCameraCommit(zoomCameraAtScreenPoint(camera, { x: size.width / 2, y: size.height / 2 }, camera.zoom * factor, 0.2, 4))
+    handleCameraCommit(zoomCameraAtScreenPoint(camera, { x: size.width / 2, y: size.height / 2 }, camera.zoom * factor, konvaMinZoom, konvaMaxZoom))
   }, [camera, handleCameraCommit, size.height, size.width])
 
   const resetZoom = useCallback(() => {
-    handleCameraCommit(zoomCameraAtScreenPoint(camera, { x: size.width / 2, y: size.height / 2 }, 1, 0.2, 4))
+    handleCameraCommit(zoomCameraAtScreenPoint(camera, { x: size.width / 2, y: size.height / 2 }, 1, konvaMinZoom, konvaMaxZoom))
   }, [camera, handleCameraCommit, size.height, size.width])
 
   const addStressStrokes = useCallback(() => {

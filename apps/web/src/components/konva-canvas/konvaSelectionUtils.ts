@@ -146,13 +146,16 @@ function normalizeResizeBounds(bounds: CanvasBounds): CanvasBounds {
 function preserveAspectPoint(anchor: CanvasPoint, point: CanvasPoint, bounds: CanvasBounds): CanvasPoint {
   const width = Math.max(1, bounds.maxX - bounds.minX)
   const height = Math.max(1, bounds.maxY - bounds.minY)
-  const aspect = width / height
   const dx = point.x - anchor.x
   const dy = point.y - anchor.y
-  if (Math.abs(dx) / aspect > Math.abs(dy)) {
-    return { x: point.x, y: anchor.y + Math.sign(dy || 1) * Math.abs(dx) / aspect }
+  const defaultXSign = anchor.x <= bounds.minX ? 1 : -1
+  const defaultYSign = anchor.y <= bounds.minY ? 1 : -1
+  const diagonalScale = (Math.abs(dx) * width + Math.abs(dy) * height) / (width * width + height * height)
+  const scale = Math.max(diagonalScale, minResizeSize / width, minResizeSize / height)
+  return {
+    x: anchor.x + (Math.sign(dx) || defaultXSign) * width * scale,
+    y: anchor.y + (Math.sign(dy) || defaultYSign) * height * scale,
   }
-  return { x: anchor.x + Math.sign(dx || 1) * Math.abs(dy) * aspect, y: point.y }
 }
 
 function transformShapeFromBounds(shape: CanvasShape, originBounds: CanvasBounds, nextBounds: CanvasBounds): CanvasShape {

@@ -149,6 +149,8 @@ Phase 3.1 object editing foundation started:
 - Phase 3B audit says the testable spine is now broad enough for user review: shapes, line/arrow handles/routes/heads, eraser first pass and navigator zoom are present. Remaining Phase 3B items are multi-selection rotate, node-port binding, direction-aware orthogonal connectors, deeper frame semantics, navigator collapse/fit, cursor polish and stroke segmentation.
 - Phase 3A right-click menu first batch is implemented: the menu has hover submenus, viewport edge clamping, platform-aware shortcuts, Cut/Cmd-Ctrl+X and multi-selection Arrange > Align commands. Group/lock/page/export entries are intentionally disabled until their data/export contracts exist.
 - Image clipboard first pass is implemented for the Konva route: Cmd/Ctrl+V can read native clipboard image files/items from browser copies or OS screenshots, right-click Paste can read async clipboard image blobs, and pasted images upload through the existing Asset API before creating a canvas image shape. Image shapes store asset ids/URLs rather than data URLs, render real images, use zoom LOD thumbnails and reuse existing resize/rotate/copy/Alt-drag behavior.
+- Rotation/resize correction: single rotated objects no longer use the axis-aligned drag override, so transform controls keep their rotation during normal drag and Alt/Option duplicate drag. Rotated corner resize now converts pointer movement into the shape's local rotated coordinate system before changing width/height. Konva min zoom is now 5%.
+- Multi-selection rotate first pass is implemented: the union boundary has a rotate handle, group rotation uses the selection center plus origin-shape snapshots, and rotated bounds now account for box-shape rotation. Shift proportional resize uses a single projected scale so width/height preview together instead of appearing staggered.
 - A Konva shell `selectionchange` guard clears accidental browser text selection while preserving normal textarea/input selection during editing.
 - Frame movement now expands the drag set to include direct/nested frame children, so moving a frame carries contained shapes with it.
 - Copy/paste/duplicate/Alt-drag clone logic now rewrites cloned `parentId` through an old-id to new-id map; cloned children no longer point at an old frame. Deleting a frame explicitly releases unselected children instead of leaving stale parent ids.
@@ -160,7 +162,6 @@ Not included yet: node cards, image drop, image-to-node/to-canvas conversion, sa
 
 Explicit Phase 3B follow-ups now tracked in the migration plan:
 
-- multi-selection group rotate from the union boundary around group center
 - line/arrow route polish after the first pass: smoother curve affordance, V-H-V or direction-aware orthogonal connectors, per-segment cursor feedback and later node-port snapping
 - deeper frame containment: drag-out affordance, nested-frame policy and export boundary semantics
 - sticky author identity from Auth, shortcut creation behavior and richer note color presets
@@ -204,10 +205,9 @@ Large Miro-scale collaboration: later multi-month S4 track
 Continue with Phase 3 object editing foundation before any `/boards/[boardId]` migration:
 
 ```text
-line/arrow midpoint controls
-line/arrow endpoint handles
-multi-selection rotate
+line/arrow route polish
 frame/sticky behavior polish
+right-click command depth
 ```
 
-After this checkpoint, hand-test Phase 3A right-click behavior, then continue the disabled menu items in contract order: group/lock first, distribute/stretch/row-column next, export/copy-as after capture bounds are defined. Phase 3B follow-ups stay tracked for multi-select rotation, port-bound arrows, deeper frame containment and navigator polish.
+After this checkpoint, hand-test Phase 3A right-click behavior and multi-selection rotation, then continue the disabled menu items in contract order: group/lock first, distribute/stretch/row-column next, export/copy-as after capture bounds are defined. Phase 3B follow-ups stay tracked for port-bound arrows, deeper frame containment and navigator polish.
