@@ -49,6 +49,7 @@ keep Board/API/storage contracts stable
 - 2026-05-04 context-menu polish: right-click menu is now capped at two levels. Arrange no longer contains nested Align/Distribute/Stretch/Flip submenus; those commands are flattened into sectioned rows, and submenu hover uses a no-gap bridge so moving the mouse into the submenu does not collapse it so easily.
 - 2026-05-04 lock polish: locked objects now show a small outline lock indicator above their bounds. Locked groups show one group-level icon, and right-clicking any grouped member selects the group scope first so Unlock applies to the whole group without manually selecting every member.
 - 2026-05-04 multi-selection right-click priority: once a multi-selection boundary exists, right-click keeps that boundary as the command target even if the pointer is over a selected member, another group member or another shape. Hit-target selection only runs when there is no active multi-selection.
+- 2026-05-04 oriented group boundary: rotated group/multi-selection now computes an oriented selection box from member geometry, so the blue boundary/resize handles follow group rotation instead of falling back to an axis-aligned union. The rotated box resize path now supports multi-selection first pass. Frame top chrome also rotates with the frame, removing the old unrotated black outline.
 
 Next development focus: Phase 3A hand-test and command polish, then return to Phase 3B follow-ups that require deeper geometry contracts: direction-aware orthogonal connectors, port binding and frame export/drag-out semantics.
 
@@ -182,8 +183,8 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | ✅ | 3.1 | 对象模型 | TLShape 承载 x/y/rotation/props/index | spike 已有 `CanvasShape` id/type/x/y/rotation/style/props；board v2 serializer 还在后续 Phase 5/7 | `features/canvas-engine/types.ts` | JSON 可读、可迁移 |
 | ✅ | 3.2 | 多选 | 框选/shift 选中多个对象 | box-select、Shift additive select、多选 union boundary 已有；line/arrow/stroke 选中高亮线本身；active multi-selection 的右键优先级高于鼠标命中的单个 shape | `KonvaSelectionOverlay.tsx`, `KonvaCanvasShape.tsx`, `KonvaCanvasSpike.tsx` | 框选复杂对象准确；框选后右键不会丢掉 boundary |
 | ✅ | 3.3 | 拖拽 | 选中对象拖动丝滑 | normal drag / Alt-copy 都走 clean drag session；Konva native source 被锁回原位，由 preview document 驱动物体和 controls 同帧移动；多选/连续绘制单选移动可用 | `useKonvaShapeDragHandlers.ts`, `konvaDragSession.ts` | 拖动无跳变，缩放/旋转控件不慢半拍 |
-| ◐ | 3.4 | resize | 图形和 node card 可 resize | shape/image/text/sticky/frame resize 已有；rotated resize 已修；node card resize 未做 | `KonvaSelectionOverlay.tsx`, `konvaRotatedResize.ts` | resize 后内容不坏 |
-| ✅ | 3.5 | rotate | 当前 tldraw shape 支持 rotation 字段 | 单选 box-like rotate、多选 union rotate 已有；rotated drag/Alt-copy/resize 控件已修 | `konvaRotationUtils.ts`, `KonvaSelectionOverlay.tsx` | 保存/恢复 rotation |
+| ◐ | 3.4 | resize | 图形和 node card 可 resize | shape/image/text/sticky/frame resize 已有；single 和 multi rotated resize first pass 已修；node card resize 未做 | `KonvaSelectionOverlay.tsx`, `konvaRotatedResize.ts`, `konvaOrientedBounds.ts` | resize 后内容不坏 |
+| ✅ | 3.5 | rotate | 当前 tldraw shape 支持 rotation 字段 | 单选 box-like rotate、多选 union rotate 已有；group/multi boundary 会从成员几何计算 oriented box 跟随旋转；rotated drag/Alt-copy/resize 控件已修 | `konvaRotationUtils.ts`, `KonvaSelectionOverlay.tsx`, `konvaOrientedBounds.ts` | 保存/恢复 rotation，group 旋转后 boundary 不回到水平框 |
 | ◐ | 3.6 | 删除 | Delete/Backspace 和面板 delete | shape delete 已接 Properties/右键/快捷键；edge cleanup 等 node runtime 还未接 | `konvaShapeCommands.ts`, `useKonvaCanvasShortcuts.ts` | 删除对象和 edges 清理一致 |
 | ✅ | 3.7 | undo/redo | tldraw 内置历史 | command history 已记录 create/drag/resize/rotate/erase/style/layer/duplicate/delete；camera 不进 undo | `useKonvaCanvasHistory.ts` | Ctrl/Cmd+Z/Shift+Z 正常 |
 | ◐ | 3.8 | copy/paste | 浏览器/内部 clipboard | 内部 shape JSON、image asset ref、外部 clipboard image paste 已有；node/edge copy 未做 | `konvaShapeCommands.ts`, `konvaImageClipboard.ts` | 复制节点/shape/edge 后位置偏移 |
@@ -205,7 +206,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | ✅ | 3B.3 | Circle/Ellipse | 圆/椭圆 shape | Konva Ellipse 从 bbox 生成；Shift 绘制/resize 等比；双击可编辑居中文字 | 圆形/椭圆可保持比例/自由缩放 |
 | ✅ | 3B.4 | Triangle | 三角形 shape | Konva polygon/path 支持 resize；双击可编辑居中文字 | 三角边框/fill 正常 |
 | ✅ | 3B.5 | Cloud | 云朵 shape 是截图重点；tldraw/CAD cloud 是根据拖拽矩形四边分段切弧，不是固定云朵轮廓缩放 | 已改为基于 bbox 四边按边长生成 revision-cloud scallop arcs；双击可编辑居中文字 | cloud 视觉和选择框接近 tldraw，不像固定图标拉伸 |
-| ◐ | 3B.6 | Frame | tldraw frame 是白底黑框的视觉容器，框外内容被裁切，顶部显示 frame 名 | Frame 黑框白底、clip、`parentId`、双击改名、移动带 children 已有；drag 时隐藏 stale chrome，避免旧位置黑边；drag-out/nested/export 语义未做 | 拖入对象后超出 frame 的部分被蒙住，双击可改名，移动时不残留旧边框 |
+| ◐ | 3B.6 | Frame | tldraw frame 是白底黑框的视觉容器，框外内容被裁切，顶部显示 frame 名 | Frame 黑框白底、clip、`parentId`、双击改名、移动带 children 已有；drag 时隐藏 stale chrome，rotate 后 top chrome 跟随 frame 旋转不留旧黑边；drag-out/nested/export 语义未做 | 拖入对象后超出 frame 的部分被蒙住，双击可改名，移动/旋转时不残留旧边框 |
 | ✅ | 3B.7 | Sticky / note | Miro-like sticky note：作者在上方，note 有阴影和立体感 | Sticky 显示 author label、raised shadow、居中文本；双击编辑正文；Properties 限颜色/透明度，支持 resize/rotate | Sticky 可创建、改色、改透明度、resize/rotate、双击中间文字编辑 |
 | ◐ | 3B.8 | Shape active preview | shape popover hover tooltip，如 Cloud | toolbar tooltip 已有；shape popover 形态尚未做，因为当前 spike 展开显示所有 shape tools | hover cloud 显示 tooltip，popover 不乱跳 |
 | ✅ | 3B.9 | Line straight | 直线工具生成两端控制点 | line shape 保存 start/end/control points，选中后显示端点 handles | 端点可拖拽 |
@@ -215,11 +216,11 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | ✅ | 3B.13 | Arrow straight | arrow 两端，默认箭头头部 | arrow visual 支持 start/end 和 default end arrow | 箭头终点头部方向正确 |
 | ✅ | 3B.14 | Arrow curve edit | arrow 中点/控制点可拖成曲线 | arrow 与 line 共用 route/control model，支持 Straight/Curve/Elbow | 曲线 arrow 拖动后自然跟随 |
 | ☐ | 3B.15 | Arrow bound to ports | arrow/edge 可吸附 node ports | port anchor + snap + edge data 分离尚未做 | 移动 node 后 arrow 跟随 port |
-| ✅ | 3B.16 | Multi-selection rotate | tldraw 多选外侧 boundary 可整体旋转 | 多选 union boundary 已有 rotate handle；按 group center 旋转；box-like 写 x/y/rotation，line/arrow/stroke 写旋转后的点位 | 多选多个形状旋转后相对位置保持，保存/undo 正常 |
+| ✅ | 3B.16 | Multi-selection rotate | tldraw 多选外侧 boundary 可整体旋转 | 多选 boundary 已从 axis union 升级为 oriented bounds；按 group center 旋转；box-like 写 x/y/rotation，line/arrow/stroke 写旋转后的点位 | 多选多个形状旋转后相对位置保持，boundary 跟随旋转，保存/undo 正常 |
 | ✅ | 3B.17 | Draw pencil | 铅笔自由画线，保留手绘质感 | perfect-freehand stroke shape，轻量平滑、速度压力和 taper 已有 | 快慢线接近 tldraw |
 | ◐ | 3B.18 | Eraser 质感 | eraser 不只是 delete，拖过笔画有擦除感 | 第一版整条 stroke/line/arrow 几何 hit delete 和拖尾已有；stroke segmentation erase 未做 | 擦除响应跟手，不误删远处图形 |
 | ✅ | 3B.19 | Text tool | `T` 工具插入文字 | Text tool one-shot，HTML textarea overlay 编辑，shape label/sticky/frame 也复用 overlay | 双击/输入/中文 IME 正常 |
-| ✅ | 3B.20 | Shape handles | 选中形状显示蓝色 bbox/handles | handles 尺寸随 zoom 稳定；单个旋转 shape 拖拽/Alt 复制/resize 控件已跟随角度；拖动时 controls 使用 drag preview shapes 防止慢半拍；locked 对象/组显示线稿锁 icon；多选 rotate first pass 已有 | zoom 后 handle 不巨大/过小，旋转后拖拽复制控件跟随角度，普通拖动时控件不滞后 |
+| ✅ | 3B.20 | Shape handles | 选中形状显示蓝色 bbox/handles | handles 尺寸随 zoom 稳定；单个和 group/multi rotated selection handles 跟随角度；拖动时 controls 使用 drag preview shapes 防止慢半拍；locked 对象/组显示线稿锁 icon | zoom 后 handle 不巨大/过小，旋转后拖拽复制控件跟随角度，普通拖动时控件不滞后 |
 | ☐ | 3B.21 | Rotation/resize cursor | handle hover 显示正确反馈 | cursor manager 根据 handle/tool 更新尚未做 | 鼠标移到 handle 有专业反馈 |
 | ✅ | 3B.22 | Minimap overview | 左下角 mini map 显示对象分布和当前视口紫框 | navigator/minimap 已显示 document overview 和 viewport | 大 Board 中能看见当前位置 |
 | ☐ | 3B.23 | Minimap collapse | 左下角可折叠/展开 | collapse state 不影响画布事件 | 折叠后只留小控制 |

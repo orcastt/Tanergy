@@ -219,7 +219,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     if (session.type === 'resize') {
       if (session.rotatedBox) {
         setResizeSnapGuides([])
-        previewDocument(withCanvasShapes(documentRef.current, resizeShapesFromRotatedBox(documentRef.current.shapes, session.originShapes[0], session.rotatedBox, session.handle, worldPoint, { preserveAspect: event.evt.shiftKey })))
+        previewDocument(withCanvasShapes(documentRef.current, resizeShapesFromRotatedBox(documentRef.current.shapes, session.originShapes, session.rotatedBox, session.handle, worldPoint, { preserveAspect: event.evt.shiftKey })))
         return
       }
       let bounds = resizeBoundsFromHandle(session.originBounds, session.handle, worldPoint, { preserveAspect: event.evt.shiftKey })
