@@ -19,7 +19,7 @@ import {
   reorderKonvaShapes,
   type KonvaCanvasWidthStyle,
 } from './konvaCanvasStyle'
-import { applyKonvaLineRoute, getKonvaLineRouteSnapshot, isKonvaLineShape, konvaLineRoutes, type KonvaLineRoute } from './konvaLineRouteUtils'
+import { KonvaLineProperties } from './KonvaLineProperties'
 
 type KonvaCanvasPropertiesProps = {
   activeTool: KonvaCanvasTool
@@ -63,8 +63,6 @@ export function KonvaCanvasProperties({
   const widthToken = styleSnapshot.strokeWidth === 'mixed' ? null : getWidthStyleToken(styleSnapshot.strokeWidth)
   const opacity = styleSnapshot.opacity === 'mixed' ? 100 : Math.round((styleSnapshot.opacity ?? 1) * 100)
   const strokeLabel = hasSelection && selectedShapes.every((shape) => shape.type === 'sticky') ? 'Color' : 'Stroke'
-  const routeSnapshot = getKonvaLineRouteSnapshot(selectedShapes)
-  const showRoute = hasSelection && selectedShapes.some(isKonvaLineShape)
 
   const applyStyle = (patch: CanvasShapeStyle) => {
     onNextStyleChange((current) => ({ ...current, ...patch }))
@@ -91,12 +89,6 @@ export function KonvaCanvasProperties({
     }
     const layerAction = action.replace('layer-', '') as 'back' | 'backward' | 'forward' | 'front'
     onDocumentChange((current) => reorderKonvaShapes(current, selectedIds, layerAction))
-  }
-
-  const applyRoute = (route: KonvaLineRoute) => {
-    if (selectedIds.length === 0) return
-    onHistoryCheckpoint(document)
-    onDocumentChange((current) => applyKonvaLineRoute(current, selectedIds, route))
   }
 
   return (
@@ -193,21 +185,7 @@ export function KonvaCanvasProperties({
             </PropertyBlock>
           ) : null}
 
-          {showRoute ? (
-            <PropertyBlock label="Route">
-              <SegmentedButtons>
-                {konvaLineRoutes.map((item) => (
-                  <IconButton
-                    active={routeSnapshot === item.value}
-                    icon={`style-icon ${item.icon}`}
-                    key={item.value}
-                    label={item.label}
-                    onClick={() => applyRoute(item.value)}
-                  />
-                ))}
-              </SegmentedButtons>
-            </PropertyBlock>
-          ) : null}
+          <KonvaLineProperties document={document} onDocumentChange={onDocumentChange} onHistoryCheckpoint={onHistoryCheckpoint} selectedIds={selectedIds} selectedShapes={selectedShapes} />
 
           <PropertyBlock label="Opacity">
             <div className="konva-canvas-properties__range-row">

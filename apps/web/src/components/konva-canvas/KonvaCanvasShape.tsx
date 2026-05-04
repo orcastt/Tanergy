@@ -1,9 +1,9 @@
 import { memo, useMemo, useRef } from 'react'
 import type Konva from 'konva'
-import { Ellipse, Group, Line, Path, Rect, Text } from 'react-konva'
+import { Circle, Ellipse, Group, Line, Path, Rect, Text } from 'react-konva'
 import type { CanvasShape } from '@/features/canvas-engine'
 import { getStickyFillColor, getStrokeDash, resolveKonvaShapeStyle } from './konvaCanvasStyle'
-import { getLineArrowHeadAnchor, getLinePathData, type KonvaLineShape } from './konvaLineRouteUtils'
+import { getLineArrowHeadAnchor, getLineHead, getLinePathData, getLineStartHeadAnchor, type KonvaLineShape } from './konvaLineRouteUtils'
 import { getPatternTile } from './konvaPatternUtils'
 import { getArrowHeadPoints, getCloudPath, getFreehandPath } from './konvaPathUtils'
 import { isBoxCanvasShape } from './konvaRotationUtils'
@@ -214,12 +214,18 @@ function renderLineLikeShape(
   }
 ) {
   const path = getLinePathData(shape)
-  const arrowAnchor = getLineArrowHeadAnchor(shape)
+  const endHead = getLineHead(shape, 'end')
+  const startHead = getLineHead(shape, 'start')
+  const end = shape.props.end
+  const start = { x: 0, y: 0 }
   return (
     <>
       {style.isSelected ? <Path data={path} hitStrokeWidth={16} lineCap="round" lineJoin="round" listening={false} opacity={0.28} stroke={style.highlightStroke} strokeWidth={style.highlightWidth} /> : null}
       <Path dash={style.dash} data={path} hitStrokeWidth={16} lineCap="round" lineJoin="round" opacity={style.opacity} stroke={style.stroke} strokeWidth={style.strokeWidth} />
-      {shape.type === 'arrow' ? <Line closed fill={style.stroke} opacity={style.opacity} points={getArrowHeadPoints(shape.props.end, arrowAnchor, Math.max(12, style.strokeWidth * 5))} /> : null}
+      {startHead === 'arrow' ? <Line closed fill={style.stroke} opacity={style.opacity} points={getArrowHeadPoints(start, getLineStartHeadAnchor(shape), Math.max(12, style.strokeWidth * 5))} /> : null}
+      {startHead === 'dot' ? <Circle fill={style.stroke} opacity={style.opacity} radius={Math.max(4, style.strokeWidth * 2.1)} x={0} y={0} /> : null}
+      {endHead === 'arrow' ? <Line closed fill={style.stroke} opacity={style.opacity} points={getArrowHeadPoints(end, getLineArrowHeadAnchor(shape), Math.max(12, style.strokeWidth * 5))} /> : null}
+      {endHead === 'dot' ? <Circle fill={style.stroke} opacity={style.opacity} radius={Math.max(4, style.strokeWidth * 2.1)} x={end.x} y={end.y} /> : null}
     </>
   )
 }
@@ -228,17 +234,8 @@ function ShapeLabel({ fill, height, opacity, text, width }: { fill: string; heig
   if (!text?.trim()) return null
   return (
     <Text
-      align="center"
-      fill={fill}
-      fontFamily="Inter, system-ui, sans-serif"
-      fontSize={18}
-      height={height}
-      listening={false}
-      opacity={opacity}
-      padding={10}
-      text={text}
-      verticalAlign="middle"
-      width={width}
+      align="center" fill={fill} fontFamily="Inter, system-ui, sans-serif" fontSize={18} height={height}
+      listening={false} opacity={opacity} padding={10} text={text} verticalAlign="middle" width={width}
     />
   )
 }

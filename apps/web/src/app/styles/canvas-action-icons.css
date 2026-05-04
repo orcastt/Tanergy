@@ -56,6 +56,24 @@
   transform: translateY(-50%) rotate(-135deg);
 }
 
+.style-icon--arrow-end-dot::after,
+.style-icon--arrow-start-dot::after {
+  border: 2px solid currentColor;
+  border-radius: 999px;
+  height: 8px;
+  width: 8px;
+}
+
+.style-icon--arrow-end-dot::after {
+  right: 0;
+  transform: translateY(-50%);
+}
+
+.style-icon--arrow-start-dot::after {
+  left: 0;
+  transform: translateY(-50%);
+}
+
 .style-icon--arrow-end-triangle::after {
   border-radius: 1px;
 }

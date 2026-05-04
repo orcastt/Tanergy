@@ -1,12 +1,20 @@
 import { withCanvasShapes, type CanvasDocument, type CanvasPoint, type CanvasShape } from '@/features/canvas-engine'
 
 export type KonvaLineRoute = 'curve' | 'orthogonal' | 'straight'
+export type KonvaLineHead = 'arrow' | 'dot' | 'none'
+export type KonvaLineHeadPosition = 'end' | 'start'
 export type KonvaLineShape = Extract<CanvasShape, { type: 'arrow' | 'line' }>
 
 export const konvaLineRoutes: Array<{ icon: string; label: string; value: KonvaLineRoute }> = [
   { icon: 'style-icon--spline-line', label: 'Straight', value: 'straight' },
   { icon: 'style-icon--spline-cubic', label: 'Curve', value: 'curve' },
   { icon: 'style-icon--arrow-kind-elbow', label: 'Elbow', value: 'orthogonal' },
+]
+
+export const konvaLineHeads: Array<{ icon: string; label: string; value: KonvaLineHead }> = [
+  { icon: 'none', label: 'None', value: 'none' },
+  { icon: 'dot', label: 'Dot', value: 'dot' },
+  { icon: 'arrow', label: 'Arrow', value: 'arrow' },
 ]
 
 export function isKonvaLineShape(shape: CanvasShape): shape is KonvaLineShape {
@@ -32,6 +40,27 @@ export function applyKonvaLineRoute(document: CanvasDocument, shapeIds: string[]
   return withCanvasShapes(document, document.shapes.map((shape) => (
     selected.has(shape.id) && isKonvaLineShape(shape) ? setLineRoute(shape, route) : shape
   )))
+}
+
+export function getKonvaLineHeadSnapshot(shapes: CanvasShape[], position: KonvaLineHeadPosition): KonvaLineHead | 'mixed' | null {
+  const lineShapes = shapes.filter(isKonvaLineShape)
+  if (lineShapes.length === 0) return null
+  const first = getLineHead(lineShapes[0], position)
+  return lineShapes.every((shape) => getLineHead(shape, position) === first) ? first : 'mixed'
+}
+
+export function applyKonvaLineHead(document: CanvasDocument, shapeIds: string[], position: KonvaLineHeadPosition, head: KonvaLineHead): CanvasDocument {
+  const selected = new Set(shapeIds)
+  return withCanvasShapes(document, document.shapes.map((shape) => (
+    selected.has(shape.id) && isKonvaLineShape(shape)
+      ? { ...shape, props: { ...shape.props, [position === 'start' ? 'startHead' : 'endHead']: head } }
+      : shape
+  )))
+}
+
+export function getLineHead(shape: KonvaLineShape, position: KonvaLineHeadPosition): KonvaLineHead {
+  if (position === 'start') return shape.props.startHead ?? 'none'
+  return shape.props.endHead ?? (shape.type === 'arrow' ? 'arrow' : 'none')
 }
 
 export function setLineRoute(shape: KonvaLineShape, route: KonvaLineRoute): KonvaLineShape {
@@ -65,6 +94,12 @@ export function getLineArrowHeadAnchor(shape: KonvaLineShape): CanvasPoint {
   if (getLineRoute(shape) === 'curve') return shape.props.control ?? getDefaultCurveControl(shape.props.end)
   const points = getLineRoutePoints(shape)
   return points[Math.max(0, points.length - 2)]
+}
+
+export function getLineStartHeadAnchor(shape: KonvaLineShape): CanvasPoint {
+  if (getLineRoute(shape) === 'curve') return shape.props.control ?? getDefaultCurveControl(shape.props.end)
+  const points = getLineRoutePoints(shape)
+  return points[1] ?? shape.props.end
 }
 
 export function getLineControlPoint(shape: KonvaLineShape): CanvasPoint {

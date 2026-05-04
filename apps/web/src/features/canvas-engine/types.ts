@@ -69,14 +69,18 @@ export type CanvasLineShape = CanvasShapeBase<'line', {
   bends?: CanvasPoint[]
   control?: CanvasPoint | null
   end: CanvasPoint
+  endHead?: 'arrow' | 'dot' | 'none'
   route?: 'curve' | 'orthogonal' | 'straight'
+  startHead?: 'arrow' | 'dot' | 'none'
 }>
 
 export type CanvasArrowShape = CanvasShapeBase<'arrow', {
   bends?: CanvasPoint[]
   control?: CanvasPoint | null
   end: CanvasPoint
+  endHead?: 'arrow' | 'dot' | 'none'
   route?: 'curve' | 'orthogonal' | 'straight'
+  startHead?: 'arrow' | 'dot' | 'none'
 }>
 
 export type CanvasImageShape = CanvasShapeBase<'image', CanvasSize & {
