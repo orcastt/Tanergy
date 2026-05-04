@@ -8,11 +8,15 @@ export type KonvaContextMenuAction =
   | 'align-right'
   | 'align-top'
   | 'copy'
+  | 'copy-as-png'
+  | 'copy-as-svg'
   | 'cut'
   | 'delete'
   | 'distribute-horizontal'
   | 'distribute-vertical'
   | 'duplicate'
+  | 'export-png'
+  | 'export-svg'
   | 'flip-horizontal'
   | 'flip-vertical'
   | 'group'
@@ -130,13 +134,13 @@ export function KonvaContextMenu({
         <MenuDivider />
 
         <MenuSubmenu disabled={!hasSelection} label="Copy as">
-          <MenuButton disabled label="SVG" shortcut={`⇧${shortcutMod}C`} />
-          <MenuButton disabled label="PNG" />
+          <MenuButton label="SVG" shortcut={`⇧${shortcutMod}C`} onClick={() => onAction('copy-as-svg')} />
+          <MenuButton label="PNG" onClick={() => onAction('copy-as-png')} />
           <MenuButton disabled label="Transparent background" />
         </MenuSubmenu>
         <MenuSubmenu label="Export as">
-          <MenuButton disabled label="SVG" />
-          <MenuButton disabled label="PNG" />
+          <MenuButton disabled={!hasSelection} label="SVG" onClick={() => onAction('export-svg')} />
+          <MenuButton disabled={!hasSelection} label="PNG" onClick={() => onAction('export-png')} />
           <MenuButton disabled label="Transparent background" />
         </MenuSubmenu>
         <MenuDivider />

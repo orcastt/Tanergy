@@ -29,6 +29,7 @@ import { useKonvaCanvasShortcuts } from './useKonvaCanvasShortcuts'
 import { useKonvaImageNodeActions } from './useKonvaImageNodeActions'
 import { useKonvaImageNodeUpload } from './useKonvaImageNodeUpload'
 import { useKonvaNodeCreationMenu } from './useKonvaNodeCreationMenu'
+import { useKonvaSelectionExportActions } from './useKonvaSelectionExportActions'
 import { useKonvaStageDomEvents } from './useKonvaStageDomEvents'
 import { removeKonvaRuntimeEdge } from './konvaRuntimeEdges'
 export function KonvaCanvasSpike() {
@@ -100,21 +101,6 @@ export function KonvaCanvasSpike() {
     selectedIds,
   })
 
-  useKonvaCanvasShortcuts({
-    clipboardRef,
-    document,
-    history,
-    onClipboardChange: setClipboardShapeCount,
-    onDocumentChange: setDocument,
-    onEdgeSelectionChange: setSelectedEdgeId,
-    getPastePoint: () => lastPastePointRef.current ?? screenToWorld({ x: size.width / 2, y: size.height / 2 }, camera),
-    onPanningChange: setIsSpacePanning,
-    onSelectionChange: handleSelectionChange,
-    onToolChange: setActiveTool,
-    selectedEdgeId,
-    selectedIds,
-  })
-
   const pointCount = useMemo(() => (
     document.shapes.reduce((total, shape) => total + (shape.type === 'stroke' ? shape.props.points.length : 0), 0)
   ), [document.shapes])
@@ -145,9 +131,47 @@ export function KonvaCanvasSpike() {
   const editingNodeTextShape = editingNodeText
     ? document.shapes.find((shape): shape is CanvasNodeShape => shape.id === editingNodeText.shapeId && shape.type === 'node_card')
     : null
+  const selectionExport = useKonvaSelectionExportActions({
+    document,
+    history,
+    onDocumentChange: setDocument,
+    onSelectionChange: handleSelectionChange,
+    selectedIds,
+  })
+  useKonvaCanvasShortcuts({
+    clipboardRef,
+    document,
+    history,
+    onClipboardChange: setClipboardShapeCount,
+    onDocumentChange: setDocument,
+    onEdgeSelectionChange: setSelectedEdgeId,
+    getPastePoint: () => lastPastePointRef.current ?? screenToWorld({ x: size.width / 2, y: size.height / 2 }, camera),
+    onPanningChange: setIsSpacePanning,
+    onSelectionChange: handleSelectionChange,
+    onToolChange: setActiveTool,
+    onCopySelectionSvg: () => { void selectionExport.handleCopySelectionSvg() },
+    selectedEdgeId,
+    selectedIds,
+  })
   const runContextAction = (action: KonvaContextMenuAction) => {
     const pastePoint = contextMenu ? { x: contextMenu.worldX, y: contextMenu.worldY } : undefined
     setContextMenu(null)
+    if (action === 'copy-as-png') {
+      void selectionExport.handleCopySelectionPng()
+      return
+    }
+    if (action === 'copy-as-svg') {
+      void selectionExport.handleCopySelectionSvg()
+      return
+    }
+    if (action === 'export-png') {
+      void selectionExport.handleExportSelectionPng()
+      return
+    }
+    if (action === 'export-svg') {
+      selectionExport.handleExportSelectionSvg()
+      return
+    }
     void runKonvaContextAction({
       action,
       clipboardRef,
@@ -185,6 +209,7 @@ export function KonvaCanvasSpike() {
         <KonvaCanvasStage
           activeTool={activeTool}
           camera={camera}
+          captureMode={selectionExport.captureMode}
           document={document}
           height={size.height}
           isSpacePanning={isSpacePanning}
@@ -206,6 +231,7 @@ export function KonvaCanvasSpike() {
           onNodeFieldChange={setNodeField}
           onNodeRunToggle={toggleNodeRun}
           onSelectionChange={handleSelectionChange}
+          onStageReady={selectionExport.handleStageReady}
           onTextEditStart={(shapeId) => {
             const shape = document.shapes.find((item) => item.id === shapeId)
             if (shape?.type === 'node_card' && shape.props.nodeType === 'image') {
@@ -274,10 +300,12 @@ export function KonvaCanvasSpike() {
         />
         <KonvaSelectionToolbar
           camera={camera}
+          canCaptureSelection={selectionExport.canCaptureSelection}
           canConvertImageToNode={canConvertImageToNode}
           canNodeToCanvas={canNodeToCanvas}
           document={document}
-          onCaptureSelection={() => undefined}
+          isCapturingSelection={selectionExport.isCapturingSelection}
+          onCaptureSelection={() => { void selectionExport.handleCaptureSelectionToImageNode() }}
           onConvertImageToNode={convertImageToNode}
           onNodeToCanvas={sendImageNodeToCanvas}
           selectedIds={selectedIds}

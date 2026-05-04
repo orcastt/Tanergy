@@ -60,8 +60,10 @@ function KonvaCanvasShapeComponent({
   return (
     <Group
       draggable={canInteract && toolAllowsDrag && !shape.isLocked}
+      id={`shape:${shape.id}`}
       key={shape.id}
       listening={interactive}
+      name="konva-canvas-shape"
       onClick={canSelect ? (event) => {
         if (event.evt.button !== 0) return
         event.cancelBubble = true

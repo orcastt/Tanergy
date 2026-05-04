@@ -113,7 +113,10 @@ Current Phase 4A image/node boundary:
 - Konva Image Node first pass renders a lightweight card with ports derived from `node-runtime/registry.ts`; runtime edge storage is still intentionally separate and not represented as visual `arrow` shapes.
 - Canvas Image → Image Node creates a `node_card` image node beside the image. Node data stores `assetId`, dimensions, `source` and `title`; it does not store `data:`, `blob:`, Base64 or provider raw payloads.
 - Image Node → Canvas Image fetches the asset record by `assetId` through the existing Asset API, then creates a `CanvasImageShape` beside the node with display URLs on the image shape only.
-- Selection capture/export remains disabled until a dedicated export bounds/upload contract exists. Frame visible-bounds helpers are available, but rotated/precise clipped export semantics are still follow-up work.
+- Selection capture/export is now a first-pass Konva boundary: actions take `selectedIds`, compute a single export bounds rect from selected shape/node geometry in `konvaSelectionExport.ts`, render only those ids with selection overlays hidden, and never infer capture scope from the current viewport.
+- Copy as PNG writes a transparent PNG clipboard item where supported; Export as PNG downloads the same selectedIds render result as a file. Copy/Export as SVG uses `konvaSelectionSvgExport.ts` for a limited vector serializer and may use placeholders for unsupported node/image internals until full serialization lands.
+- Capture selection to Image Node uploads the selectedIds PNG through the Asset API with `origin=merge_capture` before creating the Image Node below the selection bounds. Copy/export assets use `origin=editor_export` if a future persisted-export path is added. Board documents and node props must store only asset refs/metadata, not `data:`, `blob:`, Base64 images or raw render payloads.
+- Frame visible-bounds helpers are available, but rotated/precise clipped export semantics are still follow-up work.
 
 Current Phase 4 Node/Port/Edge foundation boundary:
 
@@ -494,7 +497,7 @@ apps/web/src/components/konva-canvas
   KonvaImageShape.tsx      image renderer with thumbnail/original zoom LOD
   KonvaNodeCardShape.tsx   lightweight node-card shell, registry-derived ports
   KonvaNodeEdgeLayer.tsx runtime edge visuals/hit targets, separate from annotation arrows
-  KonvaContextMenu.tsx     hover submenu shell; unsupported schema/export commands stay disabled
+  KonvaContextMenu.tsx     hover submenu shell; copy/export first-pass actions; unsupported schema/page commands stay disabled
 
 apps/web/src/features/collaboration
   ydoc.ts                  Yjs document mapping

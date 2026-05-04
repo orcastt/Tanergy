@@ -26,6 +26,7 @@ type UseKonvaCanvasShortcutsOptions = {
   getPastePoint: () => CanvasPoint
   onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
   onClipboardChange?: (shapeCount: number) => void
+  onCopySelectionSvg?: () => void
   onEdgeSelectionChange?: (edgeId: string | null) => void
   onPanningChange: (isPanning: boolean) => void
   onSelectionChange: (shapeIds: string[]) => void
@@ -57,6 +58,10 @@ export function useKonvaCanvasShortcuts(options: UseKonvaCanvasShortcutsOptions)
       }
       if (command && key === 'c') {
         event.preventDefault()
+        if (event.shiftKey && options.selectedIds.length > 0 && options.onCopySelectionSvg) {
+          options.onCopySelectionSvg()
+          return
+        }
         options.clipboardRef.current = copyKonvaShapes(options.document, options.selectedIds)
         options.onClipboardChange?.(options.clipboardRef.current.length)
         void writeKonvaShapesToSystemClipboard(options.clipboardRef.current)

@@ -1,4 +1,4 @@
-import { withCanvasShapes, type CanvasDocument, type CanvasImageShape, type CanvasNodeShape } from '@/features/canvas-engine'
+import { withCanvasShapes, type CanvasDocument, type CanvasImageShape, type CanvasNodeShape, type CanvasPoint } from '@/features/canvas-engine'
 import { hasRemotePersistenceApi, persistenceApiUrl, persistenceAssetUrl, persistenceAuthHeaders } from '@/features/api/persistenceApi'
 import type { TangentAssetRecord, TangentAssetResponse } from '@/features/assets/assetTypes'
 import { createDefaultNodeData, createDefaultRuntimeSummary, getNodeDefinition } from '@/features/node-runtime/registry'
@@ -12,6 +12,19 @@ export function createKonvaImageNodeFromCanvasImage(document: CanvasDocument, sh
   const image = document.shapes.find((shape): shape is CanvasImageShape => shape.id === shapeId && shape.type === 'image')
   if (!image) return null
   const node = createImageNodeShapeFromImage(image)
+  return {
+    document: withCanvasShapes(document, [...document.shapes, node]),
+    selectedIds: [node.id],
+  }
+}
+
+export function createKonvaImageNodeFromAssetRecord(
+  document: CanvasDocument,
+  asset: TangentAssetRecord,
+  point: CanvasPoint,
+  options: { source?: string; title?: string } = {}
+) {
+  const node = createImageNodeShapeFromAsset(asset, point, options)
   return {
     document: withCanvasShapes(document, [...document.shapes, node]),
     selectedIds: [node.id],
@@ -72,6 +85,41 @@ function createImageNodeShapeFromImage(image: CanvasImageShape): CanvasNodeShape
     type: 'node_card',
     x: image.x + image.props.width + nodeGap,
     y: image.y,
+  }
+}
+
+function createImageNodeShapeFromAsset(
+  asset: TangentAssetRecord,
+  point: CanvasPoint,
+  options: { source?: string; title?: string }
+): CanvasNodeShape {
+  const definition = getNodeDefinition('image')
+  const data = pruneUndefined({
+    ...createDefaultNodeData('image'),
+    assetId: asset.id,
+    imageHeight: asset.height,
+    imageWidth: asset.width,
+    originalUrl: asset.originalUrl,
+    source: options.source ?? asset.origin,
+    thumbnail1024Url: asset.thumbnail1024Url,
+    thumbnail256Url: asset.thumbnail256Url,
+    thumbnail512Url: asset.thumbnail512Url,
+    title: options.title ?? 'Image',
+  })
+  return {
+    id: createKonvaNodeId('image-node'),
+    props: {
+      data,
+      height: imageNodeHeight,
+      nodeId: createKonvaNodeId('image'),
+      nodeType: 'image',
+      runtimeSummary: createDefaultRuntimeSummary('image'),
+      version: definition.version,
+      width: imageNodeWidth,
+    },
+    type: 'node_card',
+    x: point.x,
+    y: point.y,
   }
 }
 

@@ -10,8 +10,10 @@ import {
 type KonvaSelectionToolbarProps = {
   camera: CanvasCamera
   document: CanvasDocument
+  canCaptureSelection: boolean
   canConvertImageToNode: boolean
   canNodeToCanvas: boolean
+  isCapturingSelection?: boolean
   selectedIds: string[]
   shellRect: DOMRect | null
   onCaptureSelection: () => void
@@ -21,9 +23,11 @@ type KonvaSelectionToolbarProps = {
 
 export function KonvaSelectionToolbar({
   camera,
+  canCaptureSelection,
   canConvertImageToNode,
   canNodeToCanvas,
   document,
+  isCapturingSelection,
   onCaptureSelection,
   onConvertImageToNode,
   onNodeToCanvas,
@@ -67,8 +71,8 @@ export function KonvaSelectionToolbar({
       <button
         aria-label="Capture selection to image node"
         className="selection-toolbar__btn"
-        data-tooltip="Capture selection to image node"
-        disabled
+        data-tooltip={isCapturingSelection ? 'Capturing selection' : 'Capture selection to image node'}
+        disabled={!canCaptureSelection || isCapturingSelection}
         onClick={onCaptureSelection}
         type="button"
       >
