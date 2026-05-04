@@ -8,5 +8,5 @@ const KonvaCanvasSpike = dynamic(
 )
 
 export default function KonvaCanvasSpikePage() {
-  return <KonvaCanvasSpike />
+  return <KonvaCanvasSpike boardId="konva-spike-local" boardTitle="Konva Spike Local" mode="board" />
 }

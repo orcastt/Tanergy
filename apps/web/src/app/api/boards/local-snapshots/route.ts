@@ -17,3 +17,17 @@ export async function GET(request: Request) {
     )
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const boardId = new URL(request.url).searchParams.get('boardId')
+    if (!boardId) throw new Error('Missing boardId.')
+    const deletedCount = await getBoardStorageAdapter().clearLocalBoardSnapshots(boardId, getApiRequestContext(request))
+    return NextResponse.json({ deletedCount, ok: true })
+  } catch (error) {
+    return NextResponse.json(
+      { deletedCount: 0, error: error instanceof Error ? error.message : 'Board history clear failed.', ok: false },
+      { status: 400 }
+    )
+  }
+}

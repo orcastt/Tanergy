@@ -23,6 +23,7 @@ export type BoardModeSaveStatusProps = {
   onSave: () => void
   onSnapshot: () => void
   saveError: string | null
+  showLoad?: boolean
   snapshotMessage?: string | null
   status: BoardSaveStatus
 }
@@ -56,6 +57,7 @@ export function BoardModeSaveStatus({
   onSave,
   onSnapshot,
   saveError,
+  showLoad = false,
   snapshotMessage,
   status,
 }: BoardModeSaveStatusProps) {
@@ -72,6 +74,11 @@ export function BoardModeSaveStatus({
       {status === 'dirty' || status === 'blocked' || status === 'error' ? (
         <button disabled={!editorAvailable || isRunning} onClick={action} type="button">
           {actionLabel}
+        </button>
+      ) : null}
+      {showLoad ? (
+        <button disabled={!editorAvailable || isRunning} onClick={onLoad} type="button">
+          Load
         </button>
       ) : null}
       <button disabled={!editorAvailable || isRunning} onClick={onSnapshot} type="button">

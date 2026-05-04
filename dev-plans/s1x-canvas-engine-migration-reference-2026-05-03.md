@@ -89,8 +89,10 @@ keep Board/API/storage contracts stable
 - 2026-05-04 Analysis Run misfire fix: node card controls now stop `dblclick` bubbling, so rapid Run/Stop clicks or model dropdown clicks no longer trigger the node double-click text editor.
 - 2026-05-04 Phase 4A capture sharpness/node resize polish: Selection Capture now exports at a higher offscreen pixel ratio and larger max edge, and `merge_capture` Image Nodes use the original capture asset above 50% zoom instead of the 1024 thumbnail, so mid-zoom captures such as 57% do not look soft. Node card internals now scale as one clipped content layer when the node is resized below its registry default size, preventing text, controls and previews from spilling outside the node frame.
 - 2026-05-04 Phase 4A polish checkpoint: user accepted the 57% capture sharpness and small-node content containment pass. Checkpoint file scope is limited to S1X docs plus Konva canvas selection/image-node/export/action files.
+- 2026-05-04 Phase 5A Konva persistence first pass: `/spikes/konva-canvas` now runs in board mode with `KonvaBoardSaveAudit`, serializes a v2 `{ renderer: 'konva', version: 2, canvasDocument }` envelope, saves/loads through the existing Board API, creates board thumbnails from an offscreen Konva capture, and reuses Board autosave, Cmd/Ctrl+S, Snapshot/History and before-unload guards. Backend/frontend metrics now count `canvasDocument.shapes` for Konva v2 docs.
+- 2026-05-05 Board History clean + resize correction: shared Board History now has a confirmed Clean action that deletes all snapshots for the current board through both local Next and FastAPI Board APIs. Shift proportional resize now flushes resize previews immediately and keeps post-snap bounds on one aspect-ratio scale so width/height do not appear to step independently.
 
-Next development focus: hand-test Phase 4 mock Run chains, then finish edge keyboard Delete/Cut, richer node editors and Phase 4A selection capture/export.
+Next development focus: hand-test Phase 5A Save/Load/Autosave/Snapshot/History/Clean on `/spikes/konva-canvas`, then tighten schema-aware Konva Board guard and decide whether to start `/boards/[boardId]` dual-engine integration.
 
 ## tldraw Behavior Inventory
 
@@ -231,7 +233,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | ✅ | 3.10 | z-order | index 控制层级 | array order / zIndex model；右键、Properties、快捷键共用 `reorderKonvaShapes` 四档 action | `konvaCanvasStyle.ts`, `konvaContextActions.ts` | bring/send 操作持久化 |
 | ✅ | 3.11 | text edit | text/note 可输入，不抢画布快捷键 | HTML textarea overlay；text/sticky/frame/shape label 可编辑；输入中阻止画布快捷键和 Cmd/Ctrl+S 浏览器保存 | `KonvaTextEditor.tsx`, `konvaShapeCommands.ts` | 输入中 Cmd+S 不误触，中文输入正常 |
 | ◐ | 3.12 | eraser | 橡皮擦删除 draw/shape | line/arrow/stroke 用几何距离 hit test；拖尾 silhouette 保留；闭合 shape 仍是第一版，stroke segmentation 未做 | `useKonvaEraserSession.ts`, `konvaEraserHitTest.ts` | 擦除不误删远处对象，拖尾跟手 |
-| ✅ | 3.13 | snapping | snap alignment/distance | drag/Alt-copy、resize、rotate 都接 shared snap settings；resize 只吸附拖动边/角；rotation 15-degree guide | `konvaSnapping.ts`, `useKonvaShapeDragHandlers.ts` | 开关和距离生效，固定 resize anchor 不乱跳 |
+| ✅ | 3.13 | snapping | snap alignment/distance | drag/Alt-copy、resize、rotate 都接 shared snap settings；resize 只吸附拖动边/角；Shift 等比 resize 在 snap 后仍回到单一 scale，并用即时 preview 避免宽高视觉错帧；rotation 15-degree guide | `konvaSnapping.ts`, `konvaSelectionUtils.ts`, `useKonvaCanvasInteractions.ts` | 开关和距离生效，固定 resize anchor 不乱跳，Shift 缩放宽高同步 |
 | ✅ | 3.14 | browser selection 清理 | 避免画布中误选中文本 | Konva shell `selectionchange` guard，编辑 textarea/input 里保留正常选区 | `useKonvaBrowserSelectionGuard.ts` | 拖动画布不出现蓝色文字选区 |
 
 ### Phase 3B：Shape / Line / Arrow / Eraser / Navigator 细则
@@ -367,17 +369,18 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 
 | 状态 | 序号 | 功能/交互 | 当前 tldraw 参考 | Konva/Yjs 复刻要求 | 参考文件 | 验收方式 |
 | --- | --- | --- | --- | --- | --- | --- |
-| ☐ | 5.1 | document guard | 禁止 data/blob/base64/长日志 | v2 document guard 适配尚未做 | `boardDocumentGuard.ts` | 违规文档被拦 |
-| ☐ | 5.2 | save now | 保存 Board document + thumbnail | Konva engine serialize + Board API save 尚未接 | `CanvasBoardSaveAudit.tsx` | Save now 后刷新可恢复 |
-| ☐ | 5.3 | autosave | dirty 后延迟保存 | Konva store dirty tracking 尚未接 Board lifecycle | `useBoardSaveLifecycle.ts` | 修改后自动进入 History |
-| ☐ | 5.4 | Cmd/Ctrl+S | keyboard save reason | Board save shortcut 尚未接 Konva route；text editor 内 Cmd/Ctrl+S guard 已做但不是保存 | `useBoardKeyboardSaveShortcut` | 快捷键保存并入 history |
-| ☐ | 5.5 | snapshot | 手动 Snapshot | Konva document snapshot 尚未接 Board History API | `useBoardSnapshots.ts` | snapshot 出现在 History |
-| ☐ | 5.6 | History restore | restore 后 dirty 并继续 autosave | restore engine document + mark dirty 尚未做 | `restoreBoardDocument` | 恢复后可再保存 |
-| ☐ | 5.7 | History filter | autosave/user save 分组 | Board History reason/filter 不受 spike 影响，但 Konva save history 未接 | `CanvasBoardHistoryPanel.tsx` | 过滤项正确 |
-| ☐ | 5.8 | thumbnail | `editor.toImageDataUrl` | `stage.toDataURL` + padding/export rules 尚未做 | `boardThumbnailCapture.ts` | Workspace 卡片显示真实预览 |
-| ◐ | 5.9 | merge capture | 选区导出为 Image Node | Konva local spike 已支持 selectedIds PNG capture/upload → Image Node；正式 Board persistence/Yjs route 接入尚未做 | `CanvasSelectionToolbar.tsx` | 多选 capture 生成新 Image Node |
+| ◐ | 5.1 | document guard | 禁止 data/blob/base64/长日志 | Konva v2 保存 envelope 已走现有 Board guard；generic guard 继续阻止 `data:`/`blob:`/large Base64；backend/frontend metrics 已识别 `canvasDocument.shapes`。更严格的 schema-aware key policy 仍是 follow-up | `konvaBoardDocument.ts`, `boardDocumentGuard.ts`, `board_metadata.py`, `boardTypes.ts` | data/blob/base64 被拦；Konva v2 summary shape/asset count 正确 |
+| ◐ | 5.2 | save now | 保存 Board document + thumbnail | `/spikes/konva-canvas` 已接 `KonvaBoardSaveAudit`；Save Now 序列化 `CanvasDocument` + settings + asset refs，走现有 Board API，并可手动 Load 恢复 | `KonvaBoardSaveAudit.tsx`, `konvaBoardDocument.ts`, `localBoardClient.ts` | Save now 后点击 Load/刷新再加载可恢复 shapes/nodes/runtimeEdges/camera |
+| ◐ | 5.3 | autosave | dirty 后延迟保存 | Konva document/camera signature 变化会进入 dirty 并复用 `useBoardAutosaveTimer`；settings dirty tracking 已复用 | `KonvaBoardSaveAudit.tsx`, `useBoardSaveLifecycle.ts` | 修改后状态变 dirty，并自动创建 autosave/history |
+| ◐ | 5.4 | Cmd/Ctrl+S | keyboard save reason | Konva board mode 复用 `useBoardKeyboardSaveShortcut`，写 `keyboard` reason；文本编辑目标仍会跳过全局保存快捷键 | `KonvaBoardSaveAudit.tsx`, `useBoardKeyboardSaveShortcut` | Cmd/Ctrl+S 保存；编辑 textarea 中不误触 |
+| ◐ | 5.5 | snapshot | 手动 Snapshot | 新增 `useKonvaBoardSnapshots`，用 v2 Konva document 创建 Board History snapshot，并上传 Konva thumbnail | `useKonvaBoardSnapshots.ts`, `KonvaBoardSaveAudit.tsx` | Snapshot 后 History 出现条目 |
+| ◐ | 5.6 | History restore | restore 后 dirty 并继续 autosave | History restore 读取 snapshot 的 Konva v2 envelope，恢复 document/settings，清空 selection/edit/menu transient state，标记 dirty 并继续 autosave | `useKonvaBoardSnapshots.ts`, `konvaBoardDocument.ts`, `KonvaCanvasSpike.tsx` | Restore 后画布替换，随后可保存 |
+| ◐ | 5.7 | History filter | autosave/user save 分组 | Konva 复用 `CanvasBoardHistoryPanel` 的 all/autosave/user filters；历史 transport 与 tldraw 共用 | `CanvasBoardHistoryPanel.tsx`, `CanvasBoardModeControls.tsx` | autosave/user filters 能分组 |
+| ◐ | 5.8 | thumbnail | `editor.toImageDataUrl` | 新增 `captureKonvaBoardThumbnailUrl`：选择全部 Konva shapes，用 offscreen clone capture，上传 `origin=board_thumbnail` | `konvaBoardThumbnailCapture.ts`, `konvaSelectionExport.ts` | Refresh preview/Save 生成真实缩略图 asset |
+| ◐ | 5.9 | merge capture | 选区导出为 Image Node | Konva local spike 已支持 selectedIds PNG capture/upload → Image Node，且保存时 merge_capture Image Node asset refs 进入 v2 document；正式 `/boards/[boardId]` route 接入仍未做 | `CanvasSelectionToolbar.tsx`, `konvaBoardDocument.ts` | 多选 capture 生成新 Image Node，保存/加载后保留 |
 | ☐ | 5.10 | Board switcher | 最近 5 个 Board 下拉 | Board shell 尚未接 Konva engine route | `CanvasBoardSwitcher.tsx` | 切换 Board 能加载新 engine doc |
-| ☐ | 5.11 | unsaved guard | 离开前 warning | engine dirty status 接入尚未做 | `useBoardBeforeUnloadWarning` | 未保存返回有确认 |
+| ◐ | 5.11 | unsaved guard | 离开前 warning | Konva board mode 复用 `useBoardBeforeUnloadWarning`，dirty/saving/blocked/error(save) 状态会拦截 unload/back；正式 Board route 集成仍未做 | `KonvaBoardSaveAudit.tsx`, `useBoardBeforeUnloadWarning` | 未保存返回有确认 |
+| ✅ | 5.12 | History clean | 清空当前 Board history | Shared History panel 增加 Clean；Next local route 和 FastAPI `DELETE /boards/{board_id}/snapshots` 删除当前 workspace/board 的所有 snapshots，并重置 snapshot signature 让下一次 autosave 可重新写入 | `CanvasBoardHistoryPanel.tsx`, `localBoardClient.ts`, `boards.py`, snapshot stores | Clean 后 History 变空，刷新后仍为空；下一次 Snapshot/Autosave 可重新出现 |
 
 ### Phase 6：协同和多人基础
 

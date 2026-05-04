@@ -104,6 +104,37 @@ export function resizeBoundsFromHandle(
   return normalizeResizeBounds(boundsFromPoints(anchor, nextPoint))
 }
 
+export function preserveAspectResizeBoundsFromSnappedBounds(
+  originBounds: CanvasBounds,
+  handle: KonvaResizeHandle,
+  snappedBounds: CanvasBounds,
+  snapOrientations: Array<'horizontal' | 'rotation' | 'vertical'>
+): CanvasBounds {
+  const width = Math.max(1, originBounds.maxX - originBounds.minX)
+  const height = Math.max(1, originBounds.maxY - originBounds.minY)
+  const anchor = getOppositeCorner(originBounds, handle)
+  const draggedPoint = getResizeHandlePoint(snappedBounds, handle)
+  const xScale = Math.abs(draggedPoint.x - anchor.x) / width
+  const yScale = Math.abs(draggedPoint.y - anchor.y) / height
+  const hasXSnap = snapOrientations.includes('vertical')
+  const hasYSnap = snapOrientations.includes('horizontal')
+  const defaultXSign = handle === 'ne' || handle === 'se' ? 1 : -1
+  const defaultYSign = handle === 'se' || handle === 'sw' ? 1 : -1
+  const scale = Math.max(
+    hasXSnap && !hasYSnap
+      ? xScale
+      : hasYSnap && !hasXSnap
+        ? yScale
+        : (xScale * width + yScale * height) / (width + height),
+    minResizeSize / width,
+    minResizeSize / height
+  )
+  return normalizeResizeBounds(boundsFromPoints(anchor, {
+    x: anchor.x + (Math.sign(draggedPoint.x - anchor.x) || defaultXSign) * width * scale,
+    y: anchor.y + (Math.sign(draggedPoint.y - anchor.y) || defaultYSign) * height * scale,
+  }))
+}
+
 export function moveBounds(bounds: CanvasBounds, delta: CanvasPoint): CanvasBounds {
   return {
     maxX: bounds.maxX + delta.x,
@@ -130,6 +161,13 @@ function getOppositeCorner(bounds: CanvasBounds, handle: KonvaResizeHandle): Can
   if (handle === 'ne') return { x: bounds.minX, y: bounds.maxY }
   if (handle === 'sw') return { x: bounds.maxX, y: bounds.minY }
   return { x: bounds.minX, y: bounds.minY }
+}
+
+function getResizeHandlePoint(bounds: CanvasBounds, handle: KonvaResizeHandle): CanvasPoint {
+  if (handle === 'nw') return { x: bounds.minX, y: bounds.minY }
+  if (handle === 'ne') return { x: bounds.maxX, y: bounds.minY }
+  if (handle === 'sw') return { x: bounds.minX, y: bounds.maxY }
+  return { x: bounds.maxX, y: bounds.maxY }
 }
 
 function normalizeResizeBounds(bounds: CanvasBounds): CanvasBounds {

@@ -25,6 +25,7 @@ class FakeS3Client:
 class FakePostgresCursor:
     def __init__(self, database):
         self.database = database
+        self.rowcount = 0
         self.row = None
         self.rows = []
 
@@ -36,6 +37,7 @@ class FakePostgresCursor:
 
     def execute(self, query, params=None):
         normalized = " ".join(query.split())
+        self.rowcount = 0
         if normalized.startswith("INSERT INTO tangent_boards"):
             key = (params[1], params[0])
             self.database.boards[key] = params
@@ -107,6 +109,14 @@ class FakePostgresCursor:
                 if workspace == workspace_id and board == board_id
             ]
             self.rows.sort(key=lambda row: row[14], reverse=True)
+        elif normalized.startswith("DELETE FROM tangent_board_snapshots WHERE workspace_id = %s AND board_id = %s") and len(params) == 2:
+            workspace_id, board_id = params
+            before = len(self.database.snapshots)
+            self.database.snapshots = {
+                key: row for key, row in self.database.snapshots.items()
+                if key[0] != workspace_id or key[1] != board_id
+            }
+            self.rowcount = before - len(self.database.snapshots)
         elif normalized.startswith("DELETE FROM tangent_board_snapshots"):
             workspace_id, board_id = params[0], params[1]
             limit = params[4] if len(params) > 4 else 10

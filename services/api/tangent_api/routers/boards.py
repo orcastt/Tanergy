@@ -14,6 +14,7 @@ from tangent_api.schemas import (
     BoardSaveResponse,
     BoardSnapshotCreateRequest,
     BoardSnapshotCreateResponse,
+    BoardSnapshotClearResponse,
     BoardSnapshotListResponse,
     BoardSnapshotLoadResponse,
     BoardValidateResponse,
@@ -111,6 +112,15 @@ def list_board_snapshots(
 ) -> BoardSnapshotListResponse:
     snapshots = get_board_storage_adapter().list_snapshots(board_id, context)
     return BoardSnapshotListResponse(ok=True, snapshots=snapshots)
+
+
+@router.delete("/{board_id}/snapshots", response_model=BoardSnapshotClearResponse)
+def clear_board_snapshots(
+    board_id: str,
+    context: ApiRequestContext = Depends(get_request_context),
+) -> BoardSnapshotClearResponse:
+    deleted_count = get_board_storage_adapter().clear_snapshots(board_id, context)
+    return BoardSnapshotClearResponse(deletedCount=deleted_count, ok=True)
 
 
 @router.get("/{board_id}/snapshots/{snapshot_id}", response_model=BoardSnapshotLoadResponse)

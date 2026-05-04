@@ -92,7 +92,7 @@ The migration is therefore a renderer engine migration, not a small library swap
 - [x] Add first-pass Frame and Sticky tools to the Konva spike.
 - [x] Complete Phase 3.10-3.14 first pass: z-order actions, text edit shortcut guard, precise eraser hit testing, snap guides and browser selection cleanup.
 - [ ] Add production-quality rectangle/text/image/node-card renderers.
-- [ ] Save/load a renderer-neutral document.
+- [x] Save/load a renderer-neutral Konva v2 document in the spike route.
 - [ ] Run two-tab Yjs sync with cursor/presence.
 - [ ] User handfeel review before any `/boards/[boardId]` migration.
 
@@ -199,6 +199,8 @@ Phase 3.1 object editing foundation started:
 - 2026-05-04 image crop first pass is implemented: single canvas image selection shows a Crop button in the floating selection toolbar. Clicking Crop enters an edge-handle crop edit mode with resize-style purple borders and corner dots; dragging left/right/top/bottom trims the image and shrinks the image boundary to the cropped region so the remaining pixels are not auto-stretched into the old bounds. Commit/Reset crop UI remains follow-up.
 - 2026-05-04 Phase 4A capture sharpness/node resize polish is implemented: selection capture now uses a higher offscreen pixel ratio/max edge, and `merge_capture` Image Node previews above 50% zoom prefer the original capture asset instead of the generated 1024 thumbnail. Node card internals scale as one clipped content layer when resized below registry default dimensions, so controls, text boxes and image previews stay inside the node frame.
 - 2026-05-04 Phase 4A polish checkpoint accepted by user: 57% zoom Capture selection → Image Node preview sharpness and small-node content containment are OK. File-state scope for this checkpoint is `apps/web/src/components/konva-canvas/*` selection/export/image-node action files plus `PRD/PRD_slice_S1X_canvas_engine_migration.md`, this dev plan and this project_state slice.
+- 2026-05-04 Phase 5A Konva Board persistence first pass is implemented in the spike route: `/spikes/konva-canvas` now mounts `KonvaBoardSaveAudit` in board mode, serializes a v2 `{ renderer: 'konva', version: 2, canvasDocument }` envelope with canvas settings and compact asset refs, saves/loads through the existing Board API, captures board thumbnails through an offscreen Konva stage, and reuses autosave, Cmd/Ctrl+S, Snapshot/History and before-unload guards. Backend/frontend document metrics now count Konva `canvasDocument.shapes`; targeted backend Board persistence tests pass.
+- 2026-05-05 Board History Clean is implemented: shared History panel has a confirmed Clean action, frontend local/remote clients call `DELETE` snapshot endpoints, local Next/FastAPI local/Postgres stores clear all current-workspace snapshots for the board, and snapshot signatures reset so a later autosave is not skipped. Shift proportional resize now uses immediate resize preview and preserves one aspect-ratio scale after resize snapping, so snap should not make width/height appear to update separately.
 - Phase 4 storage guard remains explicit: Board documents, node props and runtime edge data must not persist `data:`, `blob:`, Base64 images, provider raw payloads, complete logs or long generated text. Image Node first pass stores only Asset references, dimensions, title/source metadata and runtime summary placeholders.
 - A Konva shell `selectionchange` guard clears accidental browser text selection while preserving normal textarea/input selection during editing.
 - Frame movement now expands the drag set to include direct/nested frame children, so moving a frame carries contained shapes with it.
@@ -207,12 +209,13 @@ Phase 3.1 object editing foundation started:
 - undo/redo restores shapes plus selection only, so pan/zoom is not part of command history
 - create, drag, resize, eraser, Properties style edits, layer actions, duplicate/delete, stress strokes and clear all now create history checkpoints
 
-Not included yet: full HTML node card controls beyond targeted Prompt/Analysis text preview/editing, extensible server-backed node run adapter registry, real Image Gen result asset propagation, AiRun polling/cancel execution UI, paste-directly-into-Image-Node behavior, crop reset/explicit commit UI, save/history integration, nested-frame/export semantics, real Yjs provider sync and Board route migration.
+Not included yet: full HTML node card controls beyond targeted Prompt/Analysis text preview/editing, extensible server-backed node run adapter registry, real Image Gen result asset propagation, AiRun polling/cancel execution UI, crop reset/explicit commit UI, stricter Konva schema-aware Board guard, `/boards/[boardId]` Konva engine route migration, nested-frame/export semantics and real Yjs provider sync.
 
 Current hand-test queue:
 
 - Select 3 Image Nodes, drag from any selected `image_out` to Image Gen/Image Gen 4 `image_in_1`, and confirm 3 edges appear, image input ports expand, Run resolves 3 image refs, Undo removes the whole batch, and disconnecting one edge updates input counts/mirrors.
 - Recheck 50/100 image pressure at 5/15/25/50/100% zoom on macOS and Windows, including pan/zoom, drawing over images, drag/Alt-drag, resize/rotate, crop, runtime edge drag and node Run. Capture selection / Copy PNG / Export PNG flash is accepted as fixed.
+- Phase 5A hand-test: open `/spikes/konva-canvas`, draw shapes/images/nodes/runtime edges, confirm Save now writes a thumbnail, Load restores document/camera/settings, Cmd/Ctrl+S creates a keyboard save, Snapshot appears in History, Restore replaces the canvas, Clean clears all History entries after confirmation, and autosave/Snapshot can recreate history afterward.
 
 Explicit Phase 3B follow-ups now tracked in the migration plan:
 

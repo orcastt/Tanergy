@@ -7,6 +7,7 @@ import type {
   BoardMetadataUpdateInput,
   BoardRenameResponse,
   BoardSaveResponse,
+  BoardSnapshotClearResponse,
   BoardSnapshotCreateResponse,
   BoardSnapshotListResponse,
   BoardSnapshotLoadResponse,
@@ -32,6 +33,7 @@ export type LocalBoardDeleteResponse = BoardDeleteResponse
 export type LocalBoardSnapshotCreateResponse = BoardSnapshotCreateResponse
 export type LocalBoardSnapshotListResponse = BoardSnapshotListResponse
 export type LocalBoardSnapshotLoadResponse = BoardSnapshotLoadResponse
+export type LocalBoardSnapshotClearResponse = BoardSnapshotClearResponse
 
 export async function saveLocalBoardDocument(input: SerializedBoardSaveInput) {
   const response = await fetch(
@@ -157,6 +159,23 @@ export async function loadBoardSnapshot(boardId: string, snapshotId: string) {
   const payload = await response.json() as LocalBoardSnapshotLoadResponse
   if (!response.ok || !payload.ok || !payload.snapshot) {
     throw new Error(payload.error || 'Board history load failed.')
+  }
+  return payload
+}
+
+export async function clearBoardSnapshots(boardId: string) {
+  const response = await fetch(
+    hasRemotePersistenceApi()
+      ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(boardId)}/snapshots`)
+      : `/api/boards/local-snapshots?boardId=${encodeURIComponent(boardId)}`,
+    {
+      headers: persistenceAuthHeaders(),
+      method: 'DELETE',
+    }
+  )
+  const payload = await response.json() as LocalBoardSnapshotClearResponse
+  if (!response.ok || !payload.ok) {
+    throw new Error(payload.error || 'Board history clear failed.')
   }
   return payload
 }

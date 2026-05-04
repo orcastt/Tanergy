@@ -1,5 +1,4 @@
 import type { BoardDocumentGuardResult } from './boardDocumentGuard'
-import type { SerializedBoardDocument } from './boardDocumentSerializer'
 
 export type BoardPersistenceRecord = {
   assetCount: number
@@ -142,8 +141,14 @@ export type BoardSnapshotLoadResponse = {
   snapshot?: BoardSnapshotRecord
 }
 
-export type SerializedBoardSaveInput = BoardSaveInput<SerializedBoardDocument>
-export type SerializedBoardSnapshotCreateInput = BoardSnapshotCreateInput<SerializedBoardDocument>
+export type BoardSnapshotClearResponse = {
+  deletedCount: number
+  error?: string
+  ok: boolean
+}
+
+export type SerializedBoardSaveInput = BoardSaveInput<unknown>
+export type SerializedBoardSnapshotCreateInput = BoardSnapshotCreateInput<unknown>
 
 export function summarizeBoardRecord(record: BoardPersistenceRecord): BoardPersistenceSummary {
   const metrics = getBoardDocumentMetrics(record.document)
@@ -205,9 +210,14 @@ export function getBoardDocumentMetrics(document: unknown) {
   if (!document || typeof document !== 'object') {
     return { assetCount: 0, shapeCount: 0 }
   }
-  const candidate = document as { assets?: unknown; shapes?: unknown }
+  const candidate = document as { assets?: unknown; canvasDocument?: unknown; shapes?: unknown }
+  const canvasDocument = candidate.canvasDocument && typeof candidate.canvasDocument === 'object'
+    ? candidate.canvasDocument as { shapes?: unknown }
+    : null
   return {
     assetCount: Array.isArray(candidate.assets) ? candidate.assets.length : 0,
-    shapeCount: Array.isArray(candidate.shapes) ? candidate.shapes.length : 0,
+    shapeCount: Array.isArray(candidate.shapes)
+      ? candidate.shapes.length
+      : Array.isArray(canvasDocument?.shapes) ? canvasDocument.shapes.length : 0,
   }
 }

@@ -20,6 +20,7 @@ import {
 import {
   boundsFromPoints,
   getMarqueeSelectionIds,
+  preserveAspectResizeBoundsFromSnappedBounds,
   resizeBoundsFromHandle,
   resizeShapesFromBounds,
   toggleSelectedId,
@@ -55,7 +56,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     stageRef,
   })
   const { clearDraft, draft, scheduleDraft } = useKonvaDraftPreview()
-  const { flushPreviewDocument, previewDocument } = useKonvaDocumentPreviewScheduler({
+  const { flushPreviewDocument, previewDocument, previewDocumentNow } = useKonvaDocumentPreviewScheduler({
     documentRef,
     onDocumentPreview: options.onDocumentPreview,
   })
@@ -223,18 +224,21 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       return
     }
     if (session.type === 'resize') {
+      const preserveAspect = event.evt.shiftKey
       if (session.rotatedBox) {
         setResizeSnapGuides([])
-        previewDocument(withCanvasShapes(documentRef.current, resizeShapesFromRotatedBox(documentRef.current.shapes, session.originShapes, session.rotatedBox, session.handle, worldPoint, { preserveAspect: event.evt.shiftKey })))
+        previewDocumentNow(withCanvasShapes(documentRef.current, resizeShapesFromRotatedBox(documentRef.current.shapes, session.originShapes, session.rotatedBox, session.handle, worldPoint, { preserveAspect })))
         return
       }
-      let bounds = resizeBoundsFromHandle(session.originBounds, session.handle, worldPoint, { preserveAspect: event.evt.shiftKey })
+      let bounds = resizeBoundsFromHandle(session.originBounds, session.handle, worldPoint, { preserveAspect })
       if (snapAlignment) {
         const snapped = snapResizeBoundsToShapes(documentRef.current.shapes, session.shapeIds, bounds, snapDistance / cameraRef.current.zoom, getResizeSnapSourceKeys(session.handle))
-        bounds = snapped.bounds
+        bounds = preserveAspect
+          ? preserveAspectResizeBoundsFromSnappedBounds(session.originBounds, session.handle, snapped.bounds, snapped.guides.map((guide) => guide.orientation))
+          : snapped.bounds
         setResizeSnapGuides(snapped.guides)
       }
-      previewDocument(withCanvasShapes(documentRef.current, resizeShapesFromBounds(documentRef.current.shapes, session.originShapes, session.originBounds, bounds)))
+      previewDocumentNow(withCanvasShapes(documentRef.current, resizeShapesFromBounds(documentRef.current.shapes, session.originShapes, session.originBounds, bounds)))
       return
     }
     if (session.type === 'rotate') {

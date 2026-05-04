@@ -140,6 +140,14 @@ Current Phase 4 Node/Port/Edge foundation boundary:
 - `resolveNodeInputs` remains the AI run input source of truth. Konva now wires `runtimeGraphResolution.ts` into the mock Run adapter; the next boundary is replacing the mock completion with server-side AiRun lifecycle, polling/cancel behavior and real generated asset propagation.
 - Board documents, node props and runtime edge payloads must not persist `data:`, `blob:`, Base64 images, provider raw responses, complete logs or long generated text. Store Asset ids/URLs, compact runtime summaries and references to AiRun records instead.
 
+Current Phase 5A persistence boundary:
+
+- Konva persistence is parallel to the existing tldraw board save component. `KonvaBoardSaveAudit` is mounted only in `/spikes/konva-canvas` and uses the shared Board API client, but it serializes through `features/boards/konvaBoardDocument.ts` instead of `boardDocumentSerializer.ts`.
+- The persisted Konva envelope is versioned separately from tldraw v1: `{ version: 2, renderer: 'konva', canvasDocument, canvasSettings, assets, serializedAt }`. `canvasDocument` is the renderer-neutral `CanvasDocument` with `shapes`, `runtimeEdges`, `camera` and metadata. `assets` is a compact derived list used for Board summaries; raw image bytes stay in Asset storage.
+- Restore validates the v2 envelope, runs the existing Board guard, replaces Konva document/camera/settings and clears transient selection, edge selection, crop, edit and context-menu state. It does not route Konva documents through tldraw `Editor` shape/asset restore.
+- Board thumbnails for Konva use `captureKonvaBoardThumbnailUrl`: all shapes are captured through the offscreen Konva clone/export path and uploaded with `origin=board_thumbnail`. This keeps thumbnail generation separate from user `merge_capture` assets.
+- Existing Board save/autosave/history/before-unload hooks remain the lifecycle layer. Board History now has create/list/load/clear-all transport: `DELETE /api/v1/boards/{board_id}/snapshots` and the local Next equivalent delete all snapshots scoped to the current workspace and board, then the frontend resets the last snapshot signature so the next autosave can recreate history. Konva dirty tracking is document-signature based for the first pass; later Board route migration should replace this with a renderer-neutral dirty event source and stricter schema-aware guard tests.
+
 It does not replace `/boards/[boardId]` and does not remove any tldraw reference code.
 
 ## Current tldraw Reference Contract

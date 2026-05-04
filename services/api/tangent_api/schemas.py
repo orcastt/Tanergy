@@ -23,6 +23,7 @@ from tangent_api.board_schemas import (
     BoardSaveResponse,
     BoardSnapshotCreateRequest,
     BoardSnapshotCreateResponse,
+    BoardSnapshotClearResponse,
     BoardSnapshotListResponse,
     BoardSnapshotLoadResponse,
     BoardSnapshotRecord,

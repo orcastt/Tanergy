@@ -1,5 +1,3 @@
-import type { SerializedBoardDocument } from '@/features/boards/boardDocumentSerializer'
-
 export const boardAutosaveDelayMs = 1200
 
 export type BoardSaveStatus = 'idle' | 'loading' | 'loaded' | 'dirty' | 'saving' | 'saved' | 'blocked' | 'error'
@@ -34,8 +32,10 @@ export function hasBoardDocumentChange(changes: StoreChanges) {
   })
 }
 
-export function getDocumentSignature(document: SerializedBoardDocument) {
-  const stableDocument = { ...document, serializedAt: '' }
+export function getDocumentSignature(document: unknown) {
+  const stableDocument = document && typeof document === 'object'
+    ? { ...(document as Record<string, unknown>), serializedAt: '' }
+    : document
   return JSON.stringify(stableDocument)
 }
 

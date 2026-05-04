@@ -152,6 +152,12 @@ class BoardSnapshotLoadResponse(TangentApiModel):
     snapshot: Optional[BoardSnapshotRecord] = None
 
 
+class BoardSnapshotClearResponse(TangentApiModel):
+    deleted_count: int = Field(alias="deletedCount")
+    error: Optional[str] = None
+    ok: bool
+
+
 def summarize_board_record(record: BoardRecord) -> BoardSummary:
     metrics = get_board_document_metrics(record.document)
     return BoardSummary(

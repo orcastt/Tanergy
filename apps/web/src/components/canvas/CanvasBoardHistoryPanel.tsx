@@ -7,6 +7,7 @@ import type { BoardSnapshotSummary } from '@/features/boards/boardTypes'
 type CanvasBoardHistoryPanelProps = {
   error: string | null
   isRunning: boolean
+  onClear: () => void
   onClose: () => void
   onRefresh: () => void
   onRestore: (snapshotId: string) => void
@@ -16,6 +17,7 @@ type CanvasBoardHistoryPanelProps = {
 export function CanvasBoardHistoryPanel({
   error,
   isRunning,
+  onClear,
   onClose,
   onRefresh,
   onRestore,
@@ -82,7 +84,18 @@ export function CanvasBoardHistoryPanel({
       </div>
       <footer>
         <span>Free retention target: latest 100 autosaves + 100 user saves per board.</span>
-        <button disabled={isRunning} onClick={onRefresh} type="button">Refresh</button>
+        <div className="canvas-board-history__footer-actions">
+          <button disabled={isRunning} onClick={onRefresh} type="button">Refresh</button>
+          <button
+            disabled={isRunning || snapshots.length === 0}
+            onClick={() => {
+              if (window.confirm('Clear all board history for this board? This cannot be undone.')) onClear()
+            }}
+            type="button"
+          >
+            Clean
+          </button>
+        </div>
       </footer>
     </aside>
   )

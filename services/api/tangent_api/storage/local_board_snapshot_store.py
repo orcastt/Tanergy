@@ -93,6 +93,18 @@ def load_board_snapshot(
     return snapshot
 
 
+def clear_board_snapshots(board_id: str, context: ApiRequestContext) -> int:
+    safe_board_id = _sanitize_id(board_id)
+    if not safe_board_id:
+        raise HTTPException(status_code=400, detail="Invalid board id.")
+    snapshots = list_board_snapshots(safe_board_id, context)
+    root = _snapshot_root(context.workspace_id, safe_board_id)
+    if root.exists():
+        for path in root.glob("*.json"):
+            path.unlink(missing_ok=True)
+    return len(snapshots)
+
+
 def _write_snapshot(snapshot: BoardSnapshotRecord) -> None:
     path = _snapshot_path(snapshot.workspace_id, snapshot.board_id, snapshot.id)
     path.parent.mkdir(parents=True, exist_ok=True)

@@ -35,9 +35,19 @@ export function useKonvaDocumentPreviewScheduler({
     })
   }, [documentRef, onDocumentPreview])
 
+  const previewDocumentNow = useCallback((document: CanvasDocument) => {
+    documentRef.current = document
+    pendingDocumentRef.current = null
+    if (frameRef.current !== null) {
+      window.cancelAnimationFrame(frameRef.current)
+      frameRef.current = null
+    }
+    onDocumentPreview(document)
+  }, [documentRef, onDocumentPreview])
+
   useEffect(() => () => {
     if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current)
   }, [])
 
-  return { flushPreviewDocument, previewDocument }
+  return { flushPreviewDocument, previewDocument, previewDocumentNow }
 }

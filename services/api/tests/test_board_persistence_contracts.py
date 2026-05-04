@@ -89,6 +89,13 @@ def test_board_local_dev_contract(tmp_path, monkeypatch):
     assert [item["reason"] for item in snapshots].count("autosave") == 2
     assert [item["reason"] for item in snapshots].count("manual_save") == 1
 
+    clear_snapshots = client.delete("/api/v1/boards/api-smoke-board/snapshots")
+    assert clear_snapshots.status_code == 200
+    assert clear_snapshots.json()["deletedCount"] == 3
+    snapshot_list = client.get("/api/v1/boards/api-smoke-board/snapshots")
+    assert snapshot_list.status_code == 200
+    assert snapshot_list.json()["snapshots"] == []
+
     rename_response = client.patch("/api/v1/boards/api-smoke-board", json={"title": "Renamed Board"})
     assert rename_response.status_code == 200
     renamed = rename_response.json()["board"]
@@ -239,6 +246,14 @@ def test_board_postgres_contract(monkeypatch):
     assert [item["reason"] for item in snapshots].count("autosave") == 2
     assert [item["reason"] for item in snapshots].count("keyboard") == 1
 
+    clear_snapshots = client.delete("/api/v1/boards/api-postgres-board/snapshots")
+    assert clear_snapshots.status_code == 200
+    assert clear_snapshots.json()["deletedCount"] == 3
+    assert fake_db.snapshots == {}
+    snapshot_list = client.get("/api/v1/boards/api-postgres-board/snapshots")
+    assert snapshot_list.status_code == 200
+    assert snapshot_list.json()["snapshots"] == []
+
     rename_response = client.patch("/api/v1/boards/api-postgres-board", json={"title": "Renamed Postgres"})
     assert rename_response.status_code == 200
     assert rename_response.json()["board"]["title"] == "Renamed Postgres"
@@ -314,3 +329,42 @@ def test_board_guard_blocks_runtime_urls():
 
     assert response.status_code == 422
     assert response.json()["audit"]["issues"][0]["code"] == "runtime-url"
+
+
+def test_board_metrics_support_konva_v2_document(tmp_path, monkeypatch):
+    monkeypatch.setenv("TANGENT_BOARD_STORAGE_DIR", str(tmp_path / "boards"))
+    client = TestClient(app)
+    document = {
+        "assets": [{"id": "asset_1"}, {"id": "asset_2"}],
+        "canvasDocument": {
+            "camera": {"x": 0, "y": 0, "zoom": 1},
+            "id": "canvas-document-test",
+            "metadata": {"createdAt": "2026-05-04T00:00:00Z", "updatedAt": "2026-05-04T00:00:00Z"},
+            "runtimeEdges": [],
+            "schemaVersion": 1,
+            "shapes": [{"id": "shape_1", "props": {}, "type": "rect", "x": 0, "y": 0}],
+        },
+        "renderer": "konva",
+        "serializedAt": "2026-05-04T00:00:00Z",
+        "version": 2,
+    }
+
+    save_response = client.post(
+        "/api/v1/boards",
+        json={"boardId": "api-konva-board", "document": document, "title": "Konva Board"},
+    )
+
+    assert save_response.status_code == 200
+    saved = save_response.json()["board"]
+    assert saved["assetCount"] == 2
+    assert saved["shapeCount"] == 1
+
+    snapshot_response = client.post(
+        "/api/v1/boards/api-konva-board/snapshots",
+        json={"document": document, "reason": "manual"},
+    )
+
+    assert snapshot_response.status_code == 200
+    snapshot = snapshot_response.json()["snapshot"]
+    assert snapshot["assetCount"] == 2
+    assert snapshot["shapeCount"] == 1

@@ -80,6 +80,7 @@ Implemented now:
 - `DELETE /api/v1/boards/{board_id}` adapter-backed delete
 - `POST /api/v1/boards/{board_id}/snapshots` adapter-backed history create
 - `GET /api/v1/boards/{board_id}/snapshots` adapter-backed history list
+- `DELETE /api/v1/boards/{board_id}/snapshots` adapter-backed history clear
 - `GET /api/v1/boards/{board_id}/snapshots/{snapshot_id}` adapter-backed history load
 - `POST /api/v1/assets/from-data-url` adapter-backed asset create
 - `POST /api/v1/assets/upload` adapter-backed upload

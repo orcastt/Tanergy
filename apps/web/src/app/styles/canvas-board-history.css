@@ -32,6 +32,12 @@
   font-size: 11px;
 }
 
+.canvas-board-history__footer-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 6px;
+}
+
 .canvas-board-history header div,
 .canvas-board-history__item > div:not(.canvas-board-history__preview) {
   display: grid;

@@ -81,6 +81,14 @@ export async function loadLocalBoardSnapshot(boardId: string, snapshotId: string
   return snapshot
 }
 
+export async function clearLocalBoardSnapshots(boardId: string, context: ApiRequestContext) {
+  const safeBoardId = sanitizeBoardId(boardId)
+  if (!safeBoardId) throw new Error('Invalid board id.')
+  const snapshots = await listLocalBoardSnapshots(safeBoardId, context)
+  await rm(getSnapshotRoot(context.workspaceId, safeBoardId), { force: true, recursive: true })
+  return snapshots.length
+}
+
 function summarizeSnapshot(snapshot: BoardSnapshotRecord) {
   const { document: _document, ...summary } = snapshot
   void _document

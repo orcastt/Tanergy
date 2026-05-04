@@ -1,10 +1,12 @@
 'use client'
 
 import { useCallback, useMemo, useRef, useState } from 'react'
+import type Konva from 'konva'
 import * as Y from 'yjs'
 import { createEmptyCanvasDocument, screenToWorld, type CanvasCamera, type CanvasDocument, type CanvasNodeShape, type CanvasPoint, type CanvasShape, type CanvasShapeStyle } from '@/features/canvas-engine'
 import { CanvasTooltipLayer } from '@/components/canvas/CanvasTooltipLayer'
 import { KonvaCanvasHeader } from './KonvaCanvasHeader'
+import { KonvaBoardSaveAudit } from './KonvaBoardSaveAudit'
 import { KonvaCanvasDiagnostics } from './KonvaCanvasDiagnostics'
 import type { KonvaContextMenuAction } from './KonvaContextMenu'
 import { KonvaContextMenuHost } from './KonvaContextMenuHost'
@@ -34,7 +36,22 @@ import { useKonvaNodeCreationMenu } from './useKonvaNodeCreationMenu'
 import { useKonvaSelectionExportActions } from './useKonvaSelectionExportActions'
 import { useKonvaStageDomEvents } from './useKonvaStageDomEvents'
 import { removeKonvaRuntimeEdge } from './konvaRuntimeEdges'
-export function KonvaCanvasSpike() {
+
+type KonvaCanvasSpikeProps = {
+  autoLoadBoard?: boolean
+  boardId?: string
+  boardTitle?: string
+  mode?: 'board' | 'dev'
+  onBoardLoaded?: (title: string) => void
+}
+
+export function KonvaCanvasSpike({
+  autoLoadBoard = false,
+  boardId = 'konva-spike-local',
+  boardTitle = 'Konva Spike Local',
+  mode = 'dev',
+  onBoardLoaded,
+}: KonvaCanvasSpikeProps = {}) {
   const shellRef = useRef<HTMLDivElement | null>(null)
   const [ydoc] = useState(() => new Y.Doc())
   const [document, setDocument] = useState<CanvasDocument>(() => createEmptyCanvasDocument({
@@ -52,6 +69,7 @@ export function KonvaCanvasSpike() {
   const [editingTextId, setEditingTextId] = useState<string | null>(null)
   const [editingNodeText, setEditingNodeText] = useState<{ fieldName: KonvaNodeTextFieldName; shapeId: string } | null>(null)
   const [selectionActionError, setSelectionActionError] = useState<string | null>(null)
+  const [stage, setStage] = useState<Konva.Stage | null>(null)
   const [contextMenu, setContextMenu] = useState<{ worldX: number; worldY: number; x: number; y: number } | null>(null)
   const [, setClipboardShapeCount] = useState(0)
   const clipboardRef = useRef<CanvasShape[]>([])
@@ -160,6 +178,11 @@ export function KonvaCanvasSpike() {
     onSelectionChange: handleSelectionChange,
     selectedIds,
   })
+  const handleSelectionExportStageReady = selectionExport.handleStageReady
+  const handleStageReady = useCallback((nextStage: Konva.Stage | null) => {
+    handleSelectionExportStageReady(nextStage)
+    setStage(nextStage)
+  }, [handleSelectionExportStageReady])
   useKonvaCanvasShortcuts({
     clipboardRef,
     document,
@@ -206,10 +229,21 @@ export function KonvaCanvasSpike() {
       selectedIds,
     })
   }
+  const restoreBoardDocument = useCallback((nextDocument: CanvasDocument) => {
+    setDocument(nextDocument)
+    setCamera(nextDocument.camera)
+    handleSelectionChange([])
+    setSelectedEdgeId(null)
+    setCropEditingImageId(null)
+    setEditingTextId(null)
+    setEditingNodeText(null)
+    setContextMenu(null)
+    closeNodeMenu()
+  }, [closeNodeMenu, handleSelectionChange])
 
   return (
     <main className="konva-canvas-shell">
-      <KonvaCanvasHeader ydocId={ydoc.guid.slice(0, 8)} />
+      <KonvaCanvasHeader boardTitle={boardTitle} mode={mode} ydocId={ydoc.guid.slice(0, 8)} />
       <KonvaCanvasToolbar
         activeTool={activeTool}
         onAddStressStrokes={addStressStrokes}
@@ -255,7 +289,7 @@ export function KonvaCanvasSpike() {
           onNodeFieldChange={setNodeField}
           onNodeRunToggle={toggleNodeRun}
           onSelectionChange={handleSelectionChange}
-          onStageReady={selectionExport.handleStageReady}
+          onStageReady={handleStageReady}
           onTextEditStart={(shapeId) => {
             const shape = document.shapes.find((item) => item.id === shapeId)
             if (shape?.type === 'node_card' && shape.props.nodeType === 'image') {
@@ -348,6 +382,17 @@ export function KonvaCanvasSpike() {
           onZoomReset={resetZoom}
           stageHeight={size.height}
           stageWidth={size.width}
+        />
+        <KonvaBoardSaveAudit
+          autoLoad={autoLoadBoard}
+          boardId={boardId}
+          boardTitle={boardTitle}
+          camera={camera}
+          document={document}
+          mode={mode}
+          onBoardLoaded={(board) => onBoardLoaded?.(board.title)}
+          onDocumentRestore={restoreBoardDocument}
+          stage={stage}
         />
         <KonvaCanvasDiagnostics diagnostics={diagnostics} pointCount={pointCount} zoom={camera.zoom} />
         <KonvaContextMenuHost

@@ -14,6 +14,7 @@ from tangent_api.schemas import (
     BoardSummary,
 )
 from tangent_api.storage.local_board_snapshot_store import create_board_snapshot as create_local_snapshot
+from tangent_api.storage.local_board_snapshot_store import clear_board_snapshots as clear_local_snapshots
 from tangent_api.storage.local_board_snapshot_store import list_board_snapshots as list_local_snapshots
 from tangent_api.storage.local_board_snapshot_store import load_board_snapshot as load_local_snapshot
 from tangent_api.storage.local_board_store import load_board as load_local_board
@@ -75,6 +76,9 @@ class BoardStorageAdapter:
         snapshot_id: str,
         context: ApiRequestContext,
     ) -> BoardSnapshotRecord:
+        raise NotImplementedError
+
+    def clear_snapshots(self, board_id: str, context: ApiRequestContext) -> int:
         raise NotImplementedError
 
 
@@ -140,6 +144,9 @@ class LocalBoardStorageAdapter(BoardStorageAdapter):
     ) -> BoardSnapshotRecord:
         return load_local_snapshot(board_id, snapshot_id, context)
 
+    def clear_snapshots(self, board_id: str, context: ApiRequestContext) -> int:
+        return clear_local_snapshots(board_id, context)
+
 
 class PostgresBoardStorageAdapter(BoardStorageAdapter):
     def __init__(self) -> None:
@@ -200,6 +207,9 @@ class PostgresBoardStorageAdapter(BoardStorageAdapter):
         context: ApiRequestContext,
     ) -> BoardSnapshotRecord:
         return self.snapshots.load_snapshot(board_id, snapshot_id, context)
+
+    def clear_snapshots(self, board_id: str, context: ApiRequestContext) -> int:
+        return self.snapshots.clear_snapshots(board_id, context)
 
 
 def get_board_storage_adapter() -> BoardStorageAdapter:

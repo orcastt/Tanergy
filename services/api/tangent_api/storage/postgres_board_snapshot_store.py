@@ -165,6 +165,21 @@ class PostgresBoardSnapshotStore:
             raise HTTPException(status_code=404, detail="Board history entry not found in workspace.")
         return _snapshot_from_row(row)
 
+    def clear_snapshots(self, board_id: str, context: ApiRequestContext) -> int:
+        with connect_to_postgres() as connection:
+            with connection.cursor() as cursor:
+                self._ensure_schema(cursor)
+                cursor.execute(
+                    """
+                    DELETE FROM tangent_board_snapshots
+                    WHERE workspace_id = %s AND board_id = %s
+                    """,
+                    (context.workspace_id, board_id),
+                )
+                deleted_count = max(0, getattr(cursor, "rowcount", 0))
+            connection.commit()
+        return deleted_count
+
     def _ensure_schema(self, cursor: Any) -> None:
         if not should_auto_create_tables():
             return

@@ -42,7 +42,9 @@ def get_board_document_metrics(document: Any) -> dict[str, int]:
         return {"asset_count": 0, "shape_count": 0}
     assets = document.get("assets")
     shapes = document.get("shapes")
+    canvas_document = document.get("canvasDocument")
+    canvas_shapes = canvas_document.get("shapes") if isinstance(canvas_document, dict) else None
     return {
         "asset_count": len(assets) if isinstance(assets, list) else 0,
-        "shape_count": len(shapes) if isinstance(shapes, list) else 0,
+        "shape_count": len(shapes) if isinstance(shapes, list) else len(canvas_shapes) if isinstance(canvas_shapes, list) else 0,
     }

@@ -1,32 +1,30 @@
 'use client'
 
 import { useCallback, useRef, useState } from 'react'
-import type { Editor } from 'tldraw'
 import {
   clearBoardSnapshots,
   createBoardSnapshot,
   listBoardSnapshots,
   loadBoardSnapshot,
 } from '@/features/boards/localBoardClient'
-import { captureBoardThumbnailUrl } from '@/features/boards/boardThumbnailCapture'
-import { restoreBoardDocument } from '@/features/boards/boardDocumentRestore'
 import type {
   BoardSnapshotReason,
   BoardSnapshotRecord,
   BoardSnapshotSummary,
 } from '@/features/boards/boardTypes'
-import type { BoardDocumentSerializationResult } from '@/features/boards/boardDocumentSerializer'
-import { getDocumentSignature } from './boardSaveStatus'
+import type { KonvaBoardDocumentSerializationResult } from '@/features/boards/konvaBoardDocument'
+import { getDocumentSignature } from '@/components/canvas/boardSaveStatus'
 
-type UseBoardSnapshotsArgs = {
+type UseKonvaBoardSnapshotsArgs = {
   boardId: string
   boardTitle: string
-  editor: Editor | null
+  captureThumbnail: () => Promise<string | null>
   mode: 'board' | 'dev'
   onRestoreEnd: () => void
   onRestoreStart: () => void
   onSnapshotRestored: (snapshot: BoardSnapshotRecord) => void
-  prepareDocument: () => Promise<BoardDocumentSerializationResult | undefined>
+  prepareDocument: () => Promise<KonvaBoardDocumentSerializationResult | undefined>
+  restoreDocument: (document: unknown) => void
 }
 
 type RecordHistoryOptions = {
@@ -34,16 +32,17 @@ type RecordHistoryOptions = {
   thumbnailUrl?: string | null
 }
 
-export function useBoardSnapshots({
+export function useKonvaBoardSnapshots({
   boardId,
   boardTitle,
-  editor,
+  captureThumbnail,
   mode,
   onRestoreEnd,
   onRestoreStart,
   onSnapshotRestored,
   prepareDocument,
-}: UseBoardSnapshotsArgs) {
+  restoreDocument,
+}: UseKonvaBoardSnapshotsArgs) {
   const lastSnapshotSignature = useRef<string | null>(null)
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
   const [isSnapshotRunning, setIsSnapshotRunning] = useState(false)
@@ -66,7 +65,7 @@ export function useBoardSnapshots({
   }, [refreshSnapshots])
 
   const recordHistory = useCallback(async (
-    result: BoardDocumentSerializationResult | undefined,
+    result: KonvaBoardDocumentSerializationResult | undefined,
     reason: BoardSnapshotReason,
     options: RecordHistoryOptions = {}
   ) => {
@@ -102,14 +101,14 @@ export function useBoardSnapshots({
   }, [boardId, boardTitle, mode, refreshSnapshots])
 
   const saveSnapshot = useCallback(async (reason: BoardSnapshotReason) => {
-    if (!editor || mode !== 'board') return
+    if (mode !== 'board') return
     const result = await prepareDocument()
-    const thumbnailUrl = await captureBoardThumbnailUrl(editor, boardTitle).catch(() => null)
+    const thumbnailUrl = await captureThumbnail().catch(() => null)
     await recordHistory(result, reason, { thumbnailUrl })
-  }, [boardTitle, editor, mode, prepareDocument, recordHistory])
+  }, [captureThumbnail, mode, prepareDocument, recordHistory])
 
   const restoreSnapshot = useCallback(async (snapshotId: string) => {
-    if (!editor || mode !== 'board') return
+    if (mode !== 'board') return
     setIsSnapshotRunning(true)
     setSnapshotError(null)
     onRestoreStart()
@@ -117,7 +116,7 @@ export function useBoardSnapshots({
       const response = await loadBoardSnapshot(boardId, snapshotId)
       const snapshot = response.snapshot
       if (!snapshot) throw new Error('Board history load failed.')
-      restoreBoardDocument(editor, snapshot.document)
+      restoreDocument(snapshot.document)
       onSnapshotRestored(snapshot)
       setSnapshotMessage(`Restored snapshot from ${formatTime(snapshot.createdAt)}`)
       setIsHistoryOpen(false)
@@ -127,7 +126,7 @@ export function useBoardSnapshots({
       setIsSnapshotRunning(false)
       onRestoreEnd()
     }
-  }, [boardId, editor, mode, onRestoreEnd, onRestoreStart, onSnapshotRestored])
+  }, [boardId, mode, onRestoreEnd, onRestoreStart, onSnapshotRestored, restoreDocument])
 
   const clearHistory = useCallback(async () => {
     if (mode !== 'board') return
