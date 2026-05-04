@@ -24,9 +24,8 @@ export function NodeCardRunButton({ onRunToggle, shape, status }: { onRunToggle?
         event.cancelBubble = true
         onRunToggle?.(shape.id)
       }}
-      onPointerDown={(event) => {
-        event.cancelBubble = true
-      }}
+      onDblClick={stopNodeCardControlEvent}
+      onPointerDown={stopNodeCardControlEvent}
     >
       <Rect cornerRadius={8} fill={running ? '#dc2626' : '#111827'} height={24} width={width} x={x} y={12} />
       {running ? <Rect fill="#ffffff" height={8} width={8} x={x + 10} y={20} /> : <Line closed fill="#ffffff" points={[x + 10, 18, x + 10, 28, x + 18, 23]} />}
@@ -63,9 +62,8 @@ export function NodeCardFieldGrid({ fields, onFieldChange, openFieldName, setOpe
                 event.cancelBubble = true
                 setOpenFieldName(open ? null : field.name)
               } : undefined}
-              onPointerDown={(event) => {
-                event.cancelBubble = true
-              }}
+              onDblClick={stopNodeCardControlEvent}
+              onPointerDown={stopNodeCardControlEvent}
             >
               <Text fill="#475569" fontFamily="Inter, system-ui, sans-serif" fontSize={11} fontStyle="bold" text={getFieldLabel(field)} width={width} x={x} y={top} />
               <Rect cornerRadius={10} fill="#f8fafc" height={34} stroke="#dce3ec" strokeWidth={1} width={width} x={x} y={top + 15} />
@@ -170,9 +168,8 @@ function NodeCardFieldDropdown({
               onFieldChange?.(shape.id, field.name, option.value)
               setOpenFieldName(null)
             }}
-            onPointerDown={(event) => {
-              event.cancelBubble = true
-            }}
+            onDblClick={stopNodeCardControlEvent}
+            onPointerDown={stopNodeCardControlEvent}
           >
             <Rect cornerRadius={7} fill={selected ? '#eef2ff' : '#ffffff'} height={26} width={width - 8} x={x + 4} y={y + 4 + index * 30} />
             <Text fill={selected ? '#4338ca' : '#1f2937'} fontFamily="Inter, system-ui, sans-serif" fontSize={11} fontStyle="bold" height={26} text={option.label} verticalAlign="middle" width={width - 20} x={x + 12} y={y + 4 + index * 30} />
@@ -181,6 +178,10 @@ function NodeCardFieldDropdown({
       })}
     </Group>
   )
+}
+
+function stopNodeCardControlEvent(event: KonvaEventObject<Event>) {
+  event.cancelBubble = true
 }
 
 function getFieldDisplayValue(field: NodeCardField, data: JsonObject) {

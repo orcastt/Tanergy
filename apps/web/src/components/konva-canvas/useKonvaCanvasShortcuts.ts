@@ -8,6 +8,7 @@ import { deleteKonvaShapes, duplicateKonvaShapes, reorderKonvaShapes } from './k
 import { pasteKonvaClipboardData, writeKonvaShapesToSystemClipboard } from './konvaClipboardCommands'
 import { konvaToolShortcuts, type KonvaCanvasTool } from './konvaCanvasTypes'
 import { groupKonvaShapes, setKonvaShapesLocked, ungroupKonvaShapes } from './konvaGroupCommands'
+import { removeKonvaRuntimeEdge } from './konvaRuntimeEdges'
 import { copyKonvaShapes } from './konvaShapeCommands'
 
 type KonvaCanvasHistory = {
@@ -21,9 +22,11 @@ type UseKonvaCanvasShortcutsOptions = {
   document: CanvasDocument
   history: KonvaCanvasHistory
   selectedIds: string[]
+  selectedEdgeId?: string | null
   getPastePoint: () => CanvasPoint
   onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
   onClipboardChange?: (shapeCount: number) => void
+  onEdgeSelectionChange?: (edgeId: string | null) => void
   onPanningChange: (isPanning: boolean) => void
   onSelectionChange: (shapeIds: string[]) => void
   onToolChange: (tool: KonvaCanvasTool) => void
@@ -127,6 +130,13 @@ export function useKonvaCanvasShortcuts(options: UseKonvaCanvasShortcutsOptions)
 }
 
 function runDelete(options: UseKonvaCanvasShortcutsOptions) {
+  if (options.selectedEdgeId) {
+    const edgeId = options.selectedEdgeId
+    options.history.checkpoint(options.document)
+    options.onDocumentChange((current) => removeKonvaRuntimeEdge(current, edgeId))
+    options.onEdgeSelectionChange?.(null)
+    return
+  }
   if (options.selectedIds.length === 0) return
   options.history.checkpoint(options.document)
   const result = deleteKonvaShapes(options.document, options.selectedIds)
@@ -135,6 +145,13 @@ function runDelete(options: UseKonvaCanvasShortcutsOptions) {
 }
 
 function runCut(options: UseKonvaCanvasShortcutsOptions) {
+  if (options.selectedEdgeId) {
+    const edgeId = options.selectedEdgeId
+    options.history.checkpoint(options.document)
+    options.onDocumentChange((current) => removeKonvaRuntimeEdge(current, edgeId))
+    options.onEdgeSelectionChange?.(null)
+    return
+  }
   if (options.selectedIds.length === 0) return
   options.clipboardRef.current = copyKonvaShapes(options.document, options.selectedIds)
   options.onClipboardChange?.(options.clipboardRef.current.length)

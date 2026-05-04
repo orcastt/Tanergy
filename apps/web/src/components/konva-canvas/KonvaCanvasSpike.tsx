@@ -106,10 +106,12 @@ export function KonvaCanvasSpike() {
     history,
     onClipboardChange: setClipboardShapeCount,
     onDocumentChange: setDocument,
+    onEdgeSelectionChange: setSelectedEdgeId,
     getPastePoint: () => lastPastePointRef.current ?? screenToWorld({ x: size.width / 2, y: size.height / 2 }, camera),
     onPanningChange: setIsSpacePanning,
     onSelectionChange: handleSelectionChange,
     onToolChange: setActiveTool,
+    selectedEdgeId,
     selectedIds,
   })
 
