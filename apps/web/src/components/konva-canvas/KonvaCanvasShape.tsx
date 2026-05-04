@@ -1,5 +1,6 @@
 import { memo, useMemo, useRef } from 'react'
 import type Konva from 'konva'
+import type { KonvaEventObject } from 'konva/lib/Node'
 import { Circle, Ellipse, Group, Line, Path, Rect, Text } from 'react-konva'
 import type { CanvasShape } from '@/features/canvas-engine'
 import { getKonvaShapeFontSize, getKonvaShapeTextAlign, getStickyFillColor, getStrokeDash, resolveKonvaShapeStyle } from './konvaCanvasStyle'
@@ -22,6 +23,7 @@ type KonvaCanvasShapeProps = {
   onDragStart: (shapeId: string, config?: { duplicate?: boolean }) => { lockSource?: boolean } | void
   onDragEnd: (shapeId: string, x: number, y: number) => void
   onDoubleClick: (shapeId: string) => void
+  onNodePortPointerDown?: (shapeId: string, portId: string, event: KonvaEventObject<PointerEvent>) => void
   onSelect: (shapeId: string, options?: { additive?: boolean }) => void
 }
 
@@ -32,6 +34,7 @@ function KonvaCanvasShapeComponent({
   onDragStart,
   onDragEnd,
   onDoubleClick,
+  onNodePortPointerDown,
   onSelect,
   panMode,
   shape,
@@ -40,8 +43,8 @@ function KonvaCanvasShapeComponent({
 }: KonvaCanvasShapeProps) {
   const style = useMemo(() => resolveKonvaShapeStyle(shape.style), [shape.style])
   const renderedShape = useMemo(
-    () => renderShape(shape, style, isSelected, zoom),
-    [isSelected, shape, style, zoom]
+    () => renderShape(shape, style, isSelected, zoom, onNodePortPointerDown),
+    [isSelected, onNodePortPointerDown, shape, style, zoom]
   )
   const canInteract = interactive && !panMode
   const transform = getGroupTransform(shape)
@@ -111,11 +114,18 @@ function areShapePropsEqual(previous: KonvaCanvasShapeProps, next: KonvaCanvasSh
   if (previous.panMode !== next.panMode) return false
   if (previous.toolAllowsDrag !== next.toolAllowsDrag) return false
   if (previous.onDoubleClick !== next.onDoubleClick) return false
+  if (previous.onNodePortPointerDown !== next.onNodePortPointerDown) return false
   if (next.isSelected && previous.zoom !== next.zoom) return false
   return true
 }
 
-function renderShape(shape: CanvasShape, style: ReturnType<typeof resolveKonvaShapeStyle>, isSelected: boolean, zoom: number) {
+function renderShape(
+  shape: CanvasShape,
+  style: ReturnType<typeof resolveKonvaShapeStyle>,
+  isSelected: boolean,
+  zoom: number,
+  onNodePortPointerDown?: KonvaCanvasShapeProps['onNodePortPointerDown']
+) {
   const highlightStroke = '#6b5cff'
   const { dash, fill, fillStyle, opacity, stroke, strokeWidth } = style
   const strokeDash = getStrokeDash(dash, strokeWidth)
@@ -206,7 +216,7 @@ function renderShape(shape: CanvasShape, style: ReturnType<typeof resolveKonvaSh
     return <KonvaImageShape opacity={opacity} shape={shape} zoom={zoom} />
   }
   if (shape.type === 'node_card') {
-    return <KonvaNodeCardShape opacity={opacity} shape={shape} />
+    return <KonvaNodeCardShape onPortPointerDown={onNodePortPointerDown} opacity={opacity} shape={shape} />
   }
   return null
 }
@@ -255,15 +265,9 @@ function getGroupTransform(shape: CanvasShape) {
   }
 }
 
-function getDragPoint(target: { x: () => number; y: () => number }, transform: ReturnType<typeof getGroupTransform>) {
-  return { x: target.x() - transform.offsetX, y: target.y() - transform.offsetY }
-}
+function getDragPoint(target: { x: () => number; y: () => number }, transform: ReturnType<typeof getGroupTransform>) { return { x: target.x() - transform.offsetX, y: target.y() - transform.offsetY } }
 
-type LockedDragState = {
-  lastPoint?: { x: number; y: number }
-  startPointer: { x: number; y: number }
-  startShape: { x: number; y: number }
-}
+type LockedDragState = { lastPoint?: { x: number; y: number }; startPointer: { x: number; y: number }; startShape: { x: number; y: number } }
 
 function createLockedDragState(target: Konva.Node, shape: CanvasShape): LockedDragState | null {
   const pointer = target.getStage()?.getPointerPosition()
@@ -280,18 +284,15 @@ function getLockedDragPoint(target: Konva.Node, state: LockedDragState | null) {
   }
 }
 
-function resetDragSource(target: { position: (point: { x: number; y: number }) => void }, transform: ReturnType<typeof getGroupTransform>) {
-  target.position({ x: transform.x, y: transform.y })
-}
+function resetDragSource(target: { position: (point: { x: number; y: number }) => void }, transform: ReturnType<typeof getGroupTransform>) { target.position({ x: transform.x, y: transform.y }) }
 
 function getClosedFillProps(fill: string, fillStyle: ReturnType<typeof resolveKonvaShapeStyle>['fillStyle'], stroke: string) {
   const patternTile = fillStyle === 'pattern' ? getPatternTile(stroke) : undefined
-  return patternTile
-    ? {
-        fillPatternImage: patternTile.image as unknown as HTMLImageElement,
-        fillPatternRepeat: 'repeat' as const,
-        fillPatternScaleX: patternTile.scale,
-        fillPatternScaleY: patternTile.scale,
-      }
-    : { fill }
+  if (!patternTile) return { fill }
+  return {
+    fillPatternImage: patternTile.image as unknown as HTMLImageElement,
+    fillPatternRepeat: 'repeat' as const,
+    fillPatternScaleX: patternTile.scale,
+    fillPatternScaleY: patternTile.scale,
+  }
 }

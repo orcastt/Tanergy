@@ -1,9 +1,10 @@
 import { type Dispatch, type SetStateAction } from 'react'
 import { Group, Layer, Rect, Stage } from 'react-konva'
-import type { CanvasCamera, CanvasDocument, CanvasShape, CanvasShapeStyle } from '@/features/canvas-engine'
+import type { CanvasCamera, CanvasDocument, CanvasNodeShape, CanvasShape, CanvasShapeStyle } from '@/features/canvas-engine'
 import { KonvaCanvasShape } from './KonvaCanvasShape'
 import { KonvaEraserTrail } from './KonvaEraserTrail'
 import { KonvaFrameChrome } from './KonvaFrameChrome'
+import { KonvaNodeEdgeLayer } from './KonvaNodeEdgeLayer'
 import { KonvaSelectionOverlay } from './KonvaSelectionOverlay'
 import { useKonvaCanvasInteractions } from './useKonvaCanvasInteractions'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
@@ -37,6 +38,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
     handlePointerUp,
     handleLineEndpointStart,
     handleLineRouteHandleStart,
+    handleNodePortPointerDown,
     handleResizeStart,
     handleRotateStart,
     handleShapeDragMove,
@@ -46,6 +48,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
     handleWheel,
     dragPreviewShapes,
     draggingShapeIds,
+    runtimeConnectionPreview,
     selectedBoundsOverride,
     selectionBox,
     snapGuides,
@@ -58,6 +61,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
   const frameChildren = getFrameChildren(props.document.shapes, frameIds)
   const draggingIds = new Set(draggingShapeIds)
   const overlayShapes = dragPreviewShapes ? mergeShapes(props.document.shapes, dragPreviewShapes) : props.document.shapes
+  const nodeShapes = overlayShapes.filter((shape): shape is CanvasNodeShape => shape.type === 'node_card')
 
   const renderShapeNode = (shape: CanvasShape) => (
     <KonvaCanvasShape
@@ -68,6 +72,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
       onDragEnd={handleShapeDragEnd}
       onDragStart={handleShapeDragStart}
       onDoubleClick={props.onTextEditStart}
+      onNodePortPointerDown={handleNodePortPointerDown}
       onSelect={handleShapeSelect}
       panMode={props.isSpacePanning}
       shape={shape}
@@ -113,6 +118,15 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
             </Group>
           )
         })}
+      </Layer>
+
+      <Layer listening={false}>
+        <KonvaNodeEdgeLayer
+          edges={props.document.runtimeEdges}
+          preview={runtimeConnectionPreview}
+          shapes={nodeShapes}
+          zoom={renderCamera.zoom}
+        />
       </Layer>
 
       {draft ? (

@@ -1,4 +1,4 @@
-import type { JsonObject, NodeRuntimeSummary, NodeType } from '@/types/nodeRuntime'
+import type { JsonObject, NodePortDataType, NodeRuntimeSummary, NodeType } from '@/types/nodeRuntime'
 
 export type CanvasPoint = {
   x: number
@@ -143,10 +143,20 @@ export type CanvasDocumentMetadata = {
   updatedAt: string
 }
 
+export type CanvasRuntimeEdge = {
+  dataType: NodePortDataType
+  id: string
+  sourcePortId: string
+  sourceShapeId: string
+  targetPortId: string
+  targetShapeId: string
+}
+
 export type CanvasDocument = {
   camera: CanvasCamera
   id: string
   metadata: CanvasDocumentMetadata
+  runtimeEdges: CanvasRuntimeEdge[]
   schemaVersion: 1
   shapes: CanvasShape[]
 }

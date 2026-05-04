@@ -1,8 +1,10 @@
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
+import type { NodeType } from '@/types/nodeRuntime'
 import { konvaToolGroups, konvaToolLabels, konvaToolShortcuts } from './konvaCanvasTypes'
 
 type KonvaCanvasToolbarProps = {
   activeTool: KonvaCanvasTool
+  onCreateNode: (type: NodeType) => void
   onToolChange: (tool: KonvaCanvasTool) => void
   onAddStressStrokes: () => void
   onClear: () => void
@@ -10,6 +12,7 @@ type KonvaCanvasToolbarProps = {
 
 export function KonvaCanvasToolbar({
   activeTool,
+  onCreateNode,
   onAddStressStrokes,
   onClear,
   onToolChange,
@@ -33,6 +36,21 @@ export function KonvaCanvasToolbar({
           ))}
         </div>
       ))}
+      <div className="konva-canvas-toolbar__group konva-canvas-toolbar__node-group" aria-label="Create nodes">
+        {nodeCreateOptions.map((option) => (
+          <button
+            aria-label={`Create ${option.label} node`}
+            className="konva-canvas-node-create"
+            data-node-type={option.type}
+            key={option.type}
+            onClick={() => onCreateNode(option.type)}
+            title={`Create ${option.label}`}
+            type="button"
+          >
+            {option.shortLabel}
+          </button>
+        ))}
+      </div>
       <div className="konva-canvas-toolbar__group">
         <button className="konva-canvas-action" onClick={onAddStressStrokes} type="button">
           1k strokes
@@ -44,6 +62,14 @@ export function KonvaCanvasToolbar({
     </div>
   )
 }
+
+const nodeCreateOptions: { label: string; shortLabel: string; type: NodeType }[] = [
+  { label: 'Prompt', shortLabel: 'Pr', type: 'prompt' },
+  { label: 'Image', shortLabel: 'Im', type: 'image' },
+  { label: 'Image Gen', shortLabel: 'Gen', type: 'image_gen' },
+  { label: 'Image Gen 4', shortLabel: '4x', type: 'image_gen_4' },
+  { label: 'Analysis', shortLabel: 'An', type: 'analysis' },
+]
 
 function getToolTooltip(tool: KonvaCanvasTool) {
   const shortcut = konvaToolShortcuts[tool]

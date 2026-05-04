@@ -97,6 +97,7 @@
 
 .konva-canvas-tool,
 .konva-canvas-action,
+.konva-canvas-node-create,
 .konva-canvas-navigator button {
   align-items: center;
   background: transparent;
@@ -131,6 +132,7 @@
 
 .konva-canvas-tool:hover,
 .konva-canvas-action:hover,
+.konva-canvas-node-create:hover,
 .konva-canvas-navigator button:hover,
 .konva-canvas-tool[data-active="true"] {
   background: #f0efff;
@@ -140,6 +142,39 @@
 .konva-canvas-action {
   font-size: 12px;
   padding: 0 10px;
+}
+
+.konva-canvas-toolbar__node-group {
+  gap: 3px;
+}
+
+.konva-canvas-node-create {
+  background: #f8fafc;
+  border: 1px solid rgba(31, 42, 55, 0.1);
+  color: #243142;
+  font-size: 11px;
+  font-weight: 700;
+  height: 32px;
+  letter-spacing: 0;
+  min-width: 32px;
+  padding: 0 8px;
+}
+
+.konva-canvas-node-create[data-node-type="prompt"] {
+  border-color: rgba(139, 92, 246, 0.28);
+}
+
+.konva-canvas-node-create[data-node-type="image"] {
+  border-color: rgba(249, 115, 22, 0.28);
+}
+
+.konva-canvas-node-create[data-node-type="analysis"] {
+  border-color: rgba(22, 163, 74, 0.28);
+}
+
+.konva-canvas-node-create[data-node-type="image_gen"],
+.konva-canvas-node-create[data-node-type="image_gen_4"] {
+  border-color: rgba(37, 99, 235, 0.28);
 }
 
 .konva-canvas-stage-wrap {

@@ -1,5 +1,5 @@
 import { defaultCanvasCamera } from './geometry'
-import type { CanvasCamera, CanvasDocument, CanvasShape } from './types'
+import type { CanvasCamera, CanvasDocument, CanvasRuntimeEdge, CanvasShape } from './types'
 
 export type CreateCanvasDocumentOptions = {
   camera?: Partial<CanvasCamera>
@@ -22,6 +22,7 @@ export function createEmptyCanvasDocument(options: CreateCanvasDocumentOptions =
       name: options.name,
       updatedAt: timestamp,
     },
+    runtimeEdges: [],
     schemaVersion: 1,
     shapes: options.shapes ? [...options.shapes] : [],
   }
@@ -40,6 +41,14 @@ export function withCanvasShapes(document: CanvasDocument, shapes: CanvasShape[]
     ...document,
     metadata: touchMetadata(document.metadata),
     shapes: [...shapes],
+  }
+}
+
+export function withCanvasRuntimeEdges(document: CanvasDocument, runtimeEdges: CanvasRuntimeEdge[]): CanvasDocument {
+  return {
+    ...document,
+    metadata: touchMetadata(document.metadata),
+    runtimeEdges: [...runtimeEdges],
   }
 }
 

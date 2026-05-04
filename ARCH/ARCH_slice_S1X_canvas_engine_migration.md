@@ -1,6 +1,6 @@
 # ARCH Slice S1X: Canvas Engine Migration
 
-**Status**: Active risk-mitigation spike; Phase 4A image-node conversion first pass is in progress after accepted Phase 1A/2A/3 baselines.
+**Status**: Active risk-mitigation spike; Phase 4 Node/Port/Edge foundation first pass is in progress after accepted Phase 1A/2A/3 baselines.
 **Branch**: `feature/s1x-konva-handfeel-spike`
 **Reason**: Public staging exposed the tldraw production license requirement. TANGENT should not make the paid SDK the long-term core canvas dependency unless the business explicitly accepts that cost.
 
@@ -114,6 +114,18 @@ Current Phase 4A image/node boundary:
 - Canvas Image → Image Node creates a `node_card` image node beside the image. Node data stores `assetId`, dimensions, `source` and `title`; it does not store `data:`, `blob:`, Base64 or provider raw payloads.
 - Image Node → Canvas Image fetches the asset record by `assetId` through the existing Asset API, then creates a `CanvasImageShape` beside the node with display URLs on the image shape only.
 - Selection capture/export remains disabled until a dedicated export bounds/upload contract exists. Frame visible-bounds helpers are available, but rotated/precise clipped export semantics are still follow-up work.
+
+Current Phase 4 Node/Port/Edge foundation boundary:
+
+- `node_card` is the renderer-neutral canvas node carrier. Konva can render a lightweight card in the canvas layer, while heavier React/HTML controls should only mount for selected, editing or running nodes.
+- Ports are UI affordances derived from node registry metadata. Their screen/world anchors and hit targets must be stable under pan/zoom, but a visible port dot by itself is not a runtime connection.
+- `CanvasDocument.runtimeEdges` is the local first-pass runtime edge store. A runtime edge references source node/port and target node/port ids plus `dataType`; it is not serialized as a visual `arrow` or `line`.
+- `KonvaNodeEdgeLayer` renders runtime edges from `runtimeEdges` and node port world coordinates. It is a visual projection of runtime data, not the source of truth.
+- `useKonvaNodeConnectionSession` owns output-port drag, preview curve and compatible input-port commit. It uses registry-derived ports and zoom-aware hit radius from `konvaNodePorts.ts`.
+- Visual arrows/lines stay normal canvas geometry unless an explicit binding/edge contract creates a runtime edge. This keeps annotation arrows separate from AI dataflow edges.
+- Deleting a node now cleans connected runtime edges in the same local command/history transaction. Direct edge hit/select/delete remains a follow-up.
+- `resolveNodeInputs` remains the AI run input source of truth. Konva should provide an engine query adapter for node data, asset refs and runtime edges rather than duplicating input resolution logic in the renderer.
+- Board documents, node props and runtime edge payloads must not persist `data:`, `blob:`, Base64 images, provider raw responses, complete logs or long generated text. Store Asset ids/URLs, compact runtime summaries and references to AiRun records instead.
 
 It does not replace `/boards/[boardId]` and does not remove any tldraw reference code.
 
@@ -439,6 +451,8 @@ apps/web/src/components/konva-canvas
   konva*Commands.ts        shared object commands for menu, shortcuts and properties
   konvaImageClipboard.ts   clipboard image import through Asset API, no data URL persistence
   KonvaImageShape.tsx      image renderer with thumbnail/original zoom LOD
+  KonvaNodeCardShape.tsx   lightweight node-card shell, registry-derived ports
+  KonvaNodeEdgeOverlay.tsx runtime edge visuals/hit targets, separate from annotation arrows
   KonvaContextMenu.tsx     hover submenu shell; unsupported schema/export commands stay disabled
 
 apps/web/src/features/collaboration

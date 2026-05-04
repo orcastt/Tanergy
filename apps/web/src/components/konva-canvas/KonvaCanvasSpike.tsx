@@ -38,7 +38,9 @@ import { useKonvaBrowserSelectionGuard } from './useKonvaBrowserSelectionGuard'
 import { useKonvaCanvasHistory } from './useKonvaCanvasHistory'
 import { useKonvaCanvasShortcuts } from './useKonvaCanvasShortcuts'
 import { useKonvaImageNodeActions } from './useKonvaImageNodeActions'
+import { createKonvaNodeCardShape } from './konvaNodeCardFactory'
 import { konvaMaxZoom, konvaMinZoom } from './konvaZoomLimits'
+import type { NodeType } from '@/types/nodeRuntime'
 export function KonvaCanvasSpike() {
   const shellRef = useRef<HTMLDivElement | null>(null)
   const [ydoc] = useState(() => new Y.Doc())
@@ -168,6 +170,15 @@ export function KonvaCanvasSpike() {
     setSelectedIds([])
   }, [history])
 
+  const createNodeCard = useCallback((type: NodeType) => {
+    const position = lastPastePointRef.current ?? screenToWorld({ x: size.width / 2, y: size.height / 2 }, camera)
+    const shape = createKonvaNodeCardShape({ position, type })
+    history.checkpoint()
+    setDocument((current) => withCanvasShapes(current, [...current.shapes, shape]))
+    setSelectedIds([shape.id])
+    setActiveTool('select')
+  }, [camera, history, size.height, size.width])
+
   const editingTextShape = document.shapes.find((shape): shape is KonvaEditableTextShape => shape.id === editingTextId && isKonvaEditableTextShape(shape))
   const runContextAction = (action: KonvaContextMenuAction) => {
     const pastePoint = contextMenu ? { x: contextMenu.worldX, y: contextMenu.worldY } : undefined
@@ -192,6 +203,7 @@ export function KonvaCanvasSpike() {
         activeTool={activeTool}
         onAddStressStrokes={addStressStrokes}
         onClear={clearCanvas}
+        onCreateNode={createNodeCard}
         onToolChange={setActiveTool}
       />
       <section

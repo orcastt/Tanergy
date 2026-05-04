@@ -1,6 +1,6 @@
 # S1X Canvas Engine Migration Reference
 
-**Status**: Active tactical plan; Phase 4A image-node conversion first pass is in progress after accepted handfeel/properties/object-editing baselines.
+**Status**: Active tactical plan; Phase 4 Node/Port/Edge foundation first pass is in progress after accepted handfeel/properties/object-editing baselines.
 **Branch**: `feature/s1x-konva-handfeel-spike`
 
 ## Principle
@@ -55,8 +55,9 @@ keep Board/API/storage contracts stable
 - 2026-05-04 Sticky color fix: sticky note fill now derives from the current Color/stroke token during render, so editing note text no longer leaves a stale `style.fill` that blocks later color changes.
 - 2026-05-04 Phase 4A image-node first pass: Canvas image selection can create a lightweight Konva `node_card` Image Node placed to the image's right. The node stores asset refs and dimensions only; To Canvas fetches the asset record and creates a canvas image to the node's right. Capture selection remains disabled until export bounds/upload are implemented.
 - 2026-05-04 Frame containment first pass: dragged children can leave a frame and clear `parentId`; frame nesting is intentionally disabled for now. Frame visible bounds helpers are in place for later capture/export semantics.
+- 2026-05-04 Phase 4 Node/Port/Edge foundation first pass: toolbar can create Prompt/Image/Image Gen/Image Gen 4/Analysis nodes; node cards render registry-derived fields/status/ports; output ports can drag-connect to compatible input ports with a runtime edge preview; `CanvasDocument.runtimeEdges` stores dataflow edges separately from visual arrows/lines and participates in undo/redo and node-delete cleanup.
 
-Next development focus: hand-test Phase 2A/3A/4A first-pass actions, then continue Phase 4 node/port/edge contracts and Phase 4A selection capture/export.
+Next development focus: hand-test Phase 4 node creation + port connections, then continue edge hit/delete, Konva `resolveNodeInputs` adapter, mock Run flow and Phase 4A selection capture/export.
 
 ## tldraw Behavior Inventory
 
@@ -275,19 +276,21 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 
 ### Phase 4：节点、端口、边和 AI Runtime
 
+当前边界：Phase 4 先做 renderer-neutral foundation，不把 runtime edge 存成普通 visual arrow/line，也不让 visual arrow 自动等同 AI input edge。Board document / node props / edge data 继续禁止 `data:`、`blob:`、Base64 image payload 和 provider raw payload；Image Node 只引用 Asset id/URL 与必要尺寸/标题/source metadata。下面的 `◐` 表示 first pass / contract placeholder / 局部 image-node 能力，不代表完整 AI Runtime 已集成。
+
 | 状态 | 序号 | 功能/交互 | 当前 tldraw 参考 | Konva/Yjs 复刻要求 | 参考文件 | 验收方式 |
 | --- | --- | --- | --- | --- | --- | --- |
-| ☐ | 4.1 | 节点类型 | prompt/image/image_gen/image_gen_4/analysis | `TangentNodeShape` renderer 尚未做 | `NodeCardShape.tsx`, `registry.ts` | 五类节点都能创建 |
-| ☐ | 4.2 | 节点 UI | HTMLContainer 内 React 控件 | Konva Group + React/HTML overlay 策略尚未做 | `NodeCardContent.tsx` | 输入框/按钮可操作 |
-| ☐ | 4.3 | node data | props.data 保存 prompt/model/resolution 等 | renderer-neutral node props 尚未做 | `types/nodeRuntime.ts` | 保存恢复不丢参数 |
-| ☐ | 4.4 | runtime summary | status/cost/error/resultAssetIds | 现有 summary contract 还未接 Konva renderer | `NodeCardShape.tsx` | mock run 状态显示一致 |
-| ☐ | 4.5 | ports | typed text/image input/output dot | 端口坐标函数 + hit target 尚未做 | `NodePortDot.tsx` | 拖线能吸附端口 |
-| ☐ | 4.6 | edge store | runtimeEdges 独立保存 | `TangentEdge` 一等数据尚未做 | `nodeEdges.ts` | edge 不依赖视觉箭头存在 |
-| ☐ | 4.7 | input resolution | 通过 edges 找上游文本/图片 | engine query adapter 尚未做 | `nodeDataFlow.ts` | prompt→gen、image→analysis 正常 |
-| ☐ | 4.8 | image node | canvas image 可转 Image Node | Canvas image 已有；Image Node create 尚未做 | `imageNodeAssets.ts` | 选图片转换节点 |
-| ☐ | 4.9 | selection toolbar | 转 Image Node、Capture、Align | overlay selection toolbar 尚未复刻 | `CanvasSelectionToolbar.tsx` | 多选时出现在选区上方 |
-| ☐ | 4.10 | edge delete/cut | 选中 edge 可断开 | edge hit test + delete button 尚未做 | `CanvasNodeEdgeOverlay.tsx` | 删除 edge 后 input count 同步 |
-| ☐ | 4.11 | arrow port snap | arrow creation/handle drag 时吸附端口 | port snap margin 按 zoom 换算尚未做 | `arrowSnapLogic.ts` | 缩放下吸附距离自然 |
+| ✅ | 4.1 | 节点类型 | prompt/image/image_gen/image_gen_4/analysis | Konva toolbar 可创建五类 `node_card`；factory 使用 registry default data/runtime/version，并过滤 `data:`/`blob:`/raw/provider 风险字段 | `KonvaCanvasToolbar.tsx`, `konvaNodeCardFactory.ts`, `registry.ts` | 五类节点都能创建 |
+| ◐ | 4.2 | 节点 UI | HTMLContainer 内 React 控件 | Konva lightweight card first pass 已显示 title/status/type/fields/output/port labels；正式 React/HTML controls 只在编辑/运行态打开的策略未集成 | `NodeCardContent.tsx`, `KonvaNodeCardShape.tsx` | 输入框/按钮可操作 |
+| ◐ | 4.3 | node data | props.data 保存 prompt/model/resolution 等 | 新建节点写入 registry default prompt/model/resolution/image refs；Board save/load 迁移和 node editor 表单尚未接 | `types/nodeRuntime.ts`, `konvaNodeCardFactory.ts`, `konvaImageNodeConversion.ts` | 保存恢复不丢参数 |
+| ◐ | 4.4 | runtime summary | status/cost/error/resultAssetIds | `runtimeSummary` 已在 node card 可视化展示 idle/cost/error/result count；AiRun status/cost/resultAssetIds 尚未接 Konva renderer | `NodeCardShape.tsx`, `KonvaNodeCardShape.tsx` | mock run 状态显示一致 |
+| ✅ | 4.5 | ports | typed text/image input/output dot | registry-derived ports now render labels/hit targets; output port drag shows preview and commits to compatible input port with zoom-aware hit radius | `KonvaNodeCardShape.tsx`, `konvaNodePorts.ts`, `useKonvaNodeConnectionSession.ts` | 拖线能吸附端口 |
+| ✅ | 4.6 | edge store | runtimeEdges 独立保存 | `CanvasDocument.runtimeEdges` is separate from visual arrow/line; EdgeLayer renders dataflow curves; undo/redo includes edges and deleting nodes cleans connected edges | `types.ts`, `konvaRuntimeEdges.ts`, `KonvaNodeEdgeLayer.tsx` | edge 不依赖视觉箭头存在 |
+| ◐ | 4.7 | input resolution | 通过 edges 找上游文本/图片 | `resolveNodeInputs` 仍是输入来源边界；Konva engine query adapter 尚未做 | `nodeDataFlow.ts` | prompt→gen、image→analysis 正常 |
+| ✅ | 4.8 | image node | canvas image 可转 Image Node | Canvas Image → Image Node 和 Image Node → Canvas Image first pass 已在 selection toolbar；Capture/import/output 仍跟 4A 后续 | `konvaImageNodeConversion.ts`, `imageNodeAssets.ts` | 选图片转换节点 |
+| ◐ | 4.9 | selection toolbar | 转 Image Node、Capture、Align | Konva selection toolbar first pass 支持 Image→Node、Node→Canvas 和 Align；Capture 仍 disabled 到 export/upload contract | `KonvaSelectionToolbar.tsx`, `CanvasSelectionToolbar.tsx` | 多选时出现在选区上方 |
+| ◐ | 4.10 | edge delete/cut | 选中 edge 可断开 | 删除节点时 connected runtime edges cleanup 已接；edge hit test、选中 edge 和 delete button 尚未做 | `CanvasNodeEdgeOverlay.tsx`, `konvaRuntimeEdges.ts` | 删除 edge 后 input count 同步 |
+| ◐ | 4.11 | arrow port snap | arrow creation/handle drag 时吸附端口 | runtime port drag 已有 zoom-aware hit radius；visual arrow/line 仍刻意独立，普通 arrow port snap 尚未做 | `konvaNodePorts.ts`, `arrowSnapLogic.ts` | 缩放下吸附距离自然 |
 
 ### Phase 4A：Canvas / Node / Image 转换链路
 

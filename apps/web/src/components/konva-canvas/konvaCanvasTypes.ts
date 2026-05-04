@@ -1,4 +1,5 @@
 import type { CanvasBounds, CanvasPoint, CanvasShape, StrokePoint } from '@/features/canvas-engine'
+import type { NodePortDataType } from '@/types/nodeRuntime'
 
 export type KonvaCanvasTool =
   | 'hand'
@@ -86,6 +87,13 @@ export type KonvaToolSession =
       pointerId?: number
       shapeId: string
       type: 'line-route-handle'
+    }
+  | {
+      dataType: NodePortDataType
+      pointerId?: number
+      sourcePortId: string
+      sourceShapeId: string
+      type: 'node-connection'
     }
 
 export const konvaToolLabels: Record<KonvaCanvasTool, string> = {

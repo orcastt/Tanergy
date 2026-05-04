@@ -21,8 +21,6 @@ import {
 import {
   boundsFromPoints,
   getMarqueeSelectionIds,
-  getSelectedShapeBounds,
-  getShapesByIds,
   resizeBoundsFromHandle,
   resizeShapesFromBounds,
   toggleSelectedId,
@@ -30,16 +28,18 @@ import {
 import { clearBrowserSelection, getStagePointer, isStageTarget } from './konvaStageHelpers'
 import { updateLineEndpointShapes, updateLineRouteHandleShapes } from './konvaLineEndpointUtils'
 import { getPointAngle, rotateShapesAroundCenter } from './konvaRotationUtils'
-import { createRotatedResizeBox, resizeShapesFromRotatedBox } from './konvaRotatedResize'
+import { resizeShapesFromRotatedBox } from './konvaRotatedResize'
 import { getResizeSnapSourceKeys, getRotationSnapGuides, snapResizeBoundsToShapes, snapRotationAngle, type KonvaSnapGuide } from './konvaSnapping'
 import { getKonvaGroupMemberIds } from './konvaGroupCommands'
 import { useKonvaDraftPreview } from './useKonvaDraftPreview'
 import { useKonvaEraserSession } from './useKonvaEraserSession'
 import { useKonvaLineEndpointHandlers } from './useKonvaLineEndpointHandlers'
+import { useKonvaNodeConnectionSession } from './useKonvaNodeConnectionSession'
 import { useKonvaShapeDragHandlers } from './useKonvaShapeDragHandlers'
 import { useKonvaStageCamera } from './useKonvaStageCamera'
+import { useKonvaTransformStartHandlers } from './useKonvaTransformStartHandlers'
 import { useKonvaWheelHandler } from './useKonvaWheelHandler'
-import type { KonvaResizeHandle, KonvaToolSession } from './konvaCanvasTypes'
+import type { KonvaToolSession } from './konvaCanvasTypes'
 import type { UseKonvaCanvasInteractionsOptions } from './konvaCanvasInteractionTypes'
 export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOptions) {
   const stageRef = useRef<Konva.Stage | null>(null)
@@ -66,10 +66,35 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     onHistoryCheckpoint: options.onHistoryCheckpoint,
     sessionRef,
   })
+  const {
+    clearNodeConnectionPreview,
+    finishNodeConnection,
+    handleNodePortPointerDown: startNodeConnection,
+    runtimeConnectionPreview,
+    updateNodeConnectionPreview,
+  } = useKonvaNodeConnectionSession({
+    cameraRef,
+    documentRef,
+    onDocumentChange: options.onDocumentChange,
+    onHistoryCheckpoint: options.onHistoryCheckpoint,
+    onSelectionChange: options.onSelectionChange,
+    stageRef,
+  })
+  const handleNodePortPointerDown = useCallback((shapeId: string, portId: string, event: KonvaEventObject<PointerEvent>) => {
+    const session = startNodeConnection(shapeId, portId, event)
+    if (session) sessionRef.current = session
+  }, [startNodeConnection])
   const handleWheel = useKonvaWheelHandler({
     applyCamera,
     cameraRef,
     scheduleCameraCommit,
+    stageRef,
+  })
+  const { handleResizeStart, handleRotateStart } = useKonvaTransformStartHandlers({
+    cameraRef,
+    documentRef,
+    onHistoryCheckpoint: options.onHistoryCheckpoint,
+    sessionRef,
     stageRef,
   })
   const { dragPreviewShapes, draggingShapeIds, handleShapeDragEnd, handleShapeDragMove, handleShapeDragStart, selectedBoundsOverride, setSelectedBoundsOverride, snapGuides } = useKonvaShapeDragHandlers({
@@ -98,37 +123,6 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       ? options.selectedIds.filter((id) => !scopeIds.includes(id))
       : scopeIds.reduce((ids, id) => toggleSelectedId(ids, id), options.selectedIds))
   }, [options])
-  const handleResizeStart = useCallback((shapeIds: string[], handle: KonvaResizeHandle, event: KonvaEventObject<PointerEvent>) => {
-    event.cancelBubble = true
-    event.evt.preventDefault()
-    const originShapes = getShapesByIds(documentRef.current.shapes, shapeIds)
-    const originBounds = getSelectedShapeBounds(documentRef.current.shapes, shapeIds)
-    if (originShapes.length === 0 || originShapes.some((shape) => shape.isLocked) || !originBounds) return
-    options.onHistoryCheckpoint(documentRef.current)
-    sessionRef.current = {
-      handle,
-      originBounds,
-      originShapes,
-      pointerId: event.evt.pointerId,
-      rotatedBox: createRotatedResizeBox(originShapes),
-      shapeIds,
-      type: 'resize',
-    }
-  }, [options])
-  const handleRotateStart = useCallback((shapeIds: string[], event: KonvaEventObject<PointerEvent>) => {
-    event.cancelBubble = true
-    event.evt.preventDefault()
-    const screenPoint = getStagePointer(stageRef.current)
-    const originShapes = getShapesByIds(documentRef.current.shapes, shapeIds)
-    const bounds = getSelectedShapeBounds(documentRef.current.shapes, shapeIds)
-    if (originShapes.length === 0 || originShapes.some((shape) => shape.isLocked) || !bounds || !screenPoint) return
-    const worldPoint = pointerToWorld({ ...screenPoint, pressure: event.evt.pressure }, cameraRef.current)
-    const center = { x: (bounds.minX + bounds.maxX) / 2, y: (bounds.minY + bounds.maxY) / 2 }
-    const guideRadius = Math.max(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY) / 2 + 42 / cameraRef.current.zoom
-    const originRotation = originShapes.length === 1 ? originShapes[0]?.rotation ?? 0 : 0
-    options.onHistoryCheckpoint(documentRef.current)
-    sessionRef.current = { center, guideRadius, originRotation, originShapes, pointerId: event.evt.pointerId, shapeIds, startAngle: getPointAngle(center, worldPoint), type: 'rotate' }
-  }, [cameraRef, options])
   const handlePointerDown = (event: KonvaEventObject<PointerEvent>) => {
     const screenPoint = getStagePointer(stageRef.current)
     if (!screenPoint) return
@@ -246,6 +240,10 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       previewDocument(withCanvasShapes(documentRef.current, updateLineRouteHandleShapes(documentRef.current.shapes, session.originShape, session.handle, worldPoint)))
       return
     }
+    if (session.type === 'node-connection') {
+      updateNodeConnectionPreview(session, worldPoint)
+      return
+    }
     updateCreateDraft(session, worldPoint, event)
   }
   const handlePointerUp = (event: KonvaEventObject<PointerEvent>) => {
@@ -261,16 +259,22 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     if (session?.type === 'select-box') finishBoxSelection(session)
     if (session?.type === 'resize') { setResizeSnapGuides([]); setSelectedBoundsOverride(null) }
     if (session?.type === 'rotate') setResizeSnapGuides([])
+    if (session?.type === 'node-connection') {
+      finishNodeConnection(session, screenPoint ? pointerToWorld({ ...screenPoint, pressure: event.evt.pressure }, cameraRef.current) : null)
+    }
     const nextDraft = session?.type === 'create' ? finalizeDraft(session.draft) : null
     clearDraft()
     if (nextDraft) options.onDocumentChange((current) => appendCanvasShape(current, nextDraft))
   }
   return {
-    draft, dragPreviewShapes, draggingShapeIds, eraserTrail, handleLineEndpointStart, handleLineRouteHandleStart, handlePointerDown,
-    handlePointerLeave: () => clearEraserTrail(),
+    draft, dragPreviewShapes, draggingShapeIds, eraserTrail, handleLineEndpointStart, handleLineRouteHandleStart, handleNodePortPointerDown, handlePointerDown,
+    handlePointerLeave: () => {
+      clearEraserTrail()
+      clearNodeConnectionPreview()
+    },
     handlePointerMove, handlePointerUp, handleResizeStart, handleRotateStart,
     handleShapeDragEnd, handleShapeDragMove, handleShapeDragStart, handleShapeSelect, handleWheel,
-    selectedBoundsOverride, selectionBox,
+    runtimeConnectionPreview, selectedBoundsOverride, selectionBox,
     snapGuides: snapGuides.length > 0 ? snapGuides : resizeSnapGuides,
     stageRef,
   }

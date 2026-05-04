@@ -1,6 +1,6 @@
 # Project State Slice S1X: Canvas Engine Migration
 
-**Status**: Phase 4A image-node conversion first pass in progress after accepted Phase 1A/2A/3 spike baselines.
+**Status**: Phase 4 Node/Port/Edge foundation first pass in progress after accepted Phase 1A/2A/3 spike baselines.
 **Branch**: `feature/s1x-konva-handfeel-spike`
 **Started**: 2026-05-03
 
@@ -162,6 +162,8 @@ Phase 3.1 object editing foundation started:
 - 2026-05-04 Sticky color fix: sticky fill now derives from the current Color/stroke at render time, so typing note text no longer leaves a stale `style.fill` that prevents later color changes.
 - 2026-05-04 Konva Image Node first pass is implemented: Canvas Image → Image Node creates a lightweight `node_card` image node on the right side of the image; Image Node → Canvas Image fetches the asset record by `assetId` and creates an image on the node's right. Node data stores asset refs, dimensions, source and title only.
 - 2026-05-04 Frame containment first pass now supports drag-out: moving a child outside all frame bounds clears `parentId`, and frame nesting is intentionally disabled. Helper functions now expose frame/child visible bounds for future capture/export.
+- 2026-05-04 Phase 4 Node/Port/Edge foundation first pass is implemented: toolbar buttons create Prompt/Image/Image Gen/Image Gen 4/Analysis `node_card` shapes from registry defaults; node cards show status/fields/summary/port labels; output ports drag-connect to compatible input ports with a preview curve; `CanvasDocument.runtimeEdges` stores runtime dataflow edges separately from visual arrow/line shapes, and undo/redo plus node deletion include runtime edge cleanup.
+- Phase 4 storage guard remains explicit: Board documents, node props and runtime edge data must not persist `data:`, `blob:`, Base64 images, provider raw payloads, complete logs or long generated text. Image Node first pass stores only Asset references, dimensions, title/source metadata and runtime summary placeholders.
 - A Konva shell `selectionchange` guard clears accidental browser text selection while preserving normal textarea/input selection during editing.
 - Frame movement now expands the drag set to include direct/nested frame children, so moving a frame carries contained shapes with it.
 - Copy/paste/duplicate/Alt-drag clone logic now rewrites cloned `parentId` through an old-id to new-id map; cloned children no longer point at an old frame. Deleting a frame explicitly releases unselected children instead of leaving stale parent ids.
@@ -169,7 +171,7 @@ Phase 3.1 object editing foundation started:
 - undo/redo restores shapes plus selection only, so pan/zoom is not part of command history
 - create, drag, resize, eraser, Properties style edits, layer actions, duplicate/delete, stress strokes and clear all now create history checkpoints
 
-Not included yet: full node card controls, port-bound runtime edges, image drop into Image Node, selection capture/export to Image Node, save/history integration, nested-frame/export semantics, real Yjs provider sync and Board route migration.
+Not included yet: full node card controls, edge hit/select/delete UI, Konva `resolveNodeInputs` adapter, AiRun execution UI, image drop into Image Node, selection capture/export to Image Node, save/history integration, nested-frame/export semantics, real Yjs provider sync and Board route migration.
 
 Explicit Phase 3B follow-ups now tracked in the migration plan:
 
@@ -216,9 +218,9 @@ Large Miro-scale collaboration: later multi-month S4 track
 Continue with Phase 3 object editing foundation before any `/boards/[boardId]` migration:
 
 ```text
-Phase 2A/3A/4A hand-test
-Phase 4 node/port/edge contract implementation
+Phase 4 node creation and port-connection hand-test
+Phase 4 edge hit/delete and Konva resolveNodeInputs adapter
 Phase 4A selection capture/export contract before Copy as / Export as
 ```
 
-After this checkpoint, hand-test Properties align/actions/font controls, Canvas Image → Image Node, Image Node → Canvas Image, node-card selection guard and frame child drag-out. Export/copy-as/page/capture commands stay disabled until capture bounds, upload origin and multi-page contracts are defined.
+After this checkpoint, hand-test creating all five node types and dragging an output port into a compatible input port. Export/copy-as/page/capture commands stay disabled until capture bounds, upload origin and multi-page contracts are defined; runtime edges are local canvas data now, but input resolution, AiRun execution and Board/Yjs persistence remain follow-up work.

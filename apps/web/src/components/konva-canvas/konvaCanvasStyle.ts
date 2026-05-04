@@ -155,6 +155,7 @@ export function deleteKonvaShapes(document: CanvasDocument, shapeIds: string[]) 
     document: {
       ...document,
       metadata: { ...document.metadata, updatedAt: new Date().toISOString() },
+      runtimeEdges: document.runtimeEdges.filter((edge) => !selected.has(edge.sourceShapeId) && !selected.has(edge.targetShapeId)),
       shapes: document.shapes
         .filter((shape) => !selected.has(shape.id))
         .map((shape) => shape.parentId && selected.has(shape.parentId) ? { ...shape, parentId: null } : shape),

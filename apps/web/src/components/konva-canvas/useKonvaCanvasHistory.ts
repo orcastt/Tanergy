@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, type Dispatch, type SetStateAction } from 'react'
-import { withCanvasShapes, type CanvasDocument, type CanvasShape } from '@/features/canvas-engine'
+import { withCanvasRuntimeEdges, withCanvasShapes, type CanvasDocument, type CanvasRuntimeEdge, type CanvasShape } from '@/features/canvas-engine'
 
 type CanvasHistorySnapshot = {
+  runtimeEdges: CanvasRuntimeEdge[]
   selectedIds: string[]
   shapes: CanvasShape[]
 }
@@ -58,6 +59,7 @@ export function useKonvaCanvasHistory({
 
 function createSnapshot(document: CanvasDocument, selectedIds: string[]): CanvasHistorySnapshot {
   return {
+    runtimeEdges: cloneRuntimeEdges(document.runtimeEdges),
     selectedIds: [...selectedIds],
     shapes: cloneShapes(document.shapes),
   }
@@ -68,7 +70,9 @@ function restoreSnapshot(
   onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>,
   onSelectionChange: (shapeIds: string[]) => void
 ) {
-  onDocumentChange((current) => withCanvasShapes(current, cloneShapes(snapshot.shapes)))
+  onDocumentChange((current) => (
+    withCanvasRuntimeEdges(withCanvasShapes(current, cloneShapes(snapshot.shapes)), cloneRuntimeEdges(snapshot.runtimeEdges))
+  ))
   onSelectionChange(snapshot.selectedIds)
 }
 
@@ -78,6 +82,16 @@ function cloneShapes(shapes: CanvasShape[]) {
     : JSON.parse(JSON.stringify(shapes)) as CanvasShape[]
 }
 
+function cloneRuntimeEdges(edges: CanvasRuntimeEdge[]) {
+  return typeof structuredClone === 'function'
+    ? structuredClone(edges) as CanvasRuntimeEdge[]
+    : JSON.parse(JSON.stringify(edges)) as CanvasRuntimeEdge[]
+}
+
 function snapshotsEqual(a: CanvasHistorySnapshot, b: CanvasHistorySnapshot) {
-  return JSON.stringify(a.shapes) === JSON.stringify(b.shapes) && a.selectedIds.join('\0') === b.selectedIds.join('\0')
+  return (
+    JSON.stringify(a.shapes) === JSON.stringify(b.shapes) &&
+    JSON.stringify(a.runtimeEdges) === JSON.stringify(b.runtimeEdges) &&
+    a.selectedIds.join('\0') === b.selectedIds.join('\0')
+  )
 }
