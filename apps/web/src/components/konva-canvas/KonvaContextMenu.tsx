@@ -97,27 +97,23 @@ export function KonvaContextMenu({
           <MenuButton disabled={!canUnlock} label="Unlock" shortcut="⇧L" onClick={() => onAction('unlock')} />
         </MenuSubmenu>
         <MenuSubmenu label="Arrange">
-          <MenuSubmenu disabled={!multipleSelection} label="Align">
-            <MenuButton disabled={!multipleSelection} label="Left" onClick={() => onAction('align-left')} />
-            <MenuButton disabled={!multipleSelection} label="Center horizontally" onClick={() => onAction('align-center-x')} />
-            <MenuButton disabled={!multipleSelection} label="Right" onClick={() => onAction('align-right')} />
-            <MenuDivider />
-            <MenuButton disabled={!multipleSelection} label="Top" onClick={() => onAction('align-top')} />
-            <MenuButton disabled={!multipleSelection} label="Center vertically" onClick={() => onAction('align-center-y')} />
-            <MenuButton disabled={!multipleSelection} label="Bottom" onClick={() => onAction('align-bottom')} />
-          </MenuSubmenu>
-          <MenuSubmenu disabled={!canDistribute} label="Distribute">
-            <MenuButton disabled={!canDistribute} label="Horizontally" onClick={() => onAction('distribute-horizontal')} />
-            <MenuButton disabled={!canDistribute} label="Vertically" onClick={() => onAction('distribute-vertical')} />
-          </MenuSubmenu>
-          <MenuSubmenu disabled={!multipleSelection} label="Stretch">
-            <MenuButton disabled={!multipleSelection} label="Horizontally" onClick={() => onAction('stretch-horizontal')} />
-            <MenuButton disabled={!multipleSelection} label="Vertically" onClick={() => onAction('stretch-vertical')} />
-          </MenuSubmenu>
-          <MenuSubmenu disabled={!hasSelection} label="Flip">
-            <MenuButton disabled={!hasSelection} label="Horizontal" onClick={() => onAction('flip-horizontal')} />
-            <MenuButton disabled={!hasSelection} label="Vertical" onClick={() => onAction('flip-vertical')} />
-          </MenuSubmenu>
+          <MenuSectionLabel label="Align" />
+          <MenuButton disabled={!multipleSelection} label="Align left" onClick={() => onAction('align-left')} />
+          <MenuButton disabled={!multipleSelection} label="Align center horizontally" onClick={() => onAction('align-center-x')} />
+          <MenuButton disabled={!multipleSelection} label="Align right" onClick={() => onAction('align-right')} />
+          <MenuButton disabled={!multipleSelection} label="Align top" onClick={() => onAction('align-top')} />
+          <MenuButton disabled={!multipleSelection} label="Align center vertically" onClick={() => onAction('align-center-y')} />
+          <MenuButton disabled={!multipleSelection} label="Align bottom" onClick={() => onAction('align-bottom')} />
+          <MenuDivider />
+          <MenuSectionLabel label="Distribute / Stretch" />
+          <MenuButton disabled={!canDistribute} label="Distribute horizontally" onClick={() => onAction('distribute-horizontal')} />
+          <MenuButton disabled={!canDistribute} label="Distribute vertically" onClick={() => onAction('distribute-vertical')} />
+          <MenuButton disabled={!multipleSelection} label="Stretch horizontally" onClick={() => onAction('stretch-horizontal')} />
+          <MenuButton disabled={!multipleSelection} label="Stretch vertically" onClick={() => onAction('stretch-vertical')} />
+          <MenuDivider />
+          <MenuSectionLabel label="Transform" />
+          <MenuButton disabled={!hasSelection} label="Flip horizontal" onClick={() => onAction('flip-horizontal')} />
+          <MenuButton disabled={!hasSelection} label="Flip vertical" onClick={() => onAction('flip-vertical')} />
           <MenuButton disabled label="Pack" />
           <MenuButton disabled={!canTidy} label="Arrange in row" onClick={() => onAction('tidy-row')} />
           <MenuButton disabled={!canTidy} label="Arrange in column" onClick={() => onAction('tidy-column')} />
@@ -187,6 +183,10 @@ function MenuSubmenu({ children, disabled, label }: { children: ReactNode; disab
 
 function MenuDivider() {
   return <div className="konva-context-menu__divider" />
+}
+
+function MenuSectionLabel({ label }: { label: string }) {
+  return <div className="konva-context-menu__section-label">{label}</div>
 }
 
 function getShortcutModifier() {

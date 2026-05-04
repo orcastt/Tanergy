@@ -46,6 +46,7 @@ keep Board/API/storage contracts stable
 - Multi-selection rotate first pass: the union selection boundary now has a rotate handle. Rotation uses the group center and an origin-shape snapshot, so rectangles/images/text/sticky/frame rotate by updating x/y/rotation, while line/arrow/stroke points rotate around the same center. Shift proportional resize now uses one projected scale value so width and height preview in the same frame instead of visually stepping one after the other.
 - Phase 3A command depth now wires previously disabled context-menu actions: Group/Ungroup, Lock/Unlock, Distribute, Stretch, Flip and Arrange row/column. Group membership uses lightweight `groupId`, lock blocks drag/resize/rotate/line endpoint edits, and grouped selections expand for click-select, drag, Alt/Option copy and clipboard clone.
 - 2026-05-04 drag overlay correction: normal shape drag now uses the same clean drag-preview path as Alt/Option copy, so objects and resize/rotate controls move from one preview state instead of Konva native drag outrunning the selection overlay. Frame drag also suppresses the stale top chrome while moving, preventing the old-position black border from lingering.
+- 2026-05-04 context-menu polish: right-click menu is now capped at two levels. Arrange no longer contains nested Align/Distribute/Stretch/Flip submenus; those commands are flattened into sectioned rows, and submenu hover uses a no-gap bridge so moving the mouse into the submenu does not collapse it so easily.
 
 Next development focus: Phase 3A hand-test and command polish, then return to Phase 3B follow-ups that require deeper geometry contracts: direction-aware orthogonal connectors, port binding and frame export/drag-out semantics.
 
@@ -237,7 +238,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | ✅ | 3A.2 | 编辑 > 分组 | `⌘G` / `Ctrl+G` | 多选写入同一个 `groupId`；点选 group 成员会选中整组；拖动/Alt-copy/复制会按组扩展 | 多选后 group，可一起拖动和复制 |
 | ✅ | 3A.3 | 编辑 > 展开/取消分组 | `⇧⌘G` / `Shift+Ctrl+G` | Ungroup 清空所选 group 的 `groupId`；保留原 shape 顺序和选中对象 | group 后可拆回独立对象 |
 | ✅ | 3A.4 | 编辑 > 锁定/解锁 | `⇧L` | `isLocked` 已接菜单和快捷键；locked shape 阻止 drag/resize/rotate/line endpoint edits | locked 对象不误移动 |
-| ✅ | 3A.5 | 排列 > 对齐 | 左/水平/右/顶/垂直/底 | 右键 Arrange > Align 命令已做，移动 shape bounds；后续接 Properties align 同源入口 | 多选后对齐准确 |
+| ✅ | 3A.5 | 排列 > 对齐 | 左/水平/右/顶/垂直/底 | 右键 Arrange 面板已扁平化为二级菜单内 section rows；Align 命令已做，后续接 Properties align 同源入口 | 多选后对齐准确 |
 | ✅ | 3A.6 | 排列 > 分布 | 横向分布 / 纵向分布 | 3 个以上对象按选区 span 计算等间距；locked 对象不参与变换 | 三个以上对象分布正确 |
 | ✅ | 3A.7 | 排列 > 拉伸 | 水平拉伸 / 垂直拉伸 | 多选对象拉伸到 shared selection bounds；locked 对象不参与变换 | 多选对象尺寸变化符合预期 |
 | ✅ | 3A.8 | 排列 > 翻转 | 水平翻转 / 垂直翻转 | box/image/sticky/text/frame 写 `flipX/flipY` 并镜像位置；line/arrow/stroke 镜像点位 | 翻转后保存恢复 |
@@ -261,7 +262,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | ◐ | 3A.26 | 导出为 > 透明 | toggle | 菜单已有 disabled 占位；export options state 未做 | 状态在菜单中可见 |
 | ✅ | 3A.27 | 选中全部 | `⌘A` | Select all visible/page objects 已接右键/快捷键 | 不选中 locked hidden internals |
 | ✅ | 3A.28 | 菜单 disabled | 无 selection 时部分禁用 | 无 selection 禁用 Cut/Copy/Duplicate/Reorder/Copy as/Delete；Group/Align/Stretch/Distribute/Tidy 按 selection count 启用；Lock/Unlock 按当前锁定状态启用 | 空白右键只显示可用项 |
-| ✅ | 3A.29 | 子菜单 hover | hover 展开，鼠标可进入子菜单 | CSS hover/focus-within 展开，支持嵌套 submenu 和 edge side flip | 和截图体验接近 |
+| ✅ | 3A.29 | 子菜单 hover | hover 展开，鼠标可进入子菜单 | 右键菜单限制为最多两层；submenu 无 6px gap，并加 hover bridge；仍支持 edge side flip | 鼠标滑入子菜单不易消失，不需要先点击上层 |
 | ✅ | 3A.30 | 键盘快捷键显示 | 右侧显示 `⌘C` 等 | 根据平台显示 Mac `⌘` 或 Windows/Linux `Ctrl+` | Mac 显示 ⌘，Windows 显示 Ctrl |
 
 ### Phase 4：节点、端口、边和 AI Runtime
