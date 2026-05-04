@@ -46,6 +46,7 @@ Current accepted subset:
 - Phase 3 object editing now includes four-way layer order from Properties/right-click/keyboard, Alt/Option one-step layer shortcuts, text editing that does not trigger canvas/browser shortcuts, geometric eraser hits for line/arrow/freehand, visible snap guides tied to snap settings for drag/copy/resize/rotate, and a browser-selection guard for accidental blue text selection.
 - Frame drag carries contained shapes, and clone operations rewrite frame `parentId` relationships so copies do not stay attached to old containers.
 - Right-click menu Phase 3A first batch exposes professional canvas submenus for Edit, Arrange, Reorder, Copy as and Export as. Cut and multi-selection Align are functional; group/lock/page/export entries remain disabled until their product contracts are implemented.
+- Pasted images from browser copy or OS screenshot clipboard create real canvas image shapes through the Asset API, with no Base64 stored in the canvas document. Image shapes render with zoom-based thumbnail/original LOD and reuse the same resize, rotate, copy and Alt-drag interactions as other box-like elements.
 
 ## Handfeel Acceptance
 

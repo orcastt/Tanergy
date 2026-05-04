@@ -41,6 +41,7 @@ keep Board/API/storage contracts stable
 - Cleanup checkpoint: draft preview, eraser session, browser selection guard and snapping math were split into small helpers so `useKonvaCanvasInteractions.ts` stays under the 300-line source target.
 - Phase 3B audit checkpoint: the main Shape/Line/Arrow/Eraser/Navigator spine is testable, while multi-selection rotate, node-port arrow binding, deeper frame containment, navigator collapse/fit, cursor polish and stroke segmentation remain explicit follow-ups.
 - Phase 3A right-click menu first batch started: the menu now has real hover submenus for Edit / Arrange / Reorder / Copy as / Export as, edge clamping, Cut, platform-aware shortcuts and multi-selection Align commands. Group/lock/export/page commands are visible but disabled until their data contracts are ready.
+- Image paste first pass: external clipboard images and OS screenshots can be pasted into the Konva canvas via Cmd/Ctrl+V or right-click Paste. The flow uploads clipboard image data through the existing Asset API and stores only asset ids/URLs on the image shape; image render uses zoom LOD tiers: 10-25% `thumb-256`, 25-50% `thumb-512`, 50-100% `thumb-1024`, and above 100% original.
 
 Next development focus: Phase 3A command depth, then return to Phase 3B follow-ups that require deeper geometry contracts: multi-selection rotation, direction-aware orthogonal connectors, port binding and frame export/drag-out semantics.
 
@@ -118,7 +119,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | 1A.5 | 坐标转换 | zoom/pan 后画线漂移 | screen/world transform 单一来源，pointer anchored zoom | zoom 后笔尖落点准确 |
 | 1A.6 | hit test | 大 Board 精确 hit test 昂贵 | bbox 粗筛 + precise hit + bounds cache + viewport filter | 1,000 strokes 框选不明显卡 |
 | 1A.7 | drag/resize | 每帧 commit 文档会卡 | dragging 时更新 visual，pointerup 单 transaction commit | 拖动时流畅，undo 只产生一组操作 |
-| 1A.8 | image LOD | 大图 decode/render 卡 | R2 thumbnail first，zoom-in 再升档，Konva image cache | 20 张图 pan/zoom 不冻结 |
+| 1A.8 | image LOD | 大图 decode/render 卡 | 第一批：Konva image shape 按 zoom 选择 asset thumbnails：10-25% 用 256，25-50% 用 512，50-100% 用 1024，>100% 用 original；后续补 Konva cache / interaction mode | 20 张图 pan/zoom 不冻结 |
 | 1A.9 | node HTML | 大量 React 节点重渲染卡 | 非编辑态用轻量 visual，编辑态才开 HTML controls | 100 node cards 可拖动 |
 | 1A.10 | Yjs 本地优先 | 网络同步阻塞本地绘制 | local render 立即完成，Yjs transaction 后送 | 断网/慢网不影响本地画线 |
 | 1A.11 | presence 节流 | 光标同步太频繁会卡 | awareness 15-30fps，和 document updates 分离 | 两 tab 光标顺滑但不抢帧 |
@@ -243,7 +244,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | 3A.15 | 移动到页面 | submenu placeholder | S1X 可 disabled；未来多 page 支持 | 不误导用户当前多页面已完成 |
 | 3A.16 | 剪切 | `⌘X` | 第一批已做右键 Cut 和键盘 Cmd/Ctrl+X：复制内部 shape JSON 后删除 selection | paste 后对象恢复，asset ref 不变 |
 | 3A.17 | 复制 | `⌘C` | write internal JSON and optional image/SVG fallback | 可跨同页面粘贴 |
-| 3A.18 | 粘贴 | `⌘V` | paste at pointer/viewport center，id 重新生成 | 粘贴位置合理，不覆盖原对象 |
+| 3A.18 | 粘贴 | `⌘V` | 内部 shape JSON 和外部 image clipboard 都可 paste；Cmd/Ctrl+V 使用原生 paste event，右键 Paste 使用 async clipboard；位置优先最后鼠标 world point | 粘贴位置合理，不覆盖原对象 |
 | 3A.19 | 复制/重复 | `⌘D` | duplicate with offset | 与 properties duplicate 一致 |
 | 3A.20 | 删除 | Delete/Backspace icon | delete selected and connected edges | 删除节点时相关 edges 清理 |
 | 3A.21 | 复制为 > SVG | `⌘⇧C` reference | selection export as SVG string/clipboard | 可先支持 basic shapes，复杂节点降级 |
@@ -288,17 +289,17 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | 4A.7 | Image Node output → downstream node | Image Node 通过 `image_out` port 给 Analysis/Image Gen | engine query adapter 支持从 edge 找 Image Node effective asset | `getNodeOutput`, `resolveNodeInputs` | Image Node 连 Analysis 后 Run 可用 |
 | 4A.8 | Prompt Node → Image Gen → Image Node | prompt text 经 edge 进入 image_gen | prompt/data/edge contract 不变 | `nodeDataFlow.ts`, `registry.ts` | Prompt 连 Generate，Run 后 resultAssetIds 可显示 |
 | 4A.9 | Image import → Image Node | 上传文件进 Image Node | 读取 file preview，上传 Asset API，节点 data 写 asset ref | `importFileToImageNode` | 上传后节点显示图片，Board document 不含 data URL |
-| 4A.10 | Paste/Drop image → Canvas/Image Node | 当前 tldraw/asset layer 可接图片资产 | Konva route 明确支持 drop/paste image 到 canvas 或 Image Node | `imageAssetInputs.ts`, asset upload client | 粘贴图片后走 R2 asset，不进 Board document Base64 |
+| 4A.10 | Paste/Drop image → Canvas/Image Node | 当前 tldraw/asset layer 可接图片资产 | 第一批已支持 paste image → Canvas image；drop image 和 Image Node drop 后续补 | `imageAssetInputs.ts`, asset upload client | 粘贴图片后走 R2 asset，不进 Board document Base64 |
 | 4A.11 | Shape/Node selection export bounds | tldraw 用 shape geometry + page transform 算 bounds | engine 提供统一 `getSelectionExportBounds(ids)`，支持 rotation/scale | `getPageBounds` duplicates | capture/export 不裁切、不多留大空白 |
 | 4A.12 | Export background policy | 当前 selection capture `background:false`，Board thumbnail 可有背景 | 明确区分 transparent selection export、thumbnail export、future canvas-to-image white background | `CanvasSelectionToolbar.tsx`, `boardThumbnailCapture.ts` | selection PNG 透明，thumbnail 可读 |
 | 4A.13 | Asset origin | upload/editor_export/generated/merge_capture | 保留 `origin` 字段，方便 Admin/History/AI cost 追踪 | `assetTypes.ts`, `/api/assets/upload` | DB 里 origin 正确 |
 | 4A.14 | Conversion undo/redo | tldraw 创建节点/图片可由 editor history 处理 | conversion 作为 single transaction：上传成功后 create node/image，可 undo 视觉对象，Asset 保留 | engine history | undo 删除新节点/图片但不破坏远端 asset |
 | 4A.15 | Conversion status/error | 当前有 `Capture failed` / `Image node conversion failed` | UI 显示 loading/error，避免静默失败 | selection toolbar/actions | 断网/上传失败有可见提示 |
-| 4A.16 | Web image copy → Canvas | 浏览器里复制网络图片后 `Ctrl/Cmd+V` 到画布 | Clipboard API 读取 image blob/html/img URL，上传到 Asset API/R2，再创建 Canvas image shape | clipboard handler + asset upload | 从网页复制图片，鼠标停在画布某处粘贴，图片出现在鼠标位置 |
-| 4A.17 | Copy image from canvas | 选中 Canvas image 后 `Ctrl/Cmd+C` | clipboard 写 internal JSON + optional PNG/SVG fallback；内部粘贴保留 asset ref | command system | 复制后粘贴不重新上传同一张图，assetId 保持或可追踪 |
-| 4A.18 | Paste at mouse position | 粘贴不是固定 offset，而是鼠标/视口焦点位置 | 记录最后 canvas pointer world point；粘贴时以该点为左上或中心锚点 | clipboard/pointer store | 鼠标在哪，粘贴图就出现在附近 |
-| 4A.19 | Alt/Option drag copy image | 按住 Alt 拖拽图片复制 | drag start 如果 altKey，duplicate selected image shapes；复制 shape 引用同一 asset | selection drag engine | Alt 拖拽生成副本，原图不动，不重复上传 |
-| 4A.20 | Image resize keep quality | 图片缩放不坏图、不拉糊、不丢比例 | 支持 corner resize keep ratio，edge resize 可自由；显示尺寸和 natural size 分离；使用合适 thumbnail LOD | image renderer | 放大缩小时图片不异常变形，保存恢复尺寸 |
+| 4A.16 | Web image copy → Canvas | 浏览器里复制网络图片后 `Ctrl/Cmd+V` 到画布 | 第一批读取 `clipboardData` image file / Clipboard API image blob / HTML img URL；blob/data 走 Asset API，远程 URL 先作为 source fallback | clipboard handler + asset upload | 从网页复制图片，鼠标停在画布某处粘贴，图片出现在鼠标位置 |
+| 4A.17 | Copy image from canvas | 选中 Canvas image 后 `Ctrl/Cmd+C` | 已支持 internal JSON copy；图片内部粘贴保留 asset ref，不重新上传；optional PNG/SVG fallback 后续 | command system | 复制后粘贴不重新上传同一张图，assetId 保持或可追踪 |
+| 4A.18 | Paste at mouse position | 粘贴不是固定 offset，而是鼠标/视口焦点位置 | 第一批记录最后 canvas pointer world point；粘贴以该点为中心锚点，右键 Paste 使用右键位置 | clipboard/pointer store | 鼠标在哪，粘贴图就出现在附近 |
+| 4A.19 | Alt/Option drag copy image | 按住 Alt 拖拽图片复制 | 已复用 shape drag/duplicate session；复制 image shape 引用同一 asset URLs | selection drag engine | Alt 拖拽生成副本，原图不动，不重复上传 |
+| 4A.20 | Image resize keep quality | 图片缩放不坏图、不拉糊、不丢比例 | 第一批显示尺寸和 source 分离，resize/rotate 复用 box shape 控件，渲染按 zoom 选择 thumbnail/original；Shift 等比 resize 后续统一到 resize policy | image renderer | 放大缩小时图片不异常变形，保存恢复尺寸 |
 | 4A.21 | Image boundary placement | 转换成 Image Node 出现在图片右侧 | `Canvas Image → Image Node` 使用图片 bbox：x = right + 40, y = top | `createImageNodeFromCanvasImage` | 多张图逐个转换，节点都在对应图片右侧 |
 | 4A.22 | Screenshot/Capture placement | screenshot 成 Image Node 出现在 selection/image boundary 下方 | capture 使用 selected bounds：x = minX, y = maxY + 30 | `createImageNodeFromDataUrl`, `CanvasSelectionToolbar` | 多选图片/标注 capture 后节点在整个边界下方 |
 | 4A.23 | To Canvas placement | Image Node 的 `To Canvas` 出现在节点右侧 | `Image Node → Canvas Image` 使用 node bbox：x = node right + 40, y = node top，创建后选中新图片 | `NodeCardContent.tsx` | To Canvas 后图片在节点右侧且被选中 |

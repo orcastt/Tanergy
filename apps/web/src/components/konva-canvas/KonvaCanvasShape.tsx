@@ -4,6 +4,7 @@ import { Circle, Ellipse, Group, Line, Path, Rect, Text } from 'react-konva'
 import type { CanvasShape } from '@/features/canvas-engine'
 import { getStickyFillColor, getStrokeDash, resolveKonvaShapeStyle } from './konvaCanvasStyle'
 import { getLineArrowHeadAnchor, getLineHead, getLinePathData, getLineStartHeadAnchor, type KonvaLineShape } from './konvaLineRouteUtils'
+import { KonvaImageShape } from './KonvaImageShape'
 import { getPatternTile } from './konvaPatternUtils'
 import { getArrowHeadPoints, getCloudPath, getFreehandPath } from './konvaPathUtils'
 import { isBoxCanvasShape } from './konvaRotationUtils'
@@ -196,7 +197,7 @@ function renderShape(shape: CanvasShape, style: ReturnType<typeof resolveKonvaSh
     return <Text fill={stroke} fontFamily="Inter, system-ui, sans-serif" fontSize={18} height={shape.props.height} opacity={opacity} text={shape.props.text} width={shape.props.width} />
   }
   if (shape.type === 'image') {
-    return <Rect dash={strokeDash} fill="#eef2f7" height={shape.props.height} opacity={opacity} stroke={stroke} strokeWidth={strokeWidth} width={shape.props.width} />
+    return <KonvaImageShape opacity={opacity} shape={shape} zoom={zoom} />
   }
   return null
 }

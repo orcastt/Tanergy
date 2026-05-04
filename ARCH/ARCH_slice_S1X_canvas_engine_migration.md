@@ -415,6 +415,8 @@ apps/web/src/components/konva-canvas
   layers/*                 background, strokes, shapes, nodes, overlays
   tools/*                  draw, select, pan, resize, text, erase
   konva*Commands.ts        shared object commands for menu, shortcuts and properties
+  konvaImageClipboard.ts   clipboard image import through Asset API, no data URL persistence
+  KonvaImageShape.tsx      image renderer with thumbnail/original zoom LOD
   KonvaContextMenu.tsx     hover submenu shell; unsupported schema/export commands stay disabled
 
 apps/web/src/features/collaboration

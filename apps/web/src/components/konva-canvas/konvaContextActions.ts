@@ -2,8 +2,9 @@ import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import type { CanvasDocument, CanvasShape } from '@/features/canvas-engine'
 import { alignKonvaShapes, type KonvaAlignAction } from './konvaArrangeCommands'
 import { deleteKonvaShapes, duplicateKonvaShapes, reorderKonvaShapes } from './konvaCanvasStyle'
+import { pasteKonvaClipboard, writeKonvaShapesToSystemClipboard } from './konvaClipboardCommands'
 import type { KonvaContextMenuAction } from './KonvaContextMenu'
-import { copyKonvaShapes, pasteKonvaShapes } from './konvaShapeCommands'
+import { copyKonvaShapes } from './konvaShapeCommands'
 
 type KonvaCanvasHistory = {
   checkpoint: (document?: CanvasDocument) => void
@@ -21,7 +22,7 @@ type RunKonvaContextActionOptions = {
   onSelectionChange: (shapeIds: string[]) => void
 }
 
-export function runKonvaContextAction(options: RunKonvaContextActionOptions) {
+export async function runKonvaContextAction(options: RunKonvaContextActionOptions) {
   const { action, clipboardRef, document, history, onClipboardChange, onDocumentChange, onSelectionChange, pastePoint, selectedIds } = options
 
   if (action === 'select-all') {
@@ -31,13 +32,19 @@ export function runKonvaContextAction(options: RunKonvaContextActionOptions) {
   if (action === 'copy') {
     clipboardRef.current = copyKonvaShapes(document, selectedIds)
     onClipboardChange(clipboardRef.current.length)
+    void writeKonvaShapesToSystemClipboard(clipboardRef.current)
     return
   }
   if (action === 'paste') {
-    history.checkpoint(document)
-    const result = pasteKonvaShapes(document, clipboardRef.current, pastePoint)
-    onDocumentChange(result.document)
-    onSelectionChange(result.selectedIds)
+    await pasteKonvaClipboard({
+      clipboardRef,
+      document,
+      history,
+      onClipboardChange,
+      onDocumentChange,
+      onSelectionChange,
+      point: pastePoint ?? { x: 0, y: 0 },
+    })
     return
   }
   if (selectedIds.length === 0) return
@@ -46,6 +53,7 @@ export function runKonvaContextAction(options: RunKonvaContextActionOptions) {
   if (action === 'cut') {
     clipboardRef.current = copyKonvaShapes(document, selectedIds)
     onClipboardChange(clipboardRef.current.length)
+    void writeKonvaShapesToSystemClipboard(clipboardRef.current)
     const result = deleteKonvaShapes(document, selectedIds)
     onDocumentChange(result.document)
     onSelectionChange(result.selectedIds)

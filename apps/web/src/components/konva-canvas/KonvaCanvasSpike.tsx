@@ -14,6 +14,7 @@ import {
   type CanvasCamera,
   type CanvasDiagnosticsSnapshot,
   type CanvasDocument,
+  type CanvasPoint,
   type CanvasShape,
   type CanvasShapeStyle,
 } from '@/features/canvas-engine'
@@ -49,9 +50,10 @@ export function KonvaCanvasSpike() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [editingTextId, setEditingTextId] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<{ worldX: number; worldY: number; x: number; y: number } | null>(null)
-  const [clipboardShapeCount, setClipboardShapeCount] = useState(0)
+  const [, setClipboardShapeCount] = useState(0)
   const [diagnostics, setDiagnostics] = useState<CanvasDiagnosticsSnapshot>(() => getCanvasDiagnosticsSnapshot(document))
   const clipboardRef = useRef<CanvasShape[]>([])
+  const lastPastePointRef = useRef<CanvasPoint | null>(null)
   const frameSamplesRef = useRef<ReturnType<typeof appendFrameSample>>([])
   const lastFrameRef = useRef(0)
   useKonvaBrowserSelectionGuard(shellRef)
@@ -97,17 +99,16 @@ export function KonvaCanvasSpike() {
   }, [document, ydoc])
 
   useKonvaCanvasShortcuts({
-    camera,
     clipboardRef,
     document,
     history,
     onClipboardChange: setClipboardShapeCount,
     onDocumentChange: setDocument,
+    getPastePoint: () => lastPastePointRef.current ?? screenToWorld({ x: size.width / 2, y: size.height / 2 }, camera),
     onPanningChange: setIsSpacePanning,
     onSelectionChange: setSelectedIds,
     onToolChange: setActiveTool,
     selectedIds,
-    size,
   })
 
   const pointCount = useMemo(() => (
@@ -145,7 +146,7 @@ export function KonvaCanvasSpike() {
   const runContextAction = (action: KonvaContextMenuAction) => {
     const pastePoint = contextMenu ? { x: contextMenu.worldX, y: contextMenu.worldY } : undefined
     setContextMenu(null)
-    runKonvaContextAction({
+    void runKonvaContextAction({
       action,
       clipboardRef,
       document,
@@ -183,7 +184,12 @@ export function KonvaCanvasSpike() {
           const rect = event.currentTarget.getBoundingClientRect()
           const point = { x: event.clientX - rect.left, y: event.clientY - rect.top }
           const world = screenToWorld(point, camera)
+          lastPastePointRef.current = world
           setContextMenu({ worldX: world.x, worldY: world.y, x: point.x, y: point.y })
+        }}
+        onPointerMoveCapture={(event) => {
+          const rect = event.currentTarget.getBoundingClientRect()
+          lastPastePointRef.current = screenToWorld({ x: event.clientX - rect.left, y: event.clientY - rect.top }, camera)
         }}
         ref={shellRef}
       >
@@ -245,7 +251,7 @@ export function KonvaCanvasSpike() {
         <KonvaCanvasDiagnostics diagnostics={diagnostics} pointCount={pointCount} zoom={camera.zoom} />
         {contextMenu ? (
           <KonvaContextMenu
-            canPaste={clipboardShapeCount > 0}
+            canPaste
             containerHeight={size.height}
             containerWidth={size.width}
             hasSelection={selectedIds.length > 0}

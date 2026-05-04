@@ -148,6 +148,7 @@ Phase 3.1 object editing foundation started:
 - Line/arrow head styles are now exposed in Properties: Start Head and End Head each support None, Dot and Arrow. Existing arrow shapes still default to an end arrow.
 - Phase 3B audit says the testable spine is now broad enough for user review: shapes, line/arrow handles/routes/heads, eraser first pass and navigator zoom are present. Remaining Phase 3B items are multi-selection rotate, node-port binding, direction-aware orthogonal connectors, deeper frame semantics, navigator collapse/fit, cursor polish and stroke segmentation.
 - Phase 3A right-click menu first batch is implemented: the menu has hover submenus, viewport edge clamping, platform-aware shortcuts, Cut/Cmd-Ctrl+X and multi-selection Arrange > Align commands. Group/lock/page/export entries are intentionally disabled until their data/export contracts exist.
+- Image clipboard first pass is implemented for the Konva route: Cmd/Ctrl+V can read native clipboard image files/items from browser copies or OS screenshots, right-click Paste can read async clipboard image blobs, and pasted images upload through the existing Asset API before creating a canvas image shape. Image shapes store asset ids/URLs rather than data URLs, render real images, use zoom LOD thumbnails and reuse existing resize/rotate/copy/Alt-drag behavior.
 - A Konva shell `selectionchange` guard clears accidental browser text selection while preserving normal textarea/input selection during editing.
 - Frame movement now expands the drag set to include direct/nested frame children, so moving a frame carries contained shapes with it.
 - Copy/paste/duplicate/Alt-drag clone logic now rewrites cloned `parentId` through an old-id to new-id map; cloned children no longer point at an old frame. Deleting a frame explicitly releases unselected children instead of leaving stale parent ids.
@@ -155,7 +156,7 @@ Phase 3.1 object editing foundation started:
 - undo/redo restores shapes plus selection only, so pan/zoom is not part of command history
 - create, drag, resize, eraser, Properties style edits, layer actions, duplicate/delete, stress strokes and clear all now create history checkpoints
 
-Not included yet: node cards, image paste/drop, image-to-node/to-canvas conversion, save/history integration, full frame drag-out/nested-frame semantics, real Yjs provider sync and Board route migration.
+Not included yet: node cards, image drop, image-to-node/to-canvas conversion, save/history integration, full frame drag-out/nested-frame semantics, real Yjs provider sync and Board route migration.
 
 Explicit Phase 3B follow-ups now tracked in the migration plan:
 
