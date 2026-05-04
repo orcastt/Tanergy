@@ -47,6 +47,7 @@ keep Board/API/storage contracts stable
 - Phase 3A command depth now wires previously disabled context-menu actions: Group/Ungroup, Lock/Unlock, Distribute, Stretch, Flip and Arrange row/column. Group membership uses lightweight `groupId`, lock blocks drag/resize/rotate/line endpoint edits, and grouped selections expand for click-select, drag, Alt/Option copy and clipboard clone.
 - 2026-05-04 drag overlay correction: normal shape drag now uses the same clean drag-preview path as Alt/Option copy, so objects and resize/rotate controls move from one preview state instead of Konva native drag outrunning the selection overlay. Frame drag also suppresses the stale top chrome while moving, preventing the old-position black border from lingering.
 - 2026-05-04 context-menu polish: right-click menu is now capped at two levels. Arrange no longer contains nested Align/Distribute/Stretch/Flip submenus; those commands are flattened into sectioned rows, and submenu hover uses a no-gap bridge so moving the mouse into the submenu does not collapse it so easily.
+- 2026-05-04 lock polish: locked objects now show a small outline lock indicator above their bounds. Locked groups show one group-level icon, and right-clicking any grouped member selects the group scope first so Unlock applies to the whole group without manually selecting every member.
 
 Next development focus: Phase 3A hand-test and command polish, then return to Phase 3B follow-ups that require deeper geometry contracts: direction-aware orthogonal connectors, port binding and frame export/drag-out semantics.
 
@@ -217,7 +218,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | ✅ | 3B.17 | Draw pencil | 铅笔自由画线，保留手绘质感 | perfect-freehand stroke shape，轻量平滑、速度压力和 taper 已有 | 快慢线接近 tldraw |
 | ◐ | 3B.18 | Eraser 质感 | eraser 不只是 delete，拖过笔画有擦除感 | 第一版整条 stroke/line/arrow 几何 hit delete 和拖尾已有；stroke segmentation erase 未做 | 擦除响应跟手，不误删远处图形 |
 | ✅ | 3B.19 | Text tool | `T` 工具插入文字 | Text tool one-shot，HTML textarea overlay 编辑，shape label/sticky/frame 也复用 overlay | 双击/输入/中文 IME 正常 |
-| ✅ | 3B.20 | Shape handles | 选中形状显示蓝色 bbox/handles | handles 尺寸随 zoom 稳定；单个旋转 shape 拖拽/Alt 复制/resize 控件已跟随角度；拖动时 controls 使用 drag preview shapes 防止慢半拍；多选 rotate first pass 已有 | zoom 后 handle 不巨大/过小，旋转后拖拽复制控件跟随角度，普通拖动时控件不滞后 |
+| ✅ | 3B.20 | Shape handles | 选中形状显示蓝色 bbox/handles | handles 尺寸随 zoom 稳定；单个旋转 shape 拖拽/Alt 复制/resize 控件已跟随角度；拖动时 controls 使用 drag preview shapes 防止慢半拍；locked 对象/组显示线稿锁 icon；多选 rotate first pass 已有 | zoom 后 handle 不巨大/过小，旋转后拖拽复制控件跟随角度，普通拖动时控件不滞后 |
 | ☐ | 3B.21 | Rotation/resize cursor | handle hover 显示正确反馈 | cursor manager 根据 handle/tool 更新尚未做 | 鼠标移到 handle 有专业反馈 |
 | ✅ | 3B.22 | Minimap overview | 左下角 mini map 显示对象分布和当前视口紫框 | navigator/minimap 已显示 document overview 和 viewport | 大 Board 中能看见当前位置 |
 | ☐ | 3B.23 | Minimap collapse | 左下角可折叠/展开 | collapse state 不影响画布事件 | 折叠后只留小控制 |
@@ -237,7 +238,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | ✅ | 3A.1 | 右键打开位置 | 鼠标位置打开，子菜单向右展开 | 菜单 edge clamp、右侧空间不足时子菜单向左展开；右键 pointerdown 不触发 marquee selection | 画布边缘右键不被裁切，Copy/Paste 后不残留框选 |
 | ✅ | 3A.2 | 编辑 > 分组 | `⌘G` / `Ctrl+G` | 多选写入同一个 `groupId`；点选 group 成员会选中整组；拖动/Alt-copy/复制会按组扩展 | 多选后 group，可一起拖动和复制 |
 | ✅ | 3A.3 | 编辑 > 展开/取消分组 | `⇧⌘G` / `Shift+Ctrl+G` | Ungroup 清空所选 group 的 `groupId`；保留原 shape 顺序和选中对象 | group 后可拆回独立对象 |
-| ✅ | 3A.4 | 编辑 > 锁定/解锁 | `⇧L` | `isLocked` 已接菜单和快捷键；locked shape 阻止 drag/resize/rotate/line endpoint edits | locked 对象不误移动 |
+| ✅ | 3A.4 | 编辑 > 锁定/解锁 | `⇧L` | `isLocked` 已接菜单和快捷键；locked shape 阻止 drag/resize/rotate/line endpoint edits；右键命中 group 成员会选择 group scope，Unlock 直接作用于整组 | locked 对象不误移动，group lock/unlock 不需要逐个成员解锁 |
 | ✅ | 3A.5 | 排列 > 对齐 | 左/水平/右/顶/垂直/底 | 右键 Arrange 面板已扁平化为二级菜单内 section rows；Align 命令已做，后续接 Properties align 同源入口 | 多选后对齐准确 |
 | ✅ | 3A.6 | 排列 > 分布 | 横向分布 / 纵向分布 | 3 个以上对象按选区 span 计算等间距；locked 对象不参与变换 | 三个以上对象分布正确 |
 | ✅ | 3A.7 | 排列 > 拉伸 | 水平拉伸 / 垂直拉伸 | 多选对象拉伸到 shared selection bounds；locked 对象不参与变换 | 多选对象尺寸变化符合预期 |

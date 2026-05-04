@@ -8,6 +8,7 @@ import {
   createEmptyCanvasDocument,
   createFrameSample,
   getCanvasDiagnosticsSnapshot,
+  getShapeBounds,
   screenToWorld,
   withCanvasShapes,
   zoomCameraAtScreenPoint,
@@ -29,7 +30,7 @@ import { KonvaCanvasToolbar } from './KonvaCanvasToolbar'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
 import { konvaDefaultShapeStyle } from './konvaCanvasStyle'
 import { runKonvaContextAction } from './konvaContextActions'
-import { hasKonvaGroupedSelection } from './konvaGroupCommands'
+import { expandKonvaGroupedShapeIds, hasKonvaGroupedSelection } from './konvaGroupCommands'
 import { createSeedShapes, createStressStrokes } from './konvaSeedShapes'
 import { updateTextShape } from './konvaShapeCommands'
 import { useKonvaBrowserSelectionGuard } from './useKonvaBrowserSelectionGuard'
@@ -192,6 +193,8 @@ export function KonvaCanvasSpike() {
           const rect = event.currentTarget.getBoundingClientRect()
           const point = { x: event.clientX - rect.left, y: event.clientY - rect.top }
           const world = screenToWorld(point, camera)
+          const targetSelection = getContextTargetSelection(document.shapes, world)
+          if (targetSelection.length > 0) setSelectedIds(targetSelection)
           lastPastePointRef.current = world
           setContextMenu({ worldX: world.x, worldY: world.y, x: point.x, y: point.y })
         }}
@@ -280,4 +283,13 @@ export function KonvaCanvasSpike() {
       </section>
     </main>
   )
+}
+
+function getContextTargetSelection(shapes: CanvasShape[], point: CanvasPoint) {
+  const hitShape = [...shapes].reverse().find((shape) => boundsContainPoint(getShapeBounds(shape), point))
+  return hitShape ? expandKonvaGroupedShapeIds(shapes, [hitShape.id]) : []
+}
+
+function boundsContainPoint(bounds: ReturnType<typeof getShapeBounds>, point: CanvasPoint) {
+  return point.x >= bounds.minX && point.x <= bounds.maxX && point.y >= bounds.minY && point.y <= bounds.maxY
 }
