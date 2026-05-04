@@ -7,6 +7,7 @@ import {
   withCanvasShapes,
   type CanvasBounds,
   type CanvasDocument,
+  type CanvasImageShape,
   type CanvasPoint,
 } from '@/features/canvas-engine'
 import { useCanvasSettingsStore } from '@/features/canvas-settings/canvasSettingsStore'
@@ -26,6 +27,7 @@ import {
   toggleSelectedId,
 } from './konvaSelectionUtils'
 import { clearBrowserSelection, getStagePointer, isStageTarget } from './konvaStageHelpers'
+import { updateKonvaImageCropFromHandle, type KonvaImageCropHandle } from './konvaImageCropCommands'
 import { updateLineEndpointShapes, updateLineRouteHandleShapes } from './konvaLineEndpointUtils'
 import { getPointAngle, rotateShapesAroundCenter } from './konvaRotationUtils'
 import { resizeShapesFromRotatedBox } from './konvaRotatedResize'
@@ -84,6 +86,20 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     const session = startNodeConnection(shapeId, portId, event)
     if (session) sessionRef.current = session
   }, [startNodeConnection])
+  const handleImageCropStart = useCallback((shapeId: string, handle: KonvaImageCropHandle, event: KonvaEventObject<PointerEvent>) => {
+    const originShape = documentRef.current.shapes.find((shape): shape is CanvasImageShape => shape.id === shapeId && shape.type === 'image')
+    if (!originShape) return
+    event.cancelBubble = true
+    event.evt.preventDefault()
+    options.onHistoryCheckpoint(documentRef.current)
+    sessionRef.current = {
+      handle,
+      originShape,
+      pointerId: event.evt.pointerId,
+      shapeId,
+      type: 'image-crop',
+    }
+  }, [options])
   const handleWheel = useKonvaWheelHandler({
     applyCamera,
     cameraRef,
@@ -245,6 +261,13 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       updateNodeConnectionPreview(session, worldPoint)
       return
     }
+    if (session.type === 'image-crop') {
+      const nextShape = updateKonvaImageCropFromHandle(session.originShape, session.handle, worldPoint)
+      previewDocument(withCanvasShapes(documentRef.current, documentRef.current.shapes.map((shape) => (
+        shape.id === session.shapeId ? nextShape : shape
+      ))))
+      return
+    }
     updateCreateDraft(session, worldPoint, event)
   }
   const handlePointerUp = (event: KonvaEventObject<PointerEvent>) => {
@@ -274,6 +297,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       clearNodeConnectionPreview()
     },
     handlePointerMove, handlePointerUp, handleResizeStart, handleRotateStart,
+    handleImageCropStart,
     handleShapeDragEnd, handleShapeDragMove, handleShapeDragStart, handleShapeSelect, handleWheel,
     runtimeConnectionPreview, selectedBoundsOverride, selectionBox,
     snapGuides: snapGuides.length > 0 ? snapGuides : resizeSnapGuides,

@@ -84,6 +84,7 @@ function createImageNodeData(image: {
 }): JsonObject {
   return pruneUndefined({
     assetId: image.assetId,
+    crop: undefined,
     imageHeight: image.height,
     imageWidth: image.width,
     inputSourceEdgeId: undefined,

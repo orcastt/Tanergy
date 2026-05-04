@@ -93,6 +93,12 @@ export type CanvasArrowShape = CanvasShapeBase<'arrow', {
 export type CanvasImageShape = CanvasShapeBase<'image', CanvasSize & {
   assetId: string
   alt?: string
+  crop?: {
+    height: number
+    width: number
+    x: number
+    y: number
+  }
   mime?: string
   originalUrl?: string
   thumbnail1024Url?: string

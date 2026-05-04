@@ -3,6 +3,7 @@ import { Fragment } from 'react'
 import { Circle, Group, Line, Path, Rect } from 'react-konva'
 import { boundsToRect, type CanvasBounds, type CanvasShape } from '@/features/canvas-engine'
 import type { KonvaLineEndpointHandle, KonvaLineRouteHandle, KonvaResizeHandle } from './konvaCanvasTypes'
+import type { KonvaImageCropHandle } from './konvaImageCropCommands'
 import { KonvaLockIndicators } from './KonvaLockIndicators'
 import { KonvaLineControls } from './KonvaLineControls'
 import { getKonvaOrientedBounds } from './konvaOrientedBounds'
@@ -13,11 +14,13 @@ import type { KonvaSnapGuide } from './konvaSnapping'
 
 type KonvaSelectionOverlayProps = {
   selectedBoundsOverride?: CanvasBounds | null
+  cropEditingImageId?: string | null
   selectionBox: CanvasBounds | null
   selectedIds: string[]
   shapes: CanvasShape[]
   snapGuides: KonvaSnapGuide[]
   zoom: number
+  onImageCropStart: (shapeId: string, handle: KonvaImageCropHandle, event: KonvaEventObject<PointerEvent>) => void
   onLineEndpointStart: (shapeId: string, endpoint: KonvaLineEndpointHandle, event: KonvaEventObject<PointerEvent>) => void
   onLineRouteHandleStart: (shapeId: string, handle: KonvaLineRouteHandle, event: KonvaEventObject<PointerEvent>) => void
   onResizeStart: (shapeIds: string[], handle: KonvaResizeHandle, event: KonvaEventObject<PointerEvent>) => void
@@ -25,6 +28,8 @@ type KonvaSelectionOverlayProps = {
 }
 
 export function KonvaSelectionOverlay({
+  cropEditingImageId,
+  onImageCropStart,
   onLineEndpointStart,
   onLineRouteHandleStart,
   onResizeStart,
@@ -42,6 +47,7 @@ export function KonvaSelectionOverlay({
   const canResize = selectedShapes.length > 0
   const onlySelectedShape = selectedShapes.length === 1 ? selectedShapes[0] : null
   const singleLineShape = onlySelectedShape && (onlySelectedShape.type === 'line' || onlySelectedShape.type === 'arrow') ? onlySelectedShape : null
+  const cropEditingShape = onlySelectedShape?.type === 'image' && onlySelectedShape.id === cropEditingImageId ? onlySelectedShape : null
   const singleBoxShape = onlySelectedShape && canKonvaShapeRotate(onlySelectedShape) && isBoxCanvasShape(onlySelectedShape) && !selectedBoundsOverride ? onlySelectedShape : null
   const orientedSelectionBounds = selectedShapes.length > 1 && selectionCanRotate ? getKonvaOrientedBounds(selectedShapes) : null
   const showUnionBox = Boolean(selectedBoundsOverride) || selectedIds.length > 1
@@ -61,7 +67,13 @@ export function KonvaSelectionOverlay({
       ) : selectedBounds && showUnionBox ? (
         <SelectionRect bounds={selectedBounds} isSelection zoom={zoom} />
       ) : null}
-      {singleLineShape && !selectedBoundsOverride ? (
+      {cropEditingShape ? (
+        <ImageCropControls
+          onCropStart={(handle, event) => onImageCropStart(cropEditingShape.id, handle, event)}
+          shape={cropEditingShape}
+          zoom={zoom}
+        />
+      ) : singleLineShape && !selectedBoundsOverride ? (
         <KonvaLineControls
           onEndpointStart={(endpoint, event) => onLineEndpointStart(singleLineShape.id, endpoint, event)}
           onRouteHandleStart={(handle, event) => onLineRouteHandleStart(singleLineShape.id, handle, event)}
@@ -150,6 +162,78 @@ function SnapGuide({ guide, zoom }: { guide: KonvaSnapGuide; zoom: number }) {
       stroke="#0ea5e9"
       strokeWidth={1.4 / zoom}
     />
+  )
+}
+
+function ImageCropControls({
+  onCropStart,
+  shape,
+  zoom,
+}: {
+  onCropStart: (handle: KonvaImageCropHandle, event: KonvaEventObject<PointerEvent>) => void
+  shape: Extract<CanvasShape, { type: 'image' }>
+  zoom: number
+}) {
+  const width = shape.props.width
+  const height = shape.props.height
+  const bounds = { maxX: width / 2, maxY: height / 2, minX: -width / 2, minY: -height / 2 }
+  const hitWidth = Math.max(12, 16 / zoom)
+  const visibleRadius = Math.max(4.5, 5.5 / zoom)
+  const visibleWidth = Math.max(2, 2.4 / zoom)
+  return (
+    <Group rotation={shape.rotation ?? 0} x={shape.x + width / 2} y={shape.y + height / 2}>
+      <SelectionRect bounds={bounds} isSelection zoom={zoom} />
+      <CropEdge handle="top" hitWidth={hitWidth} onCropStart={onCropStart} points={[bounds.minX, bounds.minY, bounds.maxX, bounds.minY]} visibleWidth={visibleWidth} />
+      <CropEdge handle="right" hitWidth={hitWidth} onCropStart={onCropStart} points={[bounds.maxX, bounds.minY, bounds.maxX, bounds.maxY]} visibleWidth={visibleWidth} />
+      <CropEdge handle="bottom" hitWidth={hitWidth} onCropStart={onCropStart} points={[bounds.minX, bounds.maxY, bounds.maxX, bounds.maxY]} visibleWidth={visibleWidth} />
+      <CropEdge handle="left" hitWidth={hitWidth} onCropStart={onCropStart} points={[bounds.minX, bounds.minY, bounds.minX, bounds.maxY]} visibleWidth={visibleWidth} />
+      <CropCornerDots bounds={bounds} radius={visibleRadius} zoom={zoom} />
+    </Group>
+  )
+}
+
+function CropEdge({
+  handle,
+  hitWidth,
+  onCropStart,
+  points,
+  visibleWidth,
+}: {
+  handle: KonvaImageCropHandle
+  hitWidth: number
+  onCropStart: (handle: KonvaImageCropHandle, event: KonvaEventObject<PointerEvent>) => void
+  points: number[]
+  visibleWidth: number
+}) {
+  return (
+    <>
+      <Line hitStrokeWidth={hitWidth} onPointerDown={(event) => onCropStart(handle, event)} points={points} stroke="rgba(17, 24, 39, 0.001)" strokeWidth={hitWidth} />
+      <Line listening={false} points={points} stroke="#6b5cff" strokeLinecap="round" strokeWidth={visibleWidth} />
+    </>
+  )
+}
+
+function CropCornerDots({ bounds, radius, zoom }: { bounds: CanvasBounds; radius: number; zoom: number }) {
+  return (
+    <>
+      {[
+        [bounds.minX, bounds.minY],
+        [bounds.maxX, bounds.minY],
+        [bounds.maxX, bounds.maxY],
+        [bounds.minX, bounds.maxY],
+      ].map(([x, y], index) => (
+        <Circle
+          fill="#ffffff"
+          key={index}
+          listening={false}
+          radius={radius}
+          stroke="#6b5cff"
+          strokeWidth={1.2 / zoom}
+          x={x}
+          y={y}
+        />
+      ))}
+    </>
   )
 }
 

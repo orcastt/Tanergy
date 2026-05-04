@@ -2,6 +2,7 @@ import { withCanvasShapes, type CanvasDocument, type CanvasImageShape, type Canv
 import { hasRemotePersistenceApi, persistenceApiUrl, persistenceAssetUrl, persistenceAuthHeaders } from '@/features/api/persistenceApi'
 import type { TangentAssetRecord, TangentAssetResponse } from '@/features/assets/assetTypes'
 import { createDefaultNodeData, createDefaultRuntimeSummary, getNodeDefinition } from '@/features/node-runtime/registry'
+import { getRuntimeGraphImageCrop } from '@/features/node-runtime/runtimeGraphAssets'
 import type { JsonObject } from '@/types/nodeRuntime'
 
 const imageNodeWidth = 420
@@ -15,6 +16,21 @@ export function createKonvaImageNodeFromCanvasImage(document: CanvasDocument, sh
   return {
     document: withCanvasShapes(document, [...document.shapes, node]),
     selectedIds: [node.id],
+  }
+}
+
+export function createKonvaImageNodesFromCanvasImages(document: CanvasDocument, shapeIds: string[]) {
+  const selected = new Set(shapeIds)
+  const images = document.shapes.filter((shape): shape is CanvasImageShape => (
+    selected.has(shape.id) &&
+    shape.type === 'image' &&
+    !shape.props.assetId.startsWith('remote-')
+  ))
+  if (images.length === 0) return null
+  const nodes = images.map(createImageNodeShapeFromImage)
+  return {
+    document: withCanvasShapes(document, [...document.shapes, ...nodes]),
+    selectedIds: nodes.map((node) => node.id),
   }
 }
 
@@ -45,10 +61,11 @@ export async function createKonvaCanvasImageFromImageNode(document: CanvasDocume
 }
 
 export function canCreateImageNodeFromSelection(document: CanvasDocument, selectedIds: string[]) {
-  return selectedIds.length === 1 && document.shapes.some((shape) => (
-    shape.id === selectedIds[0] &&
-    shape.type === 'image' &&
-    !shape.props.assetId.startsWith('remote-')
+  if (selectedIds.length === 0) return false
+  const selected = new Set(selectedIds)
+  return document.shapes.some((shape) => (
+    selected.has(shape.id) &&
+    shape.type === 'image' && !shape.props.assetId.startsWith('remote-')
   ))
 }
 
@@ -66,10 +83,15 @@ function createImageNodeShapeFromImage(image: CanvasImageShape): CanvasNodeShape
   const data = pruneUndefined({
     ...createDefaultNodeData('image'),
     assetId: image.props.assetId,
+    crop: image.props.crop,
     imageHeight: image.props.height,
     imageWidth: image.props.width,
+    originalUrl: image.props.originalUrl,
     source: 'editor_export',
-    title: image.props.title ?? image.props.alt ?? image.props.assetId,
+    thumbnail1024Url: image.props.thumbnail1024Url,
+    thumbnail256Url: image.props.thumbnail256Url,
+    thumbnail512Url: image.props.thumbnail512Url,
+    title: 'Image',
   })
   return {
     id: createKonvaNodeId('image-node'),
@@ -134,6 +156,7 @@ function createImageShapeFromNode(node: CanvasNodeShape, asset: TangentAssetReco
     id: createKonvaNodeId('image'),
     props: {
       assetId,
+      crop: getRuntimeGraphImageCrop(node.props.data.crop),
       height: size.height,
       mime: asset.mime,
       originalUrl: asset.originalUrl,

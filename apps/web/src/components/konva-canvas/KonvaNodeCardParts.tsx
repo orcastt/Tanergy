@@ -180,7 +180,7 @@ function NodeCardFieldDropdown({
   )
 }
 
-function stopNodeCardControlEvent(event: KonvaEventObject<Event>) {
+export function stopNodeCardControlEvent(event: KonvaEventObject<Event>) {
   event.cancelBubble = true
 }
 

@@ -12,25 +12,25 @@ type KonvaSelectionToolbarProps = {
   document: CanvasDocument
   canCaptureSelection: boolean
   canConvertImageToNode: boolean
-  canNodeToCanvas: boolean
+  canCropImage: boolean
   isCapturingSelection?: boolean
   selectedIds: string[]
   shellRect: DOMRect | null
   onCaptureSelection: () => void
   onConvertImageToNode: () => void
-  onNodeToCanvas: () => void
+  onCropImage: () => void
 }
 
 export function KonvaSelectionToolbar({
   camera,
   canCaptureSelection,
   canConvertImageToNode,
-  canNodeToCanvas,
+  canCropImage,
   document,
   isCapturingSelection,
   onCaptureSelection,
   onConvertImageToNode,
-  onNodeToCanvas,
+  onCropImage,
   selectedIds,
   shellRect,
 }: KonvaSelectionToolbarProps) {
@@ -48,26 +48,28 @@ export function KonvaSelectionToolbar({
       role="toolbar"
       style={{ left: point.x, top: point.y }}
     >
-      <button
-        aria-label="Convert image to node"
-        className="selection-toolbar__btn"
-        data-tooltip="Convert image to node"
-        disabled={!canConvertImageToNode}
-        onClick={onConvertImageToNode}
-        type="button"
-      >
-        <span aria-hidden className="style-action-icon style-action-icon--image-node" />
-      </button>
-      <button
-        aria-label="Image node to canvas"
-        className="selection-toolbar__btn"
-        data-tooltip="Image node to canvas"
-        disabled={!canNodeToCanvas}
-        onClick={onNodeToCanvas}
-        type="button"
-      >
-        <span aria-hidden className="style-action-icon style-action-icon--node-to-canvas" />
-      </button>
+      {canConvertImageToNode ? (
+        <button
+          aria-label="Convert image to node"
+          className="selection-toolbar__btn"
+          data-tooltip="Convert image to node"
+          onClick={onConvertImageToNode}
+          type="button"
+        >
+          <span aria-hidden className="style-action-icon style-action-icon--image-node" />
+        </button>
+      ) : null}
+      {canCropImage ? (
+        <button
+          aria-label="Crop image"
+          className="selection-toolbar__btn"
+          data-tooltip="Crop image"
+          onClick={onCropImage}
+          type="button"
+        >
+          <span aria-hidden className="style-action-icon style-action-icon--crop" />
+        </button>
+      ) : null}
       <button
         aria-label="Capture selection to image node"
         className="selection-toolbar__btn"

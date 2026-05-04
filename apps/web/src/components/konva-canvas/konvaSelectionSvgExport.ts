@@ -3,6 +3,7 @@ import { boundsToRect, expandBounds, getShapeBounds } from '@/features/canvas-en
 import { getArrowHeadPoints, getCloudPath, getFreehandPath } from './konvaPathUtils'
 import { getLineArrowHeadAnchor, getLineHead, getLinePathData, getLineStartHeadAnchor, type KonvaLineShape } from './konvaLineRouteUtils'
 import { getKonvaShapeFontSize, getKonvaShapeTextAlign, getStickyFillColor, getStrokeDash, resolveKonvaShapeStyle } from './konvaCanvasStyle'
+import { renderSvgImageShape, renderSvgNodeCardShape } from './konvaSelectionSvgImages'
 
 export type KonvaSelectionSvgExportDiagnosticCode =
   | 'empty_selection'
@@ -82,8 +83,8 @@ export function createKonvaSelectionSvgClipboardPayload(svg: string): { text: st
 }
 
 function renderShapeSvg(shape: CanvasShape, diagnostics: KonvaSelectionSvgExportDiagnostic[]): string | null {
-  if (shape.type === 'image') return renderPlaceholder(shape, diagnostics, 'Image asset omitted from SVG export.')
-  if (shape.type === 'node_card') return renderPlaceholder(shape, diagnostics, 'Node card represented as an SVG placeholder.')
+  if (shape.type === 'image') return renderSvgImageShape(shape, diagnostics)
+  if (shape.type === 'node_card') return renderSvgNodeCardShape(shape, diagnostics)
   if (shape.type === 'line' || shape.type === 'arrow') return renderLineLikeShape(shape)
   if (shape.type === 'stroke') return renderStrokeShape(shape)
   if (shape.type === 'text') return renderTextShape(shape)
@@ -179,20 +180,6 @@ function renderLineHead(
   const anchor = position === 'start' ? getLineStartHeadAnchor(shape) : getLineArrowHeadAnchor(shape)
   const points = getArrowHeadPoints(point, anchor, Math.max(12, strokeWidth * 5))
   return `<polygon points="${numberPointsToString(points)}" fill="${escapeAttribute(stroke)}" opacity="${format(opacity)}" />`
-}
-
-function renderPlaceholder(shape: Extract<CanvasShape, { type: 'image' | 'node_card' }>, diagnostics: KonvaSelectionSvgExportDiagnostic[], message: string): string {
-  diagnostics.push({ code: 'placeholder', message, shapeId: shape.id, shapeType: shape.type })
-  return renderPlaceholderRect(shape, shape.type === 'image' ? shape.props.title ?? shape.props.alt ?? 'Image' : shape.props.nodeType)
-}
-
-function renderPlaceholderRect(shape: Extract<CanvasShape, { props: { height: number; width: number } }>, title: string): string {
-  const body = [
-    `<rect width="${format(shape.props.width)}" height="${format(shape.props.height)}" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="6 4" />`,
-    `<title>${escapeText(title)}</title>`,
-    renderText(title, 12, 24, Math.max(1, shape.props.width - 24), 13, '#475569', 'left'),
-  ].join('\n    ')
-  return wrapShape(shape, body)
 }
 
 function renderText(

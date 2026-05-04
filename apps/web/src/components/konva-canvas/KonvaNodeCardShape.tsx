@@ -16,23 +16,25 @@ import {
   NodeCardRunButton,
   NodeCardStatusBadge,
   NodeCardTextBox,
+  stopNodeCardControlEvent,
 } from './KonvaNodeCardParts'
-import { getGeneratedOutputSource, getNodeImageSource, NodeImagePreview } from './KonvaNodeImagePreview'
+import { getGeneratedOutputSource, getNodeImageCrop, getNodeImageSource, NodeImagePreview } from './KonvaNodeImagePreview'
 
 type KonvaNodeCardShapeProps = {
   onFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
+  onImageNodeToCanvas?: (shapeId: string) => void
   onPortPointerDown?: (shapeId: string, portId: string, event: KonvaEventObject<PointerEvent>) => void
   onRunToggle?: (shapeId: string) => void
   opacity: number
   shape: CanvasNodeShape
 }
 
-export function KonvaNodeCardShape({ onFieldChange, onPortPointerDown, onRunToggle, opacity, shape }: KonvaNodeCardShapeProps) {
+export function KonvaNodeCardShape({ onFieldChange, onImageNodeToCanvas, onPortPointerDown, onRunToggle, opacity, shape }: KonvaNodeCardShapeProps) {
   const [hoveredPort, setHoveredPort] = useState<ResolvedNodePort | null>(null)
   const [openFieldName, setOpenFieldName] = useState<string | null>(null)
   const definition = getNodeDefinition(shape.props.nodeType)
   const accent = definition.accentColor
-  const title = getStringValue(shape.props.data.title) || definition.displayName
+  const title = shape.props.nodeType === 'image' ? 'Image' : getStringValue(shape.props.data.title) || definition.displayName
   const status = getStringValue(shape.props.runtimeSummary.status) || 'idle'
   const ports = getResolvedNodePorts(shape.props.nodeType, shape.props.data)
   const statusTone = getStatusTone(status)
@@ -61,7 +63,11 @@ export function KonvaNodeCardShape({ onFieldChange, onPortPointerDown, onRunTogg
         x={14}
         y={16}
       />
-      {canRunNode(shape) ? <NodeCardRunButton onRunToggle={onRunToggle} shape={shape} status={status} /> : <NodeCardStatusBadge shape={shape} status={status} tone={statusTone} />}
+      {shape.props.nodeType === 'image'
+        ? <ImageNodeToCanvasButton onImageNodeToCanvas={onImageNodeToCanvas} shape={shape} />
+        : canRunNode(shape)
+          ? <NodeCardRunButton onRunToggle={onRunToggle} shape={shape} status={status} />
+          : <NodeCardStatusBadge shape={shape} status={status} tone={statusTone} />}
       <NodeBody
         accent={accent}
         fields={definition.cardFields}
@@ -99,6 +105,26 @@ export function KonvaNodeCardShape({ onFieldChange, onPortPointerDown, onRunTogg
         )
       })}
       {hoveredPort ? <PortTooltip port={hoveredPort} shape={shape} /> : null}
+    </Group>
+  )
+}
+
+function ImageNodeToCanvasButton({ onImageNodeToCanvas, shape }: { onImageNodeToCanvas?: (shapeId: string) => void; shape: CanvasNodeShape }) {
+  const width = 92
+  const x = shape.props.width - width - 14
+  const hasImage = typeof shape.props.data.assetId === 'string' && !shape.props.data.assetId.startsWith('input:')
+  return (
+    <Group
+      onClick={(event) => {
+        event.cancelBubble = true
+        if (hasImage) onImageNodeToCanvas?.(shape.id)
+      }}
+      onDblClick={stopNodeCardControlEvent}
+      onPointerDown={stopNodeCardControlEvent}
+      opacity={hasImage ? 1 : 0.42}
+    >
+      <Rect cornerRadius={10} fill="#111827" height={24} width={width} x={x} y={12} />
+      <Text align="center" fill="#ffffff" fontFamily="Inter, system-ui, sans-serif" fontSize={11} fontStyle="bold" height={24} text="To Canvas" verticalAlign="middle" width={width} x={x} y={12} />
     </Group>
   )
 }
@@ -184,11 +210,12 @@ function GenerationBody({ fields, onFieldChange, openFieldName, setOpenFieldName
 
 function ImageBody({ accent, shape }: { accent: string; shape: CanvasNodeShape }) {
   const bounds = { height: shape.props.height - 88, width: shape.props.width - 28, x: 14, y: 54 }
+  const imageCrop = getNodeImageCrop(shape.props.data)
   const imageSource = getNodeImageSource(shape.props.data)
   return (
     <>
       <Rect cornerRadius={12} fill="#eef4fb" height={bounds.height} width={bounds.width} x={bounds.x} y={bounds.y} />
-      <NodeImagePreview bounds={bounds} source={imageSource} />
+      <NodeImagePreview bounds={bounds} crop={imageCrop} source={imageSource} />
       {imageSource ? null : (
         <>
           <Text align="center" fill="#ffffff" fontFamily="Inter, system-ui, sans-serif" fontSize={12} fontStyle="bold" text="Image" width={70} x={shape.props.width / 2 - 35} y={bounds.y + bounds.height / 2 - 8} />

@@ -1,5 +1,6 @@
 import type { CanvasBounds, CanvasPoint, CanvasShape, StrokePoint } from '@/features/canvas-engine'
 import type { NodePortDataType } from '@/types/nodeRuntime'
+import type { KonvaImageCropHandle } from './konvaImageCropCommands'
 
 export type KonvaCanvasTool =
   | 'hand'
@@ -94,6 +95,13 @@ export type KonvaToolSession =
       sourcePortId: string
       sourceShapeId: string
       type: 'node-connection'
+    }
+  | {
+      handle: KonvaImageCropHandle
+      originShape: Extract<CanvasShape, { type: 'image' }>
+      pointerId?: number
+      shapeId: string
+      type: 'image-crop'
     }
 
 export const konvaToolLabels: Record<KonvaCanvasTool, string> = {

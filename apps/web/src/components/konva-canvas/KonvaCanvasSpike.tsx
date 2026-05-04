@@ -18,6 +18,7 @@ import { KonvaNodeCreateMenu } from './KonvaNodeCreateMenu'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
 import { konvaDefaultShapeStyle } from './konvaCanvasStyle'
 import { runKonvaContextAction } from './konvaContextActions'
+import { canCropKonvaImageSelection, getCropImageIdForSelection } from './konvaImageCropCommands'
 import { createSeedShapes } from './konvaSeedShapes'
 import { KonvaSelectionToolbar } from './KonvaSelectionToolbar'
 import { updateTextShape } from './konvaShapeCommands'
@@ -46,6 +47,7 @@ export function KonvaCanvasSpike() {
   const [nextStyle, setNextStyle] = useState<CanvasShapeStyle>(konvaDefaultShapeStyle)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
+  const [cropEditingImageId, setCropEditingImageId] = useState<string | null>(null)
   const [editingTextId, setEditingTextId] = useState<string | null>(null)
   const [editingNodeText, setEditingNodeText] = useState<{ fieldName: KonvaNodeTextFieldName; shapeId: string } | null>(null)
   const [contextMenu, setContextMenu] = useState<{ worldX: number; worldY: number; x: number; y: number } | null>(null)
@@ -55,6 +57,7 @@ export function KonvaCanvasSpike() {
   const handleSelectionChange = useCallback((shapeIds: string[]) => {
     setSelectedIds(shapeIds)
     if (shapeIds.length > 0) setSelectedEdgeId(null)
+    setCropEditingImageId((current) => (shapeIds.length === 1 && shapeIds[0] === current ? current : null))
   }, [])
   useKonvaBrowserSelectionGuard(shellRef)
   const { diagnostics, setShellRect, shellRect, size } = useKonvaCanvasMetrics({
@@ -110,7 +113,7 @@ export function KonvaCanvasSpike() {
   }, [document.shapes, selectedIds])
   const canLockSelection = selectedShapes.some((shape) => !shape.isLocked)
   const canUnlockSelection = selectedShapes.some((shape) => shape.isLocked)
-  const { canConvertImageToNode, canNodeToCanvas, convertImageToNode, sendImageNodeToCanvas } = useKonvaImageNodeActions({
+  const { canConvertImageToNode, convertImageToNode, sendImageNodeToCanvas } = useKonvaImageNodeActions({
     document,
     history,
     onDocumentChange: setDocument,
@@ -126,6 +129,13 @@ export function KonvaCanvasSpike() {
     onSelectionChange: handleSelectionChange,
     size,
   })
+  const canCropImage = canCropKonvaImageSelection(document, selectedIds)
+  const cropImage = useCallback(() => {
+    const imageId = getCropImageIdForSelection(document, selectedIds)
+    if (!imageId) return
+    setActiveTool('select')
+    setCropEditingImageId((current) => (current === imageId ? null : imageId))
+  }, [document, selectedIds])
 
   const editingTextShape = document.shapes.find((shape): shape is KonvaEditableTextShape => shape.id === editingTextId && isKonvaEditableTextShape(shape))
   const editingNodeTextShape = editingNodeText
@@ -210,6 +220,7 @@ export function KonvaCanvasSpike() {
           activeTool={activeTool}
           camera={camera}
           captureMode={selectionExport.captureMode}
+          cropEditingImageId={cropEditingImageId}
           document={document}
           height={size.height}
           isSpacePanning={isSpacePanning}
@@ -228,6 +239,7 @@ export function KonvaCanvasSpike() {
             handleSelectionChange([])
           }}
           onHistoryCheckpoint={history.checkpoint}
+          onImageNodeToCanvas={sendImageNodeToCanvas}
           onNodeFieldChange={setNodeField}
           onNodeRunToggle={toggleNodeRun}
           onSelectionChange={handleSelectionChange}
@@ -302,12 +314,12 @@ export function KonvaCanvasSpike() {
           camera={camera}
           canCaptureSelection={selectionExport.canCaptureSelection}
           canConvertImageToNode={canConvertImageToNode}
-          canNodeToCanvas={canNodeToCanvas}
+          canCropImage={canCropImage}
           document={document}
           isCapturingSelection={selectionExport.isCapturingSelection}
           onCaptureSelection={() => { void selectionExport.handleCaptureSelectionToImageNode() }}
           onConvertImageToNode={convertImageToNode}
-          onNodeToCanvas={sendImageNodeToCanvas}
+          onCropImage={cropImage}
           selectedIds={selectedIds}
           shellRect={shellRect}
         />

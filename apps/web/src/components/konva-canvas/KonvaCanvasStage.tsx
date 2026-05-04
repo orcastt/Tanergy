@@ -19,6 +19,7 @@ type KonvaCanvasStageProps = {
   height: number
   isSpacePanning: boolean
   nextStyle: CanvasShapeStyle
+  cropEditingImageId?: string | null
   selectedEdgeId: string | null
   selectedIds: string[]
   width: number
@@ -29,6 +30,7 @@ type KonvaCanvasStageProps = {
   onEdgeDisconnect: (edgeId: string) => void
   onEdgeSelect: (edgeId: string | null) => void
   onHistoryCheckpoint: (document: CanvasDocument) => void
+  onImageNodeToCanvas: (shapeId: string) => void
   onNodeFieldChange: (shapeId: string, fieldName: string, value: string | number) => void
   onNodeRunToggle: (shapeId: string) => void
   onSelectionChange: (shapeIds: string[]) => void
@@ -47,6 +49,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
     handlePointerUp,
     handleLineEndpointStart,
     handleLineRouteHandleStart,
+    handleImageCropStart,
     handleNodePortPointerDown,
     handleResizeStart,
     handleRotateStart,
@@ -81,6 +84,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
       onDragEnd={handleShapeDragEnd}
       onDragStart={handleShapeDragStart}
       onDoubleClick={props.onTextEditStart}
+      onImageNodeToCanvas={props.onImageNodeToCanvas}
       onNodeFieldChange={props.onNodeFieldChange}
       onNodePortPointerDown={handleNodePortPointerDown}
       onNodeRunToggle={props.onNodeRunToggle}
@@ -162,6 +166,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
             onDragEnd={handleShapeDragEnd}
             onDragStart={handleShapeDragStart}
             onDoubleClick={props.onTextEditStart}
+            onImageNodeToCanvas={props.onImageNodeToCanvas}
             onNodeFieldChange={props.onNodeFieldChange}
             onSelect={handleShapeSelect}
             onNodeRunToggle={props.onNodeRunToggle}
@@ -177,6 +182,8 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
       {props.captureMode ? null : (
         <Layer>
           <KonvaSelectionOverlay
+            cropEditingImageId={props.cropEditingImageId}
+            onImageCropStart={handleImageCropStart}
             onLineEndpointStart={handleLineEndpointStart}
             onLineRouteHandleStart={handleLineRouteHandleStart}
             onResizeStart={handleResizeStart}

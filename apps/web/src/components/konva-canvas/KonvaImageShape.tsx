@@ -27,6 +27,7 @@ export function KonvaImageShape({ opacity, shape, zoom }: KonvaImageShapeProps) 
 
   return (
     <KonvaImage
+      crop={getImageCrop(shape, image)}
       height={shape.props.height}
       image={image}
       imageSmoothingEnabled={zoom > 0.5}
@@ -34,6 +35,19 @@ export function KonvaImageShape({ opacity, shape, zoom }: KonvaImageShapeProps) 
       width={shape.props.width}
     />
   )
+}
+
+function getImageCrop(shape: CanvasImageShape, image: HTMLImageElement) {
+  const crop = shape.props.crop
+  if (!crop) return undefined
+  const naturalWidth = Math.max(1, image.naturalWidth)
+  const naturalHeight = Math.max(1, image.naturalHeight)
+  return {
+    height: clamp(crop.height, 0.01, 1) * naturalHeight,
+    width: clamp(crop.width, 0.01, 1) * naturalWidth,
+    x: clamp(crop.x, 0, 1) * naturalWidth,
+    y: clamp(crop.y, 0, 1) * naturalHeight,
+  }
 }
 
 function useLoadedImage(src: string | null) {
@@ -74,4 +88,8 @@ function useKonvaImageSource(shape: CanvasImageShape, zoom: number) {
     }
     return props.originalUrl ?? props.thumbnail1024Url ?? props.thumbnail512Url ?? props.thumbnail256Url ?? null
   }, [shape.props, zoom])
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
 }

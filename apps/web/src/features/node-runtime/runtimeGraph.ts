@@ -132,6 +132,7 @@ function syncImageNodeInputPreviews(document: CanvasDocument): CanvasDocument {
     return updateNodeData(shape, pruneUndefined({
       ...shape.props.data,
       ...payload,
+      crop: payload.crop,
       inputSourceEdgeId: input.id,
     }))
   })
@@ -178,6 +179,7 @@ function clearUpstreamImageData(data: JsonObject): JsonObject {
   return pruneUndefined({
     ...data,
     assetId: undefined,
+    crop: undefined,
     imageHeight: undefined,
     imageWidth: undefined,
     inputSourceEdgeId: undefined,

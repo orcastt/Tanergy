@@ -25,6 +25,7 @@ type KonvaCanvasShapeProps = {
   onDragEnd: (shapeId: string, x: number, y: number) => void
   onDoubleClick: (shapeId: string) => void
   onNodeFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
+  onImageNodeToCanvas?: (shapeId: string) => void
   onNodePortPointerDown?: (shapeId: string, portId: string, event: KonvaEventObject<PointerEvent>) => void
   onNodeRunToggle?: (shapeId: string) => void
   onSelect: (shapeId: string, options?: { additive?: boolean }) => void
@@ -37,6 +38,7 @@ function KonvaCanvasShapeComponent({
   onDragStart,
   onDragEnd,
   onDoubleClick,
+  onImageNodeToCanvas,
   onNodeFieldChange,
   onNodePortPointerDown,
   onNodeRunToggle,
@@ -49,8 +51,8 @@ function KonvaCanvasShapeComponent({
 }: KonvaCanvasShapeProps) {
   const style = useMemo(() => resolveKonvaShapeStyle(shape.style), [shape.style])
   const renderedShape = useMemo(
-    () => renderShape(shape, style, isSelected, zoom, onNodeFieldChange, onNodePortPointerDown, onNodeRunToggle),
-    [isSelected, onNodeFieldChange, onNodePortPointerDown, onNodeRunToggle, shape, style, zoom]
+    () => renderShape(shape, style, isSelected, zoom, onNodeFieldChange, onImageNodeToCanvas, onNodePortPointerDown, onNodeRunToggle),
+    [isSelected, onImageNodeToCanvas, onNodeFieldChange, onNodePortPointerDown, onNodeRunToggle, shape, style, zoom]
   )
   const canInteract = interactive && !panMode
   const canSelect = canInteract && selectable
@@ -122,6 +124,7 @@ function areShapePropsEqual(previous: KonvaCanvasShapeProps, next: KonvaCanvasSh
   if (previous.toolAllowsDrag !== next.toolAllowsDrag) return false
   if (previous.onDoubleClick !== next.onDoubleClick) return false
   if (previous.onNodeFieldChange !== next.onNodeFieldChange) return false
+  if (previous.onImageNodeToCanvas !== next.onImageNodeToCanvas) return false
   if (previous.onNodePortPointerDown !== next.onNodePortPointerDown) return false
   if (previous.onNodeRunToggle !== next.onNodeRunToggle) return false
   if (next.isSelected && previous.zoom !== next.zoom) return false
@@ -133,6 +136,7 @@ function renderShape(
   isSelected: boolean,
   zoom: number,
   onNodeFieldChange?: KonvaCanvasShapeProps['onNodeFieldChange'],
+  onImageNodeToCanvas?: KonvaCanvasShapeProps['onImageNodeToCanvas'],
   onNodePortPointerDown?: KonvaCanvasShapeProps['onNodePortPointerDown'],
   onNodeRunToggle?: KonvaCanvasShapeProps['onNodeRunToggle']
 ) {
@@ -226,7 +230,7 @@ function renderShape(
     return <KonvaImageShape opacity={opacity} shape={shape} zoom={zoom} />
   }
   if (shape.type === 'node_card') {
-    return <KonvaNodeCardShape onFieldChange={onNodeFieldChange} onPortPointerDown={onNodePortPointerDown} onRunToggle={onNodeRunToggle} opacity={opacity} shape={shape} />
+    return <KonvaNodeCardShape onFieldChange={onNodeFieldChange} onImageNodeToCanvas={onImageNodeToCanvas} onPortPointerDown={onNodePortPointerDown} onRunToggle={onNodeRunToggle} opacity={opacity} shape={shape} />
   }
   return null
 }

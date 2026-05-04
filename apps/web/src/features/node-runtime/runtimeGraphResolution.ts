@@ -1,10 +1,11 @@
 import type { CanvasDocument, CanvasNodeShape } from '@/features/canvas-engine'
 import type { JsonObject, NodeRuntimeSummary } from '@/types/nodeRuntime'
 import { getIncomingRuntimeGraphEdges } from './runtimeGraph'
-import { getRuntimeGraphGeneratedOutputRefs } from './runtimeGraphAssets'
+import { getRuntimeGraphGeneratedOutputRefs, getRuntimeGraphImageCrop, type RuntimeGraphImageCrop } from './runtimeGraphAssets'
 
 export type RuntimeGraphImageValue = {
   assetId: string
+  crop?: RuntimeGraphImageCrop
   imageHeight?: number
   imageWidth?: number
   sourceNodeId: string
@@ -123,6 +124,7 @@ export function getRuntimeGraphNodeOutput(
     return {
       imageValues: [{
         assetId,
+        crop: getRuntimeGraphImageCrop(data.crop),
         imageHeight: getNumber(data.imageHeight),
         imageWidth: getNumber(data.imageWidth),
         sourceNodeId: node.props.nodeId,
@@ -180,6 +182,7 @@ function emptyOutput(): RuntimeGraphOutput {
 function toImageValue(ref: ReturnType<typeof getRuntimeGraphGeneratedOutputRefs>[number], sourceNodeId: string): RuntimeGraphImageValue {
   return {
     assetId: ref.assetId,
+    crop: ref.crop,
     imageHeight: ref.imageHeight,
     imageWidth: ref.imageWidth,
     sourceNodeId,

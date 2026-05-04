@@ -4,7 +4,7 @@ import {
   canCreateCanvasImageFromSelection,
   canCreateImageNodeFromSelection,
   createKonvaCanvasImageFromImageNode,
-  createKonvaImageNodeFromCanvasImage,
+  createKonvaImageNodesFromCanvasImages,
 } from './konvaImageNodeConversion'
 
 type KonvaHistory = {
@@ -27,23 +27,21 @@ export function useKonvaImageNodeActions({
   selectedIds,
 }: UseKonvaImageNodeActionsOptions) {
   const convertImageToNode = useCallback(() => {
-    const shapeId = selectedIds[0]
-    if (!shapeId) return
-    const result = createKonvaImageNodeFromCanvasImage(document, shapeId)
+    const result = createKonvaImageNodesFromCanvasImages(document, selectedIds)
     if (!result) return
     history.checkpoint(document)
     onDocumentChange(result.document)
     onSelectionChange(result.selectedIds)
   }, [document, history, onDocumentChange, onSelectionChange, selectedIds])
 
-  const sendImageNodeToCanvas = useCallback(() => {
-    const shapeId = selectedIds[0]
+  const sendImageNodeToCanvas = useCallback((shapeIdOverride?: string) => {
+    const shapeId = shapeIdOverride ?? selectedIds[0]
     if (!shapeId) return
     void createKonvaCanvasImageFromImageNode(document, shapeId).then((result) => {
-    if (!result) return
-    history.checkpoint(document)
-    onDocumentChange(result.document)
-    onSelectionChange(result.selectedIds)
+      if (!result) return
+      history.checkpoint(document)
+      onDocumentChange(result.document)
+      onSelectionChange(result.selectedIds)
     })
   }, [document, history, onDocumentChange, onSelectionChange, selectedIds])
 
