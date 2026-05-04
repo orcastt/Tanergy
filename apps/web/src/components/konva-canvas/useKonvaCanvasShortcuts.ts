@@ -59,6 +59,11 @@ export function useKonvaCanvasShortcuts(options: UseKonvaCanvasShortcutsOptions)
         void writeClipboard(options.clipboardRef.current)
         return
       }
+      if (command && key === 'x') {
+        event.preventDefault()
+        runCut(options)
+        return
+      }
       if (command && key === 'v') {
         event.preventDefault()
         void pasteFromClipboard(options)
@@ -115,6 +120,14 @@ function runDelete(options: UseKonvaCanvasShortcutsOptions) {
   const result = deleteKonvaShapes(options.document, options.selectedIds)
   options.onDocumentChange(result.document)
   options.onSelectionChange(result.selectedIds)
+}
+
+function runCut(options: UseKonvaCanvasShortcutsOptions) {
+  if (options.selectedIds.length === 0) return
+  options.clipboardRef.current = copyKonvaShapes(options.document, options.selectedIds)
+  options.onClipboardChange?.(options.clipboardRef.current.length)
+  void writeClipboard(options.clipboardRef.current)
+  runDelete(options)
 }
 
 function runDuplicate(options: UseKonvaCanvasShortcutsOptions) {

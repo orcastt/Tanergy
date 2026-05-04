@@ -39,8 +39,10 @@ keep Board/API/storage contracts stable
 - Phase 3B curve handle correction: the curve handle is displayed on the line body/curve midpoint, then converted internally to the quadratic control point so users drag the visible line instead of an off-line Bezier handle.
 - Phase 3B head styles: line/arrow now expose Start Head and End Head properties with None, Dot and Arrow options; Arrow keeps a default end arrow for compatibility.
 - Cleanup checkpoint: draft preview, eraser session, browser selection guard and snapping math were split into small helpers so `useKonvaCanvasInteractions.ts` stays under the 300-line source target.
+- Phase 3B audit checkpoint: the main Shape/Line/Arrow/Eraser/Navigator spine is testable, while multi-selection rotate, node-port arrow binding, deeper frame containment, navigator collapse/fit, cursor polish and stroke segmentation remain explicit follow-ups.
+- Phase 3A right-click menu first batch started: the menu now has real hover submenus for Edit / Arrange / Reorder / Copy as / Export as, edge clamping, Cut, platform-aware shortcuts and multi-selection Align commands. Group/lock/export/page commands are visible but disabled until their data contracts are ready.
 
-Next development focus: Phase 3B editing depth, especially line/arrow endpoint/control handles, multi-selection rotation, deeper frame drag-out/nested containment behavior, Auth-backed sticky authors and later image/node conversion commands on the shared command system.
+Next development focus: Phase 3A command depth, then return to Phase 3B follow-ups that require deeper geometry contracts: multi-selection rotation, direction-aware orthogonal connectors, port binding and frame export/drag-out semantics.
 
 ## tldraw Behavior Inventory
 
@@ -220,13 +222,15 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 
 参考用户截图：右键菜单是专业画布工具的重要入口。它必须与 toolbar/properties/快捷键共享同一套 command system，不能做成只显示的假菜单。
 
+当前第一批实现原则：先把菜单结构、可用/不可用状态和低风险共享命令跑通。涉及新 schema 或导出边界的 Group、Lock、Move to page、Copy as、Export as 暂时显示 disabled，不伪装成已完成。
+
 | 序号 | 菜单项 | 当前参考/快捷键 | Konva/Yjs 复刻要求 | 验收方式 |
 | --- | --- | --- | --- | --- |
-| 3A.1 | 右键打开位置 | 鼠标位置打开，子菜单向右展开 | 菜单定位避免超出视口，支持滚动画布坐标；右键 pointerdown 不触发 marquee selection | 画布边缘右键不被裁切，Copy/Paste 后不残留框选 |
+| 3A.1 | 右键打开位置 | 鼠标位置打开，子菜单向右展开 | 第一批已做菜单 edge clamp、右侧空间不足时子菜单向左展开；右键 pointerdown 不触发 marquee selection | 画布边缘右键不被裁切，Copy/Paste 后不残留框选 |
 | 3A.2 | 编辑 > 分组 | `⌘G` | group selected shapes，生成 group/container 或 group id | 多选后 group，可一起拖动 |
 | 3A.3 | 编辑 > 展开/取消分组 | `⇧F` reference | ungroup/group expand command | group 后可拆回独立对象 |
 | 3A.4 | 编辑 > 锁定/解锁 | `⇧L` reference | locked shape 不可拖/resize，但可选择查看 | locked 对象不误移动 |
-| 3A.5 | 排列 > 对齐 | 左/水平/右/顶/垂直/底 | 与 properties align 共用命令 | 多选后对齐准确 |
+| 3A.5 | 排列 > 对齐 | 左/水平/右/顶/垂直/底 | 第一批已做右键 Arrange > Align 命令，移动 shape bounds；后续接 Properties align 同源入口 | 多选后对齐准确 |
 | 3A.6 | 排列 > 分布 | 横向分布 / 纵向分布 | equal spacing distribute | 三个以上对象分布正确 |
 | 3A.7 | 排列 > 拉伸 | 水平拉伸 / 垂直拉伸 | stretch to shared bounds | 多选对象尺寸变化符合预期 |
 | 3A.8 | 排列 > 翻转 | 水平翻转 / 垂直翻转 | shape transform 或 image flip | 翻转后保存恢复 |
@@ -237,7 +241,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | 3A.13 | 重新排序 > 下移一层 | `⌥[` reference | send backward | 层级只移动一层 |
 | 3A.14 | 重新排序 > 置底 | `[` reference | send to back | 层级持久化 |
 | 3A.15 | 移动到页面 | submenu placeholder | S1X 可 disabled；未来多 page 支持 | 不误导用户当前多页面已完成 |
-| 3A.16 | 剪切 | `⌘X` | clipboard write + remove selected | paste 后对象恢复，asset ref 不变 |
+| 3A.16 | 剪切 | `⌘X` | 第一批已做右键 Cut 和键盘 Cmd/Ctrl+X：复制内部 shape JSON 后删除 selection | paste 后对象恢复，asset ref 不变 |
 | 3A.17 | 复制 | `⌘C` | write internal JSON and optional image/SVG fallback | 可跨同页面粘贴 |
 | 3A.18 | 粘贴 | `⌘V` | paste at pointer/viewport center，id 重新生成 | 粘贴位置合理，不覆盖原对象 |
 | 3A.19 | 复制/重复 | `⌘D` | duplicate with offset | 与 properties duplicate 一致 |
@@ -249,9 +253,9 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | 3A.25 | 导出为 > PNG | export file | selection/board export PNG | PNG 尺寸和 bounds 正确 |
 | 3A.26 | 导出为 > 透明 | toggle | 与复制为透明共用 export options | 状态在菜单中可见 |
 | 3A.27 | 选中全部 | `⌘A` | select all visible/page objects | 不选中 locked hidden internals |
-| 3A.28 | 菜单 disabled | 无 selection 时部分禁用 | command availability 统一判断 | 空白右键只显示可用项 |
-| 3A.29 | 子菜单 hover | hover 展开，鼠标可进入子菜单 | 延迟关闭，避免横移时消失 | 和截图体验接近 |
-| 3A.30 | 键盘快捷键显示 | 右侧显示 `⌘C` 等 | Mac/Windows 显示不同快捷键符号 | Mac 显示 ⌘，Windows 显示 Ctrl |
+| 3A.28 | 菜单 disabled | 无 selection 时部分禁用 | 第一批已有可用状态：无 selection 禁用 Cut/Copy/Duplicate/Reorder/Copy as/Delete；Align 需要多选 | 空白右键只显示可用项 |
+| 3A.29 | 子菜单 hover | hover 展开，鼠标可进入子菜单 | 第一批用 CSS hover/focus-within 展开，支持嵌套 submenu；必要时后续加延迟关闭 | 和截图体验接近 |
+| 3A.30 | 键盘快捷键显示 | 右侧显示 `⌘C` 等 | 第一批根据平台显示 Mac `⌘` 或 Windows/Linux `Ctrl+` | Mac 显示 ⌘，Windows 显示 Ctrl |
 
 ### Phase 4：节点、端口、边和 AI Runtime
 

@@ -146,6 +146,8 @@ Phase 3.1 object editing foundation started:
 - Phase 3B route model first pass is in place: line/arrow support Straight, Curve and Elbow route properties; dragging the midpoint/control handle converts to curve, and Elbow shows two bend handles for an H-V-H orthogonal connector.
 - Curve handle correction: the visible curve handle now sits on the line body/curve midpoint and is converted internally to the quadratic control point, avoiding an off-line Bezier control handle.
 - Line/arrow head styles are now exposed in Properties: Start Head and End Head each support None, Dot and Arrow. Existing arrow shapes still default to an end arrow.
+- Phase 3B audit says the testable spine is now broad enough for user review: shapes, line/arrow handles/routes/heads, eraser first pass and navigator zoom are present. Remaining Phase 3B items are multi-selection rotate, node-port binding, direction-aware orthogonal connectors, deeper frame semantics, navigator collapse/fit, cursor polish and stroke segmentation.
+- Phase 3A right-click menu first batch is implemented: the menu has hover submenus, viewport edge clamping, platform-aware shortcuts, Cut/Cmd-Ctrl+X and multi-selection Arrange > Align commands. Group/lock/page/export entries are intentionally disabled until their data/export contracts exist.
 - A Konva shell `selectionchange` guard clears accidental browser text selection while preserving normal textarea/input selection during editing.
 - Frame movement now expands the drag set to include direct/nested frame children, so moving a frame carries contained shapes with it.
 - Copy/paste/duplicate/Alt-drag clone logic now rewrites cloned `parentId` through an old-id to new-id map; cloned children no longer point at an old frame. Deleting a frame explicitly releases unselected children instead of leaving stale parent ids.
@@ -207,4 +209,4 @@ multi-selection rotate
 frame/sticky behavior polish
 ```
 
-After that, continue Phase 3A/3B context-menu depth, eraser segmentation and image/node conversion controls on top of the same command system.
+After this checkpoint, hand-test Phase 3A right-click behavior, then continue the disabled menu items in contract order: group/lock first, distribute/stretch/row-column next, export/copy-as after capture bounds are defined. Phase 3B follow-ups stay tracked for multi-select rotation, port-bound arrows, deeper frame containment and navigator polish.

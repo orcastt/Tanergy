@@ -414,6 +414,8 @@ apps/web/src/components/konva-canvas
   KonvaCanvasSpike.tsx     isolated prototype route
   layers/*                 background, strokes, shapes, nodes, overlays
   tools/*                  draw, select, pan, resize, text, erase
+  konva*Commands.ts        shared object commands for menu, shortcuts and properties
+  KonvaContextMenu.tsx     hover submenu shell; unsupported schema/export commands stay disabled
 
 apps/web/src/features/collaboration
   ydoc.ts                  Yjs document mapping

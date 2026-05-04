@@ -26,9 +26,10 @@ import { KonvaCanvasStage } from './KonvaCanvasStage'
 import { isKonvaEditableTextShape, KonvaTextEditor, type KonvaEditableTextShape } from './KonvaTextEditor'
 import { KonvaCanvasToolbar } from './KonvaCanvasToolbar'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
-import { deleteKonvaShapes, duplicateKonvaShapes, konvaDefaultShapeStyle, reorderKonvaShapes } from './konvaCanvasStyle'
+import { konvaDefaultShapeStyle } from './konvaCanvasStyle'
+import { runKonvaContextAction } from './konvaContextActions'
 import { createSeedShapes, createStressStrokes } from './konvaSeedShapes'
-import { copyKonvaShapes, pasteKonvaShapes, updateTextShape } from './konvaShapeCommands'
+import { updateTextShape } from './konvaShapeCommands'
 import { useKonvaBrowserSelectionGuard } from './useKonvaBrowserSelectionGuard'
 import { useKonvaCanvasHistory } from './useKonvaCanvasHistory'
 import { useKonvaCanvasShortcuts } from './useKonvaCanvasShortcuts'
@@ -142,37 +143,19 @@ export function KonvaCanvasSpike() {
   }, [history])
   const editingTextShape = document.shapes.find((shape): shape is KonvaEditableTextShape => shape.id === editingTextId && isKonvaEditableTextShape(shape))
   const runContextAction = (action: KonvaContextMenuAction) => {
+    const pastePoint = contextMenu ? { x: contextMenu.worldX, y: contextMenu.worldY } : undefined
     setContextMenu(null)
-    if (action === 'select-all') {
-      setSelectedIds(document.shapes.map((shape) => shape.id))
-      return
-    }
-    if (action === 'copy') {
-      clipboardRef.current = copyKonvaShapes(document, selectedIds)
-      setClipboardShapeCount(clipboardRef.current.length)
-      return
-    }
-    if (action === 'paste') {
-      history.checkpoint(document)
-      const result = pasteKonvaShapes(document, clipboardRef.current, contextMenu ? { x: contextMenu.worldX, y: contextMenu.worldY } : undefined)
-      setDocument(result.document)
-      setSelectedIds(result.selectedIds)
-      return
-    }
-    if (selectedIds.length === 0) return
-    history.checkpoint(document)
-    if (action === 'delete') {
-      const result = deleteKonvaShapes(document, selectedIds)
-      setDocument(result.document)
-      setSelectedIds(result.selectedIds)
-    } else if (action === 'duplicate') {
-      const result = duplicateKonvaShapes(document, selectedIds)
-      setDocument(result.document)
-      setSelectedIds(result.selectedIds)
-    } else {
-      const layerAction = getContextLayerAction(action)
-      if (layerAction) setDocument(reorderKonvaShapes(document, selectedIds, layerAction))
-    }
+    runKonvaContextAction({
+      action,
+      clipboardRef,
+      document,
+      history,
+      onClipboardChange: setClipboardShapeCount,
+      onDocumentChange: setDocument,
+      onSelectionChange: setSelectedIds,
+      pastePoint,
+      selectedIds,
+    })
   }
 
   return (
@@ -263,7 +246,10 @@ export function KonvaCanvasSpike() {
         {contextMenu ? (
           <KonvaContextMenu
             canPaste={clipboardShapeCount > 0}
+            containerHeight={size.height}
+            containerWidth={size.width}
             hasSelection={selectedIds.length > 0}
+            multipleSelection={selectedIds.length > 1}
             onAction={runContextAction}
             onClose={() => setContextMenu(null)}
             x={contextMenu.x}
@@ -274,12 +260,4 @@ export function KonvaCanvasSpike() {
       </section>
     </main>
   )
-}
-
-function getContextLayerAction(action: KonvaContextMenuAction): Parameters<typeof reorderKonvaShapes>[2] | null {
-  if (action === 'layer-back') return 'back'
-  if (action === 'layer-backward') return 'backward'
-  if (action === 'layer-forward') return 'forward'
-  if (action === 'layer-front') return 'front'
-  return null
 }

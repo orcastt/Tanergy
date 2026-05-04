@@ -14,13 +14,16 @@
   box-shadow: 0 20px 48px rgba(31, 42, 55, 0.18);
   display: grid;
   gap: 2px;
-  min-width: 190px;
+  max-height: min(420px, calc(100% - 16px));
+  min-width: 232px;
+  overflow: visible;
   padding: 6px;
   position: absolute;
   z-index: 40;
 }
 
-.konva-context-menu button {
+.konva-context-menu button,
+.konva-context-menu__submenu > button {
   align-items: center;
   background: transparent;
   border: 0;
@@ -33,9 +36,12 @@
   justify-content: space-between;
   padding: 0 9px;
   text-align: left;
+  width: 100%;
 }
 
-.konva-context-menu button:hover:not(:disabled) {
+.konva-context-menu button:hover:not(:disabled),
+.konva-context-menu__submenu:hover > button:not(:disabled),
+.konva-context-menu__submenu:focus-within > button:not(:disabled) {
   background: #f0efff;
   color: #5b4bdb;
 }
@@ -59,4 +65,40 @@
   background: rgba(31, 42, 55, 0.1);
   height: 1px;
   margin: 4px 2px;
+}
+
+.konva-context-menu__submenu {
+  position: relative;
+}
+
+.konva-context-menu__submenu[data-disabled='true'] {
+  pointer-events: none;
+}
+
+.konva-context-menu__submenu-arrow {
+  color: rgba(36, 49, 66, 0.42);
+}
+
+.konva-context-menu__submenu-panel {
+  background: rgba(255, 255, 255, 0.99);
+  border: 1px solid rgba(31, 42, 55, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 18px 40px rgba(31, 42, 55, 0.16);
+  display: none;
+  gap: 2px;
+  left: calc(100% + 6px);
+  min-width: 214px;
+  padding: 6px;
+  position: absolute;
+  top: -6px;
+}
+
+.konva-context-menu[data-submenus-left='true'] .konva-context-menu__submenu-panel {
+  left: auto;
+  right: calc(100% + 6px);
+}
+
+.konva-context-menu__submenu:hover > .konva-context-menu__submenu-panel,
+.konva-context-menu__submenu:focus-within > .konva-context-menu__submenu-panel {
+  display: grid;
 }
