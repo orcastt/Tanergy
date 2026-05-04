@@ -193,7 +193,7 @@ export function KonvaCanvasSpike() {
           const rect = event.currentTarget.getBoundingClientRect()
           const point = { x: event.clientX - rect.left, y: event.clientY - rect.top }
           const world = screenToWorld(point, camera)
-          const targetSelection = getContextTargetSelection(document.shapes, world)
+          const targetSelection = getContextTargetSelection(document.shapes, world, selectedIds)
           if (targetSelection.length > 0) setSelectedIds(targetSelection)
           lastPastePointRef.current = world
           setContextMenu({ worldX: world.x, worldY: world.y, x: point.x, y: point.y })
@@ -285,7 +285,8 @@ export function KonvaCanvasSpike() {
   )
 }
 
-function getContextTargetSelection(shapes: CanvasShape[], point: CanvasPoint) {
+function getContextTargetSelection(shapes: CanvasShape[], point: CanvasPoint, selectedIds: string[]) {
+  if (selectedIds.length > 1) return selectedIds
   const hitShape = [...shapes].reverse().find((shape) => boundsContainPoint(getShapeBounds(shape), point))
   return hitShape ? expandKonvaGroupedShapeIds(shapes, [hitShape.id]) : []
 }

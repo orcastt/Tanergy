@@ -48,6 +48,7 @@ keep Board/API/storage contracts stable
 - 2026-05-04 drag overlay correction: normal shape drag now uses the same clean drag-preview path as Alt/Option copy, so objects and resize/rotate controls move from one preview state instead of Konva native drag outrunning the selection overlay. Frame drag also suppresses the stale top chrome while moving, preventing the old-position black border from lingering.
 - 2026-05-04 context-menu polish: right-click menu is now capped at two levels. Arrange no longer contains nested Align/Distribute/Stretch/Flip submenus; those commands are flattened into sectioned rows, and submenu hover uses a no-gap bridge so moving the mouse into the submenu does not collapse it so easily.
 - 2026-05-04 lock polish: locked objects now show a small outline lock indicator above their bounds. Locked groups show one group-level icon, and right-clicking any grouped member selects the group scope first so Unlock applies to the whole group without manually selecting every member.
+- 2026-05-04 multi-selection right-click priority: once a multi-selection boundary exists, right-click keeps that boundary as the command target even if the pointer is over a selected member, another group member or another shape. Hit-target selection only runs when there is no active multi-selection.
 
 Next development focus: Phase 3A hand-test and command polish, then return to Phase 3B follow-ups that require deeper geometry contracts: direction-aware orthogonal connectors, port binding and frame export/drag-out semantics.
 
@@ -179,7 +180,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | 状态 | 序号 | 功能/交互 | 当前 tldraw 参考 | Konva/Yjs 复刻要求 | 参考文件 | 验收方式 |
 | --- | --- | --- | --- | --- | --- | --- |
 | ✅ | 3.1 | 对象模型 | TLShape 承载 x/y/rotation/props/index | spike 已有 `CanvasShape` id/type/x/y/rotation/style/props；board v2 serializer 还在后续 Phase 5/7 | `features/canvas-engine/types.ts` | JSON 可读、可迁移 |
-| ✅ | 3.2 | 多选 | 框选/shift 选中多个对象 | box-select、Shift additive select、多选 union boundary 已有；line/arrow/stroke 选中高亮线本身 | `KonvaSelectionOverlay.tsx`, `KonvaCanvasShape.tsx` | 框选复杂对象准确 |
+| ✅ | 3.2 | 多选 | 框选/shift 选中多个对象 | box-select、Shift additive select、多选 union boundary 已有；line/arrow/stroke 选中高亮线本身；active multi-selection 的右键优先级高于鼠标命中的单个 shape | `KonvaSelectionOverlay.tsx`, `KonvaCanvasShape.tsx`, `KonvaCanvasSpike.tsx` | 框选复杂对象准确；框选后右键不会丢掉 boundary |
 | ✅ | 3.3 | 拖拽 | 选中对象拖动丝滑 | normal drag / Alt-copy 都走 clean drag session；Konva native source 被锁回原位，由 preview document 驱动物体和 controls 同帧移动；多选/连续绘制单选移动可用 | `useKonvaShapeDragHandlers.ts`, `konvaDragSession.ts` | 拖动无跳变，缩放/旋转控件不慢半拍 |
 | ◐ | 3.4 | resize | 图形和 node card 可 resize | shape/image/text/sticky/frame resize 已有；rotated resize 已修；node card resize 未做 | `KonvaSelectionOverlay.tsx`, `konvaRotatedResize.ts` | resize 后内容不坏 |
 | ✅ | 3.5 | rotate | 当前 tldraw shape 支持 rotation 字段 | 单选 box-like rotate、多选 union rotate 已有；rotated drag/Alt-copy/resize 控件已修 | `konvaRotationUtils.ts`, `KonvaSelectionOverlay.tsx` | 保存/恢复 rotation |
@@ -235,7 +236,7 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 
 | 状态 | 序号 | 菜单项 | 当前参考/快捷键 | Konva/Yjs 复刻要求 | 验收方式 |
 | --- | --- | --- | --- | --- | --- |
-| ✅ | 3A.1 | 右键打开位置 | 鼠标位置打开，子菜单向右展开 | 菜单 edge clamp、右侧空间不足时子菜单向左展开；右键 pointerdown 不触发 marquee selection | 画布边缘右键不被裁切，Copy/Paste 后不残留框选 |
+| ✅ | 3A.1 | 右键打开位置 | 鼠标位置打开，子菜单向右展开 | 菜单 edge clamp、右侧空间不足时子菜单向左展开；右键 pointerdown 不触发 marquee selection；已有 multi-selection 时右键不重新命中单个对象 | 画布边缘右键不被裁切，Copy/Paste 后不残留框选，框选后右键仍编辑当前 boundary |
 | ✅ | 3A.2 | 编辑 > 分组 | `⌘G` / `Ctrl+G` | 多选写入同一个 `groupId`；点选 group 成员会选中整组；拖动/Alt-copy/复制会按组扩展 | 多选后 group，可一起拖动和复制 |
 | ✅ | 3A.3 | 编辑 > 展开/取消分组 | `⇧⌘G` / `Shift+Ctrl+G` | Ungroup 清空所选 group 的 `groupId`；保留原 shape 顺序和选中对象 | group 后可拆回独立对象 |
 | ✅ | 3A.4 | 编辑 > 锁定/解锁 | `⇧L` | `isLocked` 已接菜单和快捷键；locked shape 阻止 drag/resize/rotate/line endpoint edits；右键命中 group 成员会选择 group scope，Unlock 直接作用于整组 | locked 对象不误移动，group lock/unlock 不需要逐个成员解锁 |
