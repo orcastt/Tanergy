@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Circle, Group, Image as KonvaImage, Rect, Text } from 'react-konva'
+import { useState } from 'react'
+import { Circle, Group, Rect, Text } from 'react-konva'
 import type { KonvaEventObject } from 'konva/lib/Node'
 import type { CanvasNodeShape } from '@/features/canvas-engine'
-import type { JsonObject, NodeCardField, ResolvedNodePort } from '@/types/nodeRuntime'
+import type { NodeCardField, ResolvedNodePort } from '@/types/nodeRuntime'
 import {
   getNodeDefinition,
   getPortColorName,
   getResolvedNodePorts,
 } from '@/features/node-runtime/registry'
+import { getRuntimeGraphGeneratedOutputRefs } from '@/features/node-runtime/runtimeGraphAssets'
 import {
   canRunNode,
   NodeCardFieldGrid,
@@ -16,6 +17,7 @@ import {
   NodeCardStatusBadge,
   NodeCardTextBox,
 } from './KonvaNodeCardParts'
+import { getGeneratedOutputSource, getNodeImageSource, NodeImagePreview } from './KonvaNodeImagePreview'
 
 type KonvaNodeCardShapeProps = {
   onFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
@@ -138,11 +140,16 @@ function PromptBody({ shape }: { shape: CanvasNodeShape }) {
 }
 
 function AnalysisBody({ shape }: { shape: CanvasNodeShape }) {
+  const status = getStringValue(shape.props.runtimeSummary.status) || 'idle'
+  const error = getStringValue(shape.props.runtimeSummary.error)
+  const textOutput = getStringValue(shape.props.runtimeSummary.textOutput)
+  const outputText = status === 'succeeded' && textOutput
+    ? textOutput
+    : error ?? 'Connect an image first.'
   return (
     <>
       <NodeCardTextBox height={64} text={getStringValue(shape.props.data.analysisPrompt) ?? ''} width={shape.props.width - 28} x={14} y={58} />
-      <Rect cornerRadius={10} fill="#f8fafc" height={shape.props.height - 142} width={shape.props.width - 28} x={14} y={132} />
-      <Text fill="#94a3b8" fontFamily="Inter, system-ui, sans-serif" fontSize={12} fontStyle="bold" text="Connect an image first." width={shape.props.width - 52} x={26} y={148} />
+      <NodeCardTextBox height={shape.props.height - 142} text={outputText} width={shape.props.width - 28} x={14} y={132} />
     </>
   )
 }
@@ -156,12 +163,20 @@ function GenerationBody({ fields, onFieldChange, openFieldName, setOpenFieldName
 }) {
   const imageOutputs = shape.props.nodeType === 'image_gen_4' ? 4 : 1
   const slotY = 184
-  const slotHeight = shape.props.nodeType === 'image_gen_4' ? 104 : 88
+  const status = getStringValue(shape.props.runtimeSummary.status) || 'idle'
+  const error = getStringValue(shape.props.runtimeSummary.error)
+  const footerReserve = status === 'succeeded' ? 24 : 64
+  const slotHeight = Math.max(shape.props.nodeType === 'image_gen_4' ? 104 : 88, shape.props.height - slotY - footerReserve)
   return (
     <>
       <NodeCardImageSlots count={imageOutputs} height={slotHeight} shape={shape} y={slotY} />
-      <Rect cornerRadius={8} fill="#fff1f2" height={28} width={shape.props.width - 28} x={14} y={shape.props.height - 44} />
-      <Text fill="#a11222" fontFamily="Inter, system-ui, sans-serif" fontSize={12} fontStyle="bold" text="Connect a prompt first." width={shape.props.width - 52} x={26} y={shape.props.height - 36} />
+      <GeneratedOutputPreviews count={imageOutputs} height={slotHeight} shape={shape} y={slotY} />
+      {status === 'succeeded' ? null : (
+        <>
+          <Rect cornerRadius={8} fill={status === 'failed' ? '#fff1f2' : '#f8fafc'} height={28} width={shape.props.width - 28} x={14} y={shape.props.height - 44} />
+          <Text fill={status === 'failed' ? '#a11222' : '#64748b'} fontFamily="Inter, system-ui, sans-serif" fontSize={12} fontStyle="bold" text={error ?? 'Ready when prompt is connected.'} width={shape.props.width - 52} x={26} y={shape.props.height - 36} />
+        </>
+      )}
       <NodeCardFieldGrid fields={fields} onFieldChange={onFieldChange} openFieldName={openFieldName} setOpenFieldName={setOpenFieldName} shape={shape} y={54} />
     </>
   )
@@ -197,35 +212,22 @@ function PortTooltip({ port, shape }: { port: ResolvedNodePort; shape: CanvasNod
   )
 }
 
-function NodeImagePreview({ bounds, source }: { bounds: { height: number; width: number; x: number; y: number }; source: string | null }) {
-  const image = useLoadedNodeImage(source)
-  const fit = useMemo(() => image ? getContainRect(image, bounds) : null, [bounds, image])
-  return fit && image ? <KonvaImage image={image} {...fit} /> : null
-}
-
-function useLoadedNodeImage(src: string | null) {
-  const [loadedImage, setLoadedImage] = useState<{ image: HTMLImageElement; src: string } | null>(null)
-  useEffect(() => {
-    if (!src) return
-    let cancelled = false
-    const nextImage = new window.Image()
-    nextImage.decoding = 'async'
-    if (src.startsWith('/') || src.startsWith(window.location.origin)) nextImage.crossOrigin = 'anonymous'
-    nextImage.onload = () => { if (!cancelled) setLoadedImage({ image: nextImage, src }) }
-    nextImage.onerror = () => { if (!cancelled) setLoadedImage(null) }
-    nextImage.src = src
-    return () => { cancelled = true }
-  }, [src])
-  return loadedImage?.src === src ? loadedImage.image : null
-}
-
-function getNodeImageSource(data: JsonObject) {
-  return getStringValue(data.thumbnail512Url) ?? getStringValue(data.thumbnail1024Url) ?? getStringValue(data.originalUrl) ?? null
-}
-
-function getContainRect(image: HTMLImageElement, bounds: { height: number; width: number; x: number; y: number }) {
-  const scale = Math.min(bounds.width / Math.max(1, image.naturalWidth), bounds.height / Math.max(1, image.naturalHeight))
-  const width = image.naturalWidth * scale
-  const height = image.naturalHeight * scale
-  return { height, width, x: bounds.x + (bounds.width - width) / 2, y: bounds.y + (bounds.height - height) / 2 }
+function GeneratedOutputPreviews({ count, height, shape, y }: { count: number; height: number; shape: CanvasNodeShape; y: number }) {
+  const refs = getRuntimeGraphGeneratedOutputRefs(shape.props.data)
+  const slotWidth = count === 4 ? (shape.props.width - 38) / 2 : shape.props.width - 28
+  const slotHeight = count === 4 ? (height - 8) / 2 : height
+  return (
+    <>
+      {Array.from({ length: count }, (_, index) => {
+        const ref = refs[index]
+        const bounds = {
+          height: slotHeight,
+          width: slotWidth,
+          x: 14 + (index % 2) * (slotWidth + 10),
+          y: y + Math.floor(index / 2) * (slotHeight + 8),
+        }
+        return ref ? <NodeImagePreview bounds={bounds} key={index} source={getGeneratedOutputSource(ref)} /> : null
+      })}
+    </>
+  )
 }

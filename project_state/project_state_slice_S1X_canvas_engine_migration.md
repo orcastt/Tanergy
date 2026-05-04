@@ -182,6 +182,8 @@ Phase 3.1 object editing foundation started:
 - 2026-05-04 Prompt/Analysis long-text containment correction is implemented: non-editing node text now scrolls inside the node's own Konva group with clip + local scroll offset + self-drawn scrollbar, so it obeys canvas z-order and no longer floats as a global DOM overlay above later shapes/lines. The HTML textarea editor still uses the same bounds and overflow behavior.
 - 2026-05-04 Phase 4 runtimeGraph cleanup first pass is implemented: renderer-neutral `features/node-runtime/runtimeGraph.ts` now owns runtime edge add/remove/reconnect, input uniqueness, output fan-out, invalid-edge pruning, dynamic Image Gen image input count reconciliation and Image Node upstream preview mirroring. `components/konva-canvas/konvaRuntimeEdges.ts` is now only a thin Konva shell. `runtimeGraphResolution.ts` is prepared for the next Konva mock Run/AiRun adapter and returns asset refs/short text only, including the legacy `image_gen_4:image_out` aggregate output fallback.
 - 2026-05-04 runtimeGraph audit fix is implemented: local Image Node upload now clears the node's incoming `image_in` runtime edge before writing its own asset refs, so upstream mirroring cannot overwrite the freshly uploaded image. RuntimeGraph reconciliation also skips shape writes when no derived data changes, reducing false dirty metadata updates.
+- 2026-05-04 Phase 4 mock Run adapter first pass is implemented: Konva Analysis/Image Gen/Image Gen 4 Run now resolves upstream prompt/image refs through `runtimeGraphResolution.ts`, calls the existing mock AiRun route, writes compact runtime summaries, uploads generated mock PNG assets through the Asset API, stores only generated output asset refs/URLs in node data, previews generated outputs in node cards and reconciles downstream Image Node mirrors. Stop sets the node back to idle and stale async completions no longer overwrite stopped runs.
+- 2026-05-04 Phase 4 mock Run polish is implemented: Image Gen/Image Gen 4 output containers now stretch with node resize height; generated node previews prefer 256 thumbnails and share a small image cache to reduce browser pressure. RuntimeGraph Image Node mirroring now resolves effective upstream image output recursively, so disconnecting an upstream Gen/Image edge clears later Image→Image mirrors in the same reconciliation.
 - Phase 4 storage guard remains explicit: Board documents, node props and runtime edge data must not persist `data:`, `blob:`, Base64 images, provider raw payloads, complete logs or long generated text. Image Node first pass stores only Asset references, dimensions, title/source metadata and runtime summary placeholders.
 - A Konva shell `selectionchange` guard clears accidental browser text selection while preserving normal textarea/input selection during editing.
 - Frame movement now expands the drag set to include direct/nested frame children, so moving a frame carries contained shapes with it.
@@ -190,7 +192,7 @@ Phase 3.1 object editing foundation started:
 - undo/redo restores shapes plus selection only, so pan/zoom is not part of command history
 - create, drag, resize, eraser, Properties style edits, layer actions, duplicate/delete, stress strokes and clear all now create history checkpoints
 
-Not included yet: full HTML node card controls beyond targeted Prompt/Analysis text preview/editing, keyboard edge delete/cut, Konva `resolveNodeInputs` wiring into Run, extensible node run adapter registry, mock/real Image Gen result asset propagation, AiRun execution UI, paste-directly-into-Image-Node behavior, selection capture/export to Image Node, save/history integration, nested-frame/export semantics, real Yjs provider sync and Board route migration.
+Not included yet: full HTML node card controls beyond targeted Prompt/Analysis text preview/editing, keyboard edge delete/cut, extensible server-backed node run adapter registry, real Image Gen result asset propagation, AiRun polling/cancel execution UI, paste-directly-into-Image-Node behavior, selection capture/export to Image Node, save/history integration, nested-frame/export semantics, real Yjs provider sync and Board route migration.
 
 Explicit Phase 3B follow-ups now tracked in the migration plan:
 
@@ -238,7 +240,7 @@ Continue with Phase 3 object editing foundation before any `/boards/[boardId]` m
 
 ```text
 Phase 4 node creation, Prompt/Analysis long-text scroll/editing and port fan-out hand-test
-Phase 4 runtimeGraph reconciliation hand-test before Konva resolveNodeInputs adapter
+Phase 4 mock Run chain hand-test for Prompt→Gen→Image and Image→Analysis
 Phase 4 edge keyboard Delete/Cut behavior
 Phase 4A selection capture/export contract before Copy as / Export as
 ```

@@ -8,6 +8,13 @@ import {
   type CanvasPoint,
 } from '@/features/canvas-engine'
 import { canRunNodeType, getNodeDefinition } from '@/features/node-runtime/registry'
+import {
+  completeRuntimeGraphNodeRun,
+  executeRuntimeGraphNodeRun,
+  failRuntimeGraphNodeRun,
+  startRuntimeGraphNodeRun,
+  stopRuntimeGraphNodeRun,
+} from '@/features/node-runtime/runtimeGraphRunAdapter'
 import type { NodeType } from '@/types/nodeRuntime'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
 import { createKonvaNodeCardShape } from './konvaNodeCardFactory'
@@ -83,23 +90,18 @@ export function useKonvaNodeCreationMenu({
   const toggleNodeRun = useCallback((shapeId: string) => {
     const node = document.shapes.find((shape): shape is CanvasNodeShape => shape.id === shapeId && shape.type === 'node_card')
     if (!node || !canRunNode(node)) return
-    const nextStatus = node.props.runtimeSummary.status === 'running' ? 'idle' : 'running'
     history.checkpoint(document)
-    onDocumentChange((current) => withCanvasShapes(current, current.shapes.map((shape) => (
-      shape.id === shapeId && shape.type === 'node_card'
-        ? {
-            ...shape,
-            props: {
-              ...shape.props,
-              runtimeSummary: {
-                ...shape.props.runtimeSummary,
-                error: null,
-                status: nextStatus,
-              },
-            },
-          }
-        : shape
-    ))))
+    if (node.props.runtimeSummary.status === 'running') {
+      onDocumentChange((current) => stopRuntimeGraphNodeRun(current, shapeId))
+      return
+    }
+
+    const runInput = startRuntimeGraphNodeRun(document, shapeId)
+    onDocumentChange(runInput.document)
+    if (runInput.status !== 'started') return
+    void executeRuntimeGraphNodeRun(runInput)
+      .then((completion) => onDocumentChange((current) => completeRuntimeGraphNodeRun(current, completion)))
+      .catch((error) => onDocumentChange((current) => failRuntimeGraphNodeRun(current, runInput, error)))
   }, [document, history, onDocumentChange])
 
   const openNodeMenu = useCallback((screenPoint: CanvasPoint, worldPoint: CanvasPoint) => {

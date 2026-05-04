@@ -1,6 +1,7 @@
 import type { CanvasDocument, CanvasNodeShape } from '@/features/canvas-engine'
 import type { JsonObject, NodeRuntimeSummary } from '@/types/nodeRuntime'
 import { getIncomingRuntimeGraphEdges } from './runtimeGraph'
+import { getRuntimeGraphGeneratedOutputRefs } from './runtimeGraphAssets'
 
 export type RuntimeGraphImageValue = {
   assetId: string
@@ -74,6 +75,8 @@ export function getRuntimeGraphNodeOutput(
   }
 
   if (node.props.nodeType === 'image_gen' && portId === 'image_out') {
+    const outputRefs = getRuntimeGraphGeneratedOutputRefs(data)
+    if (outputRefs.length > 0) return { imageValues: outputRefs.map((ref) => toImageValue(ref, node.props.nodeId)), textValues: [] }
     return {
       imageValues: summary.resultAssetIds.map((assetId, index) => ({
         assetId,
@@ -86,6 +89,8 @@ export function getRuntimeGraphNodeOutput(
 
   if (node.props.nodeType === 'image_gen_4' && portId.startsWith('image_out_')) {
     const outputIndex = Number(portId.replace('image_out_', '')) - 1
+    const outputRef = getRuntimeGraphGeneratedOutputRefs(data)[outputIndex]
+    if (outputRef) return { imageValues: [toImageValue(outputRef, node.props.nodeId)], textValues: [] }
     const assetId = summary.resultAssetIds[outputIndex]
     return {
       imageValues: assetId ? [{
@@ -98,6 +103,8 @@ export function getRuntimeGraphNodeOutput(
   }
 
   if (node.props.nodeType === 'image_gen_4' && portId === 'image_out') {
+    const outputRefs = getRuntimeGraphGeneratedOutputRefs(data)
+    if (outputRefs.length > 0) return { imageValues: outputRefs.map((ref) => toImageValue(ref, node.props.nodeId)), textValues: [] }
     return {
       imageValues: summary.resultAssetIds.map((assetId, index) => ({
         assetId,
@@ -168,6 +175,16 @@ function getNodeShape(document: CanvasDocument, shapeId: string): CanvasNodeShap
 
 function emptyOutput(): RuntimeGraphOutput {
   return { imageValues: [], textValues: [] }
+}
+
+function toImageValue(ref: ReturnType<typeof getRuntimeGraphGeneratedOutputRefs>[number], sourceNodeId: string): RuntimeGraphImageValue {
+  return {
+    assetId: ref.assetId,
+    imageHeight: ref.imageHeight,
+    imageWidth: ref.imageWidth,
+    sourceNodeId,
+    title: ref.title ?? 'Generated image',
+  }
 }
 
 function asJsonObject(value: unknown): JsonObject {

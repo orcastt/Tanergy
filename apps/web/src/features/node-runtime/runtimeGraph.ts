@@ -2,6 +2,7 @@ import type { CanvasDocument, CanvasNodeShape, CanvasRuntimeEdge } from '@/featu
 import { withCanvasRuntimeEdges, withCanvasShapes } from '@/features/canvas-engine'
 import type { JsonObject, NodePortDataType } from '@/types/nodeRuntime'
 import { getResolvedNodePorts, maxImageInputPorts } from './registry'
+import { getRuntimeGraphGeneratedOutputPayload, getRuntimeGraphImageNodePayload } from './runtimeGraphAssets'
 
 export type RuntimeGraphEdge = CanvasRuntimeEdge
 
@@ -113,7 +114,6 @@ function pruneInvalidRuntimeGraphEdges(document: CanvasDocument): CanvasDocument
 }
 
 function syncImageNodeInputPreviews(document: CanvasDocument): CanvasDocument {
-  const shapeById = new Map(document.shapes.map((shape) => [shape.id, shape]))
   return mapRuntimeGraphShapes(document, (shape) => {
     if (!isImageNode(shape)) return shape
 
@@ -122,8 +122,8 @@ function syncImageNodeInputPreviews(document: CanvasDocument): CanvasDocument {
       edge.targetPortId === 'image_in' &&
       edge.dataType === 'image'
     ))
-    const source = input ? shapeById.get(input.sourceShapeId) : null
-    const payload = source && source.type === 'node_card' ? getImageNodePayload(source.props.data) : null
+    const source = input ? getNodeShape(document, input.sourceShapeId) : null
+    const payload = input && source ? getRuntimeImageOutputPayload(document, source, input.sourcePortId) : null
 
     if (!input || !payload) {
       return hasUpstreamImageData(shape.props.data) ? updateNodeData(shape, clearUpstreamImageData(shape.props.data)) : shape
@@ -189,18 +189,32 @@ function clearUpstreamImageData(data: JsonObject): JsonObject {
   })
 }
 
-function getImageNodePayload(data: JsonObject): JsonObject | null {
-  if (typeof data.assetId !== 'string' && typeof data.originalUrl !== 'string' && typeof data.thumbnail512Url !== 'string') return null
-  return pruneUndefined({
-    assetId: data.assetId,
-    imageHeight: data.imageHeight,
-    imageWidth: data.imageWidth,
-    originalUrl: data.originalUrl,
-    thumbnail1024Url: data.thumbnail1024Url,
-    thumbnail256Url: data.thumbnail256Url,
-    thumbnail512Url: data.thumbnail512Url,
-    title: data.title,
-  })
+function getRuntimeImageOutputPayload(
+  document: CanvasDocument,
+  source: CanvasNodeShape,
+  portId: string,
+  visited: Set<string> = new Set()
+): JsonObject | null {
+  const visitKey = `${source.id}:${portId}`
+  if (visited.has(visitKey)) return null
+  visited.add(visitKey)
+
+  if (source.props.nodeType === 'image') {
+    const input = document.runtimeEdges.find((edge) => (
+      edge.targetShapeId === source.id &&
+      edge.targetPortId === 'image_in' &&
+      edge.dataType === 'image'
+    ))
+    if (input) {
+      const upstream = getNodeShape(document, input.sourceShapeId)
+      return upstream ? getRuntimeImageOutputPayload(document, upstream, input.sourcePortId, visited) : null
+    }
+    return hasUpstreamImageData(source.props.data) ? null : getRuntimeGraphImageNodePayload(source.props.data)
+  }
+  if (source.props.nodeType === 'image_gen' || source.props.nodeType === 'image_gen_4') {
+    return getRuntimeGraphGeneratedOutputPayload(source.props.data, portId)
+  }
+  return null
 }
 
 function updateNodeData(shape: CanvasNodeShape, data: JsonObject): CanvasNodeShape {
