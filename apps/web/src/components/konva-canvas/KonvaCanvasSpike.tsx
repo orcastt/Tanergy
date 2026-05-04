@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as Y from 'yjs'
 import {
@@ -8,7 +7,6 @@ import {
   createEmptyCanvasDocument,
   createFrameSample,
   getCanvasDiagnosticsSnapshot,
-  getShapeBounds,
   screenToWorld,
   withCanvasShapes,
   zoomCameraAtScreenPoint,
@@ -20,8 +18,10 @@ import {
   type CanvasShapeStyle,
 } from '@/features/canvas-engine'
 import { CanvasTooltipLayer } from '@/components/canvas/CanvasTooltipLayer'
+import { KonvaCanvasHeader } from './KonvaCanvasHeader'
 import { KonvaCanvasDiagnostics } from './KonvaCanvasDiagnostics'
-import { KonvaContextMenu, type KonvaContextMenuAction } from './KonvaContextMenu'
+import type { KonvaContextMenuAction } from './KonvaContextMenu'
+import { KonvaContextMenuHost } from './KonvaContextMenuHost'
 import { KonvaCanvasNavigator } from './KonvaCanvasNavigator'
 import { KonvaCanvasProperties } from './KonvaCanvasProperties'
 import { KonvaCanvasStage } from './KonvaCanvasStage'
@@ -30,17 +30,20 @@ import { KonvaCanvasToolbar } from './KonvaCanvasToolbar'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
 import { konvaDefaultShapeStyle } from './konvaCanvasStyle'
 import { runKonvaContextAction } from './konvaContextActions'
-import { expandKonvaGroupedShapeIds, hasKonvaGroupedSelection } from './konvaGroupCommands'
+import { getKonvaContextTargetSelection } from './konvaContextSelection'
 import { createSeedShapes, createStressStrokes } from './konvaSeedShapes'
+import { KonvaSelectionToolbar } from './KonvaSelectionToolbar'
 import { updateTextShape } from './konvaShapeCommands'
 import { useKonvaBrowserSelectionGuard } from './useKonvaBrowserSelectionGuard'
 import { useKonvaCanvasHistory } from './useKonvaCanvasHistory'
 import { useKonvaCanvasShortcuts } from './useKonvaCanvasShortcuts'
+import { useKonvaImageNodeActions } from './useKonvaImageNodeActions'
 import { konvaMaxZoom, konvaMinZoom } from './konvaZoomLimits'
 export function KonvaCanvasSpike() {
   const shellRef = useRef<HTMLDivElement | null>(null)
   const [ydoc] = useState(() => new Y.Doc())
   const [size, setSize] = useState({ height: 720, width: 1280 })
+  const [shellRect, setShellRect] = useState<DOMRect | null>(null)
   const [document, setDocument] = useState<CanvasDocument>(() => createEmptyCanvasDocument({
     camera: { x: 120, y: 112, zoom: 1 },
     name: 'Konva handfeel spike',
@@ -71,6 +74,7 @@ export function KonvaCanvasSpike() {
     const element = shellRef.current
     if (!element) return
     const observer = new ResizeObserver(([entry]) => {
+      setShellRect(element.getBoundingClientRect())
       setSize({
         height: Math.max(480, entry.contentRect.height),
         width: Math.max(720, entry.contentRect.width),
@@ -123,6 +127,18 @@ export function KonvaCanvasSpike() {
   }, [document.shapes, selectedIds])
   const canLockSelection = selectedShapes.some((shape) => !shape.isLocked)
   const canUnlockSelection = selectedShapes.some((shape) => shape.isLocked)
+  const {
+    canConvertImageToNode,
+    canNodeToCanvas,
+    convertImageToNode,
+    sendImageNodeToCanvas,
+  } = useKonvaImageNodeActions({
+    document,
+    history,
+    onDocumentChange: setDocument,
+    onSelectionChange: setSelectedIds,
+    selectedIds,
+  })
 
   const handleCameraPreview = useCallback((nextCamera: CanvasCamera) => {
     setCamera(nextCamera)
@@ -151,6 +167,7 @@ export function KonvaCanvasSpike() {
     setDocument((current) => withCanvasShapes(current, []))
     setSelectedIds([])
   }, [history])
+
   const editingTextShape = document.shapes.find((shape): shape is KonvaEditableTextShape => shape.id === editingTextId && isKonvaEditableTextShape(shape))
   const runContextAction = (action: KonvaContextMenuAction) => {
     const pastePoint = contextMenu ? { x: contextMenu.worldX, y: contextMenu.worldY } : undefined
@@ -170,14 +187,7 @@ export function KonvaCanvasSpike() {
 
   return (
     <main className="konva-canvas-shell">
-      <header className="konva-canvas-header">
-        <Link aria-label="Back to workspace" className="konva-canvas-back" href="/workspaces" title="Back to workspace" />
-        <Link className="konva-canvas-logo" href="/home" title="TANGENT home">TANGENT</Link>
-        <div className="konva-canvas-title">
-          <span>S1X Konva handfeel spike</span>
-          <small>tldraw parity reference, Yjs doc ready: {ydoc.guid.slice(0, 8)}</small>
-        </div>
-      </header>
+      <KonvaCanvasHeader ydocId={ydoc.guid.slice(0, 8)} />
       <KonvaCanvasToolbar
         activeTool={activeTool}
         onAddStressStrokes={addStressStrokes}
@@ -191,9 +201,10 @@ export function KonvaCanvasSpike() {
           event.preventDefault()
           setActiveTool('select')
           const rect = event.currentTarget.getBoundingClientRect()
+          setShellRect(rect)
           const point = { x: event.clientX - rect.left, y: event.clientY - rect.top }
           const world = screenToWorld(point, camera)
-          const targetSelection = getContextTargetSelection(document.shapes, world, selectedIds)
+          const targetSelection = getKonvaContextTargetSelection(document.shapes, world, selectedIds)
           if (targetSelection.length > 0) setSelectedIds(targetSelection)
           lastPastePointRef.current = world
           setContextMenu({ worldX: world.x, worldY: world.y, x: point.x, y: point.y })
@@ -250,6 +261,17 @@ export function KonvaCanvasSpike() {
           onSelectionChange={setSelectedIds}
           selectedIds={selectedIds}
         />
+        <KonvaSelectionToolbar
+          camera={camera}
+          canConvertImageToNode={canConvertImageToNode}
+          canNodeToCanvas={canNodeToCanvas}
+          document={document}
+          onCaptureSelection={() => undefined}
+          onConvertImageToNode={convertImageToNode}
+          onNodeToCanvas={sendImageNodeToCanvas}
+          selectedIds={selectedIds}
+          shellRect={shellRect}
+        />
         <KonvaCanvasNavigator
           camera={camera}
           document={document}
@@ -260,37 +282,19 @@ export function KonvaCanvasSpike() {
           stageWidth={size.width}
         />
         <KonvaCanvasDiagnostics diagnostics={diagnostics} pointCount={pointCount} zoom={camera.zoom} />
-        {contextMenu ? (
-          <KonvaContextMenu
-            canDistribute={selectedIds.length > 2}
-            canGroup={selectedIds.length > 1}
-            canLock={canLockSelection}
-            canPaste
-            canTidy={selectedIds.length > 1}
-            canUnlock={canUnlockSelection}
-            canUngroup={hasKonvaGroupedSelection(document.shapes, selectedIds)}
-            containerHeight={size.height}
-            containerWidth={size.width}
-            hasSelection={selectedIds.length > 0}
-            multipleSelection={selectedIds.length > 1}
-            onAction={runContextAction}
-            onClose={() => setContextMenu(null)}
-            x={contextMenu.x}
-            y={contextMenu.y}
-          />
-        ) : null}
+        <KonvaContextMenuHost
+          canLockSelection={canLockSelection}
+          canUnlockSelection={canUnlockSelection}
+          contextMenu={contextMenu}
+          document={document}
+          height={size.height}
+          onAction={runContextAction}
+          onClose={() => setContextMenu(null)}
+          selectedIds={selectedIds}
+          width={size.width}
+        />
         <CanvasTooltipLayer />
       </section>
     </main>
   )
-}
-
-function getContextTargetSelection(shapes: CanvasShape[], point: CanvasPoint, selectedIds: string[]) {
-  if (selectedIds.length > 1) return selectedIds
-  const hitShape = [...shapes].reverse().find((shape) => boundsContainPoint(getShapeBounds(shape), point))
-  return hitShape ? expandKonvaGroupedShapeIds(shapes, [hitShape.id]) : []
-}
-
-function boundsContainPoint(bounds: ReturnType<typeof getShapeBounds>, point: CanvasPoint) {
-  return point.x >= bounds.minX && point.x <= bounds.maxX && point.y >= bounds.minY && point.y <= bounds.maxY
 }

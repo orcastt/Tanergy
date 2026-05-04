@@ -1,6 +1,6 @@
 # PRD Slice S1X: Canvas Engine Migration
 
-**Status**: Active risk-mitigation spike; isolated Konva route has Phase 3 object editing foundation in progress after accepted handfeel/properties baselines.
+**Status**: Active risk-mitigation spike; isolated Konva route has Phase 4A image-node conversion first pass after accepted handfeel/properties/object-editing baselines.
 **Product reason**: The current public staging canvas depends on tldraw, which requires a production license. TANGENT needs a long-term canvas path that can support commercial use and collaboration without a paid canvas SDK lock-in.
 
 ## Product Goal
@@ -47,6 +47,9 @@ Current accepted subset:
 - Frame drag carries contained shapes, and clone operations rewrite frame `parentId` relationships so copies do not stay attached to old containers.
 - Right-click menu Phase 3A exposes professional canvas submenus for Edit, Arrange, Reorder, Copy as and Export as. Cut, Group/Ungroup, Lock/Unlock, multi-selection Align/Distribute/Stretch/Flip and row/column tidy are functional; page/export entries remain disabled until their product contracts are implemented.
 - Pasted images from browser copy or OS screenshot clipboard create real canvas image shapes through the Asset API, with no Base64 stored in the canvas document. Image shapes render with zoom-based thumbnail/original LOD and reuse the same resize, rotate, copy and Alt-drag interactions as other box-like elements.
+- Properties now exposes multi-selection Align, Layer and Actions grids plus first-pass font size/text alignment controls for text, sticky notes and basic shape labels.
+- Konva Image Node first pass supports Canvas Image → Image Node and Image Node → Canvas Image from the selection toolbar. Image Nodes store asset refs and dimensions, not Base64 or provider payloads. Selection capture to Image Node remains disabled until export/upload contracts are ready.
+- Frame containment first pass supports dragging children out of frames and intentionally blocks nested frame parenting for now.
 
 ## Handfeel Acceptance
 

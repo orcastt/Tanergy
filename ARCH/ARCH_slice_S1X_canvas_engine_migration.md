@@ -1,6 +1,6 @@
 # ARCH Slice S1X: Canvas Engine Migration
 
-**Status**: Active risk-mitigation spike; Phase 3 object editing foundation is in progress after accepted Phase 1A/2A baselines.
+**Status**: Active risk-mitigation spike; Phase 4A image-node conversion first pass is in progress after accepted Phase 1A/2A/3 baselines.
 **Branch**: `feature/s1x-konva-handfeel-spike`
 **Reason**: Public staging exposed the tldraw production license requirement. TANGENT should not make the paid SDK the long-term core canvas dependency unless the business explicitly accepts that cost.
 
@@ -49,6 +49,10 @@ selected style patch
   -> selected shape style update
 document.shapes order
   -> layer front/back actions
+arrange helpers
+  -> Properties and context menu share align/stretch/distribute/flip/row/column behavior
+text style patch
+  -> fontSize/textAlign on text, sticky and basic shape labels
 generated pattern tile
   -> high-DPR opaque hatch fill follows stroke color
 
@@ -102,6 +106,14 @@ Current Phase 3 command/data notes:
 - Context menu command depth is capped at two levels. Higher-level groupings such as Arrange use section labels inside one submenu panel instead of nested submenu panels, with a hover bridge to keep pointer travel stable. Context hit targeting preserves an active multi-selection boundary; object/group hit targeting only replaces selection when the current selection is empty or single-object.
 - Multi-selection rotation is supported from an oriented boundary. `konvaOrientedBounds` computes candidate rotated boxes from selected member geometry; the session stores origin shapes and rotates around the group center, while rotated resize reuses the same local-bounds coordinate space for single and multi-selection transforms. Frame chrome renders in the frame's rotated coordinate space so it does not leave an unrotated outline.
 - Browser text-selection cleanup is isolated in `useKonvaBrowserSelectionGuard`, and it skips active input/textarea/contenteditable elements.
+
+Current Phase 4A image/node boundary:
+
+- `CanvasNodeShape` is now part of the renderer-neutral `CanvasShape` union as `type: 'node_card'`, with `props.nodeType`, `props.nodeId`, `props.data`, `props.runtimeSummary`, `props.version`, `props.width` and `props.height`.
+- Konva Image Node first pass renders a lightweight card with ports derived from `node-runtime/registry.ts`; runtime edge storage is still intentionally separate and not represented as visual `arrow` shapes.
+- Canvas Image → Image Node creates a `node_card` image node beside the image. Node data stores `assetId`, dimensions, `source` and `title`; it does not store `data:`, `blob:`, Base64 or provider raw payloads.
+- Image Node → Canvas Image fetches the asset record by `assetId` through the existing Asset API, then creates a `CanvasImageShape` beside the node with display URLs on the image shape only.
+- Selection capture/export remains disabled until a dedicated export bounds/upload contract exists. Frame visible-bounds helpers are available, but rotated/precise clipped export semantics are still follow-up work.
 
 It does not replace `/boards/[boardId]` and does not remove any tldraw reference code.
 

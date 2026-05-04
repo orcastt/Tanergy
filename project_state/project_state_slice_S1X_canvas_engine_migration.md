@@ -1,6 +1,6 @@
 # Project State Slice S1X: Canvas Engine Migration
 
-**Status**: Phase 3 object editing foundation in progress after accepted Phase 1A/2A spike baselines.
+**Status**: Phase 4A image-node conversion first pass in progress after accepted Phase 1A/2A/3 spike baselines.
 **Branch**: `feature/s1x-konva-handfeel-spike`
 **Started**: 2026-05-03
 
@@ -157,6 +157,9 @@ Phase 3.1 object editing foundation started:
 - 2026-05-04 lock polish: locked objects render a small outline lock indicator above their bounds; locked groups render one group-level icon. Right-clicking any grouped member selects the group scope first, so Unlock applies to the whole group instead of requiring each member to be selected.
 - 2026-05-04 multi-selection right-click priority: once a multi-selection boundary exists, right-click keeps that boundary as the command target instead of replacing selection with the object under the pointer. Single-object/group hit targeting still applies when there is no active multi-selection.
 - 2026-05-04 oriented group boundary: rotated group/multi-selection now computes an oriented selection box from member geometry, so the blue boundary and handles follow rotation instead of reverting to an axis-aligned union. Multi rotated resize has a first-pass transform path. Frame chrome now rotates with the frame, removing the old unrotated black outline.
+- 2026-05-04 Properties parity pass is implemented: Properties now exposes Align, Layer and Actions grids for align/stretch/distribute/flip/row/column, plus first-pass font size and text alignment controls for text/sticky/shape labels.
+- 2026-05-04 Konva Image Node first pass is implemented: Canvas Image → Image Node creates a lightweight `node_card` image node on the right side of the image; Image Node → Canvas Image fetches the asset record by `assetId` and creates an image on the node's right. Node data stores asset refs, dimensions, source and title only.
+- 2026-05-04 Frame containment first pass now supports drag-out: moving a child outside all frame bounds clears `parentId`, and frame nesting is intentionally disabled. Helper functions now expose frame/child visible bounds for future capture/export.
 - A Konva shell `selectionchange` guard clears accidental browser text selection while preserving normal textarea/input selection during editing.
 - Frame movement now expands the drag set to include direct/nested frame children, so moving a frame carries contained shapes with it.
 - Copy/paste/duplicate/Alt-drag clone logic now rewrites cloned `parentId` through an old-id to new-id map; cloned children no longer point at an old frame. Deleting a frame explicitly releases unselected children instead of leaving stale parent ids.
@@ -164,12 +167,12 @@ Phase 3.1 object editing foundation started:
 - undo/redo restores shapes plus selection only, so pan/zoom is not part of command history
 - create, drag, resize, eraser, Properties style edits, layer actions, duplicate/delete, stress strokes and clear all now create history checkpoints
 
-Not included yet: node cards, image drop, image-to-node/to-canvas conversion, save/history integration, full frame drag-out/nested-frame semantics, real Yjs provider sync and Board route migration.
+Not included yet: full node card controls, port-bound runtime edges, image drop into Image Node, selection capture/export to Image Node, save/history integration, nested-frame/export semantics, real Yjs provider sync and Board route migration.
 
 Explicit Phase 3B follow-ups now tracked in the migration plan:
 
 - line/arrow route polish after the first pass: smoother curve affordance, V-H-V or direction-aware orthogonal connectors, per-segment cursor feedback and later node-port snapping
-- deeper frame containment: drag-out affordance, nested-frame policy and export boundary semantics
+- deeper frame containment: nested-frame policy beyond current disabled behavior, rotated/precise visible bounds and export boundary semantics
 - sticky author identity from Auth, shortcut creation behavior and richer note color presets
 - cursor polish for resize/rotate handles
 - rotation geometry follow-up: current rotated box visuals render correctly, but selection hit testing, frame containment and eraser still mostly use axis-aligned bounds. Phase 3B should introduce shared transformed bounds/hit-test helpers before deeper rotate behavior.
@@ -211,11 +214,9 @@ Large Miro-scale collaboration: later multi-month S4 track
 Continue with Phase 3 object editing foundation before any `/boards/[boardId]` migration:
 
 ```text
-Phase 3A command hand-test
-Phase 3B route/frame/navigator polish
-capture/export contract before Copy as / Export as
+Phase 2A/3A/4A hand-test
+Phase 4 node/port/edge contract implementation
+Phase 4A selection capture/export contract before Copy as / Export as
 ```
 
-After this checkpoint, hand-test Phase 3A right-click behavior: group/ungroup, lock/unlock, distribute/stretch/flip/tidy, grouped Alt/Option copy and locked-object transforms. Export/copy-as/page commands stay disabled until capture bounds and multi-page contracts are defined. Phase 3B follow-ups stay tracked for port-bound arrows, deeper frame containment and navigator polish.
-
-For the next hand-test, specifically verify the Phase 3 drag/handle fix: selected resize/rotate handles should stay visually attached while dragging normal shapes, rotated shapes, groups and frames; moving a frame should not leave a black stale border at the old position.
+After this checkpoint, hand-test Properties align/actions/font controls, Canvas Image → Image Node, Image Node → Canvas Image, node-card selection guard and frame child drag-out. Export/copy-as/page/capture commands stay disabled until capture bounds, upload origin and multi-page contracts are defined.

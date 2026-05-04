@@ -4,6 +4,7 @@ import { cloneKonvaShapes } from './konvaShapeCommands'
 
 export type KonvaCanvasDashStyle = NonNullable<CanvasShapeStyle['dash']>
 export type KonvaCanvasFillStyle = NonNullable<CanvasShapeStyle['fillStyle']>
+export type KonvaCanvasTextAlign = NonNullable<CanvasShapeStyle['textAlign']>
 export type KonvaCanvasWidthStyle = 's' | 'm' | 'l' | 'xl'
 
 export type KonvaCanvasResolvedShapeStyle = {
@@ -18,9 +19,11 @@ export type KonvaCanvasResolvedShapeStyle = {
 export type KonvaCanvasStyleSnapshot = {
   dash: CanvasShapeStyle['dash'] | 'mixed'
   fillStyle: CanvasShapeStyle['fillStyle'] | 'mixed'
+  fontSize: number | 'mixed'
   opacity: number | 'mixed'
   stroke: CanvasShapeStyle['stroke'] | 'mixed'
   strokeWidth: number | 'mixed'
+  textAlign: CanvasShapeStyle['textAlign'] | 'mixed'
 }
 
 export const konvaStrokeColors: Array<{ label: string; value: string; swatch: string }> = [
@@ -80,12 +83,15 @@ export function getKonvaSelectionStyleSnapshot(
   nextStyle: CanvasShapeStyle
 ): KonvaCanvasStyleSnapshot {
   const fallback = resolveKonvaShapeStyle(nextStyle)
+  const textShapes = shapes.filter(isKonvaTextStyleShape)
   return {
     dash: getSharedResolvedStyleValue(shapes, fallback.dash, (shape) => resolveKonvaShapeStyle(shape.style).dash),
     fillStyle: getSharedResolvedStyleValue(shapes, fallback.fillStyle, (shape) => resolveKonvaShapeStyle(shape.style).fillStyle),
+    fontSize: getSharedResolvedStyleValue(textShapes, nextStyle.fontSize ?? 18, getKonvaShapeFontSize),
     opacity: getSharedResolvedStyleValue(shapes, fallback.opacity, (shape) => resolveKonvaShapeStyle(shape.style).opacity),
     stroke: getSharedResolvedStyleValue(shapes, fallback.stroke, (shape) => resolveKonvaShapeStyle(shape.style).stroke),
     strokeWidth: getSharedResolvedStyleValue(shapes, fallback.strokeWidth, (shape) => resolveKonvaShapeStyle(shape.style).strokeWidth),
+    textAlign: getSharedResolvedStyleValue(textShapes, nextStyle.textAlign ?? 'left', getKonvaShapeTextAlign),
   }
 }
 
@@ -199,7 +205,20 @@ export function isKonvaDashShape(shape: CanvasShape) {
 }
 
 export function isKonvaWidthShape(shape: CanvasShape) {
-  return shape.type !== 'text' && shape.type !== 'sticky'
+  return isKonvaStrokeShape(shape) && shape.type !== 'sticky'
+}
+
+export function isKonvaTextStyleShape(shape: CanvasShape) {
+  return shape.type === 'text' || shape.type === 'sticky' || isKonvaTextContainerShape(shape)
+}
+
+export function getKonvaShapeFontSize(shape: CanvasShape) {
+  return isKonvaTextStyleShape(shape) ? shape.style?.fontSize ?? 18 : 18
+}
+
+export function getKonvaShapeTextAlign(shape: CanvasShape): KonvaCanvasTextAlign {
+  if (!isKonvaTextStyleShape(shape)) return 'left'
+  return shape.style?.textAlign ?? (shape.type === 'text' ? 'left' : 'center')
 }
 
 function applyStylePatchToShape(shape: CanvasShape, patch: CanvasShapeStyle): CanvasShape {
@@ -207,7 +226,9 @@ function applyStylePatchToShape(shape: CanvasShape, patch: CanvasShapeStyle): Ca
   if (patch.stroke !== undefined && isKonvaStrokeShape(shape)) nextStyle.stroke = patch.stroke
   if (patch.fillStyle !== undefined && isKonvaFillShape(shape)) nextStyle.fillStyle = patch.fillStyle
   if (patch.dash !== undefined && isKonvaStrokeShape(shape)) nextStyle.dash = patch.dash
+  if (patch.fontSize !== undefined && isKonvaTextStyleShape(shape)) nextStyle.fontSize = patch.fontSize
   if (patch.strokeWidth !== undefined && isKonvaWidthShape(shape)) nextStyle.strokeWidth = patch.strokeWidth
+  if (patch.textAlign !== undefined && isKonvaTextStyleShape(shape)) nextStyle.textAlign = patch.textAlign
   if (patch.opacity !== undefined) nextStyle.opacity = patch.opacity
   return { ...shape, style: nextStyle }
 }
@@ -236,4 +257,8 @@ function swapShapes(shapes: CanvasShape[], a: number, b: number) {
   const previous = shapes[a]
   shapes[a] = shapes[b]
   shapes[b] = previous
+}
+
+function isKonvaTextContainerShape(shape: CanvasShape) {
+  return shape.type === 'rect' || shape.type === 'diamond' || shape.type === 'ellipse' || shape.type === 'triangle' || shape.type === 'cloud'
 }

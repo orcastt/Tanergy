@@ -2,9 +2,11 @@ import { memo, useMemo, useRef } from 'react'
 import type Konva from 'konva'
 import { Circle, Ellipse, Group, Line, Path, Rect, Text } from 'react-konva'
 import type { CanvasShape } from '@/features/canvas-engine'
-import { getStickyFillColor, getStrokeDash, resolveKonvaShapeStyle } from './konvaCanvasStyle'
+import { getKonvaShapeFontSize, getKonvaShapeTextAlign, getStickyFillColor, getStrokeDash, resolveKonvaShapeStyle } from './konvaCanvasStyle'
 import { getLineArrowHeadAnchor, getLineHead, getLinePathData, getLineStartHeadAnchor, type KonvaLineShape } from './konvaLineRouteUtils'
 import { KonvaImageShape } from './KonvaImageShape'
+import { KonvaNodeCardShape } from './KonvaNodeCardShape'
+import { KonvaShapeLabel } from './KonvaShapeLabel'
 import { getPatternTile } from './konvaPatternUtils'
 import { getArrowHeadPoints, getCloudPath, getFreehandPath } from './konvaPathUtils'
 import { isBoxCanvasShape } from './konvaRotationUtils'
@@ -120,11 +122,13 @@ function renderShape(shape: CanvasShape, style: ReturnType<typeof resolveKonvaSh
   const highlightWidth = Math.max(strokeWidth + 4 / zoom, strokeWidth * 2.4)
   const closedFillProps = getClosedFillProps(fill, fillStyle, stroke)
   const strokeLineCap = dash === 'dotted' ? 'round' : 'butt'
+  const fontSize = getKonvaShapeFontSize(shape)
+  const textAlign = getKonvaShapeTextAlign(shape)
   if (shape.type === 'rect') {
     return (
       <>
         <Rect {...closedFillProps} cornerRadius={10} dash={strokeDash} height={shape.props.height} opacity={opacity} stroke={stroke} strokeWidth={strokeWidth} width={shape.props.width} />
-        <ShapeLabel fill={stroke} opacity={opacity} text={shape.props.text} width={shape.props.width} height={shape.props.height} />
+        <KonvaShapeLabel fill={stroke} fontSize={fontSize} height={shape.props.height} opacity={opacity} text={shape.props.text} textAlign={textAlign} width={shape.props.width} />
       </>
     )
   }
@@ -132,7 +136,7 @@ function renderShape(shape: CanvasShape, style: ReturnType<typeof resolveKonvaSh
     return (
       <>
         <Ellipse {...closedFillProps} dash={strokeDash} opacity={opacity} radiusX={shape.props.width / 2} radiusY={shape.props.height / 2} stroke={stroke} strokeWidth={strokeWidth} x={shape.props.width / 2} y={shape.props.height / 2} />
-        <ShapeLabel fill={stroke} opacity={opacity} text={shape.props.text} width={shape.props.width} height={shape.props.height} />
+        <KonvaShapeLabel fill={stroke} fontSize={fontSize} height={shape.props.height} opacity={opacity} text={shape.props.text} textAlign={textAlign} width={shape.props.width} />
       </>
     )
   }
@@ -141,7 +145,7 @@ function renderShape(shape: CanvasShape, style: ReturnType<typeof resolveKonvaSh
     return (
       <>
         <Line {...closedFillProps} closed dash={strokeDash} lineCap={strokeLineCap} opacity={opacity} points={[width / 2, 0, width, height / 2, width / 2, height, 0, height / 2]} stroke={stroke} strokeWidth={strokeWidth} />
-        <ShapeLabel fill={stroke} opacity={opacity} text={shape.props.text} width={width} height={height} />
+        <KonvaShapeLabel fill={stroke} fontSize={fontSize} height={height} opacity={opacity} text={shape.props.text} textAlign={textAlign} width={width} />
       </>
     )
   }
@@ -150,7 +154,7 @@ function renderShape(shape: CanvasShape, style: ReturnType<typeof resolveKonvaSh
     return (
       <>
         <Line {...closedFillProps} closed dash={strokeDash} lineCap={strokeLineCap} opacity={opacity} points={[width / 2, 0, width, height, 0, height]} stroke={stroke} strokeWidth={strokeWidth} />
-        <ShapeLabel fill={stroke} opacity={opacity} text={shape.props.text} width={width} height={height} />
+        <KonvaShapeLabel fill={stroke} fontSize={fontSize} height={height} opacity={opacity} text={shape.props.text} textAlign={textAlign} width={width} />
       </>
     )
   }
@@ -158,7 +162,7 @@ function renderShape(shape: CanvasShape, style: ReturnType<typeof resolveKonvaSh
     return (
       <>
         <Path {...closedFillProps} dash={strokeDash} data={getCloudPath(shape.props.width, shape.props.height)} opacity={opacity} stroke={stroke} strokeWidth={strokeWidth} />
-        <ShapeLabel fill={stroke} opacity={opacity} text={shape.props.text} width={shape.props.width} height={shape.props.height} />
+        <KonvaShapeLabel fill={stroke} fontSize={fontSize} height={shape.props.height} opacity={opacity} text={shape.props.text} textAlign={textAlign} width={shape.props.width} />
       </>
     )
   }
@@ -176,7 +180,7 @@ function renderShape(shape: CanvasShape, style: ReturnType<typeof resolveKonvaSh
       <>
         <Text fill="#6b7280" fontFamily="Inter, system-ui, sans-serif" fontSize={12} listening={false} opacity={opacity} text={shape.props.authorName ?? 'You'} width={shape.props.width} y={-20} />
         <Rect cornerRadius={2} fill={fillColor} height={shape.props.height} opacity={opacity} shadowBlur={10} shadowColor="rgba(36, 49, 66, 0.22)" shadowOffsetY={4} stroke="rgba(31, 42, 55, 0.12)" strokeWidth={1} width={shape.props.width} />
-        <Text align="center" fill="#2f2a1f" fontFamily="Inter, system-ui, sans-serif" fontSize={18} height={shape.props.height} listening={false} opacity={opacity} padding={14} text={shape.props.text} verticalAlign="middle" width={shape.props.width} />
+        <Text align={textAlign} fill="#2f2a1f" fontFamily="Inter, system-ui, sans-serif" fontSize={fontSize} height={shape.props.height} listening={false} opacity={opacity} padding={14} text={shape.props.text} verticalAlign="middle" width={shape.props.width} />
       </>
     )
   }
@@ -196,10 +200,13 @@ function renderShape(shape: CanvasShape, style: ReturnType<typeof resolveKonvaSh
     )
   }
   if (shape.type === 'text') {
-    return <Text fill={stroke} fontFamily="Inter, system-ui, sans-serif" fontSize={18} height={shape.props.height} opacity={opacity} text={shape.props.text} width={shape.props.width} />
+    return <Text align={textAlign} fill={stroke} fontFamily="Inter, system-ui, sans-serif" fontSize={fontSize} height={shape.props.height} opacity={opacity} text={shape.props.text} width={shape.props.width} />
   }
   if (shape.type === 'image') {
     return <KonvaImageShape opacity={opacity} shape={shape} zoom={zoom} />
+  }
+  if (shape.type === 'node_card') {
+    return <KonvaNodeCardShape opacity={opacity} shape={shape} />
   }
   return null
 }
@@ -230,16 +237,6 @@ function renderLineLikeShape(
       {endHead === 'arrow' ? <Line closed fill={style.stroke} opacity={style.opacity} points={getArrowHeadPoints(end, getLineArrowHeadAnchor(shape), Math.max(12, style.strokeWidth * 5))} /> : null}
       {endHead === 'dot' ? <Circle fill={style.stroke} opacity={style.opacity} radius={Math.max(4, style.strokeWidth * 2.1)} x={end.x} y={end.y} /> : null}
     </>
-  )
-}
-
-function ShapeLabel({ fill, height, opacity, text, width }: { fill: string; height: number; opacity: number; text?: string; width: number }) {
-  if (!text?.trim()) return null
-  return (
-    <Text
-      align="center" fill={fill} fontFamily="Inter, system-ui, sans-serif" fontSize={18} height={height}
-      listening={false} opacity={opacity} padding={10} text={text} verticalAlign="middle" width={width}
-    />
   )
 }
 

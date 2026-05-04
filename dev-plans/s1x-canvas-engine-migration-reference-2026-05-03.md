@@ -1,6 +1,6 @@
 # S1X Canvas Engine Migration Reference
 
-**Status**: Active tactical plan; Phase 3 object editing foundation is in progress after accepted handfeel/properties baselines.
+**Status**: Active tactical plan; Phase 4A image-node conversion first pass is in progress after accepted handfeel/properties/object-editing baselines.
 **Branch**: `feature/s1x-konva-handfeel-spike`
 
 ## Principle
@@ -50,8 +50,11 @@ keep Board/API/storage contracts stable
 - 2026-05-04 lock polish: locked objects now show a small outline lock indicator above their bounds. Locked groups show one group-level icon, and right-clicking any grouped member selects the group scope first so Unlock applies to the whole group without manually selecting every member.
 - 2026-05-04 multi-selection right-click priority: once a multi-selection boundary exists, right-click keeps that boundary as the command target even if the pointer is over a selected member, another group member or another shape. Hit-target selection only runs when there is no active multi-selection.
 - 2026-05-04 oriented group boundary: rotated group/multi-selection now computes an oriented selection box from member geometry, so the blue boundary/resize handles follow group rotation instead of falling back to an axis-aligned union. The rotated box resize path now supports multi-selection first pass. Frame top chrome also rotates with the frame, removing the old unrotated black outline.
+- 2026-05-04 Properties parity pass: Properties now has Align, Stretch, Distribute, Flip, Row/Column arrange and text font/alignment controls. Node card selection no longer shows ordinary stroke/fill/width noise.
+- 2026-05-04 Phase 4A image-node first pass: Canvas image selection can create a lightweight Konva `node_card` Image Node placed to the image's right. The node stores asset refs and dimensions only; To Canvas fetches the asset record and creates a canvas image to the node's right. Capture selection remains disabled until export bounds/upload are implemented.
+- 2026-05-04 Frame containment first pass: dragged children can leave a frame and clear `parentId`; frame nesting is intentionally disabled for now. Frame visible bounds helpers are in place for later capture/export semantics.
 
-Next development focus: Phase 3A hand-test and command polish, then return to Phase 3B follow-ups that require deeper geometry contracts: direction-aware orthogonal connectors, port binding and frame export/drag-out semantics.
+Next development focus: hand-test Phase 2A/3A/4A first-pass actions, then continue Phase 4 node/port/edge contracts and Phase 4A selection capture/export.
 
 ## tldraw Behavior Inventory
 
@@ -148,13 +151,13 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | ✅ | 2.6 | tooltip | 黑底白字，长文字不被裁切 | 工具 tooltip 显示英文 `Tool: Shortcut`，全局 tooltip layer 已接入 | `CanvasTooltipLayer.tsx`, `KonvaCanvasToolbar.tsx` | toolbar/properties tooltip 可见 |
 | ✅ | 2.7 | fixed properties | 点击空白不切换/消失，保持最后工具属性 | style panel state 与 selection 解耦；无 selection 时改 next shape style | `KonvaCanvasProperties.tsx` | 空白点击后 panel 不变 |
 | ✅ | 2.8 | selection properties | 选中普通图形时显示 selected 样式 | selection style snapshot 已支持 shared/mixed 状态 | `konvaCanvasStyle.ts`, `KonvaCanvasProperties.tsx` | 单选/多选显示正确 |
-| ☐ | 2.9 | node selection | node card 不显示普通图形属性 | node card selection guard 尚未接入 Konva node renderer | `hasNodeCardSelection` | 选节点不出现无意义样式 |
+| ✅ | 2.9 | node selection | node card 不显示普通图形属性 | Konva `node_card` first pass 已接入，选中 node 不显示普通 stroke/fill/width 噪音 | `KonvaNodeCardShape.tsx`, `konvaCanvasStyle.ts` | 选节点不出现无意义样式 |
 | ✅ | 2.10 | stroke color | black/red/green/blue/orange/violet/grey | stroke swatches 已映射为 engine style token | `konvaCanvasStyle.ts` | 新旧颜色接近 |
 | ✅ | 2.11 | fill | none/semi/solid/pattern | solid/pattern 已改为不透明浅色同色系；pattern 用高 DPR 生成 | `konvaCanvasStyle.ts`, `konvaPatternUtils.ts` | semi/solid/pattern 都不糊、不透，stroke/fill 区分明确 |
-| ◐ | 2.12 | width/dash/font | s/m/l/xl，draw/solid/dashed/dotted，font 选项 | width/dash 已有；font controls 尚未做 | `KonvaCanvasProperties.tsx`, `konvaCanvasStyle.ts` | 图标不溢出，样式可保存 |
+| ✅ | 2.12 | width/dash/font | s/m/l/xl，draw/solid/dashed/dotted，font 选项 | width/dash/font size/text align 已接入；draw 高级笔触细分仍由 2A.6 跟踪 | `KonvaCanvasProperties.tsx`, `KonvaPropertiesFont.tsx`, `konvaCanvasStyle.ts` | 图标不溢出，样式可保存 |
 | ✅ | 2.13 | arrow style | arc/elbow，start/end heads | line/arrow Route + Start/End Head properties 已接入 | `KonvaLineProperties.tsx`, `konvaLineRouteUtils.ts` | 箭头视觉接近 |
 | ✅ | 2.14 | opacity | selection/next shape opacity | selection 和 next tool 双写已接入 | `KonvaCanvasProperties.tsx` | 新对象继承 opacity |
-| ◐ | 2.15 | layer/align/actions | send/back/bring/align/stretch/duplicate/delete | layer/duplicate/delete 完成；right-click Align/Distribute/Stretch/Flip/Tidy first pass 完成；Properties align/action grid 仍未接全 | `konvaCanvasStyle.ts`, `konvaArrangeCommands.ts`, `KonvaContextMenu.tsx` | 多选对齐和层级可用 |
+| ✅ | 2.15 | layer/align/actions | send/back/bring/align/stretch/duplicate/delete | layer/duplicate/delete、Align、Distribute、Stretch、Flip、Row/Column arrange 已接入 Properties 和右键同源 helpers | `konvaCanvasStyle.ts`, `konvaArrangeCommands.ts`, `KonvaPropertiesSelectionActions.tsx`, `KonvaContextMenu.tsx` | 多选对齐和层级可用 |
 
 ### Phase 2A：Properties 面板完整对照
 
@@ -163,16 +166,16 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | 状态 | 序号 | Properties 区块 | 当前参考 | Konva/Yjs 复刻要求 | 验收方式 |
 | --- | --- | --- | --- | --- | --- |
 | ✅ | 2A.1 | Header | `Properties` + `Selected · N` 或当前工具样式 | 已显示当前 selection 数量；无 selection 时显示当前工具 style | 选中 0/1/3 个对象时文案正确 |
-| ☐ | 2A.2 | Selection actions | Convert image to node、Capture selected to Image Node 两个图标 | 转 Image Node / Capture selection 还未接入 | 选图片/多选时按钮状态正确 |
+| ◐ | 2A.2 | Selection actions | Convert image to node、Capture selected to Image Node 两个图标 | selection toolbar first pass：Canvas Image → Image Node 和 Image Node → Canvas 可用；Capture selection 仍 disabled | 选图片/多选时按钮状态正确 |
 | ✅ | 2A.3 | Stroke swatches | 黑、红、绿、蓝、橙、紫、灰；active 有紫色描边 | token 映射到 selected shapes 和 next shape | 选中图形改色立即生效 |
 | ✅ | 2A.4 | Fill buttons | none / semi / solid / pattern | fill buttons 和 active 状态已接；solid/pattern 透明度修复已完成 | fill 状态保存/恢复 |
 | ✅ | 2A.5 | Width buttons | s/m/l/xl 图标线宽不同 | 四档 width 已接入实际 strokeWidth | 四档线宽可见差异 |
 | ◐ | 2A.6 | Dash buttons | draw/solid/dashed/dotted | dash 已有；draw 的高级笔触模式、等宽/钢笔/点线细分还未做 | dash 样式保存/恢复 |
 | ✅ | 2A.7 | Opacity slider | 紫色 slider，右侧显示 0-100 | selection opacity 和 next opacity 都支持，mixed 显示 `Mixed` | 多选 mixed 状态可处理 |
 | ✅ | 2A.8 | Layer grid | 置底/下移/上移/置顶图标 | 四档 z-order 已持久化，Properties/右键/快捷键同源 | 层级顺序变化可见并持久化 |
-| ◐ | 2A.9 | Align grid | 左/中/右/顶/中/底等对齐 | right-click Arrange > Align 已完成；Properties align grid 未接 | 多选对齐符合截图菜单逻辑 |
-| ◐ | 2A.10 | Actions grid | duplicate/delete/stretch 等 | duplicate/delete 已与右键/快捷键共用 command；stretch/distribute/flip/tidy 已在右键命令层完成，Properties grid 尚未接全 | 点击 actions 和右键菜单结果一致 |
-| ☐ | 2A.11 | Node card selection | 选 node 时不出现普通图形 stroke/fill 噪音 | node card selection 尚未进入 Konva route | 选节点不会让用户误改无效样式 |
+| ✅ | 2A.9 | Align grid | 左/中/右/顶/中/底等对齐 | Properties align grid 已接 `alignKonvaShapes`，与右键 Arrange > Align 同源 | 多选对齐符合截图菜单逻辑 |
+| ✅ | 2A.10 | Actions grid | duplicate/delete/stretch 等 | Duplicate/Delete/Stretch/Distribute/Flip/Row/Column 已接入 Properties actions grid | 点击 actions 和右键菜单结果一致 |
+| ✅ | 2A.11 | Node card selection | 选 node 时不出现普通图形 stroke/fill 噪音 | Konva `node_card` first pass 已进入 route；普通 stroke/fill/width 面板对 node selection 隐藏 | 选节点不会让用户误改无效样式 |
 | ✅ | 2A.12 | Mixed selection | 多选不同样式 | style snapshot 支持 mixed；点击某值后统一应用到 selection | 多选不同颜色后能统一设置 |
 | ✅ | 2A.13 | Pointer isolation | properties 点击不触发画布选择/画线 | properties 已 stop pointer/wheel/context menu bubbling | 在 panel 上滚轮/点击不影响画布 |
 
@@ -290,8 +293,8 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 
 | 状态 | 序号 | 转换链路 | 当前 tldraw 参考 | Konva/Yjs 复刻要求 | 参考文件 | 验收方式 |
 | --- | --- | --- | --- | --- | --- | --- |
-| ☐ | 4A.1 | Canvas Image → Image Node | 选中画布 image shape 后，selection toolbar/properties 有 Convert to Image Node | Canvas image shape 已有；读取 image shape 并创建 Image Node 尚未做 | `createImageNodeFromCanvasImage`, `CanvasSelectionToolbar.tsx`, `CanvasStylePanelSelectionActions.tsx` | 选中单张图片点击转换，生成 Image Node 且 asset 不复制成 Base64 |
-| ☐ | 4A.2 | Image Node → Canvas Image | Image Node header 的 `To Canvas` 把节点资产放回画布 | Image Node renderer 未做，To Canvas 尚未接 | `createCanvasImageFromNode`, `NodeCardContent.tsx` | 有图片的 Image Node 点击 To Canvas，画布出现图片并选中 |
+| ✅ | 4A.1 | Canvas Image → Image Node | 选中画布 image shape 后，selection toolbar/properties 有 Convert to Image Node | Konva selection toolbar first pass 已读取 `CanvasImageShape` 并创建 `node_card` image node；node data 只存 asset refs/尺寸/title/source，不存 Base64 | `konvaImageNodeConversion.ts`, `KonvaSelectionToolbar.tsx`, `KonvaNodeCardShape.tsx` | 选中单张图片点击转换，生成 Image Node 且 asset 不复制成 Base64 |
+| ◐ | 4A.2 | Image Node → Canvas Image | Image Node header 的 `To Canvas` 把节点资产放回画布 | selection toolbar first pass 已支持 Image Node → Canvas Image，按 asset id 从 Asset API 拉取 URL 后创建 image；正式 node header button 等 Phase 4 Node UI | `konvaImageNodeConversion.ts`, `useKonvaImageNodeActions.ts` | 有图片的 Image Node 点击 To Canvas，画布出现图片并选中 |
 | ☐ | 4A.3 | Selection → Image Node | 选择多个对象后 Capture to Image Node | selection export/upload/create Image Node 尚未做 | `createImageNodeFromDataUrl`, `editor.toImageDataUrl`, `CanvasSelectionToolbar.tsx` | 多选图形/图片/节点后生成 Merged selection Image Node |
 | ☐ | 4A.4 | Canvas → Image / Merge Capture Preview | Merge Capture 预览当前 selection 导出结果 | bounded PNG preview 尚未做 | `CanvasMergeCapturePanel.tsx` | 预览图尺寸正确，caption 显示宽高 |
 | ☐ | 4A.5 | Canvas Markup → New Image Node | 用户在图片上画标注，多选图片+标注后 capture | merge_capture export/upload 尚未做 | P0 scope, selection capture | 标注后的图片可变成新 Image Node |
@@ -303,16 +306,16 @@ Keep these modules conceptually intact, even if their editor adapter changes:
 | ◐ | 4A.11 | Shape/Node selection export bounds | tldraw 用 shape geometry + page transform 算 bounds | rotated box bounds first pass 已进 shared geometry；统一 `getSelectionExportBounds(ids)` 和 node export bounds 未做 | `geometry.ts`, `getPageBounds` duplicates | capture/export 不裁切、不多留大空白 |
 | ☐ | 4A.12 | Export background policy | 当前 selection capture `background:false`，Board thumbnail 可有背景 | export background policy 尚未定义/接入 | `CanvasSelectionToolbar.tsx`, `boardThumbnailCapture.ts` | selection PNG 透明，thumbnail 可读 |
 | ☐ | 4A.13 | Asset origin | upload/editor_export/generated/merge_capture | Konva conversion origin policy 尚未接 | `assetTypes.ts`, `/api/assets/upload` | DB 里 origin 正确 |
-| ☐ | 4A.14 | Conversion undo/redo | tldraw 创建节点/图片可由 editor history 处理 | conversion transaction 尚未做；普通 shape/image visual undo 已有 | engine history | undo 删除新节点/图片但不破坏远端 asset |
+| ✅ | 4A.14 | Conversion undo/redo | tldraw 创建节点/图片可由 editor history 处理 | Image→Node / Node→Canvas first pass 都在转换前创建 history checkpoint；远端 asset 不被 undo 删除 | engine history | undo 删除新节点/图片但不破坏远端 asset |
 | ☐ | 4A.15 | Conversion status/error | 当前有 `Capture failed` / `Image node conversion failed` | conversion UI loading/error 尚未做 | selection toolbar/actions | 断网/上传失败有可见提示 |
 | ✅ | 4A.16 | Web image copy → Canvas | 浏览器里复制网络图片后 `Ctrl/Cmd+V` 到画布 | 已读取 clipboard image file/blob 和 HTML img URL；blob/data 走 Asset API，远程 URL 作为 source fallback | `konvaImageClipboard.ts` | 从网页复制图片，鼠标停在画布某处粘贴，图片出现在鼠标位置 |
 | ◐ | 4A.17 | Copy image from canvas | 选中 Canvas image 后 `Ctrl/Cmd+C` | internal JSON copy 已支持，粘贴保留 asset ref；PNG/SVG fallback 未做 | `konvaShapeCommands.ts`, `konvaClipboardCommands.ts` | 复制后粘贴不重新上传同一张图，assetId 保持或可追踪 |
 | ✅ | 4A.18 | Paste at mouse position | 粘贴不是固定 offset，而是鼠标/视口焦点位置 | 已记录最后 canvas pointer world point；右键 Paste 使用右键位置 | `KonvaCanvasSpike.tsx` | 鼠标在哪，粘贴图就出现在附近 |
 | ✅ | 4A.19 | Alt/Option drag copy image | 按住 Alt 拖拽图片复制 | image shape 复用 shape drag/duplicate session，副本引用同一 asset URLs | `useKonvaShapeDragHandlers.ts`, `konvaShapeCommands.ts` | Alt 拖拽生成副本，原图不动，不重复上传 |
 | ✅ | 4A.20 | Image resize keep quality | 图片缩放不坏图、不拉糊、不丢比例 | image 显示尺寸和 source 分离；resize/rotate 复用 box 控件；LOD render 已有；Shift 等比 resize 已同步修正 | `KonvaImageShape.tsx`, `konvaRotatedResize.ts` | 放大缩小时图片不异常变形，保存恢复尺寸 |
-| ☐ | 4A.21 | Image boundary placement | 转换成 Image Node 出现在图片右侧 | Image Node conversion 尚未做 | `createImageNodeFromCanvasImage` | 多张图逐个转换，节点都在对应图片右侧 |
+| ✅ | 4A.21 | Image boundary placement | 转换成 Image Node 出现在图片右侧 | Canvas Image → Image Node first pass 放在原图片右侧固定 gap | `konvaImageNodeConversion.ts` | 多张图逐个转换，节点都在对应图片右侧 |
 | ☐ | 4A.22 | Screenshot/Capture placement | screenshot 成 Image Node 出现在 selection/image boundary 下方 | capture → Image Node 尚未做 | `createImageNodeFromDataUrl`, `CanvasSelectionToolbar` | 多选图片/标注 capture 后节点在整个边界下方 |
-| ☐ | 4A.23 | To Canvas placement | Image Node 的 `To Canvas` 出现在节点右侧 | Image Node → Canvas Image 尚未做 | `NodeCardContent.tsx` | To Canvas 后图片在节点右侧且被选中 |
+| ✅ | 4A.23 | To Canvas placement | Image Node 的 `To Canvas` 出现在节点右侧 | Image Node → Canvas Image first pass 放在节点右侧并选中新图片 | `konvaImageNodeConversion.ts` | To Canvas 后图片在节点右侧且被选中 |
 | ☐ | 4A.24 | Screenshot vs thumbnail | screenshot/canvas-to-image 是用户资产，thumbnail 是 Board 预览 | screenshot/capture/thumbnail origin 区分未接 Konva | asset origin + board thumbnail | 两者不混淆，History/Board card 显示正确 |
 | ◐ | 4A.25 | Network image CORS fallback | 网络图片可能跨域导致 canvas tainted | paste URL/HTML first pass 已有 source fallback；后端 fetch/upload/export-safe 代理未做 | asset upload proxy/future API | 复制外网图片后仍能保存和 capture，不因 CORS 破坏导出 |
 

@@ -1,11 +1,9 @@
-import { useState, type CSSProperties, type Dispatch, type ReactNode, type SetStateAction, type SyntheticEvent } from 'react'
+import { useState, type CSSProperties, type Dispatch, type SetStateAction, type SyntheticEvent } from 'react'
 import type { CanvasDocument, CanvasShapeStyle } from '@/features/canvas-engine'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
 import { konvaToolLabels } from './konvaCanvasTypes'
 import {
   applyKonvaStylePatch,
-  deleteKonvaShapes,
-  duplicateKonvaShapes,
   getKonvaSelectionStyleSnapshot,
   getWidthStyleToken,
   isKonvaDashShape,
@@ -16,10 +14,12 @@ import {
   konvaFillStyles,
   konvaStrokeColors,
   konvaWidthStyles,
-  reorderKonvaShapes,
   type KonvaCanvasWidthStyle,
 } from './konvaCanvasStyle'
 import { KonvaLineProperties } from './KonvaLineProperties'
+import { KonvaPropertiesFont } from './KonvaPropertiesFont'
+import { IconButton, PropertyBlock, SegmentedButtons } from './KonvaPropertiesPrimitives'
+import { KonvaPropertiesSelectionActions } from './KonvaPropertiesSelectionActions'
 
 type KonvaCanvasPropertiesProps = {
   activeTool: KonvaCanvasTool
@@ -70,25 +70,6 @@ export function KonvaCanvasProperties({
       onHistoryCheckpoint(document)
       onDocumentChange((current) => applyKonvaStylePatch(current, selectedIds, patch))
     }
-  }
-
-  const runDocumentAction = (action: 'delete' | 'duplicate' | 'layer-back' | 'layer-backward' | 'layer-forward' | 'layer-front') => {
-    if (selectedIds.length === 0) return
-    onHistoryCheckpoint(document)
-    if (action === 'duplicate') {
-      const result = duplicateKonvaShapes(document, selectedIds)
-      onDocumentChange(result.document)
-      onSelectionChange(result.selectedIds)
-      return
-    }
-    if (action === 'delete') {
-      const result = deleteKonvaShapes(document, selectedIds)
-      onDocumentChange(result.document)
-      onSelectionChange(result.selectedIds)
-      return
-    }
-    const layerAction = action.replace('layer-', '') as 'back' | 'backward' | 'forward' | 'front'
-    onDocumentChange((current) => reorderKonvaShapes(current, selectedIds, layerAction))
   }
 
   return (
@@ -186,6 +167,7 @@ export function KonvaCanvasProperties({
           ) : null}
 
           <KonvaLineProperties document={document} onDocumentChange={onDocumentChange} onHistoryCheckpoint={onHistoryCheckpoint} selectedIds={selectedIds} selectedShapes={selectedShapes} />
+          <KonvaPropertiesFont onApplyStyle={applyStyle} selectedShapes={selectedShapes} styleSnapshot={styleSnapshot} />
 
           <PropertyBlock label="Opacity">
             <div className="konva-canvas-properties__range-row">
@@ -201,59 +183,17 @@ export function KonvaCanvasProperties({
             </div>
           </PropertyBlock>
 
-          {hasSelection ? (
-            <>
-              <PropertyBlock label="Layer">
-                <IconGrid>
-                  <IconButton icon="style-action-icon style-action-icon--layer-back" label="Send to back" onClick={() => runDocumentAction('layer-back')} />
-                  <IconButton icon="style-action-icon style-action-icon--layer-down" label="Send backward" onClick={() => runDocumentAction('layer-backward')} />
-                  <IconButton icon="style-action-icon style-action-icon--layer-up" label="Bring forward" onClick={() => runDocumentAction('layer-forward')} />
-                  <IconButton icon="style-action-icon style-action-icon--layer-front" label="Bring to front" onClick={() => runDocumentAction('layer-front')} />
-                </IconGrid>
-              </PropertyBlock>
-
-              <PropertyBlock label="Actions">
-                <IconGrid>
-                  <IconButton icon="style-action-icon style-action-icon--duplicate" label="Duplicate" onClick={() => runDocumentAction('duplicate')} />
-                  <IconButton icon="style-action-icon style-action-icon--delete" label="Delete" onClick={() => runDocumentAction('delete')} />
-                </IconGrid>
-              </PropertyBlock>
-            </>
-          ) : null}
+          <KonvaPropertiesSelectionActions
+            document={document}
+            onDocumentChange={onDocumentChange}
+            onHistoryCheckpoint={onHistoryCheckpoint}
+            onSelectionChange={onSelectionChange}
+            selectedIds={selectedIds}
+            selectedShapes={selectedShapes}
+          />
         </div>
       ) : null}
     </aside>
-  )
-}
-
-function PropertyBlock({ children, label }: { children: ReactNode; label: string }) {
-  return (
-    <section className="konva-canvas-properties__block">
-      <p>{label}</p>
-      {children}
-    </section>
-  )
-}
-
-function SegmentedButtons({ children }: { children: ReactNode }) {
-  return <div className="konva-canvas-properties__segmented">{children}</div>
-}
-
-function IconGrid({ children }: { children: ReactNode }) {
-  return <div className="konva-canvas-properties__icon-grid">{children}</div>
-}
-
-function IconButton({ active, icon, iconData, label, onClick }: {
-  active?: boolean
-  icon: string
-  iconData?: string
-  label: string
-  onClick: () => void
-}) {
-  return (
-    <button aria-label={label} className={active ? 'is-active' : undefined} data-tooltip={label} onClick={onClick} type="button">
-      <span aria-hidden className={icon} data-style-icon={iconData} />
-    </button>
   )
 }
 

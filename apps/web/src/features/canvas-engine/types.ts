@@ -1,3 +1,5 @@
+import type { JsonObject, NodeRuntimeSummary, NodeType } from '@/types/nodeRuntime'
+
 export type CanvasPoint = {
   x: number
   y: number
@@ -30,9 +32,11 @@ export type CanvasShapeStyle = {
   dash?: 'draw' | 'solid' | 'dashed' | 'dotted'
   fill?: string
   fillStyle?: 'none' | 'semi' | 'solid' | 'pattern'
+  fontSize?: number
   opacity?: number
   stroke?: string
   strokeWidth?: number
+  textAlign?: 'center' | 'left' | 'right'
 }
 
 export type CanvasShapeBase<Type extends string, Props extends object = object> = {
@@ -97,6 +101,14 @@ export type CanvasImageShape = CanvasShapeBase<'image', CanvasSize & {
   title?: string
 }>
 
+export type CanvasNodeShape = CanvasShapeBase<'node_card', CanvasSize & {
+  data: JsonObject
+  nodeId: string
+  nodeType: NodeType
+  runtimeSummary: NodeRuntimeSummary
+  version: number
+}>
+
 export type CanvasTextShape = CanvasShapeBase<'text', CanvasSize & {
   text: string
 }>
@@ -118,6 +130,7 @@ export type CanvasShape =
   | CanvasFrameShape
   | CanvasImageShape
   | CanvasLineShape
+  | CanvasNodeShape
   | CanvasRectShape
   | CanvasStickyShape
   | CanvasStrokeShape
