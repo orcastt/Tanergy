@@ -5,17 +5,13 @@ import { CanvasBoardTitle } from '@/components/canvas/CanvasBoardTitle'
 type KonvaCanvasHeaderProps = {
   boardId?: string
   boardTitle?: string
-  mode?: 'board' | 'dev'
   onBoardTitleRename?: (title: string) => Promise<string | void> | string | void
-  ydocId: string
 }
 
 export function KonvaCanvasHeader({
   boardId,
   boardTitle = 'S1X Konva handfeel spike',
-  mode = 'dev',
   onBoardTitleRename,
-  ydocId,
 }: KonvaCanvasHeaderProps) {
   return (
     <header className="konva-canvas-header">
@@ -27,7 +23,6 @@ export function KonvaCanvasHeader({
         ) : (
           <CanvasBoardTitle onRename={onBoardTitleRename} title={boardTitle} />
         )}
-        <small>{mode === 'board' ? 'Konva board persistence spike' : 'tldraw parity reference'}, Yjs doc ready: {ydocId}</small>
       </div>
     </header>
   )

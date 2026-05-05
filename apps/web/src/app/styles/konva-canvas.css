@@ -51,17 +51,12 @@
 .konva-canvas-title {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 0;
   min-width: 0;
 }
 
 .konva-canvas-title span {
   font-size: 14px;
-}
-
-.konva-canvas-title small {
-  color: #718096;
-  font-size: 11px;
 }
 
 .konva-canvas-toolbar {

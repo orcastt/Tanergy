@@ -4,6 +4,7 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import type Konva from 'konva'
 import * as Y from 'yjs'
 import { createEmptyCanvasDocument, screenToWorld, type CanvasCamera, type CanvasDocument, type CanvasNodeShape, type CanvasPoint, type CanvasShape, type CanvasShapeStyle } from '@/features/canvas-engine'
+import { CanvasSettingsPanel } from '@/components/canvas/CanvasSettingsPanel'
 import { CanvasTooltipLayer } from '@/components/canvas/CanvasTooltipLayer'
 import { KonvaCanvasHeader } from './KonvaCanvasHeader'
 import { KonvaBoardSaveAudit } from './KonvaBoardSaveAudit'
@@ -65,6 +66,7 @@ export function KonvaCanvasSpike({
   }))
   const [camera, setCamera] = useState<CanvasCamera>(document.camera)
   const [activeTool, setActiveTool] = useState<KonvaCanvasTool>('select')
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [isSpacePanning, setIsSpacePanning] = useState(false)
   const [nextStyle, setNextStyle] = useState<CanvasShapeStyle>(konvaDefaultShapeStyle)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -250,15 +252,18 @@ export function KonvaCanvasSpike({
       <KonvaCanvasHeader
         boardId={mode === 'board' ? boardId : undefined}
         boardTitle={boardTitle}
-        mode={mode}
         onBoardTitleRename={onBoardTitleRename}
-        ydocId={ydoc.guid.slice(0, 8)}
       />
       <KonvaCanvasToolbar
         activeTool={activeTool}
+        isSettingsOpen={settingsOpen}
         onAddStressStrokes={addStressStrokes}
         onClear={clearCanvas}
         onCreateNode={createNodeCard}
+        onOpenSettings={() => {
+          closeNodeMenu()
+          setSettingsOpen((open) => !open)
+        }}
         onToolChange={setActiveTool}
       />
       <section
@@ -404,6 +409,7 @@ export function KonvaCanvasSpike({
           onDocumentRestore={restoreBoardDocument}
           stage={stage}
         />
+        {settingsOpen ? <CanvasSettingsPanel boardMode={mode === 'board'} onClose={() => setSettingsOpen(false)} /> : null}
         <KonvaCanvasDiagnostics diagnostics={diagnostics} pointCount={pointCount} zoom={camera.zoom} />
         <KonvaContextMenuHost
           canLockSelection={canLockSelection}

@@ -276,7 +276,6 @@ export function KonvaBoardSaveAudit({
         onSave={() => void saveLocal('manual_save')}
         onSnapshot={() => void snapshots.saveSnapshot('manual')}
         saveError={saveError ?? snapshots.snapshotError}
-        showLoad
         snapshotMessage={snapshots.snapshotMessage}
         snapshots={snapshots}
         status={status}

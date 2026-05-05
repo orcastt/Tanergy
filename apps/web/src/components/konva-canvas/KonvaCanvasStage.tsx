@@ -1,7 +1,8 @@
 import type Konva from 'konva'
 import { useCallback, type Dispatch, type SetStateAction } from 'react'
-import { Group, Layer, Rect, Stage } from 'react-konva'
+import { Group, Layer, Stage } from 'react-konva'
 import type { CanvasCamera, CanvasDocument, CanvasNodeShape, CanvasShape, CanvasShapeStyle } from '@/features/canvas-engine'
+import { KonvaCanvasBackground } from './KonvaCanvasBackground'
 import { KonvaCanvasShape } from './KonvaCanvasShape'
 import { KonvaEraserTrail } from './KonvaEraserTrail'
 import { KonvaFrameChrome } from './KonvaFrameChrome'
@@ -127,13 +128,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
     >
       {props.captureMode ? null : (
         <Layer listening={false} name={konvaCaptureExcludeName}>
-          <Rect
-            fill="rgba(255,255,255,0.01)"
-            height={props.height / renderCamera.zoom}
-            width={props.width / renderCamera.zoom}
-            x={-renderCamera.x / renderCamera.zoom}
-            y={-renderCamera.y / renderCamera.zoom}
-          />
+          <KonvaCanvasBackground camera={renderCamera} height={props.height} width={props.width} />
         </Layer>
       )}
 

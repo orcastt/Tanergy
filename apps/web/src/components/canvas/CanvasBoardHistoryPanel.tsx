@@ -10,6 +10,7 @@ type CanvasBoardHistoryPanelProps = {
   onClear: () => void
   onClose: () => void
   onRefresh: () => void
+  onRefreshPreview: () => void
   onRestore: (snapshotId: string) => void
   snapshots: BoardSnapshotSummary[]
 }
@@ -20,6 +21,7 @@ export function CanvasBoardHistoryPanel({
   onClear,
   onClose,
   onRefresh,
+  onRefreshPreview,
   onRestore,
   snapshots,
 }: CanvasBoardHistoryPanelProps) {
@@ -86,6 +88,7 @@ export function CanvasBoardHistoryPanel({
         <span>Free retention target: latest 100 autosaves + 100 user saves per board.</span>
         <div className="canvas-board-history__footer-actions">
           <button disabled={isRunning} onClick={onRefresh} type="button">Refresh</button>
+          <button disabled={isRunning} onClick={onRefreshPreview} type="button">Refresh preview</button>
           <button
             disabled={isRunning || snapshots.length === 0}
             onClick={() => {

@@ -30,6 +30,7 @@ export function CanvasBoardModeControls({ snapshots, ...statusProps }: CanvasBoa
           onClose={snapshots.closeHistory}
           onClear={() => void snapshots.clearHistory()}
           onRefresh={() => void snapshots.refreshSnapshots()}
+          onRefreshPreview={statusProps.onRefreshPreview}
           onRestore={(snapshotId) => void snapshots.restoreSnapshot(snapshotId)}
           snapshots={snapshots.snapshots}
         />

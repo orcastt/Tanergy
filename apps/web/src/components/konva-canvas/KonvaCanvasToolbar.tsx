@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CanvasLineIcon } from '@/components/canvas/CanvasLineIcon'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
 import type { NodeType } from '@/types/nodeRuntime'
 import { KonvaNodeCreateMenu } from './KonvaNodeCreateMenu'
@@ -6,17 +7,21 @@ import { konvaToolGroups, konvaToolLabels, konvaToolShortcuts } from './konvaCan
 
 type KonvaCanvasToolbarProps = {
   activeTool: KonvaCanvasTool
+  isSettingsOpen?: boolean
   onCreateNode: (type: NodeType) => void
   onToolChange: (tool: KonvaCanvasTool) => void
   onAddStressStrokes: () => void
   onClear: () => void
+  onOpenSettings: () => void
 }
 
 export function KonvaCanvasToolbar({
   activeTool,
+  isSettingsOpen = false,
   onCreateNode,
   onAddStressStrokes,
   onClear,
+  onOpenSettings,
   onToolChange,
 }: KonvaCanvasToolbarProps) {
   const [nodeMenuOpen, setNodeMenuOpen] = useState(false)
@@ -58,6 +63,16 @@ export function KonvaCanvasToolbar({
         {nodeMenuOpen ? <KonvaNodeCreateMenu onCreateNode={createNode} variant="toolbar" /> : null}
       </div>
       <div className="konva-canvas-toolbar__group">
+        <button
+          aria-label="Canvas settings"
+          className="konva-canvas-tool"
+          data-active={isSettingsOpen}
+          data-tooltip="Canvas settings"
+          onClick={onOpenSettings}
+          type="button"
+        >
+          <CanvasLineIcon name="settings" />
+        </button>
         <button className="konva-canvas-action" onClick={onAddStressStrokes} type="button">
           1k strokes
         </button>
