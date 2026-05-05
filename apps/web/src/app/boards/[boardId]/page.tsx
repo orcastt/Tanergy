@@ -7,6 +7,7 @@ import type { BoardPersistenceRecord } from '@/features/boards/boardTypes'
 import {
   detectBoardCanvasEngine,
   getDefaultBoardCanvasEngine,
+  isTldrawReferenceEnabled,
   parseBoardCanvasEngine,
 } from '@/features/boards/boardCanvasEngine'
 import { loadLocalBoardDocument, renameLocalBoardDocument } from '@/features/boards/localBoardClient'
@@ -37,6 +38,7 @@ export default function BoardCanvasPage() {
   const requestedEngine = parseBoardCanvasEngine(searchParams.get('engine'))
   const [loadState, setLoadState] = useState<BoardLoadState>({ status: isNewBoard ? 'idle' : 'loading' })
   const [boardTitleOverride, setBoardTitleOverride] = useState<{ boardId: string; title: string } | null>(null)
+  const tldrawReferenceEnabled = isTldrawReferenceEnabled()
   const detectedEngine = loadState.status === 'loaded' ? detectBoardCanvasEngine(loadState.board.document) : null
   const engine = useMemo(
     () => detectedEngine ?? requestedEngine ?? getDefaultBoardCanvasEngine(),
@@ -98,6 +100,15 @@ export default function BoardCanvasPage() {
     )
   }
 
+  if (detectedEngine === 'tldraw' && !tldrawReferenceEnabled) {
+    return (
+      <BoardRouteState
+        title="tldraw Reference Disabled"
+        detail="This saved Board is a legacy tldraw v1 document. Production Boards must be opened through Konva v2."
+      />
+    )
+  }
+
   if (engine === 'konva') {
     return (
       <KonvaCanvasSpike
@@ -108,6 +119,15 @@ export default function BoardCanvasPage() {
         onBoardLoaded={(title) => setBoardTitleOverride({ boardId, title })}
         onBoardTitleRename={renameBoardTitle}
         seedOnMount={false}
+      />
+    )
+  }
+
+  if (!tldrawReferenceEnabled) {
+    return (
+      <BoardRouteState
+        title="tldraw Reference Disabled"
+        detail="tldraw is only available as a development reference route, not as a production Board engine."
       />
     )
   }

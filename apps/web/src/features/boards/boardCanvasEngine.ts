@@ -37,3 +37,7 @@ export function parseBoardCanvasEngine(value: string | null): BoardCanvasEngine 
 export function getDefaultBoardCanvasEngine(): BoardCanvasEngine {
   return process.env.NEXT_PUBLIC_BOARD_CANVAS_ENGINE === 'tldraw' ? 'tldraw' : 'konva'
 }
+
+export function isTldrawReferenceEnabled() {
+  return process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_ENABLE_TLDRAW_REFERENCE === '1'
+}
