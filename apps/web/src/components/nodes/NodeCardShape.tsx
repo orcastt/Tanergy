@@ -30,7 +30,7 @@ export class NodeCardShapeUtil extends BaseBoxShapeUtil<NodeCardShape> {
     data: T.jsonValue,
     h: T.number,
     nodeId: T.string,
-    nodeType: T.literalEnum('prompt', 'image_gen', 'image_gen_4', 'analysis', 'image'),
+    nodeType: T.literalEnum('prompt', 'image_gen', 'image_gen_4', 'analysis', 'image', 'chat'),
     runtimeSummary: T.jsonValue,
     version: T.number,
     w: T.number,

@@ -20,7 +20,7 @@ ALLOWED_SHAPE_TYPES = {
     "triangle",
 }
 BOX_SHAPE_TYPES = {"cloud", "diamond", "ellipse", "frame", "image", "node_card", "rect", "sticky", "text", "triangle"}
-NODE_TYPES = {"analysis", "image", "image_gen", "image_gen_4", "prompt"}
+NODE_TYPES = {"analysis", "chat", "image", "image_gen", "image_gen_4", "prompt"}
 RUNTIME_DATA_TYPES = {"image", "text"}
 
 

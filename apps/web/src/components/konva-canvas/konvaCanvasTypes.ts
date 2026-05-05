@@ -18,7 +18,7 @@ export type KonvaCanvasTool =
   | 'text'
   | 'eraser'
 
-export type KonvaResizeHandle = 'ne' | 'nw' | 'se' | 'sw'
+export type KonvaResizeHandle = 'e' | 'n' | 'ne' | 'nw' | 's' | 'se' | 'sw' | 'w'
 
 export type KonvaLineEndpointHandle = 'end' | 'start'
 export type KonvaLineRouteHandle = 'bend-0' | 'bend-1' | 'control'
@@ -50,6 +50,7 @@ export type KonvaToolSession =
       current: CanvasPoint
       origin: CanvasPoint
       pointerId?: number
+      targetShapeId?: string
       type: 'select-box'
     }
   | {

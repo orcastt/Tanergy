@@ -12,6 +12,7 @@ import { KonvaCanvasDiagnostics } from './KonvaCanvasDiagnostics'
 import type { KonvaContextMenuAction } from './KonvaContextMenu'
 import { KonvaContextMenuHost } from './KonvaContextMenuHost'
 import { KonvaCanvasNavigator } from './KonvaCanvasNavigator'
+import { KonvaCanvasPagesPanel } from './KonvaCanvasPagesPanel'
 import { KonvaCanvasProperties } from './KonvaCanvasProperties'
 import { KonvaCanvasStage } from './KonvaCanvasStage'
 import { isKonvaEditableTextShape, KonvaTextEditor, type KonvaEditableTextShape } from './KonvaTextEditor'
@@ -26,6 +27,7 @@ import { createSeedShapes } from './konvaSeedShapes'
 import { KonvaSelectionToolbar } from './KonvaSelectionToolbar'
 import { updateTextShape } from './konvaShapeCommands'
 import { useKonvaBrowserSelectionGuard } from './useKonvaBrowserSelectionGuard'
+import { useKonvaBoardPages } from './useKonvaBoardPages'
 import { useKonvaCanvasControls } from './useKonvaCanvasControls'
 import { useKonvaCanvasHistory } from './useKonvaCanvasHistory'
 import { useKonvaCanvasMetrics } from './useKonvaCanvasMetrics'
@@ -98,7 +100,7 @@ export function KonvaCanvasSpike({
     onSelectionChange: handleSelectionChange,
     selectedIds,
   })
-  const { closeNodeMenu, createNodeCard, nodeMenu, openNodeMenu, setNodeField, setNodeTextField, toggleNodeRun } = useKonvaNodeCreationMenu({
+  const { cleanChatHistory, closeNodeMenu, createNodeCard, nodeMenu, openNodeMenu, sendChatMessage, setNodeField, setNodeTextField, toggleChatMessageExport, toggleNodeRun } = useKonvaNodeCreationMenu({
     camera,
     document,
     history,
@@ -108,6 +110,23 @@ export function KonvaCanvasSpike({
     onSelectionChange: handleSelectionChange,
     onToolChange: setActiveTool,
     size,
+  })
+  const clearTransientState = useCallback(() => {
+    handleSelectionChange([])
+    setSelectedEdgeId(null)
+    setCropEditingImageId(null)
+    setEditingTextId(null)
+    setEditingNodeText(null)
+    setContextMenu(null)
+    closeNodeMenu()
+    history.clear()
+  }, [closeNodeMenu, handleSelectionChange, history])
+  const boardPages = useKonvaBoardPages({
+    activeDocument: document,
+    camera,
+    onCameraChange: setCamera,
+    onDocumentChange: setDocument,
+    onTransientClear: clearTransientState,
   })
   const { fileInput, promptImageNodeUpload, uploadDropFileAtPoint } = useKonvaImageNodeUpload({
     document,
@@ -235,18 +254,6 @@ export function KonvaCanvasSpike({
       selectedIds,
     })
   }
-  const restoreBoardDocument = useCallback((nextDocument: CanvasDocument) => {
-    setDocument(nextDocument)
-    setCamera(nextDocument.camera)
-    handleSelectionChange([])
-    setSelectedEdgeId(null)
-    setCropEditingImageId(null)
-    setEditingTextId(null)
-    setEditingNodeText(null)
-    setContextMenu(null)
-    closeNodeMenu()
-  }, [closeNodeMenu, handleSelectionChange])
-
   return (
     <main className="konva-canvas-shell">
       <KonvaCanvasHeader
@@ -277,11 +284,21 @@ export function KonvaCanvasSpike({
         onPointerMoveCapture={stageDomEvents.handlePointerMoveCapture}
         ref={shellRef}
       >
+        <KonvaCanvasPagesPanel
+          activeDocument={document}
+          activePageId={boardPages.activePageId}
+          onCreatePage={boardPages.createPage}
+          onRenamePage={boardPages.renamePage}
+          onSelectPage={boardPages.selectPage}
+          pages={boardPages.pages}
+        />
         <KonvaCanvasStage
           activeTool={activeTool}
           camera={camera}
           captureMode={selectionExport.captureMode}
           cropEditingImageId={cropEditingImageId}
+          editingNodeText={editingNodeText}
+          editingTextId={editingTextId}
           document={document}
           height={size.height}
           isSpacePanning={isSpacePanning}
@@ -301,8 +318,20 @@ export function KonvaCanvasSpike({
           }}
           onHistoryCheckpoint={history.checkpoint}
           onImageNodeToCanvas={sendImageNodeToCanvas}
+          onNodeChatClean={cleanChatHistory}
+          onNodeChatExportToggle={toggleChatMessageExport}
+          onNodeChatSend={sendChatMessage}
+          onNodeChatUpload={promptImageNodeUpload}
           onNodeFieldChange={setNodeField}
           onNodeRunToggle={toggleNodeRun}
+          onNodeTextEditStart={(shapeId, fieldName) => {
+            const shape = document.shapes.find((item) => item.id === shapeId)
+            if (!shape || shape.type !== 'node_card') return
+            handleSelectionChange([shapeId])
+            setSelectedEdgeId(null)
+            setCropEditingImageId(null)
+            setEditingNodeText({ fieldName, shapeId })
+          }}
           onSelectionChange={handleSelectionChange}
           onStageReady={handleStageReady}
           onTextEditStart={(shapeId) => {
@@ -404,9 +433,12 @@ export function KonvaCanvasSpike({
           boardTitle={boardTitle}
           camera={camera}
           document={document}
+          getPageEnvelope={boardPages.getPageEnvelope}
+          historyTitle={boardPages.activePageTitle}
           mode={mode}
           onBoardLoaded={(board) => onBoardLoaded?.(board.title)}
-          onDocumentRestore={restoreBoardDocument}
+          onDocumentRestore={boardPages.restorePages}
+          pageRevision={boardPages.revision}
           stage={stage}
         />
         {settingsOpen ? <CanvasSettingsPanel boardMode={mode === 'board'} onClose={() => setSettingsOpen(false)} /> : null}

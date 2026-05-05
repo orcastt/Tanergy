@@ -19,17 +19,12 @@ export function canKonvaSelectionFlip(shapes: CanvasShape[]) {
 }
 
 export function canKonvaShapeSelectWithTool(shape: CanvasShape, activeTool: KonvaCanvasTool) {
-  if (isKonvaContinuousLineTool(activeTool)) return false
-  if (shape.type === 'image' || shape.type === 'node_card') return activeTool === 'select'
+  void shape
+  if (activeTool === 'draw' || activeTool === 'eraser' || activeTool === 'hand') return false
   return true
 }
 
 export function canKonvaShapeDragWithTool(shape: CanvasShape, activeTool: KonvaCanvasTool) {
-  if (isKonvaContinuousLineTool(activeTool)) return false
-  if (shape.type === 'image' || shape.type === 'node_card') return activeTool === 'select'
-  return true
-}
-
-function isKonvaContinuousLineTool(tool: KonvaCanvasTool) {
-  return tool === 'arrow' || tool === 'line' || tool === 'draw'
+  void shape
+  return activeTool !== 'draw' && activeTool !== 'eraser' && activeTool !== 'hand'
 }

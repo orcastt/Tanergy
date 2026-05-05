@@ -62,7 +62,11 @@ export function KonvaCanvasProperties({
   const dashToken = styleSnapshot.dash === 'mixed' ? null : styleSnapshot.dash
   const widthToken = styleSnapshot.strokeWidth === 'mixed' ? null : getWidthStyleToken(styleSnapshot.strokeWidth)
   const opacity = styleSnapshot.opacity === 'mixed' ? 100 : Math.round((styleSnapshot.opacity ?? 1) * 100)
-  const strokeLabel = hasSelection && selectedShapes.every((shape) => shape.type === 'sticky') ? 'Color' : 'Stroke'
+  const strokeLabel = hasSelection && selectedShapes.every((shape) => shape.type === 'text')
+    ? 'Text Color'
+    : hasSelection && selectedShapes.every((shape) => shape.type === 'sticky')
+      ? 'Color'
+      : 'Stroke'
 
   const applyStyle = (patch: CanvasShapeStyle) => {
     onNextStyleChange((current) => ({ ...current, ...patch }))

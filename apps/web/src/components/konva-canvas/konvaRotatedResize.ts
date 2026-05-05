@@ -3,6 +3,7 @@ import type { KonvaResizeHandle } from './konvaCanvasTypes'
 import { isBoxCanvasShape } from './konvaRotationUtils'
 import { getKonvaOrientedBounds } from './konvaOrientedBounds'
 import { resizeBoundsFromHandle } from './konvaSelectionUtils'
+import { scaleStandaloneTextStyle } from './konvaTextAutoFit'
 
 const rotatedResizeThreshold = 0.1
 
@@ -34,18 +35,18 @@ export function resizeShapesFromRotatedBox(
   rotatedBox: KonvaRotatedResizeBox,
   handle: KonvaResizeHandle,
   worldPoint: CanvasPoint,
-  options: { preserveAspect?: boolean } = {}
+  options: { preserveAspect?: boolean; scaleText?: boolean } = {}
 ): CanvasShape[] {
   const localPoint = worldToLocalPoint(worldPoint, rotatedBox.center, rotatedBox.rotation)
   const nextBounds = resizeBoundsFromHandle(rotatedBox.localBounds, handle, localPoint, options)
   const originals = new Map(originShapes.map((shape) => [shape.id, shape]))
   return shapes.map((shape) => {
     const original = originals.get(shape.id)
-    return original ? transformShapeFromRotatedBounds(original, rotatedBox, nextBounds) : shape
+    return original ? transformShapeFromRotatedBounds(original, rotatedBox, nextBounds, options) : shape
   })
 }
 
-function transformShapeFromRotatedBounds(shape: CanvasShape, rotatedBox: KonvaRotatedResizeBox, nextBounds: CanvasBounds): CanvasShape {
+function transformShapeFromRotatedBounds(shape: CanvasShape, rotatedBox: KonvaRotatedResizeBox, nextBounds: CanvasBounds, options: { scaleText?: boolean } = {}): CanvasShape {
   const transformPoint = (point: CanvasPoint) => transformWorldPoint(point, rotatedBox, nextBounds)
 
   if (isBoxCanvasShape(shape)) {
@@ -53,9 +54,10 @@ function transformShapeFromRotatedBounds(shape: CanvasShape, rotatedBox: KonvaRo
     const center = transformPoint({ x: shape.x + shape.props.width / 2, y: shape.y + shape.props.height / 2 })
     const width = Math.max(12, shape.props.width * Math.abs(scale.x))
     const height = Math.max(12, shape.props.height * Math.abs(scale.y))
+    const scaledShape = shape.type === 'text' && options.scaleText !== false ? scaleStandaloneTextStyle(shape, scale.y) : shape
     return {
-      ...shape,
-      props: { ...shape.props, height, width },
+      ...scaledShape,
+      props: { ...scaledShape.props, height, width },
       x: center.x - width / 2,
       y: center.y - height / 2,
     } as CanvasShape

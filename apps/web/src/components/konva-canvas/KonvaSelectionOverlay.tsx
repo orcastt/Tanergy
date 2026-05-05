@@ -288,7 +288,7 @@ function RotateHandle({
   y: number
   zoom: number
 }) {
-  const hitRadius = Math.max(14, 18 / zoom)
+  const hitRadius = Math.max(18, 24 / zoom)
   const radius = 9 / zoom
   const gap = 3 / zoom
   const arrow = 4.8 / zoom
@@ -296,7 +296,16 @@ function RotateHandle({
   const arcTop = -9 / zoom
   return (
     <Group x={x} y={y}>
-      <Circle fill="rgba(107, 92, 255, 0.001)" onPointerDown={onRotateStart} radius={hitRadius} />
+      <Circle
+        fill="rgba(107, 92, 255, 0.001)"
+        onMouseEnter={(event) => setStageCursor(event, 'grab')}
+        onMouseLeave={clearStageCursor}
+        onPointerDown={(event) => {
+          setStageCursor(event, 'grabbing')
+          onRotateStart(event)
+        }}
+        radius={hitRadius}
+      />
       <Circle fill="#ffffff" listening={false} radius={13 / zoom} stroke="rgba(107, 92, 255, 0.2)" strokeWidth={1 / zoom} />
       <Path data={`M ${-radius} ${gap} C ${-radius} ${arcTop} ${radius} ${arcTop} ${radius} ${gap}`} listening={false} stroke="#5b4bdb" strokeLinecap="round" strokeWidth={strokeWidth} />
       <Line closed fill="#5b4bdb" listening={false} points={[-radius, gap, -radius + arrow * 0.98, gap - arrow * 0.25, -radius + arrow * 0.28, gap + arrow * 0.92]} />
@@ -315,9 +324,27 @@ function ResizeHandles({
   zoom: number
 }) {
   const visibleRadius = Math.max(4.5, 5.5 / zoom)
-  const hitRadius = Math.max(10, 13 / zoom)
+  const hitRadius = Math.max(14, 18 / zoom)
+  const edgeHitWidth = Math.max(16, 20 / zoom)
   return (
     <>
+      {[
+        ['n', [bounds.minX, bounds.minY, bounds.maxX, bounds.minY]],
+        ['e', [bounds.maxX, bounds.minY, bounds.maxX, bounds.maxY]],
+        ['s', [bounds.minX, bounds.maxY, bounds.maxX, bounds.maxY]],
+        ['w', [bounds.minX, bounds.minY, bounds.minX, bounds.maxY]],
+      ].map(([handle, points]) => (
+        <Line
+          hitStrokeWidth={edgeHitWidth}
+          key={handle as string}
+          onMouseEnter={(event) => setStageCursor(event, getResizeCursor(handle as KonvaResizeHandle))}
+          onMouseLeave={clearStageCursor}
+          onPointerDown={(event) => onResizeStart(handle as KonvaResizeHandle, event)}
+          points={points as number[]}
+          stroke="rgba(107, 92, 255, 0.001)"
+          strokeWidth={edgeHitWidth}
+        />
+      ))}
       {[
         ['nw', bounds.minX, bounds.minY],
         ['ne', bounds.maxX, bounds.minY],
@@ -327,6 +354,8 @@ function ResizeHandles({
         <Fragment key={handle}>
           <Circle
             fill="rgba(107, 92, 255, 0.001)"
+            onMouseEnter={(event) => setStageCursor(event, getResizeCursor(handle as KonvaResizeHandle))}
+            onMouseLeave={clearStageCursor}
             onPointerDown={(event) => onResizeStart(handle as KonvaResizeHandle, event)}
             radius={hitRadius}
             x={x as number}
@@ -345,4 +374,21 @@ function ResizeHandles({
       ))}
     </>
   )
+}
+
+function getResizeCursor(handle: KonvaResizeHandle) {
+  if (handle === 'n' || handle === 's') return 'ns-resize'
+  if (handle === 'e' || handle === 'w') return 'ew-resize'
+  if (handle === 'nw' || handle === 'se') return 'nwse-resize'
+  return 'nesw-resize'
+}
+
+function setStageCursor(event: KonvaEventObject<Event>, cursor: string) {
+  const container = event.target.getStage()?.container()
+  if (container) container.style.cursor = cursor
+}
+
+function clearStageCursor(event: KonvaEventObject<Event>) {
+  const container = event.target.getStage()?.container()
+  if (container) container.style.cursor = ''
 }

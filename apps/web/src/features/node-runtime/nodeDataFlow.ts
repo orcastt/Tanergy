@@ -76,6 +76,12 @@ export function getNodeOutput(
     return { imageValues: [], textValues: textOutput ? [textOutput] : [] }
   }
 
+  if (node.props.nodeType === 'chat' && portId.startsWith('text_out_')) {
+    const messageId = portId.replace('text_out_', '')
+    const text = getChatMessageText(data, messageId)
+    return { imageValues: [], textValues: text ? [text] : [] }
+  }
+
   if (node.props.nodeType === 'image_gen' && portId === 'image_out') {
     return {
       imageValues: (summary.resultAssetIds ?? []).map((assetId, index) => ({
@@ -185,6 +191,18 @@ function asRuntimeSummary(value: unknown): NodeRuntimeSummary {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? (value as NodeRuntimeSummary)
     : { costHint: null, error: null, lastRunId: null, resultAssetIds: [], status: 'idle' }
+}
+
+function getChatMessageText(data: JsonObject, messageId: string) {
+  if (!Array.isArray(data.exportedMessageIds) || !data.exportedMessageIds.includes(messageId)) return ''
+  if (!Array.isArray(data.chatMessages)) return ''
+  const message = data.chatMessages.find((item) => (
+    item &&
+    typeof item === 'object' &&
+    !Array.isArray(item) &&
+    (item as Record<string, unknown>).id === messageId
+  )) as Record<string, unknown> | undefined
+  return typeof message?.text === 'string' ? message.text.slice(0, 4000) : ''
 }
 
 function isNodeCard(shape: unknown): shape is NodeCardShape {

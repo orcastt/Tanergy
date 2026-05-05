@@ -2,6 +2,7 @@ import type { CanvasDocument, CanvasShape, CanvasShapeStyle } from '@/features/c
 import { mixColorWithWhite } from './konvaPatternUtils'
 import { removeKonvaRuntimeEdgesForShapes } from './konvaRuntimeEdges'
 import { cloneKonvaShapes } from './konvaShapeCommands'
+import { fitStandaloneTextShapeToContent } from './konvaTextAutoFit'
 
 export type KonvaCanvasDashStyle = NonNullable<CanvasShapeStyle['dash']>
 export type KonvaCanvasFillStyle = NonNullable<CanvasShapeStyle['fillStyle']>
@@ -199,15 +200,15 @@ export function isKonvaFillShape(shape: CanvasShape) {
 }
 
 export function isKonvaStrokeShape(shape: CanvasShape) {
-  return shape.type === 'rect' || shape.type === 'diamond' || shape.type === 'ellipse' || shape.type === 'triangle' || shape.type === 'cloud' || shape.type === 'frame' || shape.type === 'sticky' || shape.type === 'line' || shape.type === 'arrow' || shape.type === 'stroke' || shape.type === 'image'
+  return shape.type === 'rect' || shape.type === 'diamond' || shape.type === 'ellipse' || shape.type === 'triangle' || shape.type === 'cloud' || shape.type === 'frame' || shape.type === 'sticky' || shape.type === 'line' || shape.type === 'arrow' || shape.type === 'stroke' || shape.type === 'image' || shape.type === 'text'
 }
 
 export function isKonvaDashShape(shape: CanvasShape) {
-  return isKonvaStrokeShape(shape) && shape.type !== 'stroke' && shape.type !== 'sticky'
+  return isKonvaStrokeShape(shape) && shape.type !== 'stroke' && shape.type !== 'sticky' && shape.type !== 'text'
 }
 
 export function isKonvaWidthShape(shape: CanvasShape) {
-  return isKonvaStrokeShape(shape) && shape.type !== 'sticky'
+  return isKonvaStrokeShape(shape) && shape.type !== 'sticky' && shape.type !== 'text'
 }
 
 export function isKonvaTextStyleShape(shape: CanvasShape) {
@@ -232,7 +233,10 @@ function applyStylePatchToShape(shape: CanvasShape, patch: CanvasShapeStyle): Ca
   if (patch.strokeWidth !== undefined && isKonvaWidthShape(shape)) nextStyle.strokeWidth = patch.strokeWidth
   if (patch.textAlign !== undefined && isKonvaTextStyleShape(shape)) nextStyle.textAlign = patch.textAlign
   if (patch.opacity !== undefined) nextStyle.opacity = patch.opacity
-  return { ...shape, style: nextStyle }
+  const nextShape = { ...shape, style: nextStyle }
+  return patch.fontSize !== undefined && nextShape.type === 'text'
+    ? fitStandaloneTextShapeToContent(nextShape)
+    : nextShape
 }
 
 function getSharedResolvedStyleValue<T>(

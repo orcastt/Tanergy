@@ -82,7 +82,21 @@ export function NodeCardFieldGrid({ fields, onFieldChange, openFieldName, setOpe
   )
 }
 
-export function NodeCardTextBox({ height, text, width, x, y }: { height: number; text: string; width: number; x: number; y: number }) {
+export function NodeCardTextBox({
+  height,
+  onEdit,
+  text,
+  width,
+  x,
+  y,
+}: {
+  height: number
+  onEdit?: () => void
+  text: string
+  width: number
+  x: number
+  y: number
+}) {
   const viewport = useMemo(() => ({
     height: Math.max(0, height - 28),
     width: Math.max(0, width - 22),
@@ -104,8 +118,28 @@ export function NodeCardTextBox({ height, text, width, x, y }: { height: number;
 
   return (
     <>
-      <Rect cornerRadius={10} fill="#f8fafc" height={height} stroke="#dce3ec" strokeWidth={1} width={width} x={x} y={y} />
-      <Group clipHeight={viewport.height} clipWidth={viewport.width} clipX={viewport.x} clipY={viewport.y} onWheel={handleWheel}>
+      <Group
+        onClick={onEdit ? (event) => {
+          event.cancelBubble = true
+          onEdit()
+        } : undefined}
+        onDblClick={onEdit ? stopNodeCardControlEvent : undefined}
+        onPointerDown={onEdit ? stopNodeCardControlEvent : undefined}
+      >
+        <Rect cornerRadius={10} fill="#f8fafc" height={height} stroke="#dce3ec" strokeWidth={1} width={width} x={x} y={y} />
+      </Group>
+      <Group
+        clipHeight={viewport.height}
+        clipWidth={viewport.width}
+        clipX={viewport.x}
+        clipY={viewport.y}
+        onClick={onEdit ? (event) => {
+          event.cancelBubble = true
+          onEdit()
+        } : undefined}
+        onPointerDown={onEdit ? stopNodeCardControlEvent : undefined}
+        onWheel={handleWheel}
+      >
         <Text fill="#1f2937" fontFamily="Inter, system-ui, sans-serif" fontSize={13} height={contentHeight} lineHeight={1.35} text={text} width={viewport.width} wrap="char" x={viewport.x} y={viewport.y - visibleScrollY} />
       </Group>
       {scrollbar ? (

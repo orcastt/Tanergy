@@ -60,3 +60,28 @@ def get_board_document_metrics(document: Any) -> dict[str, int]:
         if page_shape_count > 0
         else len(shapes) if isinstance(shapes, list) else len(canvas_shapes) if isinstance(canvas_shapes, list) else 0,
     }
+
+
+def get_board_snapshot_display_title(document: Any, fallback_title: Optional[str]) -> str:
+    fallback = (fallback_title or "").strip()
+    return _get_konva_active_page_title(document) or fallback or "Untitled snapshot"
+
+
+def _get_konva_active_page_title(document: Any) -> Optional[str]:
+    if not isinstance(document, dict):
+        return None
+    if document.get("renderer") != "konva" or document.get("version") != 2:
+        return None
+    active_page_id = document.get("activePageId") if isinstance(document.get("activePageId"), str) else "page-1"
+    pages = document.get("pages")
+    if isinstance(pages, list):
+        for page in pages:
+            if not isinstance(page, dict) or page.get("id") != active_page_id:
+                continue
+            title = page.get("title")
+            if isinstance(title, str) and title.strip():
+                return title.strip()
+    canvas_document = document.get("canvasDocument")
+    metadata = canvas_document.get("metadata") if isinstance(canvas_document, dict) else None
+    name = metadata.get("name") if isinstance(metadata, dict) else None
+    return name.strip() if isinstance(name, str) and name.strip() else None

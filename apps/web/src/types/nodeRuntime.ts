@@ -1,6 +1,6 @@
 import type { JsonValue } from '@tldraw/utils'
 
-export type NodeType = 'prompt' | 'image_gen' | 'image_gen_4' | 'analysis' | 'image'
+export type NodeType = 'prompt' | 'image_gen' | 'image_gen_4' | 'analysis' | 'image' | 'chat'
 
 export type NodePortDirection = 'in' | 'out'
 

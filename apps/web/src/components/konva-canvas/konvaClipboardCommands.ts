@@ -2,6 +2,7 @@ import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import { getShapeBounds, type CanvasDocument, type CanvasImageShape, type CanvasNodeShape, type CanvasPoint, type CanvasShape } from '@/features/canvas-engine'
 import { setRuntimeGraphImageNodeOwnData } from '@/features/node-runtime/runtimeGraph'
 import type { JsonObject } from '@/types/nodeRuntime'
+import { addKonvaChatReferenceImage } from './konvaChatNodeActions'
 import { appendShapes, pasteKonvaShapes } from './konvaShapeCommands'
 import { readKonvaImageShapeFromClipboard, readKonvaImageShapeFromClipboardData } from './konvaImageClipboard'
 
@@ -67,10 +68,14 @@ async function readKonvaShapesFromSystemClipboard(): Promise<CanvasShape[] | nul
 }
 
 function pasteImageShape(options: PasteKonvaClipboardOptions, imageShape: CanvasImageShape) {
-  const target = getImageNodePasteTarget(options.document, options.selectedIds, options.point)
+  const target = getNodeImagePasteTarget(options.document, options.selectedIds, options.point)
   if (target) {
     options.history.checkpoint(options.document)
-    options.onDocumentChange((current) => setRuntimeGraphImageNodeOwnData(current, target.id, createImageNodeData(imageShape.props)))
+    options.onDocumentChange((current) => (
+      target.props.nodeType === 'chat'
+        ? addKonvaChatReferenceImage(current, target.id, createChatReferenceImageData(imageShape.props))
+        : setRuntimeGraphImageNodeOwnData(current, target.id, createImageNodeData(imageShape.props))
+    ))
     options.onSelectionChange([target.id])
     return true
   }
@@ -98,13 +103,27 @@ function readKonvaShapesFromClipboardText(text: string): CanvasShape[] {
   }
 }
 
-function getImageNodePasteTarget(document: CanvasDocument, selectedIds: string[], point: CanvasPoint): CanvasNodeShape | null {
+function getNodeImagePasteTarget(document: CanvasDocument, selectedIds: string[], point: CanvasPoint): CanvasNodeShape | null {
   const selected = new Set(selectedIds)
-  const nodes = document.shapes.filter((shape): shape is CanvasNodeShape => shape.type === 'node_card' && shape.props.nodeType === 'image')
+  const nodes = document.shapes.filter((shape): shape is CanvasNodeShape => shape.type === 'node_card' && (shape.props.nodeType === 'image' || shape.props.nodeType === 'chat'))
   return nodes.find((shape) => selected.has(shape.id)) ?? nodes.find((shape) => {
     const bounds = getShapeBounds(shape)
     return point.x >= bounds.minX && point.x <= bounds.maxX && point.y >= bounds.minY && point.y <= bounds.maxY
   }) ?? null
+}
+
+function createChatReferenceImageData(image: {
+  assetId: string
+  originalUrl?: string
+  thumbnail256Url?: string
+  title?: string
+}) {
+  return {
+    assetId: image.assetId,
+    originalUrl: image.originalUrl,
+    thumbnail256Url: image.thumbnail256Url,
+    title: image.title ?? 'Reference image',
+  }
 }
 
 function createImageNodeData(image: {

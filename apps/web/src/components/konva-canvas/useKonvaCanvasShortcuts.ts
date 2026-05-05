@@ -3,12 +3,15 @@ import {
   type CanvasDocument,
   type CanvasPoint,
   type CanvasShape,
+  withCanvasShapes,
 } from '@/features/canvas-engine'
 import { deleteKonvaShapes, duplicateKonvaShapes, reorderKonvaShapes } from './konvaCanvasStyle'
 import { pasteKonvaClipboardData, writeKonvaShapesToSystemClipboard } from './konvaClipboardCommands'
 import { konvaToolShortcuts, type KonvaCanvasTool } from './konvaCanvasTypes'
-import { groupKonvaShapes, setKonvaShapesLocked, ungroupKonvaShapes } from './konvaGroupCommands'
+import { applyFrameContainment } from './konvaFrameContainment'
+import { expandKonvaGroupedShapeIds, groupKonvaShapes, setKonvaShapesLocked, ungroupKonvaShapes } from './konvaGroupCommands'
 import { removeKonvaRuntimeEdge } from './konvaRuntimeEdges'
+import { getShapesByIds, moveShapesFromOrigins } from './konvaSelectionUtils'
 import { copyKonvaShapes } from './konvaShapeCommands'
 
 type KonvaCanvasHistory = {
@@ -95,6 +98,11 @@ export function useKonvaCanvasShortcuts(options: UseKonvaCanvasShortcutsOptions)
       if (event.key === 'Delete' || event.key === 'Backspace') {
         event.preventDefault()
         runDelete(options)
+        return
+      }
+      if (!command && isNudgeKey(event.key)) {
+        event.preventDefault()
+        runNudge(options, getNudgeDelta(event.key, event.shiftKey))
         return
       }
       if (!command && (event.key === '[' || event.key === ']')) {
@@ -197,6 +205,43 @@ function runLayerAction(options: UseKonvaCanvasShortcutsOptions, action: Paramet
   if (options.selectedIds.length === 0) return
   options.history.checkpoint(options.document)
   options.onDocumentChange(reorderKonvaShapes(options.document, options.selectedIds, action))
+}
+
+function runNudge(options: UseKonvaCanvasShortcutsOptions, delta: CanvasPoint) {
+  if (options.selectedIds.length === 0) return
+  const shapeIds = expandKonvaGroupedShapeIds(options.document.shapes, expandFrameChildren(options.document.shapes, options.selectedIds))
+  const originShapes = getShapesByIds(options.document.shapes, shapeIds)
+  if (originShapes.length === 0 || originShapes.some((shape) => shape.isLocked)) return
+  options.history.checkpoint(options.document)
+  const movedShapes = moveShapesFromOrigins(options.document.shapes, originShapes, delta)
+  options.onDocumentChange(withCanvasShapes(options.document, applyFrameContainment(movedShapes, shapeIds)))
+}
+
+function isNudgeKey(key: string) {
+  return key === 'ArrowUp' || key === 'ArrowDown' || key === 'ArrowLeft' || key === 'ArrowRight'
+}
+
+function getNudgeDelta(key: string, large: boolean): CanvasPoint {
+  const amount = large ? 10 : 1
+  if (key === 'ArrowUp') return { x: 0, y: -amount }
+  if (key === 'ArrowDown') return { x: 0, y: amount }
+  if (key === 'ArrowLeft') return { x: -amount, y: 0 }
+  return { x: amount, y: 0 }
+}
+
+function expandFrameChildren(shapes: CanvasDocument['shapes'], shapeIds: string[]) {
+  const expanded = new Set(shapeIds)
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const shape of shapes) {
+      if (shape.parentId && expanded.has(shape.parentId) && !expanded.has(shape.id)) {
+        expanded.add(shape.id)
+        changed = true
+      }
+    }
+  }
+  return [...expanded]
 }
 
 async function pasteFromClipboardData(options: UseKonvaCanvasShortcutsOptions, data: DataTransfer) {

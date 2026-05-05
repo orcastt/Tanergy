@@ -13,6 +13,7 @@ import { canKonvaShapeDragWithTool, canKonvaShapeSelectWithTool } from './konvaS
 import { konvaCaptureExcludeName } from './konvaSelectionExport'
 import { getVisibleKonvaShapes } from './konvaViewportCulling'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
+import type { KonvaNodeTextFieldName } from './KonvaNodeTextEditor'
 
 type KonvaCanvasStageProps = {
   activeTool: KonvaCanvasTool
@@ -23,6 +24,8 @@ type KonvaCanvasStageProps = {
   isSpacePanning: boolean
   nextStyle: CanvasShapeStyle
   cropEditingImageId?: string | null
+  editingNodeText?: { fieldName: KonvaNodeTextFieldName; shapeId: string } | null
+  editingTextId?: string | null
   selectedEdgeId: string | null
   selectedIds: string[]
   width: number
@@ -34,8 +37,13 @@ type KonvaCanvasStageProps = {
   onEdgeSelect: (edgeId: string | null) => void
   onHistoryCheckpoint: (document: CanvasDocument) => void
   onImageNodeToCanvas: (shapeId: string) => void
+  onNodeChatClean: (shapeId: string) => void
+  onNodeChatExportToggle: (shapeId: string, messageId: string) => void
+  onNodeChatSend: (shapeId: string) => void
+  onNodeChatUpload: (shapeId: string) => void
   onNodeFieldChange: (shapeId: string, fieldName: string, value: string | number) => void
   onNodeRunToggle: (shapeId: string) => void
+  onNodeTextEditStart: (shapeId: string, fieldName: KonvaNodeTextFieldName) => void
   onSelectionChange: (shapeIds: string[]) => void
   onStageReady?: (stage: Konva.Stage | null) => void
   onTextEditStart: (shapeId: string) => void
@@ -87,10 +95,16 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
   const frameChildren = getFrameChildren(renderShapes, frameIds)
   const draggingIds = new Set(draggingShapeIds)
   const nodeShapes = renderShapes.filter((shape): shape is CanvasNodeShape => shape.type === 'node_card')
+  const lightweightPreviewMode = renderCamera.zoom <= 0.25
 
   const renderShapeNode = (shape: CanvasShape) => (
     <KonvaCanvasShape
+      document={props.document}
+      editingNodeTextField={props.editingNodeText?.shapeId === shape.id ? props.editingNodeText.fieldName : null}
+      hideEditableText={props.editingTextId === shape.id}
+      directDrag={props.activeTool === 'select'}
       interactive={canInteractWithShape(shape, props.activeTool, shapesAreInteractive)}
+      isDragSelected={props.selectedIds.includes(shape.id)}
       isSelected={!props.captureMode && props.selectedIds.length === 1 && props.selectedIds.includes(shape.id)}
       key={shape.id}
       onDragMove={handleShapeDragMove}
@@ -98,11 +112,17 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
       onDragStart={handleShapeDragStart}
       onDoubleClick={props.onTextEditStart}
       onImageNodeToCanvas={props.onImageNodeToCanvas}
+      onNodeChatClean={props.onNodeChatClean}
+      onNodeChatExportToggle={props.onNodeChatExportToggle}
+      onNodeChatSend={props.onNodeChatSend}
+      onNodeChatUpload={props.onNodeChatUpload}
       onNodeFieldChange={props.onNodeFieldChange}
       onNodePortPointerDown={handleNodePortPointerDown}
       onNodeRunToggle={props.onNodeRunToggle}
+      onNodeTextEditStart={props.onNodeTextEditStart}
       onSelect={handleShapeSelect}
       panMode={props.isSpacePanning}
+      previewMode={lightweightPreviewMode}
       selectable={canSelectShapeWithTool(shape, props.activeTool)}
       shape={shape}
       toolAllowsDrag={canDragShape && canDragShapeWithTool(shape, props.activeTool)}
@@ -167,6 +187,9 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
       {draft && !props.captureMode ? (
         <Layer listening={false} name={konvaCaptureExcludeName}>
           <KonvaCanvasShape
+            document={props.document}
+            editingNodeTextField={null}
+            hideEditableText={false}
             interactive={false}
             isSelected={false}
             onDragMove={handleShapeDragMove}
@@ -174,10 +197,16 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
             onDragStart={handleShapeDragStart}
             onDoubleClick={props.onTextEditStart}
             onImageNodeToCanvas={props.onImageNodeToCanvas}
+            onNodeChatClean={props.onNodeChatClean}
+            onNodeChatExportToggle={props.onNodeChatExportToggle}
+            onNodeChatSend={props.onNodeChatSend}
+            onNodeChatUpload={props.onNodeChatUpload}
             onNodeFieldChange={props.onNodeFieldChange}
             onSelect={handleShapeSelect}
             onNodeRunToggle={props.onNodeRunToggle}
+            onNodeTextEditStart={props.onNodeTextEditStart}
             panMode={props.isSpacePanning}
+            previewMode={lightweightPreviewMode}
             selectable={false}
             shape={draft}
             toolAllowsDrag={false}
@@ -216,7 +245,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
 
 function canInteractWithShape(shape: CanvasShape, activeTool: KonvaCanvasTool, defaultInteractive: boolean) {
   if (!defaultInteractive) return false
-  if (activeTool !== 'select') return shape.type === 'node_card'
+  if (activeTool === 'draw' || activeTool === 'eraser' || activeTool === 'hand') return false
   return true
 }
 

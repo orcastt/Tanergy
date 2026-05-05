@@ -1,13 +1,14 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Circle, Group, Rect, Text } from 'react-konva'
 import type { KonvaEventObject } from 'konva/lib/Node'
-import type { CanvasNodeShape } from '@/features/canvas-engine'
+import type { CanvasDocument, CanvasNodeShape } from '@/features/canvas-engine'
 import type { NodeCardField, ResolvedNodePort } from '@/types/nodeRuntime'
 import {
   getNodeDefinition,
   getPortColorName,
   getResolvedNodePorts,
 } from '@/features/node-runtime/registry'
+import { resolveRuntimeGraphNodeInputs } from '@/features/node-runtime/runtimeGraphResolution'
 import { getRuntimeGraphGeneratedOutputRefs } from '@/features/node-runtime/runtimeGraphAssets'
 import {
   canRunNode,
@@ -18,19 +19,29 @@ import {
   NodeCardTextBox,
   stopNodeCardControlEvent,
 } from './KonvaNodeCardParts'
+import { KonvaNodeChatBody } from './KonvaNodeChatBody'
 import { getGeneratedOutputSource, getNodeImageCrop, getNodeImageSource, NodeImagePreview } from './KonvaNodeImagePreview'
+import type { KonvaNodeTextFieldName } from './KonvaNodeTextEditor'
 
 type KonvaNodeCardShapeProps = {
+  document: CanvasDocument
+  editingFieldName?: KonvaNodeTextFieldName | null
+  onChatClean?: (shapeId: string) => void
+  onChatExportToggle?: (shapeId: string, messageId: string) => void
+  onChatSend?: (shapeId: string) => void
+  onChatUpload?: (shapeId: string) => void
   onFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
   onImageNodeToCanvas?: (shapeId: string) => void
   onPortPointerDown?: (shapeId: string, portId: string, event: KonvaEventObject<PointerEvent>) => void
   onRunToggle?: (shapeId: string) => void
+  onTextEditStart?: (shapeId: string, fieldName: KonvaNodeTextFieldName) => void
   opacity: number
+  previewMode?: boolean
   shape: CanvasNodeShape
   zoom: number
 }
 
-export function KonvaNodeCardShape({ onFieldChange, onImageNodeToCanvas, onPortPointerDown, onRunToggle, opacity, shape, zoom }: KonvaNodeCardShapeProps) {
+export function KonvaNodeCardShape({ document, editingFieldName = null, onChatClean, onChatExportToggle, onChatSend, onChatUpload, onFieldChange, onImageNodeToCanvas, onPortPointerDown, onRunToggle, onTextEditStart, opacity, previewMode = false, shape, zoom }: KonvaNodeCardShapeProps) {
   const [hoveredPort, setHoveredPort] = useState<ResolvedNodePort | null>(null)
   const [openFieldName, setOpenFieldName] = useState<string | null>(null)
   const definition = getNodeDefinition(shape.props.nodeType)
@@ -38,6 +49,19 @@ export function KonvaNodeCardShape({ onFieldChange, onImageNodeToCanvas, onPortP
   const title = shape.props.nodeType === 'image' ? 'Image' : getStringValue(shape.props.data.title) || definition.displayName
   const status = getStringValue(shape.props.runtimeSummary.status) || 'idle'
   const ports = getResolvedNodePorts(shape.props.nodeType, shape.props.data)
+  if (previewMode || zoom <= 0.25) {
+    return (
+      <CompactNodeCard
+        accent={accent}
+        opacity={opacity}
+        onPortPointerDown={onPortPointerDown}
+        ports={ports}
+        shape={shape}
+        status={status}
+        title={title}
+      />
+    )
+  }
   const statusTone = getStatusTone(status)
   const contentScale = getNodeContentScale(shape, definition.defaultCardSize)
   const contentShape = getNodeContentShape(shape, contentScale)
@@ -48,7 +72,8 @@ export function KonvaNodeCardShape({ onFieldChange, onImageNodeToCanvas, onPortP
         cornerRadius={12}
         fill="#ffffff"
         height={shape.props.height}
-        shadowBlur={12}
+        perfectDrawEnabled={false}
+        shadowBlur={zoom <= 0.5 ? 0 : 12}
         shadowColor="rgba(15, 23, 42, 0.14)"
         shadowOffsetY={4}
         stroke="rgba(15, 23, 42, 0.12)"
@@ -70,13 +95,21 @@ export function KonvaNodeCardShape({ onFieldChange, onImageNodeToCanvas, onPortP
           />
           {contentShape.props.nodeType === 'image'
             ? <ImageNodeToCanvasButton onImageNodeToCanvas={onImageNodeToCanvas} shape={contentShape} />
+            : contentShape.props.nodeType === 'chat'
+              ? <ChatCleanButton onChatClean={onChatClean} shape={contentShape} />
             : canRunNode(contentShape)
               ? <NodeCardRunButton onRunToggle={onRunToggle} shape={contentShape} status={status} />
               : <NodeCardStatusBadge shape={contentShape} status={status} tone={statusTone} />}
           <NodeBody
             accent={accent}
+            document={document}
+            editingFieldName={editingFieldName}
             fields={definition.cardFields}
+            onChatExportToggle={onChatExportToggle}
+            onChatSend={onChatSend}
+            onChatUpload={onChatUpload}
             onFieldChange={onFieldChange}
+            onTextEditStart={onTextEditStart}
             openFieldName={openFieldName}
             setOpenFieldName={setOpenFieldName}
             shape={contentShape}
@@ -113,6 +146,97 @@ export function KonvaNodeCardShape({ onFieldChange, onImageNodeToCanvas, onPortP
         )
       })}
       {hoveredPort ? <PortTooltip port={hoveredPort} shape={shape} /> : null}
+    </Group>
+  )
+}
+
+function ChatCleanButton({ onChatClean, shape }: { onChatClean?: (shapeId: string) => void; shape: CanvasNodeShape }) {
+  const width = 66
+  const x = shape.props.width - width - 14
+  const hasHistory = Array.isArray(shape.props.data.chatMessages) && shape.props.data.chatMessages.length > 0
+  return (
+    <Group
+      onClick={(event) => {
+        event.cancelBubble = true
+        if (hasHistory) onChatClean?.(shape.id)
+      }}
+      onDblClick={stopNodeCardControlEvent}
+      onPointerDown={stopNodeCardControlEvent}
+      opacity={hasHistory ? 1 : 0.42}
+    >
+      <Rect cornerRadius={8} fill="#f8fafc" height={24} stroke="#dce3ec" strokeWidth={1} width={width} x={x} y={12} />
+      <Text align="center" fill="#475569" fontFamily="Inter, system-ui, sans-serif" fontSize={11} fontStyle="bold" height={24} text="Clean" verticalAlign="middle" width={width} x={x} y={12} />
+    </Group>
+  )
+}
+
+function CompactNodeCard({
+  accent,
+  opacity,
+  onPortPointerDown,
+  ports,
+  shape,
+  status,
+  title,
+}: {
+  accent: string
+  opacity: number
+  onPortPointerDown?: (shapeId: string, portId: string, event: KonvaEventObject<PointerEvent>) => void
+  ports: ResolvedNodePort[]
+  shape: CanvasNodeShape
+  status: string
+  title: string
+}) {
+  return (
+    <Group opacity={opacity}>
+      <Rect
+        cornerRadius={10}
+        fill="#ffffff"
+        height={shape.props.height}
+        perfectDrawEnabled={false}
+        stroke="rgba(15, 23, 42, 0.16)"
+        strokeWidth={1}
+        width={shape.props.width}
+      />
+      <Rect cornerRadius={10} fill={accent} height={6} perfectDrawEnabled={false} width={shape.props.width} />
+      <Text
+        fill="#0f172a"
+        fontFamily="Inter, system-ui, sans-serif"
+        fontSize={Math.max(11, Math.min(15, shape.props.width / 18))}
+        fontStyle="bold"
+        height={24}
+        text={title}
+        width={Math.max(24, shape.props.width - 28)}
+        x={14}
+        y={16}
+      />
+      <Text
+        fill="#64748b"
+        fontFamily="Inter, system-ui, sans-serif"
+        fontSize={10}
+        fontStyle="bold"
+        height={16}
+        text={status.toUpperCase()}
+        width={Math.max(24, shape.props.width - 28)}
+        x={14}
+        y={42}
+      />
+      {ports.map((port) => {
+        const isInput = port.direction === 'in'
+        const y = shape.props.height * port.anchorY
+        return (
+          <Circle
+            fill={getPortColorName(port.dataType) === 'green' ? '#22c55e' : '#facc15'}
+            key={`${port.direction}:${port.id}`}
+            onPointerDown={onPortPointerDown ? (event) => onPortPointerDown(shape.id, port.id, event) : undefined}
+            radius={8}
+            stroke="#ffffff"
+            strokeWidth={2}
+            x={isInput ? 0 : shape.props.width}
+            y={y}
+          />
+        )
+      })}
     </Group>
   )
 }
@@ -171,32 +295,58 @@ function getStatusTone(status: string) {
 
 function NodeBody({
   accent,
+  document,
+  editingFieldName,
   fields,
+  onChatExportToggle,
+  onChatSend,
+  onChatUpload,
   onFieldChange,
+  onTextEditStart,
   openFieldName,
   setOpenFieldName,
   shape,
   zoom,
 }: {
   accent: string
+  document: CanvasDocument
+  editingFieldName?: KonvaNodeTextFieldName | null
   fields: NodeCardField[]
+  onChatExportToggle?: (shapeId: string, messageId: string) => void
+  onChatSend?: (shapeId: string) => void
+  onChatUpload?: (shapeId: string) => void
   onFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
+  onTextEditStart?: (shapeId: string, fieldName: KonvaNodeTextFieldName) => void
   openFieldName: string | null
   setOpenFieldName: (fieldName: string | null) => void
   shape: CanvasNodeShape
   zoom: number
 }) {
-  if (shape.props.nodeType === 'prompt') return <PromptBody shape={shape} />
+  if (shape.props.nodeType === 'prompt') return <PromptBody document={document} editing={editingFieldName === 'prompt'} onTextEditStart={onTextEditStart} shape={shape} />
+  if (shape.props.nodeType === 'chat') return <KonvaNodeChatBody document={document} editingFieldName={editingFieldName} onChatExportToggle={onChatExportToggle} onChatSend={onChatSend} onChatUpload={onChatUpload} onTextEditStart={onTextEditStart} shape={shape} zoom={zoom} />
   if (shape.props.nodeType === 'image') return <ImageBody accent={accent} shape={shape} zoom={zoom} />
-  if (shape.props.nodeType === 'analysis') return <AnalysisBody shape={shape} />
+  if (shape.props.nodeType === 'analysis') return <AnalysisBody editing={editingFieldName === 'analysisPrompt'} onTextEditStart={onTextEditStart} shape={shape} />
   return <GenerationBody fields={fields} onFieldChange={onFieldChange} openFieldName={openFieldName} setOpenFieldName={setOpenFieldName} shape={shape} zoom={zoom} />
 }
 
-function PromptBody({ shape }: { shape: CanvasNodeShape }) {
-  return <NodeCardTextBox height={shape.props.height - 78} text={getStringValue(shape.props.data.prompt) ?? ''} width={shape.props.width - 28} x={14} y={54} />
+function PromptBody({
+  document,
+  editing,
+  onTextEditStart,
+  shape,
+}: {
+  document: CanvasDocument
+  editing: boolean
+  onTextEditStart?: (shapeId: string, fieldName: KonvaNodeTextFieldName) => void
+  shape: CanvasNodeShape
+}) {
+  const inputResolution = useMemo(() => resolveRuntimeGraphNodeInputs(document, shape), [document, shape])
+  const inheritedText = inputResolution.textValues.join('\n\n').trim()
+  const localText = getStringValue(shape.props.data.prompt) ?? ''
+  return <NodeCardTextBox height={shape.props.height - 78} onEdit={() => onTextEditStart?.(shape.id, 'prompt')} text={editing ? '' : inheritedText || localText} width={shape.props.width - 28} x={14} y={54} />
 }
 
-function AnalysisBody({ shape }: { shape: CanvasNodeShape }) {
+function AnalysisBody({ editing, onTextEditStart, shape }: { editing: boolean; onTextEditStart?: (shapeId: string, fieldName: KonvaNodeTextFieldName) => void; shape: CanvasNodeShape }) {
   const status = getStringValue(shape.props.runtimeSummary.status) || 'idle'
   const error = getStringValue(shape.props.runtimeSummary.error)
   const textOutput = getStringValue(shape.props.runtimeSummary.textOutput)
@@ -205,7 +355,7 @@ function AnalysisBody({ shape }: { shape: CanvasNodeShape }) {
     : error ?? 'Connect an image first.'
   return (
     <>
-      <NodeCardTextBox height={64} text={getStringValue(shape.props.data.analysisPrompt) ?? ''} width={shape.props.width - 28} x={14} y={58} />
+      <NodeCardTextBox height={64} onEdit={() => onTextEditStart?.(shape.id, 'analysisPrompt')} text={editing ? '' : getStringValue(shape.props.data.analysisPrompt) ?? ''} width={shape.props.width - 28} x={14} y={58} />
       <NodeCardTextBox height={shape.props.height - 142} text={outputText} width={shape.props.width - 28} x={14} y={132} />
     </>
   )

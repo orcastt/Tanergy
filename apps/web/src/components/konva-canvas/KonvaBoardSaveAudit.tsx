@@ -12,7 +12,9 @@ import type { BoardPersistenceRecord, BoardSnapshotReason, BoardSnapshotRecord }
 import {
   createGuardedKonvaBoardDocument,
   restoreKonvaBoardDocument,
+  type KonvaBoardDocumentSerializationOptions,
   type KonvaBoardDocumentSerializationResult,
+  type KonvaBoardRestorePayload,
 } from '@/features/boards/konvaBoardDocument'
 import {
   getDocumentSignature,
@@ -39,8 +41,11 @@ type KonvaBoardSaveAuditProps = {
   document: CanvasDocument
   mode?: 'board' | 'dev'
   onBoardLoaded?: (board: BoardPersistenceRecord) => void
-  onDocumentRestore: (document: CanvasDocument) => void
+  onDocumentRestore: (restore: KonvaBoardRestorePayload) => void
   stage: Konva.Stage | null
+  getPageEnvelope?: (document: CanvasDocument) => KonvaBoardDocumentSerializationOptions
+  historyTitle?: string
+  pageRevision?: number
 }
 
 const defaultBoardId = 'konva-spike-local'
@@ -53,14 +58,18 @@ export function KonvaBoardSaveAudit({
   boardTitle = defaultBoardTitle,
   camera,
   document,
+  getPageEnvelope,
+  historyTitle,
   mode = 'dev',
   onBoardLoaded,
   onDocumentRestore,
+  pageRevision = 0,
   stage,
 }: KonvaBoardSaveAuditProps) {
   const autoLoadedBoardId = useRef<string | null>(null)
   const isRestoring = useRef(false)
   const isSaving = useRef(false)
+  const dirtyCheckTimer = useRef<number | null>(null)
   const lastSavedSignature = useRef<string | null>(null)
   const recordHistoryRef = useRef<((result: KonvaBoardDocumentSerializationResult | undefined, reason: BoardSnapshotReason, options?: { silent?: boolean; thumbnailUrl?: string | null }) => Promise<void>) | null>(null)
   const saveNowRef = useRef<((source: 'autosave') => void) | null>(null)
@@ -88,11 +97,15 @@ export function KonvaBoardSaveAudit({
     camera: latestCameraRef.current,
   }), [])
 
+  const createGuardedDocument = useCallback((nextDocument: CanvasDocument) => (
+    createGuardedKonvaBoardDocument(nextDocument, getPageEnvelope?.(nextDocument))
+  ), [getPageEnvelope])
+
   const prepareDocument = useCallback(async () => {
-    const nextResult = createGuardedKonvaBoardDocument(getPreparedDocument())
+    const nextResult = createGuardedDocument(getPreparedDocument())
     setResult(nextResult)
     return nextResult
-  }, [getPreparedDocument])
+  }, [createGuardedDocument, getPreparedDocument])
 
   const captureThumbnail = useCallback(async () => {
     const currentStage = latestStageRef.current
@@ -137,7 +150,7 @@ export function KonvaBoardSaveAudit({
       })
       const savedBoard = saved.board
       if (!savedBoard) throw new Error('Konva board save failed.')
-      const currentResult = createGuardedKonvaBoardDocument(getPreparedDocument())
+      const currentResult = createGuardedDocument(getPreparedDocument())
       const currentSignature = getDocumentSignature(currentResult.document)
       const hasNewChanges = savedSignature !== currentSignature
 
@@ -156,7 +169,7 @@ export function KonvaBoardSaveAudit({
       isSaving.current = false
       setIsRunning(false)
     }
-  }, [boardId, boardTitle, captureThumbnail, clearAutosaveTimer, getPreparedDocument, mode, prepareDocument, saveResult, scheduleAutosave])
+  }, [boardId, boardTitle, captureThumbnail, clearAutosaveTimer, createGuardedDocument, getPreparedDocument, mode, prepareDocument, saveResult, scheduleAutosave])
 
   useEffect(() => {
     saveNowRef.current = (source) => void saveLocal(source)
@@ -166,7 +179,7 @@ export function KonvaBoardSaveAudit({
 
   const restoreDocument = useCallback((nextDocument: unknown) => {
     const restored = restoreKonvaBoardDocument(nextDocument)
-    onDocumentRestore(restored.document)
+    onDocumentRestore(restored)
     return restored.result
   }, [onDocumentRestore])
 
@@ -182,9 +195,12 @@ export function KonvaBoardSaveAudit({
       const board = loaded.board
       if (!board) throw new Error('Konva board load failed.')
       const restored = restoreKonvaBoardDocument(board.document)
-      onDocumentRestore(restored.document)
+      onDocumentRestore(restored)
       onBoardLoaded?.(board)
-      const restoredResult = createGuardedKonvaBoardDocument(restored.document)
+      const restoredResult = createGuardedKonvaBoardDocument(restored.document, {
+        activePageId: restored.activePageId,
+        pages: restored.pages,
+      })
       lastSavedSignature.current = getDocumentSignature(restoredResult.document)
       setResult(restoredResult)
       setSaveResult(createLoadedBoardSaveResponse(board, restored.result))
@@ -202,7 +218,7 @@ export function KonvaBoardSaveAudit({
   }, [boardId, clearAutosaveTimer, onBoardLoaded, onDocumentRestore])
 
   const handleSnapshotRestored = useCallback((snapshot: BoardSnapshotRecord) => {
-    const restoredResult = createGuardedKonvaBoardDocument(getPreparedDocument())
+    const restoredResult = createGuardedDocument(getPreparedDocument())
     lastSavedSignature.current = null
     setResult(restoredResult)
     setSaveResult(createRestoredHistorySaveResponse(snapshot))
@@ -211,11 +227,11 @@ export function KonvaBoardSaveAudit({
     setSaveError(null)
     setStatus('dirty')
     scheduleAutosave()
-  }, [getPreparedDocument, scheduleAutosave])
+  }, [createGuardedDocument, getPreparedDocument, scheduleAutosave])
 
   const snapshots = useKonvaBoardSnapshots({
     boardId,
-    boardTitle,
+    boardTitle: historyTitle?.trim() || boardTitle,
     captureThumbnail,
     mode,
     onRestoreEnd: () => requestAnimationFrame(() => { isRestoring.current = false }),
@@ -242,13 +258,24 @@ export function KonvaBoardSaveAudit({
   }, [autoLoad, boardId, loadLocal])
 
   useEffect(() => {
+    if (dirtyCheckTimer.current !== null) {
+      window.clearTimeout(dirtyCheckTimer.current)
+      dirtyCheckTimer.current = null
+    }
     if (mode !== 'board' || isRestoring.current) return
-    const nextResult = createGuardedKonvaBoardDocument(getPreparedDocument())
-    const nextSignature = getDocumentSignature(nextResult.document)
-    if (lastSavedSignature.current !== nextSignature) markDirty()
-  }, [document, camera, getPreparedDocument, markDirty, mode])
+    dirtyCheckTimer.current = window.setTimeout(() => {
+      dirtyCheckTimer.current = null
+      if (isRestoring.current) return
+      const nextResult = createGuardedDocument(getPreparedDocument())
+      const nextSignature = getDocumentSignature(nextResult.document)
+      if (lastSavedSignature.current !== nextSignature) markDirty()
+    }, 420)
+  }, [camera, createGuardedDocument, document, getPreparedDocument, markDirty, mode, pageRevision])
 
-  useEffect(() => () => clearAutosaveTimer(), [clearAutosaveTimer])
+  useEffect(() => () => {
+    if (dirtyCheckTimer.current !== null) window.clearTimeout(dirtyCheckTimer.current)
+    clearAutosaveTimer()
+  }, [clearAutosaveTimer])
 
   const issue = result?.audit.issues.find((item) => item.blocking)
   const auditStatus = !result

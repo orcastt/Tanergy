@@ -34,11 +34,11 @@ export function useKonvaStageDomEvents({
   selectedIds,
 }: UseKonvaStageDomEventsOptions) {
   const handleDragOver = useCallback((event: DragEvent<HTMLElement>) => {
-    if (Array.from(event.dataTransfer.items).some((item) => item.type.startsWith('image/'))) event.preventDefault()
+    if (Array.from(event.dataTransfer.items).some(isReferenceFileItem)) event.preventDefault()
   }, [])
 
   const handleDrop = useCallback((event: DragEvent<HTMLElement>) => {
-    const file = Array.from(event.dataTransfer.files).find((item) => item.type.startsWith('image/'))
+    const file = Array.from(event.dataTransfer.files).find(isReferenceFile)
     if (!file) return
     event.preventDefault()
     const rect = event.currentTarget.getBoundingClientRect()
@@ -94,4 +94,12 @@ export function useKonvaStageDomEvents({
 function isKonvaCanvasTarget(target: EventTarget | null) {
   if (!(target instanceof Element)) return false
   return target instanceof HTMLCanvasElement || Boolean(target.closest('.konvajs-content'))
+}
+
+function isReferenceFileItem(item: DataTransferItem) {
+  return item.type.startsWith('image/') || item.type === 'application/pdf'
+}
+
+function isReferenceFile(file: File) {
+  return file.type.startsWith('image/') || file.type === 'application/pdf'
 }

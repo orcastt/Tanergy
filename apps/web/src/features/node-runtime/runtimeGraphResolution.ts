@@ -8,7 +8,11 @@ export type RuntimeGraphImageValue = {
   crop?: RuntimeGraphImageCrop
   imageHeight?: number
   imageWidth?: number
+  originalUrl?: string
   sourceNodeId: string
+  thumbnail1024Url?: string
+  thumbnail256Url?: string
+  thumbnail512Url?: string
   title: string
 }
 
@@ -75,6 +79,12 @@ export function getRuntimeGraphNodeOutput(
     return { imageValues: [], textValues: textOutput ? [textOutput] : [] }
   }
 
+  if (node.props.nodeType === 'chat' && portId.startsWith('text_out_')) {
+    const messageId = portId.replace('text_out_', '')
+    const text = getChatMessageText(data, messageId)
+    return { imageValues: [], textValues: text ? [text] : [] }
+  }
+
   if (node.props.nodeType === 'image_gen' && portId === 'image_out') {
     const outputRefs = getRuntimeGraphGeneratedOutputRefs(data)
     if (outputRefs.length > 0) return { imageValues: outputRefs.map((ref) => toImageValue(ref, node.props.nodeId)), textValues: [] }
@@ -127,7 +137,11 @@ export function getRuntimeGraphNodeOutput(
         crop: getRuntimeGraphImageCrop(data.crop),
         imageHeight: getNumber(data.imageHeight),
         imageWidth: getNumber(data.imageWidth),
+        originalUrl: getString(data.originalUrl),
         sourceNodeId: node.props.nodeId,
+        thumbnail1024Url: getString(data.thumbnail1024Url),
+        thumbnail256Url: getString(data.thumbnail256Url),
+        thumbnail512Url: getString(data.thumbnail512Url),
         title: String(data.title ?? 'Image'),
       }],
       textValues: [],
@@ -185,7 +199,11 @@ function toImageValue(ref: ReturnType<typeof getRuntimeGraphGeneratedOutputRefs>
     crop: ref.crop,
     imageHeight: ref.imageHeight,
     imageWidth: ref.imageWidth,
+    originalUrl: ref.originalUrl,
     sourceNodeId,
+    thumbnail1024Url: ref.thumbnail1024Url,
+    thumbnail256Url: ref.thumbnail256Url,
+    thumbnail512Url: ref.thumbnail512Url,
     title: ref.title ?? 'Generated image',
   }
 }
@@ -208,6 +226,22 @@ function getNumber(value: unknown) {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined
 }
 
+function getString(value: unknown) {
+  return typeof value === 'string' && value.trim() ? value : undefined
+}
+
 function getShortTextOutput(summary: NodeRuntimeSummary) {
   return typeof summary.textOutput === 'string' ? summary.textOutput.slice(0, 4000) : ''
+}
+
+function getChatMessageText(data: JsonObject, messageId: string) {
+  if (!Array.isArray(data.exportedMessageIds) || !data.exportedMessageIds.includes(messageId)) return ''
+  if (!Array.isArray(data.chatMessages)) return ''
+  const message = data.chatMessages.find((item) => (
+    item &&
+    typeof item === 'object' &&
+    !Array.isArray(item) &&
+    (item as Record<string, unknown>).id === messageId
+  )) as Record<string, unknown> | undefined
+  return typeof message?.text === 'string' ? message.text.slice(0, 4000) : ''
 }

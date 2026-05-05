@@ -23,6 +23,7 @@ const imageGenFields = [
 ]
 
 export const maxImageInputPorts = 6
+export const maxChatInputPorts = 6
 
 const nodeCategoryOrder: NodeCategory[] = ['text', 'image', 'transform', 'utility']
 
@@ -51,6 +52,33 @@ export const nodeDefinitions: Record<NodeType, NodeDefinition> = {
     ],
     runnable: true,
     type: 'analysis',
+    version: 1,
+  },
+  chat: {
+    accentColor: '#7c3aed',
+    aiDescription: 'Multi-turn AI chat node that can gather prompt/image context and export selected replies as text outputs.',
+    aiName: 'AI Chat',
+    aiUseCases: ['chat with image references', 'merge multiple prompts', 'export selected AI replies downstream'],
+    category: 'text',
+    defaultData: {
+      chatDraft: 'Ask about the connected prompts and images...',
+      chatMessages: [],
+      exportedMessageIds: [],
+      imageInputCount: 1,
+      textInputCount: 1,
+    },
+    defaultCardSize: { height: 520, width: 360 },
+    defaultRuntimeCostHint: 'Chat runtime adapter later',
+    displayName: 'Chat',
+    cardFields: [{ label: 'Message', name: 'chatDraft', type: 'textarea' }],
+    outputSummary: 'Exported chat replies',
+    paletteOrder: 15,
+    paletteShortLabel: 'Ch',
+    ports: [
+      { dataType: 'text', direction: 'in', id: 'text_in', label: 'Prompt in', multiple: true },
+      { dataType: 'image', direction: 'in', id: 'image_in', label: 'Image in', multiple: true },
+    ],
+    type: 'chat',
     version: 1,
   },
   image: {
@@ -221,11 +249,46 @@ export function createDefaultRuntimeSummary(type: NodeType): NodeRuntimeSummary 
 
 export function getResolvedNodePorts(type: NodeType, data: JsonObject): ResolvedNodePort[] {
   const definition = nodeDefinitions[type]
+  if (type === 'chat') {
+    const textInputDefinition = definition.ports.find((port) => port.id === 'text_in')
+    const imageInputDefinition = definition.ports.find((port) => port.id === 'image_in')
+    const textInputCount = clampPortCount(Number(data.textInputCount ?? 1), maxChatInputPorts)
+    const imageInputCount = clampPortCount(Number(data.imageInputCount ?? 1), maxChatInputPorts)
+    const exportedIds = getExportedChatMessageIds(data)
+    return [
+      ...(textInputDefinition
+        ? Array.from({ length: textInputCount }, (_, index) => ({
+            ...textInputDefinition,
+            id: `${textInputDefinition.id}_${index + 1}`,
+            label: `${textInputDefinition.label} ${index + 1}`,
+            multiple: false,
+            anchorY: getChatInputAnchorY(index, 0),
+          }))
+        : []),
+      ...(imageInputDefinition
+        ? Array.from({ length: imageInputCount }, (_, index) => ({
+            ...imageInputDefinition,
+            id: `${imageInputDefinition.id}_${index + 1}`,
+            label: `${imageInputDefinition.label} ${index + 1}`,
+            multiple: false,
+            anchorY: getChatInputAnchorY(index, textInputCount),
+          }))
+        : []),
+      ...exportedIds.map((id, index) => ({
+        dataType: 'text' as const,
+        direction: 'out' as const,
+        id: `text_out_${id}`,
+        label: `Export ${index + 1}`,
+        anchorY: getDistributedAnchorY(index, exportedIds.length),
+      })),
+    ]
+  }
+
   if (type === 'image_gen' || type === 'image_gen_4') {
     const imageInputDefinition = definition.ports.find((port) => port.id === 'image_in')
     const textInputDefinition = definition.ports.find((port) => port.id === 'text_in')
     const imageOutputDefinitions = definition.ports.filter((port) => port.direction === 'out')
-    const imageInputCount = clampPortCount(Number(data.imageInputCount ?? 1))
+    const imageInputCount = clampPortCount(Number(data.imageInputCount ?? 1), maxImageInputPorts)
 
     return [
       ...(textInputDefinition ? [{ ...textInputDefinition, anchorY: 0.2 }] : []),
@@ -294,7 +357,17 @@ function getImageOutputAnchorY(type: NodeType, index: number) {
   return 0.5
 }
 
-function clampPortCount(value: number) {
+function getChatInputAnchorY(index: number, textInputCount: number) {
+  return Math.min(0.78, 0.24 + (textInputCount + index) * 0.085)
+}
+
+function getExportedChatMessageIds(data: JsonObject) {
+  return Array.isArray(data.exportedMessageIds)
+    ? data.exportedMessageIds.filter((value): value is string => typeof value === 'string').slice(0, 8)
+    : []
+}
+
+function clampPortCount(value: number, max = maxImageInputPorts) {
   if (!Number.isFinite(value)) return 1
-  return Math.max(1, Math.min(Math.round(value), maxImageInputPorts))
+  return Math.max(1, Math.min(Math.round(value), max))
 }

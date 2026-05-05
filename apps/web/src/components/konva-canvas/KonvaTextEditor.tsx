@@ -10,6 +10,7 @@ import {
   type CanvasTextShape,
   type CanvasTriangleShape,
 } from '@/features/canvas-engine'
+import { getStandaloneTextEditorMetrics } from './konvaTextAutoFit'
 
 export type KonvaEditableTextShape =
   | CanvasCloudShape
@@ -34,8 +35,11 @@ export function KonvaTextEditor({ camera, onCancel, onCommit, shape }: KonvaText
   const canceledRef = useRef(false)
 
   useEffect(() => {
-    textareaRef.current?.focus()
-    textareaRef.current?.select()
+    const textarea = textareaRef.current
+    if (!textarea) return
+    textarea.focus()
+    const end = textarea.value.length
+    textarea.setSelectionRange(end, end)
   }, [])
 
   const commit = () => {
@@ -100,14 +104,17 @@ function getEditorStyle(shape: KonvaEditableTextShape, camera: CanvasCamera): CS
     }
   }
   const centered = shape.type === 'sticky' || isTextContainerShape(shape)
+  const textMetrics = shape.type === 'text' ? getStandaloneTextEditorMetrics(shape) : null
+  const fontSize = textMetrics?.fontSize ?? 18
+  const lineHeight = textMetrics?.lineHeight ?? 24
   const height = shape.props.height * zoom
-  const verticalPadding = centered ? Math.max(10, (height - 24 * zoom) / 2) : 2
+  const verticalPadding = centered ? Math.max(10, (height - lineHeight * zoom) / 2) : 2
   return {
     boxSizing: 'border-box',
-    fontSize: `${18 * zoom}px`,
+    fontSize: `${fontSize * zoom}px`,
     height: `${height}px`,
     left: `${shape.x * zoom + camera.x}px`,
-    lineHeight: `${24 * zoom}px`,
+    lineHeight: `${lineHeight * zoom}px`,
     padding: `${verticalPadding}px ${centered ? 14 : 4}px 2px`,
     textAlign: centered ? 'center' : 'left',
     top: `${shape.y * zoom + camera.y}px`,

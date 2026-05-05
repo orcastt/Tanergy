@@ -2,7 +2,7 @@
 
 **Updated**: 2026-05-05
 **Branch**: `feature/s1x-konva-handfeel-spike`
-**Latest local checkpoint**: S1X page contract + v1 copy tooling checkpoint; keep detailed history in Git.
+**Latest local checkpoint**: S1X Page UI + page contract checkpoint; keep detailed history in Git.
 
 This folder replaces the former root-level long project ledger and short mirror files. The root `project_state.md` is now only a pointer.
 
@@ -31,7 +31,7 @@ Done locally:
   S1X Konva v2 Board save/load/history/thumbnail
   S1X formal /boards/[boardId] dual-engine detector
   tldraw production gate and local old v1 Board cleanup
-  S1X Konva v2 page contract first pass
+  S1X Konva v2 page contract + Page UI first pass
   S1X explicit v1-to-v2 copy tooling first pass
   S1A DB schema/migrations
   Auth scaffold
@@ -45,7 +45,7 @@ Not production-complete:
   staging auth/email/license hardening
   precise old-board style/binding migration beyond first-pass copy tooling
   Konva collaboration/Yjs provider sync
-  Konva page switching UI and page thumbnails
+  true Konva page thumbnails/delete/reorder/Move to page
   real AI provider/cost logs
   full Admin/Billing/Analytics
   collaboration
@@ -61,16 +61,16 @@ Not production-complete:
 | S1B Staging Infra | `project_state_slice_S1B_staging_infra.md` | In progress; FastAPI/Neon/R2 smoke passed |
 | S1C Auth Context | `project_state_slice_S1C_auth_request_context.md` | After S1A |
 | S1D Board CRUD | `project_state_slice_S1D_auth_board_crud.md` | After S1C |
-| S1X Canvas Engine Migration | `project_state_slice_S1X_canvas_engine_migration.md` | Konva Board route accepted; page contract and v1 copy tooling first pass; collaboration pending |
+| S1X Canvas Engine Migration | `project_state_slice_S1X_canvas_engine_migration.md` | Konva Board route accepted; Page UI first pass and v1 copy tooling landed; collaboration pending |
 | S2 AI/Admin Future | `project_state_slice_S2_ai_admin_future.md` | Planned |
 
 ## Current Next Fork
 
 If external resources are not ready:
 
-1. Hand-test S1X page contract save/restore and v1-to-v2 copy tooling on real legacy Boards.
+1. Hand-test S1X Page UI save/restore/history and v1-to-v2 copy tooling on real legacy Boards.
 2. Continue S1X Konva Board polish on the formal route.
-3. Prepare page switching UI/page thumbnails and real AiRun handoff boundaries.
+3. Prepare true page thumbnails/delete/reorder and real AiRun handoff boundaries.
 4. Prepare S1 Auth API contracts locally.
 
 If external resources are ready:

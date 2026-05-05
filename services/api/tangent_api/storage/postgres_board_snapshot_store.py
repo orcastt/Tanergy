@@ -8,7 +8,7 @@ from uuid import uuid4
 from fastapi import HTTPException
 
 from tangent_api.board_guard import audit_board_document
-from tangent_api.board_metadata import normalize_board_thumbnail_url
+from tangent_api.board_metadata import get_board_snapshot_display_title, normalize_board_thumbnail_url
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.schemas import (
     BoardSnapshotCreateRequest,
@@ -47,7 +47,7 @@ class PostgresBoardSnapshotStore:
             retentionTier="free",
             shapeCount=metrics["shape_count"],
             thumbnailUrl=normalize_board_thumbnail_url(input_data.thumbnail_url),
-            title=(input_data.title or "Untitled snapshot").strip() or "Untitled snapshot",
+            title=get_board_snapshot_display_title(input_data.document, input_data.title),
             workspaceId=context.workspace_id,
         )
 
@@ -259,7 +259,9 @@ def _snapshot_from_row(row: tuple[Any, ...]) -> BoardSnapshotRecord:
 
 
 def _summarize_snapshot(snapshot: BoardSnapshotRecord) -> BoardSnapshotSummary:
-    return BoardSnapshotSummary(**snapshot.model_dump(by_alias=True, exclude={"document"}))
+    payload = snapshot.model_dump(by_alias=True, exclude={"document"})
+    payload["title"] = get_board_snapshot_display_title(snapshot.document, snapshot.title)
+    return BoardSnapshotSummary(**payload)
 
 
 def _hash_document(document: object) -> str:

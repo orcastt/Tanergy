@@ -72,8 +72,16 @@ export function getRotationSnapGuides(rawRotation: number, rotation: number, cen
 
 export function getResizeSnapSourceKeys(handle: KonvaResizeHandle) {
   return {
-    x: handle === 'nw' || handle === 'sw' ? ['min' as const] : ['max' as const],
-    y: handle === 'nw' || handle === 'ne' ? ['min' as const] : ['max' as const],
+    x: handle === 'n' || handle === 's'
+      ? []
+      : handle === 'nw' || handle === 'sw' || handle === 'w'
+        ? ['min' as const]
+        : ['max' as const],
+    y: handle === 'e' || handle === 'w'
+      ? []
+      : handle === 'nw' || handle === 'ne' || handle === 'n'
+        ? ['min' as const]
+        : ['max' as const],
   }
 }
 

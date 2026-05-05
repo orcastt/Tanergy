@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import type { CanvasCamera, CanvasNodeShape } from '@/features/canvas-engine'
 
-export type KonvaNodeTextFieldName = 'analysisPrompt' | 'prompt'
+export type KonvaNodeTextFieldName = 'analysisPrompt' | 'chatDraft' | 'prompt'
 
 type KonvaNodeTextEditorProps = {
   camera: CanvasCamera
@@ -17,8 +17,11 @@ export function KonvaNodeTextEditor({ camera, fieldName, onCancel, onCommit, sha
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   useEffect(() => {
-    textareaRef.current?.focus()
-    textareaRef.current?.select()
+    const textarea = textareaRef.current
+    if (!textarea) return
+    textarea.focus()
+    const end = textarea.value.length
+    textarea.setSelectionRange(end, end)
   }, [])
 
   const finish = (nextValue = value) => {
@@ -33,7 +36,7 @@ export function KonvaNodeTextEditor({ camera, fieldName, onCancel, onCommit, sha
 
   return (
     <textarea
-      aria-label={fieldName === 'prompt' ? 'Edit prompt' : 'Edit analysis prompt'}
+      aria-label={fieldName === 'prompt' ? 'Edit prompt' : fieldName === 'chatDraft' ? 'Edit chat message' : 'Edit analysis prompt'}
       className="konva-canvas-text-editor konva-canvas-node-text-editor"
       onBlur={() => finish()}
       onChange={(event) => setValue(event.currentTarget.value)}
@@ -69,6 +72,7 @@ export function KonvaNodeTextEditor({ camera, fieldName, onCancel, onCommit, sha
 export function getEditableKonvaNodeTextField(shape: CanvasNodeShape): KonvaNodeTextFieldName | null {
   if (shape.props.nodeType === 'prompt') return 'prompt'
   if (shape.props.nodeType === 'analysis') return 'analysisPrompt'
+  if (shape.props.nodeType === 'chat') return 'chatDraft'
   return null
 }
 
@@ -89,7 +93,7 @@ function getNodeEditorStyle(shape: CanvasNodeShape, fieldName: KonvaNodeTextFiel
     overflowWrap: 'anywhere',
     overflowX: 'hidden',
     overflowY: 'auto',
-    padding: `${12 * zoom}px`,
+    padding: fieldName === 'chatDraft' ? `${2 * zoom}px 0` : `${12 * zoom}px`,
     textAlign: 'left',
     top: `${(shape.y + rect.y) * zoom + camera.y}px`,
     whiteSpace: 'pre-wrap',
@@ -100,6 +104,9 @@ function getNodeEditorStyle(shape: CanvasNodeShape, fieldName: KonvaNodeTextFiel
 export function getKonvaNodeFieldRect(shape: CanvasNodeShape, fieldName: KonvaNodeTextFieldName) {
   if (fieldName === 'analysisPrompt') {
     return { height: 64, width: shape.props.width - 28, x: 14, y: 58 }
+  }
+  if (fieldName === 'chatDraft') {
+    return { height: 38, width: shape.props.width - 60, x: 30, y: shape.props.height - 86 }
   }
   return { height: shape.props.height - 78, width: shape.props.width - 28, x: 14, y: 54 }
 }

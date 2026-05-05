@@ -1,4 +1,5 @@
 import { getShapeBounds, withCanvasShapes, type CanvasDocument, type CanvasPoint, type CanvasShape } from '@/features/canvas-engine'
+import { fitStandaloneTextShapeToContent } from './konvaTextAutoFit'
 
 const defaultPasteOffset = { x: 24, y: 24 }
 
@@ -28,10 +29,12 @@ export function appendShapes(document: CanvasDocument, shapes: CanvasShape[]) {
 export function updateTextShape(document: CanvasDocument, shapeId: string, text: string): CanvasDocument {
   return withCanvasShapes(document, document.shapes.map((shape) => (
     shape.id === shapeId && (shape.type === 'text' || shape.type === 'sticky' || isTextContainerShape(shape))
-      ? { ...shape, props: { ...shape.props, text } }
+      ? shape.type === 'text'
+        ? fitStandaloneTextShapeToContent({ ...shape, props: { ...shape.props, text } })
+        : { ...shape, props: { ...shape.props, text } }
       : shape.id === shapeId && shape.type === 'frame'
         ? { ...shape, props: { ...shape.props, title: text } }
-      : shape
+        : shape
   )))
 }
 

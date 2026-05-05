@@ -90,9 +90,39 @@ export async function clearLocalBoardSnapshots(boardId: string, context: ApiRequ
 }
 
 function summarizeSnapshot(snapshot: BoardSnapshotRecord) {
-  const { document: _document, ...summary } = snapshot
-  void _document
-  return summary
+  const { document, ...summary } = snapshot
+  return {
+    ...summary,
+    title: getSnapshotDisplayTitle(document, summary.title),
+  }
+}
+
+function getSnapshotDisplayTitle(document: unknown, fallbackTitle: string) {
+  const fallback = fallbackTitle.trim()
+  return getKonvaActivePageTitle(document) ?? (fallback || 'Untitled snapshot')
+}
+
+function getKonvaActivePageTitle(document: unknown) {
+  if (!document || typeof document !== 'object') return null
+  const envelope = document as Record<string, unknown>
+  if (envelope.renderer !== 'konva' || envelope.version !== 2) return null
+  const activePageId = typeof envelope.activePageId === 'string' ? envelope.activePageId : 'page-1'
+  const pages = Array.isArray(envelope.pages) ? envelope.pages : []
+  const activePage = pages.find((page) => (
+    Boolean(page)
+    && typeof page === 'object'
+    && (page as Record<string, unknown>).id === activePageId
+  ))
+  const pageTitle = activePage && typeof activePage === 'object'
+    ? (activePage as Record<string, unknown>).title
+    : null
+  if (typeof pageTitle === 'string' && pageTitle.trim()) return pageTitle.trim()
+  const canvasDocument = envelope.canvasDocument
+  if (!canvasDocument || typeof canvasDocument !== 'object') return null
+  const metadata = (canvasDocument as Record<string, unknown>).metadata
+  if (!metadata || typeof metadata !== 'object') return null
+  const documentTitle = (metadata as Record<string, unknown>).name
+  return typeof documentTitle === 'string' && documentTitle.trim() ? documentTitle.trim() : null
 }
 
 async function enforceSnapshotLimit(context: ApiRequestContext, boardId: string) {

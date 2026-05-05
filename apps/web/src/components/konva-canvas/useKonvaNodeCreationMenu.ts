@@ -16,6 +16,7 @@ import {
   stopRuntimeGraphNodeRun,
 } from '@/features/node-runtime/runtimeGraphRunAdapter'
 import type { NodeType } from '@/types/nodeRuntime'
+import { clearKonvaChatHistory, sendKonvaChatMessage, toggleKonvaChatMessageExport } from './konvaChatNodeActions'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
 import { createKonvaNodeCardShape } from './konvaNodeCardFactory'
 
@@ -104,6 +105,27 @@ export function useKonvaNodeCreationMenu({
       .catch((error) => onDocumentChange((current) => failRuntimeGraphNodeRun(current, runInput, error)))
   }, [document, history, onDocumentChange])
 
+  const sendChatMessage = useCallback((shapeId: string) => {
+    const node = document.shapes.find((shape): shape is CanvasNodeShape => shape.id === shapeId && shape.type === 'node_card' && shape.props.nodeType === 'chat')
+    if (!node) return
+    history.checkpoint(document)
+    onDocumentChange((current) => sendKonvaChatMessage(current, shapeId))
+  }, [document, history, onDocumentChange])
+
+  const toggleChatMessageExport = useCallback((shapeId: string, messageId: string) => {
+    const node = document.shapes.find((shape): shape is CanvasNodeShape => shape.id === shapeId && shape.type === 'node_card' && shape.props.nodeType === 'chat')
+    if (!node) return
+    history.checkpoint(document)
+    onDocumentChange((current) => toggleKonvaChatMessageExport(current, shapeId, messageId))
+  }, [document, history, onDocumentChange])
+
+  const cleanChatHistory = useCallback((shapeId: string) => {
+    const node = document.shapes.find((shape): shape is CanvasNodeShape => shape.id === shapeId && shape.type === 'node_card' && shape.props.nodeType === 'chat')
+    if (!node) return
+    history.checkpoint(document)
+    onDocumentChange((current) => clearKonvaChatHistory(current, shapeId))
+  }, [document, history, onDocumentChange])
+
   const openNodeMenu = useCallback((screenPoint: CanvasPoint, worldPoint: CanvasPoint) => {
     onToolChange('select')
     setNodeMenu({ world: worldPoint, x: screenPoint.x, y: screenPoint.y - 12 })
@@ -111,11 +133,14 @@ export function useKonvaNodeCreationMenu({
 
   return {
     closeNodeMenu: () => setNodeMenu(null),
+    cleanChatHistory,
     createNodeCard,
     nodeMenu,
     openNodeMenu,
+    sendChatMessage,
     setNodeField,
     setNodeTextField,
+    toggleChatMessageExport,
     toggleNodeRun,
   }
 }

@@ -7,12 +7,13 @@ const maxLoadedCanvasImages = 160
 
 type KonvaImageShapeProps = {
   opacity: number
+  previewMode?: boolean
   shape: CanvasImageShape
   zoom: number
 }
 
-export function KonvaImageShape({ opacity, shape, zoom }: KonvaImageShapeProps) {
-  const src = useKonvaImageSource(shape, zoom)
+export function KonvaImageShape({ opacity, previewMode = false, shape, zoom }: KonvaImageShapeProps) {
+  const src = useKonvaImageSource(shape, zoom, previewMode)
   const image = useLoadedImage(src)
 
   if (!src || !image) {
@@ -21,6 +22,7 @@ export function KonvaImageShape({ opacity, shape, zoom }: KonvaImageShapeProps) 
         fill="#eef2f7"
         height={shape.props.height}
         opacity={opacity}
+        perfectDrawEnabled={false}
         stroke="rgba(100, 116, 139, 0.42)"
         strokeWidth={1}
         width={shape.props.width}
@@ -33,8 +35,9 @@ export function KonvaImageShape({ opacity, shape, zoom }: KonvaImageShapeProps) 
       crop={getImageCrop(shape, image)}
       height={shape.props.height}
       image={image}
-      imageSmoothingEnabled={zoom > 0.5}
+      imageSmoothingEnabled={!previewMode && zoom > 0.5}
       opacity={opacity}
+      perfectDrawEnabled={false}
       width={shape.props.width}
     />
   )
@@ -95,9 +98,12 @@ function rememberLoadedCanvasImage(src: string, image: HTMLImageElement) {
   }
 }
 
-function useKonvaImageSource(shape: CanvasImageShape, zoom: number) {
+function useKonvaImageSource(shape: CanvasImageShape, zoom: number, previewMode: boolean) {
   return useMemo(() => {
     const props = shape.props
+    if (previewMode) {
+      return props.thumbnail256Url ?? props.thumbnail512Url ?? props.thumbnail1024Url ?? props.originalUrl ?? null
+    }
     if (zoom <= 0.25) {
       return props.thumbnail256Url ?? props.thumbnail512Url ?? props.thumbnail1024Url ?? null
     }
@@ -108,7 +114,7 @@ function useKonvaImageSource(shape: CanvasImageShape, zoom: number) {
       return props.thumbnail1024Url ?? props.thumbnail512Url ?? props.originalUrl ?? props.thumbnail256Url ?? null
     }
     return props.originalUrl ?? props.thumbnail1024Url ?? props.thumbnail512Url ?? props.thumbnail256Url ?? null
-  }, [shape.props, zoom])
+  }, [previewMode, shape.props, zoom])
 }
 
 function clamp(value: number, min: number, max: number) {

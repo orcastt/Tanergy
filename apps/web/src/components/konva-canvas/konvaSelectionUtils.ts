@@ -6,6 +6,7 @@ import {
   type CanvasShape,
 } from '@/features/canvas-engine'
 import type { KonvaResizeHandle } from './konvaCanvasTypes'
+import { scaleStandaloneTextStyle } from './konvaTextAutoFit'
 
 const minResizeSize = 12
 type ResizableCanvasShape = Extract<CanvasShape, { props: { height: number; width: number } }>
@@ -84,12 +85,13 @@ export function resizeShapesFromBounds(
   shapes: CanvasShape[],
   originShapes: CanvasShape[],
   originBounds: CanvasBounds,
-  nextBounds: CanvasBounds
+  nextBounds: CanvasBounds,
+  options: { scaleText?: boolean } = {}
 ): CanvasShape[] {
   const originals = new Map(originShapes.map((shape) => [shape.id, shape]))
   return shapes.map((shape) => {
     const original = originals.get(shape.id)
-    return original ? transformShapeFromBounds(original, originBounds, nextBounds) : shape
+    return original ? transformShapeFromBounds(original, originBounds, nextBounds, options) : shape
   })
 }
 
@@ -99,6 +101,7 @@ export function resizeBoundsFromHandle(
   point: CanvasPoint,
   options: { preserveAspect?: boolean } = {}
 ): CanvasBounds {
+  if (isEdgeResizeHandle(handle)) return resizeBoundsFromEdgeHandle(originBounds, handle, point)
   const anchor = getOppositeCorner(originBounds, handle)
   const nextPoint = options.preserveAspect ? preserveAspectPoint(anchor, point, originBounds) : point
   return normalizeResizeBounds(boundsFromPoints(anchor, nextPoint))
@@ -170,6 +173,19 @@ function getResizeHandlePoint(bounds: CanvasBounds, handle: KonvaResizeHandle): 
   return { x: bounds.maxX, y: bounds.maxY }
 }
 
+function isEdgeResizeHandle(handle: KonvaResizeHandle) {
+  return handle === 'n' || handle === 'e' || handle === 's' || handle === 'w'
+}
+
+function resizeBoundsFromEdgeHandle(bounds: CanvasBounds, handle: KonvaResizeHandle, point: CanvasPoint): CanvasBounds {
+  const next = { ...bounds }
+  if (handle === 'n') next.minY = Math.min(point.y, bounds.maxY - minResizeSize)
+  if (handle === 'e') next.maxX = Math.max(point.x, bounds.minX + minResizeSize)
+  if (handle === 's') next.maxY = Math.max(point.y, bounds.minY + minResizeSize)
+  if (handle === 'w') next.minX = Math.min(point.x, bounds.maxX - minResizeSize)
+  return next
+}
+
 function normalizeResizeBounds(bounds: CanvasBounds): CanvasBounds {
   const rect = boundsToRect(bounds)
   if (rect.width >= minResizeSize && rect.height >= minResizeSize) return bounds
@@ -196,7 +212,7 @@ function preserveAspectPoint(anchor: CanvasPoint, point: CanvasPoint, bounds: Ca
   }
 }
 
-function transformShapeFromBounds(shape: CanvasShape, originBounds: CanvasBounds, nextBounds: CanvasBounds): CanvasShape {
+function transformShapeFromBounds(shape: CanvasShape, originBounds: CanvasBounds, nextBounds: CanvasBounds, options: { scaleText?: boolean } = {}): CanvasShape {
   const scaleX = (nextBounds.maxX - nextBounds.minX) / Math.max(1, originBounds.maxX - originBounds.minX)
   const scaleY = (nextBounds.maxY - nextBounds.minY) / Math.max(1, originBounds.maxY - originBounds.minY)
   const nextPoint = (point: CanvasPoint): CanvasPoint => ({
@@ -206,10 +222,11 @@ function transformShapeFromBounds(shape: CanvasShape, originBounds: CanvasBounds
   const nextOrigin = nextPoint({ x: shape.x, y: shape.y })
 
   if (isResizableShape(shape)) {
+    const scaledShape = shape.type === 'text' && options.scaleText !== false ? scaleStandaloneTextStyle(shape, scaleY) : shape
     return {
-      ...shape,
+      ...scaledShape,
       props: {
-        ...shape.props,
+        ...scaledShape.props,
         height: Math.max(minResizeSize, shape.props.height * scaleY),
         width: Math.max(minResizeSize, shape.props.width * scaleX),
       },

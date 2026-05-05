@@ -13,6 +13,7 @@ const categories = [
   {
     items: [
       { label: 'Prompt', type: 'prompt' as NodeType },
+      { label: 'Chat', type: 'chat' as NodeType },
       { label: 'Analysis', type: 'analysis' as NodeType },
     ],
     title: 'Text',

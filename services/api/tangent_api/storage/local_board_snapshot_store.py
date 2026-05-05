@@ -17,7 +17,7 @@ from tangent_api.schemas import (
     BoardSnapshotSummary,
     get_board_document_metrics,
 )
-from tangent_api.board_metadata import normalize_board_thumbnail_url
+from tangent_api.board_metadata import get_board_snapshot_display_title, normalize_board_thumbnail_url
 
 BOARD_ID_PATTERN = re.compile(r"^[a-zA-Z0-9._-]+$")
 
@@ -50,7 +50,7 @@ def create_board_snapshot(
         retentionTier="free",
         shapeCount=metrics["shape_count"],
         thumbnailUrl=normalize_board_thumbnail_url(input_data.thumbnail_url),
-        title=(input_data.title or "Untitled snapshot").strip() or "Untitled snapshot",
+        title=get_board_snapshot_display_title(input_data.document, input_data.title),
         workspaceId=context.workspace_id,
     )
     _write_snapshot(snapshot)
@@ -121,7 +121,9 @@ def _enforce_snapshot_limit(context: ApiRequestContext, board_id: str) -> None:
 
 
 def _summarize_snapshot(snapshot: BoardSnapshotRecord) -> BoardSnapshotSummary:
-    return BoardSnapshotSummary(**snapshot.model_dump(by_alias=True, exclude={"document"}))
+    payload = snapshot.model_dump(by_alias=True, exclude={"document"})
+    payload["title"] = get_board_snapshot_display_title(snapshot.document, snapshot.title)
+    return BoardSnapshotSummary(**payload)
 
 
 def _snapshot_root(workspace_id: str, board_id: str) -> Path:

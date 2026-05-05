@@ -5,6 +5,7 @@ type CanvasHistorySnapshot = {
   runtimeEdges: CanvasRuntimeEdge[]
   selectedIds: string[]
   shapes: CanvasShape[]
+  signature: string
 }
 
 type UseKonvaCanvasHistoryOptions = {
@@ -31,10 +32,16 @@ export function useKonvaCanvasHistory({
   }, [document, selectedIds])
 
   const checkpoint = useCallback((snapshotDocument: CanvasDocument = documentRef.current) => {
-    const snapshot = createSnapshot(snapshotDocument, selectedIdsRef.current)
+    const signature = createSnapshotSignature(snapshotDocument.shapes, snapshotDocument.runtimeEdges, selectedIdsRef.current)
     const previous = undoStackRef.current.at(-1)
-    if (previous && snapshotsEqual(previous, snapshot)) return
+    if (previous?.signature === signature) return
+    const snapshot = createSnapshot(snapshotDocument, selectedIdsRef.current, signature)
     undoStackRef.current = [...undoStackRef.current, snapshot].slice(-80)
+    redoStackRef.current = []
+  }, [])
+
+  const clear = useCallback(() => {
+    undoStackRef.current = []
     redoStackRef.current = []
   }, [])
 
@@ -54,14 +61,15 @@ export function useKonvaCanvasHistory({
     restoreSnapshot(snapshot, onDocumentChange, onSelectionChange)
   }, [onDocumentChange, onSelectionChange])
 
-  return useMemo(() => ({ checkpoint, redo, undo }), [checkpoint, redo, undo])
+  return useMemo(() => ({ checkpoint, clear, redo, undo }), [checkpoint, clear, redo, undo])
 }
 
-function createSnapshot(document: CanvasDocument, selectedIds: string[]): CanvasHistorySnapshot {
+function createSnapshot(document: CanvasDocument, selectedIds: string[], signature = createSnapshotSignature(document.shapes, document.runtimeEdges, selectedIds)): CanvasHistorySnapshot {
   return {
     runtimeEdges: cloneRuntimeEdges(document.runtimeEdges),
     selectedIds: [...selectedIds],
     shapes: cloneShapes(document.shapes),
+    signature,
   }
 }
 
@@ -88,10 +96,6 @@ function cloneRuntimeEdges(edges: CanvasRuntimeEdge[]) {
     : JSON.parse(JSON.stringify(edges)) as CanvasRuntimeEdge[]
 }
 
-function snapshotsEqual(a: CanvasHistorySnapshot, b: CanvasHistorySnapshot) {
-  return (
-    JSON.stringify(a.shapes) === JSON.stringify(b.shapes) &&
-    JSON.stringify(a.runtimeEdges) === JSON.stringify(b.runtimeEdges) &&
-    a.selectedIds.join('\0') === b.selectedIds.join('\0')
-  )
+function createSnapshotSignature(shapes: CanvasShape[], runtimeEdges: CanvasRuntimeEdge[], selectedIds: string[]) {
+  return `${JSON.stringify(shapes)}\n${JSON.stringify(runtimeEdges)}\n${selectedIds.join('\0')}`
 }
