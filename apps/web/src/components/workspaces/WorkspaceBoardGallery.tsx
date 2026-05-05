@@ -11,6 +11,7 @@ import {
   saveLocalBoardDocument,
   updateLocalBoardMetadata,
 } from '@/features/boards/localBoardClient'
+import { migrateTldrawV1BoardToKonvaV2 } from '@/features/boards/tldrawToKonvaMigration'
 import { WorkspaceBoardHeader } from './WorkspaceBoardHeader'
 import { WorkspaceBoardPanelHost } from './WorkspaceBoardPanelHost'
 import { WorkspaceBoardResults } from './WorkspaceBoardResults'
@@ -167,6 +168,43 @@ export function WorkspaceBoardGallery() {
     }
   }
 
+  const copyBoardToKonva = async (board: BoardPersistenceSummary) => {
+    setPendingBoardId(board.id)
+    setError(null)
+    try {
+      const source = await loadLocalBoardDocument(board.id)
+      if (!source.board) throw new Error('Source Board was not found.')
+      const nextBoardId = createBoardId()
+      const nextTitle = `${board.title} Konva copy`
+      const migrated = migrateTldrawV1BoardToKonvaV2(source.board.document, {
+        boardId: nextBoardId,
+        title: nextTitle,
+      })
+      const response = await saveLocalBoardDocument({
+        boardId: nextBoardId,
+        cardColor: getBoardDisplayCardColor(board),
+        description: board.description,
+        document: migrated.document,
+        title: nextTitle,
+      })
+      if (!response.board) throw new Error('Konva copy failed.')
+      const metadata = await updateLocalBoardMetadata({
+        boardId: nextBoardId,
+        cardColor: getBoardDisplayCardColor(board),
+        description: board.description,
+        visibility: board.visibility ?? 'private',
+      })
+      const copiedBoard = metadata.board ?? response.board
+      setBoards((current) => [copiedBoard, ...current])
+      setNotice(`Created Konva v2 copy with ${migrated.migratedShapeCount} migrated shapes.`)
+      router.push(`/boards/${encodeURIComponent(nextBoardId)}`)
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : 'Konva copy failed.')
+    } finally {
+      setPendingBoardId(null)
+    }
+  }
+
   const updateBoardMetadata = async (input: BoardMetadataUpdateInput) => {
     setPendingBoardId(input.boardId)
     setError(null)
@@ -243,6 +281,7 @@ export function WorkspaceBoardGallery() {
         isLoading={isLoading}
         onCancelRename={cancelRename}
         onCopy={(board) => void copyBoard(board)}
+        onCopyToKonva={(board) => void copyBoardToKonva(board)}
         onCreate={createBoard}
         onDelete={(board) => void deleteBoard(board)}
         onLoadMore={() => setVisibleLimit((value) => value + boardPageSize)}

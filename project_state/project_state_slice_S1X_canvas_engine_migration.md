@@ -207,6 +207,8 @@ Phase 3.1 object editing foundation started:
 - 2026-05-05 tldraw production gate + local cleanup is implemented: local workspace storage was cleaned from 25 old tldraw v1 Board records to 3 Konva v2 Boards (`board-20260504235033`, `konva-spike-local`, `konva_formal_test`), orphan local snapshot dirs were removed, and production defaults now block tldraw route/Board engine usage unless `NEXT_PUBLIC_ENABLE_TLDRAW_REFERENCE=1` is explicitly set.
 - 2026-05-05 Board header/save controls polish is implemented: Konva header no longer shows spike/Yjs diagnostic subtitle, formal Board save controls no longer expose manual Load, and Refresh Preview now lives inside the History panel footer beside Refresh/Clean.
 - 2026-05-05 Konva Canvas Settings is restored: the top toolbar has a gear icon that opens the shared Canvas Settings panel. Konva now applies background color/pattern/grid spacing to the stage background, keeps snap settings wired through the existing drag/resize handlers, and uses Zoom Sensitivity for wheel zoom.
+- 2026-05-05 Page/multi-board document contract first pass is implemented: Konva v2 envelopes now include `activePageId` and `pages[]` while keeping `canvasDocument` as the active page mirror for the current single-page runtime. Frontend/FastAPI guards validate page metadata and page-level `CanvasDocument`s, restore picks the active page, and Board metrics count page shapes when `pages[]` exists.
+- 2026-05-05 explicit v1-to-v2 copy tooling first pass is implemented: Workspace legacy Board menus and the formal legacy route state can create a new Konva v2 copy from a serialized tldraw v1 Board without overwriting the source. The adapter maps common tldraw shapes/assets/runtime edges into one Konva page and uses visible placeholders for unsupported old shapes.
 - Phase 4 storage guard remains explicit: Board documents, node props and runtime edge data must not persist `data:`, `blob:`, Base64 images, provider raw payloads, complete logs or long generated text. Image Node first pass stores only Asset references, dimensions, title/source metadata and runtime summary placeholders.
 - A Konva shell `selectionchange` guard clears accidental browser text selection while preserving normal textarea/input selection during editing.
 - Frame movement now expands the drag set to include direct/nested frame children, so moving a frame carries contained shapes with it.
@@ -215,14 +217,15 @@ Phase 3.1 object editing foundation started:
 - undo/redo restores shapes plus selection only, so pan/zoom is not part of command history
 - create, drag, resize, eraser, Properties style edits, layer actions, duplicate/delete, stress strokes and clear all now create history checkpoints
 
-Not included yet: full HTML node card controls beyond targeted Prompt/Analysis text preview/editing, extensible server-backed node run adapter registry, real Image Gen result asset propagation, AiRun polling/cancel execution UI, crop reset/explicit commit UI, explicit v1-to-v2 migration/copy tooling, nested-frame/export semantics and real Yjs provider sync.
+Not included yet: full HTML node card controls beyond targeted Prompt/Analysis text preview/editing, extensible server-backed node run adapter registry, real Image Gen result asset propagation, AiRun polling/cancel execution UI, crop reset/explicit commit UI, page switching UI/page thumbnails, precise legacy style/binding migration, nested-frame/export semantics and real Yjs provider sync.
 
 Current hand-test queue:
 
 - Select 3 Image Nodes, drag from any selected `image_out` to Image Gen/Image Gen 4 `image_in_1`, and confirm 3 edges appear, image input ports expand, Run resolves 3 image refs, Undo removes the whole batch, and disconnecting one edge updates input counts/mirrors.
 - Recheck 50/100 image pressure at 5/15/25/50/100% zoom on macOS and Windows, including pan/zoom, drawing over images, drag/Alt-drag, resize/rotate, crop, runtime edge drag and node Run. Capture selection / Copy PNG / Export PNG flash is accepted as fixed.
 - Phase 5A hand-test: open `/spikes/konva-canvas`, draw shapes/images/nodes/runtime edges, confirm Save now writes a thumbnail, Load restores document/camera/settings, Cmd/Ctrl+S creates a keyboard save, Snapshot appears in History, Restore replaces the canvas, Clean clears all History entries after confirmation, and autosave/Snapshot can recreate history afterward.
-- Formal Board route hand-test: open a new `/boards/<id>?new=1` Board and confirm Konva opens blank, save/load/history work; reopen that Board without `new=1` and confirm it detects Konva v2; open an existing tldraw v1 Board and confirm it still renders in tldraw instead of being overwritten.
+- Formal Board route hand-test: open a new `/boards/<id>?new=1` Board and confirm Konva opens blank, save/load/history work; reopen that Board without `new=1` and confirm it detects Konva v2; open an existing tldraw v1 Board and confirm it still renders in tldraw/reference mode when enabled instead of being overwritten.
+- v1 copy hand-test: from `/workspaces`, use a legacy v1 Board menu `Copy to Konva v2`, confirm it creates and opens a new Konva Board, images/geo/text/notes/arrows appear, runtime edges are retained when both endpoints migrated, and the original v1 Board remains present.
 
 Explicit Phase 3B follow-ups now tracked in the migration plan:
 
@@ -266,4 +269,4 @@ Large Miro-scale collaboration: later multi-month S4 track
 
 ## Next Action
 
-Hand-test `/workspaces` after the local v1 cleanup and production tldraw gate. Next whole blocks are explicit v1-to-v2 copy/migration tooling from archived/remote old documents if needed, page/multi-board document contracts, transparent-background/export polish, real AiRun execution, and then Phase 6 Yjs collaboration.
+Hand-test `/workspaces` and `/boards/[boardId]` after the page contract and v1 copy tooling first pass. Next whole blocks are page switching UI/page thumbnails, transparent-background/export polish, precise legacy style/binding migration if hand-test finds gaps, real AiRun execution, and then Phase 6 Yjs collaboration.

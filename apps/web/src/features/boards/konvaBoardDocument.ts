@@ -2,6 +2,13 @@ import { getSerializableCanvasSettings, defaultCanvasSettings, useCanvasSettings
 import type { CanvasDocument, CanvasImageShape, CanvasNodeShape } from '@/features/canvas-engine'
 import { getRuntimeGraphGeneratedOutputRefs, getRuntimeGraphImageAssetRef, type RuntimeGraphImageAssetRef } from '@/features/node-runtime/runtimeGraphAssets'
 import { auditBoardDocument, type BoardDocumentGuardResult } from './boardDocumentGuard'
+import {
+  createKonvaBoardPage,
+  defaultKonvaBoardPageId,
+  getActiveKonvaBoardPage,
+  normalizeKonvaBoardPages,
+  type SerializedKonvaBoardPage,
+} from './konvaBoardPageContract'
 
 export type SerializedKonvaBoardAsset = {
   height?: number
@@ -14,9 +21,11 @@ export type SerializedKonvaBoardAsset = {
 }
 
 export type SerializedKonvaBoardDocument = {
+  activePageId?: string
   assets: SerializedKonvaBoardAsset[]
   canvasDocument: CanvasDocument
   canvasSettings?: CanvasSettings
+  pages?: SerializedKonvaBoardPage[]
   renderer: 'konva'
   serializedAt: string
   version: 2
@@ -30,17 +39,28 @@ export type KonvaBoardDocumentSerializationResult = {
 export type KonvaBoardRestoreResult = {
   assetCount: number
   edgeCount: number
+  pageCount: number
   shapeCount: number
 }
 
 export function serializeKonvaBoardDocument(document: CanvasDocument): SerializedKonvaBoardDocument {
   const canvasDocument = cloneJsonValue(document) as CanvasDocument
+  const serializedAt = new Date().toISOString()
+  const pages = [
+    createKonvaBoardPage(canvasDocument, {
+      id: defaultKonvaBoardPageId,
+      now: serializedAt,
+      title: canvasDocument.metadata.name ?? 'Page 1',
+    }),
+  ]
   return {
-    assets: collectKonvaBoardAssets(canvasDocument),
+    activePageId: defaultKonvaBoardPageId,
+    assets: collectKonvaBoardAssets([canvasDocument]),
     canvasDocument,
     canvasSettings: getSerializableCanvasSettings(),
+    pages,
     renderer: 'konva',
-    serializedAt: new Date().toISOString(),
+    serializedAt,
     version: 2,
   }
 }
@@ -59,12 +79,15 @@ export function restoreKonvaBoardDocument(document: unknown): { document: Canvas
   if (!audit.ok) throw new Error(audit.issues.find((issue) => issue.blocking)?.message ?? 'Board document is blocked.')
 
   useCanvasSettingsStore.getState().replace(document.canvasSettings ?? defaultCanvasSettings)
-  const canvasDocument = cloneJsonValue(document.canvasDocument) as CanvasDocument
+  const pages = normalizeKonvaBoardPages(document)
+  const activePage = getActiveKonvaBoardPage(document)
+  const canvasDocument = cloneJsonValue(activePage.canvasDocument) as CanvasDocument
   return {
     document: canvasDocument,
     result: {
       assetCount: document.assets.length,
       edgeCount: canvasDocument.runtimeEdges.length,
+      pageCount: pages.length,
       shapeCount: canvasDocument.shapes.length,
     },
   }
@@ -77,15 +100,18 @@ export function isSerializedKonvaBoardDocument(value: unknown): value is Seriali
     candidate.version === 2 &&
     candidate.renderer === 'konva' &&
     Boolean(candidate.canvasDocument && typeof candidate.canvasDocument === 'object') &&
-    Array.isArray(candidate.assets)
+    Array.isArray(candidate.assets) &&
+    (candidate.pages === undefined || Array.isArray(candidate.pages))
   )
 }
 
-function collectKonvaBoardAssets(document: CanvasDocument) {
+function collectKonvaBoardAssets(documents: CanvasDocument[]) {
   const assets = new Map<string, SerializedKonvaBoardAsset>()
-  for (const shape of document.shapes) {
-    if (shape.type === 'image') addImageShapeAsset(assets, shape)
-    if (shape.type === 'node_card') addNodeShapeAssets(assets, shape)
+  for (const document of documents) {
+    for (const shape of document.shapes) {
+      if (shape.type === 'image') addImageShapeAsset(assets, shape)
+      if (shape.type === 'node_card') addNodeShapeAssets(assets, shape)
+    }
   }
   return [...assets.values()]
 }

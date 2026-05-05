@@ -44,7 +44,19 @@ def get_board_document_metrics(document: Any) -> dict[str, int]:
     shapes = document.get("shapes")
     canvas_document = document.get("canvasDocument")
     canvas_shapes = canvas_document.get("shapes") if isinstance(canvas_document, dict) else None
+    pages = document.get("pages")
+    page_shape_count = 0
+    if isinstance(pages, list):
+        for page in pages:
+            if not isinstance(page, dict):
+                continue
+            page_document = page.get("canvasDocument")
+            page_shapes = page_document.get("shapes") if isinstance(page_document, dict) else None
+            if isinstance(page_shapes, list):
+                page_shape_count += len(page_shapes)
     return {
         "asset_count": len(assets) if isinstance(assets, list) else 0,
-        "shape_count": len(shapes) if isinstance(shapes, list) else len(canvas_shapes) if isinstance(canvas_shapes, list) else 0,
+        "shape_count": page_shape_count
+        if page_shape_count > 0
+        else len(shapes) if isinstance(shapes, list) else len(canvas_shapes) if isinstance(canvas_shapes, list) else 0,
     }

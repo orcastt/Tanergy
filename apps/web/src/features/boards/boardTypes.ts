@@ -1,4 +1,5 @@
 import type { BoardDocumentGuardResult } from './boardDocumentGuard'
+import { detectBoardCanvasEngine, type BoardCanvasEngine } from './boardCanvasEngine'
 
 export type BoardPersistenceRecord = {
   assetCount: number
@@ -22,6 +23,7 @@ export type BoardPersistenceRecord = {
 }
 
 export type BoardPersistenceSummary = Omit<BoardPersistenceRecord, 'document'>
+  & { canvasEngine?: BoardCanvasEngine | null }
 
 export type BoardSaveInput<Document = unknown> = {
   boardId?: string
@@ -155,6 +157,7 @@ export function summarizeBoardRecord(record: BoardPersistenceRecord): BoardPersi
   return {
     assetCount: record.assetCount ?? metrics.assetCount,
     byteSize: record.byteSize,
+    canvasEngine: detectBoardCanvasEngine(record.document),
     cardColor: normalizeBoardCardColor(record.cardColor),
     createdAt: record.createdAt ?? record.savedAt,
     description: normalizeBoardDescription(record.description),
@@ -206,17 +209,29 @@ export function normalizeBoardVisibility(value: unknown): BoardVisibility {
     : 'private'
 }
 
-export function getBoardDocumentMetrics(document: unknown) {
+export function getBoardDocumentMetrics(document: unknown): { assetCount: number; shapeCount: number } {
   if (!document || typeof document !== 'object') {
     return { assetCount: 0, shapeCount: 0 }
   }
   const candidate = document as { assets?: unknown; canvasDocument?: unknown; shapes?: unknown }
+  const pageShapeCounts = Array.isArray((candidate as { pages?: unknown }).pages)
+    ? ((candidate as { pages: unknown[] }).pages).reduce<number>((total, page) => {
+        if (!page || typeof page !== 'object') return total
+        const pageDocument = (page as { canvasDocument?: unknown }).canvasDocument
+        const pageShapes = pageDocument && typeof pageDocument === 'object'
+          ? (pageDocument as { shapes?: unknown }).shapes
+          : null
+        return total + (Array.isArray(pageShapes) ? pageShapes.length : 0)
+      }, 0)
+    : 0
   const canvasDocument = candidate.canvasDocument && typeof candidate.canvasDocument === 'object'
     ? candidate.canvasDocument as { shapes?: unknown }
     : null
   return {
     assetCount: Array.isArray(candidate.assets) ? candidate.assets.length : 0,
-    shapeCount: Array.isArray(candidate.shapes)
+    shapeCount: pageShapeCounts > 0
+      ? pageShapeCounts
+      : Array.isArray(candidate.shapes)
       ? candidate.shapes.length
       : Array.isArray(canvasDocument?.shapes) ? canvasDocument.shapes.length : 0,
   }

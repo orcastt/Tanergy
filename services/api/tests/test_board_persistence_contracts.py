@@ -370,6 +370,65 @@ def test_board_metrics_support_konva_v2_document(tmp_path, monkeypatch):
     assert snapshot["shapeCount"] == 1
 
 
+def test_board_metrics_support_konva_v2_pages_contract(tmp_path, monkeypatch):
+    monkeypatch.setenv("TANGENT_BOARD_STORAGE_DIR", str(tmp_path / "boards"))
+    client = TestClient(app)
+    active_document = {
+        "camera": {"x": 0, "y": 0, "zoom": 1},
+        "id": "canvas-document-page-1",
+        "metadata": {"createdAt": "2026-05-05T00:00:00Z", "updatedAt": "2026-05-05T00:00:00Z"},
+        "runtimeEdges": [],
+        "schemaVersion": 1,
+        "shapes": [{"id": "shape_1", "props": {"height": 80, "width": 120}, "type": "rect", "x": 0, "y": 0}],
+    }
+    second_document = {
+        "camera": {"x": 20, "y": 30, "zoom": 0.8},
+        "id": "canvas-document-page-2",
+        "metadata": {"createdAt": "2026-05-05T00:00:00Z", "updatedAt": "2026-05-05T00:00:00Z"},
+        "runtimeEdges": [],
+        "schemaVersion": 1,
+        "shapes": [
+            {"id": "shape_2", "props": {"height": 80, "width": 120}, "type": "rect", "x": 0, "y": 0},
+            {"id": "shape_3", "props": {"height": 80, "width": 120}, "type": "rect", "x": 140, "y": 0},
+        ],
+    }
+    document = {
+        "activePageId": "page-1",
+        "assets": [],
+        "canvasDocument": active_document,
+        "pages": [
+            {
+                "canvasDocument": active_document,
+                "createdAt": "2026-05-05T00:00:00Z",
+                "id": "page-1",
+                "index": 0,
+                "title": "Page 1",
+                "updatedAt": "2026-05-05T00:00:00Z",
+            },
+            {
+                "canvasDocument": second_document,
+                "createdAt": "2026-05-05T00:00:00Z",
+                "id": "page-2",
+                "index": 1,
+                "title": "Page 2",
+                "updatedAt": "2026-05-05T00:00:00Z",
+            },
+        ],
+        "renderer": "konva",
+        "serializedAt": "2026-05-05T00:00:00Z",
+        "version": 2,
+    }
+
+    save_response = client.post(
+        "/api/v1/boards",
+        json={"boardId": "api-konva-pages-board", "document": document, "title": "Konva Pages Board"},
+    )
+
+    assert save_response.status_code == 200
+    saved = save_response.json()["board"]
+    assert saved["shapeCount"] == 3
+
+
 def test_board_guard_rejects_invalid_konva_v2_document(tmp_path, monkeypatch):
     monkeypatch.setenv("TANGENT_BOARD_STORAGE_DIR", str(tmp_path / "boards"))
     client = TestClient(app)
@@ -411,3 +470,40 @@ def test_board_guard_rejects_invalid_konva_v2_document(tmp_path, monkeypatch):
 
     assert save_response.status_code == 422
     assert save_response.json()["audit"]["ok"] is False
+
+
+def test_board_guard_rejects_invalid_konva_v2_pages_contract(tmp_path, monkeypatch):
+    monkeypatch.setenv("TANGENT_BOARD_STORAGE_DIR", str(tmp_path / "boards"))
+    client = TestClient(app)
+    page_document = {
+        "camera": {"x": 0, "y": 0, "zoom": 1},
+        "id": "canvas-document-page-invalid",
+        "metadata": {"createdAt": "2026-05-05T00:00:00Z", "updatedAt": "2026-05-05T00:00:00Z"},
+        "runtimeEdges": [],
+        "schemaVersion": 1,
+        "shapes": [{"id": "shape_1", "props": {"height": 80, "width": 120}, "type": "rect", "x": 0, "y": 0}],
+    }
+    invalid_document = {
+        "activePageId": "missing-page",
+        "assets": [],
+        "canvasDocument": page_document,
+        "pages": [
+            {
+                "canvasDocument": page_document,
+                "createdAt": "2026-05-05T00:00:00Z",
+                "id": "page-1",
+                "index": 0,
+                "title": "Page 1",
+                "updatedAt": "2026-05-05T00:00:00Z",
+            }
+        ],
+        "renderer": "konva",
+        "serializedAt": "2026-05-05T00:00:00Z",
+        "version": 2,
+    }
+
+    response = client.post("/api/v1/boards/validate-document", json={"document": invalid_document})
+
+    assert response.status_code == 422
+    issues = response.json()["audit"]["issues"]
+    assert any(issue["code"] == "konva-v2-invalid" and issue["path"] == "document.activePageId" for issue in issues)

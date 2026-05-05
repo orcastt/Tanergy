@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CanvasLineIcon } from '@/components/canvas/CanvasLineIcon'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
 import type { NodeType } from '@/types/nodeRuntime'
@@ -24,11 +24,27 @@ export function KonvaCanvasToolbar({
   onOpenSettings,
   onToolChange,
 }: KonvaCanvasToolbarProps) {
+  const nodeMenuRef = useRef<HTMLDivElement | null>(null)
   const [nodeMenuOpen, setNodeMenuOpen] = useState(false)
   const createNode = (type: NodeType) => {
     onCreateNode(type)
     setNodeMenuOpen(false)
   }
+
+  useEffect(() => {
+    if (!nodeMenuOpen) return
+    const closeOnOutsideEvent = (event: PointerEvent | MouseEvent) => {
+      const target = event.target
+      if (target instanceof Node && nodeMenuRef.current?.contains(target)) return
+      setNodeMenuOpen(false)
+    }
+    document.addEventListener('pointerdown', closeOnOutsideEvent, true)
+    document.addEventListener('contextmenu', closeOnOutsideEvent, true)
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideEvent, true)
+      document.removeEventListener('contextmenu', closeOnOutsideEvent, true)
+    }
+  }, [nodeMenuOpen])
 
   return (
     <div className="konva-canvas-toolbar" aria-label="Konva canvas tools">
@@ -49,7 +65,7 @@ export function KonvaCanvasToolbar({
           ))}
         </div>
       ))}
-      <div className="konva-canvas-toolbar__group konva-canvas-toolbar__node-group" aria-label="Create nodes">
+      <div className="konva-canvas-toolbar__group konva-canvas-toolbar__node-group" aria-label="Create nodes" ref={nodeMenuRef}>
         <button
           aria-label="Create node"
           className="konva-canvas-tool"

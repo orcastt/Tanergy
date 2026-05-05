@@ -31,9 +31,11 @@ export function auditKonvaBoardDocumentSchema(document: unknown): BoardDocumentG
   requireString(root.serializedAt, 'document.serializedAt', issues)
   const assets = requireArray(root.assets, 'document.assets', issues)
   const canvasDocument = requireRecord(root.canvasDocument, 'document.canvasDocument', issues)
+  const pages = root.pages === undefined ? null : requireArray(root.pages, 'document.pages', issues)
 
   assets?.forEach((asset, index) => validateAsset(asset, `document.assets.${index}`, issues))
   if (canvasDocument) validateCanvasDocument(canvasDocument, issues)
+  if (pages) validatePages(pages, root.activePageId, issues)
   return issues
 }
 
@@ -42,21 +44,51 @@ function looksLikeKonvaDocument(value: unknown) {
 }
 
 function validateCanvasDocument(document: Record<string, unknown>, issues: BoardDocumentGuardIssue[]) {
-  requireString(document.id, 'document.canvasDocument.id', issues)
-  if (document.schemaVersion !== 1) addIssue(issues, 'document.canvasDocument.schemaVersion', 'Canvas document schemaVersion must be 1.')
-  validateCamera(document.camera, 'document.canvasDocument.camera', issues)
-  validateMetadata(document.metadata, 'document.canvasDocument.metadata', issues)
-  const shapes = requireArray(document.shapes, 'document.canvasDocument.shapes', issues)
-  const edges = requireArray(document.runtimeEdges, 'document.canvasDocument.runtimeEdges', issues)
+  validateCanvasDocumentAtPath(document, 'document.canvasDocument', issues)
+}
+
+function validatePages(pages: unknown[], activePageId: unknown, issues: BoardDocumentGuardIssue[]) {
+  const pageIds = new Set<string>()
+  const resolvedActivePageId = activePageId === undefined
+    ? null
+    : requireString(activePageId, 'document.activePageId', issues)
+  pages.forEach((page, index) => {
+    const path = `document.pages.${index}`
+    const record = requireRecord(page, path, issues)
+    if (!record) return
+    const pageId = requireString(record.id, `${path}.id`, issues)
+    requireString(record.title, `${path}.title`, issues)
+    requireFiniteNumber(record.index, `${path}.index`, issues)
+    requireString(record.createdAt, `${path}.createdAt`, issues)
+    requireString(record.updatedAt, `${path}.updatedAt`, issues)
+    const pageDocument = requireRecord(record.canvasDocument, `${path}.canvasDocument`, issues)
+    if (pageId) {
+      if (pageIds.has(pageId)) addIssue(issues, `${path}.id`, `Duplicate page id "${pageId}".`)
+      pageIds.add(pageId)
+    }
+    if (pageDocument) validateCanvasDocumentAtPath(pageDocument, `${path}.canvasDocument`, issues)
+  })
+  if (resolvedActivePageId && !pageIds.has(resolvedActivePageId)) {
+    addIssue(issues, 'document.activePageId', `Active page "${resolvedActivePageId}" is missing from document.pages.`)
+  }
+}
+
+function validateCanvasDocumentAtPath(document: Record<string, unknown>, path: string, issues: BoardDocumentGuardIssue[]) {
+  requireString(document.id, `${path}.id`, issues)
+  if (document.schemaVersion !== 1) addIssue(issues, `${path}.schemaVersion`, 'Canvas document schemaVersion must be 1.')
+  validateCamera(document.camera, `${path}.camera`, issues)
+  validateMetadata(document.metadata, `${path}.metadata`, issues)
+  const shapes = requireArray(document.shapes, `${path}.shapes`, issues)
+  const edges = requireArray(document.runtimeEdges, `${path}.runtimeEdges`, issues)
   const shapeIds = new Set<string>()
 
   shapes?.forEach((shape, index) => {
-    const id = validateShape(shape, `document.canvasDocument.shapes.${index}`, issues)
+    const id = validateShape(shape, `${path}.shapes.${index}`, issues)
     if (!id) return
-    if (shapeIds.has(id)) addIssue(issues, `document.canvasDocument.shapes.${index}.id`, `Duplicate shape id "${id}".`)
+    if (shapeIds.has(id)) addIssue(issues, `${path}.shapes.${index}.id`, `Duplicate shape id "${id}".`)
     shapeIds.add(id)
   })
-  edges?.forEach((edge, index) => validateRuntimeEdge(edge, `document.canvasDocument.runtimeEdges.${index}`, shapeIds, issues))
+  edges?.forEach((edge, index) => validateRuntimeEdge(edge, `${path}.runtimeEdges.${index}`, shapeIds, issues))
 }
 
 function validateAsset(value: unknown, path: string, issues: BoardDocumentGuardIssue[]) {

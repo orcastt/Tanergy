@@ -15,6 +15,7 @@ type WorkspaceBoardItemProps = {
   isPending: boolean
   onCancelRename: () => void
   onCopy: () => void
+  onCopyToKonva: () => void
   onDelete: () => void
   onMakePrivate: () => void
   onMakePublic: () => void
@@ -36,6 +37,7 @@ export function WorkspaceBoardItem({
   isPending,
   onCancelRename,
   onCopy,
+  onCopyToKonva,
   onDelete,
   onMakePrivate,
   onMakePublic,
@@ -184,6 +186,11 @@ export function WorkspaceBoardItem({
                 </WorkspaceBoardMenuAction>
                 <WorkspaceBoardMenuAction disabled={isPending} icon="rename" onClick={() => runMenuAction(onRename)}>Rename</WorkspaceBoardMenuAction>
                 <WorkspaceBoardMenuAction disabled={isPending} icon="copy" onClick={() => runMenuAction(onCopy)}>Copy board</WorkspaceBoardMenuAction>
+                {board.canvasEngine === 'tldraw' ? (
+                  <WorkspaceBoardMenuAction disabled={isPending} icon="migrate" onClick={() => runMenuAction(onCopyToKonva)}>
+                    Copy to Konva v2
+                  </WorkspaceBoardMenuAction>
+                ) : null}
                 <WorkspaceBoardMenuAction disabled={isPending} icon="manage" onClick={() => runMenuAction(onOpenPanel)}>Manage board</WorkspaceBoardMenuAction>
                 {board.visibility === 'public' ? (
                   <WorkspaceBoardMenuAction disabled={isPending} icon="private" onClick={() => runMenuAction(onMakePrivate)}>Make board private</WorkspaceBoardMenuAction>

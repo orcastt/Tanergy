@@ -17,6 +17,7 @@ type WorkspaceBoardResultsProps = {
   visibleBoards: BoardPersistenceSummary[]
   onCancelRename: () => void
   onCopy: (board: BoardPersistenceSummary) => void
+  onCopyToKonva: (board: BoardPersistenceSummary) => void
   onCreate: () => void
   onDelete: (board: BoardPersistenceSummary) => void
   onLoadMore: () => void
@@ -44,6 +45,7 @@ export function WorkspaceBoardResults({
   visibleBoards,
   onCancelRename,
   onCopy,
+  onCopyToKonva,
   onCreate,
   onDelete,
   onLoadMore,
@@ -75,6 +77,7 @@ export function WorkspaceBoardResults({
             key={board.id}
             onCancelRename={onCancelRename}
             onCopy={() => onCopy(board)}
+            onCopyToKonva={() => onCopyToKonva(board)}
             onDelete={() => onDelete(board)}
             onMakePrivate={() => onMakePrivate(board)}
             onMakePublic={() => onMakePublic(board)}

@@ -39,12 +39,15 @@ def audit_konva_board_document_schema(document: Any) -> list[BoardDocumentGuardI
     _require_string(root.get("serializedAt"), "document.serializedAt", issues)
     assets = _require_list(root.get("assets"), "document.assets", issues)
     canvas_document = _require_dict(root.get("canvasDocument"), "document.canvasDocument", issues)
+    pages = _require_list(root.get("pages"), "document.pages", issues) if "pages" in root else None
 
     if assets is not None:
         for index, asset in enumerate(assets):
             _validate_asset(asset, f"document.assets.{index}", issues)
     if canvas_document is not None:
-        _validate_canvas_document(canvas_document, issues)
+        _validate_canvas_document(canvas_document, "document.canvasDocument", issues)
+    if pages is not None:
+        _validate_pages(pages, root.get("activePageId"), issues)
     return issues
 
 
@@ -54,27 +57,53 @@ def _looks_like_konva_document(value: Any) -> bool:
     )
 
 
-def _validate_canvas_document(document: dict[str, Any], issues: list[BoardDocumentGuardIssue]) -> None:
-    _require_string(document.get("id"), "document.canvasDocument.id", issues)
+def _validate_pages(pages: list[Any], active_page_id: Any, issues: list[BoardDocumentGuardIssue]) -> None:
+    page_ids: set[str] = set()
+    resolved_active_page_id = None
+    if active_page_id is not None:
+        resolved_active_page_id = _require_string(active_page_id, "document.activePageId", issues)
+    for index, value in enumerate(pages):
+        path = f"document.pages.{index}"
+        page = _require_dict(value, path, issues)
+        if page is None:
+            continue
+        page_id = _require_string(page.get("id"), f"{path}.id", issues)
+        _require_string(page.get("title"), f"{path}.title", issues)
+        _require_number(page.get("index"), f"{path}.index", issues)
+        _require_string(page.get("createdAt"), f"{path}.createdAt", issues)
+        _require_string(page.get("updatedAt"), f"{path}.updatedAt", issues)
+        page_document = _require_dict(page.get("canvasDocument"), f"{path}.canvasDocument", issues)
+        if page_id:
+            if page_id in page_ids:
+                _add_issue(issues, f"{path}.id", f'Duplicate page id "{page_id}".')
+            page_ids.add(page_id)
+        if page_document is not None:
+            _validate_canvas_document(page_document, f"{path}.canvasDocument", issues)
+    if resolved_active_page_id and resolved_active_page_id not in page_ids:
+        _add_issue(issues, "document.activePageId", f'Active page "{resolved_active_page_id}" is missing from document.pages.')
+
+
+def _validate_canvas_document(document: dict[str, Any], path: str, issues: list[BoardDocumentGuardIssue]) -> None:
+    _require_string(document.get("id"), f"{path}.id", issues)
     if document.get("schemaVersion") != 1:
-        _add_issue(issues, "document.canvasDocument.schemaVersion", "Canvas document schemaVersion must be 1.")
-    _validate_camera(document.get("camera"), "document.canvasDocument.camera", issues)
-    _validate_metadata(document.get("metadata"), "document.canvasDocument.metadata", issues)
-    shapes = _require_list(document.get("shapes"), "document.canvasDocument.shapes", issues)
-    edges = _require_list(document.get("runtimeEdges"), "document.canvasDocument.runtimeEdges", issues)
+        _add_issue(issues, f"{path}.schemaVersion", "Canvas document schemaVersion must be 1.")
+    _validate_camera(document.get("camera"), f"{path}.camera", issues)
+    _validate_metadata(document.get("metadata"), f"{path}.metadata", issues)
+    shapes = _require_list(document.get("shapes"), f"{path}.shapes", issues)
+    edges = _require_list(document.get("runtimeEdges"), f"{path}.runtimeEdges", issues)
     shape_ids: set[str] = set()
 
     if shapes is not None:
         for index, shape in enumerate(shapes):
-            shape_id = _validate_shape(shape, f"document.canvasDocument.shapes.{index}", issues)
+            shape_id = _validate_shape(shape, f"{path}.shapes.{index}", issues)
             if not shape_id:
                 continue
             if shape_id in shape_ids:
-                _add_issue(issues, f"document.canvasDocument.shapes.{index}.id", f'Duplicate shape id "{shape_id}".')
+                _add_issue(issues, f"{path}.shapes.{index}.id", f'Duplicate shape id "{shape_id}".')
             shape_ids.add(shape_id)
     if edges is not None:
         for index, edge in enumerate(edges):
-            _validate_runtime_edge(edge, f"document.canvasDocument.runtimeEdges.{index}", shape_ids, issues)
+            _validate_runtime_edge(edge, f"{path}.runtimeEdges.{index}", shape_ids, issues)
 
 
 def _validate_asset(value: Any, path: str, issues: list[BoardDocumentGuardIssue]) -> None:

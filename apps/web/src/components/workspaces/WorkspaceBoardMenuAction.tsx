@@ -5,6 +5,7 @@ type BoardMenuIconName =
   | 'delete'
   | 'external'
   | 'manage'
+  | 'migrate'
   | 'pin'
   | 'private'
   | 'public'
@@ -78,6 +79,16 @@ function BoardMenuIcon({ name }: { name: BoardMenuIconName }) {
           <path d="M3.3 7.7h13.4" />
           <path d="M7.4 11h5.2" />
           <path d="M7.4 13.5h3.2" />
+        </>
+      ) : null}
+      {name === 'migrate' ? (
+        <>
+          <path d="M4.2 6.2h6.9" />
+          <path d="M8.7 3.8l2.6 2.4-2.6 2.4" />
+          <path d="M15.8 13.8H8.9" />
+          <path d="M11.3 11.4l-2.6 2.4 2.6 2.4" />
+          <rect x="3.4" y="3.4" width="4.5" height="4.5" rx="1" />
+          <rect x="12.1" y="12.1" width="4.5" height="4.5" rx="1" />
         </>
       ) : null}
       {name === 'private' ? (

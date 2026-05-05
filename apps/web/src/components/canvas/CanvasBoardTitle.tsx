@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 
 type CanvasBoardTitleProps = {
   onRename?: (title: string) => Promise<string | void> | string | void
@@ -8,13 +8,14 @@ type CanvasBoardTitleProps = {
 }
 
 export function CanvasBoardTitle({ onRename, title }: CanvasBoardTitleProps) {
+  const formRef = useRef<HTMLFormElement | null>(null)
   const [draft, setDraft] = useState(title)
   const [editing, setEditing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const isCommitting = useRef(false)
 
-  const commit = async () => {
+  const commit = useCallback(async () => {
     if (isCommitting.current) return
     const nextTitle = draft.trim()
     if (!onRename || !nextTitle || nextTitle === title) {
@@ -35,7 +36,18 @@ export function CanvasBoardTitle({ onRename, title }: CanvasBoardTitleProps) {
       isCommitting.current = false
       setIsSaving(false)
     }
-  }
+  }, [draft, onRename, title])
+
+  useEffect(() => {
+    if (!editing) return
+    const commitOnOutsidePointer = (event: PointerEvent) => {
+      const target = event.target
+      if (target instanceof Node && formRef.current?.contains(target)) return
+      void commit()
+    }
+    document.addEventListener('pointerdown', commitOnOutsidePointer, true)
+    return () => document.removeEventListener('pointerdown', commitOnOutsidePointer, true)
+  }, [commit, editing])
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -67,7 +79,7 @@ export function CanvasBoardTitle({ onRename, title }: CanvasBoardTitleProps) {
   }
 
   return (
-    <form className="canvas-board-title-form" onSubmit={submit}>
+    <form className="canvas-board-title-form" onSubmit={submit} ref={formRef}>
       <input
         aria-label="Board title"
         autoFocus

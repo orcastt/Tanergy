@@ -78,7 +78,7 @@ Browser route
   +-- boardCanvasEngine detector
         |
         +-- Konva v2 envelope
-        |     { version: 2, renderer: "konva", canvasDocument, canvasSettings, assets }
+        |     { version: 2, renderer: "konva", activePageId, pages, canvasDocument, canvasSettings, assets }
         |       |
         |       v
         |     KonvaCanvasSpike
@@ -127,6 +127,9 @@ CanvasDocument
   |-- shapes: rect/ellipse/line/arrow/draw/text/frame/sticky/image/node_card
   |-- runtimeEdges: renderer-neutral node dataflow edges
   |-- camera + metadata
+  |
+  +-- activePageId + pages[] envelope contract
+  |     |-- canvasDocument remains active page mirror for current single-page runtime
   |
   +-- canvasSettings store
   |
@@ -234,7 +237,7 @@ Percentages mean distance to local/P0 alpha usefulness, not final commercial com
 | S1B Staging Infra | `ARCH_slice_S1B_staging_infra.md` | Vercel, FastAPI host, Postgres, R2, domain, email provider, staging smoke | When preparing online resources |
 | S1C Auth Context | `ARCH_slice_S1C_auth_request_context.md` | Registration, login, sessions, request context, workspace membership authority | After S1A |
 | S1D Board CRUD | `ARCH_slice_S1D_auth_board_crud.md` | Permission-checked Board list/load/save/history/member APIs | After S1C |
-| S1X Canvas Engine Migration | `ARCH_slice_S1X_canvas_engine_migration.md` | tldraw license risk, current canvas reference contract, Konva/Yjs replacement path | Konva v2 formal Board route accepted; tldraw production-gated; collaboration still pending |
+| S1X Canvas Engine Migration | `ARCH_slice_S1X_canvas_engine_migration.md` | tldraw license risk, current canvas reference contract, Konva/Yjs replacement path | Konva v2 formal Board route accepted; page contract and v1 copy tooling first pass; collaboration still pending |
 | S2 AI Runtime | `ARCH_slice_S2_ai_runtime.md` | Node Registry, Model Registry, AiRun, provider routing, AI Chat planner | AI node/provider/model changes |
 | S3 Admin/Billing/Analytics | `ARCH_slice_S3_admin_billing_analytics.md` | Admin roles, audit, credits, subscriptions, analytics, moderation facts | Admin/billing/analytics schema changes |
 | S4 Collaboration | `ARCH_slice_S4_collaboration.md` | Multiplayer, presence, CRDT boundaries, roles | Collaboration work begins |
