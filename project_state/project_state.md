@@ -1,8 +1,8 @@
 # TANGENT Project State Index
 
-**Updated**: 2026-05-03
+**Updated**: 2026-05-05
 **Branch**: `feature/s1x-konva-handfeel-spike`
-**Latest local checkpoint**: latest commit on the active branch; keep detailed history in Git.
+**Latest local checkpoint**: `7fd053d polish konva board settings controls`; keep detailed history in Git.
 
 This folder replaces the former root-level long project ledger and short mirror files. The root `project_state.md` is now only a pointer.
 
@@ -10,7 +10,9 @@ This folder replaces the former root-level long project ledger and short mirror 
 
 TANGENT has accepted S0 local polish after Slice E persistence foundations. The canvas interaction pass and Smart Drawing are good enough for P0 alpha; keep only regression fixes and move new architecture work to S1.
 
-Public staging is now live enough to expose a production tldraw license requirement. S1X is the active risk-mitigation spike: keep current tldraw as the reference implementation, but evaluate Konva + Yjs before adding more tldraw-only product work.
+S1X has reached a stable basic migration checkpoint. Konva v2 is now the formal Board runtime for new/missing Boards and saved Konva Boards. tldraw remains available as a development reference route, but production defaults block tldraw Board runtime usage. Collaboration/Yjs proof and real AiRun execution remain future work.
+
+Operationally, this means `/boards/[boardId]` is the Konva-first path to keep polishing, `/spikes/canvas` is only a reference surface, and new canvas requirements should update the S1X slice docs before this total index is touched again.
 
 ```text
 Done locally:
@@ -23,8 +25,12 @@ Done locally:
   Board Management layout polish
   Captured thumbnails
   Canvas Settings
+  Konva Canvas Settings route/toolbar integration
   Canvas header/switcher/properties polish accepted
   Smart Drawing accepted for local P0 alpha
+  S1X Konva v2 Board save/load/history/thumbnail
+  S1X formal /boards/[boardId] dual-engine detector
+  tldraw production gate and local old v1 Board cleanup
   S1A DB schema/migrations
   Auth scaffold
   AI contract scaffold
@@ -35,7 +41,9 @@ Not production-complete:
   real Auth/email/session
   real team/share permissions
   staging auth/email/license hardening
-  long-term non-tldraw canvas engine
+  explicit old-board v1-to-v2 copy/migration tooling if needed
+  Konva collaboration/Yjs provider sync
+  Konva page/multi-board document contracts
   real AI provider/cost logs
   full Admin/Billing/Analytics
   collaboration
@@ -51,29 +59,29 @@ Not production-complete:
 | S1B Staging Infra | `project_state_slice_S1B_staging_infra.md` | In progress; FastAPI/Neon/R2 smoke passed |
 | S1C Auth Context | `project_state_slice_S1C_auth_request_context.md` | After S1A |
 | S1D Board CRUD | `project_state_slice_S1D_auth_board_crud.md` | After S1C |
-| S1X Canvas Engine Migration | `project_state_slice_S1X_canvas_engine_migration.md` | Phase 3A image paste/LOD first pass added |
+| S1X Canvas Engine Migration | `project_state_slice_S1X_canvas_engine_migration.md` | Basic Konva Board migration accepted; tldraw production-gated; collaboration pending |
 | S2 AI/Admin Future | `project_state_slice_S2_ai_admin_future.md` | Planned |
 
 ## Current Next Fork
 
 If external resources are not ready:
 
-1. Final S0 browser smoke and checkpoint commit.
-2. i18n/status polish and visible loading/error/copy feedback.
-3. More realistic empty/error states for mocked production surfaces.
+1. Continue S1X Konva Board polish on the formal route.
+2. Add explicit v1-to-v2 copy/migration tooling only if old remote Boards need preservation.
+3. Prepare page/multi-board document contracts and real AiRun handoff boundaries.
 4. Prepare S1 Auth API contracts locally.
 
 If external resources are ready:
 
 1. Finish recording S1B staging smoke status.
-2. Continue S1X Phase 3 object editing foundation at `/spikes/konva-canvas`.
-3. Add selection, resize, command history and clipboard before node/image migration.
-4. Continue S1C Auth if the canvas engine decision is accepted.
+2. Deploy Konva-first Board route to staging with tldraw disabled by default.
+3. Continue S1C Auth and S1D Auth-backed Board CRUD on top of the Konva v2 Board contract.
+4. Move S2 real AI provider work through server-side AiRun contracts.
 
 ## Next Slice Order
 
 ```text
-Now: checkpoint S0 accepted state
+Now: S1X Konva-first Board stabilization
   |
   v
 S1A local schema/contracts (implemented; real DB smoke pending)
@@ -84,8 +92,8 @@ S1B staging smoke
   Postgres, R2, FastAPI health, domain, CORS, Web API base URL
   |
   v
-S1X canvas engine migration spike
-  tldraw reference contract, Konva handfeel, Yjs viability
+S1X canvas engine migration
+  Konva v2 Board route accepted, tldraw reference gated, Yjs viability pending
   |
   v
 S1C real Auth
@@ -100,7 +108,9 @@ S1D Auth-backed Board CRUD
   +--> S4 Collaboration
 ```
 
-Current recommendation: pause deeper tldraw work and run S1X handfeel/collaboration spike before S1C Auth deepens canvas product coupling. S1A is implemented and S1B staging Web/API/Postgres/R2 smoke is mostly through, with tldraw license as the newly exposed frontend blocker.
+Current recommendation: keep tldraw as reference-only, finish Konva formal Board polish and document contracts, then proceed with S1C/S1D Auth-backed Board ownership on top of the Konva v2 Board contract. S1A is implemented and S1B staging Web/API/Postgres/R2 smoke is mostly through; the earlier tldraw license blocker is mitigated locally by the production gate and Konva route migration.
+
+Next S1X checkpoint should be one of: old remote Board copy/migration tooling, page/multi-board document contracts, transparent-background/export polish, or the Phase 6 Yjs collaboration proof. Avoid adding new tldraw-only behavior.
 
 ## Update Rules
 
