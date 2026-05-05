@@ -1,6 +1,6 @@
 # ARCH Slice S3: Admin, Billing And Analytics
 
-**Updated**: 2026-05-02
+**Updated**: 2026-05-05
 **Mode**: Architecture slice.
 
 ## Scope
@@ -46,3 +46,14 @@ moderation_actions
 - Boundary is documented.
 - No production admin panel yet.
 - No real billing, analytics events, moderation queue or impersonation.
+
+## First Admin MVP Boundary
+
+```text
+Auth session
+  -> server checks admin_roles
+  -> read-only user/workspace/board/asset/AiRun/API-call views
+  -> any write action must create admin_audit_logs first
+```
+
+Do not expose `/admin` in production until real Auth and server-side `admin_roles` are active.

@@ -74,6 +74,8 @@ export type BoardSnapshotSummary = {
   documentHash: string
   expiresAt?: string | null
   id: string
+  pageId?: string | null
+  pageTitle?: string | null
   reason: BoardSnapshotReason
   retentionTier: string
   shapeCount: number

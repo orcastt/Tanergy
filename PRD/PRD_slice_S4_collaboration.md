@@ -1,6 +1,6 @@
 # PRD Slice S4: Collaboration
 
-**Updated**: 2026-05-02
+**Updated**: 2026-05-05
 **Status**: Deferred to P0.5.
 
 ## Goal
@@ -22,3 +22,7 @@ Enable multiple users to edit the same Board without breaking Asset, Board, Auth
 
 - No collaboration before Auth, Board CRUD, Asset storage and AiRun boundaries are stable.
 - No CRDT storage of images, provider payloads or long logs.
+
+## Readiness Note
+
+S1X keeps Yjs viability open, but production collaboration remains P0.5. The first proof should use Konva v2 `CanvasDocument` plus `pages[]`, store only lightweight shapes/runtime edges/Asset refs in the CRDT, and leave AI runs, credits, Asset writes and permission checks server-authoritative.

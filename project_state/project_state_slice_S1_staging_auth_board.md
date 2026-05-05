@@ -1,7 +1,7 @@
 # Project State Slice S1: Staging, Auth And Board
 
-**Updated**: 2026-05-02
-**Status**: Recommended next architecture slice.
+**Updated**: 2026-05-05
+**Status**: Recommended next launch/backend slice after S1X Page polish hand-test and commit.
 
 ## Purpose
 
@@ -16,7 +16,7 @@ S1 moves TANGENT from local/dev identity to real users, real workspaces and serv
 - Email provider and sender-domain setup.
 - Auth provider setup for Google OAuth, likely Clerk first.
 - Google Cloud OAuth production client setup before public launch.
-- tldraw production license before production deploy.
+- Konva-first Board route deployed with tldraw reference disabled by default.
 
 ## First Checks When Resources Exist
 
@@ -26,6 +26,7 @@ S1 moves TANGENT from local/dev identity to real users, real workspaces and serv
 4. Board save/load/history create/list/load.
 5. Guard rejects `data:` / `blob:`.
 6. Web app uses `NEXT_PUBLIC_API_BASE_URL`.
+7. `/boards/[boardId]` opens Konva v2 in production-like env without tldraw license dependency.
 
 ## Local Work That Can Start Before Resources
 
@@ -34,6 +35,7 @@ S1 moves TANGENT from local/dev identity to real users, real workspaces and serv
 3. Define request-context rules: client user/workspace ids are hints only; server session is authority.
 4. Define Board permission matrix for owner/admin/editor/viewer.
 5. Add tests for cross-user isolation once API endpoints are wired.
+6. Keep `dev-plans/s1-launch-readiness-and-acceptance-report-2026-05-05.md` as the cross-slice handoff checklist.
 
 ## S1 Sub-Slices
 
@@ -45,6 +47,8 @@ S1 moves TANGENT from local/dev identity to real users, real workspaces and serv
 | S1D Auth-backed Board CRUD | `project_state_slice_S1D_auth_board_crud.md` | After S1C | Server-scoped Board list/load/save/history/copy/delete and owner/admin/editor/viewer checks. |
 
 S2/S3/S4 should not consume mock identity once S1 starts. They can keep planning, but implementation should use the S1 user/workspace/board contracts.
+
+Current launch note: S1X has mitigated the tldraw production blocker locally by making Konva v2 the production Board default and gating tldraw reference usage. Do not ship new tldraw-only product behavior while S1 moves to staging/Auth/Board ownership.
 
 ## Not Started
 

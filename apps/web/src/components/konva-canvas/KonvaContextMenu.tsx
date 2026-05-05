@@ -33,6 +33,12 @@ export type KonvaContextMenuAction =
   | 'tidy-row'
   | 'ungroup'
   | 'unlock'
+  | `move-to-page:${string}`
+
+type KonvaContextMenuPageTarget = {
+  id: string
+  title: string
+}
 
 type KonvaContextMenuProps = {
   canDistribute: boolean
@@ -47,6 +53,7 @@ type KonvaContextMenuProps = {
   containerWidth: number
   hasSelection: boolean
   multipleSelection: boolean
+  moveToPages: KonvaContextMenuPageTarget[]
   x: number
   y: number
   onAction: (action: KonvaContextMenuAction) => void
@@ -70,6 +77,7 @@ export function KonvaContextMenu({
   containerWidth,
   hasSelection,
   multipleSelection,
+  moveToPages,
   onAction,
   onClose,
   x,
@@ -130,7 +138,11 @@ export function KonvaContextMenu({
           <MenuButton disabled={!hasSelection} label="Send backward" shortcut="⌥[" onClick={() => onAction('layer-backward')} />
           <MenuButton disabled={!hasSelection} label="Send to back" shortcut="[" onClick={() => onAction('layer-back')} />
         </MenuSubmenu>
-        <MenuButton disabled label="Move to page" />
+        <MenuSubmenu disabled={!hasSelection || moveToPages.length === 0} label="Move to page">
+          {moveToPages.map((page) => (
+            <MenuButton key={page.id} label={page.title} onClick={() => onAction(`move-to-page:${page.id}`)} />
+          ))}
+        </MenuSubmenu>
         <MenuDivider />
 
         <MenuSubmenu disabled={!hasSelection} label="Copy as">

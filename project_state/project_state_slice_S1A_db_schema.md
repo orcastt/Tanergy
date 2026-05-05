@@ -87,3 +87,4 @@ Docker S1A migration smoke with disposable Postgres
 
 - Do not implement full Stripe, Admin dashboard or collaboration here.
 - Do make their future joins explicit.
+- Next database optimization pass should happen against staging data/query plans: run S1A smoke on staging Postgres, collect `EXPLAIN` for Board list, History list, Asset list and future AiRun/Admin list queries, then add only measured indexes or retention/size limits.

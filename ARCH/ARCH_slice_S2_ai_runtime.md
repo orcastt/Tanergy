@@ -1,6 +1,6 @@
 # ARCH Slice S2: AI Runtime
 
-**Updated**: 2026-05-02
+**Updated**: 2026-05-05
 **Mode**: Architecture slice.
 
 ## Scope
@@ -39,7 +39,16 @@ Server
 - Mock Model Registry exists.
 - Mock AiRun route exists.
 - Image Gen / Image Gen 4 model dropdown reads contract.
+- Konva runtimeGraph mock flow now exercises Prompt/Image/Chat/Image Gen/Analysis data passing, export ports and generated Asset refs without provider raw payloads.
 - Real provider calls, real AiRun persistence and cost logging are not done.
+
+## Launch-Readiness Sequence
+
+1. Keep API keys server-side and choose provider adapter boundaries.
+2. Add server-side AiRun persistence and `ai_api_calls` writes before real calls.
+3. Upload generated outputs as Assets; return Asset refs and short summaries only.
+4. Wire Konva Run/Stop UI to AiRun create/poll/cancel.
+5. Add provider failure, timeout, rate-limit and cost tests.
 
 ## Do Not Do
 

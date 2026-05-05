@@ -24,6 +24,7 @@ const imageGenFields = [
 
 export const maxImageInputPorts = 6
 export const maxChatInputPorts = 6
+export const maxTextInputPorts = 6
 
 const nodeCategoryOrder: NodeCategory[] = ['text', 'image', 'transform', 'utility']
 
@@ -117,6 +118,7 @@ export const nodeDefinitions: Record<NodeType, NodeDefinition> = {
       imageInputCount: 1,
       modelId: getDefaultImageModelId(),
       resolution: '1K',
+      textInputCount: 1,
     },
     defaultCardSize: { height: 320, width: 330 },
     defaultRuntimeCostHint: 'Mock only · API body later',
@@ -145,6 +147,7 @@ export const nodeDefinitions: Record<NodeType, NodeDefinition> = {
       imageInputCount: 1,
       modelId: getDefaultImageModelId(),
       resolution: '1K',
+      textInputCount: 1,
     },
     defaultCardSize: { height: 350, width: 330 },
     defaultRuntimeCostHint: 'Mock only · API body later',
@@ -288,17 +291,27 @@ export function getResolvedNodePorts(type: NodeType, data: JsonObject): Resolved
     const imageInputDefinition = definition.ports.find((port) => port.id === 'image_in')
     const textInputDefinition = definition.ports.find((port) => port.id === 'text_in')
     const imageOutputDefinitions = definition.ports.filter((port) => port.direction === 'out')
+    const textInputCount = clampPortCount(Number(data.textInputCount ?? 1), maxTextInputPorts)
     const imageInputCount = clampPortCount(Number(data.imageInputCount ?? 1), maxImageInputPorts)
+    const inputCount = textInputCount + imageInputCount
 
     return [
-      ...(textInputDefinition ? [{ ...textInputDefinition, anchorY: 0.2 }] : []),
+      ...(textInputDefinition
+        ? Array.from({ length: textInputCount }, (_, index) => ({
+            ...textInputDefinition,
+            id: index === 0 ? textInputDefinition.id : `${textInputDefinition.id}_${index + 1}`,
+            label: `${textInputDefinition.label} ${index + 1}`,
+            multiple: false,
+            anchorY: getCombinedInputAnchorY(index, inputCount),
+          }))
+        : []),
       ...(imageInputDefinition
         ? Array.from({ length: imageInputCount }, (_, index) => ({
             ...imageInputDefinition,
             id: `${imageInputDefinition.id}_${index + 1}`,
             label: `${imageInputDefinition.label} ${index + 1}`,
             multiple: false,
-            anchorY: getImageInputAnchorY(index),
+            anchorY: getCombinedInputAnchorY(textInputCount + index, inputCount),
           }))
         : []),
       ...imageOutputDefinitions.map((port, index) => ({
@@ -348,8 +361,8 @@ function getDistributedAnchorY(index: number, count: number) {
   return (index + 1) / (count + 1)
 }
 
-function getImageInputAnchorY(index: number) {
-  return 0.42 + index * 0.09
+function getCombinedInputAnchorY(index: number, count: number) {
+  return 0.18 + ((index + 1) / (count + 1)) * 0.62
 }
 
 function getImageOutputAnchorY(type: NodeType, index: number) {

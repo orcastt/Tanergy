@@ -1,6 +1,6 @@
 # ARCH Slice S4: Collaboration
 
-**Updated**: 2026-05-02
+**Updated**: 2026-05-05
 **Status**: Deferred to P0.5.
 
 ## Scope
@@ -29,3 +29,10 @@ Local UI only
 - AI Run and credit state are not decided by clients.
 - Board History remains guarded and restorable.
 - Collaboration waits until real Auth, Board members and storage boundaries exist.
+
+## First Proof Sequence
+
+1. Map Konva v2 `CanvasDocument` + `pages[]` into a Yjs document without binary payloads.
+2. Add awareness for cursor, selection, active page and current tool.
+3. Enforce editor/viewer writes through server-authoritative membership before production use.
+4. Keep Board snapshots as guarded server documents, not raw CRDT dumps.

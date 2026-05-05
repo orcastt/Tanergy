@@ -1,0 +1,143 @@
+# S1 上线准备和验收汇报
+
+**Updated**: 2026-05-05
+**Status**: S1X Konva Page polish first pass 之后的活跃交接报告。
+**Branch**: `feature/s1x-konva-handfeel-spike`
+
+## 当前位置
+
+S1X 已经把生产画布方向切到 Konva v2。新建/缺失 Board 和已保存的 Konva Board 都走正式 `/boards/[boardId]` 路由；tldraw 只保留为参考路径，并且生产默认关闭。
+
+当前 working tree 里还有未提交的 Page polish 改动。在 Page polish 完成手测并提交之前，不要把数据库迁移、Auth、Admin 或真实 AI provider 代码混进同一个 checkpoint。
+
+当前 Page polish 范围：
+
+- 右侧 Pages 抽屉，带轻量几何缩略图。
+- Page 创建、切换、重命名、删除、重排。
+- 右键菜单 `Move to page`。
+- `Move to page` 会把 group 成员和 frame children 一起作为移动范围。
+- Runtime edge 只在 source/target 两端都被移动时跟着迁移；跨 page runtime edge 暂时删除。
+- S1X PRD / ARCH / project state / dev plan 已同步更新。
+
+Page polish 已跑过质量门：
+
+```bash
+npm -C apps/web run lint
+npm -C apps/web run typecheck
+npm -C apps/web run build
+git diff --check
+```
+
+## 建议执行顺序
+
+```text
+0. 提交已验收的 S1X Page polish checkpoint
+   |
+   v
+1. S1B 上线/部署加固
+   staging env, Konva-first route, CORS, R2, Postgres, rollback
+   |
+   v
+2. S1A/S1D 数据库和 Board API 加固
+   staging migration smoke, cursor pagination, permission query indexes, JSON guard limits
+   |
+   v
+3. S1C Auth / request context
+   Clerk/Supabase decision, Google OAuth, JWT verification, default workspace
+   |
+   v
+4. S1D Auth-backed Board CRUD
+   list/load/save/history/copy/delete/member role checks
+   |
+   v
+5. S2 真实 AI provider 路径
+   server-side AiRun, provider adapter, asset result upload, cost logs
+   |
+   v
+6. S3 Admin MVP
+   server-side admin_roles, user search, audit logs, AI call inspection
+   |
+   v
+7. S4 collaboration proof
+   Yjs provider, presence, role-aware writes, snapshot reconciliation
+```
+
+## 上线优化 Backlog
+
+| 线路 | 现在可以开始 | 必须等待 | 验收标准 |
+| --- | --- | --- | --- |
+| S1X Board polish | 真实渲染的 page-thumbnail assets、page duplicate、export background options、route acceptance tests | Collaboration 和真实 AI side effects | `/boards/[boardId]` 在 production mode 下不依赖 tldraw |
+| S1B Deployment | 刷新 staging runbook、核对 env 名称、CORS、health、R2 asset 读写、rollback commands | 用于 Auth smoke 的公开 Auth provider credentials | Web 能调用 staging API，assets 从 R2 加载，Board save/load/history 通过 |
+| Database optimization | Staging migration smoke、Board list / History / Asset list 的 EXPLAIN、文档体积限制、snapshot retention policy | 真实用户流量和 Auth-scoped query volume | cursor indexes 被使用；Board/History list 速度稳定；guard 拒绝超大或不安全文档 |
+| S1C Auth | Auth provider 最终选择、route contracts、request-context implementation plan | Provider project keys 和 Google OAuth setup | 用户不能伪造 user/workspace id；非法 JWT 返回 401 |
+| S1D Board CRUD | Permission matrix 和 API contract tests | 真实 Auth request context | User A 不能读/改 User B 的 Board；editor/viewer 权限正确 |
+| S2 AI calls | Provider adapter interface、AiRun schema mapping、mock-to-real test plan | Server-side API keys 和 Auth/cost limits | 前端永远拿不到 key；输出是 Asset；Board 只存 refs/summaries |
+| S3 Admin | Admin role/audit contract、只读 user/search/AI-call inspection plan | 真实 Auth 和 admin_roles seed | 没有 server-side admin role 不能访问 `/admin` |
+| S4 Collaboration | Yjs document mapping proof plan、presence shape、no-binary CRDT rules | Auth、Board members、Asset 和 AiRun authority | 两个用户能编辑测试 Board，CRDT 不存图片二进制/provider payload |
+
+## Page Polish 手测清单
+
+- 创建 3 个 pages，并在每个 page 画不同内容。
+- 双击 page row 重命名；点击外部后保存名字。
+- 用 up/down 重排 pages；active page 和内容保持正确。
+- 删除 inactive page；active page 不变。
+- 删除 active page；fallback page 打开，selection/edit state 清空。
+- 选择一个普通 shape 后 `Move to page`；它从 source 消失并出现在 target。
+- 选择一个 group 后 `Move to page`；所有 group members 一起移动。
+- 选择一个带 children 的 frame 后 `Move to page`；frame children 跟着移动。
+- 移动已连接的 runtime nodes，且两端都被选中；内部 runtime edge 保留。
+- 只移动 runtime edge 的其中一端；跨 page edge 被删除。
+- Save、reload、Snapshot、Restore；page 顺序、标题、内容和 active page 都保留。
+- History 仍然显示 active Page title。
+
+## Deployment / Backend 验收
+
+- `NEXT_PUBLIC_ENABLE_TLDRAW_REFERENCE` 在 production staging 中不存在或为 false，除非明确测试 reference mode。
+- Public staging Web 打开新 Board 时 `/boards/<id>` 使用 Konva v2。
+- FastAPI `/health` 通过 HTTPS。
+- CORS 允许 staging Web origin，并拒绝无关 origin。
+- Alembic 在 staging Postgres 上达到 head。
+- Asset upload/read 通过 R2/S3-compatible storage。
+- Board save/load/history/clean 通过 staging API。
+- Board guard 拒绝 `data:`、`blob:`、Base64 images 和 malformed Konva v2 envelopes。
+- Production deploy 前已写好 rollback path。
+
+## AI Provider 验收
+
+- AI API keys 只留在 server-side。
+- Model Registry capabilities 来自 server contract。
+- `Prompt -> Image Gen -> Image` 创建 Asset，并且 Board/node data 只存 asset refs。
+- `Prompt -> Image Gen 4 -> Image` 创建 4 个 candidate Asset refs。
+- `Image + Prompt -> Analysis` 通过 AiRun summary 创建短文本输出，不把 provider raw payload 写进 Board JSON。
+- Provider 调用失败时写入 failed AiRun state，并显示用户可理解的错误。
+- AiRun 和 `ai_api_calls` 记录 user/workspace/board/node/model/provider/status/latency/cost facts。
+- Rate limits 或 credits 能防止未认证用户无限调用。
+
+## Admin 验收
+
+- 真实 Auth 完成前 `/admin` 禁用。
+- Admin access 通过 server-side `admin_roles` 检查。
+- 前端 role flags 永远不是权限依据。
+- Admin first pass 只读查看 users、workspaces、Boards、assets、AiRuns 和 AI API calls。
+- 每个 admin write 都写 `admin_audit_logs`。
+
+## Collaboration 验收
+
+- Collaboration 只能在 Auth、Board members、Asset 和 AiRun authority 稳定后开始。
+- CRDT 只存 lightweight shapes、node params、runtime edges 和 Asset refs。
+- CRDT 永远不存 image binaries、Base64、provider raw payloads 或 long logs。
+- Presence 包含 cursor、selection 和 current tool。
+- Board History 在 collaboration 下仍可 restore。
+- AI runs 和 credit charges 仍然由 server 决定。
+
+## Legacy 边界
+
+不要读取或修改 `legacy/old-tangent-desktop-2026-04-29/`，除非用户明确要求。如果之后需要从 legacy 里复制 AI provider 参考，单独开一个 inspection task，先总结差异，再迁移代码。
+
+## 下一个具体 Checkpoint
+
+Page polish 手测后：
+
+1. Commit Page polish。
+2. 针对当前 Konva-first route 跑 S1B deploy-readiness smoke。
+3. 根据 Auth credentials 是否准备好，开始 S1C Auth provider wiring 或 S2 real AiRun provider adapter。

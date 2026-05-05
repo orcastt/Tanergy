@@ -64,3 +64,4 @@ Note: current code keeps the P0 `tangent_model_options` table as the model regis
 - Schema can represent private/public Board, members, owner/editor/viewer and per-user pin/star/opened state.
 - Schema can represent personal and team credit accounts later.
 - Schema can connect AI runs to user/workspace/board/node/model/provider later.
+- Staging optimization should be based on measured query plans for Board, History, Asset, AiRun and Admin list views, not speculative index additions.

@@ -34,6 +34,7 @@ import { captureKonvaBoardThumbnailUrl } from './konvaBoardThumbnailCapture'
 import { useKonvaBoardSnapshots } from './useKonvaBoardSnapshots'
 
 type KonvaBoardSaveAuditProps = {
+  activePageId?: string
   autoLoad?: boolean
   boardId?: string
   boardTitle?: string
@@ -53,6 +54,7 @@ const defaultBoardTitle = 'Konva Spike Local'
 type SaveLocalOptions = { refreshThumbnail?: boolean }
 
 export function KonvaBoardSaveAudit({
+  activePageId,
   autoLoad = false,
   boardId = defaultBoardId,
   boardTitle = defaultBoardTitle,
@@ -292,6 +294,8 @@ export function KonvaBoardSaveAudit({
       <CanvasBoardModeControls
         editorAvailable={Boolean(stage)}
         isRunning={isRunning || snapshots.isSnapshotRunning}
+        activePageId={activePageId}
+        activePageTitle={historyTitle}
         issueMessage={issue?.message}
         issuePath={issue?.path}
         lastAction={lastAction}

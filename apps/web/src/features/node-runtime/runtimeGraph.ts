@@ -1,7 +1,7 @@
 import type { CanvasDocument, CanvasNodeShape, CanvasRuntimeEdge } from '@/features/canvas-engine'
 import { withCanvasRuntimeEdges, withCanvasShapes } from '@/features/canvas-engine'
 import type { JsonObject, NodePortDataType } from '@/types/nodeRuntime'
-import { getResolvedNodePorts, maxChatInputPorts, maxImageInputPorts } from './registry'
+import { getResolvedNodePorts, maxChatInputPorts, maxImageInputPorts, maxTextInputPorts } from './registry'
 import { getRuntimeGraphGeneratedOutputPayload, getRuntimeGraphImageNodePayload } from './runtimeGraphAssets'
 
 export type RuntimeGraphEdge = CanvasRuntimeEdge
@@ -136,8 +136,9 @@ function syncDynamicInputCounts(document: CanvasDocument): CanvasDocument {
   return mapRuntimeGraphShapes(document, (shape) => {
     if (isImageInputCountNode(shape)) {
       const nextCount = getNextDynamicInputCount(shape.id, imageInputCounts, maxImageInputIndexes, maxImageInputPorts)
-      if (Number(shape.props.data.imageInputCount ?? 1) === nextCount) return shape
-      return updateNodeData(shape, { ...shape.props.data, imageInputCount: nextCount })
+      const nextTextCount = getNextDynamicInputCount(shape.id, textInputCounts, maxTextInputIndexes, maxTextInputPorts)
+      if (Number(shape.props.data.imageInputCount ?? 1) === nextCount && Number(shape.props.data.textInputCount ?? 1) === nextTextCount) return shape
+      return updateNodeData(shape, { ...shape.props.data, imageInputCount: nextCount, textInputCount: nextTextCount })
     }
     if (isChatNode(shape)) {
       const nextImageCount = getNextDynamicInputCount(shape.id, imageInputCounts, maxImageInputIndexes, maxChatInputPorts)
@@ -166,10 +167,12 @@ function prepareDocumentForRuntimeGraphEdges(document: CanvasDocument, edges: Om
   return mapRuntimeGraphShapes(document, (shape) => {
     if (isImageInputCountNode(shape)) {
       const requiredCount = requiredImageInputCounts.get(shape.id)
-      if (!requiredCount) return shape
-      const nextCount = Math.min(Math.max(requiredCount, Number(shape.props.data.imageInputCount ?? 1), 1), maxImageInputPorts)
-      if (Number(shape.props.data.imageInputCount ?? 1) === nextCount) return shape
-      return updateNodeData(shape, { ...shape.props.data, imageInputCount: nextCount })
+      const requiredTextCount = requiredTextInputCounts.get(shape.id)
+      if (!requiredCount && !requiredTextCount) return shape
+      const nextCount = requiredCount ? Math.min(Math.max(requiredCount, Number(shape.props.data.imageInputCount ?? 1), 1), maxImageInputPorts) : Number(shape.props.data.imageInputCount ?? 1)
+      const nextTextCount = requiredTextCount ? Math.min(Math.max(requiredTextCount, Number(shape.props.data.textInputCount ?? 1), 1), maxTextInputPorts) : Number(shape.props.data.textInputCount ?? 1)
+      if (Number(shape.props.data.imageInputCount ?? 1) === nextCount && Number(shape.props.data.textInputCount ?? 1) === nextTextCount) return shape
+      return updateNodeData(shape, { ...shape.props.data, imageInputCount: nextCount, textInputCount: nextTextCount })
     }
     if (isChatNode(shape)) {
       const requiredImageCount = requiredImageInputCounts.get(shape.id)
@@ -232,6 +235,7 @@ function getTargetInputKey(edge: Pick<RuntimeGraphEdge, 'targetPortId' | 'target
 }
 
 function getDynamicInputIndex(portId: string, prefix: 'image_in' | 'text_in') {
+  if (portId === prefix) return 1
   const match = new RegExp(`^${prefix}_(\\d+)$`).exec(portId)
   if (!match) return 0
   const index = Number(match[1])

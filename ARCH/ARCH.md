@@ -130,7 +130,8 @@ CanvasDocument
   |
   +-- activePageId + pages[] envelope contract
   |     |-- canvasDocument remains active page mirror
-  |     |-- Pages panel writes active page before save/switch/snapshot
+  |     |-- Pages panel writes active page before save/switch/snapshot/page mutations
+  |     |-- Page drawer delete/reorder + context-menu Move to page
   |
   +-- canvasSettings store
   |
@@ -238,7 +239,7 @@ Percentages mean distance to local/P0 alpha usefulness, not final commercial com
 | S1B Staging Infra | `ARCH_slice_S1B_staging_infra.md` | Vercel, FastAPI host, Postgres, R2, domain, email provider, staging smoke | When preparing online resources |
 | S1C Auth Context | `ARCH_slice_S1C_auth_request_context.md` | Registration, login, sessions, request context, workspace membership authority | After S1A |
 | S1D Board CRUD | `ARCH_slice_S1D_auth_board_crud.md` | Permission-checked Board list/load/save/history/member APIs | After S1C |
-| S1X Canvas Engine Migration | `ARCH_slice_S1X_canvas_engine_migration.md` | tldraw license risk, current canvas reference contract, Konva/Yjs replacement path | Konva v2 formal Board route accepted; Page UI first pass and v1 copy tooling landed; collaboration still pending |
+| S1X Canvas Engine Migration | `ARCH_slice_S1X_canvas_engine_migration.md` | tldraw license risk, current canvas reference contract, Konva/Yjs replacement path | Konva v2 formal Board route accepted; Page polish and v1 copy tooling landed; collaboration still pending |
 | S2 AI Runtime | `ARCH_slice_S2_ai_runtime.md` | Node Registry, Model Registry, AiRun, provider routing, AI Chat planner | AI node/provider/model changes |
 | S3 Admin/Billing/Analytics | `ARCH_slice_S3_admin_billing_analytics.md` | Admin roles, audit, credits, subscriptions, analytics, moderation facts | Admin/billing/analytics schema changes |
 | S4 Collaboration | `ARCH_slice_S4_collaboration.md` | Multiplayer, presence, CRDT boundaries, roles | Collaboration work begins |
@@ -286,6 +287,8 @@ Dependency rules:
 - S3 can prepare schemas early, but real Admin/Credits/Billing needs S1 identity and S2 cost facts.
 - S1X currently provides the Konva-first Board runtime; it still needs collaboration/Yjs proof before S4.
 - S4 must wait for S1 permissions and stable Board/Asset/History contracts.
+- The current cross-slice handoff and acceptance checklist lives in `dev-plans/s1-launch-readiness-and-acceptance-report-2026-05-05.md`.
+- Do not mix uncommitted S1X Page polish with backend/database/Admin/AI implementation changes; commit the accepted checkpoint first.
 
 ## Non-Negotiable Boundaries
 

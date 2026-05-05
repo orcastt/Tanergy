@@ -50,6 +50,7 @@ export function KonvaSelectionOverlay({
   const cropEditingShape = onlySelectedShape?.type === 'image' && onlySelectedShape.id === cropEditingImageId ? onlySelectedShape : null
   const singleBoxShape = onlySelectedShape && canKonvaShapeRotate(onlySelectedShape) && isBoxCanvasShape(onlySelectedShape) && !selectedBoundsOverride ? onlySelectedShape : null
   const orientedSelectionBounds = selectedShapes.length > 1 && selectionCanRotate ? getKonvaOrientedBounds(selectedShapes) : null
+  const selectionContainsNode = selectedShapes.some((shape) => shape.type === 'node_card')
   const showUnionBox = Boolean(selectedBoundsOverride) || selectedIds.length > 1
 
   return (
@@ -91,6 +92,7 @@ export function KonvaSelectionOverlay({
         <>
           <ResizeHandles
             bounds={selectedBounds}
+            edgeHandles={!selectionContainsNode}
             onResizeStart={(handle, event) => onResizeStart(selectedIds, handle, event)}
             zoom={zoom}
           />
@@ -316,10 +318,12 @@ function RotateHandle({
 
 function ResizeHandles({
   bounds,
+  edgeHandles = true,
   onResizeStart,
   zoom,
 }: {
   bounds: CanvasBounds
+  edgeHandles?: boolean
   onResizeStart: (handle: KonvaResizeHandle, event: KonvaEventObject<PointerEvent>) => void
   zoom: number
 }) {
@@ -328,7 +332,7 @@ function ResizeHandles({
   const edgeHitWidth = Math.max(16, 20 / zoom)
   return (
     <>
-      {[
+      {edgeHandles ? [
         ['n', [bounds.minX, bounds.minY, bounds.maxX, bounds.minY]],
         ['e', [bounds.maxX, bounds.minY, bounds.maxX, bounds.maxY]],
         ['s', [bounds.minX, bounds.maxY, bounds.maxX, bounds.maxY]],
@@ -344,7 +348,7 @@ function ResizeHandles({
           stroke="rgba(107, 92, 255, 0.001)"
           strokeWidth={edgeHitWidth}
         />
-      ))}
+      )) : null}
       {[
         ['nw', bounds.minX, bounds.minY],
         ['ne', bounds.maxX, bounds.minY],

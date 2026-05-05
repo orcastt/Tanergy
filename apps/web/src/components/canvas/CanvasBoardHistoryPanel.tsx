@@ -5,6 +5,8 @@ import { useMemo, useState, type SyntheticEvent } from 'react'
 import type { BoardSnapshotSummary } from '@/features/boards/boardTypes'
 
 type CanvasBoardHistoryPanelProps = {
+  activePageId?: string
+  activePageTitle?: string
   error: string | null
   isRunning: boolean
   onClear: () => void
@@ -16,6 +18,8 @@ type CanvasBoardHistoryPanelProps = {
 }
 
 export function CanvasBoardHistoryPanel({
+  activePageId,
+  activePageTitle,
   error,
   isRunning,
   onClear,
@@ -25,11 +29,13 @@ export function CanvasBoardHistoryPanel({
   onRestore,
   snapshots,
 }: CanvasBoardHistoryPanelProps) {
+  const [scope, setScope] = useState<'all' | 'current'>('current')
   const [filter, setFilter] = useState<'all' | 'autosave' | 'user'>('all')
   const visibleSnapshots = useMemo(() => snapshots.filter((snapshot) => {
+    if (scope === 'current' && !isCurrentPageSnapshot(snapshot, activePageId, activePageTitle)) return false
     if (filter === 'all') return true
     return getSnapshotKind(snapshot.reason) === filter
-  }), [filter, snapshots])
+  }), [activePageId, activePageTitle, filter, scope, snapshots])
 
   return (
     <aside className="canvas-board-history" aria-label="Board history" {...canvasEventProps}>
@@ -41,6 +47,18 @@ export function CanvasBoardHistoryPanel({
         <button aria-label="Close board history" onClick={onClose} type="button">Close</button>
       </header>
       <div className="canvas-board-history__filters" aria-label="History filters">
+        {(['current', 'all'] as const).map((value) => (
+          <button
+            className={scope === value ? 'is-active' : undefined}
+            key={value}
+            onClick={() => setScope(value)}
+            type="button"
+          >
+            {value === 'current' ? 'Current page' : 'All pages'}
+          </button>
+        ))}
+      </div>
+      <div className="canvas-board-history__filters" aria-label="History types">
         {(['all', 'autosave', 'user'] as const).map((value) => (
           <button
             className={filter === value ? 'is-active' : undefined}
@@ -133,6 +151,16 @@ function getSnapshotKind(value: string) {
   return value === 'autosave' || value === 'auto_interval' ? 'autosave' : 'user'
 }
 
+function isCurrentPageSnapshot(snapshot: BoardSnapshotSummary, activePageId?: string, activePageTitle?: string) {
+  if (!activePageId && !activePageTitle) return true
+  if (snapshot.pageId) return snapshot.pageId === activePageId
+  const pageTitle = normalizeTitle(snapshot.pageTitle)
+  const activeTitle = normalizeTitle(activePageTitle)
+  if (pageTitle && activeTitle) return pageTitle === activeTitle
+  const snapshotTitle = normalizeTitle(snapshot.title)
+  return Boolean(snapshotTitle && activeTitle && snapshotTitle === activeTitle)
+}
+
 function getFilterLabel(value: 'all' | 'autosave' | 'user') {
   if (value === 'autosave') return 'Autosave'
   if (value === 'user') return 'User saves'
@@ -146,6 +174,11 @@ function formatUser(value: string) {
 function getInitials(value: string) {
   const label = formatUser(value)
   return label.split(/[\s._-]+/).map((part) => part[0]?.toUpperCase()).filter(Boolean).slice(0, 2).join('') || 'U'
+}
+
+function normalizeTitle(value: string | null | undefined) {
+  const trimmed = value?.trim().toLowerCase()
+  return trimmed || null
 }
 
 function formatBytes(value: number) {

@@ -1,6 +1,6 @@
 # ARCH Slice S1: Persistence, Auth And Deploy
 
-**Updated**: 2026-05-02
+**Updated**: 2026-05-05
 **Mode**: Architecture slice.
 
 ## Scope
@@ -44,6 +44,7 @@ S1 is the identity and ownership foundation. It should not implement every futur
 - S1A formal schema migrations are implemented locally through revision `20260502_0006` and passed disposable Docker Postgres smoke.
 - Real staging server, managed Postgres, R2 bucket, domain, TLS and secrets are not connected.
 - Auth is still mock/dev scaffold.
+- S1X now provides a Konva-first Board route and production tldraw reference gate locally; staging must redeploy/smoke that path before public use.
 
 ## Core Tables
 
@@ -159,6 +160,7 @@ Included:
 - Server-side board/member role model needed by future sharing and collaboration.
 - Staging Postgres/R2/domain/CORS smoke.
 - Google OAuth through Auth provider, with FastAPI JWT verification and local user mapping.
+- Konva-first Board route on staging, with tldraw disabled unless explicitly enabled for reference testing.
 
 Deferred:
 
@@ -202,3 +204,4 @@ Deferred:
 4. Board save/load/history works against staging Postgres.
 5. Guard rejects `data:` / `blob:` documents.
 6. Rollback path documented.
+7. `/boards/[boardId]` opens Konva v2 in production-like staging without tldraw license dependency.

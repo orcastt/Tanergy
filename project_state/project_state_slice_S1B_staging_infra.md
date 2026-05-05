@@ -1,11 +1,11 @@
 # Project State Slice S1B: Staging Infrastructure And Online Prep
 
-**Updated**: 2026-05-03
-**Status**: In progress; staging Web/API/Neon/R2 smoke passed, tldraw production license exposed.
+**Updated**: 2026-05-05
+**Status**: In progress; staging Web/API/Neon/R2 smoke passed, Konva-first redeploy smoke pending.
 
 ## Objective
 
-Stand up public staging Web/API with Postgres, R2 and email provider wiring.
+Stand up public staging Web/API with Postgres, R2 and email provider wiring, then redeploy the Konva-first Board route with tldraw disabled by default.
 
 ## Detailed Runbook
 
@@ -42,6 +42,8 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - [x] Asset upload/read through R2.
 - [x] Board save/load/history through staging API.
 - [x] Vercel Web domain opens Workspace/Board routes.
+- [ ] Konva-first `/boards/[boardId]` route opens new Boards on staging without tldraw license blocker.
+- [ ] Production-like env keeps tldraw reference disabled unless explicitly enabled.
 - [ ] OTP email delivered to test inbox.
 - [ ] Google OAuth login on staging returns provider session/JWT.
 - [ ] FastAPI rejects invalid/expired provider JWT.
@@ -54,7 +56,7 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - Temporary dev user/workspace seed exists for pre-Auth smoke.
 - Board save/load/history, guard rejection and R2 asset upload/read passed.
 - Vercel staging domain opens the Web app and calls the staging FastAPI origin.
-- Public Board route now exposes the tldraw production license requirement; S1X covers the long-term replacement evaluation.
+- Public Board route exposed the tldraw production license requirement before S1X. S1X now has a Konva-first route and production tldraw reference gate locally; staging needs redeploy/smoke with that setting.
 - `TANGENT_REQUIRE_API_AUTH=0` remains intentional until S1C Clerk/JWT verification lands.
 
 ## Handoff Notes
@@ -63,3 +65,4 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - Do not expose server keys to Vercel public env.
 - Keep firewall narrow: public 80/443, SSH restricted where possible.
 - Production Google OAuth requires Google Cloud Console setup, verified domain, app branding, privacy policy and terms URLs.
+- Use `dev-plans/s1-launch-readiness-and-acceptance-report-2026-05-05.md` for the current deploy/database/Auth/AI/Admin/collaboration acceptance checklist.

@@ -32,6 +32,7 @@ import { getPointAngle, rotateShapesAroundCenter } from './konvaRotationUtils'
 import { resizeShapesFromRotatedBox } from './konvaRotatedResize'
 import { getResizeSnapSourceKeys, getRotationSnapGuides, snapResizeBoundsToShapes, snapRotationAngle, type KonvaSnapGuide } from './konvaSnapping'
 import { getKonvaGroupMemberIds } from './konvaGroupCommands'
+import { applyFrameContainment } from './konvaFrameContainment'
 import { useKonvaDraftPreview } from './useKonvaDraftPreview'
 import { useKonvaDocumentPreviewScheduler } from './useKonvaDocumentPreviewScheduler'
 import { useKonvaEraserSession } from './useKonvaEraserSession'
@@ -165,6 +166,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       event.evt.preventDefault()
       sessionRef.current = null
       clearDraft()
+      clearNodeConnectionPreview()
       setResizeSnapGuides([])
       setSelectionBox(null)
       return
@@ -175,6 +177,9 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       return
     }
     const startedOnStage = isStageTarget(event)
+    const targetShapeId = getTargetShapeId(event)
+    const targetShape = targetShapeId ? documentRef.current.shapes.find((shape) => shape.id === targetShapeId) : null
+    const canCreateInsideFrame = Boolean(targetShape && targetShape.type === 'frame')
     const worldPoint = pointerToWorld({ ...screenPoint, pressure: event.evt.pressure }, cameraRef.current)
     if (options.activeTool === 'select') {
       if (startedOnStage) event.evt.preventDefault()
@@ -198,19 +203,22 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       return
     }
     if (options.activeTool === 'text') {
-      if (!startedOnStage) return
+      if (!startedOnStage && !canCreateInsideFrame) return
       event.evt.preventDefault()
       options.onHistoryCheckpoint(documentRef.current)
       const shape = createTextShape(worldPoint, options.nextStyle)
-      options.onDocumentChange((current) => appendCanvasShape(current, shape))
+      options.onDocumentChange((current) => {
+        const nextDocument = appendCanvasShape(current, shape)
+        return withCanvasShapes(nextDocument, applyFrameContainment([...nextDocument.shapes], [shape.id]))
+      })
       options.onSelectionChange([shape.id])
       options.onToolChange('select')
       return
     }
     const draftShape = createDraftShape(options.activeTool, worldPoint, worldPoint, { constrainProportions: event.evt.shiftKey, style: options.nextStyle })
     if (!draftShape) return
-    if (!startedOnStage && options.activeTool !== 'draw') return
-    if (startedOnStage || options.activeTool === 'draw') event.evt.preventDefault()
+    if (!startedOnStage && options.activeTool !== 'draw' && !canCreateInsideFrame) return
+    if (startedOnStage || options.activeTool === 'draw' || canCreateInsideFrame) event.evt.preventDefault()
     if (options.selectedIds.length > 0) options.onSelectionChange([])
     sessionRef.current = {
       draft: draftShape,
@@ -317,12 +325,16 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     clearDraft()
     if (nextDraft) {
       options.onHistoryCheckpoint(documentRef.current)
-      options.onDocumentChange((current) => appendCanvasShape(current, nextDraft))
+      options.onDocumentChange((current) => {
+        const nextDocument = appendCanvasShape(current, nextDraft)
+        return withCanvasShapes(nextDocument, applyFrameContainment([...nextDocument.shapes], [nextDraft.id]))
+      })
     }
   }
   return {
     draft, dragPreviewShapes, draggingShapeIds, eraserTrail, handleLineEndpointStart, handleLineRouteHandleStart, handleNodePortPointerDown, handlePointerDown,
     handlePointerLeave: () => {
+      if (sessionRef.current?.type === 'node-connection') sessionRef.current = null
       clearEraserTrail()
       clearNodeConnectionPreview()
     },

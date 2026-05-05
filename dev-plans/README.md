@@ -16,6 +16,7 @@ Detailed product, architecture and state truth now lives in:
 | --- | --- | --- |
 | `s1b-staging-deployment-runbook-2026-05-02.md` | Active S1B runbook | Chinese beginner guide for domain, DNS, Vercel, Hetzner, Neon, R2, Clerk, Google OAuth and email setup. |
 | `s1x-canvas-engine-migration-reference-2026-05-03.md` | Active S1X migration reference | Phase 3 parity work is active; Frame/Sticky first pass and opaque fill fix are documented. |
+| `s1-launch-readiness-and-acceptance-report-2026-05-05.md` | Active handoff report | Unified S1X/S1B/S1C/S1D/S2/S3/S4 launch-readiness order and acceptance checklist. |
 | `overseas-cost-growth-forecast.md` | Active reference | Overseas cost and growth research note. |
 
 ## Archive

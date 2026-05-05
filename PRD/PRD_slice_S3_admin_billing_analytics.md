@@ -1,6 +1,6 @@
 # PRD Slice S3: Admin, Billing And Analytics
 
-**Updated**: 2026-05-02
+**Updated**: 2026-05-05
 **Mode**: Architecture slice.
 
 ## Goal
@@ -32,3 +32,7 @@ Prepare the factual data sources and access boundary for a future management pan
 - No full revenue dashboard before subscriptions/payments exist.
 - No production impersonation before audit and permission rules are complete.
 - No moderation UI before moderation facts exist.
+
+## Launch-Readiness Note
+
+The first useful Admin checkpoint should be read-only and narrow after real Auth exists: user/workspace/Board search, asset summaries and AI run/API-call inspection. Write actions, credits, billing and impersonation stay blocked until `admin_roles` and `admin_audit_logs` are enforced server-side.

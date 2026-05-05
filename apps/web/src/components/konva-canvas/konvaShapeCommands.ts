@@ -4,7 +4,7 @@ import { fitStandaloneTextShapeToContent } from './konvaTextAutoFit'
 const defaultPasteOffset = { x: 24, y: 24 }
 
 export function copyKonvaShapes(document: CanvasDocument, shapeIds: string[]): CanvasShape[] {
-  const selected = new Set(shapeIds)
+  const selected = getClipboardShapeIds(document.shapes, shapeIds)
   return cloneShapes(document.shapes.filter((shape) => selected.has(shape.id)), { preserveIds: true })
 }
 
@@ -59,6 +59,29 @@ function cloneShapes(shapes: CanvasShape[], options: { offset?: CanvasPoint; pre
     copy.y += options.offset?.y ?? 0
     return copy
   })
+}
+
+function getClipboardShapeIds(shapes: CanvasShape[], shapeIds: string[]) {
+  const expanded = new Set(shapeIds)
+  const groupIds = new Set(shapes
+    .filter((shape) => expanded.has(shape.id) && shape.groupId)
+    .map((shape) => shape.groupId!))
+  if (groupIds.size > 0) {
+    for (const shape of shapes) {
+      if (shape.groupId && groupIds.has(shape.groupId)) expanded.add(shape.id)
+    }
+  }
+
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const shape of shapes) {
+      if (!shape.parentId || !expanded.has(shape.parentId) || expanded.has(shape.id)) continue
+      expanded.add(shape.id)
+      changed = true
+    }
+  }
+  return expanded
 }
 
 function getCenteringOffset(shapes: CanvasShape[], center: CanvasPoint): CanvasPoint {

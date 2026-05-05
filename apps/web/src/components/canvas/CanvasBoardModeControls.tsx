@@ -16,15 +16,19 @@ export type CanvasBoardSnapshotsControls = {
 }
 
 type CanvasBoardModeControlsProps = BoardModeSaveStatusProps & {
+  activePageId?: string
+  activePageTitle?: string
   snapshots: CanvasBoardSnapshotsControls
 }
 
-export function CanvasBoardModeControls({ snapshots, ...statusProps }: CanvasBoardModeControlsProps) {
+export function CanvasBoardModeControls({ activePageId, activePageTitle, snapshots, ...statusProps }: CanvasBoardModeControlsProps) {
   return (
     <>
       <BoardModeSaveStatus {...statusProps} />
       {snapshots.isHistoryOpen ? (
         <CanvasBoardHistoryPanel
+          activePageId={activePageId}
+          activePageTitle={activePageTitle}
           error={snapshots.snapshotError}
           isRunning={snapshots.isSnapshotRunning}
           onClose={snapshots.closeHistory}

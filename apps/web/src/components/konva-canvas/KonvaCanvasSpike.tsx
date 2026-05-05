@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type Konva from 'konva'
 import * as Y from 'yjs'
 import { createEmptyCanvasDocument, screenToWorld, type CanvasCamera, type CanvasDocument, type CanvasNodeShape, type CanvasPoint, type CanvasShape, type CanvasShapeStyle } from '@/features/canvas-engine'
@@ -29,7 +29,7 @@ import { updateTextShape } from './konvaShapeCommands'
 import { useKonvaBrowserSelectionGuard } from './useKonvaBrowserSelectionGuard'
 import { useKonvaBoardPages } from './useKonvaBoardPages'
 import { useKonvaCanvasControls } from './useKonvaCanvasControls'
-import { useKonvaCanvasHistory } from './useKonvaCanvasHistory'
+import { useKonvaCanvasHistory, type KonvaCanvasHistoryPageState } from './useKonvaCanvasHistory'
 import { useKonvaCanvasMetrics } from './useKonvaCanvasMetrics'
 import { useKonvaCanvasShortcuts } from './useKonvaCanvasShortcuts'
 import { useKonvaImageOpsActions } from './useKonvaImageOpsActions'
@@ -82,6 +82,10 @@ export function KonvaCanvasSpike({
   const [, setClipboardShapeCount] = useState(0)
   const clipboardRef = useRef<CanvasShape[]>([])
   const lastPastePointRef = useRef<CanvasPoint | null>(null)
+  const boardPageHistoryRef = useRef<{
+    getPageState?: (document: CanvasDocument) => KonvaCanvasHistoryPageState | null
+    restorePageState?: (state: KonvaCanvasHistoryPageState) => void
+  }>({})
   const handleSelectionChange = useCallback((shapeIds: string[]) => {
     setSelectedIds(shapeIds)
     setSelectionActionError(null)
@@ -96,7 +100,9 @@ export function KonvaCanvasSpike({
   })
   const history = useKonvaCanvasHistory({
     document,
+    getPageState: (snapshotDocument) => boardPageHistoryRef.current.getPageState?.(snapshotDocument) ?? null,
     onDocumentChange: setDocument,
+    onPageStateRestore: (state) => boardPageHistoryRef.current.restorePageState?.(state),
     onSelectionChange: handleSelectionChange,
     selectedIds,
   })
@@ -119,8 +125,7 @@ export function KonvaCanvasSpike({
     setEditingNodeText(null)
     setContextMenu(null)
     closeNodeMenu()
-    history.clear()
-  }, [closeNodeMenu, handleSelectionChange, history])
+  }, [closeNodeMenu, handleSelectionChange])
   const boardPages = useKonvaBoardPages({
     activeDocument: document,
     camera,
@@ -128,6 +133,10 @@ export function KonvaCanvasSpike({
     onDocumentChange: setDocument,
     onTransientClear: clearTransientState,
   })
+  useEffect(() => {
+    boardPageHistoryRef.current.getPageState = boardPages.getHistoryState
+    boardPageHistoryRef.current.restorePageState = boardPages.restoreHistoryState
+  }, [boardPages.getHistoryState, boardPages.restoreHistoryState])
   const { fileInput, promptImageNodeUpload, uploadDropFileAtPoint } = useKonvaImageNodeUpload({
     document,
     history,
@@ -190,6 +199,33 @@ export function KonvaCanvasSpike({
     setActiveTool('select')
     setCropEditingImageId((current) => (current === imageId ? null : imageId))
   }, [document, selectedIds])
+  const handleCreatePage = useCallback(() => {
+    history.checkpoint(document)
+    boardPages.createPage()
+  }, [boardPages, document, history])
+  const handleDeletePage = useCallback((pageId: string) => {
+    history.checkpoint(document)
+    boardPages.deletePage(pageId)
+  }, [boardPages, document, history])
+  const handleDuplicatePage = useCallback((pageId: string) => {
+    history.checkpoint(document)
+    boardPages.duplicatePage(pageId)
+  }, [boardPages, document, history])
+  const handleMovePage = useCallback((pageId: string, direction: Parameters<typeof boardPages.movePage>[1]) => {
+    history.checkpoint(document)
+    boardPages.movePage(pageId, direction)
+  }, [boardPages, document, history])
+  const handleRenamePage = useCallback((pageId: string, title: string) => {
+    const nextTitle = title.trim()
+    const currentTitle = boardPages.pages.find((page) => page.id === pageId)?.title.trim()
+    if (!nextTitle || nextTitle === currentTitle) return
+    history.checkpoint(document)
+    boardPages.renamePage(pageId, nextTitle)
+  }, [boardPages, document, history])
+  const handleMoveSelectionToPage = useCallback((targetPageId: string) => {
+    history.checkpoint(document)
+    boardPages.moveSelectionToPage(targetPageId, selectedIds)
+  }, [boardPages, document, history, selectedIds])
 
   const editingTextShape = document.shapes.find((shape): shape is KonvaEditableTextShape => shape.id === editingTextId && isKonvaEditableTextShape(shape))
   const editingNodeTextShape = editingNodeText
@@ -242,6 +278,10 @@ export function KonvaCanvasSpike({
       selectionExport.handleExportSelectionSvg()
       return
     }
+    if (action.startsWith('move-to-page:')) {
+      handleMoveSelectionToPage(action.slice('move-to-page:'.length))
+      return
+    }
     void runKonvaContextAction({
       action,
       clipboardRef,
@@ -287,8 +327,11 @@ export function KonvaCanvasSpike({
         <KonvaCanvasPagesPanel
           activeDocument={document}
           activePageId={boardPages.activePageId}
-          onCreatePage={boardPages.createPage}
-          onRenamePage={boardPages.renamePage}
+          onCreatePage={handleCreatePage}
+          onDeletePage={handleDeletePage}
+          onDuplicatePage={handleDuplicatePage}
+          onMovePage={handleMovePage}
+          onRenamePage={handleRenamePage}
           onSelectPage={boardPages.selectPage}
           pages={boardPages.pages}
         />
@@ -438,16 +481,21 @@ export function KonvaCanvasSpike({
           camera={camera}
           document={document}
           getPageEnvelope={boardPages.getPageEnvelope}
+          activePageId={boardPages.activePageId}
           historyTitle={boardPages.activePageTitle}
           mode={mode}
           onBoardLoaded={(board) => onBoardLoaded?.(board.title)}
-          onDocumentRestore={boardPages.restorePages}
+          onDocumentRestore={(restore) => {
+            history.clear()
+            boardPages.restorePages(restore)
+          }}
           pageRevision={boardPages.revision}
           stage={stage}
         />
         {settingsOpen ? <CanvasSettingsPanel boardMode={mode === 'board'} onClose={() => setSettingsOpen(false)} /> : null}
         <KonvaCanvasDiagnostics diagnostics={diagnostics} pointCount={pointCount} zoom={camera.zoom} />
         <KonvaContextMenuHost
+          activePageId={boardPages.activePageId}
           canLockSelection={canLockSelection}
           canUnlockSelection={canUnlockSelection}
           contextMenu={contextMenu}
@@ -455,6 +503,7 @@ export function KonvaCanvasSpike({
           height={size.height}
           onAction={runContextAction}
           onClose={() => setContextMenu(null)}
+          pages={boardPages.pages}
           selectedIds={selectedIds}
           width={size.width}
         />

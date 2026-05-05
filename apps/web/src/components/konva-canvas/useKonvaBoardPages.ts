@@ -5,10 +5,22 @@ import {
   defaultKonvaBoardPageId,
   type SerializedKonvaBoardPage,
 } from '@/features/boards/konvaBoardPageContract'
+import {
+  cloneKonvaPageCanvasDocument,
+  createKonvaBoardPageId,
+  deleteKonvaBoardPage,
+  duplicateKonvaBoardPage,
+  getNextKonvaBoardPageTitle,
+  moveKonvaSelectionToPage,
+  normalizeKonvaBoardPageIndexes,
+  reorderKonvaBoardPage,
+  type KonvaBoardPageReorderDirection,
+} from './konvaBoardPageActions'
 import type {
   KonvaBoardDocumentSerializationOptions,
   KonvaBoardRestorePayload,
 } from '@/features/boards/konvaBoardDocument'
+import type { KonvaCanvasHistoryPageState } from './useKonvaCanvasHistory'
 
 type UseKonvaBoardPagesOptions = {
   activeDocument: CanvasDocument
@@ -64,12 +76,17 @@ export function useKonvaBoardPages({
     pages: persistActivePage(pagesRef.current, activePageIdRef.current, document),
   }), [])
 
+  const getHistoryState = useCallback((document: CanvasDocument): KonvaCanvasHistoryPageState => ({
+    activePageId: activePageIdRef.current,
+    pages: persistActivePage(pagesRef.current, activePageIdRef.current, document),
+  }), [])
+
   const selectPage = useCallback((pageId: string) => {
     if (pageId === activePageIdRef.current) return
     const nextPages = persistActivePage(pagesRef.current, activePageIdRef.current, getActiveDocument())
     const targetPage = nextPages.find((page) => page.id === pageId)
     if (!targetPage) return
-    const nextDocument = cloneCanvasDocument(targetPage.canvasDocument)
+    const nextDocument = cloneKonvaPageCanvasDocument(targetPage.canvasDocument)
     pagesRef.current = nextPages
     activePageIdRef.current = targetPage.id
     setPages(nextPages)
@@ -82,18 +99,18 @@ export function useKonvaBoardPages({
 
   const createPage = useCallback(() => {
     const currentPages = persistActivePage(pagesRef.current, activePageIdRef.current, getActiveDocument())
-    const title = getNextPageTitle(currentPages)
+    const title = getNextKonvaBoardPageTitle(currentPages)
     const nextDocument = createEmptyCanvasDocument({
       camera: cameraRef.current,
       name: title,
       shapes: [],
     })
     const nextPage = createKonvaBoardPage(nextDocument, {
-      id: createPageId(),
+      id: createKonvaBoardPageId(),
       index: currentPages.length,
       title,
     })
-    const nextPages = normalizePageIndexes([...currentPages, nextPage])
+    const nextPages = normalizeKonvaBoardPageIndexes([...currentPages, nextPage])
     pagesRef.current = nextPages
     activePageIdRef.current = nextPage.id
     setPages(nextPages)
@@ -139,8 +156,71 @@ export function useKonvaBoardPages({
     setRevision((value) => value + 1)
   }, [getActiveDocument, onDocumentChange])
 
+  const deletePage = useCallback((pageId: string) => {
+    const result = deleteKonvaBoardPage(
+      persistActivePage(pagesRef.current, activePageIdRef.current, getActiveDocument()),
+      activePageIdRef.current,
+      pageId
+    )
+    if (!result) return
+    pagesRef.current = result.pages
+    activePageIdRef.current = result.activePageId
+    setPages(result.pages)
+    setActivePageId(result.activePageId)
+    if (result.deletedActivePage && result.document) {
+      onDocumentChange(result.document)
+      onCameraChange(result.document.camera)
+      onTransientClear()
+    }
+    setRevision((value) => value + 1)
+  }, [getActiveDocument, onCameraChange, onDocumentChange, onTransientClear])
+
+  const duplicatePage = useCallback((pageId: string) => {
+    const result = duplicateKonvaBoardPage(
+      persistActivePage(pagesRef.current, activePageIdRef.current, getActiveDocument()),
+      activePageIdRef.current,
+      pageId
+    )
+    if (!result) return
+    pagesRef.current = result.pages
+    activePageIdRef.current = result.activePageId
+    setPages(result.pages)
+    setActivePageId(result.activePageId)
+    onDocumentChange(result.document)
+    onCameraChange(result.document.camera)
+    onTransientClear()
+    setRevision((value) => value + 1)
+  }, [getActiveDocument, onCameraChange, onDocumentChange, onTransientClear])
+
+  const movePage = useCallback((pageId: string, direction: KonvaBoardPageReorderDirection) => {
+    const nextPages = reorderKonvaBoardPage(
+      persistActivePage(pagesRef.current, activePageIdRef.current, getActiveDocument()),
+      pageId,
+      direction
+    )
+    if (!nextPages) return
+    pagesRef.current = nextPages
+    setPages(nextPages)
+    setRevision((value) => value + 1)
+  }, [getActiveDocument])
+
+  const moveSelectionToPage = useCallback((targetPageId: string, shapeIds: readonly string[]) => {
+    const result = moveKonvaSelectionToPage(
+      persistActivePage(pagesRef.current, activePageIdRef.current, getActiveDocument()),
+      activePageIdRef.current,
+      targetPageId,
+      shapeIds
+    )
+    if (!result) return
+    pagesRef.current = result.pages
+    setPages(result.pages)
+    onDocumentChange(result.document)
+    onTransientClear()
+    setRevision((value) => value + 1)
+  }, [getActiveDocument, onDocumentChange, onTransientClear])
+
   const restorePages = useCallback((restore: KonvaBoardRestorePayload) => {
-    const nextPages = normalizePageIndexes(restore.pages)
+    const nextPages = normalizeKonvaBoardPageIndexes(restore.pages)
     pagesRef.current = nextPages
     activePageIdRef.current = restore.activePageId
     setPages(nextPages)
@@ -151,13 +231,34 @@ export function useKonvaBoardPages({
     setRevision((value) => value + 1)
   }, [onCameraChange, onDocumentChange, onTransientClear])
 
+  const restoreHistoryState = useCallback((state: KonvaCanvasHistoryPageState) => {
+    const nextPages = normalizeKonvaBoardPageIndexes(state.pages)
+    const activePage = nextPages.find((page) => page.id === state.activePageId) ?? nextPages[0]
+    if (!activePage) return
+    const nextDocument = cloneKonvaPageCanvasDocument(activePage.canvasDocument)
+    pagesRef.current = nextPages
+    activePageIdRef.current = activePage.id
+    setPages(nextPages)
+    setActivePageId(activePage.id)
+    onDocumentChange(nextDocument)
+    onCameraChange(nextDocument.camera)
+    onTransientClear()
+    setRevision((value) => value + 1)
+  }, [onCameraChange, onDocumentChange, onTransientClear])
+
   return {
     activePageId,
     activePageTitle,
     createPage,
+    deletePage,
+    duplicatePage,
+    getHistoryState,
     getPageEnvelope,
+    movePage,
+    moveSelectionToPage,
     pages,
     renamePage,
+    restoreHistoryState,
     restorePages,
     revision,
     selectPage,
@@ -171,19 +272,19 @@ function persistActivePage(
 ) {
   const now = new Date().toISOString()
   let didPersist = false
-  const nextPages = normalizePageIndexes(pages).map((page, index) => {
+  const nextPages = normalizeKonvaBoardPageIndexes(pages).map((page, index) => {
     if (page.id !== activePageId) return page
     didPersist = true
     return {
       ...page,
-      canvasDocument: cloneCanvasDocument(activeDocument),
+      canvasDocument: cloneKonvaPageCanvasDocument(activeDocument),
       index,
       title: page.title || activeDocument.metadata.name || `Page ${index + 1}`,
       updatedAt: activeDocument.metadata.updatedAt || now,
     }
   })
   if (didPersist) return nextPages
-  return normalizePageIndexes([
+  return normalizeKonvaBoardPageIndexes([
     ...nextPages,
     createKonvaBoardPage(activeDocument, {
       id: activePageId,
@@ -191,29 +292,4 @@ function persistActivePage(
       title: activeDocument.metadata.name ?? `Page ${nextPages.length + 1}`,
     }),
   ])
-}
-
-function normalizePageIndexes(pages: SerializedKonvaBoardPage[]) {
-  return [...pages]
-    .sort((a, b) => a.index - b.index || a.id.localeCompare(b.id))
-    .map((page, index) => ({ ...page, index }))
-}
-
-function getNextPageTitle(pages: SerializedKonvaBoardPage[]) {
-  const usedTitles = new Set(pages.map((page) => page.title.trim()))
-  for (let index = pages.length + 1; index < pages.length + 1000; index += 1) {
-    const title = `Page ${index}`
-    if (!usedTitles.has(title)) return title
-  }
-  return `Page ${pages.length + 1}`
-}
-
-function createPageId() {
-  return `page-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
-}
-
-function cloneCanvasDocument(document: CanvasDocument) {
-  return typeof structuredClone === 'function'
-    ? structuredClone(document) as CanvasDocument
-    : JSON.parse(JSON.stringify(document)) as CanvasDocument
 }

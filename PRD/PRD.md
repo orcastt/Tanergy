@@ -51,25 +51,26 @@ S1X has moved from handfeel spike to primary canvas migration path:
 - Existing Konva v2 Boards open through the formal `/boards/[boardId]` route.
 - tldraw remains a development reference at `/spikes/canvas`, but production defaults block tldraw Board runtime usage.
 - Workspace local old tldraw v1 Board data has been cleaned from the active dev workspace.
-- Page/multi-board document contract, Page UI first pass and explicit old-board v1-to-v2 copy tooling now have first passes.
-- Remaining S1X product work is polish and expansion: true page thumbnails/delete/reorder/Move to page, precise old-board style/binding migration if needed, real AiRun execution, transparent-background/export details and Phase 6 collaboration proof.
+- Page/multi-board document contract, Page UI polish and explicit old-board v1-to-v2 copy tooling now have first passes.
+- A unified S1 launch-readiness report now tracks Page polish hand-test, deployment, database, Auth, AI, Admin and collaboration acceptance in `dev-plans/s1-launch-readiness-and-acceptance-report-2026-05-05.md`.
+- Remaining S1X product work is polish and expansion: true rendered page-thumbnail assets/page duplicate/Move selection to new page, precise old-board style/binding migration if needed, real AiRun execution, transparent-background/export details and Phase 6 collaboration proof.
 
 This means the basic migration is accepted for local product direction, not that the whole canvas roadmap is complete. The production-facing Board experience should now be specified against Konva v2; tldraw should be treated as a comparison/reference surface while old Board migration, real collaboration and real AI execution are finished.
 
 If external resources are not ready:
 
-1. Hand-test S1X Page UI save/restore/history and v1-to-v2 copy tooling on real legacy Boards.
-2. Finish S1X Konva Board route polish and acceptance.
-3. Continue true page thumbnails/delete/reorder and real AiRun prep without adding new tldraw-only product work.
-4. Prepare S1 Auth API contracts locally.
+1. Hand-test S1X Page UI save/restore/history, page delete/reorder/Move to page and v1-to-v2 copy tooling on real Boards.
+2. Finish and commit S1X Konva Board route polish and acceptance.
+3. Continue true rendered page-thumbnail assets/page duplicate and real AiRun prep without adding new tldraw-only product work.
+4. Prepare S1 Auth API contracts and S2 provider/AiRun contracts locally.
 
 If external resources are ready:
 
-1. Staging Postgres/R2/domain smoke.
-2. Deploy Konva-first Board route to staging with tldraw disabled by default.
-3. Real Auth and workspace ownership.
-4. Auth-backed Board CRUD.
-5. Real AI provider path.
+1. Staging Postgres/R2/domain smoke and Konva-first route deploy with tldraw disabled by default.
+2. Real Auth and workspace ownership.
+3. Auth-backed Board CRUD.
+4. Real AI provider path through server-side AiRun.
+5. Admin read-only MVP after real Auth/admin roles.
 
 ## Product Stage Roadmap
 

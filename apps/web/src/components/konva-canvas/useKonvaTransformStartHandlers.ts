@@ -29,6 +29,7 @@ export function useKonvaTransformStartHandlers({
     event.evt.preventDefault()
     const originShapes = getShapesByIds(documentRef.current.shapes, shapeIds)
     const originBounds = getSelectedShapeBounds(documentRef.current.shapes, shapeIds)
+    if (originShapes.some((shape) => shape.type === 'node_card') && isEdgeResizeHandle(handle)) return
     if (originShapes.length === 0 || originShapes.some((shape) => shape.isLocked) || !originBounds) return
     onHistoryCheckpoint(documentRef.current)
     sessionRef.current = {
@@ -59,4 +60,8 @@ export function useKonvaTransformStartHandlers({
   }, [cameraRef, documentRef, onHistoryCheckpoint, sessionRef, stageRef])
 
   return { handleResizeStart, handleRotateStart }
+}
+
+function isEdgeResizeHandle(handle: KonvaResizeHandle) {
+  return handle === 'n' || handle === 'e' || handle === 's' || handle === 'w'
 }

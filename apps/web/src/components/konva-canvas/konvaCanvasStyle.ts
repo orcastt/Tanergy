@@ -1,7 +1,7 @@
 import type { CanvasDocument, CanvasShape, CanvasShapeStyle } from '@/features/canvas-engine'
 import { mixColorWithWhite } from './konvaPatternUtils'
 import { removeKonvaRuntimeEdgesForShapes } from './konvaRuntimeEdges'
-import { cloneKonvaShapes } from './konvaShapeCommands'
+import { cloneKonvaShapes, copyKonvaShapes } from './konvaShapeCommands'
 import { fitStandaloneTextShapeToContent } from './konvaTextAutoFit'
 
 export type KonvaCanvasDashStyle = NonNullable<CanvasShapeStyle['dash']>
@@ -138,8 +138,7 @@ export function applyKonvaStylePatch(document: CanvasDocument, shapeIds: string[
 }
 
 export function duplicateKonvaShapes(document: CanvasDocument, shapeIds: string[]) {
-  const selected = new Set(shapeIds)
-  const copies = cloneKonvaShapes(document.shapes.filter((shape) => selected.has(shape.id)))
+  const copies = cloneKonvaShapes(copyKonvaShapes(document, shapeIds))
   const shapes = [...document.shapes, ...copies]
   return {
     document: {

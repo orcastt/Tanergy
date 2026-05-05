@@ -203,3 +203,9 @@ P0 owner/member preference backfill
 - Schema contains formal user/workspace/board permission facts.
 - Cross-user isolation can be tested using SQL fixtures.
 - S2/S3/S4 can reference stable `user_id`, `workspace_id`, `board_id`, `asset_id`, `ai_run_id`.
+
+## Next Database Optimization Pass
+
+- Run S1A smoke against staging Postgres after S1B redeploy.
+- Collect `EXPLAIN` for Board list, Board History list, Asset list, AiRun list and Admin user search queries.
+- Tune measured cursor indexes and retention limits only; avoid speculative index churn before real query shapes exist.

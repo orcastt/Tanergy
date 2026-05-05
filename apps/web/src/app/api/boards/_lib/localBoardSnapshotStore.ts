@@ -22,6 +22,7 @@ export async function createLocalBoardSnapshot(input: BoardSnapshotCreateInput, 
 
   const createdAt = new Date().toISOString()
   const metrics = getBoardDocumentMetrics(input.document)
+  const activePage = getKonvaActivePageMeta(input.document)
   const snapshot: BoardSnapshotRecord = {
     assetCount: metrics.assetCount,
     boardId,
@@ -32,6 +33,8 @@ export async function createLocalBoardSnapshot(input: BoardSnapshotCreateInput, 
     documentHash: hashDocument(input.document),
     expiresAt: null,
     id: `snapshot_${randomUUID()}`,
+    pageId: activePage?.id ?? null,
+    pageTitle: activePage?.title ?? null,
     reason: input.reason,
     retentionTier: 'free',
     shapeCount: metrics.shapeCount,
@@ -99,10 +102,10 @@ function summarizeSnapshot(snapshot: BoardSnapshotRecord) {
 
 function getSnapshotDisplayTitle(document: unknown, fallbackTitle: string) {
   const fallback = fallbackTitle.trim()
-  return getKonvaActivePageTitle(document) ?? (fallback || 'Untitled snapshot')
+  return getKonvaActivePageMeta(document)?.title ?? (fallback || 'Untitled snapshot')
 }
 
-function getKonvaActivePageTitle(document: unknown) {
+function getKonvaActivePageMeta(document: unknown): { id: string; title: string | null } | null {
   if (!document || typeof document !== 'object') return null
   const envelope = document as Record<string, unknown>
   if (envelope.renderer !== 'konva' || envelope.version !== 2) return null
@@ -116,13 +119,13 @@ function getKonvaActivePageTitle(document: unknown) {
   const pageTitle = activePage && typeof activePage === 'object'
     ? (activePage as Record<string, unknown>).title
     : null
-  if (typeof pageTitle === 'string' && pageTitle.trim()) return pageTitle.trim()
+  if (typeof pageTitle === 'string' && pageTitle.trim()) return { id: activePageId, title: pageTitle.trim() }
   const canvasDocument = envelope.canvasDocument
-  if (!canvasDocument || typeof canvasDocument !== 'object') return null
+  if (!canvasDocument || typeof canvasDocument !== 'object') return { id: activePageId, title: null }
   const metadata = (canvasDocument as Record<string, unknown>).metadata
-  if (!metadata || typeof metadata !== 'object') return null
+  if (!metadata || typeof metadata !== 'object') return { id: activePageId, title: null }
   const documentTitle = (metadata as Record<string, unknown>).name
-  return typeof documentTitle === 'string' && documentTitle.trim() ? documentTitle.trim() : null
+  return { id: activePageId, title: typeof documentTitle === 'string' && documentTitle.trim() ? documentTitle.trim() : null }
 }
 
 async function enforceSnapshotLimit(context: ApiRequestContext, boardId: string) {

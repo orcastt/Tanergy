@@ -8,7 +8,8 @@ import {
   type CanvasNodeShape,
   type CanvasPoint,
 } from '@/features/canvas-engine'
-import { maxImageInputPorts } from '@/features/node-runtime/registry'
+import { maxChatInputPorts, maxImageInputPorts, maxTextInputPorts } from '@/features/node-runtime/registry'
+import type { NodePortDataType } from '@/types/nodeRuntime'
 import { getKonvaNodePort, hitTestKonvaNodePort } from './konvaNodePorts'
 import { addKonvaRuntimeEdge, addKonvaRuntimeEdges, type KonvaRuntimeConnectionEndpoint, type KonvaRuntimeConnectionPreview } from './konvaRuntimeEdges'
 import type { KonvaToolSession } from './konvaCanvasTypes'
@@ -138,22 +139,23 @@ function getBatchSourceEndpoints(
   clickedPortId: string
 ): KonvaRuntimeConnectionEndpoint[] {
   const clickedEndpoint = { portId: clickedPortId, shapeId: clickedShape.id }
-  if (clickedShape.props.nodeType !== 'image' || clickedPortId !== 'image_out' || !selectedIds.includes(clickedShape.id)) {
+  const clickedPort = getKonvaNodePort(clickedShape, clickedPortId)
+  if (!clickedPort || clickedPort.direction !== 'out' || !selectedIds.includes(clickedShape.id)) {
     return [clickedEndpoint]
   }
   const selected = new Set(selectedIds)
-  const imageNodes = shapes
+  const sourceNodes = shapes
     .filter((shape): shape is CanvasNodeShape => (
       selected.has(shape.id) &&
       shape.type === 'node_card' &&
-      shape.props.nodeType === 'image' &&
       !shape.isLocked &&
-      Boolean(getKonvaNodePort(shape, 'image_out'))
+      Boolean(getKonvaNodePort(shape, clickedPortId)) &&
+      getKonvaNodePort(shape, clickedPortId)?.dataType === clickedPort.dataType
     ))
     .sort((a, b) => Math.abs(a.y - b.y) > 8 ? a.y - b.y : a.x - b.x)
 
-  return imageNodes.length > 1
-    ? imageNodes.map((shape) => ({ portId: 'image_out', shapeId: shape.id }))
+  return sourceNodes.length > 1
+    ? sourceNodes.map((shape) => ({ portId: clickedPortId, shapeId: shape.id }))
     : [clickedEndpoint]
 }
 
@@ -165,22 +167,46 @@ function getBatchRuntimeEdges(
   const sources = session.sourceEndpoints?.length ? session.sourceEndpoints : [{ portId: session.sourcePortId, shapeId: session.sourceShapeId }]
   if (sources.length <= 1) return []
   const targetShape = getNodeShape(shapes, target.shapeId)
-  if (!targetShape || (targetShape.props.nodeType !== 'image_gen' && targetShape.props.nodeType !== 'image_gen_4') || target.dataType !== 'image') return []
-  const startIndex = getImageInputPortIndex(target.id)
+  if (!targetShape) return []
+  const allocation = getBatchTargetAllocation(targetShape, target.id, target.dataType)
+  if (!allocation) return []
+  const startIndex = getDynamicInputPortIndex(target.id, allocation.prefix)
   if (!startIndex) return []
-  const capacity = Math.max(0, maxImageInputPorts - startIndex + 1)
+  const capacity = Math.max(0, allocation.max - startIndex + 1)
   return sources.slice(0, capacity).map((source, index) => ({
     dataType: session.dataType,
     sourcePortId: source.portId,
     sourceShapeId: source.shapeId,
-    targetPortId: `image_in_${startIndex + index}`,
+    targetPortId: getDynamicTargetPortId(allocation, startIndex + index),
     targetShapeId: target.shapeId,
   }))
 }
 
-function getImageInputPortIndex(portId: string) {
-  const match = /^image_in_(\d+)$/.exec(portId)
+function getBatchTargetAllocation(shape: CanvasNodeShape, portId: string, dataType: NodePortDataType) {
+  if (dataType === 'image') {
+    if (shape.props.nodeType === 'chat') return { max: maxChatInputPorts, prefix: 'image_in' as const }
+    if (shape.props.nodeType === 'image_gen' || shape.props.nodeType === 'image_gen_4') return { max: maxImageInputPorts, prefix: 'image_in' as const }
+    return null
+  }
+  if (dataType === 'text') {
+    if (shape.props.nodeType === 'chat') return { max: maxChatInputPorts, prefix: 'text_in' as const }
+    if (shape.props.nodeType === 'image_gen' || shape.props.nodeType === 'image_gen_4') return { firstPortId: 'text_in', max: maxTextInputPorts, prefix: 'text_in' as const }
+  }
+  return portId.startsWith('image_in_') || portId.startsWith('text_in_') ? null : null
+}
+
+function getDynamicInputPortIndex(portId: string, prefix: 'image_in' | 'text_in') {
+  if (portId === prefix) return 1
+  const match = new RegExp(`^${prefix}_(\\d+)$`).exec(portId)
   if (!match) return 0
   const index = Number(match[1])
   return Number.isFinite(index) && index > 0 ? index : 0
+}
+
+function getDynamicTargetPortId(
+  allocation: NonNullable<ReturnType<typeof getBatchTargetAllocation>>,
+  index: number
+) {
+  if (index === 1 && allocation.firstPortId) return allocation.firstPortId
+  return `${allocation.prefix}_${index}`
 }

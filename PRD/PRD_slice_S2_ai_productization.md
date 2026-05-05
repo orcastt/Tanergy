@@ -1,6 +1,6 @@
 # PRD Slice S2: AI Productization
 
-**Updated**: 2026-05-02
+**Updated**: 2026-05-05
 **Mode**: Architecture slice.
 
 ## Goal
@@ -19,6 +19,8 @@ Turn the mock Model Registry and AiRun contracts into a real server-side AI exec
 | AiRun history | User can inspect own AI calls, status, latency, cost and credit impact. | Planned |
 | Cost controls | Server records provider cost, credits charged/refunded, timeout, failure and retry state. | Planned |
 | AI Chat planner | Chat can propose a legal graph spec; user confirms before applying/running. | Planned |
+
+Current canvas readiness note: Konva node UI and runtimeGraph mock dataflow are strong enough to begin real provider adapter planning. Real provider calls still must wait for server-side AiRun, Auth/rate-limit/cost controls and Asset upload of generated results.
 
 ## Acceptance
 

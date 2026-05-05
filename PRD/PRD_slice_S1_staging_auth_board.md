@@ -1,6 +1,6 @@
 # PRD Slice S1: Staging, Auth And Board CRUD
 
-**Updated**: 2026-05-02
+**Updated**: 2026-05-05
 **Mode**: Architecture slice.
 
 ## Goal
@@ -18,6 +18,7 @@ Move from local dev identity and local persistence to real staging infrastructur
 | Workspace ownership | New users get a workspace; API queries are scoped by user/workspace. | Schema implemented locally; Auth wiring pending |
 | Board CRUD | Board list/search/pagination/open/rename/delete/copy is server-side and permission checked. | Local first pass only |
 | Share/member permissions | Owner/admin/editor/viewer states become real server-side roles. | UI scaffold only |
+| Konva production canvas | New/saved Konva Boards open on staging without tldraw production dependency. | Local first pass; staging redeploy smoke pending |
 
 ## Included In S1
 
@@ -28,6 +29,7 @@ Move from local dev identity and local persistence to real staging infrastructur
 - User-scoped Board list/open/save/history/rename/delete/copy.
 - Owner/admin/editor/viewer permission checks on server APIs.
 - Staging Postgres/R2/domain/CORS smoke.
+- Konva-first Board route deploy with tldraw reference disabled by default.
 
 ## S1 Sub-Slices
 
@@ -55,6 +57,7 @@ Move from local dev identity and local persistence to real staging infrastructur
 - User A cannot read or mutate User B's Board.
 - Owner/admin can mutate Board metadata; viewer cannot.
 - Board History remains scoped to authorized members only.
+- Production-like staging Board route opens Konva v2 without requiring tldraw.
 
 ## Non-Goals
 
