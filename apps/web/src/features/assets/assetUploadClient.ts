@@ -2,7 +2,12 @@
 
 import { createImageDataUrlThumbnails } from './assetClientThumbnails'
 import type { TangentAssetDataUrlInput, TangentAssetOrigin, TangentAssetRecord, TangentAssetResponse } from './assetTypes'
-import { hasRemotePersistenceApi, persistenceApiUrl, persistenceAssetUrl, persistenceJsonHeaders } from '@/features/api/persistenceApi'
+import {
+  hasRemotePersistenceApi,
+  persistenceApiUrl,
+  persistenceAssetUrl,
+  persistenceJsonHeadersAsync,
+} from '@/features/api/persistenceApi'
 
 export async function uploadImageDataUrlAsset(input: Omit<TangentAssetDataUrlInput, 'thumbnails'>) {
   const thumbnails = await createImageDataUrlThumbnails(input.dataUrl)
@@ -10,7 +15,7 @@ export async function uploadImageDataUrlAsset(input: Omit<TangentAssetDataUrlInp
     hasRemotePersistenceApi() ? persistenceApiUrl('/api/v1/assets/from-data-url') : '/api/assets/from-data-url',
     {
       body: JSON.stringify({ ...input, thumbnails }),
-      headers: persistenceJsonHeaders(),
+      headers: await persistenceJsonHeadersAsync(),
       method: 'POST',
     }
   )
@@ -30,7 +35,7 @@ export async function importRemoteImageAsset(input: {
     hasRemotePersistenceApi() ? persistenceApiUrl('/api/v1/assets/from-url') : '/api/assets/from-url',
     {
       body: JSON.stringify({ origin: input.origin ?? 'remote_import', title: input.title ?? 'Image', url: input.url }),
-      headers: persistenceJsonHeaders(),
+      headers: await persistenceJsonHeadersAsync(),
       method: 'POST',
     }
   )

@@ -135,6 +135,15 @@ class FakePostgresCursor:
         elif normalized.startswith("INSERT INTO tangent_assets"):
             key = (params[1], params[0])
             self.database.assets[key] = params
+        elif normalized.startswith("SELECT role, permissions, note, granted_by, created_at FROM tangent_admin_roles"):
+            user_id = params[0]
+            rows = [
+                (row["role"], row["permissions"], row["note"], row["granted_by"], row["created_at"])
+                for row in self.database.admin_roles
+                if row["user_id"] == user_id and row["revoked_at"] is None
+            ]
+            rows.sort(key=lambda row: row[4])
+            self.rows = rows
         elif normalized.startswith("SELECT id, workspace_id, created_by"):
             self.row = self.database.assets.get((params[0], params[1]))
 
@@ -165,6 +174,7 @@ class FakePostgresConnection:
 
 class FakePostgresDatabase:
     def __init__(self):
+        self.admin_roles = []
         self.assets = {}
         self.boards = {}
         self.snapshots = {}

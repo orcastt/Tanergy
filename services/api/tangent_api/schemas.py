@@ -64,6 +64,22 @@ class AuthSessionResponse(TangentApiModel):
     session: Optional[AuthSession] = None
 
 
+class AdminRoleRecord(TangentApiModel):
+    created_at: str = Field(alias="createdAt")
+    granted_by: Optional[str] = Field(default=None, alias="grantedBy")
+    note: Optional[str] = None
+    permissions: dict[str, Any] = Field(default_factory=dict)
+    role: str
+
+
+class AdminMeResponse(TangentApiModel):
+    can_access_admin: bool = Field(alias="canAccessAdmin")
+    error: Optional[str] = None
+    ok: bool
+    roles: list[AdminRoleRecord] = Field(default_factory=list)
+    user_id: str = Field(alias="userId")
+
+
 class AiModelOption(TangentApiModel):
     capabilities: list[str]
     cost_hint: str = Field(alias="costHint")

@@ -18,7 +18,9 @@ import {
   hasRemotePersistenceApi,
   persistenceApiUrl,
   persistenceAuthHeaders,
+  persistenceAuthHeadersAsync,
   persistenceJsonHeaders,
+  persistenceJsonHeadersAsync,
 } from '@/features/api/persistenceApi'
 
 export type LocalBoardSaveResponse = BoardSaveResponse
@@ -36,11 +38,12 @@ export type LocalBoardSnapshotLoadResponse = BoardSnapshotLoadResponse
 export type LocalBoardSnapshotClearResponse = BoardSnapshotClearResponse
 
 export async function saveLocalBoardDocument(input: SerializedBoardSaveInput) {
+  const headers = hasRemotePersistenceApi() ? await persistenceJsonHeadersAsync() : persistenceJsonHeaders()
   const response = await fetch(
     hasRemotePersistenceApi() ? persistenceApiUrl('/api/v1/boards') : '/api/boards/local-save',
     {
       body: JSON.stringify(input),
-      headers: persistenceJsonHeaders(),
+      headers,
       method: 'POST',
     }
   )
@@ -52,11 +55,12 @@ export async function saveLocalBoardDocument(input: SerializedBoardSaveInput) {
 }
 
 export async function loadLocalBoardDocument(boardId: string) {
+  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync() : persistenceAuthHeaders()
   const response = await fetch(
     hasRemotePersistenceApi()
       ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(boardId)}`)
       : `/api/boards/local-load?boardId=${encodeURIComponent(boardId)}`,
-    { headers: persistenceAuthHeaders() }
+    { headers }
   )
   const payload = await response.json() as LocalBoardLoadResponse
   if (!response.ok || !payload.ok || !payload.board) {
@@ -66,9 +70,10 @@ export async function loadLocalBoardDocument(boardId: string) {
 }
 
 export async function listLocalBoardDocuments() {
+  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync() : persistenceAuthHeaders()
   const response = await fetch(
     hasRemotePersistenceApi() ? persistenceApiUrl('/api/v1/boards') : '/api/boards/local-list',
-    { headers: persistenceAuthHeaders() }
+    { headers }
   )
   const payload = await response.json() as LocalBoardListResponse
   if (!response.ok || !payload.ok) {
@@ -82,13 +87,14 @@ export async function renameLocalBoardDocument(boardId: string, title: string) {
 }
 
 export async function updateLocalBoardMetadata(input: BoardMetadataUpdateInput) {
+  const headers = hasRemotePersistenceApi() ? await persistenceJsonHeadersAsync() : persistenceJsonHeaders()
   const response = await fetch(
     hasRemotePersistenceApi()
       ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(input.boardId)}`)
       : '/api/boards/local-update',
     {
       body: JSON.stringify(input),
-      headers: persistenceJsonHeaders(),
+      headers,
       method: hasRemotePersistenceApi() ? 'PATCH' : 'POST',
     }
   )
@@ -100,13 +106,14 @@ export async function updateLocalBoardMetadata(input: BoardMetadataUpdateInput) 
 }
 
 export async function deleteLocalBoardDocument(boardId: string) {
+  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync() : persistenceJsonHeaders()
   const response = await fetch(
     hasRemotePersistenceApi()
       ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(boardId)}`)
       : '/api/boards/local-delete',
     {
       body: hasRemotePersistenceApi() ? undefined : JSON.stringify({ boardId }),
-      headers: hasRemotePersistenceApi() ? persistenceAuthHeaders() : persistenceJsonHeaders(),
+      headers,
       method: hasRemotePersistenceApi() ? 'DELETE' : 'POST',
     }
   )
@@ -118,13 +125,14 @@ export async function deleteLocalBoardDocument(boardId: string) {
 }
 
 export async function createBoardSnapshot(input: SerializedBoardSnapshotCreateInput) {
+  const headers = hasRemotePersistenceApi() ? await persistenceJsonHeadersAsync() : persistenceJsonHeaders()
   const response = await fetch(
     hasRemotePersistenceApi()
       ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(input.boardId)}/snapshots`)
       : '/api/boards/local-snapshot',
     {
       body: JSON.stringify(input),
-      headers: persistenceJsonHeaders(),
+      headers,
       method: 'POST',
     }
   )
@@ -136,11 +144,12 @@ export async function createBoardSnapshot(input: SerializedBoardSnapshotCreateIn
 }
 
 export async function listBoardSnapshots(boardId: string) {
+  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync() : persistenceAuthHeaders()
   const response = await fetch(
     hasRemotePersistenceApi()
       ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(boardId)}/snapshots`)
       : `/api/boards/local-snapshots?boardId=${encodeURIComponent(boardId)}`,
-    { headers: persistenceAuthHeaders() }
+    { headers }
   )
   const payload = await response.json() as LocalBoardSnapshotListResponse
   if (!response.ok || !payload.ok) {
@@ -150,11 +159,12 @@ export async function listBoardSnapshots(boardId: string) {
 }
 
 export async function loadBoardSnapshot(boardId: string, snapshotId: string) {
+  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync() : persistenceAuthHeaders()
   const response = await fetch(
     hasRemotePersistenceApi()
       ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(boardId)}/snapshots/${encodeURIComponent(snapshotId)}`)
       : `/api/boards/local-snapshot?boardId=${encodeURIComponent(boardId)}&snapshotId=${encodeURIComponent(snapshotId)}`,
-    { headers: persistenceAuthHeaders() }
+    { headers }
   )
   const payload = await response.json() as LocalBoardSnapshotLoadResponse
   if (!response.ok || !payload.ok || !payload.snapshot) {
@@ -164,12 +174,13 @@ export async function loadBoardSnapshot(boardId: string, snapshotId: string) {
 }
 
 export async function clearBoardSnapshots(boardId: string) {
+  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync() : persistenceAuthHeaders()
   const response = await fetch(
     hasRemotePersistenceApi()
       ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(boardId)}/snapshots`)
       : `/api/boards/local-snapshots?boardId=${encodeURIComponent(boardId)}`,
     {
-      headers: persistenceAuthHeaders(),
+      headers,
       method: 'DELETE',
     }
   )

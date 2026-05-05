@@ -1,14 +1,23 @@
 # S1 上线准备和验收汇报
 
 **Updated**: 2026-05-05
-**Status**: S1X Konva Page polish first pass 之后的活跃交接报告。
+**Status**: S1X Konva Page polish 稳定后，S1C Clerk/Auth first pass 已接上的活跃交接报告。
 **Branch**: `feature/s1x-konva-handfeel-spike`
 
 ## 当前位置
 
 S1X 已经把生产画布方向切到 Konva v2。新建/缺失 Board 和已保存的 Konva Board 都走正式 `/boards/[boardId]` 路由；tldraw 只保留为参考路径，并且生产默认关闭。
 
-当前 working tree 里还有未提交的 Page polish 改动。在 Page polish 完成手测并提交之前，不要把数据库迁移、Auth、Admin 或真实 AI provider 代码混进同一个 checkpoint。
+当前 working tree 除了已验收的 Page polish，还已经包含一轮 S1C Auth 接线：
+
+- `/` 是公开 Tanergy homepage；`/sign-in`、`/sign-up` 走 Clerk。
+- `/workspaces` 在 `TANGENT_REQUIRE_WEB_AUTH=1` 时会被 Clerk 保护。
+- workspace 顶部导航里的 `Home` 已移除；点 logo 返回 homepage。
+- localhost 图片上传 / 外部图片粘贴 / 截图粘贴 已重新验证能走本地 asset pipeline，不依赖数据库。
+- FastAPI 在 `TANGENT_REQUIRE_API_AUTH=1` 时不再接受伪造的 `x-tangent-user-id` / `x-tangent-workspace-id` 作为 authority；改为 Bearer Clerk token。
+- 前端 remote Board / Asset / Image Op / AI client 已补 Clerk JWT 透传。
+- Postgres Board/History 现在有第一轮 workspace-role gate：`owner/admin/member` 可写，`guest` 只读，metadata/delete/clear 更严格。
+- admin backend 已有最小 access probe：`GET /api/v1/admin/me`。
 
 当前 Page polish 范围：
 
@@ -97,9 +106,11 @@ git diff --check
 - FastAPI `/health` 通过 HTTPS。
 - CORS 允许 staging Web origin，并拒绝无关 origin。
 - Alembic 在 staging Postgres 上达到 head。
+- localhost / staging asset ingest 不要求数据库才能完成浏览器端图片上传；本地 fallback 使用 `.tangent-assets`。
 - Asset upload/read 通过 R2/S3-compatible storage。
 - Board save/load/history/clean 通过 staging API。
 - Board guard 拒绝 `data:`、`blob:`、Base64 images 和 malformed Konva v2 envelopes。
+- `TANGENT_REQUIRE_API_AUTH=1` 后，非法或缺失 Bearer token 会收到 401，不能再靠前端 header 伪造用户或 workspace。
 - Production deploy 前已写好 rollback path。
 
 ## AI Provider 验收
@@ -136,8 +147,8 @@ git diff --check
 
 ## 下一个具体 Checkpoint
 
-Page polish 手测后：
+当前这轮之后建议直接进入：
 
-1. Commit Page polish。
-2. 针对当前 Konva-first route 跑 S1B deploy-readiness smoke。
-3. 根据 Auth credentials 是否准备好，开始 S1C Auth provider wiring 或 S2 real AiRun provider adapter。
+1. 继续 S1D，把 board copy / restore / board-members scaffold / cursor pagination 补上。
+2. 继续 S3 admin bootstrap，把 `admin_roles` 的 server-side 入口从 `admin/me` 扩到只读资源路由和审计 helper。
+3. 然后再进入 S2 real AiRun provider adapter，避免真实 AI 调用先跑在松散 auth 上。

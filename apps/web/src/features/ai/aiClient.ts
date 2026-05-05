@@ -4,14 +4,17 @@ import {
   hasRemotePersistenceApi,
   persistenceApiUrl,
   persistenceAuthHeaders,
+  persistenceAuthHeadersAsync,
   persistenceJsonHeaders,
+  persistenceJsonHeadersAsync,
 } from '@/features/api/persistenceApi'
 import type { AiCapability, AiModelsResponse, AiRunRequest, AiRunResponse } from './aiTypes'
 import { getAiModels } from './mockAiContracts'
 
 export async function loadAiModels(capability: AiCapability = 'image_generation') {
+  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync() : persistenceAuthHeaders()
   const response = await fetch(getAiUrl(`/models?capability=${encodeURIComponent(capability)}`), {
-    headers: persistenceAuthHeaders(),
+    headers,
   })
   const payload = await response.json() as AiModelsResponse
   if (!response.ok || !payload.ok) {
@@ -21,9 +24,10 @@ export async function loadAiModels(capability: AiCapability = 'image_generation'
 }
 
 export async function createAiRun(input: AiRunRequest) {
+  const headers = hasRemotePersistenceApi() ? await persistenceJsonHeadersAsync() : persistenceJsonHeaders()
   const response = await fetch(getAiUrl('/runs'), {
     body: JSON.stringify(input),
-    headers: persistenceJsonHeaders(),
+    headers,
     method: 'POST',
   })
   const payload = await response.json() as AiRunResponse

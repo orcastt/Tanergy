@@ -7,10 +7,15 @@ import {
 } from '@/features/api/persistenceApi'
 import type { AuthSessionResponse } from './sessionTypes'
 
-export async function loadCurrentSession() {
+type LoadCurrentSessionOptions = {
+  getAuthToken?: () => Promise<null | string>
+}
+
+export async function loadCurrentSession(options: LoadCurrentSessionOptions = {}) {
+  const token = await options.getAuthToken?.()
   const response = await fetch(
     hasRemotePersistenceApi() ? persistenceApiUrl('/api/v1/auth/session') : '/api/auth/session',
-    { headers: persistenceAuthHeaders() }
+    { headers: token ? { Authorization: `Bearer ${token}` } : persistenceAuthHeaders() }
   )
   const payload = await response.json() as AuthSessionResponse
   if (!response.ok || !payload.ok || !payload.session) {

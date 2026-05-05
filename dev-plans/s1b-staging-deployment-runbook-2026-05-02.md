@@ -1,6 +1,6 @@
 # S1B Staging Deployment Runbook
 
-**Updated**: 2026-05-02
+**Updated**: 2026-05-05
 **Language**: Chinese beginner guide.
 **Status**: Active S1B tactical runbook.
 
@@ -281,6 +281,48 @@ FastAPI 映射到 tangent_users / tangent_oauth_accounts
 Board 权限仍看 tangent workspace/board membership
 ```
 
+### 7.1 当前本地 `.env` 安全盘点
+
+2026-05-05 已做一次只看变量名和是否已填写的安全检查，没有读取或记录任何 secret 原值。
+
+当前状态：
+
+```text
+基础设施:
+- DATABASE_URL / DATABASE_POOL_URL / DATABASE_DIRECT_URL: 已填写
+- Cloudflare / R2 / Hetzner 相关变量: 已填写
+- S3_PUBLIC_BASE_URL: 为空
+- Vercel 相关变量: 为空
+
+Auth:
+- AUTH_PROVIDER: 已填写
+- NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 为空
+- CLERK_SECRET_KEY: 为空
+- CLERK_JWKS_URL: 为空
+- CLERK_JWT_ISSUER: 为空
+- CLERK_JWT_AUDIENCE: 为空
+- Clerk sign-in/sign-up redirect 变量: 为空
+
+Google OAuth:
+- GOOGLE_CLIENT_ID: 为空
+- GOOGLE_CLIENT_SECRET: 为空
+- GOOGLE_AUTHORIZED_DOMAIN: 为空
+- GOOGLE_PRIVACY_POLICY_URL: 为空
+- GOOGLE_TERMS_URL: 为空
+
+Email:
+- RESEND_API_KEY: 为空
+- RESEND_DOMAIN: 为空
+- RESEND_FROM_EMAIL: 为空
+```
+
+结论：
+
+- 你已经有 Clerk 账号/应用的话，下一步主要是把 Clerk key 和 Google OAuth production credentials 补进安全密钥文档和部署环境。
+- 不要把 `CLERK_SECRET_KEY`、`GOOGLE_CLIENT_SECRET`、`DATABASE_URL`、R2 secret 或任何 API key 发到聊天窗口。
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` 可以放前端，因为它本来就是 public key。
+- `CLERK_SECRET_KEY` 只能放后端 API/Vercel server env，不能暴露给浏览器。
+
 ### 8. 配置 Clerk redirect URLs
 
 开发环境：
@@ -301,11 +343,113 @@ https://staging.your-domain.com
 https://app.your-domain.com
 ```
 
-### 9. 生产 Google OAuth 准备
+Clerk 里需要检查的地方：
 
-Clerk dev 模式可以先跑通 Google 登录，但公开生产前要去 Google Cloud Console 创建正式 OAuth client。
+```text
+Clerk Dashboard
+-> 选择 TANGENT application
+-> Configure
+-> Paths / Redirects
+```
 
-需要准备：
+建议先填：
+
+```text
+Sign-in URL: /sign-in
+Sign-up URL: /sign-up
+After sign-in URL: /workspaces
+After sign-up URL: /workspaces
+```
+
+如果 Clerk UI 走 Clerk Account Portal，也可以先用 Clerk 默认页面测试。等 S1C 前端实现完成后，再切到 TANGENT 自己的 `/sign-in` 和 `/sign-up` 页面。
+
+### 8.1 Tanergy staging 入口流程
+
+项目公开入口现在按 Tanergy 流程走：
+
+```text
+https://staging.tanergy.cc
+  -> Tanergy homepage
+  -> /sign-in or /sign-up
+  -> Clerk email / Google / GitHub verification
+  -> /workspaces
+```
+
+旧入口兼容：
+
+```text
+/login    -> /sign-in
+/signup   -> /sign-up
+/register -> /sign-up
+```
+
+staging 想强制登录后才能进入 workspace 时，部署环境需要打开：
+
+```text
+TANGENT_REQUIRE_WEB_AUTH=1
+```
+
+本地如果还要继续快速调画布，可以先保持：
+
+```text
+TANGENT_REQUIRE_WEB_AUTH=0
+```
+
+本地 Next dev server 是从 `apps/web` 启动的，所以 Clerk 前端变量需要放进 `apps/web/.env.local`，或在启动命令前导出到 shell。只填仓库根目录 `.env` 时，Next 可能会进入 Clerk keyless mode。
+
+本地 `apps/web/.env.local` 至少需要：
+
+```text
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=<Clerk publishable key>
+TANGENT_REQUIRE_WEB_AUTH=1
+```
+
+说明一下你前面遇到的图片问题：本地浏览器上传图片、粘贴外部图片、粘贴截图，这条链路不要求数据库先接好。当前本地 fallback 会直接写到仓库下的 `.tangent-assets`，对应 Web 侧 `/api/assets/from-data-url` / `/api/assets/from-url`。所以如果以后本地上传突然失效，优先排查 dev server、浏览器权限、asset route、storage dir，不要先怀疑是 Postgres。
+
+如果要让前端代理层也使用这些 route 默认值，可以一起放：
+
+```text
+CLERK_SIGN_IN_URL=/sign-in
+CLERK_SIGN_UP_URL=/sign-up
+CLERK_AFTER_SIGN_IN_URL=/workspaces
+CLERK_AFTER_SIGN_UP_URL=/workspaces
+```
+
+如果你要让 FastAPI 也严格校验 Clerk token 里的 `azp`，服务器 env 里再加：
+
+```text
+CLERK_AUTHORIZED_PARTIES=https://staging.tanergy.cc,http://localhost:3000,http://127.0.0.1:3000
+```
+
+不填时，后端会回退使用 `TANGENT_ALLOWED_ORIGINS` 作为允许来源列表。
+
+Google 已经在 Clerk 里配置后，`/sign-in` 和 `/sign-up` 会显示 Google 登录。GitHub 也按同一个逻辑：去 Clerk Dashboard 的 Social connections 里启用 GitHub，创建/填写 GitHub OAuth credentials 后，Clerk 的登录组件会显示 GitHub 入口。
+
+### 9. 生产 Google OAuth 准备，小白详细版
+
+Clerk dev 模式可以先跑通 Google 登录；公开 staging/production 前，需要在 Google Cloud Console 建正式 OAuth client，然后把拿到的 Client ID / Client Secret 填回 Clerk。
+
+最重要的概念：
+
+```text
+Google Cloud Console:
+- 负责创建 Google OAuth client id / secret。
+- 负责配置授权域名、同意屏幕、测试用户或正式发布状态。
+
+Clerk:
+- 负责登录 UI 和 OAuth 流程。
+- 负责给我们一个 Authorized Redirect URI。
+- 你要把 Google 的 Client ID / Secret 粘回 Clerk。
+
+TANGENT:
+- 前端只用 Clerk publishable key。
+- 后端只验证 Clerk JWT。
+- TANGENT 自己不直接拿 Google secret 做浏览器登录。
+```
+
+#### 9.1 准备材料
+
+先准备这些文字/链接，后面会用到：
 
 ```text
 App name
@@ -316,14 +460,322 @@ Terms URL
 Authorized redirect URIs from Clerk
 ```
 
-拿到：
+建议 staging 阶段：
+
+```text
+App name: TANGENT Staging
+Authorized domain: your-domain.com
+Homepage: https://staging.your-domain.com
+Privacy Policy URL: https://staging.your-domain.com/privacy
+Terms URL: https://staging.your-domain.com/terms
+```
+
+如果现在还没有 privacy/terms 页面，可以先建两个极简页面，公开上线前再补正式文本。Google OAuth 生产发布通常会要求这些信息像一个真实产品。
+
+#### 9.2 在 Clerk 里拿 Authorized Redirect URI
+
+操作：
+
+1. 打开 Clerk Dashboard。
+2. 进入你的 TANGENT application。
+3. 左侧找到 `SSO connections` 或 `Social connections`。
+4. 点击 `Add connection`。
+5. 选择 `For all users`。
+6. 选择 `Google`。
+7. 打开：
+
+```text
+Enable for sign-up and sign-in
+Use custom credentials
+```
+
+8. Clerk 会显示一个 `Authorized Redirect URI`。
+9. 把这个 URI 复制到你的私密部署文档：
+
+```text
+deploy/staging/deployment-secrets.local.md
+```
+
+注意：
+
+- 这个 redirect URI 要原样复制，不能自己猜。
+- 后面 Google OAuth client 的 `Authorized redirect URIs` 必须和 Clerk 给的一模一样。
+- 如果不一致，登录时会出现 `redirect_uri_mismatch`。
+
+#### 9.3 打开 Google Cloud Console
+
+操作：
+
+1. 打开 `https://console.cloud.google.com/`。
+2. 右上角确认登录的是你要用于 TANGENT 的 Google 账号。
+3. 顶部项目选择器点击 `Select a project`。
+4. 如果还没有项目，点击 `New Project`。
+5. 推荐项目名：
+
+```text
+TANGENT Staging
+```
+
+6. Organization 可以不选，个人账号一般没有组织。
+7. Location 保持默认。
+8. 点击 `Create`。
+9. 创建后确认顶部当前项目已经切到 `TANGENT Staging`。
+
+#### 9.4 配置 OAuth consent screen / Google Auth Platform
+
+Google 控制台 UI 可能会显示为 `OAuth consent screen`，新版也可能叫 `Google Auth Platform`。目标是同一个：告诉 Google 这个登录应用叫什么、给谁用、请求什么权限。
+
+操作：
+
+1. 左侧菜单打开：
+
+```text
+APIs & Services
+-> OAuth consent screen
+```
+
+或者：
+
+```text
+APIs & Services
+-> Google Auth Platform
+-> Branding / Audience / Data Access
+```
+
+2. User Type 选择：
+
+```text
+External
+```
+
+说明：
+
+- `Internal` 只给 Google Workspace 组织内部用户用。
+- 个人项目和公开产品通常选 `External`。
+
+3. App information 填：
+
+```text
+App name: TANGENT Staging
+User support email: 你的邮箱
+App logo: 可以先不传；公开 production 前建议补
+```
+
+4. App domain 填：
+
+```text
+Application home page: https://staging.your-domain.com
+Application privacy policy link: https://staging.your-domain.com/privacy
+Application terms of service link: https://staging.your-domain.com/terms
+```
+
+5. Authorized domains 添加：
+
+```text
+your-domain.com
+```
+
+不要填 `https://`，只填域名本体。
+
+6. Developer contact information 填你的邮箱。
+7. 保存。
+
+#### 9.5 Scopes 权限选择
+
+P0 登录只需要基础身份，不要申请 Google Drive、Calendar、Gmail 这些敏感权限。
+
+建议只保留：
+
+```text
+openid
+email
+profile
+```
+
+如果 Google UI 没有显式让你选，默认 Sign in with Google 通常也是基础身份信息。
+
+原则：
+
+- 权限越少越容易过审核。
+- 不要为了未来功能提前申请敏感 scope。
+- 后续如果要接 Google Drive，再单独做新 slice 和审核准备。
+
+#### 9.6 添加测试用户
+
+如果 OAuth app 还在 Testing 状态，Google 通常只允许测试用户登录。
+
+操作：
+
+1. 找到 `Audience` 或 `Test users`。
+2. 添加你自己的 Google 邮箱。
+3. 如果要让别人一起测，也把他们的 Google 邮箱加进去。
+4. 保存。
+
+注意：
+
+- Testing 模式适合 staging。
+- 要公开给所有用户，后面要把 publishing status 切成 `In production`。
+- 公开 production 可能触发 Google 审核，尤其是 app logo、隐私政策、服务条款和 scopes。
+
+#### 9.7 创建 OAuth Client ID
+
+操作：
+
+1. 左侧打开：
+
+```text
+APIs & Services
+-> Credentials
+```
+
+2. 点击顶部：
+
+```text
+Create Credentials
+-> OAuth client ID
+```
+
+3. Application type 选择：
+
+```text
+Web application
+```
+
+4. Name 推荐：
+
+```text
+TANGENT Staging Clerk
+```
+
+5. `Authorized JavaScript origins` 添加：
+
+```text
+http://localhost:3000
+https://staging.your-domain.com
+```
+
+后续 production 再加：
+
+```text
+https://app.your-domain.com
+```
+
+6. `Authorized redirect URIs` 添加 Clerk 刚才给你的 URI。
+
+不要填 TANGENT 自己的 `/api/auth/callback/google`，因为 Google 回调是 Clerk 接收，不是我们接收。
+
+7. 点击 `Create`。
+8. Google 会弹出：
 
 ```text
 GOOGLE_CLIENT_ID
 GOOGLE_CLIENT_SECRET
 ```
 
-把它们填进 Clerk 的 production Google social connection 设置里，不要放进前端代码。
+9. 把它们记录到私密部署文档，不要发到聊天窗口：
+
+```text
+deploy/staging/deployment-secrets.local.md
+```
+
+#### 9.8 把 Google Client ID / Secret 填回 Clerk
+
+操作：
+
+1. 回到 Clerk Dashboard 的 Google connection 页面。
+2. 确认 `Use custom credentials` 是打开的。
+3. 粘贴：
+
+```text
+Client ID
+Client Secret
+```
+
+4. 保存。
+5. 用 Clerk Account Portal 或 TANGENT `/sign-in` 页面测试 Google 登录。
+
+成功标志：
+
+```text
+点击 Continue with Google
+-> 跳到 Google 登录/授权页
+-> 同意后回到 Clerk/TANGENT
+-> 用户能进入 /workspaces
+```
+
+常见错误：
+
+```text
+redirect_uri_mismatch:
+  Google 里的 Authorized redirect URI 和 Clerk 给的不一致。重新复制 Clerk URI。
+
+access_denied:
+  当前 Google 账号不在 test users，或者 consent screen 没保存。
+
+invalid_client:
+  Client ID / Client Secret 填错，或者填到了错误的 Clerk environment。
+
+This app is blocked:
+  OAuth app 状态、域名、隐私政策、scope 或 Google 审核问题。
+```
+
+#### 9.9 本项目环境变量怎么填
+
+本地 `.env` 或部署平台变量：
+
+```text
+AUTH_PROVIDER=clerk
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=<Clerk publishable key>
+CLERK_SECRET_KEY=<Clerk secret>
+CLERK_JWKS_URL=<Clerk JWKS URL>
+CLERK_JWT_ISSUER=<Clerk issuer>
+CLERK_JWT_AUDIENCE=<Clerk audience>
+CLERK_SIGN_IN_URL=/sign-in
+CLERK_SIGN_UP_URL=/sign-up
+CLERK_AFTER_SIGN_IN_URL=/workspaces
+CLERK_AFTER_SIGN_UP_URL=/workspaces
+```
+
+Google 这两个优先填在 Clerk Dashboard，不需要前端读取：
+
+```text
+GOOGLE_CLIENT_ID=<Google OAuth client id>
+GOOGLE_CLIENT_SECRET=<Google OAuth client secret>
+```
+
+如果 `.env` 里保留这两个变量，也只作为本地安全记录或后端辅助，不允许发到前端，不允许 commit。
+
+部署平台建议：
+
+```text
+Vercel:
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+  NEXT_PUBLIC_API_BASE_URL
+
+FastAPI server:
+  CLERK_SECRET_KEY
+  CLERK_JWKS_URL
+  CLERK_JWT_ISSUER
+  CLERK_JWT_AUDIENCE
+  TANGENT_REQUIRE_API_AUTH=1
+```
+
+#### 9.10 邮箱验证需要收费吗？
+
+P0 建议先用 Clerk 自带邮箱登录/验证能力，不要自己先接 Resend 做 Auth 邮件。
+
+当前理解，按 2026-05-05 官方价格页核对：
+
+- Clerk Hobby 显示 Free，并包含 sign-up / sign-in / user profile 的 API 和预构建 UI。
+- Hobby 当前显示每个 app 有 50,000 monthly recurring users limit。
+- 也就是说，小规模 staging / P0 测试的邮箱登录和验证一般不需要单独付邮件验证费用。
+
+但要注意：
+
+- Clerk 价格和免费额度可能变，公开上线前再复核一次 pricing。
+- 如果要去掉 Clerk branding、改更高级 session/MFA、企业能力或更大规模，可能需要 Pro/Business。
+- 如果你用 Resend 发自己的 welcome、invite、billing、marketing 邮件，Resend 是另一套计费。
+- 如果不用 Clerk 邮件、自己实现 OTP/magic link，才需要额外邮件服务和安全实现，P0 不建议。
 
 ## Phase 5: 邮箱发送 Resend
 
@@ -699,6 +1151,119 @@ S1C 代码接完后再测：
 - FastAPI `/api/v1/auth/session` 接受 provider JWT。
 - 无效 JWT 返回 401。
 
+### 30. Admin owner bootstrap，小白安全流程
+
+Admin 后台不是 workspace 里的 `owner/admin`。Workspace admin 只能管自己的 workspace；全站后台必须走数据库里的 `tangent_admin_roles`。
+
+当前 staging 目标：
+
+```text
+已验证 Clerk 用户
+  -> FastAPI S1C 映射到 tangent_users
+  -> 只允许服务器侧 bootstrap 授予第一个 admin owner
+  -> 后续 admin 页面必须服务端检查 tangent_admin_roles
+  -> 所有 admin 写操作写 tangent_admin_audit_logs
+```
+
+第一个 admin 不要通过前端按钮创建，也不要信任浏览器传来的 `isAdmin=true`。推荐用一次性的服务器命令或 seed 脚本。
+
+准备信息：
+
+```text
+你的 Clerk 登录邮箱
+你的 tangent_users.id
+```
+
+`tangent_users.id` 要等 S1C Auth mapping 完成后才会真实出现。可以通过服务器 DB 只读查询确认：
+
+```sql
+SELECT id, email, status, created_at
+FROM tangent_users
+WHERE lower(email) = lower('<your-admin-email>');
+```
+
+确认只有一行、邮箱是你自己之后，再授予 owner：
+
+```sql
+INSERT INTO tangent_admin_roles (
+  user_id,
+  role,
+  permissions,
+  note,
+  granted_by
+)
+VALUES (
+  '<tangent-user-id>',
+  'owner',
+  '{"bootstrap": true}'::jsonb,
+  'Initial staging admin owner bootstrap',
+  '<tangent-user-id>'
+)
+ON CONFLICT (user_id, role)
+DO UPDATE SET
+  revoked_at = NULL,
+  permissions = EXCLUDED.permissions,
+  note = EXCLUDED.note;
+```
+
+同时写一条 audit log：
+
+```sql
+INSERT INTO tangent_admin_audit_logs (
+  id,
+  actor_user_id,
+  target_user_id,
+  action,
+  metadata
+)
+VALUES (
+  'admin-audit-' || replace(gen_random_uuid()::text, '-', ''),
+  '<tangent-user-id>',
+  '<tangent-user-id>',
+  'admin.bootstrap_owner',
+  '{"source": "manual-staging-runbook"}'::jsonb
+);
+```
+
+如果 Neon/Postgres 没有 `gen_random_uuid()`，先启用：
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+```
+
+验收查询：
+
+```sql
+SELECT user_id, role, permissions, note, created_at, revoked_at
+FROM tangent_admin_roles
+WHERE user_id = '<tangent-user-id>';
+
+SELECT actor_user_id, target_user_id, action, metadata, created_at
+FROM tangent_admin_audit_logs
+WHERE action = 'admin.bootstrap_owner'
+ORDER BY created_at DESC
+LIMIT 5;
+```
+
+安全规则：
+
+- 不要把 `admin_roles` 做成前端环境变量。
+- 不要让前端请求直接传 `admin=true`。
+- 不要给没有完成邮箱/Google 验证的用户加 admin。
+- 第一个 admin 只在 staging/production 服务器侧执行一次。
+- 后续“管理员给用户设置管理员”必须由后端 route 执行，并写 audit log。
+
+角色建议：
+
+```text
+owner: 全站最高权限，人数极少。
+admin: 用户/内容/系统管理，不能越过 owner 安全边界。
+support: 客服查看用户和 workspace，默认少写操作。
+analyst: 只读分析和 AI run/cost 视图。
+finance: 账单、订阅、credit ledger。
+moderator: 内容审核和封禁相关操作。
+```
+
 ## Phase 9: 生产前不能漏的事情
 
 公开生产前必须补：
@@ -746,7 +1311,10 @@ S1C 代码接完后再测：
 - Hetzner Cloud docs: https://docs.hetzner.com/cloud/
 - Clerk Next.js quickstart: https://clerk.com/docs/quickstarts/nextjs
 - Clerk social connections: https://clerk.com/docs/authentication/social-connections/overview
+- Clerk Google social connection setup: https://clerk.com/docs/authentication/social-connections/google
 - Clerk token verification: https://clerk.com/docs/backend-requests/handling/manual-jwt
+- Clerk pricing: https://clerk.com/pricing
 - Google OAuth 2.0: https://developers.google.com/identity/protocols/oauth2
+- Google OAuth web server apps: https://developers.google.com/identity/protocols/oauth2/web-server
 - Google OAuth consent / verification: https://support.google.com/cloud/answer/13463073
 - Resend domains: https://resend.com/docs/dashboard/domains/introduction

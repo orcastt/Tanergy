@@ -28,3 +28,28 @@ export function persistenceJsonHeaders(): HeadersInit {
     ...getSessionRequestHeaders(),
   }
 }
+
+export async function persistenceAuthHeadersAsync(): Promise<HeadersInit> {
+  return withClerkAuthorization(getSessionRequestHeaders())
+}
+
+export async function persistenceJsonHeadersAsync(): Promise<HeadersInit> {
+  return withClerkAuthorization(persistenceJsonHeaders())
+}
+
+async function withClerkAuthorization(headers: HeadersInit): Promise<HeadersInit> {
+  const token = await getBrowserClerkToken()
+  return token ? { ...headers, Authorization: `Bearer ${token}` } : headers
+}
+
+async function getBrowserClerkToken() {
+  if (typeof window === 'undefined') return null
+  const clerk = (window as Window & {
+    Clerk?: {
+      session?: {
+        getToken?: () => Promise<null | string>
+      }
+    }
+  }).Clerk
+  return clerk?.session?.getToken?.() ?? null
+}

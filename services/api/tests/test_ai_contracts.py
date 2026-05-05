@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from tangent_api.main import app
+from tangent_api.request_context import ApiRequestContext
 
 
 def test_ai_model_registry_contract():
@@ -50,6 +51,27 @@ def test_ai_run_mock_contract_round_trip():
 
 def test_ai_run_auth_required_mode(monkeypatch):
     monkeypatch.setenv("TANGENT_REQUIRE_API_AUTH", "1")
+
+    async def fake_resolve_authenticated_request_context(token: str) -> ApiRequestContext:
+        assert token == "valid-token"
+        return ApiRequestContext(
+            auth_mode="required",
+            is_dev_fallback=False,
+            user_avatar_initials="CU",
+            user_display_name="Clerk User",
+            user_email="user@example.com",
+            user_email_verified=True,
+            user_id="user_clerk_123",
+            workspace_board_count=0,
+            workspace_id="workspace_clerk_123",
+            workspace_name="Tanergy Workspace",
+            workspace_role="owner",
+        )
+
+    monkeypatch.setattr(
+        "tangent_api.request_context.resolve_authenticated_request_context",
+        fake_resolve_authenticated_request_context,
+    )
     client = TestClient(app)
 
     missing = client.get("/api/v1/ai/models?capability=image_generation")
@@ -57,6 +79,6 @@ def test_ai_run_auth_required_mode(monkeypatch):
 
     explicit = client.get(
         "/api/v1/ai/models?capability=image_generation",
-        headers={"x-tangent-user-id": "dev-user", "x-tangent-workspace-id": "dev-workspace"},
+        headers={"Authorization": "Bearer valid-token"},
     )
     assert explicit.status_code == 200

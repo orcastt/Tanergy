@@ -2,7 +2,17 @@ import json
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import uuid4
+
 from fastapi import HTTPException
+
+from tangent_api.board_access import (
+    assert_can_create_board,
+    assert_can_manage_board,
+    assert_can_read_board,
+    assert_can_write_board,
+    can_read_board,
+    can_read_workspace,
+)
 from tangent_api.board_guard import audit_board_document
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.schemas import (
@@ -37,6 +47,10 @@ class PostgresBoardStore:
         saved_at = datetime.now(timezone.utc).isoformat()
         metrics = get_board_document_metrics(input_data.document)
         existing = self._read_existing_board(board_id, context)
+        if existing:
+            assert_can_write_board(existing, context)
+        else:
+            assert_can_create_board(context)
         record = BoardRecord(
             assetCount=metrics["asset_count"],
             byteSize=audit.byte_size,
@@ -48,7 +62,7 @@ class PostgresBoardStore:
             isPinned=existing.is_pinned if existing else False,
             isStarred=existing.is_starred if existing else False,
             lastOpenedAt=existing.last_opened_at if existing else None,
-            ownerId=context.user_id,
+            ownerId=existing.owner_id if existing else context.user_id,
             savedAt=saved_at,
             shapeCount=metrics["shape_count"],
             shareId=normalize_board_share_id(existing.share_id if existing else None),
@@ -121,6 +135,19 @@ class PostgresBoardStore:
                         record.share_id,
                     ),
                 )
+                if not existing:
+                    cursor.execute(
+                        """
+                        INSERT INTO tangent_board_members (
+                            workspace_id,
+                            board_id,
+                            user_id,
+                            role
+                        ) VALUES (%s, %s, %s, 'owner')
+                        ON CONFLICT (workspace_id, board_id, user_id) DO NOTHING
+                        """,
+                        (record.workspace_id, record.id, record.owner_id),
+                    )
             connection.commit()
 
         return BoardSaveResponse(audit=audit, board=summarize_board_record(record), ok=True)
@@ -148,6 +175,8 @@ class PostgresBoardStore:
         return record.model_copy(update={"last_opened_at": opened_at})
 
     def list_boards(self, context: ApiRequestContext) -> list[BoardSummary]:
+        if not can_read_workspace(context):
+            return []
         with connect_to_postgres() as connection:
             with connection.cursor() as cursor:
                 ensure_board_schema(cursor)
@@ -161,8 +190,8 @@ class PostgresBoardStore:
                     (context.workspace_id,),
                 )
                 rows = cursor.fetchall()
-
-        return [summarize_board_record(board_record_from_row(row)) for row in rows]
+        records = [board_record_from_row(row) for row in rows]
+        return [summarize_board_record(record) for record in records if can_read_board(record, context)]
 
     def rename_board(self, board_id: str, title: str, context: ApiRequestContext) -> BoardSummary:
         return self.update_board_metadata(board_id, title, None, None, None, None, None, None, None, context)
@@ -174,6 +203,7 @@ class PostgresBoardStore:
         context: ApiRequestContext,
     ) -> BoardSummary:
         record = self._load_board_without_touch(board_id, context)
+        assert_can_manage_board(record, context)
         next_title = title.strip() if title is not None else record.title
         if not next_title:
             raise HTTPException(status_code=400, detail="Board title is required.")
@@ -221,6 +251,7 @@ class PostgresBoardStore:
 
     def delete_board(self, board_id: str, context: ApiRequestContext) -> str:
         record = self._load_board_without_touch(board_id, context)
+        assert_can_manage_board(record, context)
         with connect_to_postgres() as connection:
             with connection.cursor() as cursor:
                 ensure_board_schema(cursor)
@@ -254,10 +285,16 @@ class PostgresBoardStore:
 
         if not row:
             raise HTTPException(status_code=404, detail="Board not found in workspace.")
-        return board_record_from_row(row)
+        record = board_record_from_row(row)
+        assert_can_read_board(record, context)
+        return record
 
     def _read_existing_board(self, board_id: str, context: ApiRequestContext) -> Optional[BoardRecord]:
         try:
             return self._load_board_without_touch(board_id, context)
+        except HTTPException as exc:
+            if exc.status_code == 404:
+                return None
+            raise
         except Exception:
             return None

@@ -1,5 +1,3 @@
-import os
-
 from fastapi import APIRouter, Depends
 
 from tangent_api.request_context import ApiRequestContext, get_request_context
@@ -13,20 +11,20 @@ def get_session(
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AuthSessionResponse:
     workspace = AuthWorkspace(
-        boardCount=0,
+        boardCount=context.workspace_board_count,
         id=context.workspace_id,
-        name="Personal workspace",
-        role="owner",
+        name=context.workspace_name,
+        role=context.workspace_role,
     )
     session = AuthSession(
         activeWorkspace=workspace,
-        authMode="required" if os.getenv("TANGENT_REQUIRE_API_AUTH") == "1" else "dev",
+        authMode=context.auth_mode,
         isDevFallback=context.is_dev_fallback,
         user=AuthUser(
-            avatarInitials="DU",
-            displayName="Dev User",
-            email="dev@tangent.local",
-            emailVerified=False,
+            avatarInitials=context.user_avatar_initials,
+            displayName=context.user_display_name,
+            email=context.user_email,
+            emailVerified=context.user_email_verified,
             id=context.user_id,
         ),
         workspaces=[workspace],

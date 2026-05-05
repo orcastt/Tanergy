@@ -44,6 +44,7 @@ moderation_actions
 ## Current State
 
 - Boundary is documented.
+- Minimal backend access probe exists: `GET /api/v1/admin/me` loads active `admin_roles` for the authenticated local user id.
 - No production admin panel yet.
 - No real billing, analytics events, moderation queue or impersonation.
 
@@ -57,3 +58,41 @@ Auth session
 ```
 
 Do not expose `/admin` in production until real Auth and server-side `admin_roles` are active.
+
+Current bootstrap-first implementation direction:
+
+- Keep `/api/v1/admin/me` read-only and narrow.
+- Use it to decide whether a future `/admin` page should render or redirect.
+- Delay admin role grant/revoke APIs until an audit-log helper and existing owner/admin guard are in place.
+
+## Admin Bootstrap Contract
+
+The first global admin must be granted server-side after real Auth maps a verified provider identity into `tangent_users`.
+
+```text
+Clerk verified user
+  -> S1C auth/session mapping
+  -> tangent_users row
+  -> one-time server/DB bootstrap grants tangent_admin_roles.owner
+  -> bootstrap writes tangent_admin_audit_logs
+```
+
+Rules:
+
+- Workspace `owner/admin` is not global Admin.
+- Frontend flags, environment variables and browser-provided role fields are never Admin authority.
+- `tangent_admin_roles` is the only global Admin authority.
+- Every Admin write route must insert `tangent_admin_audit_logs` in the same server-controlled operation.
+- The first bootstrap may be manual SQL or a one-time CLI, but it must target an existing verified local user id and create an audit record.
+- Later role grants/revokes must happen through server routes that check an existing active `owner/admin` role.
+
+Role meaning:
+
+```text
+owner      Full global administration; bootstrap and dangerous settings.
+admin      General user/content/system admin after owner exists.
+support    User and workspace support views with narrow write actions.
+analyst    Read-only analytics, AI run and cost views.
+finance    Billing, subscription and credit-ledger operations.
+moderator  Moderation queues, content actions and abuse workflows.
+```

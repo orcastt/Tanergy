@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from tangent_api.main import app
+from tangent_api.request_context import ApiRequestContext
 
 
 def test_auth_session_dev_fallback(monkeypatch):
@@ -28,23 +29,67 @@ def test_auth_session_explicit_context(monkeypatch):
 
     assert response.status_code == 200
     session = response.json()["session"]
+    assert session["authMode"] == "dev"
     assert session["isDevFallback"] is False
     assert session["user"]["id"] == "user_custom"
     assert session["activeWorkspace"]["id"] == "workspace_custom"
 
 
-def test_auth_required_mode_requires_context(monkeypatch):
+def test_auth_required_mode_requires_bearer_token(monkeypatch):
     monkeypatch.setenv("TANGENT_REQUIRE_API_AUTH", "1")
     client = TestClient(app)
 
     missing = client.get("/api/v1/auth/session")
     assert missing.status_code == 401
 
-    explicit = client.get(
+    explicit_headers = client.get(
         "/api/v1/auth/session",
         headers={"x-tangent-user-id": "dev-user", "x-tangent-workspace-id": "dev-workspace"},
     )
-    assert explicit.status_code == 200
-    session = explicit.json()["session"]
+    assert explicit_headers.status_code == 401
+
+
+def test_auth_required_mode_accepts_verified_bearer(monkeypatch):
+    monkeypatch.setenv("TANGENT_REQUIRE_API_AUTH", "1")
+
+    async def fake_resolve_authenticated_request_context(token: str) -> ApiRequestContext:
+        assert token == "valid-token"
+        return ApiRequestContext(
+            auth_mode="required",
+            is_dev_fallback=False,
+            user_avatar_initials="CU",
+            user_display_name="Clerk User",
+            user_email="user@example.com",
+            user_email_verified=True,
+            user_id="user_clerk_123",
+            workspace_board_count=4,
+            workspace_id="workspace_clerk_123",
+            workspace_name="Tanergy Workspace",
+            workspace_role="owner",
+        )
+
+    monkeypatch.setattr(
+        "tangent_api.request_context.resolve_authenticated_request_context",
+        fake_resolve_authenticated_request_context,
+    )
+    client = TestClient(app)
+
+    response = client.get("/api/v1/auth/session", headers={"Authorization": "Bearer valid-token"})
+
+    assert response.status_code == 200
+    session = response.json()["session"]
     assert session["authMode"] == "required"
     assert session["isDevFallback"] is False
+    assert session["user"]["displayName"] == "Clerk User"
+    assert session["user"]["email"] == "user@example.com"
+    assert session["activeWorkspace"]["id"] == "workspace_clerk_123"
+    assert session["activeWorkspace"]["boardCount"] == 4
+
+
+def test_auth_malformed_bearer_header_returns_401(monkeypatch):
+    monkeypatch.setenv("TANGENT_REQUIRE_API_AUTH", "1")
+    client = TestClient(app)
+
+    response = client.get("/api/v1/auth/session", headers={"Authorization": "Token nope"})
+
+    assert response.status_code == 401

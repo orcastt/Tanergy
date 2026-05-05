@@ -1,6 +1,12 @@
+import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from tangent_api.main import app
+from tangent_api.request_context import ApiRequestContext
+from tangent_api.schemas import BoardSaveRequest, BoardSnapshotCreateRequest
+from tangent_api.storage.postgres_board_snapshot_store import PostgresBoardSnapshotStore
+from tangent_api.storage.postgres_board_store import PostgresBoardStore
 from tests.persistence_fakes import FakePostgresDatabase
 
 
@@ -507,3 +513,147 @@ def test_board_guard_rejects_invalid_konva_v2_pages_contract(tmp_path, monkeypat
     assert response.status_code == 422
     issues = response.json()["audit"]["issues"]
     assert any(issue["code"] == "konva-v2-invalid" and issue["path"] == "document.activePageId" for issue in issues)
+
+
+def test_postgres_board_owner_is_preserved_on_collaborator_save(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
+    store = PostgresBoardStore()
+
+    owner = make_context("user_owner", role="owner")
+    collaborator = make_context("user_editor", role="member")
+
+    store.save_board(
+        BoardSaveRequest(
+            boardId="shared_board",
+            document={"assets": [], "shapes": [{"id": "shape_1"}]},
+            title="Owner version",
+        ),
+        owner,
+    )
+    store.save_board(
+        BoardSaveRequest(
+            boardId="shared_board",
+            document={"assets": [], "shapes": [{"id": "shape_2"}]},
+            title="Collaborator update",
+        ),
+        collaborator,
+    )
+
+    assert fake_db.boards[("dev-workspace", "shared_board")][2] == "user_owner"
+
+
+def test_postgres_board_guest_permissions_first_pass(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
+    store = PostgresBoardStore()
+
+    owner = make_context("user_owner", role="owner")
+    guest = make_context("user_guest", role="guest")
+
+    store.save_board(
+        BoardSaveRequest(
+            boardId="private_board",
+            document={"assets": [], "shapes": [{"id": "shape_private"}]},
+            title="Private board",
+        ),
+        owner,
+    )
+
+    with pytest.raises(HTTPException) as create_error:
+        store.save_board(
+            BoardSaveRequest(
+                boardId="guest_new_board",
+                document={"assets": [], "shapes": [{"id": "shape_guest"}]},
+                title="Guest board",
+            ),
+            guest,
+        )
+    assert create_error.value.status_code == 403
+
+    assert store.list_boards(guest) == []
+
+    store.update_board_metadata("private_board", None, None, None, None, None, None, "public", None, owner)
+    public_boards = store.list_boards(guest)
+    assert [board.id for board in public_boards] == ["private_board"]
+
+    with pytest.raises(HTTPException) as save_error:
+        store.save_board(
+            BoardSaveRequest(
+                boardId="private_board",
+                document={"assets": [], "shapes": [{"id": "shape_guest_update"}]},
+                title="Guest update",
+            ),
+            guest,
+        )
+    assert save_error.value.status_code == 403
+
+    with pytest.raises(HTTPException) as manage_error:
+        store.delete_board("private_board", guest)
+    assert manage_error.value.status_code == 403
+
+
+def test_postgres_snapshots_require_board_write_or_manage_access(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.storage.postgres_board_snapshot_store.connect_to_postgres", fake_db.connect)
+    snapshot_store = PostgresBoardSnapshotStore()
+    board_store = PostgresBoardStore()
+
+    owner = make_context("user_owner", role="owner")
+    guest = make_context("user_guest", role="guest")
+
+    board_store.save_board(
+        BoardSaveRequest(
+            boardId="snapshot_board",
+            document={"assets": [], "shapes": [{"id": "shape_public"}]},
+            title="Snapshot board",
+        ),
+        owner,
+    )
+    board_store.update_board_metadata("snapshot_board", None, None, None, None, None, None, "public", None, owner)
+
+    snapshot = snapshot_store.create_snapshot(
+        "snapshot_board",
+        BoardSnapshotCreateRequest(
+            document={"assets": [], "shapes": [{"id": "shape_1"}]},
+            reason="manual_save",
+            title="Owner save",
+        ),
+        owner,
+    )
+    assert snapshot.board_id == "snapshot_board"
+
+    with pytest.raises(HTTPException) as guest_create_error:
+        snapshot_store.create_snapshot(
+            "snapshot_board",
+            BoardSnapshotCreateRequest(
+                document={"assets": [], "shapes": [{"id": "shape_2"}]},
+                reason="manual_save",
+                title="Guest save",
+            ),
+            guest,
+        )
+    assert guest_create_error.value.status_code == 403
+
+    assert len(snapshot_store.list_snapshots("snapshot_board", guest)) == 1
+
+    with pytest.raises(HTTPException) as guest_clear_error:
+        snapshot_store.clear_snapshots("snapshot_board", guest)
+    assert guest_clear_error.value.status_code == 403
+
+
+def make_context(user_id: str, role: str = "owner", workspace_id: str = "dev-workspace") -> ApiRequestContext:
+    return ApiRequestContext(
+        auth_mode="required",
+        is_dev_fallback=False,
+        user_avatar_initials="TU",
+        user_display_name="Test User",
+        user_email=f"{user_id}@example.com",
+        user_email_verified=True,
+        user_id=user_id,
+        workspace_board_count=0,
+        workspace_id=workspace_id,
+        workspace_name="Dev Workspace",
+        workspace_role=role,
+    )

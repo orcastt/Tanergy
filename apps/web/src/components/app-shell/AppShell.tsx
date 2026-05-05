@@ -1,12 +1,12 @@
 'use client'
 
 import Link from 'next/link'
+import { SignOutButton, UserButton } from '@clerk/nextjs'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState, type ReactNode } from 'react'
-import { getCurrentSessionSnapshot } from '@/features/auth/mockSession'
+import { useTangentSession } from '@/features/auth/useTangentSession'
 
 const topNavItems = [
-  { href: '/home', label: 'Landing page' },
   { href: '/workspaces', label: 'Workspace', match: ['/workspaces', '/boards'] },
   { href: '/collections', label: 'Collection' },
   { href: '/team', label: 'Team' },
@@ -31,7 +31,7 @@ type AppShellProps = {
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const session = getCurrentSessionSnapshot()
+  const { error: sessionError, session, status: sessionStatus } = useTangentSession()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   const createBoard = () => {
@@ -42,9 +42,9 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <div className="product-shell">
       <header className="product-top-nav">
-        <Link className="product-wordmark" href="/home" onClick={() => setIsMenuOpen(false)}>
+        <Link className="product-wordmark" href="/" onClick={() => setIsMenuOpen(false)}>
           <span className="product-wordmark-mark">T</span>
-          <span>TANGENT</span>
+          <span>Tanergy</span>
         </Link>
 
         <nav aria-label="Primary" className="product-nav-links">
@@ -63,6 +63,7 @@ export function AppShell({ children }: AppShellProps) {
           <Link aria-label="Search" className="product-search-link" href="/workspaces">
             <span aria-hidden="true" />
           </Link>
+          <UserButton />
           <button className="product-button product-button-primary" onClick={createBoard} type="button">
             New Board
           </button>
@@ -96,7 +97,7 @@ export function AppShell({ children }: AppShellProps) {
           <Link className="product-text-link" href="/account" onClick={() => setIsMenuOpen(false)}>
             Account
           </Link>
-          <Link className="product-text-link" href="/login" onClick={() => setIsMenuOpen(false)}>
+          <Link className="product-text-link" href="/sign-in" onClick={() => setIsMenuOpen(false)}>
             Log in
           </Link>
         </nav>
@@ -107,7 +108,7 @@ export function AppShell({ children }: AppShellProps) {
           <section className="product-sidebar-workspace">
             <div className="product-sidebar-avatar" aria-hidden="true" />
             <div>
-              <strong>TANGENT PRO</strong>
+              <strong>Tanergy</strong>
               <span>{session.activeWorkspace.name}</span>
             </div>
           </section>
@@ -140,13 +141,22 @@ export function AppShell({ children }: AppShellProps) {
               <span aria-hidden="true">{session.user.avatarInitials}</span>
               Account
             </Link>
-            <Link className="product-sidebar-link is-muted" href="/login">
-              <span aria-hidden="true">-&gt;</span>
-              Logout
-            </Link>
+            <SignOutButton redirectUrl="/">
+              <button className="product-sidebar-link is-muted" type="button">
+                <span aria-hidden="true">-&gt;</span>
+                Logout
+              </button>
+            </SignOutButton>
           </nav>
         </aside>
-        <main className="product-main">{children}</main>
+        <main className="product-main">
+          {sessionStatus === 'error' ? (
+            <div className="product-session-warning" role="status">
+              {sessionError ?? 'Session lookup failed. Using local fallback display.'}
+            </div>
+          ) : null}
+          {children}
+        </main>
       </div>
     </div>
   )

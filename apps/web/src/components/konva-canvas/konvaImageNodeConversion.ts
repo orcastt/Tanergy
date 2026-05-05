@@ -1,5 +1,11 @@
 import { withCanvasShapes, type CanvasDocument, type CanvasImageShape, type CanvasNodeShape, type CanvasPoint } from '@/features/canvas-engine'
-import { hasRemotePersistenceApi, persistenceApiUrl, persistenceAssetUrl, persistenceAuthHeaders } from '@/features/api/persistenceApi'
+import {
+  hasRemotePersistenceApi,
+  persistenceApiUrl,
+  persistenceAssetUrl,
+  persistenceAuthHeaders,
+  persistenceAuthHeadersAsync,
+} from '@/features/api/persistenceApi'
 import type { TangentAssetRecord, TangentAssetResponse } from '@/features/assets/assetTypes'
 import { createDefaultNodeData, createDefaultRuntimeSummary, getNodeDefinition } from '@/features/node-runtime/registry'
 import { getRuntimeGraphImageCrop } from '@/features/node-runtime/runtimeGraphAssets'
@@ -176,9 +182,10 @@ async function readImageNodeAsset(node: CanvasNodeShape): Promise<TangentAssetRe
   const assetId = getStringValue(node.props.data.assetId)
   if (!assetId || assetId.startsWith('remote-')) return null
   try {
+    const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync() : persistenceAuthHeaders()
     const response = await fetch(
       hasRemotePersistenceApi() ? persistenceApiUrl(`/api/v1/assets/${assetId}`) : `/api/assets/${assetId}`,
-      { headers: persistenceAuthHeaders() }
+      { headers }
     )
     const payload = await response.json() as TangentAssetResponse
     if (!response.ok || !payload.asset) return null

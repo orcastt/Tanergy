@@ -7,6 +7,7 @@ from uuid import uuid4
 
 from fastapi import HTTPException
 
+from tangent_api.board_access import assert_can_manage_board, assert_can_write_board
 from tangent_api.board_guard import audit_board_document
 from tangent_api.board_metadata import get_board_snapshot_display_title, normalize_board_thumbnail_url
 from tangent_api.request_context import ApiRequestContext
@@ -17,15 +18,21 @@ from tangent_api.schemas import (
     get_board_document_metrics,
 )
 from tangent_api.storage.postgres_connection import connect_to_postgres, should_auto_create_tables
+from tangent_api.storage.postgres_board_store import PostgresBoardStore
 
 
 class PostgresBoardSnapshotStore:
+    def __init__(self) -> None:
+        self.boards = PostgresBoardStore()
+
     def create_snapshot(
         self,
         board_id: str,
         input_data: BoardSnapshotCreateRequest,
         context: ApiRequestContext,
     ) -> BoardSnapshotSummary:
+        board = self.boards._load_board_without_touch(board_id, context)
+        assert_can_write_board(board, context)
         audit = audit_board_document(input_data.document)
         if not audit.ok:
             issue = next((item for item in audit.issues if item.blocking), None)
@@ -98,6 +105,9 @@ class PostgresBoardSnapshotStore:
         return _summarize_snapshot(snapshot)
 
     def list_snapshots(self, board_id: str, context: ApiRequestContext) -> list[BoardSnapshotSummary]:
+        board = self.boards._read_existing_board(board_id, context)
+        if not board:
+            return []
         with connect_to_postgres() as connection:
             with connection.cursor() as cursor:
                 self._ensure_schema(cursor)
@@ -134,6 +144,7 @@ class PostgresBoardSnapshotStore:
         snapshot_id: str,
         context: ApiRequestContext,
     ) -> BoardSnapshotRecord:
+        self.boards._load_board_without_touch(board_id, context)
         with connect_to_postgres() as connection:
             with connection.cursor() as cursor:
                 self._ensure_schema(cursor)
@@ -166,6 +177,8 @@ class PostgresBoardSnapshotStore:
         return _snapshot_from_row(row)
 
     def clear_snapshots(self, board_id: str, context: ApiRequestContext) -> int:
+        board = self.boards._load_board_without_touch(board_id, context)
+        assert_can_manage_board(board, context)
         with connect_to_postgres() as connection:
             with connection.cursor() as cursor:
                 self._ensure_schema(cursor)

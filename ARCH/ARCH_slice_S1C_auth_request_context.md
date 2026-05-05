@@ -1,8 +1,8 @@
 # ARCH Slice S1C: Auth And Request Context
 
-**Updated**: 2026-05-02
+**Updated**: 2026-05-05
 **Mode**: Architecture slice.
-**Status**: After S1A.
+**Status**: Clerk frontend/session bridge plus FastAPI bearer verification first pass are in place; multi-workspace, OTP and admin/auth hardening remain.
 
 ## Goal
 
@@ -31,7 +31,9 @@ Next.js Web
   -> Google OAuth consent
   -> provider-issued JWT
   -> FastAPI Authorization: Bearer <token>
-  -> backend verifies token and maps provider subject to tangent_users
+  -> auth_provider.py verifies issuer/audience/signature/expiry/azp
+  -> auth_sessions.py maps provider subject to tangent_users / tangent_user_identities
+  -> request_context attaches local user/workspace authority to the request
 ```
 
 The product must stay provider-portable:
@@ -73,11 +75,19 @@ Provider-backed API variant:
 GET /api/v1/auth/session
   Authorization: Bearer <provider_jwt>
   -> verify issuer/audience/signature/expiry
+  -> verify authorized party against allowed origins
   -> upsert or load tangent_users
-  -> upsert oauth identity by provider + provider_subject
+  -> upsert user identity by provider + provider_subject
   -> ensure default workspace + owner membership
   -> return local session/user/workspace payload
 ```
+
+Current implementation note:
+
+- Clerk is the active provider path for P0.
+- Clerk subject mapping currently uses `tangent_user_identities` with `provider='clerk'`.
+- `tangent_oauth_accounts` remains available for future direct Google/GitHub/Apple linking or provider portability work.
+- If `DATABASE_URL` is absent in local development, FastAPI can still derive deterministic ephemeral ids so auth-required smoke tests do not depend on Postgres bootstrapping.
 
 ## Security Rules
 
@@ -104,6 +114,12 @@ Request
 
 Frontend-provided workspace ids are allowed as a selection hint only. The server must reject the request if the session user is not a member of that workspace.
 
+Current first-pass behavior:
+
+- When `TANGENT_REQUIRE_API_AUTH=1`, `x-tangent-user-id` and `x-tangent-workspace-id` are no longer authority.
+- Bearer token or `__session` cookie becomes the only accepted identity source.
+- When `TANGENT_REQUIRE_API_AUTH=0`, dev headers/local fallback still work for fast canvas iteration.
+
 ## Middleware
 
 - Auth required middleware for Board/Asset/AI private APIs.
@@ -126,6 +142,19 @@ apps/web
   attach provider JWT to FastAPI requests
 ```
 
+Current first-pass web routes:
+
+```text
+/                  public Tanergy homepage
+/sign-in           Clerk SignIn
+/sign-up           Clerk SignUp
+/login             compatibility redirect to /sign-in
+/signup,/register  compatibility redirects to /sign-up
+/workspaces        protected by Clerk proxy when TANGENT_REQUIRE_WEB_AUTH=1
+/api/auth/session  Clerk-backed Tanergy session bridge, dev fallback only when auth is not required
+remote Board/Asset/AI/Image-Op clients  attach Clerk JWT in browser fetches
+```
+
 Expected frontend env:
 
 ```text
@@ -141,6 +170,7 @@ AUTH_PROVIDER=clerk
 CLERK_JWKS_URL
 CLERK_JWT_ISSUER
 CLERK_JWT_AUDIENCE
+CLERK_AUTHORIZED_PARTIES
 ```
 
 Do not put `CLERK_SECRET_KEY` or Google client secrets in public frontend variables.

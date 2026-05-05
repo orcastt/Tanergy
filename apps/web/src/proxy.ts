@@ -1,23 +1,34 @@
-import { NextResponse, type NextRequest } from 'next/server'
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server'
 import { isProtectedProductPath, shouldRequireWebAuth } from '@/features/auth/routeGuard'
 
-const sessionCookieName = 'tangent_session'
+const isProtectedRoute = createRouteMatcher([
+  '/account(.*)',
+  '/boards(.*)',
+  '/settings(.*)',
+  '/workspaces(.*)',
+])
 
-export function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl
-  if (!shouldRequireWebAuth() || !isProtectedProductPath(pathname)) {
+const clerkProxy = clerkMiddleware(async (auth, request) => {
+  if (shouldRequireWebAuth() && isProtectedRoute(request)) {
+    await auth.protect({
+      unauthenticatedUrl: new URL('/sign-in', request.url).toString(),
+    })
+  }
+})
+
+export function proxy(request: NextRequest, event: NextFetchEvent) {
+  if (!shouldRunClerkProxy(request.nextUrl.pathname)) {
     return NextResponse.next()
   }
-  if (request.cookies.has(sessionCookieName)) {
-    return NextResponse.next()
-  }
 
-  const loginUrl = request.nextUrl.clone()
-  loginUrl.pathname = '/login'
-  loginUrl.searchParams.set('next', `${pathname}${request.nextUrl.search}`)
-  return NextResponse.redirect(loginUrl)
+  return clerkProxy(request, event)
 }
 
 export const config = {
-  matcher: ['/account/:path*', '/boards/:path*', '/settings/:path*', '/workspaces/:path*'],
+  matcher: ['/account/:path*', '/api/auth/session', '/boards/:path*', '/settings/:path*', '/workspaces/:path*'],
+}
+
+function shouldRunClerkProxy(pathname: string) {
+  return pathname === '/api/auth/session' || isProtectedProductPath(pathname)
 }
