@@ -386,6 +386,10 @@ export function KonvaCanvasSpike({
                 setNodeTextField(editingNodeTextShape.id, editingNodeText.fieldName, value)
                 setEditingNodeText(null)
               }}
+              onSubmit={editingNodeText.fieldName === 'chatDraft' ? (value) => {
+                sendChatMessage(editingNodeTextShape.id, value)
+                setEditingNodeText(null)
+              } : undefined}
               shape={editingNodeTextShape}
             />
           </>

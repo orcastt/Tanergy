@@ -105,11 +105,11 @@ export function useKonvaNodeCreationMenu({
       .catch((error) => onDocumentChange((current) => failRuntimeGraphNodeRun(current, runInput, error)))
   }, [document, history, onDocumentChange])
 
-  const sendChatMessage = useCallback((shapeId: string) => {
+  const sendChatMessage = useCallback((shapeId: string, draftOverride?: string) => {
     const node = document.shapes.find((shape): shape is CanvasNodeShape => shape.id === shapeId && shape.type === 'node_card' && shape.props.nodeType === 'chat')
     if (!node) return
     history.checkpoint(document)
-    onDocumentChange((current) => sendKonvaChatMessage(current, shapeId))
+    onDocumentChange((current) => sendKonvaChatMessage(current, shapeId, draftOverride))
   }, [document, history, onDocumentChange])
 
   const toggleChatMessageExport = useCallback((shapeId: string, messageId: string) => {

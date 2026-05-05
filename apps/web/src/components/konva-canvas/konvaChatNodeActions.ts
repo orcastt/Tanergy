@@ -23,14 +23,19 @@ type ChatReferenceFile = {
   size: number
 }
 
-export function sendKonvaChatMessage(document: CanvasDocument, shapeId: string): CanvasDocument {
+export const konvaChatDraftPlaceholder = 'Ask about the connected prompts and images...'
+
+const maxChatMessages = 12
+const maxChatMessageTextLength = 1200
+
+export function sendKonvaChatMessage(document: CanvasDocument, shapeId: string, draftOverride?: string): CanvasDocument {
   const node = getChatNode(document, shapeId)
   if (!node) return document
-  const draft = getString(node.props.data.chatDraft).trim()
+  const draft = (draftOverride ?? getKonvaChatDraft(node.props.data)).trim()
   const inputResolution = resolveRuntimeGraphNodeInputs(document, node)
   const userText = draft || inputResolution.primaryText || 'Continue with the connected context.'
   const userMessage = createChatMessage('user', userText)
-  const assistantMessage = createChatMessage('assistant', createAssistantReply(userText, inputResolution))
+  const assistantMessage = createChatMessage('assistant', createAssistantReply(userText, inputResolution, node.props.data))
   return withCanvasShapes(document, document.shapes.map((shape) => (
     shape.id === shapeId && isChatNodeShape(shape)
       ? {
@@ -40,7 +45,7 @@ export function sendKonvaChatMessage(document: CanvasDocument, shapeId: string):
             data: {
               ...shape.props.data,
               chatDraft: '',
-              chatMessages: [...getChatMessages(shape.props.data), userMessage, assistantMessage],
+              chatMessages: [...getChatMessages(shape.props.data), userMessage, assistantMessage].slice(-maxChatMessages),
             },
             runtimeSummary: {
               ...shape.props.runtimeSummary,
@@ -135,6 +140,11 @@ export function getKonvaChatReferenceFiles(data: JsonObject) {
   return getReferenceFiles(data)
 }
 
+export function getKonvaChatDraft(data: JsonObject) {
+  const draft = getString(data.chatDraft)
+  return draft === konvaChatDraftPlaceholder ? '' : draft
+}
+
 function getChatNode(document: CanvasDocument, shapeId: string): CanvasNodeShape | null {
   return document.shapes.find((shape): shape is CanvasNodeShape => shape.id === shapeId && isChatNodeShape(shape)) ?? null
 }
@@ -143,8 +153,12 @@ function isChatNodeShape(shape: CanvasDocument['shapes'][number]): shape is Canv
   return shape.type === 'node_card' && shape.props.nodeType === 'chat'
 }
 
-function createAssistantReply(userText: string, inputResolution: ReturnType<typeof resolveRuntimeGraphNodeInputs>) {
-  const context = `${inputResolution.textValues.length} text input${inputResolution.textValues.length === 1 ? '' : 's'}, ${inputResolution.imageValues.length} image reference${inputResolution.imageValues.length === 1 ? '' : 's'}`
+function createAssistantReply(userText: string, inputResolution: ReturnType<typeof resolveRuntimeGraphNodeInputs>, data: JsonObject) {
+  const localImages = getReferenceImages(data).length
+  const localFiles = getReferenceFiles(data).length
+  const imageCount = inputResolution.imageValues.length + localImages
+  const fileText = localFiles > 0 ? `, ${localFiles} file reference${localFiles === 1 ? '' : 's'}` : ''
+  const context = `${inputResolution.textValues.length} text input${inputResolution.textValues.length === 1 ? '' : 's'}, ${imageCount} image reference${imageCount === 1 ? '' : 's'}${fileText}`
   return `${userText}\n\nContext received: ${context}.`
 }
 
@@ -152,7 +166,7 @@ function createChatMessage(role: ChatMessage['role'], text: string): ChatMessage
   return {
     id: `chat-${role}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
     role,
-    text: text.slice(0, 4000),
+    text: text.slice(0, maxChatMessageTextLength),
   }
 }
 
@@ -164,12 +178,13 @@ function getChatMessages(data: JsonObject): ChatMessage[] {
     const role = value.role === 'assistant' ? 'assistant' : value.role === 'user' ? 'user' : null
     if (!role || typeof value.text !== 'string') return []
     if (isDeprecatedSeedChatMessage(value, role)) return []
-    return [{
+    const message: ChatMessage = {
       id: typeof value.id === 'string' ? value.id : `chat-${role}`,
       role,
-      text: value.text.slice(0, 4000),
-    }]
-  })
+      text: value.text.slice(0, maxChatMessageTextLength),
+    }
+    return [message]
+  }).slice(-maxChatMessages)
 }
 
 function isDeprecatedSeedChatMessage(value: Record<string, unknown>, role: ChatMessage['role']) {

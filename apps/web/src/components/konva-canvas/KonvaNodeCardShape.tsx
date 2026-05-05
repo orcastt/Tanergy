@@ -28,7 +28,7 @@ type KonvaNodeCardShapeProps = {
   editingFieldName?: KonvaNodeTextFieldName | null
   onChatClean?: (shapeId: string) => void
   onChatExportToggle?: (shapeId: string, messageId: string) => void
-  onChatSend?: (shapeId: string) => void
+  onChatSend?: (shapeId: string, draftOverride?: string) => void
   onChatUpload?: (shapeId: string) => void
   onFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
   onImageNodeToCanvas?: (shapeId: string) => void
@@ -313,7 +313,7 @@ function NodeBody({
   editingFieldName?: KonvaNodeTextFieldName | null
   fields: NodeCardField[]
   onChatExportToggle?: (shapeId: string, messageId: string) => void
-  onChatSend?: (shapeId: string) => void
+  onChatSend?: (shapeId: string, draftOverride?: string) => void
   onChatUpload?: (shapeId: string) => void
   onFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
   onTextEditStart?: (shapeId: string, fieldName: KonvaNodeTextFieldName) => void

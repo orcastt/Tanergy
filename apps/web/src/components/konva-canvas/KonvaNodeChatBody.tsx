@@ -2,7 +2,7 @@ import { useMemo, useState, type ComponentProps } from 'react'
 import { Group, Line, Rect, Text } from 'react-konva'
 import type { CanvasDocument, CanvasNodeShape } from '@/features/canvas-engine'
 import { resolveRuntimeGraphNodeInputs, type RuntimeGraphImageValue } from '@/features/node-runtime/runtimeGraphResolution'
-import { getKonvaChatExportedMessageIds, getKonvaChatMessages, getKonvaChatReferenceFiles, getKonvaChatReferenceImages } from './konvaChatNodeActions'
+import { getKonvaChatDraft, getKonvaChatExportedMessageIds, getKonvaChatMessages, getKonvaChatReferenceFiles, getKonvaChatReferenceImages, konvaChatDraftPlaceholder } from './konvaChatNodeActions'
 import { stopNodeCardControlEvent } from './KonvaNodeCardParts'
 import { getGeneratedOutputSource, NodeImagePreview } from './KonvaNodeImagePreview'
 import type { KonvaNodeTextFieldName } from './KonvaNodeTextEditor'
@@ -12,7 +12,7 @@ type KonvaNodeChatBodyProps = {
   editingFieldName?: KonvaNodeTextFieldName | null
   shape: CanvasNodeShape
   onChatExportToggle?: (shapeId: string, messageId: string) => void
-  onChatSend?: (shapeId: string) => void
+  onChatSend?: (shapeId: string, draftOverride?: string) => void
   onChatUpload?: (shapeId: string) => void
   onTextEditStart?: (shapeId: string, fieldName: KonvaNodeTextFieldName) => void
   zoom: number
@@ -23,15 +23,23 @@ export function KonvaNodeChatBody({ document, editingFieldName = null, onChatExp
   const exported = new Set(getKonvaChatExportedMessageIds(shape.props.data))
   const references = getKonvaChatReferenceImages(shape.props.data)
   const files = getKonvaChatReferenceFiles(shape.props.data)
-  const inputResolution = useMemo(() => resolveRuntimeGraphNodeInputs(document, shape), [document, shape])
+  const inputResolution = resolveRuntimeGraphNodeInputs(document, shape)
+  const localImageValues = references.map((reference, index): RuntimeGraphImageValue => ({
+    assetId: reference.assetId,
+    originalUrl: reference.originalUrl,
+    sourceNodeId: shape.props.nodeId,
+    thumbnail256Url: reference.thumbnail256Url,
+    title: reference.title ?? `Reference image ${index + 1}`,
+  }))
+  const allImageValues = [...inputResolution.imageValues, ...localImageValues]
   const connectedPromptCount = inputResolution.textValues.length
-  const connectedImageCount = inputResolution.imageValues.length
-  const draft = typeof shape.props.data.chatDraft === 'string' ? shape.props.data.chatDraft : ''
+  const connectedImageCount = allImageValues.length
+  const draft = getKonvaChatDraft(shape.props.data)
   const bodyTop = 82
   const inputBoxHeight = 78
   const inputBottom = 16
   const inputY = shape.props.height - inputBoxHeight - inputBottom
-  const contextStripHeight = connectedPromptCount > 0 || connectedImageCount > 0 ? 58 : 0
+  const contextStripHeight = connectedPromptCount > 0 || connectedImageCount > 0 || files.length > 0 ? 58 : 0
   const contextStripGap = contextStripHeight > 0 ? 8 : 0
   const contextY = inputY - contextStripHeight - contextStripGap
   const bodyHeight = Math.max(56, (contextStripHeight > 0 ? contextY : inputY) - bodyTop - 12)
@@ -57,7 +65,7 @@ export function KonvaNodeChatBody({ document, editingFieldName = null, onChatExp
 
   return (
     <>
-      <ReferenceStrip fileCount={files.length} imageCount={references.length + connectedImageCount} promptCount={connectedPromptCount} width={viewportWidth} x={14} y={50} />
+      <ReferenceStrip fileCount={files.length} imageCount={connectedImageCount} promptCount={connectedPromptCount} width={viewportWidth} x={14} y={50} />
       <Group clipHeight={bodyHeight} clipWidth={viewportWidth} onWheel={handleWheel} x={14} y={bodyTop}>
         <Group y={-visibleScrollY}>
           {visibleMessages.map(({ height, isAssistant, message, width, x, y }) => {
@@ -108,7 +116,8 @@ export function KonvaNodeChatBody({ document, editingFieldName = null, onChatExp
       ) : null}
       {contextStripHeight > 0 ? (
         <ConnectedContextStrip
-          images={inputResolution.imageValues}
+          files={files}
+          images={allImageValues}
           prompts={inputResolution.textValues}
           width={viewportWidth}
           x={14}
@@ -132,6 +141,7 @@ export function KonvaNodeChatBody({ document, editingFieldName = null, onChatExp
 }
 
 type ChatMessage = ReturnType<typeof getKonvaChatMessages>[number]
+type ChatReferenceFile = ReturnType<typeof getKonvaChatReferenceFiles>[number]
 
 type ChatMessageLayout = {
   height: number
@@ -241,6 +251,7 @@ function ChatScrollbar({
 }
 
 function ConnectedContextStrip({
+  files,
   images,
   prompts,
   width,
@@ -248,6 +259,7 @@ function ConnectedContextStrip({
   y,
   zoom,
 }: {
+  files: ChatReferenceFile[]
   images: RuntimeGraphImageValue[]
   prompts: string[]
   width: number
@@ -255,12 +267,18 @@ function ConnectedContextStrip({
   y: number
   zoom: number
 }) {
-  const maxItems = 4
-  const items: Array<{ index: number; kind: 'image'; value: RuntimeGraphImageValue } | { index: number; kind: 'prompt'; value: string }> = [
+  const maxItems = Math.max(1, Math.min(4, Math.floor((width - 52) / 90)))
+  const allItems: Array<
+    | { index: number; kind: 'file'; value: ChatReferenceFile }
+    | { index: number; kind: 'image'; value: RuntimeGraphImageValue }
+    | { index: number; kind: 'prompt'; value: string }
+  > = [
     ...prompts.map((value, index) => ({ index, kind: 'prompt' as const, value })),
     ...images.map((value, index) => ({ index, kind: 'image' as const, value })),
-  ].slice(0, maxItems)
-  const overflow = prompts.length + images.length - items.length
+    ...files.map((value, index) => ({ index, kind: 'file' as const, value })),
+  ]
+  const items = allItems.slice(0, maxItems)
+  const overflow = allItems.length - items.length
   let cursorX = x + 10
   return (
     <Group>
@@ -269,13 +287,25 @@ function ConnectedContextStrip({
       {items.map((item) => {
         const chip = item.kind === 'image'
           ? <ConnectedImageChip image={item.value} index={item.index} key={`image-${item.index}`} width={76} x={cursorX} y={y + 20} zoom={zoom} />
-          : <ConnectedPromptChip index={item.index} key={`prompt-${item.index}`} text={item.value} width={92} x={cursorX} y={y + 20} />
-        cursorX += item.kind === 'image' ? 82 : 98
+          : item.kind === 'file'
+            ? <ConnectedFileChip file={item.value} index={item.index} key={`file-${item.index}`} width={82} x={cursorX} y={y + 20} />
+            : <ConnectedPromptChip index={item.index} key={`prompt-${item.index}`} text={item.value} width={92} x={cursorX} y={y + 20} />
+        cursorX += item.kind === 'prompt' ? 98 : item.kind === 'file' ? 88 : 82
         return chip
       })}
       {overflow > 0 ? (
         <Text align="center" fill="#64748b" fontFamily="Inter, system-ui, sans-serif" fontSize={10} fontStyle="bold" height={24} text={`+${overflow}`} verticalAlign="middle" width={30} x={Math.min(cursorX, x + width - 40)} y={y + 20} />
       ) : null}
+    </Group>
+  )
+}
+
+function ConnectedFileChip({ file, index, width, x, y }: { file: ChatReferenceFile; index: number; width: number; x: number; y: number }) {
+  return (
+    <Group>
+      <Rect cornerRadius={8} fill="#ffffff" height={24} stroke="#ddd6fe" strokeWidth={1} width={width} x={x} y={y} />
+      <Text fill="#6d28d9" fontFamily="Inter, system-ui, sans-serif" fontSize={9} fontStyle="bold" text={`file ${index + 1}`} width={40} x={x + 7} y={y + 4} />
+      <Text ellipsis fill="#64748b" fontFamily="Inter, system-ui, sans-serif" fontSize={8} height={9} text={file.name} width={width - 14} wrap="none" x={x + 7} y={y + 14} />
     </Group>
   )
 }
@@ -346,7 +376,7 @@ function ChatInputBox({
     >
       <Rect cornerRadius={10} fill="#ffffff" height={height} stroke="#8b5cf6" strokeWidth={1.2} width={width} x={x} y={y} />
       {editing ? null : (
-        <Text align="left" ellipsis fill="#8b5cf6" fontFamily="Inter, system-ui, sans-serif" fontSize={12} height={34} text={draft || 'Ask about the connected prompts and images...'} verticalAlign="middle" width={width - 30} wrap="none" x={x + 16} y={y + 9} />
+        <Text align="left" ellipsis fill="#8b5cf6" fontFamily="Inter, system-ui, sans-serif" fontSize={12} height={34} text={draft || konvaChatDraftPlaceholder} verticalAlign="middle" width={width - 30} wrap="none" x={x + 16} y={y + 9} />
       )}
       <IconButton label="+" onClick={onUpload} x={x + 12} y={toolbarY} />
       <IconButton label="image" onClick={onUpload} width={50} x={x + 40} y={toolbarY} />

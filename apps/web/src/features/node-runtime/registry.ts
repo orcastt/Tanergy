@@ -61,7 +61,7 @@ export const nodeDefinitions: Record<NodeType, NodeDefinition> = {
     aiUseCases: ['chat with image references', 'merge multiple prompts', 'export selected AI replies downstream'],
     category: 'text',
     defaultData: {
-      chatDraft: 'Ask about the connected prompts and images...',
+      chatDraft: '',
       chatMessages: [],
       exportedMessageIds: [],
       imageInputCount: 1,
