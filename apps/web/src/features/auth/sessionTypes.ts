@@ -1,4 +1,6 @@
-export type WorkspaceRole = 'admin' | 'editor' | 'owner' | 'viewer'
+import type { WorkspaceKind } from '@/features/billing/billingTypes'
+
+export type WorkspaceRole = 'admin' | 'guest' | 'member' | 'owner'
 
 export type TangentUser = {
   avatarInitials: string
@@ -11,6 +13,7 @@ export type TangentUser = {
 export type TangentWorkspace = {
   boardCount: number
   id: string
+  kind: WorkspaceKind
   name: string
   role: WorkspaceRole
 }

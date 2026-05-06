@@ -1,4 +1,7 @@
 import type { JsonObject } from '@/types/nodeRuntime'
+import { createLocalAiChargeSummary } from '@/features/billing/billingContracts'
+import type { AiRunChargeSummary } from '@/features/billing/billingTypes'
+import { getCurrentSessionSnapshot } from '@/features/auth/mockSession'
 import type { AiCapability, AiModelOption, AiRunRecord, AiRunRequest } from './aiTypes'
 
 export const mockAiModels: AiModelOption[] = [
@@ -50,7 +53,11 @@ export function getImageModelSelectOptions() {
   }))
 }
 
-export function createMockAiRun(input: AiRunRequest, runId = createRunId()): AiRunRecord {
+export function createMockAiRun(
+  input: AiRunRequest,
+  runId = createRunId(),
+  charge: AiRunChargeSummary = createLocalAiChargeSummary(getCurrentSessionSnapshot())
+): AiRunRecord {
   const model = findModel(input.selectedModelId)
   const prompt = input.prompt?.trim() || 'Untitled prompt'
   const inputAssetIds = input.inputAssetIds ?? []
@@ -61,9 +68,13 @@ export function createMockAiRun(input: AiRunRequest, runId = createRunId()): AiR
 
   return {
     boardId: input.boardId ?? null,
+    charge,
+    chargedAccountId: charge.chargedAccountId,
+    chargedScope: charge.chargedScope,
     costCredits: 0,
-    costHint: 'Mock AI run · no credits charged',
+    costHint: `Mock AI run · ${charge.payerLabel}`,
     createdAt: new Date().toISOString(),
+    entitlementSource: charge.entitlementSource,
     error: null,
     inputAssetIds,
     latencyMs: input.runType === 'image_generation' ? 450 : 180,
@@ -77,6 +88,8 @@ export function createMockAiRun(input: AiRunRequest, runId = createRunId()): AiR
     textOutput: input.runType === 'image_analysis'
       ? createMockAnalysisText(prompt, inputAssetIds)
       : null,
+    workspaceKind: charge.workspaceKind,
+    workspaceSeatId: charge.workspaceSeatId ?? null,
   }
 }
 

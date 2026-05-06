@@ -36,6 +36,7 @@ def test_alembic_revision_chain_is_linear():
         load_migration("20260502_0004_s1a_core_schema.py"),
         load_migration("20260502_0005_s1a_future_systems_schema.py"),
         load_migration("20260502_0006_s1a_constraints_indexes.py"),
+        load_migration("20260506_0007_workspace_entitlements_ai_charge_contract.py"),
     ]
 
     for previous, current in zip(migrations, migrations[1:]):
@@ -46,9 +47,11 @@ def test_s1a_migrations_keep_required_schema_contracts():
     core = load_migration("20260502_0004_s1a_core_schema.py")
     future = load_migration("20260502_0005_s1a_future_systems_schema.py")
     hardening = load_migration("20260502_0006_s1a_constraints_indexes.py")
+    entitlements = load_migration("20260506_0007_workspace_entitlements_ai_charge_contract.py")
     core_sql = "\n".join(core.UPGRADE)
     future_sql = "\n".join(future.UPGRADE)
     hardening_sql = "\n".join(hardening.UPGRADE)
+    entitlement_sql = "\n".join(entitlements.UPGRADE)
 
     for table_name in [
         "tangent_workspace_members",
@@ -68,6 +71,17 @@ def test_s1a_migrations_keep_required_schema_contracts():
         "tangent_idempotency_keys",
     ]:
         assert table_name in future_sql
+
+    for contract in [
+        "tangent_workspaces ADD COLUMN IF NOT EXISTS kind",
+        "tangent_workspace_seat_assignments",
+        "tangent_workspace_usage_rollups",
+        "tangent_workspace_dashboard_snapshots",
+        "charged_account_id",
+        "charged_scope",
+        "entitlement_source",
+    ]:
+        assert contract in entitlement_sql
 
     for contract in [
         "tangent_boards_owner_fk",

@@ -593,6 +593,63 @@ def test_postgres_board_guest_permissions_first_pass(monkeypatch):
     assert manage_error.value.status_code == 403
 
 
+def test_postgres_board_member_roles_enable_guest_access_first_pass(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
+    store = PostgresBoardStore()
+
+    owner = make_context("user_owner", role="owner")
+    guest = make_context("user_guest", role="guest")
+
+    store.save_board(
+        BoardSaveRequest(
+            boardId="shared_private_board",
+            document={"assets": [], "shapes": [{"id": "shape_owner"}]},
+            title="Shared private board",
+        ),
+        owner,
+    )
+
+    with pytest.raises(HTTPException) as missing_access:
+        store.load_board("shared_private_board", guest)
+    assert missing_access.value.status_code == 404
+
+    member = store.upsert_member("shared_private_board", "user_guest", "viewer", "Guest Viewer", owner)
+    assert member.role == "viewer"
+
+    visible = store.load_board("shared_private_board", guest)
+    assert visible.id == "shared_private_board"
+    assert [board.id for board in store.list_boards(guest)] == ["shared_private_board"]
+
+    with pytest.raises(HTTPException) as viewer_write_error:
+        store.save_board(
+            BoardSaveRequest(
+                boardId="shared_private_board",
+                document={"assets": [], "shapes": [{"id": "shape_guest_edit"}]},
+                title="Guest edit blocked",
+            ),
+            guest,
+        )
+    assert viewer_write_error.value.status_code == 403
+
+    promoted = store.upsert_member("shared_private_board", "user_guest", "editor", "Guest Editor", owner)
+    assert promoted.role == "editor"
+
+    saved = store.save_board(
+        BoardSaveRequest(
+            boardId="shared_private_board",
+            document={"assets": [], "shapes": [{"id": "shape_guest_edit"}]},
+            title="Guest edit allowed",
+        ),
+        guest,
+    )
+    assert saved.ok is True
+
+    with pytest.raises(HTTPException) as editor_manage_error:
+        store.delete_board("shared_private_board", guest)
+    assert editor_manage_error.value.status_code == 403
+
+
 def test_postgres_snapshots_require_board_write_or_manage_access(monkeypatch):
     fake_db = FakePostgresDatabase()
     monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
@@ -657,3 +714,220 @@ def make_context(user_id: str, role: str = "owner", workspace_id: str = "dev-wor
         workspace_name="Dev Workspace",
         workspace_role=role,
     )
+
+
+def test_board_list_cursor_pagination_contract(tmp_path, monkeypatch):
+    monkeypatch.setenv("TANGENT_BOARD_STORAGE_DIR", str(tmp_path / "boards"))
+    client = TestClient(app)
+
+    for board_id in ["board_a", "board_b", "board_c"]:
+        response = client.post(
+            "/api/v1/boards",
+            json={"boardId": board_id, "document": {"assets": [], "shapes": [{"id": board_id}]}, "title": board_id},
+        )
+        assert response.status_code == 200
+
+    first_page = client.get("/api/v1/boards?limit=2")
+    assert first_page.status_code == 200
+    first_payload = first_page.json()
+    assert len(first_payload["boards"]) == 2
+    assert first_payload["nextCursor"] is not None
+
+    second_page = client.get(f"/api/v1/boards?limit=2&cursor={first_payload['nextCursor']}")
+    assert second_page.status_code == 200
+    second_payload = second_page.json()
+    assert len(second_payload["boards"]) == 1
+    assert second_payload["nextCursor"] is None
+
+
+def test_board_postgres_copy_and_restore_contract(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    monkeypatch.setenv("TANGENT_BOARD_STORAGE_DRIVER", "postgres")
+    monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.storage.postgres_board_snapshot_store.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    save_response = client.post(
+        "/api/v1/boards",
+        json={"boardId": "restore_board", "document": {"assets": [], "shapes": [{"id": "shape_1"}]}, "title": "Restore Board"},
+    )
+    assert save_response.status_code == 200
+
+    snapshot_response = client.post(
+        "/api/v1/boards/restore_board/snapshots",
+        json={"document": {"assets": [], "shapes": [{"id": "shape_old"}]}, "reason": "manual_save", "title": "Old"},
+    )
+    assert snapshot_response.status_code == 200
+    source_snapshot_id = snapshot_response.json()["snapshot"]["id"]
+
+    update_response = client.post(
+        "/api/v1/boards",
+        json={"boardId": "restore_board", "document": {"assets": [], "shapes": [{"id": "shape_new"}]}, "title": "Restore Board"},
+    )
+    assert update_response.status_code == 200
+
+    restore_response = client.post(
+        "/api/v1/boards/restore_board/restore",
+        json={"snapshotId": source_snapshot_id},
+    )
+    assert restore_response.status_code == 200
+    restored = restore_response.json()
+    assert restored["sourceSnapshotId"] == source_snapshot_id
+    assert restored["preRestoreSnapshotId"] is not None
+    assert restored["board"]["document"] == {"assets": [], "shapes": [{"id": "shape_old"}]}
+
+    copied = client.post("/api/v1/boards/restore_board/copy")
+    assert copied.status_code == 200
+    copied_board = copied.json()["board"]
+    assert copied_board["id"] != "restore_board"
+    assert copied_board["title"].endswith("Copy")
+
+
+def test_board_members_scaffold_contract(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    monkeypatch.setenv("TANGENT_BOARD_STORAGE_DRIVER", "postgres")
+    monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.storage.postgres_board_snapshot_store.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    save_response = client.post(
+        "/api/v1/boards",
+        json={"boardId": "members_board", "document": {"assets": [], "shapes": [{"id": "shape_1"}]}, "title": "Members Board"},
+    )
+    assert save_response.status_code == 200
+
+    members = client.get("/api/v1/boards/members_board/members")
+    assert members.status_code == 200
+    assert [member["role"] for member in members.json()["members"]] == ["owner"]
+
+    created = client.post(
+        "/api/v1/boards/members_board/members",
+        json={"userId": "user_member_2", "role": "viewer", "displayName": "Second User"},
+    )
+    assert created.status_code == 200
+    assert created.json()["member"]["userId"] == "user_member_2"
+
+    updated = client.patch(
+        "/api/v1/boards/members_board/members/user_member_2",
+        json={"role": "editor", "displayName": "Second User"},
+    )
+    assert updated.status_code == 200
+    assert updated.json()["member"]["role"] == "editor"
+
+    deleted = client.delete("/api/v1/boards/members_board/members/user_member_2")
+    assert deleted.status_code == 200
+    assert deleted.json()["userId"] == "user_member_2"
+
+
+def test_board_member_candidates_invite_and_share_link_contract(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.users = [
+        {
+            "id": "dev-user",
+            "email": "dev@tangent.local",
+            "display_name": "Dev User",
+            "status": "active",
+            "locale": "en",
+            "created_at": "2026-05-05T00:00:00Z",
+            "last_login_at": None,
+        },
+        {
+            "id": "user_alice",
+            "email": "alice@example.com",
+            "display_name": "Alice Artist",
+            "status": "active",
+            "locale": "en",
+            "created_at": "2026-05-05T00:01:00Z",
+            "last_login_at": None,
+        },
+        {
+            "id": "user_bob",
+            "email": "bob@example.com",
+            "display_name": "Bob Builder",
+            "status": "active",
+            "locale": "en",
+            "created_at": "2026-05-05T00:02:00Z",
+            "last_login_at": None,
+        },
+    ]
+    fake_db.workspace_members = [
+        {"workspace_id": "dev-workspace", "user_id": "dev-user", "role": "owner", "display_name": "Dev User"},
+        {"workspace_id": "dev-workspace", "user_id": "user_alice", "role": "member", "display_name": "Alice Artist"},
+        {"workspace_id": "dev-workspace", "user_id": "user_bob", "role": "guest", "display_name": "Bob Builder"},
+    ]
+    monkeypatch.setenv("TANGENT_BOARD_STORAGE_DRIVER", "postgres")
+    monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.storage.postgres_board_snapshot_store.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    saved = client.post(
+        "/api/v1/boards",
+        json={"boardId": "share_board", "document": {"assets": [], "shapes": [{"id": "shape_1"}]}, "title": "Share Board"},
+    )
+    assert saved.status_code == 200
+
+    candidates = client.get("/api/v1/boards/share_board/member-candidates?query=ali")
+    assert candidates.status_code == 200
+    assert candidates.json()["candidates"] == [
+        {
+            "alreadyMember": False,
+            "boardRole": None,
+            "displayName": "Alice Artist",
+            "email": "alice@example.com",
+            "userId": "user_alice",
+            "workspaceRole": "member",
+        }
+    ]
+
+    invited = client.post(
+        "/api/v1/boards/share_board/members/invite-by-email",
+        json={"email": "alice@example.com", "role": "viewer", "displayName": "Alice Artist"},
+    )
+    assert invited.status_code == 200
+    assert invited.json()["member"] == {
+        "displayName": "Alice Artist",
+        "email": "alice@example.com",
+        "invitedBy": "dev-user",
+        "joinedAt": "2026-05-05T00:00:01Z",
+        "role": "viewer",
+        "userId": "user_alice",
+        "workspaceRole": "member",
+    }
+
+    members = client.get("/api/v1/boards/share_board/members")
+    assert members.status_code == 200
+    assert [member["userId"] for member in members.json()["members"]] == ["dev-user", "user_alice"]
+
+    share = client.post(
+        "/api/v1/boards/share_board/share-link",
+        json={"accessRole": "viewer"},
+    )
+    assert share.status_code == 200
+    share_link = share.json()["shareLink"]
+    assert share_link["boardId"] == "share_board"
+    assert share_link["workspaceId"] == "dev-workspace"
+    assert share_link["accessRole"] == "viewer"
+    assert share_link["shareId"] is not None
+
+    resolved = client.get(f"/api/v1/boards/share-links/{share_link['shareId']}")
+    assert resolved.status_code == 200
+    assert resolved.json()["shareLink"] == {
+        "accessRole": "viewer",
+        "boardId": "share_board",
+        "boardTitle": "Share Board",
+        "shareId": share_link["shareId"],
+        "workspaceId": "dev-workspace",
+    }
+
+    shared_board = client.get(f"/api/v1/boards/share-links/{share_link['shareId']}/board")
+    assert shared_board.status_code == 200
+    assert shared_board.json()["board"]["id"] == "share_board"
+    assert shared_board.json()["board"]["title"] == "Share Board"
+    assert shared_board.json()["board"]["document"] == {"assets": [], "shapes": [{"id": "shape_1"}]}
+
+    revoked = client.delete(f"/api/v1/boards/share_board/share-link/{share_link['shareId']}")
+    assert revoked.status_code == 200
+    assert revoked.json()["shareId"] == share_link["shareId"]
+
+    missing = client.get(f"/api/v1/boards/share-links/{share_link['shareId']}")
+    assert missing.status_code == 404

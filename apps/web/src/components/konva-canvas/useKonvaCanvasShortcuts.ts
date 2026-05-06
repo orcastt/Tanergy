@@ -23,6 +23,7 @@ type KonvaCanvasHistory = {
 type UseKonvaCanvasShortcutsOptions = {
   clipboardRef: MutableRefObject<CanvasShape[]>
   document: CanvasDocument
+  enabled?: boolean
   history: KonvaCanvasHistory
   selectedIds: string[]
   selectedEdgeId?: string | null
@@ -38,6 +39,8 @@ type UseKonvaCanvasShortcutsOptions = {
 
 export function useKonvaCanvasShortcuts(options: UseKonvaCanvasShortcutsOptions) {
   useEffect(() => {
+    if (options.enabled === false) return
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isEditableTarget(event.target)) return
       const key = event.key.toLowerCase()

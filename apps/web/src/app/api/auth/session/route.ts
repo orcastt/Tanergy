@@ -32,6 +32,7 @@ function createSessionFromContext(context: ApiRequestContext): TangentSession {
   const activeWorkspace = {
     ...mockSession.activeWorkspace,
     id: context.workspaceId,
+    kind: context.workspaceKind,
   }
   return {
     ...mockSession,

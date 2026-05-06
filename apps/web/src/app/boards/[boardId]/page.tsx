@@ -10,7 +10,12 @@ import {
   isTldrawReferenceEnabled,
   parseBoardCanvasEngine,
 } from '@/features/boards/boardCanvasEngine'
-import { loadLocalBoardDocument, renameLocalBoardDocument, saveLocalBoardDocument } from '@/features/boards/localBoardClient'
+import {
+  loadLocalBoardDocument,
+  loadSharedBoardDocument,
+  renameLocalBoardDocument,
+  saveLocalBoardDocument,
+} from '@/features/boards/localBoardClient'
 import { migrateTldrawV1BoardToKonvaV2 } from '@/features/boards/tldrawToKonvaMigration'
 
 const CanvasSpike = dynamic(
@@ -36,17 +41,19 @@ export default function BoardCanvasPage() {
   const rawBoardId = Array.isArray(params.boardId) ? params.boardId[0] : params.boardId
   const boardId = rawBoardId ? decodeURIComponent(rawBoardId) : 'untitled-board'
   const isNewBoard = searchParams.get('new') === '1'
+  const shareId = searchParams.get('share')
   const requestedEngine = parseBoardCanvasEngine(searchParams.get('engine'))
   const [loadState, setLoadState] = useState<BoardLoadState>({ status: isNewBoard ? 'idle' : 'loading' })
   const [boardTitleOverride, setBoardTitleOverride] = useState<{ boardId: string; title: string } | null>(null)
   const tldrawReferenceEnabled = isTldrawReferenceEnabled()
   const detectedEngine = loadState.status === 'loaded' ? detectBoardCanvasEngine(loadState.board.document) : null
+  const effectiveBoardId = loadState.status === 'loaded' ? loadState.board.id : boardId
   const engine = useMemo(
     () => detectedEngine ?? requestedEngine ?? getDefaultBoardCanvasEngine(),
     [detectedEngine, requestedEngine]
   )
   const wantsKonvaCopy = loadState.status === 'loaded' && detectedEngine === 'tldraw' && requestedEngine === 'konva'
-  const boardTitle = boardTitleOverride?.boardId === boardId
+  const boardTitle = boardTitleOverride?.boardId === effectiveBoardId
     ? boardTitleOverride.title
     : loadState.status === 'loaded'
       ? loadState.board.title
@@ -61,7 +68,9 @@ export default function BoardCanvasPage() {
       }
       if (!cancelled) setLoadState({ status: 'loading' })
       try {
-        const response = await loadLocalBoardDocument(boardId)
+        const response = shareId
+          ? await loadSharedBoardDocument(shareId)
+          : await loadLocalBoardDocument(boardId)
         if (cancelled) return
         setLoadState(response.board ? { board: response.board, status: 'loaded' } : { status: 'missing' })
       } catch (error) {
@@ -72,22 +81,22 @@ export default function BoardCanvasPage() {
     return () => {
       cancelled = true
     }
-  }, [boardId, isNewBoard])
+  }, [boardId, isNewBoard, shareId])
 
   const renameBoardTitle = useCallback(async (title: string) => {
     const nextTitle = title.trim()
     if (!nextTitle) return boardTitle
     try {
-      const response = await renameLocalBoardDocument(boardId, nextTitle)
+      const response = await renameLocalBoardDocument(effectiveBoardId, nextTitle)
       const renamedTitle = response.board?.title ?? nextTitle
-      setBoardTitleOverride({ boardId, title: renamedTitle })
+      setBoardTitleOverride({ boardId: effectiveBoardId, title: renamedTitle })
       return renamedTitle
     } catch (error) {
       if (!isNewBoard && loadState.status !== 'missing') throw error
-      setBoardTitleOverride({ boardId, title: nextTitle })
+      setBoardTitleOverride({ boardId: effectiveBoardId, title: nextTitle })
       return nextTitle
     }
-  }, [boardId, boardTitle, isNewBoard, loadState.status])
+  }, [boardTitle, effectiveBoardId, isNewBoard, loadState.status])
 
   if (loadState.status === 'loading') {
     return <BoardRouteState title="Loading Board" detail={formatBoardTitle(boardId)} />
@@ -117,10 +126,10 @@ export default function BoardCanvasPage() {
     return (
       <KonvaCanvasSpike
         autoLoadBoard={loadState.status === 'loaded' && detectedEngine === 'konva'}
-        boardId={boardId}
+        boardId={effectiveBoardId}
         boardTitle={boardTitle}
         mode="board"
-        onBoardLoaded={(title) => setBoardTitleOverride({ boardId, title })}
+        onBoardLoaded={(title) => setBoardTitleOverride({ boardId: effectiveBoardId, title })}
         onBoardTitleRename={renameBoardTitle}
         seedOnMount={false}
       />
@@ -139,10 +148,10 @@ export default function BoardCanvasPage() {
   return (
     <CanvasSpike
       autoLoadBoard={loadState.status === 'loaded' && detectedEngine === 'tldraw'}
-      boardId={boardId}
+      boardId={effectiveBoardId}
       boardTitle={boardTitle}
       headerTitle={boardTitle}
-      onBoardLoaded={(title) => setBoardTitleOverride({ boardId, title })}
+      onBoardLoaded={(title) => setBoardTitleOverride({ boardId: effectiveBoardId, title })}
       onBoardTitleRename={renameBoardTitle}
       seedOnMount={false}
     />

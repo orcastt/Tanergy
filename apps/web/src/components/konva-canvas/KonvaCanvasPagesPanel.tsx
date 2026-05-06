@@ -15,6 +15,7 @@ type KonvaCanvasPagesPanelProps = {
   onRenamePage: (pageId: string, title: string) => void
   onSelectPage: (pageId: string) => void
   pages: SerializedKonvaBoardPage[]
+  readOnly?: boolean
 }
 
 export function KonvaCanvasPagesPanel({
@@ -27,6 +28,7 @@ export function KonvaCanvasPagesPanel({
   onRenamePage,
   onSelectPage,
   pages,
+  readOnly = false,
 }: KonvaCanvasPagesPanelProps) {
   const [isOpen, setIsOpen] = useState(true)
   const [editingPageId, setEditingPageId] = useState<string | null>(null)
@@ -45,6 +47,7 @@ export function KonvaCanvasPagesPanel({
   }, [editingPageId])
 
   const beginRename = (page: SerializedKonvaBoardPage) => {
+    if (readOnly) return
     setEditingPageId(page.id)
     setDraftTitle(page.title)
   }
@@ -85,7 +88,7 @@ export function KonvaCanvasPagesPanel({
         <div className="konva-canvas-pages">
           <header>
             <strong>Pages</strong>
-            <button aria-label="New page" onClick={onCreatePage} type="button">+</button>
+            {readOnly ? null : <button aria-label="New page" onClick={onCreatePage} type="button">+</button>}
           </header>
           <div className="konva-canvas-pages__list">
             {pageSummaries.map((page) => {
@@ -99,6 +102,7 @@ export function KonvaCanvasPagesPanel({
                   data-active={isActive}
                   key={page.id}
                   onDoubleClick={(event) => {
+                    if (readOnly) return
                     event.stopPropagation()
                     beginRename(page)
                   }}
@@ -131,56 +135,58 @@ export function KonvaCanvasPagesPanel({
                     )}
                     <small>{page.shapeCount}</small>
                   </span>
-                  <span className="konva-canvas-pages__actions">
-                    <button
-                      aria-label={`Move ${page.title} up`}
-                      disabled={page.index === 0}
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        onMovePage(page.id, 'up')
-                      }}
-                      title="Move up"
-                      type="button"
-                    >
-                      ↑
-                    </button>
-                    <button
-                      aria-label={`Move ${page.title} down`}
-                      disabled={page.index >= pages.length - 1}
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        onMovePage(page.id, 'down')
-                      }}
-                      title="Move down"
-                      type="button"
-                    >
-                      ↓
-                    </button>
-                    <button
-                      aria-label={`Duplicate ${page.title}`}
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        onDuplicatePage(page.id)
-                      }}
-                      title="Duplicate"
-                      type="button"
-                    >
-                      ⧉
-                    </button>
-                    <button
-                      aria-label={`Delete ${page.title}`}
-                      disabled={!canDelete}
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        if (!window.confirm(`Delete "${page.title}"? This page and its canvas contents will be removed.`)) return
-                        onDeletePage(page.id)
-                      }}
-                      title="Delete"
-                      type="button"
-                    >
-                      ×
-                    </button>
-                  </span>
+                  {readOnly ? null : (
+                    <span className="konva-canvas-pages__actions">
+                      <button
+                        aria-label={`Move ${page.title} up`}
+                        disabled={page.index === 0}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          onMovePage(page.id, 'up')
+                        }}
+                        title="Move up"
+                        type="button"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        aria-label={`Move ${page.title} down`}
+                        disabled={page.index >= pages.length - 1}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          onMovePage(page.id, 'down')
+                        }}
+                        title="Move down"
+                        type="button"
+                      >
+                        ↓
+                      </button>
+                      <button
+                        aria-label={`Duplicate ${page.title}`}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          onDuplicatePage(page.id)
+                        }}
+                        title="Duplicate"
+                        type="button"
+                      >
+                        ⧉
+                      </button>
+                      <button
+                        aria-label={`Delete ${page.title}`}
+                        disabled={!canDelete}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          if (!window.confirm(`Delete "${page.title}"? This page and its canvas contents will be removed.`)) return
+                          onDeletePage(page.id)
+                        }}
+                        title="Delete"
+                        type="button"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
                 </div>
               )
             })}

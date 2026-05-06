@@ -11,7 +11,8 @@ export const mockUser: TangentUser = {
 export const mockWorkspaces: TangentWorkspace[] = [
   {
     id: 'dev-workspace',
-    name: 'Personal workspace',
+    kind: 'team_workspace',
+    name: 'Tanergy Team',
     role: 'owner',
     boardCount: 1,
   },
@@ -32,6 +33,7 @@ export function getCurrentSessionSnapshot() {
 export function getSessionRequestHeaders(): Record<string, string> {
   return {
     'x-tangent-user-id': mockSession.user.id,
+    'x-tangent-workspace-kind': mockSession.activeWorkspace.kind,
     'x-tangent-workspace-id': mockSession.activeWorkspace.id,
   }
 }

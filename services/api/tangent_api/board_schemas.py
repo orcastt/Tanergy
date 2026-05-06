@@ -91,6 +91,7 @@ class BoardLoadResponse(TangentApiModel):
 class BoardListResponse(TangentApiModel):
     boards: list[BoardSummary]
     error: Optional[str] = None
+    next_cursor: Optional[str] = Field(default=None, alias="nextCursor")
     ok: bool
 
 
@@ -104,6 +105,24 @@ class BoardDeleteResponse(TangentApiModel):
     board_id: Optional[str] = Field(default=None, alias="boardId")
     error: Optional[str] = None
     ok: bool
+
+
+class BoardCopyResponse(TangentApiModel):
+    board: Optional[BoardSummary] = None
+    error: Optional[str] = None
+    ok: bool
+
+
+class BoardRestoreRequest(TangentApiModel):
+    snapshot_id: str = Field(alias="snapshotId")
+
+
+class BoardRestoreResponse(TangentApiModel):
+    board: Optional[BoardRecord] = None
+    error: Optional[str] = None
+    ok: bool
+    pre_restore_snapshot_id: Optional[str] = Field(default=None, alias="preRestoreSnapshotId")
+    source_snapshot_id: Optional[str] = Field(default=None, alias="sourceSnapshotId")
 
 
 class BoardSnapshotCreateRequest(TangentApiModel):
@@ -156,6 +175,107 @@ class BoardSnapshotClearResponse(TangentApiModel):
     deleted_count: int = Field(alias="deletedCount")
     error: Optional[str] = None
     ok: bool
+
+
+class BoardMemberRecord(TangentApiModel):
+    display_name: Optional[str] = Field(default=None, alias="displayName")
+    email: Optional[str] = None
+    invited_by: Optional[str] = Field(default=None, alias="invitedBy")
+    joined_at: str = Field(alias="joinedAt")
+    role: str
+    user_id: str = Field(alias="userId")
+    workspace_role: Optional[str] = Field(default=None, alias="workspaceRole")
+
+
+class BoardMemberCreateRequest(TangentApiModel):
+    display_name: Optional[str] = Field(default=None, alias="displayName")
+    role: str
+    user_id: str = Field(alias="userId")
+
+
+class BoardMemberUpdateRequest(TangentApiModel):
+    display_name: Optional[str] = Field(default=None, alias="displayName")
+    role: Optional[str] = None
+
+
+class BoardMembersResponse(TangentApiModel):
+    error: Optional[str] = None
+    members: list[BoardMemberRecord]
+    ok: bool
+
+
+class BoardMemberResponse(TangentApiModel):
+    error: Optional[str] = None
+    member: Optional[BoardMemberRecord] = None
+    ok: bool
+
+
+class BoardMemberDeleteResponse(TangentApiModel):
+    error: Optional[str] = None
+    ok: bool
+    user_id: Optional[str] = Field(default=None, alias="userId")
+
+
+class BoardMemberCandidateRecord(TangentApiModel):
+    already_member: bool = Field(alias="alreadyMember")
+    board_role: Optional[str] = Field(default=None, alias="boardRole")
+    display_name: Optional[str] = Field(default=None, alias="displayName")
+    email: str
+    user_id: str = Field(alias="userId")
+    workspace_role: str = Field(alias="workspaceRole")
+
+
+class BoardMemberCandidatesResponse(TangentApiModel):
+    candidates: list[BoardMemberCandidateRecord]
+    error: Optional[str] = None
+    ok: bool
+
+
+class BoardMemberInviteByEmailRequest(TangentApiModel):
+    display_name: Optional[str] = Field(default=None, alias="displayName")
+    email: str
+    role: str
+
+
+class BoardShareLinkRecord(TangentApiModel):
+    access_role: str = Field(alias="accessRole")
+    board_id: str = Field(alias="boardId")
+    created_at: str = Field(alias="createdAt")
+    created_by: str = Field(alias="createdBy")
+    expires_at: Optional[str] = Field(default=None, alias="expiresAt")
+    id: str
+    share_id: str = Field(alias="shareId")
+    workspace_id: str = Field(alias="workspaceId")
+
+
+class BoardShareLinkCreateRequest(TangentApiModel):
+    access_role: str = Field(default="viewer", alias="accessRole")
+
+
+class BoardShareLinkResponse(TangentApiModel):
+    error: Optional[str] = None
+    ok: bool
+    share_link: Optional[BoardShareLinkRecord] = Field(default=None, alias="shareLink")
+
+
+class BoardShareLinkDeleteResponse(TangentApiModel):
+    error: Optional[str] = None
+    ok: bool
+    share_id: Optional[str] = Field(default=None, alias="shareId")
+
+
+class BoardShareLinkResolveRecord(TangentApiModel):
+    access_role: str = Field(alias="accessRole")
+    board_id: str = Field(alias="boardId")
+    board_title: str = Field(alias="boardTitle")
+    share_id: str = Field(alias="shareId")
+    workspace_id: str = Field(alias="workspaceId")
+
+
+class BoardShareLinkResolveResponse(TangentApiModel):
+    error: Optional[str] = None
+    ok: bool
+    share_link: Optional[BoardShareLinkResolveRecord] = Field(default=None, alias="shareLink")
 
 
 def summarize_board_record(record: BoardRecord) -> BoardSummary:

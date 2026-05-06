@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
+from tangent_api.auth_schemas import AuthSession, AuthSessionResponse, AuthUser, AuthWorkspace
 from tangent_api.request_context import ApiRequestContext, get_request_context
-from tangent_api.schemas import AuthSession, AuthSessionResponse, AuthUser, AuthWorkspace
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -13,6 +13,7 @@ def get_session(
     workspace = AuthWorkspace(
         boardCount=context.workspace_board_count,
         id=context.workspace_id,
+        kind=context.workspace_kind,
         name=context.workspace_name,
         role=context.workspace_role,
     )

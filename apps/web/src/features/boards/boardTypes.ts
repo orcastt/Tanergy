@@ -59,6 +59,71 @@ export type BoardMetadataUpdateInput = {
   visibility?: BoardVisibility
 }
 
+export const boardMemberRoleValues = ['owner', 'admin', 'editor', 'viewer', 'temporary_viewer'] as const
+
+export type BoardMemberRole = typeof boardMemberRoleValues[number]
+
+export type BoardMemberRecord = {
+  displayName?: string | null
+  email?: string | null
+  invitedBy?: string | null
+  joinedAt: string
+  role: BoardMemberRole
+  userId: string
+  workspaceRole?: 'owner' | 'admin' | 'member' | 'guest' | null
+}
+
+export type BoardMemberCreateInput = {
+  boardId: string
+  displayName?: string | null
+  role: BoardMemberRole
+  userId: string
+}
+
+export type BoardMemberUpdateInput = {
+  boardId: string
+  displayName?: string | null
+  role?: BoardMemberRole
+  userId: string
+}
+
+export type BoardMemberCandidateRecord = {
+  alreadyMember: boolean
+  boardRole?: BoardMemberRole | null
+  displayName?: string | null
+  email: string
+  userId: string
+  workspaceRole: 'owner' | 'admin' | 'member' | 'guest'
+}
+
+export type BoardMemberInviteByEmailInput = {
+  boardId: string
+  displayName?: string | null
+  email: string
+  role: BoardMemberRole
+}
+
+export type BoardShareAccessRole = 'viewer' | 'editor'
+
+export type BoardShareLinkRecord = {
+  accessRole: BoardShareAccessRole
+  boardId: string
+  createdAt: string
+  createdBy: string
+  expiresAt?: string | null
+  id: string
+  shareId: string
+  workspaceId: string
+}
+
+export type BoardShareLinkResolveRecord = {
+  accessRole: BoardShareAccessRole
+  boardId: string
+  boardTitle: string
+  shareId: string
+  workspaceId: string
+}
+
 export type BoardDeleteInput = {
   boardId: string
 }
@@ -151,6 +216,48 @@ export type BoardSnapshotClearResponse = {
   ok: boolean
 }
 
+export type BoardMembersResponse = {
+  error?: string
+  members: BoardMemberRecord[]
+  ok: boolean
+}
+
+export type BoardMemberResponse = {
+  error?: string
+  member?: BoardMemberRecord
+  ok: boolean
+}
+
+export type BoardMemberDeleteResponse = {
+  error?: string
+  ok: boolean
+  userId?: string
+}
+
+export type BoardMemberCandidatesResponse = {
+  candidates: BoardMemberCandidateRecord[]
+  error?: string
+  ok: boolean
+}
+
+export type BoardShareLinkResponse = {
+  error?: string
+  ok: boolean
+  shareLink?: BoardShareLinkRecord
+}
+
+export type BoardShareLinkDeleteResponse = {
+  error?: string
+  ok: boolean
+  shareId?: string
+}
+
+export type BoardShareLinkResolveResponse = {
+  error?: string
+  ok: boolean
+  shareLink?: BoardShareLinkResolveRecord
+}
+
 export type SerializedBoardSaveInput = BoardSaveInput<unknown>
 export type SerializedBoardSnapshotCreateInput = BoardSnapshotCreateInput<unknown>
 
@@ -209,6 +316,12 @@ export function normalizeBoardVisibility(value: unknown): BoardVisibility {
   return typeof value === 'string' && boardVisibilityValues.includes(value as BoardVisibility)
     ? value as BoardVisibility
     : 'private'
+}
+
+export function normalizeBoardMemberRole(value: unknown): BoardMemberRole {
+  return typeof value === 'string' && boardMemberRoleValues.includes(value as BoardMemberRole)
+    ? value as BoardMemberRole
+    : 'viewer'
 }
 
 export function getBoardDocumentMetrics(document: unknown): { assetCount: number; shapeCount: number } {

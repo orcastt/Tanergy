@@ -1,4 +1,5 @@
 import type { JsonObject } from '@/types/nodeRuntime'
+import type { AiRunChargeSummary } from '@/features/billing/billingTypes'
 
 export type AiCapability = 'image_analysis' | 'image_edit' | 'image_generation' | 'image_reference'
 
@@ -35,9 +36,13 @@ export type AiRunRequest = {
 
 export type AiRunRecord = {
   boardId?: string | null
+  charge: AiRunChargeSummary
+  chargedAccountId: string
+  chargedScope: AiRunChargeSummary['chargedScope']
   costCredits: number
   costHint: string
   createdAt: string
+  entitlementSource: string
   error?: string | null
   inputAssetIds: string[]
   latencyMs: number
@@ -49,6 +54,8 @@ export type AiRunRecord = {
   runType: AiRunRequest['runType']
   status: AiRunStatus
   textOutput?: string | null
+  workspaceKind: AiRunChargeSummary['workspaceKind']
+  workspaceSeatId?: null | string
 }
 
 export type AiRunResponse = {

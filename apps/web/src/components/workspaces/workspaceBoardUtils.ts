@@ -58,8 +58,9 @@ export function createBoardShareId() {
 
 export function getBoardShareUrl(board: BoardPersistenceSummary) {
   const origin = typeof window === 'undefined' ? '' : window.location.origin
-  const share = board.shareId ? `?share=${encodeURIComponent(board.shareId)}` : ''
-  return `${origin}/boards/${encodeURIComponent(board.id)}${share}`
+  return board.shareId
+    ? `${origin}/share/${encodeURIComponent(board.shareId)}`
+    : `${origin}/boards/${encodeURIComponent(board.id)}`
 }
 
 function getStableIndex(value: string, modulo: number) {

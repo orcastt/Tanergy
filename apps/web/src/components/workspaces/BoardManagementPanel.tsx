@@ -106,10 +106,15 @@ export function BoardManagementPanel({
               <button className="product-button product-button-primary" disabled={editDisabled} form="board-management-form" type="submit">
                 Save
               </button>
-              <button className="product-button product-button-secondary" disabled={isPending || (!canManageBoard && !board.shareId)} onClick={onShare} type="button">
+              <button className="product-button product-button-secondary" disabled={isPending || !canManageBoard} onClick={onShare} type="button">
                 Copy link
               </button>
-              <button className="product-button product-button-secondary" disabled title="Real invitations wait for Auth and team roles." type="button">
+              <button
+                className="product-button product-button-secondary"
+                disabled={!canManageBoard}
+                onClick={() => document.getElementById('board-members-lookup')?.focus()}
+                type="button"
+              >
                 Invite
               </button>
               <button className="product-button product-button-secondary" onClick={onOpen} type="button">
@@ -226,7 +231,7 @@ export function BoardManagementPanel({
             </form>
 
             <div className="board-panel-members-column">
-              <BoardManagementMembers board={board} />
+              <BoardManagementMembers board={board} canManageBoard={canManageBoard} disabled={isPending} />
             </div>
           </div>
         </main>

@@ -5,7 +5,9 @@ from uuid import uuid4
 
 from fastapi import HTTPException
 
-from tangent_api.schemas import AiModelOption, AiRunRecord, AiRunRequest
+from tangent_api.ai_schemas import AiModelOption, AiRunRecord, AiRunRequest
+from tangent_api.request_context import ApiRequestContext
+from tangent_api.workspace_entitlements import resolve_ai_charge_summary
 
 MOCK_AI_MODELS = [
     AiModelOption(
@@ -47,8 +49,9 @@ def list_models(capability: Optional[str]) -> list[AiModelOption]:
     return [model for model in MOCK_AI_MODELS if capability in model.capabilities]
 
 
-def create_mock_run(payload: AiRunRequest) -> AiRunRecord:
+def create_mock_run(payload: AiRunRequest, context: ApiRequestContext) -> AiRunRecord:
     model = _find_model(payload.selected_model_id)
+    charge = resolve_ai_charge_summary(context)
     run_id = f"run_mock_{uuid4()}"
     prompt = (payload.prompt or "Untitled prompt").strip() or "Untitled prompt"
     count = _clamp_count(payload.params.get("count", 1)) if payload.run_type == "image_generation" else 0
@@ -58,9 +61,13 @@ def create_mock_run(payload: AiRunRequest) -> AiRunRecord:
     ]
     run = AiRunRecord(
         boardId=payload.board_id,
+        charge=charge,
+        chargedAccountId=charge.charged_account_id,
+        chargedScope=charge.charged_scope,
         costCredits=0,
-        costHint="Mock AI run · no credits charged",
+        costHint=f"Mock AI run · {charge.payer_label}",
         createdAt=datetime.now(timezone.utc).isoformat(),
+        entitlementSource=charge.entitlement_source,
         error=None,
         inputAssetIds=payload.input_asset_ids,
         latencyMs=450 if payload.run_type == "image_generation" else 180,
@@ -72,6 +79,8 @@ def create_mock_run(payload: AiRunRequest) -> AiRunRecord:
         runType=payload.run_type,
         status="succeeded",
         textOutput=_mock_analysis_text(prompt, payload.input_asset_ids) if payload.run_type == "image_analysis" else None,
+        workspaceKind=charge.workspace_kind,
+        workspaceSeatId=charge.workspace_seat_id,
     )
     RUNS[run.run_id] = run
     return run

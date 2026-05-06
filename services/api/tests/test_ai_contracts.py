@@ -39,7 +39,10 @@ def test_ai_run_mock_contract_round_trip():
     assert response.status_code == 200
     run = response.json()["run"]
     assert run["boardId"] == "board_ai_smoke"
+    assert run["charge"]["chargedScope"] == "actor_personal"
+    assert run["charge"]["payerLabel"] == "Charges your credits"
     assert run["costCredits"] == 0
+    assert run["entitlementSource"] == "personal_topup_or_free"
     assert run["modelId"] == "gpt-image-2"
     assert len(run["outputAssetIds"]) == 4
     assert run["status"] == "succeeded"
@@ -64,6 +67,7 @@ def test_ai_run_auth_required_mode(monkeypatch):
             user_id="user_clerk_123",
             workspace_board_count=0,
             workspace_id="workspace_clerk_123",
+            workspace_kind="team_workspace",
             workspace_name="Tanergy Workspace",
             workspace_role="owner",
         )

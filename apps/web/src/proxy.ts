@@ -3,6 +3,7 @@ import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server
 import { isProtectedProductPath, shouldRequireWebAuth } from '@/features/auth/routeGuard'
 
 const isProtectedRoute = createRouteMatcher([
+  '/admin(.*)',
   '/account(.*)',
   '/boards(.*)',
   '/settings(.*)',
@@ -26,7 +27,7 @@ export function proxy(request: NextRequest, event: NextFetchEvent) {
 }
 
 export const config = {
-  matcher: ['/account/:path*', '/api/auth/session', '/boards/:path*', '/settings/:path*', '/workspaces/:path*'],
+  matcher: ['/admin/:path*', '/account/:path*', '/api/auth/session', '/boards/:path*', '/settings/:path*', '/workspaces/:path*'],
 }
 
 function shouldRunClerkProxy(pathname: string) {

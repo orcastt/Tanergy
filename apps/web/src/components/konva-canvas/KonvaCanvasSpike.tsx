@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type Konva from 'konva'
 import * as Y from 'yjs'
 import { createEmptyCanvasDocument, screenToWorld, type CanvasCamera, type CanvasDocument, type CanvasNodeShape, type CanvasPoint, type CanvasShape, type CanvasShapeStyle } from '@/features/canvas-engine'
+import type { BoardPersistenceRecord } from '@/features/boards/boardTypes'
+import { restoreKonvaBoardDocument } from '@/features/boards/konvaBoardDocument'
 import { CanvasSettingsPanel } from '@/components/canvas/CanvasSettingsPanel'
 import { CanvasTooltipLayer } from '@/components/canvas/CanvasTooltipLayer'
 import { KonvaCanvasHeader } from './KonvaCanvasHeader'
@@ -15,6 +17,7 @@ import { KonvaCanvasNavigator } from './KonvaCanvasNavigator'
 import { KonvaCanvasPagesPanel } from './KonvaCanvasPagesPanel'
 import { KonvaCanvasProperties } from './KonvaCanvasProperties'
 import { KonvaCanvasStage } from './KonvaCanvasStage'
+import { KonvaCanvasViewerStage } from './KonvaCanvasViewerStage'
 import { isKonvaEditableTextShape, KonvaTextEditor, type KonvaEditableTextShape } from './KonvaTextEditor'
 import { getEditableKonvaNodeTextField, KonvaNodeTextEditor, type KonvaNodeTextFieldName } from './KonvaNodeTextEditor'
 import { KonvaCanvasToolbar } from './KonvaCanvasToolbar'
@@ -44,9 +47,11 @@ type KonvaCanvasSpikeProps = {
   autoLoadBoard?: boolean
   boardId?: string
   boardTitle?: string
+  initialBoard?: BoardPersistenceRecord | null
   mode?: 'board' | 'dev'
   onBoardLoaded?: (title: string) => void
   onBoardTitleRename?: (title: string) => Promise<string | void> | string | void
+  readOnly?: boolean
   seedOnMount?: boolean
 }
 
@@ -54,20 +59,23 @@ export function KonvaCanvasSpike({
   autoLoadBoard = false,
   boardId = 'konva-spike-local',
   boardTitle = 'Konva Spike Local',
+  initialBoard = null,
   mode = 'dev',
   onBoardLoaded,
   onBoardTitleRename,
+  readOnly = false,
   seedOnMount = true,
 }: KonvaCanvasSpikeProps = {}) {
   const shellRef = useRef<HTMLDivElement | null>(null)
   const [ydoc] = useState(() => new Y.Doc())
-  const [document, setDocument] = useState<CanvasDocument>(() => createEmptyCanvasDocument({
-    camera: { x: 120, y: 112, zoom: 1 },
-    name: boardTitle,
-    shapes: seedOnMount ? createSeedShapes() : [],
+  const [document, setDocument] = useState<CanvasDocument>(() => createInitialDocument({
+    boardTitle,
+    initialBoard,
+    seedOnMount,
   }))
   const [camera, setCamera] = useState<CanvasCamera>(document.camera)
-  const [activeTool, setActiveTool] = useState<KonvaCanvasTool>('select')
+  const [activeToolState, setActiveToolState] = useState<KonvaCanvasTool>('select')
+  const activeTool = readOnly ? 'hand' : activeToolState
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [isSpacePanning, setIsSpacePanning] = useState(false)
   const [nextStyle, setNextStyle] = useState<CanvasShapeStyle>(konvaDefaultShapeStyle)
@@ -82,6 +90,7 @@ export function KonvaCanvasSpike({
   const [, setClipboardShapeCount] = useState(0)
   const clipboardRef = useRef<CanvasShape[]>([])
   const lastPastePointRef = useRef<CanvasPoint | null>(null)
+  const restoredInitialBoardId = useRef<string | null>(null)
   const boardPageHistoryRef = useRef<{
     getPageState?: (document: CanvasDocument) => KonvaCanvasHistoryPageState | null
     restorePageState?: (state: KonvaCanvasHistoryPageState) => void
@@ -92,6 +101,10 @@ export function KonvaCanvasSpike({
     if (shapeIds.length > 0) setSelectedEdgeId(null)
     setCropEditingImageId((current) => (shapeIds.length === 1 && shapeIds[0] === current ? current : null))
   }, [])
+  const handleToolChange = useCallback((tool: KonvaCanvasTool) => {
+    if (readOnly) return
+    setActiveToolState(tool)
+  }, [readOnly])
   useKonvaBrowserSelectionGuard(shellRef)
   const { diagnostics, setShellRect, shellRect, size } = useKonvaCanvasMetrics({
     document,
@@ -114,7 +127,7 @@ export function KonvaCanvasSpike({
     onDocumentChange: setDocument,
     onEdgeSelectionChange: setSelectedEdgeId,
     onSelectionChange: handleSelectionChange,
-    onToolChange: setActiveTool,
+    onToolChange: handleToolChange,
     size,
   })
   const clearTransientState = useCallback(() => {
@@ -137,6 +150,18 @@ export function KonvaCanvasSpike({
     boardPageHistoryRef.current.getPageState = boardPages.getHistoryState
     boardPageHistoryRef.current.restorePageState = boardPages.restoreHistoryState
   }, [boardPages.getHistoryState, boardPages.restoreHistoryState])
+  useEffect(() => {
+    if (!initialBoard || restoredInitialBoardId.current === initialBoard.id) return
+    try {
+      const restored = restoreKonvaBoardDocument(initialBoard.document)
+      history.clear()
+      boardPages.restorePages(restored)
+      restoredInitialBoardId.current = initialBoard.id
+      onBoardLoaded?.(initialBoard.title)
+    } catch {
+      restoredInitialBoardId.current = initialBoard.id
+    }
+  }, [boardPages, history, initialBoard, onBoardLoaded])
   const { fileInput, promptImageNodeUpload, uploadDropFileAtPoint } = useKonvaImageNodeUpload({
     document,
     history,
@@ -154,7 +179,7 @@ export function KonvaCanvasSpike({
     onNodeMenuClose: closeNodeMenu,
     onSelectionChange: handleSelectionChange,
     onShellRectChange: setShellRect,
-    onToolChange: setActiveTool,
+    onToolChange: handleToolChange,
     onUploadDropFileAtPoint: uploadDropFileAtPoint,
     selectedIds,
   })
@@ -196,9 +221,9 @@ export function KonvaCanvasSpike({
   const cropImage = useCallback(() => {
     const imageId = getCropImageIdForSelection(document, selectedIds)
     if (!imageId) return
-    setActiveTool('select')
+    handleToolChange('select')
     setCropEditingImageId((current) => (current === imageId ? null : imageId))
-  }, [document, selectedIds])
+  }, [document, handleToolChange, selectedIds])
   const handleCreatePage = useCallback(() => {
     history.checkpoint(document)
     boardPages.createPage()
@@ -241,12 +266,13 @@ export function KonvaCanvasSpike({
   })
   const handleSelectionExportStageReady = selectionExport.handleStageReady
   const handleStageReady = useCallback((nextStage: Konva.Stage | null) => {
-    handleSelectionExportStageReady(nextStage)
+    if (!readOnly) handleSelectionExportStageReady(nextStage)
     setStage(nextStage)
-  }, [handleSelectionExportStageReady])
+  }, [handleSelectionExportStageReady, readOnly])
   useKonvaCanvasShortcuts({
     clipboardRef,
     document,
+    enabled: !readOnly,
     history,
     onClipboardChange: setClipboardShapeCount,
     onDocumentChange: setDocument,
@@ -254,7 +280,7 @@ export function KonvaCanvasSpike({
     getPastePoint: () => lastPastePointRef.current ?? screenToWorld({ x: size.width / 2, y: size.height / 2 }, camera),
     onPanningChange: setIsSpacePanning,
     onSelectionChange: handleSelectionChange,
-    onToolChange: setActiveTool,
+    onToolChange: handleToolChange,
     onCopySelectionSvg: () => { void selectionExport.handleCopySelectionSvg() },
     selectedEdgeId,
     selectedIds,
@@ -297,31 +323,33 @@ export function KonvaCanvasSpike({
   return (
     <main className="konva-canvas-shell">
       <KonvaCanvasHeader
-        boardId={mode === 'board' ? boardId : undefined}
+        boardId={!readOnly && mode === 'board' ? boardId : undefined}
         boardTitle={boardTitle}
-        onBoardTitleRename={onBoardTitleRename}
+        onBoardTitleRename={readOnly ? undefined : onBoardTitleRename}
       />
-      <KonvaCanvasToolbar
-        activeTool={activeTool}
-        isSettingsOpen={settingsOpen}
-        onAddStressStrokes={addStressStrokes}
-        onClear={clearCanvas}
-        onCreateNode={createNodeCard}
-        onOpenSettings={() => {
-          closeNodeMenu()
-          setSettingsOpen((open) => !open)
-        }}
-        onToolChange={setActiveTool}
-      />
+      {readOnly ? null : (
+        <KonvaCanvasToolbar
+          activeTool={activeTool}
+          isSettingsOpen={settingsOpen}
+          onAddStressStrokes={addStressStrokes}
+          onClear={clearCanvas}
+          onCreateNode={createNodeCard}
+          onOpenSettings={() => {
+            closeNodeMenu()
+            setSettingsOpen((open) => !open)
+          }}
+          onToolChange={handleToolChange}
+        />
+      )}
       <section
         className="konva-canvas-stage-wrap"
         data-space-panning={isSpacePanning}
-        onContextMenu={stageDomEvents.handleContextMenu}
-        onDoubleClick={stageDomEvents.handleDoubleClick}
-        onDragOver={stageDomEvents.handleDragOver}
-        onDrop={stageDomEvents.handleDrop}
-        onPointerDownCapture={stageDomEvents.handlePointerDownCapture}
-        onPointerMoveCapture={stageDomEvents.handlePointerMoveCapture}
+        onContextMenu={readOnly ? undefined : stageDomEvents.handleContextMenu}
+        onDoubleClick={readOnly ? undefined : stageDomEvents.handleDoubleClick}
+        onDragOver={readOnly ? undefined : stageDomEvents.handleDragOver}
+        onDrop={readOnly ? undefined : stageDomEvents.handleDrop}
+        onPointerDownCapture={readOnly ? undefined : stageDomEvents.handlePointerDownCapture}
+        onPointerMoveCapture={readOnly ? undefined : stageDomEvents.handlePointerMoveCapture}
         ref={shellRef}
       >
         <KonvaCanvasPagesPanel
@@ -334,76 +362,89 @@ export function KonvaCanvasSpike({
           onRenamePage={handleRenamePage}
           onSelectPage={boardPages.selectPage}
           pages={boardPages.pages}
+          readOnly={readOnly}
         />
-        <KonvaCanvasStage
-          activeTool={activeTool}
-          camera={camera}
-          captureMode={selectionExport.captureMode}
-          cropEditingImageId={cropEditingImageId}
-          editingNodeText={editingNodeText}
-          editingTextId={editingTextId}
-          document={document}
-          height={size.height}
-          isSpacePanning={isSpacePanning}
-          nextStyle={nextStyle}
-          onCameraCommit={handleCameraCommit}
-          onCameraPreview={handleCameraPreview}
-          onDocumentChange={setDocument}
-          onDocumentPreview={setDocument}
-          onEdgeDisconnect={(edgeId) => {
-            history.checkpoint(document)
-            setDocument((current) => removeKonvaRuntimeEdge(current, edgeId))
-            setSelectedEdgeId(null)
-          }}
-          onEdgeSelect={(edgeId) => {
-            setSelectedEdgeId(edgeId)
-            handleSelectionChange([])
-          }}
-          onHistoryCheckpoint={history.checkpoint}
-          onImageNodeToCanvas={sendImageNodeToCanvas}
-          onNodeChatClean={cleanChatHistory}
-          onNodeChatExportToggle={toggleChatMessageExport}
-          onNodeChatSend={sendChatMessage}
-          onNodeChatUpload={promptImageNodeUpload}
-          onNodeFieldChange={setNodeField}
-          onNodeRunToggle={toggleNodeRun}
-          onNodeTextEditStart={(shapeId, fieldName) => {
-            const shape = document.shapes.find((item) => item.id === shapeId)
-            if (!shape || shape.type !== 'node_card') return
-            handleSelectionChange([shapeId])
-            setSelectedEdgeId(null)
-            setCropEditingImageId(null)
-            setEditingNodeText({ fieldName, shapeId })
-          }}
-          onSelectionChange={handleSelectionChange}
-          onStageReady={handleStageReady}
-          onTextEditStart={(shapeId) => {
-            const shape = document.shapes.find((item) => item.id === shapeId)
-            if (shape?.type === 'node_card' && shape.props.nodeType === 'image') {
-              promptImageNodeUpload(shapeId)
-              return
-            }
-            if (shape?.type === 'node_card') {
-              const fieldName = getEditableKonvaNodeTextField(shape)
-              if (fieldName) {
-                setEditingNodeText({ fieldName, shapeId })
+        {readOnly ? (
+          <KonvaCanvasViewerStage
+            camera={camera}
+            document={document}
+            height={size.height}
+            onCameraCommit={handleCameraCommit}
+            onCameraPreview={handleCameraPreview}
+            onStageReady={handleStageReady}
+            width={size.width}
+          />
+        ) : (
+          <KonvaCanvasStage
+            activeTool={activeTool}
+            camera={camera}
+            captureMode={selectionExport.captureMode}
+            cropEditingImageId={cropEditingImageId}
+            editingNodeText={editingNodeText}
+            editingTextId={editingTextId}
+            document={document}
+            height={size.height}
+            isSpacePanning={isSpacePanning}
+            nextStyle={nextStyle}
+            onCameraCommit={handleCameraCommit}
+            onCameraPreview={handleCameraPreview}
+            onDocumentChange={setDocument}
+            onDocumentPreview={setDocument}
+            onEdgeDisconnect={(edgeId) => {
+              history.checkpoint(document)
+              setDocument((current) => removeKonvaRuntimeEdge(current, edgeId))
+              setSelectedEdgeId(null)
+            }}
+            onEdgeSelect={(edgeId) => {
+              setSelectedEdgeId(edgeId)
+              handleSelectionChange([])
+            }}
+            onHistoryCheckpoint={history.checkpoint}
+            onImageNodeToCanvas={sendImageNodeToCanvas}
+            onNodeChatClean={cleanChatHistory}
+            onNodeChatExportToggle={toggleChatMessageExport}
+            onNodeChatSend={sendChatMessage}
+            onNodeChatUpload={promptImageNodeUpload}
+            onNodeFieldChange={setNodeField}
+            onNodeRunToggle={toggleNodeRun}
+            onNodeTextEditStart={(shapeId, fieldName) => {
+              const shape = document.shapes.find((item) => item.id === shapeId)
+              if (!shape || shape.type !== 'node_card') return
+              handleSelectionChange([shapeId])
+              setSelectedEdgeId(null)
+              setCropEditingImageId(null)
+              setEditingNodeText({ fieldName, shapeId })
+            }}
+            onSelectionChange={handleSelectionChange}
+            onStageReady={handleStageReady}
+            onTextEditStart={(shapeId) => {
+              const shape = document.shapes.find((item) => item.id === shapeId)
+              if (shape?.type === 'node_card' && shape.props.nodeType === 'image') {
+                promptImageNodeUpload(shapeId)
                 return
               }
-            }
-            if (shape && isKonvaEditableTextShape(shape)) setEditingTextId(shapeId)
-          }}
-          onToolChange={setActiveTool}
-          selectedIds={selectedIds}
-          selectedEdgeId={selectedEdgeId}
-          width={size.width}
-        />
-        {nodeMenu ? (
+              if (shape?.type === 'node_card') {
+                const fieldName = getEditableKonvaNodeTextField(shape)
+                if (fieldName) {
+                  setEditingNodeText({ fieldName, shapeId })
+                  return
+                }
+              }
+              if (shape && isKonvaEditableTextShape(shape)) setEditingTextId(shapeId)
+            }}
+            onToolChange={handleToolChange}
+            selectedIds={selectedIds}
+            selectedEdgeId={selectedEdgeId}
+            width={size.width}
+          />
+        )}
+        {!readOnly && nodeMenu ? (
           <KonvaNodeCreateMenu
             onCreateNode={(type) => createNodeCard(type, nodeMenu.world)}
             style={{ left: nodeMenu.x, top: nodeMenu.y }}
           />
         ) : null}
-        {editingTextShape ? (
+        {!readOnly && editingTextShape ? (
           <>
             <button aria-label="Finish text editing" className="konva-canvas-text-editor-backdrop" onClick={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()} type="button" />
             <KonvaTextEditor
@@ -418,7 +459,7 @@ export function KonvaCanvasSpike({
             />
           </>
         ) : null}
-        {editingNodeText && editingNodeTextShape ? (
+        {!readOnly && editingNodeText && editingNodeTextShape ? (
           <>
             <button aria-label="Finish node text editing" className="konva-canvas-text-editor-backdrop" onClick={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()} type="button" />
             <KonvaNodeTextEditor
@@ -437,34 +478,38 @@ export function KonvaCanvasSpike({
             />
           </>
         ) : null}
-        <KonvaCanvasProperties
-          activeTool={activeTool}
-          document={document}
-          nextStyle={nextStyle}
-          onDocumentChange={setDocument}
-          onHistoryCheckpoint={history.checkpoint}
-          onNextStyleChange={setNextStyle}
-          onSelectionChange={handleSelectionChange}
-          selectedIds={selectedIds}
-        />
-        <KonvaSelectionToolbar
-          actionError={selectionActionError}
-          camera={camera}
-          canCaptureSelection={selectionExport.canCaptureSelection}
-          canConvertImageToNode={canConvertImageToNode}
-          canCropImage={canCropImage}
-          canRemoveBackground={imageOps.canRemoveBackground}
-          canStartObjectCutout={imageOps.canStartObjectCutout}
-          document={document}
-          isCapturingSelection={selectionExport.isCapturingSelection}
-          isRemovingBackground={imageOps.isRemovingBackground}
-          onCaptureSelection={() => { void selectionExport.handleCaptureSelectionToImageNode() }}
-          onConvertImageToNode={convertImageToNode}
-          onCropImage={cropImage}
-          onRemoveBackground={imageOps.removeBackground}
-          selectedIds={selectedIds}
-          shellRect={shellRect}
-        />
+        {readOnly ? null : (
+          <KonvaCanvasProperties
+            activeTool={activeTool}
+            document={document}
+            nextStyle={nextStyle}
+            onDocumentChange={setDocument}
+            onHistoryCheckpoint={history.checkpoint}
+            onNextStyleChange={setNextStyle}
+            onSelectionChange={handleSelectionChange}
+            selectedIds={selectedIds}
+          />
+        )}
+        {readOnly ? null : (
+          <KonvaSelectionToolbar
+            actionError={selectionActionError}
+            camera={camera}
+            canCaptureSelection={selectionExport.canCaptureSelection}
+            canConvertImageToNode={canConvertImageToNode}
+            canCropImage={canCropImage}
+            canRemoveBackground={imageOps.canRemoveBackground}
+            canStartObjectCutout={imageOps.canStartObjectCutout}
+            document={document}
+            isCapturingSelection={selectionExport.isCapturingSelection}
+            isRemovingBackground={imageOps.isRemovingBackground}
+            onCaptureSelection={() => { void selectionExport.handleCaptureSelectionToImageNode() }}
+            onConvertImageToNode={convertImageToNode}
+            onCropImage={cropImage}
+            onRemoveBackground={imageOps.removeBackground}
+            selectedIds={selectedIds}
+            shellRect={shellRect}
+          />
+        )}
         <KonvaCanvasNavigator
           camera={camera}
           document={document}
@@ -474,42 +519,69 @@ export function KonvaCanvasSpike({
           stageHeight={size.height}
           stageWidth={size.width}
         />
-        <KonvaBoardSaveAudit
-          autoLoad={autoLoadBoard}
-          boardId={boardId}
-          boardTitle={boardTitle}
-          camera={camera}
-          document={document}
-          getPageEnvelope={boardPages.getPageEnvelope}
-          activePageId={boardPages.activePageId}
-          historyTitle={boardPages.activePageTitle}
-          mode={mode}
-          onBoardLoaded={(board) => onBoardLoaded?.(board.title)}
-          onDocumentRestore={(restore) => {
-            history.clear()
-            boardPages.restorePages(restore)
-          }}
-          pageRevision={boardPages.revision}
-          stage={stage}
-        />
+        {readOnly ? null : (
+          <KonvaBoardSaveAudit
+            autoLoad={autoLoadBoard}
+            boardId={boardId}
+            boardTitle={boardTitle}
+            camera={camera}
+            document={document}
+            getPageEnvelope={boardPages.getPageEnvelope}
+            activePageId={boardPages.activePageId}
+            historyTitle={boardPages.activePageTitle}
+            mode={mode}
+            onBoardLoaded={(board) => onBoardLoaded?.(board.title)}
+            onDocumentRestore={(restore) => {
+              history.clear()
+              boardPages.restorePages(restore)
+            }}
+            pageRevision={boardPages.revision}
+            stage={stage}
+          />
+        )}
         {settingsOpen ? <CanvasSettingsPanel boardMode={mode === 'board'} onClose={() => setSettingsOpen(false)} /> : null}
         <KonvaCanvasDiagnostics diagnostics={diagnostics} pointCount={pointCount} zoom={camera.zoom} />
-        <KonvaContextMenuHost
-          activePageId={boardPages.activePageId}
-          canLockSelection={canLockSelection}
-          canUnlockSelection={canUnlockSelection}
-          contextMenu={contextMenu}
-          document={document}
-          height={size.height}
-          onAction={runContextAction}
-          onClose={() => setContextMenu(null)}
-          pages={boardPages.pages}
-          selectedIds={selectedIds}
-          width={size.width}
-        />
+        {readOnly ? null : (
+          <KonvaContextMenuHost
+            activePageId={boardPages.activePageId}
+            canLockSelection={canLockSelection}
+            canUnlockSelection={canUnlockSelection}
+            contextMenu={contextMenu}
+            document={document}
+            height={size.height}
+            onAction={runContextAction}
+            onClose={() => setContextMenu(null)}
+            pages={boardPages.pages}
+            selectedIds={selectedIds}
+            width={size.width}
+          />
+        )}
         <CanvasTooltipLayer />
-        {fileInput}
+        {readOnly ? null : fileInput}
       </section>
     </main>
   )
+}
+
+function createInitialDocument({
+  boardTitle,
+  initialBoard,
+  seedOnMount,
+}: {
+  boardTitle: string
+  initialBoard: BoardPersistenceRecord | null
+  seedOnMount: boolean
+}) {
+  if (initialBoard) {
+    try {
+      return restoreKonvaBoardDocument(initialBoard.document).document
+    } catch {
+      // Fall back to an empty document if the shared payload cannot be restored.
+    }
+  }
+  return createEmptyCanvasDocument({
+    camera: { x: 120, y: 112, zoom: 1 },
+    name: boardTitle,
+    shapes: seedOnMount ? createSeedShapes() : [],
+  })
 }

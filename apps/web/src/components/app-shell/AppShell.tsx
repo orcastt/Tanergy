@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { SignOutButton, UserButton } from '@clerk/nextjs'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState, type ReactNode } from 'react'
+import { useAdminAccess } from '@/features/auth/useAdminAccess'
 import { useTangentSession } from '@/features/auth/useTangentSession'
 
 const topNavItems = [
@@ -31,8 +32,14 @@ type AppShellProps = {
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const { adminAccess, status: adminStatus } = useAdminAccess()
   const { error: sessionError, session, status: sessionStatus } = useTangentSession()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const canAccessAdmin = adminStatus === 'ready' && adminAccess.canAccessAdmin
+  const topItems = canAccessAdmin ? [...topNavItems, { href: '/admin', label: 'Admin' }] : topNavItems
+  const sideItems = canAccessAdmin
+    ? [...sideNavItems, { href: '/admin', icon: 'A', label: 'Admin', type: 'link' as const }]
+    : sideNavItems
 
   const createBoard = () => {
     setIsMenuOpen(false)
@@ -48,7 +55,7 @@ export function AppShell({ children }: AppShellProps) {
         </Link>
 
         <nav aria-label="Primary" className="product-nav-links">
-          {topNavItems.map((item) => (
+          {topItems.map((item) => (
             <Link
               className={`product-nav-link${isActiveItem(pathname, item) ? ' is-active' : ''}`}
               href={item.href}
@@ -81,7 +88,7 @@ export function AppShell({ children }: AppShellProps) {
 
       {isMenuOpen ? (
         <nav aria-label="Mobile primary" className="product-nav-sheet">
-          {topNavItems.map((item) => (
+          {topItems.map((item) => (
             <Link
               className={`product-nav-link${isActiveItem(pathname, item) ? ' is-active' : ''}`}
               href={item.href}
@@ -118,7 +125,7 @@ export function AppShell({ children }: AppShellProps) {
           </Link>
 
           <nav className="product-sidebar-nav">
-            {sideNavItems.map((item) => (
+            {sideItems.map((item) => (
               <Link
                 className={[
                   'product-sidebar-link',

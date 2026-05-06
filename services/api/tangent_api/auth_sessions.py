@@ -11,6 +11,7 @@ from tangent_api.storage.postgres_connection import connect_to_postgres, require
 class ResolvedAuthSession:
     user_id: str
     workspace_id: str
+    workspace_kind: str
     display_name: str
     email: str
     email_verified: bool
@@ -35,6 +36,7 @@ def _build_ephemeral_session(identity: VerifiedAuthIdentity) -> ResolvedAuthSess
     return ResolvedAuthSession(
         user_id=f"user_{suffix}",
         workspace_id=f"workspace_{suffix}",
+        workspace_kind="solo_workspace",
         display_name=display_name,
         email=email,
         email_verified=identity.email_verified,
@@ -58,6 +60,7 @@ def _load_or_create_postgres_session(identity: VerifiedAuthIdentity) -> Resolved
                     u.email_verified,
                     wm.workspace_id,
                     w.name,
+                    COALESCE(w.kind, 'solo_workspace'),
                     wm.role
                 FROM tangent_user_identities ui
                 JOIN tangent_users u ON u.id = ui.user_id
@@ -115,6 +118,7 @@ def _load_or_create_postgres_session(identity: VerifiedAuthIdentity) -> Resolved
                     return ResolvedAuthSession(
                         user_id=session.user_id,
                         workspace_id=session.workspace_id,
+                        workspace_kind=session.workspace_kind,
                         display_name=identity.display_name or session.display_name,
                         email=identity.email or session.email,
                         email_verified=identity.email_verified,
@@ -175,10 +179,11 @@ def _create_default_workspace(
             id,
             name,
             owner_id,
+            kind,
             slug
-        ) VALUES (%s, %s, %s, %s)
+        ) VALUES (%s, %s, %s, %s, %s)
         """,
-        (workspace_id, workspace_name, user_id, None),
+        (workspace_id, workspace_name, user_id, "solo_workspace", None),
     )
     cursor.execute(
         """
@@ -195,6 +200,7 @@ def _create_default_workspace(
     return ResolvedAuthSession(
         user_id=user_id,
         workspace_id=workspace_id,
+        workspace_kind="solo_workspace",
         display_name=identity.display_name or display_name,
         email=identity.email or email,
         email_verified=identity.email_verified,
@@ -222,10 +228,11 @@ def _load_board_count(cursor: Any, workspace_id: str) -> int:
 
 
 def _row_to_session(row: Any) -> ResolvedAuthSession:
-    user_id, email, display_name, avatar_initials, email_verified, workspace_id, workspace_name, workspace_role = row
+    user_id, email, display_name, avatar_initials, email_verified, workspace_id, workspace_name, workspace_kind, workspace_role = row
     return ResolvedAuthSession(
         user_id=user_id,
         workspace_id=workspace_id or "",
+        workspace_kind=workspace_kind or "solo_workspace",
         display_name=display_name,
         email=email,
         email_verified=bool(email_verified),

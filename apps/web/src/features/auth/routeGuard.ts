@@ -1,4 +1,5 @@
 export const protectedProductPathPrefixes = [
+  '/admin',
   '/account',
   '/boards',
   '/settings',

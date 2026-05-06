@@ -21,6 +21,7 @@ class ApiRequestContext(BaseModel):
     user_id: str
     workspace_board_count: int
     workspace_id: str
+    workspace_kind: str = "solo_workspace"
     workspace_name: str
     workspace_role: str
 
@@ -29,6 +30,7 @@ async def get_request_context(
     request: Request,
     x_tangent_user_id: Optional[str] = Header(default=None),
     x_tangent_workspace_id: Optional[str] = Header(default=None),
+    x_tangent_workspace_kind: Optional[str] = Header(default=None),
 ) -> ApiRequestContext:
     require_auth = os.getenv("TANGENT_REQUIRE_API_AUTH") == "1"
     token = _extract_request_token(request)
@@ -58,6 +60,11 @@ async def get_request_context(
             or "dev-workspace",
             "workspace id",
         ),
+        workspace_kind=_normalize_workspace_kind(
+            x_tangent_workspace_kind
+            or os.getenv("TANGENT_DEV_WORKSPACE_KIND")
+            or "solo_workspace"
+        ),
         workspace_name="Personal workspace",
         workspace_role="owner",
     )
@@ -76,6 +83,7 @@ async def resolve_authenticated_request_context(token: str) -> ApiRequestContext
         user_id=_normalize_context_id(session.user_id, "user id"),
         workspace_board_count=session.board_count,
         workspace_id=_normalize_context_id(session.workspace_id, "workspace id"),
+        workspace_kind=_normalize_workspace_kind(session.workspace_kind),
         workspace_name=session.workspace_name,
         workspace_role=session.workspace_role,
     )
@@ -100,3 +108,11 @@ def _normalize_context_id(value: str, label: str) -> str:
     if not trimmed or not ID_PATTERN.match(trimmed) or ".." in trimmed:
         raise HTTPException(status_code=400, detail=f"Invalid {label}.")
     return trimmed
+
+
+def _normalize_workspace_kind(value: str) -> str:
+    normalized = value.strip()
+    allowed = {"solo_workspace", "group_workspace", "team_workspace", "enterprise_workspace"}
+    if normalized not in allowed:
+        raise HTTPException(status_code=400, detail="Invalid workspace kind.")
+    return normalized

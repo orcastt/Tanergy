@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import type { BoardMetadataUpdateInput, BoardPersistenceSummary, SerializedBoardSaveInput } from '@/features/boards/boardTypes'
 import {
   deleteLocalBoardDocument,
+  ensureLocalBoardShareLink,
   listLocalBoardDocuments,
   loadLocalBoardDocument,
   renameLocalBoardDocument,
@@ -20,11 +21,10 @@ import { WorkspaceBoardToolbar, type WorkspaceBoardSortMode } from './WorkspaceB
 import {
   boardPageSize,
   createBoardId,
-  createBoardShareId,
-  getBoardShareUrl,
   getBoardDisplayCardColor,
   filterAndSortBoards,
 } from './workspaceBoardUtils'
+import { getShareUrl } from './boardMemberUtils'
 
 type ViewMode = WorkspaceBoardViewMode
 type SortMode = WorkspaceBoardSortMode
@@ -222,13 +222,15 @@ export function WorkspaceBoardGallery() {
   }
 
   const shareBoard = async (board: BoardPersistenceSummary) => {
-    const updated = board.shareId ? board : await updateBoardMetadata({ boardId: board.id, shareId: createBoardShareId() })
-    const shareBoardRecord = updated ?? board
     try {
-      await navigator.clipboard?.writeText(getBoardShareUrl(shareBoardRecord))
+      const response = await ensureLocalBoardShareLink(board.id)
+      const shareLink = response.shareLink
+      if (!shareLink) throw new Error('Board share link failed.')
+      setBoards((current) => current.map((item) => item.id === board.id ? { ...item, shareId: shareLink.shareId } : item))
+      await navigator.clipboard?.writeText(getShareUrl(shareLink))
       setNotice('Link has been copied.')
-    } catch {
-      setError('Share link is ready, but the browser blocked clipboard access.')
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : 'Share link is ready, but the browser blocked clipboard access.')
     }
   }
 

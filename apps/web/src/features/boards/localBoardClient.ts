@@ -1,6 +1,13 @@
 'use client'
 
 import type {
+  BoardMemberCandidatesResponse,
+  BoardMemberCreateInput,
+  BoardMemberDeleteResponse,
+  BoardMemberInviteByEmailInput,
+  BoardMemberResponse,
+  BoardMembersResponse,
+  BoardMemberUpdateInput,
   BoardDeleteResponse,
   BoardListResponse,
   BoardLoadResponse,
@@ -11,6 +18,10 @@ import type {
   BoardSnapshotCreateResponse,
   BoardSnapshotListResponse,
   BoardSnapshotLoadResponse,
+  BoardShareLinkDeleteResponse,
+  BoardShareLinkResolveResponse,
+  BoardShareLinkResponse,
+  BoardShareAccessRole,
   SerializedBoardSnapshotCreateInput,
   SerializedBoardSaveInput,
 } from './boardTypes'
@@ -36,6 +47,13 @@ export type LocalBoardSnapshotCreateResponse = BoardSnapshotCreateResponse
 export type LocalBoardSnapshotListResponse = BoardSnapshotListResponse
 export type LocalBoardSnapshotLoadResponse = BoardSnapshotLoadResponse
 export type LocalBoardSnapshotClearResponse = BoardSnapshotClearResponse
+export type LocalBoardMembersResponse = BoardMembersResponse
+export type LocalBoardMemberResponse = BoardMemberResponse
+export type LocalBoardMemberDeleteResponse = BoardMemberDeleteResponse
+export type LocalBoardMemberCandidatesResponse = BoardMemberCandidatesResponse
+export type LocalBoardShareLinkResponse = BoardShareLinkResponse
+export type LocalBoardShareLinkDeleteResponse = BoardShareLinkDeleteResponse
+export type LocalBoardShareLinkResolveResponse = BoardShareLinkResolveResponse
 
 export async function saveLocalBoardDocument(input: SerializedBoardSaveInput) {
   const headers = hasRemotePersistenceApi() ? await persistenceJsonHeadersAsync() : persistenceJsonHeaders()
@@ -65,6 +83,19 @@ export async function loadLocalBoardDocument(boardId: string) {
   const payload = await response.json() as LocalBoardLoadResponse
   if (!response.ok || !payload.ok || !payload.board) {
     throw new Error(payload.error || 'Local board load failed.')
+  }
+  return payload
+}
+
+export async function loadSharedBoardDocument(shareId: string) {
+  const response = await fetch(
+    hasRemotePersistenceApi()
+      ? persistenceApiUrl(`/api/v1/boards/share-links/${encodeURIComponent(shareId)}/board`)
+      : `/api/boards/local-share-board?shareId=${encodeURIComponent(shareId)}`
+  )
+  const payload = await response.json() as LocalBoardLoadResponse
+  if (!response.ok || !payload.ok || !payload.board) {
+    throw new Error(payload.error || 'Shared board load failed.')
   }
   return payload
 }
@@ -120,6 +151,161 @@ export async function deleteLocalBoardDocument(boardId: string) {
   const payload = await response.json() as LocalBoardDeleteResponse
   if (!response.ok || !payload.ok) {
     throw new Error(payload.error || 'Local board delete failed.')
+  }
+  return payload
+}
+
+export async function listLocalBoardMembers(boardId: string) {
+  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync() : persistenceAuthHeaders()
+  const response = await fetch(
+    hasRemotePersistenceApi()
+      ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(boardId)}/members`)
+      : `/api/boards/local-members?boardId=${encodeURIComponent(boardId)}`,
+    { headers }
+  )
+  const payload = await response.json() as LocalBoardMembersResponse
+  if (!response.ok || !payload.ok) {
+    throw new Error(payload.error || 'Board member list failed.')
+  }
+  return payload
+}
+
+export async function createLocalBoardMember(input: BoardMemberCreateInput) {
+  const headers = hasRemotePersistenceApi() ? await persistenceJsonHeadersAsync() : persistenceJsonHeaders()
+  const response = await fetch(
+    hasRemotePersistenceApi()
+      ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(input.boardId)}/members`)
+      : '/api/boards/local-members',
+    {
+      body: JSON.stringify(input),
+      headers,
+      method: 'POST',
+    }
+  )
+  const payload = await response.json() as LocalBoardMemberResponse
+  if (!response.ok || !payload.ok || !payload.member) {
+    throw new Error(payload.error || 'Board member create failed.')
+  }
+  return payload
+}
+
+export async function searchLocalBoardMemberCandidates(boardId: string, query: string) {
+  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync() : persistenceAuthHeaders()
+  const url = hasRemotePersistenceApi()
+    ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(boardId)}/member-candidates?query=${encodeURIComponent(query)}`)
+    : `/api/boards/local-members?boardId=${encodeURIComponent(boardId)}&query=${encodeURIComponent(query)}`
+  const response = await fetch(url, { headers })
+  const payload = await response.json() as LocalBoardMemberCandidatesResponse
+  if (!response.ok || !payload.ok) {
+    throw new Error(payload.error || 'Board member lookup failed.')
+  }
+  return payload
+}
+
+export async function inviteLocalBoardMemberByEmail(input: BoardMemberInviteByEmailInput) {
+  const headers = hasRemotePersistenceApi() ? await persistenceJsonHeadersAsync() : persistenceJsonHeaders()
+  const response = await fetch(
+    hasRemotePersistenceApi()
+      ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(input.boardId)}/members/invite-by-email`)
+      : '/api/boards/local-members',
+    {
+      body: JSON.stringify(input),
+      headers,
+      method: 'POST',
+    }
+  )
+  const payload = await response.json() as LocalBoardMemberResponse
+  if (!response.ok || !payload.ok || !payload.member) {
+    throw new Error(payload.error || 'Board email invite failed.')
+  }
+  return payload
+}
+
+export async function updateLocalBoardMember(input: BoardMemberUpdateInput) {
+  const headers = hasRemotePersistenceApi() ? await persistenceJsonHeadersAsync() : persistenceJsonHeaders()
+  const response = await fetch(
+    hasRemotePersistenceApi()
+      ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(input.boardId)}/members/${encodeURIComponent(input.userId)}`)
+      : '/api/boards/local-members',
+    {
+      body: JSON.stringify(input),
+      headers,
+      method: hasRemotePersistenceApi() ? 'PATCH' : 'PATCH',
+    }
+  )
+  const payload = await response.json() as LocalBoardMemberResponse
+  if (!response.ok || !payload.ok || !payload.member) {
+    throw new Error(payload.error || 'Board member update failed.')
+  }
+  return payload
+}
+
+export async function deleteLocalBoardMember(boardId: string, userId: string) {
+  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync() : persistenceJsonHeaders()
+  const response = await fetch(
+    hasRemotePersistenceApi()
+      ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(boardId)}/members/${encodeURIComponent(userId)}`)
+      : '/api/boards/local-members',
+    {
+      body: hasRemotePersistenceApi() ? undefined : JSON.stringify({ boardId, userId }),
+      headers,
+      method: 'DELETE',
+    }
+  )
+  const payload = await response.json() as LocalBoardMemberDeleteResponse
+  if (!response.ok || !payload.ok || !payload.userId) {
+    throw new Error(payload.error || 'Board member remove failed.')
+  }
+  return payload
+}
+
+export async function ensureLocalBoardShareLink(boardId: string, accessRole: BoardShareAccessRole = 'viewer') {
+  const headers = hasRemotePersistenceApi() ? await persistenceJsonHeadersAsync() : persistenceJsonHeaders()
+  const response = await fetch(
+    hasRemotePersistenceApi()
+      ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(boardId)}/share-link`)
+      : '/api/boards/local-share-link',
+    {
+      body: JSON.stringify({ accessRole, boardId }),
+      headers,
+      method: 'POST',
+    }
+  )
+  const payload = await response.json() as LocalBoardShareLinkResponse
+  if (!response.ok || !payload.ok || !payload.shareLink) {
+    throw new Error(payload.error || 'Board share link failed.')
+  }
+  return payload
+}
+
+export async function revokeLocalBoardShareLink(boardId: string, shareId: string) {
+  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync() : persistenceJsonHeaders()
+  const response = await fetch(
+    hasRemotePersistenceApi()
+      ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(boardId)}/share-link/${encodeURIComponent(shareId)}`)
+      : '/api/boards/local-share-link',
+    {
+      body: hasRemotePersistenceApi() ? undefined : JSON.stringify({ boardId, shareId }),
+      headers,
+      method: 'DELETE',
+    }
+  )
+  const payload = await response.json() as LocalBoardShareLinkDeleteResponse
+  if (!response.ok || !payload.ok || !payload.shareId) {
+    throw new Error(payload.error || 'Board share link revoke failed.')
+  }
+  return payload
+}
+
+export async function resolveLocalBoardShareLink(shareId: string) {
+  const response = await fetch(
+    hasRemotePersistenceApi()
+      ? persistenceApiUrl(`/api/v1/boards/share-links/${encodeURIComponent(shareId)}`)
+      : `/api/boards/local-share-link?shareId=${encodeURIComponent(shareId)}`
+  )
+  const payload = await response.json() as LocalBoardShareLinkResolveResponse
+  if (!response.ok || !payload.ok || !payload.shareLink) {
+    throw new Error(payload.error || 'Board share link resolve failed.')
   }
   return payload
 }

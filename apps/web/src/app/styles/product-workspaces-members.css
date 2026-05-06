@@ -34,13 +34,94 @@
   border-top: 1px solid var(--color-hairline);
 }
 
+.board-panel-member-add {
+  display: grid;
+  gap: 10px;
+}
+
+.board-panel-candidate-list {
+  display: grid;
+  gap: 8px;
+}
+
+.board-panel-candidate {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--color-hairline);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.board-panel-candidate strong {
+  display: block;
+  color: var(--color-ink);
+  font-size: 12px;
+}
+
+.board-panel-candidate span,
+.board-panel-candidate small {
+  display: block;
+}
+
+.board-panel-candidate button {
+  height: 30px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--color-canvas);
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.board-panel-member-add label,
+.board-panel-member-inline {
+  display: grid;
+  gap: 6px;
+}
+
+.board-panel-member-add span {
+  color: #8aa0bd;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.board-panel-member-add input,
+.board-panel-member-add select,
+.board-panel-member-actions input,
+.board-panel-member-role {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #d8e2ef;
+  border-radius: 12px;
+  background: white;
+  color: #172033;
+}
+
+.board-panel-member-add input,
+.board-panel-member-add select,
+.board-panel-member-actions input {
+  height: 38px;
+  padding: 0 12px;
+}
+
+.board-panel-member-role {
+  height: 30px;
+  padding: 0 10px;
+}
+
 .board-panel-member {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) auto auto auto;
+  grid-template-columns: 28px minmax(0, 1fr) auto 140px minmax(180px, auto);
   gap: 8px;
   align-items: center;
   padding: 9px 0;
   border-bottom: 1px solid var(--color-hairline);
+}
+
+.board-panel-member-meta {
+  min-width: 0;
 }
 
 .board-panel-member button {
@@ -72,6 +153,17 @@
   line-height: 1.2;
 }
 
+.board-panel-member-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.board-panel-member-status {
+  min-height: 16px;
+}
+
 .board-panel :where(button, input, textarea, label, legend, dt, dd, strong, span, small, h2, h3, p) {
   font-weight: 400;
 }
@@ -79,5 +171,10 @@
 @media (max-width: 640px) {
   .board-panel-member {
     grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .board-panel-member-actions,
+  .board-panel-member-inline {
+    grid-column: 2 / -1;
   }
 }

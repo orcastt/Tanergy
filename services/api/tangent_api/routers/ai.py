@@ -3,8 +3,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends
 
 from tangent_api.ai_contracts import create_mock_run, get_mock_run, list_models
+from tangent_api.ai_schemas import AiModelsResponse, AiRunRequest, AiRunResponse
 from tangent_api.request_context import ApiRequestContext, get_request_context
-from tangent_api.schemas import AiModelsResponse, AiRunRequest, AiRunResponse
 
 router = APIRouter(prefix="/api/v1/ai", tags=["ai"])
 
@@ -23,8 +23,7 @@ def create_run(
     payload: AiRunRequest,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AiRunResponse:
-    _ = context
-    return AiRunResponse(ok=True, run=create_mock_run(payload))
+    return AiRunResponse(ok=True, run=create_mock_run(payload, context))
 
 
 @router.get("/runs/{run_id}", response_model=AiRunResponse)

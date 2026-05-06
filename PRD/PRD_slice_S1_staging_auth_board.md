@@ -17,7 +17,7 @@ Move from local dev identity and local persistence to real staging infrastructur
 | Auth | Users can register/login/logout through email OTP, magic link or Google OAuth. | Scaffold only |
 | Workspace ownership | New users get a workspace; API queries are scoped by user/workspace. | Schema implemented locally; Auth wiring pending |
 | Board CRUD | Board list/search/pagination/open/rename/delete/copy is server-side and permission checked. | Local first pass only |
-| Share/member permissions | Owner/admin/editor/viewer states become real server-side roles. | UI scaffold only |
+| Share/member permissions | Owner/admin/editor/viewer states become real server-side roles, and copied share links open through a dedicated public share entry. | First pass |
 | Konva production canvas | New/saved Konva Boards open on staging without tldraw production dependency. | Local first pass; staging redeploy smoke pending |
 
 ## Included In S1
@@ -28,6 +28,7 @@ Move from local dev identity and local persistence to real staging infrastructur
 - Default workspace creation for every new user.
 - User-scoped Board list/open/save/history/rename/delete/copy.
 - Owner/admin/editor/viewer permission checks on server APIs.
+- Public share-link entry that can open a shared Konva Board in first-pass view-only mode.
 - Staging Postgres/R2/domain/CORS smoke.
 - Konva-first Board route deploy with tldraw reference disabled by default.
 
@@ -43,7 +44,7 @@ Move from local dev identity and local persistence to real staging infrastructur
 ## Prepared But Not Fully Built In S1
 
 - Admin roles and audit logs: schema compatibility may be added, but the full Admin dashboard is S3.
-- Credits and subscriptions: ids and ownership must be compatible, but real credit deduction, team billing pools and invoices are S3.
+- Credits and subscriptions: ids and ownership must be compatible, but real credit deduction, Group/Team dashboard visibility, Team seat allowance and invoices are S3.
 - AI usage/cost logs: S1 must not block them, but real provider cost tracking is S2.
 - Collaboration: S1 creates the membership truth needed later, but live multiplayer/presence is S4.
 
@@ -53,6 +54,7 @@ Move from local dev identity and local persistence to real staging infrastructur
 - Login redirects to `/workspaces`.
 - Board list returns summaries only, not full documents.
 - Board load returns full document only for authorized users.
+- Active share link opens a dedicated public shared-Board route without requiring the protected workspace shell.
 - Board save, History create/list/load and thumbnail metadata work against staging Postgres/R2.
 - User A cannot read or mutate User B's Board.
 - Owner/admin can mutate Board metadata; viewer cannot.
@@ -64,3 +66,74 @@ Move from local dev identity and local persistence to real staging infrastructur
 - No AI provider integration in this slice.
 - No full Admin analytics.
 - No real-time collaboration.
+
+## 中文完整翻译
+
+# PRD 切片 S1：Staging、Auth 与 Board CRUD
+
+**更新日期**：2026-05-05
+**模式**：架构切片。
+
+## 目标
+
+从本地 dev identity 和 local persistence 迁移到真实 staging infrastructure、真实 users、真实 workspaces 和 Auth-backed Board CRUD。这一步让 TANGENT 从单一本地 canvas 开始表现为真实的多用户 Web 产品。
+
+## 产品要求
+
+| 领域 | 要求 | 状态 |
+| --- | --- | --- |
+| Staging Web/API | 一个公开 staging Web origin 可以通过 HTTPS 调用公开 staging FastAPI origin。 | Not started |
+| Object storage | 上传和 capture 的图片持久化到 R2/S3-compatible storage，并能从 URL 重新加载。 | Local/FastAPI adapters exist; real staging pending |
+| Database | Board、Asset 和 History data 通过 migrations 持久化到 managed Postgres。 | S1A migrations implemented locally; real staging smoke pending |
+| Auth | 用户可以通过 email OTP、magic link 或 Google OAuth 注册 / 登录 / 登出。 | Scaffold only |
+| Workspace ownership | 新用户会获得 workspace；API queries 按 user/workspace scope。 | Schema implemented locally; Auth wiring pending |
+| Board CRUD | Board list/search/pagination/open/rename/delete/copy 在服务端执行并带权限检查。 | Local first pass only |
+| Share/member permissions | Owner/admin/editor/viewer states 成为真实服务端 roles，复制的 share links 通过专门 public share entry 打开。 | First pass |
+| Konva production canvas | New/saved Konva Boards 可以在 staging 打开，且不依赖 tldraw production dependency。 | Local first pass; staging redeploy smoke pending |
+
+## S1 包含
+
+- users、workspaces、workspace members、board members、boards、board history 和 assets 的 database migrations。
+- 使用 email OTP 或 magic link 的 registration/login/logout/session。
+- 通过 Auth provider 进行 Google OAuth signup/login，并映射到本地 TANGENT user。
+- 为每个新用户创建 default workspace。
+- User-scoped Board list/open/save/history/rename/delete/copy。
+- 服务端 API 上的 Owner/admin/editor/viewer permission checks。
+- 可以第一阶段 view-only 打开 shared Konva Board 的 public share-link entry。
+- Staging Postgres/R2/domain/CORS smoke。
+- Konva-first Board route deploy，并默认禁用 tldraw reference。
+
+## S1 子切片
+
+| 子切片 | 文件 | 产品结果 |
+| --- | --- | --- |
+| S1A DB schema + migrations | `PRD_slice_S1A_db_schema.md` | Account/workspace/Board facts 已在本地建模；staging DB smoke 仍待完成。 |
+| S1B staging infra | `PRD_slice_S1B_staging_infra.md` | App 可以在线对真实 staging services 测试。 |
+| S1C Auth/request context | `PRD_slice_S1C_auth_request_context.md` | 用户可以 register/login，并获得自己的 workspace。 |
+| S1D Auth-backed Board CRUD | `PRD_slice_S1D_auth_board_crud.md` | 用户只能安全保存、重新打开和管理已授权 Boards。 |
+
+## S1 已准备但不完整构建
+
+- Admin roles 和 audit logs：可以增加 schema compatibility，但完整 Admin dashboard 属于 S3。
+- Credits 和 subscriptions：ids 和 ownership 必须兼容，但真实 credit deduction、Group/Team dashboard visibility、Team seat allowance 和 invoices 属于 S3。
+- AI usage/cost logs：S1 不能阻塞它们，但真实 provider cost tracking 属于 S2。
+- Collaboration：S1 创建未来需要的 membership truth，但 live multiplayer/presence 属于 S4。
+
+## 验收
+
+- 新用户可以注册并验证 email。
+- Login 重定向到 `/workspaces`。
+- Board list 只返回 summaries，不返回 full documents。
+- Board load 只对 authorized users 返回 full document。
+- Active share link 可以打开专门的 public shared-Board route，不要求进入 protected workspace shell。
+- Board save、History create/list/load 和 thumbnail metadata 可以在 staging Postgres/R2 上工作。
+- 用户 A 不能读取或修改用户 B 的 Board。
+- Owner/admin 可以修改 Board metadata；viewer 不能。
+- Board History 仍然只对 authorized members 有 scope。
+- Production-like staging Board route 打开 Konva v2，不要求 tldraw。
+
+## 非目标
+
+- 本切片不接入 AI provider。
+- 不做完整 Admin analytics。
+- 不做 real-time collaboration。

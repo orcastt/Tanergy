@@ -11,14 +11,26 @@ from tangent_api.board_metadata import (
     normalize_board_visibility,
 )
 from tangent_api.board_schemas import (
+    BoardCopyResponse,
     BoardDeleteResponse,
     BoardDocumentGuardIssue,
     BoardDocumentGuardResult,
     BoardListResponse,
     BoardLoadResponse,
+    BoardMemberCandidateRecord,
+    BoardMemberCandidatesResponse,
+    BoardMemberCreateRequest,
+    BoardMemberDeleteResponse,
+    BoardMemberInviteByEmailRequest,
+    BoardMemberRecord,
+    BoardMemberResponse,
+    BoardMembersResponse,
+    BoardMemberUpdateRequest,
     BoardRecord,
     BoardRenameRequest,
     BoardRenameResponse,
+    BoardRestoreRequest,
+    BoardRestoreResponse,
     BoardSaveRequest,
     BoardSaveResponse,
     BoardSnapshotCreateRequest,
@@ -28,40 +40,17 @@ from tangent_api.board_schemas import (
     BoardSnapshotLoadResponse,
     BoardSnapshotRecord,
     BoardSnapshotSummary,
+    BoardShareLinkCreateRequest,
+    BoardShareLinkDeleteResponse,
+    BoardShareLinkRecord,
+    BoardShareLinkResolveRecord,
+    BoardShareLinkResolveResponse,
+    BoardShareLinkResponse,
     BoardSummary,
     BoardValidateResponse,
     summarize_board_record,
 )
 from tangent_api.schema_base import TangentApiModel
-
-
-class AuthUser(TangentApiModel):
-    avatar_initials: str = Field(alias="avatarInitials")
-    display_name: str = Field(alias="displayName")
-    email: str
-    email_verified: bool = Field(alias="emailVerified")
-    id: str
-
-
-class AuthWorkspace(TangentApiModel):
-    board_count: int = Field(alias="boardCount")
-    id: str
-    name: str
-    role: str
-
-
-class AuthSession(TangentApiModel):
-    active_workspace: AuthWorkspace = Field(alias="activeWorkspace")
-    auth_mode: str = Field(alias="authMode")
-    is_dev_fallback: bool = Field(alias="isDevFallback")
-    user: AuthUser
-    workspaces: list[AuthWorkspace]
-
-
-class AuthSessionResponse(TangentApiModel):
-    error: Optional[str] = None
-    ok: bool
-    session: Optional[AuthSession] = None
 
 
 class AdminRoleRecord(TangentApiModel):
@@ -80,57 +69,101 @@ class AdminMeResponse(TangentApiModel):
     user_id: str = Field(alias="userId")
 
 
-class AiModelOption(TangentApiModel):
-    capabilities: list[str]
-    cost_hint: str = Field(alias="costHint")
-    display_name: str = Field(alias="displayName")
-    estimated_latency: str = Field(alias="estimatedLatency")
-    id: str
-    is_default: bool = Field(alias="isDefault")
-    is_enabled: bool = Field(alias="isEnabled")
-    parameter_schema: dict[str, Any] = Field(alias="parameterSchema")
-    provider: str
+class AdminSummaryRecord(TangentApiModel):
+    admin_user_count: int = Field(alias="adminUserCount")
+    boards_count: int = Field(alias="boardsCount")
+    users_count: int = Field(alias="usersCount")
+    workspaces_count: int = Field(alias="workspacesCount")
 
 
-class AiModelsResponse(TangentApiModel):
+class AdminSummaryResponse(TangentApiModel):
     error: Optional[str] = None
-    models: list[AiModelOption]
     ok: bool
+    summary: Optional[AdminSummaryRecord] = None
 
 
-class AiRunRequest(TangentApiModel):
-    board_id: Optional[str] = Field(default=None, alias="boardId")
-    input_asset_ids: list[str] = Field(default_factory=list, alias="inputAssetIds")
-    node_id: Optional[str] = Field(default=None, alias="nodeId")
-    node_type: Optional[str] = Field(default=None, alias="nodeType")
-    params: dict[str, Any] = Field(default_factory=dict)
-    prompt: Optional[str] = None
-    run_type: str = Field(alias="runType")
-    selected_model_id: Optional[str] = Field(default=None, alias="selectedModelId")
-
-
-class AiRunRecord(TangentApiModel):
-    board_id: Optional[str] = Field(default=None, alias="boardId")
-    cost_credits: float = Field(alias="costCredits")
-    cost_hint: str = Field(alias="costHint")
+class AdminUserRecord(TangentApiModel):
     created_at: str = Field(alias="createdAt")
-    error: Optional[str] = None
-    input_asset_ids: list[str] = Field(alias="inputAssetIds")
-    latency_ms: int = Field(alias="latencyMs")
-    model_id: str = Field(alias="modelId")
-    node_id: Optional[str] = Field(default=None, alias="nodeId")
-    output_asset_ids: list[str] = Field(alias="outputAssetIds")
-    provider: str
-    run_id: str = Field(alias="runId")
-    run_type: str = Field(alias="runType")
+    display_name: str = Field(alias="displayName")
+    email: str
+    id: str
+    last_login_at: Optional[str] = Field(default=None, alias="lastLoginAt")
+    locale: str
     status: str
-    text_output: Optional[str] = Field(default=None, alias="textOutput")
 
 
-class AiRunResponse(TangentApiModel):
+class AdminUsersResponse(TangentApiModel):
     error: Optional[str] = None
     ok: bool
-    run: Optional[AiRunRecord] = None
+    users: list[AdminUserRecord] = Field(default_factory=list)
+
+
+class AdminWorkspaceRecord(TangentApiModel):
+    created_at: Optional[str] = Field(default=None, alias="createdAt")
+    id: str
+    kind: str = "solo_workspace"
+    name: str
+    owner_id: Optional[str] = Field(default=None, alias="ownerId")
+    status: str
+
+
+class AdminWorkspacesResponse(TangentApiModel):
+    error: Optional[str] = None
+    ok: bool
+    workspaces: list[AdminWorkspaceRecord] = Field(default_factory=list)
+
+
+class AdminBoardRecord(TangentApiModel):
+    id: str
+    owner_id: str = Field(alias="ownerId")
+    saved_at: str = Field(alias="savedAt")
+    title: str
+    visibility: str
+    workspace_id: str = Field(alias="workspaceId")
+
+
+class AdminBoardsResponse(TangentApiModel):
+    error: Optional[str] = None
+    ok: bool
+    boards: list[AdminBoardRecord] = Field(default_factory=list)
+
+
+class AdminAuditLogRecord(TangentApiModel):
+    action: str
+    actor_user_id: Optional[str] = Field(default=None, alias="actorUserId")
+    created_at: str = Field(alias="createdAt")
+    id: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    target_user_id: Optional[str] = Field(default=None, alias="targetUserId")
+    workspace_id: Optional[str] = Field(default=None, alias="workspaceId")
+
+
+class AdminAuditLogsResponse(TangentApiModel):
+    error: Optional[str] = None
+    logs: list[AdminAuditLogRecord] = Field(default_factory=list)
+    ok: bool
+
+
+class AdminRoleListResponse(TangentApiModel):
+    error: Optional[str] = None
+    ok: bool
+    roles: list[AdminRoleRecord] = Field(default_factory=list)
+    user_id: str = Field(alias="userId")
+
+
+class AdminRoleGrantRequest(TangentApiModel):
+    note: Optional[str] = None
+    permissions: dict[str, Any] = Field(default_factory=dict)
+    role: str
+    user_id: str = Field(alias="userId")
+
+
+class AdminRoleMutationResponse(TangentApiModel):
+    audit_id: Optional[str] = Field(default=None, alias="auditId")
+    error: Optional[str] = None
+    ok: bool
+    role: Optional[AdminRoleRecord] = None
+    user_id: str = Field(alias="userId")
 
 
 class AssetRecord(TangentApiModel):
