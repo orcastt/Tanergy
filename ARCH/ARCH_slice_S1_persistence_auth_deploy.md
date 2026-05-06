@@ -1,6 +1,6 @@
 # ARCH Slice S1: Persistence, Auth And Deploy
 
-**Updated**: 2026-05-05
+**Updated**: 2026-05-06
 **Mode**: Architecture slice.
 
 ## Scope
@@ -42,8 +42,8 @@ S1 is the identity and ownership foundation. It should not implement every futur
 - S3-compatible Asset adapter exists.
 - Alembic P0 migration scaffold exists.
 - S1A formal schema migrations are implemented locally through revision `20260502_0006` and passed disposable Docker Postgres smoke.
-- Real staging server, managed Postgres, R2 bucket, domain, TLS and secrets are not connected.
-- Auth is still mock/dev scaffold.
+- Staging server, managed Postgres, R2 bucket, domain and TLS have first smoke coverage; email/Auth/OAuth and Konva redeploy smoke still need final staging verification.
+- Clerk frontend/session bridge and FastAPI bearer verification first pass are in place; hardening remains.
 - S1X now provides a Konva-first Board route and production tldraw reference gate locally; staging must redeploy/smoke that path before public use.
 
 ## Core Tables
@@ -173,10 +173,10 @@ Deferred:
 
 | Sub-slice | File | Status | Output |
 | --- | --- | --- | --- |
-| S1A DB schema + migrations | `ARCH_slice_S1A_db_schema.md` | Implemented and locally smoke-tested; staging DB smoke pending S1B | Formal schema, constraints, indexes and future-compatible join points. |
-| S1B staging infra smoke | `ARCH_slice_S1B_staging_infra.md` | Waiting on resources | Public Web/API, Postgres, R2, DNS/TLS and email provider smoke. |
-| S1C Auth/request context | `ARCH_slice_S1C_auth_request_context.md` | After S1A | Real sessions, default workspace and server-side request context. |
-| S1D Auth-backed Board CRUD | `ARCH_slice_S1D_auth_board_crud.md` | After S1C | Board/History/Asset APIs scoped by user, workspace and role. |
+| S1A DB schema + migrations | `ARCH_slice_S1A_db_schema.md` | S1A core done through `0006`; current head includes S3 `0007` | Formal schema, constraints, indexes and future-compatible join points. |
+| S1B staging infra smoke | `ARCH_slice_S1B_staging_infra.md` | Web/API/Neon/R2 smoke passed; Auth/email/OAuth/Konva redeploy pending | Public Web/API, Postgres, R2, DNS/TLS and email provider smoke. |
+| S1C Auth/request context | `ARCH_slice_S1C_auth_request_context.md` | Clerk/FastAPI bearer first pass landed; hardening pending | Real sessions, default workspace and server-side request context. |
+| S1D Auth-backed Board CRUD | `ARCH_slice_S1D_auth_board_crud.md` | First-pass CRUD/member/share/public-share stable | Board/History/Asset APIs scoped by user, workspace and role. |
 
 ## API Rules
 

@@ -37,6 +37,8 @@ def test_alembic_revision_chain_is_linear():
         load_migration("20260502_0005_s1a_future_systems_schema.py"),
         load_migration("20260502_0006_s1a_constraints_indexes.py"),
         load_migration("20260506_0007_workspace_entitlements_ai_charge_contract.py"),
+        load_migration("20260506_0008_ai_control_plane_registry_pricing.py"),
+        load_migration("20260506_0009_ai_run_quote_facts.py"),
     ]
 
     for previous, current in zip(migrations, migrations[1:]):
@@ -48,10 +50,14 @@ def test_s1a_migrations_keep_required_schema_contracts():
     future = load_migration("20260502_0005_s1a_future_systems_schema.py")
     hardening = load_migration("20260502_0006_s1a_constraints_indexes.py")
     entitlements = load_migration("20260506_0007_workspace_entitlements_ai_charge_contract.py")
+    ai_control_plane = load_migration("20260506_0008_ai_control_plane_registry_pricing.py")
+    ai_run_facts = load_migration("20260506_0009_ai_run_quote_facts.py")
     core_sql = "\n".join(core.UPGRADE)
     future_sql = "\n".join(future.UPGRADE)
     hardening_sql = "\n".join(hardening.UPGRADE)
     entitlement_sql = "\n".join(entitlements.UPGRADE)
+    ai_control_plane_sql = "\n".join(ai_control_plane.UPGRADE)
+    ai_run_facts_sql = "\n".join(ai_run_facts.UPGRADE)
 
     for table_name in [
         "tangent_workspace_members",
@@ -91,6 +97,24 @@ def test_s1a_migrations_keep_required_schema_contracts():
         "tangent_ai_api_calls_user_idx",
     ]:
         assert contract in hardening_sql
+
+    for contract in [
+        "tangent_model_registry",
+        "tangent_model_parameter_tiers",
+        "tangent_model_pricing_rules",
+        "ALTER TABLE tangent_model_provider_routes ADD COLUMN IF NOT EXISTS model_key",
+        "tangent_model_registry_default_pricing_rule_fk",
+    ]:
+        assert contract in ai_control_plane_sql
+
+    for contract in [
+        "ALTER TABLE tangent_ai_runs ADD COLUMN IF NOT EXISTS estimated_credits",
+        "ALTER TABLE tangent_ai_runs ADD COLUMN IF NOT EXISTS pricing_rule_id",
+        "ALTER TABLE tangent_ai_runs ADD COLUMN IF NOT EXISTS route_id",
+        "ALTER TABLE tangent_ai_api_calls ADD COLUMN IF NOT EXISTS pricing_rule_id",
+        "tangent_ai_runs_pricing_idx",
+    ]:
+        assert contract in ai_run_facts_sql
 
 
 def test_s1a_smoke_runner_requires_explicit_database(monkeypatch):

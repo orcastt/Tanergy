@@ -1,6 +1,6 @@
 # ARCH Slice S1X: Canvas Engine Migration
 
-**Status**: Active risk-mitigation spike; Phase 4 runtimeGraph cleanup first pass is in progress after accepted Phase 1A/2A/3 baselines.
+**Status**: Konva v2 formal Board route is accepted as the production path for new/saved Boards. Page polish, v1-to-v2 copy tooling, runtimeGraph mock dataflow and public share view are first-pass stable; Yjs collaboration, export/background polish and real AiRun remain.
 **Branch**: `feature/s1x-konva-handfeel-spike`
 **Reason**: Public staging exposed the tldraw production license requirement. TANGENT should not make the paid SDK the long-term core canvas dependency unless the business explicitly accepts that cost.
 

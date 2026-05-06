@@ -1,8 +1,8 @@
 # ARCH Slice S1B: Staging Infrastructure And Online Prep
 
-**Updated**: 2026-05-02
+**Updated**: 2026-05-06
 **Mode**: Architecture slice.
-**Status**: Waiting on external resources.
+**Status**: In progress; staging Web/API/Neon/R2 smoke passed, while Auth/email/OAuth and Konva-first redeploy smoke remain.
 
 ## Goal
 

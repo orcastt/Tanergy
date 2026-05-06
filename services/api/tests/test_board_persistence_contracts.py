@@ -900,13 +900,14 @@ def test_board_member_candidates_invite_and_share_link_contract(monkeypatch):
 
     share = client.post(
         "/api/v1/boards/share_board/share-link",
-        json={"accessRole": "viewer"},
+        json={"accessRole": "viewer", "expiresAt": "2999-01-01T00:00:00Z"},
     )
     assert share.status_code == 200
     share_link = share.json()["shareLink"]
     assert share_link["boardId"] == "share_board"
     assert share_link["workspaceId"] == "dev-workspace"
     assert share_link["accessRole"] == "viewer"
+    assert share_link["expiresAt"] == "2999-01-01T00:00:00+00:00"
     assert share_link["shareId"] is not None
 
     resolved = client.get(f"/api/v1/boards/share-links/{share_link['shareId']}")

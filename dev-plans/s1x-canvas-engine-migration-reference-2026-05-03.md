@@ -1,6 +1,6 @@
 # S1X Canvas Engine Migration Reference
 
-**Status**: Active tactical plan; Phase 4 runtimeGraph cleanup first pass is in progress after accepted handfeel/properties/object-editing baselines.
+**Status**: Active reference and regression checklist. Konva v2 formal Board route, Page polish, v1 copy tooling, runtimeGraph mock dataflow and public share view are first-pass stable; remaining work is export/background polish, performance regressions, real AiRun wiring and Phase 6 Yjs proof.
 **Branch**: `feature/s1x-konva-handfeel-spike`
 
 ## Principle

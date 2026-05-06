@@ -251,7 +251,7 @@ def ensure_board_share_link(
     payload: BoardShareLinkCreateRequest,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> BoardShareLinkResponse:
-    share_link = get_board_storage_adapter().ensure_share_link(board_id, payload.access_role, context)
+    share_link = get_board_storage_adapter().ensure_share_link(board_id, payload.access_role, context, payload.expires_at)
     return BoardShareLinkResponse(ok=True, shareLink=share_link)
 
 

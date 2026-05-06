@@ -99,7 +99,7 @@ type AdminAuditQuery = {
   targetUserId?: string
 }
 
-async function loadAdminJson<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function loadAdminJson<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = await persistenceAuthHeadersAsync()
   const response = await fetch(persistenceApiUrl(path), {
     ...init,
@@ -114,7 +114,7 @@ async function loadAdminJson<T>(path: string, init: RequestInit = {}): Promise<T
   return payload
 }
 
-function createQuery(params: Record<string, null | number | string | undefined>) {
+export function createQuery(params: Record<string, boolean | null | number | string | undefined>) {
   const search = new URLSearchParams()
   for (const [key, value] of Object.entries(params)) {
     if (value === undefined || value === null || value === '') continue

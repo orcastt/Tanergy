@@ -1,6 +1,6 @@
 # TANGENT Development Harness
 
-**Updated**: 2026-05-02
+**Updated**: 2026-05-06
 **Purpose**: concise execution rules. Product, architecture and state details live in the folderized docs.
 
 ## Read Order
@@ -8,7 +8,7 @@
 Fast UI polish:
 
 1. `AGENTS.md`
-2. `project_state/project_state_slice_S0_local_polish.md`
+2. `project_state/Finished/project_state_slice_S0_local_polish.md`
 3. Relevant `PRD/PRD_slice_*.md`
 4. Relevant `ARCH/ARCH_slice_*.md`
 5. `dev-plans/README.md`
@@ -39,18 +39,10 @@ Architecture/API/Auth/AI/Admin/Billing/Deploy/Collaboration:
 
 ## Current Priority
 
-If external resources are not ready:
-
-1. Smart Drawing threshold tuning.
-2. i18n/status polish.
-3. More realistic empty/error states for mocked production surfaces.
-
-If external resources are ready:
-
-1. Staging Postgres migration smoke.
-2. R2/S3-compatible Asset upload/read smoke.
-3. FastAPI CORS/domain smoke.
-4. Web `NEXT_PUBLIC_API_BASE_URL` staging wiring.
+1. S1B/S1C staging Auth smoke: Clerk session, Google OAuth, FastAPI JWT verification, Postgres migrations, R2 asset upload/read and Konva-first Board route with tldraw disabled by default.
+2. S1D permission hardening: active membership/invite state, explicit Asset-sharing allowlists and frontend/API role-label alignment on top of the current effective permission resolver and known-foreign Asset guard.
+3. S3 entitlement foundation: plan catalog, seat assignment, actor-personal credit account resolver, credit ledger preflight and Team usage visibility.
+4. S2 real AiRun only after permission and charge ownership are explicit server-side.
 
 ## Required Gates
 
@@ -85,3 +77,4 @@ git diff --check
 - Do not store image binaries, Base64, provider payloads or full logs in Board/History documents.
 - Do not enable production `/admin` before real Auth and server-side admin roles.
 - Do not start collaboration until Auth, Board, Asset and AiRun authority boundaries are stable.
+- Do not treat Board edit rights as AI spend authority; every run needs server-side entitlement and payer resolution.

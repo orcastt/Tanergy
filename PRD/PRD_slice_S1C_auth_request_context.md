@@ -1,7 +1,7 @@
 # PRD Slice S1C: Auth And Request Context
 
-**Updated**: 2026-05-02
-**Status**: After S1A.
+**Updated**: 2026-05-06
+**Status**: Clerk frontend/session bridge plus FastAPI bearer verification first pass landed; hardening remains.
 
 ## User Value
 
@@ -16,6 +16,23 @@ Users can create accounts, log in, log out and return to their own workspace. Ac
 - Default workspace creation.
 - Session endpoint for current user and memberships.
 - Rate limiting and safe auth errors.
+
+## Current First Pass
+
+- Public landing, Clerk `/sign-in` and `/sign-up` routes exist.
+- Compatibility login/signup/register routes redirect to the Clerk routes.
+- Frontend remote clients can attach the Clerk JWT to Board, Asset, Image Op and AI API calls.
+- FastAPI can verify provider-issued bearer tokens and map Clerk subjects to local `tangent_users` / `tangent_user_identities`.
+- A default workspace is ensured on first verified session.
+- Required-auth mode no longer trusts `x-tangent-user-id` or `x-tangent-workspace-id` as authority.
+
+Remaining hardening:
+
+- Email OTP/magic-link product path.
+- Logout/session revocation and token-hash lifecycle.
+- Full invalid/expired/wrong-audience JWT test matrix.
+- Multi-workspace selection and membership matrix.
+- Auth route rate limiting and request logging.
 
 ## Provider Decision
 

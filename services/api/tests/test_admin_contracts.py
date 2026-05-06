@@ -1,3 +1,5 @@
+import time
+
 import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
@@ -310,6 +312,405 @@ def test_admin_workspaces_and_boards_routes_return_read_only_resources(monkeypat
     assert fake_db.admin_audit_logs[-1]["action"] == "admin.boards.list"
 
 
+def test_admin_ai_routes_return_filtered_resources_and_write_audit_logs(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.admin_roles = [
+        {
+            "user_id": "user_admin",
+            "role": "admin",
+            "permissions": {"ai": True},
+            "note": "active",
+            "granted_by": "user_owner",
+            "created_at": "2026-05-05T00:00:00Z",
+            "revoked_at": None,
+        }
+    ]
+    fake_db.model_registry = [
+        {
+            "model_key": "gpt-image-2",
+            "display_name": "GPT Image 2",
+            "capability": "image_generation",
+            "capabilities": ["image_generation", "image_edit"],
+            "parameter_schema": {"resolution": ["1K", "2K"]},
+            "cost_hint": "Fast tests",
+            "estimated_latency": "5-12s",
+            "enabled": True,
+            "is_default": True,
+            "provider_key": "geekai",
+            "default_tier_key": "1k",
+            "default_pricing_rule_id": "price_gpt_image_2_1k_v1",
+            "created_at": "2026-05-06T00:00:00Z",
+            "updated_at": "2026-05-06T02:00:00Z",
+        },
+        {
+            "model_key": "text-helper",
+            "display_name": "Text Helper",
+            "capability": "text",
+            "capabilities": ["text"],
+            "parameter_schema": {},
+            "cost_hint": "",
+            "estimated_latency": "1-2s",
+            "enabled": False,
+            "is_default": False,
+            "provider_key": "openai",
+            "default_tier_key": None,
+            "default_pricing_rule_id": None,
+            "created_at": "2026-05-06T00:00:00Z",
+            "updated_at": "2026-05-06T01:00:00Z",
+        },
+    ]
+    fake_db.model_provider_routes = [
+        {
+            "id": "route_gpt_primary",
+            "model_key": "gpt-image-2",
+            "provider_key": "geekai",
+            "provider_model": "gpt-image-2",
+            "route_key": "primary",
+            "priority": 10,
+            "weight": 100,
+            "health_status": "healthy",
+            "timeout_ms": 60000,
+            "retry_policy": {"maxAttempts": 1},
+            "enabled": True,
+            "created_at": "2026-05-06T00:00:00Z",
+            "updated_at": "2026-05-06T02:00:00Z",
+        },
+        {
+            "id": "route_gpt_backup",
+            "model_key": "gpt-image-2",
+            "provider_key": "backup",
+            "provider_model": "gpt-image-2",
+            "route_key": "backup",
+            "priority": 20,
+            "weight": 50,
+            "health_status": "degraded",
+            "timeout_ms": 60000,
+            "retry_policy": {"maxAttempts": 1},
+            "enabled": False,
+            "created_at": "2026-05-06T00:00:00Z",
+            "updated_at": "2026-05-06T01:00:00Z",
+        },
+    ]
+    fake_db.model_pricing_rules = [
+        {
+            "id": "price_gpt_image_2_1k_v1",
+            "model_key": "gpt-image-2",
+            "tier_key": "1k",
+            "billing_unit": "per_image",
+            "estimated_credits": 5,
+            "min_credits": 5,
+            "credit_multiplier": 1,
+            "provider_cost_formula": {"unit": "image"},
+            "status": "active",
+            "effective_from": "2026-05-06T00:00:00Z",
+            "effective_to": None,
+            "created_at": "2026-05-06T00:00:00Z",
+            "updated_at": "2026-05-06T00:00:00Z",
+        }
+    ]
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setattr("tangent_api.admin_access.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.admin_ai_control_plane.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    models = client.get(
+        "/api/v1/admin/ai/models?enabled=true&capability=image_generation",
+        headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
+    )
+    assert models.status_code == 200
+    assert [item["modelKey"] for item in models.json()["models"]] == ["gpt-image-2"]
+
+    routes = client.get(
+        "/api/v1/admin/ai/provider-routes?modelKey=gpt-image-2&enabled=true",
+        headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
+    )
+    assert routes.status_code == 200
+    assert [item["routeId"] for item in routes.json()["routes"]] == ["route_gpt_primary"]
+
+    pricing = client.get(
+        "/api/v1/admin/ai/pricing-rules?modelKey=gpt-image-2&status=active",
+        headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
+    )
+    assert pricing.status_code == 200
+    assert [item["id"] for item in pricing.json()["pricingRules"]] == ["price_gpt_image_2_1k_v1"]
+
+    assert [entry["action"] for entry in fake_db.admin_audit_logs[-3:]] == [
+        "admin.ai.models.list",
+        "admin.ai.provider_routes.list",
+        "admin.ai.pricing_rules.list",
+    ]
+
+
+def test_admin_ai_runtime_routes_return_persisted_runs_and_api_calls(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.admin_roles = [
+        {
+            "user_id": "user_admin",
+            "role": "admin",
+            "permissions": {"ai": True},
+            "note": "active",
+            "granted_by": "user_owner",
+            "created_at": "2026-05-05T00:00:00Z",
+            "revoked_at": None,
+        }
+    ]
+    fake_db.credit_ledger = [
+        {
+            "account_id": "credit_user_user_runtime",
+            "credits_delta": 40,
+            "id": "ledger_seed",
+            "reason": "topup_purchase",
+            "source_type": "payment",
+        }
+    ]
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setenv("TANGENT_AI_MOCK_LEDGER_CHARGING", "1")
+    monkeypatch.setattr("tangent_api.admin_access.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.admin_ai_control_plane.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.admin_ai_runtime_reads.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.ai_control_plane.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.ai_run_persistence.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.credit_ledger.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v1/ai/runs",
+        headers={
+            "x-tangent-user-id": "user_runtime",
+            "x-tangent-workspace-id": "workspace_group",
+            "x-tangent-workspace-kind": "group_workspace",
+        },
+        json={
+            "boardId": "board_runtime",
+            "params": {"count": 1},
+            "prompt": "Admin runtime readback",
+            "runType": "image_generation",
+            "selectedModelId": "gpt-image-2",
+        },
+    )
+    assert created.status_code == 200
+    run_id = created.json()["run"]["runId"]
+
+    settled_run = _wait_for_run_status(client, run_id, {"succeeded"})
+
+    runs = client.get(
+        "/api/v1/admin/ai/runs?status=succeeded&modelId=gpt-image-2",
+        headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
+    )
+    assert runs.status_code == 200
+    assert runs.json()["runs"] == [
+        {
+            "boardId": "board_runtime",
+            "chargedAccountId": "credit_user_user_runtime",
+            "chargedScope": "actor_personal",
+            "costCredits": 5.0,
+            "createdAt": fake_db.ai_runs[run_id]["created_at"].isoformat(),
+            "errorMessage": None,
+            "estimatedCredits": 5.0,
+            "id": run_id,
+            "inputAssetIds": [],
+            "latencyMs": 450,
+            "modelId": "gpt-image-2",
+            "nodeId": None,
+            "outputAssetIds": [f"asset_mock_{run_id}_1_admin-runtime-readback_refs0"],
+            "preflightStatus": "settled",
+            "pricingRuleId": "price_gpt_image_2_1k_v1",
+            "promptPreview": "Admin runtime readback",
+            "provider": "geekai",
+            "routeId": "route_gpt_image_2_primary",
+            "routeKey": "geekai-primary",
+            "runType": "image_generation",
+            "selectedTierKey": "1k",
+            "status": "succeeded",
+            "updatedAt": fake_db.ai_runs[run_id]["created_at"].isoformat(),
+            "userId": "user_runtime",
+            "workspaceId": "workspace_group",
+        }
+    ]
+
+    api_calls = client.get(
+        "/api/v1/admin/ai/api-calls?status=succeeded&provider=geekai",
+        headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
+    )
+    assert api_calls.status_code == 200
+    assert api_calls.json()["apiCalls"] == [
+        {
+            "boardId": "board_runtime",
+            "createdAt": fake_db.ai_api_calls[-1]["created_at"].isoformat(),
+            "creditsCharged": 5.0,
+            "creditsRefunded": 0.0,
+            "errorCode": None,
+            "id": f"ai_call_{run_id}_a1",
+            "latencyMs": 450,
+            "modelId": "gpt-image-2",
+            "nodeId": None,
+            "pricingRuleId": "price_gpt_image_2_1k_v1",
+            "provider": "geekai",
+            "providerCost": None,
+            "routeId": "route_gpt_image_2_primary",
+            "routeKey": "geekai-primary",
+            "runId": run_id,
+            "status": "succeeded",
+            "userId": "user_runtime",
+            "workspaceId": "workspace_group",
+        }
+    ]
+    assert [entry["action"] for entry in fake_db.admin_audit_logs[-2:]] == [
+        "admin.ai.runs.list",
+        "admin.ai.api_calls.list",
+    ]
+
+
+def test_admin_ai_api_calls_route_surfaces_failover_attempt_history(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.admin_roles = [
+        {
+            "user_id": "user_admin",
+            "role": "admin",
+            "permissions": {"ai": True},
+            "note": "active",
+            "granted_by": "user_owner",
+            "created_at": "2026-05-05T00:00:00Z",
+            "revoked_at": None,
+        }
+    ]
+    fake_db.model_registry = [
+        {
+            "model_key": "gpt-image-2",
+            "display_name": "GPT Image 2",
+            "capability": "image_generation",
+            "capabilities": ["image_generation", "image_edit"],
+            "parameter_schema": {"resolution": ["1K"]},
+            "cost_hint": "Fast tests",
+            "estimated_latency": "5-12s",
+            "enabled": True,
+            "is_default": True,
+            "provider_key": "geekai",
+            "default_tier_key": "1k",
+            "default_pricing_rule_id": "price_gpt_image_2_1k_v1",
+            "created_at": "2026-05-06T00:00:00Z",
+            "updated_at": "2026-05-06T00:00:00Z",
+        }
+    ]
+    fake_db.model_provider_routes = [
+        {
+            "id": "route_gpt_image_2_primary",
+            "model_key": "gpt-image-2",
+            "provider_key": "geekai",
+            "provider_model": "gpt-image-2",
+            "route_key": "geekai-primary",
+            "priority": 10,
+            "weight": 100,
+            "health_status": "healthy",
+            "timeout_ms": 60000,
+            "retry_policy": {"maxAttempts": 1},
+            "enabled": True,
+            "created_at": "2026-05-06T00:00:00Z",
+            "updated_at": "2026-05-06T00:00:00Z",
+        },
+        {
+            "id": "route_gpt_image_2_backup",
+            "model_key": "gpt-image-2",
+            "provider_key": "openai",
+            "provider_model": "gpt-image-2",
+            "route_key": "openai-backup",
+            "priority": 20,
+            "weight": 80,
+            "health_status": "healthy",
+            "timeout_ms": 60000,
+            "retry_policy": {"maxAttempts": 1},
+            "enabled": True,
+            "created_at": "2026-05-06T00:00:00Z",
+            "updated_at": "2026-05-06T00:00:00Z",
+        },
+    ]
+    fake_db.model_pricing_rules = [
+        {
+            "id": "price_gpt_image_2_1k_v1",
+            "model_key": "gpt-image-2",
+            "tier_key": "1k",
+            "billing_unit": "per_image",
+            "estimated_credits": 5,
+            "min_credits": 5,
+            "credit_multiplier": 1,
+            "provider_cost_formula": {"unit": "image"},
+            "status": "active",
+            "effective_from": "2026-05-06T00:00:00Z",
+            "effective_to": None,
+            "created_at": "2026-05-06T00:00:00Z",
+            "updated_at": "2026-05-06T00:00:00Z",
+        }
+    ]
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setenv("TANGENT_AI_STUB_FAIL_ROUTE_KEYS", "route_gpt_image_2_primary")
+    monkeypatch.delenv("TANGENT_AI_MOCK_LEDGER_CHARGING", raising=False)
+    monkeypatch.setattr("tangent_api.admin_access.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.admin_ai_runtime_reads.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.ai_control_plane.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.ai_run_persistence.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.credit_ledger.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v1/ai/runs",
+        headers={
+            "x-tangent-user-id": "user_runtime",
+            "x-tangent-workspace-id": "workspace_group",
+            "x-tangent-workspace-kind": "group_workspace",
+        },
+        json={
+            "prompt": "Show failover attempts",
+            "runType": "image_generation",
+            "selectedModelId": "gpt-image-2",
+        },
+    )
+    assert created.status_code == 200
+    run_id = created.json()["run"]["runId"]
+
+    settled_run = _wait_for_run_status(client, run_id, {"succeeded"})
+
+    api_calls = client.get(
+        f"/api/v1/admin/ai/api-calls?provider=openai",
+        headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
+    )
+    assert api_calls.status_code == 200
+    assert api_calls.json()["apiCalls"] == [
+        {
+            "boardId": None,
+            "createdAt": fake_db.ai_api_calls[1]["created_at"].isoformat(),
+            "creditsCharged": 0.0,
+            "creditsRefunded": 0.0,
+            "errorCode": None,
+            "id": f"ai_call_{run_id}_a2",
+            "latencyMs": 450,
+            "modelId": "gpt-image-2",
+            "nodeId": None,
+            "pricingRuleId": "price_gpt_image_2_1k_v1",
+            "provider": "openai",
+            "providerCost": None,
+            "routeId": "route_gpt_image_2_backup",
+            "routeKey": "openai-backup",
+            "runId": run_id,
+            "status": "succeeded",
+            "userId": "user_runtime",
+            "workspaceId": "workspace_group",
+        }
+    ]
+
+    all_api_calls = client.get(
+        "/api/v1/admin/ai/api-calls",
+        headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
+    )
+    assert all_api_calls.status_code == 200
+    assert [item["id"] for item in all_api_calls.json()["apiCalls"][:2]] == [
+        f"ai_call_{run_id}_a2",
+        f"ai_call_{run_id}_a1",
+    ]
+    assert all_api_calls.json()["apiCalls"][1]["errorCode"] == "preflight_route_failure"
+
+
 def test_admin_audit_logs_route_returns_filtered_entries_and_writes_access_log(monkeypatch):
     fake_db = FakePostgresDatabase()
     fake_db.admin_roles = [
@@ -482,6 +883,21 @@ def test_admin_revoke_blocks_last_active_owner(monkeypatch):
 
     assert response.status_code == 400
     assert response.json()["detail"] == "Cannot revoke the last active owner role."
+
+
+def _wait_for_run_status(client: TestClient, run_id: str, statuses: set[str], timeout_seconds: float = 1.5) -> dict[str, object]:
+    deadline = time.time() + timeout_seconds
+    last_payload: dict[str, object] | None = None
+    while time.time() < deadline:
+        response = client.get(f"/api/v1/ai/runs/{run_id}")
+        assert response.status_code == 200
+        payload = response.json()["run"]
+        last_payload = payload
+        if payload["status"] in statuses:
+            return payload
+        time.sleep(0.02)
+    assert last_payload is not None
+    raise AssertionError(f"Timed out waiting for run {run_id} to reach {statuses}; last payload was {last_payload}")
 
 
 def make_context(user_id: str) -> ApiRequestContext:

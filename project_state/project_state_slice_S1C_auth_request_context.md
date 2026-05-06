@@ -9,7 +9,7 @@ Replace dev headers/mock identity with real server-side sessions and workspace m
 
 ## Work Items
 
-- [ ] Auth API contracts.
+- [~] Auth API contracts. Clerk-backed `/api/v1/auth/session` is first-pass; native OTP/logout/session-revocation routes remain pending.
 - [x] Choose Auth provider for S1C implementation: Clerk preferred, Supabase Auth acceptable fallback.
 - [x] Add Google OAuth signup/login flow in Clerk and Tanergy `/sign-in` / `/sign-up` pages.
 - [x] Add Next.js provider shell: `ClerkProvider`, route protection proxy and account/avatar control.
@@ -23,6 +23,7 @@ Replace dev headers/mock identity with real server-side sessions and workspace m
 - [ ] Rate limit and request logging for auth routes.
 - [~] Tests for spoofed workspace/user ids. Required-auth header spoof is covered; full workspace membership matrix is still pending.
 - [ ] Tests for invalid, expired and wrong-audience provider JWTs.
+- [ ] Google OAuth staging smoke returns a provider session/JWT and maps to the same local TANGENT user on repeat login.
 
 ## Clerk-First Implementation Notes
 

@@ -1,4 +1,4 @@
-import type { WorkspaceKind } from '@/features/billing/billingTypes'
+import type { PlanKey, WorkspaceKind } from '@/features/billing/billingTypes'
 
 export type WorkspaceRole = 'admin' | 'guest' | 'member' | 'owner'
 
@@ -15,6 +15,7 @@ export type TangentWorkspace = {
   id: string
   kind: WorkspaceKind
   name: string
+  planKey?: PlanKey
   role: WorkspaceRole
 }
 

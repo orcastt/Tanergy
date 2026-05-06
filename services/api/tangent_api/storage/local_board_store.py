@@ -12,11 +12,13 @@ from fastapi import HTTPException
 from tangent_api.board_access import (
     assert_can_create_board,
     assert_can_manage_board,
+    assert_can_own_board,
     assert_can_read_board,
     assert_can_write_board,
     can_read_board,
     can_read_workspace,
 )
+from tangent_api.board_asset_references import assert_no_local_foreign_asset_refs
 from tangent_api.board_guard import audit_board_document
 from tangent_api.board_metadata import get_board_snapshot_display_title
 from tangent_api.request_context import ApiRequestContext
@@ -52,6 +54,7 @@ def save_board(input_data: BoardSaveRequest, context: ApiRequestContext) -> Boar
     audit = audit_board_document(input_data.document)
     if not audit.ok:
         return BoardSaveResponse(audit=audit, error="Board document failed save guard.", ok=False)
+    assert_no_local_foreign_asset_refs(input_data.document, context)
 
     board_id = _sanitize_board_id(input_data.board_id) or f"board_{uuid4()}"
     metrics = get_board_document_metrics(input_data.document)
@@ -198,7 +201,8 @@ def update_board_metadata(
 
 
 def delete_board(board_id: str, context: ApiRequestContext) -> str:
-    record = _load_board_without_touch(board_id, context, required_access="manage")
+    record = _load_board_without_touch(board_id, context, required_access="read")
+    assert_can_own_board(record, context, _get_board_member_role(record.id, record, context))
     _board_path(record.id).unlink()
     _member_path(record.id).unlink(missing_ok=True)
     return record.id
@@ -206,6 +210,7 @@ def delete_board(board_id: str, context: ApiRequestContext) -> str:
 
 def copy_board(board_id: str, context: ApiRequestContext) -> BoardSummary:
     source = _load_board_without_touch(board_id, context, required_access="read")
+    assert_can_own_board(source, context, _get_board_member_role(source.id, source, context))
     assert_can_create_board(context)
     copied = save_board(
         BoardSaveRequest(
@@ -383,13 +388,15 @@ def ensure_board_share_link(
     board_id: str,
     access_role: str,
     context: ApiRequestContext,
+    expires_at: Optional[str] = None,
 ) -> BoardShareLinkRecord:
     record = _load_board_without_touch(board_id, context, required_access="manage")
     normalized_access_role = _normalize_board_share_access_role(access_role)
+    normalized_expires_at = _normalize_share_expires_at(expires_at)
     share_links = _read_share_links(record.id)
-    existing = next((item for item in share_links if item.share_id), None)
+    existing = next((item for item in share_links if item.share_id and _is_share_link_active(item)), None)
     if existing:
-        updated = existing.model_copy(update={"access_role": normalized_access_role})
+        updated = existing.model_copy(update={"access_role": normalized_access_role, "expires_at": normalized_expires_at})
         next_links = [updated, *[item for item in share_links if item.id != existing.id]]
         _write_share_links(record.id, next_links)
         update_board_metadata(record.id, None, None, None, None, None, None, None, updated.share_id, context)
@@ -401,7 +408,7 @@ def ensure_board_share_link(
         boardId=record.id,
         createdAt=now,
         createdBy=context.user_id,
-        expiresAt=None,
+        expiresAt=normalized_expires_at,
         id=f"board_share_{uuid4()}",
         shareId=_create_share_id(),
         workspaceId=record.workspace_id,
@@ -431,7 +438,7 @@ def resolve_board_share_link(share_id: str) -> BoardShareLinkResolveRecord:
     for path in boards_root.glob("*.shares.json"):
         board_id = path.name.removesuffix(".shares.json")
         for link in _read_share_links(board_id):
-            if link.share_id != normalized_share_id:
+            if link.share_id != normalized_share_id or not _is_share_link_active(link):
                 continue
             record = _read_board_record(board_id)
             return BoardShareLinkResolveRecord(
@@ -452,7 +459,7 @@ def load_shared_board(share_id: str) -> BoardRecord:
     for path in boards_root.glob("*.shares.json"):
         board_id = path.name.removesuffix(".shares.json")
         for link in _read_share_links(board_id):
-            if link.share_id != normalized_share_id:
+            if link.share_id != normalized_share_id or not _is_share_link_active(link):
                 continue
             record = _read_board_record(board_id)
             opened_at = datetime.now(timezone.utc).isoformat()
@@ -583,6 +590,32 @@ def _read_share_links(board_id: str) -> list[BoardShareLinkRecord]:
         except Exception:
             continue
     return links
+
+
+def _is_share_link_active(link: BoardShareLinkRecord) -> bool:
+    if not link.expires_at:
+        return True
+    try:
+        expires_at = datetime.fromisoformat(link.expires_at.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    return expires_at > datetime.now(timezone.utc)
+
+
+def _normalize_share_expires_at(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    try:
+        expires_at = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid board share expiry.") from exc
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at <= datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="Board share expiry must be in the future.")
+    return expires_at.isoformat()
 
 
 def _write_share_links(board_id: str, links: list[BoardShareLinkRecord]) -> None:

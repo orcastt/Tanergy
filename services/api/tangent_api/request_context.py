@@ -23,6 +23,7 @@ class ApiRequestContext(BaseModel):
     workspace_id: str
     workspace_kind: str = "solo_workspace"
     workspace_name: str
+    workspace_plan_key: Optional[str] = None
     workspace_role: str
 
 
@@ -31,6 +32,7 @@ async def get_request_context(
     x_tangent_user_id: Optional[str] = Header(default=None),
     x_tangent_workspace_id: Optional[str] = Header(default=None),
     x_tangent_workspace_kind: Optional[str] = Header(default=None),
+    x_tangent_plan_key: Optional[str] = Header(default=None),
 ) -> ApiRequestContext:
     require_auth = os.getenv("TANGENT_REQUIRE_API_AUTH") == "1"
     token = _extract_request_token(request)
@@ -42,6 +44,11 @@ async def get_request_context(
         raise HTTPException(status_code=401, detail="Missing bearer auth token.")
 
     has_explicit_context = bool(x_tangent_user_id and x_tangent_workspace_id)
+    workspace_kind = _normalize_workspace_kind(
+        x_tangent_workspace_kind
+        or os.getenv("TANGENT_DEV_WORKSPACE_KIND")
+        or "solo_workspace"
+    )
     return ApiRequestContext(
         auth_mode="dev",
         is_dev_fallback=not has_explicit_context,
@@ -60,12 +67,12 @@ async def get_request_context(
             or "dev-workspace",
             "workspace id",
         ),
-        workspace_kind=_normalize_workspace_kind(
-            x_tangent_workspace_kind
-            or os.getenv("TANGENT_DEV_WORKSPACE_KIND")
-            or "solo_workspace"
-        ),
+        workspace_kind=workspace_kind,
         workspace_name="Personal workspace",
+        workspace_plan_key=_normalize_workspace_plan_key(
+            x_tangent_plan_key or os.getenv("TANGENT_DEV_WORKSPACE_PLAN_KEY"),
+            workspace_kind,
+        ),
         workspace_role="owner",
     )
 
@@ -85,6 +92,7 @@ async def resolve_authenticated_request_context(token: str) -> ApiRequestContext
         workspace_id=_normalize_context_id(session.workspace_id, "workspace id"),
         workspace_kind=_normalize_workspace_kind(session.workspace_kind),
         workspace_name=session.workspace_name,
+        workspace_plan_key=None,
         workspace_role=session.workspace_role,
     )
 
@@ -115,4 +123,19 @@ def _normalize_workspace_kind(value: str) -> str:
     allowed = {"solo_workspace", "group_workspace", "team_workspace", "enterprise_workspace"}
     if normalized not in allowed:
         raise HTTPException(status_code=400, detail="Invalid workspace kind.")
+    return normalized
+
+
+def _normalize_workspace_plan_key(value: Optional[str], workspace_kind: str) -> Optional[str]:
+    if value is None or not value.strip():
+        return None
+    normalized = value.strip()
+    allowed_by_kind = {
+        "solo_workspace": {"free_canvas"},
+        "group_workspace": {"collaborate_start", "collaborate_plus"},
+        "team_workspace": {"team_start", "team_growth"},
+        "enterprise_workspace": {"enterprise"},
+    }
+    if normalized not in allowed_by_kind.get(workspace_kind, set()):
+        raise HTTPException(status_code=400, detail="Invalid workspace plan key.")
     return normalized

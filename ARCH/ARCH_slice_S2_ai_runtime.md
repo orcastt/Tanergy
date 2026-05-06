@@ -19,10 +19,86 @@ Node UI
 Server
   -> validates user/workspace/board
   -> resolves workspace kind + permission + charge scope + charged account
-  -> selects provider route
+  -> resolves model capability + parameter tier + active pricing rule
+  -> preflights estimated credits and optionally reserves/charges a hold
+  -> selects provider route by admin-configured priority/weight/health
   -> calls provider with server-side key
   -> uploads results as Assets
-  -> writes AiRun / ai_api_calls / cost ledger
+  -> writes AiRun / ai_api_calls / credit ledger / provider cost ledger
+```
+
+## Model, Route And Pricing Control Plane
+
+S2 must be driven by server-owned configuration, not hard-coded frontend price tables.
+
+Required server facts:
+
+```text
+model_registry
+  model_key                  # stable public product key, for example gpt_image_2
+  display_name
+  capability                 # image_generation | image_edit | image_analysis | text
+  enabled
+  default_pricing_rule_id
+
+model_parameter_tiers
+  model_key
+  tier_key                   # for example 0_5k | 1k | 2k | 4k | low | medium | high
+  provider_params            # JSON mapped to provider-native size / quality / output settings
+  public_label
+  enabled
+
+model_provider_routes
+  route_id
+  model_key
+  provider_key               # openai | proxy_a | proxy_b | future provider
+  provider_model
+  priority
+  weight
+  health_status
+  timeout_ms
+  retry_policy
+  enabled
+
+model_pricing_rules
+  pricing_rule_id
+  model_key
+  tier_key
+  billing_unit               # per_image | per_output_token | per_input_token | blended
+  estimated_credits
+  min_credits
+  credit_multiplier
+  provider_cost_formula
+  effective_from
+  effective_to
+  status
+```
+
+Rules:
+
+- The UI may show model choices, parameter tiers and estimated credits, but it must read them from server APIs.
+- The UI must not send provider names, route ids, raw provider prices or arbitrary price overrides.
+- A product model like `gpt_image_2` can have multiple provider routes behind it. The user sees the product model; the server chooses the active route.
+- Admins/developer operators can disable a route, change priority/weight, change a provider model mapping and publish a new pricing-rule version without redeploying frontend code.
+- Pricing rules must be versioned. An AiRun stores the exact `pricing_rule_id`, `route_id`, estimated credits, charged credits, refunded credits, provider cost and provider currency used at run time.
+- Parameter tiers such as `0.5K`, `1K`, `2K` and `4K` are product-facing tiers. Each provider route maps them to provider-native parameters; not every provider must support every tier.
+- For providers that return actual usage, the server estimates credits before the call, then settles using actual usage after the provider response. Over-estimates become `usage_refund`; under-estimates require a bounded extra `usage_charge` or a failed/held run according to policy.
+- Route failover must never double-charge the user. Retries share one AiRun id, one charge plan and one final settlement.
+
+Runtime flow:
+
+```text
+Run request
+  -> validate node/run type and board permission
+  -> resolve model_key + tier_key from server registry
+  -> load active pricing_rule_id and estimate credits
+  -> preflight payer balance and permission
+  -> choose best enabled provider route by priority/weight/health
+  -> call provider
+  -> if route fails before provider work starts, retry another healthy route
+  -> if provider returns usage/cost, normalize provider facts
+  -> settle credit ledger and provider-cost ledger
+  -> store Assets and AiRun summary
 ```
 
 ## Charge Resolution Rules
@@ -45,29 +121,37 @@ Server
 
 1. Add/extend Node Registry spec.
 2. Add/extend Model Registry capability.
-3. Add AiRun request/response schema.
-4. Add Next/FastAPI route support.
-5. Add provider adapter or mock.
-6. Add tests and Board guard checks.
-7. Update PRD/ARCH slice files.
+3. Add parameter-tier and pricing-rule coverage.
+4. Add provider-route mapping and fallback policy.
+5. Add AiRun request/response schema.
+6. Add Next/FastAPI route support.
+7. Add provider adapter or mock.
+8. Add tests and Board guard checks.
+9. Update PRD/ARCH slice files.
 
 ## Current State
 
 - Mock Model Registry exists.
-- Mock AiRun route exists.
+- Mock AiRun routes now exist for create/poll/cancel: `POST /api/v1/ai/runs`, `GET /api/v1/ai/runs/{runId}` and `POST /api/v1/ai/runs/{runId}/cancel`.
 - Mock AiRun responses now include workspace kind, charged scope, charged account id, entitlement source and payer label, so frontend nodes can display the payer contract before real provider execution exists.
+- Mock AiRun now persists a simple lifecycle contract: create queues the run, a background executor moves it through running -> succeeded/failed, GET reads current state without mutating it, and cancel stops queued/running runs.
+- A first-pass provider-route execution shell now exists behind that lifecycle: route candidates are resolved from the control plane, a lightweight provider-adapter registry now owns the per-provider attempt boundary, route retry policy is honored inside the shell, and failover now stops on timeouts or work-started failures to avoid duplicate provider work.
+- Mock AiRun can optionally exercise real credit-ledger settlement when `TANGENT_AI_MOCK_LEDGER_CHARGING=1` and `DATABASE_URL` are configured: it estimates mock credits, rejects insufficient balance before success and writes a `usage_charge` ledger entry. That settlement now stays bound to the run's originally resolved charged account rather than the later read request context. The default local path still does not charge credits.
 - Image Gen / Image Gen 4 model dropdown reads contract.
 - Konva runtimeGraph mock flow now exercises Prompt/Image/Chat/Image Gen/Analysis data passing, export ports and generated Asset refs without provider raw payloads.
-- Real provider calls, real AiRun persistence and cost logging are not done.
+- DB-backed control-plane tables, quote-time persistence, persisted mock `ai_runs` rows and attempt-level `ai_api_calls` rows now exist.
+- Real provider adapters/calls, admin-editable model pricing/routing, provider-cost logging and generated Asset upload are not done, but the execution/settlement shell is now separated enough to plug them in without rewriting the route contract.
 
 ## Launch-Readiness Sequence
 
 1. Keep API keys server-side and choose provider adapter boundaries.
-2. Add server-side AiRun persistence and `ai_api_calls` writes before real calls.
-3. Add workspace-kind-aware entitlement + charged-account resolution before the provider call.
-4. Upload generated outputs as Assets; return Asset refs and short summaries only.
-5. Wire Konva Run/Stop UI to AiRun create/poll/cancel.
-6. Add provider failure, timeout, rate-limit and cost tests.
+2. DB-backed Model Registry, parameter tiers, provider routes and pricing-rule versions are now in the first-pass backend checkpoint.
+3. Server-side AiRun persistence, quote/preflight and a persisted mock create/poll/cancel lifecycle are now in the first-pass backend checkpoint too.
+4. A stub background executor plus timeout-safe primary->backup route shell now exist; the next step is to swap in real provider adapters while preserving one run id, one payer and no-double-charge settlement.
+5. Expand provider-cost normalization and real post-provider settlement on top of the new per-attempt `ai_api_calls` timeline and extracted finalization boundary.
+6. Upload generated outputs as Assets; return Asset refs and short summaries only.
+7. Wire Konva Run/Stop UI to AiRun create/poll/cancel.
+8. Add provider failure, timeout, rate-limit and cost tests.
 
 ## Do Not Do
 
@@ -100,10 +184,86 @@ Node UI
 Server
   -> 校验 user / workspace / board
   -> 解析 workspace kind、权限、扣费范围和被扣费账户
-  -> 选择 provider 路由
+  -> 解析模型能力、参数档位和 active pricing rule
+  -> preflight 估算 credits，并按策略选择性预留 / 扣除 hold
+  -> 按管理员配置的 priority / weight / health 选择 provider route
   -> 使用服务端密钥调用 provider
   -> 把结果上传为 Assets
-  -> 写入 AiRun / ai_api_calls / cost ledger
+  -> 写入 AiRun / ai_api_calls / credit ledger / provider cost ledger
+```
+
+## 模型、线路和价格控制平面
+
+S2 必须由服务端配置驱动，不能用前端写死的价格表驱动。
+
+必须具备的服务端事实：
+
+```text
+model_registry
+  model_key                  # 稳定的对外产品 key，例如 gpt_image_2
+  display_name
+  capability                 # image_generation | image_edit | image_analysis | text
+  enabled
+  default_pricing_rule_id
+
+model_parameter_tiers
+  model_key
+  tier_key                   # 例如 0_5k | 1k | 2k | 4k | low | medium | high
+  provider_params            # JSON，映射到 provider-native size / quality / output settings
+  public_label
+  enabled
+
+model_provider_routes
+  route_id
+  model_key
+  provider_key               # openai | proxy_a | proxy_b | future provider
+  provider_model
+  priority
+  weight
+  health_status
+  timeout_ms
+  retry_policy
+  enabled
+
+model_pricing_rules
+  pricing_rule_id
+  model_key
+  tier_key
+  billing_unit               # per_image | per_output_token | per_input_token | blended
+  estimated_credits
+  min_credits
+  credit_multiplier
+  provider_cost_formula
+  effective_from
+  effective_to
+  status
+```
+
+规则：
+
+- UI 可以展示模型选择、参数档位和预计 credits，但必须从服务端 API 读取。
+- UI 不能发送 provider name、route id、provider 原始价格或任意 price override。
+- 像 `gpt_image_2` 这样的产品模型背后可以挂多条 provider routes。用户看到的是产品模型；服务端负责选择 active route。
+- Admin / developer operators 可以在不重新部署前端的情况下禁用某条 route、调整 priority/weight、修改 provider model mapping，并发布新的 pricing-rule version。
+- Pricing rules 必须版本化。AiRun 需要保存运行当时使用的准确 `pricing_rule_id`、`route_id`、estimated credits、charged credits、refunded credits、provider cost 和 provider currency。
+- `0.5K`、`1K`、`2K`、`4K` 这类参数档位是面向产品的档位。每条 provider route 会把它们映射为 provider-native parameters；不是每个 provider 都必须支持每个档位。
+- 对于会返回 actual usage 的 providers，服务端需要在调用前估算 credits，再在 provider response 后按 actual usage 结算。估多了写 `usage_refund`；估少了按策略写受限的额外 `usage_charge`，或让 run 进入 failed/held 状态。
+- Route failover 绝不能对用户重复扣费。Retries 共享同一个 AiRun id、同一个扣费计划和一次最终结算。
+
+运行时流程：
+
+```text
+Run request
+  -> 校验 node/run type 和 board permission
+  -> 从服务端 registry 解析 model_key + tier_key
+  -> 加载 active pricing_rule_id 并估算 credits
+  -> preflight payer balance 和 permission
+  -> 按 priority/weight/health 选择最佳 enabled provider route
+  -> 调用 provider
+  -> 如果 route 在 provider 真正开始工作前失败，就重试另一条健康 route
+  -> 如果 provider 返回 usage/cost，就归一化 provider facts
+  -> 结算 credit ledger 和 provider-cost ledger
+  -> 存储 Assets 和 AiRun summary
 ```
 
 ## 扣费归属解析规则
@@ -126,29 +286,37 @@ Server
 
 1. 新增或扩展 Node Registry 规格。
 2. 新增或扩展 Model Registry 能力。
-3. 新增 AiRun request / response schema。
-4. 增加 Next / FastAPI 路由支持。
-5. 增加 provider adapter 或 mock。
-6. 增加测试和 Board guard 检查。
-7. 更新 PRD / ARCH 切片文档。
+3. 增加参数档位和 pricing-rule 覆盖。
+4. 增加 provider-route mapping 和 fallback policy。
+5. 新增 AiRun request / response schema。
+6. 增加 Next / FastAPI 路由支持。
+7. 增加 provider adapter 或 mock。
+8. 增加测试和 Board guard 检查。
+9. 更新 PRD / ARCH 切片文档。
 
 ## 当前状态
 
 - Mock Model Registry 已存在。
-- Mock AiRun route 已存在。
+- Mock AiRun create / poll / cancel routes 现在已存在：`POST /api/v1/ai/runs`、`GET /api/v1/ai/runs/{runId}` 和 `POST /api/v1/ai/runs/{runId}/cancel`。
 - Mock AiRun response 现在包含 workspace kind、charged scope、charged account id、entitlement source 和 payer label，因此在真实 provider execution 存在之前，前端节点已经可以展示扣费归属合同。
+- Mock AiRun 现在已经持久化了一个简单 lifecycle 合同：create 会把 run 置为 queued，由后台执行器推进到 running -> succeeded/failed，GET 只读取当前状态而不会修改它，cancel 可以停止 queued/running 的 run。
+- 第一阶段 provider-route 执行壳现在已经接到这条生命周期后面：route candidates 会从 control plane 解析出来，一个轻量 provider-adapter registry 现在已经接管每次 provider 尝试的边界，route retry policy 也已经在执行壳内生效，而且一旦遇到 timeout 或 provider 已开始工作的失败，就会停止 failover，以避免重复 provider work。
+- 当 `TANGENT_AI_MOCK_LEDGER_CHARGING=1` 且 `DATABASE_URL` 已配置时，Mock AiRun 可以选择性演练真实 credit-ledger settlement：它会估算 mock credits，在成功前拒绝余额不足，并写入一条 `usage_charge` ledger entry。现在这段 settlement 还会始终绑定到该 run 最初解析出的 charged account，而不会被后续读取请求上下文偷换。默认本地路径仍然不会扣 credits。
 - Image Gen / Image Gen 4 的 model dropdown 已读取该合同。
 - Konva runtimeGraph mock 流程现在已经覆盖 Prompt / Image / Chat / Image Gen / Analysis 的数据传递、导出端口，以及生成 Asset refs 的流程，同时不会把 provider 原始载荷写入文档。
-- 真实 provider 调用、真实 AiRun 持久化和成本日志仍未完成。
+- DB-backed control-plane tables、quote-time persistence、持久化的 mock `ai_runs` rows，以及按尝试分行的 `ai_api_calls` rows 现在都已存在。
+- 真实 provider adapters / calls、admin-editable model pricing/routing、provider-cost logging 和 generated Asset upload 仍未完成，但执行 / settlement shell 现在已经分层到足以在不重写 route contract 的前提下接入这些能力。
 
 ## 上线前顺序
 
 1. 保持 API keys 只在服务端，并先定清 provider adapter 的边界。
-2. 在真实调用前，先加上服务端 AiRun 持久化和 `ai_api_calls` 写入。
-3. 在 provider 调用前，先加上带 workspace kind 的 entitlement + charged-account 解析。
-4. 把生成结果上传成 Assets，只返回 Asset refs 和短摘要。
-5. 把 Konva 的 Run / Stop UI 接到 AiRun create / poll / cancel。
-6. 增加 provider failure、timeout、rate-limit 和成本测试。
+2. DB-backed Model Registry、参数档位、provider routes 和 pricing-rule versions 现在已经进入第一阶段后端检查点。
+3. 服务端 AiRun persistence、quote/preflight，以及持久化的 mock create/poll/cancel lifecycle 现在也已经进入第一阶段后端检查点。
+4. 现在已经有了 stub 背景执行器加 timeout-safe 的 primary->backup route shell；下一步要换成真实 provider adapters，同时保持一个 run id、一个 payer 和 no-double-charge settlement。
+5. 在新的逐次尝试 `ai_api_calls` 时间线和已抽离的 finalization boundary 之上，继续扩展 provider-cost normalization 和真实的 post-provider settlement。
+6. 把生成结果上传成 Assets，只返回 Asset refs 和短摘要。
+7. 把 Konva 的 Run / Stop UI 接到 AiRun create / poll / cancel。
+8. 增加 provider failure、timeout、rate-limit 和成本测试。
 
 ## 明确不要做
 

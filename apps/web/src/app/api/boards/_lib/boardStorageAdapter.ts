@@ -6,6 +6,7 @@ import {
   loadLocalBoardSnapshot,
 } from './localBoardSnapshotStore'
 import {
+  copyLocalBoard,
   deleteLocalBoard,
   listLocalBoards,
   loadLocalBoard,
@@ -27,12 +28,14 @@ import {
 
 export type BoardStorageAdapter = {
   clearLocalBoardSnapshots: (boardId: string, context: ApiRequestContext) => ReturnType<typeof clearLocalBoardSnapshots>
+  copyLocalBoard: (boardId: string, context: ApiRequestContext) => ReturnType<typeof copyLocalBoard>
   createLocalBoardSnapshot: (input: Parameters<typeof createLocalBoardSnapshot>[0], context: ApiRequestContext) => ReturnType<typeof createLocalBoardSnapshot>
   deleteLocalBoard: (boardId: string, context: ApiRequestContext) => ReturnType<typeof deleteLocalBoard>
   ensureLocalBoardShareLink: (
     boardId: string,
     accessRole: Parameters<typeof ensureLocalBoardShareLink>[1],
     context: ApiRequestContext,
+    expiresAt?: string | null,
   ) => ReturnType<typeof ensureLocalBoardShareLink>
   inviteLocalBoardMemberByEmail: (
     boardId: string,
@@ -73,6 +76,7 @@ export type BoardStorageAdapter = {
 
 const localBoardAdapter: BoardStorageAdapter = {
   clearLocalBoardSnapshots,
+  copyLocalBoard,
   createLocalBoardSnapshot,
   deleteLocalBoard,
   ensureLocalBoardShareLink,

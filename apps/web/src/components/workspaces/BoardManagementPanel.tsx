@@ -13,6 +13,8 @@ import { getBoardDisplayCardColor } from './workspaceBoardUtils'
 
 type BoardManagementPanelProps = {
   board: BoardPersistenceSummary
+  canCopyBoard: boolean
+  canDeleteBoard: boolean
   canManageBoard: boolean
   isPending: boolean
   onClose: () => void
@@ -41,6 +43,8 @@ const colorLabels: Record<BoardCardColor, string> = {
 
 export function BoardManagementPanel({
   board,
+  canCopyBoard,
+  canDeleteBoard,
   canManageBoard,
   isPending,
   onClose,
@@ -87,7 +91,7 @@ export function BoardManagementPanel({
           <h2>{board.title}</h2>
           <dl>
             <div><dt>Owner</dt><dd>{formatOwner(board.ownerId)}</dd></div>
-            <div><dt>Role</dt><dd>{canManageBoard ? 'Owner / Admin' : 'Editor / Viewer'}</dd></div>
+            <div><dt>Role</dt><dd>{canCopyBoard ? 'Owner' : canManageBoard ? 'Can manage' : 'Can view / edit'}</dd></div>
             <div><dt>Visibility</dt><dd>{getVisibilityLabel(board.visibility ?? 'private')}</dd></div>
             <div><dt>Created</dt><dd>{formatDate(board.createdAt ?? board.savedAt)}</dd></div>
             <div><dt>Last modified</dt><dd>{formatDate(board.savedAt)}</dd></div>
@@ -126,7 +130,7 @@ export function BoardManagementPanel({
 
           {!canManageBoard ? (
             <p className="board-panel-permission-note">
-              Only a board owner or workspace admin can rename the board, change the preview image, edit the description or choose the card color.
+              Only a Board owner or manager can rename the board, invite people, share links or change board metadata.
             </p>
           ) : null}
 
@@ -220,10 +224,10 @@ export function BoardManagementPanel({
                 </div>
 
                 <div className="board-panel-inline-actions">
-                  <button className="product-button product-button-secondary" disabled={isPending} onClick={onCopy} type="button">
+                  <button className="product-button product-button-secondary" disabled={isPending || !canCopyBoard} onClick={onCopy} type="button">
                     Copy board
                   </button>
-                  <button className="product-button product-button-secondary" disabled={editDisabled} onClick={onDelete} type="button">
+                  <button className="product-button product-button-secondary" disabled={isPending || !canDeleteBoard} onClick={onDelete} type="button">
                     Delete
                   </button>
                 </div>

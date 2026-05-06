@@ -1,6 +1,6 @@
 # Project State Slice S1X: Canvas Engine Migration
 
-**Status**: Phase 4A image conversion/operation polish in progress after accepted Phase 1A/2A/3 spike baselines and Phase 4 runtimeGraph first pass.
+**Status**: Konva v2 formal Board route is accepted as the production path for new/saved Boards. Page polish, v1-to-v2 copy tooling, runtimeGraph mock dataflow and public share view are first-pass stable; export/background polish, real AiRun and Yjs collaboration remain.
 **Branch**: `feature/s1x-konva-handfeel-spike`
 **Started**: 2026-05-03
 
@@ -91,15 +91,15 @@ The migration is therefore a renderer engine migration, not a small library swap
 - [x] Fix fill rendering so solid/pattern use opaque lighter same-hue fills instead of lowered opacity.
 - [x] Add first-pass Frame and Sticky tools to the Konva spike.
 - [x] Complete Phase 3.10-3.14 first pass: z-order actions, text edit shortcut guard, precise eraser hit testing, snap guides and browser selection cleanup.
-- [ ] Add production-quality rectangle/text/image/node-card renderers.
+- [~] Add production-quality rectangle/text/image/node-card renderers. First-pass accepted; export/background/performance polish remains.
 - [x] Save/load a renderer-neutral Konva v2 document in the spike route.
 - [ ] Run two-tab Yjs sync with cursor/presence.
-- [ ] User handfeel review before any `/boards/[boardId]` migration.
+- [x] User handfeel review accepted enough to migrate `/boards/[boardId]` to Konva-first.
 
 ## Current Implementation
 
 ```text
-Route: /spikes/konva-canvas
+Routes: /boards/[boardId] formal Konva-first Board route; /spikes/konva-canvas regression surface
 Files: apps/web/src/components/konva-canvas/*
 Engine helpers: apps/web/src/features/canvas-engine/*
 ```

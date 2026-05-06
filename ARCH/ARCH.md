@@ -1,7 +1,7 @@
 # TANGENT Architecture Index
 
 **Updated**: 2026-05-06
-**Status**: Canonical architecture overview and slice index, now reflecting S1D public share first pass, S3 admin bootstrap first pass and the documented Group/Team workspace + actor-personal AI charging boundary.
+**Status**: Canonical architecture overview and slice index, now reflecting S1D public share plus effective-permission / owner-only copy-delete / known-foreign Asset guard hardening, S3 admin bootstrap first pass and the documented Group/Team workspace + actor-personal AI charging boundary.
 
 This file replaces the former duplicated `ARCH/00-current-map.md` plus the long root `ARCH.md`. The root `ARCH.md` is now only a pointer.
 
@@ -208,7 +208,7 @@ New canvas feature
 
 ## Parallel Development Lanes
 
-Percentages mean distance to local/P0 alpha usefulness, not final commercial completeness. S0 local polish is accepted for P0 alpha; keep only regression fixes and shift new architecture work toward S1.
+Milestone labels are now preferred over fake precision. S0 local polish is archived as an accepted baseline; S1/S2/S3 show the next boundary that still changes implementation behavior.
 
 ```text
                  +-----------------------------+
@@ -223,20 +223,20 @@ Percentages mean distance to local/P0 alpha usefulness, not final commercial com
 | S0             |      | S1             |      | S2             |
 +-------+--------+      +-------+--------+      +-------+--------+
         |                       |                       |
-| Product shell [95%]   | DB schema [92%]      | Model Registry [35%]
-| Board save UX [94%]   | Staging infra [85%]  | AiRun/logs [20%]
-| Board History [95%]   | Auth boundary [40%]  | Provider route [0%]
-| Canvas Settings [96%] | Board CRUD API [48%] | AI Chat planner [10%]
-| Board Mgmt [93%]      | Postgres/R2 [90%]    |
-| Canvas controls [96%] | Canvas Engine S1X [82%] |
-| Captured thumb [91%]  |
-| Smart Drawing [95%]   |
+| Product shell [accepted] | DB schema [core done] | Model Registry [mock]
+| Board save UX [accepted] | Staging infra [smoke] | AiRun/logs [mock]
+| Board History [accepted] | Auth boundary [first pass] | Provider route [not wired]
+| Canvas Settings [accepted] | Board CRUD/share [first pass] | AI Chat planner [mock]
+| Board Mgmt [accepted] | Postgres/R2 [smoke]    |
+| Canvas controls [accepted] | Canvas Engine S1X [route accepted] |
+| Captured thumb [accepted]  |
+| Smart Drawing [accepted]   |
         |                       |                       |
         +-----------+-----------+-----------+-----------+
                     |                       |
              +------v------+        +------v------+
              | Admin/Bill  |        | Collab P0.5 |
-             | S3 [30%]    |        | S4 [0%]     |
+             | S3 first pass|       | S4 deferred |
              +-------------+        +-------------+
 ```
 
@@ -314,15 +314,15 @@ Global /admin
 
 | Slice | File | Owns | Update when |
 | --- | --- | --- | --- |
-| S0 Local Polish | `ARCH_slice_S0_local_polish.md` | Product shell, Workspace, Board save/history, Canvas Settings, Smart Drawing, Board Management, Canvas controls | Accepted for P0 alpha; regression fixes only |
-| S1 Persistence/Auth/Deploy | `ARCH_slice_S1_persistence_auth_deploy.md` | FastAPI, Postgres, R2/S3, migrations, Auth, real Board CRUD, deployment | Next active architecture slice: data/API/Auth/deploy changes |
-| S1A DB Schema | `ARCH_slice_S1A_db_schema.md` | Formal schema, Alembic migrations, constraints, indexes, future-compatible join points | Implemented and locally smoke-tested; staging DB smoke pending S1B |
-| S1B Staging Infra | `ARCH_slice_S1B_staging_infra.md` | Vercel, FastAPI host, Postgres, R2, domain, email provider, staging smoke | When preparing online resources |
-| S1C Auth Context | `ARCH_slice_S1C_auth_request_context.md` | Registration, login, sessions, request context, workspace membership authority | After S1A |
-| S1D Board CRUD | `ARCH_slice_S1D_auth_board_crud.md` | Permission-checked Board list/load/save/history/member/share APIs | Stable first-pass CRUD/member/share/public-share-open checkpoint |
+| S0 Local Polish | `Finished/ARCH_slice_S0_local_polish.md` | Product shell, Workspace, Board save/history, Canvas Settings, Smart Drawing, Board Management, Canvas controls | Finished baseline; regression reference only |
+| S1 Persistence/Auth/Deploy | `ARCH_slice_S1_persistence_auth_deploy.md` | FastAPI, Postgres, R2/S3, migrations, Auth, real Board CRUD, deployment | Active umbrella; keep detailed truth in S1A/S1B/S1C/S1D/S1X |
+| S1A DB Schema | `ARCH_slice_S1A_db_schema.md` | Formal schema, Alembic migrations, constraints, indexes, future-compatible join points | S1A core implemented through `0006`; current head also includes S3 entitlement extension `0007` |
+| S1B Staging Infra | `ARCH_slice_S1B_staging_infra.md` | Vercel, FastAPI host, Postgres, R2, domain, email provider, staging smoke | Web/API/Neon/R2 smoke passed; Auth/email/OAuth/Konva redeploy smoke pending |
+| S1C Auth Context | `ARCH_slice_S1C_auth_request_context.md` | Registration, login, sessions, request context, workspace membership authority | Clerk/FastAPI bearer first pass landed; hardening remains |
+| S1D Board CRUD | `ARCH_slice_S1D_auth_board_crud.md` | Permission-checked Board list/load/save/history/member/share APIs | Stable first-pass CRUD/member/share/public-share-open checkpoint with owner-only copy/delete, share expiry and known-foreign Asset guard |
 | S1X Canvas Engine Migration | `ARCH_slice_S1X_canvas_engine_migration.md` | tldraw license risk, current canvas reference contract, Konva/Yjs replacement path | Konva v2 formal Board route accepted; Page polish and v1 copy tooling landed; collaboration still pending |
-| S2 AI Runtime | `ARCH_slice_S2_ai_runtime.md` | Node Registry, Model Registry, AiRun, provider routing, AI Chat planner | AI node/provider/model changes |
-| S3 Admin/Billing/Analytics | `ARCH_slice_S3_admin_billing_analytics.md` | Admin roles, audit, credits, subscriptions, Group/Team workspace dashboards, AI charge facts, analytics, moderation facts | First-pass `/admin` summary/audit/role-management landed; read-only billing/workspace entitlement routes, migration and AiRun payer fields now exist; real billing ledger still pending |
+| S2 AI Runtime | `ARCH_slice_S2_ai_runtime.md` | Node Registry, Model Registry, AiRun, provider routing, AI Chat planner | Mock runtime plus optional mock-ledger charging exercise exists; DB-backed model tiers/pricing/routes, quote/preflight, persisted mock create/poll/cancel lifecycle, attempt-level `ai_api_calls`, timeout-safe failover and extracted settlement orchestration now sit in the first-pass backend checkpoint; real provider execution remains pending |
+| S3 Admin/Billing/Analytics | `ARCH_slice_S3_admin_billing_analytics.md` | Admin roles, audit, credits, subscriptions, Group/Team workspace dashboards, AI charge facts, analytics, moderation facts | First-pass `/admin` summary/audit/role-management landed; billing/workspace entitlement routes, Team seat mutation, credit read/preflight, internal ledger settlement helpers, read-only `/admin/ai/runs` and `/admin/ai/api-calls` runtime views, plus a first-pass frontend `/admin` AI dashboard with grouped attempt timelines, and the planned developer AI pricing/route control plane are now documented; real billing/payment/provider settlement still pending |
 | S4 Collaboration | `ARCH_slice_S4_collaboration.md` | Multiplayer, presence, CRDT boundaries, roles | Collaboration work begins |
 
 ## Stage Flow
@@ -365,7 +365,7 @@ Dependency rules:
 - S1B needs staging Postgres/R2/domain/API resources.
 - S1C depends on S1A and an email/session strategy.
 - S1D depends on S1A/S1C and becomes the permission foundation for S2/S3/S4.
-- S1D now includes first-pass public share entry and share-token Board open; richer `Can view/edit/manage/owner` plus Group/Team workspace separation still remain future work.
+- S1D now includes first-pass public share entry, share-token Board open, backend `none/view/edit/manage/owner` resolution, owner-only copy/delete, share expiry and known-foreign Asset reference blocking; richer Group/Team workspace separation and explicit Asset-sharing allowlists still remain future work.
 - S2 should use real `user_id`, `workspace_id`, `board_id` from S1 before charging credits or writing provider logs.
 - S3 now has a first-pass server-gated `/admin` surface, and the billing slice now defines Group/Team dashboard visibility plus actor-personal AI charging, but real Admin/Credits/Billing still needs S1 identity and S2 cost facts.
 - S1X currently provides the Konva-first Board runtime; it still needs collaboration/Yjs proof before S4.
@@ -395,7 +395,7 @@ Dependency rules:
 # TANGENT 架构索引
 
 **更新日期**：2026-05-06
-**状态**：规范架构总览和切片索引，当前反映 S1D 公共分享第一阶段、S3 admin bootstrap 第一阶段，以及已文档化的 Group/Team workspace + actor-personal AI charging 边界。
+**状态**：规范架构总览和切片索引，当前反映 S1D 公共分享加 effective-permission / owner-only copy-delete / known-foreign Asset guard hardening、S3 admin bootstrap 第一阶段，以及已文档化的 Group/Team workspace + actor-personal AI charging 边界。
 
 本文件取代原来的重复 `ARCH/00-current-map.md` 和根目录长 `ARCH.md`。根目录 `ARCH.md` 现在只做指针用途。
 
@@ -602,7 +602,7 @@ New canvas feature
 
 ## 平行开发泳道
 
-百分比表示距离本地 / P0 alpha 可用性的距离，不表示最终商业完整度。S0 local polish 已被 P0 alpha 接受；只保留 regression fixes，把新架构工作转向 S1。
+现在优先使用里程碑标签，而不是虚假的精确百分比。S0 local polish 已作为接受的 baseline 归档；S1/S2/S3 显示的是仍会改变实现行为的下一条边界。
 
 ```text
                  +-----------------------------+
@@ -617,20 +617,20 @@ New canvas feature
 | S0             |      | S1             |      | S2             |
 +-------+--------+      +-------+--------+      +-------+--------+
         |                       |                       |
-| Product shell [95%]   | DB schema [92%]      | Model Registry [35%]
-| Board save UX [94%]   | Staging infra [85%]  | AiRun/logs [20%]
-| Board History [95%]   | Auth boundary [40%]  | Provider route [0%]
-| Canvas Settings [96%] | Board CRUD API [48%] | AI Chat planner [10%]
-| Board Mgmt [93%]      | Postgres/R2 [90%]    |
-| Canvas controls [96%] | Canvas Engine S1X [82%] |
-| Captured thumb [91%]  |
-| Smart Drawing [95%]   |
+| Product shell [accepted] | DB schema [core done] | Model Registry [mock]
+| Board save UX [accepted] | Staging infra [smoke] | AiRun/logs [mock]
+| Board History [accepted] | Auth boundary [first pass] | Provider route [not wired]
+| Canvas Settings [accepted] | Board CRUD/share [first pass] | AI Chat planner [mock]
+| Board Mgmt [accepted] | Postgres/R2 [smoke]    |
+| Canvas controls [accepted] | Canvas Engine S1X [route accepted] |
+| Captured thumb [accepted]  |
+| Smart Drawing [accepted]   |
         |                       |                       |
         +-----------+-----------+-----------+-----------+
                     |                       |
              +------v------+        +------v------+
              | Admin/Bill  |        | Collab P0.5 |
-             | S3 [30%]    |        | S4 [0%]     |
+             | S3 first pass|       | S4 deferred |
              +-------------+        +-------------+
 ```
 
@@ -708,15 +708,15 @@ Global /admin
 
 | 切片 | 文件 | 负责内容 | 更新时机 |
 | --- | --- | --- | --- |
-| S0 Local Polish | `ARCH_slice_S0_local_polish.md` | Product shell、Workspace、Board save/history、Canvas Settings、Smart Drawing、Board Management、Canvas controls | 已接受为 P0 alpha；只做 regression fixes |
-| S1 Persistence/Auth/Deploy | `ARCH_slice_S1_persistence_auth_deploy.md` | FastAPI、Postgres、R2/S3、migrations、Auth、real Board CRUD、deployment | 下一个活跃架构切片：data/API/Auth/deploy changes |
-| S1A DB Schema | `ARCH_slice_S1A_db_schema.md` | Formal schema、Alembic migrations、constraints、indexes、future-compatible join points | 已实现并完成本地 smoke；staging DB smoke 等待 S1B |
-| S1B Staging Infra | `ARCH_slice_S1B_staging_infra.md` | Vercel、FastAPI host、Postgres、R2、domain、email provider、staging smoke | 准备在线资源时 |
-| S1C Auth Context | `ARCH_slice_S1C_auth_request_context.md` | Registration、login、sessions、request context、workspace membership authority | S1A 之后 |
-| S1D Board CRUD | `ARCH_slice_S1D_auth_board_crud.md` | Permission-checked Board list/load/save/history/member/share APIs | 稳定第一阶段 CRUD/member/share/public-share-open checkpoint |
+| S0 Local Polish | `Finished/ARCH_slice_S0_local_polish.md` | Product shell、Workspace、Board save/history、Canvas Settings、Smart Drawing、Board Management、Canvas controls | 已完成 baseline；仅作为 regression reference |
+| S1 Persistence/Auth/Deploy | `ARCH_slice_S1_persistence_auth_deploy.md` | FastAPI、Postgres、R2/S3、migrations、Auth、real Board CRUD、deployment | 活跃 umbrella；详细事实放在 S1A/S1B/S1C/S1D/S1X |
+| S1A DB Schema | `ARCH_slice_S1A_db_schema.md` | Formal schema、Alembic migrations、constraints、indexes、future-compatible join points | S1A core 已通过 `0006` 实现；当前 head 还包含 S3 entitlement extension `0007` |
+| S1B Staging Infra | `ARCH_slice_S1B_staging_infra.md` | Vercel、FastAPI host、Postgres、R2、domain、email provider、staging smoke | Web/API/Neon/R2 smoke 已通过；Auth/email/OAuth/Konva redeploy smoke 待完成 |
+| S1C Auth Context | `ARCH_slice_S1C_auth_request_context.md` | Registration、login、sessions、request context、workspace membership authority | Clerk/FastAPI bearer 第一阶段已落地；仍需 hardening |
+| S1D Board CRUD | `ARCH_slice_S1D_auth_board_crud.md` | Permission-checked Board list/load/save/history/member/share APIs | 稳定第一阶段 CRUD/member/share/public-share-open checkpoint，并已带 owner-only copy/delete、share expiry 和 known-foreign Asset guard |
 | S1X Canvas Engine Migration | `ARCH_slice_S1X_canvas_engine_migration.md` | tldraw license risk、current canvas reference contract、Konva/Yjs replacement path | Konva v2 formal Board route 已接受；Page polish 和 v1 copy tooling 已落地；collaboration 仍待完成 |
-| S2 AI Runtime | `ARCH_slice_S2_ai_runtime.md` | Node Registry、Model Registry、AiRun、provider routing、AI Chat planner | AI node/provider/model changes |
-| S3 Admin/Billing/Analytics | `ARCH_slice_S3_admin_billing_analytics.md` | Admin roles、audit、credits、subscriptions、Group/Team workspace dashboards、AI charge facts、analytics、moderation facts | 第一阶段 `/admin` summary/audit/role-management 已落地；只读 billing/workspace entitlement routes、migration 和 AiRun payer fields 现在已存在；真实 billing ledger 仍待完成 |
+| S2 AI Runtime | `ARCH_slice_S2_ai_runtime.md` | Node Registry、Model Registry、AiRun、provider routing、AI Chat planner | Mock runtime 加 optional mock-ledger charging exercise 已存在；DB-backed 模型档位 / 定价 / 线路、quote/preflight、持久化的 mock create/poll/cancel lifecycle、按尝试分行的 `ai_api_calls`、timeout-safe failover，以及抽离出的 settlement orchestration 现在都已进入第一阶段后端检查点；真实 provider execution 仍待完成 |
+| S3 Admin/Billing/Analytics | `ARCH_slice_S3_admin_billing_analytics.md` | Admin roles、audit、credits、subscriptions、Group/Team workspace dashboards、AI charge facts、analytics、moderation facts | 第一阶段 `/admin` summary/audit/role-management 已落地；billing/workspace entitlement routes、Team seat mutation、credit read/preflight、internal ledger settlement helpers、只读 `/admin/ai/runs` 和 `/admin/ai/api-calls` runtime views、带 grouped attempt timeline 的第一阶段前端 `/admin` AI dashboard，以及规划中的开发者 AI 定价 / 线路控制平面现已文档化；真实 billing/payment/provider settlement 仍待完成 |
 | S4 Collaboration | `ARCH_slice_S4_collaboration.md` | Multiplayer、presence、CRDT boundaries、roles | Collaboration work begins |
 
 ## 阶段流程
@@ -759,7 +759,7 @@ S1 Real Boundary: staging + Auth + ownership + Board CRUD
 - S1B 需要 staging Postgres/R2/domain/API resources。
 - S1C 依赖 S1A 和 email/session strategy。
 - S1D 依赖 S1A/S1C，并成为 S2/S3/S4 的权限基础。
-- S1D 现在包含 first-pass public share entry 和 share-token Board open；更丰富的 `Can view/edit/manage/owner` 加 Group/Team workspace separation 仍然是未来工作。
+- S1D 现在包含 first-pass public share entry、share-token Board open、backend `none/view/edit/manage/owner` resolution、owner-only copy/delete、share expiry 和 known-foreign Asset reference blocking；更丰富的 Group/Team workspace separation 和明确的 Asset-sharing allowlists 仍然是未来工作。
 - S2 应使用来自 S1 的真实 `user_id`、`workspace_id`、`board_id`，再开始扣 credits 或写 provider logs。
 - S3 现在有第一阶段 server-gated `/admin` surface，并且 billing slice 已定义 Group/Team dashboard visibility 和 actor-personal AI charging，但真实 Admin/Credits/Billing 仍然需要 S1 identity 和 S2 cost facts。
 - S1X 当前提供 Konva-first Board runtime；它仍然需要 collaboration/Yjs proof 才能进入 S4。

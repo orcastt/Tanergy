@@ -1,6 +1,6 @@
 # PRD Slice S1: Staging, Auth And Board CRUD
 
-**Updated**: 2026-05-05
+**Updated**: 2026-05-06
 **Mode**: Architecture slice.
 
 ## Goal
@@ -11,14 +11,14 @@ Move from local dev identity and local persistence to real staging infrastructur
 
 | Area | Requirement | Status |
 | --- | --- | --- |
-| Staging Web/API | A public staging Web origin can call a public staging FastAPI origin over HTTPS. | Not started |
-| Object storage | Uploaded and captured images persist in R2/S3-compatible storage and reload from URL. | Local/FastAPI adapters exist; real staging pending |
-| Database | Board, Asset and History data persist in managed Postgres via migrations. | S1A migrations implemented locally; real staging smoke pending |
-| Auth | Users can register/login/logout through email OTP, magic link or Google OAuth. | Scaffold only |
-| Workspace ownership | New users get a workspace; API queries are scoped by user/workspace. | Schema implemented locally; Auth wiring pending |
-| Board CRUD | Board list/search/pagination/open/rename/delete/copy is server-side and permission checked. | Local first pass only |
-| Share/member permissions | Owner/admin/editor/viewer states become real server-side roles, and copied share links open through a dedicated public share entry. | First pass |
-| Konva production canvas | New/saved Konva Boards open on staging without tldraw production dependency. | Local first pass; staging redeploy smoke pending |
+| Staging Web/API | A public staging Web origin can call a public staging FastAPI origin over HTTPS. | First smoke passed |
+| Object storage | Uploaded and captured images persist in R2/S3-compatible storage and reload from URL. | R2 smoke passed; production hardening pending |
+| Database | Board, Asset and History data persist in managed Postgres via migrations. | Neon/Alembic smoke passed; current head includes `20260506_0007` entitlement extension |
+| Auth | Users can register/login/logout through email OTP, magic link or Google OAuth. | Clerk frontend/session bridge and FastAPI JWT verification first pass; email/logout/hardening smoke pending |
+| Workspace ownership | New users get a workspace; API queries are scoped by user/workspace. | Default workspace first pass exists; multi-workspace hardening pending |
+| Board CRUD | Board list/search/pagination/open/rename/delete/copy is server-side and permission checked. | Cursor/copy/restore/member/share first pass exists; search/sort/effective permission hardening pending |
+| Share/member permissions | Owner/admin/editor/viewer states become real server-side roles, and copied share links open through a dedicated public share entry. | First pass; `Can view/edit/manage/Owner` hardening pending |
+| Konva production canvas | New/saved Konva Boards open on staging without tldraw production dependency. | Local accepted; staging redeploy smoke pending |
 
 ## Included In S1
 
@@ -82,14 +82,14 @@ Move from local dev identity and local persistence to real staging infrastructur
 
 | 领域 | 要求 | 状态 |
 | --- | --- | --- |
-| Staging Web/API | 一个公开 staging Web origin 可以通过 HTTPS 调用公开 staging FastAPI origin。 | Not started |
-| Object storage | 上传和 capture 的图片持久化到 R2/S3-compatible storage，并能从 URL 重新加载。 | Local/FastAPI adapters exist; real staging pending |
-| Database | Board、Asset 和 History data 通过 migrations 持久化到 managed Postgres。 | S1A migrations implemented locally; real staging smoke pending |
-| Auth | 用户可以通过 email OTP、magic link 或 Google OAuth 注册 / 登录 / 登出。 | Scaffold only |
-| Workspace ownership | 新用户会获得 workspace；API queries 按 user/workspace scope。 | Schema implemented locally; Auth wiring pending |
-| Board CRUD | Board list/search/pagination/open/rename/delete/copy 在服务端执行并带权限检查。 | Local first pass only |
-| Share/member permissions | Owner/admin/editor/viewer states 成为真实服务端 roles，复制的 share links 通过专门 public share entry 打开。 | First pass |
-| Konva production canvas | New/saved Konva Boards 可以在 staging 打开，且不依赖 tldraw production dependency。 | Local first pass; staging redeploy smoke pending |
+| Staging Web/API | 一个公开 staging Web origin 可以通过 HTTPS 调用公开 staging FastAPI origin。 | 第一轮 smoke 已通过 |
+| Object storage | 上传和 capture 的图片持久化到 R2/S3-compatible storage，并能从 URL 重新加载。 | R2 smoke 已通过；production hardening 待完成 |
+| Database | Board、Asset 和 History data 通过 migrations 持久化到 managed Postgres。 | Neon/Alembic smoke 已通过；当前 head 包含 `20260506_0007` entitlement extension |
+| Auth | 用户可以通过 email OTP、magic link 或 Google OAuth 注册 / 登录 / 登出。 | Clerk frontend/session bridge 和 FastAPI JWT verification 第一阶段；email/logout/hardening smoke 待完成 |
+| Workspace ownership | 新用户会获得 workspace；API queries 按 user/workspace scope。 | Default workspace 第一阶段存在；multi-workspace hardening 待完成 |
+| Board CRUD | Board list/search/pagination/open/rename/delete/copy 在服务端执行并带权限检查。 | Cursor/copy/restore/member/share 第一阶段存在；search/sort/effective permission hardening 待完成 |
+| Share/member permissions | Owner/admin/editor/viewer states 成为真实服务端 roles，复制的 share links 通过专门 public share entry 打开。 | 第一阶段；`Can view/edit/manage/Owner` hardening 待完成 |
+| Konva production canvas | New/saved Konva Boards 可以在 staging 打开，且不依赖 tldraw production dependency。 | 本地已接受；staging redeploy smoke 待完成 |
 
 ## S1 包含
 

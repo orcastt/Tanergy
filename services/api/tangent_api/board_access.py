@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import HTTPException
 
@@ -11,6 +11,14 @@ MANAGE_ROLES = {"owner", "admin"}
 READ_BOARD_MEMBER_ROLES = {"owner", "admin", "editor", "viewer", "temporary_viewer"}
 WRITE_BOARD_MEMBER_ROLES = {"owner", "admin", "editor"}
 MANAGE_BOARD_MEMBER_ROLES = {"owner", "admin"}
+BOARD_PERMISSION_ORDER = {
+    "none": 0,
+    "view": 1,
+    "edit": 2,
+    "manage": 3,
+    "owner": 4,
+}
+BoardPermission = Literal["none", "view", "edit", "manage", "owner"]
 
 
 def can_read_workspace(context: ApiRequestContext) -> bool:
@@ -21,20 +29,46 @@ def can_create_board(context: ApiRequestContext) -> bool:
     return context.workspace_role in WRITE_ROLES
 
 
+def resolve_effective_board_permission(
+    record: BoardRecord,
+    context: ApiRequestContext,
+    board_member_role: Optional[str] = None,
+) -> BoardPermission:
+    if record.workspace_id != context.workspace_id:
+        return "none"
+
+    normalized_member_role = board_member_role.strip().lower() if isinstance(board_member_role, str) else None
+    if record.owner_id == context.user_id or normalized_member_role == "owner":
+        return "owner"
+    if normalized_member_role in MANAGE_BOARD_MEMBER_ROLES:
+        return "manage"
+    if normalized_member_role in WRITE_BOARD_MEMBER_ROLES:
+        return "edit"
+    if normalized_member_role in READ_BOARD_MEMBER_ROLES:
+        return "view"
+
+    if context.workspace_role in MANAGE_ROLES:
+        return "manage"
+    if context.workspace_role in WRITE_ROLES:
+        return "edit"
+    if context.workspace_role == "guest" and record.visibility in {"workspace", "public"}:
+        return "view"
+    return "none"
+
+
+def has_board_permission(
+    permission: BoardPermission,
+    required_permission: BoardPermission,
+) -> bool:
+    return BOARD_PERMISSION_ORDER[permission] >= BOARD_PERMISSION_ORDER[required_permission]
+
+
 def can_read_board(
     record: BoardRecord,
     context: ApiRequestContext,
     board_member_role: Optional[str] = None,
 ) -> bool:
-    if record.workspace_id != context.workspace_id:
-        return False
-    if context.workspace_role in {"owner", "admin", "member"}:
-        return True
-    if board_member_role in READ_BOARD_MEMBER_ROLES:
-        return True
-    if context.workspace_role == "guest":
-        return record.owner_id == context.user_id or record.visibility in {"workspace", "public"}
-    return False
+    return has_board_permission(resolve_effective_board_permission(record, context, board_member_role), "view")
 
 
 def can_write_board(
@@ -42,13 +76,7 @@ def can_write_board(
     context: ApiRequestContext,
     board_member_role: Optional[str] = None,
 ) -> bool:
-    if record.workspace_id != context.workspace_id:
-        return False
-    if context.workspace_role in WRITE_ROLES:
-        return True
-    if board_member_role in WRITE_BOARD_MEMBER_ROLES:
-        return True
-    return record.owner_id == context.user_id
+    return has_board_permission(resolve_effective_board_permission(record, context, board_member_role), "edit")
 
 
 def can_manage_board(
@@ -56,13 +84,15 @@ def can_manage_board(
     context: ApiRequestContext,
     board_member_role: Optional[str] = None,
 ) -> bool:
-    if record.workspace_id != context.workspace_id:
-        return False
-    if context.workspace_role in MANAGE_ROLES:
-        return True
-    if board_member_role in MANAGE_BOARD_MEMBER_ROLES:
-        return True
-    return record.owner_id == context.user_id
+    return has_board_permission(resolve_effective_board_permission(record, context, board_member_role), "manage")
+
+
+def can_own_board(
+    record: BoardRecord,
+    context: ApiRequestContext,
+    board_member_role: Optional[str] = None,
+) -> bool:
+    return resolve_effective_board_permission(record, context, board_member_role) == "owner"
 
 
 def assert_can_create_board(context: ApiRequestContext) -> None:
@@ -95,3 +125,12 @@ def assert_can_manage_board(
 ) -> None:
     if not can_manage_board(record, context, board_member_role):
         raise HTTPException(status_code=403, detail="Workspace role cannot manage this board.")
+
+
+def assert_can_own_board(
+    record: BoardRecord,
+    context: ApiRequestContext,
+    board_member_role: Optional[str] = None,
+) -> None:
+    if not can_own_board(record, context, board_member_role):
+        raise HTTPException(status_code=403, detail="Only the Board owner can copy or delete this board.")

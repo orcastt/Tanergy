@@ -250,6 +250,7 @@ class BoardShareLinkRecord(TangentApiModel):
 
 class BoardShareLinkCreateRequest(TangentApiModel):
     access_role: str = Field(default="viewer", alias="accessRole")
+    expires_at: Optional[str] = Field(default=None, alias="expiresAt")
 
 
 class BoardShareLinkResponse(TangentApiModel):

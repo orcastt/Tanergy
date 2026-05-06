@@ -1,7 +1,7 @@
 # Project State Slice S1: Staging, Auth And Board
 
-**Updated**: 2026-05-05
-**Status**: Recommended next launch/backend slice after S1X Page polish hand-test and commit.
+**Updated**: 2026-05-06
+**Status**: Active umbrella. Use S1A/S1B/S1C/S1D/S1X slice files for detailed truth; this file only summarizes the launch boundary.
 
 ## Purpose
 
@@ -43,19 +43,20 @@ S1 moves TANGENT from local/dev identity to real users, real workspaces and serv
 | --- | --- | --- |
 | S1A DB schema + migrations | `project_state_slice_S1A_db_schema.md` | Implemented and locally smoke-tested; staging DB smoke pending S1B | Formal Alembic migrations and schema contracts for identity, workspace, Board, History and Asset facts. |
 | S1B Staging infra smoke | `project_state_slice_S1B_staging_infra.md` | Waiting on resources | Public FastAPI health, CORS, staging Postgres, R2/S3 and Web API base URL smoke. |
-| S1C Auth/request context | `project_state_slice_S1C_auth_request_context.md` | After S1A | Register/login/logout/session and default workspace creation. |
-| S1D Auth-backed Board CRUD | `project_state_slice_S1D_auth_board_crud.md` | After S1C | Server-scoped Board list/load/save/history/copy/delete and owner/admin/editor/viewer checks. |
+| S1C Auth/request context | `project_state_slice_S1C_auth_request_context.md` | Clerk/FastAPI bearer first pass landed; hardening pending | Register/login/logout/session and default workspace creation. |
+| S1D Auth-backed Board CRUD | `project_state_slice_S1D_auth_board_crud.md` | First-pass CRUD/member/share/public-share stable | Server-scoped Board list/load/save/history/copy/delete and owner/admin/editor/viewer checks. |
 
 S2/S3/S4 should not consume mock identity once S1 starts. They can keep planning, but implementation should use the S1 user/workspace/board contracts.
 
 Current launch note: S1X has mitigated the tldraw production blocker locally by making Konva v2 the production Board default and gating tldraw reference usage. Do not ship new tldraw-only product behavior while S1 moves to staging/Auth/Board ownership.
 
-## Not Started
+## Still Not Production-Complete
 
-- Real Auth.
-- Real workspace membership API behavior.
-- Real Board member/share permissions.
-- Server-side pagination under real DB scale.
+- Auth email/logout/session revocation and full staging Google OAuth/JWT smoke.
+- Full workspace membership matrix and multi-workspace selection.
+- Final `Can view / Can edit / Can manage / Owner` effective permission resolver.
+- Owner-only copy/delete enforcement in code.
+- Cross-workspace Asset reference validation.
 - Credit ledger/team billing enforcement.
-- Full Admin dashboard.
+- Full Admin/Billing/Analytics.
 - Real-time collaboration.

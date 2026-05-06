@@ -125,18 +125,20 @@ export async function ensureLocalBoardShareLink(
   boardId: string,
   accessRole: BoardShareAccessRole,
   context: ApiRequestContext,
+  expiresAt?: string | null,
 ) {
   const board = await readRequiredBoardRecord(boardId, context)
   const links = await readShareLinks(board.id)
-  const existing = links[0]
+  const normalizedExpiresAt = normalizeShareExpiresAt(expiresAt)
+  const existing = links.find((link) => isShareLinkActive(link))
   const nextLink: BoardShareLinkRecord = existing
-    ? { ...existing, accessRole }
+    ? { ...existing, accessRole, expiresAt: normalizedExpiresAt }
     : {
         accessRole,
         boardId: board.id,
         createdAt: new Date().toISOString(),
         createdBy: context.userId,
-        expiresAt: null,
+        expiresAt: normalizedExpiresAt,
         id: `board_share_${crypto.randomUUID()}`,
         shareId: crypto.randomUUID().replace(/-/g, '').slice(0, 16),
         workspaceId: board.workspaceId,
@@ -164,7 +166,7 @@ export async function resolveLocalBoardShareLink(shareId: string): Promise<Board
     for (const file of files.filter((entry) => entry.endsWith('.shares.json'))) {
       const boardId = file.replace(/\.shares\.json$/, '')
       const links = await readShareLinks(boardId)
-      const match = links.find((link) => link.shareId === normalizedShareId)
+      const match = links.find((link) => link.shareId === normalizedShareId && isShareLinkActive(link))
       if (!match) continue
       const board = await readBoardRecord(boardId)
       return {
@@ -191,7 +193,7 @@ export async function loadLocalSharedBoard(shareId: string): Promise<BoardPersis
     for (const file of files.filter((entry) => entry.endsWith('.shares.json'))) {
       const boardId = file.replace(/\.shares\.json$/, '')
       const links = await readShareLinks(boardId)
-      const match = links.find((link) => link.shareId === normalizedShareId)
+      const match = links.find((link) => link.shareId === normalizedShareId && isShareLinkActive(link))
       if (!match) continue
       const board = await readBoardRecord(boardId)
       const updatedBoard = { ...board, lastOpenedAt: new Date().toISOString() }
@@ -424,6 +426,20 @@ function normalizeShareLinkRecord(link: Partial<BoardShareLinkRecord>): BoardSha
     shareId,
     workspaceId: link.workspaceId,
   } satisfies BoardShareLinkRecord
+}
+
+function isShareLinkActive(link: BoardShareLinkRecord) {
+  if (!link.expiresAt) return true
+  const expiresAt = new Date(link.expiresAt)
+  return !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() > Date.now()
+}
+
+function normalizeShareExpiresAt(value?: string | null) {
+  if (!value) return null
+  const expiresAt = new Date(value)
+  if (Number.isNaN(expiresAt.getTime())) throw new Error('Invalid board share expiry.')
+  if (expiresAt.getTime() <= Date.now()) throw new Error('Board share expiry must be in the future.')
+  return expiresAt.toISOString()
 }
 
 function createLocalPersonId(email: string) {

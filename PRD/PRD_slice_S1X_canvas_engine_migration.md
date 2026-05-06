@@ -1,6 +1,7 @@
 # PRD Slice S1X: Canvas Engine Migration
 
-**Status**: Active risk-mitigation spike; isolated Konva route has Phase 4 runtimeGraph cleanup first pass after accepted handfeel/properties/object-editing baselines.
+**Updated**: 2026-05-06
+**Status**: Konva v2 is the accepted formal Board runtime for new/saved Boards; Page polish, v1 copy tooling, runtimeGraph mock dataflow and public share viewing have first passes. Remaining work is export/background polish, performance regression, real AiRun wiring and Yjs collaboration proof.
 **Product reason**: The current public staging canvas depends on tldraw, which requires a production license. TANGENT needs a long-term canvas path that can support commercial use and collaboration without a paid canvas SDK lock-in.
 
 ## Product Goal

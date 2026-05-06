@@ -1,7 +1,9 @@
 'use client'
 
 import type { FormEvent } from 'react'
+import { getCurrentSessionSnapshot } from '@/features/auth/mockSession'
 import type { BoardPersistenceSummary } from '@/features/boards/boardTypes'
+import { getBoardCapabilities } from './boardCapabilities'
 import { WorkspaceBoardItem, type WorkspaceBoardViewMode } from './WorkspaceBoardItem'
 import { NewBoardTile, WorkspaceEmptyState, WorkspaceLoadingState } from './WorkspaceBoardStates'
 
@@ -63,35 +65,42 @@ export function WorkspaceBoardResults({
   if (isLoading) return <WorkspaceLoadingState />
   if (boards.length === 0) return <WorkspaceEmptyState onCreate={onCreate} />
   if (filteredBoards.length === 0) return <div className="workspace-empty-inline">No boards match your search.</div>
+  const session = getCurrentSessionSnapshot()
 
   return (
     <>
       <section className={viewMode === 'gallery' ? 'workspace-board-grid' : 'workspace-board-list'} aria-label="Workspace boards">
         <NewBoardTile onCreate={onCreate} viewMode={viewMode} />
-        {visibleBoards.map((board) => (
-          <WorkspaceBoardItem
-            board={board}
-            editingTitle={editingTitle}
-            isEditing={editingBoardId === board.id}
-            isPending={pendingBoardId === board.id}
-            key={board.id}
-            onCancelRename={onCancelRename}
-            onCopy={() => onCopy(board)}
-            onCopyToKonva={() => onCopyToKonva(board)}
-            onDelete={() => onDelete(board)}
-            onMakePrivate={() => onMakePrivate(board)}
-            onMakePublic={() => onMakePublic(board)}
-            onOpen={() => onOpen(board.id)}
-            onOpenPanel={() => onOpenPanel(board.id)}
-            onRename={() => onRename(board)}
-            onShare={() => onShare(board)}
-            onSubmitRename={(event) => onSubmitRename(event, board.id)}
-            onTitleChange={onTitleChange}
-            onTogglePin={() => onTogglePin(board)}
-            onToggleStar={() => onToggleStar(board)}
-            viewMode={viewMode}
-          />
-        ))}
+        {visibleBoards.map((board) => {
+          const capabilities = getBoardCapabilities(board, session)
+          return (
+            <WorkspaceBoardItem
+              board={board}
+              canCopyBoard={capabilities.canCopyBoard}
+              canDeleteBoard={capabilities.canDeleteBoard}
+              canManageBoard={capabilities.canManageBoard}
+              editingTitle={editingTitle}
+              isEditing={editingBoardId === board.id}
+              isPending={pendingBoardId === board.id}
+              key={board.id}
+              onCancelRename={onCancelRename}
+              onCopy={() => onCopy(board)}
+              onCopyToKonva={() => onCopyToKonva(board)}
+              onDelete={() => onDelete(board)}
+              onMakePrivate={() => onMakePrivate(board)}
+              onMakePublic={() => onMakePublic(board)}
+              onOpen={() => onOpen(board.id)}
+              onOpenPanel={() => onOpenPanel(board.id)}
+              onRename={() => onRename(board)}
+              onShare={() => onShare(board)}
+              onSubmitRename={(event) => onSubmitRename(event, board.id)}
+              onTitleChange={onTitleChange}
+              onTogglePin={() => onTogglePin(board)}
+              onToggleStar={() => onToggleStar(board)}
+              viewMode={viewMode}
+            />
+          )
+        })}
       </section>
       <div className="workspace-pagination" aria-label="Board pagination">
         <span>Showing {visibleBoards.length} of {filteredBoards.length} boards</span>

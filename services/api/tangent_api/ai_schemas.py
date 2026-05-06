@@ -8,6 +8,7 @@ from tangent_api.schema_base import TangentApiModel
 class AiModelOption(TangentApiModel):
     capabilities: list[str]
     cost_hint: str = Field(alias="costHint")
+    default_tier_key: Optional[str] = Field(default=None, alias="defaultTierKey")
     display_name: str = Field(alias="displayName")
     estimated_latency: str = Field(alias="estimatedLatency")
     id: str
@@ -15,6 +16,7 @@ class AiModelOption(TangentApiModel):
     is_enabled: bool = Field(alias="isEnabled")
     parameter_schema: dict[str, Any] = Field(alias="parameterSchema")
     provider: str
+    tier_options: list[dict[str, Any]] = Field(default_factory=list, alias="tierOptions")
 
 
 class AiModelsResponse(TangentApiModel):
@@ -53,6 +55,7 @@ class AiRunRecord(TangentApiModel):
     cost_credits: float = Field(alias="costCredits")
     cost_hint: str = Field(alias="costHint")
     created_at: str = Field(alias="createdAt")
+    estimated_credits: float = Field(default=0, alias="estimatedCredits")
     entitlement_source: str = Field(alias="entitlementSource")
     error: Optional[str] = None
     input_asset_ids: list[str] = Field(alias="inputAssetIds")
@@ -60,13 +63,44 @@ class AiRunRecord(TangentApiModel):
     model_id: str = Field(alias="modelId")
     node_id: Optional[str] = Field(default=None, alias="nodeId")
     output_asset_ids: list[str] = Field(alias="outputAssetIds")
+    pricing_rule_id: Optional[str] = Field(default=None, alias="pricingRuleId")
     provider: str
+    route_id: Optional[str] = Field(default=None, alias="routeId")
+    route_key: Optional[str] = Field(default=None, alias="routeKey")
     run_id: str = Field(alias="runId")
     run_type: str = Field(alias="runType")
+    selected_tier_key: Optional[str] = Field(default=None, alias="selectedTierKey")
     status: str
     text_output: Optional[str] = Field(default=None, alias="textOutput")
     workspace_kind: str = Field(alias="workspaceKind")
     workspace_seat_id: Optional[str] = Field(default=None, alias="workspaceSeatId")
+
+
+class AiRunQuoteRecord(TangentApiModel):
+    account_id: str = Field(alias="accountId")
+    available_credits: float = Field(alias="availableCredits")
+    billing_unit: str = Field(alias="billingUnit")
+    can_run: bool = Field(alias="canRun")
+    charge: AiRunChargeSummary
+    cost_hint: str = Field(alias="costHint")
+    estimated_credits: float = Field(alias="estimatedCredits")
+    model_display_name: str = Field(alias="modelDisplayName")
+    model_id: str = Field(alias="modelId")
+    parameter_key: Optional[str] = Field(default=None, alias="parameterKey")
+    preflight_status: str = Field(alias="preflightStatus")
+    pricing_rule_id: Optional[str] = Field(default=None, alias="pricingRuleId")
+    required_credits: float = Field(alias="requiredCredits")
+    route_id: Optional[str] = Field(default=None, alias="routeId")
+    route_key: Optional[str] = Field(default=None, alias="routeKey")
+    selected_tier_key: Optional[str] = Field(default=None, alias="selectedTierKey")
+    selected_tier_label: Optional[str] = Field(default=None, alias="selectedTierLabel")
+    shortfall_credits: float = Field(alias="shortfallCredits")
+
+
+class AiRunQuoteResponse(TangentApiModel):
+    error: Optional[str] = None
+    ok: bool
+    quote: Optional[AiRunQuoteRecord] = None
 
 
 class AiRunResponse(TangentApiModel):

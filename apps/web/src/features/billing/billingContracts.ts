@@ -62,7 +62,7 @@ export const planCatalog: Record<PlanKey, WorkspacePlanSummary> = {
 
 export function createLocalBillingMe(session: TangentSession): BillingMeResponse {
   const workspaceKind = session.activeWorkspace.kind ?? 'solo_workspace'
-  const plan = planCatalog[resolvePlanKey(workspaceKind)]
+  const plan = planCatalog[resolvePlanKey(workspaceKind, session.activeWorkspace.planKey)]
   const credits = createCreditSummary(session.user.id, plan.includedCredits)
   return {
     chargeScope: workspaceKind === 'enterprise_workspace' ? 'workspace_pool' : 'actor_personal',
@@ -82,7 +82,7 @@ export function createLocalBillingMe(session: TangentSession): BillingMeResponse
 export function createLocalWorkspaceDashboard(session: TangentSession): WorkspaceDashboardRecord {
   const workspaceKind = session.activeWorkspace.kind ?? 'solo_workspace'
   const canSeeMemberUsage = workspaceKind === 'team_workspace' && ['admin', 'owner'].includes(session.activeWorkspace.role)
-  const plan = planCatalog[resolvePlanKey(workspaceKind)]
+  const plan = planCatalog[resolvePlanKey(workspaceKind, session.activeWorkspace.planKey)]
   const credits = createCreditSummary(session.user.id, plan.includedCredits)
   return {
     boardCount: session.activeWorkspace.boardCount,
@@ -111,6 +111,7 @@ export function createLocalWorkspaceDashboard(session: TangentSession): Workspac
 export function createLocalAiChargeSummary(session: TangentSession): AiRunChargeSummary {
   const workspaceKind = session.activeWorkspace.kind ?? 'solo_workspace'
   return createAiChargeSummaryForContext({
+    planKey: session.activeWorkspace.planKey,
     userId: session.user.id,
     workspaceId: session.activeWorkspace.id,
     workspaceKind,
@@ -118,11 +119,12 @@ export function createLocalAiChargeSummary(session: TangentSession): AiRunCharge
 }
 
 export function createAiChargeSummaryForContext(input: {
+  planKey?: PlanKey
   userId: string
   workspaceId: string
   workspaceKind: WorkspaceKind
 }): AiRunChargeSummary {
-  const planKey = resolvePlanKey(input.workspaceKind)
+  const planKey = resolvePlanKey(input.workspaceKind, input.planKey)
   const chargedScope = input.workspaceKind === 'enterprise_workspace' ? 'workspace_pool' : 'actor_personal'
   return {
     chargedAccountId: chargedScope === 'workspace_pool'
@@ -138,11 +140,19 @@ export function createAiChargeSummaryForContext(input: {
   }
 }
 
-export function resolvePlanKey(workspaceKind: WorkspaceKind): PlanKey {
+export function resolvePlanKey(workspaceKind: WorkspaceKind, explicitPlanKey?: PlanKey): PlanKey {
+  if (explicitPlanKey && isPlanKeyAllowedForWorkspaceKind(explicitPlanKey, workspaceKind)) return explicitPlanKey
   if (workspaceKind === 'group_workspace') return 'collaborate_start'
   if (workspaceKind === 'team_workspace') return 'team_start'
   if (workspaceKind === 'enterprise_workspace') return 'enterprise'
   return 'free_canvas'
+}
+
+function isPlanKeyAllowedForWorkspaceKind(planKey: PlanKey, workspaceKind: WorkspaceKind) {
+  if (workspaceKind === 'group_workspace') return ['collaborate_plus', 'collaborate_start'].includes(planKey)
+  if (workspaceKind === 'team_workspace') return ['team_growth', 'team_start'].includes(planKey)
+  if (workspaceKind === 'enterprise_workspace') return planKey === 'enterprise'
+  return planKey === 'free_canvas'
 }
 
 function createCreditSummary(userId: string, includedTotal: number): PersonalCreditSummary {

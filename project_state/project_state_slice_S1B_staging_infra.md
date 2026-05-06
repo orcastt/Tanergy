@@ -21,9 +21,9 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - [x] Managed Postgres project, Supabase or Neon acceptable for staging.
 - [x] Cloudflare R2 bucket and S3 credentials.
 - [ ] Email provider account and verified sending domain.
-- [ ] Clerk or Supabase Auth staging project.
-- [ ] Google social login enabled in Auth provider.
-- [ ] Google Cloud OAuth production Client ID/Secret prepared before public launch.
+- [x] Clerk Auth project prepared.
+- [x] Google social login configured in Clerk.
+- [x] Google Cloud OAuth Client ID/Secret prepared and entered into Clerk.
 
 ## Auth And Google OAuth Setup
 
@@ -58,6 +58,7 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - Vercel staging domain opens the Web app and calls the staging FastAPI origin.
 - Public Board route exposed the tldraw production license requirement before S1X. S1X now has a Konva-first route and production tldraw reference gate locally; staging needs redeploy/smoke with that setting.
 - `TANGENT_REQUIRE_API_AUTH=0` remains intentional until S1C Clerk/JWT verification lands.
+- User-confirmed Clerk and Google OAuth provider setup exists; staging browser/API smoke still needs to prove the full session/JWT path.
 
 ## Handoff Notes
 

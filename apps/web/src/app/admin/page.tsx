@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { AppShell } from '@/components/app-shell/AppShell'
+import { AdminAiDashboard } from '@/features/admin/AdminAiDashboard'
 import {
   grantAdminRole,
   loadAdminRoles,
@@ -234,6 +235,8 @@ export default function AdminPage() {
                 </div>
               </article>
             </section>
+
+            <AdminAiDashboard enabled={resourcesEnabled} />
 
             <section className="management-section-grid" aria-label="Audit activity">
               <article className="management-panel management-panel-wide">

@@ -9,11 +9,13 @@ from fastapi import HTTPException
 from tangent_api.board_access import (
     assert_can_create_board,
     assert_can_manage_board,
+    assert_can_own_board,
     assert_can_read_board,
     assert_can_write_board,
     can_read_board,
     can_read_workspace,
 )
+from tangent_api.board_asset_references import assert_no_postgres_foreign_asset_refs
 from tangent_api.board_guard import audit_board_document
 from tangent_api.board_metadata import get_board_snapshot_display_title
 from tangent_api.request_context import ApiRequestContext
@@ -52,6 +54,7 @@ class PostgresBoardStore:
         audit = audit_board_document(input_data.document)
         if not audit.ok:
             return BoardSaveResponse(audit=audit, error="Board document failed save guard.", ok=False)
+        assert_no_postgres_foreign_asset_refs(input_data.document, context, connect_to_postgres)
 
         board_id = sanitize_board_id(input_data.board_id) or f"board_{uuid4()}"
         saved_at = datetime.now(timezone.utc).isoformat()
@@ -275,7 +278,8 @@ class PostgresBoardStore:
         return summarize_board_record(record.model_copy(update=update))
 
     def delete_board(self, board_id: str, context: ApiRequestContext) -> str:
-        record = self._load_board_without_touch(board_id, context, required_access="manage")
+        record = self._load_board_without_touch(board_id, context, required_access="read")
+        assert_can_own_board(record, context, self._load_board_member_role(record.id, context))
         with connect_to_postgres() as connection:
             with connection.cursor() as cursor:
                 ensure_board_schema(cursor)
@@ -291,6 +295,7 @@ class PostgresBoardStore:
 
     def copy_board(self, board_id: str, context: ApiRequestContext) -> BoardSummary:
         source = self._load_board_without_touch(board_id, context, required_access="read")
+        assert_can_own_board(source, context, self._load_board_member_role(source.id, context))
         assert_can_create_board(context)
         copied = self.save_board(
             BoardSaveRequest(
@@ -523,9 +528,11 @@ class PostgresBoardStore:
         board_id: str,
         access_role: str,
         context: ApiRequestContext,
+        expires_at: Optional[str] = None,
     ) -> BoardShareLinkRecord:
         record = self._load_board_without_touch(board_id, context, required_access="manage")
         normalized_access_role = _normalize_board_share_access_role(access_role)
+        normalized_expires_at = _normalize_share_expires_at(expires_at)
         with connect_to_postgres() as connection:
             with connection.cursor() as cursor:
                 ensure_board_schema(cursor)
@@ -534,6 +541,7 @@ class PostgresBoardStore:
                     SELECT id, workspace_id, board_id, share_id, access_role, created_by, expires_at, created_at
                     FROM tangent_board_share_links
                     WHERE workspace_id = %s AND board_id = %s AND revoked_at IS NULL
+                      AND (expires_at IS NULL OR expires_at > NOW())
                     ORDER BY created_at DESC
                     LIMIT 1
                     """,
@@ -541,14 +549,15 @@ class PostgresBoardStore:
                 )
                 existing = cursor.fetchone()
                 if existing:
-                    if str(existing[4]).strip().lower() != normalized_access_role:
+                    current_expires_at = existing[6].isoformat() if hasattr(existing[6], "isoformat") else existing[6]
+                    if str(existing[4]).strip().lower() != normalized_access_role or current_expires_at != normalized_expires_at:
                         cursor.execute(
                             """
                             UPDATE tangent_board_share_links
-                            SET access_role = %s
+                            SET access_role = %s, expires_at = %s
                             WHERE id = %s
                             """,
-                            (normalized_access_role, existing[0]),
+                            (normalized_access_role, normalized_expires_at, existing[0]),
                         )
                         existing = (
                             existing[0],
@@ -557,7 +566,7 @@ class PostgresBoardStore:
                             existing[3],
                             normalized_access_role,
                             existing[5],
-                            existing[6],
+                            normalized_expires_at,
                             existing[7],
                         )
                 else:
@@ -576,7 +585,15 @@ class PostgresBoardStore:
                             expires_at
                         ) VALUES (%s, %s, %s, %s, %s, %s, %s)
                         """,
-                        (share_link_id, context.workspace_id, record.id, share_id, normalized_access_role, context.user_id, None),
+                        (
+                            share_link_id,
+                            context.workspace_id,
+                            record.id,
+                            share_id,
+                            normalized_access_role,
+                            context.user_id,
+                            normalized_expires_at,
+                        ),
                     )
                     existing = (
                         share_link_id,
@@ -585,7 +602,7 @@ class PostgresBoardStore:
                         share_id,
                         normalized_access_role,
                         context.user_id,
-                        None,
+                        normalized_expires_at,
                         now,
                     )
             connection.commit()
@@ -625,6 +642,7 @@ class PostgresBoardStore:
                     JOIN tangent_boards b
                       ON b.workspace_id = sl.workspace_id AND b.id = sl.board_id
                     WHERE sl.share_id = %s AND sl.revoked_at IS NULL
+                      AND (sl.expires_at IS NULL OR sl.expires_at > NOW())
                     ORDER BY sl.created_at DESC
                     LIMIT 1
                     """,
@@ -653,6 +671,7 @@ class PostgresBoardStore:
                     JOIN tangent_boards b
                       ON b.workspace_id = sl.workspace_id AND b.id = sl.board_id
                     WHERE sl.share_id = %s AND sl.revoked_at IS NULL
+                      AND (sl.expires_at IS NULL OR sl.expires_at > NOW())
                     ORDER BY sl.created_at DESC
                     LIMIT 1
                     """,
@@ -732,6 +751,7 @@ class PostgresBoardStore:
                     SELECT role
                     FROM tangent_board_members
                     WHERE workspace_id = %s AND board_id = %s AND user_id = %s
+                      AND (expires_at IS NULL OR expires_at > NOW())
                     """,
                     (context.workspace_id, board_id, context.user_id),
                 )
@@ -748,6 +768,7 @@ class PostgresBoardStore:
                     SELECT board_id, role
                     FROM tangent_board_members
                     WHERE workspace_id = %s AND user_id = %s
+                      AND (expires_at IS NULL OR expires_at > NOW())
                     """,
                     (context.workspace_id, context.user_id),
                 )
@@ -849,6 +870,20 @@ def _normalize_board_share_access_role(role: str) -> str:
     if normalized not in BOARD_SHARE_ACCESS_ROLE_PATTERN:
         raise HTTPException(status_code=400, detail="Invalid board share access role.")
     return normalized
+
+
+def _normalize_share_expires_at(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    try:
+        expires_at = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid board share expiry.") from exc
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at <= datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="Board share expiry must be in the future.")
+    return expires_at.isoformat()
 
 
 def _normalize_email(value: str) -> str:

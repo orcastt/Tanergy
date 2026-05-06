@@ -16,19 +16,19 @@ Root `PRD.md`, `ARCH.md` and `project_state.md` are pointers only.
 | Need | Read |
 | --- | --- |
 | Current state | `project_state/project_state.md` |
-| Active local slice | `project_state/project_state_slice_S0_local_polish.md` |
+| Accepted local baseline | `project_state/Finished/project_state_slice_S0_local_polish.md` |
 | Product requirements | `PRD/PRD.md` |
 | Architecture map | `ARCH/ARCH.md` |
 | Execution rules | `AGENTS.md`, `HARNESS.md` |
 | Tactical plans | `dev-plans/README.md` |
 
-For small UI polish, start with:
+For S0 regression-only UI polish, start with:
 
 ```text
 AGENTS.md
-project_state/project_state_slice_S0_local_polish.md
-PRD/PRD_slice_S0_local_product_shell.md
-ARCH/ARCH_slice_S0_local_polish.md
+project_state/Finished/project_state_slice_S0_local_polish.md
+PRD/Finished/PRD_slice_S0_local_product_shell.md
+ARCH/Finished/ARCH_slice_S0_local_polish.md
 ```
 
 For architecture/API/Auth/AI/Admin/Billing/Deploy/Collaboration, start with:
@@ -44,7 +44,7 @@ relevant slice files
 
 ## Active Source
 
-- `apps/web/` — Next.js web app and tldraw canvas.
+- `apps/web/` — Next.js web app, Konva v2 production canvas and gated tldraw reference.
 - `services/api/` — FastAPI service, storage adapters and migrations.
 - `packages/shared/` — shared packages if needed.
 - `legacy/old-tangent-desktop-2026-04-29/` — archived old app; do not read or edit unless explicitly asked.
@@ -63,15 +63,7 @@ git diff --check
 
 ## Current Next Work
 
-If external resources are not ready:
-
-1. Smart Drawing threshold tuning.
-2. i18n/status polish.
-3. More realistic empty/error states for mocked production surfaces.
-
-If external resources are ready:
-
-1. Staging Postgres/R2/domain smoke.
-2. Real Auth and workspace ownership.
-3. Auth-backed Board CRUD.
-4. Real AI provider path.
+1. Finish S1B/S1C staging Auth smoke with Clerk, Google OAuth, Postgres, R2 and Konva-first Board route.
+2. Harden S1D effective Board permissions into `Can view / Can edit / Can manage / Owner`.
+3. Implement S3 entitlement/seat/credit-ledger contracts before real AI charging.
+4. Then move S2 from mock AiRun to real provider execution through server-side contracts.

@@ -29,6 +29,7 @@ export async function saveLocalBoard(input: BoardSaveInput, context: ApiRequestC
   const boardId = sanitizeBoardId(input.boardId) ?? `board_${randomUUID()}`
   const metrics = getBoardDocumentMetrics(input.document)
   const existing = await readLocalBoardRecord(boardId, context)
+  if (existing) assertBoardAccess(existing, context)
   const savedAt = new Date().toISOString()
   const record: BoardPersistenceRecord = {
     assetCount: metrics.assetCount,
@@ -41,7 +42,7 @@ export async function saveLocalBoard(input: BoardSaveInput, context: ApiRequestC
     isPinned: existing?.isPinned ?? false,
     isStarred: existing?.isStarred ?? false,
     lastOpenedAt: existing?.lastOpenedAt ?? null,
-    ownerId: context.userId,
+    ownerId: existing?.ownerId ?? context.userId,
     savedAt,
     shapeCount: metrics.shapeCount,
     shareId: normalizeBoardShareId(existing?.shareId),
@@ -137,9 +138,33 @@ export async function updateLocalBoardMetadata(input: BoardMetadataUpdateInput, 
 
 export async function deleteLocalBoard(boardId: string, context: ApiRequestContext) {
   const board = await readRequiredBoardRecord(boardId, context)
-  assertBoardAccess(board, context)
+  assertBoardOwner(board, context)
   await unlink(getBoardPath(board.id))
   return board.id
+}
+
+export async function copyLocalBoard(boardId: string, context: ApiRequestContext) {
+  const source = await readRequiredBoardRecord(boardId, context)
+  assertBoardOwner(source, context)
+  const audit = auditBoardDocument(source.document)
+  if (!audit.ok) {
+    return { audit, board: null }
+  }
+
+  const boardIdCopy = `board_${randomUUID()}`
+  const savedAt = new Date().toISOString()
+  const record: BoardPersistenceRecord = {
+    ...source,
+    createdAt: savedAt,
+    id: boardIdCopy,
+    lastOpenedAt: null,
+    ownerId: context.userId,
+    savedAt,
+    shareId: null,
+    title: `${source.title || 'Untitled Board'} Copy`,
+  }
+  await writeBoardRecord(record)
+  return { audit, board: summarizeBoardRecord(record) }
 }
 
 function getBoardPath(boardId: string) {
@@ -181,6 +206,13 @@ function normalizeBoardRecord(
 function assertBoardAccess(board: BoardPersistenceRecord, context: ApiRequestContext) {
   if (board.workspaceId !== context.workspaceId) {
     throw new Error('Board not found in workspace.')
+  }
+}
+
+function assertBoardOwner(board: BoardPersistenceRecord, context: ApiRequestContext) {
+  assertBoardAccess(board, context)
+  if (board.ownerId !== context.userId) {
+    throw new Error('Only the Board owner can copy or delete this board.')
   }
 }
 

@@ -17,11 +17,22 @@ Turn the mock Model Registry and AiRun contracts into a real server-side AI exec
 | Image edit/reference | Image Node + Prompt Node -> Image Gen creates edited/fused image Asset. | Not started |
 | Analysis | Image Node + Prompt Node -> Analysis creates text/prompt output. | Not started |
 | AiRun history | User can inspect own AI calls, status, latency, cost and credit impact. | Planned |
-| Charge transparency | Before the user runs AI, the UI can explain whether the run will charge the actor's personal/top-up balance, the actor's Team seat allowance or an explicit Enterprise workspace pool. | Planned |
-| Cost controls | Server records provider cost, credits charged/refunded, timeout, failure and retry state. | Planned |
+| Charge transparency | Before the user runs AI, the UI can explain whether the run will charge the actor's personal/top-up balance, the actor's Team seat allowance or an explicit Enterprise workspace pool. | Mock payer contract exists |
+| Cost controls | Server records provider cost, credits charged/refunded, timeout, failure and retry state. | Internal ledger helper + optional mock charge exercise exist; provider cost controls planned |
+| Dynamic model pricing | Each model/tier combination, such as image generation resolution, quality and output count, has a server-managed credit estimate and final settlement rule. | Planned |
+| Provider routing | One product model can have multiple provider routes, and developer/admin operators can enable, disable, reorder or fail over those routes without frontend deploys. | Planned |
 | AI Chat planner | Chat can propose a legal graph spec; user confirms before applying/running. | Planned |
 
-Current canvas readiness note: Konva node UI and runtimeGraph mock dataflow are strong enough to begin real provider adapter planning. Real provider calls still must wait for server-side AiRun, Auth/rate-limit/cost controls and Asset upload of generated results.
+Current canvas readiness note: Konva node UI and runtimeGraph mock dataflow are strong enough to begin real provider adapter planning. Mock AiRun can now exercise credit-ledger usage charging behind `TANGENT_AI_MOCK_LEDGER_CHARGING=1`, but real provider calls still must wait for server-side AiRun persistence, Auth/rate-limit/provider-cost controls and Asset upload of generated results.
+
+## Model Pricing Product Rules
+
+- Product-visible model names should be stable even when suppliers change. For example, `GPT Image 2` can remain visible to users while the backend switches from one healthy provider route to another.
+- Resolution/quality/count tiers such as `0.5K`, `1K`, `2K`, `4K`, `low`, `medium`, `high` and `1/4 outputs` must be priced by server-managed rules, not by canvas code.
+- The Run UI should show an estimated credit cost before execution. The final charged/refunded credits may differ when a provider returns actual usage facts.
+- If a provider route is unhealthy, the server may retry another route, but the user must still see one AiRun and one final credit settlement.
+- Developer/admin operators need a backend UI to adjust model availability, tier prices, provider route priority, provider-specific parameter mapping and credit multipliers as market prices change.
+- All pricing changes must be versioned and audited. Old AiRuns keep their historical pricing version; new AiRuns use the newly published version.
 
 ## Acceptance
 
@@ -60,11 +71,22 @@ Current canvas readiness note: Konva node UI and runtimeGraph mock dataflow are 
 | Image edit/reference | Image Node + Prompt Node -> Image Gen 创建 edited/fused image Asset。 | Not started |
 | Analysis | Image Node + Prompt Node -> Analysis 创建 text/prompt output。 | Not started |
 | AiRun history | 用户可以检查自己的 AI calls、status、latency、cost 和 credit impact。 | Planned |
-| Charge transparency | 用户运行 AI 之前，UI 可以解释本次运行会扣 actor 的 personal/top-up balance、actor 的 Team seat allowance，还是明确的 Enterprise workspace pool。 | Planned |
-| Cost controls | 服务端记录 provider cost、credits charged/refunded、timeout、failure 和 retry state。 | Planned |
+| Charge transparency | 用户运行 AI 之前，UI 可以解释本次运行会扣 actor 的 personal/top-up balance、actor 的 Team seat allowance，还是明确的 Enterprise workspace pool。 | Mock payer contract exists |
+| Cost controls | 服务端记录 provider cost、credits charged/refunded、timeout、failure 和 retry state。 | Internal ledger helper + optional mock charge exercise exist；provider cost controls planned |
+| Dynamic model pricing | 每个 model/tier 组合，例如生图分辨率、质量和输出数量，都有服务端管理的 credit estimate 和最终结算规则。 | Planned |
+| Provider routing | 一个产品模型可以拥有多条 provider routes，developer/admin operators 可以在不部署前端的情况下启用、禁用、排序或 fail over 这些线路。 | Planned |
 | AI Chat planner | Chat 可以提出合法 graph spec；用户确认后才 apply/running。 | Planned |
 
-当前 canvas readiness note：Konva node UI 和 runtimeGraph mock dataflow 已足够开始真实 provider adapter planning。真实 provider calls 仍必须等待 server-side AiRun、Auth/rate-limit/cost controls，以及 generated results 的 Asset upload。
+当前 canvas readiness note：Konva node UI 和 runtimeGraph mock dataflow 已足够开始真实 provider adapter planning。Mock AiRun 现在可以在 `TANGENT_AI_MOCK_LEDGER_CHARGING=1` 后面演练 credit-ledger usage charging，但真实 provider calls 仍必须等待 server-side AiRun persistence、Auth/rate-limit/provider-cost controls，以及 generated results 的 Asset upload。
+
+## 模型定价产品规则
+
+- 面向产品显示的模型名称应该稳定，即使供应商变化也不应影响用户理解。例如 `GPT Image 2` 可以继续展示给用户，而后端在多条健康 provider routes 之间切换。
+- `0.5K`、`1K`、`2K`、`4K`、`low`、`medium`、`high` 和 `1/4 outputs` 这样的分辨率 / 质量 / 数量档位，必须由服务端规则定价，不能由画布代码写死。
+- Run UI 应该在执行前展示预计 credit cost。当 provider 返回 actual usage facts 时，最终 charged / refunded credits 可以和预计值不同。
+- 如果某条 provider route 不健康，服务端可以重试另一条 route，但用户仍然只应看到一个 AiRun 和一次最终 credit settlement。
+- Developer/admin operators 需要一个后台 UI，可以随着市场价格变化调整 model availability、tier prices、provider route priority、provider-specific parameter mapping 和 credit multipliers。
+- 所有 pricing changes 都必须版本化并写审计。旧 AiRuns 保留历史 pricing version；新 AiRuns 使用新发布的 version。
 
 ## 验收
 

@@ -21,12 +21,13 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json() as { accessRole?: BoardShareAccessRole; boardId?: string }
+    const body = await request.json() as { accessRole?: BoardShareAccessRole; boardId?: string; expiresAt?: string | null }
     if (!body.boardId) throw new Error('Missing boardId.')
     const shareLink = await getBoardStorageAdapter().ensureLocalBoardShareLink(
       body.boardId,
       body.accessRole ?? 'viewer',
-      getApiRequestContext(request)
+      getApiRequestContext(request),
+      body.expiresAt
     )
     return NextResponse.json({ ok: true, shareLink })
   } catch (error) {

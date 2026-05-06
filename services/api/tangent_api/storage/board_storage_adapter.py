@@ -141,6 +141,7 @@ class BoardStorageAdapter:
         board_id: str,
         access_role: str,
         context: ApiRequestContext,
+        expires_at: Optional[str] = None,
     ) -> BoardShareLinkRecord:
         raise NotImplementedError
 
@@ -290,10 +291,11 @@ class LocalBoardStorageAdapter(BoardStorageAdapter):
         board_id: str,
         access_role: str,
         context: ApiRequestContext,
+        expires_at: Optional[str] = None,
     ) -> BoardShareLinkRecord:
         from tangent_api.storage.local_board_store import ensure_board_share_link
 
-        return ensure_board_share_link(board_id, access_role, context)
+        return ensure_board_share_link(board_id, access_role, context, expires_at)
 
     def revoke_share_link(self, board_id: str, share_id: str, context: ApiRequestContext) -> str:
         from tangent_api.storage.local_board_store import revoke_board_share_link
@@ -429,8 +431,9 @@ class PostgresBoardStorageAdapter(BoardStorageAdapter):
         board_id: str,
         access_role: str,
         context: ApiRequestContext,
+        expires_at: Optional[str] = None,
     ) -> BoardShareLinkRecord:
-        return self.store.ensure_share_link(board_id, access_role, context)
+        return self.store.ensure_share_link(board_id, access_role, context, expires_at)
 
     def revoke_share_link(self, board_id: str, share_id: str, context: ApiRequestContext) -> str:
         return self.store.revoke_share_link(board_id, share_id, context)

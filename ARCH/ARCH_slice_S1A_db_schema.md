@@ -1,8 +1,8 @@
 # ARCH Slice S1A: Database Schema And Migration
 
-**Updated**: 2026-05-02
+**Updated**: 2026-05-06
 **Mode**: Architecture slice.
-**Status**: Implemented and locally smoke-tested; staging DB smoke pending S1B resources.
+**Status**: S1A core implemented and locally smoke-tested through `20260502_0006`; current migration head also includes later S3 entitlement/AI-charge extension `20260506_0007`.
 
 ## Goal
 
@@ -129,6 +129,11 @@ tangent_idempotency_keys
 
 migrations/env.py
   - normalizes postgresql:// to postgresql+psycopg:// for SQLAlchemy/Alembic
+
+20260506_0007_workspace_entitlements_ai_charge_contract
+  - later S3 extension on top of S1A
+  - adds workspace kind, workspace seat assignments, usage rollups, dashboard snapshots
+  - adds AiRun charge/payer fields used by S2/S3 contracts
 ```
 
 Fixtures and tests:

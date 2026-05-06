@@ -1,7 +1,7 @@
 # Project State Slice S1A: Database Schema And Migration
 
-**Updated**: 2026-05-02
-**Status**: Implemented and locally smoke-tested; staging DB smoke pending S1B resources.
+**Updated**: 2026-05-06
+**Status**: S1A core implemented and locally smoke-tested through `20260502_0006`; current migration head also includes later S3 entitlement/AI-charge extension `20260506_0007`.
 
 ## Objective
 
@@ -41,6 +41,7 @@ services/api/tests/test_migration_contracts.py
 - `credit_accounts` supports both personal and team/workspace credit pools.
 - Alembic now normalizes `postgresql://` to `postgresql+psycopg://` so Neon-style URLs work with the project's `psycopg` v3 dependency.
 - Local real Postgres smoke passed with disposable Docker Postgres; staging Neon/Postgres smoke still belongs to S1B.
+- Migration `20260506_0007_workspace_entitlements_ai_charge_contract` is a later S3 extension on top of the S1A foundation. It adds workspace kind, seat assignment, usage/dashboard facts and AiRun charge fields.
 
 ## Local Smoke Runner
 

@@ -1,7 +1,7 @@
 # PRD Slice S1A: Database Schema And Migration
 
-**Updated**: 2026-05-02
-**Status**: Implemented and locally smoke-tested; staging DB smoke pending S1B resources.
+**Updated**: 2026-05-06
+**Status**: S1A core implemented and locally smoke-tested through migration `20260502_0006`; current migration head also includes later S3 entitlement extension `20260506_0007`. Staging DB smoke remains part of S1B.
 
 ## User Value
 
@@ -56,6 +56,8 @@ moderation_items
 ```
 
 Note: current code keeps the P0 `tangent_model_options` table as the model registry scaffold. S2 should decide whether to formalize it in place or migrate it to `tangent_model_registry`.
+
+Note: migration `20260506_0007_workspace_entitlements_ai_charge_contract` belongs to the later S3 entitlement/AI-charge contract, not the original S1A core. It adds workspace kind, seat assignment, usage/dashboard facts and AiRun charge fields on top of the S1A foundation.
 
 ## Acceptance
 

@@ -27,7 +27,7 @@ Do not recreate mirror files such as `ARCH/00-current-map.md` or `project_state/
 - When that slice reaches a stable checkpoint, update the folder total file.
 - Root pointer files should almost never change.
 - PRD changes describe product behavior; ARCH changes describe implementation boundaries; project state changes describe what is currently true.
-- For `Fast UI polish`, read `project_state/project_state_slice_S0_local_polish.md`, then the relevant `PRD/` and `ARCH/` slice.
+- For `Fast UI polish`, read `project_state/Finished/project_state_slice_S0_local_polish.md`, then the relevant `PRD/` and `ARCH/` slice.
 - For data/API/Auth/AI/Admin/Billing/Deploy/Collaboration, read `project_state/project_state.md`, `PRD/PRD.md`, `ARCH/ARCH.md`, `HARNESS.md` and the relevant slices.
 
 ## Safety Rules

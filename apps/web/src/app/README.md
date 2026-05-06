@@ -1,12 +1,21 @@
 # App Routes
 
-Current routes:
+Current production-facing routes:
 
-- `/` redirects to `/boards`
-- `/boards`
-- `/boards/:boardId`
-- `/spikes/canvas`
+- `/`: public Tanergy landing page.
+- `/sign-in`, `/sign-up`: Clerk Auth entry points with Google-ready social login.
+- `/login`, `/signup`, `/register`, `/forgot-password`, `/verify-email`: compatibility redirects.
+- `/workspaces`: protected workspace and Board gallery shell.
+- `/boards`: compatibility redirect to `/workspaces`.
+- `/boards/[boardId]`: formal Board shell. New/missing and Konva v2 Boards use the Konva runtime; tldraw v1 is gated as a reference only.
+- `/share/[shareId]`: public view-only shared Konva Board entry.
+- `/billing`: signed-in user's own plan, credits, payer summary and usage view.
+- `/team`: Group/Team workspace structure and Team usage visibility view.
+- `/admin`: server-gated first-pass admin surface.
 
-Planned routes:
+Development/reference routes:
 
-- `/login`
+- `/spikes/konva-canvas`: Konva regression and prototype surface.
+- `/spikes/canvas`: gated tldraw reference surface.
+
+Route ownership stays in PRD/ARCH/project_state slice docs. Keep this file as a short map only.

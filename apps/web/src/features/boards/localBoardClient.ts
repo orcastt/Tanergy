@@ -43,6 +43,7 @@ export type LocalBoardListResponse = BoardListResponse
 export type LocalBoardRenameResponse = BoardRenameResponse
 
 export type LocalBoardDeleteResponse = BoardDeleteResponse
+export type LocalBoardCopyResponse = BoardRenameResponse
 export type LocalBoardSnapshotCreateResponse = BoardSnapshotCreateResponse
 export type LocalBoardSnapshotListResponse = BoardSnapshotListResponse
 export type LocalBoardSnapshotLoadResponse = BoardSnapshotLoadResponse
@@ -155,6 +156,25 @@ export async function deleteLocalBoardDocument(boardId: string) {
   return payload
 }
 
+export async function copyLocalBoardDocument(boardId: string) {
+  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync() : persistenceJsonHeaders()
+  const response = await fetch(
+    hasRemotePersistenceApi()
+      ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(boardId)}/copy`)
+      : '/api/boards/local-copy',
+    {
+      body: hasRemotePersistenceApi() ? undefined : JSON.stringify({ boardId }),
+      headers,
+      method: 'POST',
+    }
+  )
+  const payload = await response.json() as LocalBoardCopyResponse
+  if (!response.ok || !payload.ok || !payload.board) {
+    throw new Error(payload.error || 'Local board copy failed.')
+  }
+  return payload
+}
+
 export async function listLocalBoardMembers(boardId: string) {
   const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync() : persistenceAuthHeaders()
   const response = await fetch(
@@ -259,14 +279,18 @@ export async function deleteLocalBoardMember(boardId: string, userId: string) {
   return payload
 }
 
-export async function ensureLocalBoardShareLink(boardId: string, accessRole: BoardShareAccessRole = 'viewer') {
+export async function ensureLocalBoardShareLink(
+  boardId: string,
+  accessRole: BoardShareAccessRole = 'viewer',
+  expiresAt?: string | null
+) {
   const headers = hasRemotePersistenceApi() ? await persistenceJsonHeadersAsync() : persistenceJsonHeaders()
   const response = await fetch(
     hasRemotePersistenceApi()
       ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(boardId)}/share-link`)
       : '/api/boards/local-share-link',
     {
-      body: JSON.stringify({ accessRole, boardId }),
+      body: JSON.stringify({ accessRole, boardId, expiresAt }),
       headers,
       method: 'POST',
     }

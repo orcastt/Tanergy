@@ -2,8 +2,10 @@
 
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
-import type { BoardMetadataUpdateInput, BoardPersistenceSummary, SerializedBoardSaveInput } from '@/features/boards/boardTypes'
+import { getCurrentSessionSnapshot } from '@/features/auth/mockSession'
+import type { BoardMetadataUpdateInput, BoardPersistenceSummary } from '@/features/boards/boardTypes'
 import {
+  copyLocalBoardDocument,
   deleteLocalBoardDocument,
   ensureLocalBoardShareLink,
   listLocalBoardDocuments,
@@ -13,6 +15,7 @@ import {
   updateLocalBoardMetadata,
 } from '@/features/boards/localBoardClient'
 import { migrateTldrawV1BoardToKonvaV2 } from '@/features/boards/tldrawToKonvaMigration'
+import { getBoardCapabilities } from './boardCapabilities'
 import { WorkspaceBoardHeader } from './WorkspaceBoardHeader'
 import { WorkspaceBoardPanelHost } from './WorkspaceBoardPanelHost'
 import { WorkspaceBoardResults } from './WorkspaceBoardResults'
@@ -88,6 +91,10 @@ export function WorkspaceBoardGallery() {
   }
 
   const startRename = (board: BoardPersistenceSummary) => {
+    if (!getCapabilities(board).canManageBoard) {
+      setError('Only a Board owner or manager can rename this board.')
+      return
+    }
     setEditingBoardId(board.id)
     setEditingTitle(board.title)
     setError(null)
@@ -120,6 +127,10 @@ export function WorkspaceBoardGallery() {
   }
 
   const deleteBoard = async (board: BoardPersistenceSummary) => {
+    if (!getCapabilities(board).canDeleteBoard) {
+      setError('Only the Board owner can delete this board.')
+      return
+    }
     if (!window.confirm(`Delete "${board.title}"? This cannot be undone.`)) return
     setPendingBoardId(board.id)
     setError(null)
@@ -135,31 +146,16 @@ export function WorkspaceBoardGallery() {
   }
 
   const copyBoard = async (board: BoardPersistenceSummary) => {
+    if (!getCapabilities(board).canCopyBoard) {
+      setError('Only the Board owner can copy this board.')
+      return
+    }
     setPendingBoardId(board.id)
     setError(null)
     try {
-      const source = await loadLocalBoardDocument(board.id)
-      const nextBoardId = createBoardId()
-      const response = await saveLocalBoardDocument({
-        boardId: nextBoardId,
-        cardColor: getBoardDisplayCardColor(board),
-        description: board.description,
-        document: source.board!.document as SerializedBoardSaveInput['document'],
-        thumbnailUrl: board.thumbnailUrl,
-        title: `${board.title} copy`,
-      })
+      const response = await copyLocalBoardDocument(board.id)
       if (!response.board) throw new Error('Board copy failed.')
-      const metadata = await updateLocalBoardMetadata({
-        boardId: nextBoardId,
-        cardColor: getBoardDisplayCardColor(board),
-        description: board.description,
-        isPinned: Boolean(board.isPinned),
-        isStarred: Boolean(board.isStarred),
-        thumbnailUrl: board.thumbnailUrl,
-        visibility: board.visibility ?? 'private',
-      })
-      const copiedBoard = metadata.board ?? response.board
-      setBoards((current) => [copiedBoard, ...current])
+      setBoards((current) => [response.board!, ...current])
       setNotice(`Copied "${board.title}".`)
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : 'Board copy failed.')
@@ -169,6 +165,10 @@ export function WorkspaceBoardGallery() {
   }
 
   const copyBoardToKonva = async (board: BoardPersistenceSummary) => {
+    if (!getCapabilities(board).canCopyBoard) {
+      setError('Only the Board owner can copy this board.')
+      return
+    }
     setPendingBoardId(board.id)
     setError(null)
     try {
@@ -206,6 +206,11 @@ export function WorkspaceBoardGallery() {
   }
 
   const updateBoardMetadata = async (input: BoardMetadataUpdateInput) => {
+    const sourceBoard = boards.find((board) => board.id === input.boardId)
+    if (sourceBoard && !getCapabilities(sourceBoard).canManageBoard) {
+      setError('Only a Board owner or manager can update this board.')
+      return null
+    }
     setPendingBoardId(input.boardId)
     setError(null)
     try {
@@ -222,6 +227,10 @@ export function WorkspaceBoardGallery() {
   }
 
   const shareBoard = async (board: BoardPersistenceSummary) => {
+    if (!getCapabilities(board).canShareBoard) {
+      setError('Only a Board owner or manager can share this board.')
+      return
+    }
     try {
       const response = await ensureLocalBoardShareLink(board.id)
       const shareLink = response.shareLink
@@ -235,11 +244,19 @@ export function WorkspaceBoardGallery() {
   }
 
   const makeBoardPrivate = (board: BoardPersistenceSummary) => {
+    if (!getCapabilities(board).canManageBoard) {
+      setError('Only a Board owner or manager can change this board visibility.')
+      return
+    }
     if (!window.confirm('Are you sure to make this board private? Only you will be able to use it until team permissions are enabled.')) return
     void updateBoardMetadata({ boardId: board.id, visibility: 'private' })
   }
 
   const makeBoardPublic = (board: BoardPersistenceSummary) => {
+    if (!getCapabilities(board).canManageBoard) {
+      setError('Only a Board owner or manager can change this board visibility.')
+      return
+    }
     if (!window.confirm('Are you sure to make this board public? Team members will be able to access it once real permissions are enabled.')) return
     void updateBoardMetadata({ boardId: board.id, visibility: 'public' })
   }
@@ -258,6 +275,8 @@ export function WorkspaceBoardGallery() {
     setViewMode(mode)
     setVisibleLimit(boardPageSize)
   }
+
+  const getCapabilities = (board: BoardPersistenceSummary) => getBoardCapabilities(board, getCurrentSessionSnapshot())
 
   return (
     <div className="workspace-page">

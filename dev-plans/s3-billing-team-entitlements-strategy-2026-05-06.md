@@ -388,12 +388,48 @@ Do not jump straight to S2 real provider charging yet. Finish the S1D permission
 ## Current Implementation Checkpoint
 
 - Migration `20260506_0007` now adds `workspace.kind`, workspace seat assignments, usage rollups, dashboard snapshots and AiRun charge ownership fields.
-- Request/session context now carries `workspace_kind`.
+- Request/session context now carries `workspace_kind` plus a dev-only compatible `workspace_plan_key` for local tier-contract testing.
+- Backend and local frontend read-only plan catalogs now cover `collaborate_plus` and `team_growth`, not only the Start tiers.
+- Entitlement reads now prefer database facts when Postgres is configured: active Team seat assignment first, then active user/workspace subscription via credit account, then dev/default fallback.
+- AiRun payer summaries now use active database credit account ids when available, with synthetic ids kept as local fallback only.
+- Team owner/admin seat mutation contracts now exist for list/upsert/revoke, but they do not touch Stripe or mutate credit ledger balances.
+- Credit ledger read/preflight routes now exist for current payer account balance, entries, can-run and shortfall facts.
+- Internal credit ledger mutation/settlement helpers now exist for subscription grants, top-up purchases, usage charges with insufficient-balance rejection, usage refunds and admin adjustments. They are intentionally service-layer only until payment webhooks, Admin finance writes and real AiRun settlement routes are server-gated.
 - Backend read-only routes now exist for `/api/v1/billing/me`, `/api/v1/workspaces/current/dashboard` and `/api/v1/workspaces/current/entitlement`.
 - Mock AiRun responses now include payer facts: `workspaceKind`, `chargedScope`, `chargedAccountId`, `entitlementSource`, optional `workspaceSeatId` and `payerLabel`.
+- Mock AiRun can optionally exercise credit-ledger usage charging behind `TANGENT_AI_MOCK_LEDGER_CHARGING=1`: it estimates mock credits, rejects insufficient balance and writes `usage_charge`. The default local path still does not charge credits.
+- S2/S3 docs now define the future developer AI control plane for model tiers, provider routes, pricing-rule versions and audited failover/publish flow.
 - Frontend `/billing` now shows the signed-in user's own plan/credits/usage/payer summary.
 - Frontend `/team` now shows Group structure or Team usage visibility according to workspace kind.
-- This checkpoint is still contract-only for billing: no Stripe, no real balance mutation, no paid seat mutation service and no provider-cost ledger settlement yet.
+- This checkpoint is still contract-only for billing: no Stripe, no payment-webhook balance mutation, no paid seat purchase flow and no provider-cost ledger settlement yet.
+
+## Next Implementation Tranche: Developer AI Control Plane
+
+The next S2/S3 bridge should not jump straight to one hard-coded provider. It should create a unified backend control plane for model tiers, supplier routes and credit pricing.
+
+Required backend entities:
+
+- `model_registry`: stable public product model keys such as `gpt_image_2`.
+- `model_parameter_tiers`: product-facing tiers such as `0.5K`, `1K`, `2K`, `4K`, quality and output count.
+- `model_provider_routes`: provider/model mapping, priority, weight, timeout, retry policy and enabled/health state.
+- `model_pricing_rules`: versioned credit estimate, minimum charge, multiplier/markup and provider-cost formula per model/tier.
+- `model_pricing_rule_audit_logs` and `provider_route_health_events`: publish history and route health/failover facts.
+
+Required admin/developer backend surfaces:
+
+- Models screen: enable/disable product models and default tiers.
+- Tier screen: edit product-facing resolution/quality/count choices and provider-native parameter mapping.
+- Routes screen: choose primary/fallback supplier lines, reorder priority and disable unstable routes.
+- Pricing screen: publish new credit versions as supplier prices change, with effective date and audit trail.
+- Cost screen: inspect AiRun route id, pricing rule id, provider cost, credits charged/refunded, margin estimate and failures.
+
+Execution rules:
+
+- The frontend must read estimated credit cost from the server, not compute it locally.
+- One product model may map to multiple supplier lines; users never choose the raw provider route directly.
+- Route failover must keep one AiRun id and one final settlement outcome.
+- Pricing/version changes affect only future runs; historical runs keep the original pricing rule id.
+- If the provider exposes actual usage/cost, the server estimates first, then settles final charge/refund after the response.
 
 ## 中文完整翻译
 
@@ -787,9 +823,45 @@ Phase E: Developer/Admin console
 ## 当前实现检查点
 
 - 迁移 `20260506_0007` 现在增加 `workspace.kind`、workspace seat assignments、usage rollups、dashboard snapshots 和 AiRun charge ownership fields。
-- Request/session context 现在携带 `workspace_kind`。
+- Request/session context 现在携带 `workspace_kind`，并带有 dev-only compatible `workspace_plan_key`，用于本地 tier-contract 测试。
+- 后端和本地前端只读 plan catalogs 现在已覆盖 `collaborate_plus` 和 `team_growth`，不再只覆盖 Start 档。
+- 当 Postgres 已配置时，entitlement reads 现在会优先使用数据库事实：先 active Team seat assignment，再通过 credit account 查 active user/workspace subscription，最后才 dev/default fallback。
+- AiRun payer summaries 现在会在可用时使用 active database credit account ids，synthetic ids 只作为本地 fallback 保留。
+- Team owner/admin seat mutation contracts 现在已支持 list/upsert/revoke，但不会触碰 Stripe，也不会 mutation credit ledger balance。
+- Credit ledger read/preflight routes 现在已支持当前 payer account 的 balance、entries、can-run 和 shortfall facts。
+- 内部 credit ledger mutation / settlement helpers 现在已存在，覆盖 subscription grants、top-up purchases、带余额不足拒绝的 usage charges、usage refunds 和 admin adjustments。在 payment webhooks、Admin finance writes 和真实 AiRun settlement routes 完成服务端门控之前，它们会刻意只保留在 service-layer。
 - 后端只读路由现在已经存在：`/api/v1/billing/me`、`/api/v1/workspaces/current/dashboard` 和 `/api/v1/workspaces/current/entitlement`。
 - Mock AiRun responses 现在包含 payer facts：`workspaceKind`、`chargedScope`、`chargedAccountId`、`entitlementSource`、可选 `workspaceSeatId` 和 `payerLabel`。
+- Mock AiRun 现在可以在 `TANGENT_AI_MOCK_LEDGER_CHARGING=1` 后面选择性演练 credit-ledger usage charging：它会估算 mock credits、拒绝余额不足，并写入 `usage_charge`。默认本地路径仍然不会扣 credits。
+- S2/S3 文档现在已经定义了未来的开发者 AI 控制平面，覆盖模型档位、provider routes、pricing-rule versions，以及带审计的 failover/publish flow。
 - 前端 `/billing` 现在显示当前登录用户自己的 plan/credits/usage/payer summary。
 - 前端 `/team` 现在会根据 workspace kind 显示 Group structure 或 Team usage visibility。
-- 这个检查点仍然只是 billing contract：还没有 Stripe、没有真实余额 mutation、没有付费 seat mutation service，也没有 provider-cost ledger settlement。
+- 这个检查点仍然只是 billing contract：还没有 Stripe、没有 payment-webhook balance mutation、没有付费 seat purchase flow，也没有 provider-cost ledger settlement。
+
+## 下一段实现主线：开发者 AI 控制平面
+
+下一步的 S2/S3 衔接，不应该直接跳成一个写死的单供应商实现。应该先建立统一的后端控制平面，来管理模型档位、供应商线路和 credit 定价。
+
+必须具备的后端实体：
+
+- `model_registry`：稳定的对外产品模型 key，例如 `gpt_image_2`。
+- `model_parameter_tiers`：面向产品的档位，例如 `0.5K`、`1K`、`2K`、`4K`、quality 和 output count。
+- `model_provider_routes`：provider/model mapping、priority、weight、timeout、retry policy，以及 enabled/health 状态。
+- `model_pricing_rules`：按 model/tier 维度版本化的 credit estimate、minimum charge、multiplier/markup 和 provider-cost formula。
+- `model_pricing_rule_audit_logs` 和 `provider_route_health_events`：发布历史，以及 route health/failover 事实。
+
+必须具备的 admin/developer 后台界面：
+
+- Models screen：启用 / 禁用产品模型和默认 tiers。
+- Tier screen：编辑面向产品的分辨率 / 质量 / 数量档位，以及它们到 provider-native parameters 的映射。
+- Routes screen：选择 primary/fallback supplier lines、调整 priority，并禁用不稳定线路。
+- Pricing screen：随着 supplier 价格变化发布新的 credit versions，并带 effective date 和 audit trail。
+- Cost screen：查看 AiRun 的 route id、pricing rule id、provider cost、charged/refunded credits、margin estimate 和失败情况。
+
+执行规则：
+
+- 前端必须从服务端读取 estimated credit cost，不能本地自己计算。
+- 一个产品模型可以映射到多条 supplier lines；用户永远不直接选择底层 provider route。
+- Route failover 必须保持一个 AiRun id 和一次最终 settlement outcome。
+- Pricing/version changes 只影响未来的新运行；历史运行保留原始 pricing rule id。
+- 如果 provider 会暴露 actual usage/cost，服务端必须先估算，再在 response 后做最终 charge/refund settlement。

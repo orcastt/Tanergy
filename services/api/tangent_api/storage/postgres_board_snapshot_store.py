@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from fastapi import HTTPException
 
-from tangent_api.board_access import assert_can_manage_board, assert_can_write_board
+from tangent_api.board_asset_references import assert_no_postgres_foreign_asset_refs
 from tangent_api.board_guard import audit_board_document
 from tangent_api.board_metadata import get_board_snapshot_display_title, normalize_board_thumbnail_url
 from tangent_api.request_context import ApiRequestContext
@@ -31,12 +31,12 @@ class PostgresBoardSnapshotStore:
         input_data: BoardSnapshotCreateRequest,
         context: ApiRequestContext,
     ) -> BoardSnapshotSummary:
-        board = self.boards._load_board_without_touch(board_id, context)
-        assert_can_write_board(board, context)
+        self.boards._load_board_without_touch(board_id, context, required_access="write")
         audit = audit_board_document(input_data.document)
         if not audit.ok:
             issue = next((item for item in audit.issues if item.blocking), None)
             raise HTTPException(status_code=422, detail=issue.message if issue else "Board document is blocked.")
+        assert_no_postgres_foreign_asset_refs(input_data.document, context, connect_to_postgres)
 
         created_at = datetime.now(timezone.utc).isoformat()
         metrics = get_board_document_metrics(input_data.document)
@@ -144,7 +144,7 @@ class PostgresBoardSnapshotStore:
         snapshot_id: str,
         context: ApiRequestContext,
     ) -> BoardSnapshotRecord:
-        self.boards._load_board_without_touch(board_id, context)
+        self.boards._load_board_without_touch(board_id, context, required_access="read")
         with connect_to_postgres() as connection:
             with connection.cursor() as cursor:
                 self._ensure_schema(cursor)
@@ -177,8 +177,7 @@ class PostgresBoardSnapshotStore:
         return _snapshot_from_row(row)
 
     def clear_snapshots(self, board_id: str, context: ApiRequestContext) -> int:
-        board = self.boards._load_board_without_touch(board_id, context)
-        assert_can_manage_board(board, context)
+        self.boards._load_board_without_touch(board_id, context, required_access="manage")
         with connect_to_postgres() as connection:
             with connection.cursor() as cursor:
                 self._ensure_schema(cursor)

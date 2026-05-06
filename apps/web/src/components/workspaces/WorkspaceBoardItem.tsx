@@ -10,6 +10,9 @@ export type WorkspaceBoardViewMode = 'gallery' | 'list'
 
 type WorkspaceBoardItemProps = {
   board: BoardPersistenceSummary
+  canCopyBoard: boolean
+  canDeleteBoard: boolean
+  canManageBoard: boolean
   editingTitle: string
   isEditing: boolean
   isPending: boolean
@@ -32,6 +35,9 @@ type WorkspaceBoardItemProps = {
 
 export function WorkspaceBoardItem({
   board,
+  canCopyBoard,
+  canDeleteBoard,
+  canManageBoard,
   editingTitle,
   isEditing,
   isPending,
@@ -176,7 +182,7 @@ export function WorkspaceBoardItem({
             </button>
             {isMenuOpen ? (
               <div className="workspace-board-menu-popover">
-                <WorkspaceBoardMenuAction disabled={isPending} icon="share" onClick={() => runMenuAction(onShare)}>Share link</WorkspaceBoardMenuAction>
+                <WorkspaceBoardMenuAction disabled={isPending || !canManageBoard} icon="share" onClick={() => runMenuAction(onShare)}>Share link</WorkspaceBoardMenuAction>
                 <WorkspaceBoardMenuAction disabled={isPending} icon="external" onClick={() => runMenuAction(openInNewTab)}>Open in new tab</WorkspaceBoardMenuAction>
                 <WorkspaceBoardMenuAction disabled={isPending} icon="star" onClick={() => runMenuAction(onToggleStar)}>
                   {board.isStarred ? 'Unstar board' : 'Star this board'}
@@ -184,20 +190,20 @@ export function WorkspaceBoardItem({
                 <WorkspaceBoardMenuAction disabled={isPending} icon="pin" onClick={() => runMenuAction(onTogglePin)}>
                   {board.isPinned ? 'Unpin board' : 'Pin board'}
                 </WorkspaceBoardMenuAction>
-                <WorkspaceBoardMenuAction disabled={isPending} icon="rename" onClick={() => runMenuAction(onRename)}>Rename</WorkspaceBoardMenuAction>
-                <WorkspaceBoardMenuAction disabled={isPending} icon="copy" onClick={() => runMenuAction(onCopy)}>Copy board</WorkspaceBoardMenuAction>
+                <WorkspaceBoardMenuAction disabled={isPending || !canManageBoard} icon="rename" onClick={() => runMenuAction(onRename)}>Rename</WorkspaceBoardMenuAction>
+                <WorkspaceBoardMenuAction disabled={isPending || !canCopyBoard} icon="copy" onClick={() => runMenuAction(onCopy)}>Copy board</WorkspaceBoardMenuAction>
                 {board.canvasEngine === 'tldraw' ? (
-                  <WorkspaceBoardMenuAction disabled={isPending} icon="migrate" onClick={() => runMenuAction(onCopyToKonva)}>
+                  <WorkspaceBoardMenuAction disabled={isPending || !canCopyBoard} icon="migrate" onClick={() => runMenuAction(onCopyToKonva)}>
                     Copy to Konva v2
                   </WorkspaceBoardMenuAction>
                 ) : null}
                 <WorkspaceBoardMenuAction disabled={isPending} icon="manage" onClick={() => runMenuAction(onOpenPanel)}>Manage board</WorkspaceBoardMenuAction>
                 {board.visibility === 'public' ? (
-                  <WorkspaceBoardMenuAction disabled={isPending} icon="private" onClick={() => runMenuAction(onMakePrivate)}>Make board private</WorkspaceBoardMenuAction>
+                  <WorkspaceBoardMenuAction disabled={isPending || !canManageBoard} icon="private" onClick={() => runMenuAction(onMakePrivate)}>Make board private</WorkspaceBoardMenuAction>
                 ) : (
-                  <WorkspaceBoardMenuAction disabled={isPending} icon="public" onClick={() => runMenuAction(onMakePublic)}>Make board public</WorkspaceBoardMenuAction>
+                  <WorkspaceBoardMenuAction disabled={isPending || !canManageBoard} icon="public" onClick={() => runMenuAction(onMakePublic)}>Make board public</WorkspaceBoardMenuAction>
                 )}
-                <WorkspaceBoardMenuAction disabled={isPending} icon="delete" onClick={() => runMenuAction(onDelete)} tone="danger">Delete</WorkspaceBoardMenuAction>
+                <WorkspaceBoardMenuAction disabled={isPending || !canDeleteBoard} icon="delete" onClick={() => runMenuAction(onDelete)} tone="danger">Delete</WorkspaceBoardMenuAction>
               </div>
             ) : null}
           </div>

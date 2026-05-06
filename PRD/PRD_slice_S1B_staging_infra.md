@@ -1,7 +1,7 @@
 # PRD Slice S1B: Staging Infrastructure And Online Prep
 
-**Updated**: 2026-05-02
-**Status**: Waiting on external resources.
+**Updated**: 2026-05-06
+**Status**: In progress; staging Web/API/Neon/R2 smoke passed, while email/Auth/OAuth and Konva-first redeploy smoke remain.
 
 ## User Value
 
@@ -18,6 +18,7 @@ The app becomes testable outside local dev. Real browsers can access staging Web
 - Auth provider staging project configured.
 - Google OAuth enabled for staging login.
 - Production Google OAuth preparation documented before public launch.
+- Konva-first Board route redeployed with tldraw disabled by default.
 
 ## Online Preparation Checklist
 
@@ -50,3 +51,4 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - Email OTP can be delivered to a test inbox.
 - Google login succeeds on staging.
 - FastAPI accepts valid provider JWT and rejects invalid/expired JWT.
+- `/boards/[boardId]` opens Konva v2 on staging without the tldraw production license path.

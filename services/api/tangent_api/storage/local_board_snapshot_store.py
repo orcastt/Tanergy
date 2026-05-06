@@ -9,6 +9,7 @@ from uuid import uuid4
 
 from fastapi import HTTPException
 
+from tangent_api.board_asset_references import assert_no_local_foreign_asset_refs
 from tangent_api.board_guard import audit_board_document
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.schemas import (
@@ -27,13 +28,17 @@ def create_board_snapshot(
     input_data: BoardSnapshotCreateRequest,
     context: ApiRequestContext,
 ) -> BoardSnapshotSummary:
+    from tangent_api.storage.local_board_store import _load_board_without_touch
+
     safe_board_id = _sanitize_id(board_id)
     if not safe_board_id:
         raise HTTPException(status_code=400, detail="Invalid board id.")
+    _load_board_without_touch(safe_board_id, context, required_access="write")
     audit = audit_board_document(input_data.document)
     if not audit.ok:
         issue = next((item for item in audit.issues if item.blocking), None)
         raise HTTPException(status_code=422, detail=issue.message if issue else "Board document is blocked.")
+    assert_no_local_foreign_asset_refs(input_data.document, context)
 
     metrics = get_board_document_metrics(input_data.document)
     snapshot = BoardSnapshotRecord(
@@ -59,9 +64,17 @@ def create_board_snapshot(
 
 
 def list_board_snapshots(board_id: str, context: ApiRequestContext) -> list[BoardSnapshotSummary]:
+    from tangent_api.storage.local_board_store import _load_board_without_touch
+
     safe_board_id = _sanitize_id(board_id)
     if not safe_board_id:
         raise HTTPException(status_code=400, detail="Invalid board id.")
+    try:
+        _load_board_without_touch(safe_board_id, context, required_access="read")
+    except HTTPException as exc:
+        if exc.status_code == 404:
+            return []
+        raise
     root = _snapshot_root(context.workspace_id, safe_board_id)
     if not root.exists():
         return []
@@ -80,10 +93,13 @@ def load_board_snapshot(
     snapshot_id: str,
     context: ApiRequestContext,
 ) -> BoardSnapshotRecord:
+    from tangent_api.storage.local_board_store import _load_board_without_touch
+
     safe_board_id = _sanitize_id(board_id)
     safe_snapshot_id = _sanitize_id(snapshot_id)
     if not safe_board_id or not safe_snapshot_id:
         raise HTTPException(status_code=400, detail="Invalid snapshot id.")
+    _load_board_without_touch(safe_board_id, context, required_access="read")
     path = _snapshot_path(context.workspace_id, safe_board_id, safe_snapshot_id)
     if not path.exists():
         raise HTTPException(status_code=404, detail="Board history entry not found.")
@@ -94,9 +110,12 @@ def load_board_snapshot(
 
 
 def clear_board_snapshots(board_id: str, context: ApiRequestContext) -> int:
+    from tangent_api.storage.local_board_store import _load_board_without_touch
+
     safe_board_id = _sanitize_id(board_id)
     if not safe_board_id:
         raise HTTPException(status_code=400, detail="Invalid board id.")
+    _load_board_without_touch(safe_board_id, context, required_access="manage")
     snapshots = list_board_snapshots(safe_board_id, context)
     root = _snapshot_root(context.workspace_id, safe_board_id)
     if root.exists():

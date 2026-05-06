@@ -128,6 +128,73 @@ class AdminBoardsResponse(TangentApiModel):
     boards: list[AdminBoardRecord] = Field(default_factory=list)
 
 
+class AdminAiModelRecord(TangentApiModel):
+    capabilities: list[str] = Field(default_factory=list)
+    capability: str
+    cost_hint: str = Field(alias="costHint")
+    created_at: str = Field(alias="createdAt")
+    default_pricing_rule_id: Optional[str] = Field(default=None, alias="defaultPricingRuleId")
+    default_tier_key: Optional[str] = Field(default=None, alias="defaultTierKey")
+    display_name: str = Field(alias="displayName")
+    enabled: bool
+    estimated_latency: str = Field(alias="estimatedLatency")
+    is_default: bool = Field(alias="isDefault")
+    model_key: str = Field(alias="modelKey")
+    parameter_schema: dict[str, Any] = Field(default_factory=dict, alias="parameterSchema")
+    provider_key: Optional[str] = Field(default=None, alias="providerKey")
+    updated_at: str = Field(alias="updatedAt")
+
+
+class AdminAiModelsResponse(TangentApiModel):
+    error: Optional[str] = None
+    models: list[AdminAiModelRecord] = Field(default_factory=list)
+    ok: bool
+
+
+class AdminAiProviderRouteRecord(TangentApiModel):
+    created_at: str = Field(alias="createdAt")
+    enabled: bool
+    health_status: str = Field(alias="healthStatus")
+    model_key: str = Field(alias="modelKey")
+    priority: int
+    provider_key: str = Field(alias="providerKey")
+    provider_model: str = Field(alias="providerModel")
+    retry_policy: dict[str, Any] = Field(default_factory=dict, alias="retryPolicy")
+    route_id: str = Field(alias="routeId")
+    route_key: str = Field(alias="routeKey")
+    timeout_ms: int = Field(alias="timeoutMs")
+    updated_at: str = Field(alias="updatedAt")
+    weight: int
+
+
+class AdminAiProviderRoutesResponse(TangentApiModel):
+    error: Optional[str] = None
+    ok: bool
+    routes: list[AdminAiProviderRouteRecord] = Field(default_factory=list)
+
+
+class AdminAiPricingRuleRecord(TangentApiModel):
+    billing_unit: str = Field(alias="billingUnit")
+    created_at: str = Field(alias="createdAt")
+    credit_multiplier: float = Field(alias="creditMultiplier")
+    effective_from: str = Field(alias="effectiveFrom")
+    effective_to: Optional[str] = Field(default=None, alias="effectiveTo")
+    estimated_credits: float = Field(alias="estimatedCredits")
+    id: str
+    min_credits: float = Field(alias="minCredits")
+    model_key: str = Field(alias="modelKey")
+    provider_cost_formula: dict[str, Any] = Field(default_factory=dict, alias="providerCostFormula")
+    status: str
+    tier_key: Optional[str] = Field(default=None, alias="tierKey")
+    updated_at: str = Field(alias="updatedAt")
+
+
+class AdminAiPricingRulesResponse(TangentApiModel):
+    error: Optional[str] = None
+    ok: bool
+    pricing_rules: list[AdminAiPricingRuleRecord] = Field(default_factory=list, alias="pricingRules")
+
+
 class AdminAuditLogRecord(TangentApiModel):
     action: str
     actor_user_id: Optional[str] = Field(default=None, alias="actorUserId")

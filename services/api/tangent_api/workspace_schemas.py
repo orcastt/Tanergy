@@ -69,3 +69,35 @@ class WorkspaceEntitlementResponse(TangentApiModel):
     ok: bool
     plan: WorkspacePlanSummary
     workspace: BillingWorkspaceSummary
+
+
+class WorkspaceSeatAssignmentRecord(TangentApiModel):
+    assigned_by: Optional[str] = Field(default=None, alias="assignedBy")
+    current_period_end: Optional[str] = Field(default=None, alias="currentPeriodEnd")
+    current_period_start: Optional[str] = Field(default=None, alias="currentPeriodStart")
+    id: str
+    included_credits: int = Field(alias="includedCredits")
+    plan_key: str = Field(alias="planKey")
+    status: str
+    user_id: str = Field(alias="userId")
+    workspace_id: str = Field(alias="workspaceId")
+
+
+class WorkspaceSeatAssignmentUpsertRequest(TangentApiModel):
+    current_period_end: Optional[str] = Field(default=None, alias="currentPeriodEnd")
+    current_period_start: Optional[str] = Field(default=None, alias="currentPeriodStart")
+    included_credits: Optional[int] = Field(default=None, alias="includedCredits")
+    plan_key: str = Field(alias="planKey")
+    user_id: str = Field(alias="userId")
+
+
+class WorkspaceSeatAssignmentResponse(TangentApiModel):
+    error: Optional[str] = None
+    ok: bool
+    seat: WorkspaceSeatAssignmentRecord
+
+
+class WorkspaceSeatAssignmentsResponse(TangentApiModel):
+    error: Optional[str] = None
+    ok: bool
+    seats: list[WorkspaceSeatAssignmentRecord]

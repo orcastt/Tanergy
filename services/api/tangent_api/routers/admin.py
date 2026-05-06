@@ -2,6 +2,12 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 
+from tangent_api.admin_ai_control_plane import (
+    list_admin_ai_models,
+    list_admin_ai_pricing_rules,
+    list_admin_ai_provider_routes,
+)
+from tangent_api.admin_ai_runtime_reads import list_admin_ai_api_calls, list_admin_ai_runs
 from tangent_api.admin_access import (
     grant_admin_role,
     list_admin_audit_logs,
@@ -15,7 +21,11 @@ from tangent_api.admin_access import (
     write_admin_audit_log,
 )
 from tangent_api.request_context import ApiRequestContext, get_request_context
+from tangent_api.admin_ai_runtime_schemas import AdminAiApiCallsResponse, AdminAiRunsResponse
 from tangent_api.schemas import (
+    AdminAiModelsResponse,
+    AdminAiPricingRulesResponse,
+    AdminAiProviderRoutesResponse,
     AdminAuditLogsResponse,
     AdminBoardsResponse,
     AdminMeResponse,
@@ -104,6 +114,129 @@ def get_admin_boards(
         workspace_id=context.workspace_id,
     )
     return AdminBoardsResponse(ok=True, boards=boards)
+
+
+@router.get("/ai/models", response_model=AdminAiModelsResponse)
+def get_admin_ai_models(
+    limit: int = Query(default=50, ge=1, le=200),
+    capability: Optional[str] = Query(default=None, min_length=1),
+    enabled: Optional[bool] = Query(default=None),
+    context: ApiRequestContext = Depends(get_request_context),
+) -> AdminAiModelsResponse:
+    roles = require_admin_role(context)
+    models = list_admin_ai_models(limit=limit, capability=capability, enabled=enabled)
+    write_admin_audit_log(
+        action="admin.ai.models.list",
+        actor_user_id=context.user_id,
+        metadata={"capability": capability, "enabled": enabled, "limit": limit, "roles": [role.role for role in roles]},
+        workspace_id=context.workspace_id,
+    )
+    return AdminAiModelsResponse(models=models, ok=True)
+
+
+@router.get("/ai/provider-routes", response_model=AdminAiProviderRoutesResponse)
+def get_admin_ai_provider_routes(
+    limit: int = Query(default=100, ge=1, le=300),
+    model_key: Optional[str] = Query(default=None, alias="modelKey", min_length=1),
+    provider_key: Optional[str] = Query(default=None, alias="providerKey", min_length=1),
+    enabled: Optional[bool] = Query(default=None),
+    context: ApiRequestContext = Depends(get_request_context),
+) -> AdminAiProviderRoutesResponse:
+    roles = require_admin_role(context)
+    routes = list_admin_ai_provider_routes(
+        limit=limit,
+        model_key=model_key,
+        provider_key=provider_key,
+        enabled=enabled,
+    )
+    write_admin_audit_log(
+        action="admin.ai.provider_routes.list",
+        actor_user_id=context.user_id,
+        metadata={
+            "enabled": enabled,
+            "limit": limit,
+            "modelKey": model_key,
+            "providerKey": provider_key,
+            "roles": [role.role for role in roles],
+        },
+        workspace_id=context.workspace_id,
+    )
+    return AdminAiProviderRoutesResponse(ok=True, routes=routes)
+
+
+@router.get("/ai/pricing-rules", response_model=AdminAiPricingRulesResponse)
+def get_admin_ai_pricing_rules(
+    limit: int = Query(default=100, ge=1, le=300),
+    model_key: Optional[str] = Query(default=None, alias="modelKey", min_length=1),
+    tier_key: Optional[str] = Query(default=None, alias="tierKey", min_length=1),
+    status: Optional[str] = Query(default=None, min_length=1),
+    context: ApiRequestContext = Depends(get_request_context),
+) -> AdminAiPricingRulesResponse:
+    roles = require_admin_role(context)
+    pricing_rules = list_admin_ai_pricing_rules(limit=limit, model_key=model_key, tier_key=tier_key, status=status)
+    write_admin_audit_log(
+        action="admin.ai.pricing_rules.list",
+        actor_user_id=context.user_id,
+        metadata={
+            "limit": limit,
+            "modelKey": model_key,
+            "roles": [role.role for role in roles],
+            "status": status,
+            "tierKey": tier_key,
+        },
+        workspace_id=context.workspace_id,
+    )
+    return AdminAiPricingRulesResponse(ok=True, pricingRules=pricing_rules)
+
+
+@router.get("/ai/runs", response_model=AdminAiRunsResponse)
+def get_admin_ai_runs(
+    limit: int = Query(default=100, ge=1, le=300),
+    model_id: Optional[str] = Query(default=None, alias="modelId", min_length=1),
+    run_type: Optional[str] = Query(default=None, alias="runType", min_length=1),
+    status: Optional[str] = Query(default=None, min_length=1),
+    context: ApiRequestContext = Depends(get_request_context),
+) -> AdminAiRunsResponse:
+    roles = require_admin_role(context)
+    runs = list_admin_ai_runs(limit=limit, model_id=model_id, run_type=run_type, status=status)
+    write_admin_audit_log(
+        action="admin.ai.runs.list",
+        actor_user_id=context.user_id,
+        metadata={
+            "limit": limit,
+            "modelId": model_id,
+            "roles": [role.role for role in roles],
+            "runType": run_type,
+            "status": status,
+        },
+        workspace_id=context.workspace_id,
+    )
+    return AdminAiRunsResponse(ok=True, runs=runs)
+
+
+@router.get("/ai/api-calls", response_model=AdminAiApiCallsResponse)
+def get_admin_ai_api_calls(
+    limit: int = Query(default=100, ge=1, le=300),
+    model_id: Optional[str] = Query(default=None, alias="modelId", min_length=1),
+    provider: Optional[str] = Query(default=None, min_length=1),
+    status: Optional[str] = Query(default=None, min_length=1),
+    context: ApiRequestContext = Depends(get_request_context),
+) -> AdminAiApiCallsResponse:
+    roles = require_admin_role(context)
+    api_calls = list_admin_ai_api_calls(limit=limit, model_id=model_id, provider=provider, status=status)
+    write_admin_audit_log(
+        action="admin.ai.api_calls.list",
+        actor_user_id=context.user_id,
+        metadata={
+            "limit": limit,
+            "modelId": model_id,
+            "provider": provider,
+            "roles": [role.role for role in roles],
+            "status": status,
+        },
+        workspace_id=context.workspace_id,
+    )
+    return AdminAiApiCallsResponse(apiCalls=api_calls, ok=True)
 
 
 @router.get("/audit-logs", response_model=AdminAuditLogsResponse)
