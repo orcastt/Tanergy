@@ -1,10 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Circle, Group, Rect, Text } from 'react-konva'
 import type { KonvaEventObject } from 'konva/lib/Node'
 import type { CanvasDocument, CanvasNodeShape } from '@/features/canvas-engine'
 import type { NodeCardField, ResolvedNodePort } from '@/types/nodeRuntime'
 import {
   getNodeDefinition,
+  getNodeCardFields,
+  getNormalizedNodeData,
   getPortColorName,
   getResolvedNodePorts,
 } from '@/features/node-runtime/registry'
@@ -28,6 +30,7 @@ type KonvaNodeCardShapeProps = {
   editingFieldName?: KonvaNodeTextFieldName | null
   onChatClean?: (shapeId: string) => void
   onChatExportToggle?: (shapeId: string, messageId: string) => void
+  onChatModelChange?: (shapeId: string, modelId: string) => void
   onChatSend?: (shapeId: string, draftOverride?: string) => void
   onChatUpload?: (shapeId: string) => void
   onFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
@@ -41,11 +44,13 @@ type KonvaNodeCardShapeProps = {
   zoom: number
 }
 
-export function KonvaNodeCardShape({ document, editingFieldName = null, onChatClean, onChatExportToggle, onChatSend, onChatUpload, onFieldChange, onImageNodeToCanvas, onPortPointerDown, onRunToggle, onTextEditStart, opacity, previewMode = false, shape, zoom }: KonvaNodeCardShapeProps) {
+export function KonvaNodeCardShape({ document, editingFieldName = null, onChatClean, onChatExportToggle, onChatModelChange, onChatSend, onChatUpload, onFieldChange, onImageNodeToCanvas, onPortPointerDown, onRunToggle, onTextEditStart, opacity, previewMode = false, shape, zoom }: KonvaNodeCardShapeProps) {
   const [hoveredPort, setHoveredPort] = useState<ResolvedNodePort | null>(null)
   const [openFieldName, setOpenFieldName] = useState<string | null>(null)
   const definition = getNodeDefinition(shape.props.nodeType)
   const accent = definition.accentColor
+  const normalizedData = getNormalizedNodeData(shape.props.nodeType, shape.props.data)
+  const cardFields = getNodeCardFields(shape.props.nodeType, normalizedData)
   const title = shape.props.nodeType === 'image' ? 'Image' : getStringValue(shape.props.data.title) || definition.displayName
   const status = getStringValue(shape.props.runtimeSummary.status) || 'idle'
   const ports = getResolvedNodePorts(shape.props.nodeType, shape.props.data)
@@ -80,7 +85,7 @@ export function KonvaNodeCardShape({ document, editingFieldName = null, onChatCl
         strokeWidth={1}
         width={shape.props.width}
       />
-      <Group clipHeight={shape.props.height} clipWidth={shape.props.width}>
+      <Group>
         <Group scaleX={contentScale} scaleY={contentScale}>
           <Text
             fill="#0f172a"
@@ -93,10 +98,13 @@ export function KonvaNodeCardShape({ document, editingFieldName = null, onChatCl
             x={14}
             y={16}
           />
+          {contentShape.props.nodeType === 'prompt_optimizer' ? <PromptOptimizerProBadge /> : null}
           {contentShape.props.nodeType === 'image'
             ? <ImageNodeToCanvasButton onImageNodeToCanvas={onImageNodeToCanvas} shape={contentShape} />
             : contentShape.props.nodeType === 'chat'
               ? <ChatCleanButton onChatClean={onChatClean} shape={contentShape} />
+            : contentShape.props.nodeType === 'prompt'
+              ? null
             : canRunNode(contentShape)
               ? <NodeCardRunButton onRunToggle={onRunToggle} shape={contentShape} status={status} />
               : <NodeCardStatusBadge shape={contentShape} status={status} tone={statusTone} />}
@@ -104,8 +112,10 @@ export function KonvaNodeCardShape({ document, editingFieldName = null, onChatCl
             accent={accent}
             document={document}
             editingFieldName={editingFieldName}
-            fields={definition.cardFields}
+            fields={cardFields}
+            normalizedData={normalizedData}
             onChatExportToggle={onChatExportToggle}
+            onChatModelChange={onChatModelChange}
             onChatSend={onChatSend}
             onChatUpload={onChatUpload}
             onFieldChange={onFieldChange}
@@ -167,6 +177,15 @@ function ChatCleanButton({ onChatClean, shape }: { onChatClean?: (shapeId: strin
       <Rect cornerRadius={8} fill="#f8fafc" height={24} stroke="#dce3ec" strokeWidth={1} width={width} x={x} y={12} />
       <Text align="center" fill="#475569" fontFamily="Inter, system-ui, sans-serif" fontSize={11} fontStyle="bold" height={24} text="Clean" verticalAlign="middle" width={width} x={x} y={12} />
     </Group>
+  )
+}
+
+function PromptOptimizerProBadge() {
+  return (
+    <>
+      <Rect cornerRadius={999} fill="#f1f5f9" height={24} stroke="#dce3ec" strokeWidth={1} width={48} x={184} y={12} />
+      <Text align="center" fill="#475569" fontFamily="Inter, system-ui, sans-serif" fontSize={12} fontStyle="bold" height={24} text="Pro" verticalAlign="middle" width={48} x={184} y={12} />
+    </>
   )
 }
 
@@ -286,6 +305,10 @@ function getStringValue(value: unknown) {
   return typeof value === 'string' ? value : undefined
 }
 
+function getNumberValue(value: unknown) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined
+}
+
 function getStatusTone(status: string) {
   if (status === 'running') return { fill: '#eff6ff', stroke: '#bfdbfe', text: '#1d4ed8' }
   if (status === 'succeeded') return { fill: '#ecfdf5', stroke: '#bbf7d0', text: '#047857' }
@@ -298,7 +321,9 @@ function NodeBody({
   document,
   editingFieldName,
   fields,
+  normalizedData,
   onChatExportToggle,
+  onChatModelChange,
   onChatSend,
   onChatUpload,
   onFieldChange,
@@ -312,7 +337,9 @@ function NodeBody({
   document: CanvasDocument
   editingFieldName?: KonvaNodeTextFieldName | null
   fields: NodeCardField[]
+  normalizedData: CanvasNodeShape['props']['data']
   onChatExportToggle?: (shapeId: string, messageId: string) => void
+  onChatModelChange?: (shapeId: string, modelId: string) => void
   onChatSend?: (shapeId: string, draftOverride?: string) => void
   onChatUpload?: (shapeId: string) => void
   onFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
@@ -323,10 +350,24 @@ function NodeBody({
   zoom: number
 }) {
   if (shape.props.nodeType === 'prompt') return <PromptBody document={document} editing={editingFieldName === 'prompt'} onTextEditStart={onTextEditStart} shape={shape} />
-  if (shape.props.nodeType === 'chat') return <KonvaNodeChatBody document={document} editingFieldName={editingFieldName} onChatExportToggle={onChatExportToggle} onChatSend={onChatSend} onChatUpload={onChatUpload} onTextEditStart={onTextEditStart} shape={shape} zoom={zoom} />
+  if (shape.props.nodeType === 'prompt_optimizer') return <PromptOptimizerBody document={document} shape={shape} />
+  if (shape.props.nodeType === 'chat') return <KonvaNodeChatBody document={document} editingFieldName={editingFieldName} onChatExportToggle={onChatExportToggle} onChatModelChange={onChatModelChange} onChatSend={onChatSend} onChatUpload={onChatUpload} onTextEditStart={onTextEditStart} shape={shape} zoom={zoom} />
   if (shape.props.nodeType === 'image') return <ImageBody accent={accent} shape={shape} zoom={zoom} />
-  if (shape.props.nodeType === 'analysis') return <AnalysisBody editing={editingFieldName === 'analysisPrompt'} onTextEditStart={onTextEditStart} shape={shape} />
-  return <GenerationBody fields={fields} onFieldChange={onFieldChange} openFieldName={openFieldName} setOpenFieldName={setOpenFieldName} shape={shape} zoom={zoom} />
+  if (shape.props.nodeType === 'analysis') {
+    return (
+      <AnalysisBody
+        editing={editingFieldName === 'analysisPrompt'}
+        fields={fields}
+        normalizedData={normalizedData}
+        onFieldChange={onFieldChange}
+        onTextEditStart={onTextEditStart}
+        openFieldName={openFieldName}
+        setOpenFieldName={setOpenFieldName}
+        shape={shape}
+      />
+    )
+  }
+  return <GenerationBody fields={fields} normalizedData={normalizedData} onFieldChange={onFieldChange} openFieldName={openFieldName} setOpenFieldName={setOpenFieldName} shape={shape} zoom={zoom} />
 }
 
 function PromptBody({
@@ -346,7 +387,56 @@ function PromptBody({
   return <NodeCardTextBox height={shape.props.height - 78} onEdit={() => onTextEditStart?.(shape.id, 'prompt')} text={editing ? '' : inheritedText || localText} width={shape.props.width - 28} x={14} y={54} />
 }
 
-function AnalysisBody({ editing, onTextEditStart, shape }: { editing: boolean; onTextEditStart?: (shapeId: string, fieldName: KonvaNodeTextFieldName) => void; shape: CanvasNodeShape }) {
+function PromptOptimizerBody({
+  document,
+  shape,
+}: {
+  document: CanvasDocument
+  shape: CanvasNodeShape
+}) {
+  const inputResolution = useMemo(() => resolveRuntimeGraphNodeInputs(document, shape), [document, shape])
+  const status = getStringValue(shape.props.runtimeSummary.status) || 'idle'
+  const error = getStringValue(shape.props.runtimeSummary.error)
+  const optimizedPrompt = getStringValue(shape.props.runtimeSummary.textOutput) || getStringValue(shape.props.data.optimizedPrompt) || ''
+  const previewText = optimizedPrompt || (status === 'running'
+    ? 'Generating...'
+    : error ?? (inputResolution.canRun ? 'Ready to optimize.' : inputResolution.missingReasons[0] ?? 'Connect a prompt first.'))
+  return (
+    <>
+      <Text fill="#64748b" fontFamily="Inter, system-ui, sans-serif" fontSize={13} fontStyle="bold" text="Optimized preview" width={shape.props.width - 28} x={14} y={58} />
+      <NodeCardTextBox height={shape.props.height - 98} text={previewText} width={shape.props.width - 28} x={14} y={84} />
+    </>
+  )
+}
+
+function AnalysisBody({
+  editing,
+  fields,
+  normalizedData,
+  onFieldChange,
+  onTextEditStart,
+  openFieldName,
+  setOpenFieldName,
+  shape,
+}: {
+  editing: boolean
+  fields: NodeCardField[]
+  normalizedData: CanvasNodeShape['props']['data']
+  onFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
+  onTextEditStart?: (shapeId: string, fieldName: KonvaNodeTextFieldName) => void
+  openFieldName: string | null
+  setOpenFieldName: (fieldName: string | null) => void
+  shape: CanvasNodeShape
+}) {
+  const displayShape = shape.props.data === normalizedData
+    ? shape
+    : {
+        ...shape,
+        props: {
+          ...shape.props,
+          data: normalizedData,
+        },
+      }
   const status = getStringValue(shape.props.runtimeSummary.status) || 'idle'
   const error = getStringValue(shape.props.runtimeSummary.error)
   const textOutput = getStringValue(shape.props.runtimeSummary.textOutput)
@@ -355,37 +445,51 @@ function AnalysisBody({ editing, onTextEditStart, shape }: { editing: boolean; o
     : error ?? 'Connect an image first.'
   return (
     <>
-      <NodeCardTextBox height={64} onEdit={() => onTextEditStart?.(shape.id, 'analysisPrompt')} text={editing ? '' : getStringValue(shape.props.data.analysisPrompt) ?? ''} width={shape.props.width - 28} x={14} y={58} />
-      <NodeCardTextBox height={shape.props.height - 142} text={outputText} width={shape.props.width - 28} x={14} y={132} />
+      <NodeCardFieldGrid fields={fields} onFieldChange={onFieldChange} openFieldName={openFieldName} setOpenFieldName={setOpenFieldName} shape={displayShape} y={54} />
+      <NodeCardTextBox height={64} onEdit={() => onTextEditStart?.(shape.id, 'analysisPrompt')} text={editing ? '' : getStringValue(displayShape.props.data.analysisPrompt) ?? ''} width={shape.props.width - 28} x={14} y={116} />
+      <NodeCardTextBox height={shape.props.height - 208} text={outputText} width={shape.props.width - 28} x={14} y={190} />
     </>
   )
 }
 
-function GenerationBody({ fields, onFieldChange, openFieldName, setOpenFieldName, shape, zoom }: {
+function GenerationBody({ fields, normalizedData, onFieldChange, openFieldName, setOpenFieldName, shape, zoom }: {
   fields: NodeCardField[]
+  normalizedData: CanvasNodeShape['props']['data']
   onFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
   openFieldName: string | null
   setOpenFieldName: (fieldName: string | null) => void
   shape: CanvasNodeShape
   zoom: number
 }) {
+  const displayShape = shape.props.data === normalizedData
+    ? shape
+    : {
+        ...shape,
+        props: {
+          ...shape.props,
+          data: normalizedData,
+        },
+      }
   const imageOutputs = shape.props.nodeType === 'image_gen_4' ? 4 : 1
   const slotY = 184
   const status = getStringValue(shape.props.runtimeSummary.status) || 'idle'
   const error = getStringValue(shape.props.runtimeSummary.error)
-  const footerReserve = status === 'succeeded' ? 24 : 64
+  const progress = useEstimatedGenerationProgress(shape.props.runtimeSummary)
+  const footerReserve = status === 'running' ? 74 : status === 'succeeded' ? 24 : 64
   const slotHeight = Math.max(shape.props.nodeType === 'image_gen_4' ? 104 : 88, shape.props.height - slotY - footerReserve)
   return (
     <>
       <NodeCardImageSlots count={imageOutputs} height={slotHeight} shape={shape} y={slotY} />
       <GeneratedOutputPreviews count={imageOutputs} height={slotHeight} shape={shape} y={slotY} zoom={zoom} />
-      {status === 'succeeded' ? null : (
+      {status === 'succeeded' ? null : status === 'running' ? (
+        <GenerationProgressFooter progress={progress} shape={shape} />
+      ) : (
         <>
           <Rect cornerRadius={8} fill={status === 'failed' ? '#fff1f2' : '#f8fafc'} height={28} width={shape.props.width - 28} x={14} y={shape.props.height - 44} />
           <Text fill={status === 'failed' ? '#a11222' : '#64748b'} fontFamily="Inter, system-ui, sans-serif" fontSize={12} fontStyle="bold" text={error ?? 'Ready when prompt is connected.'} width={shape.props.width - 52} x={26} y={shape.props.height - 36} />
         </>
       )}
-      <NodeCardFieldGrid fields={fields} onFieldChange={onFieldChange} openFieldName={openFieldName} setOpenFieldName={setOpenFieldName} shape={shape} y={54} />
+      <NodeCardFieldGrid fields={fields} onFieldChange={onFieldChange} openFieldName={openFieldName} setOpenFieldName={setOpenFieldName} shape={displayShape} y={54} />
     </>
   )
 }
@@ -439,4 +543,58 @@ function GeneratedOutputPreviews({ count, height, shape, y, zoom }: { count: num
       })}
     </>
   )
+}
+
+function GenerationProgressFooter({
+  progress,
+  shape,
+}: {
+  progress: { label: string; percent: number }
+  shape: CanvasNodeShape
+}) {
+  const trackX = 14
+  const trackY = shape.props.height - 32
+  const trackWidth = shape.props.width - 28
+  const fillWidth = Math.max(10, Math.round(trackWidth * progress.percent))
+  return (
+    <>
+      <Text fill="#64748b" fontFamily="Inter, system-ui, sans-serif" fontSize={11} fontStyle="bold" text={progress.label} width={trackWidth - 42} x={trackX} y={shape.props.height - 50} />
+      <Text align="right" fill="#94a3b8" fontFamily="Inter, system-ui, sans-serif" fontSize={11} fontStyle="bold" text={`${Math.round(progress.percent * 100)}%`} width={42} x={shape.props.width - 56} y={shape.props.height - 50} />
+      <Rect cornerRadius={999} fill="#e2e8f0" height={8} width={trackWidth} x={trackX} y={trackY} />
+      <Rect cornerRadius={999} fill="#2563eb" height={8} width={fillWidth} x={trackX} y={trackY} />
+    </>
+  )
+}
+
+function useEstimatedGenerationProgress(summary: CanvasNodeShape['props']['runtimeSummary']) {
+  const status = getStringValue(summary.status) || 'idle'
+  const startedAt = getNumberValue(summary.progressStartedAt)
+  const estimatedMs = getNumberValue(summary.progressEstimatedMs)
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    if (status !== 'running' || !startedAt || !estimatedMs) return
+    const timer = window.setInterval(() => setNow(Date.now()), 250)
+    return () => window.clearInterval(timer)
+  }, [estimatedMs, startedAt, status])
+
+  if (status !== 'running' || !startedAt || !estimatedMs) {
+    return { label: 'Preparing…', percent: 0.08 }
+  }
+
+  const elapsedMs = Math.max(0, now - startedAt)
+  const raw = Math.min(elapsedMs / Math.max(estimatedMs, 1), 1.4)
+  const percent = raw < 0.08
+    ? 0.08
+    : raw < 0.92
+      ? raw
+      : Math.min(0.98, 0.92 + (raw - 0.92) * 0.12)
+
+  if (elapsedMs < 2000) {
+    return { label: 'Submitting…', percent: Math.min(percent, 0.12) }
+  }
+  if (percent < 0.88) {
+    return { label: 'Generating…', percent }
+  }
+  return { label: 'Finishing…', percent }
 }

@@ -5,7 +5,7 @@ import type { Editor } from 'tldraw'
 import type { NodeCardShape } from '@/types/nodeCardShape'
 import type { JsonObject, NodeRuntimeSummary } from '@/types/nodeRuntime'
 import { useCanvasPerformanceStore } from '@/features/canvas-performance/canvasPerformanceStore'
-import { getNodeDefinition, getResolvedNodePorts } from '@/features/node-runtime/registry'
+import { getNodeDefinition, getNormalizedNodeData, getResolvedNodePorts } from '@/features/node-runtime/registry'
 import { createCanvasImageFromNode } from '@/features/node-runtime/imageNodeAssets'
 import { getImageNodeEffectiveAsset } from '@/features/node-runtime/imageNodeEffectiveAsset'
 import { auditNodePayload } from '@/features/node-runtime/payloadAudit'
@@ -13,7 +13,7 @@ import { resolveNodeInputs } from '@/features/node-runtime/nodeDataFlow'
 import { getNodeEdgeSignatureForShape, useNodeEdgeStore } from '@/features/node-runtime/nodeEdges'
 import { useEditorRevision } from '@/components/canvas/useEditorRevision'
 import { NodePortDot } from './NodePortDot'
-import { AnalysisPreview, ImageGeneratePreview, ImagePreview, PromptPreview } from './NodeCardPreviews'
+import { AnalysisPreview, ImageGeneratePreview, ImagePreview, PromptOptimizerPreview, PromptPreview } from './NodeCardPreviews'
 
 type NodeCardContentProps = {
   editor: Editor
@@ -36,7 +36,7 @@ export function NodeCardContent({ editor, getEditorPagePoint, onDataChange, onRu
   const nodeRenderMode = useCanvasPerformanceStore((state) => state.nodeRenderMode)
   const zoom = useCanvasPerformanceStore((state) => state.zoom)
   const definition = getNodeDefinition(shape.props.nodeType)
-  const data = asJsonObject(shape.props.data)
+  const data = getNormalizedNodeData(shape.props.nodeType, asJsonObject(shape.props.data))
   const runtimeSummary = asRuntimeSummary(shape.props.runtimeSummary)
   const ports = getResolvedNodePorts(shape.props.nodeType, data)
   const shouldUseShell = nodeRenderMode === 'shell' && !hasReadableImageNodeFootprint(shape, zoom)
@@ -153,6 +153,14 @@ function NodeCardFullContent({
       <div className="node-card__body">
         {shape.props.nodeType === 'prompt' ? (
           <PromptPreview data={data} inputResolution={inputResolution} onDataChange={onDataChange} />
+        ) : null}
+        {shape.props.nodeType === 'prompt_optimizer' ? (
+          <PromptOptimizerPreview
+            data={data}
+            inputResolution={inputResolution}
+            onDataChange={onDataChange}
+            runtimeSummary={runtimeSummary}
+          />
         ) : null}
         {shape.props.nodeType === 'image_gen' || shape.props.nodeType === 'image_gen_4' ? (
           <ImageGeneratePreview

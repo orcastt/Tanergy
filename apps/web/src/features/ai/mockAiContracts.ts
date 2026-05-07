@@ -6,6 +6,50 @@ import type { AiCapability, AiModelOption, AiRunRecord, AiRunRequest } from './a
 
 export const mockAiModels: AiModelOption[] = [
   {
+    capabilities: ['text'],
+    costHint: 'Fast streaming chat for node conversations.',
+    displayName: 'Hunyuan 3.0 Preview',
+    estimatedLatency: '1-4s',
+    id: 'hunyuan-3.0-preview',
+    isDefault: false,
+    isEnabled: true,
+    parameterSchema: {},
+    provider: 'geekai',
+  },
+  {
+    capabilities: ['text', 'image_analysis'],
+    costHint: 'Balanced multimodal model for chat and image analysis.',
+    displayName: 'GPT-5 Mini',
+    estimatedLatency: '1-4s',
+    id: 'gpt-5-mini',
+    isDefault: false,
+    isEnabled: true,
+    parameterSchema: {},
+    provider: 'geekai',
+  },
+  {
+    capabilities: ['image_analysis'],
+    costHint: 'Fast vision analysis for image prompt extraction and comparisons.',
+    displayName: 'GPT-4o Mini',
+    estimatedLatency: '1-4s',
+    id: 'gpt-4o-mini',
+    isDefault: false,
+    isEnabled: true,
+    parameterSchema: {},
+    provider: 'geekai',
+  },
+  {
+    capabilities: ['image_analysis'],
+    costHint: 'Gemini vision analysis through GeekAI chat completions.',
+    displayName: 'Gemini 2.5 Flash Vision',
+    estimatedLatency: '1-4s',
+    id: 'gemini-2.5-flash',
+    isDefault: false,
+    isEnabled: true,
+    parameterSchema: {},
+    provider: 'geekai',
+  },
+  {
     capabilities: ['image_generation', 'image_edit'],
     costHint: 'Use low quality for early tests.',
     displayName: 'GPT Image 2',
@@ -14,22 +58,22 @@ export const mockAiModels: AiModelOption[] = [
     isDefault: true,
     isEnabled: true,
     parameterSchema: {
-      aspectRatio: ['auto', '1:1', '4:3', '16:9', '3:2'],
-      resolution: ['0.5K', '1K', '2K'],
+      quality: ['low', 'medium', 'high'],
+      size: ['1024x1024', '1024x1536', '1536x1024'],
     },
     provider: 'geekai',
   },
   {
     capabilities: ['image_generation', 'image_edit', 'image_reference'],
-    costHint: 'Use 0.5K for fast mock validation.',
-    displayName: 'Gemini 3.1 Flash Image Preview',
+    costHint: 'Nano Banana 2 backend for fast image generation and edits.',
+    displayName: 'Nano Banana 2',
     estimatedLatency: '4-10s',
     id: 'gemini-3.1-flash-image-preview',
     isDefault: false,
     isEnabled: true,
     parameterSchema: {
-      aspectRatio: ['auto', '1:1', '4:3', '16:9'],
-      resolution: ['0.5K', '1K', '2K', '4K'],
+      aspectRatio: ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9', '9:21', '1:4', '4:1', '1:8', '8:1'],
+      imageSize: ['0.5K', '1K', '2K', '4K'],
     },
     provider: 'geekai',
   },
@@ -42,7 +86,21 @@ export function getAiModels(capability?: AiCapability) {
 }
 
 export function getDefaultImageModelId() {
-  return mockAiModels.find((model) => model.isDefault && model.isEnabled)?.id ?? mockAiModels[0].id
+  return getAiModels('image_generation').find((model) => model.isDefault && model.isEnabled)?.id
+    ?? getAiModels('image_generation')[0]?.id
+    ?? mockAiModels[0].id
+}
+
+export function getDefaultChatModelId() {
+  return getAiModels('text').find((model) => model.id === 'hunyuan-3.0-preview' && model.isEnabled)?.id
+    ?? getAiModels('text').find((model) => model.isEnabled)?.id
+    ?? mockAiModels[0].id
+}
+
+export function getDefaultAnalysisModelId() {
+  return getAiModels('image_analysis').find((model) => model.id === 'gpt-5-mini' && model.isEnabled)?.id
+    ?? getAiModels('image_analysis').find((model) => model.isEnabled)?.id
+    ?? mockAiModels[0].id
 }
 
 export function getImageModelSelectOptions() {
@@ -51,6 +109,34 @@ export function getImageModelSelectOptions() {
     label: model.displayName,
     value: model.id,
   }))
+}
+
+export function getChatModelSelectOptions() {
+  return getAiModels('text').map((model) => ({
+    disabled: !model.isEnabled,
+    label: model.displayName,
+    value: model.id,
+  }))
+}
+
+export function getAnalysisModelSelectOptions() {
+  return getAiModels('image_analysis').map((model) => ({
+    disabled: !model.isEnabled,
+    label: model.displayName,
+    value: model.id,
+  }))
+}
+
+export function getChatModelDisplayName(modelId: null | string | undefined) {
+  return getAiModels('text').find((model) => model.id === modelId)?.displayName ?? 'Model'
+}
+
+export function getAnalysisModelDisplayName(modelId: null | string | undefined) {
+  return getAiModels('image_analysis').find((model) => model.id === modelId)?.displayName ?? 'Model'
+}
+
+export function getAiModelDefinition(modelId: null | string | undefined) {
+  return findModel(modelId)
 }
 
 export function createMockAiRun(

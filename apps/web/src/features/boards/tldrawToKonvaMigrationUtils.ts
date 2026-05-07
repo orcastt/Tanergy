@@ -77,7 +77,7 @@ export function mapColor(value: string | null, fallback: string | undefined) {
 }
 
 export function getNodeType(value: unknown): NodeType | null {
-  return value === 'prompt' || value === 'image' || value === 'image_gen' || value === 'image_gen_4' || value === 'analysis' || value === 'chat'
+  return value === 'prompt' || value === 'prompt_optimizer' || value === 'image' || value === 'image_gen' || value === 'image_gen_4' || value === 'analysis' || value === 'chat'
     ? value
     : null
 }

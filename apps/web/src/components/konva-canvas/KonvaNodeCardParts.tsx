@@ -227,7 +227,9 @@ function getFieldDisplayValue(field: NodeCardField, data: JsonObject) {
 }
 
 function getFieldLabel(field: NodeCardField) {
-  return field.name === 'aspectRatio' ? 'Aspect' : field.label
+  if (field.name === 'aspectRatio') return 'Aspect'
+  if (field.name === 'imageSize') return 'Image'
+  return field.label
 }
 
 function estimateWrappedTextHeight(text: string, width: number) {

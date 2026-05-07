@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type Konva from 'konva'
 import type { CanvasCamera, CanvasDocument } from '@/features/canvas-engine'
+import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import {
   loadLocalBoardDocument,
   saveLocalBoardDocument,
@@ -47,6 +48,7 @@ type KonvaBoardSaveAuditProps = {
   getPageEnvelope?: (document: CanvasDocument) => KonvaBoardDocumentSerializationOptions
   historyTitle?: string
   pageRevision?: number
+  workspace?: TangentWorkspace
 }
 
 const defaultBoardId = 'konva-spike-local'
@@ -67,6 +69,7 @@ export function KonvaBoardSaveAudit({
   onDocumentRestore,
   pageRevision = 0,
   stage,
+  workspace,
 }: KonvaBoardSaveAuditProps) {
   const autoLoadedBoardId = useRef<string | null>(null)
   const isRestoring = useRef(false)
@@ -149,7 +152,7 @@ export function KonvaBoardSaveAudit({
         document: nextResult.document,
         thumbnailUrl,
         title: boardTitle,
-      })
+      }, workspace)
       const savedBoard = saved.board
       if (!savedBoard) throw new Error('Konva board save failed.')
       const currentResult = createGuardedDocument(getPreparedDocument())
@@ -171,7 +174,7 @@ export function KonvaBoardSaveAudit({
       isSaving.current = false
       setIsRunning(false)
     }
-  }, [boardId, boardTitle, captureThumbnail, clearAutosaveTimer, createGuardedDocument, getPreparedDocument, mode, prepareDocument, saveResult, scheduleAutosave])
+  }, [boardId, boardTitle, captureThumbnail, clearAutosaveTimer, createGuardedDocument, getPreparedDocument, mode, prepareDocument, saveResult, scheduleAutosave, workspace])
 
   useEffect(() => {
     saveNowRef.current = (source) => void saveLocal(source)
@@ -193,7 +196,7 @@ export function KonvaBoardSaveAudit({
       setSaveError(null)
       setStatus('loading')
       setLastAction('load')
-      const loaded = await loadLocalBoardDocument(boardId)
+      const loaded = await loadLocalBoardDocument(boardId, workspace)
       const board = loaded.board
       if (!board) throw new Error('Konva board load failed.')
       const restored = restoreKonvaBoardDocument(board.document)
@@ -217,7 +220,7 @@ export function KonvaBoardSaveAudit({
         isRestoring.current = false
       })
     }
-  }, [boardId, clearAutosaveTimer, onBoardLoaded, onDocumentRestore])
+  }, [boardId, clearAutosaveTimer, onBoardLoaded, onDocumentRestore, workspace])
 
   const handleSnapshotRestored = useCallback((snapshot: BoardSnapshotRecord) => {
     const restoredResult = createGuardedDocument(getPreparedDocument())
@@ -244,6 +247,7 @@ export function KonvaBoardSaveAudit({
     onSnapshotRestored: handleSnapshotRestored,
     prepareDocument,
     restoreDocument: (nextDocument) => { restoreDocument(nextDocument) },
+    workspace,
   })
 
   useEffect(() => {

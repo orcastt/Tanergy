@@ -1,9 +1,11 @@
 import { useCallback, useRef, type Dispatch, type SetStateAction } from 'react'
 import { getShapeBounds, type CanvasDocument, type CanvasNodeShape, type CanvasPoint } from '@/features/canvas-engine'
+import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import { setRuntimeGraphImageNodeOwnData } from '@/features/node-runtime/runtimeGraph'
 import type { JsonObject } from '@/types/nodeRuntime'
 import { addKonvaChatReferenceFile, addKonvaChatReferenceImage } from './konvaChatNodeActions'
 import { createKonvaImageShapeFromFile } from './konvaImageClipboard'
+import { appendShapes } from './konvaShapeCommands'
 
 type KonvaCanvasHistory = {
   checkpoint: (document?: CanvasDocument) => void
@@ -12,9 +14,9 @@ type KonvaCanvasHistory = {
 type UseKonvaImageNodeUploadOptions = {
   document: CanvasDocument
   history: KonvaCanvasHistory
-  selectedIds: string[]
   onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
   onSelectionChange: (shapeIds: string[]) => void
+  workspace?: TangentWorkspace
 }
 
 export function useKonvaImageNodeUpload({
@@ -22,7 +24,7 @@ export function useKonvaImageNodeUpload({
   history,
   onDocumentChange,
   onSelectionChange,
-  selectedIds,
+  workspace,
 }: UseKonvaImageNodeUploadOptions) {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const uploadTargetRef = useRef<string | null>(null)
@@ -33,7 +35,7 @@ export function useKonvaImageNodeUpload({
     const imageShape = await createKonvaImageShapeFromFile(file, {
       x: target.x + target.props.width / 2,
       y: target.y + target.props.height / 2,
-    })
+    }, 'upload', workspace)
     history.checkpoint(document)
     onDocumentChange((current) => setRuntimeGraphImageNodeOwnData(
       current,
@@ -41,7 +43,7 @@ export function useKonvaImageNodeUpload({
       createImageNodeData(imageShape.props)
     ))
     onSelectionChange([shapeId])
-  }, [document, history, onDocumentChange, onSelectionChange])
+  }, [document, history, onDocumentChange, onSelectionChange, workspace])
 
   const uploadChatNodeFile = useCallback(async (shapeId: string, file: File) => {
     const target = getChatNode(document, shapeId)
@@ -59,7 +61,7 @@ export function useKonvaImageNodeUpload({
     const imageShape = await createKonvaImageShapeFromFile(file, {
       x: target.x + target.props.width / 2,
       y: target.y + target.props.height / 2,
-    })
+    }, 'upload', workspace)
     onDocumentChange((current) => addKonvaChatReferenceImage(current, shapeId, {
       assetId: imageShape.props.assetId,
       originalUrl: imageShape.props.originalUrl,
@@ -67,19 +69,31 @@ export function useKonvaImageNodeUpload({
       title: imageShape.props.title ?? 'Reference image',
     }))
     onSelectionChange([shapeId])
-  }, [document, history, onDocumentChange, onSelectionChange])
+  }, [document, history, onDocumentChange, onSelectionChange, workspace])
+
+  const uploadCanvasImageFile = useCallback(async (file: File, center: CanvasPoint) => {
+    const imageShape = await createKonvaImageShapeFromFile(file, center, 'upload', workspace)
+    history.checkpoint(document)
+    const result = appendShapes(document, [imageShape])
+    onDocumentChange(result.document)
+    onSelectionChange(result.selectedIds)
+  }, [document, history, onDocumentChange, onSelectionChange, workspace])
 
   const promptImageNodeUpload = useCallback((shapeId: string) => {
     uploadTargetRef.current = shapeId
     fileInputRef.current?.click()
   }, [])
 
-  const uploadDropFileAtPoint = useCallback((file: File, point: CanvasPoint) => {
-    const target = getNodeFileDropTarget(document, selectedIds, point)
-    if (!target) return
-    if (target.props.nodeType === 'chat') void uploadChatNodeFile(target.id, file)
-    else if (file.type.startsWith('image/')) void uploadImageNodeFile(target.id, file)
-  }, [document, selectedIds, uploadChatNodeFile, uploadImageNodeFile])
+  const uploadDropFileAtPoint = useCallback((file: File, point: CanvasPoint, fallbackCenterPoint: CanvasPoint = point) => {
+    const target = getNodeFileDropTarget(document, point)
+    if (target) {
+      if (target.props.nodeType === 'chat') void uploadChatNodeFile(target.id, file)
+      else if (file.type.startsWith('image/')) void uploadImageNodeFile(target.id, file)
+      return
+    }
+    if (!file.type.startsWith('image/')) return
+    void uploadCanvasImageFile(file, fallbackCenterPoint)
+  }, [document, uploadCanvasImageFile, uploadChatNodeFile, uploadImageNodeFile])
 
   const fileInput = (
     <input
@@ -147,10 +161,9 @@ function getUploadNode(document: CanvasDocument, shapeId: string): CanvasNodeSha
   )) ?? null
 }
 
-function getNodeFileDropTarget(document: CanvasDocument, selectedIds: string[], point: CanvasPoint): CanvasNodeShape | null {
-  const selected = new Set(selectedIds)
+function getNodeFileDropTarget(document: CanvasDocument, point: CanvasPoint): CanvasNodeShape | null {
   const nodes = document.shapes.filter((shape): shape is CanvasNodeShape => shape.type === 'node_card' && (shape.props.nodeType === 'image' || shape.props.nodeType === 'chat'))
-  return nodes.find((shape) => selected.has(shape.id)) ?? nodes.find((shape) => {
+  return nodes.find((shape) => {
     const bounds = getShapeBounds(shape)
     return point.x >= bounds.minX && point.x <= bounds.maxX && point.y >= bounds.minY && point.y <= bounds.maxY
   }) ?? null

@@ -1,8 +1,9 @@
-import { useCallback, type DragEvent, type MouseEvent, type PointerEvent, type RefObject } from 'react'
+import { useCallback, useRef, type DragEvent, type MouseEvent, type PointerEvent, type RefObject } from 'react'
 import { screenToWorld, type CanvasCamera, type CanvasDocument, type CanvasPoint } from '@/features/canvas-engine'
 import { getKonvaContextTargetSelection } from './konvaContextSelection'
 
 type ContextMenuState = { worldX: number; worldY: number; x: number; y: number }
+type DropHintKind = 'image' | 'pdf' | null
 
 type UseKonvaStageDomEventsOptions = {
   camera: CanvasCamera
@@ -15,8 +16,9 @@ type UseKonvaStageDomEventsOptions = {
   onNodeMenuClose: () => void
   onSelectionChange: (shapeIds: string[]) => void
   onShellRectChange: (rect: DOMRect) => void
+  onDropHintChange: (kind: DropHintKind) => void
   onToolChange: (tool: 'select') => void
-  onUploadDropFileAtPoint: (file: File, point: CanvasPoint) => void
+  onUploadDropFileAtPoint: (file: File, point: CanvasPoint, fallbackCenterPoint: CanvasPoint) => void
 }
 
 export function useKonvaStageDomEvents({
@@ -26,6 +28,7 @@ export function useKonvaStageDomEvents({
   nodeMenuOpen,
   onCanvasDoubleClick,
   onContextMenuChange,
+  onDropHintChange,
   onNodeMenuClose,
   onSelectionChange,
   onShellRectChange,
@@ -33,18 +36,41 @@ export function useKonvaStageDomEvents({
   onUploadDropFileAtPoint,
   selectedIds,
 }: UseKonvaStageDomEventsOptions) {
+  const dragDepthRef = useRef(0)
+
   const handleDragOver = useCallback((event: DragEvent<HTMLElement>) => {
-    if (Array.from(event.dataTransfer.items).some(isReferenceFileItem)) event.preventDefault()
-  }, [])
+    const kind = getDropHintKind(event.dataTransfer)
+    if (!kind) return
+    event.preventDefault()
+    onDropHintChange(kind)
+  }, [onDropHintChange])
+
+  const handleDragEnter = useCallback((event: DragEvent<HTMLElement>) => {
+    const kind = getDropHintKind(event.dataTransfer)
+    if (!kind) return
+    event.preventDefault()
+    dragDepthRef.current += 1
+    onDropHintChange(kind)
+  }, [onDropHintChange])
+
+  const handleDragLeave = useCallback((event: DragEvent<HTMLElement>) => {
+    if (!getDropHintKind(event.dataTransfer)) return
+    event.preventDefault()
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1)
+    if (dragDepthRef.current === 0) onDropHintChange(null)
+  }, [onDropHintChange])
 
   const handleDrop = useCallback((event: DragEvent<HTMLElement>) => {
     const file = Array.from(event.dataTransfer.files).find(isReferenceFile)
     if (!file) return
     event.preventDefault()
+    dragDepthRef.current = 0
+    onDropHintChange(null)
     const rect = event.currentTarget.getBoundingClientRect()
     const world = screenToWorld({ x: event.clientX - rect.left, y: event.clientY - rect.top }, camera)
-    onUploadDropFileAtPoint(file, world)
-  }, [camera, onUploadDropFileAtPoint])
+    const worldCenter = screenToWorld({ x: rect.width / 2, y: rect.height / 2 }, camera)
+    onUploadDropFileAtPoint(file, world, worldCenter)
+  }, [camera, onDropHintChange, onUploadDropFileAtPoint])
 
   const handleContextMenu = useCallback((event: MouseEvent<HTMLElement>) => {
     event.preventDefault()
@@ -84,6 +110,8 @@ export function useKonvaStageDomEvents({
   return {
     handleContextMenu,
     handleDoubleClick,
+    handleDragEnter,
+    handleDragLeave,
     handleDragOver,
     handleDrop,
     handlePointerDownCapture,
@@ -96,10 +124,12 @@ function isKonvaCanvasTarget(target: EventTarget | null) {
   return target instanceof HTMLCanvasElement || Boolean(target.closest('.konvajs-content'))
 }
 
-function isReferenceFileItem(item: DataTransferItem) {
-  return item.type.startsWith('image/') || item.type === 'application/pdf'
-}
-
 function isReferenceFile(file: File) {
   return file.type.startsWith('image/') || file.type === 'application/pdf'
+}
+
+function getDropHintKind(dataTransfer: DataTransfer): DropHintKind {
+  if (Array.from(dataTransfer.items).some((item) => item.type.startsWith('image/'))) return 'image'
+  if (Array.from(dataTransfer.items).some((item) => item.type === 'application/pdf')) return 'pdf'
+  return null
 }

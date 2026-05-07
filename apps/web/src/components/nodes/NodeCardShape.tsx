@@ -13,8 +13,9 @@ import {
 import type { JsonObject, NodeRuntimeSummary } from '@/types/nodeRuntime'
 import type { NodeCardShape } from '@/types/nodeCardShape'
 import { createAiRun } from '@/features/ai/aiClient'
-import { getDefaultImageModelId } from '@/features/ai/mockAiContracts'
+import { getDefaultAnalysisModelId, getDefaultImageModelId } from '@/features/ai/mockAiContracts'
 import { resolveNodeInputs } from '@/features/node-runtime/nodeDataFlow'
+import { defaultAnalysisPrompt, getNormalizedAnalysisData, getNormalizedImageGenerationData } from '@/features/node-runtime/registry'
 import { NodeCardContent } from './NodeCardContent'
 
 declare module '@tldraw/tlschema' {
@@ -30,7 +31,7 @@ export class NodeCardShapeUtil extends BaseBoxShapeUtil<NodeCardShape> {
     data: T.jsonValue,
     h: T.number,
     nodeId: T.string,
-    nodeType: T.literalEnum('prompt', 'image_gen', 'image_gen_4', 'analysis', 'image', 'chat'),
+    nodeType: T.literalEnum('prompt', 'prompt_optimizer', 'image_gen', 'image_gen_4', 'analysis', 'image', 'chat'),
     runtimeSummary: T.jsonValue,
     version: T.number,
     w: T.number,
@@ -115,19 +116,26 @@ export class NodeCardShapeUtil extends BaseBoxShapeUtil<NodeCardShape> {
         if (!latest) return
         const latestInputs = resolveNodeInputs(this.editor, latest)
         const latestData = asJsonObject(latest.props.data)
+        const normalizedRunData = latest.props.nodeType === 'analysis'
+          ? getNormalizedAnalysisData(latestData)
+          : latest.props.nodeType === 'image_gen' || latest.props.nodeType === 'image_gen_4'
+          ? getNormalizedImageGenerationData(latestData)
+          : latestData
         void createAiRun({
           boardId: null,
           inputAssetIds: latestInputs.imageValues.map((image) => image.assetId),
           nodeId: latest.props.nodeId,
           nodeType: latest.props.nodeType,
           params: {
-            aspectRatio: latestData.aspectRatio ?? 'auto',
+            aspectRatio: normalizedRunData.aspectRatio ?? '1:1',
             count: resultCount,
-            resolution: latestData.resolution ?? '1K',
+            imageSize: normalizedRunData.imageSize ?? '1K',
+            quality: normalizedRunData.quality ?? 'medium',
+            size: normalizedRunData.size ?? '1024x1024',
           },
-          prompt: getRunPrompt(latestData, latestInputs),
+          prompt: getRunPrompt(normalizedRunData, latestInputs),
           runType: latest.props.nodeType === 'analysis' ? 'image_analysis' : 'image_generation',
-          selectedModelId: String(latestData.modelId ?? getDefaultImageModelId()),
+          selectedModelId: String(normalizedRunData.modelId ?? (latest.props.nodeType === 'analysis' ? getDefaultAnalysisModelId() : getDefaultImageModelId())),
         }).then((run) => {
           this.editor.updateShape<NodeCardShape>({
             id: shape.id,
@@ -190,7 +198,7 @@ function getRunPrompt(
   data: JsonObject,
   inputResolution: ReturnType<typeof resolveNodeInputs>
 ) {
-  return inputResolution.primaryText || String(data.prompt ?? data.analysisPrompt ?? 'Reverse prompt from the image.')
+  return inputResolution.primaryText || String(data.prompt ?? data.analysisPrompt ?? defaultAnalysisPrompt)
 }
 
 function asJsonObject(value: unknown): JsonObject {

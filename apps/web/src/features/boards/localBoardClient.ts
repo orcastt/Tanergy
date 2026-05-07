@@ -33,6 +33,7 @@ import {
   persistenceJsonHeaders,
   persistenceJsonHeadersAsync,
 } from '@/features/api/persistenceApi'
+import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 
 export type LocalBoardSaveResponse = BoardSaveResponse
 
@@ -56,8 +57,8 @@ export type LocalBoardShareLinkResponse = BoardShareLinkResponse
 export type LocalBoardShareLinkDeleteResponse = BoardShareLinkDeleteResponse
 export type LocalBoardShareLinkResolveResponse = BoardShareLinkResolveResponse
 
-export async function saveLocalBoardDocument(input: SerializedBoardSaveInput) {
-  const headers = hasRemotePersistenceApi() ? await persistenceJsonHeadersAsync() : persistenceJsonHeaders()
+export async function saveLocalBoardDocument(input: SerializedBoardSaveInput, workspace?: TangentWorkspace) {
+  const headers = hasRemotePersistenceApi() ? await persistenceJsonHeadersAsync(workspace) : persistenceJsonHeaders(workspace)
   const response = await fetch(
     hasRemotePersistenceApi() ? persistenceApiUrl('/api/v1/boards') : '/api/boards/local-save',
     {
@@ -73,8 +74,8 @@ export async function saveLocalBoardDocument(input: SerializedBoardSaveInput) {
   return payload
 }
 
-export async function loadLocalBoardDocument(boardId: string) {
-  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync() : persistenceAuthHeaders()
+export async function loadLocalBoardDocument(boardId: string, workspace?: TangentWorkspace) {
+  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync(workspace) : persistenceAuthHeaders(workspace)
   const response = await fetch(
     hasRemotePersistenceApi()
       ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(boardId)}`)
@@ -101,8 +102,10 @@ export async function loadSharedBoardDocument(shareId: string) {
   return payload
 }
 
-export async function listLocalBoardDocuments() {
-  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync() : persistenceAuthHeaders()
+export async function listLocalBoardDocuments(workspace?: TangentWorkspace) {
+  const headers = hasRemotePersistenceApi()
+    ? await persistenceAuthHeadersAsync(workspace)
+    : persistenceAuthHeaders(workspace)
   const response = await fetch(
     hasRemotePersistenceApi() ? persistenceApiUrl('/api/v1/boards') : '/api/boards/local-list',
     { headers }
@@ -114,12 +117,12 @@ export async function listLocalBoardDocuments() {
   return payload
 }
 
-export async function renameLocalBoardDocument(boardId: string, title: string) {
-  return updateLocalBoardMetadata({ boardId, title })
+export async function renameLocalBoardDocument(boardId: string, title: string, workspace?: TangentWorkspace) {
+  return updateLocalBoardMetadata({ boardId, title }, workspace)
 }
 
-export async function updateLocalBoardMetadata(input: BoardMetadataUpdateInput) {
-  const headers = hasRemotePersistenceApi() ? await persistenceJsonHeadersAsync() : persistenceJsonHeaders()
+export async function updateLocalBoardMetadata(input: BoardMetadataUpdateInput, workspace?: TangentWorkspace) {
+  const headers = hasRemotePersistenceApi() ? await persistenceJsonHeadersAsync(workspace) : persistenceJsonHeaders(workspace)
   const response = await fetch(
     hasRemotePersistenceApi()
       ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(input.boardId)}`)
@@ -137,8 +140,8 @@ export async function updateLocalBoardMetadata(input: BoardMetadataUpdateInput) 
   return payload
 }
 
-export async function deleteLocalBoardDocument(boardId: string) {
-  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync() : persistenceJsonHeaders()
+export async function deleteLocalBoardDocument(boardId: string, workspace?: TangentWorkspace) {
+  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync(workspace) : persistenceJsonHeaders(workspace)
   const response = await fetch(
     hasRemotePersistenceApi()
       ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(boardId)}`)
@@ -156,8 +159,8 @@ export async function deleteLocalBoardDocument(boardId: string) {
   return payload
 }
 
-export async function copyLocalBoardDocument(boardId: string) {
-  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync() : persistenceJsonHeaders()
+export async function copyLocalBoardDocument(boardId: string, workspace?: TangentWorkspace) {
+  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync(workspace) : persistenceJsonHeaders(workspace)
   const response = await fetch(
     hasRemotePersistenceApi()
       ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(boardId)}/copy`)
@@ -175,8 +178,8 @@ export async function copyLocalBoardDocument(boardId: string) {
   return payload
 }
 
-export async function listLocalBoardMembers(boardId: string) {
-  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync() : persistenceAuthHeaders()
+export async function listLocalBoardMembers(boardId: string, workspace?: TangentWorkspace) {
+  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync(workspace) : persistenceAuthHeaders(workspace)
   const response = await fetch(
     hasRemotePersistenceApi()
       ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(boardId)}/members`)
@@ -190,8 +193,8 @@ export async function listLocalBoardMembers(boardId: string) {
   return payload
 }
 
-export async function createLocalBoardMember(input: BoardMemberCreateInput) {
-  const headers = hasRemotePersistenceApi() ? await persistenceJsonHeadersAsync() : persistenceJsonHeaders()
+export async function createLocalBoardMember(input: BoardMemberCreateInput, workspace?: TangentWorkspace) {
+  const headers = hasRemotePersistenceApi() ? await persistenceJsonHeadersAsync(workspace) : persistenceJsonHeaders(workspace)
   const response = await fetch(
     hasRemotePersistenceApi()
       ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(input.boardId)}/members`)
@@ -209,8 +212,8 @@ export async function createLocalBoardMember(input: BoardMemberCreateInput) {
   return payload
 }
 
-export async function searchLocalBoardMemberCandidates(boardId: string, query: string) {
-  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync() : persistenceAuthHeaders()
+export async function searchLocalBoardMemberCandidates(boardId: string, query: string, workspace?: TangentWorkspace) {
+  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync(workspace) : persistenceAuthHeaders(workspace)
   const url = hasRemotePersistenceApi()
     ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(boardId)}/member-candidates?query=${encodeURIComponent(query)}`)
     : `/api/boards/local-members?boardId=${encodeURIComponent(boardId)}&query=${encodeURIComponent(query)}`
@@ -222,8 +225,8 @@ export async function searchLocalBoardMemberCandidates(boardId: string, query: s
   return payload
 }
 
-export async function inviteLocalBoardMemberByEmail(input: BoardMemberInviteByEmailInput) {
-  const headers = hasRemotePersistenceApi() ? await persistenceJsonHeadersAsync() : persistenceJsonHeaders()
+export async function inviteLocalBoardMemberByEmail(input: BoardMemberInviteByEmailInput, workspace?: TangentWorkspace) {
+  const headers = hasRemotePersistenceApi() ? await persistenceJsonHeadersAsync(workspace) : persistenceJsonHeaders(workspace)
   const response = await fetch(
     hasRemotePersistenceApi()
       ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(input.boardId)}/members/invite-by-email`)
@@ -241,8 +244,8 @@ export async function inviteLocalBoardMemberByEmail(input: BoardMemberInviteByEm
   return payload
 }
 
-export async function updateLocalBoardMember(input: BoardMemberUpdateInput) {
-  const headers = hasRemotePersistenceApi() ? await persistenceJsonHeadersAsync() : persistenceJsonHeaders()
+export async function updateLocalBoardMember(input: BoardMemberUpdateInput, workspace?: TangentWorkspace) {
+  const headers = hasRemotePersistenceApi() ? await persistenceJsonHeadersAsync(workspace) : persistenceJsonHeaders(workspace)
   const response = await fetch(
     hasRemotePersistenceApi()
       ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(input.boardId)}/members/${encodeURIComponent(input.userId)}`)
@@ -260,8 +263,8 @@ export async function updateLocalBoardMember(input: BoardMemberUpdateInput) {
   return payload
 }
 
-export async function deleteLocalBoardMember(boardId: string, userId: string) {
-  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync() : persistenceJsonHeaders()
+export async function deleteLocalBoardMember(boardId: string, userId: string, workspace?: TangentWorkspace) {
+  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync(workspace) : persistenceJsonHeaders(workspace)
   const response = await fetch(
     hasRemotePersistenceApi()
       ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(boardId)}/members/${encodeURIComponent(userId)}`)
@@ -282,9 +285,10 @@ export async function deleteLocalBoardMember(boardId: string, userId: string) {
 export async function ensureLocalBoardShareLink(
   boardId: string,
   accessRole: BoardShareAccessRole = 'viewer',
-  expiresAt?: string | null
+  expiresAt?: string | null,
+  workspace?: TangentWorkspace
 ) {
-  const headers = hasRemotePersistenceApi() ? await persistenceJsonHeadersAsync() : persistenceJsonHeaders()
+  const headers = hasRemotePersistenceApi() ? await persistenceJsonHeadersAsync(workspace) : persistenceJsonHeaders(workspace)
   const response = await fetch(
     hasRemotePersistenceApi()
       ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(boardId)}/share-link`)
@@ -302,8 +306,8 @@ export async function ensureLocalBoardShareLink(
   return payload
 }
 
-export async function revokeLocalBoardShareLink(boardId: string, shareId: string) {
-  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync() : persistenceJsonHeaders()
+export async function revokeLocalBoardShareLink(boardId: string, shareId: string, workspace?: TangentWorkspace) {
+  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync(workspace) : persistenceJsonHeaders(workspace)
   const response = await fetch(
     hasRemotePersistenceApi()
       ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(boardId)}/share-link/${encodeURIComponent(shareId)}`)
@@ -334,8 +338,8 @@ export async function resolveLocalBoardShareLink(shareId: string) {
   return payload
 }
 
-export async function createBoardSnapshot(input: SerializedBoardSnapshotCreateInput) {
-  const headers = hasRemotePersistenceApi() ? await persistenceJsonHeadersAsync() : persistenceJsonHeaders()
+export async function createBoardSnapshot(input: SerializedBoardSnapshotCreateInput, workspace?: TangentWorkspace) {
+  const headers = hasRemotePersistenceApi() ? await persistenceJsonHeadersAsync(workspace) : persistenceJsonHeaders(workspace)
   const response = await fetch(
     hasRemotePersistenceApi()
       ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(input.boardId)}/snapshots`)
@@ -353,8 +357,8 @@ export async function createBoardSnapshot(input: SerializedBoardSnapshotCreateIn
   return payload
 }
 
-export async function listBoardSnapshots(boardId: string) {
-  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync() : persistenceAuthHeaders()
+export async function listBoardSnapshots(boardId: string, workspace?: TangentWorkspace) {
+  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync(workspace) : persistenceAuthHeaders(workspace)
   const response = await fetch(
     hasRemotePersistenceApi()
       ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(boardId)}/snapshots`)
@@ -368,8 +372,8 @@ export async function listBoardSnapshots(boardId: string) {
   return payload
 }
 
-export async function loadBoardSnapshot(boardId: string, snapshotId: string) {
-  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync() : persistenceAuthHeaders()
+export async function loadBoardSnapshot(boardId: string, snapshotId: string, workspace?: TangentWorkspace) {
+  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync(workspace) : persistenceAuthHeaders(workspace)
   const response = await fetch(
     hasRemotePersistenceApi()
       ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(boardId)}/snapshots/${encodeURIComponent(snapshotId)}`)
@@ -383,8 +387,8 @@ export async function loadBoardSnapshot(boardId: string, snapshotId: string) {
   return payload
 }
 
-export async function clearBoardSnapshots(boardId: string) {
-  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync() : persistenceAuthHeaders()
+export async function clearBoardSnapshots(boardId: string, workspace?: TangentWorkspace) {
+  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync(workspace) : persistenceAuthHeaders(workspace)
   const response = await fetch(
     hasRemotePersistenceApi()
       ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(boardId)}/snapshots`)

@@ -1,19 +1,20 @@
 'use client'
 
 import { hasRemotePersistenceApi, persistenceApiUrl, persistenceAuthHeaders, persistenceJsonHeadersAsync } from '@/features/api/persistenceApi'
+import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import { normalizeAssetUrls } from './assetUploadClient'
 import type { TangentAssetResponse } from './assetTypes'
 
-export async function removeBackgroundAsset(assetId: string) {
-  return runImageOp('/remove-background', assetId, 'Remove background failed.')
+export async function removeBackgroundAsset(assetId: string, workspace?: TangentWorkspace) {
+  return runImageOp('/remove-background', assetId, 'Remove background failed.', workspace)
 }
 
-async function runImageOp(path: string, assetId: string, fallbackError: string) {
+async function runImageOp(path: string, assetId: string, fallbackError: string, workspace?: TangentWorkspace) {
   const headers = hasRemotePersistenceApi()
-    ? await persistenceJsonHeadersAsync()
+    ? await persistenceJsonHeadersAsync(workspace)
     : {
         'Content-Type': 'application/json',
-        ...persistenceAuthHeaders(),
+        ...persistenceAuthHeaders(workspace),
       }
   const response = await fetch(
     hasRemotePersistenceApi() ? persistenceApiUrl(`/api/v1/image-ops${path}`) : `/api/image-ops${path}`,

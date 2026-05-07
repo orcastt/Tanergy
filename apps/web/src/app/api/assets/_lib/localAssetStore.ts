@@ -9,7 +9,7 @@ import type {
 import type { ApiRequestContext } from '../../_lib/apiRequestContext'
 
 const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp'])
-const maxAssetBytes = 30 * 1024 * 1024
+const maxAssetBytes = 100 * 1024 * 1024
 const storageRoot = process.env.TANGENT_ASSET_STORAGE_DIR ?? path.join(process.cwd(), '.tangent-assets')
 const assetsRoot = path.join(storageRoot, 'assets')
 
@@ -95,10 +95,7 @@ export async function createLocalAssetFromUpload(input: {
 }
 
 export async function getLocalAssetRecord(assetId: string, context: ApiRequestContext) {
-  assertSafePathSegment(assetId)
-  const recordPath = path.join(assetsRoot, assetId, 'metadata.json')
-  const raw = await readFile(recordPath, 'utf8')
-  const record = normalizeAssetRecord(JSON.parse(raw) as Partial<TangentAssetRecord>, context)
+  const record = await readStoredAssetRecord(assetId, context)
   assertWorkspaceAccess(record, context)
   return record
 }
@@ -106,11 +103,20 @@ export async function getLocalAssetRecord(assetId: string, context: ApiRequestCo
 export async function readLocalAssetFile(assetId: string, fileName: string, context: ApiRequestContext) {
   assertSafePathSegment(assetId)
   assertSafePathSegment(fileName)
-  await getLocalAssetRecord(assetId, context)
+  if (!context.isDevFallback) {
+    await getLocalAssetRecord(assetId, context)
+  }
   const filePath = path.join(assetsRoot, assetId, fileName)
   const file = await readFile(filePath)
   const body = file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength) as ArrayBuffer
   return { file: body, mime: getMimeFromFileName(fileName) }
+}
+
+async function readStoredAssetRecord(assetId: string, context: ApiRequestContext) {
+  assertSafePathSegment(assetId)
+  const recordPath = path.join(assetsRoot, assetId, 'metadata.json')
+  const raw = await readFile(recordPath, 'utf8')
+  return normalizeAssetRecord(JSON.parse(raw) as Partial<TangentAssetRecord>, context)
 }
 
 function parseImageDataUrl(dataUrl: string): ParsedDataUrl {
@@ -150,7 +156,7 @@ function assertImageMime(mime: string) {
 }
 
 function assertAssetSize(byteSize: number) {
-  if (byteSize > maxAssetBytes) throw new Error('Image must be 30MB or smaller.')
+  if (byteSize > maxAssetBytes) throw new Error('Image must be 100MB or smaller.')
 }
 
 function getExtension(mime: string) {
@@ -186,6 +192,7 @@ function normalizeAssetRecord(record: Partial<TangentAssetRecord>, context: ApiR
 }
 
 function assertWorkspaceAccess(record: TangentAssetRecord, context: ApiRequestContext) {
+  if (process.env.NODE_ENV !== 'production' && process.env.TANGENT_REQUIRE_API_AUTH !== '1') return
   if (record.workspaceId !== context.workspaceId) {
     throw new Error('Asset not found in workspace.')
   }

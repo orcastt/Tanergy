@@ -5,6 +5,7 @@ import {
   type CanvasShape,
   withCanvasShapes,
 } from '@/features/canvas-engine'
+import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import { deleteKonvaShapes, duplicateKonvaShapes, reorderKonvaShapes } from './konvaCanvasStyle'
 import { pasteKonvaClipboardData, writeKonvaShapesToSystemClipboard } from './konvaClipboardCommands'
 import { konvaToolShortcuts, type KonvaCanvasTool } from './konvaCanvasTypes'
@@ -35,6 +36,7 @@ type UseKonvaCanvasShortcutsOptions = {
   onPanningChange: (isPanning: boolean) => void
   onSelectionChange: (shapeIds: string[]) => void
   onToolChange: (tool: KonvaCanvasTool) => void
+  workspace?: TangentWorkspace
 }
 
 export function useKonvaCanvasShortcuts(options: UseKonvaCanvasShortcutsOptions) {
@@ -257,6 +259,7 @@ async function pasteFromClipboardData(options: UseKonvaCanvasShortcutsOptions, d
     onSelectionChange: options.onSelectionChange,
     point: options.getPastePoint(),
     selectedIds: options.selectedIds,
+    workspace: options.workspace,
   }, data)
 }
 

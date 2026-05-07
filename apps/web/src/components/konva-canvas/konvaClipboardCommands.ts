@@ -1,5 +1,6 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import { getShapeBounds, type CanvasDocument, type CanvasImageShape, type CanvasNodeShape, type CanvasPoint, type CanvasShape } from '@/features/canvas-engine'
+import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import { setRuntimeGraphImageNodeOwnData } from '@/features/node-runtime/runtimeGraph'
 import type { JsonObject } from '@/types/nodeRuntime'
 import { addKonvaChatReferenceImage } from './konvaChatNodeActions'
@@ -19,10 +20,11 @@ type PasteKonvaClipboardOptions = {
   onClipboardChange?: (shapeCount: number) => void
   onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
   onSelectionChange: (shapeIds: string[]) => void
+  workspace?: TangentWorkspace
 }
 
 export async function pasteKonvaClipboard(options: PasteKonvaClipboardOptions) {
-  const imageShape = await readKonvaImageShapeFromClipboard(options.point)
+  const imageShape = await readKonvaImageShapeFromClipboard(options.point, options.workspace)
   if (imageShape) return pasteImageShape(options, imageShape)
 
   const systemShapes = await readKonvaShapesFromSystemClipboard()
@@ -39,7 +41,7 @@ export async function pasteKonvaClipboard(options: PasteKonvaClipboardOptions) {
 }
 
 export async function pasteKonvaClipboardData(options: PasteKonvaClipboardOptions, data: DataTransfer) {
-  const imageShape = await readKonvaImageShapeFromClipboardData(data, options.point)
+  const imageShape = await readKonvaImageShapeFromClipboardData(data, options.point, options.workspace)
   if (imageShape) return pasteImageShape(options, imageShape)
 
   const shapes = readKonvaShapesFromClipboardText(data.getData('text/plain'))

@@ -79,6 +79,11 @@ export function getRuntimeGraphNodeOutput(
     return { imageValues: [], textValues: textOutput ? [textOutput] : [] }
   }
 
+  if (node.props.nodeType === 'prompt_optimizer' && portId === 'text_out') {
+    const textOutput = getShortTextOutput(summary) || getString(data.optimizedPrompt) || ''
+    return { imageValues: [], textValues: textOutput ? [textOutput] : [] }
+  }
+
   if (node.props.nodeType === 'chat' && portId.startsWith('text_out_')) {
     const messageId = portId.replace('text_out_', '')
     const text = getChatMessageText(data, messageId)
@@ -173,11 +178,13 @@ function getIncomingImages(document: CanvasDocument, node: CanvasNodeShape, visi
 
 function getMissingReasons(node: CanvasNodeShape, textValues: string[], imageValues: RuntimeGraphImageValue[]) {
   if ((node.props.nodeType === 'image_gen' || node.props.nodeType === 'image_gen_4') && textValues.length === 0) return ['Connect a prompt first.']
+  if (node.props.nodeType === 'prompt_optimizer' && textValues.length === 0) return ['Connect a prompt first.']
   if (node.props.nodeType === 'analysis' && imageValues.length === 0) return ['Connect an image first.']
   return []
 }
 
 function getReadyHint(node: CanvasNodeShape, textValues: string[], imageValues: RuntimeGraphImageValue[]) {
+  if (node.props.nodeType === 'prompt_optimizer') return `Ready: ${textValues.length} prompt${textValues.length === 1 ? '' : 's'}`
   if (node.props.nodeType === 'analysis') return `Ready: ${imageValues.length} image input${imageValues.length === 1 ? '' : 's'}`
   if (node.props.nodeType === 'image_gen' || node.props.nodeType === 'image_gen_4') {
     return `Ready: ${textValues.length} prompt, ${imageValues.length} image reference${imageValues.length === 1 ? '' : 's'}`

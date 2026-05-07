@@ -1,7 +1,7 @@
 import { createShapeId, type Editor, type TLAssetId, type TLShapeId } from 'tldraw'
 import { createEditorImageAsset, getImageAsset } from '@/features/assets/editorImageAssets'
-import { imageMaxBytes, acceptedImageMimeTypes, readImageFileAsDataUrl, validateImageFile } from '@/features/assets/imageAssetInputs'
-import { uploadImageDataUrlAsset } from '@/features/assets/assetUploadClient'
+import { acceptedImageMimeTypes, imageMaxBytes, readImageFileMetadata, validateImageFile } from '@/features/assets/imageAssetInputs'
+import { uploadImageDataUrlAsset, uploadImageFileAsset } from '@/features/assets/assetUploadClient'
 import type { NodeCardShape } from '@/types/nodeCardShape'
 import { createNodeCard } from './createNodeCard'
 
@@ -120,22 +120,21 @@ export async function importFileToImageNode(
   file: File
 ) {
   validateImageFile(file)
-  const preview = await readImageFileAsDataUrl(file)
-  const assetRecord = await uploadImageDataUrlAsset({
-    dataUrl: preview.url,
-    fileName: file.name,
-    height: preview.height,
+  const metadata = await readImageFileMetadata(file)
+  const assetRecord = await uploadImageFileAsset({
+    file,
+    height: metadata.height,
     origin: 'upload',
     title: file.name,
-    width: preview.width,
+    width: metadata.width,
   })
   const assetId = createEditorImageAsset(editor, assetRecord)
 
   const nextData = {
     ...(asJsonObject(shape.props.data)),
     assetId,
-    imageHeight: preview.height,
-    imageWidth: preview.width,
+    imageHeight: metadata.height,
+    imageWidth: metadata.width,
     source: 'upload',
     title: file.name,
   }

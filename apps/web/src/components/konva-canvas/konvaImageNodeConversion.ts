@@ -6,6 +6,7 @@ import {
   persistenceAuthHeaders,
   persistenceAuthHeadersAsync,
 } from '@/features/api/persistenceApi'
+import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import type { TangentAssetRecord, TangentAssetResponse } from '@/features/assets/assetTypes'
 import { createDefaultNodeData, createDefaultRuntimeSummary, getNodeDefinition } from '@/features/node-runtime/registry'
 import { getRuntimeGraphImageCrop } from '@/features/node-runtime/runtimeGraphAssets'
@@ -53,10 +54,14 @@ export function createKonvaImageNodeFromAssetRecord(
   }
 }
 
-export async function createKonvaCanvasImageFromImageNode(document: CanvasDocument, shapeId: string) {
+export async function createKonvaCanvasImageFromImageNode(
+  document: CanvasDocument,
+  shapeId: string,
+  workspace?: TangentWorkspace
+) {
   const node = document.shapes.find((shape): shape is CanvasNodeShape => shape.id === shapeId && shape.type === 'node_card')
   if (!node || node.props.nodeType !== 'image') return null
-  const asset = await readImageNodeAsset(node)
+  const asset = await readImageNodeAsset(node, workspace)
   if (!asset) return null
   const image = createImageShapeFromNode(node, asset)
   if (!image) return null
@@ -178,11 +183,13 @@ function createImageShapeFromNode(node: CanvasNodeShape, asset: TangentAssetReco
   }
 }
 
-async function readImageNodeAsset(node: CanvasNodeShape): Promise<TangentAssetRecord | null> {
+async function readImageNodeAsset(node: CanvasNodeShape, workspace?: TangentWorkspace): Promise<TangentAssetRecord | null> {
   const assetId = getStringValue(node.props.data.assetId)
   if (!assetId || assetId.startsWith('remote-')) return null
   try {
-    const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync() : persistenceAuthHeaders()
+    const headers = hasRemotePersistenceApi()
+      ? await persistenceAuthHeadersAsync(workspace)
+      : persistenceAuthHeaders(workspace)
     const response = await fetch(
       hasRemotePersistenceApi() ? persistenceApiUrl(`/api/v1/assets/${assetId}`) : `/api/assets/${assetId}`,
       { headers }

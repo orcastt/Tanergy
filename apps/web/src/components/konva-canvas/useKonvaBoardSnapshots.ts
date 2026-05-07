@@ -13,6 +13,7 @@ import type {
   BoardSnapshotSummary,
 } from '@/features/boards/boardTypes'
 import type { KonvaBoardDocumentSerializationResult } from '@/features/boards/konvaBoardDocument'
+import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import { getDocumentSignature } from '@/components/canvas/boardSaveStatus'
 
 type UseKonvaBoardSnapshotsArgs = {
@@ -25,6 +26,7 @@ type UseKonvaBoardSnapshotsArgs = {
   onSnapshotRestored: (snapshot: BoardSnapshotRecord) => void
   prepareDocument: () => Promise<KonvaBoardDocumentSerializationResult | undefined>
   restoreDocument: (document: unknown) => void
+  workspace?: TangentWorkspace
 }
 
 type RecordHistoryOptions = {
@@ -42,6 +44,7 @@ export function useKonvaBoardSnapshots({
   onSnapshotRestored,
   prepareDocument,
   restoreDocument,
+  workspace,
 }: UseKonvaBoardSnapshotsArgs) {
   const lastSnapshotSignature = useRef<string | null>(null)
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
@@ -52,9 +55,9 @@ export function useKonvaBoardSnapshots({
 
   const refreshSnapshots = useCallback(async () => {
     if (mode !== 'board') return
-    const response = await listBoardSnapshots(boardId)
+    const response = await listBoardSnapshots(boardId, workspace)
     setSnapshots(response.snapshots)
-  }, [boardId, mode])
+  }, [boardId, mode, workspace])
 
   const openHistory = useCallback(() => {
     setIsHistoryOpen(true)
@@ -87,7 +90,7 @@ export function useKonvaBoardSnapshots({
         reason,
         thumbnailUrl: options.thumbnailUrl ?? null,
         title: boardTitle,
-      })
+      }, workspace)
       const snapshot = response.snapshot
       if (!snapshot) throw new Error('Board history failed.')
       lastSnapshotSignature.current = signature
@@ -98,7 +101,7 @@ export function useKonvaBoardSnapshots({
     } finally {
       setIsSnapshotRunning(false)
     }
-  }, [boardId, boardTitle, mode, refreshSnapshots])
+  }, [boardId, boardTitle, mode, refreshSnapshots, workspace])
 
   const saveSnapshot = useCallback(async (reason: BoardSnapshotReason) => {
     if (mode !== 'board') return
@@ -113,7 +116,7 @@ export function useKonvaBoardSnapshots({
     setSnapshotError(null)
     onRestoreStart()
     try {
-      const response = await loadBoardSnapshot(boardId, snapshotId)
+      const response = await loadBoardSnapshot(boardId, snapshotId, workspace)
       const snapshot = response.snapshot
       if (!snapshot) throw new Error('Board history load failed.')
       restoreDocument(snapshot.document)
@@ -126,14 +129,14 @@ export function useKonvaBoardSnapshots({
       setIsSnapshotRunning(false)
       onRestoreEnd()
     }
-  }, [boardId, mode, onRestoreEnd, onRestoreStart, onSnapshotRestored, restoreDocument])
+  }, [boardId, mode, onRestoreEnd, onRestoreStart, onSnapshotRestored, restoreDocument, workspace])
 
   const clearHistory = useCallback(async () => {
     if (mode !== 'board') return
     setIsSnapshotRunning(true)
     setSnapshotError(null)
     try {
-      const response = await clearBoardSnapshots(boardId)
+      const response = await clearBoardSnapshots(boardId, workspace)
       lastSnapshotSignature.current = null
       setSnapshots([])
       setSnapshotMessage(`Cleared ${response.deletedCount} history entr${response.deletedCount === 1 ? 'y' : 'ies'}`)
@@ -142,7 +145,7 @@ export function useKonvaBoardSnapshots({
     } finally {
       setIsSnapshotRunning(false)
     }
-  }, [boardId, mode])
+  }, [boardId, mode, workspace])
 
   return {
     clearHistory,

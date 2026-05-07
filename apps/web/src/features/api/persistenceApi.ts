@@ -1,6 +1,7 @@
 'use client'
 
 import { getSessionRequestHeaders } from '@/features/auth/mockSession'
+import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 
 const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL ?? '').replace(/\/+$/, '')
 
@@ -18,23 +19,23 @@ export function persistenceAssetUrl(url: string | undefined) {
   return `${apiBaseUrl}${url}`
 }
 
-export function persistenceAuthHeaders(): HeadersInit {
-  return getSessionRequestHeaders()
+export function persistenceAuthHeaders(workspace?: TangentWorkspace): HeadersInit {
+  return getSessionRequestHeaders(workspace)
 }
 
-export function persistenceJsonHeaders(): HeadersInit {
+export function persistenceJsonHeaders(workspace?: TangentWorkspace): HeadersInit {
   return {
     'Content-Type': 'application/json',
-    ...getSessionRequestHeaders(),
+    ...getSessionRequestHeaders(workspace),
   }
 }
 
-export async function persistenceAuthHeadersAsync(): Promise<HeadersInit> {
-  return withClerkAuthorization(getSessionRequestHeaders())
+export async function persistenceAuthHeadersAsync(workspace?: TangentWorkspace): Promise<HeadersInit> {
+  return withClerkAuthorization(getSessionRequestHeaders(workspace))
 }
 
-export async function persistenceJsonHeadersAsync(): Promise<HeadersInit> {
-  return withClerkAuthorization(persistenceJsonHeaders())
+export async function persistenceJsonHeadersAsync(workspace?: TangentWorkspace): Promise<HeadersInit> {
+  return withClerkAuthorization(persistenceJsonHeaders(workspace))
 }
 
 async function withClerkAuthorization(headers: HeadersInit): Promise<HeadersInit> {

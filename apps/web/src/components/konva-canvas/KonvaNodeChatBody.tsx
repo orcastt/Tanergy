@@ -1,8 +1,9 @@
 import { useMemo, useState, type ComponentProps } from 'react'
 import { Group, Line, Rect, Text } from 'react-konva'
 import type { CanvasDocument, CanvasNodeShape } from '@/features/canvas-engine'
+import { getChatModelDisplayName, getChatModelSelectOptions } from '@/features/ai/mockAiContracts'
 import { resolveRuntimeGraphNodeInputs, type RuntimeGraphImageValue } from '@/features/node-runtime/runtimeGraphResolution'
-import { getKonvaChatDraft, getKonvaChatExportedMessageIds, getKonvaChatMessages, getKonvaChatReferenceFiles, getKonvaChatReferenceImages, konvaChatDraftPlaceholder } from './konvaChatNodeActions'
+import { getKonvaChatDraft, getKonvaChatExportedMessageIds, getKonvaChatMessages, getKonvaChatModelId, getKonvaChatReferenceFiles, getKonvaChatReferenceImages, konvaChatDraftPlaceholder } from './konvaChatNodeActions'
 import { stopNodeCardControlEvent } from './KonvaNodeCardParts'
 import { getGeneratedOutputSource, NodeImagePreview } from './KonvaNodeImagePreview'
 import type { KonvaNodeTextFieldName } from './KonvaNodeTextEditor'
@@ -12,18 +13,20 @@ type KonvaNodeChatBodyProps = {
   editingFieldName?: KonvaNodeTextFieldName | null
   shape: CanvasNodeShape
   onChatExportToggle?: (shapeId: string, messageId: string) => void
+  onChatModelChange?: (shapeId: string, modelId: string) => void
   onChatSend?: (shapeId: string, draftOverride?: string) => void
   onChatUpload?: (shapeId: string) => void
   onTextEditStart?: (shapeId: string, fieldName: KonvaNodeTextFieldName) => void
   zoom: number
 }
 
-export function KonvaNodeChatBody({ document, editingFieldName = null, onChatExportToggle, onChatSend, onChatUpload, onTextEditStart, shape, zoom }: KonvaNodeChatBodyProps) {
+export function KonvaNodeChatBody({ document, editingFieldName = null, onChatExportToggle, onChatModelChange, onChatSend, onChatUpload, onTextEditStart, shape, zoom }: KonvaNodeChatBodyProps) {
   const messages = getKonvaChatMessages(shape.props.data)
   const exported = new Set(getKonvaChatExportedMessageIds(shape.props.data))
   const references = getKonvaChatReferenceImages(shape.props.data)
   const files = getKonvaChatReferenceFiles(shape.props.data)
   const inputResolution = resolveRuntimeGraphNodeInputs(document, shape)
+  const [modelMenuOpen, setModelMenuOpen] = useState(false)
   const localImageValues = references.map((reference, index): RuntimeGraphImageValue => ({
     assetId: reference.assetId,
     originalUrl: reference.originalUrl,
@@ -35,6 +38,9 @@ export function KonvaNodeChatBody({ document, editingFieldName = null, onChatExp
   const connectedPromptCount = inputResolution.textValues.length
   const connectedImageCount = allImageValues.length
   const draft = getKonvaChatDraft(shape.props.data)
+  const modelId = getKonvaChatModelId(shape.props.data)
+  const modelOptions = getChatModelSelectOptions()
+  const modelLabel = getShortModelLabel(getChatModelDisplayName(modelId))
   const bodyTop = 82
   const inputBoxHeight = 78
   const inputBottom = 16
@@ -85,7 +91,7 @@ export function KonvaNodeChatBody({ document, editingFieldName = null, onChatExp
                   fontSize={12}
                   height={height - (isAssistant ? 42 : 24)}
                   lineHeight={1.28}
-                  text={message.text}
+                  text={message.text || (isAssistant ? 'Thinking...' : '')}
                   width={width - 20}
                   wrap="char"
                   x={10}
@@ -129,9 +135,17 @@ export function KonvaNodeChatBody({ document, editingFieldName = null, onChatExp
         draft={draft}
         editing={editingFieldName === 'chatDraft'}
         onEdit={() => onTextEditStart?.(shape.id, 'chatDraft')}
+        onModelSelect={(nextModelId) => {
+          onChatModelChange?.(shape.id, nextModelId)
+          setModelMenuOpen(false)
+        }}
+        onModelToggle={() => setModelMenuOpen((current) => !current)}
         onSend={() => onChatSend?.(shape.id)}
         onUpload={() => onChatUpload?.(shape.id)}
         height={inputBoxHeight}
+        modelLabel={modelLabel}
+        modelMenuOpen={modelMenuOpen}
+        modelOptions={modelOptions}
         width={viewportWidth}
         x={14}
         y={inputY}
@@ -348,8 +362,13 @@ function ChatInputBox({
   editing,
   height,
   onEdit,
+  onModelSelect,
+  onModelToggle,
   onSend,
   onUpload,
+  modelLabel,
+  modelMenuOpen,
+  modelOptions,
   width,
   x,
   y,
@@ -358,13 +377,19 @@ function ChatInputBox({
   editing: boolean
   height: number
   onEdit: () => void
+  onModelSelect: (modelId: string) => void
+  onModelToggle: () => void
   onSend: () => void
   onUpload: () => void
+  modelLabel: string
+  modelMenuOpen: boolean
+  modelOptions: Array<{ disabled?: boolean; label: string; value: string | number }>
   width: number
   x: number
   y: number
 }) {
   const buttonWidth = 58
+  const modelButtonWidth = 88
   const toolbarY = y + height - 31
   return (
     <Group
@@ -380,7 +405,16 @@ function ChatInputBox({
       )}
       <IconButton label="+" onClick={onUpload} x={x + 12} y={toolbarY} />
       <IconButton label="image" onClick={onUpload} width={50} x={x + 40} y={toolbarY} />
-      <IconButton label="model" width={54} x={x + 96} y={toolbarY} />
+      <IconButton label={modelLabel} onClick={onModelToggle} width={modelButtonWidth} x={x + 96} y={toolbarY} />
+      {modelMenuOpen ? (
+        <ChatModelMenu
+          onSelect={onModelSelect}
+          options={modelOptions}
+          width={modelButtonWidth + 28}
+          x={x + 96}
+          y={toolbarY - 10 - (modelOptions.length * 30 + 8)}
+        />
+      ) : null}
       <Group
         onClick={(event) => {
           event.cancelBubble = true
@@ -392,6 +426,41 @@ function ChatInputBox({
         <Rect cornerRadius={999} fill="#dcfce7" height={22} stroke="#22c55e" strokeWidth={1} width={buttonWidth} x={x + width - buttonWidth - 12} y={toolbarY} />
         <Text align="center" fill="#16a34a" fontFamily="Inter, system-ui, sans-serif" fontSize={10} fontStyle="bold" height={22} text="send" verticalAlign="middle" width={buttonWidth} x={x + width - buttonWidth - 12} y={toolbarY} />
       </Group>
+    </Group>
+  )
+}
+
+function ChatModelMenu({
+  onSelect,
+  options,
+  width,
+  x,
+  y,
+}: {
+  onSelect: (modelId: string) => void
+  options: Array<{ disabled?: boolean; label: string; value: string | number }>
+  width: number
+  x: number
+  y: number
+}) {
+  return (
+    <Group>
+      <Rect cornerRadius={10} fill="#ffffff" height={options.length * 30 + 8} shadowBlur={14} shadowColor="rgba(15, 23, 42, 0.18)" shadowOffsetY={6} stroke="#dce3ec" strokeWidth={1} width={width} x={x} y={y} />
+      {options.map((option, index) => (
+        <Group
+          key={String(option.value)}
+          onClick={option.disabled ? undefined : (event) => {
+            event.cancelBubble = true
+            onSelect(String(option.value))
+          }}
+          onDblClick={stopNodeCardControlEvent}
+          onPointerDown={stopNodeCardControlEvent}
+          opacity={option.disabled ? 0.45 : 1}
+        >
+          <Rect cornerRadius={7} fill="#ffffff" height={26} width={width - 8} x={x + 4} y={y + 4 + index * 30} />
+          <Text fill="#1f2937" fontFamily="Inter, system-ui, sans-serif" fontSize={11} fontStyle="bold" height={26} text={option.label} verticalAlign="middle" width={width - 18} x={x + 10} y={y + 4 + index * 30} />
+        </Group>
+      ))}
     </Group>
   )
 }
@@ -426,4 +495,8 @@ function ExportButton({ exported, onClick, x, y }: { exported: boolean; onClick:
       <Text align="center" fill={exported ? '#dc2626' : '#16a34a'} fontFamily="Inter, system-ui, sans-serif" fontSize={10} fontStyle="bold" height={20} text={exported ? 'unexport' : 'export'} verticalAlign="middle" width={58} x={x} y={y} />
     </Group>
   )
+}
+
+function getShortModelLabel(label: string) {
+  return label.replace(/\s+Preview$/i, '').slice(0, 14) || 'Model'
 }

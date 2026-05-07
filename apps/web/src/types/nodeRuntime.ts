@@ -1,6 +1,6 @@
 import type { JsonValue } from '@tldraw/utils'
 
-export type NodeType = 'prompt' | 'image_gen' | 'image_gen_4' | 'analysis' | 'image' | 'chat'
+export type NodeType = 'prompt' | 'prompt_optimizer' | 'image_gen' | 'image_gen_4' | 'analysis' | 'image' | 'chat'
 
 export type NodePortDirection = 'in' | 'out'
 
@@ -59,7 +59,10 @@ export type NodeRuntimeSummary = JsonObject & {
   costHint: string | null
   error: string | null
   lastRunId: string | null
+  progressEstimatedMs?: number | null
+  progressStartedAt?: number | null
   resultAssetIds: string[]
+  serverRunId?: string | null
   status: NodeRunStatus
 }
 

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type Konva from 'konva'
 import * as Y from 'yjs'
 import { createEmptyCanvasDocument, screenToWorld, type CanvasCamera, type CanvasDocument, type CanvasNodeShape, type CanvasPoint, type CanvasShape, type CanvasShapeStyle } from '@/features/canvas-engine'
+import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import type { BoardPersistenceRecord } from '@/features/boards/boardTypes'
 import { restoreKonvaBoardDocument } from '@/features/boards/konvaBoardDocument'
 import { CanvasSettingsPanel } from '@/components/canvas/CanvasSettingsPanel'
@@ -53,6 +54,7 @@ type KonvaCanvasSpikeProps = {
   onBoardTitleRename?: (title: string) => Promise<string | void> | string | void
   readOnly?: boolean
   seedOnMount?: boolean
+  workspace?: TangentWorkspace
 }
 
 export function KonvaCanvasSpike({
@@ -65,6 +67,7 @@ export function KonvaCanvasSpike({
   onBoardTitleRename,
   readOnly = false,
   seedOnMount = true,
+  workspace,
 }: KonvaCanvasSpikeProps = {}) {
   const shellRef = useRef<HTMLDivElement | null>(null)
   const [ydoc] = useState(() => new Y.Doc())
@@ -85,6 +88,7 @@ export function KonvaCanvasSpike({
   const [editingTextId, setEditingTextId] = useState<string | null>(null)
   const [editingNodeText, setEditingNodeText] = useState<{ fieldName: KonvaNodeTextFieldName; shapeId: string } | null>(null)
   const [selectionActionError, setSelectionActionError] = useState<string | null>(null)
+  const [dropHintKind, setDropHintKind] = useState<'image' | 'pdf' | null>(null)
   const [stage, setStage] = useState<Konva.Stage | null>(null)
   const [contextMenu, setContextMenu] = useState<{ worldX: number; worldY: number; x: number; y: number } | null>(null)
   const [, setClipboardShapeCount] = useState(0)
@@ -119,7 +123,8 @@ export function KonvaCanvasSpike({
     onSelectionChange: handleSelectionChange,
     selectedIds,
   })
-  const { cleanChatHistory, closeNodeMenu, createNodeCard, nodeMenu, openNodeMenu, sendChatMessage, setNodeField, setNodeTextField, toggleChatMessageExport, toggleNodeRun } = useKonvaNodeCreationMenu({
+  const { cleanChatHistory, closeNodeMenu, createNodeCard, nodeMenu, openNodeMenu, sendChatMessage, setChatModel, setNodeField, setNodeTextField, toggleChatMessageExport, toggleNodeRun } = useKonvaNodeCreationMenu({
+    boardId,
     camera,
     document,
     history,
@@ -129,6 +134,7 @@ export function KonvaCanvasSpike({
     onSelectionChange: handleSelectionChange,
     onToolChange: handleToolChange,
     size,
+    workspace,
   })
   const clearTransientState = useCallback(() => {
     handleSelectionChange([])
@@ -167,7 +173,7 @@ export function KonvaCanvasSpike({
     history,
     onDocumentChange: setDocument,
     onSelectionChange: handleSelectionChange,
-    selectedIds,
+    workspace,
   })
   const stageDomEvents = useKonvaStageDomEvents({
     camera,
@@ -176,6 +182,7 @@ export function KonvaCanvasSpike({
     nodeMenuOpen: Boolean(nodeMenu),
     onCanvasDoubleClick: openNodeMenu,
     onContextMenuChange: setContextMenu,
+    onDropHintChange: setDropHintKind,
     onNodeMenuClose: closeNodeMenu,
     onSelectionChange: handleSelectionChange,
     onShellRectChange: setShellRect,
@@ -199,6 +206,7 @@ export function KonvaCanvasSpike({
     onDocumentChange: setDocument,
     onSelectionChange: handleSelectionChange,
     selectedIds,
+    workspace,
   })
   const imageOps = useKonvaImageOpsActions({
     document,
@@ -207,6 +215,7 @@ export function KonvaCanvasSpike({
     onDocumentChange: setDocument,
     onSelectionChange: handleSelectionChange,
     selectedIds,
+    workspace,
   })
   const { addStressStrokes, clearCanvas, handleCameraCommit, handleCameraPreview, resetZoom, zoomAtCenter } = useKonvaCanvasControls({
     camera,
@@ -284,6 +293,7 @@ export function KonvaCanvasSpike({
     onCopySelectionSvg: () => { void selectionExport.handleCopySelectionSvg() },
     selectedEdgeId,
     selectedIds,
+    workspace,
   })
   const runContextAction = (action: KonvaContextMenuAction) => {
     const pastePoint = contextMenu ? { x: contextMenu.worldX, y: contextMenu.worldY } : undefined
@@ -343,15 +353,29 @@ export function KonvaCanvasSpike({
       )}
       <section
         className="konva-canvas-stage-wrap"
+        data-drop-active={dropHintKind ? 'true' : 'false'}
         data-space-panning={isSpacePanning}
         onContextMenu={readOnly ? undefined : stageDomEvents.handleContextMenu}
         onDoubleClick={readOnly ? undefined : stageDomEvents.handleDoubleClick}
+        onDragEnter={readOnly ? undefined : stageDomEvents.handleDragEnter}
+        onDragLeave={readOnly ? undefined : stageDomEvents.handleDragLeave}
         onDragOver={readOnly ? undefined : stageDomEvents.handleDragOver}
         onDrop={readOnly ? undefined : stageDomEvents.handleDrop}
         onPointerDownCapture={readOnly ? undefined : stageDomEvents.handlePointerDownCapture}
         onPointerMoveCapture={readOnly ? undefined : stageDomEvents.handlePointerMoveCapture}
         ref={shellRef}
       >
+        {readOnly || !dropHintKind ? null : (
+          <div className="konva-canvas-drop-hint" aria-hidden="true" data-kind={dropHintKind}>
+            <div className="konva-canvas-drop-hint__icon">
+              <span />
+            </div>
+            <div className="konva-canvas-drop-hint__content">
+              <strong>{dropHintKind === 'image' ? 'Drop image to upload' : 'Drop PDF on a chat node'}</strong>
+              <small>{dropHintKind === 'image' ? 'Empty canvas lands at the current view center.' : 'PDF files attach to chat references rather than the blank canvas.'}</small>
+            </div>
+          </div>
+        )}
         <KonvaCanvasPagesPanel
           activeDocument={document}
           activePageId={boardPages.activePageId}
@@ -403,6 +427,7 @@ export function KonvaCanvasSpike({
             onImageNodeToCanvas={sendImageNodeToCanvas}
             onNodeChatClean={cleanChatHistory}
             onNodeChatExportToggle={toggleChatMessageExport}
+            onNodeChatModelChange={setChatModel}
             onNodeChatSend={sendChatMessage}
             onNodeChatUpload={promptImageNodeUpload}
             onNodeFieldChange={setNodeField}
@@ -537,6 +562,7 @@ export function KonvaCanvasSpike({
             }}
             pageRevision={boardPages.revision}
             stage={stage}
+            workspace={workspace}
           />
         )}
         {settingsOpen ? <CanvasSettingsPanel boardMode={mode === 'board'} onClose={() => setSettingsOpen(false)} /> : null}

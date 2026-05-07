@@ -145,6 +145,10 @@ export function getKonvaChatDraft(data: JsonObject) {
   return draft === konvaChatDraftPlaceholder ? '' : draft
 }
 
+export function getKonvaChatModelId(data: JsonObject) {
+  return getString(data.modelId)
+}
+
 function getChatNode(document: CanvasDocument, shapeId: string): CanvasNodeShape | null {
   return document.shapes.find((shape): shape is CanvasNodeShape => shape.id === shapeId && isChatNodeShape(shape)) ?? null
 }

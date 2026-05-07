@@ -1,17 +1,22 @@
 import {
-  readImageFileAsDataUrl,
+  readImageFileMetadata,
   validateImageFile,
 } from '@/features/assets/imageAssetInputs'
-import { importRemoteImageAsset, uploadImageDataUrlAsset } from '@/features/assets/assetUploadClient'
+import { importRemoteImageAsset, uploadImageFileAsset } from '@/features/assets/assetUploadClient'
+import type { TangentWorkspace } from '@/features/auth/sessionTypes'
+import type { TangentAssetOrigin } from '@/features/assets/assetTypes'
 import type { CanvasImageShape, CanvasPoint } from '@/features/canvas-engine'
 
 const maxPlacedImageEdge = 420
 
-export async function readKonvaImageShapeFromClipboard(center: CanvasPoint): Promise<CanvasImageShape | null> {
+export async function readKonvaImageShapeFromClipboard(
+  center: CanvasPoint,
+  workspace?: TangentWorkspace
+): Promise<CanvasImageShape | null> {
   const file = await readClipboardImageFile()
   if (file) {
     try {
-      return await createKonvaImageShapeFromFile(file, center)
+      return await createKonvaImageShapeFromFile(file, center, 'paste', workspace)
     } catch {
       return null
     }
@@ -19,17 +24,21 @@ export async function readKonvaImageShapeFromClipboard(center: CanvasPoint): Pro
   const url = await readClipboardImageUrl()
   if (!url) return null
   try {
-    return await createKonvaImageShapeFromUrl(url, center)
+    return await createKonvaImageShapeFromUrl(url, center, workspace)
   } catch {
     return null
   }
 }
 
-export async function readKonvaImageShapeFromClipboardData(data: DataTransfer, center: CanvasPoint): Promise<CanvasImageShape | null> {
+export async function readKonvaImageShapeFromClipboardData(
+  data: DataTransfer,
+  center: CanvasPoint,
+  workspace?: TangentWorkspace
+): Promise<CanvasImageShape | null> {
   const file = getImageFileFromDataTransfer(data)
   if (file) {
     try {
-      return await createKonvaImageShapeFromFile(file, center)
+      return await createKonvaImageShapeFromFile(file, center, 'paste', workspace)
     } catch {
       return null
     }
@@ -37,23 +46,27 @@ export async function readKonvaImageShapeFromClipboardData(data: DataTransfer, c
   const url = getImageUrlFromClipboardText(data.getData('text/html') || data.getData('text/plain'))
   if (!url) return null
   try {
-    return await createKonvaImageShapeFromUrl(url, center)
+    return await createKonvaImageShapeFromUrl(url, center, workspace)
   } catch {
     return null
   }
 }
 
-export async function createKonvaImageShapeFromFile(file: File, center: CanvasPoint): Promise<CanvasImageShape> {
+export async function createKonvaImageShapeFromFile(
+  file: File,
+  center: CanvasPoint,
+  origin: TangentAssetOrigin = 'upload',
+  workspace?: TangentWorkspace,
+): Promise<CanvasImageShape> {
   validateImageFile(file)
-  const image = await readImageFileAsDataUrl(file)
-  const asset = await uploadImageDataUrlAsset({
-    dataUrl: image.url,
-    fileName: file.name || getClipboardFileName(file.type),
+  const image = await readImageFileMetadata(file)
+  const asset = await uploadImageFileAsset({
+    file,
     height: image.height,
-    origin: 'paste',
-    title: file.name || 'Clipboard image',
+    origin,
+    title: file.name || (origin === 'paste' ? 'Clipboard image' : 'Image'),
     width: image.width,
-  })
+  }, workspace)
   return createImageShapeFromAsset({
     assetId: asset.id,
     center,
@@ -79,12 +92,16 @@ function getImageFileFromDataTransfer(data: DataTransfer) {
   return null
 }
 
-async function createKonvaImageShapeFromUrl(url: string, center: CanvasPoint): Promise<CanvasImageShape | null> {
+async function createKonvaImageShapeFromUrl(
+  url: string,
+  center: CanvasPoint,
+  workspace?: TangentWorkspace
+): Promise<CanvasImageShape | null> {
   if (url.startsWith('data:image/')) {
     const file = dataUrlToFile(url)
-    return file ? createKonvaImageShapeFromFile(file, center) : null
+    return file ? createKonvaImageShapeFromFile(file, center, 'upload', workspace) : null
   }
-  const asset = await importRemoteImageAsset({ origin: 'remote_import', title: 'Image', url })
+  const asset = await importRemoteImageAsset({ origin: 'remote_import', title: 'Image', url }, workspace)
   const dimensions = asset.width > 0 && asset.height > 0
     ? { height: asset.height, width: asset.width }
     : await decodeImageDimensions(asset.originalUrl)

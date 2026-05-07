@@ -1,6 +1,7 @@
 import { useCallback, useState, type Dispatch, type SetStateAction } from 'react'
 import { withCanvasShapes, type CanvasDocument, type CanvasImageShape } from '@/features/canvas-engine'
 import { removeBackgroundAsset } from '@/features/assets/imageOpsClient'
+import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 
 type KonvaHistory = {
   checkpoint: (document?: CanvasDocument) => void
@@ -13,6 +14,7 @@ type UseKonvaImageOpsActionsOptions = {
   onActionError?: (message: string | null) => void
   onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
   onSelectionChange: (shapeIds: string[]) => void
+  workspace?: TangentWorkspace
 }
 
 export function useKonvaImageOpsActions({
@@ -22,6 +24,7 @@ export function useKonvaImageOpsActions({
   onDocumentChange,
   onSelectionChange,
   selectedIds,
+  workspace,
 }: UseKonvaImageOpsActionsOptions) {
   const [isRemovingBackground, setIsRemovingBackground] = useState(false)
   const selectedImage = getSingleImageSelection(document, selectedIds)
@@ -31,7 +34,7 @@ export function useKonvaImageOpsActions({
     if (!image || isRemovingBackground) return
     onActionError?.(null)
     setIsRemovingBackground(true)
-    void removeBackgroundAsset(image.props.assetId)
+    void removeBackgroundAsset(image.props.assetId, workspace)
       .then((asset) => {
         history.checkpoint(document)
         const result = createCutoutImageShape(image, asset)
@@ -42,7 +45,7 @@ export function useKonvaImageOpsActions({
         reportActionError(error, 'Remove background failed.', onActionError)
       })
       .finally(() => setIsRemovingBackground(false))
-  }, [document, history, isRemovingBackground, onActionError, onDocumentChange, onSelectionChange, selectedIds])
+  }, [document, history, isRemovingBackground, onActionError, onDocumentChange, onSelectionChange, selectedIds, workspace])
 
   return {
     canRemoveBackground: Boolean(selectedImage) && !isRemovingBackground,

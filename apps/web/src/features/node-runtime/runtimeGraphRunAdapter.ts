@@ -3,13 +3,17 @@
 import type { CanvasDocument, CanvasNodeShape } from '@/features/canvas-engine'
 import { withCanvasShapes } from '@/features/canvas-engine'
 import { createAiRun } from '@/features/ai/aiClient'
-import { getDefaultImageModelId } from '@/features/ai/mockAiContracts'
+import { getAiRunTerminalError, waitForAiRunCompletion } from '@/features/ai/aiRunLifecycle'
+import { getDefaultAnalysisModelId, getDefaultImageModelId } from '@/features/ai/mockAiContracts'
 import type { AiRunRecord, AiRunRequest } from '@/features/ai/aiTypes'
-import { uploadImageDataUrlAsset } from '@/features/assets/assetUploadClient'
+import { hasRemotePersistenceApi } from '@/features/api/persistenceApi'
+import { loadAssetRecords } from '@/features/assets/assetClient'
 import type { TangentAssetRecord } from '@/features/assets/assetTypes'
+import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import type { JsonObject, NodeType } from '@/types/nodeRuntime'
-import { canRunNodeType } from './registry'
+import { canRunNodeType, getNormalizedAnalysisData, getNormalizedImageGenerationData } from './registry'
 import { reconcileRuntimeGraphDocument } from './runtimeGraph'
+import { uploadMockGeneratedAssets } from './runtimeGraphMockAssets'
 import { resolveRuntimeGraphNodeInputs, type RuntimeGraphInputResolution } from './runtimeGraphResolution'
 import { runtimeGraphImageRefToPayload } from './runtimeGraphAssets'
 
@@ -27,7 +31,7 @@ export type RuntimeGraphNodeRunCompletion = {
   runInput: RuntimeGraphNodeRunStart
 }
 
-export function startRuntimeGraphNodeRun(document: CanvasDocument, shapeId: string): RuntimeGraphNodeRunStart {
+export function startRuntimeGraphNodeRun(document: CanvasDocument, shapeId: string, boardId?: string | null): RuntimeGraphNodeRunStart {
   const node = getNodeShape(document, shapeId)
   if (!node || !canRunNodeType(node.props.nodeType)) {
     return { clientRunId: '', document, shapeId, status: 'ignored' }
@@ -53,13 +57,16 @@ export function startRuntimeGraphNodeRun(document: CanvasDocument, shapeId: stri
   return {
     clientRunId,
     document: reconcileRuntimeGraphDocument(updateRuntimeNodeSummary(document, shapeId, {
-      costHint: 'Mock run · no credits charged',
+      costHint: 'Submitting AI run…',
       error: null,
       lastRunId: clientRunId,
+      progressEstimatedMs: getEstimatedNodeRunDurationMs(node),
+      progressStartedAt: Date.now(),
       resultAssetIds: [],
+      serverRunId: null,
       status: 'running',
     }, shouldClearGeneratedOutputs(node.props.nodeType))),
-    request: createRuntimeGraphAiRunRequest(node, inputResolution),
+    request: createRuntimeGraphAiRunRequest(node, inputResolution, boardId),
     shapeId,
     status: 'started',
   }
@@ -67,18 +74,63 @@ export function startRuntimeGraphNodeRun(document: CanvasDocument, shapeId: stri
 
 export function stopRuntimeGraphNodeRun(document: CanvasDocument, shapeId: string): CanvasDocument {
   return updateRuntimeNodeSummary(document, shapeId, {
+    costHint: 'AI run canceled.',
     error: null,
+    progressEstimatedMs: null,
+    progressStartedAt: null,
+    serverRunId: null,
     status: 'idle',
   })
 }
 
-export async function executeRuntimeGraphNodeRun(runInput: RuntimeGraphNodeRunStart): Promise<RuntimeGraphNodeRunCompletion> {
+export async function executeRuntimeGraphNodeRun(
+  runInput: RuntimeGraphNodeRunStart,
+  options?: {
+    onServerRunAccepted?: (run: AiRunRecord) => void
+    workspace?: TangentWorkspace
+  }
+): Promise<RuntimeGraphNodeRunCompletion> {
   if (runInput.status !== 'started' || !runInput.request) throw new Error('Runtime node run was not started.')
-  const run = await createAiRun(runInput.request)
-  const generatedAssets = run.runType === 'image_generation'
-    ? await uploadMockGeneratedAssets(run, runInput.request)
+  const createdRun = await createAiRun(runInput.request, { workspace: options?.workspace })
+  options?.onServerRunAccepted?.(createdRun)
+
+  if (!hasRemotePersistenceApi()) {
+    const generatedAssets = createdRun.runType === 'image_generation'
+      ? createdRun.outputAssetIds.length > 0
+        ? await loadAssetRecords(createdRun.outputAssetIds, options?.workspace)
+        : await uploadMockGeneratedAssets(createdRun, runInput.request)
+      : []
+    return { generatedAssets, run: createdRun, runInput }
+  }
+
+  const settledRun = await waitForAiRunCompletion(createdRun.runId, { workspace: options?.workspace })
+  if (settledRun.status !== 'succeeded') {
+    throw getAiRunTerminalError(settledRun)
+  }
+
+  const generatedAssets = settledRun.runType === 'image_generation'
+    ? await loadAssetRecords(settledRun.outputAssetIds, options?.workspace)
     : []
-  return { generatedAssets, run, runInput }
+
+  return { generatedAssets, run: settledRun, runInput }
+}
+
+export function syncRuntimeGraphAcceptedRun(
+  document: CanvasDocument,
+  runInput: RuntimeGraphNodeRunStart,
+  run: AiRunRecord
+): { accepted: boolean; document: CanvasDocument } {
+  const node = getNodeShape(document, runInput.shapeId)
+  if (!node || node.props.runtimeSummary.lastRunId !== runInput.clientRunId || node.props.runtimeSummary.status !== 'running') {
+    return { accepted: false, document }
+  }
+  return {
+    accepted: true,
+    document: updateRuntimeNodeSummary(document, runInput.shapeId, {
+      costHint: run.costHint,
+      serverRunId: run.runId,
+    }),
+  }
 }
 
 export function completeRuntimeGraphNodeRun(document: CanvasDocument, completion: RuntimeGraphNodeRunCompletion): CanvasDocument {
@@ -101,7 +153,10 @@ export function completeRuntimeGraphNodeRun(document: CanvasDocument, completion
     error: null,
     lastRunId: completion.run.runId,
     modelId: completion.run.modelId,
+    progressEstimatedMs: null,
+    progressStartedAt: null,
     resultAssetIds: resultAssetIds.length > 0 ? resultAssetIds : completion.run.outputAssetIds,
+    serverRunId: null,
     status: 'succeeded',
     textOutput: completion.run.textOutput?.slice(0, 4000) ?? '',
   }, false, generatedOutputs))
@@ -111,54 +166,41 @@ export function failRuntimeGraphNodeRun(document: CanvasDocument, runInput: Runt
   const node = getNodeShape(document, runInput.shapeId)
   if (!node || node.props.runtimeSummary.lastRunId !== runInput.clientRunId || node.props.runtimeSummary.status !== 'running') return document
   return updateRuntimeNodeSummary(document, runInput.shapeId, {
-    costHint: 'Mock AI run failed',
+    costHint: 'AI run failed.',
     error: error instanceof Error ? error.message : 'AI run failed.',
+    progressEstimatedMs: null,
+    progressStartedAt: null,
     resultAssetIds: [],
+    serverRunId: null,
     status: 'failed',
   })
 }
 
-function createRuntimeGraphAiRunRequest(node: CanvasNodeShape, inputResolution: RuntimeGraphInputResolution): AiRunRequest {
-  const data = node.props.data
+function createRuntimeGraphAiRunRequest(node: CanvasNodeShape, inputResolution: RuntimeGraphInputResolution, boardId?: string | null): AiRunRequest {
   const isGeneration = node.props.nodeType === 'image_gen' || node.props.nodeType === 'image_gen_4'
+  const data = isGeneration
+    ? getNormalizedImageGenerationData(node.props.data)
+    : node.props.nodeType === 'analysis'
+      ? getNormalizedAnalysisData(node.props.data)
+      : node.props.data
   return {
-    boardId: null,
+    boardId: boardId ?? null,
     inputAssetIds: inputResolution.imageValues.map((image) => image.assetId),
     nodeId: node.props.nodeId,
     nodeType: node.props.nodeType,
-    params: {
-      aspectRatio: data.aspectRatio ?? 'auto',
-      count: node.props.nodeType === 'image_gen_4' ? 4 : node.props.nodeType === 'image_gen' ? 1 : 0,
-      resolution: data.resolution ?? '1K',
-    },
+    params: isGeneration
+      ? {
+          aspectRatio: String(data.aspectRatio ?? '1:1'),
+          count: node.props.nodeType === 'image_gen_4' ? 4 : 1,
+          imageSize: String(data.imageSize ?? '1K'),
+          quality: String(data.quality ?? 'medium'),
+          size: String(data.size ?? '1024x1024'),
+        }
+      : {},
     prompt: getRunPrompt(data, inputResolution),
     runType: isGeneration ? 'image_generation' : 'image_analysis',
-    selectedModelId: String(data.modelId ?? getDefaultImageModelId()),
+    selectedModelId: String(data.modelId ?? (node.props.nodeType === 'analysis' ? getDefaultAnalysisModelId() : getDefaultImageModelId())),
   }
-}
-
-async function uploadMockGeneratedAssets(run: AiRunRecord, request: AiRunRequest) {
-  const count = Math.max(1, Math.min(4, run.outputAssetIds.length || Number(request.params?.count ?? 1)))
-  const size = getMockImageSize(request.params)
-  return Promise.all(Array.from({ length: count }, (_, index) => {
-    const dataUrl = createMockGeneratedImageDataUrl({
-      count,
-      height: size.height,
-      index,
-      modelId: run.modelId,
-      prompt: request.prompt ?? 'Generated image',
-      runId: run.runId,
-      width: size.width,
-    })
-    return uploadImageDataUrlAsset({
-      dataUrl,
-      fileName: `mock-ai-run-${index + 1}.png`,
-      height: size.height,
-      origin: 'ai_run',
-      title: count === 1 ? 'Generated image' : `Generated option ${index + 1}`,
-      width: size.width,
-    })
-  }))
 }
 
 function updateRuntimeNodeSummary(
@@ -190,7 +232,7 @@ function updateRuntimeNodeSummary(
 }
 
 function getRunPrompt(data: JsonObject, inputResolution: RuntimeGraphInputResolution) {
-  return inputResolution.primaryText || String(data.prompt ?? data.analysisPrompt ?? 'Reverse prompt from the image.')
+  return inputResolution.primaryText || String(data.prompt ?? data.analysisPrompt ?? 'Analyze this image in detail and write one clean image prompt.')
 }
 
 function shouldClearGeneratedOutputs(nodeType: NodeType) {
@@ -206,45 +248,31 @@ function createClientRunId() {
   return `run_client_${Date.now()}_${Math.random().toString(36).slice(2)}`
 }
 
-function getMockImageSize(params: JsonObject | undefined) {
-  const longSide = params?.resolution === '0.5K' ? 256 : params?.resolution === '2K' ? 512 : params?.resolution === '4K' ? 640 : 384
-  const aspect = typeof params?.aspectRatio === 'string' ? params.aspectRatio : '1:1'
-  if (aspect === '16:9') return { height: Math.round(longSide * 9 / 16), width: longSide }
-  if (aspect === '4:3') return { height: Math.round(longSide * 3 / 4), width: longSide }
-  if (aspect === '3:2') return { height: Math.round(longSide * 2 / 3), width: longSide }
-  return { height: longSide, width: longSide }
-}
+function getEstimatedNodeRunDurationMs(node: CanvasNodeShape) {
+  if (node.props.nodeType !== 'image_gen' && node.props.nodeType !== 'image_gen_4') return 45_000
+  const data = getNormalizedImageGenerationData(node.props.data)
+  const count = node.props.nodeType === 'image_gen_4' ? 4 : 1
+  const modelId = String(data.modelId ?? getDefaultImageModelId())
 
-function createMockGeneratedImageDataUrl(input: { count: number; height: number; index: number; modelId: string; prompt: string; runId: string; width: number }) {
-  const canvas = globalThis.document.createElement('canvas')
-  canvas.width = input.width
-  canvas.height = input.height
-  const context = canvas.getContext('2d')
-  if (!context) throw new Error('Canvas preview generator is unavailable.')
-  const hue = hashString(`${input.runId}:${input.index}`) % 360
-  const gradient = context.createLinearGradient(0, 0, input.width, input.height)
-  gradient.addColorStop(0, `hsl(${hue} 82% 56%)`)
-  gradient.addColorStop(1, `hsl(${(hue + 54) % 360} 76% 38%)`)
-  context.fillStyle = gradient
-  context.fillRect(0, 0, input.width, input.height)
-  context.fillStyle = 'rgba(255,255,255,0.18)'
-  for (let i = 0; i < 8; i += 1) {
-    context.beginPath()
-    context.arc(input.width * (0.12 + i * 0.11), input.height * (0.2 + (i % 3) * 0.22), input.width * 0.12, 0, Math.PI * 2)
-    context.fill()
+  if (modelId === 'gemini-3.1-flash-image-preview') {
+    const imageSize = String(data.imageSize ?? '1K')
+    const baseMs = imageSize === '0.5K'
+      ? 28_000
+      : imageSize === '2K'
+        ? 58_000
+        : imageSize === '4K'
+          ? 84_000
+          : 42_000
+    return Math.round(baseMs * (1 + (count - 1) * 0.5))
   }
-  context.fillStyle = 'rgba(15,23,42,0.72)'
-  context.fillRect(0, input.height - 132, input.width, 132)
-  context.fillStyle = '#ffffff'
-  context.font = '700 34px Inter, system-ui, sans-serif'
-  context.fillText(input.count === 1 ? 'Mock Image Gen' : `Mock Image ${input.index + 1}`, 36, input.height - 76)
-  context.font = '500 22px Inter, system-ui, sans-serif'
-  context.fillText(input.prompt.slice(0, 72), 36, input.height - 38)
-  context.font = '600 16px Inter, system-ui, sans-serif'
-  context.fillText(input.modelId, 36, 38)
-  return canvas.toDataURL('image/png')
-}
 
-function hashString(value: string) {
-  return Array.from(value).reduce((hash, char) => ((hash << 5) - hash + char.charCodeAt(0)) | 0, 0) >>> 0
+  const quality = String(data.quality ?? 'medium')
+  const size = String(data.size ?? '1024x1024')
+  const baseMs = quality === 'low'
+    ? 42_000
+    : quality === 'high'
+      ? 82_000
+      : 58_000
+  const sizeMultiplier = size === '1024x1024' ? 1 : 1.15
+  return Math.round(baseMs * sizeMultiplier * (1 + (count - 1) * 0.55))
 }

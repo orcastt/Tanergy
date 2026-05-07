@@ -17,7 +17,7 @@ const allowedShapeTypes = new Set([
   'triangle',
 ])
 const boxShapeTypes = new Set(['cloud', 'diamond', 'ellipse', 'frame', 'image', 'node_card', 'rect', 'sticky', 'text', 'triangle'])
-const nodeTypes = new Set(['analysis', 'chat', 'image', 'image_gen', 'image_gen_4', 'prompt'])
+const nodeTypes = new Set(['analysis', 'chat', 'image', 'image_gen', 'image_gen_4', 'prompt', 'prompt_optimizer'])
 const runtimeDataTypes = new Set(['image', 'text'])
 
 export function auditKonvaBoardDocumentSchema(document: unknown): BoardDocumentGuardIssue[] {
