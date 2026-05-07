@@ -5,8 +5,12 @@ import { isProtectedProductPath, shouldRequireWebAuth } from '@/features/auth/ro
 const isProtectedRoute = createRouteMatcher([
   '/admin(.*)',
   '/account(.*)',
+  '/billing(.*)',
   '/boards(.*)',
+  '/collections(.*)',
+  '/team(.*)',
   '/settings(.*)',
+  '/usage(.*)',
   '/workspaces(.*)',
 ])
 
@@ -27,7 +31,18 @@ export function proxy(request: NextRequest, event: NextFetchEvent) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/account/:path*', '/api/auth/session', '/boards/:path*', '/settings/:path*', '/workspaces/:path*'],
+  matcher: [
+    '/admin/:path*',
+    '/account/:path*',
+    '/api/auth/session',
+    '/billing/:path*',
+    '/boards/:path*',
+    '/collections/:path*',
+    '/settings/:path*',
+    '/team/:path*',
+    '/usage/:path*',
+    '/workspaces/:path*',
+  ],
 }
 
 function shouldRunClerkProxy(pathname: string) {

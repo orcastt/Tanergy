@@ -1,11 +1,15 @@
 # PRD Slice S4: Collaboration
 
 **Updated**: 2026-05-05
-**Status**: Deferred to P0.5.
+**Status**: Deferred to P0.5 and frozen for the current P0 alpha stabilization pass.
 
 ## Goal
 
 Enable multiple users to edit the same Board without breaking Asset, Board, Auth or AiRun authority boundaries.
+
+## Stabilization Rule
+
+Keep this slice deferred for the current P0 alpha pass. Collaboration readiness may be documented, but it must not pull scope into the active release spine.
 
 ## Product Requirements
 

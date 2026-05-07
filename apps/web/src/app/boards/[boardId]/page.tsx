@@ -3,6 +3,8 @@
 import dynamic from 'next/dynamic'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { TangentWorkspace } from '@/features/auth/sessionTypes'
+import { useTangentSession } from '@/features/auth/useTangentSession'
 import type { BoardPersistenceRecord } from '@/features/boards/boardTypes'
 import {
   detectBoardCanvasEngine,
@@ -38,16 +40,41 @@ type BoardLoadState =
 export default function BoardCanvasPage() {
   const params = useParams<{ boardId?: string | string[] }>()
   const searchParams = useSearchParams()
+  const { session } = useTangentSession()
   const rawBoardId = Array.isArray(params.boardId) ? params.boardId[0] : params.boardId
   const boardId = rawBoardId ? decodeURIComponent(rawBoardId) : 'untitled-board'
   const isNewBoard = searchParams.get('new') === '1'
   const shareId = searchParams.get('share')
+  const requestedWorkspaceId = searchParams.get('workspace')
   const requestedEngine = parseBoardCanvasEngine(searchParams.get('engine'))
   const [loadState, setLoadState] = useState<BoardLoadState>({ status: isNewBoard ? 'idle' : 'loading' })
   const [boardTitleOverride, setBoardTitleOverride] = useState<{ boardId: string; title: string } | null>(null)
   const tldrawReferenceEnabled = isTldrawReferenceEnabled()
   const detectedEngine = loadState.status === 'loaded' ? detectBoardCanvasEngine(loadState.board.document) : null
   const effectiveBoardId = loadState.status === 'loaded' ? loadState.board.id : boardId
+  const candidateWorkspaces = useMemo(() => {
+    const ordered: TangentWorkspace[] = []
+    const seen = new Set<string>()
+    const pushWorkspace = (workspace: TangentWorkspace | null | undefined) => {
+      if (!workspace || seen.has(workspace.id)) return
+      seen.add(workspace.id)
+      ordered.push(workspace)
+    }
+
+    pushWorkspace(session.workspaces.find((workspace) => workspace.id === requestedWorkspaceId))
+    pushWorkspace(session.activeWorkspace)
+    session.workspaces.forEach((workspace) => pushWorkspace(workspace))
+    return ordered
+  }, [requestedWorkspaceId, session.activeWorkspace, session.workspaces])
+  const resolvedWorkspace = useMemo(() => {
+    if (loadState.status === 'loaded') {
+      return candidateWorkspaces.find((workspace) => workspace.id === loadState.board.workspaceId)
+        ?? session.workspaces.find((workspace) => workspace.id === loadState.board.workspaceId)
+        ?? candidateWorkspaces[0]
+        ?? session.activeWorkspace
+    }
+    return candidateWorkspaces[0] ?? session.activeWorkspace
+  }, [candidateWorkspaces, loadState, session.activeWorkspace, session.workspaces])
   const engine = useMemo(
     () => detectedEngine ?? requestedEngine ?? getDefaultBoardCanvasEngine(),
     [detectedEngine, requestedEngine]
@@ -70,7 +97,7 @@ export default function BoardCanvasPage() {
       try {
         const response = shareId
           ? await loadSharedBoardDocument(shareId)
-          : await loadLocalBoardDocument(boardId)
+          : await loadBoardAcrossWorkspaces(boardId, candidateWorkspaces)
         if (cancelled) return
         setLoadState(response.board ? { board: response.board, status: 'loaded' } : { status: 'missing' })
       } catch (error) {
@@ -81,13 +108,13 @@ export default function BoardCanvasPage() {
     return () => {
       cancelled = true
     }
-  }, [boardId, isNewBoard, shareId])
+  }, [boardId, candidateWorkspaces, isNewBoard, shareId])
 
   const renameBoardTitle = useCallback(async (title: string) => {
     const nextTitle = title.trim()
     if (!nextTitle) return boardTitle
     try {
-      const response = await renameLocalBoardDocument(effectiveBoardId, nextTitle)
+      const response = await renameLocalBoardDocument(effectiveBoardId, nextTitle, resolvedWorkspace)
       const renamedTitle = response.board?.title ?? nextTitle
       setBoardTitleOverride({ boardId: effectiveBoardId, title: renamedTitle })
       return renamedTitle
@@ -96,7 +123,7 @@ export default function BoardCanvasPage() {
       setBoardTitleOverride({ boardId: effectiveBoardId, title: nextTitle })
       return nextTitle
     }
-  }, [boardTitle, effectiveBoardId, isNewBoard, loadState.status])
+  }, [boardTitle, effectiveBoardId, isNewBoard, loadState.status, resolvedWorkspace])
 
   if (loadState.status === 'loading') {
     return <BoardRouteState title="Loading Board" detail={formatBoardTitle(boardId)} />
@@ -118,6 +145,7 @@ export default function BoardCanvasPage() {
         detail={tldrawReferenceEnabled
           ? 'This saved Board is a legacy tldraw v1 document. Copy it to a new Konva v2 Board to continue migration testing.'
           : 'This saved Board is a legacy tldraw v1 document. Production Boards must be opened through Konva v2.'}
+        workspace={resolvedWorkspace}
       />
     )
   }
@@ -132,6 +160,7 @@ export default function BoardCanvasPage() {
         onBoardLoaded={(title) => setBoardTitleOverride({ boardId: effectiveBoardId, title })}
         onBoardTitleRename={renameBoardTitle}
         seedOnMount={false}
+        workspace={resolvedWorkspace}
       />
     )
   }
@@ -154,6 +183,7 @@ export default function BoardCanvasPage() {
       onBoardLoaded={(title) => setBoardTitleOverride({ boardId: effectiveBoardId, title })}
       onBoardTitleRename={renameBoardTitle}
       seedOnMount={false}
+      workspace={resolvedWorkspace}
     />
   )
 }
@@ -167,7 +197,15 @@ function BoardRouteState({ detail, title }: { detail: string; title: string }) {
   )
 }
 
-function LegacyTldrawMigrationState({ board, detail }: { board: BoardPersistenceRecord; detail: string }) {
+function LegacyTldrawMigrationState({
+  board,
+  detail,
+  workspace,
+}: {
+  board: BoardPersistenceRecord
+  detail: string
+  workspace?: TangentWorkspace
+}) {
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [isCopying, setIsCopying] = useState(false)
@@ -185,8 +223,10 @@ function LegacyTldrawMigrationState({ board, detail }: { board: BoardPersistence
         description: board.description ?? null,
         document: migrated.document,
         title,
-      })
-      router.push(`/boards/${encodeURIComponent(boardId)}`)
+      }, workspace)
+      const query = new URLSearchParams()
+      if (workspace?.id) query.set('workspace', workspace.id)
+      router.push(`/boards/${encodeURIComponent(boardId)}${query.toString() ? `?${query.toString()}` : ''}`)
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : 'Konva copy failed.')
     } finally {
@@ -218,4 +258,21 @@ function formatBoardTitle(boardId: string) {
     .replace(/^board[_-]?/i, '')
     .replace(/[._-]+/g, ' ')
     .trim() || 'Untitled board'
+}
+
+async function loadBoardAcrossWorkspaces(
+  boardId: string,
+  workspaces: TangentWorkspace[]
+) {
+  let lastError: unknown = null
+
+  for (const workspace of workspaces) {
+    try {
+      return await loadLocalBoardDocument(boardId, workspace)
+    } catch (error) {
+      lastError = error
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('Board load failed.')
 }

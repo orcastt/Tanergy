@@ -17,10 +17,16 @@ import {
 type AdminAiResourceState = 'error' | 'loading' | 'partial' | 'ready'
 
 type AdminAiResourceOptions = {
+  apiCallBoardId?: string
+  apiCallErrorCode?: string
   apiCallLimit: number
   apiCallModelId?: string
   apiCallProvider?: string
+  apiCallPricingRuleId?: string
+  apiCallRouteKey?: string
+  apiCallRunId?: string
   apiCallStatus?: string
+  apiCallWorkspaceId?: string
   modelCapability?: string
   modelEnabled?: boolean
   modelLimit: number
@@ -32,10 +38,17 @@ type AdminAiResourceOptions = {
   routeLimit: number
   routeModelKey?: string
   routeProviderKey?: string
+  runBoardId?: string
   runLimit: number
   runModelId?: string
+  runPreflightStatus?: string
+  runPricingRuleId?: string
+  runProvider?: string
+  runRouteKey?: string
+  runRunId?: string
   runStatus?: string
   runType?: string
+  runWorkspaceId?: string
 }
 
 const emptyModels: AdminAiModelsResource = { models: [], ok: false }
@@ -77,16 +90,29 @@ export function useAdminAiResources(enabled: boolean, options: AdminAiResourceOp
         tierKey: options.pricingTierKey,
       }),
       loadAdminAiRuns({
+        boardId: options.runBoardId,
         limit: options.runLimit,
         modelId: options.runModelId,
+        preflightStatus: options.runPreflightStatus,
+        pricingRuleId: options.runPricingRuleId,
+        provider: options.runProvider,
+        routeKey: options.runRouteKey,
+        runId: options.runRunId,
         runType: options.runType,
         status: options.runStatus,
+        workspaceId: options.runWorkspaceId,
       }),
       loadAdminAiApiCalls({
+        boardId: options.apiCallBoardId,
+        errorCode: options.apiCallErrorCode,
         limit: options.apiCallLimit,
         modelId: options.apiCallModelId,
         provider: options.apiCallProvider,
+        pricingRuleId: options.apiCallPricingRuleId,
+        routeKey: options.apiCallRouteKey,
+        runId: options.apiCallRunId,
         status: options.apiCallStatus,
+        workspaceId: options.apiCallWorkspaceId,
       }),
     ]).then((results) => {
       if (isCancelled) return
@@ -112,9 +138,15 @@ export function useAdminAiResources(enabled: boolean, options: AdminAiResourceOp
   }, [
     enabled,
     options.apiCallLimit,
+    options.apiCallBoardId,
+    options.apiCallErrorCode,
     options.apiCallModelId,
     options.apiCallProvider,
+    options.apiCallPricingRuleId,
+    options.apiCallRouteKey,
+    options.apiCallRunId,
     options.apiCallStatus,
+    options.apiCallWorkspaceId,
     options.modelCapability,
     options.modelEnabled,
     options.modelLimit,
@@ -126,10 +158,17 @@ export function useAdminAiResources(enabled: boolean, options: AdminAiResourceOp
     options.routeLimit,
     options.routeModelKey,
     options.routeProviderKey,
+    options.runBoardId,
     options.runLimit,
     options.runModelId,
+    options.runPreflightStatus,
+    options.runPricingRuleId,
+    options.runProvider,
+    options.runRouteKey,
+    options.runRunId,
     options.runStatus,
     options.runType,
+    options.runWorkspaceId,
     reloadToken,
   ])
 

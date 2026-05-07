@@ -7,6 +7,16 @@
 
 Real staging infrastructure, persistent data, real Auth/session, and Auth-backed Board CRUD. S1 turns the local product shell into a multi-user staging product with server-side ownership and permission checks.
 
+## P0 Alpha Boundary
+
+In the current release pass, this slice exists to make the core user journey safe and real:
+
+- landing/Auth/workspace route safety
+- Board/share/page permission safety
+- staging persistence and object-storage integrity
+
+It must not absorb collaboration, finance or deep admin scope.
+
 ## Target Architecture
 
 ```text

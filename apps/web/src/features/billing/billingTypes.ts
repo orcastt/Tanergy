@@ -57,6 +57,8 @@ export type BillingMeResponse = {
 export type WorkspaceDashboardMember = {
   displayName: string
   email?: null | string
+  invitedBy?: null | string
+  joinedAt?: null | string
   role: string
   usageThisCycle?: null | number
   userId: string
@@ -78,10 +80,131 @@ export type WorkspaceDashboardResponse = {
   ok: boolean
 }
 
+export type WorkspaceSeatAssignmentRecord = {
+  assignedBy?: null | string
+  currentPeriodEnd?: null | string
+  currentPeriodStart?: null | string
+  id: string
+  includedCredits: number
+  planKey: PlanKey
+  status: string
+  userId: string
+  workspaceId: string
+}
+
+export type WorkspaceSeatAssignmentsResponse = {
+  error?: string
+  ok: boolean
+  seats: WorkspaceSeatAssignmentRecord[]
+}
+
+export type WorkspaceSeatUpsertInput = {
+  currentPeriodEnd?: null | string
+  currentPeriodStart?: null | string
+  includedCredits?: null | number
+  planKey: PlanKey
+  userId: string
+}
+
+export type WorkspaceMemberRoleUpdateInput = {
+  role: string
+}
+
+export type CreditLedgerEntryRecord = {
+  accountId: string
+  actorUserId?: null | string
+  createdAt: string
+  creditsDelta: number
+  id: string
+  metadata: Record<string, unknown>
+  reason: string
+  sourceId?: null | string
+  sourceType: string
+  workspaceId?: null | string
+}
+
+export type CreditLedgerResponse = {
+  accountId: string
+  balanceCredits: number
+  entries: CreditLedgerEntryRecord[]
+  error?: string
+  ok: boolean
+}
+
+export type CreditLedgerMutationResponse = {
+  accountId: string
+  balanceCredits: number
+  entry: CreditLedgerEntryRecord
+  error?: string
+  ok: boolean
+}
+
+export type CreditLedgerQuery = {
+  actorUserId?: null | string
+  limit?: number
+  reason?: null | string
+  sourceId?: null | string
+  sourceType?: null | string
+  workspaceId?: null | string
+}
+
+export type CreditTopupInput = {
+  credits: number
+  metadata?: Record<string, unknown>
+  sourceId?: null | string
+}
+
 export type WorkspaceEntitlementResponse = {
   charge: AiRunChargeSummary
   error?: string
   ok: boolean
   plan: WorkspacePlanSummary
   workspace: BillingWorkspaceSummary
+}
+
+export type BillingPaymentRecord = {
+  accountId?: null | string
+  amountCents: number
+  checkoutSessionId?: null | string
+  createdAt: string
+  currency: string
+  id: string
+  kind: string
+  metadata: Record<string, unknown>
+  provider: string
+  providerPaymentId?: null | string
+  status: string
+}
+
+export type BillingPaymentsResponse = {
+  error?: string
+  ok: boolean
+  payments: BillingPaymentRecord[]
+}
+
+export type BillingPaymentMutationResponse = {
+  error?: string
+  ok: boolean
+  payment?: BillingPaymentRecord
+  topupEntryId?: null | string
+}
+
+export type BillingPaymentQuery = {
+  kind?: null | string
+  limit?: number
+  status?: null | string
+  workspaceScoped?: boolean
+}
+
+export type BillingTopupCheckoutInput = {
+  credits: number
+  currency?: string
+  metadata?: Record<string, unknown>
+}
+
+export type BillingSeatPurchaseCheckoutInput = {
+  currency?: string
+  metadata?: Record<string, unknown>
+  planKey: Extract<PlanKey, 'team_growth' | 'team_start'>
+  quantity: number
 }

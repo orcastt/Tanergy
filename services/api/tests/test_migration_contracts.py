@@ -39,6 +39,8 @@ def test_alembic_revision_chain_is_linear():
         load_migration("20260506_0007_workspace_entitlements_ai_charge_contract.py"),
         load_migration("20260506_0008_ai_control_plane_registry_pricing.py"),
         load_migration("20260506_0009_ai_run_quote_facts.py"),
+        load_migration("20260506_0010_ai_runtime_provider_currency.py"),
+        load_migration("20260506_0011_ai_control_plane_versions_and_payment_checkout.py"),
     ]
 
     for previous, current in zip(migrations, migrations[1:]):
@@ -52,12 +54,16 @@ def test_s1a_migrations_keep_required_schema_contracts():
     entitlements = load_migration("20260506_0007_workspace_entitlements_ai_charge_contract.py")
     ai_control_plane = load_migration("20260506_0008_ai_control_plane_registry_pricing.py")
     ai_run_facts = load_migration("20260506_0009_ai_run_quote_facts.py")
+    ai_runtime_currency = load_migration("20260506_0010_ai_runtime_provider_currency.py")
+    ai_control_plane_versions = load_migration("20260506_0011_ai_control_plane_versions_and_payment_checkout.py")
     core_sql = "\n".join(core.UPGRADE)
     future_sql = "\n".join(future.UPGRADE)
     hardening_sql = "\n".join(hardening.UPGRADE)
     entitlement_sql = "\n".join(entitlements.UPGRADE)
     ai_control_plane_sql = "\n".join(ai_control_plane.UPGRADE)
     ai_run_facts_sql = "\n".join(ai_run_facts.UPGRADE)
+    ai_runtime_currency_sql = "\n".join(ai_runtime_currency.UPGRADE)
+    ai_control_plane_versions_sql = "\n".join(ai_control_plane_versions.UPGRADE)
 
     for table_name in [
         "tangent_workspace_members",
@@ -115,6 +121,23 @@ def test_s1a_migrations_keep_required_schema_contracts():
         "tangent_ai_runs_pricing_idx",
     ]:
         assert contract in ai_run_facts_sql
+
+    for contract in [
+        "ALTER TABLE tangent_ai_api_calls ADD COLUMN IF NOT EXISTS provider_currency",
+        "price_gpt_image_2_1k_v1",
+        "price_gemini_flash_4k_v1",
+    ]:
+        assert contract in ai_runtime_currency_sql
+
+    for contract in [
+        "tangent_ai_control_plane_versions",
+        "tangent_ai_control_plane_versions_lookup_idx",
+        "ALTER TABLE tangent_payments ADD COLUMN IF NOT EXISTS checkout_session_id",
+        "ALTER TABLE tangent_payments ADD COLUMN IF NOT EXISTS kind",
+        "ALTER TABLE tangent_payments ADD COLUMN IF NOT EXISTS metadata",
+        "ALTER TABLE tangent_api_cost_ledger ADD COLUMN IF NOT EXISTS settlement_kind",
+    ]:
+        assert contract in ai_control_plane_versions_sql
 
 
 def test_s1a_smoke_runner_requires_explicit_database(monkeypatch):

@@ -8,6 +8,14 @@
 
 Replace tldraw as the long-term runtime engine while preserving the current TANGENT canvas experience as the reference.
 
+## P0 Alpha Stabilization Note
+
+This slice is now primarily a stabilization lane, not a feature-expansion lane:
+
+- Konva-first Board runtime is accepted as the production path.
+- Page polish, Board history and share viewing are part of the current alpha spine.
+- Yjs collaboration proof, rendered page-thumbnail assets, page duplicate and broader export polish remain deferred.
+
 This is not a visual redesign. Users should still feel they are using the same product:
 
 - clean whiteboard surface

@@ -3,6 +3,7 @@ import time
 from fastapi.testclient import TestClient
 
 from tangent_api.main import app
+from tangent_api.ai_provider_types import AiProviderAttemptResult
 from tangent_api.request_context import ApiRequestContext
 from tests.persistence_fakes import FakePostgresDatabase
 
@@ -109,6 +110,11 @@ def test_ai_run_mock_can_settle_against_credit_ledger(monkeypatch):
     assert fake_db.ai_api_calls[-1]["id"] == f"ai_call_{settled_run['runId']}_a1"
     assert fake_db.ai_api_calls[-1]["run_id"] == settled_run["runId"]
     assert fake_db.ai_api_calls[-1]["status"] == "succeeded"
+    assert fake_db.api_cost_ledger[-1]["id"] == f"api_cost_{settled_run['runId']}_a1"
+    assert fake_db.api_cost_ledger[-1]["settlement_kind"] == "usage"
+    assert fake_db.api_cost_ledger[-1]["credits_charged"] == 10.0
+    assert fake_db.api_cost_ledger[-1]["provider"] == "geekai"
+    assert fake_db.api_cost_ledger[-1]["provider_currency"] == "USD"
 
 
 def test_ai_run_mock_rejects_when_ledger_balance_is_insufficient(monkeypatch):
@@ -339,6 +345,12 @@ def test_ai_run_uses_backup_route_when_primary_route_fails(monkeypatch):
     assert attempts[0]["error_code"] == "preflight_route_failure"
     assert attempts[1]["route_id"] == "route_gpt_image_2_backup"
     assert attempts[1]["status"] == "succeeded"
+    assert [row["id"] for row in fake_db.api_cost_ledger[-2:]] == [
+        f"api_cost_{run_id}_a1",
+        f"api_cost_{run_id}_a2",
+    ]
+    assert fake_db.api_cost_ledger[-2]["settlement_kind"] == "attempt_failure"
+    assert fake_db.api_cost_ledger[-1]["settlement_kind"] == "usage"
 
 
 def test_ai_run_fails_when_all_provider_routes_fail(monkeypatch):
@@ -735,6 +747,112 @@ def test_ai_run_quote_returns_tier_based_estimate_and_preflight(monkeypatch):
     assert quote["estimatedCredits"] == 18
     assert quote["canRun"] is True
     assert quote["preflightStatus"] == "ok"
+
+
+def test_live_provider_adapter_persists_provider_cost_and_settles_by_actual_outputs(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.model_registry = [
+        {
+            "model_key": "gpt-image-2",
+            "display_name": "GPT Image 2",
+            "capability": "image_generation",
+            "capabilities": ["image_generation", "image_edit"],
+            "parameter_schema": {"resolution": ["1K"]},
+            "cost_hint": "Live route tests",
+            "estimated_latency": "5-12s",
+            "enabled": True,
+            "is_default": True,
+            "provider_key": "openai",
+            "default_tier_key": "1k",
+            "default_pricing_rule_id": "price_gpt_image_2_1k_v1",
+            "created_at": "2026-05-06T00:00:00Z",
+            "updated_at": "2026-05-06T00:00:00Z",
+        }
+    ]
+    fake_db.model_provider_routes = [
+        {
+            "id": "route_gpt_image_2_primary",
+            "model_key": "gpt-image-2",
+            "provider_key": "openai",
+            "provider_model": "gpt-image-2",
+            "route_key": "openai-primary",
+            "priority": 10,
+            "weight": 100,
+            "health_status": "healthy",
+            "timeout_ms": 60000,
+            "retry_policy": {"maxAttempts": 1},
+            "enabled": True,
+            "created_at": "2026-05-06T00:00:00Z",
+            "updated_at": "2026-05-06T00:00:00Z",
+        }
+    ]
+    fake_db.model_pricing_rules = [
+        {
+            "id": "price_gpt_image_2_1k_v1",
+            "model_key": "gpt-image-2",
+            "tier_key": "1k",
+            "billing_unit": "per_image",
+            "estimated_credits": 5,
+            "min_credits": 5,
+            "credit_multiplier": 1,
+            "provider_cost_formula": {"type": "per_image", "currency": "USD", "amount": 0.04},
+            "status": "active",
+            "effective_from": "2026-05-06T00:00:00Z",
+            "effective_to": None,
+            "created_at": "2026-05-06T00:00:00Z",
+            "updated_at": "2026-05-06T00:00:00Z",
+        }
+    ]
+
+    def fake_live_attempt(*_args, **_kwargs):
+        return AiProviderAttemptResult(
+            created_at="2026-05-06T00:00:00Z",
+            error_code=None,
+            error_message=None,
+            latency_ms=320,
+            output_asset_ids=["asset_live_single_output"],
+            provider="openai",
+            provider_cost=0.031,
+            provider_currency="USD",
+            retryable=False,
+            route_id="route_gpt_image_2_primary",
+            route_key="openai-primary",
+            status="succeeded",
+            text_output=None,
+            work_started=True,
+        )
+
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setenv("TANGENT_AI_PROVIDER_OPENAI_MODE", "live")
+    monkeypatch.delenv("TANGENT_AI_MOCK_LEDGER_CHARGING", raising=False)
+    monkeypatch.setattr("tangent_api.ai_control_plane.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.ai_run_persistence.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.credit_ledger.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.ai_provider_adapters.run_openai_compatible_attempt", fake_live_attempt)
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v1/ai/runs",
+        json={
+            "params": {"count": 2, "resolution": "1K"},
+            "prompt": "Live execute one output",
+            "runType": "image_generation",
+            "selectedModelId": "gpt-image-2",
+        },
+    )
+    assert created.status_code == 200
+    run_id = created.json()["run"]["runId"]
+
+    settled = _wait_for_run_status(client, run_id, {"succeeded"})
+    assert settled["provider"] == "openai"
+    assert settled["providerCost"] == 0.031
+    assert settled["providerCurrency"] == "USD"
+    assert settled["costCredits"] == 5
+    assert fake_db.ai_runs[run_id]["provider_cost"] == 0.031
+    assert fake_db.ai_runs[run_id]["provider_currency"] == "USD"
+    assert fake_db.ai_api_calls[-1]["provider_currency"] == "USD"
+    assert fake_db.ai_api_calls[-1]["credits_charged"] == 5
 
 
 def test_ai_run_auth_required_mode(monkeypatch):

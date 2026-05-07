@@ -23,17 +23,20 @@ export function WorkspaceBoardToolbar({
 }: WorkspaceBoardToolbarProps) {
   return (
     <section className="workspace-toolbar" aria-label="Board gallery tools">
-      <input
-        aria-label="Search boards"
-        onChange={(event) => onSearchChange(event.target.value)}
-        placeholder="Search boards"
-        value={searchQuery}
-      />
+      <label className="workspace-search-field">
+        <span aria-hidden="true" className="workspace-search-glyph" />
+        <input
+          aria-label="Search boards"
+          onChange={(event) => onSearchChange(event.target.value)}
+          placeholder="Search boards"
+          value={searchQuery}
+        />
+      </label>
       <div className="workspace-toolbar-controls">
-        <label className="workspace-sort-control">
-          <span>Sort</span>
+        <div className="workspace-select-shell">
           <select
             aria-label="Sort boards"
+            className="workspace-sort-select"
             onChange={(event) => onSortModeChange(event.target.value as WorkspaceBoardSortMode)}
             value={sortMode}
           >
@@ -42,7 +45,7 @@ export function WorkspaceBoardToolbar({
             <option value="title">Title A-Z</option>
             <option value="objects">Most objects</option>
           </select>
-        </label>
+        </div>
         <div className="workspace-view-toggle" aria-label="View mode">
           <button className={viewMode === 'gallery' ? 'is-active' : ''} onClick={() => onViewModeChange('gallery')} type="button">
             Gallery

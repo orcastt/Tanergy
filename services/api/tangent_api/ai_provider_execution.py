@@ -3,9 +3,11 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
 
-from tangent_api.ai_provider_adapters import AiProviderAttemptResult, execute_ai_provider_attempt
+from tangent_api.ai_provider_adapters import execute_ai_provider_attempt
+from tangent_api.ai_provider_types import AiProviderAttemptResult
 from tangent_api.ai_route_catalog import AiProviderRouteCandidate, list_route_candidates
 from tangent_api.ai_schemas import AiRunRecord, AiRunRequest
+from tangent_api.request_context import ApiRequestContext
 
 
 @dataclass(frozen=True)
@@ -16,6 +18,7 @@ class AiProviderExecutionOutcome:
     output_asset_ids: list[str]
     provider: str
     provider_cost: Optional[float]
+    provider_currency: Optional[str]
     route_id: Optional[str]
     route_key: Optional[str]
     status: str
@@ -25,7 +28,11 @@ class AiProviderExecutionOutcome:
 PROVIDER_ATTEMPT_EXECUTOR = ThreadPoolExecutor(max_workers=8, thread_name_prefix="tangent-provider")
 
 
-def run_ai_provider_execution(run: AiRunRecord, payload: AiRunRequest) -> AiProviderExecutionOutcome:
+def run_ai_provider_execution(
+    run: AiRunRecord,
+    payload: AiRunRequest,
+    context: ApiRequestContext,
+) -> AiProviderExecutionOutcome:
     route_candidates = list_route_candidates(run.model_id)
     if not route_candidates:
         return AiProviderExecutionOutcome(
@@ -35,6 +42,7 @@ def run_ai_provider_execution(run: AiRunRecord, payload: AiRunRequest) -> AiProv
             output_asset_ids=[],
             provider=run.provider,
             provider_cost=None,
+            provider_currency=None,
             route_id=run.route_id,
             route_key=run.route_key,
             status="failed",
@@ -45,7 +53,7 @@ def run_ai_provider_execution(run: AiRunRecord, payload: AiRunRequest) -> AiProv
     for route in route_candidates:
         max_attempts = _route_max_attempts(route.retry_policy)
         for _ in range(max_attempts):
-            attempt = _execute_route_attempt(run, payload, route)
+            attempt = _execute_route_attempt(run, payload, route, context)
             attempts.append(attempt)
             if attempt.status == "succeeded":
                 return _succeeded_execution_outcome(attempts, attempt)
@@ -58,8 +66,9 @@ def _execute_route_attempt(
     run: AiRunRecord,
     payload: AiRunRequest,
     route: AiProviderRouteCandidate,
+    context: ApiRequestContext,
 ) -> AiProviderAttemptResult:
-    future = PROVIDER_ATTEMPT_EXECUTOR.submit(execute_ai_provider_attempt, run, payload, route)
+    future = PROVIDER_ATTEMPT_EXECUTOR.submit(execute_ai_provider_attempt, run, payload, route, context)
     timeout_seconds = max(0.001, route.timeout_ms / 1000)
     try:
         return future.result(timeout=timeout_seconds)
@@ -73,6 +82,7 @@ def _execute_route_attempt(
             output_asset_ids=[],
             provider=route.provider_key,
             provider_cost=None,
+            provider_currency=None,
             retryable=False,
             route_id=route.route_id,
             route_key=route.route_key,
@@ -89,6 +99,7 @@ def _execute_route_attempt(
             output_asset_ids=[],
             provider=route.provider_key,
             provider_cost=None,
+            provider_currency=None,
             retryable=False,
             route_id=route.route_id,
             route_key=route.route_key,
@@ -109,6 +120,7 @@ def _succeeded_execution_outcome(
         output_asset_ids=attempt.output_asset_ids,
         provider=attempt.provider,
         provider_cost=attempt.provider_cost,
+        provider_currency=attempt.provider_currency,
         route_id=attempt.route_id,
         route_key=attempt.route_key,
         status="succeeded",
@@ -133,6 +145,7 @@ def _non_retryable_failure_outcome(
         output_asset_ids=[],
         provider=attempt.provider or run.provider,
         provider_cost=attempt.provider_cost,
+        provider_currency=attempt.provider_currency,
         route_id=attempt.route_id or run.route_id,
         route_key=attempt.route_key or run.route_key,
         status="failed",
@@ -155,6 +168,7 @@ def _exhausted_retryable_failures_outcome(
         output_asset_ids=[],
         provider=run.provider,
         provider_cost=None,
+        provider_currency=None,
         route_id=run.route_id,
         route_key=run.route_key,
         status="failed",

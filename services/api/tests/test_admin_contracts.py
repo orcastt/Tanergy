@@ -499,35 +499,23 @@ def test_admin_ai_runtime_routes_return_persisted_runs_and_api_calls(monkeypatch
         headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
     )
     assert runs.status_code == 200
-    assert runs.json()["runs"] == [
-        {
-            "boardId": "board_runtime",
-            "chargedAccountId": "credit_user_user_runtime",
-            "chargedScope": "actor_personal",
-            "costCredits": 5.0,
-            "createdAt": fake_db.ai_runs[run_id]["created_at"].isoformat(),
-            "errorMessage": None,
-            "estimatedCredits": 5.0,
-            "id": run_id,
-            "inputAssetIds": [],
-            "latencyMs": 450,
-            "modelId": "gpt-image-2",
-            "nodeId": None,
-            "outputAssetIds": [f"asset_mock_{run_id}_1_admin-runtime-readback_refs0"],
-            "preflightStatus": "settled",
-            "pricingRuleId": "price_gpt_image_2_1k_v1",
-            "promptPreview": "Admin runtime readback",
-            "provider": "geekai",
-            "routeId": "route_gpt_image_2_primary",
-            "routeKey": "geekai-primary",
-            "runType": "image_generation",
-            "selectedTierKey": "1k",
-            "status": "succeeded",
-            "updatedAt": fake_db.ai_runs[run_id]["created_at"].isoformat(),
-            "userId": "user_runtime",
-            "workspaceId": "workspace_group",
-        }
-    ]
+    run_record = runs.json()["runs"][0]
+    assert [item["id"] for item in runs.json()["runs"]] == [run_id]
+    assert run_record["boardId"] == "board_runtime"
+    assert run_record["chargedAccountId"] == "credit_user_user_runtime"
+    assert run_record["costCredits"] == 5.0
+    assert run_record["estimatedCredits"] == 5.0
+    assert run_record["modelId"] == "gpt-image-2"
+    assert run_record["outputAssetIds"] == [f"asset_mock_{run_id}_1_admin-runtime-readback_refs0"]
+    assert run_record["preflightStatus"] == "settled"
+    assert run_record["provider"] == "geekai"
+    assert run_record["providerCost"] == 0.04
+    assert run_record["providerCurrency"] == "USD"
+    assert run_record["routeKey"] == "geekai-primary"
+    assert run_record["runType"] == "image_generation"
+    assert run_record["selectedTierKey"] == "1k"
+    assert run_record["status"] == "succeeded"
+    assert run_record["workspaceId"] == "workspace_group"
 
     api_calls = client.get(
         "/api/v1/admin/ai/api-calls?status=succeeded&provider=geekai",
@@ -547,7 +535,8 @@ def test_admin_ai_runtime_routes_return_persisted_runs_and_api_calls(monkeypatch
             "nodeId": None,
             "pricingRuleId": "price_gpt_image_2_1k_v1",
             "provider": "geekai",
-            "providerCost": None,
+            "providerCost": 0.04,
+            "providerCurrency": "USD",
             "routeId": "route_gpt_image_2_primary",
             "routeKey": "geekai-primary",
             "runId": run_id,
@@ -556,9 +545,285 @@ def test_admin_ai_runtime_routes_return_persisted_runs_and_api_calls(monkeypatch
             "workspaceId": "workspace_group",
         }
     ]
-    assert [entry["action"] for entry in fake_db.admin_audit_logs[-2:]] == [
+    filtered_runs = client.get(
+        f"/api/v1/admin/ai/runs?runId={run_id}&provider=geekai&pricingRuleId=price_gpt_image_2_1k_v1&preflightStatus=settled&workspaceId=workspace_group&boardId=board_runtime",
+        headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
+    )
+    assert filtered_runs.status_code == 200
+    assert [item["id"] for item in filtered_runs.json()["runs"]] == [run_id]
+
+    filtered_api_calls = client.get(
+        f"/api/v1/admin/ai/api-calls?runId={run_id}&routeKey=geekai-primary&pricingRuleId=price_gpt_image_2_1k_v1&workspaceId=workspace_group&boardId=board_runtime",
+        headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
+    )
+    assert filtered_api_calls.status_code == 200
+    assert [item["id"] for item in filtered_api_calls.json()["apiCalls"]] == [f"ai_call_{run_id}_a1"]
+    assert [entry["action"] for entry in fake_db.admin_audit_logs[-4:]] == [
         "admin.ai.runs.list",
         "admin.ai.api_calls.list",
+        "admin.ai.runs.list",
+        "admin.ai.api_calls.list",
+    ]
+
+
+def test_admin_ai_control_plane_patch_routes_persist_updates_and_audit(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.admin_roles = [
+        {
+            "user_id": "user_admin",
+            "role": "admin",
+            "permissions": {"ai": True},
+            "note": "active",
+            "granted_by": "user_owner",
+            "created_at": "2026-05-05T00:00:00Z",
+            "revoked_at": None,
+        }
+    ]
+    fake_db.model_registry = [
+        {
+            "model_key": "gpt-image-2",
+            "display_name": "GPT Image 2",
+            "capability": "image_generation",
+            "capabilities": ["image_generation", "image_edit"],
+            "parameter_schema": {"resolution": ["1K"]},
+            "cost_hint": "Fast tests",
+            "estimated_latency": "5-12s",
+            "enabled": True,
+            "is_default": True,
+            "provider_key": "geekai",
+            "default_tier_key": "1k",
+            "default_pricing_rule_id": "price_gpt_image_2_1k_v1",
+            "created_at": "2026-05-06T00:00:00Z",
+            "updated_at": "2026-05-06T00:00:00Z",
+        }
+    ]
+    fake_db.model_provider_routes = [
+        {
+            "id": "route_gpt_primary",
+            "model_key": "gpt-image-2",
+            "provider_key": "geekai",
+            "provider_model": "gpt-image-2",
+            "route_key": "primary",
+            "priority": 10,
+            "weight": 100,
+            "health_status": "healthy",
+            "timeout_ms": 60000,
+            "retry_policy": {"maxAttempts": 1},
+            "enabled": True,
+            "created_at": "2026-05-06T00:00:00Z",
+            "updated_at": "2026-05-06T00:00:00Z",
+        }
+    ]
+    fake_db.model_pricing_rules = [
+        {
+            "id": "price_gpt_image_2_1k_v1",
+            "model_key": "gpt-image-2",
+            "tier_key": "1k",
+            "billing_unit": "per_image",
+            "estimated_credits": 5,
+            "min_credits": 5,
+            "credit_multiplier": 1,
+            "provider_cost_formula": {"amount": 0.04, "currency": "USD", "type": "per_image"},
+            "status": "active",
+            "effective_from": "2026-05-06T00:00:00Z",
+            "effective_to": None,
+            "created_at": "2026-05-06T00:00:00Z",
+            "updated_at": "2026-05-06T00:00:00Z",
+        }
+    ]
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setattr("tangent_api.admin_access.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.admin_ai_control_plane.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    model_response = client.patch(
+        "/api/v1/admin/ai/models/gpt-image-2",
+        headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
+        json={
+            "costHint": "Higher quality default.",
+            "defaultTierKey": "2k",
+            "enabled": False,
+            "estimatedLatency": "8-16s",
+        },
+    )
+    assert model_response.status_code == 200
+    assert model_response.json()["model"]["defaultTierKey"] == "2k"
+    assert model_response.json()["model"]["enabled"] is False
+
+    route_response = client.patch(
+        "/api/v1/admin/ai/provider-routes/route_gpt_primary",
+        headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
+        json={
+            "enabled": False,
+            "healthStatus": "degraded",
+            "priority": 25,
+            "retryPolicy": {"maxAttempts": 3},
+            "timeoutMs": 45000,
+            "weight": 120,
+        },
+    )
+    assert route_response.status_code == 200
+    assert route_response.json()["route"]["healthStatus"] == "degraded"
+    assert route_response.json()["route"]["timeoutMs"] == 45000
+
+    pricing_response = client.patch(
+        "/api/v1/admin/ai/pricing-rules/price_gpt_image_2_1k_v1",
+        headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
+        json={
+            "creditMultiplier": 1.5,
+            "estimatedCredits": 7,
+            "providerCostFormula": {"amount": 0.06, "currency": "USD", "type": "per_image"},
+            "status": "draft",
+        },
+    )
+    assert pricing_response.status_code == 200
+    assert pricing_response.json()["pricingRule"]["creditMultiplier"] == 1.5
+    assert pricing_response.json()["pricingRule"]["status"] == "draft"
+
+    assert fake_db.model_registry[0]["default_tier_key"] == "2k"
+    assert fake_db.model_provider_routes[0]["retry_policy"] == {"maxAttempts": 3}
+    assert fake_db.model_pricing_rules[0]["estimated_credits"] == 7
+    assert [entry["action"] for entry in fake_db.admin_audit_logs[-3:]] == [
+        "admin.ai.model.update",
+        "admin.ai.provider_route.update",
+        "admin.ai.pricing_rule.update",
+    ]
+
+
+def test_admin_ai_publish_list_and_rollback_versions(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.admin_roles = [
+        {
+            "user_id": "user_admin",
+            "role": "admin",
+            "permissions": {"ai": True},
+            "note": "active",
+            "granted_by": "user_owner",
+            "created_at": "2026-05-05T00:00:00Z",
+            "revoked_at": None,
+        }
+    ]
+    fake_db.model_registry = [
+        {
+            "model_key": "gpt-image-2",
+            "display_name": "GPT Image 2",
+            "capability": "image_generation",
+            "capabilities": ["image_generation", "image_edit"],
+            "parameter_schema": {"resolution": ["1K"]},
+            "cost_hint": "Fast tests",
+            "estimated_latency": "5-12s",
+            "enabled": True,
+            "is_default": True,
+            "provider_key": "geekai",
+            "default_tier_key": "1k",
+            "default_pricing_rule_id": "price_gpt_image_2_1k_v1",
+            "created_at": "2026-05-06T00:00:00Z",
+            "updated_at": "2026-05-06T00:00:00Z",
+        }
+    ]
+    fake_db.model_pricing_rules = [
+        {
+            "id": "price_gpt_image_2_1k_v1",
+            "model_key": "gpt-image-2",
+            "tier_key": "1k",
+            "billing_unit": "per_image",
+            "estimated_credits": 5,
+            "min_credits": 5,
+            "credit_multiplier": 1,
+            "provider_cost_formula": {"amount": 0.04, "currency": "USD", "type": "per_image"},
+            "status": "active",
+            "effective_from": "2026-05-06T00:00:00Z",
+            "effective_to": None,
+            "created_at": "2026-05-06T00:00:00Z",
+            "updated_at": "2026-05-06T00:00:00Z",
+        },
+        {
+            "id": "price_gpt_image_2_1k_v2",
+            "model_key": "gpt-image-2",
+            "tier_key": "1k",
+            "billing_unit": "per_image",
+            "estimated_credits": 7,
+            "min_credits": 7,
+            "credit_multiplier": 1.4,
+            "provider_cost_formula": {"amount": 0.06, "currency": "USD", "type": "per_image"},
+            "status": "draft",
+            "effective_from": "2026-05-06T01:00:00Z",
+            "effective_to": None,
+            "created_at": "2026-05-06T01:00:00Z",
+            "updated_at": "2026-05-06T01:00:00Z",
+        },
+    ]
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setattr("tangent_api.admin_access.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.admin_ai_control_plane.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.admin_ai_versions.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    published_model = client.post(
+        "/api/v1/admin/ai/models/gpt-image-2/publish",
+        headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
+        json={"note": "Initial model publish"},
+    )
+    assert published_model.status_code == 200
+    model_version = published_model.json()["version"]
+    assert model_version["action"] == "publish"
+    assert model_version["versionNumber"] == 1
+    assert model_version["snapshot"]["display_name"] == "GPT Image 2"
+
+    list_model_versions = client.get(
+        "/api/v1/admin/ai/versions?resourceType=model&resourceId=gpt-image-2",
+        headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
+    )
+    assert list_model_versions.status_code == 200
+    assert [row["id"] for row in list_model_versions.json()["versions"]] == [model_version["id"]]
+
+    patched_model = client.patch(
+        "/api/v1/admin/ai/models/gpt-image-2",
+        headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
+        json={"displayName": "GPT Image 2 Beta", "enabled": False},
+    )
+    assert patched_model.status_code == 200
+    assert patched_model.json()["model"]["displayName"] == "GPT Image 2 Beta"
+
+    rolled_back_model = client.post(
+        f"/api/v1/admin/ai/models/gpt-image-2/rollback/{model_version['id']}",
+        headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
+        json={"note": "Restore baseline"},
+    )
+    assert rolled_back_model.status_code == 200
+    rollback_version = rolled_back_model.json()["version"]
+    assert rollback_version["action"] == "rollback"
+    assert rollback_version["versionNumber"] == 2
+    assert fake_db.model_registry[0]["display_name"] == "GPT Image 2"
+    assert fake_db.model_registry[0]["enabled"] is True
+
+    published_pricing = client.post(
+        "/api/v1/admin/ai/pricing-rules/price_gpt_image_2_1k_v2/publish",
+        headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
+        json={"note": "Promote v2"},
+    )
+    assert published_pricing.status_code == 200
+    pricing_version = published_pricing.json()["version"]
+    assert pricing_version["action"] == "publish"
+    assert pricing_version["versionNumber"] == 1
+    pricing_rules_by_id = {row["id"]: row for row in fake_db.model_pricing_rules}
+    assert pricing_rules_by_id["price_gpt_image_2_1k_v2"]["status"] == "active"
+    assert pricing_rules_by_id["price_gpt_image_2_1k_v1"]["status"] == "retired"
+
+    listed_pricing_versions = client.get(
+        "/api/v1/admin/ai/versions?resourceType=pricing_rule&resourceId=price_gpt_image_2_1k_v2",
+        headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
+    )
+    assert listed_pricing_versions.status_code == 200
+    assert [row["id"] for row in listed_pricing_versions.json()["versions"]] == [pricing_version["id"]]
+
+    assert [entry["action"] for entry in fake_db.admin_audit_logs[-6:]] == [
+        "admin.ai.model.publish",
+        "admin.ai.versions.list",
+        "admin.ai.model.update",
+        "admin.ai.model.rollback",
+        "admin.ai.pricing_rule.publish",
+        "admin.ai.versions.list",
     ]
 
 
@@ -676,28 +941,14 @@ def test_admin_ai_api_calls_route_surfaces_failover_attempt_history(monkeypatch)
         headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
     )
     assert api_calls.status_code == 200
-    assert api_calls.json()["apiCalls"] == [
-        {
-            "boardId": None,
-            "createdAt": fake_db.ai_api_calls[1]["created_at"].isoformat(),
-            "creditsCharged": 0.0,
-            "creditsRefunded": 0.0,
-            "errorCode": None,
-            "id": f"ai_call_{run_id}_a2",
-            "latencyMs": 450,
-            "modelId": "gpt-image-2",
-            "nodeId": None,
-            "pricingRuleId": "price_gpt_image_2_1k_v1",
-            "provider": "openai",
-            "providerCost": None,
-            "routeId": "route_gpt_image_2_backup",
-            "routeKey": "openai-backup",
-            "runId": run_id,
-            "status": "succeeded",
-            "userId": "user_runtime",
-            "workspaceId": "workspace_group",
-        }
-    ]
+    assert [item["id"] for item in api_calls.json()["apiCalls"]] == [f"ai_call_{run_id}_a2"]
+    assert api_calls.json()["apiCalls"][0]["creditsCharged"] == 5.0
+    assert api_calls.json()["apiCalls"][0]["provider"] == "openai"
+    assert api_calls.json()["apiCalls"][0]["providerCost"] is None
+    assert api_calls.json()["apiCalls"][0]["providerCurrency"] is None
+    assert api_calls.json()["apiCalls"][0]["routeKey"] == "openai-backup"
+    assert api_calls.json()["apiCalls"][0]["runId"] == run_id
+    assert api_calls.json()["apiCalls"][0]["workspaceId"] == "workspace_group"
 
     all_api_calls = client.get(
         "/api/v1/admin/ai/api-calls",

@@ -1,0 +1,466 @@
+.workspace-commerce-page {
+  width: min(1360px, 100%);
+  margin: 0 auto;
+  padding: 0 32px 104px;
+}
+
+.workspace-commerce-header,
+.workspace-commerce-header-row,
+.workspace-commerce-card-head,
+.workspace-commerce-card-top,
+.workspace-commerce-card-actions,
+.workspace-commerce-section-head,
+.workspace-commerce-usage-tag-row,
+.workspace-commerce-ledger-head,
+.workspace-commerce-ledger-row {
+  display: flex;
+  align-items: center;
+}
+
+.workspace-commerce-page,
+.workspace-commerce-header,
+.workspace-commerce-section,
+.workspace-commerce-stack,
+.workspace-commerce-plan-card,
+.workspace-commerce-active-card,
+.workspace-commerce-usage-card,
+.workspace-commerce-rail,
+.workspace-commerce-rail-card,
+.workspace-commerce-rail-list,
+.workspace-commerce-summary-card,
+.workspace-commerce-ledger,
+.workspace-commerce-ledger-table {
+  display: grid;
+}
+
+.workspace-commerce-page,
+.workspace-commerce-stack {
+  gap: 28px;
+}
+
+.workspace-commerce-header {
+  gap: 18px;
+  padding-bottom: 8px;
+}
+
+.workspace-commerce-header-row,
+.workspace-commerce-card-head,
+.workspace-commerce-card-top,
+.workspace-commerce-section-head,
+.workspace-commerce-ledger-head,
+.workspace-commerce-ledger-row {
+  justify-content: space-between;
+}
+
+.workspace-commerce-header-row {
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.workspace-commerce-header-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.workspace-commerce-switch {
+  display: inline-flex;
+  padding: 4px;
+  border: 1px solid rgba(24, 29, 38, 0.1);
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.workspace-commerce-switch button,
+.workspace-commerce-primary-button,
+.workspace-commerce-secondary-button {
+  min-height: 40px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-decoration: none;
+}
+
+.workspace-commerce-switch button {
+  border: 0;
+  padding: 0 16px;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.workspace-commerce-switch button.is-active {
+  background: var(--color-ink);
+  color: #ffffff;
+}
+
+.workspace-commerce-summary-grid,
+.workspace-commerce-active-grid,
+.workspace-commerce-plan-grid,
+.workspace-commerce-card-list {
+  display: grid;
+  gap: 16px;
+}
+
+.workspace-commerce-summary-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.workspace-commerce-active-grid,
+.workspace-commerce-plan-grid,
+.workspace-commerce-card-list {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.workspace-commerce-section {
+  gap: 18px;
+}
+
+.workspace-commerce-section-head {
+  gap: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(24, 29, 38, 0.08);
+}
+
+.workspace-commerce-section-head h2,
+.workspace-commerce-card-top h3,
+.workspace-commerce-card-head h3,
+.workspace-commerce-enterprise h3 {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 1.18;
+}
+
+.workspace-commerce-summary-card,
+.workspace-commerce-plan-card,
+.workspace-commerce-active-card,
+.workspace-commerce-usage-card,
+.workspace-commerce-rail-card,
+.workspace-commerce-ledger-table,
+.workspace-commerce-enterprise {
+  border: 1px solid rgba(24, 29, 38, 0.08);
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.workspace-commerce-summary-card,
+.workspace-commerce-rail-card {
+  gap: 10px;
+  padding: 18px;
+}
+
+.workspace-commerce-summary-card {
+  min-height: 136px;
+}
+
+.workspace-commerce-summary-label,
+.workspace-commerce-card-eyebrow,
+.workspace-commerce-note,
+.workspace-commerce-ledger-head,
+.workspace-commerce-usage-tag {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.workspace-commerce-summary-value {
+  color: var(--color-ink);
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.1;
+}
+
+.workspace-commerce-summary-meta,
+.workspace-commerce-plan-list,
+.workspace-commerce-rail-row span,
+.workspace-commerce-rail-row small {
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.workspace-commerce-active-card,
+.workspace-commerce-usage-card,
+.workspace-commerce-plan-card {
+  gap: 18px;
+  padding: 20px;
+}
+
+.workspace-commerce-active-card[data-tone='group'],
+.workspace-commerce-usage-card[data-tone='group'] {
+  background: #fff1e7;
+}
+
+.workspace-commerce-active-card[data-tone='team'],
+.workspace-commerce-usage-card[data-tone='team'] {
+  background: #fbf5db;
+}
+
+.workspace-commerce-plan-card[data-plan='free_canvas'] {
+  background: #edf8eb;
+}
+
+.workspace-commerce-plan-card[data-plan='collaborate_start'],
+.workspace-commerce-plan-card[data-plan='collaborate_plus'] {
+  background: #faf4ea;
+}
+
+.workspace-commerce-plan-card.is-current {
+  border-color: rgba(24, 29, 38, 0.18);
+}
+
+.workspace-commerce-plan-head {
+  display: grid;
+  gap: 6px;
+}
+
+.workspace-commerce-plan-status {
+  color: var(--color-ink);
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.workspace-commerce-plan-price {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.workspace-commerce-plan-price strong {
+  color: var(--color-ink);
+  font-size: 38px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.workspace-commerce-plan-price small,
+.workspace-commerce-plan-badge {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.workspace-commerce-plan-badge,
+.workspace-commerce-usage-tag {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid rgba(24, 29, 38, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.workspace-commerce-plan-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.workspace-commerce-primary-button,
+.workspace-commerce-secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  cursor: pointer;
+}
+
+.workspace-commerce-primary-button {
+  border: 0;
+  background: var(--color-ink);
+  color: #ffffff;
+}
+
+.workspace-commerce-secondary-button {
+  border: 1px solid rgba(24, 29, 38, 0.12);
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--color-ink);
+}
+
+.workspace-commerce-tertiary-link {
+  color: var(--color-muted);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.workspace-commerce-card-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.workspace-commerce-stat {
+  display: grid;
+  gap: 6px;
+}
+
+.workspace-commerce-stat span {
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.workspace-commerce-stat strong {
+  color: var(--color-ink);
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.25;
+}
+
+.workspace-commerce-card-footer,
+.workspace-commerce-usage-tag-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.workspace-commerce-card-footer {
+  justify-content: space-between;
+  align-items: center;
+}
+
+.workspace-commerce-card-actions {
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.workspace-commerce-usage-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.52fr) minmax(280px, 0.78fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.workspace-commerce-progress {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(24, 29, 38, 0.12);
+}
+
+.workspace-commerce-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #181d26;
+}
+
+.workspace-commerce-progress.is-light span {
+  background: #aa2d00;
+}
+
+.workspace-commerce-usage-card.is-muted {
+  background: #f8fafc;
+}
+
+.workspace-commerce-rail {
+  gap: 16px;
+}
+
+.workspace-commerce-rail-list {
+  gap: 12px;
+}
+
+.workspace-commerce-rail-row {
+  display: grid;
+  gap: 3px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(24, 29, 38, 0.08);
+}
+
+.workspace-commerce-rail-row:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.workspace-commerce-rail-row strong {
+  color: var(--color-ink);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.workspace-commerce-ledger {
+  gap: 16px;
+}
+
+.workspace-commerce-ledger-table {
+  overflow: hidden;
+}
+
+.workspace-commerce-ledger-head,
+.workspace-commerce-ledger-row {
+  gap: 16px;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(24, 29, 38, 0.08);
+}
+
+.workspace-commerce-ledger-head,
+.workspace-commerce-ledger-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, 1fr) minmax(120px, 0.8fr);
+}
+
+.workspace-commerce-ledger-row:last-child {
+  border-bottom: 0;
+}
+
+.workspace-commerce-ledger-row span {
+  color: var(--color-ink);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.workspace-commerce-ledger-amount {
+  color: var(--color-signature-coral);
+  font-weight: 600;
+}
+
+.workspace-commerce-enterprise {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px;
+}
+
+@media (max-width: 1180px) {
+  .workspace-commerce-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .workspace-commerce-usage-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .workspace-commerce-page {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .workspace-commerce-summary-grid,
+  .workspace-commerce-active-grid,
+  .workspace-commerce-plan-grid,
+  .workspace-commerce-card-list,
+  .workspace-commerce-card-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-commerce-ledger-head,
+  .workspace-commerce-ledger-row {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-commerce-enterprise,
+  .workspace-commerce-card-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

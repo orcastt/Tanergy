@@ -5,6 +5,7 @@ import { getCurrentSessionSnapshot } from '@/features/auth/mockSession'
 import type { BoardPersistenceSummary } from '@/features/boards/boardTypes'
 import { getBoardCapabilities } from './boardCapabilities'
 import { WorkspaceBoardItem, type WorkspaceBoardViewMode } from './WorkspaceBoardItem'
+import { getInitials } from './boardMemberUtils'
 import { NewBoardTile, WorkspaceEmptyState, WorkspaceLoadingState } from './WorkspaceBoardStates'
 
 type WorkspaceBoardResultsProps = {
@@ -73,12 +74,18 @@ export function WorkspaceBoardResults({
         <NewBoardTile onCreate={onCreate} viewMode={viewMode} />
         {visibleBoards.map((board) => {
           const capabilities = getBoardCapabilities(board, session)
+          const workspace = session.workspaces.find((item) => item.id === board.workspaceId) ?? session.activeWorkspace
           return (
             <WorkspaceBoardItem
               board={board}
               canCopyBoard={capabilities.canCopyBoard}
               canDeleteBoard={capabilities.canDeleteBoard}
               canManageBoard={capabilities.canManageBoard}
+              collaborators={[
+                { id: `self-${session.user.id}`, initials: session.user.avatarInitials, label: `${session.user.displayName} (You)` },
+                { id: `owner-${board.ownerId}`, initials: getInitials(board.ownerId || 'Owner') || 'OW', label: `Owner ${board.ownerId}` },
+                { id: `workspace-${workspace.id}`, initials: getInitials(workspace.name) || 'WS', label: workspace.name },
+              ]}
               editingTitle={editingTitle}
               isEditing={editingBoardId === board.id}
               isPending={pendingBoardId === board.id}
@@ -98,6 +105,7 @@ export function WorkspaceBoardResults({
               onTogglePin={() => onTogglePin(board)}
               onToggleStar={() => onToggleStar(board)}
               viewMode={viewMode}
+              workspace={workspace}
             />
           )
         })}

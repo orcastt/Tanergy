@@ -7,6 +7,14 @@
 
 Data-model and access boundary for future management panel, billing, credits, seat entitlements and analytics.
 
+## P0 Alpha Boundary
+
+In the current release pass, this slice stays bounded:
+
+- billing is visible and explainable, but not fully automated
+- admin is server-gated and auditable, but not a deep business console yet
+- finance reconciliation, invoices, payment webhooks and enterprise operations remain deferred
+
 ## Fact Sources
 
 ```text
@@ -146,6 +154,7 @@ plan_change_adjustment
 ## Developer AI Control Plane
 
 The unified developer/admin backend must manage AI pricing and supplier routing separately from user-facing subscription packages.
+Runtime observation must expose both commercial credits and normalized supplier cost/currency so operators can tune margins without reading raw provider payloads.
 
 Core admin-managed tables:
 
@@ -221,24 +230,36 @@ GET /api/v1/admin/workspaces
 GET /api/v1/admin/boards
 GET /api/v1/admin/audit-logs
 GET /api/v1/admin/ai/models
+PATCH /api/v1/admin/ai/models/{modelKey}
+GET /api/v1/admin/ai/versions
+POST /api/v1/admin/ai/models/{modelKey}/publish
+POST /api/v1/admin/ai/models/{modelKey}/rollback/{versionId}
 GET /api/v1/admin/ai/runs
 GET /api/v1/admin/ai/api-calls
-POST /api/v1/admin/ai/models
 GET /api/v1/admin/ai/provider-routes
-POST /api/v1/admin/ai/provider-routes
+PATCH /api/v1/admin/ai/provider-routes/{routeId}
+POST /api/v1/admin/ai/provider-routes/{routeId}/publish
+POST /api/v1/admin/ai/provider-routes/{routeId}/rollback/{versionId}
 GET /api/v1/admin/ai/pricing-rules
-POST /api/v1/admin/ai/pricing-rules
+PATCH /api/v1/admin/ai/pricing-rules/{ruleId}
+POST /api/v1/admin/ai/pricing-rules/{ruleId}/publish
+POST /api/v1/admin/ai/pricing-rules/{ruleId}/rollback/{versionId}
 ```
 
 Billing/entitlements:
 
 ```text
 GET  /api/v1/billing/me
+GET  /api/v1/billing/payments
+POST /api/v1/billing/topups/checkout
+POST /api/v1/billing/payments/{paymentId}/complete
+POST /api/v1/billing/workspaces/current/seats/checkout
 GET  /api/v1/workspaces/current/dashboard
 GET  /api/v1/workspaces/current/entitlement
 GET  /api/v1/workspaces/current/seats
 POST /api/v1/workspaces/current/seats
 DELETE /api/v1/workspaces/current/seats/{userId}
+PATCH /api/v1/workspaces/current/members/{userId}
 GET  /api/v1/credits/ledger
 GET  /api/v1/credits/preflight?requiredCredits=
 GET  /api/v1/workspaces/{workspaceId}/billing
@@ -266,30 +287,31 @@ The exact route split may still change, but the core contract should remain:
 - Minimal backend access probe exists: `GET /api/v1/admin/me` loads active `admin_roles` for the authenticated local user id.
 - Read-only routes now exist for `GET /api/v1/admin/summary`, `GET /api/v1/admin/users?limit=n`, `GET /api/v1/admin/workspaces?limit=n` and `GET /api/v1/admin/boards?limit=n`, all behind the same server-side admin check and audit logging.
 - `GET /api/v1/admin/audit-logs` now exists with bounded filters for `limit`, `action`, `actorUserId` and `targetUserId`.
-- Read-only AI inspection routes now also exist: `GET /api/v1/admin/ai/models`, `GET /api/v1/admin/ai/provider-routes`, `GET /api/v1/admin/ai/pricing-rules`, `GET /api/v1/admin/ai/runs` and `GET /api/v1/admin/ai/api-calls`.
-- Frontend `/admin` now also renders a first-pass read-only AI dashboard on top of those routes: models, provider routes, pricing rules, runs and grouped API-call attempt timelines.
+- AI inspection plus first-pass mutation routes now also exist: `GET /api/v1/admin/ai/models`, `PATCH /api/v1/admin/ai/models/{modelKey}`, `GET /api/v1/admin/ai/versions`, publish/rollback routes for models/provider-routes/pricing-rules, `GET /api/v1/admin/ai/provider-routes`, `PATCH /api/v1/admin/ai/provider-routes/{routeId}`, `GET /api/v1/admin/ai/pricing-rules`, `PATCH /api/v1/admin/ai/pricing-rules/{ruleId}`, `GET /api/v1/admin/ai/runs` and `GET /api/v1/admin/ai/api-calls`.
+- Frontend `/admin` now also renders a first-pass AI dashboard on top of those routes: models, provider routes, pricing rules, runs, grouped API-call attempt timelines, version history/publish/rollback controls and editable save panels for model/route/pricing updates.
 - Frontend `/admin` now renders a real first-pass management surface behind server-checked access: summary, users, workspaces, boards, recent audit logs, selected-user role inspection and owner-only role grant/revoke controls.
 - Frontend `/admin` access gating now uses the server-side admin probe to render or redirect; browser role flags remain non-authoritative.
 - Billing/package strategy is now defined at the doc level, including Group-vs-Team workspace visibility boundaries and actor-personal charging for Team.
-- First-pass entitlement implementation now exists: `workspace_kind` and a dev-only compatible `workspace_plan_key` enter request/session context, migration `20260506_0007` adds workspace kind, seat-assignment, usage-rollup, dashboard-snapshot and AiRun charge fields, and the backend exposes read-only `/api/v1/billing/me`, `/api/v1/workspaces/current/dashboard` and `/api/v1/workspaces/current/entitlement`.
+- First-pass entitlement implementation now exists: `workspace_kind` and a dev-only compatible `workspace_plan_key` enter request/session context, migration `20260506_0007` adds workspace kind, seat-assignment, usage-rollup, dashboard-snapshot and AiRun charge fields, and the backend exposes `/api/v1/billing/me`, `/api/v1/billing/payments`, payment checkout/complete routes, `/api/v1/workspaces/current/dashboard`, `/api/v1/workspaces/current/entitlement`, `POST /api/v1/credits/topups`, `GET /api/v1/credits/ledger` and `PATCH /api/v1/workspaces/current/members/{userId}` for the current first pass.
 - Backend and local frontend read-only plan catalogs now cover `free_canvas`, `collaborate_start`, `collaborate_plus`, `team_start`, `team_growth` and `enterprise`.
 - When Postgres is configured, the entitlement resolver now checks active Team seat assignments first, then active user/workspace subscriptions via `tangent_credit_accounts` + `tangent_subscriptions`, before falling back to dev context/default plan keys.
 - The same resolver uses active `tangent_credit_accounts.id` as the charged account id when available; synthetic ids remain fallback only.
 - First-pass Team seat mutation contracts now exist behind Team workspace owner/admin checks: list current seats, upsert a Team Start/Growth seat for an active workspace member and revoke a member seat. The upsert path also ensures an active user credit account exists for the assigned member.
 - First-pass credit ledger read/preflight contracts now exist: `/api/v1/credits/ledger` returns current payer account balance plus recent ledger entries, and `/api/v1/credits/preflight?requiredCredits=n` returns can-run/shortfall facts without writing a usage charge.
-- Internal credit ledger mutation helpers now exist for subscription grants, top-up purchases, usage charges with insufficient-balance rejection, usage refunds and admin adjustments. These helpers write auditable `tangent_credit_ledger` rows, but they are not yet exposed as payment, Admin finance or AiRun settlement routes.
+- Frontend `/billing` now includes a first-pass top-up action, `/usage` exposes ledger filters plus workspace-vs-personal drill-down, and `/team` now supports seat assign/revoke plus workspace member-role editing on top of the Group/Team visibility split.
+- Internal credit ledger mutation helpers now exist for subscription grants, top-up purchases, usage charges with insufficient-balance rejection, usage refunds and admin adjustments. These helpers write auditable `tangent_credit_ledger` rows; first-pass billing checkout/complete now uses them for top-ups, Team seat checkout/complete updates subscription capacity, and AiRun settlement now also writes attempt-level `api_cost_ledger` rows.
 - Mock AiRun can optionally call those helpers when `TANGENT_AI_MOCK_LEDGER_CHARGING=1`, giving the charge resolver, preflight and ledger path a tested backend exercise while real providers remain disabled.
 - That same mock AiRun path now also gives Admin a persisted runtime fact surface: quote-selected pricing/route ids plus queued/running/succeeded/canceled lifecycle rows, and `ai_api_calls` now persist one row per provider attempt so failover history stays visible. The current `/admin` runtime surface groups those attempts by `run_id` and marks the final winning attempt for inspection.
-- The developer AI control-plane contract is now documented: future `/admin` work must manage models, parameter tiers, provider routes, pricing-rule versions and route health/failover facts.
+- The developer AI control-plane contract is now documented and has a first-pass save surface: current `/admin` work can already mutate bounded model, route and pricing facts, and versioned publish/rollback now exists for those resources, while future work still needs parameter-tier editing and richer route-health governance.
 - Frontend `/billing` now renders the signed-in user's own plan/credit/payer summary, and `/team` renders a Group structural dashboard or Team member-usage dashboard according to the server/local workspace kind contract.
-- This is still not real billing: no payment provider, payment webhook integration, Admin finance write surface, developer-facing model/pricing/route editor, AiRun provider-cost ledger settlement, analytics event stream, moderation queue or impersonation flow exists yet.
+- This is still not real external billing: no real payment provider, payment webhook integration, invoice/reconciliation flow, broader Admin finance write surface, analytics event stream, moderation queue or impersonation flow exists yet.
 
 ## First Admin MVP Boundary
 
 ```text
 Auth session
   -> server checks admin_roles
-  -> read-only user/workspace/board/asset/AiRun/API-call views
+  -> bounded user/workspace/board/asset/AiRun/API-call views plus audited admin write actions
   -> any write action must create admin_audit_logs first
 ```
 
@@ -301,6 +323,7 @@ Current bootstrap-first implementation direction:
 - Use it to decide whether `/admin` should render or redirect in the current first pass.
 - Allow bounded summary/users/workspaces/boards/audit-log routes behind the same server-side `admin_roles` check.
 - Keep owner-only role grant/revoke as the first admin mutation slice, with audit logging in the same server-controlled path.
+- First-pass AI control-plane save routes now exist; they must stay server-gated and audit each mutation, and later publish/rollback flows must preserve version history.
 - Richer search, pagination, billing controls, seat controls and moderation tooling still wait for later slices.
 
 ## Admin Bootstrap Contract
@@ -346,6 +369,14 @@ moderator  Moderation queues, content actions and abuse workflows.
 ## 范围
 
 本切片负责未来管理后台、计费、积分、席位权限和分析系统所需的数据模型与访问边界。
+
+## P0 Alpha 边界
+
+在当前这一轮发布里，这个切片保持有限边界：
+
+- billing 需要可见、可解释，但不是完整自动化系统
+- admin 需要 server-gated 且可审计，但还不是深层业务控制台
+- finance reconciliation、invoices、payment webhooks 和 enterprise operations 继续延后
 
 ## 事实数据源
 
@@ -561,24 +592,36 @@ GET /api/v1/admin/workspaces
 GET /api/v1/admin/boards
 GET /api/v1/admin/audit-logs
 GET /api/v1/admin/ai/models
+PATCH /api/v1/admin/ai/models/{modelKey}
+GET /api/v1/admin/ai/versions
+POST /api/v1/admin/ai/models/{modelKey}/publish
+POST /api/v1/admin/ai/models/{modelKey}/rollback/{versionId}
 GET /api/v1/admin/ai/runs
 GET /api/v1/admin/ai/api-calls
-POST /api/v1/admin/ai/models
 GET /api/v1/admin/ai/provider-routes
-POST /api/v1/admin/ai/provider-routes
+PATCH /api/v1/admin/ai/provider-routes/{routeId}
+POST /api/v1/admin/ai/provider-routes/{routeId}/publish
+POST /api/v1/admin/ai/provider-routes/{routeId}/rollback/{versionId}
 GET /api/v1/admin/ai/pricing-rules
-POST /api/v1/admin/ai/pricing-rules
+PATCH /api/v1/admin/ai/pricing-rules/{ruleId}
+POST /api/v1/admin/ai/pricing-rules/{ruleId}/publish
+POST /api/v1/admin/ai/pricing-rules/{ruleId}/rollback/{versionId}
 ```
 
 Billing / entitlement：
 
 ```text
 GET  /api/v1/billing/me
+GET  /api/v1/billing/payments
+POST /api/v1/billing/topups/checkout
+POST /api/v1/billing/payments/{paymentId}/complete
+POST /api/v1/billing/workspaces/current/seats/checkout
 GET  /api/v1/workspaces/current/dashboard
 GET  /api/v1/workspaces/current/entitlement
 GET  /api/v1/workspaces/current/seats
 POST /api/v1/workspaces/current/seats
 DELETE /api/v1/workspaces/current/seats/{userId}
+PATCH /api/v1/workspaces/current/members/{userId}
 GET  /api/v1/credits/ledger
 GET  /api/v1/credits/preflight?requiredCredits=
 GET  /api/v1/workspaces/{workspaceId}/billing
@@ -606,30 +649,31 @@ GET  /api/v1/boards/{boardId}/permissions/effective
 - 后端已有最小 Admin 访问探针：`GET /api/v1/admin/me`，用于加载已认证本地用户 id 的 active `admin_roles`。
 - 只读接口 `GET /api/v1/admin/summary`、`GET /api/v1/admin/users?limit=n`、`GET /api/v1/admin/workspaces?limit=n` 和 `GET /api/v1/admin/boards?limit=n` 已存在，并统一挂在同一个服务端 admin 检查和审计日志后面。
 - `GET /api/v1/admin/audit-logs` 已存在，并支持 `limit`、`action`、`actorUserId` 和 `targetUserId` 的受限过滤。
-- 只读 AI 检查 routes 现在也已存在：`GET /api/v1/admin/ai/models`、`GET /api/v1/admin/ai/provider-routes`、`GET /api/v1/admin/ai/pricing-rules`、`GET /api/v1/admin/ai/runs` 和 `GET /api/v1/admin/ai/api-calls`。
-- 前端 `/admin` 现在也已经在这些 routes 之上渲染了第一阶段只读 AI dashboard：models、provider routes、pricing rules、runs，以及按 run 分组的 API-call attempt 时间线。
+- AI 检查加第一阶段 mutation routes 现在也已存在：`GET /api/v1/admin/ai/models`、`PATCH /api/v1/admin/ai/models/{modelKey}`、`GET /api/v1/admin/ai/versions`、models/provider-routes/pricing-rules 的 publish/rollback routes、`GET /api/v1/admin/ai/provider-routes`、`PATCH /api/v1/admin/ai/provider-routes/{routeId}`、`GET /api/v1/admin/ai/pricing-rules`、`PATCH /api/v1/admin/ai/pricing-rules/{ruleId}`、`GET /api/v1/admin/ai/runs` 和 `GET /api/v1/admin/ai/api-calls`。
+- 前端 `/admin` 现在也已经在这些 routes 之上渲染了第一阶段 AI dashboard：既有 models、provider routes、pricing rules、runs 和按 run 分组的 API-call attempt 时间线，也有 version history / publish / rollback 控件，以及 model / route / pricing 更新的可编辑 save panels。
 - 前端 `/admin` 现在已经是一个真实的第一阶段管理界面，基于服务端权限检查渲染 summary、users、workspaces、boards、recent audit logs、selected-user role inspection 以及 owner-only role grant/revoke controls。
 - 前端 `/admin` 的访问门控现在依赖服务端探针，而不是浏览器本地 role flags。
 - 计费 / 套餐策略已经在文档层被定义，包括 Group/Team workspace 的可见性边界，以及 Team 也采用 actor-personal charging 的规则。
-- 第一阶段 entitlement 实现现在已经存在：`workspace_kind` 和 dev-only compatible `workspace_plan_key` 进入 request/session context，迁移 `20260506_0007` 增加 workspace kind、seat-assignment、usage-rollup、dashboard-snapshot 和 AiRun charge fields，并且后端暴露只读 `/api/v1/billing/me`、`/api/v1/workspaces/current/dashboard` 和 `/api/v1/workspaces/current/entitlement`。
+- 第一阶段 entitlement 实现现在已经存在：`workspace_kind` 和 dev-only compatible `workspace_plan_key` 进入 request/session context，迁移 `20260506_0007` 增加 workspace kind、seat-assignment、usage-rollup、dashboard-snapshot 和 AiRun charge fields，并且后端当前已经暴露 `/api/v1/billing/me`、`/api/v1/billing/payments`、payment checkout/complete routes、`/api/v1/workspaces/current/dashboard`、`/api/v1/workspaces/current/entitlement`、`POST /api/v1/credits/topups`、`GET /api/v1/credits/ledger` 和 `PATCH /api/v1/workspaces/current/members/{userId}` 这些第一阶段接口。
 - 后端和本地前端只读 plan catalogs 现在已覆盖 `free_canvas`、`collaborate_start`、`collaborate_plus`、`team_start`、`team_growth` 和 `enterprise`。
 - 当 Postgres 已配置时，entitlement resolver 现在会先检查 active Team seat assignments，再通过 `tangent_credit_accounts` + `tangent_subscriptions` 检查 active user/workspace subscriptions，最后才 fallback 到 dev context / default plan keys。
 - 同一个 resolver 会在可用时使用 active `tangent_credit_accounts.id` 作为 charged account id；synthetic ids 只作为 fallback 保留。
 - 第一阶段 Team seat mutation contracts 现在已存在，并且受 Team workspace owner/admin 检查保护：列出当前 seats、为 active workspace member upsert Team Start/Growth seat、revoke member seat。upsert 路径也会确保被分配成员拥有 active user credit account。
 - 第一阶段 credit ledger read/preflight contracts 现在已存在：`/api/v1/credits/ledger` 返回当前 payer account balance 和近期 ledger entries，`/api/v1/credits/preflight?requiredCredits=n` 返回 can-run / shortfall facts，但不会写 usage charge。
-- 内部 credit ledger mutation helpers 现在已存在，用于 subscription grants、top-up purchases、带余额不足拒绝的 usage charges、usage refunds 和 admin adjustments。这些 helper 会写入可审计的 `tangent_credit_ledger` rows，但还没有暴露成 payment、Admin finance 或 AiRun settlement routes。
+- 前端 `/billing` 现在已经带上第一阶段 top-up 动作，`/usage` 现在支持 ledger filters 和 workspace-vs-personal drill-down，而 `/team` 现在也已经在 Group/Team 可见性分层之上支持 seat assign/revoke 和 workspace member-role 编辑。
+- 内部 credit ledger mutation helpers 现在已存在，用于 subscription grants、top-up purchases、带余额不足拒绝的 usage charges、usage refunds 和 admin adjustments。这些 helper 会写入可审计的 `tangent_credit_ledger` rows；第一阶段 billing checkout/complete 现在已经会在 top-up 场景下调用它们，Team seat checkout/complete 会更新 subscription capacity，而 AiRun settlement 现在也会按尝试写入 `api_cost_ledger`。
 - 当 `TANGENT_AI_MOCK_LEDGER_CHARGING=1` 时，Mock AiRun 可以选择性调用这些 helper，让 charge resolver、preflight 和 ledger path 有一条被测试覆盖的后端演练链路，同时保持真实 providers disabled。
 - 同一条 Mock AiRun 路径现在也给 Admin 提供了持久化 runtime 事实面：quote 阶段选中的 pricing / route ids，加上 queued/running/succeeded/canceled lifecycle rows，而且 `ai_api_calls` 现在会按每次 provider 尝试各写一行，因此 failover 历史不会被覆盖掉。当前 `/admin` runtime 界面也会按 `run_id` 对这些 attempts 分组，并标出最终成功的是哪次。
-- 开发者 AI 控制平面合同已经被文档化：后续需要在 `/admin` 下管理 models、parameter tiers、provider routes、pricing-rule versions 和 route health/failover facts。
+- 开发者 AI 控制平面合同已经被文档化，并且已经有了第一阶段 save surface：当前 `/admin` 已能对受限的 model、route 和 pricing facts 做 mutation，而且这些资源现在已经支持版本化 publish/rollback；后续还需要补 parameter-tier editing 和更丰富的 route-health 治理。
 - 前端 `/billing` 现在渲染当前登录用户自己的 plan/credit/payer summary，`/team` 会根据服务端 / 本地 workspace kind 合同渲染 Group structural dashboard 或 Team member-usage dashboard。
-- 这仍然不是真实 billing：payment provider、payment webhook integration、Admin finance write surface、developer-facing model/pricing/route editor、AiRun provider-cost ledger settlement、analytics event stream、moderation queue 和 impersonation flow 都还不存在。
+- 这仍然不是真实的外部 billing：真实 payment provider、payment webhook integration、invoice/reconciliation 流、更广的 Admin finance write surface、analytics event stream、moderation queue 和 impersonation flow 都还不存在。
 
 ## 第一阶段 Admin MVP 边界
 
 ```text
 Auth session
   -> 服务端检查 admin_roles
-  -> 只读 user/workspace/board/asset/AiRun/API-call 视图
+  -> 有边界的 user/workspace/board/asset/AiRun/API-call 视图，加上带审计的 admin 写操作
   -> 任意写操作都必须先写 admin_audit_logs
 ```
 
@@ -641,6 +685,7 @@ Auth session
 - 用它来决定 `/admin` 在当前第一阶段是应该渲染还是重定向。
 - 允许有边界的 summary / users / workspaces / boards / audit-log 路由都挂在同一个服务端 `admin_roles` 检查后面。
 - 保留 owner-only 的角色授予 / 撤销作为第一个 admin mutation 切片，并在同一路径中写入审计日志。
+- 第一阶段 AI control-plane save routes 现在已经存在；它们必须继续保持服务端门控，并对每次 mutation 写审计，而后续 publish / rollback 还必须保留版本历史。
 - 更丰富的搜索、分页、billing controls、seat controls 和 moderation tooling 仍然留到后续切片。
 
 ## Admin Bootstrap 合同

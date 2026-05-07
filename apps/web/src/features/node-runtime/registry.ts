@@ -38,6 +38,62 @@ const geminiImageSizeOptions = [
   { label: '4K', value: '4K' },
 ]
 
+const seedreamSizeOptions = [
+  { label: '2K auto', value: '2K' },
+  { label: '3K auto', value: '3K' },
+  { label: '4K auto', value: '4K' },
+  { label: '2K 1:1 · 2048 x 2048', value: '2048x2048' },
+  { label: '2K 4:3 · 2304 x 1728', value: '2304x1728' },
+  { label: '2K 3:4 · 1728 x 2304', value: '1728x2304' },
+  { label: '2K 16:9 · 2848 x 1600', value: '2848x1600' },
+  { label: '2K 9:16 · 1600 x 2848', value: '1600x2848' },
+  { label: '2K 3:2 · 2496 x 1664', value: '2496x1664' },
+  { label: '2K 2:3 · 1664 x 2496', value: '1664x2496' },
+  { label: '2K 21:9 · 3136 x 1344', value: '3136x1344' },
+  { label: '3K 1:1 · 3072 x 3072', value: '3072x3072' },
+  { label: '3K 4:3 · 3456 x 2592', value: '3456x2592' },
+  { label: '3K 3:4 · 2592 x 3456', value: '2592x3456' },
+  { label: '3K 16:9 · 4096 x 2304', value: '4096x2304' },
+  { label: '3K 9:16 · 2304 x 4096', value: '2304x4096' },
+  { label: '3K 3:2 · 3744 x 2496', value: '3744x2496' },
+  { label: '3K 2:3 · 2496 x 3744', value: '2496x3744' },
+  { label: '3K 21:9 · 4704 x 2016', value: '4704x2016' },
+  { label: '4K 1:1 · 4096 x 4096', value: '4096x4096' },
+  { label: '4K 4:3 · 3520 x 4704', value: '3520x4704' },
+  { label: '4K 3:4 · 4704 x 3520', value: '4704x3520' },
+  { label: '4K 16:9 · 5504 x 3040', value: '5504x3040' },
+  { label: '4K 9:16 · 3040 x 5504', value: '3040x5504' },
+  { label: '4K 3:2 · 3328 x 4992', value: '3328x4992' },
+  { label: '4K 2:3 · 4992 x 3328', value: '4992x3328' },
+  { label: '4K 21:9 · 6240 x 2656', value: '6240x2656' },
+]
+
+const seedreamOutputFormatOptions = [
+  { label: 'PNG', value: 'png' },
+  { label: 'JPEG', value: 'jpeg' },
+]
+
+const jimengSizeOptions = [
+  { label: '1K 1:1 · 1024 x 1024', value: '1024x1024' },
+  { label: '2K 1:1 · 2048 x 2048', value: '2048x2048' },
+  { label: '2K 4:3 · 2304 x 1728', value: '2304x1728' },
+  { label: '2K 16:9 · 2560 x 1440', value: '2560x1440' },
+  { label: '2K 3:2 · 2496 x 1664', value: '2496x1664' },
+  { label: '2K 21:9 · 3024 x 1296', value: '3024x1296' },
+  { label: '4K 1:1 · 4096 x 4096', value: '4096x4096' },
+  { label: '4K 4:3 · 4694 x 3520', value: '4694x3520' },
+  { label: '4K 3:2 · 4992 x 3328', value: '4992x3328' },
+  { label: '4K 16:9 · 5404 x 3040', value: '5404x3040' },
+  { label: '4K 21:9 · 6198 x 2656', value: '6198x2656' },
+]
+
+const jimengStrengthOptions = [
+  { label: '0.3', value: '0.3' },
+  { label: '0.5', value: '0.5' },
+  { label: '0.7', value: '0.7' },
+  { label: '0.9', value: '0.9' },
+]
+
 export const defaultAnalysisPrompt = 'Analyze this image in detail. Describe the scene, subjects, materials, lighting, composition, and notable visual traits. Then write one clean image prompt.'
 const legacyAnalysisPrompt = '分析这张图片内容，尽可能描述场景中的物体和特征，并输出一段提示词。'
 
@@ -65,6 +121,18 @@ const geminiImageFields = [
   imageModelField,
   { label: 'Aspect ratio', name: 'aspectRatio', options: geminiAspectRatioOptions, type: 'select' as const },
   { label: 'Image size', name: 'imageSize', options: geminiImageSizeOptions, type: 'select' as const },
+]
+
+const seedreamImageFields = [
+  imageModelField,
+  { label: 'Size', name: 'seedreamSize', options: seedreamSizeOptions, type: 'select' as const },
+  { label: 'Format', name: 'seedreamOutputFormat', options: seedreamOutputFormatOptions, type: 'select' as const },
+]
+
+const jimengImageFields = [
+  imageModelField,
+  { label: 'Size', name: 'jimengSize', options: jimengSizeOptions, type: 'select' as const },
+  { label: 'Strength', name: 'jimengStrength', options: jimengStrengthOptions, type: 'select' as const },
 ]
 
 export const maxImageInputPorts = 6
@@ -164,8 +232,12 @@ export const nodeDefinitions: Record<NodeType, NodeDefinition> = {
       aspectRatio: '1:1',
       imageSize: '1K',
       imageInputCount: 1,
+      jimengSize: '2048x2048',
+      jimengStrength: '0.5',
       modelId: getDefaultImageModelId(),
       quality: 'medium',
+      seedreamOutputFormat: 'png',
+      seedreamSize: '2K',
       size: '1024x1024',
       textInputCount: 1,
     },
@@ -195,8 +267,12 @@ export const nodeDefinitions: Record<NodeType, NodeDefinition> = {
       aspectRatio: '1:1',
       imageSize: '1K',
       imageInputCount: 1,
+      jimengSize: '2048x2048',
+      jimengStrength: '0.5',
       modelId: getDefaultImageModelId(),
       quality: 'medium',
+      seedreamOutputFormat: 'png',
+      seedreamSize: '2K',
       size: '1024x1024',
       textInputCount: 1,
     },
@@ -347,7 +423,10 @@ export function createDefaultRuntimeSummary(type: NodeType): NodeRuntimeSummary 
 
 export function getImageGenerationCardFields(data: JsonObject): NodeCardField[] {
   const normalized = getNormalizedImageGenerationData(data)
-  return normalized.modelId === 'gemini-3.1-flash-image-preview' ? geminiImageFields : gptImage2Fields
+  if (normalized.modelId === 'gemini-3.1-flash-image-preview') return geminiImageFields
+  if (normalized.modelId === 'doubao-seedream-5.0-lite') return seedreamImageFields
+  if (normalized.modelId === 'jimeng_t2i_v40') return jimengImageFields
+  return gptImage2Fields
 }
 
 export function getAnalysisCardFields(): NodeCardField[] {
@@ -394,12 +473,36 @@ export function getNormalizedImageGenerationData(data: JsonObject): JsonObject {
     geminiImageSizeOptions.map((option) => option.value),
     '1K'
   )
+  const seedreamSize = getAllowedFieldValue(
+    typeof data.seedreamSize === 'string' && data.seedreamSize.trim() ? data.seedreamSize : '2K',
+    seedreamSizeOptions.map((option) => option.value),
+    '2K'
+  )
+  const seedreamOutputFormat = getAllowedFieldValue(
+    typeof data.seedreamOutputFormat === 'string' && data.seedreamOutputFormat.trim() ? data.seedreamOutputFormat : 'png',
+    seedreamOutputFormatOptions.map((option) => option.value),
+    'png'
+  )
+  const jimengSize = getAllowedFieldValue(
+    typeof data.jimengSize === 'string' && data.jimengSize.trim() ? data.jimengSize : '2048x2048',
+    jimengSizeOptions.map((option) => option.value),
+    '2048x2048'
+  )
+  const jimengStrength = getAllowedFieldValue(
+    typeof data.jimengStrength === 'string' && data.jimengStrength.trim() ? data.jimengStrength : '0.5',
+    jimengStrengthOptions.map((option) => option.value),
+    '0.5'
+  )
   return {
     ...data,
     aspectRatio,
     imageSize,
+    jimengSize,
+    jimengStrength,
     modelId,
     quality,
+    seedreamOutputFormat,
+    seedreamSize,
     size,
   }
 }

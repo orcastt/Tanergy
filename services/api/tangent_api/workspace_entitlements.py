@@ -7,6 +7,7 @@ from uuid import uuid4
 from fastapi import HTTPException
 
 from tangent_api.ai_schemas import AiRunChargeSummary
+from tangent_api.billing_balance import load_credit_balance_for_account, load_credit_reason_totals, split_credit_balance
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.storage.postgres_connection import connect_to_postgres, require_database_url
 from tangent_api.workspace_schemas import (
@@ -83,13 +84,28 @@ def build_billing_me_response(context: ApiRequestContext) -> BillingMeResponse:
     plan = build_plan_summary(entitlement.plan_key, entitlement.included_credits_override)
     charge = _build_ai_charge_summary(context, entitlement)
     included_total = plan.included_credits
-    usage = _mock_usage_for_user(context.user_id, included_total)
+    total_balance = 0.0
+    reason_totals: dict[str, float] = {}
+    if os.getenv("DATABASE_URL"):
+        total_balance = load_credit_balance_for_account(charge.charged_account_id)
+        reason_totals = load_credit_reason_totals(charge.charged_account_id)
+    if total_balance > 0 and reason_totals.get("subscription_grant", 0) > 0:
+        included_remaining, top_up_balance = split_credit_balance(total_balance, included_total)
+        usage = max(0, included_total - included_remaining)
+    elif total_balance > 0:
+        usage = _mock_usage_for_user(context.user_id, included_total)
+        included_remaining = max(0, included_total - usage)
+        top_up_balance = int(round(total_balance))
+    else:
+        usage = _mock_usage_for_user(context.user_id, included_total)
+        included_remaining = max(0, included_total - usage)
+        top_up_balance = 0
     return BillingMeResponse(
         chargeScope=charge.charged_scope,
         credits=PersonalCreditSummary(
-            includedRemaining=max(0, included_total - usage),
+            includedRemaining=included_remaining,
             includedTotal=included_total,
-            topUpBalance=0,
+            topUpBalance=top_up_balance,
             usedThisCycle=usage,
         ),
         ok=True,
@@ -101,22 +117,17 @@ def build_billing_me_response(context: ApiRequestContext) -> BillingMeResponse:
 
 def build_workspace_dashboard_response(context: ApiRequestContext) -> WorkspaceDashboardRecord:
     can_see_member_usage = can_see_team_member_usage(context)
-    entitlement = resolve_entitlement(context)
-    usage = _mock_usage_for_user(context.user_id, build_plan_summary(entitlement.plan_key, entitlement.included_credits_override).included_credits)
-    member = WorkspaceDashboardMember(
-        displayName=context.user_display_name,
-        email=context.user_email,
-        role=context.workspace_role,
-        usageThisCycle=usage if can_see_member_usage else None,
-        userId=context.user_id,
-    )
+    members = _load_workspace_dashboard_members(context, can_see_member_usage)
+    total_usage = None
+    if can_see_member_usage:
+        total_usage = sum(member.usage_this_cycle or 0 for member in members)
     return WorkspaceDashboardRecord(
         boardCount=context.workspace_board_count,
         canSeeMemberUsage=can_see_member_usage,
         dashboardKind="team_usage" if can_see_member_usage else "group_structure",
-        memberCount=1,
-        members=[member],
-        totalUsageThisCycle=usage if can_see_member_usage else None,
+        memberCount=len(members),
+        members=members,
+        totalUsageThisCycle=total_usage,
         workspace=build_workspace_summary(context),
     )
 
@@ -233,6 +244,40 @@ def list_workspace_seat_assignments(context: ApiRequestContext) -> list[Workspac
     return [_seat_assignment_from_row(row) for row in rows]
 
 
+def update_workspace_member_role(user_id: str, role: str, context: ApiRequestContext) -> WorkspaceDashboardMember:
+    _assert_can_manage_workspace_members(context)
+    normalized_user_id = _normalize_id(user_id, "user id")
+    normalized_role = _normalize_workspace_role(role)
+    require_database_url()
+
+    with connect_to_postgres() as connection:
+        with connection.cursor() as cursor:
+            current_member = _load_workspace_member_row(cursor, context.workspace_id, normalized_user_id)
+            if current_member is None:
+                raise HTTPException(status_code=404, detail="Workspace member not found.")
+            current_role = str(current_member[3])
+            _assert_role_mutation_allowed(context.workspace_role, normalized_user_id, context.user_id, current_role, normalized_role)
+            cursor.execute(
+                """
+                UPDATE tangent_workspace_members
+                SET role = %s
+                WHERE workspace_id = %s
+                  AND user_id = %s
+                """,
+                (
+                    normalized_role,
+                    context.workspace_id,
+                    normalized_user_id,
+                ),
+            )
+            row = _load_workspace_member_row(cursor, context.workspace_id, normalized_user_id)
+        connection.commit()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Workspace member not found.")
+    usage_by_user = _load_workspace_usage_map(context.workspace_id) if can_see_team_member_usage(context) else {}
+    return _workspace_dashboard_member_from_row(row, usage_by_user.get(normalized_user_id), can_see_team_member_usage(context))
+
+
 def upsert_workspace_seat_assignment(
     input_data: WorkspaceSeatAssignmentUpsertRequest,
     context: ApiRequestContext,
@@ -251,6 +296,7 @@ def upsert_workspace_seat_assignment(
         with connection.cursor() as cursor:
             _assert_active_workspace_member(cursor, context.workspace_id, user_id)
             _ensure_user_credit_account(cursor, user_id)
+            _assert_workspace_seat_capacity(cursor, context.workspace_id, plan_key, user_id)
             seat_id = f"seat_{uuid4()}"
             cursor.execute(
                 """
@@ -302,6 +348,22 @@ def upsert_workspace_seat_assignment(
             )
             row = cursor.fetchone()
         connection.commit()
+    from tangent_api.credit_ledger import grant_subscription_credits_to_account
+
+    grant_subscription_credits_to_account(
+        account_id=f"credit_user_{user_id}",
+        actor_user_id=context.user_id,
+        workspace_id=context.workspace_id,
+        credits=included_credits,
+        source_id=f"seat_grant:{context.workspace_id}:{user_id}:{plan_key}:{input_data.current_period_start or 'current'}",
+        metadata={
+            "currentPeriodEnd": input_data.current_period_end,
+            "currentPeriodStart": input_data.current_period_start,
+            "planKey": plan_key,
+            "workspaceSeatId": str(row[0]) if row else seat_id,
+            "workspaceId": context.workspace_id,
+        },
+    )
     return _seat_assignment_from_row(row)
 
 
@@ -326,6 +388,52 @@ def revoke_workspace_seat_assignment(user_id: str, context: ApiRequestContext) -
     return normalized_user_id
 
 
+def _assert_workspace_seat_capacity(cursor: object, workspace_id: str, plan_key: str, user_id: str) -> None:
+    max_seats = _load_workspace_purchased_seat_count(cursor, workspace_id, plan_key)
+    if max_seats <= 0:
+        raise HTTPException(status_code=402, detail="No purchased seats are available for this plan.")
+    cursor.execute(
+        """
+        SELECT COUNT(*)
+        FROM tangent_workspace_seat_assignments
+        WHERE workspace_id = %s
+          AND plan_key = %s
+          AND status = 'active'
+          AND user_id <> %s
+        """,
+        (workspace_id, plan_key, user_id),
+    )
+    row = cursor.fetchone()
+    active_assignments = int(row[0] or 0) if row else 0
+    if active_assignments >= max_seats:
+        raise HTTPException(status_code=402, detail="No purchased seats remain for this plan.")
+
+
+def _load_workspace_purchased_seat_count(cursor: object, workspace_id: str, plan_key: str) -> int:
+    cursor.execute(
+        """
+        SELECT amount_cents, metadata
+        FROM tangent_payments
+        WHERE account_id = %s
+          AND kind = 'seat_purchase'
+          AND status = 'succeeded'
+        ORDER BY created_at DESC
+        """,
+        (f"credit_workspace_{workspace_id}",),
+    )
+    rows = cursor.fetchall()
+    total = 0
+    for amount_cents, metadata in rows:
+        if not isinstance(metadata, dict):
+            continue
+        if str(metadata.get("workspaceId") or "") != workspace_id:
+            continue
+        if str(metadata.get("planKey") or "") != plan_key:
+            continue
+        total += int(metadata.get("quantity") or 0)
+    return total
+
+
 def _entitlement_source(workspace_kind: str) -> str:
     if workspace_kind == "team_workspace":
         return "team_seat_allowance"
@@ -347,6 +455,13 @@ def _assert_can_manage_team_seats(context: ApiRequestContext) -> None:
         raise HTTPException(status_code=403, detail="Seat assignment is only available for Team workspaces.")
     if context.workspace_role not in {"admin", "owner"}:
         raise HTTPException(status_code=403, detail="Workspace role cannot manage team seats.")
+
+
+def _assert_can_manage_workspace_members(context: ApiRequestContext) -> None:
+    if context.workspace_kind not in {"group_workspace", "team_workspace", "enterprise_workspace"}:
+        raise HTTPException(status_code=403, detail="Workspace member management is unavailable for this workspace.")
+    if context.workspace_role not in {"admin", "owner"}:
+        raise HTTPException(status_code=403, detail="Workspace role cannot manage workspace members.")
 
 
 def _assert_active_workspace_member(cursor: object, workspace_id: str, user_id: str) -> None:
@@ -399,6 +514,13 @@ def _normalize_team_plan_key(value: str) -> str:
     normalized = value.strip()
     if normalized not in {"team_start", "team_growth"}:
         raise HTTPException(status_code=400, detail="Invalid team plan key.")
+    return normalized
+
+
+def _normalize_workspace_role(value: str) -> str:
+    normalized = value.strip()
+    if normalized not in {"admin", "guest", "member"}:
+        raise HTTPException(status_code=400, detail="Invalid workspace role.")
     return normalized
 
 
@@ -477,6 +599,139 @@ def _resolve_database_entitlement(context: ApiRequestContext) -> Optional[Entitl
             workspace_seat_id=None,
         )
     return None
+
+
+def _load_workspace_dashboard_members(
+    context: ApiRequestContext,
+    can_see_member_usage: bool,
+) -> list[WorkspaceDashboardMember]:
+    if not os.getenv("DATABASE_URL"):
+        return [_fallback_workspace_dashboard_member(context, can_see_member_usage)]
+    with connect_to_postgres() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT wm.user_id,
+                       u.email,
+                       COALESCE(wm.display_name, u.display_name, u.email),
+                       wm.role,
+                       wm.joined_at,
+                       wm.invited_by
+                FROM tangent_workspace_members wm
+                LEFT JOIN tangent_users u ON u.id = wm.user_id
+                WHERE wm.workspace_id = %s
+                ORDER BY CASE wm.role
+                    WHEN 'owner' THEN 0
+                    WHEN 'admin' THEN 1
+                    WHEN 'member' THEN 2
+                    ELSE 3
+                END,
+                wm.joined_at ASC
+                """,
+                (context.workspace_id,),
+            )
+            rows = cursor.fetchall()
+    if not rows:
+        return [_fallback_workspace_dashboard_member(context, can_see_member_usage)]
+    usage_by_user = _load_workspace_usage_map(context.workspace_id) if can_see_member_usage else {}
+    return [
+        _workspace_dashboard_member_from_row(row, usage_by_user.get(str(row[0])), can_see_member_usage)
+        for row in rows
+    ]
+
+
+def _fallback_workspace_dashboard_member(
+    context: ApiRequestContext,
+    can_see_member_usage: bool,
+) -> WorkspaceDashboardMember:
+    entitlement = resolve_entitlement(context)
+    usage = _mock_usage_for_user(
+        context.user_id,
+        build_plan_summary(entitlement.plan_key, entitlement.included_credits_override).included_credits,
+    )
+    return WorkspaceDashboardMember(
+        displayName=context.user_display_name,
+        email=context.user_email,
+        invitedBy=None,
+        joinedAt=None,
+        role=context.workspace_role,
+        usageThisCycle=usage if can_see_member_usage else None,
+        userId=context.user_id,
+    )
+
+
+def _load_workspace_usage_map(workspace_id: str) -> dict[str, int]:
+    if not os.getenv("DATABASE_URL"):
+        return {}
+    with connect_to_postgres() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT actor_user_id,
+                       COALESCE(SUM(CASE WHEN credits_delta < 0 THEN -credits_delta ELSE 0 END), 0)
+                FROM tangent_credit_ledger
+                WHERE workspace_id = %s
+                  AND actor_user_id IS NOT NULL
+                GROUP BY actor_user_id
+                """,
+                (workspace_id,),
+            )
+            rows = cursor.fetchall()
+    return {str(row[0]): int(float(row[1] or 0)) for row in rows}
+
+
+def _workspace_dashboard_member_from_row(
+    row: tuple[object, ...],
+    usage_this_cycle: Optional[int],
+    can_see_member_usage: bool,
+) -> WorkspaceDashboardMember:
+    return WorkspaceDashboardMember(
+        displayName=str(row[2] or row[1] or row[0]),
+        email=str(row[1]) if row[1] else None,
+        invitedBy=str(row[5]) if len(row) > 5 and row[5] else None,
+        joinedAt=_optional_iso(row[4]) if len(row) > 4 else None,
+        role=str(row[3]),
+        usageThisCycle=usage_this_cycle if can_see_member_usage else None,
+        userId=str(row[0]),
+    )
+
+
+def _load_workspace_member_row(cursor: object, workspace_id: str, user_id: str) -> Optional[tuple[object, ...]]:
+    cursor.execute(
+        """
+        SELECT wm.user_id,
+               u.email,
+               COALESCE(wm.display_name, u.display_name, u.email),
+               wm.role,
+               wm.joined_at,
+               wm.invited_by
+        FROM tangent_workspace_members wm
+        LEFT JOIN tangent_users u ON u.id = wm.user_id
+        WHERE wm.workspace_id = %s
+          AND wm.user_id = %s
+        LIMIT 1
+        """,
+        (workspace_id, user_id),
+    )
+    return cursor.fetchone()
+
+
+def _assert_role_mutation_allowed(
+    actor_role: str,
+    target_user_id: str,
+    actor_user_id: str,
+    current_role: str,
+    next_role: str,
+) -> None:
+    if current_role == "owner":
+        raise HTTPException(status_code=400, detail="Owner role cannot be changed here.")
+    if target_user_id == actor_user_id and current_role == "admin" and next_role != "admin":
+        raise HTTPException(status_code=400, detail="Admins cannot demote themselves.")
+    if actor_role != "owner":
+        if next_role == "admin":
+            raise HTTPException(status_code=403, detail="Only owners can grant admin role.")
+        if current_role == "admin":
+            raise HTTPException(status_code=403, detail="Only owners can change another admin role.")
 
 
 def _is_plan_key_allowed_for_workspace_kind(plan_key: str, workspace_kind: str) -> bool:

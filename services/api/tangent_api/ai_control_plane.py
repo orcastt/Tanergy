@@ -40,6 +40,26 @@ def list_models(capability: Optional[str]) -> list[AiModelOption]:
     return options
 
 
+def load_pricing_rule_by_id(pricing_rule_id: Optional[str]) -> Optional[dict[str, Any]]:
+    if not pricing_rule_id:
+        return None
+    _models, _tiers, _routes, pricing_rules = _load_control_plane_rows()
+    return next((row for row in pricing_rules if row.get("id") == pricing_rule_id), None)
+
+
+def load_tier_by_key(model_key: str, tier_key: Optional[str]) -> Optional[dict[str, Any]]:
+    if not tier_key:
+        return None
+    _models, tiers, _routes, _pricing_rules = _load_control_plane_rows()
+    return next(
+        (
+            row for row in tiers
+            if row.get("model_key") == model_key and row.get("tier_key") == tier_key and row.get("enabled", True)
+        ),
+        None,
+    )
+
+
 def build_ai_run_quote(payload: AiRunRequest, context: ApiRequestContext) -> AiRunQuoteRecord:
     return resolve_ai_run_quote(payload, context).quote
 

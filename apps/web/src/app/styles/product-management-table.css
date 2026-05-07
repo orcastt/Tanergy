@@ -4,20 +4,27 @@
 
 .management-table {
   width: 100%;
-  min-width: 680px;
+  min-width: 720px;
   border-collapse: collapse;
 }
 
 .management-table th,
 .management-table td {
-  padding: 16px 12px;
-  border-top: 1px solid var(--color-hairline);
+  padding: 18px 12px;
+  border-top: 1px solid rgba(24, 29, 38, 0.08);
   text-align: left;
+  vertical-align: top;
+}
+
+.management-table thead th {
+  padding-top: 0;
+  padding-bottom: 18px;
 }
 
 .management-table td {
   color: var(--color-body);
   font-size: 14px;
+  line-height: 1.55;
 }
 
 .management-member {
@@ -42,5 +49,24 @@
 
 .management-member small {
   margin-top: 2px;
+  color: var(--color-muted);
+}
+
+.management-table-cell-stack {
+  display: grid;
+  gap: 4px;
+}
+
+.management-table-cell-stack strong,
+.management-table-cell-stack small {
+  display: block;
+}
+
+.management-table-cell-stack strong {
+  color: var(--color-ink);
+  font-weight: 500;
+}
+
+.management-table-cell-stack small {
   color: var(--color-muted);
 }

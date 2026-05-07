@@ -8,6 +8,7 @@ from uuid import uuid4
 from fastapi import HTTPException
 
 from tangent_api.ai_control_plane import list_models, resolve_ai_run_quote
+from tangent_api.ai_cost_ledger import persist_ai_cost_ledger_entries
 from tangent_api.ai_run_execution import finalize_mock_run, mock_cost_hint
 from tangent_api.ai_run_persistence import (
     persist_ai_api_call_attempts,
@@ -55,6 +56,8 @@ def create_mock_run(payload: AiRunRequest, context: ApiRequestContext) -> AiRunR
         outputAssetIds=[],
         pricingRuleId=quote_bundle.pricing_rule_id,
         provider=quote_bundle.provider,
+        providerCost=None,
+        providerCurrency=None,
         routeId=quote_bundle.route_id,
         routeKey=quote_bundle.route_key,
         runId=run_id,
@@ -147,6 +150,7 @@ def _execute_scheduled_run(run_id: str, payload: AiRunRequest, context: ApiReque
         )
         if finalization.attempts:
             persist_ai_api_call_attempts(finalization.run, context, finalization.attempts)
+            persist_ai_cost_ledger_entries(finalization.run, context, finalization.attempts)
         canceled = load_ai_run_record(run_id)
         if canceled is not None and canceled.status == "canceled":
             RUNS[run_id] = canceled

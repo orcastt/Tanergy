@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, type FormEvent } from 'react'
+import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import {
   boardCardColorValues,
   type BoardCardColor,
@@ -31,6 +32,7 @@ type BoardManagementPanelProps = {
     visibility: BoardVisibility
   }) => void
   onShare: () => void
+  workspace?: TangentWorkspace
 }
 
 const colorLabels: Record<BoardCardColor, string> = {
@@ -53,6 +55,7 @@ export function BoardManagementPanel({
   onOpen,
   onSave,
   onShare,
+  workspace,
 }: BoardManagementPanelProps) {
   const [cardColor, setCardColor] = useState<BoardCardColor>(getBoardDisplayCardColor(board))
   const [description, setDescription] = useState(board.description ?? '')
@@ -96,7 +99,7 @@ export function BoardManagementPanel({
             <div><dt>Created</dt><dd>{formatDate(board.createdAt ?? board.savedAt)}</dd></div>
             <div><dt>Last modified</dt><dd>{formatDate(board.savedAt)}</dd></div>
             <div><dt>Last opened</dt><dd>{board.lastOpenedAt ? formatDate(board.lastOpenedAt) : 'Not opened yet'}</dd></div>
-            <div><dt>Location</dt><dd>{board.workspaceId}</dd></div>
+            <div><dt>Location</dt><dd>{workspace?.name ?? board.workspaceId}</dd></div>
             <div><dt>Objects</dt><dd>{board.shapeCount} shapes / {board.assetCount} assets</dd></div>
           </dl>
         </aside>
@@ -235,7 +238,7 @@ export function BoardManagementPanel({
             </form>
 
             <div className="board-panel-members-column">
-              <BoardManagementMembers board={board} canManageBoard={canManageBoard} disabled={isPending} />
+              <BoardManagementMembers board={board} canManageBoard={canManageBoard} disabled={isPending} workspace={workspace} />
             </div>
           </div>
         </main>

@@ -3,7 +3,7 @@ import os
 from datetime import datetime, timezone
 from typing import Optional
 
-from tangent_api.ai_provider_adapters import AiProviderAttemptResult
+from tangent_api.ai_provider_types import AiProviderAttemptResult
 from tangent_api.ai_schemas import AiRunChargeSummary, AiRunRecord, AiRunRequest
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.storage.postgres_connection import connect_to_postgres
@@ -88,8 +88,8 @@ def persist_ai_run_record(
                     run.entitlement_source,
                     charged_credits,
                     0,
-                    None,
-                    None,
+                    run.provider_cost,
+                    run.provider_currency,
                     run.estimated_credits,
                     run.pricing_rule_id,
                     run.route_id,
@@ -114,17 +114,24 @@ def persist_ai_api_call_attempts(
     with connect_to_postgres() as connection:
         with connection.cursor() as cursor:
             for index, attempt in enumerate(attempts, start=1):
+                attempt_provider_cost = attempt.provider_cost
+                attempt_provider_currency = attempt.provider_currency
+                if attempt.status == "succeeded":
+                    if attempt_provider_cost is None:
+                        attempt_provider_cost = run.provider_cost
+                    if attempt_provider_currency is None:
+                        attempt_provider_currency = run.provider_currency
                 cursor.execute(
                     """
                     INSERT INTO tangent_ai_api_calls (
                         id, workspace_id, user_id, run_id, board_id, node_id, model_id, provider,
                         route_key, route_id, pricing_rule_id, status, latency_ms, credits_charged,
-                        credits_refunded, provider_cost, error_code, created_at
+                        credits_refunded, provider_cost, provider_currency, error_code, created_at
                     )
                     VALUES (
                         %s, %s, %s, %s, %s, %s, %s, %s,
                         %s, %s, %s, %s, %s, %s,
-                        %s, %s, %s, %s
+                        %s, %s, %s, %s, %s
                     )
                     ON CONFLICT (id) DO UPDATE SET
                         board_id = EXCLUDED.board_id,
@@ -139,6 +146,7 @@ def persist_ai_api_call_attempts(
                         credits_charged = EXCLUDED.credits_charged,
                         credits_refunded = EXCLUDED.credits_refunded,
                         provider_cost = EXCLUDED.provider_cost,
+                        provider_currency = EXCLUDED.provider_currency,
                         error_code = EXCLUDED.error_code
                     """,
                     (
@@ -157,7 +165,8 @@ def persist_ai_api_call_attempts(
                         attempt.latency_ms,
                         charged_credits if attempt.status == "succeeded" else 0,
                         0,
-                        attempt.provider_cost,
+                        attempt_provider_cost,
+                        attempt_provider_currency,
                         attempt.error_code,
                         _parse_datetime(attempt.created_at),
                     ),
@@ -179,7 +188,12 @@ def load_ai_run_record(run_id: str) -> Optional[AiRunRecord]:
         chargedAccountId=str(snapshot["charged_account_id"]),
         chargedScope=str(snapshot["charged_scope"]),
         costCredits=float(snapshot["cost_credits"] or 0),
-        costHint=_build_cost_hint(charge, float(snapshot["estimated_credits"] or 0), str(snapshot["status"])),
+        costHint=_build_cost_hint(
+            charge,
+            estimated_credits=float(snapshot["estimated_credits"] or 0),
+            charged_credits=float(snapshot["cost_credits"] or 0),
+            status=str(snapshot["status"]),
+        ),
         createdAt=_to_iso(snapshot["created_at"]),
         estimatedCredits=float(snapshot["estimated_credits"] or 0),
         entitlementSource=str(snapshot["entitlement_source"]),
@@ -191,6 +205,8 @@ def load_ai_run_record(run_id: str) -> Optional[AiRunRecord]:
         outputAssetIds=list(snapshot["output_asset_ids"]),
         pricingRuleId=snapshot["pricing_rule_id"],
         provider=str(snapshot["provider"]),
+        providerCost=float(snapshot["provider_cost"]) if snapshot["provider_cost"] is not None else None,
+        providerCurrency=snapshot["provider_currency"],
         routeId=snapshot["route_id"],
         routeKey=snapshot["route_key"],
         runId=str(snapshot["id"]),
@@ -253,7 +269,8 @@ def load_ai_run_snapshot(run_id: str) -> Optional[dict[str, object]]:
                        workspace_seat_id, entitlement_source, input_asset_ids, latency_ms, model_id,
                        node_id, output_asset_ids, provider, run_type, status, prompt_preview,
                        created_at, pricing_rule_id, route_id, route_key, estimated_credits,
-                       selected_tier_key, preflight_status, params, error_message
+                       selected_tier_key, preflight_status, params, error_message,
+                       provider_cost, provider_currency
                 FROM tangent_ai_runs
                 WHERE id = %s
                 """,
@@ -289,6 +306,8 @@ def load_ai_run_snapshot(run_id: str) -> Optional[dict[str, object]]:
         "preflight_status": row[23],
         "params": dict(row[24] or {}),
         "error_message": row[25],
+        "provider_cost": row[26],
+        "provider_currency": row[27],
     }
 
 
@@ -313,7 +332,12 @@ def _prompt_preview(prompt: Optional[str]) -> Optional[str]:
     return trimmed[:280] if trimmed else None
 
 
-def _build_cost_hint(charge: AiRunChargeSummary, estimated_credits: float, status: str) -> str:
+def _build_cost_hint(
+    charge: AiRunChargeSummary,
+    estimated_credits: float,
+    charged_credits: float,
+    status: str,
+) -> str:
     if status == "queued":
         return f"Mock AI run queued · {charge.payer_label}"
     if status == "running":
@@ -323,7 +347,8 @@ def _build_cost_hint(charge: AiRunChargeSummary, estimated_credits: float, statu
     if status == "failed":
         return f"Mock AI run failed · {charge.payer_label}"
     if charge.preflight_status == "settled":
-        return f"Mock AI run · charged {estimated_credits:g} credits · {charge.payer_label}"
+        credits = charged_credits or estimated_credits
+        return f"Mock AI run · charged {credits:g} credits · {charge.payer_label}"
     return f"Mock AI run · {charge.payer_label}"
 
 

@@ -6,6 +6,9 @@
 @import './styles/product-landing.css';
 @import './styles/product-management.css';
 @import './styles/product-management-table.css';
+@import './styles/product-directory.css';
+@import './styles/product-team-dashboard.css';
+@import './styles/product-commerce.css';
 @import './styles/product-auth.css';
 @import './styles/product-auth-form.css';
 @import './styles/product-workspaces.css';

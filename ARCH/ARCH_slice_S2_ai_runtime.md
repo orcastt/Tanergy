@@ -7,6 +7,14 @@
 
 Node Registry, Model Registry, AiRun, provider routing, cost/credit facts and AI Chat planner.
 
+## P0 Alpha Boundary
+
+The current alpha requires one real server-side AI image path, not full provider breadth.
+
+- quote/preflight, payer resolution and settlement are release-critical
+- one live provider-backed image path is release-critical
+- broader analysis/text coverage, refund depth and provider breadth remain deferred
+
 ## Contract
 
 ```text
@@ -136,21 +144,24 @@ Run request
 - Mock AiRun responses now include workspace kind, charged scope, charged account id, entitlement source and payer label, so frontend nodes can display the payer contract before real provider execution exists.
 - Mock AiRun now persists a simple lifecycle contract: create queues the run, a background executor moves it through running -> succeeded/failed, GET reads current state without mutating it, and cancel stops queued/running runs.
 - A first-pass provider-route execution shell now exists behind that lifecycle: route candidates are resolved from the control plane, a lightweight provider-adapter registry now owns the per-provider attempt boundary, route retry policy is honored inside the shell, and failover now stops on timeouts or work-started failures to avoid duplicate provider work.
+- The provider-adapter boundary now also has an opt-in live path: OpenAI-compatible routes can execute server-side image generation/edit calls, Google routes can execute `generateContent`-style requests, and successful image outputs are persisted as Assets through the existing storage adapter.
 - Mock AiRun can optionally exercise real credit-ledger settlement when `TANGENT_AI_MOCK_LEDGER_CHARGING=1` and `DATABASE_URL` are configured: it estimates mock credits, rejects insufficient balance before success and writes a `usage_charge` ledger entry. That settlement now stays bound to the run's originally resolved charged account rather than the later read request context. The default local path still does not charge credits.
+- Successful run settlement now also persists normalized `provider_cost` / `provider_currency` onto the final `ai_runs` row and the final successful `ai_api_calls` attempt row, and the shell also writes attempt-level `api_cost_ledger` rows so Admin can inspect supplier-cost facts separately from user-credit charging.
 - Image Gen / Image Gen 4 model dropdown reads contract.
 - Konva runtimeGraph mock flow now exercises Prompt/Image/Chat/Image Gen/Analysis data passing, export ports and generated Asset refs without provider raw payloads.
+- The formal Konva Board runtime now consumes the same lifecycle contract: create returns a server run id, the browser polls `GET /api/v1/ai/runs/{runId}` until terminal state, user stop triggers best-effort `POST /api/v1/ai/runs/{runId}/cancel`, and successful remote image runs hydrate persisted Asset records back into generated node outputs instead of fabricating client-only previews.
 - DB-backed control-plane tables, quote-time persistence, persisted mock `ai_runs` rows and attempt-level `ai_api_calls` rows now exist.
-- Real provider adapters/calls, admin-editable model pricing/routing, provider-cost logging and generated Asset upload are not done, but the execution/settlement shell is now separated enough to plug them in without rewriting the route contract.
+- Remaining gaps are broader live-provider capability coverage and durable real text-output persistence; the execution/settlement shell is now separated enough to plug the rest in without rewriting the route contract.
 
 ## Launch-Readiness Sequence
 
 1. Keep API keys server-side and choose provider adapter boundaries.
 2. DB-backed Model Registry, parameter tiers, provider routes and pricing-rule versions are now in the first-pass backend checkpoint.
 3. Server-side AiRun persistence, quote/preflight and a persisted mock create/poll/cancel lifecycle are now in the first-pass backend checkpoint too.
-4. A stub background executor plus timeout-safe primary->backup route shell now exist; the next step is to swap in real provider adapters while preserving one run id, one payer and no-double-charge settlement.
-5. Expand provider-cost normalization and real post-provider settlement on top of the new per-attempt `ai_api_calls` timeline and extracted finalization boundary.
+4. A persisted background executor plus timeout-safe primary->backup route shell now exist; live provider-specific adapters can plug into the same one-run / one-payer / no-double-charge boundary.
+5. Expand capability coverage, provider-cost normalization depth and real post-provider settlement on top of the new per-attempt `ai_api_calls` timeline and extracted finalization boundary.
 6. Upload generated outputs as Assets; return Asset refs and short summaries only.
-7. Wire Konva Run/Stop UI to AiRun create/poll/cancel.
+7. Hand-test and harden the Konva Run/Stop create/poll/cancel path against one credentialed live provider route.
 8. Add provider failure, timeout, rate-limit and cost tests.
 
 ## Do Not Do
@@ -171,6 +182,14 @@ Run request
 ## 范围
 
 本切片负责 Node Registry、Model Registry、AiRun、provider routing、成本 / 积分事实，以及 AI Chat planner。
+
+## P0 Alpha 边界
+
+当前 alpha 只要求一条真实的、服务端驱动的 AI 图像路径，而不是完整的 provider 广度。
+
+- quote/preflight、payer resolution 和 settlement 属于发布关键路径
+- 一条 live provider-backed image path 属于发布关键路径
+- 更广的 analysis/text 覆盖、refund depth 和 provider breadth 继续延后
 
 ## 合同
 
@@ -302,10 +321,12 @@ Run request
 - Mock AiRun 现在已经持久化了一个简单 lifecycle 合同：create 会把 run 置为 queued，由后台执行器推进到 running -> succeeded/failed，GET 只读取当前状态而不会修改它，cancel 可以停止 queued/running 的 run。
 - 第一阶段 provider-route 执行壳现在已经接到这条生命周期后面：route candidates 会从 control plane 解析出来，一个轻量 provider-adapter registry 现在已经接管每次 provider 尝试的边界，route retry policy 也已经在执行壳内生效，而且一旦遇到 timeout 或 provider 已开始工作的失败，就会停止 failover，以避免重复 provider work。
 - 当 `TANGENT_AI_MOCK_LEDGER_CHARGING=1` 且 `DATABASE_URL` 已配置时，Mock AiRun 可以选择性演练真实 credit-ledger settlement：它会估算 mock credits，在成功前拒绝余额不足，并写入一条 `usage_charge` ledger entry。现在这段 settlement 还会始终绑定到该 run 最初解析出的 charged account，而不会被后续读取请求上下文偷换。默认本地路径仍然不会扣 credits。
+- 成功 run 的 settlement 现在也会把归一化后的 `provider_cost` / `provider_currency` 写进最终 `ai_runs` 行和成功的 `ai_api_calls` attempt 行，同时还会按尝试写入 `api_cost_ledger`，让 Admin 可以把供应商成本与用户积分扣费拆开看。
 - Image Gen / Image Gen 4 的 model dropdown 已读取该合同。
 - Konva runtimeGraph mock 流程现在已经覆盖 Prompt / Image / Chat / Image Gen / Analysis 的数据传递、导出端口，以及生成 Asset refs 的流程，同时不会把 provider 原始载荷写入文档。
+- 正式 Konva Board runtime 现在也已经消费同一套 lifecycle 合同：create 会返回 server run id，浏览器会轮询 `GET /api/v1/ai/runs/{runId}` 到终态，用户 stop 会尽力触发 `POST /api/v1/ai/runs/{runId}/cancel`，而成功的远端 image runs 会把持久化 Asset records 回填到生成节点输出，而不再伪造纯客户端 previews。
 - DB-backed control-plane tables、quote-time persistence、持久化的 mock `ai_runs` rows，以及按尝试分行的 `ai_api_calls` rows 现在都已存在。
-- 真实 provider adapters / calls、admin-editable model pricing/routing、provider-cost logging 和 generated Asset upload 仍未完成，但执行 / settlement shell 现在已经分层到足以在不重写 route contract 的前提下接入这些能力。
+- 真实 provider adapters / calls、generated Asset upload 和更广的 live-provider capability 覆盖仍未完成，但执行 / settlement shell 现在已经分层到足以在不重写 route contract 的前提下接入这些能力。
 
 ## 上线前顺序
 
@@ -313,9 +334,9 @@ Run request
 2. DB-backed Model Registry、参数档位、provider routes 和 pricing-rule versions 现在已经进入第一阶段后端检查点。
 3. 服务端 AiRun persistence、quote/preflight，以及持久化的 mock create/poll/cancel lifecycle 现在也已经进入第一阶段后端检查点。
 4. 现在已经有了 stub 背景执行器加 timeout-safe 的 primary->backup route shell；下一步要换成真实 provider adapters，同时保持一个 run id、一个 payer 和 no-double-charge settlement。
-5. 在新的逐次尝试 `ai_api_calls` 时间线和已抽离的 finalization boundary 之上，继续扩展 provider-cost normalization 和真实的 post-provider settlement。
+5. 在新的逐次尝试 `ai_api_calls` 时间线、`api_cost_ledger` 和已抽离的 finalization boundary 之上，继续扩展 provider-cost normalization 和真实的 post-provider settlement。
 6. 把生成结果上传成 Assets，只返回 Asset refs 和短摘要。
-7. 把 Konva 的 Run / Stop UI 接到 AiRun create / poll / cancel。
+7. 用一条带真实凭据的 live provider route 手测并收紧 Konva Run / Stop create / poll / cancel 路径。
 8. 增加 provider failure、timeout、rate-limit 和成本测试。
 
 ## 明确不要做

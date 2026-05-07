@@ -2,19 +2,27 @@
 
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { BoardThumbnail } from '@/components/boards/BoardThumbnail'
+import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import type { BoardPersistenceSummary } from '@/features/boards/boardTypes'
 import { WorkspaceBoardMenuAction } from './WorkspaceBoardMenuAction'
 import { getBoardDisplayCardColor } from './workspaceBoardUtils'
 
 export type WorkspaceBoardViewMode = 'gallery' | 'list'
+export type WorkspaceBoardCollaborator = {
+  id: string
+  initials: string
+  label: string
+}
 
 type WorkspaceBoardItemProps = {
   board: BoardPersistenceSummary
   canCopyBoard: boolean
   canDeleteBoard: boolean
   canManageBoard: boolean
+  collaborators: WorkspaceBoardCollaborator[]
   editingTitle: string
   isEditing: boolean
+  isInteractive?: boolean
   isPending: boolean
   onCancelRename: () => void
   onCopy: () => void
@@ -31,6 +39,7 @@ type WorkspaceBoardItemProps = {
   onTogglePin: () => void
   onToggleStar: () => void
   viewMode: WorkspaceBoardViewMode
+  workspace?: TangentWorkspace
 }
 
 export function WorkspaceBoardItem({
@@ -38,8 +47,10 @@ export function WorkspaceBoardItem({
   canCopyBoard,
   canDeleteBoard,
   canManageBoard,
+  collaborators,
   editingTitle,
   isEditing,
+  isInteractive = true,
   isPending,
   onCancelRename,
   onCopy,
@@ -56,8 +67,8 @@ export function WorkspaceBoardItem({
   onTogglePin,
   onToggleStar,
   viewMode,
+  workspace,
 }: WorkspaceBoardItemProps) {
-  const collaborators = getCollaborators(board.id)
   const openTimerRef = useRef<number | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -97,7 +108,10 @@ export function WorkspaceBoardItem({
   }
 
   const openInNewTab = () => {
-    window.open(`/boards/${encodeURIComponent(board.id)}`, '_blank', 'noopener,noreferrer')
+    const query = new URLSearchParams()
+    if (workspace?.id) query.set('workspace', workspace.id)
+    const url = `/boards/${encodeURIComponent(board.id)}${query.toString() ? `?${query.toString()}` : ''}`
+    window.open(url, '_blank', 'noopener,noreferrer')
   }
 
   const openAfterSingleClick = () => {
@@ -125,6 +139,7 @@ export function WorkspaceBoardItem({
     <article
       className={`workspace-board-card ${viewMode === 'list' ? 'is-list' : ''}`}
       data-card-color={getBoardDisplayCardColor(board)}
+      data-interactive={isInteractive ? 'true' : 'false'}
       data-pinned={board.isPinned ? 'true' : undefined}
     >
       <div className="workspace-board-status-badges" aria-label="Board status">
@@ -138,7 +153,7 @@ export function WorkspaceBoardItem({
           {board.visibility === 'public' ? <PublicBoardIcon /> : <PrivateBoardIcon />}
         </span>
       </div>
-      <button className="workspace-board-open" onClick={onOpen} type="button">
+      <button className="workspace-board-open" disabled={!isInteractive} onClick={onOpen} type="button">
         <BoardThumbnail board={board} />
       </button>
       <div className="workspace-board-body">
@@ -149,30 +164,49 @@ export function WorkspaceBoardItem({
             <button disabled={isPending} onClick={onCancelRename} type="button">Cancel</button>
           </form>
         ) : (
-          <button className="workspace-board-title" onClick={openAfterSingleClick} onDoubleClick={renameFromDoubleClick} type="button">
+          <button
+            className="workspace-board-title"
+            disabled={!isInteractive}
+            onClick={openAfterSingleClick}
+            onDoubleClick={renameFromDoubleClick}
+            type="button"
+          >
             <strong>{board.title}</strong>
-            <small>{board.id}</small>
           </button>
         )}
         <div className="workspace-board-meta">
-          {board.description ? <span>{board.description}</span> : null}
           <span>{formatObjectCount(board)}</span>
-          <span>{formatActivityTime(board)}</span>
           <span>Saved {formatDateTime(board.savedAt)}</span>
         </div>
       </div>
       <div className="workspace-board-footer">
         <div className="workspace-board-members" aria-label="Collaborators">
-          {collaborators.map((member) => <span key={member}>{member}</span>)}
-          <span>+2</span>
+          {collaborators.map((member) => (
+            <span
+              aria-label={member.label}
+              className="workspace-board-member-avatar"
+              key={member.id}
+              title={member.label}
+            >
+              {member.initials}
+            </span>
+          ))}
         </div>
         <div className="workspace-board-actions">
-          <button aria-label="Open board management" onClick={onOpenPanel} title="Board management" type="button">Manage</button>
+          <button
+            className="workspace-board-manage"
+            disabled={!isInteractive}
+            onClick={onOpenPanel}
+            type="button"
+          >
+            Manage
+          </button>
           <div className="workspace-board-menu" ref={menuRef}>
             <button
               aria-expanded={isMenuOpen}
               aria-label="Board actions"
               className="workspace-board-menu-trigger"
+              disabled={!isInteractive}
               onClick={() => setIsMenuOpen((value) => !value)}
               type="button"
             >
@@ -197,7 +231,6 @@ export function WorkspaceBoardItem({
                     Copy to Konva v2
                   </WorkspaceBoardMenuAction>
                 ) : null}
-                <WorkspaceBoardMenuAction disabled={isPending} icon="manage" onClick={() => runMenuAction(onOpenPanel)}>Manage board</WorkspaceBoardMenuAction>
                 {board.visibility === 'public' ? (
                   <WorkspaceBoardMenuAction disabled={isPending || !canManageBoard} icon="private" onClick={() => runMenuAction(onMakePrivate)}>Make board private</WorkspaceBoardMenuAction>
                 ) : (
@@ -237,25 +270,8 @@ function formatObjectCount(board: BoardPersistenceSummary) {
   return `${board.shapeCount} shape${board.shapeCount === 1 ? '' : 's'} / ${board.assetCount} asset${board.assetCount === 1 ? '' : 's'}`
 }
 
-function formatActivityTime(board: BoardPersistenceSummary) {
-  if (!board.lastOpenedAt) return 'Not opened yet'
-  return `Opened ${formatDateTime(board.lastOpenedAt)}`
-}
-
 function formatDateTime(value: string) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(date)
-}
-
-function getCollaborators(seed: string) {
-  const names = ['A', 'J', 'M', 'R', 'S', 'T']
-  const start = getStableIndex(seed, names.length)
-  return [names[start], names[(start + 2) % names.length]]
-}
-
-function getStableIndex(value: string, modulo: number) {
-  let hash = 0
-  for (const char of value) hash = (hash * 31 + char.charCodeAt(0)) >>> 0
-  return hash % modulo
+  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date)
 }

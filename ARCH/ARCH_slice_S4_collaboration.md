@@ -1,11 +1,15 @@
 # ARCH Slice S4: Collaboration
 
 **Updated**: 2026-05-05
-**Status**: Deferred to P0.5.
+**Status**: Deferred to P0.5 and frozen for the current P0 alpha stabilization pass.
 
 ## Scope
 
 Realtime multi-user Board editing after S1/S2 boundaries are stable.
+
+## Stabilization Rule
+
+Keep this slice fully deferred during the current P0 alpha stabilization pass. Readiness notes are allowed; release-scope implementation is not.
 
 ## Boundary Diagram
 

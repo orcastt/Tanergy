@@ -10,12 +10,44 @@ export const mockUser: TangentUser = {
 
 export const mockWorkspaces: TangentWorkspace[] = [
   {
-    id: 'dev-workspace',
-    kind: 'team_workspace',
-    name: 'Tanergy Team',
-    planKey: 'team_start',
+    id: 'private-studio',
+    kind: 'solo_workspace',
+    name: 'Private',
+    planKey: 'free_canvas',
     role: 'owner',
-    boardCount: 1,
+    boardCount: 3,
+  },
+  {
+    id: 'atlas-team-growth',
+    kind: 'team_workspace',
+    name: 'Atlas Team',
+    planKey: 'team_growth',
+    role: 'owner',
+    boardCount: 6,
+  },
+  {
+    id: 'north-team-start',
+    kind: 'team_workspace',
+    name: 'North Team',
+    planKey: 'team_start',
+    role: 'admin',
+    boardCount: 4,
+  },
+  {
+    id: 'pixel-group-plus',
+    kind: 'group_workspace',
+    name: 'Pixel Group',
+    planKey: 'collaborate_plus',
+    role: 'owner',
+    boardCount: 3,
+  },
+  {
+    id: 'studio-group-start',
+    kind: 'group_workspace',
+    name: 'Studio Group',
+    planKey: 'collaborate_start',
+    role: 'member',
+    boardCount: 2,
   },
 ]
 
@@ -23,7 +55,7 @@ export const mockSession: TangentSession = {
   authMode: 'dev',
   isDevFallback: true,
   user: mockUser,
-  activeWorkspace: mockWorkspaces[0],
+  activeWorkspace: mockWorkspaces[1],
   workspaces: mockWorkspaces,
 }
 
@@ -31,14 +63,14 @@ export function getCurrentSessionSnapshot() {
   return mockSession
 }
 
-export function getSessionRequestHeaders(): Record<string, string> {
+export function getSessionRequestHeaders(workspace: TangentWorkspace = mockSession.activeWorkspace): Record<string, string> {
   const headers = {
     'x-tangent-user-id': mockSession.user.id,
-    'x-tangent-workspace-kind': mockSession.activeWorkspace.kind,
-    'x-tangent-workspace-id': mockSession.activeWorkspace.id,
+    'x-tangent-workspace-kind': workspace.kind,
+    'x-tangent-workspace-id': workspace.id,
   }
-  if (mockSession.activeWorkspace.planKey) {
-    return { ...headers, 'x-tangent-plan-key': mockSession.activeWorkspace.planKey }
+  if (workspace.planKey) {
+    return { ...headers, 'x-tangent-plan-key': workspace.planKey }
   }
   return headers
 }

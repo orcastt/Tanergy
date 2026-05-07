@@ -10,7 +10,7 @@ from tangent_api.schemas import AssetRecord
 
 ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
 ASSET_ID_PATTERN = re.compile(r"^[a-zA-Z0-9._-]+$")
-MAX_ASSET_BYTES = 30 * 1024 * 1024
+MAX_ASSET_BYTES = 100 * 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -37,7 +37,7 @@ def assert_image_mime(mime: str) -> None:
 
 def assert_asset_size(byte_size: int) -> None:
     if byte_size > MAX_ASSET_BYTES:
-        raise HTTPException(status_code=400, detail="Image must be 30MB or smaller.")
+        raise HTTPException(status_code=400, detail="Image must be 100MB or smaller.")
 
 
 def assert_workspace_access(record: AssetRecord, context: ApiRequestContext) -> None:

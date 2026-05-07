@@ -8,9 +8,10 @@ import { useAdminAccess } from '@/features/auth/useAdminAccess'
 import { useTangentSession } from '@/features/auth/useTangentSession'
 
 const topNavItems = [
-  { href: '/workspaces', label: 'Workspace', match: ['/workspaces', '/boards'] },
-  { href: '/collections', label: 'Collection' },
+  { href: '/workspaces', label: 'Boards', match: ['/workspaces', '/boards'] },
   { href: '/team', label: 'Team' },
+  { href: '/group', label: 'Group' },
+  { href: '/usage', label: 'Usage' },
   { href: '/billing', label: 'Subscription' },
 ]
 
@@ -18,11 +19,11 @@ type SideNavItem =
   | { href: string; icon: string; label: string; match?: string[]; type: 'link' }
 
 const sideNavItems = [
-  { href: '/workspaces', icon: 'W', label: 'Workspace', match: ['/boards', '/workspaces'], type: 'link' },
-  { href: '/collections', icon: 'C', label: 'Collections', type: 'link' },
+  { href: '/workspaces', icon: 'B', label: 'Boards', match: ['/boards', '/workspaces'], type: 'link' },
   { href: '/team', icon: 'T', label: 'Team', type: 'link' },
-  { href: '/billing', icon: '$', label: 'Subscription', type: 'link' },
-  { href: '/settings', icon: '*', label: 'Settings', type: 'link' },
+  { href: '/group', icon: 'G', label: 'Group', type: 'link' },
+  { href: '/usage', icon: 'U', label: 'Billing and Usage', type: 'link' },
+  { href: '/billing', icon: 'S', label: 'Subscription', type: 'link' },
 ] satisfies SideNavItem[]
 
 type AppShellProps = {
@@ -36,6 +37,7 @@ export function AppShell({ children }: AppShellProps) {
   const { error: sessionError, session, status: sessionStatus } = useTangentSession()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const canAccessAdmin = adminStatus === 'ready' && adminAccess.canAccessAdmin
+  const hideCreateBoardAction = isActivePath(pathname, '/workspaces')
   const topItems = canAccessAdmin ? [...topNavItems, { href: '/admin', label: 'Admin' }] : topNavItems
   const sideItems = canAccessAdmin
     ? [...sideNavItems, { href: '/admin', icon: 'A', label: 'Admin', type: 'link' as const }]
@@ -49,45 +51,60 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <div className="product-shell">
       <header className="product-top-nav">
-        <Link className="product-wordmark" href="/" onClick={() => setIsMenuOpen(false)}>
-          <span className="product-wordmark-mark">T</span>
-          <span>Tanergy</span>
-        </Link>
-
-        <nav aria-label="Primary" className="product-nav-links">
-          {topItems.map((item) => (
-            <Link
-              className={`product-nav-link${isActiveItem(pathname, item) ? ' is-active' : ''}`}
-              href={item.href}
-              key={item.label}
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-
-        <div className="product-nav-actions">
-          <Link aria-label="Search" className="product-search-link" href="/workspaces">
-            <span aria-hidden="true" />
+        <div className="product-top-nav-inner">
+          <Link className="product-wordmark" href="/workspaces" onClick={() => setIsMenuOpen(false)}>
+            <span className="product-wordmark-mark">T</span>
+            <span>TANGENT</span>
           </Link>
-          <UserButton />
-          <button className="product-button product-button-primary" onClick={createBoard} type="button">
-            New Board
+
+          <Link
+            aria-label="Open board search"
+            className="product-search-shell"
+            href="/workspaces"
+            onClick={() => setIsMenuOpen(false)}
+          >
+            <span aria-hidden="true" className="product-search-icon" />
+            <span className="product-search-copy">Search boards</span>
+          </Link>
+
+          <nav aria-label="Primary" className="product-nav-links">
+            {topItems.map((item) => (
+              <Link
+                className={`product-nav-link${isActiveItem(pathname, item) ? ' is-active' : ''}`}
+                href={item.href}
+                key={item.label}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+
+          <div className="product-nav-actions">
+            <UserButton />
+            {hideCreateBoardAction ? null : (
+              <button className="product-button product-button-primary" onClick={createBoard} type="button">
+                Create Board
+              </button>
+            )}
+          </div>
+
+          <button
+            aria-expanded={isMenuOpen}
+            className="product-button product-button-secondary product-mobile-menu"
+            onClick={() => setIsMenuOpen((value) => !value)}
+            type="button"
+          >
+            Menu
           </button>
         </div>
-
-        <button
-          aria-expanded={isMenuOpen}
-          className="product-button product-button-secondary product-mobile-menu"
-          onClick={() => setIsMenuOpen((value) => !value)}
-          type="button"
-        >
-          Menu
-        </button>
       </header>
 
       {isMenuOpen ? (
         <nav aria-label="Mobile primary" className="product-nav-sheet">
+          <Link className="product-search-shell is-mobile" href="/workspaces" onClick={() => setIsMenuOpen(false)}>
+            <span aria-hidden="true" className="product-search-icon" />
+            <span className="product-search-copy">Search boards</span>
+          </Link>
           {topItems.map((item) => (
             <Link
               className={`product-nav-link${isActiveItem(pathname, item) ? ' is-active' : ''}`}
@@ -99,7 +116,7 @@ export function AppShell({ children }: AppShellProps) {
             </Link>
           ))}
           <Link className="product-button product-button-primary" href="/workspaces" onClick={() => setIsMenuOpen(false)}>
-            Open workspace
+            Open boards
           </Link>
           <Link className="product-text-link" href="/account" onClick={() => setIsMenuOpen(false)}>
             Account
@@ -111,12 +128,13 @@ export function AppShell({ children }: AppShellProps) {
       ) : null}
 
       <div className="product-app-frame">
-        <aside className="product-sidebar" aria-label="Workspace navigation">
+        <aside className="product-sidebar" aria-label="Product navigation">
           <section className="product-sidebar-workspace">
             <div className="product-sidebar-avatar" aria-hidden="true" />
-            <div>
-              <strong>Tanergy</strong>
+            <div className="product-sidebar-workspace-copy">
+              <strong>TANGENT</strong>
               <span>{session.activeWorkspace.name}</span>
+              <small>{formatWorkspaceKindLabel(session.activeWorkspace.kind)}</small>
             </div>
           </section>
 
@@ -180,4 +198,11 @@ function isActiveItem(pathname: string, item: { href: string; match?: string[] }
 
 function createBoardId() {
   return `board-${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}`
+}
+
+function formatWorkspaceKindLabel(value: string) {
+  if (value === 'team_workspace') return 'Team workspace'
+  if (value === 'group_workspace') return 'Group workspace'
+  if (value === 'enterprise_workspace') return 'Enterprise workspace'
+  return 'Solo workspace'
 }

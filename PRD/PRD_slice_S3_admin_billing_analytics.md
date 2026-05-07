@@ -1,11 +1,20 @@
 # PRD Slice S3: Admin, Billing And Analytics
 
-**Updated**: 2026-05-06
+**Updated**: 2026-05-07
 **Mode**: Product slice.
 
 ## Goal
 
 Prepare the factual data sources, pricing model and access boundary for Admin, billing and credit usage without pretending revenue automation is already finished.
+
+## P0 Alpha Release Boundary
+
+For the current release pass, this slice is accepted only as a bounded first-pass operator and visibility layer:
+
+- billing remains mock/manual in public flows
+- usage and ledger visibility must be honest and inspectable
+- `/admin` must stay server-gated and auditable
+- deeper finance operations, invoices, payment webhooks and enterprise governance remain deferred
 
 ## Product Requirements
 
@@ -17,14 +26,15 @@ Prepare the factual data sources, pricing model and access boundary for Admin, b
 | Packaging | Product packaging is `free_canvas`, `collaborate_start`, `collaborate_plus`, `team_start`, `team_growth`, `enterprise`. | Strategy defined |
 | Workspace modes | `group_workspace` and `team_workspace` share the same core Board/member surface; Team adds admin-visible usage governance while Group keeps billing private to each member. | Strategy defined |
 | Charge ownership | Every AI run clearly resolves which acting member pays. Team adds visibility and governance, not automatic pooled charging. | Strategy defined |
-| Credits | Credit account and ledger records can be read for the current payer, preflight can determine whether a run has enough balance before provider execution, and internal ledger mutation helpers now cover grants, top-ups, usage charges, refunds and admin adjustments. Public billing/payment write flows remain pending. | First-pass read/preflight + internal settlement stable |
+| Credits | Credit account and ledger records can be read for the current payer, preflight can determine whether a run has enough balance before provider execution, first-pass top-up writes now exist, and internal ledger mutation helpers now cover grants, top-ups, usage charges, refunds and admin adjustments. Public billing/payment write flows remain pending. | First-pass read/preflight/top-up stable |
 | Billing | Subscription/payment/invoice facts are queryable for revenue views. | Planned |
 | Team seats | Team owner/admin can assign and revoke first-pass Team Start/Growth seats for active workspace members without charging a payment provider yet. | First-pass stable |
-| AI API calls | Admin can inspect model/provider/latency/status/cost/error by user/run and see which account was charged. | Planned |
-| AI pricing control | Developer/admin operators can manage model/tier credit rules, estimated-vs-final settlement policy and publish new pricing versions as supplier costs change. | Planned |
-| Provider routing control | Developer/admin operators can manage multiple provider routes behind one product model, reorder priority, disable unhealthy routes and save failover policy without a frontend deploy. | Planned |
+| Workspace member controls | Group/Team workspace owner/admin can update workspace member roles through server-backed write flows; Team seat assignment stays separate from Board roles. | First-pass stable |
+| AI API calls | Admin can inspect model/provider/latency/status/cost/error by user/run and see which account was charged. | First-pass stable |
+| AI pricing control | Developer/admin operators can edit first-pass model/tier credit rules from the server-gated Admin console; versioned publish/rollback now exists, while richer approval and finance governance remain pending. | First-pass stable |
+| Provider routing control | Developer/admin operators can edit first-pass provider routes, enable/disable routes and save failover-related configuration without a frontend deploy; versioned publish/rollback now exists, while health automation remains pending. | First-pass stable |
 | Analytics | Event facts support funnels, retention cohorts, activation metrics and seat/credit usage reporting. | Planned |
-| Developer/Admin console | Internal operators can inspect users, workspaces, Boards, subscriptions, credit ledger, AiRuns, provider calls, cost ledger and audit logs through server-gated UI. | Planned |
+| Developer/Admin console | Internal operators can inspect current first-pass admin resources, bounded credit/usage facts, AiRuns/provider calls and AI control-plane configuration through server-gated UI; broader finance tooling remains pending. | First-pass stable |
 | Moderation | Assets/prompts/reports can enter review queues later. | Planned |
 
 ## Recommended Launch Packaging
@@ -59,6 +69,7 @@ These price points are a product strategy target, not a locked finance promise. 
 - One product model such as `GPT Image 2` may expose multiple parameter tiers like `0.5K`, `1K`, `2K`, `4K`, quality levels and output counts. Each tier needs its own credit estimate and final settlement rule.
 - Users should see stable product model names even if the backend supplier changes. Provider brand, route id and supplier switching are backend concerns.
 - One product model may map to multiple supplier routes. When a primary route is unhealthy, operators can switch to a fallback route from the backend, and future runs should use that new route without redeploying the frontend.
+- Local provider-specific fast paths such as the current GeekAI image/chat/analysis route must be folded back into this backend control plane before production reliance, so later provider swaps do not require node UI rewrites.
 - The Run UI should show an estimated credit cost before execution. Final credits can be lower or higher after usage settlement, but the run must remain auditable.
 - Every published pricing change must be versioned and audited. Historical AiRuns keep the original pricing-rule version that was active at execution time.
 - Provider-route failover must never double-charge a user. Retries belong to one AiRun and one final settlement outcome.
@@ -132,8 +143,10 @@ The first global admin is created outside the public UI through a server-side bo
 - These endpoints are not a full admin panel; they expose access status, summary facts, bounded recent resource lists, recent audit logs and first-pass role-management controls for authenticated global admins.
 - Frontend `/admin` access now depends on that server-side answer rather than local role guesses.
 - First-pass billing/workspace entitlement surfaces now exist: `/billing` shows the user's own plan, included credits, usage and payer summary; `/team` shows Group structure or Team usage visibility according to workspace kind.
+- Frontend `/billing` now also includes a first-pass top-up action, and `/usage` provides ledger filters plus workspace-vs-personal usage drill-down.
 - Backend read-only contracts now exist for `/api/v1/billing/me`, `/api/v1/workspaces/current/dashboard` and `/api/v1/workspaces/current/entitlement`.
 - Team seat contracts now exist for `/api/v1/workspaces/current/seats`: Team owner/admin can list seats, upsert a Team Start/Growth seat for an active workspace member and revoke a seat.
+- Workspace member-role mutation now exists at `PATCH /api/v1/workspaces/current/members/{userId}` for first-pass owner/admin role editing inside the current workspace.
 - Credit read/preflight contracts now exist for `/api/v1/credits/ledger` and `/api/v1/credits/preflight?requiredCredits=n`; they read the current payer account and report balance, entries, can-run state and shortfall.
 - Internal credit ledger mutation helpers now exist for subscription grants, top-up purchases, usage charges, usage refunds and admin adjustments. These helpers are intentionally service-layer only until payment webhooks, Admin finance actions and real AiRun settlement routes are server-gated.
 - Mock AiRun can optionally exercise this ledger settlement path behind `TANGENT_AI_MOCK_LEDGER_CHARGING=1`, which gives S2/S3 a regression harness without enabling real provider calls.
@@ -141,18 +154,29 @@ The first global admin is created outside the public UI through a server-side bo
 - When Postgres is configured, entitlement reads now prefer active Team seat assignments and active subscription facts before falling back to dev context/defaults.
 - AiRun payer summaries now use active database credit account ids when available, while synthetic ids remain local fallback only.
 - Mock AiRun now returns a payer summary so the UI can explain whether a run charges the actor or a future enterprise workspace pool.
-- Full user search, richer audit pagination/filtering, real billing controls, payment-provider-backed seat management, public/admin credit write flows, developer-facing model/pricing/route management and moderation tooling are still pending.
+- First-pass admin AI save surfaces now exist: `/admin` can edit/save model metadata, provider routes and pricing rules through server-gated mutation flows, with versioned publish/rollback controls now present.
+- The current canvas-facing GeekAI image/chat/analysis path proves the desired user flow, but it is not yet the final production control-plane path. The next S2/S3 cut should reconcile GPT Image 2, Nano Banana 2, Doubao Seedream, Jimeng, analysis and prompt optimizer model parameters into server-owned model/route/pricing facts before broad launch.
+- Full user search, richer audit pagination/filtering, real billing controls, payment-provider-backed seat management, public/admin credit write flows, richer approval governance and moderation tooling are still pending.
 
 ## 中文完整翻译
 
 # PRD 切片 S3：后台管理、计费与分析
 
-**更新日期**：2026-05-06
+**更新日期**：2026-05-07
 **模式**：产品切片。
 
 ## 目标
 
 在不假装收入自动化已经完成的前提下，先把后台管理、计费和积分消耗所需的事实数据源、定价模型和访问边界定义清楚。
+
+## P0 Alpha 发布边界
+
+在当前这一轮里，这个切片只按“有边界的第一阶段运营与可见性层”来验收：
+
+- 面向公开用户的 billing 仍然保持 mock/manual
+- usage 和 ledger 可见性必须诚实且可检查
+- `/admin` 必须保持 server-gated 且可审计
+- 更深的 finance operations、invoices、payment webhooks 和 enterprise governance 继续延后
 
 ## 产品要求
 
@@ -164,14 +188,15 @@ The first global admin is created outside the public UI through a server-side bo
 | 套餐设计 | 产品套餐采用 `free_canvas`、`collaborate_start`、`collaborate_plus`、`team_start`、`team_growth`、`enterprise`。 | 策略已定义 |
 | Workspace 形态 | `group_workspace` 和 `team_workspace` 共享同一套核心 Board/成员界面；Team 额外提供管理员可见的 usage 治理，而 Group 保持每个成员计费私有。 | 策略已定义 |
 | 扣费归属 | 每次 AI 运行都必须明确判断究竟是哪个操作者成员在付费。Team 带来的是可见性和治理能力，不是自动共用扣费。 | 策略已定义 |
-| Credits | 当前 payer 的积分账户和流水已经可以读取，preflight 可以在 provider execution 前判断余额是否足够，并且内部 ledger mutation helpers 已覆盖赠送、充值、使用扣费、退款和管理员调整。公开 billing/payment 写流程仍待完成。 | 第一阶段 read/preflight + 内部 settlement 稳定 |
+| Credits | 当前 payer 的积分账户和流水已经可以读取，preflight 可以在 provider execution 前判断余额是否足够，第一阶段 top-up 写入也已经存在，并且内部 ledger mutation helpers 已覆盖赠送、充值、使用扣费、退款和管理员调整。公开 billing/payment 写流程仍待完成。 | 第一阶段 read/preflight/top-up 稳定 |
 | Billing | 订阅 / 支付 / 发票事实数据需要可查询，以支撑收入视图。 | 规划中 |
 | Team seats | Team owner/admin 可以在暂不触发 payment provider 的前提下，为 active workspace members 分配和 revoke 第一阶段 Team Start/Growth seats。 | 第一阶段稳定 |
-| AI API 调用 | Admin 需要能查看模型 / 提供商 / 延迟 / 状态 / 成本 / 错误，以及这次运行究竟扣了哪个账户。 | 规划中 |
-| AI 定价控制 | Developer/admin operators 需要能管理 model/tier credit rules、estimated-vs-final settlement policy，并在供应商成本变化时发布新的 pricing versions。 | 规划中 |
-| Provider 路由控制 | Developer/admin operators 需要能在一个产品模型背后管理多条 provider routes、调整 priority、禁用异常线路，并在不部署前端的情况下保存 failover policy。 | 规划中 |
+| Workspace 成员控制 | Group/Team workspace 的 owner/admin 可以通过服务端写入流更新 workspace member roles；Team seat assignment 继续与 Board 角色分离。 | 第一阶段稳定 |
+| AI API 调用 | Admin 需要能查看模型 / 提供商 / 延迟 / 状态 / 成本 / 错误，以及这次运行究竟扣了哪个账户。 | 第一阶段稳定 |
+| AI 定价控制 | Developer/admin operators 现在已经可以在服务端门控的 Admin console 中编辑第一阶段 model/tier credit rules；版本化 publish/rollback 已存在，更完整的审批和 finance governance 仍待完成。 | 第一阶段稳定 |
+| Provider 路由控制 | Developer/admin operators 现在已经可以编辑第一阶段 provider routes、启用/禁用线路，并在不部署前端的前提下保存 failover 相关配置；版本化 publish/rollback 已存在，health automation 仍待完成。 | 第一阶段稳定 |
 | 分析 | 事件事实需要支持漏斗、留存分群、激活指标以及席位 / 积分使用报表。 | 规划中 |
-| Developer / Admin console | 内部运营者需要能通过服务端门控 UI 查看 users、workspaces、Boards、subscriptions、credit ledger、AiRuns、provider calls、cost ledger 和 audit logs。 | 规划中 |
+| Developer / Admin console | 内部运营者现在已经可以通过服务端门控 UI 查看第一阶段 admin 资源、有限的 credit/usage 事实、AiRuns/provider calls 和 AI control-plane 配置；更广的 finance tooling 仍待完成。 | 第一阶段稳定 |
 | 审核 | 素材 / 提示词 / 举报在后续需要能进入审核队列。 | 规划中 |
 
 ## 推荐的上线套餐
@@ -206,6 +231,7 @@ The first global admin is created outside the public UI through a server-side bo
 - 像 `GPT Image 2` 这样的一个产品模型，可以暴露多个参数档位，例如 `0.5K`、`1K`、`2K`、`4K`、不同质量档和输出数量。每个档位都需要独立的 credit estimate 和最终 settlement rule。
 - 即使后端供应商变化，用户看到的产品模型名称也应保持稳定。Provider 品牌、route id 和供应商切换都属于后端问题。
 - 一个产品模型可以映射到多条供应商线路。当主线路不健康时，运营者可以在后台切换到 fallback route，后续运行应直接使用新线路，而不需要重新部署前端。
+- 像当前 GeekAI image/chat/analysis route 这样的本地 provider-specific fast path，在生产依赖前必须收口回后台 control plane，这样后续切换供应商时不需要重写节点 UI。
 - Run UI 应该在执行前展示预计 credit cost。结算后最终 credits 可以更低或更高，但整个运行必须可审计。
 - 每一次发布的 pricing change 都必须版本化并写审计。历史 AiRuns 要保留执行当时启用的 pricing-rule version。
 - Provider-route failover 绝不能让用户被重复扣费。所有 retries 都必须归属于同一个 AiRun 和一次最终 settlement outcome。
@@ -279,8 +305,10 @@ The first global admin is created outside the public UI through a server-side bo
 - 这些接口还不是完整管理后台；它们只提供访问状态、摘要事实、有限的近期资源列表、近期审计日志，以及第一阶段的角色管理控件。
 - 前端 `/admin` 的访问现在依赖服务端返回，而不是浏览器本地猜测角色。
 - 第一阶段 billing / workspace entitlement 界面现在已经存在：`/billing` 显示当前用户自己的 plan、included credits、usage 和 payer summary；`/team` 根据 workspace kind 显示 Group 结构视图或 Team usage 可见性视图。
+- 前端 `/billing` 现在也已经带上第一阶段 top-up 动作，而 `/usage` 现在提供 ledger filters 和 workspace-vs-personal usage drill-down。
 - 后端只读合同现在已经存在：`/api/v1/billing/me`、`/api/v1/workspaces/current/dashboard` 和 `/api/v1/workspaces/current/entitlement`。
 - Team seat contracts 现在已存在：`/api/v1/workspaces/current/seats` 支持 Team owner/admin list seats、为 active workspace member upsert Team Start/Growth seat，以及 revoke seat。
+- Workspace member-role mutation 现在也已存在：`PATCH /api/v1/workspaces/current/members/{userId}` 支持当前 workspace 内第一阶段 owner/admin 角色编辑。
 - Credit read/preflight contracts 现在已存在：`/api/v1/credits/ledger` 和 `/api/v1/credits/preflight?requiredCredits=n` 会读取当前 payer account，并返回 balance、entries、can-run state 和 shortfall。
 - 内部 credit ledger mutation helpers 现在已存在，用于 subscription grants、top-up purchases、usage charges、usage refunds 和 admin adjustments。在 payment webhooks、Admin finance actions 和真实 AiRun settlement routes 完成服务端门控之前，这些 helper 会刻意只保留在 service-layer。
 - Mock AiRun 可以在 `TANGENT_AI_MOCK_LEDGER_CHARGING=1` 后面选择性演练这条 ledger settlement path，为 S2/S3 提供一个不会启用真实 provider calls 的回归 harness。
@@ -288,4 +316,6 @@ The first global admin is created outside the public UI through a server-side bo
 - 当 Postgres 已配置时，entitlement reads 现在会优先使用 active Team seat assignments 和 active subscription facts，然后才 fallback 到 dev context / defaults。
 - AiRun payer summaries 现在会在可用时使用 active database credit account ids，而 synthetic ids 只作为本地 fallback 保留。
 - Mock AiRun 现在返回 payer summary，因此 UI 可以解释一次运行会扣当前操作者，还是未来 enterprise workspace pool。
-- 更完整的用户搜索、更丰富的审计分页 / 筛选、真实 billing 控制、由 payment-provider 支撑的 seat 管理、公开 / Admin credit write flows、面向开发者的 model/pricing/route management，以及 moderation 工具仍待后续完成。
+- 第一阶段 admin AI save surfaces 现在也已经存在：`/admin` 可以通过服务端门控的 mutation flows 编辑/保存 model metadata、provider routes 和 pricing rules，并且现在已经有版本化 publish/rollback controls。
+- 当前面向画布的 GeekAI image/chat/analysis path 已经证明目标用户流程，但它还不是最终生产 control-plane path。下一轮 S2/S3 cut 应把 GPT Image 2、Nano Banana 2、Doubao Seedream、Jimeng、analysis 和 prompt optimizer 的模型参数收口到服务端 model/route/pricing facts 后，再扩大上线范围。
+- 更完整的用户搜索、更丰富的审计分页 / 筛选、真实 billing 控制、由 payment-provider 支撑的 seat 管理、公开 / Admin credit write flows、更完整的审批治理，以及 moderation 工具仍待后续完成。

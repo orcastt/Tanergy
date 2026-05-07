@@ -42,6 +42,8 @@ class BillingMeResponse(TangentApiModel):
 class WorkspaceDashboardMember(TangentApiModel):
     display_name: str = Field(alias="displayName")
     email: Optional[str] = None
+    invited_by: Optional[str] = Field(default=None, alias="invitedBy")
+    joined_at: Optional[str] = Field(default=None, alias="joinedAt")
     role: str
     usage_this_cycle: Optional[int] = Field(default=None, alias="usageThisCycle")
     user_id: str = Field(alias="userId")
@@ -101,3 +103,13 @@ class WorkspaceSeatAssignmentsResponse(TangentApiModel):
     error: Optional[str] = None
     ok: bool
     seats: list[WorkspaceSeatAssignmentRecord]
+
+
+class WorkspaceMemberRoleUpdateRequest(TangentApiModel):
+    role: str
+
+
+class WorkspaceMemberResponse(TangentApiModel):
+    error: Optional[str] = None
+    member: WorkspaceDashboardMember
+    ok: bool

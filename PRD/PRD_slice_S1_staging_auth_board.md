@@ -1,11 +1,21 @@
 # PRD Slice S1: Staging, Auth And Board CRUD
 
 **Updated**: 2026-05-06
-**Mode**: Architecture slice.
+**Mode**: Product slice.
 
 ## Goal
 
 Move from local dev identity and local persistence to real staging infrastructure, real users, real workspaces and Auth-backed Board CRUD. This is the step where TANGENT stops being a single local canvas and starts behaving like a real multi-user web product.
+
+## P0 Alpha Stabilization Note
+
+For the current release pass, this slice is release-critical only for the core user journey:
+
+- public landing -> sign in -> workspace
+- Konva-first Board open/save/history/page/share
+- Auth-backed Board/member/share permission boundaries
+
+Group/Team business-system depth, real billing automation, collaboration and other future surfaces must not expand the promise of this slice.
 
 ## Product Requirements
 
@@ -72,11 +82,21 @@ Move from local dev identity and local persistence to real staging infrastructur
 # PRD 切片 S1：Staging、Auth 与 Board CRUD
 
 **更新日期**：2026-05-05
-**模式**：架构切片。
+**模式**：产品切片。
 
 ## 目标
 
 从本地 dev identity 和 local persistence 迁移到真实 staging infrastructure、真实 users、真实 workspaces 和 Auth-backed Board CRUD。这一步让 TANGENT 从单一本地 canvas 开始表现为真实的多用户 Web 产品。
+
+## P0 Alpha 稳定化说明
+
+在当前这一轮发布里，这个切片只对核心用户旅程承担发布关键职责：
+
+- public landing -> sign in -> workspace
+- Konva-first Board 的 open/save/history/page/share
+- Auth-backed 的 Board/member/share 权限边界
+
+Group/Team 的业务系统深度、真实 billing automation、collaboration 以及其他未来界面，都不能继续扩大这个切片的承诺范围。
 
 ## 产品要求
 

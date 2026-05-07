@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Editor } from 'tldraw'
 import { migrateRuntimeImageAssets, type RuntimeAssetMigrationResult } from '@/features/assets/runtimeAssetMigration'
+import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import {
   loadLocalBoardDocument,
   saveLocalBoardDocument,
@@ -41,6 +42,7 @@ type CanvasBoardSaveAuditProps = {
   editor: Editor | null
   mode?: 'board' | 'dev'
   onBoardLoaded?: (board: BoardPersistenceRecord) => void
+  workspace?: TangentWorkspace
 }
 
 const defaultBoardId = 'canvas-spike-local'
@@ -54,6 +56,7 @@ export function CanvasBoardSaveAudit({
   editor,
   mode = 'dev',
   onBoardLoaded,
+  workspace,
 }: CanvasBoardSaveAuditProps) {
   const autoLoadedBoardId = useRef<string | null>(null)
   const isRestoring = useRef(false)
@@ -124,7 +127,7 @@ export function CanvasBoardSaveAudit({
         document: nextResult.document,
         thumbnailUrl,
         title: boardTitle,
-      })
+      }, workspace)
       const savedBoard = saved.board
       if (!savedBoard) throw new Error('Local board save failed.')
       const currentResult = createGuardedBoardDocument(editor)
@@ -146,7 +149,7 @@ export function CanvasBoardSaveAudit({
       isSaving.current = false
       setIsRunning(false)
     }
-  }, [boardId, boardTitle, clearAutosaveTimer, editor, mode, prepareDocument, saveResult, scheduleAutosave])
+  }, [boardId, boardTitle, clearAutosaveTimer, editor, mode, prepareDocument, saveResult, scheduleAutosave, workspace])
 
   useEffect(() => {
     saveNowRef.current = (source) => void saveLocal(source)
@@ -171,7 +174,7 @@ export function CanvasBoardSaveAudit({
       setSaveError(null)
       setStatus('loading')
       setLastAction('load')
-      const loaded = await loadLocalBoardDocument(boardId)
+      const loaded = await loadLocalBoardDocument(boardId, workspace)
       const board = loaded.board
       if (!board) throw new Error('Local board load failed.')
       const restore = restoreBoardDocument(editor, board.document)
@@ -191,7 +194,7 @@ export function CanvasBoardSaveAudit({
         isRestoring.current = false
       })
     }
-  }, [boardId, clearAutosaveTimer, editor, onBoardLoaded])
+  }, [boardId, clearAutosaveTimer, editor, onBoardLoaded, workspace])
 
   const handleSnapshotRestored = useCallback((snapshot: BoardSnapshotRecord) => {
     if (!editor) return
@@ -217,6 +220,7 @@ export function CanvasBoardSaveAudit({
     },
     onSnapshotRestored: handleSnapshotRestored,
     prepareDocument,
+    workspace,
   })
 
   useEffect(() => {

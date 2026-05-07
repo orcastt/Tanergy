@@ -13,8 +13,10 @@ from tangent_api.credit_schemas import (
     CreditPreflightResponse,
 )
 from tangent_api.request_context import ApiRequestContext
-from tangent_api.storage.postgres_connection import connect_to_postgres
+from tangent_api.storage.postgres_connection import connect_to_postgres as storage_connect_to_postgres
 from tangent_api.workspace_entitlements import resolve_ai_charge_summary
+
+connect_to_postgres = storage_connect_to_postgres
 
 LEDGER_REASONS = {
     "admin_adjustment",
@@ -27,26 +29,53 @@ LEDGER_REASONS = {
 }
 
 
-def build_credit_ledger_response(context: ApiRequestContext, limit: int = 50) -> CreditLedgerResponse:
+def build_credit_ledger_response(
+    context: ApiRequestContext,
+    limit: int = 50,
+    *,
+    actor_user_id: Optional[str] = None,
+    reason: Optional[str] = None,
+    source_id: Optional[str] = None,
+    source_type: Optional[str] = None,
+    workspace_id: Optional[str] = None,
+) -> CreditLedgerResponse:
     normalized_limit = _normalize_limit(limit)
     charge = resolve_ai_charge_summary(context)
     account_id = charge.charged_account_id
     if not os.getenv("DATABASE_URL"):
         return CreditLedgerResponse(accountId=account_id, balanceCredits=0, entries=[], ok=True)
+    filters: list[str] = ["account_id = %s"]
+    params: list[object] = [account_id]
+    if actor_user_id:
+        filters.append("actor_user_id = %s")
+        params.append(actor_user_id.strip())
+    if reason:
+        filters.append("reason = %s")
+        params.append(reason.strip())
+    if source_id:
+        filters.append("source_id = %s")
+        params.append(source_id.strip())
+    if source_type:
+        filters.append("source_type = %s")
+        params.append(source_type.strip())
+    if workspace_id:
+        filters.append("workspace_id = %s")
+        params.append(workspace_id.strip())
+    where_sql = " AND ".join(filters)
 
-    with connect_to_postgres() as connection:
+    with _connect_to_postgres() as connection:
         with connection.cursor() as cursor:
             balance = _load_credit_balance(cursor, account_id)
             cursor.execute(
-                """
+                f"""
                 SELECT id, account_id, workspace_id, actor_user_id, source_type, source_id,
                        credits_delta, reason, metadata, created_at
                 FROM tangent_credit_ledger
-                WHERE account_id = %s
+                WHERE {where_sql}
                 ORDER BY created_at DESC
                 LIMIT %s
                 """,
-                (account_id, normalized_limit),
+                tuple([*params, normalized_limit]),
             )
             rows = cursor.fetchall()
     return CreditLedgerResponse(
@@ -67,7 +96,7 @@ def build_credit_preflight_response(
     account_id = charge.charged_account_id
     available_credits = 0.0
     if os.getenv("DATABASE_URL"):
-        with connect_to_postgres() as connection:
+        with _connect_to_postgres() as connection:
             with connection.cursor() as cursor:
                 available_credits = _load_credit_balance(cursor, account_id)
     can_run = available_credits >= required_credits
@@ -90,8 +119,29 @@ def grant_subscription_credits(
     source_id: str,
     metadata: Optional[dict[str, Any]] = None,
 ) -> CreditLedgerMutationResponse:
-    return write_credit_ledger_entry(
-        context=context,
+    charge = resolve_ai_charge_summary(context)
+    return grant_subscription_credits_to_account(
+        account_id=charge.charged_account_id,
+        actor_user_id=context.user_id,
+        workspace_id=context.workspace_id,
+        credits=credits,
+        source_id=source_id,
+        metadata=metadata,
+    )
+
+
+def grant_subscription_credits_to_account(
+    account_id: str,
+    actor_user_id: str,
+    workspace_id: str,
+    credits: float,
+    source_id: str,
+    metadata: Optional[dict[str, Any]] = None,
+) -> CreditLedgerMutationResponse:
+    return _write_credit_ledger_entry_for_account(
+        account_id=account_id,
+        actor_user_id=actor_user_id,
+        workspace_id=workspace_id,
         credits_delta=_positive_credits(credits, "Granted credits"),
         reason="subscription_grant",
         source_id=source_id,
@@ -106,8 +156,29 @@ def record_topup_purchase(
     source_id: str,
     metadata: Optional[dict[str, Any]] = None,
 ) -> CreditLedgerMutationResponse:
-    return write_credit_ledger_entry(
-        context=context,
+    charge = resolve_ai_charge_summary(context)
+    return record_topup_purchase_to_account(
+        account_id=charge.charged_account_id,
+        actor_user_id=context.user_id,
+        workspace_id=context.workspace_id,
+        credits=credits,
+        source_id=source_id,
+        metadata=metadata,
+    )
+
+
+def record_topup_purchase_to_account(
+    account_id: str,
+    actor_user_id: str,
+    workspace_id: str,
+    credits: float,
+    source_id: str,
+    metadata: Optional[dict[str, Any]] = None,
+) -> CreditLedgerMutationResponse:
+    return _write_credit_ledger_entry_for_account(
+        account_id=account_id,
+        actor_user_id=actor_user_id,
+        workspace_id=workspace_id,
         credits_delta=_positive_credits(credits, "Top-up credits"),
         reason="topup_purchase",
         source_id=source_id,
@@ -226,7 +297,7 @@ def _build_credit_preflight_for_account(
 ) -> CreditPreflightResponse:
     available_credits = 0.0
     if os.getenv("DATABASE_URL"):
-        with connect_to_postgres() as connection:
+        with _connect_to_postgres() as connection:
             with connection.cursor() as cursor:
                 available_credits = _load_credit_balance(cursor, account_id)
     can_run = available_credits >= required_credits
@@ -263,7 +334,7 @@ def _write_credit_ledger_entry_for_account(
     metadata: Optional[dict[str, Any]] = None,
 ) -> CreditLedgerMutationResponse:
     entry_id = f"credit_ledger_{uuid4()}"
-    with connect_to_postgres() as connection:
+    with _connect_to_postgres() as connection:
         with connection.cursor() as cursor:
             cursor.execute(
                 """
@@ -347,6 +418,17 @@ def _normalize_limit(limit: int) -> int:
 
 def _normalize_metadata(value: object) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
+
+
+def _connect_to_postgres():
+    try:
+        from tangent_api import workspace_entitlements as workspace_entitlements_module
+        workspace_connect = getattr(workspace_entitlements_module, "connect_to_postgres", storage_connect_to_postgres)
+        if workspace_connect is not storage_connect_to_postgres:
+            return workspace_connect()
+    except Exception:
+        pass
+    return connect_to_postgres()
 
 
 def _to_iso(value: object) -> str:

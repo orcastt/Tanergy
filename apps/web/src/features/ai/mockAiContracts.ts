@@ -77,6 +77,34 @@ export const mockAiModels: AiModelOption[] = [
     },
     provider: 'geekai',
   },
+  {
+    capabilities: ['image_generation', 'image_edit', 'image_reference'],
+    costHint: 'ByteDance Seedream 5.0 Lite with high-resolution generation and reference image support.',
+    displayName: 'Doubao Seedream 5.0 Lite',
+    estimatedLatency: '6-18s',
+    id: 'doubao-seedream-5.0-lite',
+    isDefault: false,
+    isEnabled: true,
+    parameterSchema: {
+      outputFormat: ['png', 'jpeg'],
+      size: ['2K', '3K', '4K', '2048x2048', '2304x1728', '1728x2304', '2848x1600', '1600x2848', '2496x1664', '1664x2496', '3136x1344', '3072x3072', '3456x2592', '2592x3456', '4096x2304', '2304x4096', '3744x2496', '2496x3744', '4704x2016', '4096x4096', '3520x4704', '4704x3520', '5504x3040', '3040x5504', '3328x4992', '4992x3328', '6240x2656'],
+    },
+    provider: 'geekai',
+  },
+  {
+    capabilities: ['image_generation', 'image_edit', 'image_reference'],
+    costHint: 'Jimeng Image 4.0 for text-to-image, image editing, and Chinese prompt generation.',
+    displayName: 'Jimeng Image 4.0',
+    estimatedLatency: '6-18s',
+    id: 'jimeng_t2i_v40',
+    isDefault: false,
+    isEnabled: true,
+    parameterSchema: {
+      size: ['1024x1024', '2048x2048', '2304x1728', '2560x1440', '2496x1664', '3024x1296', '4096x4096', '4694x3520', '4992x3328', '5404x3040', '6198x2656'],
+      strength: [0.3, 0.5, 0.7, 0.9],
+    },
+    provider: 'geekai',
+  },
 ]
 
 export function getAiModels(capability?: AiCapability) {

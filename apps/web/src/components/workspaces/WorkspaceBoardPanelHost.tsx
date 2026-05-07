@@ -1,7 +1,7 @@
 'use client'
 
 import type { Dispatch, SetStateAction } from 'react'
-import { getCurrentSessionSnapshot } from '@/features/auth/mockSession'
+import type { TangentSession, TangentWorkspace } from '@/features/auth/sessionTypes'
 import type { BoardPersistenceSummary } from '@/features/boards/boardTypes'
 import { updateLocalBoardMetadata } from '@/features/boards/localBoardClient'
 import { getBoardCapabilities } from './boardCapabilities'
@@ -16,8 +16,10 @@ type WorkspaceBoardPanelHostProps = {
   onDelete: (board: BoardPersistenceSummary) => void
   onOpen: (boardId: string) => void
   onShare: (board: BoardPersistenceSummary) => void
+  session: TangentSession
   setError: Dispatch<SetStateAction<string | null>>
   setPendingBoardId: Dispatch<SetStateAction<string | null>>
+  workspace?: TangentWorkspace
 }
 
 export function WorkspaceBoardPanelHost({
@@ -29,11 +31,12 @@ export function WorkspaceBoardPanelHost({
   onDelete,
   onOpen,
   onShare,
+  session,
   setError,
   setPendingBoardId,
+  workspace,
 }: WorkspaceBoardPanelHostProps) {
   if (!board) return null
-  const session = getCurrentSessionSnapshot()
   const capabilities = getBoardCapabilities(board, session)
 
   const saveMetadata = async (input: {
@@ -57,7 +60,7 @@ export function WorkspaceBoardPanelHost({
         thumbnailUrl: input.thumbnailUrl,
         title: input.title,
         visibility: input.visibility,
-      })
+      }, workspace)
       if (!response.board) throw new Error('Board update failed.')
       onBoardUpdated(response.board)
       onClose()
@@ -76,6 +79,7 @@ export function WorkspaceBoardPanelHost({
       canManageBoard={capabilities.canManageBoard}
       isPending={isPending}
       key={board.id}
+      workspace={workspace}
       onClose={onClose}
       onCopy={() => onCopy(board)}
       onDelete={() => onDelete(board)}

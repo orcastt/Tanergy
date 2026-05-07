@@ -1,6 +1,6 @@
 # Dev Plans Index
 
-**Updated**: 2026-05-06
+**Updated**: 2026-05-07
 
 Detailed product, architecture and state truth now lives in:
 
@@ -14,19 +14,21 @@ Detailed product, architecture and state truth now lives in:
 
 | File | Status | Notes |
 | --- | --- | --- |
+| `p0-alpha-stabilization-and-acceptance-2026-05-06.md` | Active release-spine plan | Defines the current shipping-now list, deferred/frozen list, route map, risk matrix and acceptance guide for the P0 alpha pass. |
+| `s2-ai-provider-route-billing-control-plane-2026-05-07.md` | Active S2 tactical plan | Moves provider route switching, credit charging, provider-cost settlement and admin observability behind one server-owned AiRun control plane. |
 | `s1b-staging-deployment-runbook-2026-05-02.md` | Active S1B runbook | Chinese beginner guide for domain, DNS, Vercel, Hetzner, Neon, R2, Clerk, Google OAuth and email setup. |
 | `s1x-canvas-engine-migration-reference-2026-05-03.md` | Active S1X migration reference | Konva-first route/public share/admin-adjacent checkpoints are in; remaining work is runtime, export, performance and collaboration polish. |
 | `s1-launch-readiness-and-acceptance-report-2026-05-05.md` | Active handoff report | Unified S1X/S1B/S1C/S1D/S2/S3/S4 launch-readiness order and acceptance checklist, now including public share, owner-only copy/delete, known-foreign Asset guard and admin bootstrap first pass. |
 | `s3-billing-team-entitlements-strategy-2026-05-06.md` | Active S3 strategy plan | Market-informed pricing, Group/Team workspace visibility, actor-personal credit ownership, team seat and implementation sequence for free/collaborate/team/enterprise. |
-| `s1-s3-document-consolidation-report-2026-05-06.md` | Active consolidation report | Current doc/code truth, archived files, known conflicts and next implementation slices after the May 6 consolidation pass. |
 
 ## Current Tactical Focus
 
-1. S1B/S1C deploy and Auth rollout against staging resources.
-2. S1D permission hardening on top of the current `Can view / Can edit / Can manage / Owner` resolver and known-foreign Asset guard, with active membership/invite state, explicit Asset-sharing allowlists and Group/Team workspace role separation.
-3. S3 Group/Team dashboard visibility, seat entitlement and actor-personal credit-account implementation from the new strategy plan.
-4. S2 real AiRun provider adapter after the local mock/runtime graph checkpoint and after charge ownership is settled.
-5. S3 richer admin/developer console search, pagination, credit ledger and AiRun/provider-call views on top of the current first-pass `/admin`.
+1. Stabilize the current P0 alpha spine defined in `p0-alpha-stabilization-and-acceptance-2026-05-06.md`.
+2. Finish S1B/S1C deploy and Auth rollout against staging resources.
+3. Keep S1D focused on permission hardening for the current Board/share/page release path.
+4. Finish the S2 provider-route/billing control-plane cut and one real AiRun/provider path before broadening AI scope.
+5. Keep S3 bounded to billing visibility, usage/ledger surfaces and a minimum admin operating surface.
+6. Track frontend product UI alignment as a parallel lane: navigation, plan labels, role language and AI cost messaging must match the narrower P0 alpha promise before launch.
 
 ## Archive
 
@@ -44,7 +46,7 @@ Detailed product, architecture and state truth now lives in:
 
 # Dev Plans 索引
 
-**更新日期**：2026-05-06
+**更新日期**：2026-05-07
 
 详细的产品、架构和状态事实现在位于：
 
@@ -58,19 +60,21 @@ Detailed product, architecture and state truth now lives in:
 
 | 文件 | 状态 | 说明 |
 | --- | --- | --- |
+| `p0-alpha-stabilization-and-acceptance-2026-05-06.md` | 活跃 release-spine plan | 定义本轮 P0 alpha 的 shipping-now list、deferred/frozen list、route map、risk matrix 和 acceptance guide。 |
+| `s2-ai-provider-route-billing-control-plane-2026-05-07.md` | 活跃 S2 tactical plan | 把 provider route 切换、credits 扣费、provider-cost settlement 和 admin observability 收口到服务端 AiRun control plane。 |
 | `s1b-staging-deployment-runbook-2026-05-02.md` | 活跃 S1B runbook | 面向新手的中文指南，覆盖 domain、DNS、Vercel、Hetzner、Neon、R2、Clerk、Google OAuth 和 email setup。 |
 | `s1x-canvas-engine-migration-reference-2026-05-03.md` | 活跃 S1X migration reference | Konva-first route / public share / admin-adjacent checkpoints 已进入；剩余工作是 runtime、export、performance 和 collaboration polish。 |
 | `s1-launch-readiness-and-acceptance-report-2026-05-05.md` | 活跃 handoff report | 统一的 S1X/S1B/S1C/S1D/S2/S3/S4 launch-readiness 顺序和 acceptance checklist，现在包含 public share、owner-only copy/delete、known-foreign Asset guard 和 admin bootstrap first pass。 |
 | `s3-billing-team-entitlements-strategy-2026-05-06.md` | 活跃 S3 strategy plan | 市场参考定价、Group/Team workspace 可见性、actor-personal credit ownership、team seat 和 free/collaborate/team/enterprise 实施顺序。 |
-| `s1-s3-document-consolidation-report-2026-05-06.md` | 活跃 consolidation report | 2026-05-06 收拢后的当前文档 / 代码事实、已归档文件、已知冲突和下一批实现切片。 |
 
 ## 当前战术焦点
 
-1. 基于 staging resources 推进 S1B/S1C deploy 和 Auth rollout。
-2. 在当前 `Can view / Can edit / Can manage / Owner` resolver 和 known-foreign Asset guard 之上继续硬化 S1D 权限，并接入 active membership / invite state、明确的 Asset-sharing allowlists 和 Group/Team workspace role 边界。
-3. 按新 strategy plan 实现 S3 Group/Team dashboard visibility、seat entitlement 和 actor-personal credit-account。
-4. 在本地 mock/runtime graph checkpoint 之后，并且 charge ownership 稳定后，推进 S2 真实 AiRun provider adapter。
-5. 在当前第一阶段 `/admin` 之上扩展 S3 richer admin/developer console search、pagination、credit ledger 和 AiRun/provider-call views。
+1. 以 `p0-alpha-stabilization-and-acceptance-2026-05-06.md` 为准，稳定当前 P0 alpha 主线。
+2. 基于 staging resources 完成 S1B/S1C deploy 和 Auth rollout。
+3. 让 S1D 继续只聚焦在当前 Board/share/page 发布路径的 permission hardening。
+4. 先完成 S2 provider-route/billing control-plane cut 和一条真实 AiRun/provider 路径，再扩大 AI 范围。
+5. 让 S3 继续收敛在 billing visibility、usage/ledger surfaces 和最小 admin operating surface 上。
+6. 把前端产品 UI 对齐视为并行线路：navigation、套餐标签、角色语言和 AI 扣费文案在上线前必须匹配当前更窄的 P0 alpha 承诺。
 
 ## 归档
 

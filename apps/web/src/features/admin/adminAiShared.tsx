@@ -44,6 +44,25 @@ export function FilterSelect({
   )
 }
 
+export function FilterTextInput({
+  label,
+  onChange,
+  placeholder,
+  value,
+}: {
+  label: string
+  onChange: (value: string) => void
+  placeholder?: string
+  value: string
+}) {
+  return (
+    <label style={{ display: 'grid', gap: 6 }}>
+      <span style={{ color: 'var(--color-muted)', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{label}</span>
+      <input onChange={(event) => onChange(event.target.value)} placeholder={placeholder} style={selectStyle} type="text" value={value} />
+    </label>
+  )
+}
+
 export function EmptyRow({ colSpan, message }: { colSpan: number; message: string }) {
   return <tr><td colSpan={colSpan}>{message}</td></tr>
 }

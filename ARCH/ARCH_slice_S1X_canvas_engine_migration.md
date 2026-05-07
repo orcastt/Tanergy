@@ -4,6 +4,14 @@
 **Branch**: `feature/s1x-konva-handfeel-spike`
 **Reason**: Public staging exposed the tldraw production license requirement. TANGENT should not make the paid SDK the long-term core canvas dependency unless the business explicitly accepts that cost.
 
+## P0 Alpha Stabilization Boundary
+
+This slice is now in stabilization mode:
+
+- Konva-first `/boards/[boardId]` is the production-facing canvas path.
+- Share viewing, page safety and Board persistence are in scope.
+- Yjs room sync, rendered page-thumbnail assets, page duplicate and broader export polish remain deferred.
+
 ## Decision
 
 Treat the current tldraw implementation as the reference implementation, not as discarded work.

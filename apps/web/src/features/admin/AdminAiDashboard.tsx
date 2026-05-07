@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { AdminAiMutationPanels } from './AdminAiMutationPanels'
 import { ModelsPanel, PricingRulesPanel, RoutesPanel } from './AdminAiPanels'
 import { ApiCallsPanel, RunsPanel } from './AdminAiRuntimePanels'
 import { useAdminAiResources } from './useAdminAiResources'
@@ -17,16 +18,35 @@ export function AdminAiDashboard({ enabled }: { enabled: boolean }) {
   const [pricingTierKey, setPricingTierKey] = useState('')
   const [pricingStatus, setPricingStatus] = useState('')
   const [runModelId, setRunModelId] = useState('')
+  const [runBoardId, setRunBoardId] = useState('')
+  const [runPreflightStatus, setRunPreflightStatus] = useState('')
+  const [runPricingRuleId, setRunPricingRuleId] = useState('')
+  const [runProvider, setRunProvider] = useState('')
+  const [runRouteKey, setRunRouteKey] = useState('')
+  const [runRunId, setRunRunId] = useState('')
   const [runType, setRunType] = useState('')
   const [runStatus, setRunStatus] = useState('')
+  const [runWorkspaceId, setRunWorkspaceId] = useState('')
+  const [apiCallBoardId, setApiCallBoardId] = useState('')
+  const [apiCallErrorCode, setApiCallErrorCode] = useState('')
   const [apiCallModelId, setApiCallModelId] = useState('')
+  const [apiCallPricingRuleId, setApiCallPricingRuleId] = useState('')
   const [apiCallProvider, setApiCallProvider] = useState('')
+  const [apiCallRouteKey, setApiCallRouteKey] = useState('')
+  const [apiCallRunId, setApiCallRunId] = useState('')
   const [apiCallStatus, setApiCallStatus] = useState('')
+  const [apiCallWorkspaceId, setApiCallWorkspaceId] = useState('')
   const ai = useAdminAiResources(enabled, {
+    apiCallBoardId: apiCallBoardId || undefined,
+    apiCallErrorCode: apiCallErrorCode || undefined,
     apiCallLimit: limit,
     apiCallModelId: apiCallModelId || undefined,
+    apiCallPricingRuleId: apiCallPricingRuleId || undefined,
     apiCallProvider: apiCallProvider || undefined,
+    apiCallRouteKey: apiCallRouteKey || undefined,
+    apiCallRunId: apiCallRunId || undefined,
     apiCallStatus: apiCallStatus || undefined,
+    apiCallWorkspaceId: apiCallWorkspaceId || undefined,
     modelCapability: modelCapability || undefined,
     modelEnabled: resolveBooleanFilter(modelEnabled),
     modelLimit: limit,
@@ -38,18 +58,31 @@ export function AdminAiDashboard({ enabled }: { enabled: boolean }) {
     routeLimit: limit,
     routeModelKey: routeModelKey || undefined,
     routeProviderKey: routeProviderKey || undefined,
+    runBoardId: runBoardId || undefined,
     runLimit: limit,
     runModelId: runModelId || undefined,
+    runPreflightStatus: runPreflightStatus || undefined,
+    runPricingRuleId: runPricingRuleId || undefined,
+    runProvider: runProvider || undefined,
+    runRouteKey: runRouteKey || undefined,
+    runRunId: runRunId || undefined,
     runStatus: runStatus || undefined,
     runType: runType || undefined,
+    runWorkspaceId: runWorkspaceId || undefined,
   })
   const capabilityOptions = useMemo(() => uniqueValues(ai.models.models.flatMap((model) => [model.capability, ...model.capabilities])), [ai.models.models])
   const modelOptions = useMemo(() => uniqueValues([...ai.models.models.map((model) => model.modelKey), ...ai.routes.routes.map((route) => route.modelKey), ...ai.pricingRules.pricingRules.map((rule) => rule.modelKey), ...ai.runs.runs.map((run) => run.modelId), ...ai.apiCalls.apiCalls.map((apiCall) => apiCall.modelId)]), [ai.apiCalls.apiCalls, ai.models.models, ai.pricingRules.pricingRules, ai.routes.routes, ai.runs.runs])
   const providerOptions = useMemo(() => uniqueValues([...ai.models.models.map((model) => model.providerKey), ...ai.routes.routes.map((route) => route.providerKey), ...ai.runs.runs.map((run) => run.provider), ...ai.apiCalls.apiCalls.map((apiCall) => apiCall.provider)]), [ai.apiCalls.apiCalls, ai.models.models, ai.routes.routes, ai.runs.runs])
+  const boardOptions = useMemo(() => uniqueValues([...ai.runs.runs.map((run) => run.boardId), ...ai.apiCalls.apiCalls.map((apiCall) => apiCall.boardId)]), [ai.apiCalls.apiCalls, ai.runs.runs])
+  const workspaceOptions = useMemo(() => uniqueValues([...ai.runs.runs.map((run) => run.workspaceId), ...ai.apiCalls.apiCalls.map((apiCall) => apiCall.workspaceId)]), [ai.apiCalls.apiCalls, ai.runs.runs])
+  const pricingRuleOptions = useMemo(() => uniqueValues([...ai.pricingRules.pricingRules.map((rule) => rule.id), ...ai.runs.runs.map((run) => run.pricingRuleId), ...ai.apiCalls.apiCalls.map((apiCall) => apiCall.pricingRuleId)]), [ai.apiCalls.apiCalls, ai.pricingRules.pricingRules, ai.runs.runs])
+  const routeKeyOptions = useMemo(() => uniqueValues([...ai.routes.routes.map((route) => route.routeKey), ...ai.runs.runs.map((run) => run.routeKey), ...ai.apiCalls.apiCalls.map((apiCall) => apiCall.routeKey)]), [ai.apiCalls.apiCalls, ai.routes.routes, ai.runs.runs])
   const tierOptions = useMemo(() => uniqueValues([...ai.models.models.map((model) => model.defaultTierKey), ...ai.pricingRules.pricingRules.map((rule) => rule.tierKey), ...ai.runs.runs.map((run) => run.selectedTierKey)]), [ai.models.models, ai.pricingRules.pricingRules, ai.runs.runs])
   const pricingStatusOptions = useMemo(() => uniqueValues(['active', 'draft', 'retired', ...ai.pricingRules.pricingRules.map((rule) => rule.status)]), [ai.pricingRules.pricingRules])
+  const preflightStatusOptions = useMemo(() => uniqueValues(ai.runs.runs.map((run) => run.preflightStatus)), [ai.runs.runs])
   const runTypeOptions = useMemo(() => uniqueValues(['image_generation', 'image_analysis', 'chat', ...ai.runs.runs.map((run) => run.runType)]), [ai.runs.runs])
   const runtimeStatusOptions = useMemo(() => uniqueValues(['queued', 'running', 'succeeded', 'failed', 'cancelled', ...ai.runs.runs.map((run) => run.status), ...ai.apiCalls.apiCalls.map((apiCall) => apiCall.status)]), [ai.apiCalls.apiCalls, ai.runs.runs])
+  const errorCodeOptions = useMemo(() => uniqueValues(ai.apiCalls.apiCalls.map((apiCall) => apiCall.errorCode)), [ai.apiCalls.apiCalls])
   const enabledModels = ai.models.models.filter((model) => model.enabled).length
   const enabledRoutes = ai.routes.routes.filter((route) => route.enabled).length
   const activePricingRules = ai.pricingRules.pricingRules.filter((rule) => rule.status === 'active').length
@@ -85,11 +118,13 @@ export function AdminAiDashboard({ enabled }: { enabled: boolean }) {
 
       <section className="management-section-grid" aria-label="AI pricing and runtime">
         <PricingRulesPanel modelOptions={modelOptions} onModelChange={setPricingModelKey} onStatusChange={setPricingStatus} onTierChange={setPricingTierKey} pricingRules={ai.pricingRules} selectedModel={pricingModelKey} selectedStatus={pricingStatus} selectedTier={pricingTierKey} statusOptions={pricingStatusOptions} tierOptions={tierOptions} />
-        <RunsPanel modelOptions={modelOptions} onModelChange={setRunModelId} onStatusChange={setRunStatus} onTypeChange={setRunType} runs={ai.runs} selectedModel={runModelId} selectedStatus={runStatus} selectedType={runType} statusOptions={runtimeStatusOptions} typeOptions={runTypeOptions} />
+        <RunsPanel boardOptions={boardOptions} modelOptions={modelOptions} onBoardChange={setRunBoardId} onModelChange={setRunModelId} onPreflightStatusChange={setRunPreflightStatus} onPricingRuleChange={setRunPricingRuleId} onProviderChange={setRunProvider} onRouteKeyChange={setRunRouteKey} onRunIdChange={setRunRunId} onStatusChange={setRunStatus} onTypeChange={setRunType} onWorkspaceChange={setRunWorkspaceId} preflightStatusOptions={preflightStatusOptions} pricingRuleOptions={pricingRuleOptions} providerOptions={providerOptions} routeKeyOptions={routeKeyOptions} runs={ai.runs} selectedBoard={runBoardId} selectedModel={runModelId} selectedPreflightStatus={runPreflightStatus} selectedPricingRule={runPricingRuleId} selectedProvider={runProvider} selectedRouteKey={runRouteKey} selectedRunId={runRunId} selectedStatus={runStatus} selectedType={runType} selectedWorkspace={runWorkspaceId} statusOptions={runtimeStatusOptions} typeOptions={runTypeOptions} workspaceOptions={workspaceOptions} />
       </section>
 
+      <AdminAiMutationPanels models={ai.models} onSaved={() => ai.reload()} pricingRules={ai.pricingRules} routes={ai.routes} />
+
       <section className="management-section-grid" aria-label="AI API calls">
-        <ApiCallsPanel apiCalls={ai.apiCalls} modelOptions={modelOptions} onModelChange={setApiCallModelId} onProviderChange={setApiCallProvider} onStatusChange={setApiCallStatus} providerOptions={providerOptions} selectedModel={apiCallModelId} selectedProvider={apiCallProvider} selectedStatus={apiCallStatus} statusOptions={runtimeStatusOptions} />
+        <ApiCallsPanel apiCalls={ai.apiCalls} boardOptions={boardOptions} errorCodeOptions={errorCodeOptions} modelOptions={modelOptions} onBoardChange={setApiCallBoardId} onErrorCodeChange={setApiCallErrorCode} onModelChange={setApiCallModelId} onPricingRuleChange={setApiCallPricingRuleId} onProviderChange={setApiCallProvider} onRouteKeyChange={setApiCallRouteKey} onRunIdChange={setApiCallRunId} onStatusChange={setApiCallStatus} onWorkspaceChange={setApiCallWorkspaceId} pricingRuleOptions={pricingRuleOptions} providerOptions={providerOptions} routeKeyOptions={routeKeyOptions} runs={ai.runs} selectedBoard={apiCallBoardId} selectedErrorCode={apiCallErrorCode} selectedModel={apiCallModelId} selectedPricingRule={apiCallPricingRuleId} selectedProvider={apiCallProvider} selectedRouteKey={apiCallRouteKey} selectedRunId={apiCallRunId} selectedStatus={apiCallStatus} selectedWorkspace={apiCallWorkspaceId} statusOptions={runtimeStatusOptions} workspaceOptions={workspaceOptions} />
       </section>
     </>
   )

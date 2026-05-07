@@ -23,6 +23,8 @@ class AdminAiRunRecord(TangentApiModel):
     pricing_rule_id: Optional[str] = Field(default=None, alias="pricingRuleId")
     prompt_preview: Optional[str] = Field(default=None, alias="promptPreview")
     provider: str
+    provider_cost: Optional[float] = Field(default=None, alias="providerCost")
+    provider_currency: Optional[str] = Field(default=None, alias="providerCurrency")
     route_id: Optional[str] = Field(default=None, alias="routeId")
     route_key: Optional[str] = Field(default=None, alias="routeKey")
     run_type: str = Field(alias="runType")
@@ -52,6 +54,7 @@ class AdminAiApiCallRecord(TangentApiModel):
     pricing_rule_id: Optional[str] = Field(default=None, alias="pricingRuleId")
     provider: str
     provider_cost: Optional[float] = Field(default=None, alias="providerCost")
+    provider_currency: Optional[str] = Field(default=None, alias="providerCurrency")
     route_id: Optional[str] = Field(default=None, alias="routeId")
     route_key: Optional[str] = Field(default=None, alias="routeKey")
     run_id: str = Field(alias="runId")

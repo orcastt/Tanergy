@@ -2,9 +2,11 @@ import type { TangentSession } from '@/features/auth/sessionTypes'
 import type {
   AiRunChargeSummary,
   BillingMeResponse,
+  CreditLedgerResponse,
   PersonalCreditSummary,
   PlanKey,
   WorkspaceDashboardRecord,
+  WorkspaceSeatAssignmentsResponse,
   WorkspaceKind,
   WorkspacePlanSummary,
 } from './billingTypes'
@@ -137,6 +139,81 @@ export function createAiChargeSummaryForContext(input: {
     preflightStatus: 'mock_contract_only',
     workspaceKind: input.workspaceKind,
     workspaceSeatId: input.workspaceKind === 'team_workspace' ? `seat_${input.workspaceId}_${input.userId}` : null,
+  }
+}
+
+export function createLocalWorkspaceSeats(session: TangentSession): WorkspaceSeatAssignmentsResponse {
+  const workspaceKind = session.activeWorkspace.kind ?? 'solo_workspace'
+  if (workspaceKind !== 'team_workspace') return { ok: true, seats: [] }
+
+  const planKey = resolvePlanKey(workspaceKind, session.activeWorkspace.planKey)
+  const now = new Date()
+  const periodStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString()
+  const periodEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59)).toISOString()
+  return {
+    ok: true,
+    seats: [
+      {
+        assignedBy: session.user.id,
+        currentPeriodEnd: periodEnd,
+        currentPeriodStart: periodStart,
+        id: `seat_${session.activeWorkspace.id}_${session.user.id}`,
+        includedCredits: planCatalog[planKey].includedCredits,
+        planKey,
+        status: 'active',
+        userId: session.user.id,
+        workspaceId: session.activeWorkspace.id,
+      },
+    ],
+  }
+}
+
+export function createLocalCreditLedger(session: TangentSession): CreditLedgerResponse {
+  const workspaceKind = session.activeWorkspace.kind ?? 'solo_workspace'
+  const plan = planCatalog[resolvePlanKey(workspaceKind, session.activeWorkspace.planKey)]
+  const credits = createCreditSummary(session.user.id, plan.includedCredits)
+  const accountId = workspaceKind === 'enterprise_workspace'
+    ? `credit_workspace_${session.activeWorkspace.id}`
+    : `credit_user_${session.user.id}`
+  const grantCreatedAt = new Date(Date.UTC(2026, 4, 1, 9, 0, 0)).toISOString()
+  const usageCreatedAt = new Date(Date.UTC(2026, 4, 6, 14, 30, 0)).toISOString()
+
+  return {
+    accountId,
+    balanceCredits: credits.includedRemaining + credits.topUpBalance,
+    entries: [
+      {
+        accountId,
+        actorUserId: session.user.id,
+        createdAt: usageCreatedAt,
+        creditsDelta: -credits.usedThisCycle,
+        id: `credit_usage_${session.user.id}`,
+        metadata: {
+          note: 'Mock AI usage summary',
+          planKey: plan.planKey,
+        },
+        reason: 'usage_charge',
+        sourceId: 'mock-run-batch',
+        sourceType: 'ai_run',
+        workspaceId: session.activeWorkspace.id,
+      },
+      {
+        accountId,
+        actorUserId: session.user.id,
+        createdAt: grantCreatedAt,
+        creditsDelta: credits.includedTotal,
+        id: `credit_grant_${session.user.id}`,
+        metadata: {
+          billingPeriod: plan.billingPeriod,
+          planKey: plan.planKey,
+        },
+        reason: 'subscription_grant',
+        sourceId: `subscription_${plan.planKey}`,
+        sourceType: 'subscription',
+        workspaceId: session.activeWorkspace.id,
+      },
+    ],
+    ok: true,
   }
 }
 

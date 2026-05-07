@@ -193,7 +193,11 @@ function createRuntimeGraphAiRunRequest(node: CanvasNodeShape, inputResolution: 
           aspectRatio: String(data.aspectRatio ?? '1:1'),
           count: node.props.nodeType === 'image_gen_4' ? 4 : 1,
           imageSize: String(data.imageSize ?? '1K'),
+          jimengSize: String(data.jimengSize ?? '2048x2048'),
+          jimengStrength: String(data.jimengStrength ?? '0.5'),
           quality: String(data.quality ?? 'medium'),
+          seedreamOutputFormat: String(data.seedreamOutputFormat ?? 'png'),
+          seedreamSize: String(data.seedreamSize ?? '2K'),
           size: String(data.size ?? '1024x1024'),
         }
       : {},
@@ -264,6 +268,26 @@ function getEstimatedNodeRunDurationMs(node: CanvasNodeShape) {
           ? 84_000
           : 42_000
     return Math.round(baseMs * (1 + (count - 1) * 0.5))
+  }
+
+  if (modelId === 'doubao-seedream-5.0-lite') {
+    const size = String(data.seedreamSize ?? '2K')
+    const baseMs = size.startsWith('4K') || size.includes('4096') || size.includes('5504') || size.includes('6240')
+      ? 96_000
+      : size.startsWith('3K') || size.includes('3072') || size.includes('3456') || size.includes('4704')
+        ? 78_000
+        : 58_000
+    return Math.round(baseMs * (count > 1 ? 1.45 : 1))
+  }
+
+  if (modelId === 'jimeng_t2i_v40') {
+    const size = String(data.jimengSize ?? '2048x2048')
+    const baseMs = size.includes('4096') || size.includes('4694') || size.includes('4992') || size.includes('5404') || size.includes('6198')
+      ? 92_000
+      : size === '1024x1024'
+        ? 42_000
+        : 62_000
+    return Math.round(baseMs * (1 + (count - 1) * 0.55))
   }
 
   const quality = String(data.quality ?? 'medium')

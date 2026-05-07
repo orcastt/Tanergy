@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
-import { getCurrentSessionSnapshot } from '@/features/auth/mockSession'
+import type { TangentWorkspace } from '@/features/auth/sessionTypes'
+import { useTangentSession } from '@/features/auth/useTangentSession'
 import {
   boardMemberRoleValues,
   type BoardMemberCandidateRecord,
@@ -32,6 +33,7 @@ type BoardManagementMembersProps = {
   board: BoardPersistenceSummary
   canManageBoard: boolean
   disabled: boolean
+  workspace?: TangentWorkspace
 }
 
 type MemberDraft = {
@@ -42,8 +44,8 @@ type MemberDraft = {
 const editableRoleValues = boardMemberRoleValues.filter((role) => role !== 'owner')
 const ownerRoleValue: BoardMemberRole[] = ['owner']
 
-export function BoardManagementMembers({ board, canManageBoard, disabled }: BoardManagementMembersProps) {
-  const session = getCurrentSessionSnapshot()
+export function BoardManagementMembers({ board, canManageBoard, disabled, workspace }: BoardManagementMembersProps) {
+  const { session } = useTangentSession()
   const [createRole, setCreateRole] = useState<BoardMemberRole>('viewer')
   const [inviteDisplayName, setInviteDisplayName] = useState('')
   const [lookupCandidates, setLookupCandidates] = useState<BoardMemberCandidateRecord[]>([])
@@ -63,7 +65,7 @@ export function BoardManagementMembers({ board, canManageBoard, disabled }: Boar
       setIsLoading(true)
       setError(null)
       try {
-        const response = await listLocalBoardMembers(board.id)
+        const response = await listLocalBoardMembers(board.id, workspace)
         if (cancelled) return
         const nextMembers = sortMembers(response.members, board.ownerId)
         setMembers(nextMembers)
@@ -82,7 +84,7 @@ export function BoardManagementMembers({ board, canManageBoard, disabled }: Boar
     return () => {
       cancelled = true
     }
-  }, [board.id, board.ownerId])
+  }, [board.id, board.ownerId, workspace])
 
   useEffect(() => {
     if (!canManageBoard) return
@@ -92,7 +94,7 @@ export function BoardManagementMembers({ board, canManageBoard, disabled }: Boar
     let cancelled = false
     const timeout = window.setTimeout(() => {
       setIsSearching(true)
-      void searchLocalBoardMemberCandidates(board.id, normalizedQuery)
+      void searchLocalBoardMemberCandidates(board.id, normalizedQuery, workspace)
         .then((response) => {
           if (cancelled) return
           setLookupCandidates(response.candidates)
@@ -111,7 +113,7 @@ export function BoardManagementMembers({ board, canManageBoard, disabled }: Boar
       cancelled = true
       window.clearTimeout(timeout)
     }
-  }, [board.id, canManageBoard, lookupQuery])
+  }, [board.id, canManageBoard, lookupQuery, workspace])
 
   const readOnly = disabled || !canManageBoard
   const isBusy = isLoading || isCreating || pendingUserId !== null
@@ -137,7 +139,7 @@ export function BoardManagementMembers({ board, canManageBoard, disabled }: Boar
         displayName: inviteDisplayName.trim() || undefined,
         email: normalizedEmail,
         role: createRole,
-      })
+      }, workspace)
       if (!response.member) throw new Error('Board member create failed.')
       const nextMembers = upsertMember(members, response.member, board.ownerId)
       setMembers(nextMembers)
@@ -163,7 +165,7 @@ export function BoardManagementMembers({ board, canManageBoard, disabled }: Boar
         displayName: candidate.displayName ?? undefined,
         role: createRole,
         userId: candidate.userId,
-      })
+      }, workspace)
       if (!response.member) throw new Error('Board member create failed.')
       const nextMembers = upsertMember(members, response.member, board.ownerId)
       setMembers(nextMembers)
@@ -190,7 +192,7 @@ export function BoardManagementMembers({ board, canManageBoard, disabled }: Boar
         displayName: draft.displayName.trim() || undefined,
         role: draft.role,
         userId: member.userId,
-      })
+      }, workspace)
       if (!response.member) throw new Error('Board member update failed.')
       const nextMembers = upsertMember(members, response.member, board.ownerId)
       setMembers(nextMembers)
@@ -207,7 +209,7 @@ export function BoardManagementMembers({ board, canManageBoard, disabled }: Boar
     setPendingUserId(member.userId)
     setError(null)
     try {
-      const response = await deleteLocalBoardMember(board.id, member.userId)
+      const response = await deleteLocalBoardMember(board.id, member.userId, workspace)
       setMembers((current) => current.filter((entry) => entry.userId !== response.userId))
       setDrafts((current) => {
         const next = { ...current }

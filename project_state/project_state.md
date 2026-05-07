@@ -1,8 +1,8 @@
 # TANGENT Project State Index
 
-**Updated**: 2026-05-06
+**Updated**: 2026-05-07
 **Branch**: `feature/s1x-konva-handfeel-spike`
-**Latest local checkpoint**: S1X Konva route stabilization + S1D effective-permission / owner-only copy-delete / expiring-share / known-foreign Asset guard hardening + S3 admin bootstrap first pass + S2/S3 first DB-backed AI control-plane read/quote + background-executed persisted mock AiRun lifecycle plus timeout-safe route-failover shell with attempt-level `ai_api_calls` and grouped `/admin` runtime attempt views; keep detailed history in Git.
+**Latest local checkpoint**: S1X Konva route stabilization + S1D effective-permission / owner-only copy-delete / expiring-share / known-foreign Asset guard hardening + S3 admin bootstrap first pass + S2/S3 DB-backed AI control-plane read/quote/save + persisted AiRun lifecycle plus timeout-safe route-failover shell, opt-in live provider-specific adapter scaffolding, normalized provider cost/currency settlement facts, versioned publish/rollback, attempt-level `api_cost_ledger` settlement, grouped `/admin` runtime attempt views with finer filters/drill-down, first-pass Team/Billing/Usage write surfaces, and a canvas-facing GeekAI local fast path for chat streaming, prompt optimization, image generation/edit/reference, analysis and model-aware Image Gen / Image Gen 4 controls; keep detailed history in Git.
 
 This folder replaces the former root-level long project ledger and short mirror files. The root `project_state.md` is now only a pointer.
 
@@ -14,13 +14,46 @@ S1X has reached a stable basic migration checkpoint. Konva v2 is now the formal 
 
 S1D has now moved past raw member CRUD scaffold into a usable first-pass permission layer: a backend `none/view/edit/manage/owner` resolver, owner-only Board copy/delete, Board restore, guest-aware board-member roles, people lookup, email invite, server-backed expiring share links, known-foreign Asset reference blocking and public shared-Board consumption are all present locally.
 
-S3 also has a stable first-pass admin bootstrap checkpoint: `/admin` is now server-gated, reads summary/users/workspaces/boards/audit facts, and supports owner-only role grant/revoke with audit logging.
+S3 also has a stable first-pass admin bootstrap checkpoint: `/admin` is now server-gated, reads summary/users/workspaces/boards/audit facts, supports owner-only role grant/revoke with audit logging, and now includes first-pass save/edit panels plus versioned publish/rollback for AI model routes and pricing, along with billing/usage/team write surfaces.
 
-S2/S3 have now started the first real AI control-plane backend slice too: migration `20260506_0008` adds DB-backed model registry / parameter tiers / pricing rules and normalizes provider-route facts, migration `20260506_0009` extends `ai_runs` / `ai_api_calls` with quote-selected route/pricing linkage, `/api/v1/admin/ai/*` exposes read-only admin inspection, `/api/v1/ai/runs/quote` gives a payer-aware estimate/preflight before provider execution, and the DB-backed mock run path now supports background-executed persisted lifecycle rows plus a first-pass timeout-safe primary->backup route shell with one `ai_api_calls` row per provider attempt, retry-policy-aware execution, extracted settlement orchestration and grouped `/admin` runtime attempt views.
+S2/S3 have now started the first real AI control-plane backend slice too: migration `20260506_0008` adds DB-backed model registry / parameter tiers / pricing rules and normalizes provider-route facts, migration `20260506_0009` extends `ai_runs` / `ai_api_calls` with quote-selected route/pricing linkage, migration `20260506_0010` adds provider-currency/runtime-cost facts, migration `20260506_0011` adds control-plane version history and cost-ledger settlement columns, `/api/v1/admin/ai/*` exposes admin inspection plus first-pass PATCH save and publish/rollback flows, `/api/v1/ai/runs/quote` gives a payer-aware estimate/preflight before provider execution, and the run path now supports persisted lifecycle rows, a timeout-safe primary->backup route shell, opt-in live provider-specific adapter dispatch, normalized provider cost/currency settlement, attempt-level `api_cost_ledger` facts and grouped `/admin` runtime attempt views with finer filters/drill-down.
+
+In parallel, the canvas now has a fast local GeekAI integration path through the web app for user-flow proof: Chat can stream text, Prompt Optimizer can stream improved image prompts, Analysis can choose OpenAI-style or Gemini-style visual analysis models, and Image Gen / Image Gen 4 can run model-aware image generation/edit/reference flows with GPT Image 2, Nano Banana 2, Doubao Seedream and Jimeng parameter surfaces. This is useful product evidence, but it is not yet the production authority boundary; the next S2 cut is to fold that GeekAI path into the server AiRun provider-route/billing control plane documented in `dev-plans/s2-ai-provider-route-billing-control-plane-2026-05-07.md`.
 
 The next documented business-system target is now clearer too: S1D permission hardening for `Can view / Can edit / Can manage / Owner`, plus S3 Group-vs-Team workspace contracts that decide who may see member usage and how an AI run charges the acting user.
 
 Operationally, this means `/boards/[boardId]` is the Konva-first path to keep polishing, `/spikes/canvas` is only a reference surface, and new canvas requirements should update the S1X slice docs before this total index is touched again.
+
+## Current Alpha Spine
+
+The current release pass is narrower than the full local scaffold. Only these four lines are release-critical now:
+
+1. Canvas / Board / Page / Share / Auth
+2. One real AI provider path
+3. Billing mock + usage / ledger visible
+4. Admin minimum operating surface
+
+Everything else should be treated as one of:
+
+- parallel scaffold that supports the release spine
+- frozen placeholder that stays out of the main promise
+- deferred post-alpha work such as collaboration, real payments or deep finance tooling
+
+## Current Parallel Readiness Snapshot
+
+These percentages are coarse readiness markers, not time estimates:
+
+```text
+S1X Canvas/Konva runtime      78%  stable local Board path; export/Yjs/live AiRun polish pending
+S1A Schema/DB foundation      85%  schema join points exist; staging DB smoke remains
+S1B Deploy/staging            60%  Web/API/Neon/R2 smoke exists; Auth/email/OAuth pass pending
+S1C Auth/registration         55%  Clerk/FastAPI first pass exists; session hardening pending
+S1D Board/share/invites       70%  CRUD/share/member first pass exists; invite/Team permission polish pending
+S2 AI runtime/provider routes 58%  GeekAI local UX path exists; server route/billing control-plane cut pending
+S3 Admin/billing/team         56%  admin/billing/team first pass exists; real payments/finance depth pending
+Frontend product UI alignment 52%  major surfaces exist; nav, plan labels and cost messaging need alignment
+S4 Collaboration              10%  boundary documented; Yjs/provider proof deferred
+```
 
 ```text
 Done locally:
@@ -46,8 +79,10 @@ Done locally:
   Auth scaffold
   S1D first-pass Board members/share/public share flow with owner-only copy/delete and known-foreign Asset guard
   S3 first-pass admin probe/summary/audit/role management
-  S3 first-pass billing/workspace entitlement dashboard contract with Collaborate Plus / Team Growth catalog, DB-backed read lookup, Team seat mutation, credit preflight coverage and internal ledger settlement helpers
-  S2/S3 first DB-backed AI control-plane registry/provider-route/pricing-rule read + AiRun quote/preflight + background mock lifecycle/failover checkpoint
+  S3 first-pass billing/workspace entitlement dashboard contract with Collaborate Plus / Team Growth catalog, DB-backed read lookup, Team seat mutation, credit preflight coverage, internal ledger settlement helpers, payment-backed top-up/seat checkout scaffolds and first-pass top-up/usage/admin AI save panels
+  S2/S3 DB-backed AI control-plane registry/provider-route/pricing-rule read/save + versioned publish/rollback + AiRun quote/preflight + persisted lifecycle/failover + live-adapter scaffold checkpoint
+  Canvas-facing GeekAI local fast path for chat streaming, prompt optimization, image generation/edit/reference and analysis
+  Image Gen / Image Gen 4 model-aware controls for GPT Image 2, Nano Banana 2, Doubao Seedream and Jimeng-style parameters
   Billing/team packaging strategy checkpoint
   AI contract scaffold
   Alembic scaffold
@@ -56,13 +91,14 @@ Done locally:
 Not production-complete:
   real Auth/email/session
   share editor/invite-accept and full team/share permissions
-  real Group/Team workspace governance, paid seat purchase flows and provider-backed actor-personal credit ledger charging
+  real Group/Team workspace governance, paid seat renewal/cancellation flows and external payment-provider-backed actor-personal credit ledger charging
   staging auth/email/license hardening
   precise old-board style/binding migration beyond first-pass copy tooling
   Konva collaboration/Yjs provider sync
   true rendered Konva page-thumbnail assets/page duplicate/Move selection to new page
-  real AI provider/cost logs
-  full Admin/Billing/Analytics
+  local GeekAI path folded into the server AiRun/provider-route/billing control plane
+  full real AI provider coverage and durable text-output persistence
+  full Admin/Billing/Analytics depth, including external billing reconciliation and richer finance views
   collaboration
 ```
 
@@ -77,8 +113,8 @@ Not production-complete:
 | S1C Auth Context | `project_state_slice_S1C_auth_request_context.md` | In progress; real provider-backed auth still pending end-to-end rollout |
 | S1D Board CRUD | `project_state_slice_S1D_auth_board_crud.md` | Stable first-pass CRUD/member/share/public-share-open checkpoint with owner-only copy/delete, share expiry and known-foreign Asset guard |
 | S1X Canvas Engine Migration | `project_state_slice_S1X_canvas_engine_migration.md` | Konva Board route accepted; Page polish and v1 copy tooling landed; collaboration pending |
-| S2 AI Runtime | `project_state_slice_S2_ai_runtime.md` | Mock runtime/dataflow stable enough for provider planning; optional mock-ledger charging exercise exists; DB-backed model/pricing/route tables, AiRun quote/preflight, background-executed persisted mock `ai_runs`, attempt-level `ai_api_calls`, pure-read run polling, timeout-safe failover and extracted settlement orchestration now exist; real provider adapters are still pending |
-| S3 Admin/Billing/Analytics | `project_state_slice_S3_admin_billing_analytics.md` | Admin first-pass and entitlement surfaces exist with Start/Plus/Growth catalog, DB-backed read lookup, Team seat mutation, credit preflight coverage, internal ledger settlement helpers, read-only `/admin` AI control-plane plus `/admin/ai/runs` and `/admin/ai/api-calls` routes, and a first-pass frontend `/admin` AI dashboard with grouped runtime attempt timelines on top of quote-time route/pricing facts plus persisted mock lifecycle facts for later admin run/cost views; write/publish workflows remain next |
+| S2 AI Runtime | `project_state_slice_S2_ai_runtime.md` | Mock/runtime dataflow, persisted route/settlement shell and local GeekAI canvas path are usable; DB-backed quote/preflight/lifecycle/attempt facts exist; production gate is folding GeekAI plus future providers into the server provider-route/billing control plane and validating one live image path with durable Asset/text-output handling |
+| S3 Admin/Billing/Analytics | `project_state_slice_S3_admin_billing_analytics.md` | Admin first-pass and entitlement surfaces exist with Start/Plus/Growth catalog, DB-backed read lookup, Team seat mutation, credit preflight coverage, internal ledger settlement helpers, payment-backed top-up/seat checkout scaffolds, first-pass top-up/usage/team-member write surfaces, versioned publish/rollback for AI control-plane facts, and a frontend `/admin` AI dashboard with grouped runtime attempt timelines, finer filters, per-run drill-down and editable model/route/pricing save panels on top of persisted route/pricing/runtime-cost facts; real payment/provider settlement depth remains pending |
 
 ## Current Next Fork
 
@@ -87,8 +123,8 @@ If external resources are not ready:
 1. Hand-test S1X Page UI save/restore/history, page delete/reorder/Move to page and v1-to-v2 copy tooling on real Boards.
 2. Keep S1X on regression-only fixes while the new share/admin checkpoints settle.
 3. Harden S1D permissions into the target `Can view/edit/manage/owner` model with Group/Team workspace separation.
-4. Replace the remaining stub adapter bodies with real provider adapters while preserving the new timeout-safe per-attempt observability and no-double-charge settlement boundary before real provider charging.
-5. Expand the new AI control plane from read/quote into audited route/pricing publish flows.
+4. Fold the current GeekAI local fast path into the server provider-route adapter layer while preserving timeout-safe per-attempt observability and no-double-charge settlement before real provider charging.
+5. Keep the new AI control plane focused on audited route/pricing publish flows, live smoke and durable output handling.
 
 If external resources are ready:
 
@@ -96,8 +132,8 @@ If external resources are ready:
 2. Run staging Postgres migration/query smoke and R2 asset smoke.
 3. Continue S1C Auth rollout and harden S1D Auth-backed Board CRUD/public share on top of the Konva v2 Board contract.
 4. Harden S1D Group/Team workspace permissions and S3 billing-visibility entitlements on top of real identity.
-5. Move S2 real AI provider work through server-side AiRun contracts.
-6. Expand S3 Admin from the current first-pass checkpoint after real Auth/admin roles exist.
+5. Move S2 real AI provider work through server-side AiRun contracts, starting with the GeekAI provider-route reconciliation plan.
+6. Expand S3 Admin from the current first-pass save/edit checkpoint after real Auth/admin roles exist.
 
 ## Next Slice Order
 
@@ -129,9 +165,9 @@ S1D Auth-backed Board CRUD
   +--> S4 Collaboration
 ```
 
-Current recommendation: keep tldraw as reference-only, treat S1X page polish as accepted unless regressions appear, and use `dev-plans/s1-launch-readiness-and-acceptance-report-2026-05-05.md` as the handoff checklist for S1B deployment, S1C Auth rollout, S2 real AiRun, S3 admin expansion and S4 collaboration sequencing. S1A is implemented, S1B staging Web/API/Postgres/R2 smoke is mostly through, S1D first-pass share flow is now in place, and the earlier tldraw license blocker is mitigated locally by the production gate and Konva route migration.
+Current recommendation: keep tldraw as reference-only, treat S1X page polish as accepted unless regressions appear, and use `dev-plans/s1-launch-readiness-and-acceptance-report-2026-05-05.md` plus `dev-plans/s2-ai-provider-route-billing-control-plane-2026-05-07.md` as the handoff checklists for S1B deployment, S1C Auth rollout, S2 real AiRun/provider-route reconciliation, S3 admin expansion and S4 collaboration sequencing. S1A is implemented, S1B staging Web/API/Postgres/R2 smoke is mostly through, S1D first-pass share flow is now in place, and the earlier tldraw license blocker is mitigated locally by the production gate and Konva route migration.
 
-Next major checkpoint should be one of: S1 share/group-team permission hardening, S3 seat/credit + workspace-dashboard entitlement implementation, S2 real AiRun/provider execution, S3 richer admin search/pagination, or the Phase 6 Yjs collaboration proof. Avoid adding new tldraw-only behavior.
+Next major checkpoint should be one of: S2 GeekAI provider-route/billing control-plane reconciliation with one real live image smoke, S1 share/group-team permission hardening, S3 payment/finance settlement depth, frontend UI alignment on navigation/plan/cost language, or the Phase 6 Yjs collaboration proof. Avoid adding new tldraw-only behavior.
 
 ## Update Rules
 
@@ -145,9 +181,9 @@ Next major checkpoint should be one of: S1 share/group-team permission hardening
 
 # TANGENT 项目状态索引
 
-**更新日期**：2026-05-06
+**更新日期**：2026-05-07
 **分支**：`feature/s1x-konva-handfeel-spike`
-**最新本地检查点**：S1X Konva 路由稳定化 + S1D effective-permission / owner-only copy-delete / expiring-share / known-foreign Asset guard hardening + S3 后台 bootstrap 第一阶段 + S2/S3 第一批 DB-backed AI control-plane read/quote + 后台执行的 persisted mock AiRun lifecycle 加 timeout-safe route-failover shell，并带按尝试分行的 `ai_api_calls` 与分组 `/admin` runtime attempt 视图检查点；详细历史请留在 Git 中。
+**最新本地检查点**：S1X Konva 路由稳定化 + S1D effective-permission / owner-only copy-delete / expiring-share / known-foreign Asset guard hardening + S3 后台 bootstrap 第一阶段 + S2/S3 第一批 DB-backed AI control-plane read/quote/save + 后台执行的 persisted mock AiRun lifecycle、timeout-safe route-failover shell、按尝试分行的 `ai_api_calls`、版本化 publish/rollback、按尝试分行的 `api_cost_ledger` settlement、分组 `/admin` runtime attempt 视图、第一阶段 Team / Billing / Usage 写入界面，以及面向画布的 GeekAI 本地 fast path：chat streaming、prompt optimization、image generation/edit/reference、analysis 和模型感知 Image Gen / Image Gen 4 控件；详细历史请留在 Git 中。
 
 本目录取代了原来的根级长项目台账和短镜像文件。根目录 `project_state.md` 现在只做指针用途。
 
@@ -159,13 +195,46 @@ S1X 已经达到一个稳定的基础迁移检查点。Konva v2 现在是新建 
 
 S1D 现在已经超越“原始 member CRUD scaffold”，进入了一个可用的第一阶段权限层：backend `none/view/edit/manage/owner` resolver、owner-only Board copy/delete、Board restore、支持 guest 的 board-member 角色、people lookup、email invite、服务端 expiring share links、known-foreign Asset reference blocking，以及公共 shared-Board 消费都已经在本地具备。
 
-S3 也已经有了稳定的第一阶段后台 bootstrap 检查点：`/admin` 现在由服务端门控，能够读取 summary / users / workspaces / boards / audit 事实，并支持 owner-only 的 role grant / revoke 与审计日志。
+S3 也已经有了稳定的第一阶段后台 bootstrap 检查点：`/admin` 现在由服务端门控，能够读取 summary / users / workspaces / boards / audit 事实，支持 owner-only 的 role grant / revoke 与审计日志，并且现在也已经带上 AI model / route / pricing 的第一阶段 save/edit panels 和版本化 publish/rollback，以及 billing / usage / team 的写入界面。
 
-S2/S3 现在也已经开始了第一条真正的 AI control-plane backend 主线：migration `20260506_0008` 增加了 DB-backed model registry / parameter tiers / pricing rules，并把 provider-route 事实做了第一批规范化；migration `20260506_0009` 则把 quote 阶段选中的 route/pricing 关联扩展进 `ai_runs` / `ai_api_calls`；`/api/v1/admin/ai/*` 暴露了只读后台检查接口，`/api/v1/ai/runs/quote` 会在 provider execution 之前返回带 payer 信息的 estimate/preflight，而 DB-backed mock run 路径现在也已经支持后台执行的持久化 lifecycle rows、timeout-safe 的 primary->backup route shell、retry-policy-aware execution、抽离出的 settlement orchestration，并为每次 provider 尝试各写一条 `ai_api_calls` 记录；前端 `/admin` 也已经会按 run 分组显示这些 attempts，而不再只是一次性的 success 记录或一条会被覆盖的 API-call 摘要。
+S2/S3 现在也已经开始了第一条真正的 AI control-plane backend 主线：migration `20260506_0008` 增加了 DB-backed model registry / parameter tiers / pricing rules，并把 provider-route 事实做了第一批规范化；migration `20260506_0009` 则把 quote 阶段选中的 route/pricing 关联扩展进 `ai_runs` / `ai_api_calls`；migration `20260506_0010` 则继续补上 provider-currency / runtime-cost 事实；migration `20260506_0011` 则增加控制平面版本历史与 cost-ledger settlement 列。`/api/v1/admin/ai/*` 现在既暴露后台检查接口，也已经带上第一阶段 PATCH save 和 publish/rollback flows；`/api/v1/ai/runs/quote` 会在 provider execution 之前返回带 payer 信息的 estimate/preflight，而当前 run 路径已经支持持久化 lifecycle rows、timeout-safe 的 primary->backup route shell、可选启用的 live provider-specific adapter dispatch、归一化后的 provider cost/currency settlement、按尝试分行的 `api_cost_ledger` 事实，以及带更细 filters / drill-down 的 `/admin` runtime attempt 视图。
+
+与此同时，画布现在也有了一条通过 Web app 接入 GeekAI 的本地 fast path，用来验证用户流程：Chat 可以流式输出文本，Prompt Optimizer 可以流式优化出图提示词，Analysis 可以选择 OpenAI 系或 Gemini 系视觉分析模型，Image Gen / Image Gen 4 可以用 GPT Image 2、Nano Banana 2、Doubao Seedream 和 Jimeng 的参数界面运行 image generation/edit/reference。这对产品验证有价值，但还不是生产权限边界；下一步 S2 cut 是把这条 GeekAI 路径收口到 `dev-plans/s2-ai-provider-route-billing-control-plane-2026-05-07.md` 里定义的 server AiRun provider-route/billing control plane。
 
 从业务系统角度看，下一步目标现在也更清晰了：一方面要把 S1D 权限继续硬化为 `Can view / Can edit / Can manage / Owner`，另一方面要把 S3 的 Group/Team workspace 合同做清楚，明确谁能看到成员 usage，以及一次 AI run 应该怎样扣到当前操作者自己。
 
 从运行角度看，这意味着 `/boards/[boardId]` 是需要继续打磨的 Konva-first 主路径，`/spikes/canvas` 只是参考表面；新的白板需求在更新这个总索引之前，应该先更新 S1X 切片文档。
+
+## 当前 Alpha 主线
+
+当前这一轮发布范围，比完整本地 scaffold 更窄。现在只有下面四条线属于发布关键路径：
+
+1. Canvas / Board / Page / Share / Auth
+2. 一个真实 AI provider 路径
+3. Billing mock + usage / ledger 可见
+4. Admin 最小可运营面
+
+除此之外的内容，都应该被视为以下三类之一：
+
+- 支撑发布主线的 parallel scaffold
+- 保留在代码中、但不进入主承诺的 frozen placeholder
+- collaboration、真实支付、deep finance tooling 这类 post-alpha 延后项
+
+## 当前并行就绪快照
+
+这些百分比是粗粒度就绪标记，不是时间估算：
+
+```text
+S1X Canvas/Konva runtime      78%  本地 Board 主路径稳定；export/Yjs/live AiRun polish 待完成
+S1A Schema/DB foundation      85%  schema join points 已存在；staging DB smoke 仍待完成
+S1B Deploy/staging            60%  Web/API/Neon/R2 smoke 已存在；Auth/email/OAuth 待通过
+S1C Auth/registration         55%  Clerk/FastAPI 第一阶段存在；session hardening 待完成
+S1D Board/share/invites       70%  CRUD/share/member 第一阶段存在；invite/Team permission polish 待完成
+S2 AI runtime/provider routes 58%  GeekAI 本地 UX 路径存在；服务端 route/billing control-plane cut 待完成
+S3 Admin/billing/team         56%  admin/billing/team 第一阶段存在；真实支付和 finance 深度待完成
+Frontend product UI alignment 52%  主要界面已存在；导航、套餐语言和扣费文案需要对齐
+S4 Collaboration              10%  边界已文档化；Yjs/provider proof 后置
+```
 
 ```text
 本地已完成：
@@ -191,8 +260,10 @@ S2/S3 现在也已经开始了第一条真正的 AI control-plane backend 主线
   Auth scaffold
   S1D first-pass Board members/share/public share flow with owner-only copy/delete and known-foreign Asset guard
   S3 first-pass admin probe/summary/audit/role management
-  S3 first-pass billing/workspace entitlement dashboard contract with Collaborate Plus / Team Growth catalog, DB-backed read lookup, Team seat mutation、credit preflight coverage 和 internal ledger settlement helpers
-  S2/S3 first DB-backed AI control-plane registry/provider-route/pricing-rule read + AiRun quote/preflight + background mock lifecycle/failover checkpoint
+  S3 first-pass billing/workspace entitlement dashboard contract with Collaborate Plus / Team Growth catalog, DB-backed read lookup, Team seat mutation、credit preflight coverage、internal ledger settlement helpers、payment-backed top-up/seat checkout scaffolds 和第一阶段 top-up / usage / admin AI save panels
+  S2/S3 DB-backed AI control-plane registry/provider-route/pricing-rule read/save + 版本化 publish/rollback + AiRun quote/preflight + persisted lifecycle/failover + live-adapter scaffold checkpoint
+  面向画布的 GeekAI 本地 fast path：chat streaming、prompt optimization、image generation/edit/reference 和 analysis
+  Image Gen / Image Gen 4 已有 GPT Image 2、Nano Banana 2、Doubao Seedream 和 Jimeng 风格参数的模型感知控件
   Billing/team packaging strategy checkpoint
   AI contract scaffold
   Alembic scaffold
@@ -201,13 +272,14 @@ S2/S3 现在也已经开始了第一条真正的 AI control-plane backend 主线
 尚未达到生产完成：
   real Auth/email/session
   share editor/invite-accept and full team/share permissions
-  real Group/Team workspace governance、paid seat purchase flows 和 provider-backed actor-personal credit ledger charging
+  real Group/Team workspace governance、paid seat renewal/cancellation flows 和 external payment-provider-backed actor-personal credit ledger charging
   staging auth/email/license hardening
   precise old-board style/binding migration beyond first-pass copy tooling
   Konva collaboration/Yjs provider sync
   true rendered Konva page-thumbnail assets/page duplicate/Move selection to new page
-  real AI provider/cost logs
-  full Admin/Billing/Analytics
+  local GeekAI path 收口到 server AiRun/provider-route/billing control plane
+  full real AI provider coverage 和 durable text-output persistence
+  full Admin/Billing/Analytics 深度能力，包括 external billing reconciliation 和更丰富的 finance views
   collaboration
 ```
 
@@ -222,8 +294,8 @@ S2/S3 现在也已经开始了第一条真正的 AI control-plane backend 主线
 | S1C Auth Context | `project_state_slice_S1C_auth_request_context.md` | 进行中；真实 provider-backed auth 还未端到端上线 |
 | S1D Board CRUD | `project_state_slice_S1D_auth_board_crud.md` | 第一阶段 CRUD/member/share/public-share-open 检查点稳定，并已带 owner-only copy/delete、share expiry 和 known-foreign Asset guard |
 | S1X Canvas Engine Migration | `project_state_slice_S1X_canvas_engine_migration.md` | Konva Board 路由已接受；Page polish 和 v1 copy tooling 已落地；协作仍待完成 |
-| S2 AI Runtime | `project_state_slice_S2_ai_runtime.md` | Mock runtime/dataflow 已足够规划 provider；optional mock-ledger charging exercise 已存在；DB-backed model/pricing/route tables、AiRun quote/preflight、后台执行的持久化 mock `ai_runs`、按尝试分行的 `ai_api_calls`、纯读取 run polling、timeout-safe failover，以及抽离出的 settlement orchestration 现在都已存在；真实 provider adapters 仍待完成 |
-| S3 Admin/Billing/Analytics | `project_state_slice_S3_admin_billing_analytics.md` | Admin 第一阶段和 entitlement surfaces 已存在，并带 Start/Plus/Growth catalog、DB-backed read lookup、Team seat mutation、credit preflight coverage、internal ledger settlement helpers、只读 `/admin` AI control-plane 加 `/admin/ai/runs` 和 `/admin/ai/api-calls` routes，以及建立在 quote-time route/pricing facts 和 persisted mock lifecycle facts 之上的第一阶段前端 `/admin` grouped runtime attempt dashboard；可写 publish workflow 仍是下一主线 |
+| S2 AI Runtime | `project_state_slice_S2_ai_runtime.md` | Mock/runtime dataflow、持久化 route/settlement shell 和本地 GeekAI canvas path 都已可用；DB-backed quote/preflight/lifecycle/attempt facts 已存在；生产闸门是把 GeekAI 和未来 providers 收口到服务端 provider-route/billing control plane，并用 durable Asset/text-output handling 验证一条 live image path |
+| S3 Admin/Billing/Analytics | `project_state_slice_S3_admin_billing_analytics.md` | Admin 第一阶段和 entitlement surfaces 已存在，并带 Start/Plus/Growth catalog、DB-backed read lookup、Team seat mutation、credit preflight coverage、internal ledger settlement helpers、payment-backed top-up/seat checkout scaffolds、第一阶段 top-up / usage / team-member 写入 surface、AI control-plane facts 的版本化 publish/rollback，以及建立在持久化 route/pricing/runtime-cost facts 之上的前端 `/admin` grouped runtime dashboard、细粒度 filters、per-run drill-down 和可编辑 model/route/pricing save panels；真实支付和 provider settlement 深度仍待完成 |
 
 ## 当前下一条分叉路线
 
@@ -232,8 +304,8 @@ S2/S3 现在也已经开始了第一条真正的 AI control-plane backend 主线
 1. 手测真实 Board 上的 S1X Page UI save/restore/history、page delete/reorder/Move to page，以及 v1-to-v2 copy tooling。
 2. 让 S1X 保持在只修回归的状态，同时等待新的 share/admin 检查点稳定。
 3. 把 S1D 权限硬化到目标 `Can view/edit/manage/owner` 模型，并拆清 Group/Team workspace 边界。
-4. 在真实 provider charging 之前，先把剩余的 stub adapter bodies 替换成真实 route execution / provider adapters，同时保留新的 timeout-safe 逐次尝试可观测性和 no-double-charge settlement 边界。
-5. 再把新的 AI control plane 从 read/quote 扩展成带审计的 route/pricing publish flows。
+4. 在真实 provider charging 之前，先把当前 GeekAI 本地 fast path 收口到服务端 provider-route adapter layer，同时保留 timeout-safe 逐次尝试可观测性和 no-double-charge settlement 边界。
+5. 让新的 AI control plane 继续聚焦在带审计的 route/pricing publish flows、live smoke 和 durable output handling。
 
 如果外部资源已经准备好：
 
@@ -241,8 +313,8 @@ S2/S3 现在也已经开始了第一条真正的 AI control-plane backend 主线
 2. 运行 staging Postgres migration/query smoke 和 R2 asset smoke。
 3. 继续推进 S1C Auth rollout，并在 Konva v2 Board 合同之上继续加固 S1D Auth-backed Board CRUD / public share。
 4. 在真实 identity 之上继续硬化 S1D 的 Group/Team workspace 权限，以及 S3 的 billing 可见性 entitlement。
-5. 通过服务端 AiRun 合同推进 S2 的真实 AI provider 工作。
-6. 在真实 Auth/admin roles 存在之后，再从第一阶段检查点继续扩展 S3 Admin。
+5. 通过服务端 AiRun 合同推进 S2 的真实 AI provider 工作，先从 GeekAI provider-route reconciliation plan 开始。
+6. 在真实 Auth/admin roles 存在之后，再从第一阶段 save/edit 检查点继续扩展 S3 Admin。
 
 ## 下一切片顺序
 
@@ -274,9 +346,9 @@ S1D Auth-backed Board CRUD
   +--> S4 Collaboration
 ```
 
-当前建议是：继续把 tldraw 视作参考路径；除非出现回归，否则把 S1X page polish 视为已接受；并使用 `dev-plans/s1-launch-readiness-and-acceptance-report-2026-05-05.md` 作为 S1B 部署、S1C Auth rollout、S2 真实 AiRun、S3 admin 扩展和 S4 协作排序的交接检查清单。S1A 已实现，S1B staging Web/API/Postgres/R2 smoke 已基本完成，S1D 第一阶段 share flow 已就绪，之前的 tldraw license blocker 也已通过生产 gate 和 Konva 路由迁移在本地得到缓解。
+当前建议是：继续把 tldraw 视作参考路径；除非出现回归，否则把 S1X page polish 视为已接受；并使用 `dev-plans/s1-launch-readiness-and-acceptance-report-2026-05-05.md` 加上 `dev-plans/s2-ai-provider-route-billing-control-plane-2026-05-07.md` 作为 S1B 部署、S1C Auth rollout、S2 真实 AiRun / provider-route reconciliation、S3 admin 扩展和 S4 协作排序的交接检查清单。S1A 已实现，S1B staging Web/API/Postgres/R2 smoke 已基本完成，S1D 第一阶段 share flow 已就绪，之前的 tldraw license blocker 也已通过生产 gate 和 Konva 路由迁移在本地得到缓解。
 
-下一个主要检查点应当是以下之一：S1 share/group-team permission hardening、S3 seat/credit + workspace-dashboard entitlement implementation、S2 real AiRun/provider execution、S3 richer admin search/pagination，或者 Phase 6 的 Yjs collaboration proof。避免再新增任何只属于 tldraw 的行为。
+下一个主要检查点应当是以下之一：S2 GeekAI provider-route/billing control-plane reconciliation 并完成一条真实 live image smoke、S1 share/group-team permission hardening、S3 payment/finance settlement depth、前端 UI 在 navigation/plan/cost language 上的对齐，或者 Phase 6 的 Yjs collaboration proof。避免再新增任何只属于 tldraw 的行为。
 
 ## 更新规则
 

@@ -45,3 +45,9 @@ class CreditLedgerMutationResponse(TangentApiModel):
     entry: CreditLedgerEntryRecord
     error: Optional[str] = None
     ok: bool
+
+
+class CreditTopupRequest(TangentApiModel):
+    credits: float
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    source_id: Optional[str] = Field(default=None, alias="sourceId")

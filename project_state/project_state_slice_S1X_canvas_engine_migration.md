@@ -4,6 +4,16 @@
 **Branch**: `feature/s1x-konva-handfeel-spike`
 **Started**: 2026-05-03
 
+## Current Alpha Boundary
+
+This slice is no longer a broad migration exploration. For the current release pass it is a stabilization lane:
+
+- keep `/boards/[boardId]` reliable
+- keep page/history/share flows reliable
+- keep tldraw as reference-only
+
+Yjs collaboration, rendered page-thumbnail assets, page duplicate and broader export polish remain outside the current alpha promise.
+
 ## Why This Slice Exists
 
 Public staging exposed the tldraw production license requirement. The current tldraw canvas can remain a local/reference implementation, but TANGENT should evaluate a long-term MIT-compatible canvas/collaboration stack before adding more tldraw-only product work.

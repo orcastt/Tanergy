@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ArrowShapeUtil, Tldraw, type Editor, type TLAnyShapeUtilConstructor, type TLComponents } from 'tldraw'
 import { NodeCardShapeUtil } from '@/components/nodes/NodeCardShape'
+import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import { useCanvasPerformanceStore } from '@/features/canvas-performance/canvasPerformanceStore'
 import { useCanvasPerformanceTracking } from '@/features/canvas-performance/useCanvasPerformanceTracking'
 import { createNodeCard } from '@/features/node-runtime/createNodeCard'
@@ -89,6 +90,7 @@ type CanvasSpikeProps = {
   onBoardLoaded?: (boardTitle: string) => void
   onBoardTitleRename?: (title: string) => Promise<string | void> | string | void
   seedOnMount?: boolean
+  workspace?: TangentWorkspace
 }
 
 export function CanvasSpike({
@@ -99,6 +101,7 @@ export function CanvasSpike({
   onBoardLoaded,
   onBoardTitleRename,
   seedOnMount = true,
+  workspace,
 }: CanvasSpikeProps = {}) {
   const [editor, setEditor] = useState<Editor | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -234,6 +237,7 @@ export function CanvasSpike({
           editor={editor}
           mode={boardId ? 'board' : 'dev'}
           onBoardLoaded={(board) => onBoardLoaded?.(board.title)}
+          workspace={workspace}
         />
         {settingsOpen ? <CanvasSettingsPanel boardMode={Boolean(boardId)} onClose={() => setSettingsOpen(false)} /> : null}
         <CanvasSpikeStylePanel editor={editor} />

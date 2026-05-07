@@ -35,6 +35,7 @@ function createSessionFromContext(context: ApiRequestContext): TangentSession {
     kind: context.workspaceKind,
     planKey: context.workspacePlanKey,
   }
+  const workspaces = buildMockWorkspaceCollection(activeWorkspace)
   return {
     ...mockSession,
     activeWorkspace,
@@ -44,7 +45,7 @@ function createSessionFromContext(context: ApiRequestContext): TangentSession {
       ...mockSession.user,
       id: context.userId,
     },
-    workspaces: [activeWorkspace],
+    workspaces,
   }
 }
 
@@ -57,6 +58,7 @@ function createSessionFromClerk(userId: string, user: ClerkCurrentUser | null): 
     name: 'Tanergy Workspace',
     role: 'owner' as const,
   }
+  const workspaces = buildMockWorkspaceCollection(activeWorkspace)
 
   return {
     ...mockSession,
@@ -70,8 +72,17 @@ function createSessionFromClerk(userId: string, user: ClerkCurrentUser | null): 
       emailVerified: isClerkEmailVerified(user),
       id: userId,
     },
-    workspaces: [activeWorkspace],
+    workspaces,
   }
+}
+
+function buildMockWorkspaceCollection(activeWorkspace: TangentSession['activeWorkspace']) {
+  return [
+    activeWorkspace,
+    ...mockSession.workspaces
+      .filter((workspace) => workspace.id !== activeWorkspace.id)
+      .map((workspace) => ({ ...workspace })),
+  ]
 }
 
 function getClerkEmail(user: ClerkCurrentUser | null, userId: string) {

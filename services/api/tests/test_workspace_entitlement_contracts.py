@@ -316,8 +316,233 @@ def test_credit_preflight_reports_shortfall(monkeypatch):
     assert payload["shortfallCredits"] == 8
 
 
+def test_credit_ledger_route_applies_filters(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.credit_ledger = [
+        {
+            "account_id": "credit_user_user_ledger",
+            "actor_user_id": "user_ledger",
+            "created_at": "2026-05-06T00:10:00Z",
+            "credits_delta": -15,
+            "id": "ledger_usage_match",
+            "metadata": {"runId": "run_1"},
+            "reason": "usage_charge",
+            "source_id": "run_1",
+            "source_type": "ai_run",
+            "workspace_id": "workspace_group",
+        },
+        {
+            "account_id": "credit_user_user_ledger",
+            "actor_user_id": "user_other",
+            "created_at": "2026-05-06T00:20:00Z",
+            "credits_delta": -7,
+            "id": "ledger_usage_other_actor",
+            "metadata": {"runId": "run_2"},
+            "reason": "usage_charge",
+            "source_id": "run_2",
+            "source_type": "ai_run",
+            "workspace_id": "workspace_group",
+        },
+        {
+            "account_id": "credit_user_user_ledger",
+            "actor_user_id": "user_ledger",
+            "created_at": "2026-05-06T00:30:00Z",
+            "credits_delta": 20,
+            "id": "ledger_topup_other_reason",
+            "metadata": {},
+            "reason": "topup_purchase",
+            "source_id": "payment_1",
+            "source_type": "payment",
+            "workspace_id": "workspace_other",
+        },
+    ]
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.credit_ledger.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    response = client.get(
+        "/api/v1/credits/ledger?reason=usage_charge&actorUserId=user_ledger&workspaceId=workspace_group",
+        headers={
+            "x-tangent-user-id": "user_ledger",
+            "x-tangent-workspace-id": "workspace_group",
+            "x-tangent-workspace-kind": "group_workspace",
+        },
+    )
+
+    assert response.status_code == 200
+    assert [entry["id"] for entry in response.json()["entries"]] == ["ledger_usage_match"]
+
+
+def test_credit_topup_route_writes_payment_entry(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.credit_ledger.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/credits/topups",
+        headers={
+            "x-tangent-user-id": "user_topup",
+            "x-tangent-workspace-id": "workspace_group",
+            "x-tangent-workspace-kind": "group_workspace",
+        },
+        json={
+            "credits": 24,
+            "metadata": {"pack": "growth"},
+            "sourceId": "payment_growth_1",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["accountId"] == "credit_user_user_topup"
+    assert payload["balanceCredits"] == 24
+    assert payload["entry"]["reason"] == "topup_purchase"
+    assert payload["entry"]["sourceType"] == "payment"
+    assert payload["entry"]["metadata"] == {"pack": "growth"}
+    assert fake_db.credit_ledger[-1]["source_id"] == "payment_growth_1"
+
+
+def test_billing_topup_checkout_complete_and_list_payments(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.credit_ledger.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    checkout = client.post(
+        "/api/v1/billing/topups/checkout",
+        headers={
+            "x-tangent-plan-key": "collaborate_start",
+            "x-tangent-user-id": "user_topup_checkout",
+            "x-tangent-workspace-id": "workspace_group",
+            "x-tangent-workspace-kind": "group_workspace",
+        },
+        json={
+            "credits": 40,
+            "currency": "usd",
+            "metadata": {"pack": "starter"},
+        },
+    )
+
+    assert checkout.status_code == 200
+    payment = checkout.json()["payment"]
+    assert payment["accountId"] == "credit_user_user_topup_checkout"
+    assert payment["amountCents"] == 40
+    assert payment["kind"] == "topup"
+    assert payment["status"] == "pending"
+
+    completed = client.post(
+        f"/api/v1/billing/payments/{payment['id']}/complete",
+        headers={
+            "x-tangent-plan-key": "collaborate_start",
+            "x-tangent-user-id": "user_topup_checkout",
+            "x-tangent-workspace-id": "workspace_group",
+            "x-tangent-workspace-kind": "group_workspace",
+        },
+    )
+
+    assert completed.status_code == 200
+    completed_payload = completed.json()
+    assert completed_payload["payment"]["status"] == "succeeded"
+    assert completed_payload["topupEntryId"] is not None
+    assert fake_db.credit_ledger[-1]["account_id"] == "credit_user_user_topup_checkout"
+    assert fake_db.credit_ledger[-1]["credits_delta"] == 40
+    assert fake_db.credit_ledger[-1]["reason"] == "topup_purchase"
+
+    listed = client.get(
+        "/api/v1/billing/payments?status=succeeded",
+        headers={
+            "x-tangent-user-id": "user_topup_checkout",
+            "x-tangent-workspace-id": "workspace_group",
+            "x-tangent-workspace-kind": "group_workspace",
+        },
+    )
+
+    assert listed.status_code == 200
+    assert [row["id"] for row in listed.json()["payments"]] == [payment["id"]]
+
+
+def test_team_seat_checkout_complete_updates_subscription_and_workspace_payments(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    checkout = client.post(
+        "/api/v1/billing/workspaces/current/seats/checkout",
+        headers={
+            "x-tangent-user-id": "user_team_owner",
+            "x-tangent-workspace-id": "workspace_team",
+            "x-tangent-workspace-kind": "team_workspace",
+        },
+        json={
+            "planKey": "team_growth",
+            "quantity": 3,
+            "currency": "usd",
+            "metadata": {"cycle": "launch"},
+        },
+    )
+
+    assert checkout.status_code == 200
+    payment = checkout.json()["payment"]
+    assert payment["accountId"] == "credit_workspace_workspace_team"
+    assert payment["amountCents"] == 13500
+    assert payment["kind"] == "seat_purchase"
+    assert payment["status"] == "pending"
+
+    completed = client.post(
+        f"/api/v1/billing/payments/{payment['id']}/complete",
+        headers={
+            "x-tangent-user-id": "user_team_owner",
+            "x-tangent-workspace-id": "workspace_team",
+            "x-tangent-workspace-kind": "team_workspace",
+        },
+    )
+
+    assert completed.status_code == 200
+    completed_payload = completed.json()
+    assert completed_payload["payment"]["status"] == "succeeded"
+    assert completed_payload["topupEntryId"] is None
+    assert fake_db.subscriptions[0]["account_id"] == "credit_workspace_workspace_team"
+    assert fake_db.subscriptions[0]["plan_key"] == "team_growth"
+    assert fake_db.subscriptions[0]["provider_subscription_id"] == payment["id"]
+
+    listed = client.get(
+        "/api/v1/billing/payments?workspaceScoped=true&kind=seat_purchase&status=succeeded",
+        headers={
+            "x-tangent-user-id": "user_team_owner",
+            "x-tangent-workspace-id": "workspace_team",
+            "x-tangent-workspace-kind": "team_workspace",
+        },
+    )
+
+    assert listed.status_code == 200
+    assert [row["id"] for row in listed.json()["payments"]] == [payment["id"]]
+
+
 def test_team_owner_can_assign_and_list_seats(monkeypatch):
     fake_db = FakePostgresDatabase()
+    fake_db.payments = [
+        {
+            "account_id": "credit_workspace_workspace_team",
+            "amount_cents": 9000,
+            "created_at": "2026-05-06T00:00:00Z",
+            "currency": "usd",
+            "id": "payment_seat_growth",
+            "kind": "seat_purchase",
+            "metadata": {
+                "planKey": "team_growth",
+                "quantity": 2,
+                "workspaceId": "workspace_team",
+            },
+            "provider": "manual_test",
+            "provider_payment_id": "payment_provider_seat_growth",
+            "status": "succeeded",
+        }
+    ]
     fake_db.workspace_members = [
         {
             "display_name": "Team Member",
@@ -365,8 +590,70 @@ def test_team_owner_can_assign_and_list_seats(monkeypatch):
     assert listed.json()["seats"][0]["id"] == seat["id"]
 
 
+def test_group_owner_can_change_workspace_member_role(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.workspace_members = [
+        {
+            "display_name": "Group Member",
+            "invited_by": "user_group_owner",
+            "joined_at": "2026-05-05T01:00:00Z",
+            "role": "member",
+            "user_id": "user_group_member",
+            "workspace_id": "workspace_group",
+        }
+    ]
+    fake_db.users = [
+        {
+            "id": "user_group_member",
+            "email": "member@example.com",
+            "display_name": "Group Member",
+            "status": "active",
+            "locale": "en",
+            "created_at": "2026-05-05T00:00:00Z",
+            "last_login_at": None,
+        }
+    ]
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    response = client.patch(
+        "/api/v1/workspaces/current/members/user_group_member",
+        headers={
+            "x-tangent-user-id": "user_group_owner",
+            "x-tangent-workspace-id": "workspace_group",
+            "x-tangent-workspace-kind": "group_workspace",
+        },
+        json={"role": "guest"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["member"]["role"] == "guest"
+    assert payload["member"]["invitedBy"] == "user_group_owner"
+    assert fake_db.workspace_members[0]["role"] == "guest"
+
+
 def test_team_seat_assignment_revokes_previous_plan_for_same_member(monkeypatch):
     fake_db = FakePostgresDatabase()
+    fake_db.payments = [
+        {
+            "account_id": "credit_workspace_workspace_team",
+            "amount_cents": 9000,
+            "created_at": "2026-05-06T00:00:00Z",
+            "currency": "usd",
+            "id": "payment_seat_growth",
+            "kind": "seat_purchase",
+            "metadata": {
+                "planKey": "team_growth",
+                "quantity": 1,
+                "workspaceId": "workspace_team",
+            },
+            "provider": "manual_test",
+            "provider_payment_id": "payment_provider_seat_growth",
+            "status": "succeeded",
+        }
+    ]
     fake_db.workspace_members = [
         {
             "display_name": "Team Member",

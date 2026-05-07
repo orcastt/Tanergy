@@ -6,11 +6,14 @@ from tangent_api.workspace_entitlements import (
     build_workspace_entitlement_response,
     list_workspace_seat_assignments,
     revoke_workspace_seat_assignment,
+    update_workspace_member_role,
     upsert_workspace_seat_assignment,
 )
 from tangent_api.workspace_schemas import (
     WorkspaceDashboardResponse,
     WorkspaceEntitlementResponse,
+    WorkspaceMemberResponse,
+    WorkspaceMemberRoleUpdateRequest,
     WorkspaceSeatAssignmentResponse,
     WorkspaceSeatAssignmentUpsertRequest,
     WorkspaceSeatAssignmentsResponse,
@@ -54,3 +57,12 @@ def revoke_current_workspace_seat(
     context: ApiRequestContext = Depends(get_request_context),
 ) -> dict[str, object]:
     return {"ok": True, "userId": revoke_workspace_seat_assignment(user_id, context)}
+
+
+@router.patch("/current/members/{user_id}", response_model=WorkspaceMemberResponse)
+def update_current_workspace_member_role(
+    user_id: str,
+    input_data: WorkspaceMemberRoleUpdateRequest,
+    context: ApiRequestContext = Depends(get_request_context),
+) -> WorkspaceMemberResponse:
+    return WorkspaceMemberResponse(member=update_workspace_member_role(user_id, input_data.role, context), ok=True)

@@ -1,48 +1,79 @@
 import os
 import re
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from time import sleep
 from typing import Callable, Optional
 
+from tangent_api.ai_provider_google import run_google_attempt
+from tangent_api.ai_provider_openai_compatible import run_openai_compatible_attempt
+from tangent_api.ai_provider_types import AiProviderAttemptResult
 from tangent_api.ai_route_catalog import AiProviderRouteCandidate
 from tangent_api.ai_schemas import AiRunRecord, AiRunRequest
+from tangent_api.request_context import ApiRequestContext
 
+ProviderAdapter = Callable[
+    [AiRunRecord, AiRunRequest, AiProviderRouteCandidate, ApiRequestContext],
+    AiProviderAttemptResult,
+]
 
-@dataclass(frozen=True)
-class AiProviderAttemptResult:
-    created_at: str
-    error_code: Optional[str]
-    error_message: Optional[str]
-    latency_ms: int
-    output_asset_ids: list[str]
-    provider: str
-    provider_cost: Optional[float]
-    retryable: bool
-    route_id: Optional[str]
-    route_key: Optional[str]
-    status: str
-    text_output: Optional[str]
-    work_started: bool
-
-
-ProviderAdapter = Callable[[AiRunRecord, AiRunRequest, AiProviderRouteCandidate], AiProviderAttemptResult]
+_DEFAULT_PROVIDER_BASE_URLS = {
+    "google": "https://generativelanguage.googleapis.com/v1beta",
+    "openai": "https://api.openai.com/v1",
+}
 
 
 def execute_ai_provider_attempt(
     run: AiRunRecord,
     payload: AiRunRequest,
     route: AiProviderRouteCandidate,
+    context: ApiRequestContext,
 ) -> AiProviderAttemptResult:
-    adapter = _PROVIDER_ADAPTERS.get(route.provider_key, _run_stub_provider_adapter)
-    return adapter(run, payload, route)
+    if _should_use_live_provider(route.provider_key):
+        adapter = _LIVE_PROVIDER_ADAPTERS.get(route.provider_key)
+        if adapter is not None:
+            return adapter(run, payload, route, context)
+    return _run_stub_provider_adapter(run, payload, route, context)
+
+
+def _run_live_openai_compatible(
+    run: AiRunRecord,
+    payload: AiRunRequest,
+    route: AiProviderRouteCandidate,
+    context: ApiRequestContext,
+) -> AiProviderAttemptResult:
+    return run_openai_compatible_attempt(
+        run,
+        payload,
+        route,
+        context,
+        api_key=_provider_api_key(route.provider_key),
+        base_url=_provider_base_url(route.provider_key),
+    )
+
+
+def _run_live_google(
+    run: AiRunRecord,
+    payload: AiRunRequest,
+    route: AiProviderRouteCandidate,
+    context: ApiRequestContext,
+) -> AiProviderAttemptResult:
+    return run_google_attempt(
+        run,
+        payload,
+        route,
+        context,
+        api_key=_provider_api_key(route.provider_key),
+        base_url=_provider_base_url(route.provider_key),
+    )
 
 
 def _run_stub_provider_adapter(
     run: AiRunRecord,
     payload: AiRunRequest,
     route: AiProviderRouteCandidate,
+    context: ApiRequestContext,
 ) -> AiProviderAttemptResult:
+    _ = context
     if _should_fail_route(route):
         return AiProviderAttemptResult(
             created_at=_timestamp(),
@@ -52,6 +83,7 @@ def _run_stub_provider_adapter(
             output_asset_ids=[],
             provider=route.provider_key,
             provider_cost=None,
+            provider_currency=None,
             retryable=True,
             route_id=route.route_id,
             route_key=route.route_key,
@@ -71,6 +103,7 @@ def _run_stub_provider_adapter(
             output_asset_ids=[],
             provider=route.provider_key,
             provider_cost=None,
+            provider_currency=None,
             retryable=False,
             route_id=route.route_id,
             route_key=route.route_key,
@@ -88,6 +121,7 @@ def _run_stub_provider_adapter(
             output_asset_ids=[],
             provider=route.provider_key,
             provider_cost=None,
+            provider_currency=None,
             retryable=False,
             route_id=route.route_id,
             route_key=route.route_key,
@@ -107,6 +141,7 @@ def _run_stub_provider_adapter(
         output_asset_ids=output_asset_ids,
         provider=route.provider_key,
         provider_cost=None,
+        provider_currency=None,
         retryable=False,
         route_id=route.route_id,
         route_key=route.route_key,
@@ -114,6 +149,52 @@ def _run_stub_provider_adapter(
         text_output=None,
         work_started=True,
     )
+
+
+def _should_use_live_provider(provider_key: str) -> bool:
+    normalized_key = provider_key.upper().replace("-", "_")
+    return os.getenv(f"TANGENT_AI_PROVIDER_{normalized_key}_MODE", "").strip().lower() == "live" or os.getenv(
+        "TANGENT_AI_PROVIDER_EXECUTION_MODE",
+        "",
+    ).strip().lower() == "live"
+
+
+def _provider_api_key(provider_key: str) -> Optional[str]:
+    normalized_key = provider_key.upper().replace("-", "_")
+    return (
+        os.getenv(f"TANGENT_AI_PROVIDER_{normalized_key}_API_KEY")
+        or os.getenv(f"{normalized_key}_API_KEY")
+        or os.getenv(_legacy_provider_api_key_env(provider_key))
+    )
+
+
+def _provider_base_url(provider_key: str) -> Optional[str]:
+    normalized_key = provider_key.upper().replace("-", "_")
+    return (
+        os.getenv(f"TANGENT_AI_PROVIDER_{normalized_key}_BASE_URL")
+        or os.getenv(_legacy_provider_base_url_env(provider_key))
+        or _DEFAULT_PROVIDER_BASE_URLS.get(provider_key)
+    )
+
+
+def _legacy_provider_api_key_env(provider_key: str) -> str:
+    if provider_key == "google":
+        return "GOOGLE_API_KEY"
+    if provider_key == "openai":
+        return "OPENAI_API_KEY"
+    if provider_key == "geekai":
+        return "GEEKAI_API_KEY"
+    return f"{provider_key.upper()}_API_KEY"
+
+
+def _legacy_provider_base_url_env(provider_key: str) -> str:
+    if provider_key == "openai":
+        return "OPENAI_BASE_URL"
+    if provider_key == "google":
+        return "GOOGLE_BASE_URL"
+    if provider_key == "geekai":
+        return "GEEKAI_BASE_URL"
+    return f"{provider_key.upper()}_BASE_URL"
 
 
 def _should_fail_route(route: AiProviderRouteCandidate) -> bool:
@@ -181,8 +262,8 @@ def _timestamp() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-_PROVIDER_ADAPTERS: dict[str, ProviderAdapter] = {
-    "geekai": _run_stub_provider_adapter,
-    "google": _run_stub_provider_adapter,
-    "openai": _run_stub_provider_adapter,
+_LIVE_PROVIDER_ADAPTERS: dict[str, ProviderAdapter] = {
+    "geekai": _run_live_openai_compatible,
+    "google": _run_live_google,
+    "openai": _run_live_openai_compatible,
 }

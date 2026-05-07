@@ -189,10 +189,23 @@ function NodeCardFieldDropdown({
   y: number
 }) {
   const options = field.options ?? []
+  const selectedIndex = Math.max(0, options.findIndex((option) => option.value === shape.props.data[field.name]))
+  const maxVisibleOptions = 9
+  const maxScrollIndex = Math.max(0, options.length - maxVisibleOptions)
+  const [scrollIndex, setScrollIndex] = useState(() => clamp(selectedIndex - 2, 0, maxScrollIndex))
+  const visibleOptions = options.slice(scrollIndex, scrollIndex + maxVisibleOptions)
+  const dropdownHeight = visibleOptions.length * 30 + 8
+  const handleWheel = (event: KonvaEventObject<WheelEvent>) => {
+    if (maxScrollIndex <= 0) return
+    event.cancelBubble = true
+    event.evt.preventDefault()
+    const delta = event.evt.deltaY > 0 ? 1 : -1
+    setScrollIndex((current) => clamp(current + delta, 0, maxScrollIndex))
+  }
   return (
-    <Group>
-      <Rect cornerRadius={10} fill="#ffffff" height={options.length * 30 + 8} shadowBlur={14} shadowColor="rgba(15,23,42,0.18)" shadowOffsetY={6} stroke="#dce3ec" strokeWidth={1} width={width} x={x} y={y} />
-      {options.map((option, index) => {
+    <Group onWheel={handleWheel}>
+      <Rect cornerRadius={10} fill="#ffffff" height={dropdownHeight} shadowBlur={14} shadowColor="rgba(15,23,42,0.18)" shadowOffsetY={6} stroke="#dce3ec" strokeWidth={1} width={width} x={x} y={y} />
+      {visibleOptions.map((option, index) => {
         const selected = option.value === shape.props.data[field.name]
         return (
           <Group
@@ -210,6 +223,12 @@ function NodeCardFieldDropdown({
           </Group>
         )
       })}
+      {maxScrollIndex > 0 ? (
+        <>
+          <Rect cornerRadius={999} fill="rgba(148,163,184,0.22)" height={dropdownHeight - 16} width={4} x={x + width - 10} y={y + 8} />
+          <Rect cornerRadius={999} fill="#94a3b8" height={Math.max(22, (dropdownHeight - 16) * visibleOptions.length / options.length)} width={4} x={x + width - 10} y={y + 8 + ((dropdownHeight - 16) - Math.max(22, (dropdownHeight - 16) * visibleOptions.length / options.length)) * (scrollIndex / maxScrollIndex)} />
+        </>
+      ) : null}
     </Group>
   )
 }

@@ -1,11 +1,91 @@
 # TANGENT Architecture Index
 
-**Updated**: 2026-05-06
-**Status**: Canonical architecture overview and slice index, now reflecting S1D public share plus effective-permission / owner-only copy-delete / known-foreign Asset guard hardening, S3 admin bootstrap first pass and the documented Group/Team workspace + actor-personal AI charging boundary.
+**Updated**: 2026-05-07
+**Status**: Canonical architecture overview and slice index, now aligned with the current parallel P0 alpha workstreams: Konva-first Board/Auth/share boundaries, staging deploy/Auth rollout, Group/Team billing visibility, AI provider route control, credit settlement and a minimum admin/developer operating surface.
 
 This file replaces the former duplicated `ARCH/00-current-map.md` plus the long root `ARCH.md`. The root `ARCH.md` is now only a pointer.
 
-## System Overview
+## Parallel Development Swimlane
+
+The original single-trunk diagram is no longer enough because Auth/deploy, Board permissions, Team/Group billing, AI provider routing, admin tooling and frontend node UI are now moving in parallel. The percentages below are coarse architecture-readiness markers as of 2026-05-07. They are not time estimates; they show whether a lane has a usable first pass, a server authority boundary and a remaining production gate.
+
+```text
+Current architecture readiness snapshot
+
+S1X Canvas/Konva runtime      78%  [###############-----]
+  Stable: Konva v2 Board route, pages, nodes, runtime edges, save/history/share view.
+  Gate: rendered page thumbnails, export/background polish, real AiRun adapter, Yjs proof.
+
+S1A Schema/DB foundation      85%  [#################---]
+  Stable: core user/workspace/board/asset/admin/AI/credit join points and migrations.
+  Gate: staging migration/query smoke after deploy/Auth resources settle.
+
+S1B Deploy/staging            60%  [############--------]
+  Stable: public Web/API/Neon/R2 smoke path.
+  Gate: Auth/email/OAuth, Konva-first redeploy, production-like secret and CORS pass.
+
+S1C Auth/registration         55%  [###########---------]
+  Stable: Clerk frontend shell, FastAPI bearer first pass, remote client token attach.
+  Gate: full registration/session hardening, workspace membership matrix, spoof tests.
+
+S1D Board/share/invites       70%  [##############------]
+  Stable: Board CRUD, owner-only copy/delete, share expiry, public view, member first pass.
+  Gate: invite acceptance, Group/Team permission separation, explicit Asset sharing.
+
+S2 AI runtime/provider routes 58%  [############--------]
+  Stable: model/route/pricing tables, quote/preflight, persisted AiRun shell, admin facts.
+  Gate: fold local GeekAI path into provider-route adapter, real live smoke, text persistence.
+
+S3 Admin/billing/team         56%  [###########---------]
+  Stable: server-gated admin, AI route/pricing panels, billing/team/usage first pass.
+  Gate: real payment webhooks, renewals/cancelation, deeper finance and route health views.
+
+Frontend product UI alignment 52%  [##########----------]
+  Stable: workspaces, boards, billing, team, usage, admin and canvas node surfaces exist.
+  Gate: align navigation, empty states, role language, plan labels and AI cost messaging.
+
+S4 Collaboration              10%  [##------------------]
+  Stable: collaboration boundary documented.
+  Gate: Yjs/provider proof after Auth, Board, Asset and AiRun authority are stable.
+```
+
+Dependency view:
+
+```text
+S1B Deploy + S1C Auth
+  -> S1D Board/workspace permission
+       -> S2 AiRun permission + credit preflight
+       -> S3 Team/Group visibility + billing/admin facts
+
+S1X Konva canvas
+  -> Node Registry + runtimeGraph
+       -> S2 server AiRun lifecycle
+       -> Asset refs back into Board-safe node outputs
+
+S2 Model/Route/Pricing control plane
+  -> Provider adapter selection
+  -> Credit/provider-cost settlement
+  -> S3 Admin runtime and finance observability
+
+Frontend UI alignment runs across all lanes and should follow, not invent, server authority.
+```
+
+## Architecture Slice Index
+
+| Slice | File | Owns | Update when |
+| --- | --- | --- | --- |
+| S0 Local Polish | `Finished/ARCH_slice_S0_local_polish.md` | Product shell, Workspace, Board save/history, Canvas Settings, Smart Drawing, Board Management, Canvas controls | Finished baseline; regression reference only |
+| S1 Persistence/Auth/Deploy | `ARCH_slice_S1_persistence_auth_deploy.md` | FastAPI, Postgres, R2/S3, migrations, Auth, real Board CRUD, deployment | Active umbrella; keep detailed truth in S1A/S1B/S1C/S1D/S1X |
+| S1A DB Schema | `ARCH_slice_S1A_db_schema.md` | Formal schema, Alembic migrations, constraints, indexes, future-compatible join points | S1A core implemented through `0006`; current head also includes S3 entitlement extension `0007` |
+| S1B Staging Infra | `ARCH_slice_S1B_staging_infra.md` | Vercel, FastAPI host, Postgres, R2, domain, email provider, staging smoke | Web/API/Neon/R2 smoke passed; Auth/email/OAuth/Konva redeploy smoke pending |
+| S1C Auth Context | `ARCH_slice_S1C_auth_request_context.md` | Registration, login, sessions, request context, workspace membership authority | Clerk/FastAPI bearer first pass landed; hardening remains |
+| S1D Board CRUD | `ARCH_slice_S1D_auth_board_crud.md` | Permission-checked Board list/load/save/history/member/share APIs | Stable first-pass CRUD/member/share/public-share-open checkpoint with owner-only copy/delete, share expiry and known-foreign Asset guard |
+| S1X Canvas Engine Migration | `ARCH_slice_S1X_canvas_engine_migration.md` | tldraw license risk, current canvas reference contract, Konva/Yjs replacement path | Konva v2 formal Board route accepted; Page polish and v1 copy tooling landed; collaboration still pending |
+| S2 AI Runtime | `ARCH_slice_S2_ai_runtime.md` | Node Registry, Model Registry, AiRun, provider routing, AI Chat planner | Mock/runtime dataflow and the local GeekAI canvas path now prove the user-facing image/analysis/chat flow; DB-backed model tiers/pricing/routes, quote/preflight, persisted lifecycle, attempt-level `ai_api_calls`, timeout-safe failover and extracted settlement orchestration exist; production gate is folding GeekAI and future providers into the server provider-route control plane with live smoke and durable text output |
+| S3 Admin/Billing/Analytics | `ARCH_slice_S3_admin_billing_analytics.md` | Admin roles, audit, credits, subscriptions, Group/Team workspace dashboards, AI charge facts, analytics, moderation facts | First-pass `/admin` summary/audit/role-management landed; billing/workspace entitlement routes, Team seat mutation, credit read/preflight, internal ledger settlement helpers, read-only `/admin/ai/runs` and `/admin/ai/api-calls` runtime views, plus a first-pass frontend `/admin` AI dashboard with grouped attempt timelines, and the planned developer AI pricing/route control plane are now documented; real billing/payment/provider settlement still pending |
+| S4 Collaboration | `ARCH_slice_S4_collaboration.md` | Multiplayer, presence, CRDT boundaries, roles | Deferred to P0.5; collaboration work begins after Auth, Board, Asset and AiRun authority are stable |
+
+## Project Architecture Overview
 
 ```text
 Browser
@@ -38,7 +118,22 @@ External Providers
   |-- Payment provider
 ```
 
-## Source Tree Map
+## P0 Alpha Architecture Spine
+
+Only these architecture lines are release-critical in the current pass:
+
+1. Landing/Auth/workspace/Board/share route boundaries
+2. Konva-first Board persistence and page/history safety
+3. One server-side AiRun/provider execution path with payer preflight and settlement
+4. Bounded billing visibility plus server-gated admin/operator routes
+
+Architectural implications:
+
+- Collaboration transport, live presence and CRDT room sync remain deferred.
+- External payment-provider automation remains deferred.
+- Placeholder product routes may remain in code, but should not drive the main architecture story.
+
+## Source Tree And Documentation Index
 
 ```text
 apps/web
@@ -68,6 +163,32 @@ ARCH                      Architecture slices
 project_state             Current progress and handoff slices
 dev-plans                 Active implementation plans and historical archive
 ```
+
+Canonical documentation ownership:
+
+| Folder/File | Role | Index file | Slice pattern |
+| --- | --- | --- | --- |
+| `PRD/` | User-visible product requirements and acceptance | `PRD/PRD.md` | `PRD/PRD_slice_*.md` |
+| `ARCH/` | Architecture boundaries, diagrams, APIs and schemas | `ARCH/ARCH.md` | `ARCH/ARCH_slice_*.md` |
+| `project_state/` | Current progress, handoff state and next steps | `project_state/project_state.md` | `project_state/project_state_slice_*.md` |
+| `dev-plans/` | Tactical implementation plans and runbooks | `dev-plans/README.md` | dated plan files, archived in `dev-plans/Archive/` |
+
+Current active tactical references:
+
+| Plan | Purpose |
+| --- | --- |
+| `dev-plans/p0-alpha-stabilization-and-acceptance-2026-05-06.md` | Current P0 alpha shipping spine and acceptance gates |
+| `dev-plans/s2-ai-provider-route-billing-control-plane-2026-05-07.md` | Fold GeekAI and future providers into server-owned AiRun route switching, credit settlement and admin observability |
+| `dev-plans/s3-billing-team-entitlements-strategy-2026-05-06.md` | Group/Team packaging, entitlement and actor-personal credit strategy |
+
+Completed/reference content that still appears in this architecture file:
+
+| Content | Current label | Why it remains |
+| --- | --- | --- |
+| S0 local alpha / local polish | Completed baseline | Regression reference only; do not reopen as current architecture scope |
+| tldraw v1 Board runtime | Reference-only, production-gated | Kept for behavior comparison during Konva migration; new product behavior lands on Konva |
+| Old single-trunk stage diagram | Completed/reference flow | Useful historical dependency map, but current planning uses the parallel swimlane above |
+| Former `ARCH/00-current-map.md` mirror | Retired | This `ARCH/ARCH.md` is the canonical map |
 
 ## Canvas Engine Parallel Architecture
 
@@ -206,40 +327,6 @@ New canvas feature
           -> compare manually, do not add new tldraw-only product dependency
 ```
 
-## Parallel Development Lanes
-
-Milestone labels are now preferred over fake precision. S0 local polish is archived as an accepted baseline; S1/S2/S3 show the next boundary that still changes implementation behavior.
-
-```text
-                 +-----------------------------+
-                 | Current baseline accepted   |
-                 | S0 Product shell + Board    |
-                 +--------------+--------------+
-                                |
-        +-----------------------+-----------------------+
-        |                       |                       |
-+-------v--------+      +-------v--------+      +-------v--------+
-| Local Polish   |      | Real Boundary  |      | AI Runtime     |
-| S0             |      | S1             |      | S2             |
-+-------+--------+      +-------+--------+      +-------+--------+
-        |                       |                       |
-| Product shell [accepted] | DB schema [core done] | Model Registry [mock]
-| Board save UX [accepted] | Staging infra [smoke] | AiRun/logs [mock]
-| Board History [accepted] | Auth boundary [first pass] | Provider route [not wired]
-| Canvas Settings [accepted] | Board CRUD/share [first pass] | AI Chat planner [mock]
-| Board Mgmt [accepted] | Postgres/R2 [smoke]    |
-| Canvas controls [accepted] | Canvas Engine S1X [route accepted] |
-| Captured thumb [accepted]  |
-| Smart Drawing [accepted]   |
-        |                       |                       |
-        +-----------+-----------+-----------+-----------+
-                    |                       |
-             +------v------+        +------v------+
-             | Admin/Bill  |        | Collab P0.5 |
-             | S3 first pass|       | S4 deferred |
-             +-------------+        +-------------+
-```
-
 ## Group/Team Workspace + AI Charging Architecture
 
 The commercial system is intentionally split into four independent facts so permissions do not leak across layers:
@@ -310,24 +397,9 @@ Global /admin
   users / workspaces / Boards / subscriptions / ledger / AiRuns / provider calls / audit
 ```
 
-## Architecture Slice Index
+## Completed / Reference Stage Flow
 
-| Slice | File | Owns | Update when |
-| --- | --- | --- | --- |
-| S0 Local Polish | `Finished/ARCH_slice_S0_local_polish.md` | Product shell, Workspace, Board save/history, Canvas Settings, Smart Drawing, Board Management, Canvas controls | Finished baseline; regression reference only |
-| S1 Persistence/Auth/Deploy | `ARCH_slice_S1_persistence_auth_deploy.md` | FastAPI, Postgres, R2/S3, migrations, Auth, real Board CRUD, deployment | Active umbrella; keep detailed truth in S1A/S1B/S1C/S1D/S1X |
-| S1A DB Schema | `ARCH_slice_S1A_db_schema.md` | Formal schema, Alembic migrations, constraints, indexes, future-compatible join points | S1A core implemented through `0006`; current head also includes S3 entitlement extension `0007` |
-| S1B Staging Infra | `ARCH_slice_S1B_staging_infra.md` | Vercel, FastAPI host, Postgres, R2, domain, email provider, staging smoke | Web/API/Neon/R2 smoke passed; Auth/email/OAuth/Konva redeploy smoke pending |
-| S1C Auth Context | `ARCH_slice_S1C_auth_request_context.md` | Registration, login, sessions, request context, workspace membership authority | Clerk/FastAPI bearer first pass landed; hardening remains |
-| S1D Board CRUD | `ARCH_slice_S1D_auth_board_crud.md` | Permission-checked Board list/load/save/history/member/share APIs | Stable first-pass CRUD/member/share/public-share-open checkpoint with owner-only copy/delete, share expiry and known-foreign Asset guard |
-| S1X Canvas Engine Migration | `ARCH_slice_S1X_canvas_engine_migration.md` | tldraw license risk, current canvas reference contract, Konva/Yjs replacement path | Konva v2 formal Board route accepted; Page polish and v1 copy tooling landed; collaboration still pending |
-| S2 AI Runtime | `ARCH_slice_S2_ai_runtime.md` | Node Registry, Model Registry, AiRun, provider routing, AI Chat planner | Mock runtime plus optional mock-ledger charging exercise exists; DB-backed model tiers/pricing/routes, quote/preflight, persisted mock create/poll/cancel lifecycle, attempt-level `ai_api_calls`, timeout-safe failover and extracted settlement orchestration now sit in the first-pass backend checkpoint; real provider execution remains pending |
-| S3 Admin/Billing/Analytics | `ARCH_slice_S3_admin_billing_analytics.md` | Admin roles, audit, credits, subscriptions, Group/Team workspace dashboards, AI charge facts, analytics, moderation facts | First-pass `/admin` summary/audit/role-management landed; billing/workspace entitlement routes, Team seat mutation, credit read/preflight, internal ledger settlement helpers, read-only `/admin/ai/runs` and `/admin/ai/api-calls` runtime views, plus a first-pass frontend `/admin` AI dashboard with grouped attempt timelines, and the planned developer AI pricing/route control plane are now documented; real billing/payment/provider settlement still pending |
-| S4 Collaboration | `ARCH_slice_S4_collaboration.md` | Multiplayer, presence, CRDT boundaries, roles | Collaboration work begins |
-
-## Stage Flow
-
-S1 is the next trunk. S2/S3/S4 can be designed in parallel, but implementation should not outrun the identity and ownership facts created in S1.
+This completed/reference flow shows the original dependency ladder. It is kept to explain why S1 identity/ownership gates S2/S3/S4, but current planning should use the parallel swimlane at the top of this file.
 
 ```text
 S0 Accepted local alpha
@@ -394,12 +466,92 @@ Dependency rules:
 
 # TANGENT 架构索引
 
-**更新日期**：2026-05-06
-**状态**：规范架构总览和切片索引，当前反映 S1D 公共分享加 effective-permission / owner-only copy-delete / known-foreign Asset guard hardening、S3 admin bootstrap 第一阶段，以及已文档化的 Group/Team workspace + actor-personal AI charging 边界。
+**更新日期**：2026-05-07
+**状态**：规范架构总览和切片索引，当前已对齐正在并行推进的 P0 alpha 工作流：Konva-first Board/Auth/share 边界、staging deploy/Auth rollout、Group/Team billing visibility、AI provider route control、credit settlement，以及最小 admin/developer operating surface。
 
 本文件取代原来的重复 `ARCH/00-current-map.md` 和根目录长 `ARCH.md`。根目录 `ARCH.md` 现在只做指针用途。
 
-## 系统总览
+## 平行开发泳道
+
+原来的单主干图已经不够用了，因为 Auth/deploy、Board 权限、Team/Group billing、AI provider routing、admin tooling 和 frontend node UI 正在并行推进。下面的百分比是截至 2026-05-07 的粗颗粒架构就绪度，不是工时估算；它表示每条线是否已有可用第一阶段、服务端权威边界，以及还剩哪个 production gate。
+
+```text
+当前架构就绪度快照
+
+S1X Canvas/Konva runtime      78%  [###############-----]
+  已稳定：Konva v2 Board route、pages、nodes、runtime edges、save/history/share view。
+  闸门：rendered page thumbnails、export/background polish、real AiRun adapter、Yjs proof。
+
+S1A Schema/DB foundation      85%  [#################---]
+  已稳定：user/workspace/board/asset/admin/AI/credit 的核心 join points 和 migrations。
+  闸门：deploy/Auth 资源稳定后的 staging migration/query smoke。
+
+S1B Deploy/staging            60%  [############--------]
+  已稳定：public Web/API/Neon/R2 smoke path。
+  闸门：Auth/email/OAuth、Konva-first redeploy、production-like secrets 和 CORS pass。
+
+S1C Auth/registration         55%  [###########---------]
+  已稳定：Clerk frontend shell、FastAPI bearer first pass、remote client token attach。
+  闸门：完整 registration/session hardening、workspace membership matrix、spoof tests。
+
+S1D Board/share/invites       70%  [##############------]
+  已稳定：Board CRUD、owner-only copy/delete、share expiry、public view、member first pass。
+  闸门：invite acceptance、Group/Team permission separation、explicit Asset sharing。
+
+S2 AI runtime/provider routes 58%  [############--------]
+  已稳定：model/route/pricing tables、quote/preflight、persisted AiRun shell、admin facts。
+  闸门：把 local GeekAI path 收口进 provider-route adapter、real live smoke、text persistence。
+
+S3 Admin/billing/team         56%  [###########---------]
+  已稳定：server-gated admin、AI route/pricing panels、billing/team/usage first pass。
+  闸门：real payment webhooks、renewals/cancelation、更深 finance 和 route health views。
+
+Frontend product UI alignment 52%  [##########----------]
+  已稳定：workspaces、boards、billing、team、usage、admin 和 canvas node surfaces 已存在。
+  闸门：统一 navigation、empty states、role language、plan labels 和 AI cost messaging。
+
+S4 Collaboration              10%  [##------------------]
+  已稳定：collaboration boundary 已文档化。
+  闸门：Auth、Board、Asset、AiRun authority 稳定后的 Yjs/provider proof。
+```
+
+依赖视图：
+
+```text
+S1B Deploy + S1C Auth
+  -> S1D Board/workspace permission
+       -> S2 AiRun permission + credit preflight
+       -> S3 Team/Group visibility + billing/admin facts
+
+S1X Konva canvas
+  -> Node Registry + runtimeGraph
+       -> S2 server AiRun lifecycle
+       -> Asset refs back into Board-safe node outputs
+
+S2 Model/Route/Pricing control plane
+  -> Provider adapter selection
+  -> Credit/provider-cost settlement
+  -> S3 Admin runtime and finance observability
+
+Frontend UI alignment 横跨所有线，应该跟随服务端权威边界，不能自己发明权限和计费规则。
+```
+
+## 架构切片索引
+
+| 切片 | 文件 | 负责内容 | 更新时机 |
+| --- | --- | --- | --- |
+| S0 Local Polish | `Finished/ARCH_slice_S0_local_polish.md` | Product shell、Workspace、Board save/history、Canvas Settings、Smart Drawing、Board Management、Canvas controls | 已完成 baseline；仅作为 regression reference |
+| S1 Persistence/Auth/Deploy | `ARCH_slice_S1_persistence_auth_deploy.md` | FastAPI、Postgres、R2/S3、migrations、Auth、real Board CRUD、deployment | 活跃 umbrella；详细事实放在 S1A/S1B/S1C/S1D/S1X |
+| S1A DB Schema | `ARCH_slice_S1A_db_schema.md` | Formal schema、Alembic migrations、constraints、indexes、future-compatible join points | S1A core 已通过 `0006` 实现；当前 head 还包含 S3 entitlement extension `0007` |
+| S1B Staging Infra | `ARCH_slice_S1B_staging_infra.md` | Vercel、FastAPI host、Postgres、R2、domain、email provider、staging smoke | Web/API/Neon/R2 smoke 已通过；Auth/email/OAuth/Konva redeploy smoke 待完成 |
+| S1C Auth Context | `ARCH_slice_S1C_auth_request_context.md` | Registration、login、sessions、request context、workspace membership authority | Clerk/FastAPI bearer 第一阶段已落地；仍需 hardening |
+| S1D Board CRUD | `ARCH_slice_S1D_auth_board_crud.md` | Permission-checked Board list/load/save/history/member/share APIs | 稳定第一阶段 CRUD/member/share/public-share-open checkpoint，并已带 owner-only copy/delete、share expiry 和 known-foreign Asset guard |
+| S1X Canvas Engine Migration | `ARCH_slice_S1X_canvas_engine_migration.md` | tldraw license risk、current canvas reference contract、Konva/Yjs replacement path | Konva v2 formal Board route 已接受；Page polish 和 v1 copy tooling 已落地；collaboration 仍待完成 |
+| S2 AI Runtime | `ARCH_slice_S2_ai_runtime.md` | Node Registry、Model Registry、AiRun、provider routing、AI Chat planner | Mock/runtime dataflow 和本地 GeekAI canvas path 现在已经证明用户侧 image/analysis/chat flow；DB-backed 模型档位 / 定价 / 线路、quote/preflight、持久化 lifecycle、按尝试分行的 `ai_api_calls`、timeout-safe failover，以及抽离出的 settlement orchestration 已存在；production gate 是把 GeekAI 和未来 providers 收口到服务端 provider-route control plane，并完成 live smoke 和 durable text output |
+| S3 Admin/Billing/Analytics | `ARCH_slice_S3_admin_billing_analytics.md` | Admin roles、audit、credits、subscriptions、Group/Team workspace dashboards、AI charge facts、analytics、moderation facts | 第一阶段 `/admin` summary/audit/role-management 已落地；billing/workspace entitlement routes、Team seat mutation、credit read/preflight、internal ledger settlement helpers、只读 `/admin/ai/runs` 和 `/admin/ai/api-calls` runtime views、带 grouped attempt timeline 的第一阶段前端 `/admin` AI dashboard，以及规划中的开发者 AI 定价 / 线路控制平面现已文档化；真实 billing/payment/provider settlement 仍待完成 |
+| S4 Collaboration | `ARCH_slice_S4_collaboration.md` | Multiplayer、presence、CRDT boundaries、roles | 推迟到 P0.5；Auth、Board、Asset 和 AiRun authority 稳定后再开始 collaboration work |
+
+## 项目架构总览
 
 ```text
 Browser
@@ -432,7 +584,22 @@ External Providers
   |-- Payment provider
 ```
 
-## 源码树地图
+## P0 Alpha 架构主线
+
+当前这一轮，只有下面这些架构线属于发布关键路径：
+
+1. Landing/Auth/workspace/Board/share 的路由边界
+2. Konva-first Board 持久化以及 page/history 安全性
+3. 一条带 payer preflight 和 settlement 的 server-side AiRun/provider execution 路径
+4. 有限的 billing 可见性，加上 server-gated admin/operator 路由
+
+对应的架构含义：
+
+- collaboration transport、live presence 和 CRDT room sync 继续延后。
+- external payment-provider automation 继续延后。
+- placeholder product routes 可以继续存在于代码中，但不能继续主导整体架构叙事。
+
+## 源码树与文档索引
 
 ```text
 apps/web
@@ -462,6 +629,32 @@ ARCH                      Architecture slices
 project_state             Current progress and handoff slices
 dev-plans                 Active implementation plans and historical archive
 ```
+
+规范文档职责：
+
+| 文件夹/文件 | 角色 | 索引文件 | 切片模式 |
+| --- | --- | --- | --- |
+| `PRD/` | 用户可见产品需求和验收 | `PRD/PRD.md` | `PRD/PRD_slice_*.md` |
+| `ARCH/` | 架构边界、图、API 和 schema | `ARCH/ARCH.md` | `ARCH/ARCH_slice_*.md` |
+| `project_state/` | 当前进度、交接状态和下一步 | `project_state/project_state.md` | `project_state/project_state_slice_*.md` |
+| `dev-plans/` | 战术实施计划和 runbooks | `dev-plans/README.md` | 带日期的 plan 文件，归档在 `dev-plans/Archive/` |
+
+当前活跃战术参考：
+
+| Plan | 用途 |
+| --- | --- |
+| `dev-plans/p0-alpha-stabilization-and-acceptance-2026-05-06.md` | 当前 P0 alpha 发布主线和验收闸门 |
+| `dev-plans/s2-ai-provider-route-billing-control-plane-2026-05-07.md` | 把 GeekAI 和未来 providers 收口到服务端 AiRun route switching、credit settlement 和 admin observability |
+| `dev-plans/s3-billing-team-entitlements-strategy-2026-05-06.md` | Group/Team 套餐、entitlement 和 actor-personal credit strategy |
+
+本架构文件中仍出现的已完成/参考内容：
+
+| 内容 | 当前标签 | 保留原因 |
+| --- | --- | --- |
+| S0 local alpha / local polish | 已完成 baseline | 仅作为 regression reference；不要重新打开为当前架构范围 |
+| tldraw v1 Board runtime | 仅参考、生产 gate | Konva 迁移期间用于行为对照；新产品行为落在 Konva |
+| 旧单主干阶段图 | 已完成/reference flow | 用于解释历史依赖；当前规划使用本文顶部的平行泳道 |
+| 旧 `ARCH/00-current-map.md` mirror | 已退役 | 当前 `ARCH/ARCH.md` 是唯一 canonical map |
 
 ## Canvas Engine 平行架构
 
@@ -600,40 +793,6 @@ New canvas feature
           -> compare manually, do not add new tldraw-only product dependency
 ```
 
-## 平行开发泳道
-
-现在优先使用里程碑标签，而不是虚假的精确百分比。S0 local polish 已作为接受的 baseline 归档；S1/S2/S3 显示的是仍会改变实现行为的下一条边界。
-
-```text
-                 +-----------------------------+
-                 | Current baseline accepted   |
-                 | S0 Product shell + Board    |
-                 +--------------+--------------+
-                                |
-        +-----------------------+-----------------------+
-        |                       |                       |
-+-------v--------+      +-------v--------+      +-------v--------+
-| Local Polish   |      | Real Boundary  |      | AI Runtime     |
-| S0             |      | S1             |      | S2             |
-+-------+--------+      +-------+--------+      +-------+--------+
-        |                       |                       |
-| Product shell [accepted] | DB schema [core done] | Model Registry [mock]
-| Board save UX [accepted] | Staging infra [smoke] | AiRun/logs [mock]
-| Board History [accepted] | Auth boundary [first pass] | Provider route [not wired]
-| Canvas Settings [accepted] | Board CRUD/share [first pass] | AI Chat planner [mock]
-| Board Mgmt [accepted] | Postgres/R2 [smoke]    |
-| Canvas controls [accepted] | Canvas Engine S1X [route accepted] |
-| Captured thumb [accepted]  |
-| Smart Drawing [accepted]   |
-        |                       |                       |
-        +-----------+-----------+-----------+-----------+
-                    |                       |
-             +------v------+        +------v------+
-             | Admin/Bill  |        | Collab P0.5 |
-             | S3 first pass|       | S4 deferred |
-             +-------------+        +-------------+
-```
-
 ## Group/Team Workspace + AI Charging 架构
 
 商业系统被刻意拆成四个独立事实，避免权限跨层泄漏：
@@ -704,24 +863,9 @@ Global /admin
   users / workspaces / Boards / subscriptions / ledger / AiRuns / provider calls / audit
 ```
 
-## 架构切片索引
+## 已完成 / 参考阶段流程
 
-| 切片 | 文件 | 负责内容 | 更新时机 |
-| --- | --- | --- | --- |
-| S0 Local Polish | `Finished/ARCH_slice_S0_local_polish.md` | Product shell、Workspace、Board save/history、Canvas Settings、Smart Drawing、Board Management、Canvas controls | 已完成 baseline；仅作为 regression reference |
-| S1 Persistence/Auth/Deploy | `ARCH_slice_S1_persistence_auth_deploy.md` | FastAPI、Postgres、R2/S3、migrations、Auth、real Board CRUD、deployment | 活跃 umbrella；详细事实放在 S1A/S1B/S1C/S1D/S1X |
-| S1A DB Schema | `ARCH_slice_S1A_db_schema.md` | Formal schema、Alembic migrations、constraints、indexes、future-compatible join points | S1A core 已通过 `0006` 实现；当前 head 还包含 S3 entitlement extension `0007` |
-| S1B Staging Infra | `ARCH_slice_S1B_staging_infra.md` | Vercel、FastAPI host、Postgres、R2、domain、email provider、staging smoke | Web/API/Neon/R2 smoke 已通过；Auth/email/OAuth/Konva redeploy smoke 待完成 |
-| S1C Auth Context | `ARCH_slice_S1C_auth_request_context.md` | Registration、login、sessions、request context、workspace membership authority | Clerk/FastAPI bearer 第一阶段已落地；仍需 hardening |
-| S1D Board CRUD | `ARCH_slice_S1D_auth_board_crud.md` | Permission-checked Board list/load/save/history/member/share APIs | 稳定第一阶段 CRUD/member/share/public-share-open checkpoint，并已带 owner-only copy/delete、share expiry 和 known-foreign Asset guard |
-| S1X Canvas Engine Migration | `ARCH_slice_S1X_canvas_engine_migration.md` | tldraw license risk、current canvas reference contract、Konva/Yjs replacement path | Konva v2 formal Board route 已接受；Page polish 和 v1 copy tooling 已落地；collaboration 仍待完成 |
-| S2 AI Runtime | `ARCH_slice_S2_ai_runtime.md` | Node Registry、Model Registry、AiRun、provider routing、AI Chat planner | Mock runtime 加 optional mock-ledger charging exercise 已存在；DB-backed 模型档位 / 定价 / 线路、quote/preflight、持久化的 mock create/poll/cancel lifecycle、按尝试分行的 `ai_api_calls`、timeout-safe failover，以及抽离出的 settlement orchestration 现在都已进入第一阶段后端检查点；真实 provider execution 仍待完成 |
-| S3 Admin/Billing/Analytics | `ARCH_slice_S3_admin_billing_analytics.md` | Admin roles、audit、credits、subscriptions、Group/Team workspace dashboards、AI charge facts、analytics、moderation facts | 第一阶段 `/admin` summary/audit/role-management 已落地；billing/workspace entitlement routes、Team seat mutation、credit read/preflight、internal ledger settlement helpers、只读 `/admin/ai/runs` 和 `/admin/ai/api-calls` runtime views、带 grouped attempt timeline 的第一阶段前端 `/admin` AI dashboard，以及规划中的开发者 AI 定价 / 线路控制平面现已文档化；真实 billing/payment/provider settlement 仍待完成 |
-| S4 Collaboration | `ARCH_slice_S4_collaboration.md` | Multiplayer、presence、CRDT boundaries、roles | Collaboration work begins |
-
-## 阶段流程
-
-S1 是下一条主干。S2/S3/S4 可以并行设计，但实现不应该跑在 S1 创建的 identity 和 ownership facts 前面。
+这条已完成 / 参考流程展示的是原始依赖阶梯。它保留在这里用于解释为什么 S1 identity / ownership 会约束 S2/S3/S4，但当前规划应以本文顶部的平行泳道为准。
 
 ```text
 S0 Accepted local alpha

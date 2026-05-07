@@ -7,6 +7,16 @@
 
 S1 moves TANGENT from local/dev identity to real users, real workspaces and server-side Board ownership. It should make the current local Board product usable on staging without users seeing or mutating each other's data.
 
+## Current Alpha Boundary
+
+In the current pass, this slice is only trying to make the main user journey safe enough to test:
+
+- landing/Auth/workspace entry
+- Board/page/share permission boundaries
+- staging persistence and asset loading
+
+Group/Team business depth, real payments and collaboration remain outside this slice's current promise.
+
 ## Needed External Resources
 
 - Staging API server or VPS.
@@ -55,8 +65,7 @@ Current launch note: S1X has mitigated the tldraw production blocker locally by 
 - Auth email/logout/session revocation and full staging Google OAuth/JWT smoke.
 - Full workspace membership matrix and multi-workspace selection.
 - Final `Can view / Can edit / Can manage / Owner` effective permission resolver.
-- Owner-only copy/delete enforcement in code.
-- Cross-workspace Asset reference validation.
+- Invite-accept/editor-management hardening beyond the current first pass.
 - Credit ledger/team billing enforcement.
 - Full Admin/Billing/Analytics.
 - Real-time collaboration.

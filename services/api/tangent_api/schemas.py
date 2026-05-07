@@ -151,6 +151,26 @@ class AdminAiModelsResponse(TangentApiModel):
     ok: bool
 
 
+class AdminAiModelUpdateRequest(TangentApiModel):
+    capabilities: Optional[list[str]] = None
+    capability: Optional[str] = None
+    cost_hint: Optional[str] = Field(default=None, alias="costHint")
+    default_pricing_rule_id: Optional[str] = Field(default=None, alias="defaultPricingRuleId")
+    default_tier_key: Optional[str] = Field(default=None, alias="defaultTierKey")
+    display_name: Optional[str] = Field(default=None, alias="displayName")
+    enabled: Optional[bool] = None
+    estimated_latency: Optional[str] = Field(default=None, alias="estimatedLatency")
+    is_default: Optional[bool] = Field(default=None, alias="isDefault")
+    parameter_schema: Optional[dict[str, Any]] = Field(default=None, alias="parameterSchema")
+    provider_key: Optional[str] = Field(default=None, alias="providerKey")
+
+
+class AdminAiModelMutationResponse(TangentApiModel):
+    error: Optional[str] = None
+    model: Optional[AdminAiModelRecord] = None
+    ok: bool
+
+
 class AdminAiProviderRouteRecord(TangentApiModel):
     created_at: str = Field(alias="createdAt")
     enabled: bool
@@ -173,6 +193,25 @@ class AdminAiProviderRoutesResponse(TangentApiModel):
     routes: list[AdminAiProviderRouteRecord] = Field(default_factory=list)
 
 
+class AdminAiProviderRouteUpdateRequest(TangentApiModel):
+    enabled: Optional[bool] = None
+    health_status: Optional[str] = Field(default=None, alias="healthStatus")
+    model_key: Optional[str] = Field(default=None, alias="modelKey")
+    priority: Optional[int] = None
+    provider_key: Optional[str] = Field(default=None, alias="providerKey")
+    provider_model: Optional[str] = Field(default=None, alias="providerModel")
+    retry_policy: Optional[dict[str, Any]] = Field(default=None, alias="retryPolicy")
+    timeout_ms: Optional[int] = Field(default=None, alias="timeoutMs")
+    route_key: Optional[str] = Field(default=None, alias="routeKey")
+    weight: Optional[int] = None
+
+
+class AdminAiProviderRouteMutationResponse(TangentApiModel):
+    error: Optional[str] = None
+    ok: bool
+    route: Optional[AdminAiProviderRouteRecord] = None
+
+
 class AdminAiPricingRuleRecord(TangentApiModel):
     billing_unit: str = Field(alias="billingUnit")
     created_at: str = Field(alias="createdAt")
@@ -193,6 +232,25 @@ class AdminAiPricingRulesResponse(TangentApiModel):
     error: Optional[str] = None
     ok: bool
     pricing_rules: list[AdminAiPricingRuleRecord] = Field(default_factory=list, alias="pricingRules")
+
+
+class AdminAiPricingRuleUpdateRequest(TangentApiModel):
+    billing_unit: Optional[str] = Field(default=None, alias="billingUnit")
+    credit_multiplier: Optional[float] = Field(default=None, alias="creditMultiplier")
+    effective_from: Optional[str] = Field(default=None, alias="effectiveFrom")
+    effective_to: Optional[str] = Field(default=None, alias="effectiveTo")
+    estimated_credits: Optional[float] = Field(default=None, alias="estimatedCredits")
+    min_credits: Optional[float] = Field(default=None, alias="minCredits")
+    model_key: Optional[str] = Field(default=None, alias="modelKey")
+    provider_cost_formula: Optional[dict[str, Any]] = Field(default=None, alias="providerCostFormula")
+    status: Optional[str] = None
+    tier_key: Optional[str] = Field(default=None, alias="tierKey")
+
+
+class AdminAiPricingRuleMutationResponse(TangentApiModel):
+    error: Optional[str] = None
+    ok: bool
+    pricing_rule: Optional[AdminAiPricingRuleRecord] = Field(default=None, alias="pricingRule")
 
 
 class AdminAuditLogRecord(TangentApiModel):
