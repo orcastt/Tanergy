@@ -2,7 +2,7 @@
 
 **Updated**: 2026-05-08
 **Mode**: Architecture slice.
-**Status**: Clerk frontend/session bridge plus FastAPI bearer verification first pass are in place; multi-workspace, OTP and admin/auth hardening remain.
+**Status**: Clerk frontend/session bridge plus FastAPI bearer verification first pass are in place. The active next cut is auth/admin production boundary hardening: real-login admin access, admin_roles bootstrap, spoof tests, production-like CORS/origin rules and default personal-wallet creation.
 
 ## Goal
 
@@ -165,6 +165,14 @@ Current first-pass web routes:
 remote Board/Asset/AI/Image-Op clients  attach Clerk JWT in browser fetches
 ```
 
+Local development exception:
+
+- `/api/auth/dev-bypass` may set a `tangent_dev_auth` cookie only when `NODE_ENV !== production`.
+- The proxy bypass exists only to unblock local admin/product testing when Clerk browser state or localhost/127.0.0.1 origins are not aligned.
+- Staging and production acceptance must use real Clerk sessions and FastAPI bearer verification.
+- `/admin` access still requires `admin_roles`; after each fresh database or migration reset, bootstrap or grant a real signed-in operator before running admin smoke.
+- Staging/prod `/admin` smoke must use a real provider JWT for the signed-in operator, never the local dev-bypass cookie.
+
 Expected frontend env:
 
 ```text
@@ -190,8 +198,11 @@ Do not put `CLERK_SECRET_KEY` or Google client secrets in public frontend variab
 - New user can register and verify/login.
 - New user can sign up/login with Google OAuth.
 - New user receives a default workspace and owner membership.
+- New user receives a personal wallet for Solo/Collaborate billing.
 - Logout revokes the active session.
 - Session endpoint returns user plus workspace memberships.
 - User cannot spoof `user_id` or `workspace_id` through headers.
+- Real signed-in admin can load `/admin` after an audited `admin_roles` bootstrap/grant.
+- Production-like Web/API origins pass CORS and Clerk authorized-party checks.
 - Rate limit and invalid OTP behavior are tested.
 - Invalid, expired or wrong-audience provider JWT returns 401.

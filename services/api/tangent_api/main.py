@@ -3,7 +3,20 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from tangent_api.routers import admin, admin_finance, ai, assets, auth, billing, boards, credits, image_ops, workspaces
+from tangent_api.routers import (
+    admin,
+    admin_ai_analytics,
+    admin_directory,
+    admin_finance,
+    ai,
+    assets,
+    auth,
+    billing,
+    boards,
+    credits,
+    image_ops,
+    workspaces,
+)
 
 app = FastAPI(title="TANGENT API", version="0.1.0")
 
@@ -24,6 +37,8 @@ app.add_middleware(
 
 app.include_router(ai.router)
 app.include_router(admin.router)
+app.include_router(admin_ai_analytics.router)
+app.include_router(admin_directory.router)
 app.include_router(admin_finance.router)
 app.include_router(assets.router)
 app.include_router(auth.router)

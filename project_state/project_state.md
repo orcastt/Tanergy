@@ -2,7 +2,7 @@
 
 **Updated**: 2026-05-08
 **Branch**: `feature/s1x-konva-handfeel-spike`
-**Latest local checkpoint**: S1X Konva route stabilization + S1D permission/share hardening + S2/S3 DB-backed AI control-plane scaffolds + first-pass billing/team/usage/admin surfaces + GeekAI local canvas UX proof. The active business-system checkpoint is now the S3 Team/Group wallet pivot: Team plans should use isolated Team workspaces and Team wallets, while Group/Collaborate uses personal wallets.
+**Latest local checkpoint**: S1X Konva route stabilization + S1D permission/share hardening + S2/S3 DB-backed AI control-plane scaffolds + first-pass billing/team/usage/admin surfaces + GeekAI local canvas UX proof. The active business-system checkpoint is now the S3 Team/Group wallet pivot: Team plans should use isolated Team workspaces and Team wallets, while Group/Collaborate uses personal wallets. The next highest-priority backend slice is S1C auth/admin production boundary hardening.
 
 This folder replaces the former root-level long project ledger and short mirror files. The root `project_state.md` is now only a pointer.
 
@@ -23,6 +23,8 @@ In parallel, the canvas now has a fast local GeekAI integration path through the
 The next documented business-system target is now the S3 Team/Group wallet slice: Team purchase creates an isolated Team workspace and Team wallet, while Collaborate remains a personal subscription/wallet for Group collaboration. S1D permission hardening still matters, but the payer contract must now distinguish Team wallet from personal Group/Collaborate wallet.
 
 Operationally, this means `/boards/[boardId]` is the Konva-first path to keep polishing, `/spikes/canvas` is only a reference surface, and new canvas requirements should update the S1X slice docs before this total index is touched again.
+
+S1E is now planned as the portable Board package lane: `.tgy` will be the Tanergy Board Package extension for exporting and importing a complete Board with drawings, images, AI nodes, prompts, model parameters and runtime edges. No user-facing `.tgy` implementation exists yet.
 
 ## Current Alpha Spine
 
@@ -46,12 +48,13 @@ These percentages are coarse readiness markers, not time estimates:
 ```text
 S1X Canvas/Konva runtime      78%  stable local Board path; export/Yjs/live AiRun polish pending
 S1A Schema/DB foundation      82%  core join points and Team-wallet schema delta exist; staging DB smoke remains
-S1B Deploy/staging            60%  Web/API/Neon/R2 smoke exists; Auth/email/OAuth pass pending
-S1C Auth/registration         55%  Clerk/FastAPI first pass exists; session hardening pending
+S1B Deploy/staging            60%  Web/API/Neon/R2 smoke exists; production-like Web/API origin, CORS and Auth/email/OAuth pass pending
+S1C Auth/registration         55%  Clerk/FastAPI first pass exists; session hardening and real-login admin access without local dev bypass pending
 S1D Board/share/invites       73%  CRUD/share/member first pass, workspace invite backend contracts and role-gated Team/Group UI first pass exist; billing visibility separation pending
+S1E Board packages            05%  `.tgy` package docs exist; export/import UI, asset bundling and asset rehydration pending
 S2 AI runtime/provider routes 56%  GeekAI local UX path exists; server route/billing control-plane and live Team-wallet settlement smoke pending
-S3 Admin/billing/team         78%  admin/billing/team scaffolds, Team-wallet payer + settlement contract tests, Team/Collaborate checkout, provider-neutral checkout adapter, signed payment webhook inbox, Group create, workspace invite/member contracts, real `/usage` checkout buttons, billing return routes, admin finance reconciliation panels, disposable Postgres quote/run-settlement smoke and local manual/hosted payment smoke exist; remote staging redeploy plus payment/invoice/refund depth pending
-Frontend product UI alignment 58%  major surfaces, role-gated Team/Group member actions, first-pass Billing actions and admin finance panels exist; nav, plan labels and cost messaging need alignment
+S3 Admin/billing/team         83%  admin/billing/team scaffolds, Team-wallet payer + settlement contract tests, Team/Collaborate checkout, provider-neutral checkout adapter, signed payment webhook inbox, Group create, workspace invite/member contracts, real `/usage` checkout buttons, billing return routes, admin directory APIs, tabbed admin console, AI route metrics, admin finance reconciliation panels, manual admin top-up/plan/cancel controls, disposable Postgres quote/run-settlement smoke and local manual/hosted payment smoke exist; remote staging redeploy, Alembic-head/admin_roles real-login smoke plus payment/invoice/refund depth pending
+Frontend product UI alignment 60%  major surfaces, role-gated Team/Group member actions, first-pass Billing actions, tabbed admin console and admin finance panels exist; nav, plan labels and cost messaging need alignment
 S4 Collaboration              10%  boundary documented; Yjs/provider proof deferred
 ```
 
@@ -78,6 +81,7 @@ Done locally:
   S1A DB schema/migrations
   Auth scaffold
   S1D first-pass Board members/share/public share flow with owner-only copy/delete and known-foreign Asset guard
+  S1E `.tgy` Board Package product/architecture/tactical plan documented
   S3 first-pass admin probe/summary/audit/role management
   S3 first-pass billing/workspace entitlement dashboard contract with Collaborate Plus / Team Growth catalog, DB-backed read lookup, Team seat mutation, credit preflight coverage, internal ledger settlement helpers, payment-backed top-up/seat checkout scaffolds and first-pass top-up/usage/admin AI save panels
   S3 Team/Group wallet plan update: Team wallet replaces the older Team actor-personal charging strategy; Collaborate stays personal-wallet based
@@ -95,6 +99,7 @@ Done locally:
   S3 frontend action wiring: billing plan checkout/complete, Team create/purchase, Group create, invite accept/create/revoke, member removal, Team top-up, Team seat checkout and personal top-up now have UI entry points backed by real routes
   S3 disposable Postgres smoke: migration-to-head, Team checkout/invite/quote/run-settlement/remove and Collaborate/Group create/invite/quote/run-settlement passed
   S3 local admin/payment smoke: disposable Postgres-backed `/admin` finance reads, manual Team wallet top-up, manual Team seat checkout/assignment and hosted redirect/manual-complete rejection passed
+  S3 manual admin billing bridge: `/admin` finance can top up user/Team wallets, assign Group/Collaborate or Team plans and cancel subscriptions through audited `admin_manual` backend operations while Stripe is unavailable; `/admin` now separates Users, Teams, Groups, AI API Routes, Finance and Access with server-backed directory and route metrics
   S2/S3 DB-backed AI control-plane registry/provider-route/pricing-rule read/save + versioned publish/rollback + AiRun quote/preflight + persisted lifecycle/failover + live-adapter scaffold checkpoint
   Canvas-facing GeekAI local fast path for chat streaming, prompt optimization, image generation/edit/reference and analysis
   Image Gen / Image Gen 4 model-aware controls for GPT Image 2, Nano Banana 2, Doubao Seedream and Jimeng-style parameters
@@ -109,6 +114,7 @@ Not production-complete:
   real Group/Team workspace governance depth, deployed staging payment smoke, paid seat renewal/cancellation flows, external payment-provider reconciliation and hosted live provider settlement smoke
   staging auth/email/license hardening
   precise old-board style/binding migration beyond first-pass copy tooling
+  `.tgy` Board Package export/import and asset rehydration
   Konva collaboration/Yjs provider sync
   true rendered Konva page-thumbnail assets/page duplicate/Move selection to new page
   local GeekAI path folded into the server AiRun/provider-route/billing control plane
@@ -127,9 +133,10 @@ Not production-complete:
 | S1B Staging Infra | `project_state_slice_S1B_staging_infra.md` | In progress; FastAPI/Neon/R2 smoke passed |
 | S1C Auth Context | `project_state_slice_S1C_auth_request_context.md` | In progress; real provider-backed auth still pending end-to-end rollout |
 | S1D Board CRUD | `project_state_slice_S1D_auth_board_crud.md` | Stable first-pass CRUD/member/share/public-share-open checkpoint with owner-only copy/delete, share expiry and known-foreign Asset guard |
+| S1E Board Packages | `project_state_slice_S1E_board_packages.md` | Planned; `.tgy` package decision and docs exist, implementation not started |
 | S1X Canvas Engine Migration | `project_state_slice_S1X_canvas_engine_migration.md` | Konva Board route accepted; Page polish and v1 copy tooling landed; collaboration pending |
 | S2 AI Runtime | `project_state_slice_S2_ai_runtime.md` | Mock/runtime dataflow, persisted route/settlement shell and local GeekAI canvas path are usable; DB-backed quote/preflight/lifecycle/attempt facts exist; production gate is folding GeekAI plus future providers into the server provider-route/billing control plane and validating one live image path with durable Asset/text-output handling |
-| S3 Admin/Billing/Analytics | `project_state_slice_S3_admin_billing_analytics.md` | Active pivot: migration `20260508_0012/0013`, payer resolver plus settlement contracts, Team/Collaborate checkout, provider-neutral checkout adapter, signed webhook inbox, Group create, workspace invite/member contracts, frontend actions, admin finance reconciliation panels, disposable Postgres smoke and local manual/hosted payment smoke now support Team wallet vs personal Collaborate wallet; remote staging redeploy smoke plus invoice/refund depth remain pending |
+| S3 Admin/Billing/Analytics | `project_state_slice_S3_admin_billing_analytics.md` | Active pivot: migration `20260508_0012/0013`, payer resolver plus settlement contracts, Team/Collaborate checkout, provider-neutral checkout adapter, signed webhook inbox, Group create, workspace invite/member contracts, frontend actions, admin directory APIs, tabbed admin console, AI route metrics, admin finance reconciliation panels, manual admin billing bridge, disposable Postgres smoke and local manual/hosted payment smoke now support Team wallet vs personal Collaborate wallet while Stripe is unavailable; remote staging redeploy smoke plus invoice/refund depth remain pending |
 
 ## Current Next Fork
 
@@ -138,8 +145,10 @@ If external resources are not ready:
 1. Hand-test S1X Page UI save/restore/history, page delete/reorder/Move to page and v1-to-v2 copy tooling on real Boards.
 2. Keep S1X on regression-only fixes while the new share/admin checkpoints settle.
 3. Harden S1D permissions into the target `Can view/edit/manage/owner` model with Group/Team workspace separation.
-4. Continue the S3 Team/Group wallet slice: deployed staging admin/payment smoke and real payment webhook depth.
-5. Fold the current GeekAI local fast path into the server provider-route adapter layer while preserving timeout-safe per-attempt observability and no-double-charge settlement before real provider charging.
+4. Start S1E `.tgy` Board Package export/import if Board/Asset guard work remains stable.
+5. Continue the S3 Team/Group wallet slice: deployed staging admin/payment smoke and real payment webhook depth.
+6. Start the S1C auth/admin production boundary cut: real Clerk login on staging/prod, admin_roles bootstrap, spoof tests, CORS/origin contract and default solo workspace + personal wallet registration closure.
+7. Fold the current GeekAI local fast path into the server provider-route adapter layer while preserving timeout-safe per-attempt observability and no-double-charge settlement before real provider charging.
 
 If external resources are ready:
 
@@ -172,9 +181,10 @@ S1C real Auth
   register, login, logout, session, default workspace
   |
   v
-S1D Auth-backed Board CRUD
+  S1D Auth-backed Board CRUD
   server-side list/load/save/history/copy/delete, members, share and public shared-Board view
   |
+  +--> S1E `.tgy` Board Package export/import
   +--> S2 real AI provider and AiRun/cost facts
   +--> S3 Admin/Credits/Billing/Analytics expansion
   +--> S4 Collaboration
@@ -182,7 +192,7 @@ S1D Auth-backed Board CRUD
 
 Current recommendation: keep tldraw as reference-only, treat S1X page polish as accepted unless regressions appear, and use `dev-plans/s1-launch-readiness-and-acceptance-report-2026-05-05.md`, `dev-plans/s2-ai-provider-route-billing-control-plane-2026-05-07.md` and `dev-plans/s3-team-group-wallets-membership-billing-plan-2026-05-08.md` as the handoff checklists. S1A is implemented but needs the Team-wallet delta, S1D first-pass share flow is in place, and S3 should not start real provider charging until Team wallet and personal Collaborate wallet payer tests pass.
 
-Next major checkpoint should be one of: S2 GeekAI provider-route/billing control-plane reconciliation with one real live image smoke, S1 share/group-team permission hardening, S3 payment/finance settlement depth, frontend UI alignment on navigation/plan/cost language, or the Phase 6 Yjs collaboration proof. Avoid adding new tldraw-only behavior.
+Next major checkpoint should start with the S1C auth/admin production boundary: real Clerk login, admin_roles bootstrap, real-login admin smoke, spoof tests, CORS / Web/API origin contract, and default solo workspace + personal wallet registration closure. After that, continue with S2 GeekAI provider-route/billing control-plane reconciliation with one real live image smoke, S1 share/group-team permission hardening, S3 payment/finance settlement depth, frontend UI alignment on navigation/plan/cost language, or the Phase 6 Yjs collaboration proof. Avoid adding new tldraw-only behavior.
 
 ## Update Rules
 
@@ -245,9 +255,10 @@ S1A Schema/DB foundation      82%  core join points 与 Team-wallet schema delta
 S1B Deploy/staging            60%  Web/API/Neon/R2 smoke 已存在；Auth/email/OAuth 待通过
 S1C Auth/registration         55%  Clerk/FastAPI 第一阶段存在；session hardening 待完成
 S1D Board/share/invites       73%  CRUD/share/member 第一阶段、workspace invite backend contracts 和带角色门控的 Team/Group UI first pass 已存在；billing visibility separation 待完成
+S1E Board packages            05%  `.tgy` package docs 已存在；export/import UI、asset bundling 和 asset rehydration 待完成
 S2 AI runtime/provider routes 56%  GeekAI 本地 UX 路径存在；服务端 route/billing control-plane 和 live Team-wallet settlement smoke 待完成
-S3 Admin/billing/team         78%  admin/billing/team 脚手架、Team-wallet payer + settlement 合同测试、Team/Collaborate checkout、provider-neutral checkout adapter、signed payment webhook inbox、Group create、workspace invite/member contracts、real `/usage` checkout buttons、billing return routes、admin finance reconciliation panels、disposable Postgres quote/run-settlement smoke 和本地 manual/hosted payment smoke 已存在；remote staging redeploy 与 payment/invoice/refund 深度待完成
-Frontend product UI alignment 58%  主要界面、带角色门控的 Team/Group member actions、第一阶段 Billing actions 和 admin finance panels 已存在；导航、套餐语言和扣费文案需要对齐
+S3 Admin/billing/team         83%  admin/billing/team 脚手架、Team-wallet payer + settlement 合同测试、Team/Collaborate checkout、provider-neutral checkout adapter、signed payment webhook inbox、Group create、workspace invite/member contracts、real `/usage` checkout buttons、billing return routes、admin directory APIs、tabbed admin console、AI route metrics、admin finance reconciliation panels、manual admin top-up/plan/cancel controls、disposable Postgres quote/run-settlement smoke 和本地 manual/hosted payment smoke 已存在；remote staging redeploy 与 payment/invoice/refund 深度待完成
+Frontend product UI alignment 60%  主要界面、带角色门控的 Team/Group member actions、第一阶段 Billing actions、tabbed admin console 和 admin finance panels 已存在；导航、套餐语言和扣费文案需要对齐
 S4 Collaboration              10%  边界已文档化；Yjs/provider proof 后置
 ```
 
@@ -274,6 +285,7 @@ S4 Collaboration              10%  边界已文档化；Yjs/provider proof 后�
   S1A DB schema/migrations
   Auth scaffold
   S1D first-pass Board members/share/public share flow with owner-only copy/delete and known-foreign Asset guard
+  S1E `.tgy` Board Package product/architecture/tactical plan documented
   S3 first-pass admin probe/summary/audit/role management
   S3 first-pass billing/workspace entitlement dashboard contract with Collaborate Plus / Team Growth catalog, DB-backed read lookup, Team seat mutation、credit preflight coverage、internal ledger settlement helpers、payment-backed top-up/seat checkout scaffolds 和第一阶段 top-up / usage / admin AI save panels
   S3 payment webhook inbox：签名 provider event 会写入 tangent_webhook_events，成功 checkout event 可以通过 internal payment id、client reference 或 provider metadata checkout session id 复用 shared grant path 完成 payment，重复事件不会重复发放 credits
@@ -281,6 +293,7 @@ S4 Collaboration              10%  边界已文档化；Yjs/provider proof 后�
   S3 Stripe Checkout Session adapter：stripe provider 是可选线路，仅在选择时要求 TANGENT_STRIPE_SECRET_KEY，server-side 创建 Checkout Sessions，并会标记 checkout.adapter=stripe_checkout，不读取本地 secret 文件
   S3/S2 payer settlement contract：mock AiRuns 会把 Group/Collaborate run 扣到 actor personal wallet，把 Team run 扣到 Team wallet，并且 polling/cancel 不能切换 charged account
   S3 local admin/payment smoke：disposable Postgres-backed `/admin` finance reads、manual Team wallet top-up、manual Team seat checkout/assignment 和 hosted redirect/manual-complete rejection 已通过
+  S3 manual admin billing bridge：Stripe 不可用时，`/admin` finance 可以通过 audited `admin_manual` backend operations 给 user/Team wallet 充值、分配 Group/Collaborate 或 Team plan，并取消 subscription；`/admin` 现在按 Users、Teams、Groups、AI API Routes、Finance、Access 拆开，并有 server-backed directory 与 route metrics
   S2/S3 DB-backed AI control-plane registry/provider-route/pricing-rule read/save + 版本化 publish/rollback + AiRun quote/preflight + persisted lifecycle/failover + live-adapter scaffold checkpoint
   面向画布的 GeekAI 本地 fast path：chat streaming、prompt optimization、image generation/edit/reference 和 analysis
   Image Gen / Image Gen 4 已有 GPT Image 2、Nano Banana 2、Doubao Seedream 和 Jimeng 风格参数的模型感知控件
@@ -295,6 +308,7 @@ S4 Collaboration              10%  边界已文档化；Yjs/provider proof 后�
   real Group/Team workspace governance、deployed staging payment smoke、paid seat renewal/cancellation flows、external payment-provider reconciliation 和 hosted live provider settlement smoke
   staging auth/email/license hardening
   precise old-board style/binding migration beyond first-pass copy tooling
+  `.tgy` Board Package export/import 和 asset rehydration
   Konva collaboration/Yjs provider sync
   true rendered Konva page-thumbnail assets/page duplicate/Move selection to new page
   local GeekAI path 收口到 server AiRun/provider-route/billing control plane
@@ -313,9 +327,10 @@ S4 Collaboration              10%  边界已文档化；Yjs/provider proof 后�
 | S1B Staging Infra | `project_state_slice_S1B_staging_infra.md` | 进行中；FastAPI / Neon / R2 smoke 已通过 |
 | S1C Auth Context | `project_state_slice_S1C_auth_request_context.md` | 进行中；真实 provider-backed auth 还未端到端上线 |
 | S1D Board CRUD | `project_state_slice_S1D_auth_board_crud.md` | 第一阶段 CRUD/member/share/public-share-open 检查点稳定，并已带 owner-only copy/delete、share expiry 和 known-foreign Asset guard |
+| S1E Board Packages | `project_state_slice_S1E_board_packages.md` | 已规划；`.tgy` package 决策和文档已存在，implementation 还未开始 |
 | S1X Canvas Engine Migration | `project_state_slice_S1X_canvas_engine_migration.md` | Konva Board 路由已接受；Page polish 和 v1 copy tooling 已落地；协作仍待完成 |
 | S2 AI Runtime | `project_state_slice_S2_ai_runtime.md` | Mock/runtime dataflow、持久化 route/settlement shell 和本地 GeekAI canvas path 都已可用；DB-backed quote/preflight/lifecycle/attempt facts 已存在；生产闸门是把 GeekAI 和未来 providers 收口到服务端 provider-route/billing control plane，并用 durable Asset/text-output handling 验证一条 live image path |
-| S3 Admin/Billing/Analytics | `project_state_slice_S3_admin_billing_analytics.md` | 活跃调整：migration `20260508_0012/0013`、payer resolver、settlement contracts、Team/Collaborate checkout、provider-neutral checkout adapter、signed webhook inbox、Group create、workspace invite/member contracts、frontend actions、admin finance reconciliation panels、disposable Postgres smoke 和本地 manual/hosted payment smoke 已支持 Team wallet vs personal Collaborate wallet；remote staging redeploy smoke 以及 invoice/refund 深度仍待完成 |
+| S3 Admin/Billing/Analytics | `project_state_slice_S3_admin_billing_analytics.md` | 活跃调整：migration `20260508_0012/0013`、payer resolver、settlement contracts、Team/Collaborate checkout、provider-neutral checkout adapter、signed webhook inbox、Group create、workspace invite/member contracts、frontend actions、admin directory APIs、tabbed admin console、AI route metrics、admin finance reconciliation panels、manual admin billing bridge、disposable Postgres smoke 和本地 manual/hosted payment smoke 已在 Stripe 不可用时支持 Team wallet vs personal Collaborate wallet；remote staging redeploy smoke 以及 invoice/refund 深度仍待完成 |
 
 ## 当前下一条分叉路线
 
@@ -324,8 +339,9 @@ S4 Collaboration              10%  边界已文档化；Yjs/provider proof 后�
 1. 手测真实 Board 上的 S1X Page UI save/restore/history、page delete/reorder/Move to page，以及 v1-to-v2 copy tooling。
 2. 让 S1X 保持在只修回归的状态，同时等待新的 share/admin 检查点稳定。
 3. 把 S1D 权限硬化到目标 `Can view/edit/manage/owner` 模型，并拆清 Group/Team workspace 边界。
-4. 在真实 provider charging 之前，先把当前 GeekAI 本地 fast path 收口到服务端 provider-route adapter layer，同时保留 timeout-safe 逐次尝试可观测性和 no-double-charge settlement 边界。
-5. 让新的 AI control plane 继续聚焦在带审计的 route/pricing publish flows、live smoke 和 durable output handling。
+4. 如果 Board/Asset guard 稳定，启动 S1E `.tgy` Board Package export/import。
+5. 在真实 provider charging 之前，先把当前 GeekAI 本地 fast path 收口到服务端 provider-route adapter layer，同时保留 timeout-safe 逐次尝试可观测性和 no-double-charge settlement 边界。
+6. 让新的 AI control plane 继续聚焦在带审计的 route/pricing publish flows、live smoke 和 durable output handling。
 
 如果外部资源已经准备好：
 
@@ -361,6 +377,7 @@ S1C real Auth
 S1D Auth-backed Board CRUD
   server-side list/load/save/history/copy/delete, members, share and public shared-Board view
   |
+  +--> S1E `.tgy` Board Package export/import
   +--> S2 real AI provider and AiRun/cost facts
   +--> S3 Admin/Credits/Billing/Analytics expansion
   +--> S4 Collaboration

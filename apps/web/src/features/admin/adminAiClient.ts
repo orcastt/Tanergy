@@ -103,6 +103,29 @@ export type AdminAiApiCallRecord = {
   workspaceId?: null | string
 }
 
+export type AdminAiRouteMetricRecord = {
+  avgLatencyMs: number
+  calls: number
+  capability: string
+  creditsCharged: number
+  failedCalls: number
+  lastCalledAt?: null | string
+  modelId: string
+  provider: string
+  providerCost: number
+  providerCurrency?: null | string
+  routeKey: string
+  succeededCalls: number
+}
+
+export type AdminAiRouteMetricsTotals = {
+  calls: number
+  creditsCharged: number
+  failedCalls: number
+  providerCost: number
+  succeededCalls: number
+}
+
 export type AdminAiModelsResource = { error?: string; models: AdminAiModelRecord[]; ok: boolean }
 export type AdminAiModelMutationResource = { error?: string; model?: AdminAiModelRecord; ok: boolean }
 export type AdminAiProviderRoutesResource = { error?: string; ok: boolean; routes: AdminAiProviderRouteRecord[] }
@@ -111,6 +134,12 @@ export type AdminAiPricingRulesResource = { error?: string; ok: boolean; pricing
 export type AdminAiPricingRuleMutationResource = { error?: string; ok: boolean; pricingRule?: AdminAiPricingRuleRecord }
 export type AdminAiRunsResource = { error?: string; ok: boolean; runs: AdminAiRunRecord[] }
 export type AdminAiApiCallsResource = { apiCalls: AdminAiApiCallRecord[]; error?: string; ok: boolean }
+export type AdminAiRouteMetricsResource = {
+  error?: string
+  metrics: AdminAiRouteMetricRecord[]
+  ok: boolean
+  totals: AdminAiRouteMetricsTotals
+}
 export type AdminAiControlPlaneVersionRecord = {
   action: string
   actorUserId?: null | string
@@ -213,6 +242,10 @@ export async function loadAdminAiRuns(query: AdminAiRunQuery): Promise<AdminAiRu
 
 export async function loadAdminAiApiCalls(query: AdminAiApiCallQuery): Promise<AdminAiApiCallsResource> {
   return loadAdminJson<AdminAiApiCallsResource>(`/api/v1/admin/ai/api-calls${createQuery(query)}`)
+}
+
+export async function loadAdminAiRouteMetrics(query: { capability?: string; limit?: number }): Promise<AdminAiRouteMetricsResource> {
+  return loadAdminJson<AdminAiRouteMetricsResource>(`/api/v1/admin/ai/route-metrics${createQuery(query)}`)
 }
 
 export async function loadAdminAiVersions(query: AdminAiVersionQuery): Promise<AdminAiControlPlaneVersionsResource> {

@@ -1,6 +1,6 @@
 # Project State Slice S1B: Staging Infrastructure And Online Prep
 
-**Updated**: 2026-05-05
+**Updated**: 2026-05-08
 **Status**: In progress; staging Web/API/Neon/R2 smoke passed, Konva-first redeploy smoke pending.
 
 ## Objective
@@ -63,6 +63,13 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 ## Handoff Notes
 
 - Keep staging/prod env vars separate.
+- Preserve the local vs deployed route split:
+  - local Web uses `http://127.0.0.1:3000` or `http://localhost:3000`
+  - local API may use `http://127.0.0.1:8100` when another service occupies `8000`
+  - staging/prod Web must use the real HTTPS domain
+  - staging/prod API must use the real HTTPS API domain
+- Every deployment needs `NEXT_PUBLIC_API_BASE_URL`, FastAPI `TANGENT_ALLOWED_ORIGINS`, and Clerk allowed origins/redirect URLs to agree on the exact domains.
+- Local `/api/auth/dev-bypass` and `tangent_dev_auth` are development helpers only; do not count them as staging/prod Auth smoke.
 - Do not expose server keys to Vercel public env.
 - Keep firewall narrow: public 80/443, SSH restricted where possible.
 - Production Google OAuth requires Google Cloud Console setup, verified domain, app branding, privacy policy and terms URLs.

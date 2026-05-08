@@ -15,6 +15,8 @@ Detailed product, architecture and state truth now lives in:
 | File | Status | Notes |
 | --- | --- | --- |
 | `p0-alpha-stabilization-and-acceptance-2026-05-06.md` | Active release-spine plan | Defines the current shipping-now list, deferred/frozen list, route map, risk matrix and acceptance guide for the P0 alpha pass. |
+| `s1c-auth-admin-production-boundary-2026-05-08.md` | Active S1C tactical plan | Hardens real Clerk login, admin_roles bootstrap, CORS/origin contract, spoof tests and default solo workspace + personal wallet creation before staging/admin acceptance. |
+| `s1e-tgy-board-package-export-import-2026-05-08.md` | Planned S1E tactical plan | Defines `.tgy` Tanergy Board Package export/import, package contents, asset rehydration, validation and smoke phases. |
 | `s2-ai-provider-route-billing-control-plane-2026-05-07.md` | Active S2 tactical plan | Moves provider route switching, credit charging, provider-cost settlement and admin observability behind one server-owned AiRun control plane. |
 | `s3-team-group-wallets-membership-billing-plan-2026-05-08.md` | Active S3 tactical plan | Supersedes the old Team actor-personal charging strategy with Team wallet, personal Collaborate wallet, invites, seats, membership, billing usage and payer-resolver phases. |
 | `s1b-staging-deployment-runbook-2026-05-02.md` | Active S1B runbook | Chinese beginner guide for domain, DNS, Vercel, Hetzner, Neon, R2, Clerk, Google OAuth and email setup. |
@@ -25,11 +27,12 @@ Detailed product, architecture and state truth now lives in:
 ## Current Tactical Focus
 
 1. Stabilize the current P0 alpha spine defined in `p0-alpha-stabilization-and-acceptance-2026-05-06.md`.
-2. Finish S1B/S1C deploy and Auth rollout against staging resources.
+2. Finish the S1C auth/admin production boundary before relying on staging admin: real Clerk login, admin_roles bootstrap, spoof tests, CORS/origin contract and first-session wallet creation.
 3. Keep S1D focused on permission hardening for the current Board/share/page release path.
-4. Finish the S2 provider-route/billing control-plane cut and one real AiRun/provider path before broadening AI scope.
-5. Move S3 through the Team/Group wallet plan before real charging: schema delta, Team workspace wallet, personal Collaborate wallet, invite/member hardening, payer resolver and billing usage.
-6. Track frontend product UI alignment as a parallel lane: navigation, plan labels, role language and AI cost messaging must match the narrower P0 alpha promise before launch.
+4. Add S1E `.tgy` Board Package export/import after Board/Asset guards stay stable.
+5. Finish the S2 provider-route/billing control-plane cut and one real AiRun/provider path before broadening AI scope.
+6. Move S3 through the Team/Group wallet plan before real charging: schema delta, Team workspace wallet, personal Collaborate wallet, invite/member hardening, payer resolver and billing usage.
+7. Track frontend product UI alignment as a parallel lane: navigation, plan labels, role language and AI cost messaging must match the narrower P0 alpha promise before launch.
 
 ## Archive
 
@@ -62,6 +65,8 @@ Detailed product, architecture and state truth now lives in:
 | 文件 | 状态 | 说明 |
 | --- | --- | --- |
 | `p0-alpha-stabilization-and-acceptance-2026-05-06.md` | 活跃 release-spine plan | 定义本轮 P0 alpha 的 shipping-now list、deferred/frozen list、route map、risk matrix 和 acceptance guide。 |
+| `s1c-auth-admin-production-boundary-2026-05-08.md` | 活跃 S1C tactical plan | 在 staging/admin 验收前，硬化真实 Clerk 登录、admin_roles bootstrap、CORS/origin contract、spoof tests，以及默认 solo workspace + personal wallet 创建。 |
+| `s1e-tgy-board-package-export-import-2026-05-08.md` | 已规划 S1E tactical plan | 定义 `.tgy` Tanergy Board Package export/import、package contents、asset rehydration、validation 和 smoke phases。 |
 | `s2-ai-provider-route-billing-control-plane-2026-05-07.md` | 活跃 S2 tactical plan | 把 provider route 切换、credits 扣费、provider-cost settlement 和 admin observability 收口到服务端 AiRun control plane。 |
 | `s3-team-group-wallets-membership-billing-plan-2026-05-08.md` | 活跃 S3 tactical plan | 用 Team wallet、个人 Collaborate wallet、invites、seats、membership、billing usage 和 payer-resolver 阶段，取代旧的 Team actor-personal 扣费策略。 |
 | `s1b-staging-deployment-runbook-2026-05-02.md` | 活跃 S1B runbook | 面向新手的中文指南，覆盖 domain、DNS、Vercel、Hetzner、Neon、R2、Clerk、Google OAuth 和 email setup。 |
@@ -72,11 +77,12 @@ Detailed product, architecture and state truth now lives in:
 ## 当前战术焦点
 
 1. 以 `p0-alpha-stabilization-and-acceptance-2026-05-06.md` 为准，稳定当前 P0 alpha 主线。
-2. 基于 staging resources 完成 S1B/S1C deploy 和 Auth rollout。
+2. 先完成 S1C auth/admin production boundary：真实 Clerk 登录、admin_roles bootstrap、spoof tests、CORS/origin contract 和 first-session wallet 创建。
 3. 让 S1D 继续只聚焦在当前 Board/share/page 发布路径的 permission hardening。
-4. 先完成 S2 provider-route/billing control-plane cut 和一条真实 AiRun/provider 路径，再扩大 AI 范围。
-5. 让 S3 先按 Team/Group wallet plan 推进：schema delta、Team workspace wallet、个人 Collaborate wallet、invite/member hardening、payer resolver 和 billing usage。
-6. 把前端产品 UI 对齐视为并行线路：navigation、套餐标签、角色语言和 AI 扣费文案在上线前必须匹配当前更窄的 P0 alpha 承诺。
+4. 在 Board/Asset guards 稳定后加入 S1E `.tgy` Board Package export/import。
+5. 先完成 S2 provider-route/billing control-plane cut 和一条真实 AiRun/provider 路径，再扩大 AI 范围。
+6. 让 S3 先按 Team/Group wallet plan 推进：schema delta、Team workspace wallet、个人 Collaborate wallet、invite/member hardening、payer resolver 和 billing usage。
+7. 把前端产品 UI 对齐视为并行线路：navigation、套餐标签、角色语言和 AI 扣费文案在上线前必须匹配当前更窄的 P0 alpha 承诺。
 
 ## 归档
 

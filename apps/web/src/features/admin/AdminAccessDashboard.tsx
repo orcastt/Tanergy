@@ -1,0 +1,158 @@
+'use client'
+
+import { useEffect, useMemo, useState } from 'react'
+import {
+  grantAdminRole,
+  loadAdminAuditLogs,
+  loadAdminRoles,
+  revokeAdminRole,
+  type AdminAccess,
+  type AdminAuditLogRecord,
+  type AdminRoleRecord,
+} from './adminClient'
+import type { AdminDirectoryUserRecord } from './adminDirectoryClient'
+import { EmptyRow, FilterSelect, MetaLine, formatDate, selectStyle } from './adminAiShared'
+
+const auditActions = ['', 'admin.role.grant', 'admin.role.revoke', 'admin.directory.users.list', 'admin.directory.workspaces.list', 'admin.ai.route_metrics.list']
+const roleOptions = ['owner', 'admin', 'support', 'analyst', 'finance', 'moderator'] as const
+
+export function AdminAccessDashboard({
+  adminAccess,
+  enabled,
+  users,
+}: {
+  adminAccess: AdminAccess
+  enabled: boolean
+  users: AdminDirectoryUserRecord[]
+}) {
+  const [auditAction, setAuditAction] = useState('')
+  const [auditLogs, setAuditLogs] = useState<AdminAuditLogRecord[]>([])
+  const [auditStatus, setAuditStatus] = useState<'error' | 'loading' | 'ready'>('loading')
+  const [draftNote, setDraftNote] = useState('')
+  const [draftRole, setDraftRole] = useState<(typeof roleOptions)[number]>('admin')
+  const [loadedRolesUserId, setLoadedRolesUserId] = useState('')
+  const [mutationMessage, setMutationMessage] = useState('')
+  const [roles, setRoles] = useState<AdminRoleRecord[]>([])
+  const [selectedUserId, setSelectedUserId] = useState('')
+  const [reloadToken, setReloadToken] = useState(0)
+  const roleNames = useMemo(() => adminAccess.roles.map((role) => role.role), [adminAccess.roles])
+  const isOwner = roleNames.includes('owner')
+  const selectedUser = users.find((user) => user.id === selectedUserId) ?? users[0] ?? null
+
+  useEffect(() => {
+    if (!enabled || !selectedUser?.id) return
+    let cancelled = false
+    loadAdminRoles(selectedUser.id)
+      .then((payload) => {
+        if (cancelled) return
+        setLoadedRolesUserId(selectedUser.id)
+        setRoles(payload.roles)
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return
+        setLoadedRolesUserId(selectedUser.id)
+        setRoles([])
+        setMutationMessage(error instanceof Error ? error.message : 'Role lookup failed.')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [enabled, reloadToken, selectedUser?.id])
+
+  useEffect(() => {
+    if (!enabled) return
+    let cancelled = false
+    loadAdminAuditLogs({ action: auditAction || undefined, limit: 50, targetUserId: selectedUser?.id })
+      .then((payload) => {
+        if (cancelled) return
+        setAuditLogs(payload.logs)
+        setAuditStatus('ready')
+      })
+      .catch(() => {
+        if (cancelled) return
+        setAuditLogs([])
+        setAuditStatus('error')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [auditAction, enabled, reloadToken, selectedUser?.id])
+
+  async function grantRole() {
+    if (!selectedUser || !isOwner) return
+    try {
+      await grantAdminRole({ note: draftNote || undefined, role: draftRole, userId: selectedUser.id })
+      setDraftNote('')
+      setMutationMessage(`Granted ${draftRole}.`)
+      setReloadToken((value) => value + 1)
+    } catch (error) {
+      setMutationMessage(error instanceof Error ? error.message : 'Role grant failed.')
+    }
+  }
+
+  async function revokeRole(role: string) {
+    if (!selectedUser || !isOwner) return
+    try {
+      await revokeAdminRole(selectedUser.id, role)
+      setMutationMessage(`Revoked ${role}.`)
+      setReloadToken((value) => value + 1)
+    } catch (error) {
+      setMutationMessage(error instanceof Error ? error.message : 'Role revoke failed.')
+    }
+  }
+
+  return (
+    <section className="management-main-grid" aria-label="Admin access">
+      <article className="management-panel">
+        <div className="management-panel-heading">
+          <div><h2>Admin roles</h2><p>Server-gated developer access and role grants.</p></div>
+          <span className="management-badge">{roleNames.join(', ') || 'none'}</span>
+        </div>
+        <FilterSelect
+          label="User"
+          onChange={setSelectedUserId}
+          options={users.map((user) => ({ label: `${user.email} (${user.id})`, value: user.id }))}
+          value={selectedUser?.id ?? ''}
+        />
+        {mutationMessage ? <p>{mutationMessage}</p> : null}
+        <dl className="management-definition-list">
+          {(loadedRolesUserId === selectedUser?.id ? roles : []).map((role) => (
+            <div key={`${role.role}-${role.createdAt}`}>
+              <dt>{role.role}</dt>
+              <dd>
+                Granted {formatDate(role.createdAt)}
+                {role.grantedBy ? <MetaLine>by {role.grantedBy}</MetaLine> : null}
+                {isOwner ? <button className="product-button product-button-secondary compact" onClick={() => revokeRole(role.role)} type="button">Revoke</button> : null}
+              </dd>
+            </div>
+          ))}
+        </dl>
+        {isOwner ? (
+          <div className="management-section-gap">
+            <select onChange={(event) => setDraftRole(event.target.value as (typeof roleOptions)[number])} style={selectStyle} value={draftRole}>
+              {roleOptions.map((role) => <option key={role} value={role}>{role}</option>)}
+            </select>
+            <input onChange={(event) => setDraftNote(event.target.value)} placeholder="Optional note" style={selectStyle} value={draftNote} />
+            <button className="product-button" disabled={!selectedUser} onClick={grantRole} type="button">Grant role</button>
+          </div>
+        ) : <p>Owner role is required to grant or revoke admin access.</p>}
+      </article>
+
+      <article className="management-panel">
+        <div className="management-panel-heading">
+          <div><h2>Audit log</h2><p>Recent admin actions for the selected target user.</p></div>
+          <span className={`management-status ${auditStatus === 'ready' ? 'is-success' : ''}`}>{auditStatus}</span>
+        </div>
+        <FilterSelect label="Action" onChange={setAuditAction} options={auditActions} value={auditAction} />
+        <div className="management-table-wrap">
+          <table className="management-table compact">
+            <thead><tr><th>When</th><th>Action</th><th>Actor</th><th>Target</th></tr></thead>
+            <tbody>{auditLogs.length ? auditLogs.map((log) => (
+              <tr key={log.id}><td>{formatDate(log.createdAt)}</td><td>{log.action}</td><td>{log.actorUserId ?? 'System'}</td><td>{log.targetUserId ?? log.workspaceId ?? '-'}</td></tr>
+            )) : <EmptyRow colSpan={4} message="No audit rows match this filter." />}</tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+  )
+}

@@ -64,6 +64,14 @@ NEXT_PUBLIC_API_BASE_URL=https://api-staging.example.com
 
 The canvas spike keeps the Next local API bridge only when `NEXT_PUBLIC_API_BASE_URL` is unset.
 
+Local development may use a different port when another service occupies `8000`:
+
+```bash
+NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8100
+```
+
+Do not reuse the local dev-bypass path for staging or production. `/api/auth/dev-bypass` and the `tangent_dev_auth` cookie are local-only helpers; deployed `/admin` smoke must use a real Clerk login and real FastAPI bearer verification.
+
 For staging, `TANGENT_ALLOWED_ORIGINS` in `api.env` must include the Web origin, for example:
 
 ```bash
@@ -168,7 +176,8 @@ Web canvas:
 
 ## Current Gaps
 
-- Auth is still dev context based: `dev-user` / `dev-workspace`.
+- Auth still needs real deployed smoke: local can use `dev-user` / `dev-workspace` plus dev bypass, but staging/prod must verify Clerk session, JWT issuer/JWKS/audience, exact allowed origins and the actual signed-in user's `admin_roles`.
+- Admin finance deploy smoke requires Alembic migrated to head before calling `/api/v1/admin/finance/summary`; stale DB schema can produce missing-column errors.
 - `TANGENT_POSTGRES_AUTO_CREATE_TABLES=0` is the preferred staging/prod path after running Alembic migrations. Temporary staging smoke can still use `1` while debugging a fresh database.
 - No AI provider proxy, model registry, run logs or credits yet.
 - No backup / restore automation yet.

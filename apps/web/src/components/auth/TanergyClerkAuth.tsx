@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useState } from 'react'
 import { ClerkFailed, ClerkLoaded, ClerkLoading, SignIn, SignUp } from '@clerk/nextjs'
 
 type TanergyClerkAuthProps = {
@@ -30,11 +31,29 @@ const clerkAppearance = {
 
 export function TanergyClerkAuth({ mode }: TanergyClerkAuthProps) {
   const isSignUp = mode === 'sign-up'
+  const [devBypassError, setDevBypassError] = useState<string | null>(null)
+  const [devBypassBusy, setDevBypassBusy] = useState(false)
   const AuthComponent = isSignUp ? SignUp : SignIn
   const title = isSignUp ? 'Create your Tanergy account.' : 'Welcome back to Tanergy.'
   const copy = isSignUp
     ? 'Register with email, Google or GitHub, then enter your workspace.'
     : 'Log in with email, Google or GitHub to continue.'
+  const showDevBypass = process.env.NODE_ENV !== 'production'
+
+  async function continueAsLocalAdmin() {
+    setDevBypassBusy(true)
+    setDevBypassError(null)
+    try {
+      const response = await fetch('/api/auth/dev-bypass', { method: 'POST' })
+      const payload = await response.json() as { error?: string; next?: string; ok?: boolean }
+      if (!response.ok || !payload.ok) throw new Error(payload.error || 'Local dev access failed.')
+      window.location.assign(payload.next || '/admin')
+    } catch (error) {
+      setDevBypassError(error instanceof Error ? error.message : 'Local dev access failed.')
+      setDevBypassBusy(false)
+    }
+  }
+
   return (
     <main className={`tanergy-auth tanergy-auth-${isSignUp ? 'mint' : 'coral'}`}>
       <section className="tanergy-auth-panel" aria-label="Tanergy account context">
@@ -86,6 +105,19 @@ export function TanergyClerkAuth({ mode }: TanergyClerkAuthProps) {
             signUpUrl="/sign-up"
           />
         </ClerkLoaded>
+        {showDevBypass ? (
+          <div className="tanergy-dev-auth">
+            <button
+              className="tanergy-dev-auth-button"
+              disabled={devBypassBusy}
+              onClick={continueAsLocalAdmin}
+              type="button"
+            >
+              {devBypassBusy ? 'Opening local admin.' : 'Continue as local admin'}
+            </button>
+            {devBypassError ? <p role="alert">{devBypassError}</p> : null}
+          </div>
+        ) : null}
       </section>
     </main>
   )

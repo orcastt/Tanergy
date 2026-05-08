@@ -96,6 +96,16 @@ export type AdminFinanceWalletsResource = { error?: string; ok: boolean; wallets
 export type AdminFinanceLedgerResource = { error?: string; ledger: AdminFinanceLedgerRecord[]; ok: boolean }
 export type AdminFinanceSubscriptionsResource = { error?: string; ok: boolean; subscriptions: AdminFinanceSubscriptionRecord[] }
 export type AdminFinanceMemberUsageResource = { error?: string; memberUsage: AdminFinanceMemberUsageRecord[]; ok: boolean }
+export type AdminFinanceManualMutationResource = {
+  accountId?: null | string
+  auditId?: null | string
+  balanceCredits?: null | number
+  ledgerEntryId?: null | string
+  message: string
+  ok: boolean
+  paymentId?: null | string
+  subscriptionId?: null | string
+}
 
 export type AdminFinanceQuery = {
   accountId?: string
@@ -111,6 +121,39 @@ export type AdminFinanceQuery = {
   status?: string
   userId?: string
   workspaceId?: string
+}
+
+export type AdminManualUserTopupInput = {
+  amountCents?: number
+  credits: number
+  currency?: string
+  note?: string
+  userId: string
+}
+
+export type AdminManualWorkspaceTopupInput = {
+  amountCents?: number
+  credits: number
+  currency?: string
+  note?: string
+  workspaceId: string
+}
+
+export type AdminManualCollaboratePlanInput = {
+  grantIncludedCredits?: boolean
+  note?: string
+  planKey: string
+  status?: string
+  userId: string
+}
+
+export type AdminManualTeamPlanInput = {
+  grantIncludedCredits?: boolean
+  note?: string
+  planKey: string
+  seatCapacity: number
+  status?: string
+  workspaceId: string
 }
 
 export function loadAdminFinanceSummary() {
@@ -135,4 +178,39 @@ export function loadAdminFinanceSubscriptions(query: AdminFinanceQuery) {
 
 export function loadAdminFinanceMemberUsage(query: AdminFinanceQuery) {
   return loadAdminJson<AdminFinanceMemberUsageResource>(`/api/v1/admin/finance/member-usage${createQuery(query)}`)
+}
+
+export function adminManualTopupUser(input: AdminManualUserTopupInput) {
+  return loadAdminJson<AdminFinanceManualMutationResource>('/api/v1/admin/finance/manual/user-topup', {
+    body: JSON.stringify(input),
+    method: 'POST',
+  })
+}
+
+export function adminManualTopupWorkspace(input: AdminManualWorkspaceTopupInput) {
+  return loadAdminJson<AdminFinanceManualMutationResource>('/api/v1/admin/finance/manual/workspace-topup', {
+    body: JSON.stringify(input),
+    method: 'POST',
+  })
+}
+
+export function adminManualSetCollaboratePlan(input: AdminManualCollaboratePlanInput) {
+  return loadAdminJson<AdminFinanceManualMutationResource>('/api/v1/admin/finance/manual/collaborate-plan', {
+    body: JSON.stringify(input),
+    method: 'POST',
+  })
+}
+
+export function adminManualSetTeamPlan(input: AdminManualTeamPlanInput) {
+  return loadAdminJson<AdminFinanceManualMutationResource>('/api/v1/admin/finance/manual/team-plan', {
+    body: JSON.stringify(input),
+    method: 'POST',
+  })
+}
+
+export function adminManualCancelSubscription(subscriptionId: string, note?: string) {
+  return loadAdminJson<AdminFinanceManualMutationResource>('/api/v1/admin/finance/manual/subscription-cancel', {
+    body: JSON.stringify({ note, subscriptionId }),
+    method: 'POST',
+  })
 }

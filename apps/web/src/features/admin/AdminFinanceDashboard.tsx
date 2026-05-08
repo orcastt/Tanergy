@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import type { AdminWorkspaceRecord } from './adminClient'
+import { AdminFinanceManualControls } from './AdminFinanceManualControls'
 import { useAdminFinanceResources } from './useAdminFinanceResources'
 import {
   AiCallout,
@@ -87,6 +88,13 @@ export function AdminFinanceDashboard({ enabled, workspaces }: { enabled: boolea
           }} type="button">Clear filters</button>
         </div>
       </section>
+
+      <AdminFinanceManualControls
+        enabled={enabled}
+        onMutated={finance.reload}
+        selectedWorkspaceId={selectedWorkspaceId}
+        workspaces={workspaceOptions}
+      />
 
       <section className="management-section-grid" aria-label="Finance payments and wallets">
         <PaymentsPanel payments={finance.payments.payments} />

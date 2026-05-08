@@ -37,18 +37,19 @@ Enterprise may later use a contract-defined workspace pool, but it is not the al
 | Group/Collaborate | A user can hold one active Collaborate plan at a time. Group members share Boards, while AI usage charges each actor's personal wallet. | Backend Collaborate checkout and Group create first cut implemented; minimal frontend create/invite wiring implemented |
 | Invites | Team and Group support invite links, invite acceptance, expiration/revoke and member role assignment. | Backend workspace invite link create/accept/revoke/expiry first cut implemented; dashboard invite link, revoke, member role and Team seat actions are wired; email pending |
 | Permissions | Board `Can view/edit/manage/Owner` stays separate from workspace admin/editor/viewer and separate from AI payer eligibility. | First-pass resolver exists; Group/Team hardening pending |
-| Billing usage | Users can see personal wallet, credits, ledger, usage and top-ups. Team admins can see Team wallet, seat costs, member usage and usage by Board/model. | First-pass `/billing`, `/team`, `/usage` exists; `/usage` Team top-up, seat checkout, personal top-up and Group create buttons now call real routes; `/admin` finance panels can inspect payment, wallet, subscription, ledger and Team member usage facts |
-| Payment lifecycle | Checkout, webhook grants, renewals, cancellation, invoices, top-ups and seat additions are durable and auditable. | Hosted checkout response contract, provider-neutral checkout adapter, optional Stripe Checkout Session first cut, frontend success/cancel return routes, missing-config guard, signed webhook inbox, admin finance reconciliation and local manual/hosted payment smoke exist; deployed staging smoke plus renewals/cancel/invoices/refunds pending |
+| Billing usage | Users can see personal wallet, credits, ledger, usage and top-ups. Team admins can see Team wallet, seat costs, member usage and usage by Board/model. | First-pass `/billing`, `/team`, `/usage` exists; `/usage` Team top-up, seat checkout, personal top-up and Group create buttons now call real routes; `/admin` is now tabbed into Overview, Users, Teams, Groups, AI API Routes, Finance and Access, can inspect payment, wallet, subscription, ledger and Team member usage facts, and developer admins can manually top up user/Team wallets |
+| Payment lifecycle | Checkout, webhook grants, renewals, cancellation, invoices, top-ups and seat additions are durable and auditable. | Hosted checkout response contract, provider-neutral checkout adapter, optional Stripe Checkout Session first cut, frontend success/cancel return routes, missing-config guard, signed webhook inbox, admin finance reconciliation, audited `admin_manual` plan/top-up/cancel operations and local manual/hosted payment smoke exist; deployed staging smoke plus renewals/invoices/refunds pending |
 | AI charge transparency | Every AI run explains user, workspace/team, board, node, model, pricing rule, provider route, charged account and provider cost. | S2/S3 scaffolds exist; GeekAI fast path still needs reconciliation |
 
 ## Current First Pass To Reuse
 
 - Server-gated `/admin`, audit logs, admin finance reconciliation panels and owner-only global-admin role mutation.
+- Admin directory APIs and tabbed developer console for registered users, Team dashboards, Group dashboards, AI API route metrics, finance reconciliation and access control.
 - First-pass `/billing`, `/team` and `/usage` UI surfaces.
 - `workspace.kind`, workspace members, seat assignments, usage rollups and dashboard snapshots.
 - `credit_accounts`, `credit_ledger`, internal grant/top-up/usage/refund/admin-adjustment helpers.
 - Payment checkout/complete scaffolds for top-ups and seat capacity, hosted checkout response metadata and missing-config guard for non-manual providers, provider-neutral checkout adapter with optional Stripe Checkout Session support, amount/currency/kind/client-reference handoff metadata, plus a signed webhook inbox that reuses the payment completion/grant path by payment id, client reference or provider metadata checkout session id.
-- Admin finance reconciliation first pass with payment, wallet, subscription, credit ledger and Team member usage read APIs plus matching frontend panels.
+- Admin finance reconciliation first pass with payment, wallet, subscription, credit ledger and Team member usage read APIs plus matching frontend panels and audited manual operations for user wallet top-up, Team wallet top-up, Collaborate/Group plan assignment, Team plan assignment and subscription cancellation.
 - AiRun charge fields, quote/preflight, runtime facts, `ai_api_calls`, provider-cost facts and admin AI route/pricing panels.
 - Board permission resolver, owner-only copy/delete, share links, people lookup and Board member management.
 
@@ -74,12 +75,13 @@ Required rework:
 - Each paid seat contributes included credits to the Team wallet according to the active plan.
 - Team owner/admin can invite, accept, remove and role-manage members as admin/editor/viewer.
 - Team owner/admin can see Team wallet balance, top-ups, seat capacity, member usage, Board usage and billing usage.
-- Admin finance roles can reconcile payment status, wallet balances, subscriptions, credit ledger rows and Team member usage from one developer console.
+- Admin finance roles can reconcile payment status, wallet balances, subscriptions, credit ledger rows and Team member usage from one developer console, and owner/admin/finance roles can manually assign plans or top up credits while Stripe is unavailable.
 - Group/Collaborate members can share and edit Boards according to role, but each member's AI usage charges their own personal wallet.
 - A user can have only one active Collaborate subscription at a time.
 - Personal billing never exposes another Group member's wallet, usage, invoices or top-ups.
 - AI runs fail before provider execution if the actor lacks Board permission, payer eligibility or balance.
 - Admin/developer views can explain every run by user, workspace/team, board, node, model, route, pricing rule, charged account, credits and provider cost.
+- Developer admins can navigate users, Teams and Groups separately, enter focused manual top-up/plan actions from the relevant detail view, and see AI image/text provider-route usage from one route-management tab.
 
 ## Non-Goals For This Slice
 

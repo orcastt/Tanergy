@@ -39,8 +39,18 @@ export async function persistenceJsonHeadersAsync(workspace?: TangentWorkspace):
 }
 
 async function withClerkAuthorization(headers: HeadersInit): Promise<HeadersInit> {
+  if (shouldUseLocalDevHeaders()) return headers
   const token = await getBrowserClerkToken()
   return token ? { ...headers, Authorization: `Bearer ${token}` } : headers
+}
+
+function shouldUseLocalDevHeaders() {
+  if (process.env.NODE_ENV === 'production') return false
+  if (process.env.NEXT_PUBLIC_USE_CLERK_API_AUTH === '1') return false
+  if (typeof window === 'undefined') return false
+  const host = window.location.hostname
+  const apiHost = apiBaseUrl ? new URL(apiBaseUrl).hostname : ''
+  return ['localhost', '127.0.0.1'].includes(host) && ['localhost', '127.0.0.1'].includes(apiHost)
 }
 
 async function getBrowserClerkToken() {

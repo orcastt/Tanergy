@@ -1,7 +1,7 @@
 # Project State Slice S1C: Auth And Request Context
 
 **Updated**: 2026-05-08
-**Status**: Clerk frontend routes plus FastAPI bearer verification first pass landed; auth hardening, personal wallet creation and richer workspace/session flows still pending.
+**Status**: Clerk frontend routes plus FastAPI bearer verification first pass landed. The next active backend slice is production-boundary hardening: real-login admin access, admin_roles bootstrap, spoof tests, CORS/origin contract and first-session personal wallet creation.
 
 ## Objective
 
@@ -20,6 +20,9 @@ Replace dev headers/mock identity with real server-side sessions and workspace m
 - [ ] Email OTP issue/verify flow.
 - [x] Default workspace creation first pass.
 - [ ] Personal wallet creation on first verified local user session.
+- [ ] Real-login admin smoke without local dev-bypass.
+- [ ] Admin operator bootstrap/grant path for the actual signed-in local TANGENT user after migrations.
+- [ ] Production-like Web/API origin and CORS contract for Clerk bearer requests.
 - [x] Request context middleware.
 - [ ] Active workspace selection matrix for users with multiple Team/Group memberships.
 - [ ] Rate limit and request logging for auth routes.
@@ -50,6 +53,12 @@ Current frontend first pass:
 /api/auth/session  -> returns Clerk-backed Tanergy session shape when signed in
 shared remote clients -> attach Clerk JWT to /api/v1/auth, /boards, /assets, /image-ops and /ai
 ```
+
+Current local issue to maintain during deploy:
+
+- Local `/admin` was blocked when Web Auth required Clerk but the browser had no Clerk session; the dev-only `/api/auth/dev-bypass` route now sets `tangent_dev_auth=1` and lets local testing continue.
+- This bypass is intentionally disabled in production and must not be used as an acceptance path.
+- Staging/prod `/admin` must be verified with a real Clerk login, a matching `NEXT_PUBLIC_API_BASE_URL`, matching API CORS, Alembic migrated to head, and `admin_roles` granted to the actual signed-in local TANGENT user.
 
 Backend:
 

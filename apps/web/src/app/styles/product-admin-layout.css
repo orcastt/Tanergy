@@ -1,0 +1,109 @@
+.management-page {
+  display: grid;
+  gap: 24px;
+  align-content: start;
+}
+
+.management-page .product-page-header {
+  padding-bottom: 0;
+}
+
+.management-summary-grid,
+.management-section-grid,
+.management-main-grid,
+.management-three-grid {
+  align-items: stretch;
+  margin: 0;
+}
+
+.management-summary-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.management-three-grid {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.management-callout,
+.management-panel,
+.management-notice {
+  box-sizing: border-box;
+  height: 100%;
+}
+
+.management-callout {
+  display: grid;
+  align-content: start;
+  min-height: 168px;
+}
+
+.management-panel {
+  min-width: 0;
+}
+
+.management-subpanel {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 16px;
+}
+
+.management-subpanel h2 {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.management-subpanel p {
+  margin: 10px 0 0;
+  color: var(--color-body);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.management-routes-shell {
+  display: grid;
+  gap: 20px;
+}
+
+.management-routes-shell .management-panel-heading,
+.management-routes-shell .management-console-tabs {
+  margin-bottom: 0;
+}
+
+.management-panel > .management-main-grid,
+.management-panel > .management-three-grid {
+  margin-top: 4px;
+}
+
+.management-console-tabs {
+  min-height: 46px;
+  padding: 4px;
+  border: 1px solid var(--color-hairline);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-canvas) 64%, var(--color-surface-soft));
+}
+
+.management-console-tabs button {
+  min-height: 36px;
+}
+
+@media (max-width: 1100px) {
+  .management-summary-grid,
+  .management-three-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .management-summary-grid,
+  .management-section-grid,
+  .management-main-grid,
+  .management-three-grid {
+    grid-template-columns: 1fr;
+  }
+}

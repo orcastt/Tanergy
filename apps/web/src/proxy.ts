@@ -27,6 +27,13 @@ export function proxy(request: NextRequest, event: NextFetchEvent) {
   if (!shouldRunClerkProxy(request.nextUrl.pathname)) {
     return NextResponse.next()
   }
+  if (
+    shouldRequireWebAuth()
+    && isProtectedRoute(request)
+    && isLocalDevAuthBypass(request)
+  ) {
+    return NextResponse.next()
+  }
 
   return clerkProxy(request, event)
 }

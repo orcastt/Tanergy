@@ -8,6 +8,10 @@
   border-collapse: collapse;
 }
 
+.management-table.compact {
+  min-width: 560px;
+}
+
 .management-table th,
 .management-table td {
   padding: 18px 12px;
@@ -69,4 +73,12 @@
 
 .management-table-cell-stack small {
   color: var(--color-muted);
+}
+
+.management-table tr.is-selected td {
+  background: var(--color-surface-soft);
+}
+
+.management-table tbody tr[onClick] {
+  cursor: pointer;
 }

@@ -99,19 +99,26 @@ class FakePostgresCursor:
             self.database.credit_ledger.append(row)
             self.row = _credit_ledger_tuple(row)
         elif normalized.startswith("INSERT INTO tangent_payments"):
-            metadata = json.loads(params[7]) if isinstance(params[7], str) else params[7]
+            if len(params) == 9:
+                payment_id, account_id, provider, provider_payment_id, amount_cents, currency, checkout_session_id, kind, metadata_value = params
+                status = "succeeded"
+            else:
+                payment_id, account_id, provider, amount_cents, currency, checkout_session_id, kind, metadata_value = params
+                provider_payment_id = None
+                status = "pending"
+            metadata = json.loads(metadata_value) if isinstance(metadata_value, str) else metadata_value
             row = {
-                "account_id": params[1],
-                "amount_cents": params[3],
-                "checkout_session_id": params[5],
+                "account_id": account_id,
+                "amount_cents": amount_cents,
+                "checkout_session_id": checkout_session_id,
                 "created_at": f"2026-05-06T00:25:{len(self.database.payments):02d}Z",
-                "currency": params[4],
-                "id": params[0],
-                "kind": params[6],
+                "currency": currency,
+                "id": payment_id,
+                "kind": kind,
                 "metadata": metadata or {},
-                "provider": params[2],
-                "provider_payment_id": None,
-                "status": "pending",
+                "provider": provider,
+                "provider_payment_id": provider_payment_id,
+                "status": status,
             }
             self.database.payments.append(row)
             self.row = _payment_tuple(row)
@@ -1291,6 +1298,10 @@ class FakePostgresCursor:
             ]
             rows.sort(key=lambda row: row[9], reverse=True)
             self.rows = rows
+        elif normalized.startswith("SELECT id, account_id, owner_type, owner_id, workspace_id FROM tangent_subscriptions WHERE id = %s"):
+            row = next((row for row in self.database.subscriptions if row["id"] == params[0]), None)
+            if row:
+                self.row = (row["id"], row.get("account_id"), row.get("owner_type"), row.get("owner_id"), row.get("workspace_id"))
         elif normalized.startswith("SELECT id FROM tangent_subscriptions"):
             account_id = params[0]
             matches = [
@@ -1386,7 +1397,24 @@ class FakePostgresCursor:
                 row["revoked_at"] = "2026-05-08T00:26:00Z"
                 self.row = _workspace_invitation_tuple(row)
         elif normalized.startswith("INSERT INTO tangent_subscriptions"):
-            if len(params) == 9:
+            if len(params) == 11:
+                row = {
+                    "account_id": params[1],
+                    "current_period_end": params[10],
+                    "current_period_start": "2026-05-06T00:50:00Z",
+                    "id": params[0],
+                    "owner_id": params[3],
+                    "owner_type": params[2],
+                    "plan_family": params[5],
+                    "plan_key": params[7],
+                    "provider": "admin_manual",
+                    "provider_subscription_id": params[6],
+                    "seat_capacity": params[9],
+                    "status": params[8],
+                    "updated_at": "2026-05-06T00:50:00Z",
+                    "workspace_id": params[4],
+                }
+            elif len(params) == 9:
                 row = {
                     "account_id": params[1],
                     "current_period_end": params[8],
@@ -1433,31 +1461,49 @@ class FakePostgresCursor:
                 }
             self.database.subscriptions.append(row)
         elif normalized.startswith("UPDATE tangent_subscriptions SET plan_key = %s"):
-            if len(params) == 8:
+            if len(params) == 10:
+                plan_key, plan_family, owner_type, owner_id, workspace_id, provider_subscription_id, status, seat_capacity, current_period_end, subscription_id = params
+                provider = "admin_manual"
+            elif len(params) == 8:
                 plan_key, owner_id, workspace_id, provider, provider_subscription_id, seat_capacity, current_period_end, subscription_id = params
+                owner_type = "workspace" if workspace_id is not None else "user"
+                plan_family = "team" if workspace_id is not None else "collaborate"
+                status = "active"
             elif len(params) == 6:
                 plan_key, owner_id, provider, provider_subscription_id, current_period_end, subscription_id = params
                 workspace_id = None
                 seat_capacity = 1
+                owner_type = "user"
+                plan_family = "collaborate"
+                status = "active"
             else:
                 plan_key, provider, provider_subscription_id, current_period_end, subscription_id = params
                 owner_id = None
                 workspace_id = None
                 seat_capacity = None
+                owner_type = None
+                plan_family = None
+                status = "active"
             row = next((value for value in self.database.subscriptions if value["id"] == subscription_id), None)
             if row:
                 row["plan_key"] = plan_key
                 if owner_id is not None:
                     row["owner_id"] = owner_id
-                    row["owner_type"] = "workspace" if workspace_id is not None else "user"
-                    row["plan_family"] = "team" if workspace_id is not None else "collaborate"
+                    row["owner_type"] = owner_type
+                    row["plan_family"] = plan_family
                     row["workspace_id"] = workspace_id
-                    row["seat_capacity"] = max(int(row.get("seat_capacity") or 0), int(seat_capacity or 0))
+                    row["seat_capacity"] = int(seat_capacity or 0)
                 row["provider"] = provider
                 row["provider_subscription_id"] = provider_subscription_id
-                row["status"] = "active"
+                row["status"] = status
                 row["current_period_end"] = current_period_end
                 row["updated_at"] = "2026-05-06T00:51:00Z"
+        elif normalized.startswith("UPDATE tangent_subscriptions SET status = 'canceled'"):
+            row = next((value for value in self.database.subscriptions if value["id"] == params[0]), None)
+            if row:
+                row["status"] = "canceled"
+                row["current_period_end"] = "2026-05-06T00:52:00Z"
+                row["updated_at"] = "2026-05-06T00:52:00Z"
         elif normalized.startswith("SELECT COALESCE(SUM(credits_delta), 0) FROM tangent_credit_ledger"):
             account_id = params[0]
             self.row = (

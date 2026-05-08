@@ -111,7 +111,7 @@ payment completed
   -> audit admin/system facts
 ```
 
-Implementation checkpoint: the backend checkout/complete contract exists with manual-test payment completion. Checkout responses now include a `checkout` object; non-manual providers require hosted checkout configuration before a payment is created, can expose a hosted checkout URL with amount/currency/kind/client-reference handoff metadata and cannot be manually completed. The payment layer is provider-neutral: `manual_test` and generic hosted checkout can keep staging moving while Stripe is unavailable. The optional Stripe checkout adapter first cut requires `TANGENT_STRIPE_SECRET_KEY` only when `stripe` is selected, creates Checkout Sessions through Stripe's server API, writes internal payment/session references into provider metadata and labels `checkout.adapter=stripe_checkout`; it does not read local secret files. A first signed webhook inbox also exists: `POST /api/v1/billing/webhooks/{provider}` validates `TANGENT_PAYMENT_WEBHOOK_SECRET`, stores provider events in `tangent_webhook_events`, calls the shared payment completion path for supported checkout success events by internal payment id, client reference or provider metadata checkout session id and avoids duplicate grants for repeated provider event ids. The frontend now has hosted checkout return routes at `/billing/success` and `/billing/cancel`, and `/usage` buttons call the real Team top-up, Team seat checkout, personal top-up and Group create routes. Admin finance reconciliation now has server-gated read endpoints and frontend panels for payments, credit ledger rows, subscriptions, wallets and Team member usage. Local disposable-Postgres smoke now covers admin finance reads plus manual-test and hosted payment flows; remote staging still needs a redeploy before real-login smoke can pass. Provider-specific signatures, invoices, refunds and production payment reconciliation still need implementation.
+Implementation checkpoint: the backend checkout/complete contract exists with manual-test payment completion. Checkout responses now include a `checkout` object; non-manual providers require hosted checkout configuration before a payment is created, can expose a hosted checkout URL with amount/currency/kind/client-reference handoff metadata and cannot be manually completed. The payment layer is provider-neutral: `manual_test` and generic hosted checkout can keep staging moving while Stripe is unavailable. The optional Stripe checkout adapter first cut requires `TANGENT_STRIPE_SECRET_KEY` only when `stripe` is selected, creates Checkout Sessions through Stripe's server API, writes internal payment/session references into provider metadata and labels `checkout.adapter=stripe_checkout`; it does not read local secret files. A first signed webhook inbox also exists: `POST /api/v1/billing/webhooks/{provider}` validates `TANGENT_PAYMENT_WEBHOOK_SECRET`, stores provider events in `tangent_webhook_events`, calls the shared payment completion path for supported checkout success events by internal payment id, client reference or provider metadata checkout session id and avoids duplicate grants for repeated provider event ids. The frontend now has hosted checkout return routes at `/billing/success` and `/billing/cancel`, and `/usage` buttons call the real Team top-up, Team seat checkout, personal top-up and Group create routes. Admin finance reconciliation now has server-gated read endpoints and frontend panels for payments, credit ledger rows, subscriptions, wallets and Team member usage. Admin directory APIs now expose user, Team and Group aggregates plus workspace member/board detail, and `/admin` is split into Overview, Users, Teams, Groups, AI API Routes, Finance and Access tabs. Because Stripe is not available yet, the developer panel also has audited `admin_manual` operations for user personal-wallet top-up, Team wallet top-up, Collaborate/Group plan assignment, Team plan assignment and subscription cancellation. Local disposable-Postgres smoke now covers admin finance reads plus manual admin, manual-test and hosted payment flows; local live API smoke covers the new admin directory and AI route metrics endpoints. Remote staging still needs a redeploy before real-login smoke can pass. Provider-specific signatures, invoices, refunds and production payment reconciliation still need implementation.
 
 Team seat add:
 
@@ -258,6 +258,36 @@ The next migration should confirm or add:
 - Workspace invite tokens with expiry/revoke/acceptance state.
 - Seat capacity and member assignment facts that do not imply personal credit ownership.
 - `ai_runs.node_id` if node-level attribution is not already durable.
+
+## Admin Console IA
+
+Current developer console tabs:
+
+```text
+Overview
+  -> global counts, Team/Group inventory and operator map
+Users
+  -> registered user list, personal wallet, Collaborate/Group plan, owned Teams/Groups and focused manual user actions
+Teams
+  -> all Team workspaces, owner/member/board counts, Team wallet, Team plan and Team member/board detail
+Groups
+  -> all Group workspaces, owner/member/board counts, owner Collaborate plan and Group member/board detail
+AI API Routes
+  -> image/text route metrics, credits, provider cost, failures, latency plus model/route/pricing control plane
+Finance
+  -> payment, wallet, subscription, credit ledger and member-usage reconciliation
+Access
+  -> global admin roles and audit log
+```
+
+Server-backed endpoints added for this IA:
+
+```text
+GET /api/v1/admin/directory/users
+GET /api/v1/admin/directory/workspaces?kind=team_workspace|group_workspace
+GET /api/v1/admin/directory/workspaces/{workspace_id}
+GET /api/v1/admin/ai/route-metrics
+```
 - Charge-scope widening or `entitlement_source=team_wallet` compatibility mapping.
 
 ## Planned API Capability Map

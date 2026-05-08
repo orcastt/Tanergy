@@ -1,6 +1,6 @@
 # ARCH Slice S1B: Staging Infrastructure And Online Prep
 
-**Updated**: 2026-05-06
+**Updated**: 2026-05-08
 **Mode**: Architecture slice.
 **Status**: In progress; staging Web/API/Neon/R2 smoke passed, while Auth/email/OAuth and Konva-first redeploy smoke remain.
 
@@ -124,6 +124,16 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 
 ## Deployment Gates
 
+- Web/API origin contract is explicit per environment:
+  - local web: `http://127.0.0.1:3000` or `http://localhost:3000`
+  - local API fallback when port 8000 is occupied: `http://127.0.0.1:8100`
+  - staging web: public HTTPS Web origin
+  - staging API: public HTTPS API origin
+  - production web/API: final real domains only
+- `NEXT_PUBLIC_API_BASE_URL` points at the matching API origin in each Web environment.
+- FastAPI `TANGENT_ALLOWED_ORIGINS` allows only the matching Web origin(s) for that environment.
+- Clerk allowed origins and redirect URLs include the exact staging/production Web domains before turning on required Web Auth.
+- Local-only auth helpers such as `/api/auth/dev-bypass` and the `tangent_dev_auth` cookie remain disabled in production and are never used for staging/prod acceptance.
 - Public FastAPI `/health` returns 200 over HTTPS.
 - CORS allows only staging Web origin.
 - Vercel route can call FastAPI.
