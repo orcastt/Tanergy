@@ -6,11 +6,14 @@ from tangent_api.billing_payment_schemas import (
     BillingPaymentMutationResponse,
     BillingPaymentsResponse,
     BillingSeatPurchaseCheckoutRequest,
+    BillingTeamSubscriptionCheckoutRequest,
     BillingTopupCheckoutRequest,
 )
 from tangent_api.billing_payments import (
     complete_billing_payment,
+    create_team_subscription_checkout,
     create_topup_checkout,
+    create_workspace_topup_checkout,
     create_workspace_seat_checkout,
     list_billing_payments,
 )
@@ -64,6 +67,24 @@ def post_topup_checkout(
     )
 
 
+@router.post("/teams/checkout", response_model=BillingPaymentMutationResponse)
+def post_team_subscription_checkout(
+    input_data: BillingTeamSubscriptionCheckoutRequest,
+    context: ApiRequestContext = Depends(get_request_context),
+) -> BillingPaymentMutationResponse:
+    return BillingPaymentMutationResponse(
+        ok=True,
+        payment=create_team_subscription_checkout(
+            context,
+            currency=input_data.currency,
+            metadata=input_data.metadata,
+            plan_key=input_data.plan_key,
+            quantity=input_data.quantity,
+            team_name=input_data.team_name,
+        ),
+    )
+
+
 @router.post("/payments/{payment_id}/complete", response_model=BillingPaymentMutationResponse)
 def post_billing_payment_complete(
     payment_id: str,
@@ -85,5 +106,21 @@ def post_workspace_seat_checkout(
             metadata=input_data.metadata,
             plan_key=input_data.plan_key,
             quantity=input_data.quantity,
+        ),
+    )
+
+
+@router.post("/workspaces/current/topups/checkout", response_model=BillingPaymentMutationResponse)
+def post_workspace_topup_checkout(
+    input_data: BillingTopupCheckoutRequest,
+    context: ApiRequestContext = Depends(get_request_context),
+) -> BillingPaymentMutationResponse:
+    return BillingPaymentMutationResponse(
+        ok=True,
+        payment=create_workspace_topup_checkout(
+            context,
+            credits=input_data.credits,
+            currency=input_data.currency,
+            metadata=input_data.metadata,
         ),
     )

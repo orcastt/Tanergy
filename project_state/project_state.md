@@ -50,7 +50,7 @@ S1B Deploy/staging            60%  Web/API/Neon/R2 smoke exists; Auth/email/OAut
 S1C Auth/registration         55%  Clerk/FastAPI first pass exists; session hardening pending
 S1D Board/share/invites       68%  CRUD/share/member first pass exists; workspace invite accept and Team/Group permission split pending
 S2 AI runtime/provider routes 56%  GeekAI local UX path exists; server route/billing control-plane and live Team-wallet settlement pending
-S3 Admin/billing/team         49%  admin/billing/team scaffolds and Team-wallet payer first cut exist; invites/payment depth pending
+S3 Admin/billing/team         53%  admin/billing/team scaffolds, Team-wallet payer first cut, Team checkout provisioning and Team top-up contracts exist; invites/payment depth pending
 Frontend product UI alignment 52%  major surfaces exist; nav, plan labels and cost messaging need alignment
 S4 Collaboration              10%  boundary documented; Yjs/provider proof deferred
 ```
@@ -81,6 +81,8 @@ Done locally:
   S3 first-pass admin probe/summary/audit/role management
   S3 first-pass billing/workspace entitlement dashboard contract with Collaborate Plus / Team Growth catalog, DB-backed read lookup, Team seat mutation, credit preflight coverage, internal ledger settlement helpers, payment-backed top-up/seat checkout scaffolds and first-pass top-up/usage/admin AI save panels
   S3 Team/Group wallet plan update: Team wallet replaces the older Team actor-personal charging strategy; Collaborate stays personal-wallet based
+  S3 Team subscription checkout backend contract: pending team_subscription payment can complete into a new Team workspace, owner membership, Team wallet, subscription, seat capacity and included-credit grant
+  S3 Team wallet top-up backend contract: current Team owner/admin can create a workspace_topup payment and complete it into the Team wallet ledger
   S2/S3 DB-backed AI control-plane registry/provider-route/pricing-rule read/save + versioned publish/rollback + AiRun quote/preflight + persisted lifecycle/failover + live-adapter scaffold checkpoint
   Canvas-facing GeekAI local fast path for chat streaming, prompt optimization, image generation/edit/reference and analysis
   Image Gen / Image Gen 4 model-aware controls for GPT Image 2, Nano Banana 2, Doubao Seedream and Jimeng-style parameters
@@ -115,7 +117,7 @@ Not production-complete:
 | S1D Board CRUD | `project_state_slice_S1D_auth_board_crud.md` | Stable first-pass CRUD/member/share/public-share-open checkpoint with owner-only copy/delete, share expiry and known-foreign Asset guard |
 | S1X Canvas Engine Migration | `project_state_slice_S1X_canvas_engine_migration.md` | Konva Board route accepted; Page polish and v1 copy tooling landed; collaboration pending |
 | S2 AI Runtime | `project_state_slice_S2_ai_runtime.md` | Mock/runtime dataflow, persisted route/settlement shell and local GeekAI canvas path are usable; DB-backed quote/preflight/lifecycle/attempt facts exist; production gate is folding GeekAI plus future providers into the server provider-route/billing control plane and validating one live image path with durable Asset/text-output handling |
-| S3 Admin/Billing/Analytics | `project_state_slice_S3_admin_billing_analytics.md` | Active pivot: migration `20260508_0012` and first payer resolver cut now support Team wallet vs personal Collaborate wallet; invite/member hardening and real payment/provider settlement remain pending |
+| S3 Admin/Billing/Analytics | `project_state_slice_S3_admin_billing_analytics.md` | Active pivot: migration `20260508_0012`, first payer resolver cut, Team checkout provisioning and Team top-up contracts now support Team wallet vs personal Collaborate wallet; invite/member hardening and real payment/provider settlement remain pending |
 
 ## Current Next Fork
 
@@ -124,7 +126,7 @@ If external resources are not ready:
 1. Hand-test S1X Page UI save/restore/history, page delete/reorder/Move to page and v1-to-v2 copy tooling on real Boards.
 2. Keep S1X on regression-only fixes while the new share/admin checkpoints settle.
 3. Harden S1D permissions into the target `Can view/edit/manage/owner` model with Group/Team workspace separation.
-4. Start the S3 Team/Group wallet slice: schema delta, Team checkout creates workspace+wallet, Collaborate one-active personal subscription, invite/member hardening and payer resolver tests.
+4. Continue the S3 Team/Group wallet slice: Collaborate one-active personal checkout, invite/member hardening and payer resolver settlement tests.
 5. Fold the current GeekAI local fast path into the server provider-route adapter layer while preserving timeout-safe per-attempt observability and no-double-charge settlement before real provider charging.
 
 If external resources are ready:

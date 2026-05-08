@@ -98,7 +98,10 @@ If the current code can only store `workspace_pool`, use `charged_scope=workspac
 Team purchase:
 
 ```text
-checkout completed
+POST /api/v1/billing/teams/checkout
+  -> create pending team_subscription payment owned by the buyer's personal context
+
+payment completed
   -> create team_workspace
   -> create owner/admin workspace_members row
   -> create workspace-owned credit_account(account_kind=team_wallet)
@@ -108,6 +111,8 @@ checkout completed
   -> audit admin/system facts
 ```
 
+Implementation checkpoint: the backend checkout/complete contract exists with manual-test payment completion. External payment webhooks, invoices and admin audit facts still need production implementation.
+
 Team seat add:
 
 ```text
@@ -115,6 +120,14 @@ owner/admin checkout
   -> update subscription seat_capacity
   -> grant incremental included credits to Team wallet
   -> allow assigning seats to active/invited members up to capacity
+```
+
+Team wallet top-up:
+
+```text
+owner/admin checkout in active team_workspace
+  -> create workspace_topup payment owned by the Team wallet
+  -> payment completed writes topup_purchase to the workspace-owned credit_account
 ```
 
 Collaborate purchase:

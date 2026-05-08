@@ -9,6 +9,12 @@ from tangent_api.billing_payment_schemas import BillingPaymentMutationResponse, 
 from tangent_api.credit_ledger import grant_subscription_credits_to_account, record_topup_purchase_to_account
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.storage.postgres_connection import require_database_url
+from tangent_api.team_subscription_lifecycle import (
+    assert_team_subscription_completion_allowed,
+    build_team_subscription_metadata,
+    calculate_team_subscription_amount_cents,
+    provision_team_subscription_payment,
+)
 from tangent_api.workspace_entitlements import PLAN_CATALOG
 
 PAYMENT_PROVIDER = "manual_test"
@@ -85,6 +91,37 @@ def create_topup_checkout(
     )
 
 
+def create_workspace_topup_checkout(
+    context: ApiRequestContext,
+    *,
+    credits: float,
+    currency: str,
+    metadata: dict[str, object],
+) -> BillingPaymentRecord:
+    require_database_url()
+    if context.workspace_kind != "team_workspace":
+        raise HTTPException(status_code=400, detail="Workspace top-up is only available for Team workspaces.")
+    if context.workspace_role not in {"owner", "admin"}:
+        raise HTTPException(status_code=403, detail="Only workspace owners or admins may top up the Team wallet.")
+    if credits <= 0:
+        raise HTTPException(status_code=400, detail="Top-up credits must be greater than zero.")
+    cents_per_credit = TOPUP_CENTS_PER_CREDIT.get(context.workspace_plan_key or "team_start", 1)
+    payment_metadata = {
+        **metadata,
+        "credits": float(credits),
+        "workspaceId": context.workspace_id,
+        "workspaceKind": context.workspace_kind,
+    }
+    return _create_payment(
+        account_owner_id=context.workspace_id,
+        account_owner_type="workspace",
+        amount_cents=max(1, int(round(float(credits) * cents_per_credit))),
+        currency=currency,
+        kind="workspace_topup",
+        metadata=payment_metadata,
+    )
+
+
 def create_workspace_seat_checkout(
     context: ApiRequestContext,
     *,
@@ -117,6 +154,34 @@ def create_workspace_seat_checkout(
         amount_cents=monthly_price_usd * 100 * quantity,
         currency=currency,
         kind="seat_purchase",
+        metadata=payment_metadata,
+    )
+
+
+def create_team_subscription_checkout(
+    context: ApiRequestContext,
+    *,
+    currency: str,
+    metadata: dict[str, object],
+    plan_key: str,
+    quantity: int,
+    team_name: str,
+) -> BillingPaymentRecord:
+    require_database_url()
+    payment_metadata = build_team_subscription_metadata(
+        context,
+        metadata=metadata,
+        plan_key=plan_key,
+        quantity=quantity,
+        team_name=team_name,
+    )
+    amount_cents = calculate_team_subscription_amount_cents(plan_key, quantity)
+    return _create_payment(
+        account_owner_id=context.user_id,
+        account_owner_type="user",
+        amount_cents=amount_cents,
+        currency=currency,
+        kind="team_subscription",
         metadata=payment_metadata,
     )
 
@@ -179,24 +244,51 @@ def complete_billing_payment(
                     },
                 )
                 topup_entry_id = mutation.entry.id
+            elif updated.kind == "workspace_topup":
+                credits = float(updated.metadata.get("credits") or 0)
+                mutation = record_topup_purchase_to_account(
+                    account_id=str(updated.account_id),
+                    actor_user_id=context.user_id,
+                    workspace_id=str(updated.metadata.get("workspaceId") or context.workspace_id),
+                    credits=credits,
+                    source_id=updated.id,
+                    metadata={
+                        "checkoutSessionId": updated.checkout_session_id,
+                        "paymentId": updated.id,
+                        **updated.metadata,
+                    },
+                )
+                topup_entry_id = mutation.entry.id
             elif updated.kind == "seat_purchase":
                 _upsert_workspace_subscription(cursor, updated)
-                credits = float(updated.metadata.get("includedCreditsPerSeat") or 0) * int(updated.metadata.get("quantity") or 0)
-                if credits > 0:
-                    grant_subscription_credits_to_account(
-                        account_id=str(updated.account_id),
-                        actor_user_id=context.user_id,
-                        workspace_id=context.workspace_id,
-                        credits=credits,
-                        source_id=updated.id,
-                        metadata={
-                            "checkoutSessionId": updated.checkout_session_id,
-                            "paymentId": updated.id,
-                            **updated.metadata,
-                        },
-                    )
+                _grant_team_subscription_credits(updated, context)
+            elif updated.kind == "team_subscription":
+                updated = provision_team_subscription_payment(cursor, updated, context)
+                _upsert_workspace_subscription(cursor, updated)
+                _grant_team_subscription_credits(updated, context)
         connection.commit()
     return BillingPaymentMutationResponse(ok=True, payment=updated, topupEntryId=topup_entry_id)
+
+
+def _grant_team_subscription_credits(
+    payment: BillingPaymentRecord,
+    context: ApiRequestContext,
+) -> None:
+    credits = float(payment.metadata.get("includedCreditsPerSeat") or 0) * int(payment.metadata.get("quantity") or 0)
+    if credits <= 0:
+        return
+    grant_subscription_credits_to_account(
+        account_id=str(payment.account_id),
+        actor_user_id=context.user_id,
+        workspace_id=str(payment.metadata.get("workspaceId") or context.workspace_id),
+        credits=credits,
+        source_id=payment.id,
+        metadata={
+            "checkoutSessionId": payment.checkout_session_id,
+            "paymentId": payment.id,
+            **payment.metadata,
+        },
+    )
 
 
 def _create_payment(
@@ -282,11 +374,20 @@ def _resolve_payment_account_id(context: ApiRequestContext, kind: Optional[str],
 
 
 def _assert_payment_completion_allowed(payment: BillingPaymentRecord, context: ApiRequestContext) -> None:
+    if payment.kind == "workspace_topup":
+        if context.workspace_role not in {"owner", "admin"}:
+            raise HTTPException(status_code=403, detail="Only workspace owners or admins may complete Team wallet payments.")
+        if payment.metadata.get("workspaceId") != context.workspace_id:
+            raise HTTPException(status_code=403, detail="Workspace payment does not belong to this workspace.")
+        return
     if payment.kind == "seat_purchase":
         if context.workspace_role not in {"owner", "admin"}:
             raise HTTPException(status_code=403, detail="Only workspace owners or admins may complete seat payments.")
         if payment.metadata.get("workspaceId") != context.workspace_id:
             raise HTTPException(status_code=403, detail="Seat payment does not belong to this workspace.")
+        return
+    if payment.kind == "team_subscription":
+        assert_team_subscription_completion_allowed(payment, context)
         return
     expected_account_id = f"credit_user_{context.user_id}"
     if payment.account_id != expected_account_id:

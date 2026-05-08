@@ -115,6 +115,38 @@ class FakePostgresCursor:
             }
             self.database.payments.append(row)
             self.row = _payment_tuple(row)
+        elif normalized.startswith("INSERT INTO tangent_workspaces"):
+            workspace_id, name, owner_id, billing_owner_user_id = params
+            existing = next((row for row in self.database.workspaces if row["id"] == workspace_id), None)
+            next_row = {
+                "billing_owner_user_id": billing_owner_user_id,
+                "created_at": f"2026-05-08T00:10:{len(self.database.workspaces):02d}Z",
+                "id": workspace_id,
+                "kind": "team_workspace",
+                "name": name,
+                "owner_id": owner_id,
+                "slug": None,
+                "status": "active",
+            }
+            if existing:
+                existing.update(next_row)
+            else:
+                self.database.workspaces.append(next_row)
+        elif normalized.startswith("INSERT INTO tangent_workspace_members"):
+            workspace_id, user_id, display_name = params
+            existing = _find_workspace_member(self.database, workspace_id, user_id)
+            next_row = {
+                "display_name": display_name,
+                "invited_by": None,
+                "joined_at": f"2026-05-08T00:15:{len(self.database.workspace_members):02d}Z",
+                "role": "owner",
+                "user_id": user_id,
+                "workspace_id": workspace_id,
+            }
+            if existing:
+                existing.update(next_row)
+            else:
+                self.database.workspace_members.append(next_row)
         elif normalized.startswith("INSERT INTO tangent_ai_runs"):
             row = {
                 "id": params[0],
@@ -1160,6 +1192,13 @@ class FakePostgresCursor:
             if payment:
                 payment["status"] = "succeeded"
                 payment["provider_payment_id"] = provider_payment_id
+                self.row = _payment_tuple(payment)
+        elif normalized.startswith("UPDATE tangent_payments SET account_id = %s"):
+            account_id, metadata, payment_id = params
+            payment = next((row for row in self.database.payments if row["id"] == payment_id), None)
+            if payment:
+                payment["account_id"] = account_id
+                payment["metadata"] = json.loads(metadata) if isinstance(metadata, str) else metadata
                 self.row = _payment_tuple(payment)
         elif normalized.startswith("INSERT INTO tangent_subscriptions"):
             if len(params) == 9:

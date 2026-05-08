@@ -38,6 +38,14 @@ class BillingSeatPurchaseCheckoutRequest(TangentApiModel):
     quantity: int = 1
 
 
+class BillingTeamSubscriptionCheckoutRequest(TangentApiModel):
+    currency: str = "usd"
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    plan_key: str = Field(alias="planKey")
+    quantity: int = 1
+    team_name: str = Field(alias="teamName")
+
+
 class BillingPaymentMutationResponse(TangentApiModel):
     error: Optional[str] = None
     ok: bool

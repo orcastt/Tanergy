@@ -31,9 +31,9 @@ Enterprise may later use a contract-defined workspace pool, but it is not the al
 | --- | --- | --- |
 | Admin access | `/admin` is server-gated through `admin_roles`; all admin writes are audited. | First-pass stable |
 | Developer AI control | Admin/developer operators can inspect and edit model, provider-route and pricing facts with versioned publish/rollback. | First-pass stable |
-| Team purchase | Buying Team Start/Growth creates a new Team workspace, owner membership, Team wallet, subscription and seat capacity. | Schema and seat-checkout first cut exist; full Team purchase flow pending |
+| Team purchase | Buying Team Start/Growth creates a new Team workspace, owner membership, Team wallet, subscription and seat capacity. | Backend checkout/complete contract first cut implemented; frontend flow and real webhooks pending |
 | Team seats | Team owners/admins can invite members, assign/remove roles, buy/add seats and remove members. Initial purchase need not max out the plan cap. | Seat mutation exists; wallet grant first cut now writes Team wallet |
-| Team wallet | Included seat credits and Team top-ups land in the Team wallet. Team AI runs charge that wallet, not each member's personal account. | Entitlement/quote first cut implemented; Team top-up pending |
+| Team wallet | Included seat credits and Team top-ups land in the Team wallet. Team AI runs charge that wallet, not each member's personal account. | Backend entitlement/quote and Team top-up contract first cut implemented; UI/webhooks pending |
 | Group/Collaborate | A user can hold one active Collaborate plan at a time. Group members share Boards, while AI usage charges each actor's personal wallet. | Database constraint exists; checkout/service hardening pending |
 | Invites | Team and Group support invite links, invite acceptance, expiration/revoke and member role assignment. | Board invite first pass exists; workspace invite accept needs work |
 | Permissions | Board `Can view/edit/manage/Owner` stays separate from workspace admin/editor/viewer and separate from AI payer eligibility. | First-pass resolver exists; Group/Team hardening pending |
@@ -58,9 +58,9 @@ The older S3 strategy treated Team Start/Growth as governance plus member-person
 Required rework:
 
 1. Team payer resolver: Team workspaces charge a workspace-owned Team wallet.
-2. Team subscription lifecycle: Team purchase creates the Team workspace and wallet.
+2. Team subscription lifecycle: Team purchase creates the Team workspace and wallet. Backend contract first cut implemented; real webhook authority and UI remain.
 3. Seat grants: seat capacity and member assignment do not create per-member payer accounts; seat purchases grant included credits into Team wallet.
-4. Team top-up: Team top-ups credit the Team wallet.
+4. Team top-up: Team top-ups credit the Team wallet. Backend contract first cut implemented; UI/webhooks pending.
 5. Collaborate constraint: a user can have one active Collaborate subscription, Start or Plus.
 6. Group privacy: Group admins manage collaboration structure, not other users' billing.
 7. AiRun attribution: every production run stores actor, workspace/team, board, node, charged account, pricing rule and provider route before provider execution.

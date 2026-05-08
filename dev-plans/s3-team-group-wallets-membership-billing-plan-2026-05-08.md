@@ -48,7 +48,7 @@ Add or confirm:
 - [x] `subscriptions.seat_capacity`, owner fields, workspace link and period columns.
 - [x] Unique active Collaborate subscription constraint per user.
 - [x] Unique active Team subscription constraint per workspace.
-- [~] Team purchase linkage from subscription/payment to workspace and Team wallet. Seat checkout completion now writes subscription ownership and Team wallet grant; full Team purchase/create flow remains pending.
+- [x] Team purchase linkage from subscription/payment to workspace and Team wallet. Initial `/billing/teams/checkout` plus payment completion now provisions Team workspace, owner membership, Team wallet, subscription, seat capacity and first included-credit grant.
 - [x] Workspace invite token fields: token hash, role, expiry, revoked/accepted timestamps, inviter, optional target user/email.
 - Seat assignment facts scoped to Team workspace and member, without implying a personal credit account.
 - [x] `ai_runs.node_id` confirmed from the base schema; `team_wallet` charge-scope compatibility added.
@@ -66,7 +66,7 @@ Tests:
   - default solo workspace
   - personal wallet
 - Add active workspace selection that cannot be spoofed by frontend headers.
-- Add Team checkout completion flow that creates a Team workspace and owner membership.
+- [x] Add Team checkout completion flow that creates a Team workspace and owner membership.
 - Add Collaborate checkout completion flow that activates exactly one personal Collaborate subscription.
 
 Tests:
@@ -102,7 +102,7 @@ Tests:
 
 ## Phase 4: Wallet And Billing Services
 
-- Team wallet balance, ledger and top-up checkout.
+- [x] Team wallet balance, ledger and top-up checkout backend contract.
 - Team seat add checkout and included-credit grant into Team wallet.
 - Personal wallet balance, ledger and top-up checkout.
 - Collaborate subscription grant into personal wallet.
@@ -114,7 +114,7 @@ Tests:
 
 Tests:
 
-- Team top-up credits workspace-owned account.
+- [x] Team top-up credits workspace-owned account.
 - Personal top-up credits user-owned account.
 - Team seat add grants to Team wallet.
 - Credit ledger balances derive from ledger entries.

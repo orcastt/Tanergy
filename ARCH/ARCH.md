@@ -36,8 +36,8 @@ S2 AI runtime/provider routes 56%  [###########---------]
   Stable: model/route/pricing tables, quote/preflight, persisted AiRun shell, admin facts.
   Gate: fold local GeekAI path into provider-route adapter, live Team-wallet settlement smoke, text persistence.
 
-S3 Admin/billing/team         49%  [##########----------]
-  Stable: server-gated admin, AI route/pricing panels, billing/team/usage first pass.
+S3 Admin/billing/team         53%  [###########---------]
+  Stable: server-gated admin, AI route/pricing panels, billing/team/usage first pass, Team checkout provisioning and Team top-up contracts.
   Gate: invite/member hardening, Team top-up, real payment webhooks, renewals/cancelation, deeper finance and route health views.
 
 Frontend product UI alignment 52%  [##########----------]
@@ -82,7 +82,7 @@ Frontend UI alignment runs across all lanes and should follow, not invent, serve
 | S1D Board CRUD | `ARCH_slice_S1D_auth_board_crud.md` | Permission-checked Board list/load/save/history/member/share APIs | Stable first-pass CRUD/member/share/public-share-open checkpoint with owner-only copy/delete, share expiry and known-foreign Asset guard |
 | S1X Canvas Engine Migration | `ARCH_slice_S1X_canvas_engine_migration.md` | tldraw license risk, current canvas reference contract, Konva/Yjs replacement path | Konva v2 formal Board route accepted; Page polish and v1 copy tooling landed; collaboration still pending |
 | S2 AI Runtime | `ARCH_slice_S2_ai_runtime.md` | Node Registry, Model Registry, AiRun, provider routing, AI Chat planner | Mock/runtime dataflow and the local GeekAI canvas path now prove the user-facing image/analysis/chat flow; DB-backed model tiers/pricing/routes, quote/preflight, persisted lifecycle, attempt-level `ai_api_calls`, timeout-safe failover and extracted settlement orchestration exist; production gate is folding GeekAI and future providers into the server provider-route control plane with live smoke and durable text output |
-| S3 Admin/Billing/Analytics | `ARCH_slice_S3_admin_billing_analytics.md` | Admin roles, audit, Team wallets, personal Collaborate wallets, credits, subscriptions, workspace dashboards, AI charge facts, analytics, moderation facts | Active pivot: migration `20260508_0012` and first payer resolver cut now support Team wallet vs personal Collaborate wallet; invite/member hardening and real billing/payment/provider settlement remain pending |
+| S3 Admin/Billing/Analytics | `ARCH_slice_S3_admin_billing_analytics.md` | Admin roles, audit, Team wallets, personal Collaborate wallets, credits, subscriptions, workspace dashboards, AI charge facts, analytics, moderation facts | Active pivot: migration `20260508_0012`, first payer resolver cut, Team checkout provisioning and Team top-up contracts now support Team wallet vs personal Collaborate wallet; invite/member hardening and real billing/payment/provider settlement remain pending |
 | S4 Collaboration | `ARCH_slice_S4_collaboration.md` | Multiplayer, presence, CRDT boundaries, roles | Deferred to P0.5; collaboration work begins after Auth, Board, Asset and AiRun authority are stable |
 
 ## Project Architecture Overview

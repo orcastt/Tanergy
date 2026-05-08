@@ -43,7 +43,7 @@ Everything else should be described as deferred, frozen or internal scaffolding 
 | S1D Board CRUD | `PRD_slice_S1D_auth_board_crud.md` | Auth-backed Board and History user workflows | Stable first-pass CRUD/member/share/public-share checkpoint with owner-only copy/delete, share expiry and known-foreign Asset guard; next tranche is effective permission hardening |
 | S1X Canvas Engine Migration | `PRD_slice_S1X_canvas_engine_migration.md` | Production license risk, tldraw reference parity, Konva/Yjs handfeel and collaboration viability | Konva v2 formal Board route accepted; Page polish and v1 copy tooling landed; collaboration/Yjs and export polish remain |
 | S2 AI Productization | `PRD_slice_S2_ai_productization.md` | Real AI provider path, Model Registry, AiRun, cost/credit logs, AI Chat planner | Canvas-facing GeekAI fast path now proves chat streaming, prompt optimization, image generation/edit/reference and analysis UX locally; Image Gen / Image Gen 4 model-aware UI includes GPT Image 2, Nano Banana 2, Doubao Seedream and Jimeng-style parameter surfaces; production gate is folding that path into the server AiRun provider-route/billing control plane and smoke-testing one live route |
-| S3 Admin/Billing/Analytics | `PRD_slice_S3_admin_billing_analytics.md` | Admin access, user management, credits, subscriptions, Team wallets, Group/Collaborate personal wallets, workspace dashboards, analytics, moderation | Active pivot: migration `20260508_0012` and first payer resolver cut now support Team wallet vs personal Collaborate wallet; real payment webhooks, finance reconciliation and production provider settlement remain pending |
+| S3 Admin/Billing/Analytics | `PRD_slice_S3_admin_billing_analytics.md` | Admin access, user management, credits, subscriptions, Team wallets, Group/Collaborate personal wallets, workspace dashboards, analytics, moderation | Active pivot: migration `20260508_0012`, first payer resolver cut, Team checkout provisioning and Team top-up contracts now support Team wallet vs personal Collaborate wallet; real payment webhooks, finance reconciliation and production provider settlement remain pending |
 | S4 Collaboration | `PRD_slice_S4_collaboration.md` | Multi-user Board collaboration, presence, roles, conflict boundaries | Deferred to P0.5 |
 
 ## Update Rules
@@ -69,7 +69,7 @@ S1B Deploy/staging            60%  Web/API/Neon/R2 smoke exists; Auth/email/OAut
 S1C Auth/registration         55%  Clerk/FastAPI first pass exists; session hardening pending
 S1D Board/share/invites       68%  CRUD/share/member first pass exists; workspace invite accept and Team/Group permission split pending
 S2 AI runtime/provider routes 56%  GeekAI local UX path exists; server route/billing control-plane and live Team-wallet settlement pending
-S3 Admin/billing/team         49%  admin/billing/team scaffolds and Team-wallet payer first cut exist; invites/payment depth pending
+S3 Admin/billing/team         53%  admin/billing/team scaffolds, Team-wallet payer first cut, Team checkout provisioning and Team top-up contracts exist; invites/payment depth pending
 Frontend product UI alignment 52%  major surfaces exist; nav, plan labels and cost messaging need alignment
 S4 Collaboration              10%  boundary documented; Yjs/provider proof deferred
 ```
@@ -78,7 +78,7 @@ Shipping-now promise:
 
 - Konva-first Board runtime is the production-facing canvas path.
 - Public landing -> Auth -> protected workspace -> Board -> share viewer is the core user journey.
-- Billing, Team, Usage, Admin and AI route controls are first-pass bounded surfaces; the next business-system cut is Team wallet + personal Collaborate wallet.
+- Billing, Team, Usage, Admin and AI route controls are first-pass bounded surfaces; the next business-system cut is Collaborate checkout and invite/member hardening.
 - The active release-spine document is `dev-plans/p0-alpha-stabilization-and-acceptance-2026-05-06.md`.
 
 Deferred or frozen for this pass:
