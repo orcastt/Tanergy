@@ -4,7 +4,7 @@ from fastapi import HTTPException
 
 from tangent_api.main import app
 from tangent_api.request_context import ApiRequestContext
-from tangent_api.workspace_entitlements import upsert_workspace_seat_assignment
+from tangent_api.workspace_seats import upsert_workspace_seat_assignment
 from tangent_api.workspace_schemas import WorkspaceSeatAssignmentUpsertRequest
 from tests.persistence_fakes import FakePostgresDatabase
 
@@ -100,6 +100,7 @@ def test_workspace_entitlement_uses_database_team_seat_assignment(monkeypatch):
     ]
     monkeypatch.setenv("DATABASE_URL", "postgresql://test")
     monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.workspace_seats.connect_to_postgres", fake_db.connect)
     client = TestClient(app)
 
     response = client.get(
@@ -141,6 +142,7 @@ def test_billing_me_uses_database_personal_subscription(monkeypatch):
     ]
     monkeypatch.setenv("DATABASE_URL", "postgresql://test")
     monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.workspace_seats.connect_to_postgres", fake_db.connect)
     client = TestClient(app)
 
     response = client.get(
@@ -538,9 +540,18 @@ def test_team_seat_checkout_complete_updates_subscription_and_workspace_payments
 
 def test_team_owner_can_assign_and_list_seats(monkeypatch):
     fake_db = FakePostgresDatabase()
+    fake_db.credit_accounts = [
+        {
+            "account_kind": "team_wallet",
+            "id": "credit_workspace_legacy_team",
+            "owner_id": "workspace_team",
+            "owner_type": "workspace",
+            "status": "active",
+        }
+    ]
     fake_db.payments = [
         {
-            "account_id": "credit_workspace_workspace_team",
+            "account_id": "credit_workspace_legacy_team",
             "amount_cents": 9000,
             "created_at": "2026-05-06T00:00:00Z",
             "currency": "usd",
@@ -566,6 +577,7 @@ def test_team_owner_can_assign_and_list_seats(monkeypatch):
     ]
     monkeypatch.setenv("DATABASE_URL", "postgresql://test")
     monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.workspace_seats.connect_to_postgres", fake_db.connect)
     client = TestClient(app)
 
     assigned = client.post(
@@ -592,7 +604,7 @@ def test_team_owner_can_assign_and_list_seats(monkeypatch):
     assert fake_db.credit_accounts[0]["account_kind"] == "team_wallet"
     assert fake_db.credit_accounts[0]["owner_id"] == "workspace_team"
     assert fake_db.credit_accounts[0]["owner_type"] == "workspace"
-    assert fake_db.credit_ledger[-1]["account_id"] == "credit_workspace_workspace_team"
+    assert fake_db.credit_ledger[-1]["account_id"] == "credit_workspace_legacy_team"
     assert fake_db.credit_ledger[-1]["metadata"]["targetUserId"] == "user_team_member"
 
     listed = client.get(
@@ -632,6 +644,7 @@ def test_group_owner_can_change_workspace_member_role(monkeypatch):
     ]
     monkeypatch.setenv("DATABASE_URL", "postgresql://test")
     monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.workspace_seats.connect_to_postgres", fake_db.connect)
     client = TestClient(app)
 
     response = client.patch(
@@ -692,6 +705,7 @@ def test_team_seat_assignment_revokes_previous_plan_for_same_member(monkeypatch)
     ]
     monkeypatch.setenv("DATABASE_URL", "postgresql://test")
     monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.workspace_seats.connect_to_postgres", fake_db.connect)
     client = TestClient(app)
 
     response = client.post(
@@ -729,6 +743,7 @@ def test_team_owner_can_revoke_seat(monkeypatch):
     ]
     monkeypatch.setenv("DATABASE_URL", "postgresql://test")
     monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.workspace_seats.connect_to_postgres", fake_db.connect)
     client = TestClient(app)
 
     response = client.delete(
@@ -747,7 +762,7 @@ def test_team_owner_can_revoke_seat(monkeypatch):
 
 def test_seat_assignment_requires_team_admin_or_owner(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgresql://test")
-    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", FakePostgresDatabase().connect)
+    monkeypatch.setattr("tangent_api.workspace_seats.connect_to_postgres", FakePostgresDatabase().connect)
 
     with pytest.raises(HTTPException) as group_error:
         upsert_workspace_seat_assignment(

@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from typing import Any, Optional
 from uuid import uuid4
 
+from fastapi import HTTPException
+
 from tangent_api.auth_provider import VerifiedAuthIdentity
 from tangent_api.storage.postgres_connection import connect_to_postgres, require_database_url
 
@@ -21,12 +23,15 @@ class ResolvedAuthSession:
     board_count: int
 
 
-def resolve_local_auth_session(identity: VerifiedAuthIdentity) -> ResolvedAuthSession:
+def resolve_local_auth_session(
+    identity: VerifiedAuthIdentity,
+    requested_workspace_id: Optional[str] = None,
+) -> ResolvedAuthSession:
     try:
         require_database_url()
     except Exception:
         return _build_ephemeral_session(identity)
-    return _load_or_create_postgres_session(identity)
+    return _load_or_create_postgres_session(identity, requested_workspace_id=requested_workspace_id)
 
 
 def _build_ephemeral_session(identity: VerifiedAuthIdentity) -> ResolvedAuthSession:
@@ -47,39 +52,13 @@ def _build_ephemeral_session(identity: VerifiedAuthIdentity) -> ResolvedAuthSess
     )
 
 
-def _load_or_create_postgres_session(identity: VerifiedAuthIdentity) -> ResolvedAuthSession:
+def _load_or_create_postgres_session(
+    identity: VerifiedAuthIdentity,
+    requested_workspace_id: Optional[str] = None,
+) -> ResolvedAuthSession:
     with connect_to_postgres() as connection:
         with connection.cursor() as cursor:
-            cursor.execute(
-                """
-                SELECT
-                    u.id,
-                    u.email,
-                    u.display_name,
-                    u.avatar_initials,
-                    u.email_verified,
-                    wm.workspace_id,
-                    w.name,
-                    COALESCE(w.kind, 'solo_workspace'),
-                    wm.role
-                FROM tangent_user_identities ui
-                JOIN tangent_users u ON u.id = ui.user_id
-                LEFT JOIN tangent_workspace_members wm ON wm.user_id = u.id
-                LEFT JOIN tangent_workspaces w ON w.id = wm.workspace_id
-                WHERE ui.provider = %s AND ui.provider_subject = %s
-                ORDER BY
-                    CASE wm.role
-                        WHEN 'owner' THEN 0
-                        WHEN 'admin' THEN 1
-                        WHEN 'member' THEN 2
-                        ELSE 3
-                    END,
-                    wm.joined_at ASC NULLS LAST
-                LIMIT 1
-                """,
-                (identity.provider, identity.provider_subject),
-            )
-            row = cursor.fetchone()
+            row = _load_auth_session_row(cursor, identity, requested_workspace_id)
 
             if row:
                 session = _row_to_session(row)
@@ -130,6 +109,9 @@ def _load_or_create_postgres_session(identity: VerifiedAuthIdentity) -> Resolved
 
                 return _create_default_workspace(cursor, connection, session.user_id, identity, session.display_name, session.email)
 
+            if requested_workspace_id and _identity_exists(cursor, identity):
+                raise HTTPException(status_code=403, detail="Requested workspace is not available for this user.")
+
             user_id = f"user_{uuid4()}"
             email = identity.email or f"{user_id}@clerk.local"
             display_name = identity.display_name or email.split("@")[0]
@@ -161,6 +143,64 @@ def _load_or_create_postgres_session(identity: VerifiedAuthIdentity) -> Resolved
                 (f"identity_{uuid4()}", user_id, identity.provider, identity.provider_subject, email),
             )
             return _create_default_workspace(cursor, connection, user_id, identity, display_name, email)
+
+
+def _load_auth_session_row(
+    cursor: Any,
+    identity: VerifiedAuthIdentity,
+    requested_workspace_id: Optional[str],
+) -> Optional[tuple[object, ...]]:
+    workspace_filter = "AND wm.workspace_id = %s" if requested_workspace_id else ""
+    params: tuple[object, ...] = (
+        identity.provider,
+        identity.provider_subject,
+        requested_workspace_id,
+    ) if requested_workspace_id else (identity.provider, identity.provider_subject)
+    cursor.execute(
+        f"""
+        SELECT
+            u.id,
+            u.email,
+            u.display_name,
+            u.avatar_initials,
+            u.email_verified,
+            wm.workspace_id,
+            w.name,
+            COALESCE(w.kind, 'solo_workspace'),
+            wm.role
+        FROM tangent_user_identities ui
+        JOIN tangent_users u ON u.id = ui.user_id
+        LEFT JOIN tangent_workspace_members wm ON wm.user_id = u.id
+        LEFT JOIN tangent_workspaces w ON w.id = wm.workspace_id
+        WHERE ui.provider = %s AND ui.provider_subject = %s
+          {workspace_filter}
+        ORDER BY
+            CASE wm.role
+                WHEN 'owner' THEN 0
+                WHEN 'admin' THEN 1
+                WHEN 'editor' THEN 2
+                WHEN 'member' THEN 3
+                ELSE 4
+            END,
+            wm.joined_at ASC NULLS LAST
+        LIMIT 1
+        """,
+        params,
+    )
+    return cursor.fetchone()
+
+
+def _identity_exists(cursor: Any, identity: VerifiedAuthIdentity) -> bool:
+    cursor.execute(
+        """
+        SELECT 1
+        FROM tangent_user_identities
+        WHERE provider = %s AND provider_subject = %s
+        LIMIT 1
+        """,
+        (identity.provider, identity.provider_subject),
+    )
+    return cursor.fetchone() is not None
 
 
 def _create_default_workspace(

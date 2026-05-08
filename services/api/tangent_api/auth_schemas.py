@@ -18,6 +18,7 @@ class AuthWorkspace(TangentApiModel):
     id: str
     kind: str = "solo_workspace"
     name: str
+    plan_key: Optional[str] = Field(default=None, alias="planKey")
     role: str
 
 

@@ -15,6 +15,7 @@ def get_session(
         id=context.workspace_id,
         kind=context.workspace_kind,
         name=context.workspace_name,
+        planKey=context.workspace_plan_key,
         role=context.workspace_role,
     )
     session = AuthSession(

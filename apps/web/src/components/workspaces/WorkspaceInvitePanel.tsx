@@ -15,6 +15,7 @@ type WorkspaceInvitePanelProps = {
 }
 
 type InviteRole = 'admin' | 'editor' | 'viewer'
+const managerRoles = new Set(['owner', 'admin'])
 
 export function WorkspaceInvitePanel({ seatLabel, workspace }: WorkspaceInvitePanelProps) {
   const [email, setEmail] = useState('')
@@ -28,6 +29,8 @@ export function WorkspaceInvitePanel({ seatLabel, workspace }: WorkspaceInvitePa
     () => invitations.filter((invite) => !invite.acceptedAt && !invite.revokedAt),
     [invitations],
   )
+  const canManageInvites = managerRoles.has(workspace.role)
+  const inviteRoles = workspace.role === 'owner' ? ['admin', 'editor', 'viewer'] as InviteRole[] : ['editor', 'viewer'] as InviteRole[]
 
   useEffect(() => {
     let isMounted = true
@@ -45,7 +48,12 @@ export function WorkspaceInvitePanel({ seatLabel, workspace }: WorkspaceInvitePa
 
   return (
     <section className="workspace-detail-panel workspace-detail-side-panel">
-      <div className="workspace-detail-panel-head"><h2>Invite</h2></div>
+      <div className="workspace-detail-panel-head">
+        <div>
+          <h2>Invite</h2>
+          <small>{canManageInvites ? 'Create role-scoped invite links.' : 'Only owners and admins can invite.'}</small>
+        </div>
+      </div>
       {seatLabel ? (
         <div className="workspace-detail-dark-card">
           <div className="workspace-detail-dark-row"><strong>{seatLabel}</strong></div>
@@ -56,17 +64,15 @@ export function WorkspaceInvitePanel({ seatLabel, workspace }: WorkspaceInvitePa
         <span>Invite link</span>
         <div className="workspace-detail-field-row">
           <input onChange={(event) => setEmail(event.target.value)} placeholder="Optional email" value={email} />
-          <button className="workspace-detail-danger-button" disabled={isPending} onClick={createInvite} type="button">
+          <button className="workspace-detail-danger-button" disabled={isPending || !canManageInvites} onClick={createInvite} type="button">
             Invite
           </button>
         </div>
       </label>
       <label className="workspace-detail-field">
         <span>Role</span>
-        <select onChange={(event) => setRole(event.target.value as InviteRole)} value={role}>
-          <option value="admin">Admin</option>
-          <option value="editor">Editor</option>
-          <option value="viewer">Viewer</option>
+        <select disabled={!canManageInvites} onChange={(event) => setRole(event.target.value as InviteRole)} value={inviteRoles.includes(role) ? role : 'editor'}>
+          {inviteRoles.map((inviteRole) => <option key={inviteRole} value={inviteRole}>{formatInviteRole(inviteRole)}</option>)}
         </select>
       </label>
       {inviteLink ? (
@@ -81,7 +87,7 @@ export function WorkspaceInvitePanel({ seatLabel, workspace }: WorkspaceInvitePa
           {activeInvites.slice(0, 4).map((invite) => (
             <div className="workspace-detail-summary-row" key={invite.id}>
               <span>{invite.email ?? invite.role}</span>
-              <button className="workspace-detail-muted-button" onClick={() => revokeInvite(invite.id)} type="button">Revoke</button>
+              <button className="workspace-detail-muted-button" disabled={!canManageInvites} onClick={() => revokeInvite(invite.id)} type="button">Revoke</button>
             </div>
           ))}
         </div>
@@ -90,13 +96,14 @@ export function WorkspaceInvitePanel({ seatLabel, workspace }: WorkspaceInvitePa
   )
 
   async function createInvite() {
+    if (!canManageInvites) return setStatus('Your workspace role cannot create invites.')
     setIsPending(true)
     setStatus(null)
     try {
       const response = await createWorkspaceInvitation({
         email: email.trim() || null,
         expiresInDays: 7,
-        role,
+        role: inviteRoles.includes(role) ? role : 'editor',
       }, { workspace })
       const origin = typeof window === 'undefined' ? '' : window.location.origin
       const nextLink = `${origin}${response.result.acceptPath}`
@@ -111,6 +118,7 @@ export function WorkspaceInvitePanel({ seatLabel, workspace }: WorkspaceInvitePa
   }
 
   async function revokeInvite(invitationId: string) {
+    if (!canManageInvites) return setStatus('Your workspace role cannot revoke invites.')
     setStatus(null)
     try {
       const response = await revokeWorkspaceInvitation(invitationId, { workspace })
@@ -122,4 +130,10 @@ export function WorkspaceInvitePanel({ seatLabel, workspace }: WorkspaceInvitePa
       setStatus(error instanceof Error ? error.message : 'Revoke failed.')
     }
   }
+}
+
+function formatInviteRole(role: InviteRole) {
+  if (role === 'admin') return 'Admin'
+  if (role === 'editor') return 'Editor'
+  return 'Viewer'
 }

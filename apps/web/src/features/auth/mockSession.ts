@@ -68,6 +68,8 @@ export function getSessionRequestHeaders(workspace: TangentWorkspace = mockSessi
     'x-tangent-user-id': mockSession.user.id,
     'x-tangent-workspace-kind': workspace.kind,
     'x-tangent-workspace-id': workspace.id,
+    'x-tangent-workspace-name': workspace.name,
+    'x-tangent-workspace-role': workspace.role,
   }
   if (workspace.planKey) {
     return { ...headers, 'x-tangent-plan-key': workspace.planKey }

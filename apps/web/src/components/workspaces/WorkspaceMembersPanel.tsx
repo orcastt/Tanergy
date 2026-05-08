@@ -18,6 +18,7 @@ type WorkspaceMembersPanelProps = {
 }
 
 const editableRoles: WorkspaceMembershipRole[] = ['admin', 'editor', 'viewer']
+const managerRoles = new Set(['owner', 'admin'])
 
 export function WorkspaceMembersPanel({ members, onMembersChanged, workspace }: WorkspaceMembersPanelProps) {
   const [hiddenMemberIds, setHiddenMemberIds] = useState<Set<string>>(() => new Set())
@@ -25,10 +26,17 @@ export function WorkspaceMembersPanel({ members, onMembersChanged, workspace }: 
   const [roleDrafts, setRoleDrafts] = useState<Record<string, WorkspaceMembershipRole>>({})
   const [status, setStatus] = useState<null | string>(null)
   const visibleMembers = members.filter((member) => !hiddenMemberIds.has(member.id))
+  const canManageMembers = managerRoles.has(workspace.role)
+  const canManageAdmins = workspace.role === 'owner'
 
   return (
     <section className="workspace-detail-panel workspace-detail-members-panel">
-      <div className="workspace-detail-panel-head"><h2>Members</h2></div>
+      <div className="workspace-detail-panel-head">
+        <div>
+          <h2>Members</h2>
+          <small>{canManageMembers ? 'Role changes are saved to the workspace contract.' : 'Your role can view members only.'}</small>
+        </div>
+      </div>
       {status ? <small className="workspace-detail-status" role="status">{status}</small> : null}
       <div className="workspace-detail-member-list">
         {visibleMembers.map((member) => (
@@ -41,26 +49,28 @@ export function WorkspaceMembersPanel({ members, onMembersChanged, workspace }: 
               </div>
             </div>
             <div className="workspace-detail-member-actions">
-              {member.role === 'owner' ? (
-                <span className="workspace-detail-member-role-label">Owner</span>
+              {member.role === 'owner' || !canEditMember(member.role) ? (
+                <span className="workspace-detail-member-role-label">{formatWorkspaceMembershipRole(member.role)}</span>
               ) : (
                 <select
                   aria-label={`Role for ${member.displayName || member.id}`}
-                  disabled={pendingMemberId === member.id}
+                  disabled={pendingMemberId === member.id || !canManageMembers}
                   onChange={(event) => setRoleDrafts((current) => ({ ...current, [member.id]: event.target.value as WorkspaceMembershipRole }))}
                   value={roleDrafts[member.id] ?? member.role}
                 >
-                  {editableRoles.map((role) => <option key={role} value={role}>{formatWorkspaceMembershipRole(role)}</option>)}
+                  {editableRoles
+                    .filter((role) => role !== 'admin' || canManageAdmins)
+                    .map((role) => <option key={role} value={role}>{formatWorkspaceMembershipRole(role)}</option>)}
                 </select>
               )}
-              {member.role === 'owner' ? null : (
-                <button className="workspace-detail-muted-button" disabled={pendingMemberId === member.id} onClick={() => saveRole(member)} type="button">Save role</button>
+              {member.role === 'owner' || !canEditMember(member.role) ? null : (
+                <button className="workspace-detail-muted-button" disabled={pendingMemberId === member.id || !canManageMembers} onClick={() => saveRole(member)} type="button">Save role</button>
               )}
-              {workspace.kind === 'team_workspace' && member.role !== 'owner' ? (
+              {workspace.kind === 'team_workspace' && member.role !== 'owner' && canManageMembers ? (
                 <button className="workspace-detail-muted-button" disabled={pendingMemberId === member.id} onClick={() => assignSeat(member.id)} type="button">Assign seat</button>
               ) : null}
-              {member.role === 'owner' ? null : (
-                <button className="workspace-detail-danger-button" disabled={pendingMemberId === member.id} onClick={() => removeMember(member.id)} type="button">Remove</button>
+              {member.role === 'owner' || !canRemoveMember(member.role) ? null : (
+                <button className="workspace-detail-danger-button" disabled={pendingMemberId === member.id || !canManageMembers} onClick={() => removeMember(member.id)} type="button">Remove</button>
               )}
             </div>
           </div>
@@ -71,6 +81,8 @@ export function WorkspaceMembersPanel({ members, onMembersChanged, workspace }: 
 
   async function saveRole(member: WorkspaceDashboardMember) {
     const nextRole = roleDrafts[member.id] ?? member.role
+    if (!canManageMembers) return setStatus('Your workspace role cannot manage members.')
+    if (nextRole === 'admin' && !canManageAdmins) return setStatus('Only owners can grant admin.')
     setPendingMemberId(member.id)
     setStatus(null)
     try {
@@ -85,6 +97,7 @@ export function WorkspaceMembersPanel({ members, onMembersChanged, workspace }: 
   }
 
   async function assignSeat(userId: string) {
+    if (!canManageMembers) return setStatus('Your workspace role cannot manage seats.')
     const planKey = workspace.planKey === 'team_growth' ? 'team_growth' : 'team_start'
     setPendingMemberId(userId)
     setStatus(null)
@@ -104,6 +117,7 @@ export function WorkspaceMembersPanel({ members, onMembersChanged, workspace }: 
   }
 
   async function removeMember(userId: string) {
+    if (!canManageMembers) return setStatus('Your workspace role cannot remove members.')
     setPendingMemberId(userId)
     setStatus(null)
     try {
@@ -116,5 +130,17 @@ export function WorkspaceMembersPanel({ members, onMembersChanged, workspace }: 
     } finally {
       setPendingMemberId(null)
     }
+  }
+
+  function canEditMember(role: WorkspaceMembershipRole) {
+    if (!canManageMembers) return false
+    if (role === 'admin') return canManageAdmins
+    return role !== 'owner'
+  }
+
+  function canRemoveMember(role: WorkspaceMembershipRole) {
+    if (!canManageMembers) return false
+    if (role === 'admin') return canManageAdmins
+    return role !== 'owner'
   }
 }

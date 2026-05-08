@@ -12,10 +12,7 @@ from tangent_api.workspace_members import remove_workspace_member
 from tangent_api.workspace_entitlements import (
     build_workspace_dashboard_response,
     build_workspace_entitlement_response,
-    list_workspace_seat_assignments,
-    revoke_workspace_seat_assignment,
     update_workspace_member_role,
-    upsert_workspace_seat_assignment,
 )
 from tangent_api.workspace_schemas import (
     WorkspaceDashboardResponse,
@@ -32,6 +29,11 @@ from tangent_api.workspace_schemas import (
     WorkspaceSeatAssignmentResponse,
     WorkspaceSeatAssignmentUpsertRequest,
     WorkspaceSeatAssignmentsResponse,
+)
+from tangent_api.workspace_seats import (
+    list_workspace_seat_assignments,
+    revoke_workspace_seat_assignment,
+    upsert_workspace_seat_assignment,
 )
 
 router = APIRouter(prefix="/api/v1/workspaces", tags=["workspaces"])

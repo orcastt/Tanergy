@@ -28,20 +28,20 @@ S1C Auth/registration         55%  [###########---------]
   Stable: Clerk frontend shell, FastAPI bearer first pass, remote client token attach.
   Gate: full registration/session hardening, workspace membership matrix, spoof tests.
 
-S1D Board/share/invites       72%  [##############------]
-  Stable: Board CRUD, owner-only copy/delete, share expiry, public view, member first pass, workspace invite backend contracts and Team/Group role UI first pass.
+S1D Board/share/invites       73%  [###############-----]
+  Stable: Board CRUD, owner-only copy/delete, share expiry, public view, member first pass, workspace invite backend contracts and Team/Group role UI first pass with owner/admin/member gating.
   Gate: billing-visibility separation, explicit Asset sharing, invite email delivery.
 
 S2 AI runtime/provider routes 56%  [###########---------]
   Stable: model/route/pricing tables, quote/preflight, persisted AiRun shell, admin facts.
   Gate: fold local GeekAI path into provider-route adapter, hosted live Team-wallet settlement smoke, text persistence.
 
-S3 Admin/billing/team         76%  [###############-----]
-  Stable: server-gated admin, AI route/pricing panels, Team checkout/top-up, Collaborate checkout, hosted checkout response contract, provider-neutral checkout adapter, Stripe Checkout Session first cut, signed webhook inbox with provider metadata lookup, Group create, workspace invite with Team seat policy, member removal contracts, payer settlement contracts, real usage checkout buttons, billing return routes and admin finance reconciliation for payments/wallets/subscriptions/ledger/member usage.
-  Gate: provider-neutral hosted/manual-test staging smoke, provider-specific signatures, renewals/cancelation, invoices, refunds and deeper route health views.
+S3 Admin/billing/team         78%  [################----]
+  Stable: server-gated admin, AI route/pricing panels, Team checkout/top-up, Collaborate checkout, hosted checkout response contract, provider-neutral checkout adapter, Stripe Checkout Session first cut, signed webhook inbox with provider metadata lookup, Group create, workspace invite with Team seat policy, member removal contracts, payer settlement contracts, real usage checkout buttons, billing return routes, admin finance reconciliation for payments/wallets/subscriptions/ledger/member usage, and local disposable-Postgres admin finance + manual/hosted payment smoke.
+  Gate: redeploy current Web/API to staging and rerun real-login remote admin finance smoke, provider-specific signatures, renewals/cancelation, invoices, refunds and deeper route health views.
 
-Frontend product UI alignment 57%  [###########---------]
-  Stable: workspaces, boards, billing, team, usage, admin, canvas node surfaces, Team/Group member actions, first-pass Billing actions and admin finance reconciliation panels exist.
+Frontend product UI alignment 58%  [############--------]
+  Stable: workspaces, boards, billing, team, usage, admin, canvas node surfaces, Team/Group role-gated member actions, first-pass Billing actions and admin finance reconciliation panels exist.
   Gate: align navigation, empty states, role language, plan labels and AI cost messaging.
 
 S4 Collaboration              10%  [##------------------]
@@ -82,7 +82,7 @@ Frontend UI alignment runs across all lanes and should follow, not invent, serve
 | S1D Board CRUD | `ARCH_slice_S1D_auth_board_crud.md` | Permission-checked Board list/load/save/history/member/share APIs | Stable first-pass CRUD/member/share/public-share-open checkpoint with owner-only copy/delete, share expiry and known-foreign Asset guard |
 | S1X Canvas Engine Migration | `ARCH_slice_S1X_canvas_engine_migration.md` | tldraw license risk, current canvas reference contract, Konva/Yjs replacement path | Konva v2 formal Board route accepted; Page polish and v1 copy tooling landed; collaboration still pending |
 | S2 AI Runtime | `ARCH_slice_S2_ai_runtime.md` | Node Registry, Model Registry, AiRun, provider routing, AI Chat planner | Mock/runtime dataflow and the local GeekAI canvas path now prove the user-facing image/analysis/chat flow; DB-backed model tiers/pricing/routes, quote/preflight, persisted lifecycle, attempt-level `ai_api_calls`, timeout-safe failover and extracted settlement orchestration exist; production gate is folding GeekAI and future providers into the server provider-route control plane with live smoke and durable text output |
-| S3 Admin/Billing/Analytics | `ARCH_slice_S3_admin_billing_analytics.md` | Admin roles, audit, Team wallets, personal Collaborate wallets, credits, subscriptions, workspace dashboards, AI charge facts, analytics, moderation facts | Active pivot: migration `20260508_0012/0013`, payer resolver, settlement contracts, Team/Collaborate checkout, provider-neutral checkout adapter, signed webhook inbox, workspace invite/member contracts, usage checkout buttons and admin finance reconciliation panels now support Team wallet vs personal Collaborate wallet; provider-neutral hosted/manual-test staging payment settlement and invoice/refund depth remain pending |
+| S3 Admin/Billing/Analytics | `ARCH_slice_S3_admin_billing_analytics.md` | Admin roles, audit, Team wallets, personal Collaborate wallets, credits, subscriptions, workspace dashboards, AI charge facts, analytics, moderation facts | Active pivot: migration `20260508_0012/0013`, payer resolver, settlement contracts, Team/Collaborate checkout, provider-neutral checkout adapter, signed webhook inbox, workspace invite/member contracts, usage checkout buttons, admin finance reconciliation panels and local disposable-Postgres admin/payment smoke now support Team wallet vs personal Collaborate wallet; remote staging redeploy smoke plus invoice/refund depth remain pending |
 | S4 Collaboration | `ARCH_slice_S4_collaboration.md` | Multiplayer, presence, CRDT boundaries, roles | Deferred to P0.5; collaboration work begins after Auth, Board, Asset and AiRun authority are stable |
 
 ## Project Architecture Overview
@@ -495,20 +495,20 @@ S1C Auth/registration         55%  [###########---------]
   已稳定：Clerk frontend shell、FastAPI bearer first pass、remote client token attach。
   闸门：完整 registration/session hardening、workspace membership matrix、spoof tests。
 
-S1D Board/share/invites       72%  [##############------]
-  已稳定：Board CRUD、owner-only copy/delete、share expiry、public view、member first pass、workspace invite backend contracts 和 Team/Group role UI first pass。
+S1D Board/share/invites       73%  [###############-----]
+  已稳定：Board CRUD、owner-only copy/delete、share expiry、public view、member first pass、workspace invite backend contracts，以及带 owner/admin/member gating 的 Team/Group role UI first pass。
   闸门：billing-visibility separation、explicit Asset sharing、invite email delivery。
 
 S2 AI runtime/provider routes 56%  [###########---------]
   已稳定：model/route/pricing tables、quote/preflight、persisted AiRun shell、admin facts。
   闸门：把 local GeekAI path 收口进 provider-route adapter、hosted live Team-wallet settlement smoke、text persistence。
 
-S3 Admin/billing/team         76%  [###############-----]
-  已稳定：server-gated admin、AI route/pricing panels、Team checkout/top-up、Collaborate checkout、hosted checkout response contract、provider-neutral checkout adapter、Stripe Checkout Session first cut、signed webhook inbox with provider metadata lookup、Group create、workspace invite with Team seat policy、member removal contracts、payer settlement contracts、real usage checkout buttons、billing return routes，以及 payments/wallets/subscriptions/ledger/member usage 的 admin finance reconciliation。
-  闸门：provider-neutral hosted/manual-test staging smoke、provider-specific signatures、renewals/cancelation、invoices、refunds 和更深 route health views。
+S3 Admin/billing/team         78%  [################----]
+  已稳定：server-gated admin、AI route/pricing panels、Team checkout/top-up、Collaborate checkout、hosted checkout response contract、provider-neutral checkout adapter、Stripe Checkout Session first cut、signed webhook inbox with provider metadata lookup、Group create、workspace invite with Team seat policy、member removal contracts、payer settlement contracts、real usage checkout buttons、billing return routes、payments/wallets/subscriptions/ledger/member usage 的 admin finance reconciliation，以及本地 disposable-Postgres admin finance + manual/hosted payment smoke。
+  闸门：重新部署当前 Web/API 到 staging 后重跑真实登录态 remote admin finance smoke、provider-specific signatures、renewals/cancelation、invoices、refunds 和更深 route health views。
 
-Frontend product UI alignment 57%  [###########---------]
-  已稳定：workspaces、boards、billing、team、usage、admin、canvas node surfaces、Team/Group member actions、第一阶段 Billing actions 和 admin finance reconciliation panels 已存在。
+Frontend product UI alignment 58%  [############--------]
+  已稳定：workspaces、boards、billing、team、usage、admin、canvas node surfaces、带角色门控的 Team/Group member actions、第一阶段 Billing actions 和 admin finance reconciliation panels 已存在。
   闸门：统一 navigation、empty states、role language、plan labels 和 AI cost messaging。
 
 S4 Collaboration              10%  [##------------------]
@@ -549,7 +549,7 @@ Frontend UI alignment 横跨所有线，应该跟随服务端权威边界，不�
 | S1D Board CRUD | `ARCH_slice_S1D_auth_board_crud.md` | Permission-checked Board list/load/save/history/member/share APIs | 稳定第一阶段 CRUD/member/share/public-share-open checkpoint，并已带 owner-only copy/delete、share expiry 和 known-foreign Asset guard |
 | S1X Canvas Engine Migration | `ARCH_slice_S1X_canvas_engine_migration.md` | tldraw license risk、current canvas reference contract、Konva/Yjs replacement path | Konva v2 formal Board route 已接受；Page polish 和 v1 copy tooling 已落地；collaboration 仍待完成 |
 | S2 AI Runtime | `ARCH_slice_S2_ai_runtime.md` | Node Registry、Model Registry、AiRun、provider routing、AI Chat planner | Mock/runtime dataflow 和本地 GeekAI canvas path 现在已经证明用户侧 image/analysis/chat flow；DB-backed 模型档位 / 定价 / 线路、quote/preflight、持久化 lifecycle、按尝试分行的 `ai_api_calls`、timeout-safe failover，以及抽离出的 settlement orchestration 已存在；production gate 是把 GeekAI 和未来 providers 收口到服务端 provider-route control plane，并完成 live smoke 和 durable text output |
-| S3 Admin/Billing/Analytics | `ARCH_slice_S3_admin_billing_analytics.md` | Admin roles、audit、Team wallets、personal Collaborate wallets、credits、subscriptions、workspace dashboards、AI charge facts、analytics、moderation facts | 活跃调整：migration `20260508_0012/0013`、payer resolver、settlement contracts、Team/Collaborate checkout、provider-neutral checkout adapter、signed webhook inbox、workspace invite/member contracts、usage checkout buttons 和 admin finance reconciliation panels 已支持 Team wallet vs personal Collaborate wallet；provider-neutral hosted/manual-test staging payment settlement 以及 invoice/refund 深度仍待完成 |
+| S3 Admin/Billing/Analytics | `ARCH_slice_S3_admin_billing_analytics.md` | Admin roles、audit、Team wallets、personal Collaborate wallets、credits、subscriptions、workspace dashboards、AI charge facts、analytics、moderation facts | 活跃调整：migration `20260508_0012/0013`、payer resolver、settlement contracts、Team/Collaborate checkout、provider-neutral checkout adapter、signed webhook inbox、workspace invite/member contracts、usage checkout buttons、admin finance reconciliation panels 和本地 disposable-Postgres admin/payment smoke 已支持 Team wallet vs personal Collaborate wallet；remote staging redeploy smoke 以及 invoice/refund 深度仍待完成 |
 | S4 Collaboration | `ARCH_slice_S4_collaboration.md` | Multiplayer、presence、CRDT boundaries、roles | 推迟到 P0.5；Auth、Board、Asset 和 AiRun authority 稳定后再开始 collaboration work |
 
 ## 项目架构总览

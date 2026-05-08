@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi.testclient import TestClient
 
 from tangent_api.main import app
@@ -49,11 +51,40 @@ def test_auth_required_mode_requires_bearer_token(monkeypatch):
     assert explicit_headers.status_code == 401
 
 
+def test_auth_session_explicit_workspace_context(monkeypatch):
+    monkeypatch.delenv("TANGENT_REQUIRE_API_AUTH", raising=False)
+    client = TestClient(app)
+
+    response = client.get(
+        "/api/v1/auth/session",
+        headers={
+            "x-tangent-user-id": "user_custom",
+            "x-tangent-workspace-id": "workspace_custom",
+            "x-tangent-workspace-kind": "team_workspace",
+            "x-tangent-workspace-name": "Custom Team",
+            "x-tangent-workspace-role": "admin",
+            "x-tangent-plan-key": "team_growth",
+        },
+    )
+
+    assert response.status_code == 200
+    workspace = response.json()["session"]["activeWorkspace"]
+    assert workspace["id"] == "workspace_custom"
+    assert workspace["kind"] == "team_workspace"
+    assert workspace["name"] == "Custom Team"
+    assert workspace["planKey"] == "team_growth"
+    assert workspace["role"] == "admin"
+
+
 def test_auth_required_mode_accepts_verified_bearer(monkeypatch):
     monkeypatch.setenv("TANGENT_REQUIRE_API_AUTH", "1")
 
-    async def fake_resolve_authenticated_request_context(token: str) -> ApiRequestContext:
+    async def fake_resolve_authenticated_request_context(
+        token: str,
+        requested_workspace_id: Optional[str] = None,
+    ) -> ApiRequestContext:
         assert token == "valid-token"
+        assert requested_workspace_id == "workspace_clerk_123"
         return ApiRequestContext(
             auth_mode="required",
             is_dev_fallback=False,
@@ -74,7 +105,13 @@ def test_auth_required_mode_accepts_verified_bearer(monkeypatch):
     )
     client = TestClient(app)
 
-    response = client.get("/api/v1/auth/session", headers={"Authorization": "Bearer valid-token"})
+    response = client.get(
+        "/api/v1/auth/session",
+        headers={
+            "Authorization": "Bearer valid-token",
+            "x-tangent-workspace-id": "workspace_clerk_123",
+        },
+    )
 
     assert response.status_code == 200
     session = response.json()["session"]

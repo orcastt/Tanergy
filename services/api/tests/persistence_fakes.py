@@ -1210,12 +1210,19 @@ class FakePostgresCursor:
             ]
             self.rowcount = before - len(self.database.workspace_members)
         elif normalized.startswith("SELECT amount_cents, metadata FROM tangent_payments"):
-            account_id = params[0]
+            account_or_workspace_id = params[0]
+            if "JOIN tangent_credit_accounts" in normalized:
+                account_ids = {
+                    row["id"] for row in self.database.credit_accounts
+                    if row.get("owner_type") == "workspace" and row.get("owner_id") == account_or_workspace_id
+                }
+            else:
+                account_ids = {account_or_workspace_id}
             rows = [
                 (row["amount_cents"], row.get("metadata", {}))
                 for row in self.database.payments
                 if (
-                    row["account_id"] == account_id
+                    row["account_id"] in account_ids
                     and row.get("kind") == "seat_purchase"
                     and row.get("status") == "succeeded"
                 )
@@ -1542,6 +1549,9 @@ class FakePostgresCursor:
         elif normalized.startswith("SELECT 1 FROM tangent_users WHERE id = %s"):
             user_id = params[0]
             self.row = (1,) if any(row["id"] == user_id for row in self.database.users) else None
+        elif normalized.startswith("SELECT 1 FROM tangent_workspaces WHERE id = %s"):
+            workspace_id = params[0]
+            self.row = (1,) if any(row["id"] == workspace_id for row in self.database.workspaces) else None
         elif normalized.startswith("SELECT id, email, display_name, status, locale, created_at, last_login_at FROM tangent_users"):
             limit = params[0]
             rows = [

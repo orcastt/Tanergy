@@ -990,8 +990,12 @@ def test_live_provider_adapter_persists_provider_cost_and_settles_by_actual_outp
 def test_ai_run_auth_required_mode(monkeypatch):
     monkeypatch.setenv("TANGENT_REQUIRE_API_AUTH", "1")
 
-    async def fake_resolve_authenticated_request_context(token: str) -> ApiRequestContext:
+    async def fake_resolve_authenticated_request_context(
+        token: str,
+        requested_workspace_id: object = None,
+    ) -> ApiRequestContext:
         assert token == "valid-token"
+        assert requested_workspace_id is None
         return ApiRequestContext(
             auth_mode="required",
             is_dev_fallback=False,

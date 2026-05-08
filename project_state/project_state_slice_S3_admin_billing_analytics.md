@@ -29,9 +29,11 @@ Reusable first-pass work:
 - `/api/v1/workspaces/groups` now creates a `group_workspace` and owner membership, gated by an active personal Collaborate subscription.
 - `/api/v1/workspaces/current/invitations` and `/api/v1/workspaces/invitations/{token}/accept` now provide backend invite link create/list/accept/revoke and expiry contracts. Tokens are stored as hashes, accepted invites create/update workspace membership with `admin/editor/viewer` roles, and Team invite accept enforces active subscription seat capacity before creating a seat assignment.
 - `DELETE /api/v1/workspaces/current/members/{user_id}` now removes workspace members; for Team workspaces it also revokes active seat assignments.
-- Frontend first-pass wiring now exposes billing plan checkout/complete, Team create/purchase, Group create, invite accept, invite create/revoke, member removal, member role update, Team seat assignment, `/usage` Team top-up, Team seat checkout, personal top-up and Group create actions. Team/Group dashboards load the server workspace dashboard when available. Hosted checkout redirects and `/billing/success` plus `/billing/cancel` return routes exist; final wallet/subscription state still depends on provider webhook completion.
+- Frontend first-pass wiring now exposes billing plan checkout/complete, Team create/purchase, Group create, invite accept, invite create/revoke, role-gated member removal, role update, Team seat assignment, `/usage` Team top-up, Team seat checkout, personal top-up and Group create actions. Team/Group dashboards load the server workspace dashboard when available. Hosted checkout redirects and `/billing/success` plus `/billing/cancel` return routes exist; final wallet/subscription state still depends on provider webhook completion.
 - Backend AI run settlement contract tests now cover both Group/Collaborate actor-personal charging and Team workspace Team-wallet charging, and polling/cancel requests preserve the original run charge context.
 - Disposable Postgres smoke passed on 2026-05-08: empty DB and P0-seeded DB migrate to head; Team checkout creates a Team workspace/wallet, invite accept works, Team quote/run settlement resolves and charges `team_wallet`, member removal works; Collaborate checkout creates a Group, Group invite accept works and Group quote/run settlement resolves and charges `actor_personal`.
+- Local admin/payment smoke passed on 2026-05-08: `/admin` loaded the finance panel against a disposable Postgres-backed API and every admin finance read returned 200; manual-test Team wallet top-up completed into the Team wallet ledger; manual-test Team seat checkout completed and allowed a Team seat assignment; hosted checkout returned a `hosted_redirect` URL and rejected manual completion with the expected webhook-only 409.
+- Remote staging smoke is blocked until redeploy: `https://staging.tanergy.cc/admin`, `https://api-staging.tanergy.cc/api/v1/admin/me` and `https://api-staging.tanergy.cc/api/v1/admin/finance/summary` returned 404 while `https://api-staging.tanergy.cc/health` returned 200.
 
 ## Product Rule Drift
 
@@ -53,8 +55,8 @@ New rule:
 2. Subscription model: Team subscriptions must be workspace-owned; Collaborate subscriptions must be user-owned and single-active per user. Backend checkout/upsert first cut implemented.
 3. Seat lifecycle: seat capacity/member assignment must not imply per-member credit ownership. Seat grant first cut now writes Team wallet.
 4. Wallet grants: Team plan grants and top-ups write to the Team wallet; Collaborate grants/top-ups write to personal wallet. Backend Team subscription, seat and top-up grants now write Team wallet; hosted checkout response metadata and signed webhook authority first cuts now exist.
-5. Workspace purchase flow: backend contract first cut implemented for Team checkout completion; frontend action wiring, hosted checkout response contract, provider-neutral checkout adapter, Stripe Checkout Session first cut, signed webhook inbox with provider metadata lookup and disposable Postgres smoke now exist; provider-neutral hosted/manual-test staging smoke remains.
-6. Invite and member lifecycle: backend Team/Group invite create/accept/revoke/expiry, Team seat-capacity-on-accept, role assignment and member removal first cut implemented; frontend action wiring now includes invite/revoke/remove/role-update/seat-assign, while email sending and board-specific assignment UI remain.
+5. Workspace purchase flow: backend contract first cut implemented for Team checkout completion; frontend action wiring, hosted checkout response contract, provider-neutral checkout adapter, Stripe Checkout Session first cut, signed webhook inbox with provider metadata lookup, disposable Postgres smoke and local manual/hosted payment smoke now exist; deployed staging smoke remains.
+6. Invite and member lifecycle: backend Team/Group invite create/accept/revoke/expiry, Team seat-capacity-on-accept, role assignment and member removal first cut implemented; frontend action wiring now includes invite/revoke/remove/role-update/seat-assign with owner/admin gating, while email sending and board-specific assignment UI remain.
 7. Permission services: Board roles, workspace roles, Team billing visibility and AI payer eligibility must stay separate.
 8. Admin monitoring: every production AiRun must be queryable by user, team/workspace, board, node, model, route, pricing rule, charged account and provider cost. Finance first pass now also surfaces payments, wallets, subscriptions, credit ledger and Team member usage.
 9. GeekAI reconciliation: local Next routes must become thin/product-proof paths behind server AiRun or be marked development-only.
@@ -78,7 +80,7 @@ dev-plans/s3-team-group-wallets-membership-billing-plan-2026-05-08.md
 ## Validation Target For Next Checkpoint
 
 - A new Team checkout can create an isolated Team workspace and Team wallet in backend contract tests and disposable Postgres smoke; hosted staging smoke remains.
-- A Team owner can create invite links, accept/revoke/expire invites with seat-capacity enforcement, assign role, remove member with seat revoke, and add seats; frontend first-pass wiring and disposable Postgres smoke exist, while email/hosted staging smoke remain.
+- A Team owner can create invite links, accept/revoke/expire invites with seat-capacity enforcement, assign role, remove member with seat revoke, and add seats; frontend first-pass wiring, owner/admin role gating and disposable Postgres smoke exist, while email/deployed staging smoke remain.
 - A Team AI quote resolves `charged_account_id` to the Team wallet. Covered by backend tests.
 - A Group AI quote resolves `charged_account_id` to the actor's personal wallet. Covered by backend tests.
 - Team and Group mock AI run settlement writes usage charges to the resolved account. Covered by backend contract tests and disposable Postgres run-settlement smoke; hosted live-provider smoke still remains for the next staging checkpoint.
@@ -87,7 +89,7 @@ dev-plans/s3-team-group-wallets-membership-billing-plan-2026-05-08.md
 
 ## Not Production-Complete
 
-- Provider-specific signatures, provider-neutral hosted/manual-test staging smoke, invoices, refunds and production reconciliation.
+- Provider-specific signatures, deployed staging payment smoke, invoices, refunds and production reconciliation.
 - Subscription renewal/cancellation automation.
 - Production-grade seat proration and downgrade policy.
 - Deeper admin finance views for invoices, refunds, provider health and revenue rollups.

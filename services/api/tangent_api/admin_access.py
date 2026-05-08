@@ -417,6 +417,7 @@ def _insert_admin_audit_log(
     workspace_id: Optional[str] = None,
 ) -> str:
     audit_id = f"admin_audit_{uuid4()}"
+    safe_workspace_id = _coerce_existing_workspace_id(cursor, workspace_id)
     cursor.execute(
         """
         INSERT INTO tangent_admin_audit_logs (
@@ -432,9 +433,16 @@ def _insert_admin_audit_log(
             audit_id,
             actor_user_id,
             target_user_id,
-            workspace_id,
+            safe_workspace_id,
             action,
             json.dumps(_coerce_json_dict(metadata)),
         ),
     )
     return audit_id
+
+
+def _coerce_existing_workspace_id(cursor: Any, workspace_id: Optional[str]) -> Optional[str]:
+    if not workspace_id:
+        return None
+    cursor.execute("SELECT 1 FROM tangent_workspaces WHERE id = %s", (workspace_id,))
+    return workspace_id if cursor.fetchone() is not None else None

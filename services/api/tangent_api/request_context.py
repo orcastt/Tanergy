@@ -32,22 +32,38 @@ async def get_request_context(
     x_tangent_user_id: Optional[str] = Header(default=None),
     x_tangent_workspace_id: Optional[str] = Header(default=None),
     x_tangent_workspace_kind: Optional[str] = Header(default=None),
+    x_tangent_workspace_name: Optional[str] = Header(default=None),
+    x_tangent_workspace_role: Optional[str] = Header(default=None),
     x_tangent_plan_key: Optional[str] = Header(default=None),
 ) -> ApiRequestContext:
     require_auth = os.getenv("TANGENT_REQUIRE_API_AUTH") == "1"
     token = _extract_request_token(request)
 
     if token:
-        return await resolve_authenticated_request_context(token)
+        return await resolve_authenticated_request_context(
+            token,
+            requested_workspace_id=_normalize_optional_context_id(x_tangent_workspace_id, "workspace id"),
+        )
 
     if require_auth:
         raise HTTPException(status_code=401, detail="Missing bearer auth token.")
 
     has_explicit_context = bool(x_tangent_user_id and x_tangent_workspace_id)
+    workspace_id = _normalize_context_id(
+        x_tangent_workspace_id
+        or os.getenv("TANGENT_DEV_WORKSPACE_ID")
+        or "dev-workspace",
+        "workspace id",
+    )
     workspace_kind = _normalize_workspace_kind(
         x_tangent_workspace_kind
         or os.getenv("TANGENT_DEV_WORKSPACE_KIND")
         or "solo_workspace"
+    )
+    workspace_role = _normalize_workspace_role(
+        x_tangent_workspace_role
+        or os.getenv("TANGENT_DEV_WORKSPACE_ROLE")
+        or "owner"
     )
     return ApiRequestContext(
         auth_mode="dev",
@@ -61,25 +77,27 @@ async def get_request_context(
             "user id",
         ),
         workspace_board_count=0,
-        workspace_id=_normalize_context_id(
-            x_tangent_workspace_id
-            or os.getenv("TANGENT_DEV_WORKSPACE_ID")
-            or "dev-workspace",
-            "workspace id",
-        ),
+        workspace_id=workspace_id,
         workspace_kind=workspace_kind,
-        workspace_name="Personal workspace",
+        workspace_name=_normalize_workspace_name(
+            x_tangent_workspace_name
+            or os.getenv("TANGENT_DEV_WORKSPACE_NAME")
+            or "Personal workspace"
+        ),
         workspace_plan_key=_normalize_workspace_plan_key(
             x_tangent_plan_key or os.getenv("TANGENT_DEV_WORKSPACE_PLAN_KEY"),
             workspace_kind,
         ),
-        workspace_role="owner",
+        workspace_role=workspace_role,
     )
 
 
-async def resolve_authenticated_request_context(token: str) -> ApiRequestContext:
+async def resolve_authenticated_request_context(
+    token: str,
+    requested_workspace_id: Optional[str] = None,
+) -> ApiRequestContext:
     identity = await verify_bearer_token(token)
-    session = resolve_local_auth_session(identity)
+    session = resolve_local_auth_session(identity, requested_workspace_id=requested_workspace_id)
     return ApiRequestContext(
         auth_mode="required",
         is_dev_fallback=False,
@@ -118,12 +136,33 @@ def _normalize_context_id(value: str, label: str) -> str:
     return trimmed
 
 
+def _normalize_optional_context_id(value: Optional[str], label: str) -> Optional[str]:
+    if value is None or not value.strip():
+        return None
+    return _normalize_context_id(value, label)
+
+
 def _normalize_workspace_kind(value: str) -> str:
     normalized = value.strip()
     allowed = {"solo_workspace", "group_workspace", "team_workspace", "enterprise_workspace"}
     if normalized not in allowed:
         raise HTTPException(status_code=400, detail="Invalid workspace kind.")
     return normalized
+
+
+def _normalize_workspace_role(value: str) -> str:
+    normalized = value.strip()
+    allowed = {"owner", "admin", "editor", "viewer", "member", "guest"}
+    if normalized not in allowed:
+        raise HTTPException(status_code=400, detail="Invalid workspace role.")
+    return normalized
+
+
+def _normalize_workspace_name(value: str) -> str:
+    normalized = value.strip()
+    if not normalized:
+        return "Personal workspace"
+    return normalized[:120]
 
 
 def _normalize_workspace_plan_key(value: Optional[str], workspace_kind: str) -> Optional[str]:

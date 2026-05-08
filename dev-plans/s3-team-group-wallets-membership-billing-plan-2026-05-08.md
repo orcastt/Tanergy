@@ -149,7 +149,7 @@ Tests:
 User UI:
 
 - [x] Team create/purchase flow first-pass UI using manual-test checkout/complete or hosted checkout redirect.
-- [x] Team member invite, remove, role update, seat assignment and seat count first-pass UI. Add-seat polish and board-specific assignment remain.
+- [x] Team member invite, remove, role update, seat assignment and seat count first-pass UI with owner/admin gating. Add-seat polish and board-specific assignment remain.
 - [x] Team wallet top-up and seat checkout buttons from `/usage` call real billing routes; hosted checkout return pages exist.
 - [x] Group create/invite/member remove/role-update first-pass UI.
 - [x] Personal wallet top-up from `/usage` calls real billing route.
@@ -166,6 +166,8 @@ Tests/smoke:
 
 - [x] Minimal Team purchase -> invite -> quote -> member removal -> run settlement smoke against disposable Postgres.
 - [x] Minimal Group create/invite -> quote -> personal-wallet run settlement smoke against disposable Postgres.
+- [x] Local `/admin` finance UI smoke against disposable Postgres-backed API; payment, wallet, subscription, ledger and member usage reads returned 200.
+- [x] Local manual/hosted payment smoke: manual Team wallet top-up, manual Team seat checkout + assignment, hosted redirect URL and hosted manual-complete 409.
 - Admin can explain each smoke run.
 
 ## Phase 7: Payment, Renewal And Finance Depth
@@ -174,7 +176,7 @@ Tests/smoke:
 - [x] Hosted checkout response contract first cut: checkout responses include provider session metadata, amount/currency/kind/client-reference handoff metadata, non-manual providers require hosted checkout configuration before payment creation, and hosted-provider payments cannot be manually completed.
 - [x] Provider-neutral checkout adapter first cut: `manual_test` and generic hosted checkout keep staging moving; optional `stripe` provider requires `TANGENT_STRIPE_SECRET_KEY` only when selected, creates Checkout Sessions through Stripe's server API, labels `checkout.adapter=stripe_checkout`, and keeps secrets server-side.
 - [x] Admin finance reconciliation first pass: server-gated summary/payment/wallet/subscription/credit-ledger/member-usage reads, frontend panels and audit events.
-- Payment provider webhooks become production authority for grants and subscription state after provider-neutral staging smoke and provider-specific signatures are wired.
+- Payment provider webhooks become production authority for grants and subscription state after deployed staging smoke and provider-specific signatures are wired.
 - Renewal grants monthly included credits.
 - Cancellation/downgrade handles remaining credits and seat capacity.
 - Invoice, refund and revenue reconciliation views land in Admin finance.
