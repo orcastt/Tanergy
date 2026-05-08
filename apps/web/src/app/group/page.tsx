@@ -10,6 +10,7 @@ export default function GroupPage() {
         emptyCreatedLabel="No groups created."
         emptyJoinedLabel="No joined groups."
         joinLabel="Join Group"
+        kind="group_workspace"
         items={getWorkspaceDirectoryItems('group_workspace').map((item) => ({
           ...item,
           href: `/group/${encodeURIComponent(item.id)}`,

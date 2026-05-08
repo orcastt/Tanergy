@@ -10,6 +10,7 @@ export default function TeamPage() {
         emptyCreatedLabel="No teams created."
         emptyJoinedLabel="No joined teams."
         joinLabel="Join Team"
+        kind="team_workspace"
         items={getWorkspaceDirectoryItems('team_workspace').map((item) => ({
           ...item,
           href: `/team/${encodeURIComponent(item.id)}`,

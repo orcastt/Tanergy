@@ -117,6 +117,138 @@ def test_ai_run_mock_can_settle_against_credit_ledger(monkeypatch):
     assert fake_db.api_cost_ledger[-1]["provider_currency"] == "USD"
 
 
+def test_ai_run_mock_settles_team_workspace_against_team_wallet(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.credit_accounts = [
+        {
+            "account_kind": "team_wallet",
+            "id": "credit_db_team_wallet",
+            "owner_id": "workspace_team",
+            "owner_type": "workspace",
+            "status": "active",
+        }
+    ]
+    fake_db.workspace_seat_assignments = [
+        {
+            "id": "seat_team_member_1",
+            "included_credits": 2500,
+            "plan_key": "team_start",
+            "status": "active",
+            "updated_at": "2026-05-06T00:00:00Z",
+            "user_id": "user_team_member",
+            "workspace_id": "workspace_team",
+        }
+    ]
+    fake_db.credit_ledger = [
+        {
+            "account_id": "credit_db_team_wallet",
+            "credits_delta": 80,
+            "id": "ledger_team_wallet_seed",
+            "reason": "topup_purchase",
+            "source_type": "payment",
+            "workspace_id": "workspace_team",
+        }
+    ]
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setenv("TANGENT_AI_MOCK_LEDGER_CHARGING", "1")
+    monkeypatch.setattr("tangent_api.ai_control_plane.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.ai_run_persistence.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.credit_ledger.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/ai/runs",
+        headers={
+            "x-tangent-user-id": "user_team_member",
+            "x-tangent-workspace-id": "workspace_team",
+            "x-tangent-workspace-kind": "team_workspace",
+        },
+        json={
+            "boardId": "board_team_charge",
+            "nodeId": "node_team_image_gen",
+            "params": {"count": 2},
+            "prompt": "A team funded campaign concept",
+            "runType": "image_generation",
+            "selectedModelId": "gpt-image-2",
+        },
+    )
+
+    assert response.status_code == 200
+    run = response.json()["run"]
+    assert run["charge"]["chargedAccountId"] == "credit_db_team_wallet"
+    assert run["charge"]["chargedScope"] == "team_wallet"
+    assert run["charge"]["workspaceSeatId"] == "seat_team_member_1"
+    settled_run = _wait_for_run_status(client, run["runId"], {"succeeded"})
+    assert settled_run["costCredits"] == 10
+    assert settled_run["charge"]["preflightStatus"] == "settled"
+    assert fake_db.credit_ledger[-1]["account_id"] == "credit_db_team_wallet"
+    assert fake_db.credit_ledger[-1]["actor_user_id"] == "user_team_member"
+    assert fake_db.credit_ledger[-1]["credits_delta"] == -10
+    assert fake_db.credit_ledger[-1]["reason"] == "usage_charge"
+    assert fake_db.credit_ledger[-1]["workspace_id"] == "workspace_team"
+    assert fake_db.ai_runs[settled_run["runId"]]["charged_account_id"] == "credit_db_team_wallet"
+    assert fake_db.ai_runs[settled_run["runId"]]["charged_scope"] == "team_wallet"
+
+
+def test_ai_run_poll_and_cancel_keep_original_charge_context(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setenv("TANGENT_AI_EXECUTION_START_DELAY_MS", "100")
+    monkeypatch.delenv("TANGENT_AI_MOCK_LEDGER_CHARGING", raising=False)
+    monkeypatch.setattr("tangent_api.ai_control_plane.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.ai_run_persistence.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.credit_ledger.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v1/ai/runs",
+        headers={
+            "x-tangent-user-id": "user_original",
+            "x-tangent-workspace-id": "workspace_group",
+            "x-tangent-workspace-kind": "group_workspace",
+        },
+        json={
+            "boardId": "board_context_lock",
+            "prompt": "Keep my accounting context stable",
+            "runType": "image_generation",
+            "selectedModelId": "gpt-image-2",
+        },
+    )
+    assert created.status_code == 200
+    run = created.json()["run"]
+    run_id = run["runId"]
+    assert run["charge"]["chargedAccountId"] == "credit_user_user_original"
+
+    polled = client.get(
+        f"/api/v1/ai/runs/{run_id}",
+        headers={
+            "x-tangent-user-id": "user_spoof",
+            "x-tangent-workspace-id": "workspace_team",
+            "x-tangent-workspace-kind": "team_workspace",
+        },
+    )
+    assert polled.status_code == 200
+    assert polled.json()["run"]["charge"]["chargedAccountId"] == "credit_user_user_original"
+
+    canceled = client.post(
+        f"/api/v1/ai/runs/{run_id}/cancel",
+        headers={
+            "x-tangent-user-id": "user_spoof",
+            "x-tangent-workspace-id": "workspace_team",
+            "x-tangent-workspace-kind": "team_workspace",
+        },
+    )
+    assert canceled.status_code == 200
+    canceled_run = canceled.json()["run"]
+    assert canceled_run["status"] == "canceled"
+    assert canceled_run["charge"]["chargedAccountId"] == "credit_user_user_original"
+    assert fake_db.ai_runs[run_id]["created_by"] == "user_original"
+    assert fake_db.ai_runs[run_id]["workspace_id"] == "workspace_group"
+    assert fake_db.ai_runs[run_id]["charged_account_id"] == "credit_user_user_original"
+
+
 def test_ai_run_mock_rejects_when_ledger_balance_is_insufficient(monkeypatch):
     fake_db = FakePostgresDatabase()
     fake_db.credit_ledger = [

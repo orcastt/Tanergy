@@ -38,6 +38,11 @@
   gap: 28px;
 }
 
+.workspace-commerce-action-stack {
+  display: grid;
+  gap: 8px;
+}
+
 .workspace-commerce-header {
   gap: 18px;
   padding-bottom: 8px;

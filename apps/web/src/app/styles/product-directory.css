@@ -26,6 +26,13 @@
   gap: 24px;
 }
 
+.workspace-directory-status {
+  margin: 12px 0 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .workspace-directory-header-actions {
   flex-wrap: wrap;
   gap: 12px;

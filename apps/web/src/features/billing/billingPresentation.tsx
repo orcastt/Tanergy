@@ -54,6 +54,7 @@ export function BillingLedgerTable({
 }
 
 export function describeChargeScope(scope: ChargeScope) {
+  if (scope === 'team_wallet') return 'Team wallet credits'
   if (scope === 'workspace_pool') return 'Workspace pooled credits'
   return 'Personal credits'
 }

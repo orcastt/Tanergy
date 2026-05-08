@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import Field
 
@@ -112,4 +112,73 @@ class WorkspaceMemberRoleUpdateRequest(TangentApiModel):
 class WorkspaceMemberResponse(TangentApiModel):
     error: Optional[str] = None
     member: WorkspaceDashboardMember
+    ok: bool
+
+
+class WorkspaceGroupCreateRequest(TangentApiModel):
+    name: str
+
+
+class WorkspaceCreateResponse(TangentApiModel):
+    error: Optional[str] = None
+    ok: bool
+    workspace: BillingWorkspaceSummary
+
+
+class WorkspaceInvitationRecord(TangentApiModel):
+    accepted_at: Optional[str] = Field(default=None, alias="acceptedAt")
+    accepted_by: Optional[str] = Field(default=None, alias="acceptedBy")
+    created_at: str = Field(alias="createdAt")
+    email: Optional[str] = None
+    expires_at: str = Field(alias="expiresAt")
+    id: str
+    invited_by: Optional[str] = Field(default=None, alias="invitedBy")
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    revoked_at: Optional[str] = Field(default=None, alias="revokedAt")
+    role: str
+    target_user_id: Optional[str] = Field(default=None, alias="targetUserId")
+    workspace_id: str = Field(alias="workspaceId")
+
+
+class WorkspaceInvitationCreateRequest(TangentApiModel):
+    email: Optional[str] = None
+    expires_in_days: int = Field(default=7, alias="expiresInDays")
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    role: str
+    target_user_id: Optional[str] = Field(default=None, alias="targetUserId")
+
+
+class WorkspaceInvitationCreateRecord(TangentApiModel):
+    accept_path: str = Field(alias="acceptPath")
+    invitation: WorkspaceInvitationRecord
+    token: str
+
+
+class WorkspaceInvitationCreateResponse(TangentApiModel):
+    error: Optional[str] = None
+    ok: bool
+    result: WorkspaceInvitationCreateRecord
+
+
+class WorkspaceInvitationAcceptRecord(TangentApiModel):
+    invitation: WorkspaceInvitationRecord
+    role: str
+    workspace_id: str = Field(alias="workspaceId")
+
+
+class WorkspaceInvitationAcceptResponse(TangentApiModel):
+    error: Optional[str] = None
+    ok: bool
+    result: WorkspaceInvitationAcceptRecord
+
+
+class WorkspaceInvitationResponse(TangentApiModel):
+    error: Optional[str] = None
+    invitation: WorkspaceInvitationRecord
+    ok: bool
+
+
+class WorkspaceInvitationsResponse(TangentApiModel):
+    error: Optional[str] = None
+    invitations: list[WorkspaceInvitationRecord] = Field(default_factory=list)
     ok: bool

@@ -58,11 +58,11 @@ def provision_team_subscription_payment(
     team_name = _normalize_team_name(str(metadata.get("teamName") or "Team workspace"))
     plan_key = _normalize_team_plan_key(str(metadata.get("planKey") or ""))
     quantity = _normalize_team_quantity(int(metadata.get("quantity") or 1))
-    account_id = f"credit_workspace_{workspace_id}"
+    requested_account_id = f"credit_workspace_{workspace_id}"
 
     _upsert_team_workspace(cursor, workspace_id, team_name, context)
     _upsert_team_owner_membership(cursor, workspace_id, context)
-    _ensure_team_wallet(cursor, workspace_id, account_id)
+    account_id = _ensure_team_wallet(cursor, workspace_id, requested_account_id)
 
     provisioned_metadata = {
         **metadata,
@@ -133,7 +133,7 @@ def _upsert_team_owner_membership(cursor: object, workspace_id: str, context: Ap
     )
 
 
-def _ensure_team_wallet(cursor: object, workspace_id: str, account_id: str) -> None:
+def _ensure_team_wallet(cursor: object, workspace_id: str, account_id: str) -> str:
     cursor.execute(
         """
         INSERT INTO tangent_credit_accounts (
@@ -149,9 +149,12 @@ def _ensure_team_wallet(cursor: object, workspace_id: str, account_id: str) -> N
             status = 'active',
             account_kind = 'team_wallet',
             updated_at = NOW()
+        RETURNING id
         """,
         (account_id, workspace_id),
     )
+    row = cursor.fetchone()
+    return str(row[0]) if row else account_id
 
 
 def _normalize_team_plan_key(plan_key: str) -> str:

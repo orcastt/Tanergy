@@ -6,18 +6,28 @@ import {
   persistenceAuthHeadersAsync,
 } from '@/features/api/persistenceApi'
 import { getCurrentSessionSnapshot } from '@/features/auth/mockSession'
+import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import type {
+  BillingCollaborateSubscriptionCheckoutInput,
   BillingMeResponse,
   BillingPaymentMutationResponse,
   BillingPaymentQuery,
   BillingPaymentsResponse,
   BillingSeatPurchaseCheckoutInput,
+  BillingTeamSubscriptionCheckoutInput,
   BillingTopupCheckoutInput,
   CreditLedgerMutationResponse,
   CreditLedgerQuery,
   CreditLedgerResponse,
   CreditTopupInput,
+  WorkspaceCreateInput,
+  WorkspaceCreateResponse,
   WorkspaceDashboardResponse,
+  WorkspaceInvitationAcceptResponse,
+  WorkspaceInvitationCreateInput,
+  WorkspaceInvitationCreateResponse,
+  WorkspaceInvitationResponse,
+  WorkspaceInvitationsResponse,
   WorkspaceMemberRoleUpdateInput,
   WorkspaceSeatAssignmentsResponse,
   WorkspaceSeatUpsertInput,
@@ -29,40 +39,48 @@ import {
   createLocalWorkspaceSeats,
 } from './billingContracts'
 
-export async function loadBillingMe(): Promise<BillingMeResponse> {
+type BillingClientOptions = {
+  workspace?: TangentWorkspace
+}
+
+export async function loadBillingMe(options: BillingClientOptions = {}): Promise<BillingMeResponse> {
   if (!hasRemotePersistenceApi()) return createLocalBillingMe(getCurrentSessionSnapshot())
-  return loadJson<BillingMeResponse>('/api/v1/billing/me')
+  return loadJson<BillingMeResponse>('/api/v1/billing/me', {}, options)
 }
 
-export async function loadWorkspaceDashboard(): Promise<WorkspaceDashboardResponse> {
+export async function loadWorkspaceDashboard(options: BillingClientOptions = {}): Promise<WorkspaceDashboardResponse> {
   if (!hasRemotePersistenceApi()) return { dashboard: createLocalWorkspaceDashboard(getCurrentSessionSnapshot()), ok: true }
-  return loadJson<WorkspaceDashboardResponse>('/api/v1/workspaces/current/dashboard')
+  return loadJson<WorkspaceDashboardResponse>('/api/v1/workspaces/current/dashboard', {}, options)
 }
 
-export async function loadWorkspaceSeats(): Promise<WorkspaceSeatAssignmentsResponse> {
+export async function loadWorkspaceSeats(options: BillingClientOptions = {}): Promise<WorkspaceSeatAssignmentsResponse> {
   if (!hasRemotePersistenceApi()) return createLocalWorkspaceSeats(getCurrentSessionSnapshot())
-  return loadJson<WorkspaceSeatAssignmentsResponse>('/api/v1/workspaces/current/seats')
+  return loadJson<WorkspaceSeatAssignmentsResponse>('/api/v1/workspaces/current/seats', {}, options)
 }
 
-export async function upsertWorkspaceSeat(input: WorkspaceSeatUpsertInput): Promise<WorkspaceSeatAssignmentsResponse['seats'][number]> {
+export async function upsertWorkspaceSeat(
+  input: WorkspaceSeatUpsertInput,
+  options: BillingClientOptions = {},
+): Promise<WorkspaceSeatAssignmentsResponse['seats'][number]> {
   if (!hasRemotePersistenceApi()) throw new Error('Seat management requires the remote workspace API.')
   const payload = await loadJson<{ ok: boolean; seat: WorkspaceSeatAssignmentsResponse['seats'][number] }>('/api/v1/workspaces/current/seats', {
     body: JSON.stringify(input),
     method: 'POST',
-  })
+  }, options)
   return payload.seat
 }
 
-export async function revokeWorkspaceSeat(userId: string): Promise<void> {
+export async function revokeWorkspaceSeat(userId: string, options: BillingClientOptions = {}): Promise<void> {
   if (!hasRemotePersistenceApi()) throw new Error('Seat management requires the remote workspace API.')
   await loadJson<{ ok: boolean; userId: string }>(`/api/v1/workspaces/current/seats/${encodeURIComponent(userId)}`, {
     method: 'DELETE',
-  })
+  }, options)
 }
 
 export async function updateWorkspaceMemberRole(
   userId: string,
   input: WorkspaceMemberRoleUpdateInput,
+  options: BillingClientOptions = {},
 ): Promise<WorkspaceDashboardResponse['dashboard']['members'][number]> {
   if (!hasRemotePersistenceApi()) throw new Error('Workspace member management requires the remote workspace API.')
   const payload = await loadJson<{ member: WorkspaceDashboardResponse['dashboard']['members'][number]; ok: boolean }>(
@@ -71,8 +89,57 @@ export async function updateWorkspaceMemberRole(
       body: JSON.stringify(input),
       method: 'PATCH',
     },
+    options,
   )
   return payload.member
+}
+
+export async function removeWorkspaceMember(userId: string, options: BillingClientOptions = {}): Promise<void> {
+  if (!hasRemotePersistenceApi()) throw new Error('Workspace member management requires the remote workspace API.')
+  await loadJson<{ ok: boolean; userId: string }>(`/api/v1/workspaces/current/members/${encodeURIComponent(userId)}`, {
+    method: 'DELETE',
+  }, options)
+}
+
+export async function createGroupWorkspace(input: WorkspaceCreateInput): Promise<WorkspaceCreateResponse> {
+  if (!hasRemotePersistenceApi()) throw new Error('Group creation requires the remote workspace API.')
+  return loadJson<WorkspaceCreateResponse>('/api/v1/workspaces/groups', {
+    body: JSON.stringify(input),
+    method: 'POST',
+  })
+}
+
+export async function listWorkspaceInvitations(options: BillingClientOptions = {}): Promise<WorkspaceInvitationsResponse> {
+  if (!hasRemotePersistenceApi()) return { invitations: [], ok: true }
+  return loadJson<WorkspaceInvitationsResponse>('/api/v1/workspaces/current/invitations', {}, options)
+}
+
+export async function createWorkspaceInvitation(
+  input: WorkspaceInvitationCreateInput,
+  options: BillingClientOptions = {},
+): Promise<WorkspaceInvitationCreateResponse> {
+  if (!hasRemotePersistenceApi()) throw new Error('Workspace invitations require the remote workspace API.')
+  return loadJson<WorkspaceInvitationCreateResponse>('/api/v1/workspaces/current/invitations', {
+    body: JSON.stringify(input),
+    method: 'POST',
+  }, options)
+}
+
+export async function acceptWorkspaceInvitation(token: string): Promise<WorkspaceInvitationAcceptResponse> {
+  if (!hasRemotePersistenceApi()) throw new Error('Workspace invitations require the remote workspace API.')
+  return loadJson<WorkspaceInvitationAcceptResponse>(`/api/v1/workspaces/invitations/${encodeURIComponent(token)}/accept`, {
+    method: 'POST',
+  })
+}
+
+export async function revokeWorkspaceInvitation(
+  invitationId: string,
+  options: BillingClientOptions = {},
+): Promise<WorkspaceInvitationResponse> {
+  if (!hasRemotePersistenceApi()) throw new Error('Workspace invitations require the remote workspace API.')
+  return loadJson<WorkspaceInvitationResponse>(`/api/v1/workspaces/current/invitations/${encodeURIComponent(invitationId)}`, {
+    method: 'DELETE',
+  }, options)
 }
 
 export async function loadCreditLedger(query: CreditLedgerQuery = {}): Promise<CreditLedgerResponse> {
@@ -106,19 +173,56 @@ export async function createBillingTopupCheckout(input: BillingTopupCheckoutInpu
   })
 }
 
-export async function createWorkspaceSeatCheckout(input: BillingSeatPurchaseCheckoutInput): Promise<BillingPaymentMutationResponse> {
-  if (!hasRemotePersistenceApi()) throw new Error('Seat checkout requires the remote billing API.')
-  return loadJson<BillingPaymentMutationResponse>('/api/v1/billing/workspaces/current/seats/checkout', {
+export async function createCollaborateSubscriptionCheckout(
+  input: BillingCollaborateSubscriptionCheckoutInput,
+): Promise<BillingPaymentMutationResponse> {
+  if (!hasRemotePersistenceApi()) throw new Error('Collaborate checkout requires the remote billing API.')
+  return loadJson<BillingPaymentMutationResponse>('/api/v1/billing/collaborate/checkout', {
     body: JSON.stringify(input),
     method: 'POST',
   })
 }
 
-export async function completeBillingPayment(paymentId: string): Promise<BillingPaymentMutationResponse> {
+export async function createTeamSubscriptionCheckout(
+  input: BillingTeamSubscriptionCheckoutInput,
+): Promise<BillingPaymentMutationResponse> {
+  if (!hasRemotePersistenceApi()) throw new Error('Team checkout requires the remote billing API.')
+  return loadJson<BillingPaymentMutationResponse>('/api/v1/billing/teams/checkout', {
+    body: JSON.stringify(input),
+    method: 'POST',
+  })
+}
+
+export async function createWorkspaceSeatCheckout(
+  input: BillingSeatPurchaseCheckoutInput,
+  options: BillingClientOptions = {},
+): Promise<BillingPaymentMutationResponse> {
+  if (!hasRemotePersistenceApi()) throw new Error('Seat checkout requires the remote billing API.')
+  return loadJson<BillingPaymentMutationResponse>('/api/v1/billing/workspaces/current/seats/checkout', {
+    body: JSON.stringify(input),
+    method: 'POST',
+  }, options)
+}
+
+export async function createWorkspaceTopupCheckout(
+  input: BillingTopupCheckoutInput,
+  options: BillingClientOptions = {},
+): Promise<BillingPaymentMutationResponse> {
+  if (!hasRemotePersistenceApi()) throw new Error('Workspace top-up checkout requires the remote billing API.')
+  return loadJson<BillingPaymentMutationResponse>('/api/v1/billing/workspaces/current/topups/checkout', {
+    body: JSON.stringify(input),
+    method: 'POST',
+  }, options)
+}
+
+export async function completeBillingPayment(
+  paymentId: string,
+  options: BillingClientOptions = {},
+): Promise<BillingPaymentMutationResponse> {
   if (!hasRemotePersistenceApi()) throw new Error('Payment completion requires the remote billing API.')
   return loadJson<BillingPaymentMutationResponse>(`/api/v1/billing/payments/${encodeURIComponent(paymentId)}/complete`, {
     method: 'POST',
-  })
+  }, options)
 }
 
 function createQuery(params: Record<string, null | number | string | undefined>) {
@@ -131,8 +235,12 @@ function createQuery(params: Record<string, null | number | string | undefined>)
   return query ? `?${query}` : ''
 }
 
-async function loadJson<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const headers = await persistenceAuthHeadersAsync()
+async function loadJson<T>(
+  path: string,
+  init: RequestInit = {},
+  options: BillingClientOptions = {},
+): Promise<T> {
+  const headers = await persistenceAuthHeadersAsync(options.workspace)
   const response = await fetch(persistenceApiUrl(path), {
     ...init,
     headers: {

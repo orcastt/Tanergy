@@ -42,6 +42,7 @@ def test_alembic_revision_chain_is_linear():
         load_migration("20260506_0010_ai_runtime_provider_currency.py"),
         load_migration("20260506_0011_ai_control_plane_versions_and_payment_checkout.py"),
         load_migration("20260508_0012_team_group_wallet_contracts.py"),
+        load_migration("20260508_0013_workspace_invites_roles.py"),
     ]
 
     for previous, current in zip(migrations, migrations[1:]):
@@ -58,6 +59,7 @@ def test_s1a_migrations_keep_required_schema_contracts():
     ai_runtime_currency = load_migration("20260506_0010_ai_runtime_provider_currency.py")
     ai_control_plane_versions = load_migration("20260506_0011_ai_control_plane_versions_and_payment_checkout.py")
     team_group_wallets = load_migration("20260508_0012_team_group_wallet_contracts.py")
+    workspace_invite_roles = load_migration("20260508_0013_workspace_invites_roles.py")
     core_sql = "\n".join(core.UPGRADE)
     future_sql = "\n".join(future.UPGRADE)
     hardening_sql = "\n".join(hardening.UPGRADE)
@@ -67,6 +69,7 @@ def test_s1a_migrations_keep_required_schema_contracts():
     ai_runtime_currency_sql = "\n".join(ai_runtime_currency.UPGRADE)
     ai_control_plane_versions_sql = "\n".join(ai_control_plane_versions.UPGRADE)
     team_group_wallets_sql = "\n".join(team_group_wallets.UPGRADE)
+    workspace_invite_roles_sql = "\n".join(workspace_invite_roles.UPGRADE)
 
     for table_name in [
         "tangent_workspace_members",
@@ -153,6 +156,16 @@ def test_s1a_migrations_keep_required_schema_contracts():
         "CHECK (charged_scope IN ('actor_personal', 'team_wallet', 'workspace_pool'))",
     ]:
         assert contract in team_group_wallets_sql
+
+    for contract in [
+        "tangent_workspace_members_role_ck",
+        "tangent_workspace_invitations_role_ck",
+        "'editor'",
+        "'viewer'",
+        "ALTER COLUMN email DROP NOT NULL",
+        "tangent_workspace_members_workspace_role_idx",
+    ]:
+        assert contract in workspace_invite_roles_sql
 
 
 def test_s1a_smoke_runner_requires_explicit_database(monkeypatch):

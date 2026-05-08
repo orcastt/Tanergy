@@ -8,7 +8,7 @@ export type PlanKey =
   | 'team_growth'
   | 'team_start'
 
-export type ChargeScope = 'actor_personal' | 'workspace_pool'
+export type ChargeScope = 'actor_personal' | 'team_wallet' | 'workspace_pool'
 
 export type WorkspacePlanSummary = {
   billingPeriod: string
@@ -110,6 +110,75 @@ export type WorkspaceMemberRoleUpdateInput = {
   role: string
 }
 
+export type WorkspaceCreateInput = {
+  name: string
+}
+
+export type WorkspaceCreateResponse = {
+  error?: string
+  ok: boolean
+  workspace: BillingWorkspaceSummary
+}
+
+export type WorkspaceInvitationRecord = {
+  acceptedAt?: null | string
+  acceptedBy?: null | string
+  createdAt: string
+  email?: null | string
+  expiresAt: string
+  id: string
+  invitedBy?: null | string
+  metadata: Record<string, unknown>
+  revokedAt?: null | string
+  role: string
+  targetUserId?: null | string
+  workspaceId: string
+}
+
+export type WorkspaceInvitationCreateInput = {
+  email?: null | string
+  expiresInDays?: number
+  metadata?: Record<string, unknown>
+  role: 'admin' | 'editor' | 'viewer'
+  targetUserId?: null | string
+}
+
+export type WorkspaceInvitationCreateResult = {
+  acceptPath: string
+  invitation: WorkspaceInvitationRecord
+  token: string
+}
+
+export type WorkspaceInvitationAcceptResult = {
+  invitation: WorkspaceInvitationRecord
+  role: string
+  workspaceId: string
+}
+
+export type WorkspaceInvitationCreateResponse = {
+  error?: string
+  ok: boolean
+  result: WorkspaceInvitationCreateResult
+}
+
+export type WorkspaceInvitationAcceptResponse = {
+  error?: string
+  ok: boolean
+  result: WorkspaceInvitationAcceptResult
+}
+
+export type WorkspaceInvitationResponse = {
+  error?: string
+  invitation: WorkspaceInvitationRecord
+  ok: boolean
+}
+
+export type WorkspaceInvitationsResponse = {
+  error?: string
+  invitations: WorkspaceInvitationRecord[]
+  ok: boolean
+}
+
 export type CreditLedgerEntryRecord = {
   accountId: string
   actorUserId?: null | string
@@ -207,4 +276,18 @@ export type BillingSeatPurchaseCheckoutInput = {
   metadata?: Record<string, unknown>
   planKey: Extract<PlanKey, 'team_growth' | 'team_start'>
   quantity: number
+}
+
+export type BillingCollaborateSubscriptionCheckoutInput = {
+  currency?: string
+  metadata?: Record<string, unknown>
+  planKey: Extract<PlanKey, 'collaborate_plus' | 'collaborate_start'>
+}
+
+export type BillingTeamSubscriptionCheckoutInput = {
+  currency?: string
+  metadata?: Record<string, unknown>
+  planKey: Extract<PlanKey, 'team_growth' | 'team_start'>
+  quantity: number
+  teamName: string
 }

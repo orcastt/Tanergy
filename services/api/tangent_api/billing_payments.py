@@ -6,6 +6,13 @@ from uuid import uuid4
 from fastapi import HTTPException
 
 from tangent_api.billing_payment_schemas import BillingPaymentMutationResponse, BillingPaymentRecord
+from tangent_api.collaborate_subscription_lifecycle import (
+    assert_collaborate_subscription_completion_allowed,
+    build_collaborate_subscription_metadata,
+    calculate_collaborate_subscription_amount_cents,
+    subscription_credits_from_payment,
+    upsert_collaborate_subscription,
+)
 from tangent_api.credit_ledger import grant_subscription_credits_to_account, record_topup_purchase_to_account
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.storage.postgres_connection import require_database_url
@@ -186,6 +193,29 @@ def create_team_subscription_checkout(
     )
 
 
+def create_collaborate_subscription_checkout(
+    context: ApiRequestContext,
+    *,
+    currency: str,
+    metadata: dict[str, object],
+    plan_key: str,
+) -> BillingPaymentRecord:
+    require_database_url()
+    payment_metadata = build_collaborate_subscription_metadata(
+        context,
+        metadata=metadata,
+        plan_key=plan_key,
+    )
+    return _create_payment(
+        account_owner_id=context.user_id,
+        account_owner_type="user",
+        amount_cents=calculate_collaborate_subscription_amount_cents(plan_key),
+        currency=currency,
+        kind="collaborate_subscription",
+        metadata=payment_metadata,
+    )
+
+
 def complete_billing_payment(
     payment_id: str,
     context: ApiRequestContext,
@@ -261,26 +291,70 @@ def complete_billing_payment(
                 topup_entry_id = mutation.entry.id
             elif updated.kind == "seat_purchase":
                 _upsert_workspace_subscription(cursor, updated)
-                _grant_team_subscription_credits(updated, context)
+                _grant_team_subscription_credits(cursor, updated, context)
             elif updated.kind == "team_subscription":
                 updated = provision_team_subscription_payment(cursor, updated, context)
                 _upsert_workspace_subscription(cursor, updated)
-                _grant_team_subscription_credits(updated, context)
+                _grant_team_subscription_credits(cursor, updated, context)
+            elif updated.kind == "collaborate_subscription":
+                upsert_collaborate_subscription(cursor, updated, context)
+                _grant_collaborate_subscription_credits(updated, context)
         connection.commit()
     return BillingPaymentMutationResponse(ok=True, payment=updated, topupEntryId=topup_entry_id)
 
 
 def _grant_team_subscription_credits(
+    cursor: object,
     payment: BillingPaymentRecord,
     context: ApiRequestContext,
 ) -> None:
     credits = float(payment.metadata.get("includedCreditsPerSeat") or 0) * int(payment.metadata.get("quantity") or 0)
     if credits <= 0:
         return
+    cursor.execute(
+        """
+        INSERT INTO tangent_credit_ledger (
+            id,
+            account_id,
+            workspace_id,
+            actor_user_id,
+            source_type,
+            source_id,
+            credits_delta,
+            reason,
+            metadata
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb)
+        """,
+        (
+            f"credit_ledger_{uuid4()}",
+            str(payment.account_id),
+            str(payment.metadata.get("workspaceId") or context.workspace_id),
+            context.user_id,
+            "subscription",
+            payment.id,
+            credits,
+            "subscription_grant",
+            json.dumps({
+                "checkoutSessionId": payment.checkout_session_id,
+                "paymentId": payment.id,
+                **payment.metadata,
+            }),
+        ),
+    )
+
+
+def _grant_collaborate_subscription_credits(
+    payment: BillingPaymentRecord,
+    context: ApiRequestContext,
+) -> None:
+    credits = subscription_credits_from_payment(payment)
+    if credits <= 0:
+        return
     grant_subscription_credits_to_account(
         account_id=str(payment.account_id),
         actor_user_id=context.user_id,
-        workspace_id=str(payment.metadata.get("workspaceId") or context.workspace_id),
+        workspace_id=context.workspace_id,
         credits=credits,
         source_id=payment.id,
         metadata={
@@ -388,6 +462,9 @@ def _assert_payment_completion_allowed(payment: BillingPaymentRecord, context: A
         return
     if payment.kind == "team_subscription":
         assert_team_subscription_completion_allowed(payment, context)
+        return
+    if payment.kind == "collaborate_subscription":
+        assert_collaborate_subscription_completion_allowed(payment, context)
         return
     expected_account_id = f"credit_user_{context.user_id}"
     if payment.account_id != expected_account_id:

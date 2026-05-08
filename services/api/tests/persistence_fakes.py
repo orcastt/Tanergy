@@ -116,13 +116,17 @@ class FakePostgresCursor:
             self.database.payments.append(row)
             self.row = _payment_tuple(row)
         elif normalized.startswith("INSERT INTO tangent_workspaces"):
-            workspace_id, name, owner_id, billing_owner_user_id = params
+            if len(params) == 5:
+                workspace_id, name, owner_id, kind, billing_owner_user_id = params
+            else:
+                workspace_id, name, owner_id, billing_owner_user_id = params
+                kind = "team_workspace"
             existing = next((row for row in self.database.workspaces if row["id"] == workspace_id), None)
             next_row = {
                 "billing_owner_user_id": billing_owner_user_id,
                 "created_at": f"2026-05-08T00:10:{len(self.database.workspaces):02d}Z",
                 "id": workspace_id,
-                "kind": "team_workspace",
+                "kind": kind,
                 "name": name,
                 "owner_id": owner_id,
                 "slug": None,
@@ -133,13 +137,18 @@ class FakePostgresCursor:
             else:
                 self.database.workspaces.append(next_row)
         elif normalized.startswith("INSERT INTO tangent_workspace_members"):
-            workspace_id, user_id, display_name = params
+            if len(params) == 5:
+                workspace_id, user_id, role, display_name, invited_by = params
+            else:
+                workspace_id, user_id, display_name = params
+                role = "owner"
+                invited_by = None
             existing = _find_workspace_member(self.database, workspace_id, user_id)
             next_row = {
                 "display_name": display_name,
-                "invited_by": None,
+                "invited_by": invited_by,
                 "joined_at": f"2026-05-08T00:15:{len(self.database.workspace_members):02d}Z",
-                "role": "owner",
+                "role": role,
                 "user_id": user_id,
                 "workspace_id": workspace_id,
             }
@@ -147,6 +156,25 @@ class FakePostgresCursor:
                 existing.update(next_row)
             else:
                 self.database.workspace_members.append(next_row)
+        elif normalized.startswith("INSERT INTO tangent_workspace_invitations"):
+            metadata = json.loads(params[8]) if isinstance(params[8], str) else params[8]
+            row = {
+                "accepted_at": None,
+                "accepted_by": None,
+                "created_at": f"2026-05-08T00:20:{len(self.database.workspace_invitations):02d}Z",
+                "email": params[2],
+                "expires_at": params[5],
+                "id": params[0],
+                "invited_by": params[4],
+                "metadata": metadata or {},
+                "revoked_at": None,
+                "role": params[3],
+                "target_user_id": params[7],
+                "token_hash": params[6],
+                "workspace_id": params[1],
+            }
+            self.database.workspace_invitations.append(row)
+            self.row = _workspace_invitation_tuple(row)
         elif normalized.startswith("INSERT INTO tangent_ai_runs"):
             row = {
                 "id": params[0],
@@ -1037,7 +1065,22 @@ class FakePostgresCursor:
             rows.sort(key=lambda row: row[0], reverse=True)
             self.rows = rows
         elif normalized.startswith("SELECT COUNT(*) FROM tangent_workspace_seat_assignments"):
-            workspace_id, plan_key, user_id = params
+            workspace_id = params[0]
+            if len(params) == 2:
+                user_id = params[1]
+                self.row = (
+                    sum(
+                        1
+                        for row in self.database.workspace_seat_assignments
+                        if (
+                            row["workspace_id"] == workspace_id
+                            and row.get("status", "active") == "active"
+                            and row["user_id"] != user_id
+                        )
+                    ),
+                )
+                return
+            plan_key, user_id = params[1], params[2]
             self.row = (
                 sum(
                     1
@@ -1067,19 +1110,31 @@ class FakePostgresCursor:
         elif normalized.startswith("SELECT 1 FROM tangent_workspace_members"):
             workspace_id, user_id = params
             member = _find_workspace_member(self.database, workspace_id, user_id)
-            if member and member.get("role") in {"admin", "member", "owner"}:
+            if member and member.get("role") in {"admin", "editor", "guest", "member", "owner", "viewer"}:
                 self.row = (1,)
+        elif normalized.startswith("SELECT role FROM tangent_workspace_members"):
+            workspace_id, user_id = params
+            member = _find_workspace_member(self.database, workspace_id, user_id)
+            if member:
+                self.row = (member.get("role"),)
         elif normalized.startswith("INSERT INTO tangent_workspace_seat_assignments"):
-            (
-                seat_id,
-                workspace_id,
-                user_id,
-                plan_key,
-                included_credits,
-                current_period_start,
-                current_period_end,
-                assigned_by,
-            ) = params
+            if len(params) == 6:
+                seat_id, workspace_id, user_id, plan_key, included_credits, assigned_by = params
+                current_period_start = None
+                current_period_end = None
+                should_return = False
+            else:
+                (
+                    seat_id,
+                    workspace_id,
+                    user_id,
+                    plan_key,
+                    included_credits,
+                    current_period_start,
+                    current_period_end,
+                    assigned_by,
+                ) = params
+                should_return = True
             existing = next(
                 (
                     row for row in self.database.workspace_seat_assignments
@@ -1105,10 +1160,12 @@ class FakePostgresCursor:
             }
             if existing:
                 existing.update(next_row)
-                self.row = _seat_assignment_tuple(existing)
+                if should_return:
+                    self.row = _seat_assignment_tuple(existing)
             else:
                 self.database.workspace_seat_assignments.append(next_row)
-                self.row = _seat_assignment_tuple(next_row)
+                if should_return:
+                    self.row = _seat_assignment_tuple(next_row)
         elif normalized.startswith("UPDATE tangent_workspace_seat_assignments SET status = 'revoked'"):
             workspace_id, user_id = params[0], params[1]
             excluded_plan_key = params[2] if len(params) > 2 else None
@@ -1121,6 +1178,14 @@ class FakePostgresCursor:
                 ):
                     row["status"] = "revoked"
                     self.rowcount += 1
+        elif normalized.startswith("DELETE FROM tangent_workspace_members"):
+            workspace_id, user_id = params
+            before = len(self.database.workspace_members)
+            self.database.workspace_members = [
+                row for row in self.database.workspace_members
+                if row["workspace_id"] != workspace_id or row["user_id"] != user_id
+            ]
+            self.rowcount = before - len(self.database.workspace_members)
         elif normalized.startswith("SELECT amount_cents, metadata FROM tangent_payments"):
             account_id = params[0]
             rows = [
@@ -1133,6 +1198,26 @@ class FakePostgresCursor:
                 )
             ]
             self.rows = rows
+        elif normalized.startswith("SELECT COALESCE(kind, 'solo_workspace') FROM tangent_workspaces"):
+            workspace_id = params[0]
+            row = next((row for row in self.database.workspaces if row["id"] == workspace_id), None)
+            if row:
+                self.row = (row.get("kind", "solo_workspace"),)
+        elif normalized.startswith("SELECT plan_key, seat_capacity FROM tangent_subscriptions"):
+            workspace_id = params[0]
+            matches = [
+                row for row in self.database.subscriptions
+                if (
+                    row.get("owner_type") == "workspace"
+                    and row.get("owner_id") == workspace_id
+                    and row.get("plan_family") == "team"
+                    and row.get("status", "active") in {"active", "trialing"}
+                )
+            ]
+            matches.sort(key=lambda row: row.get("updated_at", ""), reverse=True)
+            if matches:
+                row = matches[0]
+                self.row = (row.get("plan_key"), row.get("seat_capacity", 0))
         elif normalized.startswith("SELECT ca.id, s.plan_key FROM tangent_credit_accounts ca JOIN tangent_subscriptions s"):
             owner_type, owner_id = params
             accounts = [
@@ -1151,6 +1236,31 @@ class FakePostgresCursor:
             if matches:
                 matches.sort(key=lambda row: row.get("updated_at", ""), reverse=True)
                 self.row = (matches[0]["account_id"], matches[0]["plan_key"])
+        elif normalized.startswith("SELECT id, workspace_id, email, role, invited_by, accepted_by, expires_at, accepted_at, revoked_at, created_at, token_hash, target_user_id, metadata FROM tangent_workspace_invitations WHERE token_hash = %s"):
+            token_hash = params[0]
+            row = next(
+                (
+                    row for row in self.database.workspace_invitations
+                    if (
+                        row.get("token_hash") == token_hash
+                        and row.get("accepted_at") is None
+                        and row.get("revoked_at") is None
+                        and _invite_is_active(row)
+                    )
+                ),
+                None,
+            )
+            if row:
+                self.row = _workspace_invitation_tuple(row)
+        elif normalized.startswith("SELECT id, workspace_id, email, role, invited_by, accepted_by, expires_at, accepted_at, revoked_at, created_at, token_hash, target_user_id, metadata FROM tangent_workspace_invitations WHERE workspace_id = %s"):
+            workspace_id = params[0]
+            rows = [
+                _workspace_invitation_tuple(row)
+                for row in self.database.workspace_invitations
+                if row["workspace_id"] == workspace_id
+            ]
+            rows.sort(key=lambda row: row[9], reverse=True)
+            self.rows = rows
         elif normalized.startswith("SELECT id FROM tangent_subscriptions"):
             account_id = params[0]
             matches = [
@@ -1200,6 +1310,30 @@ class FakePostgresCursor:
                 payment["account_id"] = account_id
                 payment["metadata"] = json.loads(metadata) if isinstance(metadata, str) else metadata
                 self.row = _payment_tuple(payment)
+        elif normalized.startswith("UPDATE tangent_workspace_invitations SET accepted_by = %s"):
+            accepted_by, invitation_id = params
+            row = next((row for row in self.database.workspace_invitations if row["id"] == invitation_id), None)
+            if row:
+                row["accepted_by"] = accepted_by
+                row["accepted_at"] = "2026-05-08T00:25:00Z"
+                self.row = _workspace_invitation_tuple(row)
+        elif normalized.startswith("UPDATE tangent_workspace_invitations SET revoked_at = NOW()"):
+            invitation_id, workspace_id = params
+            row = next(
+                (
+                    row for row in self.database.workspace_invitations
+                    if (
+                        row["id"] == invitation_id
+                        and row["workspace_id"] == workspace_id
+                        and row.get("accepted_at") is None
+                        and row.get("revoked_at") is None
+                    )
+                ),
+                None,
+            )
+            if row:
+                row["revoked_at"] = "2026-05-08T00:26:00Z"
+                self.row = _workspace_invitation_tuple(row)
         elif normalized.startswith("INSERT INTO tangent_subscriptions"):
             if len(params) == 9:
                 row = {
@@ -1218,6 +1352,23 @@ class FakePostgresCursor:
                     "updated_at": "2026-05-06T00:50:00Z",
                     "workspace_id": params[3],
                 }
+            elif len(params) == 7:
+                row = {
+                    "account_id": params[1],
+                    "current_period_end": params[6],
+                    "current_period_start": "2026-05-06T00:50:00Z",
+                    "id": params[0],
+                    "owner_id": params[2],
+                    "owner_type": "user",
+                    "plan_family": "collaborate",
+                    "plan_key": params[5],
+                    "provider": params[3],
+                    "provider_subscription_id": params[4],
+                    "seat_capacity": 1,
+                    "status": "active",
+                    "updated_at": "2026-05-06T00:50:00Z",
+                    "workspace_id": None,
+                }
             else:
                 row = {
                     "account_id": params[1],
@@ -1233,6 +1384,10 @@ class FakePostgresCursor:
         elif normalized.startswith("UPDATE tangent_subscriptions SET plan_key = %s"):
             if len(params) == 8:
                 plan_key, owner_id, workspace_id, provider, provider_subscription_id, seat_capacity, current_period_end, subscription_id = params
+            elif len(params) == 6:
+                plan_key, owner_id, provider, provider_subscription_id, current_period_end, subscription_id = params
+                workspace_id = None
+                seat_capacity = 1
             else:
                 plan_key, provider, provider_subscription_id, current_period_end, subscription_id = params
                 owner_id = None
@@ -1243,8 +1398,8 @@ class FakePostgresCursor:
                 row["plan_key"] = plan_key
                 if owner_id is not None:
                     row["owner_id"] = owner_id
-                    row["owner_type"] = "workspace"
-                    row["plan_family"] = "team"
+                    row["owner_type"] = "workspace" if workspace_id is not None else "user"
+                    row["plan_family"] = "team" if workspace_id is not None else "collaborate"
                     row["workspace_id"] = workspace_id
                     row["seat_capacity"] = max(int(row.get("seat_capacity") or 0), int(seat_capacity or 0))
                 row["provider"] = provider
@@ -1569,6 +1724,7 @@ class FakePostgresDatabase:
         self.subscriptions = []
         self.users = []
         self.workspaces = []
+        self.workspace_invitations = []
         self.workspace_members = []
         self.workspace_seat_assignments = []
 
@@ -1601,6 +1757,22 @@ def _workspace_role_rank(role):
 
 
 def _share_link_is_active(row):
+    expires_at = row.get("expires_at")
+    if not expires_at:
+        return True
+    if hasattr(expires_at, "isoformat"):
+        parsed = expires_at
+    else:
+        try:
+            parsed = datetime.fromisoformat(str(expires_at).replace("Z", "+00:00"))
+        except ValueError:
+            return False
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed > datetime.now(timezone.utc)
+
+
+def _invite_is_active(row):
     expires_at = row.get("expires_at")
     if not expires_at:
         return True
@@ -1657,6 +1829,24 @@ def _payment_tuple(row):
         row.get("created_at", "1970-01-01T00:00:00Z"),
         row.get("checkout_session_id"),
         row.get("kind", "topup"),
+        row.get("metadata", {}),
+    )
+
+
+def _workspace_invitation_tuple(row):
+    return (
+        row["id"],
+        row["workspace_id"],
+        row.get("email"),
+        row["role"],
+        row.get("invited_by"),
+        row.get("accepted_by"),
+        row.get("expires_at"),
+        row.get("accepted_at"),
+        row.get("revoked_at"),
+        row.get("created_at", "1970-01-01T00:00:00Z"),
+        row.get("token_hash"),
+        row.get("target_user_id"),
         row.get("metadata", {}),
     )
 

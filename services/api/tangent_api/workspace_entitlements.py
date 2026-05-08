@@ -486,7 +486,7 @@ def _assert_active_workspace_member(cursor: object, workspace_id: str, user_id: 
         FROM tangent_workspace_members
         WHERE workspace_id = %s
           AND user_id = %s
-          AND role IN ('owner', 'admin', 'member')
+          AND role IN ('owner', 'admin', 'editor', 'viewer', 'member', 'guest')
         LIMIT 1
         """,
         (workspace_id, user_id),
@@ -536,7 +536,7 @@ def _normalize_team_plan_key(value: str) -> str:
 
 def _normalize_workspace_role(value: str) -> str:
     normalized = value.strip()
-    if normalized not in {"admin", "guest", "member"}:
+    if normalized not in {"admin", "editor", "viewer", "guest", "member"}:
         raise HTTPException(status_code=400, detail="Invalid workspace role.")
     return normalized
 
@@ -646,8 +646,11 @@ def _load_workspace_dashboard_members(
                 ORDER BY CASE wm.role
                     WHEN 'owner' THEN 0
                     WHEN 'admin' THEN 1
-                    WHEN 'member' THEN 2
-                    ELSE 3
+                    WHEN 'editor' THEN 2
+                    WHEN 'member' THEN 3
+                    WHEN 'viewer' THEN 4
+                    WHEN 'guest' THEN 5
+                    ELSE 6
                 END,
                 wm.joined_at ASC
                 """,

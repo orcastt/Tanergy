@@ -3,6 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 
 from tangent_api.billing_payment_schemas import (
+    BillingCollaborateSubscriptionCheckoutRequest,
     BillingPaymentMutationResponse,
     BillingPaymentsResponse,
     BillingSeatPurchaseCheckoutRequest,
@@ -11,6 +12,7 @@ from tangent_api.billing_payment_schemas import (
 )
 from tangent_api.billing_payments import (
     complete_billing_payment,
+    create_collaborate_subscription_checkout,
     create_team_subscription_checkout,
     create_topup_checkout,
     create_workspace_topup_checkout,
@@ -81,6 +83,22 @@ def post_team_subscription_checkout(
             plan_key=input_data.plan_key,
             quantity=input_data.quantity,
             team_name=input_data.team_name,
+        ),
+    )
+
+
+@router.post("/collaborate/checkout", response_model=BillingPaymentMutationResponse)
+def post_collaborate_subscription_checkout(
+    input_data: BillingCollaborateSubscriptionCheckoutRequest,
+    context: ApiRequestContext = Depends(get_request_context),
+) -> BillingPaymentMutationResponse:
+    return BillingPaymentMutationResponse(
+        ok=True,
+        payment=create_collaborate_subscription_checkout(
+            context,
+            currency=input_data.currency,
+            metadata=input_data.metadata,
+            plan_key=input_data.plan_key,
         ),
     )
 

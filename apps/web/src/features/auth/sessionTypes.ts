@@ -1,6 +1,6 @@
 import type { PlanKey, WorkspaceKind } from '@/features/billing/billingTypes'
 
-export type WorkspaceRole = 'admin' | 'guest' | 'member' | 'owner'
+export type WorkspaceRole = 'admin' | 'editor' | 'guest' | 'member' | 'owner' | 'viewer'
 
 export type TangentUser = {
   avatarInitials: string

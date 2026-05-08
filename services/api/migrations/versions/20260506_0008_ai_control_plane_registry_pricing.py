@@ -15,13 +15,15 @@ depends_on = None
 
 
 def upgrade() -> None:
+    connection = op.get_bind()
     for statement in UPGRADE:
-        op.execute(statement)
+        connection.exec_driver_sql(statement)
 
 
 def downgrade() -> None:
+    connection = op.get_bind()
     for statement in DOWNGRADE:
-        op.execute(statement)
+        connection.exec_driver_sql(statement)
 
 
 def constraint_sql(name: str, table: str, clause: str) -> str:

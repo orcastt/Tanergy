@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { formatCredits } from './billingPresentation'
+import { SubscriptionPlanAction } from './SubscriptionPlanAction'
 import {
   formatPlanBadge,
   formatPlanPrice,
@@ -224,9 +225,14 @@ function PlanCard({
       <ul className="workspace-commerce-plan-list">
         {plan.features.map((feature) => <li key={feature}>{feature}</li>)}
       </ul>
-      <Link className={activeCount > 0 ? 'workspace-commerce-primary-button' : 'workspace-commerce-secondary-button'} href={href}>
-        {buttonLabel}
-      </Link>
+      <SubscriptionPlanAction
+        activeCount={activeCount}
+        className={activeCount > 0 ? 'workspace-commerce-primary-button' : 'workspace-commerce-secondary-button'}
+        href={href}
+        label={buttonLabel}
+        planKey={plan.key}
+        planName={plan.name}
+      />
     </article>
   )
 }

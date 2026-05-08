@@ -56,7 +56,7 @@ Add or confirm:
 Tests:
 
 - [x] Migration contract test for new columns/constraints.
-- [ ] Empty DB and seeded DB migration smoke against disposable Postgres after this cut.
+- [x] Empty DB and seeded DB migration smoke against disposable Postgres after this cut.
 - [x] Static unique active Collaborate constraint coverage in migration contract test.
 
 ## Phase 2: Auth, Registration And Workspace Selection
@@ -67,45 +67,45 @@ Tests:
   - personal wallet
 - Add active workspace selection that cannot be spoofed by frontend headers.
 - [x] Add Team checkout completion flow that creates a Team workspace and owner membership.
-- Add Collaborate checkout completion flow that activates exactly one personal Collaborate subscription.
+- [x] Add Collaborate checkout completion flow that activates exactly one personal Collaborate subscription.
 
 Tests:
 
 - New user gets personal wallet and default workspace.
-- User can own multiple Team workspaces.
-- User cannot activate both Collaborate Start and Plus.
+- [x] User can own multiple Team workspaces.
+- [x] User cannot activate both Collaborate Start and Plus.
 - Workspace selection rejects non-member workspace ids.
 
 ## Phase 3: Team And Group Membership
 
 Team:
 
-- Create Team invite link/email invite.
-- Accept Team invite with role admin/editor/viewer.
-- Enforce seat capacity for paid member roles where applicable.
-- Remove member and clean or freeze member seat assignment according to policy.
+- [x] Create Team invite link/email invite backend contract.
+- [x] Accept Team invite with role admin/editor/viewer backend contract.
+- [x] Enforce seat capacity for Team invite accept backend contract.
+- [x] Remove member and revoke member seat assignment backend contract.
 - Team owner/admin can update roles.
 
 Group:
 
-- Create Group workspace under personal Collaborate authority.
-- Create/accept Group invite.
+- [x] Create Group workspace under personal Collaborate authority.
+- [x] Create/accept Group invite backend contract.
 - Group admin/editor/viewer roles manage collaboration structure only.
 - Group admin cannot see other members' billing or personal usage.
 
 Tests:
 
-- Invite accept creates correct workspace membership.
-- Revoked/expired invite cannot be accepted.
-- Team member removal stops future Team wallet usage by that member.
+- [x] Invite accept creates correct workspace membership.
+- [x] Revoked/expired invite cannot be accepted.
+- [x] Team member removal stops future Team wallet usage by that member.
 - Group admin billing visibility is denied for another user.
 
 ## Phase 4: Wallet And Billing Services
 
 - [x] Team wallet balance, ledger and top-up checkout backend contract.
-- Team seat add checkout and included-credit grant into Team wallet.
-- Personal wallet balance, ledger and top-up checkout.
-- Collaborate subscription grant into personal wallet.
+- [x] Team seat add checkout and included-credit grant into Team wallet.
+- [x] Personal wallet balance, ledger and top-up checkout.
+- [x] Collaborate subscription grant into personal wallet.
 - Billing usage summaries:
   - personal usage
   - Team total usage
@@ -115,8 +115,8 @@ Tests:
 Tests:
 
 - [x] Team top-up credits workspace-owned account.
-- Personal top-up credits user-owned account.
-- Team seat add grants to Team wallet.
+- [x] Personal top-up credits user-owned account.
+- [x] Team seat add grants to Team wallet.
 - Credit ledger balances derive from ledger entries.
 
 ## Phase 5: Payer Resolver And AiRun Integration
@@ -139,19 +139,19 @@ Implementation:
 
 Tests:
 
-- Group run charges actor personal wallet.
-- Team run charges Team wallet.
-- Later polling/cancel cannot switch charged account.
-- Insufficient balance fails before provider call.
+- [x] Group run charges actor personal wallet.
+- [x] Team run charges Team wallet.
+- [x] Later polling/cancel cannot switch charged account.
+- [x] Insufficient balance fails before provider call.
 
 ## Phase 6: UI And Admin Surfaces
 
 User UI:
 
-- Team create/purchase flow.
-- Team member invite, role management, remove, seat count and add-seat flow.
+- [x] Team create/purchase flow first-pass UI using manual-test checkout/complete.
+- [x] Team member invite, remove and seat count first-pass UI. Rich role editing and add-seat polish remain.
 - Team wallet balance, top-up and usage view.
-- Group create/invite/member management.
+- [x] Group create/invite/member management first-pass UI.
 - Personal wallet/billing/usage view.
 - Clear AI node payer hints.
 
@@ -164,8 +164,8 @@ Admin/developer UI:
 
 Tests/smoke:
 
-- Minimal Team purchase -> invite -> quote -> run settlement smoke.
-- Minimal Group invite -> quote -> personal-wallet charge smoke.
+- [x] Minimal Team purchase -> invite -> quote -> member removal -> run settlement smoke against disposable Postgres.
+- [x] Minimal Group create/invite -> quote -> personal-wallet run settlement smoke against disposable Postgres.
 - Admin can explain each smoke run.
 
 ## Phase 7: Payment, Renewal And Finance Depth

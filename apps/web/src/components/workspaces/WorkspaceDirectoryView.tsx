@@ -2,6 +2,8 @@
 
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
+import type { WorkspaceKind } from '@/features/billing/billingTypes'
+import { WorkspaceDirectoryActions } from './WorkspaceDirectoryActions'
 import {
   formatWorkspaceMembershipRole,
   type WorkspaceDirectoryItem,
@@ -14,6 +16,7 @@ type WorkspaceDirectoryViewProps = {
   emptyCreatedLabel: string
   emptyJoinedLabel: string
   joinLabel: string
+  kind: Extract<WorkspaceKind, 'group_workspace' | 'team_workspace'>
   items: WorkspaceDirectoryItem[]
   title: string
 }
@@ -23,20 +26,22 @@ export function WorkspaceDirectoryView({
   emptyCreatedLabel,
   emptyJoinedLabel,
   joinLabel,
+  kind,
   items,
   title,
 }: WorkspaceDirectoryViewProps) {
+  const [directoryItems, setDirectoryItems] = useState(items)
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState<DirectoryViewMode>('gallery')
 
   const filteredItems = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
-    if (!query) return items
-    return items.filter((item) => (
+    if (!query) return directoryItems
+    return directoryItems.filter((item) => (
       item.name.toLowerCase().includes(query)
       || item.membershipRole.includes(query)
     ))
-  }, [items, searchQuery])
+  }, [directoryItems, searchQuery])
 
   const createdItems = filteredItems.filter((item) => item.relationship === 'created')
   const joinedItems = filteredItems.filter((item) => item.relationship === 'joined')
@@ -46,14 +51,12 @@ export function WorkspaceDirectoryView({
       <section className="product-page-header workspace-directory-header">
         <div className="workspace-directory-header-main">
           <h1 className="product-page-title">{title}</h1>
-          <div className="workspace-directory-header-actions">
-            <button className="product-button product-button-primary" type="button">
-              {createLabel}
-            </button>
-            <button className="product-button product-button-secondary" type="button">
-              {joinLabel}
-            </button>
-          </div>
+          <WorkspaceDirectoryActions
+            createLabel={createLabel}
+            joinLabel={joinLabel}
+            kind={kind}
+            onWorkspaceAdded={appendDirectoryItem}
+          />
         </div>
       </section>
 
@@ -93,6 +96,15 @@ export function WorkspaceDirectoryView({
       </div>
     </div>
   )
+
+  function appendDirectoryItem(item: WorkspaceDirectoryItem) {
+    if (item.kind !== kind) return
+    const href = item.kind === 'team_workspace' ? `/team/${encodeURIComponent(item.id)}` : `/group/${encodeURIComponent(item.id)}`
+    setDirectoryItems((current) => [
+      { ...item, href },
+      ...current.filter((existing) => existing.id !== item.id),
+    ])
+  }
 }
 
 function DirectorySection({

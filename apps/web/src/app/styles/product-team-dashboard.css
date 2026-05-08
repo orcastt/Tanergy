@@ -345,6 +345,8 @@
   gap: 10px;
 }
 
+.workspace-detail-field input,
+.workspace-detail-field select,
 .workspace-detail-field-row input {
   width: 100%;
   min-width: 0;
@@ -354,6 +356,19 @@
   background: #ffffff;
   color: var(--color-ink);
   padding: 0 14px;
+}
+
+.workspace-detail-status {
+  display: block;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.workspace-detail-invite-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
 }
 
 .workspace-detail-summary-list,

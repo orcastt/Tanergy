@@ -141,6 +141,18 @@ checkout completed
   -> allow Group creation/invite flows according to plan limits
 ```
 
+Implementation checkpoint: `/api/v1/billing/collaborate/checkout` and payment completion now create/update the user's single active Collaborate subscription and grant included credits to the personal wallet.
+
+Group create:
+
+```text
+POST /api/v1/workspaces/groups
+  -> require active user-owned Collaborate subscription
+  -> create group_workspace
+  -> create owner workspace_members row
+  -> future invites share Boards while AI spend stays actor-personal
+```
+
 Invite acceptance:
 
 ```text
@@ -151,6 +163,17 @@ create invite link/email invite
   -> create/update workspace_members
   -> optional board_members grant
   -> audit membership change
+```
+
+Implementation checkpoint: backend workspace invite create/list/accept/revoke/expiry contracts exist. Invite tokens are stored only as hashes. The current first cut verifies token state and optional target email/user, then creates/updates workspace membership. Team invite accept also requires an active Team subscription with remaining seat capacity and creates the member's seat assignment without granting duplicate credits. A minimal frontend invite/create/revoke/remove wiring exists on Team and Group surfaces. Email delivery, richer role UI and audit events remain.
+
+Member removal:
+
+```text
+owner/admin removes member
+  -> prevent owner removal/self-removal through this endpoint
+  -> delete workspace_members row
+  -> if team_workspace, revoke active workspace_seat_assignments for that member
 ```
 
 ## Permission Boundaries
@@ -303,10 +326,16 @@ Implemented in the 2026-05-08 first cut:
 - Team payer resolver now returns the workspace-owned Team wallet for Team entitlement/quote.
 - Team seat assignment now grants included credits to the Team wallet instead of a member personal wallet.
 - Team seat checkout completion now writes Team subscription ownership/seat-capacity facts and a Team wallet subscription grant.
+- Team top-up targets the Team wallet.
+- Collaborate checkout enforces the single active personal Collaborate subscription contract and grants credits to the personal wallet.
+- Workspace invite create/list/accept/revoke and member removal contracts exist for Team and Group.
+- Mock AI run settlement now has contract coverage for Group actor-personal charging, Team wallet charging and immutable charge context during polling/cancel.
+- Disposable Postgres smoke passed for migration-to-head, Team checkout/invite/quote/run-settlement/remove and Collaborate/Group create/invite/quote/run-settlement.
 
 Remaining rework:
 
-- Team top-up must target the Team wallet.
-- Collaborate checkout must enforce one active personal Collaborate subscription at the route/service layer; the database index now exists.
-- Workspace invite acceptance must become product-grade for Team and Group.
+- Hosted staging smoke still needs to run against managed Postgres and deployed API/Web.
+- Hosted live-provider run-settlement smoke still needs to exercise real provider output persistence through the same payer contract.
+- Real payment provider webhooks must replace manual-test completion as the authority for grants and subscription state.
+- Richer role UI, email invites and audit events remain.
 - GeekAI canvas fast path must be reconciled into S2 server provider-route/billing control plane before production reliance.

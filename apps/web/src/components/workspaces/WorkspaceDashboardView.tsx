@@ -3,19 +3,18 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { formatCredits } from '@/features/billing/billingPresentation'
+import type { TangentWorkspace } from '@/features/auth/sessionTypes'
+import { WorkspaceInvitePanel } from './WorkspaceInvitePanel'
+import { WorkspaceMembersPanel } from './WorkspaceMembersPanel'
 import {
   getGroupWorkspaceDashboardRecord,
   getTeamWorkspaceDashboardRecord,
   type GroupWorkspaceDashboardRecord,
   type WorkspaceDashboardAction,
   type WorkspaceDashboardBoard,
-  type WorkspaceDashboardMember,
   type TeamWorkspaceDashboardRecord,
 } from '@/features/workspaces/workspaceDashboardMock'
-import {
-  formatWorkspaceMembershipRole,
-  formatWorkspacePlanName,
-} from '@/features/workspaces/workspaceDirectoryMock'
+import { formatWorkspacePlanName } from '@/features/workspaces/workspaceDirectoryMock'
 
 type WorkspaceDashboardViewProps = {
   kind: 'group' | 'team'
@@ -35,8 +34,19 @@ export function WorkspaceDashboardView({ kind, workspaceId }: WorkspaceDashboard
     [kind, workspaceId],
   )
   const record = kind === 'team' ? teamRecord : groupRecord
+  const workspace = useMemo<TangentWorkspace | null>(() => {
+    if (!record) return null
+    return {
+      boardCount: record.boards.length,
+      id: record.id,
+      kind: kind === 'team' ? 'team_workspace' : 'group_workspace',
+      name: record.name,
+      planKey: record.planKey,
+      role: 'owner',
+    }
+  }, [kind, record])
 
-  if (!record) {
+  if (!record || !workspace) {
     return (
       <div className="product-page workspace-detail-page">
         <section className="product-page-header workspace-detail-header">
@@ -68,6 +78,7 @@ export function WorkspaceDashboardView({ kind, workspaceId }: WorkspaceDashboard
       {kind === 'team' && teamRecord ? (
         <TeamDashboardLayout
           record={teamRecord}
+          workspace={workspace}
           viewMode={viewMode}
           onViewModeChange={setViewMode}
         />
@@ -75,6 +86,7 @@ export function WorkspaceDashboardView({ kind, workspaceId }: WorkspaceDashboard
       {kind === 'group' && groupRecord ? (
         <GroupDashboardLayout
           record={groupRecord}
+          workspace={workspace}
           viewMode={viewMode}
           onViewModeChange={setViewMode}
         />
@@ -86,14 +98,15 @@ export function WorkspaceDashboardView({ kind, workspaceId }: WorkspaceDashboard
 function TeamDashboardLayout({
   onViewModeChange,
   record,
+  workspace,
   viewMode,
 }: {
   onViewModeChange: (mode: BoardViewMode) => void
   record: TeamWorkspaceDashboardRecord
+  workspace: TangentWorkspace
   viewMode: BoardViewMode
 }) {
   const creditPercent = Math.min(100, Math.round((record.totalCreditsRemaining / record.totalCredits) * 100))
-  const seatPercent = Math.min(100, Math.round((record.seatsUsed / record.seatLimit) * 100))
 
   return (
     <div className="workspace-detail-stack">
@@ -126,27 +139,8 @@ function TeamDashboardLayout({
       </section>
 
       <section className="workspace-detail-grid workspace-detail-grid-bottom">
-        <DashboardMembersPanel members={record.members} />
-        <section className="workspace-detail-panel workspace-detail-side-panel">
-          <div className="workspace-detail-panel-head"><h2>Invite</h2></div>
-          <div className="workspace-detail-dark-card">
-            <div className="workspace-detail-dark-row">
-              <strong>{record.seatsUsed}/{record.seatLimit}</strong>
-              <Link className="workspace-detail-danger-button" href="/billing">
-                Buy seat
-              </Link>
-            </div>
-            <small>seats</small>
-            <div className="workspace-detail-progress"><span style={{ width: `${seatPercent}%` }} /></div>
-          </div>
-          <label className="workspace-detail-field">
-            <span>Invite link</span>
-            <div className="workspace-detail-field-row">
-              <input readOnly value={record.inviteCode} />
-              <button className="workspace-detail-danger-button" type="button">Invite</button>
-            </div>
-          </label>
-        </section>
+        <WorkspaceMembersPanel members={record.members} workspace={workspace} />
+        <WorkspaceInvitePanel seatLabel={`${record.seatsUsed}/${record.seatLimit}`} workspace={workspace} />
       </section>
     </div>
   )
@@ -155,10 +149,12 @@ function TeamDashboardLayout({
 function GroupDashboardLayout({
   onViewModeChange,
   record,
+  workspace,
   viewMode,
 }: {
   onViewModeChange: (mode: BoardViewMode) => void
   record: GroupWorkspaceDashboardRecord
+  workspace: TangentWorkspace
   viewMode: BoardViewMode
 }) {
   const creditPercent = Math.min(100, Math.round((record.totalCreditsRemaining / record.totalCredits) * 100))
@@ -193,13 +189,30 @@ function GroupDashboardLayout({
       </section>
 
       <section className="workspace-detail-grid workspace-detail-grid-bottom">
-        <DashboardMembersPanel members={record.members} />
-        <section className="workspace-detail-panel workspace-detail-side-panel">
-          <div className="workspace-detail-panel-head"><h2>Actions</h2></div>
-          <DashboardActionsPanel actions={record.actions} />
-        </section>
+        <WorkspaceMembersPanel members={record.members} workspace={workspace} />
+        <WorkspaceInvitePanel workspace={workspace} />
+        <DashboardActionsPanel actions={record.actions} />
       </section>
     </div>
+  )
+}
+
+function DashboardActionsPanel({
+  actions,
+}: {
+  actions: WorkspaceDashboardAction[]
+}) {
+  return (
+    <section className="workspace-detail-panel workspace-detail-side-panel">
+      <div className="workspace-detail-panel-head"><h2>Actions</h2></div>
+      <div className="workspace-detail-action-list">
+        {actions.map((action) => (
+          <Link className="workspace-detail-action-link" href={action.href} key={action.label}>
+            {action.label}
+          </Link>
+        ))}
+      </div>
+    </section>
   )
 }
 
@@ -236,53 +249,5 @@ function DashboardBoardPanel({
       </div>
       <div className="workspace-detail-pagination"><span>1</span><span>2</span><span>3</span><span>...</span><span>10</span></div>
     </section>
-  )
-}
-
-function DashboardMembersPanel({
-  members,
-}: {
-  members: WorkspaceDashboardMember[]
-}) {
-  return (
-    <section className="workspace-detail-panel workspace-detail-members-panel">
-      <div className="workspace-detail-panel-head"><h2>Members</h2></div>
-      <div className="workspace-detail-member-list">
-        {members.map((member) => (
-          <div className="workspace-detail-member-row" key={member.id}>
-            <div className="workspace-detail-member-copy">
-              <span className="workspace-detail-avatar large">{member.initials}</span>
-              <div>
-                <strong>{formatWorkspaceMembershipRole(member.role)}</strong>
-                <small>{member.boardAssignments} boards</small>
-              </div>
-            </div>
-            <div className="workspace-detail-member-actions">
-              <button className="workspace-detail-muted-button" type="button">Manage</button>
-              <button className="workspace-detail-muted-button" type="button">Assign board</button>
-              {member.role === 'owner' ? null : (
-                <button className="workspace-detail-danger-button" type="button">Remove</button>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function DashboardActionsPanel({
-  actions,
-}: {
-  actions: WorkspaceDashboardAction[]
-}) {
-  return (
-    <div className="workspace-detail-action-list">
-      {actions.map((action) => (
-        <Link className="workspace-detail-action-link" href={action.href} key={action.label}>
-          {action.label}
-        </Link>
-      ))}
-    </div>
   )
 }

@@ -31,11 +31,11 @@ Enterprise may later use a contract-defined workspace pool, but it is not the al
 | --- | --- | --- |
 | Admin access | `/admin` is server-gated through `admin_roles`; all admin writes are audited. | First-pass stable |
 | Developer AI control | Admin/developer operators can inspect and edit model, provider-route and pricing facts with versioned publish/rollback. | First-pass stable |
-| Team purchase | Buying Team Start/Growth creates a new Team workspace, owner membership, Team wallet, subscription and seat capacity. | Backend checkout/complete contract first cut implemented; frontend flow and real webhooks pending |
-| Team seats | Team owners/admins can invite members, assign/remove roles, buy/add seats and remove members. Initial purchase need not max out the plan cap. | Seat mutation exists; wallet grant first cut now writes Team wallet |
+| Team purchase | Buying Team Start/Growth creates a new Team workspace, owner membership, Team wallet, subscription and seat capacity. | Backend checkout/complete contract first cut implemented; minimal frontend manual-test checkout wiring implemented; real webhooks pending |
+| Team seats | Team owners/admins can invite members, assign/remove roles, buy/add seats and remove members. Initial purchase need not max out the plan cap. | Backend seat mutation, invite accept seat-capacity enforcement and member removal first cuts implemented; minimal frontend invite/remove wiring implemented |
 | Team wallet | Included seat credits and Team top-ups land in the Team wallet. Team AI runs charge that wallet, not each member's personal account. | Backend entitlement/quote and Team top-up contract first cut implemented; UI/webhooks pending |
-| Group/Collaborate | A user can hold one active Collaborate plan at a time. Group members share Boards, while AI usage charges each actor's personal wallet. | Database constraint exists; checkout/service hardening pending |
-| Invites | Team and Group support invite links, invite acceptance, expiration/revoke and member role assignment. | Board invite first pass exists; workspace invite accept needs work |
+| Group/Collaborate | A user can hold one active Collaborate plan at a time. Group members share Boards, while AI usage charges each actor's personal wallet. | Backend Collaborate checkout and Group create first cut implemented; minimal frontend create/invite wiring implemented |
+| Invites | Team and Group support invite links, invite acceptance, expiration/revoke and member role assignment. | Backend workspace invite link create/accept/revoke/expiry first cut implemented; minimal frontend link UI implemented; email pending |
 | Permissions | Board `Can view/edit/manage/Owner` stays separate from workspace admin/editor/viewer and separate from AI payer eligibility. | First-pass resolver exists; Group/Team hardening pending |
 | Billing usage | Users can see personal wallet, credits, ledger, usage and top-ups. Team admins can see Team wallet, seat costs, member usage and usage by Board/model. | First-pass `/billing`, `/team`, `/usage` exists; semantics must pivot |
 | Payment lifecycle | Checkout, webhook grants, renewals, cancellation, invoices, top-ups and seat additions are durable and auditable. | Scaffold only |
@@ -61,7 +61,7 @@ Required rework:
 2. Team subscription lifecycle: Team purchase creates the Team workspace and wallet. Backend contract first cut implemented; real webhook authority and UI remain.
 3. Seat grants: seat capacity and member assignment do not create per-member payer accounts; seat purchases grant included credits into Team wallet.
 4. Team top-up: Team top-ups credit the Team wallet. Backend contract first cut implemented; UI/webhooks pending.
-5. Collaborate constraint: a user can have one active Collaborate subscription, Start or Plus.
+5. Collaborate constraint: a user can have one active Collaborate subscription, Start or Plus. Backend checkout/upsert first cut implemented.
 6. Group privacy: Group admins manage collaboration structure, not other users' billing.
 7. AiRun attribution: every production run stores actor, workspace/team, board, node, charged account, pricing rule and provider route before provider execution.
 

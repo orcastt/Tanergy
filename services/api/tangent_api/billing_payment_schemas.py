@@ -38,6 +38,12 @@ class BillingSeatPurchaseCheckoutRequest(TangentApiModel):
     quantity: int = 1
 
 
+class BillingCollaborateSubscriptionCheckoutRequest(TangentApiModel):
+    currency: str = "usd"
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    plan_key: str = Field(alias="planKey")
+
+
 class BillingTeamSubscriptionCheckoutRequest(TangentApiModel):
     currency: str = "usd"
     metadata: dict[str, Any] = Field(default_factory=dict)
