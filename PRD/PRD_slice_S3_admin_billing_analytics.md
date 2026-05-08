@@ -31,14 +31,14 @@ Enterprise may later use a contract-defined workspace pool, but it is not the al
 | --- | --- | --- |
 | Admin access | `/admin` is server-gated through `admin_roles`; all admin writes are audited. | First-pass stable |
 | Developer AI control | Admin/developer operators can inspect and edit model, provider-route and pricing facts with versioned publish/rollback. | First-pass stable |
-| Team purchase | Buying Team Start/Growth creates a new Team workspace, owner membership, Team wallet, subscription and seat capacity. | Backend checkout/complete contract first cut implemented; minimal frontend manual-test checkout wiring implemented; real webhooks pending |
+| Team purchase | Buying Team Start/Growth creates a new Team workspace, owner membership, Team wallet, subscription and seat capacity. | Backend checkout/complete contract first cut implemented; minimal frontend manual-test checkout wiring and signed webhook inbox first cut implemented; real provider session mapping pending |
 | Team seats | Team owners/admins can invite members, assign/remove roles, buy/add seats and remove members. Initial purchase need not max out the plan cap. | Backend seat mutation, invite accept seat-capacity enforcement and member removal first cuts implemented; minimal frontend invite/remove wiring implemented |
-| Team wallet | Included seat credits and Team top-ups land in the Team wallet. Team AI runs charge that wallet, not each member's personal account. | Backend entitlement/quote and Team top-up contract first cut implemented; UI/webhooks pending |
+| Team wallet | Included seat credits and Team top-ups land in the Team wallet. Team AI runs charge that wallet, not each member's personal account. | Backend entitlement/quote, Team top-up contract and signed webhook inbox first cuts implemented; UI polish pending |
 | Group/Collaborate | A user can hold one active Collaborate plan at a time. Group members share Boards, while AI usage charges each actor's personal wallet. | Backend Collaborate checkout and Group create first cut implemented; minimal frontend create/invite wiring implemented |
 | Invites | Team and Group support invite links, invite acceptance, expiration/revoke and member role assignment. | Backend workspace invite link create/accept/revoke/expiry first cut implemented; minimal frontend link UI implemented; email pending |
 | Permissions | Board `Can view/edit/manage/Owner` stays separate from workspace admin/editor/viewer and separate from AI payer eligibility. | First-pass resolver exists; Group/Team hardening pending |
 | Billing usage | Users can see personal wallet, credits, ledger, usage and top-ups. Team admins can see Team wallet, seat costs, member usage and usage by Board/model. | First-pass `/billing`, `/team`, `/usage` exists; semantics must pivot |
-| Payment lifecycle | Checkout, webhook grants, renewals, cancellation, invoices, top-ups and seat additions are durable and auditable. | Scaffold only |
+| Payment lifecycle | Checkout, webhook grants, renewals, cancellation, invoices, top-ups and seat additions are durable and auditable. | Signed webhook inbox first cut exists; renewals/cancel/invoices/reconciliation pending |
 | AI charge transparency | Every AI run explains user, workspace/team, board, node, model, pricing rule, provider route, charged account and provider cost. | S2/S3 scaffolds exist; GeekAI fast path still needs reconciliation |
 
 ## Current First Pass To Reuse
@@ -47,7 +47,7 @@ Enterprise may later use a contract-defined workspace pool, but it is not the al
 - First-pass `/billing`, `/team` and `/usage` UI surfaces.
 - `workspace.kind`, workspace members, seat assignments, usage rollups and dashboard snapshots.
 - `credit_accounts`, `credit_ledger`, internal grant/top-up/usage/refund/admin-adjustment helpers.
-- Payment checkout/complete scaffolds for top-ups and seat capacity.
+- Payment checkout/complete scaffolds for top-ups and seat capacity, plus a signed webhook inbox that reuses the payment completion/grant path.
 - AiRun charge fields, quote/preflight, runtime facts, `ai_api_calls`, provider-cost facts and admin AI route/pricing panels.
 - Board permission resolver, owner-only copy/delete, share links, people lookup and Board member management.
 
@@ -58,9 +58,9 @@ The older S3 strategy treated Team Start/Growth as governance plus member-person
 Required rework:
 
 1. Team payer resolver: Team workspaces charge a workspace-owned Team wallet.
-2. Team subscription lifecycle: Team purchase creates the Team workspace and wallet. Backend contract first cut implemented; real webhook authority and UI remain.
+2. Team subscription lifecycle: Team purchase creates the Team workspace and wallet. Backend contract first cut and signed webhook inbox implemented; real provider session mapping and UI polish remain.
 3. Seat grants: seat capacity and member assignment do not create per-member payer accounts; seat purchases grant included credits into Team wallet.
-4. Team top-up: Team top-ups credit the Team wallet. Backend contract first cut implemented; UI/webhooks pending.
+4. Team top-up: Team top-ups credit the Team wallet. Backend contract and signed webhook inbox first cuts implemented; UI polish pending.
 5. Collaborate constraint: a user can have one active Collaborate subscription, Start or Plus. Backend checkout/upsert first cut implemented.
 6. Group privacy: Group admins manage collaboration structure, not other users' billing.
 7. AiRun attribution: every production run stores actor, workspace/team, board, node, charged account, pricing rule and provider route before provider execution.

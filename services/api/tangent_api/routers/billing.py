@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Header, Query, Request
 
 from tangent_api.billing_payment_schemas import (
     BillingCollaborateSubscriptionCheckoutRequest,
@@ -9,9 +9,10 @@ from tangent_api.billing_payment_schemas import (
     BillingSeatPurchaseCheckoutRequest,
     BillingTeamSubscriptionCheckoutRequest,
     BillingTopupCheckoutRequest,
+    BillingWebhookMutationResponse,
 )
+from tangent_api.billing_payment_completion import complete_billing_payment
 from tangent_api.billing_payments import (
-    complete_billing_payment,
     create_collaborate_subscription_checkout,
     create_team_subscription_checkout,
     create_topup_checkout,
@@ -19,6 +20,7 @@ from tangent_api.billing_payments import (
     create_workspace_seat_checkout,
     list_billing_payments,
 )
+from tangent_api.billing_webhooks import process_billing_webhook
 from tangent_api.request_context import ApiRequestContext, get_request_context
 from tangent_api.workspace_entitlements import build_billing_me_response
 from tangent_api.workspace_schemas import BillingMeResponse
@@ -141,4 +143,17 @@ def post_workspace_topup_checkout(
             currency=input_data.currency,
             metadata=input_data.metadata,
         ),
+    )
+
+
+@router.post("/webhooks/{provider}", response_model=BillingWebhookMutationResponse)
+async def post_billing_webhook(
+    provider: str,
+    request: Request,
+    x_tangent_webhook_signature: Optional[str] = Header(default=None),
+) -> BillingWebhookMutationResponse:
+    return process_billing_webhook(
+        provider,
+        raw_body=await request.body(),
+        signature=x_tangent_webhook_signature,
     )

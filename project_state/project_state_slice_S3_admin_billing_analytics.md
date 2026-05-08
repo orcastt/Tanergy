@@ -13,7 +13,7 @@ Reusable first-pass work:
 - Backend billing/entitlement reads exist for `/api/v1/billing/me`, `/api/v1/workspaces/current/dashboard` and `/api/v1/workspaces/current/entitlement`.
 - Team seat list/upsert/revoke and workspace member-role mutation exist for the current workspace.
 - `credit_accounts`, `credit_ledger`, preflight reads and internal grant/top-up/usage/refund/admin-adjustment helpers exist.
-- Payment checkout/complete scaffolds exist for top-ups and seat capacity, but real provider webhooks and reconciliation are not production-complete.
+- Payment checkout/complete scaffolds exist for top-ups and seat capacity. A signed provider webhook inbox first cut now records provider events and routes successful checkout events through the same completion/grant path, but real provider session mapping and reconciliation are not production-complete.
 - AiRun quote/preflight/lifecycle, model-route-pricing facts, provider-cost facts and attempt-level admin runtime views exist.
 - The canvas GeekAI fast path proves UX for image generation/edit/reference, analysis, chat and prompt optimization, but is not yet the production control-plane path.
 - Migration `20260508_0012_team_group_wallet_contracts` now adds account kind, subscription ownership/family/seat capacity, one-active Collaborate and one-active Team workspace subscription indexes, workspace invite token facts and `team_wallet` charge scope.
@@ -24,6 +24,7 @@ Reusable first-pass work:
 - `/api/v1/billing/workspaces/current/topups/checkout` now creates a Team wallet top-up payment for the current Team workspace; completion writes `topup_purchase` into the workspace-owned Team wallet ledger.
 - `/api/v1/billing/topups/checkout` remains the personal-wallet top-up path; completion writes `topup_purchase` into the acting user's personal wallet.
 - `/api/v1/billing/collaborate/checkout` now creates a personal Collaborate subscription payment; completing it upserts the user's single active `collaborate_start`/`collaborate_plus` subscription and grants included credits to the personal wallet.
+- `/api/v1/billing/webhooks/{provider}` now verifies `TANGENT_PAYMENT_WEBHOOK_SECRET` HMAC signatures, records `tangent_webhook_events`, completes supported checkout success events through the shared payment completion path, and returns duplicate provider events without double-granting credits.
 - `/api/v1/workspaces/groups` now creates a `group_workspace` and owner membership, gated by an active personal Collaborate subscription.
 - `/api/v1/workspaces/current/invitations` and `/api/v1/workspaces/invitations/{token}/accept` now provide backend invite link create/list/accept/revoke and expiry contracts. Tokens are stored as hashes, accepted invites create/update workspace membership with `admin/editor/viewer` roles, and Team invite accept enforces active subscription seat capacity before creating a seat assignment.
 - `DELETE /api/v1/workspaces/current/members/{user_id}` now removes workspace members; for Team workspaces it also revokes active seat assignments.
@@ -51,7 +52,7 @@ New rule:
 2. Subscription model: Team subscriptions must be workspace-owned; Collaborate subscriptions must be user-owned and single-active per user. Backend checkout/upsert first cut implemented.
 3. Seat lifecycle: seat capacity/member assignment must not imply per-member credit ownership. Seat grant first cut now writes Team wallet.
 4. Wallet grants: Team plan grants and top-ups write to the Team wallet; Collaborate grants/top-ups write to personal wallet. Backend Team subscription, seat and top-up grants now write Team wallet; frontend and real webhook authority remain.
-5. Workspace purchase flow: backend contract first cut implemented for Team checkout completion; minimal frontend action wiring and disposable Postgres smoke now exist; real payment webhook authority and hosted staging smoke remain.
+5. Workspace purchase flow: backend contract first cut implemented for Team checkout completion; minimal frontend action wiring, signed webhook inbox first cut and disposable Postgres smoke now exist; real provider session mapping and hosted staging smoke remain.
 6. Invite and member lifecycle: backend Team/Group invite create/accept/revoke/expiry, Team seat-capacity-on-accept, role assignment and member removal first cut implemented; minimal frontend action wiring now exists, while email sending and richer role UI remain.
 7. Permission services: Board roles, workspace roles, Team billing visibility and AI payer eligibility must stay separate.
 8. Admin monitoring: every production AiRun must be queryable by user, team/workspace, board, node, model, route, pricing rule, charged account and provider cost.
@@ -85,7 +86,7 @@ dev-plans/s3-team-group-wallets-membership-billing-plan-2026-05-08.md
 
 ## Not Production-Complete
 
-- Real payment webhooks, invoices and reconciliation.
+- Real payment-provider session mapping, invoices and reconciliation.
 - Subscription renewal/cancellation automation.
 - Production-grade seat proration and downgrade policy.
 - Full admin finance views.

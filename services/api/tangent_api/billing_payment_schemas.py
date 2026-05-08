@@ -57,3 +57,11 @@ class BillingPaymentMutationResponse(TangentApiModel):
     ok: bool
     payment: Optional[BillingPaymentRecord] = None
     topup_entry_id: Optional[str] = Field(default=None, alias="topupEntryId")
+
+
+class BillingWebhookMutationResponse(TangentApiModel):
+    duplicate: bool = False
+    event_id: Optional[str] = Field(default=None, alias="eventId")
+    ok: bool
+    payment: Optional[BillingPaymentRecord] = None
+    processed: bool = False

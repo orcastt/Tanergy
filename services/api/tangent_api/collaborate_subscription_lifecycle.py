@@ -20,6 +20,7 @@ def build_collaborate_subscription_metadata(
     included_credits = int(PLAN_CATALOG[normalized_plan]["included_credits"] or 0)
     return {
         **metadata,
+        "checkoutWorkspaceId": context.workspace_id,
         "includedCredits": included_credits,
         "ownerUserId": context.user_id,
         "planFamily": "collaborate",

@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from uuid import uuid4
 
@@ -25,6 +26,7 @@ def build_team_subscription_metadata(
     included_credits = int(PLAN_CATALOG[normalized_plan]["included_credits"] or 0)
     return {
         **metadata,
+        "checkoutWorkspaceId": context.workspace_id,
         "includedCreditsPerSeat": included_credits,
         "ownerUserId": context.user_id,
         "planFamily": "team",
@@ -87,6 +89,90 @@ def provision_team_subscription_payment(
     if row is None:
         raise HTTPException(status_code=404, detail="Payment not found.")
     return _payment_from_row(row)
+
+
+def upsert_team_workspace_subscription(cursor: object, payment: BillingPaymentRecord) -> None:
+    workspace_id = str(payment.metadata.get("workspaceId") or "")
+    plan_key = str(payment.metadata.get("planKey") or "")
+    if not workspace_id or plan_key not in TEAM_PLAN_KEYS:
+        return
+    account_id = str(payment.account_id or f"credit_workspace_{workspace_id}")
+    seat_capacity = int(payment.metadata.get("quantity") or 1)
+    cursor.execute(
+        """
+        SELECT id
+        FROM tangent_subscriptions
+        WHERE account_id = %s
+          AND status IN ('active', 'trialing')
+        ORDER BY updated_at DESC
+        LIMIT 1
+        """,
+        (account_id,),
+    )
+    row = cursor.fetchone()
+    current_period_end = datetime.now(timezone.utc) + timedelta(days=30)
+    if row is None:
+        cursor.execute(
+            """
+            INSERT INTO tangent_subscriptions (
+                id,
+                account_id,
+                owner_type,
+                owner_id,
+                workspace_id,
+                plan_family,
+                provider,
+                provider_customer_id,
+                provider_subscription_id,
+                plan_key,
+                status,
+                seat_capacity,
+                current_period_start,
+                current_period_end
+            )
+            VALUES (%s, %s, 'workspace', %s, %s, 'team', %s, NULL, %s, %s, 'active', %s, NOW(), %s)
+            """,
+            (
+                f"subscription_{uuid4()}",
+                account_id,
+                workspace_id,
+                workspace_id,
+                payment.provider,
+                payment.id,
+                plan_key,
+                seat_capacity,
+                current_period_end,
+            ),
+        )
+        return
+    cursor.execute(
+        """
+        UPDATE tangent_subscriptions
+        SET plan_key = %s,
+            plan_family = 'team',
+            owner_type = 'workspace',
+            owner_id = %s,
+            workspace_id = %s,
+            provider = %s,
+            provider_subscription_id = %s,
+            status = 'active',
+            seat_capacity = GREATEST(seat_capacity, %s),
+            current_period_start = COALESCE(current_period_start, NOW()),
+            current_period_end = %s,
+            updated_at = NOW()
+        WHERE id = %s
+        """,
+        (
+            plan_key,
+            workspace_id,
+            workspace_id,
+            payment.provider,
+            payment.id,
+            seat_capacity,
+            current_period_end,
+            row[0],
+        ),
+    )
 
 
 def _upsert_team_workspace(cursor: object, workspace_id: str, team_name: str, context: ApiRequestContext) -> None:

@@ -170,7 +170,8 @@ Tests/smoke:
 
 ## Phase 7: Payment, Renewal And Finance Depth
 
-- Payment provider webhooks become authority for grants and subscription state.
+- [x] Payment webhook inbox first cut: signed provider event endpoint records `tangent_webhook_events`, completes checkout payments through the shared completion path, and treats duplicate provider events as idempotent.
+- Payment provider webhooks become production authority for grants and subscription state after real provider signature/session mapping is wired.
 - Renewal grants monthly included credits.
 - Cancellation/downgrade handles remaining credits and seat capacity.
 - Invoice and reconciliation views land in Admin finance.

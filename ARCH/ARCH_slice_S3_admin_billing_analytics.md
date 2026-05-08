@@ -111,7 +111,7 @@ payment completed
   -> audit admin/system facts
 ```
 
-Implementation checkpoint: the backend checkout/complete contract exists with manual-test payment completion. External payment webhooks, invoices and admin audit facts still need production implementation.
+Implementation checkpoint: the backend checkout/complete contract exists with manual-test payment completion. A first signed webhook inbox also exists: `POST /api/v1/billing/webhooks/{provider}` validates `TANGENT_PAYMENT_WEBHOOK_SECRET`, stores provider events in `tangent_webhook_events`, calls the shared payment completion path for supported checkout success events and avoids duplicate grants for repeated provider event ids. Real provider session creation/mapping, invoices and admin audit facts still need production implementation.
 
 Team seat add:
 
@@ -328,6 +328,7 @@ Implemented in the 2026-05-08 first cut:
 - Team seat checkout completion now writes Team subscription ownership/seat-capacity facts and a Team wallet subscription grant.
 - Team top-up targets the Team wallet.
 - Collaborate checkout enforces the single active personal Collaborate subscription contract and grants credits to the personal wallet.
+- Signed payment webhook inbox first cut records provider events and completes top-up/subscription payments through the shared grant path with duplicate-event idempotency.
 - Workspace invite create/list/accept/revoke and member removal contracts exist for Team and Group.
 - Mock AI run settlement now has contract coverage for Group actor-personal charging, Team wallet charging and immutable charge context during polling/cancel.
 - Disposable Postgres smoke passed for migration-to-head, Team checkout/invite/quote/run-settlement/remove and Collaborate/Group create/invite/quote/run-settlement.
@@ -336,6 +337,6 @@ Remaining rework:
 
 - Hosted staging smoke still needs to run against managed Postgres and deployed API/Web.
 - Hosted live-provider run-settlement smoke still needs to exercise real provider output persistence through the same payer contract.
-- Real payment provider webhooks must replace manual-test completion as the authority for grants and subscription state.
+- Real payment-provider session mapping and webhooks must replace manual-test completion as the authority for grants and subscription state.
 - Richer role UI, email invites and audit events remain.
 - GeekAI canvas fast path must be reconciled into S2 server provider-route/billing control plane before production reliance.

@@ -115,6 +115,29 @@ class FakePostgresCursor:
             }
             self.database.payments.append(row)
             self.row = _payment_tuple(row)
+        elif normalized.startswith("INSERT INTO tangent_webhook_events"):
+            payload = json.loads(params[4]) if isinstance(params[4], str) else params[4]
+            existing = next(
+                (
+                    row for row in self.database.webhook_events
+                    if row["provider"] == params[1] and row["provider_event_id"] == params[2]
+                ),
+                None,
+            )
+            if existing:
+                self.row = (existing["id"], existing.get("processed_at"))
+            else:
+                row = {
+                    "created_at": f"2026-05-08T00:35:{len(self.database.webhook_events):02d}Z",
+                    "event_type": params[3],
+                    "id": params[0],
+                    "payload": payload or {},
+                    "processed_at": None,
+                    "provider": params[1],
+                    "provider_event_id": params[2],
+                }
+                self.database.webhook_events.append(row)
+                self.row = (row["id"], row.get("processed_at"))
         elif normalized.startswith("INSERT INTO tangent_workspaces"):
             if len(params) == 5:
                 workspace_id, name, owner_id, kind, billing_owner_user_id = params
@@ -1287,6 +1310,11 @@ class FakePostgresCursor:
             )
             if row:
                 self.row = (row["id"],)
+        elif normalized.startswith("SELECT owner_type, owner_id FROM tangent_credit_accounts"):
+            account_id = params[0]
+            row = next((row for row in self.database.credit_accounts if row["id"] == account_id), None)
+            if row:
+                self.row = (row["owner_type"], row["owner_id"])
         elif normalized.startswith("SELECT id, account_id, provider, provider_payment_id, amount_cents, currency, status, created_at, checkout_session_id, kind, metadata FROM tangent_payments WHERE id = %s"):
             payment = next((row for row in self.database.payments if row["id"] == params[0]), None)
             if payment:
@@ -1310,6 +1338,11 @@ class FakePostgresCursor:
                 payment["account_id"] = account_id
                 payment["metadata"] = json.loads(metadata) if isinstance(metadata, str) else metadata
                 self.row = _payment_tuple(payment)
+        elif normalized.startswith("UPDATE tangent_webhook_events SET processed_at = NOW()"):
+            event_id = params[0]
+            row = next((row for row in self.database.webhook_events if row["id"] == event_id), None)
+            if row:
+                row["processed_at"] = "2026-05-08T00:40:00Z"
         elif normalized.startswith("UPDATE tangent_workspace_invitations SET accepted_by = %s"):
             accepted_by, invitation_id = params
             row = next((row for row in self.database.workspace_invitations if row["id"] == invitation_id), None)
@@ -1727,6 +1760,7 @@ class FakePostgresDatabase:
         self.workspace_invitations = []
         self.workspace_members = []
         self.workspace_seat_assignments = []
+        self.webhook_events = []
 
     def connect(self):
         return FakePostgresConnection(self)
