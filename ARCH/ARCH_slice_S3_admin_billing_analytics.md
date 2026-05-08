@@ -284,11 +284,16 @@ Reusable:
 - S2 model/route/pricing control plane, AiRun lifecycle and provider-cost facts.
 - Board permission resolver and share/member first pass.
 
-Needs rework:
+Implemented in the 2026-05-08 first cut:
 
-- Team payer resolver currently reflects the older actor-personal seat-backed strategy.
-- Team seat assignment must become capacity/attribution, not payer-account creation.
+- Migration `20260508_0012` adds wallet account kind, subscription ownership/family/seat capacity, one-active Collaborate and Team workspace subscription indexes, invite token facts and `team_wallet` charge scope.
+- Team payer resolver now returns the workspace-owned Team wallet for Team entitlement/quote.
+- Team seat assignment now grants included credits to the Team wallet instead of a member personal wallet.
+- Team seat checkout completion now writes Team subscription ownership/seat-capacity facts and a Team wallet subscription grant.
+
+Remaining rework:
+
 - Team top-up must target the Team wallet.
-- Collaborate must enforce one active personal Collaborate subscription.
+- Collaborate checkout must enforce one active personal Collaborate subscription at the route/service layer; the database index now exists.
 - Workspace invite acceptance must become product-grade for Team and Group.
 - GeekAI canvas fast path must be reconciled into S2 server provider-route/billing control plane before production reliance.

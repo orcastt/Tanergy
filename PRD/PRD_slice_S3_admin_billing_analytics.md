@@ -31,10 +31,10 @@ Enterprise may later use a contract-defined workspace pool, but it is not the al
 | --- | --- | --- |
 | Admin access | `/admin` is server-gated through `admin_roles`; all admin writes are audited. | First-pass stable |
 | Developer AI control | Admin/developer operators can inspect and edit model, provider-route and pricing facts with versioned publish/rollback. | First-pass stable |
-| Team purchase | Buying Team Start/Growth creates a new Team workspace, owner membership, Team wallet, subscription and seat capacity. | Needs new slice |
-| Team seats | Team owners/admins can invite members, assign/remove roles, buy/add seats and remove members. Initial purchase need not max out the plan cap. | Seat mutation scaffold exists; wallet semantics must be changed |
-| Team wallet | Included seat credits and Team top-ups land in the Team wallet. Team AI runs charge that wallet, not each member's personal account. | Must be rebuilt from current personal-seat assumption |
-| Group/Collaborate | A user can hold one active Collaborate plan at a time. Group members share Boards, while AI usage charges each actor's personal wallet. | Product rule needs implementation hardening |
+| Team purchase | Buying Team Start/Growth creates a new Team workspace, owner membership, Team wallet, subscription and seat capacity. | Schema and seat-checkout first cut exist; full Team purchase flow pending |
+| Team seats | Team owners/admins can invite members, assign/remove roles, buy/add seats and remove members. Initial purchase need not max out the plan cap. | Seat mutation exists; wallet grant first cut now writes Team wallet |
+| Team wallet | Included seat credits and Team top-ups land in the Team wallet. Team AI runs charge that wallet, not each member's personal account. | Entitlement/quote first cut implemented; Team top-up pending |
+| Group/Collaborate | A user can hold one active Collaborate plan at a time. Group members share Boards, while AI usage charges each actor's personal wallet. | Database constraint exists; checkout/service hardening pending |
 | Invites | Team and Group support invite links, invite acceptance, expiration/revoke and member role assignment. | Board invite first pass exists; workspace invite accept needs work |
 | Permissions | Board `Can view/edit/manage/Owner` stays separate from workspace admin/editor/viewer and separate from AI payer eligibility. | First-pass resolver exists; Group/Team hardening pending |
 | Billing usage | Users can see personal wallet, credits, ledger, usage and top-ups. Team admins can see Team wallet, seat costs, member usage and usage by Board/model. | First-pass `/billing`, `/team`, `/usage` exists; semantics must pivot |

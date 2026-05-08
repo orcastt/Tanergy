@@ -1,11 +1,11 @@
 # Project State Slice S2: AI Runtime
 
 **Updated**: 2026-05-08
-**Status**: Mock runtime/dataflow is usable locally; the canvas also has a GeekAI-backed fast path for chat streaming, prompt optimization, image generation/edit/reference and analysis UX; mock AiRun can optionally exercise credit-ledger usage charging behind `TANGENT_AI_MOCK_LEDGER_CHARGING=1`; migrations `20260506_0008`, `20260506_0009`, `20260506_0010` and `20260506_0011` now add the first DB-backed AI control-plane tables, quote-time persistence facts, provider-currency/runtime-cost normalization fields, version-history storage and attempt-level `api_cost_ledger` settlement fields. Current alpha gate: fold the local GeekAI path into the server provider-route/billing control plane, update payer resolution so Team runs charge Team wallets and Group/Collaborate runs charge personal wallets, then hand-test one credentialed real provider-backed image path end to end.
+**Status**: Mock runtime/dataflow is usable locally; the canvas also has a GeekAI-backed fast path for chat streaming, prompt optimization, image generation/edit/reference and analysis UX; mock AiRun can optionally exercise credit-ledger usage charging behind `TANGENT_AI_MOCK_LEDGER_CHARGING=1`; migrations `20260506_0008`, `20260506_0009`, `20260506_0010` and `20260506_0011` now add the first DB-backed AI control-plane tables, quote-time persistence facts, provider-currency/runtime-cost normalization fields, version-history storage and attempt-level `api_cost_ledger` settlement fields. Migration `20260508_0012` adds `team_wallet` charge scope, and the first payer resolver cut now charges Team workspaces to Team wallet while Group/Collaborate remains personal-wallet based. Current alpha gate: fold the local GeekAI path into the server provider-route/billing control plane and hand-test one credentialed real provider-backed image path end to end.
 
 ## Current Alpha Boundary
 
-- release-critical: quote/preflight, payer summary, Team-wallet/personal-wallet resolver, persisted run lifecycle, one real provider-backed image path
+- release-critical: quote/preflight, payer summary, persisted Team-wallet/personal-wallet resolver, persisted run lifecycle, one real provider-backed image path
 - local product proof: GeekAI-backed chat, prompt optimizer, image gen/edit/reference and analysis flows in the canvas
 - not current-alpha promise: full provider breadth, durable text output, broad refund/reconciliation depth
 
@@ -14,7 +14,7 @@
 - Mock Model Registry exists and is consumed by Image Gen / Image Gen 4 node controls.
 - Canvas-facing AI node UX now has a GeekAI fast path for local product validation: Chat streams text, Prompt Optimizer streams enriched image prompts, Analysis can choose OpenAI-style or Gemini-style visual analysis, and Image Gen / Image Gen 4 can return images into slots and board Assets through the current web app route.
 - Image node controls now reflect model-specific parameter surfaces for GPT Image 2, Nano Banana 2, Doubao Seedream and Jimeng-style generation/edit/reference flows. These controls are useful UX proof, but their provider-specific parameter mapping still needs to move behind the server provider adapter/control-plane boundary before production reliance.
-- Mock AiRun route exists and returns payer facts: `workspaceKind`, `chargedScope`, `chargedAccountId`, `entitlementSource`, optional `workspaceSeatId` and a user-facing payer label.
+- Mock AiRun route exists and returns payer facts: `workspaceKind`, `chargedScope`, `chargedAccountId`, `entitlementSource`, optional `workspaceSeatId` and a user-facing payer label. Team workspace quotes now resolve to `team_wallet`; Group/Collaborate quotes remain `actor_personal`.
 - Mock AiRun can optionally charge the current payer through the internal credit ledger service when `TANGENT_AI_MOCK_LEDGER_CHARGING=1` and `DATABASE_URL` are configured. It rejects insufficient balance with `402` and writes a `usage_charge` entry on success; the default local path remains no-charge.
 - Migration `20260506_0008` now adds `tangent_model_registry`, `tangent_model_parameter_tiers`, `tangent_model_pricing_rules` and the first normalization columns on `tangent_model_provider_routes`, with safe backfill/default seed coverage.
 - Migration `20260506_0009` now adds `estimated_credits`, `pricing_rule_id`, `route_id`, `route_key`, `selected_tier_key` and `preflight_status` to `tangent_ai_runs`, plus route/pricing linkage fields to `tangent_ai_api_calls`.
@@ -37,7 +37,7 @@
 ## Required Next Work
 
 1. Reconcile the current GeekAI local fast path into the server provider-route adapter layer described by `dev-plans/s2-ai-provider-route-billing-control-plane-2026-05-07.md`.
-2. Update payer resolution so Team workspace runs charge Team wallet and Group/Collaborate workspace runs charge the actor's personal wallet.
+2. Persist and test Team-wallet settlement through the full live provider path, not only mock entitlement/quote.
 3. Finish provider-capability coverage so live adapters support image generation, image edit/reference, analysis and prompt/text optimization with durable Asset or short text outputs.
 4. Deepen real-provider settlement policy so success, failure, cancel and refund paths reconcile cleanly across `credit_ledger`, `api_cost_ledger` and provider-returned usage/cost facts.
 5. Preserve provider-response summaries safely for runtime UX without storing long raw payloads.

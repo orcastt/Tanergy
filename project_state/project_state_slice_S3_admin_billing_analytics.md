@@ -1,7 +1,7 @@
 # Project State Slice S3: Team, Group, Wallets, Billing And Admin
 
 **Updated**: 2026-05-08
-**Status**: Active pivot slice. Admin, ledger, usage, seat, checkout and AI-control-plane scaffolds exist, but the commercial rule changed: Team AI spend should charge a Team wallet, while Group/Collaborate AI spend stays personal.
+**Status**: Active pivot slice. Admin, ledger, usage, seat, checkout and AI-control-plane scaffolds exist. Phase 1 development has started: migration `20260508_0012` adds Team/Group wallet schema facts, and the first payer resolver cut now makes Team workspaces charge a Team wallet while Group/Collaborate workspaces charge the actor personal wallet.
 
 ## Current Truth
 
@@ -16,6 +16,10 @@ Reusable first-pass work:
 - Payment checkout/complete scaffolds exist for top-ups and seat capacity, but real provider webhooks and reconciliation are not production-complete.
 - AiRun quote/preflight/lifecycle, model-route-pricing facts, provider-cost facts and attempt-level admin runtime views exist.
 - The canvas GeekAI fast path proves UX for image generation/edit/reference, analysis, chat and prompt optimization, but is not yet the production control-plane path.
+- Migration `20260508_0012_team_group_wallet_contracts` now adds account kind, subscription ownership/family/seat capacity, one-active Collaborate and one-active Team workspace subscription indexes, workspace invite token facts and `team_wallet` charge scope.
+- `workspace_entitlements` now resolves Team charge summaries to `chargedScope=team_wallet`, `entitlementSource=team_wallet` and the workspace-owned Team wallet account. Group/Collaborate remains `actor_personal`.
+- Team seat assignment now grants included credits to the Team wallet instead of the assigned member's personal wallet.
+- Team seat checkout completion now writes Team subscription ownership/seat-capacity facts and grants included credits into the Team wallet.
 
 ## Product Rule Drift
 
@@ -33,10 +37,10 @@ New rule:
 
 ## What Must Be Redone Or Hardened
 
-1. Payer resolver: Team workspace runs must resolve to a workspace-owned Team wallet.
-2. Subscription model: Team subscriptions must be workspace-owned; Collaborate subscriptions must be user-owned and single-active per user.
-3. Seat lifecycle: seat capacity/member assignment must not imply per-member credit ownership.
-4. Wallet grants: Team plan grants and top-ups write to the Team wallet; Collaborate grants/top-ups write to personal wallet.
+1. Payer resolver: Team workspace runs must resolve to a workspace-owned Team wallet. First cut implemented for entitlement/quote.
+2. Subscription model: Team subscriptions must be workspace-owned; Collaborate subscriptions must be user-owned and single-active per user. Schema/index first cut implemented.
+3. Seat lifecycle: seat capacity/member assignment must not imply per-member credit ownership. Seat grant first cut now writes Team wallet.
+4. Wallet grants: Team plan grants and top-ups write to the Team wallet; Collaborate grants/top-ups write to personal wallet. Team seat grant first cut implemented; Team top-up UI/API still pending.
 5. Workspace purchase flow: Team checkout completion creates workspace, owner membership, wallet, subscription and initial seat capacity.
 6. Invite acceptance: Team/Group invite links need product-grade accept/revoke/expiry and role assignment.
 7. Permission services: Board roles, workspace roles, Team billing visibility and AI payer eligibility must stay separate.
@@ -63,9 +67,9 @@ dev-plans/s3-team-group-wallets-membership-billing-plan-2026-05-08.md
 
 - A new Team checkout can create an isolated Team workspace and Team wallet in staging/dev.
 - A Team owner can invite a member, assign role, remove member and add seats.
-- A Team AI quote resolves `charged_account_id` to the Team wallet.
-- A Group AI quote resolves `charged_account_id` to the actor's personal wallet.
-- A user cannot activate both Collaborate Start and Collaborate Plus at the same time.
+- A Team AI quote resolves `charged_account_id` to the Team wallet. Covered by backend tests.
+- A Group AI quote resolves `charged_account_id` to the actor's personal wallet. Covered by backend tests.
+- A user cannot activate both Collaborate Start and Collaborate Plus at the same time. Schema index exists; checkout flow still pending.
 - Admin runtime views can filter a run by user, workspace/team, board, model, route and charged account.
 
 ## Not Production-Complete

@@ -43,20 +43,21 @@ Exit criteria:
 
 Add or confirm:
 
-- `credit_accounts.account_kind = personal_wallet | team_wallet | enterprise_pool` or equivalent constrained metadata.
-- `subscriptions.plan_family = free | collaborate | team | enterprise`.
-- `subscriptions.seat_capacity`, period columns and provider ids.
-- Unique active Collaborate subscription constraint per user.
-- Team purchase linkage from subscription/payment to workspace and Team wallet.
-- Workspace invite token fields: token hash, role, expiry, revoked/accepted timestamps, inviter, optional target email.
+- [x] `credit_accounts.account_kind = personal_wallet | team_wallet | enterprise_pool` or equivalent constrained metadata.
+- [x] `subscriptions.plan_family = free | collaborate | team | enterprise`.
+- [x] `subscriptions.seat_capacity`, owner fields, workspace link and period columns.
+- [x] Unique active Collaborate subscription constraint per user.
+- [x] Unique active Team subscription constraint per workspace.
+- [~] Team purchase linkage from subscription/payment to workspace and Team wallet. Seat checkout completion now writes subscription ownership and Team wallet grant; full Team purchase/create flow remains pending.
+- [x] Workspace invite token fields: token hash, role, expiry, revoked/accepted timestamps, inviter, optional target user/email.
 - Seat assignment facts scoped to Team workspace and member, without implying a personal credit account.
-- `ai_runs.node_id` and charge-scope compatibility for `team_wallet`.
+- [x] `ai_runs.node_id` confirmed from the base schema; `team_wallet` charge-scope compatibility added.
 
 Tests:
 
-- Migration contract test for new columns/constraints.
-- Empty DB and seeded DB migration smoke.
-- Unique active Collaborate constraint test.
+- [x] Migration contract test for new columns/constraints.
+- [ ] Empty DB and seeded DB migration smoke against disposable Postgres after this cut.
+- [x] Static unique active Collaborate constraint coverage in migration contract test.
 
 ## Phase 2: Auth, Registration And Workspace Selection
 

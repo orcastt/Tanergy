@@ -313,16 +313,25 @@ def load_ai_run_snapshot(run_id: str) -> Optional[dict[str, object]]:
 
 def _build_charge(snapshot: dict[str, object]) -> AiRunChargeSummary:
     workspace_kind = str(snapshot["workspace_kind"])
+    charged_scope = str(snapshot["charged_scope"])
     return AiRunChargeSummary(
         chargedAccountId=str(snapshot["charged_account_id"]),
-        chargedScope=str(snapshot["charged_scope"]),
+        chargedScope=charged_scope,
         entitlementSource=str(snapshot["entitlement_source"]),
-        payerLabel="Charges enterprise workspace credits" if workspace_kind == "enterprise_workspace" else "Charges your credits",
+        payerLabel=_payer_label(charged_scope, workspace_kind),
         planKey="unknown",
         preflightStatus=str(snapshot["preflight_status"] or "mock_contract_only"),
         workspaceKind=workspace_kind,
         workspaceSeatId=snapshot["workspace_seat_id"],
     )
+
+
+def _payer_label(charged_scope: str, workspace_kind: str) -> str:
+    if charged_scope == "team_wallet":
+        return "Charges Team wallet"
+    if charged_scope == "workspace_pool" or workspace_kind == "enterprise_workspace":
+        return "Charges enterprise workspace credits"
+    return "Charges your credits"
 
 
 def _prompt_preview(prompt: Optional[str]) -> Optional[str]:

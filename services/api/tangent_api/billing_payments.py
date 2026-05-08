@@ -6,7 +6,7 @@ from uuid import uuid4
 from fastapi import HTTPException
 
 from tangent_api.billing_payment_schemas import BillingPaymentMutationResponse, BillingPaymentRecord
-from tangent_api.credit_ledger import record_topup_purchase_to_account
+from tangent_api.credit_ledger import grant_subscription_credits_to_account, record_topup_purchase_to_account
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.storage.postgres_connection import require_database_url
 from tangent_api.workspace_entitlements import PLAN_CATALOG
@@ -181,6 +181,20 @@ def complete_billing_payment(
                 topup_entry_id = mutation.entry.id
             elif updated.kind == "seat_purchase":
                 _upsert_workspace_subscription(cursor, updated)
+                credits = float(updated.metadata.get("includedCreditsPerSeat") or 0) * int(updated.metadata.get("quantity") or 0)
+                if credits > 0:
+                    grant_subscription_credits_to_account(
+                        account_id=str(updated.account_id),
+                        actor_user_id=context.user_id,
+                        workspace_id=context.workspace_id,
+                        credits=credits,
+                        source_id=updated.id,
+                        metadata={
+                            "checkoutSessionId": updated.checkout_session_id,
+                            "paymentId": updated.id,
+                            **updated.metadata,
+                        },
+                    )
         connection.commit()
     return BillingPaymentMutationResponse(ok=True, payment=updated, topupEntryId=topup_entry_id)
 
@@ -237,22 +251,25 @@ def _create_payment(
 
 def _ensure_credit_account(cursor: object, owner_type: str, owner_id: str) -> str:
     account_id = f"credit_{owner_type}_{owner_id}"
+    account_kind = "team_wallet" if owner_type == "workspace" else "personal_wallet"
     cursor.execute(
         """
         INSERT INTO tangent_credit_accounts (
             id,
             owner_type,
             owner_id,
+            account_kind,
             status
         )
-        VALUES (%s, %s, %s, 'active')
+        VALUES (%s, %s, %s, %s, 'active')
         ON CONFLICT (owner_type, owner_id)
         DO UPDATE SET
             status = 'active',
+            account_kind = EXCLUDED.account_kind,
             updated_at = NOW()
         RETURNING id
         """,
-        (account_id, owner_type, owner_id),
+        (account_id, owner_type, owner_id, account_kind),
     )
     row = cursor.fetchone()
     return str(row[0]) if row else account_id
@@ -282,6 +299,7 @@ def _upsert_workspace_subscription(cursor: object, payment: BillingPaymentRecord
     if not workspace_id or plan_key not in {"team_start", "team_growth"}:
         return
     account_id = str(payment.account_id or f"credit_workspace_{workspace_id}")
+    seat_capacity = int(payment.metadata.get("quantity") or 1)
     cursor.execute(
         """
         SELECT id
@@ -301,21 +319,30 @@ def _upsert_workspace_subscription(cursor: object, payment: BillingPaymentRecord
             INSERT INTO tangent_subscriptions (
                 id,
                 account_id,
+                owner_type,
+                owner_id,
+                workspace_id,
+                plan_family,
                 provider,
                 provider_customer_id,
                 provider_subscription_id,
                 plan_key,
                 status,
+                seat_capacity,
+                current_period_start,
                 current_period_end
             )
-            VALUES (%s, %s, %s, NULL, %s, %s, 'active', %s)
+            VALUES (%s, %s, 'workspace', %s, %s, 'team', %s, NULL, %s, %s, 'active', %s, NOW(), %s)
             """,
             (
                 f"subscription_{uuid4()}",
                 account_id,
+                workspace_id,
+                workspace_id,
                 payment.provider,
                 payment.id,
                 plan_key,
+                seat_capacity,
                 current_period_end,
             ),
         )
@@ -324,17 +351,26 @@ def _upsert_workspace_subscription(cursor: object, payment: BillingPaymentRecord
         """
         UPDATE tangent_subscriptions
         SET plan_key = %s,
+            plan_family = 'team',
+            owner_type = 'workspace',
+            owner_id = %s,
+            workspace_id = %s,
             provider = %s,
             provider_subscription_id = %s,
             status = 'active',
+            seat_capacity = GREATEST(seat_capacity, %s),
+            current_period_start = COALESCE(current_period_start, NOW()),
             current_period_end = %s,
             updated_at = NOW()
         WHERE id = %s
         """,
         (
             plan_key,
+            workspace_id,
+            workspace_id,
             payment.provider,
             payment.id,
+            seat_capacity,
             current_period_end,
             row[0],
         ),

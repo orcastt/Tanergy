@@ -9,7 +9,7 @@ from tangent_api.workspace_schemas import WorkspaceSeatAssignmentUpsertRequest
 from tests.persistence_fakes import FakePostgresDatabase
 
 
-def test_billing_me_returns_actor_personal_team_contract():
+def test_billing_me_returns_team_wallet_contract():
     client = TestClient(app)
 
     response = client.get(
@@ -23,8 +23,9 @@ def test_billing_me_returns_actor_personal_team_contract():
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["chargeScope"] == "actor_personal"
-    assert payload["payerLabel"] == "Charges your credits"
+    assert payload["chargeScope"] == "team_wallet"
+    assert payload["payerLabel"] == "Charges Team wallet"
+    assert payload["chargeScope"] != "actor_personal"
     assert payload["plan"]["planKey"] == "team_start"
     assert payload["plan"]["includedCredits"] == 2500
     assert payload["workspace"]["kind"] == "team_workspace"
@@ -46,7 +47,8 @@ def test_billing_me_supports_team_growth_plan_contract():
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["chargeScope"] == "actor_personal"
+    assert payload["chargeScope"] == "team_wallet"
+    assert payload["payerLabel"] == "Charges Team wallet"
     assert payload["plan"]["planKey"] == "team_growth"
     assert payload["plan"]["includedCredits"] == 5500
     assert payload["plan"]["monthlyPriceUsd"] == 45
@@ -78,9 +80,10 @@ def test_workspace_entitlement_uses_database_team_seat_assignment(monkeypatch):
     fake_db = FakePostgresDatabase()
     fake_db.credit_accounts = [
         {
-            "id": "credit_db_team_member",
-            "owner_id": "user_team_member",
-            "owner_type": "user",
+            "account_kind": "team_wallet",
+            "id": "credit_db_team_wallet",
+            "owner_id": "workspace_team",
+            "owner_type": "workspace",
             "status": "active",
         }
     ]
@@ -110,7 +113,9 @@ def test_workspace_entitlement_uses_database_team_seat_assignment(monkeypatch):
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["charge"]["chargedAccountId"] == "credit_db_team_member"
+    assert payload["charge"]["chargedAccountId"] == "credit_db_team_wallet"
+    assert payload["charge"]["chargedScope"] == "team_wallet"
+    assert payload["charge"]["entitlementSource"] == "team_wallet"
     assert payload["charge"]["workspaceSeatId"] == "seat_db_growth_1"
     assert payload["plan"]["planKey"] == "team_growth"
     assert payload["plan"]["includedCredits"] == 6200
@@ -227,8 +232,9 @@ def test_workspace_entitlement_returns_ai_charge_summary():
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["charge"]["chargedScope"] == "actor_personal"
-    assert payload["charge"]["entitlementSource"] == "team_seat_allowance"
+    assert payload["charge"]["chargedAccountId"] == "credit_workspace_workspace_team"
+    assert payload["charge"]["chargedScope"] == "team_wallet"
+    assert payload["charge"]["entitlementSource"] == "team_wallet"
     assert payload["charge"]["workspaceSeatId"] == "seat_workspace_team_user_team_member"
     assert payload["plan"]["planKey"] == "team_start"
 
@@ -507,8 +513,15 @@ def test_team_seat_checkout_complete_updates_subscription_and_workspace_payments
     assert completed_payload["payment"]["status"] == "succeeded"
     assert completed_payload["topupEntryId"] is None
     assert fake_db.subscriptions[0]["account_id"] == "credit_workspace_workspace_team"
+    assert fake_db.subscriptions[0]["owner_type"] == "workspace"
+    assert fake_db.subscriptions[0]["owner_id"] == "workspace_team"
+    assert fake_db.subscriptions[0]["plan_family"] == "team"
     assert fake_db.subscriptions[0]["plan_key"] == "team_growth"
     assert fake_db.subscriptions[0]["provider_subscription_id"] == payment["id"]
+    assert fake_db.subscriptions[0]["seat_capacity"] == 3
+    assert fake_db.credit_ledger[-1]["account_id"] == "credit_workspace_workspace_team"
+    assert fake_db.credit_ledger[-1]["credits_delta"] == 16500
+    assert fake_db.credit_ledger[-1]["reason"] == "subscription_grant"
 
     listed = client.get(
         "/api/v1/billing/payments?workspaceScoped=true&kind=seat_purchase&status=succeeded",
@@ -576,7 +589,11 @@ def test_team_owner_can_assign_and_list_seats(monkeypatch):
     assert seat["planKey"] == "team_growth"
     assert seat["status"] == "active"
     assert seat["userId"] == "user_team_member"
-    assert fake_db.credit_accounts[0]["owner_id"] == "user_team_member"
+    assert fake_db.credit_accounts[0]["account_kind"] == "team_wallet"
+    assert fake_db.credit_accounts[0]["owner_id"] == "workspace_team"
+    assert fake_db.credit_accounts[0]["owner_type"] == "workspace"
+    assert fake_db.credit_ledger[-1]["account_id"] == "credit_workspace_workspace_team"
+    assert fake_db.credit_ledger[-1]["metadata"]["targetUserId"] == "user_team_member"
 
     listed = client.get(
         "/api/v1/workspaces/current/seats",

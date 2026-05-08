@@ -151,12 +151,18 @@ def _build_ai_charge_summary(
     entitlement: EntitlementResolution,
 ) -> AiRunChargeSummary:
     is_enterprise_pool = context.workspace_kind == "enterprise_workspace"
-    charged_scope = "workspace_pool" if is_enterprise_pool else "actor_personal"
+    is_team_wallet = context.workspace_kind == "team_workspace"
+    if is_enterprise_pool:
+        charged_scope = "workspace_pool"
+    elif is_team_wallet:
+        charged_scope = "team_wallet"
+    else:
+        charged_scope = "actor_personal"
     charged_account_id = (
         entitlement.charged_account_id
         or (
             f"credit_workspace_{context.workspace_id}"
-            if charged_scope == "workspace_pool"
+            if charged_scope in {"team_wallet", "workspace_pool"}
             else f"credit_user_{context.user_id}"
         )
     )
@@ -167,7 +173,7 @@ def _build_ai_charge_summary(
         chargedAccountId=charged_account_id,
         chargedScope=charged_scope,
         entitlementSource=_entitlement_source(context.workspace_kind),
-        payerLabel="Charges enterprise workspace credits" if is_enterprise_pool else "Charges your credits",
+        payerLabel=_payer_label(charged_scope),
         planKey=entitlement.plan_key,
         preflightStatus="mock_contract_only",
         workspaceKind=context.workspace_kind,
@@ -295,7 +301,7 @@ def upsert_workspace_seat_assignment(
     with connect_to_postgres() as connection:
         with connection.cursor() as cursor:
             _assert_active_workspace_member(cursor, context.workspace_id, user_id)
-            _ensure_user_credit_account(cursor, user_id)
+            team_account_id = _ensure_workspace_credit_account(cursor, context.workspace_id)
             _assert_workspace_seat_capacity(cursor, context.workspace_id, plan_key, user_id)
             seat_id = f"seat_{uuid4()}"
             cursor.execute(
@@ -351,7 +357,7 @@ def upsert_workspace_seat_assignment(
     from tangent_api.credit_ledger import grant_subscription_credits_to_account
 
     grant_subscription_credits_to_account(
-        account_id=f"credit_user_{user_id}",
+        account_id=team_account_id,
         actor_user_id=context.user_id,
         workspace_id=context.workspace_id,
         credits=included_credits,
@@ -360,6 +366,7 @@ def upsert_workspace_seat_assignment(
             "currentPeriodEnd": input_data.current_period_end,
             "currentPeriodStart": input_data.current_period_start,
             "planKey": plan_key,
+            "targetUserId": user_id,
             "workspaceSeatId": str(row[0]) if row else seat_id,
             "workspaceId": context.workspace_id,
         },
@@ -436,12 +443,20 @@ def _load_workspace_purchased_seat_count(cursor: object, workspace_id: str, plan
 
 def _entitlement_source(workspace_kind: str) -> str:
     if workspace_kind == "team_workspace":
-        return "team_seat_allowance"
+        return "team_wallet"
     if workspace_kind == "group_workspace":
         return "personal_collaborate_balance"
     if workspace_kind == "enterprise_workspace":
         return "enterprise_contract"
     return "personal_topup_or_free"
+
+
+def _payer_label(charged_scope: str) -> str:
+    if charged_scope == "team_wallet":
+        return "Charges Team wallet"
+    if charged_scope == "workspace_pool":
+        return "Charges enterprise workspace credits"
+    return "Charges your credits"
 
 
 def _mock_usage_for_user(user_id: str, included_total: int) -> int:
@@ -480,24 +495,26 @@ def _assert_active_workspace_member(cursor: object, workspace_id: str, user_id: 
         raise HTTPException(status_code=404, detail="Workspace member not found.")
 
 
-def _ensure_user_credit_account(cursor: object, user_id: str) -> str:
-    account_id = f"credit_user_{user_id}"
+def _ensure_workspace_credit_account(cursor: object, workspace_id: str) -> str:
+    account_id = f"credit_workspace_{workspace_id}"
     cursor.execute(
         """
         INSERT INTO tangent_credit_accounts (
             id,
             owner_type,
             owner_id,
+            account_kind,
             status
         )
-        VALUES (%s, 'user', %s, 'active')
+        VALUES (%s, 'workspace', %s, 'team_wallet', 'active')
         ON CONFLICT (owner_type, owner_id)
         DO UPDATE SET
             status = 'active',
+            account_kind = 'team_wallet',
             updated_at = NOW()
         RETURNING id
         """,
-        (account_id, user_id),
+        (account_id, workspace_id),
     )
     row = cursor.fetchone()
     return str(row[0]) if row else account_id
@@ -567,8 +584,14 @@ def _resolve_database_entitlement(context: ApiRequestContext) -> Optional[Entitl
                 )
                 seat_row = cursor.fetchone()
                 if seat_row and str(seat_row[1]) in {"team_start", "team_growth", "enterprise"}:
+                    charged_account_id = _select_credit_account_id(
+                        cursor,
+                        "workspace",
+                        context.workspace_id,
+                        account_kind="team_wallet",
+                    )
                     return EntitlementResolution(
-                        charged_account_id=_select_credit_account_id(cursor, "user", context.user_id),
+                        charged_account_id=charged_account_id,
                         included_credits_override=int(seat_row[2] or 0),
                         plan_key=str(seat_row[1]),
                         workspace_seat_id=str(seat_row[0]),
@@ -744,17 +767,26 @@ def _is_plan_key_allowed_for_workspace_kind(plan_key: str, workspace_kind: str) 
     return plan_key == "free_canvas"
 
 
-def _select_credit_account_id(cursor: object, owner_type: str, owner_id: str) -> Optional[str]:
+def _select_credit_account_id(
+    cursor: object,
+    owner_type: str,
+    owner_id: str,
+    *,
+    account_kind: Optional[str] = None,
+) -> Optional[str]:
+    filters = ["owner_type = %s", "owner_id = %s", "status = 'active'"]
+    params: list[object] = [owner_type, owner_id]
+    if account_kind:
+        filters.append("(account_kind = %s OR account_kind IS NULL)")
+        params.append(account_kind)
     cursor.execute(
-        """
+        f"""
         SELECT id
         FROM tangent_credit_accounts
-        WHERE owner_type = %s
-          AND owner_id = %s
-          AND status = 'active'
+        WHERE {" AND ".join(filters)}
         LIMIT 1
         """,
-        (owner_type, owner_id),
+        tuple(params),
     )
     row = cursor.fetchone()
     return str(row[0]) if row else None

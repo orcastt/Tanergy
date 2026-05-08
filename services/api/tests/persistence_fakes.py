@@ -954,9 +954,17 @@ class FakePostgresCursor:
         elif normalized.startswith("INSERT INTO tangent_credit_accounts"):
             if len(params) == 2:
                 account_id, owner_id = params
-                owner_type = "user"
+                if "VALUES (%s, 'workspace', %s, 'team_wallet', 'active')" in normalized:
+                    owner_type = "workspace"
+                    account_kind = "team_wallet"
+                else:
+                    owner_type = "user"
+                    account_kind = "personal_wallet"
+            elif len(params) == 4:
+                account_id, owner_type, owner_id, account_kind = params
             else:
                 account_id, owner_type, owner_id = params
+                account_kind = "team_wallet" if owner_type == "workspace" else "personal_wallet"
             existing = next(
                 (
                     row for row in self.database.credit_accounts
@@ -967,10 +975,12 @@ class FakePostgresCursor:
             if existing:
                 existing["id"] = existing.get("id", account_id)
                 existing["status"] = "active"
+                existing["account_kind"] = account_kind
                 self.row = (existing["id"],)
             else:
                 self.database.credit_accounts.append(
                     {
+                        "account_kind": account_kind,
                         "id": account_id,
                         "owner_id": owner_id,
                         "owner_type": owner_type,
@@ -1119,13 +1129,15 @@ class FakePostgresCursor:
             if matches:
                 self.row = (matches[0]["id"],)
         elif normalized.startswith("SELECT id FROM tangent_credit_accounts WHERE owner_type = %s"):
-            owner_type, owner_id = params
+            owner_type, owner_id = params[0], params[1]
+            account_kind = params[2] if len(params) > 2 else None
             row = next(
                 (
                     row for row in self.database.credit_accounts
                     if (
                         row["owner_type"] == owner_type
                         and row["owner_id"] == owner_id
+                        and (account_kind is None or row.get("account_kind") in {account_kind, None})
                         and row.get("status", "active") == "active"
                     )
                 ),
@@ -1150,22 +1162,52 @@ class FakePostgresCursor:
                 payment["provider_payment_id"] = provider_payment_id
                 self.row = _payment_tuple(payment)
         elif normalized.startswith("INSERT INTO tangent_subscriptions"):
-            row = {
-                "account_id": params[1],
-                "current_period_end": params[5] if len(params) == 6 else params[6],
-                "id": params[0],
-                "plan_key": params[4] if len(params) == 6 else params[4],
-                "provider": params[2],
-                "provider_subscription_id": params[3],
-                "status": "active" if len(params) == 6 else params[5],
-                "updated_at": "2026-05-06T00:50:00Z",
-            }
+            if len(params) == 9:
+                row = {
+                    "account_id": params[1],
+                    "current_period_end": params[8],
+                    "current_period_start": "2026-05-06T00:50:00Z",
+                    "id": params[0],
+                    "owner_id": params[2],
+                    "owner_type": "workspace",
+                    "plan_family": "team",
+                    "plan_key": params[6],
+                    "provider": params[4],
+                    "provider_subscription_id": params[5],
+                    "seat_capacity": params[7],
+                    "status": "active",
+                    "updated_at": "2026-05-06T00:50:00Z",
+                    "workspace_id": params[3],
+                }
+            else:
+                row = {
+                    "account_id": params[1],
+                    "current_period_end": params[5] if len(params) == 6 else params[6],
+                    "id": params[0],
+                    "plan_key": params[4] if len(params) == 6 else params[4],
+                    "provider": params[2],
+                    "provider_subscription_id": params[3],
+                    "status": "active" if len(params) == 6 else params[5],
+                    "updated_at": "2026-05-06T00:50:00Z",
+                }
             self.database.subscriptions.append(row)
         elif normalized.startswith("UPDATE tangent_subscriptions SET plan_key = %s"):
-            plan_key, provider, provider_subscription_id, current_period_end, subscription_id = params
+            if len(params) == 8:
+                plan_key, owner_id, workspace_id, provider, provider_subscription_id, seat_capacity, current_period_end, subscription_id = params
+            else:
+                plan_key, provider, provider_subscription_id, current_period_end, subscription_id = params
+                owner_id = None
+                workspace_id = None
+                seat_capacity = None
             row = next((value for value in self.database.subscriptions if value["id"] == subscription_id), None)
             if row:
                 row["plan_key"] = plan_key
+                if owner_id is not None:
+                    row["owner_id"] = owner_id
+                    row["owner_type"] = "workspace"
+                    row["plan_family"] = "team"
+                    row["workspace_id"] = workspace_id
+                    row["seat_capacity"] = max(int(row.get("seat_capacity") or 0), int(seat_capacity or 0))
                 row["provider"] = provider
                 row["provider_subscription_id"] = provider_subscription_id
                 row["status"] = "active"
