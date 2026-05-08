@@ -1,6 +1,9 @@
 import type Konva from 'konva'
-import { boundsToRect, expandBounds, getShapeBounds, type CanvasBounds, type CanvasDocument, type CanvasImageShape } from '@/features/canvas-engine'
+import { boundsToRect, expandBounds, getShapeBounds, type CanvasBounds, type CanvasDocument, type CanvasImageShape, type CanvasNodeShape } from '@/features/canvas-engine'
 import { getRuntimeGraphGeneratedOutputRefs } from '@/features/node-runtime/runtimeGraphAssets'
+import { konvaCaptureExcludeName, konvaRuntimeEdgeNodeIdPrefix, konvaRuntimeEdgeNodeName } from './konvaCaptureNames'
+import { getKonvaNodePortWorldPoint } from './konvaNodePorts'
+import { getKonvaRuntimeEdgeBounds } from './konvaRuntimeEdgeGeometry'
 
 export type KonvaSelectionPngCapture = {
   bounds: CanvasBounds
@@ -19,7 +22,7 @@ export type KonvaSelectionCaptureOptions = {
 const defaultPadding = 24
 const defaultPixelRatio = 3
 const defaultMaxPixelEdge = 8192
-export const konvaCaptureExcludeName = 'konva-capture-exclude'
+export { konvaCaptureExcludeName } from './konvaCaptureNames'
 const shapeNodeName = 'konva-canvas-shape'
 const shapeNodeIdPrefix = 'shape:'
 
@@ -32,6 +35,7 @@ export function getKonvaSelectionExportBounds(
   const bounds = document.shapes
     .filter((shape) => selected.has(shape.id))
     .map(getShapeBounds)
+    .concat(getSelectedRuntimeEdgeBounds(document, selected))
 
   if (bounds.length === 0) return null
   return expandBounds(bounds.slice(1).reduce<CanvasBounds>((current, item) => ({
@@ -64,7 +68,7 @@ export async function captureKonvaSelectionPng({
     options.pixelRatio ?? defaultPixelRatio,
     options.maxPixelEdge ?? defaultMaxPixelEdge
   )
-  const captureStage = createOffscreenSelectionStage(stage, selectedIds)
+  const captureStage = createOffscreenSelectionStage(stage, document, selectedIds)
 
   try {
     await hydrateOffscreenCaptureImages(captureStage.stage, document, selectedIds)
@@ -134,12 +138,12 @@ export function downloadKonvaBlob(blob: Blob, fileName: string) {
   }
 }
 
-function createOffscreenSelectionStage(stage: Konva.Stage, selectedIds: readonly string[]) {
+function createOffscreenSelectionStage(stage: Konva.Stage, canvasDocument: CanvasDocument, selectedIds: readonly string[]) {
   const container = document.createElement('div')
   container.style.cssText = 'position:fixed;left:-100000px;top:-100000px;width:1px;height:1px;overflow:hidden;pointer-events:none;opacity:0;'
   document.body.appendChild(container)
   const clone = stage.clone({ container }) as Konva.Stage
-  prepareStageForSelectionCapture(clone, selectedIds)
+  prepareStageForSelectionCapture(clone, canvasDocument, selectedIds)
   return {
     destroy: () => {
       clone.destroy()
@@ -149,18 +153,45 @@ function createOffscreenSelectionStage(stage: Konva.Stage, selectedIds: readonly
   }
 }
 
-function prepareStageForSelectionCapture(stage: Konva.Stage, selectedIds: readonly string[]) {
+function prepareStageForSelectionCapture(stage: Konva.Stage, document: CanvasDocument, selectedIds: readonly string[]) {
   const selected = new Set(selectedIds)
+  const selectedEdgeIds = getSelectedRuntimeEdgeIds(document, selected)
   const shapeNodes = stage.find(`.${shapeNodeName}`)
+  const edgeNodes = stage.find(`.${konvaRuntimeEdgeNodeName}`)
 
   stage.find(`.${konvaCaptureExcludeName}`).forEach((node) => node.visible(false))
   for (const node of shapeNodes) {
     const shapeId = node.id().startsWith(shapeNodeIdPrefix) ? node.id().slice(shapeNodeIdPrefix.length) : ''
     node.visible(selected.has(shapeId))
   }
+  for (const node of edgeNodes) {
+    const edgeId = node.id().startsWith(konvaRuntimeEdgeNodeIdPrefix) ? node.id().slice(konvaRuntimeEdgeNodeIdPrefix.length) : ''
+    node.visible(selectedEdgeIds.has(edgeId))
+  }
   stage.position({ x: 0, y: 0 })
   stage.scale({ x: 1, y: 1 })
   stage.batchDraw()
+}
+
+function getSelectedRuntimeEdgeIds(document: CanvasDocument, selected: Set<string>) {
+  return new Set(document.runtimeEdges
+    .filter((edge) => selected.has(edge.sourceShapeId) && selected.has(edge.targetShapeId))
+    .map((edge) => edge.id))
+}
+
+function getSelectedRuntimeEdgeBounds(document: CanvasDocument, selected: Set<string>) {
+  const nodeShapes = new Map(document.shapes
+    .filter((shape): shape is CanvasNodeShape => shape.type === 'node_card')
+    .map((shape) => [shape.id, shape]))
+  return document.runtimeEdges.flatMap((edge) => {
+    if (!selected.has(edge.sourceShapeId) || !selected.has(edge.targetShapeId)) return []
+    const sourceShape = nodeShapes.get(edge.sourceShapeId)
+    const targetShape = nodeShapes.get(edge.targetShapeId)
+    if (!sourceShape || !targetShape) return []
+    const start = getKonvaNodePortWorldPoint(sourceShape, edge.sourcePortId)
+    const target = getKonvaNodePortWorldPoint(targetShape, edge.targetPortId)
+    return start && target ? [getKonvaRuntimeEdgeBounds(start, target)] : []
+  })
 }
 
 async function hydrateOffscreenCaptureImages(stage: Konva.Stage, document: CanvasDocument, selectedIds: readonly string[]) {

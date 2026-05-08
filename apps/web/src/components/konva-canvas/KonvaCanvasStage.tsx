@@ -155,7 +155,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
       )}
 
       {props.captureMode ? null : (
-        <Layer name={konvaCaptureExcludeName}>
+        <Layer>
           <KonvaNodeEdgeLayer
             edges={props.document.runtimeEdges}
             onEdgeDisconnect={props.onEdgeDisconnect}

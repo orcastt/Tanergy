@@ -51,6 +51,7 @@ export function KonvaNodeCardShape({ document, editingFieldName = null, onChatCl
   const definition = getNodeDefinition(shape.props.nodeType)
   const themeMode = useResolvedCanvasThemeMode()
   const palette = getCanvasThemePalette(themeMode)
+  const nodeStrokeWidth = themeMode === 'dark' ? 1.25 : 1
   const accent = definition.accentColor
   const normalizedData = getNormalizedNodeData(shape.props.nodeType, shape.props.data)
   const cardFields = getNodeCardFields(shape.props.nodeType, normalizedData)
@@ -86,7 +87,7 @@ export function KonvaNodeCardShape({ document, editingFieldName = null, onChatCl
         shadowColor={palette.nodeShadow}
         shadowOffsetY={4}
         stroke={palette.nodeStroke}
-        strokeWidth={1}
+        strokeWidth={nodeStrokeWidth}
         width={shape.props.width}
       />
       <Group>
@@ -204,6 +205,7 @@ function CompactNodeCard({
   title: string
 }) {
   const palette = getCanvasThemePalette(themeMode)
+  const nodeStrokeWidth = themeMode === 'dark' ? 1.25 : 1
   return (
     <Group opacity={opacity}>
       <Rect
@@ -212,7 +214,7 @@ function CompactNodeCard({
         height={shape.props.height}
         perfectDrawEnabled={false}
         stroke={palette.nodeStroke}
-        strokeWidth={1}
+        strokeWidth={nodeStrokeWidth}
         width={shape.props.width}
       />
       <Rect cornerRadius={10} fill={accent} height={6} perfectDrawEnabled={false} width={shape.props.width} />
