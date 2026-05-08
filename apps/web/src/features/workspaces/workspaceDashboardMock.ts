@@ -14,6 +14,8 @@ export type WorkspaceDashboardBoard = {
 
 export type WorkspaceDashboardMember = {
   boardAssignments: number
+  displayName?: string
+  email?: null | string
   id: string
   initials: string
   role: WorkspaceMembershipRole

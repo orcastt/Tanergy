@@ -1319,6 +1319,17 @@ class FakePostgresCursor:
             payment = next((row for row in self.database.payments if row["id"] == params[0]), None)
             if payment:
                 self.row = _payment_tuple(payment)
+        elif normalized.startswith("SELECT id, account_id, provider, provider_payment_id, amount_cents, currency, status, created_at, checkout_session_id, kind, metadata FROM tangent_payments WHERE provider = %s"):
+            provider, checkout_session_id = params
+            payment = next(
+                (
+                    row for row in self.database.payments
+                    if row["provider"] == provider and row["checkout_session_id"] == checkout_session_id
+                ),
+                None,
+            )
+            if payment:
+                self.row = _payment_tuple(payment)
         elif normalized.startswith("SELECT id, account_id, provider, provider_payment_id, amount_cents, currency, status, created_at, checkout_session_id, kind, metadata FROM tangent_payments WHERE account_id = %s"):
             account_id, limit = params
             rows = [_payment_tuple(row) for row in self.database.payments if row["account_id"] == account_id]

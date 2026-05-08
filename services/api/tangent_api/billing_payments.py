@@ -4,6 +4,8 @@ from uuid import uuid4
 
 from fastapi import HTTPException
 
+from tangent_api.billing_credit_accounts import ensure_credit_account
+from tangent_api.billing_payment_provider import get_payment_provider, require_checkout_provider_ready
 from tangent_api.billing_payment_schemas import BillingPaymentRecord
 from tangent_api.billing_payment_rows import payment_from_row
 from tangent_api.collaborate_subscription_lifecycle import (
@@ -18,7 +20,6 @@ from tangent_api.team_subscription_lifecycle import (
 )
 from tangent_api.workspace_entitlements import PLAN_CATALOG
 
-PAYMENT_PROVIDER = "manual_test"
 TOPUP_CENTS_PER_CREDIT = {
     "collaborate_plus": 1,
     "collaborate_start": 1,
@@ -224,9 +225,11 @@ def _create_payment(
 
     with connect_to_postgres() as connection:
         with connection.cursor() as cursor:
-            account_id = _ensure_credit_account(cursor, account_owner_type, account_owner_id)
+            account_id = ensure_credit_account(cursor, account_owner_type, account_owner_id)
             payment_id = f"payment_{uuid4()}"
             checkout_session_id = f"checkout_{uuid4()}"
+            payment_provider = get_payment_provider()
+            require_checkout_provider_ready(payment_provider)
             cursor.execute(
                 """
                 INSERT INTO tangent_payments (
@@ -248,7 +251,7 @@ def _create_payment(
                 (
                     payment_id,
                     account_id,
-                    PAYMENT_PROVIDER,
+                    payment_provider,
                     amount_cents,
                     currency.lower(),
                     checkout_session_id,
@@ -259,32 +262,6 @@ def _create_payment(
             row = cursor.fetchone()
         connection.commit()
     return payment_from_row(row)
-
-
-def _ensure_credit_account(cursor: object, owner_type: str, owner_id: str) -> str:
-    account_id = f"credit_{owner_type}_{owner_id}"
-    account_kind = "team_wallet" if owner_type == "workspace" else "personal_wallet"
-    cursor.execute(
-        """
-        INSERT INTO tangent_credit_accounts (
-            id,
-            owner_type,
-            owner_id,
-            account_kind,
-            status
-        )
-        VALUES (%s, %s, %s, %s, 'active')
-        ON CONFLICT (owner_type, owner_id)
-        DO UPDATE SET
-            status = 'active',
-            account_kind = EXCLUDED.account_kind,
-            updated_at = NOW()
-        RETURNING id
-        """,
-        (account_id, owner_type, owner_id, account_kind),
-    )
-    row = cursor.fetchone()
-    return str(row[0]) if row else account_id
 
 
 def _resolve_payment_account_id(context: ApiRequestContext, kind: Optional[str], workspace_scoped: bool) -> str:

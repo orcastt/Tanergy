@@ -1,0 +1,23 @@
+.workspace-detail-member-actions select,
+.workspace-detail-member-role-label {
+  min-height: 34px;
+  border: 1px solid var(--color-hairline);
+  border-radius: 8px;
+  padding: 0 10px;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.workspace-detail-member-role-label {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-muted);
+}
+
+.workspace-detail-muted-button:disabled,
+.workspace-detail-danger-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}

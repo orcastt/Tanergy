@@ -12,6 +12,7 @@ from tangent_api.billing_payment_schemas import (
     BillingWebhookMutationResponse,
 )
 from tangent_api.billing_payment_completion import complete_billing_payment
+from tangent_api.billing_payment_responses import payment_checkout_response
 from tangent_api.billing_payments import (
     create_collaborate_subscription_checkout,
     create_team_subscription_checkout,
@@ -60,15 +61,13 @@ def post_topup_checkout(
     input_data: BillingTopupCheckoutRequest,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> BillingPaymentMutationResponse:
-    return BillingPaymentMutationResponse(
-        ok=True,
-        payment=create_topup_checkout(
-            context,
-            credits=input_data.credits,
-            currency=input_data.currency,
-            metadata=input_data.metadata,
-        ),
+    payment = create_topup_checkout(
+        context,
+        credits=input_data.credits,
+        currency=input_data.currency,
+        metadata=input_data.metadata,
     )
+    return payment_checkout_response(payment)
 
 
 @router.post("/teams/checkout", response_model=BillingPaymentMutationResponse)
@@ -76,17 +75,15 @@ def post_team_subscription_checkout(
     input_data: BillingTeamSubscriptionCheckoutRequest,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> BillingPaymentMutationResponse:
-    return BillingPaymentMutationResponse(
-        ok=True,
-        payment=create_team_subscription_checkout(
-            context,
-            currency=input_data.currency,
-            metadata=input_data.metadata,
-            plan_key=input_data.plan_key,
-            quantity=input_data.quantity,
-            team_name=input_data.team_name,
-        ),
+    payment = create_team_subscription_checkout(
+        context,
+        currency=input_data.currency,
+        metadata=input_data.metadata,
+        plan_key=input_data.plan_key,
+        quantity=input_data.quantity,
+        team_name=input_data.team_name,
     )
+    return payment_checkout_response(payment)
 
 
 @router.post("/collaborate/checkout", response_model=BillingPaymentMutationResponse)
@@ -94,15 +91,13 @@ def post_collaborate_subscription_checkout(
     input_data: BillingCollaborateSubscriptionCheckoutRequest,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> BillingPaymentMutationResponse:
-    return BillingPaymentMutationResponse(
-        ok=True,
-        payment=create_collaborate_subscription_checkout(
-            context,
-            currency=input_data.currency,
-            metadata=input_data.metadata,
-            plan_key=input_data.plan_key,
-        ),
+    payment = create_collaborate_subscription_checkout(
+        context,
+        currency=input_data.currency,
+        metadata=input_data.metadata,
+        plan_key=input_data.plan_key,
     )
+    return payment_checkout_response(payment)
 
 
 @router.post("/payments/{payment_id}/complete", response_model=BillingPaymentMutationResponse)
@@ -118,16 +113,14 @@ def post_workspace_seat_checkout(
     input_data: BillingSeatPurchaseCheckoutRequest,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> BillingPaymentMutationResponse:
-    return BillingPaymentMutationResponse(
-        ok=True,
-        payment=create_workspace_seat_checkout(
-            context,
-            currency=input_data.currency,
-            metadata=input_data.metadata,
-            plan_key=input_data.plan_key,
-            quantity=input_data.quantity,
-        ),
+    payment = create_workspace_seat_checkout(
+        context,
+        currency=input_data.currency,
+        metadata=input_data.metadata,
+        plan_key=input_data.plan_key,
+        quantity=input_data.quantity,
     )
+    return payment_checkout_response(payment)
 
 
 @router.post("/workspaces/current/topups/checkout", response_model=BillingPaymentMutationResponse)
@@ -135,15 +128,13 @@ def post_workspace_topup_checkout(
     input_data: BillingTopupCheckoutRequest,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> BillingPaymentMutationResponse:
-    return BillingPaymentMutationResponse(
-        ok=True,
-        payment=create_workspace_topup_checkout(
-            context,
-            credits=input_data.credits,
-            currency=input_data.currency,
-            metadata=input_data.metadata,
-        ),
+    payment = create_workspace_topup_checkout(
+        context,
+        credits=input_data.credits,
+        currency=input_data.currency,
+        metadata=input_data.metadata,
     )
+    return payment_checkout_response(payment)
 
 
 @router.post("/webhooks/{provider}", response_model=BillingWebhookMutationResponse)

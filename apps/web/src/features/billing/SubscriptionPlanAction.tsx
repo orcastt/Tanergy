@@ -3,10 +3,10 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import {
-  completeBillingPayment,
   createCollaborateSubscriptionCheckout,
   createTeamSubscriptionCheckout,
 } from './billingClient'
+import { continueBillingCheckout } from './billingCheckoutFlow'
 import type { PlanKey } from './billingTypes'
 
 type SubscriptionPlanActionProps = {
@@ -53,11 +53,12 @@ export function SubscriptionPlanAction({
           ? await createTeamCheckout(planKey, planName)
           : null
       if (!checkout) throw new Error('This plan is not available for checkout.')
-      if (!checkout.payment?.id) {
-        throw new Error('Checkout did not return a payment id.')
+      const { completed, message, openedHostedCheckout } = await continueBillingCheckout(checkout)
+      if (openedHostedCheckout) {
+        setStatus(message)
+        return
       }
-      const completed = await completeBillingPayment(checkout.payment.id)
-      const workspaceName = completed.payment?.metadata.workspaceName
+      const workspaceName = completed?.payment?.metadata.workspaceName
       setStatus(typeof workspaceName === 'string' ? `${workspaceName} is active.` : `${planName} is active.`)
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Checkout failed.')

@@ -3,10 +3,10 @@
 import { useState } from 'react'
 import {
   acceptWorkspaceInvitation,
-  completeBillingPayment,
   createGroupWorkspace,
   createTeamSubscriptionCheckout,
 } from '@/features/billing/billingClient'
+import { continueBillingCheckout } from '@/features/billing/billingCheckoutFlow'
 import type { PlanKey, WorkspaceKind } from '@/features/billing/billingTypes'
 import { getCurrentSessionSnapshot } from '@/features/auth/mockSession'
 import type {
@@ -83,10 +83,13 @@ export function WorkspaceDirectoryActions({
     const planKey = normalizeTeamPlan(window.prompt('Plan key', 'team_start') ?? 'team_start')
     const quantity = normalizeQuantity(window.prompt('Seats to start with', '2') ?? '2')
     const checkout = await createTeamSubscriptionCheckout({ planKey, quantity, teamName })
-    if (!checkout.payment?.id) throw new Error('Checkout did not return a payment id.')
-    const completed = await completeBillingPayment(checkout.payment.id)
-    const metadata = completed.payment?.metadata ?? {}
-    const workspaceId = typeof metadata.workspaceId === 'string' ? metadata.workspaceId : checkout.payment.id
+    const { completed, message, openedHostedCheckout } = await continueBillingCheckout(checkout)
+    if (openedHostedCheckout) {
+      setStatus(message)
+      return
+    }
+    const metadata = completed?.payment?.metadata ?? {}
+    const workspaceId = typeof metadata.workspaceId === 'string' ? metadata.workspaceId : checkout.payment?.id ?? teamName
     const workspaceName = typeof metadata.workspaceName === 'string' ? metadata.workspaceName : teamName
     onWorkspaceAdded({
       boardCount: 0,

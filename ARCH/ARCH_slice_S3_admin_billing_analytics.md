@@ -111,7 +111,7 @@ payment completed
   -> audit admin/system facts
 ```
 
-Implementation checkpoint: the backend checkout/complete contract exists with manual-test payment completion. A first signed webhook inbox also exists: `POST /api/v1/billing/webhooks/{provider}` validates `TANGENT_PAYMENT_WEBHOOK_SECRET`, stores provider events in `tangent_webhook_events`, calls the shared payment completion path for supported checkout success events and avoids duplicate grants for repeated provider event ids. Real provider session creation/mapping, invoices and admin audit facts still need production implementation.
+Implementation checkpoint: the backend checkout/complete contract exists with manual-test payment completion. Checkout responses now include a `checkout` object; non-manual providers require hosted checkout configuration before a payment is created, can expose a hosted checkout URL with amount/currency/kind/client-reference handoff metadata and cannot be manually completed. The payment layer is provider-neutral: `manual_test` and generic hosted checkout can keep staging moving while Stripe is unavailable. The optional Stripe checkout adapter first cut requires `TANGENT_STRIPE_SECRET_KEY` only when `stripe` is selected, creates Checkout Sessions through Stripe's server API, writes internal payment/session references into provider metadata and labels `checkout.adapter=stripe_checkout`; it does not read local secret files. A first signed webhook inbox also exists: `POST /api/v1/billing/webhooks/{provider}` validates `TANGENT_PAYMENT_WEBHOOK_SECRET`, stores provider events in `tangent_webhook_events`, calls the shared payment completion path for supported checkout success events by internal payment id, client reference or provider metadata checkout session id and avoids duplicate grants for repeated provider event ids. The frontend now has hosted checkout return routes at `/billing/success` and `/billing/cancel`, and `/usage` buttons call the real Team top-up, Team seat checkout, personal top-up and Group create routes. Admin finance reconciliation now has server-gated read endpoints and frontend panels for payments, credit ledger rows, subscriptions, wallets and Team member usage. Provider-specific signatures, invoices, refunds and production payment reconciliation still need implementation.
 
 Team seat add:
 
@@ -165,7 +165,7 @@ create invite link/email invite
   -> audit membership change
 ```
 
-Implementation checkpoint: backend workspace invite create/list/accept/revoke/expiry contracts exist. Invite tokens are stored only as hashes. The current first cut verifies token state and optional target email/user, then creates/updates workspace membership. Team invite accept also requires an active Team subscription with remaining seat capacity and creates the member's seat assignment without granting duplicate credits. A minimal frontend invite/create/revoke/remove wiring exists on Team and Group surfaces. Email delivery, richer role UI and audit events remain.
+Implementation checkpoint: backend workspace invite create/list/accept/revoke/expiry contracts exist. Invite tokens are stored only as hashes. The current first cut verifies token state and optional target email/user, then creates/updates workspace membership. Team invite accept also requires an active Team subscription with remaining seat capacity and creates the member's seat assignment without granting duplicate credits. Team and Group dashboard surfaces now load the server dashboard when available and wire invite/create/revoke, member remove, member role update and Team seat assignment actions to the real routes. Email delivery, board-specific assignment UI and audit events remain.
 
 Member removal:
 
@@ -302,8 +302,12 @@ POST /api/v1/ai/runs/quote
 POST /api/v1/ai/runs
 GET  /api/v1/admin/ai/runs
 GET  /api/v1/admin/ai/api-calls
-GET  /api/v1/admin/credits/accounts
-GET  /api/v1/admin/credits/ledger
+GET  /api/v1/admin/finance/summary
+GET  /api/v1/admin/finance/payments
+GET  /api/v1/admin/finance/wallets
+GET  /api/v1/admin/finance/subscriptions
+GET  /api/v1/admin/finance/credit-ledger
+GET  /api/v1/admin/finance/member-usage
 ```
 
 Exact route names may change, but the capabilities and server authority must remain.
@@ -313,7 +317,7 @@ Exact route names may change, but the capabilities and server authority must rem
 Reusable:
 
 - Server-gated Admin and audit log scaffolds.
-- Billing/team/usage first-pass UI.
+- Billing/team/usage first-pass UI, including real `/usage` checkout/create button wiring and billing success/cancel return routes.
 - `workspace.kind`, membership, seat assignment, usage/dashboard facts.
 - Credit ledger helpers and preflight/read routes.
 - Payment checkout/complete scaffolds.
@@ -328,7 +332,10 @@ Implemented in the 2026-05-08 first cut:
 - Team seat checkout completion now writes Team subscription ownership/seat-capacity facts and a Team wallet subscription grant.
 - Team top-up targets the Team wallet.
 - Collaborate checkout enforces the single active personal Collaborate subscription contract and grants credits to the personal wallet.
-- Signed payment webhook inbox first cut records provider events and completes top-up/subscription payments through the shared grant path with duplicate-event idempotency.
+- Hosted checkout response contract exists for non-manual providers; missing hosted checkout configuration fails before payment creation and manual completion is blocked for hosted-provider payments.
+- Provider-neutral checkout first cut supports manual-test and generic hosted checkout; the optional Stripe adapter requires server-side `TANGENT_STRIPE_SECRET_KEY` only when selected, creates Stripe Checkout Sessions and labels checkout responses with `adapter=stripe_checkout`.
+- Signed payment webhook inbox first cut records provider events and completes top-up/subscription payments through the shared grant path by internal payment id, client reference or provider metadata checkout session id with duplicate-event idempotency.
+- Admin finance reconciliation first pass exposes server-gated summary, payment, wallet, subscription, credit ledger and Team member usage read APIs, with matching frontend panels and audit-log entries.
 - Workspace invite create/list/accept/revoke and member removal contracts exist for Team and Group.
 - Mock AI run settlement now has contract coverage for Group actor-personal charging, Team wallet charging and immutable charge context during polling/cancel.
 - Disposable Postgres smoke passed for migration-to-head, Team checkout/invite/quote/run-settlement/remove and Collaborate/Group create/invite/quote/run-settlement.
@@ -337,6 +344,6 @@ Remaining rework:
 
 - Hosted staging smoke still needs to run against managed Postgres and deployed API/Web.
 - Hosted live-provider run-settlement smoke still needs to exercise real provider output persistence through the same payer contract.
-- Real payment-provider session mapping and webhooks must replace manual-test completion as the authority for grants and subscription state.
-- Richer role UI, email invites and audit events remain.
+- Provider-specific webhook signatures, invoice/refund handling and hosted staging smoke must replace manual-test completion as the authority for grants and subscription state.
+- Email invites, board-specific assignment UI and richer audit events remain.
 - GeekAI canvas fast path must be reconciled into S2 server provider-route/billing control plane before production reliance.

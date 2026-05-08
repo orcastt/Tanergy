@@ -19,6 +19,19 @@ class BillingPaymentRecord(TangentApiModel):
     status: str
 
 
+class BillingCheckoutSessionRecord(TangentApiModel):
+    adapter: str
+    amount_cents: int = Field(alias="amountCents")
+    client_reference_id: str = Field(alias="clientReferenceId")
+    currency: str
+    id: str
+    kind: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    mode: str
+    provider: str
+    url: Optional[str] = None
+
+
 class BillingPaymentsResponse(TangentApiModel):
     error: Optional[str] = None
     ok: bool
@@ -53,6 +66,7 @@ class BillingTeamSubscriptionCheckoutRequest(TangentApiModel):
 
 
 class BillingPaymentMutationResponse(TangentApiModel):
+    checkout: Optional[BillingCheckoutSessionRecord] = None
     error: Optional[str] = None
     ok: bool
     payment: Optional[BillingPaymentRecord] = None

@@ -5,16 +5,18 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { AppShell } from '@/components/app-shell/AppShell'
 import { AdminAiDashboard } from '@/features/admin/AdminAiDashboard'
+import { AdminFinanceDashboard } from '@/features/admin/AdminFinanceDashboard'
 import {
   grantAdminRole,
   loadAdminRoles,
   revokeAdminRole,
   type AdminRoleRecord,
 } from '@/features/admin/adminClient'
+import { formatDate } from '@/features/admin/adminAiShared'
 import { useAdminResources } from '@/features/admin/useAdminResources'
 import { useAdminAccess } from '@/features/auth/useAdminAccess'
 
-const auditActions = ['', 'admin.role.grant', 'admin.role.revoke', 'admin.roles.read', 'admin.users.list', 'admin.workspaces.list', 'admin.boards.list', 'admin.summary.read', 'admin.audit.list']
+const auditActions = ['', 'admin.role.grant', 'admin.role.revoke', 'admin.roles.read', 'admin.users.list', 'admin.workspaces.list', 'admin.boards.list', 'admin.summary.read', 'admin.audit.list', 'admin.finance.summary.read', 'admin.finance.payments.list', 'admin.finance.wallets.list', 'admin.finance.subscriptions.list', 'admin.finance.credit_ledger.list', 'admin.finance.member_usage.list']
 const auditLimitOptions = [10, 25, 50] as const
 const roleOptions = ['owner', 'admin', 'support', 'analyst', 'finance', 'moderator'] as const
 const userLimitOptions = [10, 25, 50] as const
@@ -237,6 +239,7 @@ export default function AdminPage() {
             </section>
 
             <AdminAiDashboard enabled={resourcesEnabled} />
+            <AdminFinanceDashboard enabled={resourcesEnabled} workspaces={resources.workspaces.workspaces} />
 
             <section className="management-section-grid" aria-label="Audit activity">
               <article className="management-panel management-panel-wide">
@@ -278,11 +281,6 @@ function Notice({ body, title }: { body: string; title: string }) {
 
 function ErrorNotice({ error }: { error: string }) {
   return <Notice body={error} title="Admin access check failed" />
-}
-
-function formatDate(value: string) {
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' }).format(date)
 }
 
 function initials(value: string) {

@@ -5,6 +5,7 @@ from uuid import uuid4
 from fastapi import HTTPException
 
 from tangent_api.billing_payment_schemas import BillingPaymentMutationResponse, BillingPaymentRecord
+from tangent_api.billing_payment_context import build_provider_completion_context
 from tangent_api.billing_payment_rows import payment_from_row
 from tangent_api.collaborate_subscription_lifecycle import (
     assert_collaborate_subscription_completion_allowed,
@@ -31,6 +32,8 @@ def complete_billing_payment(
     with connect_to_postgres() as connection:
         with connection.cursor() as cursor:
             payment = _load_payment_for_update(cursor, payment_id)
+            if payment.provider != "manual_test":
+                raise HTTPException(status_code=409, detail="Hosted provider payments complete through webhooks.")
             _assert_payment_completion_allowed(payment, context)
             response = _complete_loaded_payment(
                 cursor,
@@ -43,8 +46,9 @@ def complete_billing_payment(
 
 
 def complete_billing_payment_from_provider(
-    payment_id: str,
     *,
+    checkout_session_id: Optional[str] = None,
+    payment_id: Optional[str] = None,
     provider: str,
     provider_payment_id: str,
 ) -> BillingPaymentMutationResponse:
@@ -53,10 +57,15 @@ def complete_billing_payment_from_provider(
 
     with connect_to_postgres() as connection:
         with connection.cursor() as cursor:
-            payment = _load_payment_for_update(cursor, payment_id)
+            payment = _load_provider_payment_for_update(
+                cursor,
+                provider=provider,
+                payment_id=payment_id,
+                checkout_session_id=checkout_session_id,
+            )
             if payment.provider != provider:
                 raise HTTPException(status_code=400, detail="Payment provider mismatch.")
-            context = _build_provider_completion_context(cursor, payment)
+            context = build_provider_completion_context(cursor, payment)
             response = _complete_loaded_payment(
                 cursor,
                 payment,
@@ -121,6 +130,37 @@ def _load_payment_for_update(cursor: object, payment_id: str) -> BillingPaymentR
         LIMIT 1
         """,
         (payment_id,),
+    )
+    row = cursor.fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Payment not found.")
+    return payment_from_row(row)
+
+
+def _load_provider_payment_for_update(
+    cursor: object,
+    *,
+    checkout_session_id: Optional[str],
+    payment_id: Optional[str],
+    provider: str,
+) -> BillingPaymentRecord:
+    normalized_payment_id = (payment_id or "").strip()
+    if normalized_payment_id:
+        return _load_payment_for_update(cursor, normalized_payment_id)
+    normalized_checkout_session_id = (checkout_session_id or "").strip()
+    if not normalized_checkout_session_id:
+        raise HTTPException(status_code=400, detail="Payment reference is required.")
+    cursor.execute(
+        """
+        SELECT id, account_id, provider, provider_payment_id, amount_cents, currency,
+               status, created_at, checkout_session_id, kind, metadata
+        FROM tangent_payments
+        WHERE provider = %s
+          AND checkout_session_id = %s
+        LIMIT 1
+        FOR UPDATE
+        """,
+        (provider, normalized_checkout_session_id),
     )
     row = cursor.fetchone()
     if row is None:
@@ -210,54 +250,6 @@ def _grant_collaborate_subscription_credits(
             **payment.metadata,
         },
     )
-
-
-def _build_provider_completion_context(cursor: object, payment: BillingPaymentRecord) -> ApiRequestContext:
-    metadata = dict(payment.metadata or {})
-    owner_type, owner_id = _load_payment_account_owner(cursor, payment)
-    actor_user_id = str(
-        metadata.get("ownerUserId")
-        or (owner_id if owner_type == "user" else metadata.get("actorUserId") or "payment-webhook")
-    )
-    workspace_id = str(
-        metadata.get("workspaceId")
-        or metadata.get("checkoutWorkspaceId")
-        or (owner_id if owner_type == "workspace" else f"workspace_{actor_user_id}")
-    )
-    workspace_kind = str(metadata.get("workspaceKind") or ("team_workspace" if owner_type == "workspace" else "solo_workspace"))
-    return ApiRequestContext(
-        auth_mode="provider_webhook",
-        is_dev_fallback=False,
-        user_avatar_initials="PW",
-        user_display_name=str(metadata.get("ownerDisplayName") or "Payment Webhook"),
-        user_email=str(metadata.get("ownerEmail") or "payment-webhook@tangent.local"),
-        user_email_verified=True,
-        user_id=actor_user_id,
-        workspace_board_count=0,
-        workspace_id=workspace_id,
-        workspace_kind=workspace_kind,
-        workspace_name=str(metadata.get("workspaceName") or metadata.get("teamName") or "Payment workspace"),
-        workspace_plan_key=str(metadata.get("planKey")) if metadata.get("planKey") else None,
-        workspace_role="owner",
-    )
-
-
-def _load_payment_account_owner(cursor: object, payment: BillingPaymentRecord) -> tuple[str, str]:
-    if not payment.account_id:
-        return "user", str(payment.metadata.get("ownerUserId") or "payment-webhook")
-    cursor.execute(
-        """
-        SELECT owner_type, owner_id
-        FROM tangent_credit_accounts
-        WHERE id = %s
-        LIMIT 1
-        """,
-        (payment.account_id,),
-    )
-    row = cursor.fetchone()
-    if row:
-        return str(row[0]), str(row[1])
-    return "user", str(payment.metadata.get("ownerUserId") or "payment-webhook")
 
 
 def _assert_payment_completion_allowed(payment: BillingPaymentRecord, context: ApiRequestContext) -> None:

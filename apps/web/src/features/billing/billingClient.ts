@@ -165,12 +165,15 @@ export async function loadBillingPayments(query: BillingPaymentQuery = {}): Prom
   })}`)
 }
 
-export async function createBillingTopupCheckout(input: BillingTopupCheckoutInput): Promise<BillingPaymentMutationResponse> {
+export async function createBillingTopupCheckout(
+  input: BillingTopupCheckoutInput,
+  options: BillingClientOptions = {},
+): Promise<BillingPaymentMutationResponse> {
   if (!hasRemotePersistenceApi()) throw new Error('Top-up checkout requires the remote billing API.')
   return loadJson<BillingPaymentMutationResponse>('/api/v1/billing/topups/checkout', {
     body: JSON.stringify(input),
     method: 'POST',
-  })
+  }, options)
 }
 
 export async function createCollaborateSubscriptionCheckout(

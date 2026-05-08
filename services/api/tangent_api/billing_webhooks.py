@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 from fastapi import HTTPException
 
+from tangent_api.billing_payment_provider import normalize_payment_provider
 from tangent_api.billing_payment_schemas import BillingWebhookMutationResponse
 from tangent_api.billing_payment_completion import complete_billing_payment_from_provider
 from tangent_api.storage.postgres_connection import require_database_url
@@ -44,10 +45,11 @@ def process_billing_webhook(
         return BillingWebhookMutationResponse(eventId=event_id, ok=True, processed=False)
 
     data = _extract_event_data(payload)
-    payment_id = _extract_payment_id(data, payload)
+    payment_id, checkout_session_id = _extract_payment_reference(data, payload, event_type)
     provider_payment_id = _extract_provider_payment_id(data, provider_event_id)
     completion = complete_billing_payment_from_provider(
-        payment_id,
+        checkout_session_id=checkout_session_id,
+        payment_id=payment_id,
         provider=normalized_provider,
         provider_payment_id=provider_payment_id,
     )
@@ -162,18 +164,63 @@ def _extract_event_type(payload: dict[str, Any]) -> str:
     return event_type
 
 
-def _extract_payment_id(data: dict[str, Any], payload: dict[str, Any]) -> str:
+def _extract_payment_reference(
+    data: dict[str, Any],
+    payload: dict[str, Any],
+    event_type: str,
+) -> tuple[Optional[str], Optional[str]]:
+    metadata = _extract_provider_metadata(data, payload)
     payment_id = str(
         data.get("paymentId")
         or data.get("payment_id")
-        or data.get("client_reference_id")
+        or metadata.get("paymentId")
+        or metadata.get("payment_id")
         or payload.get("paymentId")
         or payload.get("payment_id")
         or ""
     ).strip()
+    client_reference_id = str(
+        data.get("client_reference_id")
+        or metadata.get("clientReferenceId")
+        or metadata.get("client_reference_id")
+        or payload.get("client_reference_id")
+        or ""
+    ).strip()
+    if not payment_id and client_reference_id.startswith("payment_"):
+        payment_id = client_reference_id
+    checkout_session_id = str(
+        data.get("checkoutSessionId")
+        or data.get("checkout_session_id")
+        or data.get("checkout_session")
+        or metadata.get("checkoutSessionId")
+        or metadata.get("checkout_session_id")
+        or metadata.get("checkout_session")
+        or payload.get("checkoutSessionId")
+        or payload.get("checkout_session_id")
+        or payload.get("checkout_session")
+        or ""
+    ).strip()
+    if not checkout_session_id and client_reference_id.startswith("checkout_"):
+        checkout_session_id = client_reference_id
+    if not checkout_session_id and event_type == "checkout.session.completed":
+        checkout_session_id = str(data.get("id") or "").strip()
     if not payment_id:
-        raise HTTPException(status_code=400, detail="Payment webhook payment id is required.")
-    return payment_id
+        payment_id = None
+    if not checkout_session_id:
+        checkout_session_id = None
+    if not payment_id and not checkout_session_id:
+        raise HTTPException(status_code=400, detail="Payment webhook payment reference is required.")
+    return payment_id, checkout_session_id
+
+
+def _extract_provider_metadata(data: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    metadata = data.get("metadata")
+    if isinstance(metadata, dict):
+        return metadata
+    metadata = payload.get("metadata")
+    if isinstance(metadata, dict):
+        return metadata
+    return {}
 
 
 def _extract_provider_payment_id(data: dict[str, Any], fallback_event_id: str) -> str:
@@ -187,7 +234,7 @@ def _extract_provider_payment_id(data: dict[str, Any], fallback_event_id: str) -
 
 
 def _normalize_provider(provider: str) -> str:
-    normalized = provider.strip().lower().replace("-", "_")
-    if not normalized or not normalized.replace("_", "").isalnum():
+    normalized = normalize_payment_provider(provider)
+    if not normalized:
         raise HTTPException(status_code=400, detail="Invalid payment provider.")
     return normalized

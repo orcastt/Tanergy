@@ -30,6 +30,7 @@ export type AdminUserRecord = {
 export type AdminWorkspaceRecord = {
   createdAt?: null | string
   id: string
+  kind?: string
   name: string
   ownerId?: null | string
   status: string

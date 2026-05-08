@@ -1,20 +1,19 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { formatCredits } from '@/features/billing/billingPresentation'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import { WorkspaceInvitePanel } from './WorkspaceInvitePanel'
 import { WorkspaceMembersPanel } from './WorkspaceMembersPanel'
 import {
-  getGroupWorkspaceDashboardRecord,
-  getTeamWorkspaceDashboardRecord,
   type GroupWorkspaceDashboardRecord,
   type WorkspaceDashboardAction,
   type WorkspaceDashboardBoard,
   type TeamWorkspaceDashboardRecord,
 } from '@/features/workspaces/workspaceDashboardMock'
 import { formatWorkspacePlanName } from '@/features/workspaces/workspaceDirectoryMock'
+import { useWorkspaceDashboardRuntime } from './useWorkspaceDashboardRuntime'
 
 type WorkspaceDashboardViewProps = {
   kind: 'group' | 'team'
@@ -25,28 +24,10 @@ type BoardViewMode = 'gallery' | 'list'
 
 export function WorkspaceDashboardView({ kind, workspaceId }: WorkspaceDashboardViewProps) {
   const [viewMode, setViewMode] = useState<BoardViewMode>('gallery')
-  const teamRecord = useMemo(
-    () => kind === 'team' ? getTeamWorkspaceDashboardRecord(workspaceId) : null,
-    [kind, workspaceId],
-  )
-  const groupRecord = useMemo(
-    () => kind === 'group' ? getGroupWorkspaceDashboardRecord(workspaceId) : null,
-    [kind, workspaceId],
-  )
+  const { error, groupRecord, reload, status, teamRecord, workspace } = useWorkspaceDashboardRuntime(kind, workspaceId)
   const record = kind === 'team' ? teamRecord : groupRecord
-  const workspace = useMemo<TangentWorkspace | null>(() => {
-    if (!record) return null
-    return {
-      boardCount: record.boards.length,
-      id: record.id,
-      kind: kind === 'team' ? 'team_workspace' : 'group_workspace',
-      name: record.name,
-      planKey: record.planKey,
-      role: 'owner',
-    }
-  }, [kind, record])
 
-  if (!record || !workspace) {
+  if (!record || status === 'loading') {
     return (
       <div className="product-page workspace-detail-page">
         <section className="product-page-header workspace-detail-header">
@@ -55,8 +36,9 @@ export function WorkspaceDashboardView({ kind, workspaceId }: WorkspaceDashboard
             <span>Back</span>
           </Link>
           <div className="workspace-detail-header-row">
-            <h1 className="product-page-title">{kind === 'team' ? 'Team not found' : 'Group not found'}</h1>
+            <h1 className="product-page-title">{status === 'loading' ? 'Loading workspace' : kind === 'team' ? 'Team not found' : 'Group not found'}</h1>
           </div>
+          {error ? <p className="workspace-detail-status">{error}</p> : null}
         </section>
       </div>
     )
@@ -78,6 +60,7 @@ export function WorkspaceDashboardView({ kind, workspaceId }: WorkspaceDashboard
       {kind === 'team' && teamRecord ? (
         <TeamDashboardLayout
           record={teamRecord}
+          onMembersChanged={reload}
           workspace={workspace}
           viewMode={viewMode}
           onViewModeChange={setViewMode}
@@ -86,6 +69,7 @@ export function WorkspaceDashboardView({ kind, workspaceId }: WorkspaceDashboard
       {kind === 'group' && groupRecord ? (
         <GroupDashboardLayout
           record={groupRecord}
+          onMembersChanged={reload}
           workspace={workspace}
           viewMode={viewMode}
           onViewModeChange={setViewMode}
@@ -97,10 +81,12 @@ export function WorkspaceDashboardView({ kind, workspaceId }: WorkspaceDashboard
 
 function TeamDashboardLayout({
   onViewModeChange,
+  onMembersChanged,
   record,
   workspace,
   viewMode,
 }: {
+  onMembersChanged: () => void
   onViewModeChange: (mode: BoardViewMode) => void
   record: TeamWorkspaceDashboardRecord
   workspace: TangentWorkspace
@@ -139,7 +125,7 @@ function TeamDashboardLayout({
       </section>
 
       <section className="workspace-detail-grid workspace-detail-grid-bottom">
-        <WorkspaceMembersPanel members={record.members} workspace={workspace} />
+        <WorkspaceMembersPanel members={record.members} onMembersChanged={onMembersChanged} workspace={workspace} />
         <WorkspaceInvitePanel seatLabel={`${record.seatsUsed}/${record.seatLimit}`} workspace={workspace} />
       </section>
     </div>
@@ -148,10 +134,12 @@ function TeamDashboardLayout({
 
 function GroupDashboardLayout({
   onViewModeChange,
+  onMembersChanged,
   record,
   workspace,
   viewMode,
 }: {
+  onMembersChanged: () => void
   onViewModeChange: (mode: BoardViewMode) => void
   record: GroupWorkspaceDashboardRecord
   workspace: TangentWorkspace
@@ -189,7 +177,7 @@ function GroupDashboardLayout({
       </section>
 
       <section className="workspace-detail-grid workspace-detail-grid-bottom">
-        <WorkspaceMembersPanel members={record.members} workspace={workspace} />
+        <WorkspaceMembersPanel members={record.members} onMembersChanged={onMembersChanged} workspace={workspace} />
         <WorkspaceInvitePanel workspace={workspace} />
         <DashboardActionsPanel actions={record.actions} />
       </section>

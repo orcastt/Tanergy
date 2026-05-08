@@ -231,39 +231,13 @@ export type WorkspaceEntitlementResponse = {
   workspace: BillingWorkspaceSummary
 }
 
-export type BillingPaymentRecord = {
-  accountId?: null | string
-  amountCents: number
-  checkoutSessionId?: null | string
-  createdAt: string
-  currency: string
-  id: string
-  kind: string
-  metadata: Record<string, unknown>
-  provider: string
-  providerPaymentId?: null | string
-  status: string
-}
-
-export type BillingPaymentsResponse = {
-  error?: string
-  ok: boolean
-  payments: BillingPaymentRecord[]
-}
-
-export type BillingPaymentMutationResponse = {
-  error?: string
-  ok: boolean
-  payment?: BillingPaymentRecord
-  topupEntryId?: null | string
-}
-
-export type BillingPaymentQuery = {
-  kind?: null | string
-  limit?: number
-  status?: null | string
-  workspaceScoped?: boolean
-}
+export type {
+  BillingCheckoutSessionRecord,
+  BillingPaymentMutationResponse,
+  BillingPaymentQuery,
+  BillingPaymentRecord,
+  BillingPaymentsResponse,
+} from './billingPaymentTypes'
 
 export type BillingTopupCheckoutInput = {
   credits: number
