@@ -16,6 +16,7 @@ const isProtectedRoute = createRouteMatcher([
 
 const clerkProxy = clerkMiddleware(async (auth, request) => {
   if (shouldRequireWebAuth() && isProtectedRoute(request)) {
+    if (isLocalDevAuthBypass(request)) return NextResponse.next()
     await auth.protect({
       unauthenticatedUrl: new URL('/sign-in', request.url).toString(),
     })
@@ -47,4 +48,8 @@ export const config = {
 
 function shouldRunClerkProxy(pathname: string) {
   return pathname === '/api/auth/session' || isProtectedProductPath(pathname)
+}
+
+function isLocalDevAuthBypass(request: NextRequest) {
+  return process.env.NODE_ENV !== 'production' && request.cookies.get('tangent_dev_auth')?.value === '1'
 }

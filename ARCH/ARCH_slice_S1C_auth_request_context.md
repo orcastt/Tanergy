@@ -1,6 +1,6 @@
 # ARCH Slice S1C: Auth And Request Context
 
-**Updated**: 2026-05-05
+**Updated**: 2026-05-08
 **Mode**: Architecture slice.
 **Status**: Clerk frontend/session bridge plus FastAPI bearer verification first pass are in place; multi-workspace, OTP and admin/auth hardening remain.
 
@@ -31,9 +31,10 @@ Next.js Web
   -> Google OAuth consent
   -> provider-issued JWT
   -> FastAPI Authorization: Bearer <token>
-  -> auth_provider.py verifies issuer/audience/signature/expiry/azp
-  -> auth_sessions.py maps provider subject to tangent_users / tangent_user_identities
-  -> request_context attaches local user/workspace authority to the request
+-> auth_provider.py verifies issuer/audience/signature/expiry/azp
+-> auth_sessions.py maps provider subject to tangent_users / tangent_user_identities
+-> auth/session service ensures default workspace and personal wallet
+-> request_context attaches local user/workspace authority to the request
 ```
 
 The product must stay provider-portable:
@@ -101,6 +102,8 @@ Current implementation note:
 - Authorization headers are required for FastAPI private APIs once provider Auth is enabled.
 - `admin` is not a billing plan. Admin authority comes from `admin_roles`.
 - `free/premium/team` is not an Auth role. Product entitlement comes from billing/credits.
+- Team purchase creates Team workspace authority through billing/webhook services, not through Auth roles.
+- Collaborate Start/Plus is a personal subscription; enforce one active Collaborate subscription per user in billing/entitlement services.
 
 ## Request Context Contract
 
@@ -113,6 +116,13 @@ Request
 ```
 
 Frontend-provided workspace ids are allowed as a selection hint only. The server must reject the request if the session user is not a member of that workspace.
+
+S3 wallet dependency:
+
+- First verified session should ensure a user-owned personal wallet.
+- Team checkout completion, not signup, creates additional Team workspaces and Team wallets.
+- Users may own multiple Team workspaces, so active workspace selection must be explicit and server-validated.
+- Group/Collaborate workspaces can share Boards, but their AI payer remains the actor's personal wallet.
 
 Current first-pass behavior:
 

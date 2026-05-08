@@ -1,6 +1,6 @@
 # ARCH Slice S1D: Auth-Backed Board CRUD
 
-**Updated**: 2026-05-06
+**Updated**: 2026-05-08
 **Mode**: Architecture slice.
 **Status**: Stable first-pass Board CRUD is active in the Postgres path, including cursor-paginated Board listing, owner-only Board copy/delete, snapshot restore, guest-aware board-member roles, a first usable member-management surface, expiring share-link enforcement, cross-workspace Asset reference guard and a first public share-view path.
 
@@ -58,9 +58,10 @@ Rules:
 - Private Board is visible only to owner/admin/member grants.
 - Public/shared Board must still have server-side share link validation, including revoke and expiry checks.
 - Initial product direction: edit/manage requires active workspace membership or an explicit invited-member record; non-team external share recipients remain view-only.
-- Initial commercial direction: Group Workspaces may grant `Can edit` to invited free editors without a paid seat, but those invitees still need their own top-up/subscription balance to run AI and should not hold `Can manage` in the first pass.
+- Current commercial direction: Group Workspaces may grant `Can edit` to invited free editors without a paid seat, but those invitees still need their own personal wallet balance to run AI and should not hold `Can manage` in the first pass.
 - Group Workspace creators/admins may assign workspace admins/editors plus Board admins/editors, but they do not inherit billing visibility over other members.
-- Team Workspaces use the same core role surface, but Team workspace owners/admins additionally see the Team dashboard and member-usage summaries.
+- Team Workspaces use the same core role surface, but Team workspace owners/admins additionally see the Team wallet, member-usage summaries and seat/billing usage.
+- Team AI payer eligibility comes from Team membership plus Team wallet balance, not from a member's personal wallet.
 - Board copy/delete are owner-only in the initial product direction.
 - Board rename/share/member management are manage-or-owner actions.
 
@@ -178,6 +179,7 @@ Planned product rules:
 - `Owner` may copy and delete.
 - Invited free editors in Group Workspaces may stop at `Can edit`; first-pass `Can manage` should stay with invited/paying workspace admins rather than free editors.
 - Workspace admin visibility and Board admin visibility must stay separate: Group admins can manage structure without seeing other members' AI usage, while only Team workspace admins/owners may see Team dashboard usage summaries.
+- Team admins/owners may see Team wallet and member usage; Board admins alone may not.
 - Share links stay view-only until there is an explicit server-side editor-via-share product decision.
 
 ## Data Guard
@@ -208,7 +210,7 @@ Planned product rules:
 
 # ARCH 切片 S1D：带 Auth 的 Board CRUD
 
-**更新日期**：2026-05-06
+**更新日期**：2026-05-08
 **模式**：架构切片。
 **状态**：第一阶段稳定版 Board CRUD 已在 Postgres 路径生效，包含游标分页的 Board 列表、owner-only Board copy/delete、snapshot restore、支持 guest 的 board-member 角色、一套初步可用的成员管理界面、share-link 过期校验、cross-workspace Asset reference guard，以及第一版公共分享查看路径。
 

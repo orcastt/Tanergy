@@ -1,8 +1,8 @@
 # ARCH Slice S1A: Database Schema And Migration
 
-**Updated**: 2026-05-06
+**Updated**: 2026-05-08
 **Mode**: Architecture slice.
-**Status**: S1A core implemented and locally smoke-tested through `20260502_0006`; current migration head also includes later S3 entitlement/AI-charge extension `20260506_0007`.
+**Status**: S1A core implemented and locally smoke-tested through `20260502_0006`; current migration head also includes later S3 entitlement/AI-charge extension `20260506_0007`. The next schema cut is the S3 Team-wallet/personal-wallet delta.
 
 ## Goal
 
@@ -148,7 +148,7 @@ services/api/tests/test_migration_contracts.py
 
 - `board_members` is the Board permission authority. Workspace role can grant default access, but Board sharing must be representable independently.
 - `is_pinned`, `is_starred` and `last_opened_at` should move to `board_user_preferences`, because these are per-user preferences.
-- Team credit pools should be modeled through `credit_accounts.owner_type = workspace`; personal plans can use `owner_type = user`.
+- Team wallets should be modeled through `credit_accounts.owner_type = workspace`; personal Collaborate wallets use `owner_type = user`.
 - Credit balance must be derived from `credit_ledger`, not stored only as a mutable number on `users`.
 - AI usage must split user-visible `ai_runs` from provider-level `ai_api_calls`.
 - The existing `tangent_model_options` table remains the current model registry scaffold; S2 should either formalize it in place or migrate it to a dedicated `tangent_model_registry`.
@@ -211,6 +211,13 @@ P0 owner/member preference backfill
 
 ## Next Database Optimization Pass
 
+- Add the S3 Team/Group wallet delta before real provider charging:
+  - `credit_accounts.account_kind` or equivalent constrained metadata for `personal_wallet`, `team_wallet`, `enterprise_pool`
+  - `subscriptions.plan_family`, `seat_capacity`, provider ids and active-period fields
+  - partial unique constraint for one active Collaborate subscription per user
+  - Team checkout linkage from payment/subscription to workspace and Team wallet
+  - workspace invite token expiry/revoke/acceptance facts
+  - charge-scope or `entitlement_source=team_wallet` compatibility facts on AiRun
 - Run S1A smoke against staging Postgres after S1B redeploy.
 - Collect `EXPLAIN` for Board list, Board History list, Asset list, AiRun list and Admin user search queries.
 - Tune measured cursor indexes and retention limits only; avoid speculative index churn before real query shapes exist.

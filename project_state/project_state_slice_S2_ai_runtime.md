@@ -1,11 +1,11 @@
 # Project State Slice S2: AI Runtime
 
-**Updated**: 2026-05-07
-**Status**: Mock runtime/dataflow is usable locally; the canvas also has a GeekAI-backed fast path for chat streaming, prompt optimization, image generation/edit/reference and analysis UX; mock AiRun can optionally exercise credit-ledger usage charging behind `TANGENT_AI_MOCK_LEDGER_CHARGING=1`; migrations `20260506_0008`, `20260506_0009`, `20260506_0010` and `20260506_0011` now add the first DB-backed AI control-plane tables, quote-time persistence facts, provider-currency/runtime-cost normalization fields, version-history storage and attempt-level `api_cost_ledger` settlement fields. When `DATABASE_URL` is configured the run path now writes persistent `ai_runs`, attempt-level `ai_api_calls` and attempt-level `api_cost_ledger`, schedules background execution after create, exposes pure-read run polling, and now includes an opt-in live provider-specific adapter scaffold for OpenAI-compatible and Google routes, generated-Asset persistence, route timeout handling, retry-policy-aware execution and extracted settlement orchestration. Konva runtimeGraph now submits server AiRuns, tracks the returned server run id, polls terminal status, best-effort cancels queued/running runs and hydrates generated Asset refs back into node outputs instead of fabricating client-only image results when a remote API is configured. First-pass admin save flows plus versioned publish/rollback for model/route/pricing facts now exist. Current alpha gate: fold the local GeekAI path into the server provider-route/billing control plane and hand-test one credentialed real provider-backed image path end to end; broader provider depth and durable real text-output persistence remain deferred.
+**Updated**: 2026-05-08
+**Status**: Mock runtime/dataflow is usable locally; the canvas also has a GeekAI-backed fast path for chat streaming, prompt optimization, image generation/edit/reference and analysis UX; mock AiRun can optionally exercise credit-ledger usage charging behind `TANGENT_AI_MOCK_LEDGER_CHARGING=1`; migrations `20260506_0008`, `20260506_0009`, `20260506_0010` and `20260506_0011` now add the first DB-backed AI control-plane tables, quote-time persistence facts, provider-currency/runtime-cost normalization fields, version-history storage and attempt-level `api_cost_ledger` settlement fields. Current alpha gate: fold the local GeekAI path into the server provider-route/billing control plane, update payer resolution so Team runs charge Team wallets and Group/Collaborate runs charge personal wallets, then hand-test one credentialed real provider-backed image path end to end.
 
 ## Current Alpha Boundary
 
-- release-critical: quote/preflight, payer summary, persisted run lifecycle, one real provider-backed image path
+- release-critical: quote/preflight, payer summary, Team-wallet/personal-wallet resolver, persisted run lifecycle, one real provider-backed image path
 - local product proof: GeekAI-backed chat, prompt optimizer, image gen/edit/reference and analysis flows in the canvas
 - not current-alpha promise: full provider breadth, durable text output, broad refund/reconciliation depth
 
@@ -37,10 +37,11 @@
 ## Required Next Work
 
 1. Reconcile the current GeekAI local fast path into the server provider-route adapter layer described by `dev-plans/s2-ai-provider-route-billing-control-plane-2026-05-07.md`.
-2. Finish provider-capability coverage so live adapters support image generation, image edit/reference, analysis and prompt/text optimization with durable Asset or short text outputs.
-3. Deepen real-provider settlement policy so success, failure, cancel and refund paths reconcile cleanly across `credit_ledger`, `api_cost_ledger` and provider-returned usage/cost facts.
-4. Preserve provider-response summaries safely for runtime UX without storing long raw payloads.
-5. Hand-test the Konva Run/Stop -> create/poll/cancel path against one credentialed live provider route and tighten user-facing quote/error/cancel messaging.
+2. Update payer resolution so Team workspace runs charge Team wallet and Group/Collaborate workspace runs charge the actor's personal wallet.
+3. Finish provider-capability coverage so live adapters support image generation, image edit/reference, analysis and prompt/text optimization with durable Asset or short text outputs.
+4. Deepen real-provider settlement policy so success, failure, cancel and refund paths reconcile cleanly across `credit_ledger`, `api_cost_ledger` and provider-returned usage/cost facts.
+5. Preserve provider-response summaries safely for runtime UX without storing long raw payloads.
+6. Hand-test the Konva Run/Stop -> create/poll/cancel path against one credentialed live provider route and tighten user-facing quote/error/cancel messaging.
 
 ## Validation Target
 
@@ -54,12 +55,12 @@
 
 # Project State 切片 S2：AI 运行时
 
-**更新日期**：2026-05-07
-**状态**：Mock runtime / dataflow 已经可以在本地使用；画布也已有 GeekAI-backed fast path，用于验证 chat streaming、prompt optimization、image generation/edit/reference 和 analysis UX；Mock AiRun 可以在 `TANGENT_AI_MOCK_LEDGER_CHARGING=1` 后面选择性演练 credit-ledger usage charging；migrations `20260506_0008`、`20260506_0009`、`20260506_0010` 和 `20260506_0011` 现在已经补上第一批 DB-backed AI 控制平面表、quote-time persistence facts、provider-currency / runtime-cost normalization 字段、版本历史存储，以及按尝试分行的 `api_cost_ledger` settlement 字段。当 `DATABASE_URL` 已配置时，run 路径现在会写持久化的 `ai_runs`、按尝试分行的 `ai_api_calls` 和按尝试分行的 `api_cost_ledger`，在 create 之后调度后台执行，暴露纯读取 run polling，并且现在已经带有一个可选启用的 live provider-specific adapter scaffold，用于 OpenAI-compatible 和 Google routes、generated-Asset persistence、route timeout handling、retry-policy-aware execution 以及抽离出来的 settlement orchestration。现在 Konva runtimeGraph 在指向远端 API 时，也已经会提交服务端 AiRun、记录返回的 server run id、轮询最终状态、在用户停止后尽力 cancel queued/running run，并把返回的生成 Asset 重新注入到节点输出里，而不是继续伪造纯客户端图片结果。现在也已经有了第一阶段 admin model/route/pricing save flows 以及版本化 publish/rollback。当前 alpha 的关键闸门是把本地 GeekAI 路径收口到 server provider-route/billing control plane，并用真实凭据把一条 provider-backed image path 端到端手测通过；更广的 provider 深度和真实 text output 稳定持久化继续延后。
+**更新日期**：2026-05-08
+**状态**：Mock runtime / dataflow 已经可以在本地使用；画布也已有 GeekAI-backed fast path，用于验证 chat streaming、prompt optimization、image generation/edit/reference 和 analysis UX；Mock AiRun 可以在 `TANGENT_AI_MOCK_LEDGER_CHARGING=1` 后面选择性演练 credit-ledger usage charging；migrations `20260506_0008`、`20260506_0009`、`20260506_0010` 和 `20260506_0011` 现在已经补上第一批 DB-backed AI 控制平面表、quote-time persistence facts、provider-currency / runtime-cost normalization 字段、版本历史存储，以及按尝试分行的 `api_cost_ledger` settlement 字段。当前 alpha 的关键闸门是把本地 GeekAI 路径收口到 server provider-route/billing control plane，同时更新 payer resolution：Team runs 扣 Team wallet，Group/Collaborate runs 扣个人钱包，然后用真实凭据把一条 provider-backed image path 端到端手测通过。
 
 ## 当前 Alpha 边界
 
-- 发布关键：quote/preflight、payer summary、持久化 run lifecycle，以及一条真实的 provider-backed image path
+- 发布关键：quote/preflight、payer summary、Team-wallet/personal-wallet resolver、持久化 run lifecycle，以及一条真实的 provider-backed image path
 - 本地产品证明：画布里的 GeekAI-backed chat、prompt optimizer、image gen/edit/reference 和 analysis flows
 - 非当前 alpha 承诺：完整 provider breadth、durable text output 和更广的 refund/reconciliation depth
 
@@ -91,10 +92,11 @@
 ## 下一步必要工作
 
 1. 按 `dev-plans/s2-ai-provider-route-billing-control-plane-2026-05-07.md`，把当前 GeekAI 本地 fast path 收口到服务端 provider-route adapter layer。
-2. 把 live adapters 的能力覆盖补齐，让 image generation、image edit/reference、analysis 和 prompt/text optimization 都能输出 durable Asset 或短文本结果。
-3. 围绕真实 provider outcomes，把 success / failure / cancel / refund 路径在 `credit_ledger`、`api_cost_ledger` 和 provider 返回 usage/cost 事实之间做完整对账。
-4. 在不存长原始 payload 的前提下，安全保留 provider-response summaries 以支撑 runtime UX。
-5. 用一条带真实凭据的 live provider route 手测 Konva Run/Stop -> create/poll/cancel 路径，并继续收紧用户可见的 quote / error / cancel 文案。
+2. 更新 payer resolution：Team workspace runs 扣 Team wallet，Group/Collaborate workspace runs 扣操作者个人钱包。
+3. 把 live adapters 的能力覆盖补齐，让 image generation、image edit/reference、analysis 和 prompt/text optimization 都能输出 durable Asset 或短文本结果。
+4. 围绕真实 provider outcomes，把 success / failure / cancel / refund 路径在 `credit_ledger`、`api_cost_ledger` 和 provider 返回 usage/cost 事实之间做完整对账。
+5. 在不存长原始 payload 的前提下，安全保留 provider-response summaries 以支撑 runtime UX。
+6. 用一条带真实凭据的 live provider route 手测 Konva Run/Stop -> create/poll/cancel 路径，并继续收紧用户可见的 quote / error / cancel 文案。
 
 ## 验证目标
 

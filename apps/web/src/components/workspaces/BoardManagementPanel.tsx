@@ -94,7 +94,7 @@ export function BoardManagementPanel({
           <h2>{board.title}</h2>
           <dl>
             <div><dt>Owner</dt><dd>{formatOwner(board.ownerId)}</dd></div>
-            <div><dt>Role</dt><dd>{canCopyBoard ? 'Owner' : canManageBoard ? 'Can manage' : 'Can view / edit'}</dd></div>
+            <div><dt>Role</dt><dd>{canManageBoard ? 'Can manage' : 'Can view / edit'}</dd></div>
             <div><dt>Visibility</dt><dd>{getVisibilityLabel(board.visibility ?? 'private')}</dd></div>
             <div><dt>Created</dt><dd>{formatDate(board.createdAt ?? board.savedAt)}</dd></div>
             <div><dt>Last modified</dt><dd>{formatDate(board.savedAt)}</dd></div>

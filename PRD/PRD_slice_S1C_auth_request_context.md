@@ -1,6 +1,6 @@
 # PRD Slice S1C: Auth And Request Context
 
-**Updated**: 2026-05-06
+**Updated**: 2026-05-08
 **Status**: Clerk frontend/session bridge plus FastAPI bearer verification first pass landed; hardening remains.
 
 ## User Value
@@ -14,7 +14,9 @@ Users can create accounts, log in, log out and return to their own workspace. Ac
 - Optional Apple OAuth account contract later.
 - Secure server session.
 - Default workspace creation.
+- Personal wallet creation on first verified local user session.
 - Session endpoint for current user and memberships.
+- Active workspace selection for users who own or join multiple Teams/Groups.
 - Rate limiting and safe auth errors.
 
 ## Current First Pass
@@ -24,6 +26,7 @@ Users can create accounts, log in, log out and return to their own workspace. Ac
 - Frontend remote clients can attach the Clerk JWT to Board, Asset, Image Op and AI API calls.
 - FastAPI can verify provider-issued bearer tokens and map Clerk subjects to local `tangent_users` / `tangent_user_identities`.
 - A default workspace is ensured on first verified session.
+- A personal wallet should be ensured on first verified session so Collaborate and personal top-ups have a payer account.
 - Required-auth mode no longer trusts `x-tangent-user-id` or `x-tangent-workspace-id` as authority.
 
 Remaining hardening:
@@ -32,6 +35,8 @@ Remaining hardening:
 - Logout/session revocation and token-hash lifecycle.
 - Full invalid/expired/wrong-audience JWT test matrix.
 - Multi-workspace selection and membership matrix.
+- Team checkout-created workspaces and Group workspace selection.
+- One active Collaborate subscription per user at checkout/session entitlement time.
 - Auth route rate limiting and request logging.
 
 ## Provider Decision

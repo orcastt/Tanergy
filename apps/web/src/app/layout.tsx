@@ -13,7 +13,13 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <ClerkProvider dynamic>
+    <ClerkProvider
+      dynamic
+      signInFallbackRedirectUrl="/workspaces"
+      signInUrl="/sign-in"
+      signUpFallbackRedirectUrl="/workspaces"
+      signUpUrl="/sign-up"
+    >
       <html lang="en">
         <body>{children}</body>
       </html>

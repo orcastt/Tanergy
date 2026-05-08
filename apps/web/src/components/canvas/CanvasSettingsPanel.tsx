@@ -89,6 +89,9 @@ export function CanvasSettingsPanel({ boardMode = false, onClose }: CanvasSettin
 
           <section className="canvas-settings__card">
             <h3>Interface</h3>
+            <SettingRow label="Theme" subtitle="Canvas and node colors">
+              <Segmented options={[['system', 'System'], ['light', 'Light'], ['dark', 'Dark']]} value={settings.themeMode} onChange={(themeMode) => update({ themeMode: themeMode as CanvasSettings['themeMode'] })} />
+            </SettingRow>
             <SettingRow label="Language" subtitle="Language interface control">
               <Segmented options={[['en', 'EN'], ['zh', 'ZH']]} value={settings.language} onChange={(language) => update({ language: language as CanvasSettings['language'] })} />
             </SettingRow>

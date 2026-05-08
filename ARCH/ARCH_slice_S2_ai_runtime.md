@@ -1,6 +1,6 @@
 # ARCH Slice S2: AI Runtime
 
-**Updated**: 2026-05-06
+**Updated**: 2026-05-08
 **Mode**: Architecture slice.
 
 ## Scope
@@ -117,13 +117,23 @@ Run request
   - `workspace_id`
   - `workspace_kind`
   - `board_id`
-  - `charged_scope = actor_personal | workspace_pool`
+  - `charged_scope = actor_personal | team_wallet | workspace_pool`
   - `charged_account_id`
-- Free, both Collaborate tiers and both Team tiers default to `actor_personal`.
+- Free and both Collaborate tiers default to `actor_personal`.
+- Team Start/Growth resolve to the active Team workspace wallet.
 - Enterprise may resolve to `actor_personal` or `workspace_pool` depending on contract.
 - Board edit permission alone is not enough to run AI; invited free editors in Group Workspaces still need their own personal subscription credits or top-up balance.
-- Team dashboard visibility never changes who pays; Team admins may see usage summaries, but the acting member is still the payer.
-- Share-link viewers and non-team external viewers must not trigger paid AI runs in the initial product model.
+- Team dashboard visibility never comes from Board admin rights. Team workspace owners/admins may see Team wallet/member usage, while the Team wallet remains the payer for Team runs.
+- Share-link viewers and non-member external viewers must not trigger paid AI runs in the initial product model.
+
+Target payer matrix:
+
+```text
+solo/free            -> actor personal wallet
+group/collaborate   -> actor personal wallet
+team                -> active Team wallet
+enterprise          -> contract-defined workspace pool or personal fallback
+```
 
 ## Required Expansion Path For New AI Nodes
 
@@ -293,13 +303,23 @@ Run request
   - `workspace_id`
   - `workspace_kind`
   - `board_id`
-  - `charged_scope = actor_personal | workspace_pool`
+  - `charged_scope = actor_personal | team_wallet | workspace_pool`
   - `charged_account_id`
-- Free、两个 Collaborate 档位和两个 Team 档位默认都扣 `actor_personal`。
+- Free 和两个 Collaborate 档位默认扣 `actor_personal`。
+- Team Start/Growth 解析到当前 Team workspace wallet。
 - Enterprise 可以根据合同解析为 `actor_personal` 或 `workspace_pool`。
 - 仅有 Board 编辑权限并不等于可以运行 AI；Group Workspace 中被邀请的免费编辑者仍然需要自己的个人订阅积分或充值余额。
-- Team dashboard 的可见性不会改变付款方；Team 管理员可以看到 usage 汇总，但真正付款的仍然是当前操作者。
-- share-link viewer 和非团队外部 viewer 在初始产品模型中不能触发付费 AI 运行。
+- Team dashboard 可见性不能来自 Board admin 权限；Team workspace owners/admins 可以看到 Team wallet/member usage，而 Team wallet 是 Team runs 的 payer。
+- share-link viewer 和非 workspace member 外部 viewer 在初始产品模型中不能触发付费 AI 运行。
+
+目标 payer matrix：
+
+```text
+solo/free            -> actor personal wallet
+group/collaborate   -> actor personal wallet
+team                -> active Team wallet
+enterprise          -> contract-defined workspace pool or personal fallback
+```
 
 ## 新 AI 节点的必经扩展路径
 

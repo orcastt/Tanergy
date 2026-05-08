@@ -1,7 +1,7 @@
 # Project State Slice S1C: Auth And Request Context
 
-**Updated**: 2026-05-05
-**Status**: Clerk frontend routes plus FastAPI bearer verification first pass landed; auth hardening and richer workspace/session flows still pending.
+**Updated**: 2026-05-08
+**Status**: Clerk frontend routes plus FastAPI bearer verification first pass landed; auth hardening, personal wallet creation and richer workspace/session flows still pending.
 
 ## Objective
 
@@ -19,7 +19,9 @@ Replace dev headers/mock identity with real server-side sessions and workspace m
 - [ ] Session token hashing and revocation.
 - [ ] Email OTP issue/verify flow.
 - [x] Default workspace creation first pass.
+- [ ] Personal wallet creation on first verified local user session.
 - [x] Request context middleware.
+- [ ] Active workspace selection matrix for users with multiple Team/Group memberships.
 - [ ] Rate limit and request logging for auth routes.
 - [~] Tests for spoofed workspace/user ids. Required-auth header spoof is covered; full workspace membership matrix is still pending.
 - [ ] Tests for invalid, expired and wrong-audience provider JWTs.
@@ -61,6 +63,7 @@ services/api/tangent_api/auth_sessions.py
   map Clerk subject -> tangent_user_identities
   upsert/load tangent_users
   ensure default workspace + owner membership
+  should also ensure personal_wallet for S3 Collaborate/personal top-ups
   fall back to deterministic ephemeral ids only when DATABASE_URL is absent
 
 request_context.py
@@ -91,3 +94,5 @@ Keep provider secrets server-side only. Google OAuth client secret must not be e
 - [ ] Session endpoint returns user and memberships.
 - [ ] User cannot access workspace without membership.
 - [ ] Invalid/expired provider JWT returns 401.
+- [ ] Session/workspace selection supports multiple Team memberships without leaking authority across Teams.
+- [ ] First verified user has a personal wallet for Collaborate and personal AI usage.

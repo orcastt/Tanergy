@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Circle, Group, Rect, Text } from 'react-konva'
 import type { KonvaEventObject } from 'konva/lib/Node'
 import type { CanvasDocument, CanvasNodeShape } from '@/features/canvas-engine'
+import { getCanvasThemePalette, useResolvedCanvasThemeMode, type ResolvedCanvasTheme } from '@/features/canvas-settings/canvasTheme'
 import type { NodeCardField, ResolvedNodePort } from '@/types/nodeRuntime'
 import {
   getNodeDefinition,
@@ -48,6 +49,8 @@ export function KonvaNodeCardShape({ document, editingFieldName = null, onChatCl
   const [hoveredPort, setHoveredPort] = useState<ResolvedNodePort | null>(null)
   const [openFieldName, setOpenFieldName] = useState<string | null>(null)
   const definition = getNodeDefinition(shape.props.nodeType)
+  const themeMode = useResolvedCanvasThemeMode()
+  const palette = getCanvasThemePalette(themeMode)
   const accent = definition.accentColor
   const normalizedData = getNormalizedNodeData(shape.props.nodeType, shape.props.data)
   const cardFields = getNodeCardFields(shape.props.nodeType, normalizedData)
@@ -63,11 +66,12 @@ export function KonvaNodeCardShape({ document, editingFieldName = null, onChatCl
         ports={ports}
         shape={shape}
         status={status}
+        themeMode={themeMode}
         title={title}
       />
     )
   }
-  const statusTone = getStatusTone(status)
+  const statusTone = getStatusTone(status, themeMode)
   const contentScale = getNodeContentScale(shape, definition.defaultCardSize)
   const contentShape = getNodeContentShape(shape, contentScale)
 
@@ -75,20 +79,20 @@ export function KonvaNodeCardShape({ document, editingFieldName = null, onChatCl
     <Group opacity={opacity}>
       <Rect
         cornerRadius={12}
-        fill="#ffffff"
+        fill={palette.nodeBg}
         height={shape.props.height}
         perfectDrawEnabled={false}
         shadowBlur={zoom <= 0.5 ? 0 : 12}
-        shadowColor="rgba(15, 23, 42, 0.14)"
+        shadowColor={palette.nodeShadow}
         shadowOffsetY={4}
-        stroke="rgba(15, 23, 42, 0.12)"
+        stroke={palette.nodeStroke}
         strokeWidth={1}
         width={shape.props.width}
       />
       <Group>
         <Group scaleX={contentScale} scaleY={contentScale}>
           <Text
-            fill="#0f172a"
+            fill={palette.nodeTitle}
             fontFamily="Inter, system-ui, sans-serif"
             fontSize={15}
             fontStyle="bold"
@@ -98,7 +102,6 @@ export function KonvaNodeCardShape({ document, editingFieldName = null, onChatCl
             x={14}
             y={16}
           />
-          {contentShape.props.nodeType === 'prompt_optimizer' ? <PromptOptimizerProBadge /> : null}
           {contentShape.props.nodeType === 'image'
             ? <ImageNodeToCanvasButton onImageNodeToCanvas={onImageNodeToCanvas} shape={contentShape} />
             : contentShape.props.nodeType === 'chat'
@@ -161,6 +164,7 @@ export function KonvaNodeCardShape({ document, editingFieldName = null, onChatCl
 }
 
 function ChatCleanButton({ onChatClean, shape }: { onChatClean?: (shapeId: string) => void; shape: CanvasNodeShape }) {
+  const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
   const width = 66
   const x = shape.props.width - width - 14
   const hasHistory = Array.isArray(shape.props.data.chatMessages) && shape.props.data.chatMessages.length > 0
@@ -174,18 +178,9 @@ function ChatCleanButton({ onChatClean, shape }: { onChatClean?: (shapeId: strin
       onPointerDown={stopNodeCardControlEvent}
       opacity={hasHistory ? 1 : 0.42}
     >
-      <Rect cornerRadius={8} fill="#f8fafc" height={24} stroke="#dce3ec" strokeWidth={1} width={width} x={x} y={12} />
-      <Text align="center" fill="#475569" fontFamily="Inter, system-ui, sans-serif" fontSize={11} fontStyle="bold" height={24} text="Clean" verticalAlign="middle" width={width} x={x} y={12} />
+      <Rect cornerRadius={8} fill={palette.fieldBg} height={24} stroke={palette.fieldStroke} strokeWidth={1} width={width} x={x} y={12} />
+      <Text align="center" fill={palette.mutedText} fontFamily="Inter, system-ui, sans-serif" fontSize={11} fontStyle="bold" height={24} text="Clean" verticalAlign="middle" width={width} x={x} y={12} />
     </Group>
-  )
-}
-
-function PromptOptimizerProBadge() {
-  return (
-    <>
-      <Rect cornerRadius={999} fill="#f1f5f9" height={24} stroke="#dce3ec" strokeWidth={1} width={48} x={184} y={12} />
-      <Text align="center" fill="#475569" fontFamily="Inter, system-ui, sans-serif" fontSize={12} fontStyle="bold" height={24} text="Pro" verticalAlign="middle" width={48} x={184} y={12} />
-    </>
   )
 }
 
@@ -196,6 +191,7 @@ function CompactNodeCard({
   ports,
   shape,
   status,
+  themeMode,
   title,
 }: {
   accent: string
@@ -204,22 +200,24 @@ function CompactNodeCard({
   ports: ResolvedNodePort[]
   shape: CanvasNodeShape
   status: string
+  themeMode: ResolvedCanvasTheme
   title: string
 }) {
+  const palette = getCanvasThemePalette(themeMode)
   return (
     <Group opacity={opacity}>
       <Rect
         cornerRadius={10}
-        fill="#ffffff"
+        fill={palette.nodeBg}
         height={shape.props.height}
         perfectDrawEnabled={false}
-        stroke="rgba(15, 23, 42, 0.16)"
+        stroke={palette.nodeStroke}
         strokeWidth={1}
         width={shape.props.width}
       />
       <Rect cornerRadius={10} fill={accent} height={6} perfectDrawEnabled={false} width={shape.props.width} />
       <Text
-        fill="#0f172a"
+        fill={palette.nodeTitle}
         fontFamily="Inter, system-ui, sans-serif"
         fontSize={Math.max(11, Math.min(15, shape.props.width / 18))}
         fontStyle="bold"
@@ -230,7 +228,7 @@ function CompactNodeCard({
         y={16}
       />
       <Text
-        fill="#64748b"
+        fill={palette.compactStatus}
         fontFamily="Inter, system-ui, sans-serif"
         fontSize={10}
         fontStyle="bold"
@@ -282,6 +280,7 @@ function getNodeContentShape(shape: CanvasNodeShape, scale: number): CanvasNodeS
 }
 
 function ImageNodeToCanvasButton({ onImageNodeToCanvas, shape }: { onImageNodeToCanvas?: (shapeId: string) => void; shape: CanvasNodeShape }) {
+  const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
   const width = 92
   const x = shape.props.width - width - 14
   const hasImage = typeof shape.props.data.assetId === 'string' && !shape.props.data.assetId.startsWith('input:')
@@ -295,8 +294,8 @@ function ImageNodeToCanvasButton({ onImageNodeToCanvas, shape }: { onImageNodeTo
       onPointerDown={stopNodeCardControlEvent}
       opacity={hasImage ? 1 : 0.42}
     >
-      <Rect cornerRadius={10} fill="#111827" height={24} width={width} x={x} y={12} />
-      <Text align="center" fill="#ffffff" fontFamily="Inter, system-ui, sans-serif" fontSize={11} fontStyle="bold" height={24} text="To Canvas" verticalAlign="middle" width={width} x={x} y={12} />
+      <Rect cornerRadius={10} fill={palette.actionBg} height={24} width={width} x={x} y={12} />
+      <Text align="center" fill={palette.actionText} fontFamily="Inter, system-ui, sans-serif" fontSize={11} fontStyle="bold" height={24} text="To Canvas" verticalAlign="middle" width={width} x={x} y={12} />
     </Group>
   )
 }
@@ -309,10 +308,11 @@ function getNumberValue(value: unknown) {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined
 }
 
-function getStatusTone(status: string) {
+function getStatusTone(status: string, themeMode: ResolvedCanvasTheme) {
   if (status === 'running') return { fill: '#eff6ff', stroke: '#bfdbfe', text: '#1d4ed8' }
   if (status === 'succeeded') return { fill: '#ecfdf5', stroke: '#bbf7d0', text: '#047857' }
   if (status === 'failed') return { fill: '#fef2f2', stroke: '#fecaca', text: '#b91c1c' }
+  if (themeMode === 'dark') return { fill: '#172031', stroke: 'rgba(148, 163, 184, 0.28)', text: '#cbd5e1' }
   return { fill: '#f8fafc', stroke: '#e2e8f0', text: '#475569' }
 }
 
@@ -394,6 +394,7 @@ function PromptOptimizerBody({
   document: CanvasDocument
   shape: CanvasNodeShape
 }) {
+  const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
   const inputResolution = useMemo(() => resolveRuntimeGraphNodeInputs(document, shape), [document, shape])
   const status = getStringValue(shape.props.runtimeSummary.status) || 'idle'
   const error = getStringValue(shape.props.runtimeSummary.error)
@@ -403,7 +404,7 @@ function PromptOptimizerBody({
     : error ?? (inputResolution.canRun ? 'Ready to optimize.' : inputResolution.missingReasons[0] ?? 'Connect a prompt first.'))
   return (
     <>
-      <Text fill="#64748b" fontFamily="Inter, system-ui, sans-serif" fontSize={13} fontStyle="bold" text="Optimized preview" width={shape.props.width - 28} x={14} y={58} />
+      <Text fill={palette.softText} fontFamily="Inter, system-ui, sans-serif" fontSize={13} fontStyle="bold" text="Optimized preview" width={shape.props.width - 28} x={14} y={58} />
       <NodeCardTextBox height={shape.props.height - 98} text={previewText} width={shape.props.width - 28} x={14} y={84} />
     </>
   )
@@ -461,6 +462,7 @@ function GenerationBody({ fields, normalizedData, onFieldChange, openFieldName, 
   shape: CanvasNodeShape
   zoom: number
 }) {
+  const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
   const displayShape = shape.props.data === normalizedData
     ? shape
     : {
@@ -485,8 +487,8 @@ function GenerationBody({ fields, normalizedData, onFieldChange, openFieldName, 
         <GenerationProgressFooter progress={progress} shape={shape} />
       ) : (
         <>
-          <Rect cornerRadius={8} fill={status === 'failed' ? '#fff1f2' : '#f8fafc'} height={28} width={shape.props.width - 28} x={14} y={shape.props.height - 44} />
-          <Text fill={status === 'failed' ? '#a11222' : '#64748b'} fontFamily="Inter, system-ui, sans-serif" fontSize={12} fontStyle="bold" text={error ?? 'Ready when prompt is connected.'} width={shape.props.width - 52} x={26} y={shape.props.height - 36} />
+          <Rect cornerRadius={8} fill={status === 'failed' ? '#fff1f2' : palette.fieldBg} height={28} width={shape.props.width - 28} x={14} y={shape.props.height - 44} />
+          <Text fill={status === 'failed' ? '#a11222' : palette.softText} fontFamily="Inter, system-ui, sans-serif" fontSize={12} fontStyle="bold" text={error ?? 'Ready when prompt is connected.'} width={shape.props.width - 52} x={26} y={shape.props.height - 36} />
         </>
       )}
       <NodeCardFieldGrid fields={fields} onFieldChange={onFieldChange} openFieldName={openFieldName} setOpenFieldName={setOpenFieldName} shape={displayShape} y={54} />
@@ -495,12 +497,13 @@ function GenerationBody({ fields, normalizedData, onFieldChange, openFieldName, 
 }
 
 function ImageBody({ accent, shape, zoom }: { accent: string; shape: CanvasNodeShape; zoom: number }) {
+  const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
   const bounds = { height: shape.props.height - 88, width: shape.props.width - 28, x: 14, y: 54 }
   const imageCrop = getNodeImageCrop(shape.props.data)
   const imageSource = getNodeImageSource(shape.props.data, zoom)
   return (
     <>
-      <Rect cornerRadius={12} fill="#eef4fb" height={bounds.height} width={bounds.width} x={bounds.x} y={bounds.y} />
+      <Rect cornerRadius={12} fill={palette.imageEmptyBg} height={bounds.height} width={bounds.width} x={bounds.x} y={bounds.y} />
       <NodeImagePreview bounds={bounds} crop={imageCrop} source={imageSource} />
       {imageSource ? null : (
         <>
@@ -513,14 +516,15 @@ function ImageBody({ accent, shape, zoom }: { accent: string; shape: CanvasNodeS
 }
 
 function PortTooltip({ port, shape }: { port: ResolvedNodePort; shape: CanvasNodeShape }) {
+  const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
   const text = port.dataType
   const width = text.length * 8 + 14
   const x = port.direction === 'in' ? 8 : shape.props.width - width - 8
   const y = shape.props.height * port.anchorY - 24
   return (
     <>
-      <Rect cornerRadius={6} fill="#111827" height={22} width={width} x={x} y={y} />
-      <Text align="center" fill="#ffffff" fontFamily="Inter, system-ui, sans-serif" fontSize={12} fontStyle="bold" height={22} text={text} verticalAlign="middle" width={width} x={x} y={y} />
+      <Rect cornerRadius={6} fill={palette.actionBg} height={22} width={width} x={x} y={y} />
+      <Text align="center" fill={palette.actionText} fontFamily="Inter, system-ui, sans-serif" fontSize={12} fontStyle="bold" height={22} text={text} verticalAlign="middle" width={width} x={x} y={y} />
     </>
   )
 }
@@ -552,15 +556,16 @@ function GenerationProgressFooter({
   progress: { label: string; percent: number }
   shape: CanvasNodeShape
 }) {
+  const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
   const trackX = 14
   const trackY = shape.props.height - 32
   const trackWidth = shape.props.width - 28
   const fillWidth = Math.max(10, Math.round(trackWidth * progress.percent))
   return (
     <>
-      <Text fill="#64748b" fontFamily="Inter, system-ui, sans-serif" fontSize={11} fontStyle="bold" text={progress.label} width={trackWidth - 42} x={trackX} y={shape.props.height - 50} />
-      <Text align="right" fill="#94a3b8" fontFamily="Inter, system-ui, sans-serif" fontSize={11} fontStyle="bold" text={`${Math.round(progress.percent * 100)}%`} width={42} x={shape.props.width - 56} y={shape.props.height - 50} />
-      <Rect cornerRadius={999} fill="#e2e8f0" height={8} width={trackWidth} x={trackX} y={trackY} />
+      <Text fill={palette.softText} fontFamily="Inter, system-ui, sans-serif" fontSize={11} fontStyle="bold" text={progress.label} width={trackWidth - 42} x={trackX} y={shape.props.height - 50} />
+      <Text align="right" fill={palette.mutedText} fontFamily="Inter, system-ui, sans-serif" fontSize={11} fontStyle="bold" text={`${Math.round(progress.percent * 100)}%`} width={42} x={shape.props.width - 56} y={shape.props.height - 50} />
+      <Rect cornerRadius={999} fill={palette.scrollbarTrack} height={8} width={trackWidth} x={trackX} y={trackY} />
       <Rect cornerRadius={999} fill="#2563eb" height={8} width={fillWidth} x={trackX} y={trackY} />
     </>
   )

@@ -1,6 +1,6 @@
 # P0 Alpha Stabilization And Acceptance
 
-**Updated**: 2026-05-07
+**Updated**: 2026-05-08
 **Status**: Active stabilization spine for the current release pass.
 **Branch**: `feature/s1x-konva-handfeel-spike`
 
@@ -16,7 +16,7 @@ Only these four lanes are release-critical for the current pass:
 | --- | --- | --- | --- |
 | Canvas / Board / Page / Share / Auth | Public landing, Clerk entry, protected workspace shell, Konva-first Board route, page/history flows, public share view, permission-scoped Board CRUD | First-pass stable locally; staging/Auth hardening still open | Finish Auth/staging smoke, permission edge cases and regression sweep |
 | One real AI provider path | One server-backed AI image path through AiRun, preflight, provider execution, Asset output and settlement | Runtime shell, quote, ledger and provider adapter scaffold exist; GeekAI local fast path proves chat, prompt optimization, image generation/edit/reference and analysis UX in the canvas | Fold GeekAI into the server provider-route/billing control plane and hand-test one live provider path end to end |
-| Billing mock + usage / ledger visible | User can see plan, payer, included credits, top-up balance, ledger activity and workspace usage visibility rules | First-pass stable locally | Keep mock/manual payment path honest; real payments stay deferred |
+| Billing mock + usage / ledger visible | User can see plan, payer, included credits, top-up balance, ledger activity and workspace usage visibility rules | First-pass stable locally, but Team wallet semantics are now the next S3 gate | Keep mock/manual payment path honest; real payments stay deferred |
 | Admin minimum operating surface | Server-gated `/admin`, summary/users/workspaces/boards/audit plus first-pass AI model/route/pricing/runtime inspection | First-pass stable locally | Keep server-gated, audited and bounded; deeper finance/admin tooling stays deferred |
 
 Release rule:
@@ -51,6 +51,7 @@ Release rule:
 - `/billing` shows current plan, included credits, remaining credits, top-up balance and payer summary.
 - `/usage` shows ledger activity, filters and workspace-vs-personal usage drill-down.
 - `/team` shows Group/Team workspace visibility differences plus first-pass seat/member controls.
+- S3 implementation must now treat Team plans as Team-wallet backed and Group/Collaborate as personal-wallet backed.
 - Internal ledger mutation helpers remain valid for grants, top-ups, usage and refunds, even while public payment provider flows stay mocked/manual.
 
 ### 4. Admin Minimum Operating Surface
@@ -67,7 +68,7 @@ These are intentionally not part of the current P0 alpha promise:
 - Real-time collaboration / Yjs room sync / presence / multi-user live canvas.
 - Full production provider coverage across image gen, image gen 4, analysis, text persistence and refund depth beyond the current GeekAI local proof and first live server smoke route.
 - Real external payment provider integration, invoices, webhooks, renewals and reconciliation.
-- Full Team governance, enterprise pooled charging, advanced billing operations and finance workflows.
+- Full Team governance, Team wallet payment automation, enterprise pooled charging, advanced billing operations and finance workflows.
 - Collections as a real asset-library product.
 - Settings as a primary navigation destination.
 - `/home` as a separate product destination.
@@ -104,6 +105,7 @@ Freeze rule:
 - New active stabilization spine: this file.
 - Keep active: `s1-launch-readiness-and-acceptance-report-2026-05-05.md` as the detailed cross-slice checklist.
 - Keep active: `s2-ai-provider-route-billing-control-plane-2026-05-07.md` as the tactical checklist for folding GeekAI and future providers into server-owned route switching, credit settlement and admin observability.
+- Keep active: `s3-team-group-wallets-membership-billing-plan-2026-05-08.md` as the tactical checklist for Team wallet, personal Collaborate wallet, invites, seats, membership and payer resolver.
 - Archive: `s1-s3-document-consolidation-report-2026-05-06.md` after this stabilization pass, because its purpose is historical and parts of its S2/S3 truth are already stale.
 
 ## Test And Risk Matrix
@@ -201,7 +203,7 @@ Current acceptance split:
 
 # P0 Alpha 稳定化与验收
 
-**更新日期**：2026-05-07
+**更新日期**：2026-05-08
 **状态**：当前发布轮次的活跃稳定化主线文档。
 **分支**：`feature/s1x-konva-handfeel-spike`
 
@@ -217,7 +219,7 @@ Current acceptance split:
 | --- | --- | --- | --- |
 | Canvas / Board / Page / Share / Auth | 公开 landing、Clerk 登录入口、受保护的 workspace shell、Konva-first Board 路由、page/history 流程、公开 share 查看和按权限收口的 Board CRUD | 本地第一阶段稳定；staging/Auth hardening 仍未完成 | 完成 Auth/staging smoke、权限边界和回归扫测 |
 | 一个真实 AI provider 路径 | 一条经由 AiRun、preflight、provider execution、Asset 输出和 settlement 的服务端 AI 图像路径 | runtime shell、quote、ledger 和 provider adapter scaffold 已存在；GeekAI 本地 fast path 已在画布里证明 chat、prompt optimization、image generation/edit/reference 和 analysis UX | 把 GeekAI 收口进服务端 provider-route/billing control plane，并端到端手测一条真实 provider 路径 |
-| Billing mock + usage / ledger 可见 | 用户能看到 plan、payer、included credits、top-up 余额、ledger 活动和 workspace usage 可见性规则 | 本地第一阶段稳定 | 保持 mock/manual payment 路径诚实；真实支付继续后置 |
+| Billing mock + usage / ledger 可见 | 用户能看到 plan、payer、included credits、top-up 余额、ledger 活动和 workspace usage 可见性规则 | 本地第一阶段稳定，但 Team wallet semantics 是下一道 S3 闸门 | 保持 mock/manual payment 路径诚实；真实支付继续后置 |
 | Admin 最小可运营面 | 服务端门控的 `/admin`，带 summary/users/workspaces/boards/audit，以及第一阶段 AI model/route/pricing/runtime 检查面 | 本地第一阶段稳定 | 持续保持 server-gated、audited 且边界有限；更深 finance/admin 能力后置 |
 
 发布规则：
@@ -252,6 +254,7 @@ Current acceptance split:
 - `/billing` 展示当前 plan、included credits、remaining credits、top-up balance 和 payer summary。
 - `/usage` 展示 ledger activity、filters 和 workspace-vs-personal usage drill-down。
 - `/team` 展示 Group/Team workspace 可见性差异，以及第一阶段 seat/member controls。
+- S3 implementation 现在必须把 Team plans 当作 Team-wallet backed，把 Group/Collaborate 当作 personal-wallet backed。
 - 即使 public payment provider flows 仍保持 mocked/manual，内部 ledger mutation helpers 也必须继续对 grants、top-ups、usage 和 refunds 保持有效。
 
 ### 4. Admin 最小可运营面
@@ -268,7 +271,7 @@ Current acceptance split:
 - real-time collaboration / Yjs 房间同步 / presence / 多人实时画布。
 - 超出当前 GeekAI 本地证明和第一条服务端 live smoke route 的完整生产 provider 覆盖，包括 image gen、image gen 4、analysis、text persistence 和 refund depth。
 - 真实外部 payment provider integration、发票、webhooks、renewals 和 reconciliation。
-- 完整的 Team governance、enterprise pooled charging、高级 billing operations 和 finance workflows。
+- 完整的 Team governance、Team wallet payment automation、enterprise pooled charging、高级 billing operations 和 finance workflows。
 - 作为真实资产库产品的 Collections。
 - 作为主导航目的地的 Settings。
 - 作为独立产品目的地的 `/home`。
@@ -305,6 +308,7 @@ Current acceptance split:
 - 新的活跃稳定化主线：本文件。
 - 保持活跃：`s1-launch-readiness-and-acceptance-report-2026-05-05.md`，继续作为细粒度 cross-slice checklist。
 - 保持活跃：`s2-ai-provider-route-billing-control-plane-2026-05-07.md`，作为把 GeekAI 和后续 providers 收口到服务端 route switching、credit settlement 和 admin observability 的战术 checklist。
+- 保持活跃：`s3-team-group-wallets-membership-billing-plan-2026-05-08.md`，作为 Team wallet、personal Collaborate wallet、invites、seats、membership 和 payer resolver 的战术 checklist。
 - 归档：`s1-s3-document-consolidation-report-2026-05-06.md`，因为它的作用已经转为历史记录，而且其中部分 S2/S3 事实已经过时。
 
 ## 测试与风险矩阵

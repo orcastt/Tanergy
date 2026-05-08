@@ -6,6 +6,7 @@ import * as Y from 'yjs'
 import { createEmptyCanvasDocument, screenToWorld, type CanvasCamera, type CanvasDocument, type CanvasNodeShape, type CanvasPoint, type CanvasShape, type CanvasShapeStyle } from '@/features/canvas-engine'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import type { BoardPersistenceRecord } from '@/features/boards/boardTypes'
+import { useResolvedCanvasThemeMode } from '@/features/canvas-settings/canvasTheme'
 import { restoreKonvaBoardDocument } from '@/features/boards/konvaBoardDocument'
 import { CanvasSettingsPanel } from '@/components/canvas/CanvasSettingsPanel'
 import { CanvasTooltipLayer } from '@/components/canvas/CanvasTooltipLayer'
@@ -91,6 +92,7 @@ export function KonvaCanvasSpike({
   const [dropHintKind, setDropHintKind] = useState<'image' | 'pdf' | null>(null)
   const [stage, setStage] = useState<Konva.Stage | null>(null)
   const [contextMenu, setContextMenu] = useState<{ worldX: number; worldY: number; x: number; y: number } | null>(null)
+  const themeMode = useResolvedCanvasThemeMode()
   const [, setClipboardShapeCount] = useState(0)
   const clipboardRef = useRef<CanvasShape[]>([])
   const lastPastePointRef = useRef<CanvasPoint | null>(null)
@@ -331,7 +333,7 @@ export function KonvaCanvasSpike({
     })
   }
   return (
-    <main className="konva-canvas-shell">
+    <main className="konva-canvas-shell" data-theme={themeMode}>
       <KonvaCanvasHeader
         boardId={!readOnly && mode === 'board' ? boardId : undefined}
         boardTitle={boardTitle}

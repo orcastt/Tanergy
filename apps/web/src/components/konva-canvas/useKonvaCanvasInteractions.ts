@@ -261,7 +261,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       return
     }
     if (session.type === 'resize') {
-      const preserveAspect = event.evt.shiftKey && !isEdgeResizeHandle(session.handle)
+      const preserveAspect = !event.evt.shiftKey && !isEdgeResizeHandle(session.handle)
       const scaleText = !isEdgeResizeHandle(session.handle)
       if (session.rotatedBox) {
         setResizeSnapGuides([])

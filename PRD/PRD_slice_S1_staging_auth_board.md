@@ -54,7 +54,7 @@ Group/Team business-system depth, real billing automation, collaboration and oth
 ## Prepared But Not Fully Built In S1
 
 - Admin roles and audit logs: schema compatibility may be added, but the full Admin dashboard is S3.
-- Credits and subscriptions: ids and ownership must be compatible, but real credit deduction, Group/Team dashboard visibility, Team seat allowance and invoices are S3.
+- Credits and subscriptions: ids and ownership must be compatible, but real credit deduction, Group/Team dashboard visibility, Team wallet grants and invoices are S3.
 - AI usage/cost logs: S1 must not block them, but real provider cost tracking is S2.
 - Collaboration: S1 creates the membership truth needed later, but live multiplayer/presence is S4.
 
@@ -135,7 +135,7 @@ Group/Team 的业务系统深度、真实 billing automation、collaboration 以
 ## S1 已准备但不完整构建
 
 - Admin roles 和 audit logs：可以增加 schema compatibility，但完整 Admin dashboard 属于 S3。
-- Credits 和 subscriptions：ids 和 ownership 必须兼容，但真实 credit deduction、Group/Team dashboard visibility、Team seat allowance 和 invoices 属于 S3。
+- Credits 和 subscriptions：ids 和 ownership 必须兼容，但真实 credit deduction、Group/Team dashboard visibility、Team wallet grants 和 invoices 属于 S3。
 - AI usage/cost logs：S1 不能阻塞它们，但真实 provider cost tracking 属于 S2。
 - Collaboration：S1 创建未来需要的 membership truth，但 live multiplayer/presence 属于 S4。
 

@@ -1,7 +1,7 @@
 # Project State Slice S1A: Database Schema And Migration
 
-**Updated**: 2026-05-06
-**Status**: S1A core implemented and locally smoke-tested through `20260502_0006`; current migration head also includes later S3 entitlement/AI-charge extension `20260506_0007`.
+**Updated**: 2026-05-08
+**Status**: S1A core implemented and locally smoke-tested through `20260502_0006`; current migration head also includes later S3 entitlement/AI-charge extension `20260506_0007`. The next DB work is an S3 Team-wallet/personal-wallet schema delta, not a rewrite of S1A.
 
 ## Objective
 
@@ -39,6 +39,7 @@ services/api/tests/test_migration_contracts.py
 - `board_members` becomes the future Board permission authority.
 - `board_user_preferences` holds per-user pin/star/recent-open facts; current API still reads legacy board columns until S1D rewires queries.
 - `credit_accounts` supports both personal and team/workspace credit pools.
+- New S3 product rule: Team workspaces should use a workspace-owned Team wallet; Collaborate/Group should use a user-owned personal wallet. The existing credit-account shape is reusable, but it needs account-kind constraints and subscription ownership rules.
 - Alembic now normalizes `postgresql://` to `postgresql+psycopg://` so Neon-style URLs work with the project's `psycopg` v3 dependency.
 - Local real Postgres smoke passed with disposable Docker Postgres; staging Neon/Postgres smoke still belongs to S1B.
 - Migration `20260506_0007_workspace_entitlements_ai_charge_contract` is a later S3 extension on top of the S1A foundation. It adds workspace kind, seat assignment, usage/dashboard facts and AiRun charge fields.
@@ -88,4 +89,5 @@ Docker S1A migration smoke with disposable Postgres
 
 - Do not implement full Stripe, Admin dashboard or collaboration here.
 - Do make their future joins explicit.
+- Next migration should add Team-wallet facts, one-active Collaborate subscription constraint, workspace invite acceptance facts and AiRun Team-wallet payer compatibility before real provider charging.
 - Next database optimization pass should happen against staging data/query plans: run S1A smoke on staging Postgres, collect `EXPLAIN` for Board list, History list, Asset list and future AiRun/Admin list queries, then add only measured indexes or retention/size limits.

@@ -11,6 +11,7 @@ export type CanvasSettings = {
   snapAlignment: boolean
   snapDistance: number
   smartDrawing: boolean
+  themeMode: 'dark' | 'light' | 'system'
   zoomSensitivity: number
 }
 
@@ -25,6 +26,7 @@ const storageKey = 'tangent.canvas.settings.v1'
 const aiChatStyles = ['solid', 'transparent'] as const
 const edgeColorModes = ['follow-handle', 'standard'] as const
 const languages = ['en', 'zh'] as const
+const themeModes = ['system', 'light', 'dark'] as const
 
 export const defaultCanvasSettings: CanvasSettings = {
   aiChatStyle: 'transparent',
@@ -37,6 +39,7 @@ export const defaultCanvasSettings: CanvasSettings = {
   snapAlignment: true,
   snapDistance: 12,
   smartDrawing: true,
+  themeMode: 'system',
   zoomSensitivity: 1,
 }
 
@@ -64,6 +67,7 @@ export function normalizeCanvasSettings(settings: Partial<CanvasSettings> & { gr
     snapAlignment: typeof settings.snapAlignment === 'boolean' ? settings.snapAlignment : defaultCanvasSettings.snapAlignment,
     snapDistance: clampNumber(Number(settings.snapDistance ?? defaultCanvasSettings.snapDistance), 2, 48),
     smartDrawing: typeof settings.smartDrawing === 'boolean' ? settings.smartDrawing : defaultCanvasSettings.smartDrawing,
+    themeMode: getChoice(settings.themeMode, themeModes, defaultCanvasSettings.themeMode),
     zoomSensitivity: clampNumber(Number(settings.zoomSensitivity ?? defaultCanvasSettings.zoomSensitivity), 0.25, 3),
   }
   return normalized

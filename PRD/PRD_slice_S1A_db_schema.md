@@ -1,7 +1,7 @@
 # PRD Slice S1A: Database Schema And Migration
 
-**Updated**: 2026-05-06
-**Status**: S1A core implemented and locally smoke-tested through migration `20260502_0006`; current migration head also includes later S3 entitlement extension `20260506_0007`. Staging DB smoke remains part of S1B.
+**Updated**: 2026-05-08
+**Status**: S1A core implemented and locally smoke-tested through migration `20260502_0006`; current migration head also includes later S3 entitlement extension `20260506_0007`. The next schema delta belongs to S3 Team/Group wallets.
 
 ## User Value
 
@@ -59,11 +59,23 @@ Note: current code keeps the P0 `tangent_model_options` table as the model regis
 
 Note: migration `20260506_0007_workspace_entitlements_ai_charge_contract` belongs to the later S3 entitlement/AI-charge contract, not the original S1A core. It adds workspace kind, seat assignment, usage/dashboard facts and AiRun charge fields on top of the S1A foundation.
 
+## 2026-05-08 S3 Schema Delta
+
+The next database cut should keep the S1A foundation and add only the missing Team/Group wallet facts:
+
+- distinguish `personal_wallet`, `team_wallet` and future `enterprise_pool` credit accounts
+- make Team subscriptions workspace-owned and Collaborate subscriptions user-owned
+- enforce one active Collaborate subscription per user
+- link Team checkout completion to Team workspace creation, Team wallet creation and subscription seat capacity
+- keep Team seat assignments as capacity/member/usage attribution, not personal credit ownership
+- harden workspace invite links with expiry, revoke and acceptance facts
+- persist AiRun node id and Team-wallet payer facts before provider execution
+
 ## Acceptance
 
 - Migration from empty DB succeeds. Passed locally with disposable Docker Postgres; staging smoke pending S1B.
 - Migration from current P0 scaffold succeeds. Passed locally with disposable Docker Postgres; staging smoke pending S1B.
 - Schema can represent private/public Board, members, owner/editor/viewer and per-user pin/star/opened state.
-- Schema can represent personal and team credit accounts later.
+- Schema can represent personal, Team and future enterprise credit accounts.
 - Schema can connect AI runs to user/workspace/board/node/model/provider later.
 - Staging optimization should be based on measured query plans for Board, History, Asset, AiRun and Admin list views, not speculative index additions.

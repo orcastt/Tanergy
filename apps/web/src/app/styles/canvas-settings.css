@@ -35,6 +35,12 @@
   transform: translate(-50%, -50%);
 }
 
+.konva-canvas-shell[data-theme='dark'] .canvas-settings {
+  border-color: rgba(148, 163, 184, 0.22);
+  background: rgba(17, 24, 39, 0.98);
+  box-shadow: 0 24px 76px rgba(0, 0, 0, 0.36);
+}
+
 .canvas-settings :where(h2, h3, strong, button, input, span) {
   font-weight: 400;
 }
@@ -57,6 +63,10 @@
   border-bottom: 1px solid #edf2f7;
 }
 
+.konva-canvas-shell[data-theme='dark'] .canvas-settings__header {
+  border-bottom-color: rgba(148, 163, 184, 0.18);
+}
+
 .canvas-settings__header h2 {
   margin: 0;
   color: #172033;
@@ -66,10 +76,19 @@
   line-height: 1.1;
 }
 
+.konva-canvas-shell[data-theme='dark'] .canvas-settings__header h2,
+.konva-canvas-shell[data-theme='dark'] .canvas-settings__title strong {
+  color: #f8fafc;
+}
+
 .canvas-settings__title span {
   color: #8aa0bd;
   font-size: 12px;
   font-weight: 400;
+}
+
+.konva-canvas-shell[data-theme='dark'] .canvas-settings__title span {
+  color: #94a3b8;
 }
 
 .canvas-settings__actions {
@@ -91,9 +110,20 @@
   font-weight: 400;
 }
 
+.konva-canvas-shell[data-theme='dark'] .canvas-settings__secondary {
+  border-color: rgba(148, 163, 184, 0.26);
+  background: #172031;
+  color: #e5e7eb;
+}
+
 .canvas-settings__save {
   background: #111827;
   color: white;
+}
+
+.konva-canvas-shell[data-theme='dark'] .canvas-settings__save {
+  background: #e5e7eb;
+  color: #111827;
 }
 
 .canvas-settings__close {
@@ -107,6 +137,11 @@
   color: #475569;
   cursor: pointer;
   font-size: 20px;
+}
+
+.konva-canvas-shell[data-theme='dark'] .canvas-settings__close {
+  background: #172031;
+  color: #cbd5e1;
 }
 
 .canvas-settings__title {

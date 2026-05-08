@@ -1,7 +1,7 @@
 # Project State Slice S1D: Auth-Backed Board CRUD
 
-**Updated**: 2026-05-06
-**Status**: Stable first-pass workspace-role authorization is now in the Postgres Board/History path, including Board cursor pagination, owner-only Board copy/delete, snapshot restore, guest-aware board-member roles, people lookup, email invite, server-backed share-link contracts with expiry checks, cross-workspace Asset reference blocking and public share-entry consumption. The next permission hardening target is now defined around Group/Team workspace separation.
+**Updated**: 2026-05-08
+**Status**: Stable first-pass workspace-role authorization is now in the Postgres Board/History path, including Board cursor pagination, owner-only Board copy/delete, snapshot restore, guest-aware board-member roles, people lookup, email invite, server-backed share-link contracts with expiry checks, cross-workspace Asset reference blocking and public share-entry consumption. The next permission hardening target is Group/Team workspace separation plus billing-visibility and payer-policy separation.
 
 ## Objective
 
@@ -68,7 +68,8 @@ Route Board and History operations through real FastAPI permissions instead of d
 - Require active workspace membership or an explicit invited-member record for edit/manage.
 - Add `workspace.kind` resolution for `solo_workspace`, `group_workspace`, `team_workspace` and future `enterprise_workspace`.
 - Keep Group Workspace creator/admin authority separate from other members' billing usage visibility.
-- Keep Team Workspace dashboard visibility separate from Board-level `Can manage`; Team admins/owners see member usage, Board admins do not automatically inherit that visibility.
+- Keep Team Workspace dashboard/wallet visibility separate from Board-level `Can manage`; Team admins/owners see Team wallet and member usage, Board admins do not automatically inherit that visibility.
+- Keep Team AI payer eligibility tied to Team membership and Team wallet preflight, not personal-wallet balance.
 - Keep non-team external share recipients view-only in the initial product direction.
 - Keep Board copy/delete owner-only while the future effective-permission resolver is introduced.
 - Align remaining implementation drift around active membership/invited-member edit/manage and explicit Asset-sharing allowlists.
@@ -77,8 +78,8 @@ Route Board and History operations through real FastAPI permissions instead of d
 
 # Project State 切片 S1D：带 Auth 的 Board CRUD
 
-**更新日期**：2026-05-06
-**状态**：稳定的第一阶段 workspace-role authorization 已经进入 Postgres Board/History 路径，包含 Board cursor pagination、owner-only Board copy/delete、snapshot restore、支持 guest 的 board-member roles、people lookup、email invite、带 expiry checks 的 server-backed share-link contracts、cross-workspace Asset reference blocking 和 public share-entry consumption。下一轮权限硬化目标现在围绕 Group/Team workspace separation 定义。
+**更新日期**：2026-05-08
+**状态**：稳定的第一阶段 workspace-role authorization 已经进入 Postgres Board/History 路径，包含 Board cursor pagination、owner-only Board copy/delete、snapshot restore、支持 guest 的 board-member roles、people lookup、email invite、带 expiry checks 的 server-backed share-link contracts、cross-workspace Asset reference blocking 和 public share-entry consumption。下一轮权限硬化目标围绕 Group/Team workspace separation、billing visibility 和 payer-policy separation 定义。
 
 ## 目标
 

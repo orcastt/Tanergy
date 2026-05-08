@@ -8,7 +8,7 @@ const allowedDevOrigins = (process.env.NEXT_ALLOWED_DEV_ORIGINS ?? '')
   .filter(Boolean)
 
 const nextConfig = {
-  allowedDevOrigins,
+  allowedDevOrigins: Array.from(new Set(['127.0.0.1', ...allowedDevOrigins])),
   reactStrictMode: true,
 }
 

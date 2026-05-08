@@ -14,6 +14,11 @@
   background: rgba(255, 255, 255, 0.92);
 }
 
+.konva-canvas-shell[data-theme='dark'] .canvas-settings__card {
+  border-color: rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.82);
+}
+
 .canvas-settings__card h3 {
   margin: 0 0 4px;
   color: #172033;
@@ -23,6 +28,10 @@
   line-height: 1.2;
 }
 
+.konva-canvas-shell[data-theme='dark'] .canvas-settings__card h3 {
+  color: #f8fafc;
+}
+
 .canvas-settings__row {
   display: flex;
   align-items: center;
@@ -30,6 +39,10 @@
   gap: 14px;
   min-height: 58px;
   border-bottom: 1px solid #edf2f7;
+}
+
+.konva-canvas-shell[data-theme='dark'] .canvas-settings__row {
+  border-bottom-color: rgba(148, 163, 184, 0.16);
 }
 
 .canvas-settings__row:last-child {
@@ -59,6 +72,14 @@
   background: #111827;
 }
 
+.konva-canvas-shell[data-theme='dark'] .canvas-settings__toggle {
+  background: #475569;
+}
+
+.konva-canvas-shell[data-theme='dark'] .canvas-settings__toggle[data-active='true'] {
+  background: #c4b5fd;
+}
+
 .canvas-settings__toggle[data-active='true'] span {
   transform: translateX(18px);
 }
@@ -70,6 +91,11 @@
   padding: 4px;
   border-radius: 12px;
   background: #f1f5f9;
+}
+
+.konva-canvas-shell[data-theme='dark'] .canvas-settings__segmented,
+.konva-canvas-shell[data-theme='dark'] .canvas-settings__number {
+  background: #172031;
 }
 
 .canvas-settings__segmented button {
@@ -84,11 +110,21 @@
   font-weight: 400;
 }
 
+.konva-canvas-shell[data-theme='dark'] .canvas-settings__segmented button {
+  color: #94a3b8;
+}
+
 .canvas-settings__segmented button.is-active {
   border: 1px solid #111827;
   background: #ffe9cf;
   color: #172033;
   box-shadow: none;
+}
+
+.konva-canvas-shell[data-theme='dark'] .canvas-settings__segmented button.is-active {
+  border-color: rgba(196, 181, 253, 0.72);
+  background: rgba(99, 102, 241, 0.28);
+  color: #f8fafc;
 }
 
 .canvas-settings__number input {
@@ -99,6 +135,10 @@
   font: inherit;
   font-weight: 400;
   text-align: center;
+}
+
+.konva-canvas-shell[data-theme='dark'] .canvas-settings__number input {
+  color: #e5e7eb;
 }
 
 .canvas-settings__number span {
@@ -131,6 +171,11 @@
   background: white;
   cursor: pointer;
   place-items: center;
+}
+
+.konva-canvas-shell[data-theme='dark'] .canvas-settings__color {
+  border-color: rgba(148, 163, 184, 0.24);
+  background: #172031;
 }
 
 .canvas-settings__color span {

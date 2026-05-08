@@ -302,7 +302,7 @@ export const nodeDefinitions: Record<NodeType, NodeDefinition> = {
     aiUseCases: ['write a prompt', 'feed text into generation', 'provide instruction text'],
     category: 'text',
     defaultData: {
-      prompt: 'DRAW a cat',
+      prompt: '',
     },
     defaultCardSize: { height: 220, width: 300 },
     displayName: 'Prompt',

@@ -1,7 +1,9 @@
 # S3 Billing + Team Entitlements Strategy
 
-**Updated**: 2026-05-06  
-**Status**: Active tactical plan for pricing, credit ownership, team seat policy and implementation sequencing.
+**Updated**: 2026-05-08
+**Status**: Superseded strategy reference. Keep only for market benchmarks and historical reasoning. The active implementation plan is `s3-team-group-wallets-membership-billing-plan-2026-05-08.md`.
+
+> Superseded decision: this file describes an older Team actor-personal / seat-backed credit strategy. The current product decision is Team workspace wallet for Team Start/Growth, and personal wallet for Group/Collaborate.
 
 ## Goal
 

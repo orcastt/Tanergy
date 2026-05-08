@@ -173,7 +173,7 @@ export function WorkspaceBoardGallery() {
 
   const deleteBoard = async (board: BoardPersistenceSummary) => {
     if (!getCapabilities(board).canDeleteBoard) {
-      setError('Only the Board owner can delete this board.')
+      setError('Only a Board owner or workspace manager can delete this board.')
       return
     }
     if (!window.confirm(`Delete "${board.title}"? This cannot be undone.`)) return
@@ -192,7 +192,7 @@ export function WorkspaceBoardGallery() {
 
   const copyBoard = async (board: BoardPersistenceSummary) => {
     if (!getCapabilities(board).canCopyBoard) {
-      setError('Only the Board owner can copy this board.')
+      setError('Only a Board owner or workspace manager can copy this board.')
       return
     }
     setPendingBoardId(board.id)
@@ -211,7 +211,7 @@ export function WorkspaceBoardGallery() {
 
   const copyBoardToKonva = async (board: BoardPersistenceSummary) => {
     if (!getCapabilities(board).canCopyBoard) {
-      setError('Only the Board owner can copy this board.')
+      setError('Only a Board owner or workspace manager can copy this board.')
       return
     }
     setPendingBoardId(board.id)

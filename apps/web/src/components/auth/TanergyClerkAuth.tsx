@@ -1,5 +1,7 @@
+'use client'
+
 import Link from 'next/link'
-import { SignIn, SignUp } from '@clerk/nextjs'
+import { ClerkFailed, ClerkLoaded, ClerkLoading, SignIn, SignUp } from '@clerk/nextjs'
 
 type TanergyClerkAuthProps = {
   mode: 'sign-in' | 'sign-up'
@@ -33,7 +35,6 @@ export function TanergyClerkAuth({ mode }: TanergyClerkAuthProps) {
   const copy = isSignUp
     ? 'Register with email, Google or GitHub, then enter your workspace.'
     : 'Log in with email, Google or GitHub to continue.'
-
   return (
     <main className={`tanergy-auth tanergy-auth-${isSignUp ? 'mint' : 'coral'}`}>
       <section className="tanergy-auth-panel" aria-label="Tanergy account context">
@@ -67,14 +68,24 @@ export function TanergyClerkAuth({ mode }: TanergyClerkAuthProps) {
           <h2>{title}</h2>
           <p>{copy}</p>
         </div>
-        <AuthComponent
-          appearance={clerkAppearance}
-          fallbackRedirectUrl="/workspaces"
-          path={`/${mode}`}
-          routing="path"
-          signInUrl="/sign-in"
-          signUpUrl="/sign-up"
-        />
+        <ClerkLoading>
+          <div className="tanergy-clerk-status">Loading account form.</div>
+        </ClerkLoading>
+        <ClerkFailed>
+          <div className="tanergy-clerk-status" role="alert">
+            Clerk could not load. Check the publishable key, allowed origin and network access.
+          </div>
+        </ClerkFailed>
+        <ClerkLoaded>
+          <AuthComponent
+            appearance={clerkAppearance}
+            fallbackRedirectUrl="/workspaces"
+            path={`/${mode}`}
+            routing="path"
+            signInUrl="/sign-in"
+            signUpUrl="/sign-up"
+          />
+        </ClerkLoaded>
       </section>
     </main>
   )

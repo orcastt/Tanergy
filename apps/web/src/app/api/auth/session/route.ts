@@ -1,19 +1,21 @@
-import { NextResponse } from 'next/server'
-import { auth, currentUser } from '@clerk/nextjs/server'
+import { NextResponse, type NextRequest } from 'next/server'
+import { getAuth } from '@clerk/nextjs/server'
 import { mockSession } from '@/features/auth/mockSession'
 import type { TangentSession } from '@/features/auth/sessionTypes'
 import { getApiRequestContext, type ApiRequestContext } from '../../_lib/apiRequestContext'
 
 export const runtime = 'nodejs'
 
-type ClerkCurrentUser = NonNullable<Awaited<ReturnType<typeof currentUser>>>
-
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const clerkAuth = await auth()
+    const clerkAuth = getOptionalClerkAuth(request)
     if (clerkAuth.userId) {
-      const user = await currentUser()
-      return NextResponse.json({ ok: true, session: createSessionFromClerk(clerkAuth.userId, user) })
+      return NextResponse.json({ ok: true, session: createSessionFromClerk(clerkAuth.userId, clerkAuth.sessionClaims) })
+    }
+
+    if (isLocalDevAuthBypass(request)) {
+      const context = getApiRequestContext(request)
+      return NextResponse.json({ ok: true, session: createSessionFromContext(context) })
     }
 
     if (process.env.TANGENT_REQUIRE_WEB_AUTH === '1') {
@@ -26,6 +28,19 @@ export async function GET(request: Request) {
     const message = error instanceof Error ? error.message : 'Session lookup failed.'
     return NextResponse.json({ error: message, ok: false }, { status: message.includes('authenticated') ? 401 : 400 })
   }
+}
+
+function getOptionalClerkAuth(request: NextRequest) {
+  try {
+    const auth = getAuth(request)
+    return { didRun: true, sessionClaims: auth.sessionClaims, userId: auth.userId }
+  } catch {
+    return { didRun: false, sessionClaims: null, userId: null }
+  }
+}
+
+function isLocalDevAuthBypass(request: NextRequest) {
+  return process.env.NODE_ENV !== 'production' && request.cookies.get('tangent_dev_auth')?.value === '1'
 }
 
 function createSessionFromContext(context: ApiRequestContext): TangentSession {
@@ -49,9 +64,9 @@ function createSessionFromContext(context: ApiRequestContext): TangentSession {
   }
 }
 
-function createSessionFromClerk(userId: string, user: ClerkCurrentUser | null): TangentSession {
-  const email = getClerkEmail(user, userId)
-  const displayName = getClerkDisplayName(user, email)
+function createSessionFromClerk(userId: string, claims: Record<string, unknown> | null): TangentSession {
+  const email = getClerkEmail(claims, userId)
+  const displayName = getClerkDisplayName(claims, email)
   const activeWorkspace = {
     ...mockSession.activeWorkspace,
     id: `workspace-${userId}`,
@@ -69,7 +84,7 @@ function createSessionFromClerk(userId: string, user: ClerkCurrentUser | null): 
       avatarInitials: getInitials(displayName, email),
       displayName,
       email,
-      emailVerified: isClerkEmailVerified(user),
+      emailVerified: isClerkEmailVerified(claims),
       id: userId,
     },
     workspaces,
@@ -85,16 +100,17 @@ function buildMockWorkspaceCollection(activeWorkspace: TangentSession['activeWor
   ]
 }
 
-function getClerkEmail(user: ClerkCurrentUser | null, userId: string) {
-  return user?.primaryEmailAddress?.emailAddress
-    ?? user?.emailAddresses[0]?.emailAddress
+function getClerkEmail(claims: Record<string, unknown> | null, userId: string) {
+  return getStringClaim(claims, 'email')
+    ?? getStringClaim(claims, 'email_address')
+    ?? getStringClaim(claims, 'primary_email_address')
     ?? `${userId}@clerk.local`
 }
 
-function getClerkDisplayName(user: ClerkCurrentUser | null, email: string) {
-  return user?.fullName
-    || [user?.firstName, user?.lastName].filter(Boolean).join(' ')
-    || user?.username
+function getClerkDisplayName(claims: Record<string, unknown> | null, email: string) {
+  return getStringClaim(claims, 'name')
+    || [getStringClaim(claims, 'given_name'), getStringClaim(claims, 'family_name')].filter(Boolean).join(' ')
+    || getStringClaim(claims, 'username')
     || email.split('@')[0]
     || 'Tanergy user'
 }
@@ -110,6 +126,11 @@ function getInitials(displayName: string, email: string) {
   return initials || 'T'
 }
 
-function isClerkEmailVerified(user: ClerkCurrentUser | null) {
-  return user?.primaryEmailAddress?.verification?.status === 'verified'
+function getStringClaim(claims: Record<string, unknown> | null, key: string) {
+  const value = claims?.[key]
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined
+}
+
+function isClerkEmailVerified(claims: Record<string, unknown> | null) {
+  return claims?.email_verified === true || claims?.email_verified === 'true'
 }

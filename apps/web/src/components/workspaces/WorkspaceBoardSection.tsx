@@ -122,7 +122,7 @@ export function WorkspaceBoardSection({
   )
 }
 
-function buildBoardCollaborators(
+export function buildBoardCollaborators(
   board: WorkspaceBoardDisplayItem,
   workspace: TangentWorkspace,
   session: TangentSession
@@ -130,10 +130,24 @@ function buildBoardCollaborators(
   const ownerInitials = getInitials(board.ownerId || 'Owner') || 'OW'
   const workspaceInitials = getInitials(workspace.name || workspace.kind) || 'WS'
   const currentUserInitials = session.user.avatarInitials || getInitials(session.user.displayName || session.user.id) || 'YU'
+  const ownerId = board.ownerId?.trim()
 
-  return [
+  return dedupeCollaborators([
     { id: `self-${session.user.id}`, initials: currentUserInitials, label: `${session.user.displayName} (You)` },
-    { id: `owner-${board.ownerId}`, initials: ownerInitials, label: `Owner ${board.ownerId}` },
+    ownerId && ownerId !== session.user.id
+      ? { id: `owner-${board.id}-${ownerId}`, initials: ownerInitials, label: `Owner ${ownerId}` }
+      : null,
     { id: `workspace-${workspace.id}`, initials: workspaceInitials, label: workspace.name },
-  ]
+  ])
+}
+
+function dedupeCollaborators(
+  collaborators: Array<null | { id: string; initials: string; label: string }>
+) {
+  const seen = new Set<string>()
+  return collaborators.filter((collaborator): collaborator is { id: string; initials: string; label: string } => {
+    if (!collaborator?.id || seen.has(collaborator.id)) return false
+    seen.add(collaborator.id)
+    return true
+  })
 }

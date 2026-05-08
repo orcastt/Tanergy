@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { KonvaEventObject } from 'konva/lib/Node'
 import { Group, Line, Rect, Text } from 'react-konva'
 import type { CanvasNodeShape } from '@/features/canvas-engine'
+import { getCanvasThemePalette, useResolvedCanvasThemeMode } from '@/features/canvas-settings/canvasTheme'
 import { canRunNodeType } from '@/features/node-runtime/registry'
 import type { JsonObject, NodeCardField } from '@/types/nodeRuntime'
 
@@ -15,6 +16,7 @@ export function NodeCardStatusBadge({ shape, status, tone }: { shape: CanvasNode
 }
 
 export function NodeCardRunButton({ onRunToggle, shape, status }: { onRunToggle?: (shapeId: string) => void; shape: CanvasNodeShape; status: string }) {
+  const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
   const running = status === 'running'
   const width = running ? 70 : 58
   const x = shape.props.width - width - 14
@@ -27,9 +29,9 @@ export function NodeCardRunButton({ onRunToggle, shape, status }: { onRunToggle?
       onDblClick={stopNodeCardControlEvent}
       onPointerDown={stopNodeCardControlEvent}
     >
-      <Rect cornerRadius={8} fill={running ? '#dc2626' : '#111827'} height={24} width={width} x={x} y={12} />
-      {running ? <Rect fill="#ffffff" height={8} width={8} x={x + 10} y={20} /> : <Line closed fill="#ffffff" points={[x + 10, 18, x + 10, 28, x + 18, 23]} />}
-      <Text fill="#ffffff" fontFamily="Inter, system-ui, sans-serif" fontSize={11} fontStyle="bold" height={24} text={running ? 'Stop' : 'Run'} verticalAlign="middle" width={width - 24} x={x + 24} y={12} />
+      <Rect cornerRadius={8} fill={running ? '#dc2626' : palette.actionBg} height={24} width={width} x={x} y={12} />
+      {running ? <Rect fill="#ffffff" height={8} width={8} x={x + 10} y={20} /> : <Line closed fill={palette.actionText} points={[x + 10, 18, x + 10, 28, x + 18, 23]} />}
+      <Text fill={running ? '#ffffff' : palette.actionText} fontFamily="Inter, system-ui, sans-serif" fontSize={11} fontStyle="bold" height={24} text={running ? 'Stop' : 'Run'} verticalAlign="middle" width={width - 24} x={x + 24} y={12} />
     </Group>
   )
 }
@@ -42,6 +44,7 @@ export function NodeCardFieldGrid({ fields, onFieldChange, openFieldName, setOpe
   shape: CanvasNodeShape
   y: number
 }) {
+  const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
   const layouts = fields.map((field, index) => {
     const column = index % 2
     const row = Math.floor(index / 2)
@@ -65,10 +68,10 @@ export function NodeCardFieldGrid({ fields, onFieldChange, openFieldName, setOpe
               onDblClick={stopNodeCardControlEvent}
               onPointerDown={stopNodeCardControlEvent}
             >
-              <Text fill="#475569" fontFamily="Inter, system-ui, sans-serif" fontSize={11} fontStyle="bold" text={getFieldLabel(field)} width={width} x={x} y={top} />
-              <Rect cornerRadius={10} fill="#f8fafc" height={34} stroke="#dce3ec" strokeWidth={1} width={width} x={x} y={top + 15} />
-              <Text fill="#1f2937" fontFamily="Inter, system-ui, sans-serif" fontSize={12} fontStyle="bold" text={getFieldDisplayValue(field, shape.props.data)} width={width - 24} x={x + 12} y={top + 25} />
-              {field.options ? <Text align="right" fill="#475569" fontFamily="Inter, system-ui, sans-serif" fontSize={12} text="v" width={16} x={x + width - 24} y={top + 24} /> : null}
+              <Text fill={palette.mutedText} fontFamily="Inter, system-ui, sans-serif" fontSize={11} fontStyle="bold" text={getFieldLabel(field)} width={width} x={x} y={top} />
+              <Rect cornerRadius={10} fill={palette.fieldBg} height={34} stroke={palette.fieldStroke} strokeWidth={1} width={width} x={x} y={top + 15} />
+              <Text fill={palette.fieldText} fontFamily="Inter, system-ui, sans-serif" fontSize={12} fontStyle="bold" text={getFieldDisplayValue(field, shape.props.data)} width={width - 24} x={x + 12} y={top + 25} />
+              {field.options ? <Text align="right" fill={palette.mutedText} fontFamily="Inter, system-ui, sans-serif" fontSize={12} text="v" width={16} x={x + width - 24} y={top + 24} /> : null}
             </Group>
           </Group>
         )
@@ -97,6 +100,7 @@ export function NodeCardTextBox({
   x: number
   y: number
 }) {
+  const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
   const viewport = useMemo(() => ({
     height: Math.max(0, height - 28),
     width: Math.max(0, width - 22),
@@ -126,7 +130,7 @@ export function NodeCardTextBox({
         onDblClick={onEdit ? stopNodeCardControlEvent : undefined}
         onPointerDown={onEdit ? stopNodeCardControlEvent : undefined}
       >
-        <Rect cornerRadius={10} fill="#f8fafc" height={height} stroke="#dce3ec" strokeWidth={1} width={width} x={x} y={y} />
+        <Rect cornerRadius={10} fill={palette.fieldBg} height={height} stroke={palette.fieldStroke} strokeWidth={1} width={width} x={x} y={y} />
       </Group>
       <Group
         clipHeight={viewport.height}
@@ -140,12 +144,12 @@ export function NodeCardTextBox({
         onPointerDown={onEdit ? stopNodeCardControlEvent : undefined}
         onWheel={handleWheel}
       >
-        <Text fill="#1f2937" fontFamily="Inter, system-ui, sans-serif" fontSize={13} height={contentHeight} lineHeight={1.35} text={text} width={viewport.width} wrap="char" x={viewport.x} y={viewport.y - visibleScrollY} />
+        <Text fill={palette.fieldText} fontFamily="Inter, system-ui, sans-serif" fontSize={13} height={contentHeight} lineHeight={1.35} text={text} width={viewport.width} wrap="char" x={viewport.x} y={viewport.y - visibleScrollY} />
       </Group>
       {scrollbar ? (
         <>
-          <Rect cornerRadius={999} fill="rgba(148, 163, 184, 0.22)" height={scrollbar.trackHeight} width={4} x={scrollbar.x} y={scrollbar.trackY} />
-          <Rect cornerRadius={999} fill="#94a3b8" height={scrollbar.thumbHeight} width={4} x={scrollbar.x} y={scrollbar.thumbY} />
+          <Rect cornerRadius={999} fill={palette.scrollbarTrack} height={scrollbar.trackHeight} width={4} x={scrollbar.x} y={scrollbar.trackY} />
+          <Rect cornerRadius={999} fill={palette.scrollbar} height={scrollbar.thumbHeight} width={4} x={scrollbar.x} y={scrollbar.thumbY} />
         </>
       ) : null}
     </>
@@ -153,14 +157,15 @@ export function NodeCardTextBox({
 }
 
 export function NodeCardImageSlots({ count, height, shape, y }: { count: number; height: number; shape: CanvasNodeShape; y: number }) {
+  const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
   const slotWidth = count === 4 ? (shape.props.width - 38) / 2 : shape.props.width - 28
   const slotHeight = count === 4 ? (height - 8) / 2 : height
   return (
     <>
       {Array.from({ length: count }, (_, index) => (
         <Group key={index}>
-          <Rect cornerRadius={10} fill="#e8eef5" height={slotHeight} width={slotWidth} x={14 + (index % 2) * (slotWidth + 10)} y={y + Math.floor(index / 2) * (slotHeight + 8)} />
-          <Text align="center" fill="#64748b" fontFamily="Inter, system-ui, sans-serif" fontSize={12} fontStyle="bold" text={String(index + 1)} width={slotWidth} x={14 + (index % 2) * (slotWidth + 10)} y={y + Math.floor(index / 2) * (slotHeight + 8) + slotHeight / 2 - 6} />
+          <Rect cornerRadius={10} fill={palette.imageSlotBg} height={slotHeight} width={slotWidth} x={14 + (index % 2) * (slotWidth + 10)} y={y + Math.floor(index / 2) * (slotHeight + 8)} />
+          <Text align="center" fill={palette.softText} fontFamily="Inter, system-ui, sans-serif" fontSize={12} fontStyle="bold" text={String(index + 1)} width={slotWidth} x={14 + (index % 2) * (slotWidth + 10)} y={y + Math.floor(index / 2) * (slotHeight + 8) + slotHeight / 2 - 6} />
         </Group>
       ))}
     </>
@@ -188,6 +193,7 @@ function NodeCardFieldDropdown({
   x: number
   y: number
 }) {
+  const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
   const options = field.options ?? []
   const selectedIndex = Math.max(0, options.findIndex((option) => option.value === shape.props.data[field.name]))
   const maxVisibleOptions = 9
@@ -204,7 +210,7 @@ function NodeCardFieldDropdown({
   }
   return (
     <Group onWheel={handleWheel}>
-      <Rect cornerRadius={10} fill="#ffffff" height={dropdownHeight} shadowBlur={14} shadowColor="rgba(15,23,42,0.18)" shadowOffsetY={6} stroke="#dce3ec" strokeWidth={1} width={width} x={x} y={y} />
+      <Rect cornerRadius={10} fill={palette.dropdownBg} height={dropdownHeight} shadowBlur={14} shadowColor={palette.nodeShadow} shadowOffsetY={6} stroke={palette.fieldStroke} strokeWidth={1} width={width} x={x} y={y} />
       {visibleOptions.map((option, index) => {
         const selected = option.value === shape.props.data[field.name]
         return (
@@ -218,15 +224,15 @@ function NodeCardFieldDropdown({
             onDblClick={stopNodeCardControlEvent}
             onPointerDown={stopNodeCardControlEvent}
           >
-            <Rect cornerRadius={7} fill={selected ? '#eef2ff' : '#ffffff'} height={26} width={width - 8} x={x + 4} y={y + 4 + index * 30} />
-            <Text fill={selected ? '#4338ca' : '#1f2937'} fontFamily="Inter, system-ui, sans-serif" fontSize={11} fontStyle="bold" height={26} text={option.label} verticalAlign="middle" width={width - 20} x={x + 12} y={y + 4 + index * 30} />
+            <Rect cornerRadius={7} fill={selected ? palette.selectedBg : palette.dropdownBg} height={26} width={width - 8} x={x + 4} y={y + 4 + index * 30} />
+            <Text fill={selected ? palette.selectedText : palette.fieldText} fontFamily="Inter, system-ui, sans-serif" fontSize={11} fontStyle="bold" height={26} text={option.label} verticalAlign="middle" width={width - 20} x={x + 12} y={y + 4 + index * 30} />
           </Group>
         )
       })}
       {maxScrollIndex > 0 ? (
         <>
-          <Rect cornerRadius={999} fill="rgba(148,163,184,0.22)" height={dropdownHeight - 16} width={4} x={x + width - 10} y={y + 8} />
-          <Rect cornerRadius={999} fill="#94a3b8" height={Math.max(22, (dropdownHeight - 16) * visibleOptions.length / options.length)} width={4} x={x + width - 10} y={y + 8 + ((dropdownHeight - 16) - Math.max(22, (dropdownHeight - 16) * visibleOptions.length / options.length)) * (scrollIndex / maxScrollIndex)} />
+          <Rect cornerRadius={999} fill={palette.scrollbarTrack} height={dropdownHeight - 16} width={4} x={x + width - 10} y={y + 8} />
+          <Rect cornerRadius={999} fill={palette.scrollbar} height={Math.max(22, (dropdownHeight - 16) * visibleOptions.length / options.length)} width={4} x={x + width - 10} y={y + 8 + ((dropdownHeight - 16) - Math.max(22, (dropdownHeight - 16) * visibleOptions.length / options.length)) * (scrollIndex / maxScrollIndex)} />
         </>
       ) : null}
     </Group>

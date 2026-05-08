@@ -1,6 +1,6 @@
 # PRD Slice S2: AI Productization
 
-**Updated**: 2026-05-07
+**Updated**: 2026-05-08
 **Mode**: Product slice.
 
 ## Goal
@@ -27,7 +27,7 @@ This slice is intentionally narrower in the current pass:
 | Analysis | Image Node + Prompt Node -> Analysis creates text/prompt output. | Local model-select analysis path exists; durable server text-output path remains pending |
 | Prompt Optimizer | Prompt Optimizer Node turns rough image prompts into richer generation prompts through a text model. | Local streaming UX exists; production gate is server text AiRun route |
 | AiRun history | User can inspect own AI calls, status, latency, cost and credit impact. | Planned |
-| Charge transparency | Before the user runs AI, the UI can explain whether the run will charge the actor's personal/top-up balance, the actor's Team seat allowance or an explicit Enterprise workspace pool. | Mock payer contract exists |
+| Charge transparency | Before the user runs AI, the UI can explain whether the run will charge the actor's personal wallet, the active Team wallet or an explicit Enterprise workspace pool. | Mock payer contract exists; Team-wallet resolver pending |
 | Cost controls | Server records provider cost, credits charged/refunded, timeout, failure and retry state. | Internal ledger helper + optional mock charge exercise exist; provider cost controls planned |
 | Dynamic model pricing | Each model/tier combination, such as image generation resolution, quality and output count, has a server-managed credit estimate and final settlement rule. | Planned |
 | Provider routing | One product model can have multiple provider routes, and developer/admin operators can enable, disable, reorder or fail over those routes without frontend deploys. | Planned |
@@ -50,6 +50,7 @@ Current canvas readiness note: Konva node UI and runtimeGraph dataflow are stron
 - Board document stores only Asset/AiRun references and short run summaries.
 - Every provider call creates structured AiRun/API-call records.
 - Every provider call also records who paid, which account was charged and which workspace kind/entitlement source allowed the run.
+- Team workspace runs must charge the Team wallet after server preflight; Group/Collaborate runs must charge the acting user's personal wallet.
 - Failed calls show useful user-facing error state and do not silently consume credits.
 - Model routing can be disabled or changed server-side.
 
@@ -64,7 +65,7 @@ Current canvas readiness note: Konva node UI and runtimeGraph dataflow are stron
 
 # PRD 切片 S2：AI 产品化
 
-**更新日期**：2026-05-07
+**更新日期**：2026-05-08
 **模式**：产品切片。
 
 ## 目标
@@ -91,7 +92,7 @@ Current canvas readiness note: Konva node UI and runtimeGraph dataflow are stron
 | Analysis | Image Node + Prompt Node -> Analysis 创建 text/prompt output。 | 本地 model-select analysis path 已存在；durable server text-output path 仍待完成 |
 | Prompt Optimizer | Prompt Optimizer Node 通过 text model 把粗略出图提示词优化成更完整的生成提示词。 | 本地 streaming UX 已存在；生产闸门是 server text AiRun route |
 | AiRun history | 用户可以检查自己的 AI calls、status、latency、cost 和 credit impact。 | Planned |
-| Charge transparency | 用户运行 AI 之前，UI 可以解释本次运行会扣 actor 的 personal/top-up balance、actor 的 Team seat allowance，还是明确的 Enterprise workspace pool。 | Mock payer contract exists |
+| Charge transparency | 用户运行 AI 之前，UI 可以解释本次运行会扣操作者个人钱包、当前 Team wallet，还是明确的 Enterprise workspace pool。 | Mock payer contract exists；Team-wallet resolver 待完成 |
 | Cost controls | 服务端记录 provider cost、credits charged/refunded、timeout、failure 和 retry state。 | Internal ledger helper + optional mock charge exercise exist；provider cost controls planned |
 | Dynamic model pricing | 每个 model/tier 组合，例如生图分辨率、质量和输出数量，都有服务端管理的 credit estimate 和最终结算规则。 | Planned |
 | Provider routing | 一个产品模型可以拥有多条 provider routes，developer/admin operators 可以在不部署前端的情况下启用、禁用、排序或 fail over 这些线路。 | Planned |
@@ -114,6 +115,7 @@ Current canvas readiness note: Konva node UI and runtimeGraph dataflow are stron
 - Board document 只存 Asset/AiRun references 和 short run summaries。
 - 每个 provider call 都创建结构化 AiRun/API-call records。
 - 每个 provider call 也记录谁付费、哪个 account 被扣费，以及哪个 workspace kind / entitlement source 允许本次运行。
+- Team workspace runs 必须在服务端 preflight 后扣 Team wallet；Group/Collaborate runs 必须扣操作者个人钱包。
 - Failed calls 显示有用的 user-facing error state，并且不能静默消耗 credits。
 - Model routing 可以在服务端 disabled 或 changed。
 

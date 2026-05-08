@@ -2,6 +2,7 @@ import { useMemo, useState, type ComponentProps } from 'react'
 import { Group, Line, Rect, Text } from 'react-konva'
 import type { CanvasDocument, CanvasNodeShape } from '@/features/canvas-engine'
 import { getChatModelDisplayName, getChatModelSelectOptions } from '@/features/ai/mockAiContracts'
+import { getCanvasThemePalette, useResolvedCanvasThemeMode } from '@/features/canvas-settings/canvasTheme'
 import { resolveRuntimeGraphNodeInputs, type RuntimeGraphImageValue } from '@/features/node-runtime/runtimeGraphResolution'
 import { getKonvaChatDraft, getKonvaChatExportedMessageIds, getKonvaChatMessages, getKonvaChatModelId, getKonvaChatReferenceFiles, getKonvaChatReferenceImages, konvaChatDraftPlaceholder } from './konvaChatNodeActions'
 import { stopNodeCardControlEvent } from './KonvaNodeCardParts'
@@ -21,6 +22,7 @@ type KonvaNodeChatBodyProps = {
 }
 
 export function KonvaNodeChatBody({ document, editingFieldName = null, onChatExportToggle, onChatModelChange, onChatSend, onChatUpload, onTextEditStart, shape, zoom }: KonvaNodeChatBodyProps) {
+  const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
   const messages = getKonvaChatMessages(shape.props.data)
   const exported = new Set(getKonvaChatExportedMessageIds(shape.props.data))
   const references = getKonvaChatReferenceImages(shape.props.data)
@@ -79,14 +81,14 @@ export function KonvaNodeChatBody({ document, editingFieldName = null, onChatExp
               <Group key={message.id} x={x} y={y}>
                 <Rect
                   cornerRadius={10}
-                  fill={isAssistant ? '#f8fafc' : '#ffffff'}
+                  fill={isAssistant ? palette.fieldBg : palette.secondaryBg}
                   height={height}
-                  stroke={isAssistant ? '#cfd8e3' : '#8b5cf6'}
+                  stroke={isAssistant ? palette.fieldStroke : '#8b5cf6'}
                   strokeWidth={1}
                   width={width}
                 />
                 <Text
-                  fill="#1f2937"
+                  fill={palette.fieldText}
                   fontFamily="Inter, system-ui, sans-serif"
                   fontSize={12}
                   height={height - (isAssistant ? 42 : 24)}
@@ -221,6 +223,7 @@ function ChatScrollbar({
   x: number
   y: number
 }) {
+  const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
   const contentHeight = trackHeight + maxScroll
   const thumbHeight = Math.max(28, Math.min(trackHeight, trackHeight * trackHeight / Math.max(trackHeight, contentHeight)))
   const travel = Math.max(1, trackHeight - thumbHeight)
@@ -229,7 +232,7 @@ function ChatScrollbar({
     <Group>
       <Rect
         cornerRadius={999}
-        fill="rgba(148, 163, 184, 0.18)"
+        fill={palette.scrollbarTrack}
         height={trackHeight}
         onClick={(event) => {
           event.cancelBubble = true
@@ -246,7 +249,7 @@ function ChatScrollbar({
       <Rect
         cornerRadius={999}
         draggable
-        fill="#94a3b8"
+        fill={palette.scrollbar}
         height={thumbHeight}
         onDragMove={(event) => {
           event.cancelBubble = true
@@ -281,6 +284,7 @@ function ConnectedContextStrip({
   y: number
   zoom: number
 }) {
+  const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
   const maxItems = Math.max(1, Math.min(4, Math.floor((width - 52) / 90)))
   const allItems: Array<
     | { index: number; kind: 'file'; value: ChatReferenceFile }
@@ -296,8 +300,8 @@ function ConnectedContextStrip({
   let cursorX = x + 10
   return (
     <Group>
-      <Rect cornerRadius={10} fill="#f8fafc" height={50} stroke="#dce3ec" strokeWidth={1} width={width} x={x} y={y} />
-      <Text fill="#64748b" fontFamily="Inter, system-ui, sans-serif" fontSize={9} fontStyle="bold" text="Connected" width={74} x={x + 10} y={y + 7} />
+      <Rect cornerRadius={10} fill={palette.fieldBg} height={50} stroke={palette.fieldStroke} strokeWidth={1} width={width} x={x} y={y} />
+      <Text fill={palette.softText} fontFamily="Inter, system-ui, sans-serif" fontSize={9} fontStyle="bold" text="Connected" width={74} x={x + 10} y={y + 7} />
       {items.map((item) => {
         const chip = item.kind === 'image'
           ? <ConnectedImageChip image={item.value} index={item.index} key={`image-${item.index}`} width={76} x={cursorX} y={y + 20} zoom={zoom} />
@@ -308,51 +312,55 @@ function ConnectedContextStrip({
         return chip
       })}
       {overflow > 0 ? (
-        <Text align="center" fill="#64748b" fontFamily="Inter, system-ui, sans-serif" fontSize={10} fontStyle="bold" height={24} text={`+${overflow}`} verticalAlign="middle" width={30} x={Math.min(cursorX, x + width - 40)} y={y + 20} />
+        <Text align="center" fill={palette.softText} fontFamily="Inter, system-ui, sans-serif" fontSize={10} fontStyle="bold" height={24} text={`+${overflow}`} verticalAlign="middle" width={30} x={Math.min(cursorX, x + width - 40)} y={y + 20} />
       ) : null}
     </Group>
   )
 }
 
 function ConnectedFileChip({ file, index, width, x, y }: { file: ChatReferenceFile; index: number; width: number; x: number; y: number }) {
+  const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
   return (
     <Group>
-      <Rect cornerRadius={8} fill="#ffffff" height={24} stroke="#ddd6fe" strokeWidth={1} width={width} x={x} y={y} />
+      <Rect cornerRadius={8} fill={palette.secondaryBg} height={24} stroke="#ddd6fe" strokeWidth={1} width={width} x={x} y={y} />
       <Text fill="#6d28d9" fontFamily="Inter, system-ui, sans-serif" fontSize={9} fontStyle="bold" text={`file ${index + 1}`} width={40} x={x + 7} y={y + 4} />
-      <Text ellipsis fill="#64748b" fontFamily="Inter, system-ui, sans-serif" fontSize={8} height={9} text={file.name} width={width - 14} wrap="none" x={x + 7} y={y + 14} />
+      <Text ellipsis fill={palette.softText} fontFamily="Inter, system-ui, sans-serif" fontSize={8} height={9} text={file.name} width={width - 14} wrap="none" x={x + 7} y={y + 14} />
     </Group>
   )
 }
 
 function ConnectedPromptChip({ index, text, width, x, y }: { index: number; text: string; width: number; x: number; y: number }) {
+  const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
   return (
     <Group>
-      <Rect cornerRadius={8} fill="#ffffff" height={24} stroke="#fde68a" strokeWidth={1} width={width} x={x} y={y} />
+      <Rect cornerRadius={8} fill={palette.secondaryBg} height={24} stroke="#fde68a" strokeWidth={1} width={width} x={x} y={y} />
       <Text fill="#b45309" fontFamily="Inter, system-ui, sans-serif" fontSize={9} fontStyle="bold" text={`prompt ${index + 1}`} width={52} x={x + 7} y={y + 4} />
-      <Text ellipsis fill="#475569" fontFamily="Inter, system-ui, sans-serif" fontSize={9} height={10} text={text} width={width - 14} wrap="none" x={x + 7} y={y + 13} />
+      <Text ellipsis fill={palette.mutedText} fontFamily="Inter, system-ui, sans-serif" fontSize={9} height={10} text={text} width={width - 14} wrap="none" x={x + 7} y={y + 13} />
     </Group>
   )
 }
 
 function ConnectedImageChip({ image, index, width, x, y, zoom }: { image: RuntimeGraphImageValue; index: number; width: number; x: number; y: number; zoom: number }) {
+  const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
   const source = getGeneratedOutputSource(image, zoom)
   return (
     <Group>
-      <Rect cornerRadius={8} fill="#ffffff" height={24} stroke="#bbf7d0" strokeWidth={1} width={width} x={x} y={y} />
-      <Rect cornerRadius={5} fill="#e2e8f0" height={18} width={24} x={x + 4} y={y + 3} />
+      <Rect cornerRadius={8} fill={palette.secondaryBg} height={24} stroke="#bbf7d0" strokeWidth={1} width={width} x={x} y={y} />
+      <Rect cornerRadius={5} fill={palette.imageSlotBg} height={18} width={24} x={x + 4} y={y + 3} />
       <NodeImagePreview bounds={{ height: 18, width: 24, x: x + 4, y: y + 3 }} crop={image.crop} source={source} />
       <Text fill="#047857" fontFamily="Inter, system-ui, sans-serif" fontSize={9} fontStyle="bold" text={`image ${index + 1}`} width={width - 34} x={x + 34} y={y + 5} />
-      <Text ellipsis fill="#64748b" fontFamily="Inter, system-ui, sans-serif" fontSize={8} height={9} text={image.title} width={width - 34} wrap="none" x={x + 34} y={y + 14} />
+      <Text ellipsis fill={palette.softText} fontFamily="Inter, system-ui, sans-serif" fontSize={8} height={9} text={image.title} width={width - 34} wrap="none" x={x + 34} y={y + 14} />
     </Group>
   )
 }
 
 function ReferenceStrip({ fileCount, imageCount, promptCount, width, x, y }: { fileCount: number; imageCount: number; promptCount: number; width: number; x: number; y: number }) {
+  const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
   const promptText = promptCount > 0 ? ` · ${promptCount} prompts` : ''
   return (
     <Group>
-      <Text fill="#64748b" fontFamily="Inter, system-ui, sans-serif" fontSize={10} fontStyle="bold" text={`Refs ${imageCount} images · ${fileCount} PDFs${promptText}`} width={width} x={x} y={y} />
-      <Line points={[x, y + 15, x + width, y + 15]} stroke="#e2e8f0" strokeWidth={1} />
+      <Text fill={palette.softText} fontFamily="Inter, system-ui, sans-serif" fontSize={10} fontStyle="bold" text={`Refs ${imageCount} images · ${fileCount} PDFs${promptText}`} width={width} x={x} y={y} />
+      <Line points={[x, y + 15, x + width, y + 15]} stroke={palette.fieldStroke} strokeWidth={1} />
     </Group>
   )
 }
@@ -388,6 +396,7 @@ function ChatInputBox({
   x: number
   y: number
 }) {
+  const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
   const buttonWidth = 58
   const modelButtonWidth = 88
   const toolbarY = y + height - 31
@@ -399,7 +408,7 @@ function ChatInputBox({
       }}
       onPointerDown={stopNodeCardControlEvent}
     >
-      <Rect cornerRadius={10} fill="#ffffff" height={height} stroke="#8b5cf6" strokeWidth={1.2} width={width} x={x} y={y} />
+      <Rect cornerRadius={10} fill={palette.secondaryBg} height={height} stroke="#8b5cf6" strokeWidth={1.2} width={width} x={x} y={y} />
       {editing ? null : (
         <Text align="left" ellipsis fill="#8b5cf6" fontFamily="Inter, system-ui, sans-serif" fontSize={12} height={34} text={draft || konvaChatDraftPlaceholder} verticalAlign="middle" width={width - 30} wrap="none" x={x + 16} y={y + 9} />
       )}
@@ -443,9 +452,10 @@ function ChatModelMenu({
   x: number
   y: number
 }) {
+  const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
   return (
     <Group>
-      <Rect cornerRadius={10} fill="#ffffff" height={options.length * 30 + 8} shadowBlur={14} shadowColor="rgba(15, 23, 42, 0.18)" shadowOffsetY={6} stroke="#dce3ec" strokeWidth={1} width={width} x={x} y={y} />
+      <Rect cornerRadius={10} fill={palette.dropdownBg} height={options.length * 30 + 8} shadowBlur={14} shadowColor={palette.nodeShadow} shadowOffsetY={6} stroke={palette.fieldStroke} strokeWidth={1} width={width} x={x} y={y} />
       {options.map((option, index) => (
         <Group
           key={String(option.value)}
@@ -457,8 +467,8 @@ function ChatModelMenu({
           onPointerDown={stopNodeCardControlEvent}
           opacity={option.disabled ? 0.45 : 1}
         >
-          <Rect cornerRadius={7} fill="#ffffff" height={26} width={width - 8} x={x + 4} y={y + 4 + index * 30} />
-          <Text fill="#1f2937" fontFamily="Inter, system-ui, sans-serif" fontSize={11} fontStyle="bold" height={26} text={option.label} verticalAlign="middle" width={width - 18} x={x + 10} y={y + 4 + index * 30} />
+          <Rect cornerRadius={7} fill={palette.dropdownBg} height={26} width={width - 8} x={x + 4} y={y + 4 + index * 30} />
+          <Text fill={palette.fieldText} fontFamily="Inter, system-ui, sans-serif" fontSize={11} fontStyle="bold" height={26} text={option.label} verticalAlign="middle" width={width - 18} x={x + 10} y={y + 4 + index * 30} />
         </Group>
       ))}
     </Group>
@@ -466,6 +476,7 @@ function ChatModelMenu({
 }
 
 function IconButton({ label, onClick, width = 22, x, y }: { label: string; onClick?: () => void; width?: number; x: number; y: number }) {
+  const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
   return (
     <Group
       onClick={(event) => {
@@ -475,8 +486,8 @@ function IconButton({ label, onClick, width = 22, x, y }: { label: string; onCli
       onDblClick={stopNodeCardControlEvent}
       onPointerDown={stopNodeCardControlEvent}
     >
-      <Rect cornerRadius={999} fill="#f8fafc" height={22} stroke="#dce3ec" strokeWidth={1} width={width} x={x} y={y} />
-      <Text align="center" fill="#475569" fontFamily="Inter, system-ui, sans-serif" fontSize={10} fontStyle="bold" height={22} text={label} verticalAlign="middle" width={width} x={x} y={y} />
+      <Rect cornerRadius={999} fill={palette.fieldBg} height={22} stroke={palette.fieldStroke} strokeWidth={1} width={width} x={x} y={y} />
+      <Text align="center" fill={palette.mutedText} fontFamily="Inter, system-ui, sans-serif" fontSize={10} fontStyle="bold" height={22} text={label} verticalAlign="middle" width={width} x={x} y={y} />
     </Group>
   )
 }
