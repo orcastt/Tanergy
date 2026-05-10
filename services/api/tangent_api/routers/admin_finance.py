@@ -11,21 +11,6 @@ from tangent_api.admin_finance_reads import (
     list_admin_finance_wallets,
     load_admin_finance_summary,
 )
-from tangent_api.admin_finance_manual import (
-    manual_cancel_subscription,
-    manual_set_collaborate_plan,
-    manual_set_team_plan,
-    manual_topup_user,
-    manual_topup_workspace,
-)
-from tangent_api.admin_finance_manual_schemas import (
-    AdminManualCollaboratePlanRequest,
-    AdminManualFinanceMutationResponse,
-    AdminManualSubscriptionCancelRequest,
-    AdminManualTeamPlanRequest,
-    AdminManualUserTopupRequest,
-    AdminManualWorkspaceTopupRequest,
-)
 from tangent_api.admin_finance_schemas import (
     AdminFinanceLedgerResponse,
     AdminFinanceMemberUsageResponse,
@@ -35,11 +20,12 @@ from tangent_api.admin_finance_schemas import (
     AdminFinanceWalletsResponse,
 )
 from tangent_api.request_context import ApiRequestContext, get_request_context
+from tangent_api.routers.admin_finance_manual import router as manual_router
 
 router = APIRouter(prefix="/api/v1/admin/finance", tags=["admin"])
+router.include_router(manual_router)
 
 FINANCE_READ_ROLES = {"owner", "admin", "finance", "analyst"}
-FINANCE_WRITE_ROLES = {"owner", "admin", "finance"}
 
 
 @router.get("/summary", response_model=AdminFinanceSummaryResponse)
@@ -148,86 +134,6 @@ def get_admin_finance_member_usage(
     member_usage = list_admin_finance_member_usage(workspace_id, limit=limit)
     _write_read_audit(context, "admin.finance.member_usage.list", roles, {"limit": limit, "workspaceId": workspace_id})
     return AdminFinanceMemberUsageResponse(ok=True, memberUsage=member_usage)
-
-
-@router.post("/manual/user-topup", response_model=AdminManualFinanceMutationResponse)
-def post_admin_manual_user_topup(
-    payload: AdminManualUserTopupRequest,
-    context: ApiRequestContext = Depends(get_request_context),
-) -> AdminManualFinanceMutationResponse:
-    require_admin_role(context, allowed_roles=FINANCE_WRITE_ROLES)
-    return manual_topup_user(
-        actor_user_id=context.user_id,
-        amount_cents=payload.amount_cents,
-        credits=payload.credits,
-        currency=payload.currency,
-        note=payload.note,
-        target_user_id=payload.user_id,
-    )
-
-
-@router.post("/manual/workspace-topup", response_model=AdminManualFinanceMutationResponse)
-def post_admin_manual_workspace_topup(
-    payload: AdminManualWorkspaceTopupRequest,
-    context: ApiRequestContext = Depends(get_request_context),
-) -> AdminManualFinanceMutationResponse:
-    require_admin_role(context, allowed_roles=FINANCE_WRITE_ROLES)
-    return manual_topup_workspace(
-        actor_user_id=context.user_id,
-        amount_cents=payload.amount_cents,
-        credits=payload.credits,
-        currency=payload.currency,
-        note=payload.note,
-        workspace_id=payload.workspace_id,
-    )
-
-
-@router.post("/manual/collaborate-plan", response_model=AdminManualFinanceMutationResponse)
-def post_admin_manual_collaborate_plan(
-    payload: AdminManualCollaboratePlanRequest,
-    context: ApiRequestContext = Depends(get_request_context),
-) -> AdminManualFinanceMutationResponse:
-    require_admin_role(context, allowed_roles=FINANCE_WRITE_ROLES)
-    return manual_set_collaborate_plan(
-        actor_user_id=context.user_id,
-        grant_included_credits=payload.grant_included_credits,
-        note=payload.note,
-        plan_key=payload.plan_key,
-        status=payload.status,
-        target_user_id=payload.user_id,
-    )
-
-
-@router.post("/manual/team-plan", response_model=AdminManualFinanceMutationResponse)
-def post_admin_manual_team_plan(
-    payload: AdminManualTeamPlanRequest,
-    context: ApiRequestContext = Depends(get_request_context),
-) -> AdminManualFinanceMutationResponse:
-    require_admin_role(context, allowed_roles=FINANCE_WRITE_ROLES)
-    return manual_set_team_plan(
-        actor_user_id=context.user_id,
-        grant_included_credits=payload.grant_included_credits,
-        note=payload.note,
-        plan_key=payload.plan_key,
-        seat_capacity=payload.seat_capacity,
-        status=payload.status,
-        workspace_id=payload.workspace_id,
-    )
-
-
-@router.post("/manual/subscription-cancel", response_model=AdminManualFinanceMutationResponse)
-def post_admin_manual_subscription_cancel(
-    payload: AdminManualSubscriptionCancelRequest,
-    context: ApiRequestContext = Depends(get_request_context),
-) -> AdminManualFinanceMutationResponse:
-    require_admin_role(context, allowed_roles=FINANCE_WRITE_ROLES)
-    return manual_cancel_subscription(
-        actor_user_id=context.user_id,
-        note=payload.note,
-        subscription_id=payload.subscription_id,
-    )
-
-
 def _write_read_audit(
     context: ApiRequestContext,
     action: str,

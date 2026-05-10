@@ -33,7 +33,7 @@ export function ModelsPanel({
 }) {
   return (
     <article className="management-panel">
-      <PanelHeading body="Registry defaults, parameter schemas and routing affinity." rows={models.models.length} title="Models" />
+      <PanelHeading rows={models.models.length} title="Models" />
       <div style={filterGridStyle(2)}>
         <FilterSelect label="Capability" onChange={onCapabilityChange} options={capabilityOptions} value={selectedCapability} />
         <FilterSelect label="Enabled" onChange={(value) => onEnabledChange(value as BooleanFilter)} options={[{ label: 'All', value: 'all' }, { label: 'Enabled', value: 'enabled' }, { label: 'Disabled', value: 'disabled' }]} value={enabledFilter} />
@@ -72,7 +72,7 @@ export function RoutesPanel({
 }) {
   return (
     <article className="management-panel">
-      <PanelHeading body="Failover candidates, priority order and health flags." rows={routes.routes.length} title="Provider routes" />
+      <PanelHeading rows={routes.routes.length} title="Provider routes" />
       <div style={filterGridStyle(3)}>
         <FilterSelect label="Model" onChange={onModelChange} options={modelOptions} value={selectedModel} />
         <FilterSelect label="Provider" onChange={onProviderChange} options={providerOptions} value={selectedProvider} />
@@ -114,7 +114,7 @@ export function PricingRulesPanel({
 }) {
   return (
     <article className="management-panel">
-      <PanelHeading body="Tiered credit rules that the backend quote path resolves." rows={pricingRules.pricingRules.length} title="Pricing rules" />
+      <PanelHeading rows={pricingRules.pricingRules.length} title="Pricing rules" />
       <div style={filterGridStyle(3)}>
         <FilterSelect label="Model" onChange={onModelChange} options={modelOptions} value={selectedModel} />
         <FilterSelect label="Tier" onChange={onTierChange} options={tierOptions} value={selectedTier} />
@@ -131,6 +131,6 @@ export function PricingRulesPanel({
   )
 }
 
-function PanelHeading({ body, rows, title }: { body: string; rows: number; title: string }) {
-  return <div className="management-panel-heading"><div><h2>{title}</h2><p>{body}</p></div><span className="management-badge">{rows} rows</span></div>
+function PanelHeading({ rows, title }: { rows: number; title: string }) {
+  return <div className="management-panel-heading"><div><h2>{title}</h2></div><span className="management-badge">{rows} rows</span></div>
 }

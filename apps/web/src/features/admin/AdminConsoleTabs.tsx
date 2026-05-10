@@ -1,6 +1,6 @@
 'use client'
 
-const tabs = [
+export const adminConsoleTabs = [
   { id: 'overview', label: 'Overview' },
   { id: 'users', label: 'Users' },
   { id: 'teams', label: 'Teams' },
@@ -10,28 +10,33 @@ const tabs = [
   { id: 'access', label: 'Access' },
 ] as const
 
-export type AdminConsoleTab = (typeof tabs)[number]['id']
+export type AdminConsoleTab = (typeof adminConsoleTabs)[number]['id']
 
 export function AdminConsoleTabs({
   activeTab,
-  onChange,
+  onTabChange,
 }: {
   activeTab: AdminConsoleTab
-  onChange: (tab: AdminConsoleTab) => void
+  onTabChange: (tab: AdminConsoleTab) => void
 }) {
   return (
-    <div className="management-segmented management-console-tabs" role="tablist" aria-label="Admin sections">
-      {tabs.map((tab) => (
+    <nav className="management-segmented management-console-tabs" aria-label="Admin sections" role="tablist">
+      {adminConsoleTabs.map((tab) => (
         <button
+          aria-selected={tab.id === activeTab}
           key={tab.id}
-          className={tab.id === activeTab ? 'is-active' : undefined}
-          onClick={() => onChange(tab.id)}
           role="tab"
+          className={[
+            tab.id === activeTab ? 'is-active' : '',
+          ].filter(Boolean).join(' ')}
+          onClick={() => {
+            if (tab.id !== activeTab) onTabChange(tab.id)
+          }}
           type="button"
         >
-          {tab.label}
+          <span>{tab.label}</span>
         </button>
       ))}
-    </div>
+    </nav>
   )
 }

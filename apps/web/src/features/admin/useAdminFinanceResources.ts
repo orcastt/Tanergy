@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   loadAdminFinanceLedger,
   loadAdminFinanceMemberUsage,
@@ -16,6 +16,7 @@ import {
   type AdminFinanceSummaryResource,
   type AdminFinanceWalletsResource,
 } from './adminFinanceClient'
+import { loadClientResource, readClientResource } from '@/features/shared/clientResourceCache'
 
 type AdminFinanceState = 'error' | 'loading' | 'ready'
 
@@ -25,6 +26,20 @@ const emptyWallets: AdminFinanceWalletsResource = { ok: false, wallets: [] }
 const emptyLedger: AdminFinanceLedgerResource = { ok: false, ledger: [] }
 const emptySubscriptions: AdminFinanceSubscriptionsResource = { ok: false, subscriptions: [] }
 const emptyMemberUsage: AdminFinanceMemberUsageResource = { ok: false, memberUsage: [] }
+type AdminFinanceBundle = {
+  ledger: AdminFinanceLedgerResource
+  memberUsage: AdminFinanceMemberUsageResource
+  payments: AdminFinancePaymentsResource
+  subscriptions: AdminFinanceSubscriptionsResource
+  summary: AdminFinanceSummaryResource
+  wallets: AdminFinanceWalletsResource
+}
+const financeResourceStore = new Map<string, {
+  data?: AdminFinanceBundle
+  error?: string | null
+  promise?: Promise<AdminFinanceBundle>
+  updatedAt: number
+}>()
 
 export function useAdminFinanceResources(enabled: boolean, query: AdminFinanceQuery) {
   const {
@@ -42,50 +57,91 @@ export function useAdminFinanceResources(enabled: boolean, query: AdminFinanceQu
     userId,
     workspaceId,
   } = query
-  const [summary, setSummary] = useState<AdminFinanceSummaryResource>(emptySummary)
-  const [payments, setPayments] = useState<AdminFinancePaymentsResource>(emptyPayments)
-  const [wallets, setWallets] = useState<AdminFinanceWalletsResource>(emptyWallets)
-  const [ledger, setLedger] = useState<AdminFinanceLedgerResource>(emptyLedger)
-  const [subscriptions, setSubscriptions] = useState<AdminFinanceSubscriptionsResource>(emptySubscriptions)
-  const [memberUsage, setMemberUsage] = useState<AdminFinanceMemberUsageResource>(emptyMemberUsage)
-  const [status, setStatus] = useState<AdminFinanceState>('loading')
-  const [error, setError] = useState<string | null>(null)
+  const scopedQuery = useMemo(() => ({
+    accountId,
+    accountKind,
+    actorUserId,
+    kind,
+    limit: limit ?? 25,
+    ownerId,
+    ownerType,
+    planFamily,
+    provider,
+    reason,
+    status: queryStatus,
+    userId,
+    workspaceId,
+  }), [
+    accountId,
+    accountKind,
+    actorUserId,
+    kind,
+    limit,
+    ownerId,
+    ownerType,
+    planFamily,
+    provider,
+    queryStatus,
+    reason,
+    userId,
+    workspaceId,
+  ])
+  const requestKey = useMemo(() => JSON.stringify(scopedQuery), [scopedQuery])
+  const snapshot = readClientResource(financeResourceStore, requestKey, {
+    storage: 'local',
+    storageKey: financeStorageKey(requestKey),
+    ttlMs: 300_000,
+  })
+  const [summary, setSummary] = useState<AdminFinanceSummaryResource>(snapshot.data?.summary ?? emptySummary)
+  const [payments, setPayments] = useState<AdminFinancePaymentsResource>(snapshot.data?.payments ?? emptyPayments)
+  const [wallets, setWallets] = useState<AdminFinanceWalletsResource>(snapshot.data?.wallets ?? emptyWallets)
+  const [ledger, setLedger] = useState<AdminFinanceLedgerResource>(snapshot.data?.ledger ?? emptyLedger)
+  const [subscriptions, setSubscriptions] = useState<AdminFinanceSubscriptionsResource>(snapshot.data?.subscriptions ?? emptySubscriptions)
+  const [memberUsage, setMemberUsage] = useState<AdminFinanceMemberUsageResource>(snapshot.data?.memberUsage ?? emptyMemberUsage)
+  const [status, setStatus] = useState<AdminFinanceState>(snapshot.data ? 'ready' : snapshot.error ? 'error' : 'loading')
+  const [error, setError] = useState<string | null>(snapshot.error ?? null)
   const [reloadToken, setReloadToken] = useState(0)
 
   useEffect(() => {
     if (!enabled) return
     let cancelled = false
-    const scopedQuery = {
-      accountId,
-      accountKind,
-      actorUserId,
-      kind,
-      limit: limit ?? 25,
-      ownerId,
-      ownerType,
-      planFamily,
-      provider,
-      reason,
-      status: queryStatus,
-      userId,
-      workspaceId,
-    }
-    Promise.all([
-      loadAdminFinanceSummary(),
-      loadAdminFinancePayments(scopedQuery),
-      loadAdminFinanceWallets(scopedQuery),
-      loadAdminFinanceLedger(scopedQuery),
-      loadAdminFinanceSubscriptions(scopedQuery),
-      workspaceId ? loadAdminFinanceMemberUsage(scopedQuery) : Promise.resolve(emptyMemberUsage),
-    ])
-      .then(([nextSummary, nextPayments, nextWallets, nextLedger, nextSubscriptions, nextMemberUsage]) => {
+
+    loadClientResource(
+      financeResourceStore,
+      requestKey,
+      async () => {
+        const [nextSummary, nextPayments, nextWallets, nextLedger, nextSubscriptions, nextMemberUsage] = await Promise.all([
+          loadAdminFinanceSummary(),
+          loadAdminFinancePayments(scopedQuery),
+          loadAdminFinanceWallets(scopedQuery),
+          loadAdminFinanceLedger(scopedQuery),
+          loadAdminFinanceSubscriptions(scopedQuery),
+          workspaceId ? loadAdminFinanceMemberUsage(scopedQuery) : Promise.resolve(emptyMemberUsage),
+        ])
+        return {
+          ledger: nextLedger,
+          memberUsage: nextMemberUsage,
+          payments: nextPayments,
+          subscriptions: nextSubscriptions,
+          summary: nextSummary,
+          wallets: nextWallets,
+        }
+      },
+      {
+        force: reloadToken > 0,
+        storage: 'local',
+        storageKey: financeStorageKey(requestKey),
+        ttlMs: 300_000,
+      },
+    )
+      .then((bundle) => {
         if (cancelled) return
-        setSummary(nextSummary)
-        setPayments(nextPayments)
-        setWallets(nextWallets)
-        setLedger(nextLedger)
-        setSubscriptions(nextSubscriptions)
-        setMemberUsage(nextMemberUsage)
+        setSummary(bundle.summary)
+        setPayments(bundle.payments)
+        setWallets(bundle.wallets)
+        setLedger(bundle.ledger)
+        setSubscriptions(bundle.subscriptions)
+        setMemberUsage(bundle.memberUsage)
         setError(null)
         setStatus('ready')
       })
@@ -105,18 +161,8 @@ export function useAdminFinanceResources(enabled: boolean, query: AdminFinanceQu
     }
   }, [
     enabled,
-    accountId,
-    accountKind,
-    actorUserId,
-    kind,
-    limit,
-    ownerId,
-    ownerType,
-    planFamily,
-    provider,
-    queryStatus,
-    reason,
-    userId,
+    requestKey,
+    scopedQuery,
     workspaceId,
     reloadToken,
   ])
@@ -132,4 +178,8 @@ export function useAdminFinanceResources(enabled: boolean, query: AdminFinanceQu
     summary: enabled ? summary : emptySummary,
     wallets: enabled ? wallets : emptyWallets,
   }
+}
+
+function financeStorageKey(requestKey: string) {
+  return `tanergy.admin-finance.${requestKey}`
 }

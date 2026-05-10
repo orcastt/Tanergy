@@ -11,8 +11,8 @@ export async function POST(request: NextRequest) {
 }
 
 function createLocalDevBypassResponse(request: NextRequest, mode: 'json' | 'redirect') {
-  if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json({ error: 'Local dev auth is unavailable in production.', ok: false }, { status: 404 })
+  if (process.env.NODE_ENV === 'production' || process.env.TANGENT_ENABLE_DEV_AUTH_BYPASS !== '1') {
+    return NextResponse.json({ error: 'Local dev auth bypass is disabled.', ok: false }, { status: 404 })
   }
 
   const nextPath = getSafeNextPath(request.nextUrl.searchParams.get('next')) ?? '/admin'

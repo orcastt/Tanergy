@@ -92,16 +92,16 @@ export function AdminAiDashboard({ enabled }: { enabled: boolean }) {
   return (
     <>
       <section className="management-summary-grid" aria-label="AI admin summary">
-        <AiCallout body="Enabled registry entries" label="Models" value={`${enabledModels}/${ai.models.models.length || 0}`} />
-        <AiCallout body="Enabled provider routes" label="Routes" value={`${enabledRoutes}/${ai.routes.routes.length || 0}`} />
-        <AiCallout body="Pricing rules in scope" label="Pricing" value={`${activePricingRules}/${ai.pricingRules.pricingRules.length || 0}`} />
-        <AiCallout body="Grouped runs represented by the current attempt window" label="Attempt groups" value={groupedRunCount.toLocaleString('en-US')} />
-        <AiCallout body="Non-succeeded attempts in the current window" label="Runtime" value={failedApiCalls.toLocaleString('en-US')} />
+        <AiCallout label="Models" value={`${enabledModels}/${ai.models.models.length || 0}`} />
+        <AiCallout label="Routes" value={`${enabledRoutes}/${ai.routes.routes.length || 0}`} />
+        <AiCallout label="Pricing" value={`${activePricingRules}/${ai.pricingRules.pricingRules.length || 0}`} />
+        <AiCallout label="Attempt groups" value={groupedRunCount.toLocaleString('en-US')} />
+        <AiCallout label="Runtime" value={failedApiCalls.toLocaleString('en-US')} />
       </section>
 
       <section className="management-panel management-panel-wide" aria-label="AI admin control plane">
         <div className="management-panel-heading">
-          <div><h2>AI control plane</h2><p>Read-only inventory for models, routes, pricing, runs and provider calls.</p></div>
+          <div><h2>AI control plane</h2></div>
           <div className="management-actions">
             <div className="management-segmented">{limitOptions.map((option) => <button key={option} className={option === limit ? 'is-active' : undefined} onClick={() => setLimit(option)} type="button">{option}</button>)}</div>
             <button className="product-button product-button-secondary" onClick={ai.reload} type="button">Reload</button>

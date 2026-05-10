@@ -993,9 +993,11 @@ def test_ai_run_auth_required_mode(monkeypatch):
     async def fake_resolve_authenticated_request_context(
         token: str,
         requested_workspace_id: object = None,
+        request_ip: object = None,
     ) -> ApiRequestContext:
         assert token == "valid-token"
         assert requested_workspace_id is None
+        assert request_ip == "testclient"
         return ApiRequestContext(
             auth_mode="required",
             is_dev_fallback=False,

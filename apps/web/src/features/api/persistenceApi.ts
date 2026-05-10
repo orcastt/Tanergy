@@ -30,18 +30,29 @@ export function persistenceJsonHeaders(workspace?: TangentWorkspace): HeadersIni
   }
 }
 
-export async function persistenceAuthHeadersAsync(workspace?: TangentWorkspace): Promise<HeadersInit> {
-  return withClerkAuthorization(getSessionRequestHeaders(workspace))
+type PersistenceAuthOptions = {
+  getAuthToken?: () => Promise<null | string>
 }
 
-export async function persistenceJsonHeadersAsync(workspace?: TangentWorkspace): Promise<HeadersInit> {
-  return withClerkAuthorization(persistenceJsonHeaders(workspace))
+export async function persistenceAuthHeadersAsync(
+  workspace?: TangentWorkspace,
+  options: PersistenceAuthOptions = {},
+): Promise<HeadersInit> {
+  return withClerkAuthorization(getBaseRequestHeaders(workspace), options)
 }
 
-async function withClerkAuthorization(headers: HeadersInit): Promise<HeadersInit> {
+export async function persistenceJsonHeadersAsync(
+  workspace?: TangentWorkspace,
+  options: PersistenceAuthOptions = {},
+): Promise<HeadersInit> {
+  return withClerkAuthorization(getBaseJsonHeaders(workspace), options)
+}
+
+async function withClerkAuthorization(headers: HeadersInit, options: PersistenceAuthOptions = {}): Promise<HeadersInit> {
+  const token = await options.getAuthToken?.() ?? await getBrowserClerkToken()
+  if (token) return { ...headers, Authorization: `Bearer ${token}` }
   if (shouldUseLocalDevHeaders()) return headers
-  const token = await getBrowserClerkToken()
-  return token ? { ...headers, Authorization: `Bearer ${token}` } : headers
+  return headers
 }
 
 function shouldUseLocalDevHeaders() {
@@ -55,12 +66,38 @@ function shouldUseLocalDevHeaders() {
 
 async function getBrowserClerkToken() {
   if (typeof window === 'undefined') return null
-  const clerk = (window as Window & {
+  const win = window as Window & {
     Clerk?: {
+      loaded?: boolean
       session?: {
         getToken?: () => Promise<null | string>
       }
     }
-  }).Clerk
-  return clerk?.session?.getToken?.() ?? null
+  }
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const clerk = win.Clerk
+    if (clerk?.session?.getToken) {
+      return clerk.session.getToken()
+    }
+    if (clerk?.loaded) break
+    await sleep(50)
+  }
+  return null
+}
+
+function getBaseRequestHeaders(workspace?: TangentWorkspace): HeadersInit {
+  return workspace ? getSessionRequestHeaders(workspace) : {}
+}
+
+function getBaseJsonHeaders(workspace?: TangentWorkspace): HeadersInit {
+  return workspace
+    ? {
+      'Content-Type': 'application/json',
+      ...getSessionRequestHeaders(workspace),
+    }
+    : { 'Content-Type': 'application/json' }
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
 }

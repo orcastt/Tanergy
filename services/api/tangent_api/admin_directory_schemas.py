@@ -9,6 +9,7 @@ class AdminDirectoryUserRecord(TangentApiModel):
     collaborate_plan_key: Optional[str] = Field(default=None, alias="collaboratePlanKey")
     collaborate_plan_status: Optional[str] = Field(default=None, alias="collaboratePlanStatus")
     collaborate_period_end: Optional[str] = Field(default=None, alias="collaboratePeriodEnd")
+    collaborate_subscription_id: Optional[str] = Field(default=None, alias="collaborateSubscriptionId")
     created_at: str = Field(alias="createdAt")
     display_name: str = Field(alias="displayName")
     email: str
@@ -17,9 +18,16 @@ class AdminDirectoryUserRecord(TangentApiModel):
     last_login_at: Optional[str] = Field(default=None, alias="lastLoginAt")
     locale: str
     owned_board_count: int = Field(alias="ownedBoardCount")
+    personal_credits_spent: float = Field(default=0, alias="personalCreditsSpent")
     personal_wallet_credits: float = Field(alias="personalWalletCredits")
     status: str
     team_count: int = Field(alias="teamCount")
+    team_credits_spent: float = Field(default=0, alias="teamCreditsSpent")
+    team_period_end: Optional[str] = Field(default=None, alias="teamPeriodEnd")
+    team_plan_key: Optional[str] = Field(default=None, alias="teamPlanKey")
+    team_plan_status: Optional[str] = Field(default=None, alias="teamPlanStatus")
+    team_subscription_id: Optional[str] = Field(default=None, alias="teamSubscriptionId")
+    total_credits_spent: float = Field(default=0, alias="totalCreditsSpent")
 
 
 class AdminDirectoryWorkspaceRecord(TangentApiModel):
@@ -30,6 +38,7 @@ class AdminDirectoryWorkspaceRecord(TangentApiModel):
     member_count: int = Field(alias="memberCount")
     name: str
     owner_collaborate_plan_key: Optional[str] = Field(default=None, alias="ownerCollaboratePlanKey")
+    owner_collaborate_subscription_id: Optional[str] = Field(default=None, alias="ownerCollaborateSubscriptionId")
     owner_display_name: str = Field(alias="ownerDisplayName")
     owner_email: str = Field(alias="ownerEmail")
     owner_id: Optional[str] = Field(default=None, alias="ownerId")
@@ -38,6 +47,7 @@ class AdminDirectoryWorkspaceRecord(TangentApiModel):
     seat_capacity: int = Field(alias="seatCapacity")
     status: str
     subscription_period_end: Optional[str] = Field(default=None, alias="subscriptionPeriodEnd")
+    subscription_id: Optional[str] = Field(default=None, alias="subscriptionId")
     usage_credits: float = Field(alias="usageCredits")
     wallet_credits: float = Field(alias="walletCredits")
 
@@ -63,13 +73,25 @@ class AdminDirectoryBoardRecord(TangentApiModel):
 
 class AdminDirectoryUsersResponse(TangentApiModel):
     error: Optional[str] = None
+    limit: int = 0
+    offset: int = 0
     ok: bool
+    total_count: int = Field(default=0, alias="totalCount")
     users: list[AdminDirectoryUserRecord] = Field(default_factory=list)
+
+
+class AdminDirectoryUserResponse(TangentApiModel):
+    error: Optional[str] = None
+    ok: bool
+    user: Optional[AdminDirectoryUserRecord] = None
 
 
 class AdminDirectoryWorkspacesResponse(TangentApiModel):
     error: Optional[str] = None
+    limit: int = 0
+    offset: int = 0
     ok: bool
+    total_count: int = Field(default=0, alias="totalCount")
     workspaces: list[AdminDirectoryWorkspaceRecord] = Field(default_factory=list)
 
 

@@ -1,7 +1,9 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import type { AdminAiApiCallsResource, AdminAiRunRecord, AdminAiRunsResource } from './adminAiClient'
+import type { AdminAiApiCallsResource, AdminAiRunsResource } from './adminAiClient'
+import type { GroupedApiAttempt } from './adminAiRuntimeGrouping'
+import { groupApiCallsByRun } from './adminAiRuntimeGrouping'
 import {
   EmptyRow,
   FilterSelect,
@@ -47,7 +49,7 @@ export function RunsPanel(props: {
 }) {
   return (
     <article className="management-panel management-panel-wide">
-      <PanelHeading body="Persisted run records with route, tier, charge ownership and settled provider cost." rows={props.runs.runs.length} title="AI runs" />
+      <PanelHeading rows={props.runs.runs.length} title="AI runs" />
       <div style={filterGridStyle(4)}>
         <FilterSelect label="Model" onChange={props.onModelChange} options={props.modelOptions} value={props.selectedModel} />
         <FilterSelect label="Provider" onChange={props.onProviderChange} options={props.providerOptions} value={props.selectedProvider} />
@@ -69,15 +71,6 @@ export function RunsPanel(props: {
       </div>
     </article>
   )
-}
-
-type GroupedApiAttempt = {
-  attempts: Array<AdminAiApiCallsResource['apiCalls'][number] & { attemptNumber: number; isFinalAttempt: boolean }>
-  finalAttemptNumber: number
-  finalStatus: string
-  run?: AdminAiRunRecord
-  runId: string
-  succeededAttemptNumber: null | number
 }
 
 export function ApiCallsPanel(props: {
@@ -116,7 +109,7 @@ export function ApiCallsPanel(props: {
 
   return (
     <article className="management-panel management-panel-wide">
-      <PanelHeading body="Attempt timelines grouped by run, with winner detection and per-run drill-down." rows={props.apiCalls.apiCalls.length} title="AI API calls" />
+      <PanelHeading rows={props.apiCalls.apiCalls.length} title="AI API calls" />
       <div style={filterGridStyle(4)}>
         <FilterSelect label="Model" onChange={props.onModelChange} options={props.modelOptions} value={props.selectedModel} />
         <FilterSelect label="Provider" onChange={props.onProviderChange} options={props.providerOptions} value={props.selectedProvider} />
@@ -184,37 +177,6 @@ function Detail({ label, value }: { label: string; value: string }) {
   return <div><strong>{label}</strong><MetaLine>{value}</MetaLine></div>
 }
 
-function PanelHeading({ body, rows, title }: { body: string; rows: number; title: string }) {
-  return <div className="management-panel-heading"><div><h2>{title}</h2><p>{body}</p></div><span className="management-badge">{rows} rows</span></div>
-}
-
-function groupApiCallsByRun(apiCalls: AdminAiApiCallsResource['apiCalls'], runs: AdminAiRunsResource['runs']): GroupedApiAttempt[] {
-  const groups = new Map<string, AdminAiApiCallsResource['apiCalls']>()
-  for (const apiCall of apiCalls) {
-    const current = groups.get(apiCall.runId)
-    if (current) current.push(apiCall)
-    else groups.set(apiCall.runId, [apiCall])
-  }
-  return Array.from(groups.entries()).map(([runId, attempts]) => {
-    const sortedAttempts = [...attempts].sort((left, right) => {
-      const leftTime = new Date(left.createdAt).getTime()
-      const rightTime = new Date(right.createdAt).getTime()
-      return leftTime !== rightTime ? leftTime - rightTime : parseAttemptNumber(left.id) - parseAttemptNumber(right.id)
-    })
-    const finalAttemptNumber = parseAttemptNumber(sortedAttempts[sortedAttempts.length - 1]?.id ?? '')
-    const finalStatus = sortedAttempts[sortedAttempts.length - 1]?.status ?? 'unknown'
-    return {
-      attempts: sortedAttempts.map((attempt) => ({ ...attempt, attemptNumber: parseAttemptNumber(attempt.id), isFinalAttempt: parseAttemptNumber(attempt.id) === finalAttemptNumber })),
-      finalAttemptNumber,
-      finalStatus,
-      run: runs.find((run) => run.id === runId),
-      runId,
-      succeededAttemptNumber: finalStatus === 'succeeded' ? finalAttemptNumber : null,
-    }
-  }).sort((left, right) => new Date(right.attempts[right.attempts.length - 1]?.createdAt ?? '').getTime() - new Date(left.attempts[left.attempts.length - 1]?.createdAt ?? '').getTime())
-}
-
-function parseAttemptNumber(id: string) {
-  const match = /_a(\d+)$/.exec(id)
-  return match ? Number(match[1]) : 1
+function PanelHeading({ rows, title }: { rows: number; title: string }) {
+  return <div className="management-panel-heading"><div><h2>{title}</h2></div><span className="management-badge">{rows} rows</span></div>
 }

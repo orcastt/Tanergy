@@ -104,26 +104,41 @@ export type AdminAiApiCallRecord = {
 }
 
 export type AdminAiRouteMetricRecord = {
+  averageAttemptsPerRun: number
   avgLatencyMs: number
   calls: number
   capability: string
   creditsCharged: number
+  directWinRate?: null | number
+  directWins: number
   failedCalls: number
+  fallbackWins: number
   lastCalledAt?: null | string
   modelId: string
   provider: string
   providerCost: number
   providerCurrency?: null | string
+  routeAttemptSuccessRate?: null | number
+  routeHitRuns: number
+  routeId?: null | string
   routeKey: string
   succeededCalls: number
+  terminalFailures: number
 }
 
 export type AdminAiRouteMetricsTotals = {
+  averageAttemptsPerRun: number
   calls: number
   creditsCharged: number
+  directWinRate?: null | number
+  directWins: number
   failedCalls: number
+  fallbackWins: number
   providerCost: number
+  routeAttemptSuccessRate?: null | number
+  routeHitRuns: number
   succeededCalls: number
+  terminalFailures: number
 }
 
 export type AdminAiModelsResource = { error?: string; models: AdminAiModelRecord[]; ok: boolean }
@@ -183,6 +198,7 @@ type AdminAiRunQuery = {
   preflightStatus?: string
   pricingRuleId?: string
   provider?: string
+  routeId?: string
   routeKey?: string
   runId?: string
   runType?: string
@@ -197,6 +213,7 @@ type AdminAiApiCallQuery = {
   modelId?: string
   provider?: string
   pricingRuleId?: string
+  routeId?: string
   routeKey?: string
   runId?: string
   status?: string

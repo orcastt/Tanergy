@@ -105,6 +105,7 @@ export type AdminFinanceManualMutationResource = {
   ok: boolean
   paymentId?: null | string
   subscriptionId?: null | string
+  workspaceId?: null | string
 }
 
 export type AdminFinanceQuery = {
@@ -127,33 +128,69 @@ export type AdminManualUserTopupInput = {
   amountCents?: number
   credits: number
   currency?: string
-  note?: string
+  note: string
   userId: string
+}
+
+export type AdminManualCreditAdjustmentInput = {
+  creditsDelta: number
+  note: string
+  userId?: string
+  workspaceId?: string
 }
 
 export type AdminManualWorkspaceTopupInput = {
   amountCents?: number
   credits: number
   currency?: string
-  note?: string
+  note: string
   workspaceId: string
 }
 
 export type AdminManualCollaboratePlanInput = {
+  durationCount?: number
+  durationUnitDays?: number
+  effectMode?: string
   grantIncludedCredits?: boolean
-  note?: string
+  note: string
+  periodEnd?: string
   planKey: string
   status?: string
   userId: string
 }
 
 export type AdminManualTeamPlanInput = {
+  durationCount?: number
+  durationUnitDays?: number
+  effectMode?: string
   grantIncludedCredits?: boolean
-  note?: string
+  note: string
+  periodEnd?: string
   planKey: string
   seatCapacity: number
   status?: string
   workspaceId: string
+}
+
+export type AdminManualCreateGroupWorkspaceInput = {
+  note: string
+  userId: string
+  workspaceName: string
+}
+
+export type AdminManualCreateTeamWorkspaceInput = {
+  durationCount?: number
+  durationUnitDays?: number
+  effectMode?: string
+  extraCredits?: number
+  grantIncludedCredits?: boolean
+  note: string
+  periodEnd?: string
+  planKey: string
+  seatCapacity: number
+  status?: string
+  userId: string
+  workspaceName: string
 }
 
 export function loadAdminFinanceSummary() {
@@ -194,6 +231,20 @@ export function adminManualTopupWorkspace(input: AdminManualWorkspaceTopupInput)
   })
 }
 
+export function adminManualAdjustUserCredits(input: AdminManualCreditAdjustmentInput) {
+  return loadAdminJson<AdminFinanceManualMutationResource>('/api/v1/admin/finance/manual/user-credit-adjust', {
+    body: JSON.stringify(input),
+    method: 'POST',
+  })
+}
+
+export function adminManualAdjustWorkspaceCredits(input: AdminManualCreditAdjustmentInput) {
+  return loadAdminJson<AdminFinanceManualMutationResource>('/api/v1/admin/finance/manual/workspace-credit-adjust', {
+    body: JSON.stringify(input),
+    method: 'POST',
+  })
+}
+
 export function adminManualSetCollaboratePlan(input: AdminManualCollaboratePlanInput) {
   return loadAdminJson<AdminFinanceManualMutationResource>('/api/v1/admin/finance/manual/collaborate-plan', {
     body: JSON.stringify(input),
@@ -208,9 +259,30 @@ export function adminManualSetTeamPlan(input: AdminManualTeamPlanInput) {
   })
 }
 
-export function adminManualCancelSubscription(subscriptionId: string, note?: string) {
+export function adminManualCreateGroupWorkspace(input: AdminManualCreateGroupWorkspaceInput) {
+  return loadAdminJson<AdminFinanceManualMutationResource>('/api/v1/admin/finance/manual/group-workspace', {
+    body: JSON.stringify(input),
+    method: 'POST',
+  })
+}
+
+export function adminManualCreateTeamWorkspace(input: AdminManualCreateTeamWorkspaceInput) {
+  return loadAdminJson<AdminFinanceManualMutationResource>('/api/v1/admin/finance/manual/team-workspace', {
+    body: JSON.stringify(input),
+    method: 'POST',
+  })
+}
+
+export function adminManualCancelSubscription(subscriptionId: string, note: string) {
   return loadAdminJson<AdminFinanceManualMutationResource>('/api/v1/admin/finance/manual/subscription-cancel', {
     body: JSON.stringify({ note, subscriptionId }),
+    method: 'POST',
+  })
+}
+
+export function adminManualDeleteWorkspace(workspaceId: string, note: string) {
+  return loadAdminJson<AdminFinanceManualMutationResource>('/api/v1/admin/finance/manual/workspace-delete', {
+    body: JSON.stringify({ note, workspaceId }),
     method: 'POST',
   })
 }

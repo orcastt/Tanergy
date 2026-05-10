@@ -1,6 +1,6 @@
 # ARCH Slice S3: Team, Group, Wallets, Billing And Admin
 
-**Updated**: 2026-05-08
+**Updated**: 2026-05-10
 **Mode**: Architecture slice.
 **Status**: Active architecture pivot. Existing admin, ledger, seat, subscription and AiRun facts are reusable, but Team charging must move to a workspace-owned Team wallet.
 
@@ -13,6 +13,7 @@ Server authority and data contracts for:
 - Invite links and invite acceptance.
 - Billing usage, top-ups, seat additions, subscription lifecycle and ledger facts.
 - Admin/developer observability for users, teams, boards, AiRuns, provider routes, costs and credits.
+- Admin operator read models for fast user inventory, one-call user detail bundles, Team/Group plan tabs and modal-backed operations.
 
 ## Authority Rules
 
@@ -22,6 +23,135 @@ Server authority and data contracts for:
 - Frontend may request an active workspace, model and parameter tier, but the server resolves membership, permission, payer, route and price.
 - Provider secrets, raw provider routes and provider pricing stay server-side.
 - Board documents, node props and Board History store compact refs and summaries only.
+
+## Admin Operator Console Redesign
+
+The current admin backend has useful primitives, but the operator UI should not compose slow per-panel fetches. A first server-owned admin operator read model now sits on top of existing users, workspaces, subscriptions, wallets, ledger, payments and audit logs.
+
+Target routes:
+
+```text
+GET  /api/v1/admin/operator/users
+GET  /api/v1/admin/operator/users/{user_id}
+POST /api/v1/admin/operator/users/{user_id}/status
+POST /api/v1/admin/operator/users/{user_id}/delete
+POST /api/v1/admin/operator/subscriptions/{subscription_id}/freeze
+POST /api/v1/admin/operator/subscriptions/{subscription_id}/unfreeze
+POST /api/v1/admin/operator/workspaces/{workspace_id}/members
+PATCH /api/v1/admin/operator/workspaces/{workspace_id}/members/{user_id}
+DELETE /api/v1/admin/operator/workspaces/{workspace_id}/members/{user_id}
+GET  /api/v1/admin/operator/workspaces/{workspace_id}/invitations
+POST /api/v1/admin/operator/workspaces/{workspace_id}/invitations
+DELETE /api/v1/admin/operator/workspaces/{workspace_id}/invitations/{invitation_id}
+POST /api/v1/admin/operator/workspaces/{workspace_id}/boards/{board_id}/copy
+DELETE /api/v1/admin/operator/workspaces/{workspace_id}/boards/{board_id}
+```
+
+Implemented first pass:
+
+- `GET /api/v1/admin/operator/users`
+- `GET /api/v1/admin/operator/users/{user_id}`
+- `POST /api/v1/admin/operator/users/{user_id}/status`
+- `POST /api/v1/admin/operator/users/{user_id}/delete`
+- `POST /api/v1/admin/operator/subscriptions/{subscription_id}/freeze`
+- `POST /api/v1/admin/operator/subscriptions/{subscription_id}/unfreeze`
+- `POST /api/v1/admin/operator/workspaces/{workspace_id}/members`
+- `PATCH /api/v1/admin/operator/workspaces/{workspace_id}/members/{user_id}`
+- `DELETE /api/v1/admin/operator/workspaces/{workspace_id}/members/{user_id}`
+- `GET /api/v1/admin/operator/workspaces/{workspace_id}/invitations`
+- `POST /api/v1/admin/operator/workspaces/{workspace_id}/invitations`
+- `DELETE /api/v1/admin/operator/workspaces/{workspace_id}/invitations/{invitation_id}`
+- `POST /api/v1/admin/operator/workspaces/{workspace_id}/boards/{board_id}/copy`
+- `DELETE /api/v1/admin/operator/workspaces/{workspace_id}/boards/{board_id}`
+- `/admin?tab=users` renders the operator inventory from the read model.
+- `/admin/users/[userId]` renders Billing, Team Plan, Joined Team, Group Plan and Joined Group from the detail bundle.
+- Billing history now materializes as a unified timeline of payment, credit-ledger, subscription and admin-audit rows instead of a ledger-only list.
+- Existing audited `/api/v1/admin/finance/manual/*` writes are now reachable from centered user-detail modals for personal credits, Team credits, Team plan/create, Group create, Collaborate plan, subscription cancel and workspace delete.
+- `POST /api/v1/admin/finance/manual/group-plan-operation` and `POST /api/v1/admin/finance/manual/team-plan-operation` now provide the mock-aligned modal contract for `assign`, `renew`, `upgrade`, `delete`, `freeze` and `unfreeze`, returning `action`, `effectiveAt`, `periodStart`, `periodEnd`, `planKey`, `previousPlanKey`, `seatCapacity`, `subscriptionStatus` and `grantedCredits`.
+- `/admin/users/[userId]` Team Plan and Group Plan tabs now consume those plan-operation contracts directly for renew/upgrade/delete/freeze/unfreeze instead of routing owned-plan actions through the older set-plan plus generic subscription-write split.
+- Native operator writes now cover user block/unblock/delete, subscription freeze/unfreeze and joined Team/Group member role/remove actions so those actions do not have to flow through the manual-finance bridge.
+- Operator-owned Team and Group rows now render as dense inventory tables: Team rows expose Team wallet, seats, members, boards and Team plan actions in one pass, while owned Team/Group member rows can now open native role-change or remove-member modals inline from the table itself.
+- Owned Team/Group rows now also expose native operator `Invite` and `Add member` actions against arbitrary workspaces, and board rows can now trigger audited admin `Copy` and `Delete` writes instead of stopping at read-only labels.
+- Joined Team and Joined Group now also expose native operator `Join Team` / `Join Group` entry points. The modal uses `/api/v1/admin/directory/workspaces?kind=...&search=...` for server-side workspace lookup, then executes the existing `POST /api/v1/admin/operator/workspaces/{workspace_id}/members` contract with the target user.
+- `/api/v1/admin/directory/workspaces` now also supports paginated `limit` + `offset` response facts with `totalCount`, so top-level Team and Group dashboards can scale past the first local page instead of loading a fixed list and filtering it on the client.
+- The AI API Routes admin surface now shares the same table-first operator language as the rest of `/admin`: route inventory is selected from a dense table filtered by kind/search/provider/model/enabled state, detail editing stays in a dedicated right-hand form panel, route consumption remains split into image/text/video tables, and the lower runtime panel now groups API calls by `runId` with inline failover-attempt expansion instead of showing only raw attempt rows.
+- The AI API Routes local runtime pass now also shares one selected-run state between the right-side recent-runs table and the lower grouped ledger, and exposes an operator summary strip for direct wins, fallback-away wins, terminal failures, attempts-per-run and last route hit.
+- `/api/v1/admin/ai/route-metrics` now also materializes long-window route-health facts on the server side, including direct wins, fallback wins, terminal failures, route-hit runs, average attempts per run, direct win rate and route-attempt success rate. The dense route tables consume those backend facts directly instead of deriving everything from the current in-memory route window.
+- Operator detail bundles now hydrate pending workspace invitations directly into owned and joined Team/Group rows, so invite state lives beside the member stack instead of requiring an extra workspace fetch.
+- After the first detail load, member role/remove, add-member, invite create/revoke and board copy/delete actions can patch the local detail bundle immediately; full refetch is still reserved for larger billing/plan/workspace mutations.
+- Search-backed join-workspace actions can now also patch the local detail bundle by projecting the selected workspace lookup row into the joined Team/Group table, so the operator does not wait on a forced detail reload just to see the new membership row appear.
+- A local/demo-rich QA seed now exists at `services/api/scripts/seed_admin_operator_demo.py`, so the operator console can be exercised against owned Teams, joined Teams, owned Groups, joined Groups, pending invites, boards, ledger rows and manual-payment rows without hand-building fixtures in Neon.
+- Operator inventory/user detail now expose derived registration state plus `tangent_users.last_ip_address`, so the later dense-table redesign can render real access facts instead of placeholders.
+- Subscription freeze/unfreeze now persists `paused_at`, `paused_by` and `pause_reason`, and unfreeze extends `current_period_end` by the paused duration instead of silently resuming on the original expiry date.
+- Manual plan grants now follow operator semantics instead of the older blunt overwrite path: `assign` and `renew` grant the full included-credit pack for the target plan, while `upgrade` grants only the delta from the current included-credit pack to the target included-credit pack.
+
+### AI Routes Progress Swimlane
+
+This is a local implementation-readiness snapshot for the current AI API Routes/operator pass as of 2026-05-10. The percentages are coarse architecture/UI readiness, not time estimates.
+
+```text
+AI API Routes operator lane       95%  [###################-]
+
+Route inventory/filter shell     100%  [####################]
+  Stable: kind tabs, search, enabled/provider/model filters and dense row selection.
+
+Route control-plane detail       100%  [####################]
+  Stable: edit/save form, version history, publish, rollback and optional audit note.
+
+Route-aware runtime reads         95%  [###################-]
+  Stable: `/admin/ai/runs` + `/admin/ai/api-calls` accept `routeId`, with route-key/provider fallback for older rows, and `/admin/ai/route-metrics` now exposes long-window route health beyond raw call counts.
+  Remaining gate: higher-volume query/index smoke and staging redeploy verification.
+
+Recent runs drilldown             96%  [###################-]
+  Stable: selected-route recent runs, per-run attempt drilldown, failover-route visibility, selected-route highlighting and shared selection state with the lower ledger.
+  Remaining gate: remote smoke against staging data after redeploy.
+
+Grouped API-call ledger           94%  [###################-]
+  Stable: full-width `runId` ledger, final status, attempt count, selected-route credits/cost, inline inspect, attempt expansion and cross-panel run selection sync.
+  Remaining gate: operator sorting/pinning refinements if the dataset grows.
+
+Route-health / live-smoke depth   81%  [################----]
+  Stable: operator runtime summary covers the live route window, while `/admin/ai/route-metrics` now aggregates long-window direct wins, fallback wins, terminal failures, route-hit runs, attempts-per-run, direct win rate and route-attempt success rate.
+  Remaining gate: remote real-login smoke after staging redeploy, plus higher-volume query/index verification on production-like data.
+```
+
+Read-model requirements:
+
+- User inventory returns active and expired Team plans, active and expired Collaborate/Group plans, personal wallet summary, Team wallet summaries, total spent and status in one paginated response.
+- Paused subscriptions are treated as current plan rows in operator inventory/detail, not historical rows.
+- User detail returns Billing, Team Plan, Joined Team, Group Plan and Joined Group bundles in one response.
+- Billing history merges payments, credit ledger, subscriptions and admin audit facts into operator rows.
+- Joined Team/Group views are driven by membership rows and server-side permission facts, not frontend guesses.
+- Every write remains server-gated through `admin_roles` and writes audit metadata with a required reason.
+
+Performance and UI contract:
+
+- `/admin?tab=users` should fetch one inventory page, cache it on the client and keep search, pagination and scroll state when returning from a detail page.
+- `/admin` now server-bootstraps admin access plus the active tab seed bundle, then background-warms the remaining top-level tabs after idle so Users, Teams, Groups, AI, Finance and Access switch locally instead of reloading the route shell each time.
+- `/admin/users/{user_id}` should render from the server-seeded operator detail bundle on first open and reopen from the cached operator detail bundle when available, while hover/focus on Detail pre-warms that bundle. Local tab switching must not call access checks or workspace detail endpoints again.
+- Workspace invite/member/board row actions should update the visible detail table from the existing bundle whenever the server response already contains enough mutation facts; they should not force a second detail fetch just to reflect the row change.
+- Frontend tables render real read-model arrays directly. They should not compose inventory rows by fetching every Team, Group, wallet, ledger or member record separately.
+- Empty states can be terse table rows only. Do not add explanatory helper copy under tabs, panels or cards.
+- Actions open centered modals with reason fields. First-pass modals reuse the manual finance bridge for credit/plan/workspace writes, while native operator writes now cover user status/delete, subscription freeze/unfreeze and joined Team/Group member role/remove operations.
+
+Operator detail bundle shape:
+
+```text
+account_profile
+billing_history[]
+owned_team_plans[]
+joined_team_workspaces[]
+collaborate_plan
+owned_group_workspaces[]
+joined_group_workspaces[]
+available_actions
+```
+
+Small schema delta status:
+
+- `tangent_users.last_ip_address` is now the first durable operator access fact.
+- `tangent_subscriptions.paused_at/paused_by/pause_reason` now back operator freeze semantics.
+- inventory/detail indexes over users, workspace members, workspaces, subscriptions, ledger and audit logs still need a deeper pass once real volume arrives.
 
 ## Workspace And Wallet Model
 
@@ -111,7 +241,7 @@ payment completed
   -> audit admin/system facts
 ```
 
-Implementation checkpoint: the backend checkout/complete contract exists with manual-test payment completion. Checkout responses now include a `checkout` object; non-manual providers require hosted checkout configuration before a payment is created, can expose a hosted checkout URL with amount/currency/kind/client-reference handoff metadata and cannot be manually completed. The payment layer is provider-neutral: `manual_test` and generic hosted checkout can keep staging moving while Stripe is unavailable. The optional Stripe checkout adapter first cut requires `TANGENT_STRIPE_SECRET_KEY` only when `stripe` is selected, creates Checkout Sessions through Stripe's server API, writes internal payment/session references into provider metadata and labels `checkout.adapter=stripe_checkout`; it does not read local secret files. A first signed webhook inbox also exists: `POST /api/v1/billing/webhooks/{provider}` validates `TANGENT_PAYMENT_WEBHOOK_SECRET`, stores provider events in `tangent_webhook_events`, calls the shared payment completion path for supported checkout success events by internal payment id, client reference or provider metadata checkout session id and avoids duplicate grants for repeated provider event ids. The frontend now has hosted checkout return routes at `/billing/success` and `/billing/cancel`, and `/usage` buttons call the real Team top-up, Team seat checkout, personal top-up and Group create routes. Admin finance reconciliation now has server-gated read endpoints and frontend panels for payments, credit ledger rows, subscriptions, wallets and Team member usage. Admin directory APIs now expose user, Team and Group aggregates plus workspace member/board detail, and `/admin` is split into Overview, Users, Teams, Groups, AI API Routes, Finance and Access tabs. Because Stripe is not available yet, the developer panel also has audited `admin_manual` operations for user personal-wallet top-up, Team wallet top-up, Collaborate/Group plan assignment, Team plan assignment and subscription cancellation. Local disposable-Postgres smoke now covers admin finance reads plus manual admin, manual-test and hosted payment flows; local live API smoke covers the new admin directory and AI route metrics endpoints. Remote staging still needs a redeploy before real-login smoke can pass. Provider-specific signatures, invoices, refunds and production payment reconciliation still need implementation.
+Implementation checkpoint: the backend checkout/complete contract exists with manual-test payment completion. Checkout responses now include a `checkout` object; non-manual providers require hosted checkout configuration before a payment is created, can expose a hosted checkout URL with amount/currency/kind/client-reference handoff metadata and cannot be manually completed. The payment layer is provider-neutral: `manual_test` and generic hosted checkout can keep staging moving while Stripe is unavailable. The optional Stripe checkout adapter first cut requires `TANGENT_STRIPE_SECRET_KEY` only when `stripe` is selected, creates Checkout Sessions through Stripe's server API, writes internal payment/session references into provider metadata and labels `checkout.adapter=stripe_checkout`; it does not read local secret files. A first signed webhook inbox also exists: `POST /api/v1/billing/webhooks/{provider}` validates `TANGENT_PAYMENT_WEBHOOK_SECRET`, stores provider events in `tangent_webhook_events`, calls the shared payment completion path for supported checkout success events by internal payment id, client reference or provider metadata checkout session id and avoids duplicate grants for repeated provider event ids. The frontend now has hosted checkout return routes at `/billing/success` and `/billing/cancel`, and `/usage` buttons call the real Team top-up, Team seat checkout, personal top-up and Group create routes. Admin finance reconciliation now has server-gated read endpoints and frontend panels for payments, credit ledger rows, subscriptions, wallets and Team member usage. Admin directory APIs now expose user, Team and Group aggregates plus workspace member/board detail, and `/admin` is split into Overview, Users, Teams, Groups, AI API Routes, Finance and Access tabs. Because Stripe is not available yet, the developer panel also has audited `admin_manual` operations for user personal-wallet top-up, user/Team credit deduction, Collaborate/Group plan assignment, Team plan assignment, Team/Group workspace creation, subscription cancellation and workspace deletion. Every manual write requires an operation reason, and plan windows are driven by `effectMode` plus `durationCount * durationUnitDays` rather than a date picker. Local disposable-Postgres smoke now covers admin finance reads plus manual admin, manual-test and hosted payment flows; local live API smoke covers the new admin directory and AI route metrics endpoints. Remote staging still needs a redeploy before real-login smoke can pass. Provider-specific signatures, invoices, refunds and production payment reconciliation still need implementation.
 
 Team seat add:
 

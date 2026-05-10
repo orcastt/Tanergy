@@ -14,8 +14,8 @@ export const selectStyle = {
 
 export type BooleanFilter = 'all' | 'disabled' | 'enabled'
 
-export function AiCallout({ body, label, value }: { body: string; label: string; value: string }) {
-  return <article className="management-callout"><span>{label}</span><h2>{value}</h2><p>{body}</p></article>
+export function AiCallout({ label, value }: { body?: string; label: string; value: string }) {
+  return <article className="management-callout"><span>{label}</span><h2>{value}</h2></article>
 }
 
 export function FilterSelect({
@@ -45,20 +45,36 @@ export function FilterSelect({
 }
 
 export function FilterTextInput({
+  leadingIcon,
   label,
   onChange,
   placeholder,
   value,
 }: {
+  leadingIcon?: 'search'
   label: string
   onChange: (value: string) => void
   placeholder?: string
   value: string
 }) {
+  const inputStyle = leadingIcon
+    ? { ...selectStyle, paddingLeft: 40 }
+    : selectStyle
+
   return (
-    <label style={{ display: 'grid', gap: 6 }}>
-      <span style={{ color: 'var(--color-muted)', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{label}</span>
-      <input onChange={(event) => onChange(event.target.value)} placeholder={placeholder} style={selectStyle} type="text" value={value} />
+    <label className="admin-filter-shell">
+      <span className="management-field-label">{label}</span>
+      <span className="admin-filter-input-wrap">
+        {leadingIcon === 'search' ? <SearchIcon /> : null}
+        <input
+          className={leadingIcon ? 'has-leading-icon' : undefined}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          style={inputStyle}
+          type="text"
+          value={value}
+        />
+      </span>
     </label>
   )
 }
@@ -106,6 +122,54 @@ export function formatDate(value: string) {
   return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' }).format(date)
 }
 
+export function formatCompactDateTime(value?: null | string) {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  const year = date.getUTCFullYear()
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(date.getUTCDate()).padStart(2, '0')
+  const hours = String(date.getUTCHours()).padStart(2, '0')
+  const minutes = String(date.getUTCMinutes()).padStart(2, '0')
+  return `${year}/${month}/${day} ${hours}:${minutes}`
+}
+
+export function formatCompactDate(value?: null | string) {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  const year = date.getUTCFullYear()
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(date.getUTCDate()).padStart(2, '0')
+  return `${year}/${month}/${day}`
+}
+
 export function formatNumber(value: number) {
   return Number.isInteger(value) ? value.toLocaleString('en-US') : value.toLocaleString('en-US', { maximumFractionDigits: 2 })
+}
+
+export function truncateMiddle(value?: null | string, start = 14, end = 8) {
+  if (!value) return '-'
+  const normalized = value.trim()
+  if (normalized.length <= start + end + 1) return normalized
+  return `${normalized.slice(0, start)}...${normalized.slice(-end)}`
+}
+
+export function buildStableListKey(parts: Array<null | number | string | undefined>, index: number) {
+  const base = parts
+    .map((part) => (typeof part === 'number' ? String(part) : part?.trim()))
+    .filter(Boolean)
+    .join(':')
+  return base ? `${base}:${index}` : `row:${index}`
+}
+
+function SearchIcon() {
+  return (
+    <span aria-hidden="true" className="admin-filter-input-icon">
+      <svg fill="none" height="16" viewBox="0 0 16 16" width="16">
+        <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5" />
+        <path d="M10.5 10.5 14 14" stroke="currentColor" strokeLinecap="round" strokeWidth="1.5" />
+      </svg>
+    </span>
+  )
 }

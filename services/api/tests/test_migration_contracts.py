@@ -43,6 +43,7 @@ def test_alembic_revision_chain_is_linear():
         load_migration("20260506_0011_ai_control_plane_versions_and_payment_checkout.py"),
         load_migration("20260508_0012_team_group_wallet_contracts.py"),
         load_migration("20260508_0013_workspace_invites_roles.py"),
+        load_migration("20260510_0014_admin_operator_access_pause_facts.py"),
     ]
 
     for previous, current in zip(migrations, migrations[1:]):
@@ -60,6 +61,7 @@ def test_s1a_migrations_keep_required_schema_contracts():
     ai_control_plane_versions = load_migration("20260506_0011_ai_control_plane_versions_and_payment_checkout.py")
     team_group_wallets = load_migration("20260508_0012_team_group_wallet_contracts.py")
     workspace_invite_roles = load_migration("20260508_0013_workspace_invites_roles.py")
+    admin_operator_facts = load_migration("20260510_0014_admin_operator_access_pause_facts.py")
     core_sql = "\n".join(core.UPGRADE)
     future_sql = "\n".join(future.UPGRADE)
     hardening_sql = "\n".join(hardening.UPGRADE)
@@ -70,6 +72,7 @@ def test_s1a_migrations_keep_required_schema_contracts():
     ai_control_plane_versions_sql = "\n".join(ai_control_plane_versions.UPGRADE)
     team_group_wallets_sql = "\n".join(team_group_wallets.UPGRADE)
     workspace_invite_roles_sql = "\n".join(workspace_invite_roles.UPGRADE)
+    admin_operator_facts_sql = "\n".join(admin_operator_facts.UPGRADE)
 
     for table_name in [
         "tangent_workspace_members",
@@ -166,6 +169,15 @@ def test_s1a_migrations_keep_required_schema_contracts():
         "tangent_workspace_members_workspace_role_idx",
     ]:
         assert contract in workspace_invite_roles_sql
+
+    for contract in [
+        "ALTER TABLE tangent_users ADD COLUMN IF NOT EXISTS last_ip_address",
+        "ALTER TABLE tangent_subscriptions ADD COLUMN IF NOT EXISTS paused_at",
+        "ALTER TABLE tangent_subscriptions ADD COLUMN IF NOT EXISTS paused_by",
+        "ALTER TABLE tangent_subscriptions ADD COLUMN IF NOT EXISTS pause_reason",
+        "tangent_subscriptions_paused_idx",
+    ]:
+        assert contract in admin_operator_facts_sql
 
 
 def test_s1a_smoke_runner_requires_explicit_database(monkeypatch):

@@ -156,8 +156,11 @@ def _validate_registered_claims(claims: dict[str, Any]) -> None:
 
     authorized_parties = _get_authorized_parties()
     azp = claims.get("azp")
-    if authorized_parties and isinstance(azp, str) and azp not in authorized_parties:
-        raise HTTPException(status_code=401, detail="Invalid token authorized party.")
+    if authorized_parties:
+        if not isinstance(azp, str) or not azp.strip():
+            raise HTTPException(status_code=401, detail="Missing token authorized party.")
+        if azp not in authorized_parties:
+            raise HTTPException(status_code=401, detail="Invalid token authorized party.")
 
     if claims.get("sts") == "pending":
         raise HTTPException(status_code=403, detail="Auth session is pending organization membership.")

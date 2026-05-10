@@ -93,9 +93,49 @@ Implemented now:
 - CORS allowlist via `TANGENT_ALLOWED_ORIGINS`
 - Shared request context parsing for `x-tangent-user-id` / `x-tangent-workspace-id`
 - Board document guard parity with the current Next local bridge
+- Clerk bearer verification first pass with issuer/audience/authorized-party checks
+- First-session local user, default solo workspace and personal wallet creation
+- Admin bootstrap script for granting `admin_roles` by local user id or login email
+- Opt-in admin/operator demo seed script for dense local QA data
 
 Explicitly not implemented yet:
 
-- Auth/JWT/session validation
+- Native OTP/password Auth and session revocation
 - AI provider proxy and run logs
 - Backup/restore automation
+
+## Auth/Admin Production Boundary
+
+For staging/prod admin smoke:
+
+1. Set `TANGENT_REQUIRE_API_AUTH=1`.
+2. Set `TANGENT_ALLOWED_ORIGINS` and `CLERK_AUTHORIZED_PARTIES` to the deployed Web origin.
+3. Sign in once with Clerk so `/api/v1/auth/session` creates the local TANGENT user, solo workspace and personal wallet.
+4. Grant admin access with:
+
+```bash
+DATABASE_URL=postgresql://... \
+PYTHONPATH=services/api \
+python3 services/api/scripts/s3_admin_bootstrap.py --email operator@example.com --role owner
+```
+
+Optional demo data seed:
+
+```bash
+DATABASE_URL=postgresql://... \
+PYTHONPATH=services/api \
+python3 services/api/scripts/seed_admin_operator_demo.py
+```
+
+Use `--clean-only` to remove the same namespaced demo rows without reseeding. The script refuses non-local database hosts unless you pass `--allow-remote`.
+
+Optional real-token smoke:
+
+```bash
+S1C_SMOKE_BASE_URL=https://api-staging.example.com \
+S1C_SMOKE_ORIGIN=https://staging.example.com \
+S1C_SMOKE_BEARER_TOKEN=<real-clerk-token> \
+python3 services/api/scripts/s1c_remote_admin_smoke.py
+```
+
+The local `x-tangent-user-id` and `x-tangent-workspace-id` headers are ignored as authority when `TANGENT_REQUIRE_API_AUTH=1`.

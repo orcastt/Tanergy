@@ -248,7 +248,6 @@ function EditorHeading({ title }: { title: string }) {
     <div className="management-panel-heading">
       <div>
         <h2>{title}</h2>
-        <p>Editable admin control-plane form with server persistence.</p>
       </div>
     </div>
   )

@@ -18,6 +18,17 @@ def get_session(
         planKey=context.workspace_plan_key,
         role=context.workspace_role,
     )
+    workspaces = [
+        AuthWorkspace(
+            boardCount=item.board_count,
+            id=item.workspace_id,
+            kind=item.workspace_kind,
+            name=item.workspace_name,
+            planKey=item.workspace_plan_key,
+            role=item.workspace_role,
+        )
+        for item in (context.workspace_memberships or [])
+    ] or [workspace]
     session = AuthSession(
         activeWorkspace=workspace,
         authMode=context.auth_mode,
@@ -29,6 +40,6 @@ def get_session(
             emailVerified=context.user_email_verified,
             id=context.user_id,
         ),
-        workspaces=[workspace],
+        workspaces=workspaces,
     )
     return AuthSessionResponse(ok=True, session=session)

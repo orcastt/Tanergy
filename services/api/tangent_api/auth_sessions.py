@@ -1,39 +1,45 @@
 import hashlib
-from dataclasses import dataclass
 from typing import Any, Optional
 from uuid import uuid4
 
 from fastapi import HTTPException
 
+from tangent_api.auth_session_memberships import (
+    ResolvedWorkspaceMembership,
+    default_workspace_membership,
+    load_workspace_memberships,
+)
+from tangent_api.auth_session_models import ResolvedAuthSession, row_to_auth_session
+from tangent_api.auth_session_identity import (
+    identity_exists,
+    load_identity_user_status,
+    require_active_auth_user_status,
+)
 from tangent_api.auth_provider import VerifiedAuthIdentity
+from tangent_api.auth_request_metadata import normalize_last_ip_address
+from tangent_api.auth_session_profile import get_auth_session_initials
+from tangent_api.auth_user_schema import (
+    auth_user_last_ip_enabled,
+    auth_user_last_ip_insert_field_sql,
+    auth_user_last_ip_insert_value_sql,
+    auth_user_last_ip_update_assignment_sql,
+)
+from tangent_api.billing_credit_accounts import ensure_credit_account
 from tangent_api.storage.postgres_connection import connect_to_postgres, require_database_url
-
-
-@dataclass(frozen=True)
-class ResolvedAuthSession:
-    user_id: str
-    workspace_id: str
-    workspace_kind: str
-    display_name: str
-    email: str
-    email_verified: bool
-    avatar_initials: str
-    workspace_name: str
-    workspace_role: str
-    board_count: int
-
-
 def resolve_local_auth_session(
     identity: VerifiedAuthIdentity,
     requested_workspace_id: Optional[str] = None,
+    request_ip: Optional[str] = None,
 ) -> ResolvedAuthSession:
     try:
         require_database_url()
     except Exception:
         return _build_ephemeral_session(identity)
-    return _load_or_create_postgres_session(identity, requested_workspace_id=requested_workspace_id)
-
-
+    return _load_or_create_postgres_session(
+        identity,
+        requested_workspace_id=requested_workspace_id,
+        request_ip=request_ip,
+    )
 def _build_ephemeral_session(identity: VerifiedAuthIdentity) -> ResolvedAuthSession:
     suffix = hashlib.sha256(identity.provider_subject.encode("utf-8")).hexdigest()[:16]
     display_name = identity.display_name.strip() or "Tanergy user"
@@ -45,42 +51,47 @@ def _build_ephemeral_session(identity: VerifiedAuthIdentity) -> ResolvedAuthSess
         display_name=display_name,
         email=email,
         email_verified=identity.email_verified,
-        avatar_initials=_get_initials(display_name, email),
+        avatar_initials=get_auth_session_initials(display_name, email),
         workspace_name="Tanergy Workspace",
+        workspace_plan_key="free_canvas",
         workspace_role="owner",
         board_count=0,
+        workspaces=[default_workspace_membership(f"workspace_{suffix}", "Tanergy Workspace")],
     )
-
-
 def _load_or_create_postgres_session(
     identity: VerifiedAuthIdentity,
     requested_workspace_id: Optional[str] = None,
+    request_ip: Optional[str] = None,
 ) -> ResolvedAuthSession:
+    normalized_request_ip = normalize_last_ip_address(request_ip)
     with connect_to_postgres() as connection:
         with connection.cursor() as cursor:
             row = _load_auth_session_row(cursor, identity, requested_workspace_id)
 
             if row:
-                session = _row_to_session(row)
+                require_active_auth_user_status(row[9] if len(row) > 9 else "active")
+                session = row_to_auth_session(row)
                 cursor.execute(
-                    """
+                    f"""
                     UPDATE tangent_users
                     SET
                         email = %s,
                         display_name = %s,
                         avatar_initials = %s,
                         email_verified = %s,
+                        {auth_user_last_ip_update_assignment_sql()}
                         last_login_at = NOW(),
                         updated_at = NOW()
                     WHERE id = %s
                     """,
-                    (
+                    tuple([
                         identity.email or session.email,
                         identity.display_name or session.display_name,
-                        _get_initials(identity.display_name or session.display_name, identity.email or session.email),
+                        get_auth_session_initials(identity.display_name or session.display_name, identity.email or session.email),
                         identity.email_verified,
+                        *([normalized_request_ip] if auth_user_last_ip_enabled() else []),
                         session.user_id,
-                    ),
+                    ]),
                 )
                 cursor.execute(
                     """
@@ -92,43 +103,68 @@ def _load_or_create_postgres_session(
                 )
 
                 if session.workspace_id:
-                    board_count = _load_board_count(cursor, session.workspace_id)
+                    ensure_credit_account(cursor, "user", session.user_id)
+                    memberships = load_workspace_memberships(cursor, session.user_id, session.workspace_id)
+                    if not memberships:
+                        memberships = [
+                            ResolvedWorkspaceMembership(
+                                board_count=0,
+                                workspace_id=session.workspace_id,
+                                workspace_kind=session.workspace_kind,
+                                workspace_name=session.workspace_name,
+                                workspace_plan_key=session.workspace_plan_key,
+                                workspace_role=session.workspace_role,
+                            )
+                        ]
+                    active_workspace = memberships[0]
                     connection.commit()
                     return ResolvedAuthSession(
                         user_id=session.user_id,
-                        workspace_id=session.workspace_id,
-                        workspace_kind=session.workspace_kind,
+                        workspace_id=active_workspace.workspace_id,
+                        workspace_kind=active_workspace.workspace_kind,
                         display_name=identity.display_name or session.display_name,
                         email=identity.email or session.email,
                         email_verified=identity.email_verified,
-                        avatar_initials=_get_initials(identity.display_name or session.display_name, identity.email or session.email),
-                        workspace_name=session.workspace_name,
-                        workspace_role=session.workspace_role,
-                        board_count=board_count,
+                        avatar_initials=get_auth_session_initials(identity.display_name or session.display_name, identity.email or session.email),
+                        workspace_name=active_workspace.workspace_name,
+                        workspace_plan_key=active_workspace.workspace_plan_key,
+                        workspace_role=active_workspace.workspace_role,
+                        board_count=active_workspace.board_count,
+                        workspaces=memberships,
                     )
 
                 return _create_default_workspace(cursor, connection, session.user_id, identity, session.display_name, session.email)
 
-            if requested_workspace_id and _identity_exists(cursor, identity):
-                raise HTTPException(status_code=403, detail="Requested workspace is not available for this user.")
+            if identity_exists(cursor, identity):
+                require_active_auth_user_status(load_identity_user_status(cursor, identity))
+                if requested_workspace_id:
+                    raise HTTPException(status_code=403, detail="Requested workspace is not available for this user.")
 
             user_id = f"user_{uuid4()}"
             email = identity.email or f"{user_id}@clerk.local"
             display_name = identity.display_name or email.split("@")[0]
-            avatar_initials = _get_initials(display_name, email)
+            avatar_initials = get_auth_session_initials(display_name, email)
 
             cursor.execute(
-                """
+                f"""
                 INSERT INTO tangent_users (
                     id,
                     email,
                     display_name,
                     avatar_initials,
                     email_verified,
+                    {auth_user_last_ip_insert_field_sql()}
                     last_login_at
-                ) VALUES (%s, %s, %s, %s, %s, NOW())
+                ) VALUES (%s, %s, %s, %s, %s, {auth_user_last_ip_insert_value_sql()} NOW())
                 """,
-                (user_id, email, display_name, avatar_initials, identity.email_verified),
+                tuple([
+                    user_id,
+                    email,
+                    display_name,
+                    avatar_initials,
+                    identity.email_verified,
+                    *([normalized_request_ip] if auth_user_last_ip_enabled() else []),
+                ]),
             )
             cursor.execute(
                 """
@@ -143,8 +179,6 @@ def _load_or_create_postgres_session(
                 (f"identity_{uuid4()}", user_id, identity.provider, identity.provider_subject, email),
             )
             return _create_default_workspace(cursor, connection, user_id, identity, display_name, email)
-
-
 def _load_auth_session_row(
     cursor: Any,
     identity: VerifiedAuthIdentity,
@@ -167,7 +201,8 @@ def _load_auth_session_row(
             wm.workspace_id,
             w.name,
             COALESCE(w.kind, 'solo_workspace'),
-            wm.role
+            wm.role,
+            COALESCE(u.status, 'active')
         FROM tangent_user_identities ui
         JOIN tangent_users u ON u.id = ui.user_id
         LEFT JOIN tangent_workspace_members wm ON wm.user_id = u.id
@@ -188,21 +223,6 @@ def _load_auth_session_row(
         params,
     )
     return cursor.fetchone()
-
-
-def _identity_exists(cursor: Any, identity: VerifiedAuthIdentity) -> bool:
-    cursor.execute(
-        """
-        SELECT 1
-        FROM tangent_user_identities
-        WHERE provider = %s AND provider_subject = %s
-        LIMIT 1
-        """,
-        (identity.provider, identity.provider_subject),
-    )
-    return cursor.fetchone() is not None
-
-
 def _create_default_workspace(
     cursor: Any,
     connection: Any,
@@ -236,7 +256,9 @@ def _create_default_workspace(
         """,
         (workspace_id, user_id, display_name),
     )
+    ensure_credit_account(cursor, "user", user_id)
     connection.commit()
+    default_workspace = default_workspace_membership(workspace_id, workspace_name)
     return ResolvedAuthSession(
         user_id=user_id,
         workspace_id=workspace_id,
@@ -244,46 +266,10 @@ def _create_default_workspace(
         display_name=identity.display_name or display_name,
         email=identity.email or email,
         email_verified=identity.email_verified,
-        avatar_initials=_get_initials(identity.display_name or display_name, identity.email or email),
+        avatar_initials=get_auth_session_initials(identity.display_name or display_name, identity.email or email),
         workspace_name=workspace_name,
+        workspace_plan_key=default_workspace.workspace_plan_key,
         workspace_role="owner",
         board_count=0,
+        workspaces=[default_workspace],
     )
-
-
-def _load_board_count(cursor: Any, workspace_id: str) -> int:
-    cursor.execute(
-        """
-        SELECT COUNT(*)
-        FROM tangent_boards
-        WHERE workspace_id = %s AND deleted_at IS NULL
-        """,
-        (workspace_id,),
-    )
-    row = cursor.fetchone()
-    if not row:
-        return 0
-    value = row[0] if isinstance(row, (list, tuple)) else row
-    return int(value or 0)
-
-
-def _row_to_session(row: Any) -> ResolvedAuthSession:
-    user_id, email, display_name, avatar_initials, email_verified, workspace_id, workspace_name, workspace_kind, workspace_role = row
-    return ResolvedAuthSession(
-        user_id=user_id,
-        workspace_id=workspace_id or "",
-        workspace_kind=workspace_kind or "solo_workspace",
-        display_name=display_name,
-        email=email,
-        email_verified=bool(email_verified),
-        avatar_initials=avatar_initials,
-        workspace_name=workspace_name or "Tanergy Workspace",
-        workspace_role=workspace_role or "owner",
-        board_count=0,
-    )
-
-
-def _get_initials(display_name: str, email: str) -> str:
-    source = display_name or email
-    initials = "".join(part[:1].upper() for part in source.replace("_", " ").replace(".", " ").split()[:2] if part)
-    return initials or "T"

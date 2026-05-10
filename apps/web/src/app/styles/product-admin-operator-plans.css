@@ -1,0 +1,295 @@
+.admin-owned-plan-table,
+.admin-joined-plan-table,
+.admin-billing-history-table {
+  min-width: 0;
+  table-layout: fixed;
+}
+.admin-owned-plan-table th:nth-child(1),
+.admin-owned-plan-table th:nth-child(2) {
+  min-width: 140px;
+}
+.admin-owned-plan-table th:nth-child(3) {
+  min-width: 124px;
+}
+.admin-owned-plan-table th:nth-child(4),
+.admin-owned-plan-table th:nth-child(5) {
+  min-width: 180px;
+}
+.admin-owned-plan-table th:last-child {
+  min-width: 96px;
+}
+.admin-joined-plan-table th:nth-child(1),
+.admin-joined-plan-table th:nth-child(2),
+.admin-joined-plan-table th:nth-child(3) {
+  min-width: 132px;
+}
+.admin-joined-plan-table th:nth-child(4) {
+  min-width: 72px;
+}
+.admin-joined-plan-table th:nth-child(5) {
+  min-width: 120px;
+}
+.admin-joined-plan-table th:nth-child(6),
+.admin-joined-plan-table th:nth-child(7) {
+  min-width: 172px;
+}
+.admin-joined-plan-table th:last-child {
+  min-width: 96px;
+}
+.admin-plan-heading,
+.admin-cell-stack-list,
+.admin-plan-credit-cell,
+.admin-plan-action-stack,
+.admin-plan-choice-list,
+.admin-modal-plan-summary,
+.admin-modal-plan-summary-main {
+  display: grid;
+  gap: 8px;
+}
+.admin-plan-heading strong {
+  color: var(--color-ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+.admin-plan-heading small,
+.admin-modal-plan-summary-card small {
+  font-size: 11px;
+  line-height: 1.35;
+}
+.admin-plan-heading small.is-active,
+.admin-modal-plan-summary-card small.is-active {
+  color: var(--color-success);
+}
+.admin-plan-heading small.is-muted,
+.admin-modal-plan-summary-card small.is-muted {
+  color: var(--color-muted);
+}
+.admin-cell-count {
+  color: var(--color-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+.admin-member-line,
+.admin-board-line,
+.admin-modal-inline-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.admin-member-line,
+.admin-board-line {
+  min-width: 0;
+}
+
+.admin-member-role {
+  display: inline-flex;
+  min-height: 20px;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #f3f4f5;
+  color: var(--color-muted);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.admin-member-role:is([data-role='admin']) {
+  background: rgba(59, 130, 246, 0.14);
+  color: #1d4ed8;
+}
+
+.admin-member-role:is([data-role='editor']) {
+  background: rgba(34, 197, 94, 0.14);
+  color: #15803d;
+}
+
+.admin-member-email,
+.admin-board-line span,
+.admin-member-empty {
+  min-width: 0;
+  color: var(--color-body);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.admin-board-line {
+  padding-left: 10px;
+  position: relative;
+}
+
+.admin-board-line::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-hairline);
+  transform: translateY(-50%);
+}
+
+.admin-plan-credit-cell {
+  align-content: start;
+}
+
+.admin-plan-action-stack {
+  justify-items: start;
+}
+
+.admin-plan-action-button {
+  min-width: 84px;
+}
+
+.admin-plan-action-button[data-tone='primary'] {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.admin-plan-action-button[data-tone='positive'] {
+  border-color: rgba(34, 197, 94, 0.28);
+  background: rgba(34, 197, 94, 0.12);
+  color: #0f7a43;
+}
+
+.admin-plan-action-button[data-tone='danger'] {
+  border-color: rgba(239, 68, 68, 0.22);
+  background: rgba(239, 68, 68, 0.1);
+  color: #b42318;
+}
+
+.admin-plan-action-button[data-tone='neutral'] {
+  border-color: var(--color-hairline);
+  background: var(--color-canvas);
+  color: var(--color-ink);
+}
+
+.admin-modal-grid-span {
+  grid-column: 1 / -1;
+}
+
+.admin-modal-plan-summary {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.admin-modal-plan-summary-card {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  padding: 14px 16px;
+  border: 1px solid var(--color-hairline);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-canvas) 80%, var(--color-surface-soft));
+}
+
+.admin-modal-plan-summary-card strong {
+  color: var(--color-ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.admin-modal-plan-summary-card .management-badge {
+  min-height: 24px;
+  padding: 0 10px;
+}
+
+.admin-plan-choice-list {
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+}
+
+.admin-plan-choice-list button {
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid var(--color-hairline);
+  border-radius: 10px;
+  background: var(--color-canvas);
+  color: var(--color-body);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease;
+}
+
+.admin-plan-choice-list button.is-selected {
+  border-color: color-mix(in srgb, var(--color-primary) 54%, var(--color-hairline));
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-canvas));
+  color: var(--color-ink);
+}
+
+.admin-group-plan-matrix {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-group-plan-matrix button {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-hairline);
+  border-radius: 14px;
+  background: var(--color-canvas);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
+}
+
+.admin-group-plan-matrix button.is-selected {
+  border-color: color-mix(in srgb, var(--color-primary) 52%, var(--color-hairline));
+  background: color-mix(in srgb, var(--color-primary) 5%, var(--color-canvas));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 28%, transparent);
+}
+
+.admin-group-plan-matrix-check {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  border: 1px solid var(--color-hairline);
+  border-radius: 6px;
+  background: var(--color-surface-soft);
+}
+
+.admin-group-plan-matrix button.is-selected .admin-group-plan-matrix-check {
+  border-color: color-mix(in srgb, var(--color-primary) 56%, var(--color-hairline));
+  background: color-mix(in srgb, var(--color-primary) 16%, var(--color-canvas));
+}
+
+.admin-group-plan-matrix-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-group-plan-matrix-copy strong {
+  color: var(--color-ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.admin-group-plan-matrix-copy small {
+  color: var(--color-body);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.admin-plan-preview-pill {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: #eef1f4;
+  color: var(--color-ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+@media (max-width: 760px) {
+  .admin-modal-inline-row { flex-wrap: wrap; }
+}

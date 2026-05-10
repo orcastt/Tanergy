@@ -58,5 +58,7 @@ function shouldRunClerkProxy(pathname: string) {
 }
 
 function isLocalDevAuthBypass(request: NextRequest) {
-  return process.env.NODE_ENV !== 'production' && request.cookies.get('tangent_dev_auth')?.value === '1'
+  return process.env.NODE_ENV !== 'production'
+    && process.env.TANGENT_ENABLE_DEV_AUTH_BYPASS === '1'
+    && request.cookies.get('tangent_dev_auth')?.value === '1'
 }

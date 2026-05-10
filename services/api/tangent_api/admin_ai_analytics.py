@@ -1,10 +1,9 @@
 from typing import Optional
 
 from tangent_api.admin_ai_analytics_schemas import (
-    AdminAiRouteMetricRecord,
     AdminAiRouteMetricsResponse,
-    AdminAiRouteMetricsTotals,
 )
+from tangent_api.admin_ai_route_metrics_aggregation import api_call_from_row, build_capability_map, build_metrics, build_totals
 from tangent_api.storage.postgres_connection import connect_to_postgres, require_database_url
 
 
@@ -14,66 +13,53 @@ def list_admin_ai_route_metrics(
     limit: int = 25,
 ) -> AdminAiRouteMetricsResponse:
     require_database_url()
-    rows = _fetchall(
-        """
-        SELECT c.route_key, c.provider, c.model_id, COALESCE(m.capability, 'unknown'),
-               COUNT(*) AS calls,
-               COALESCE(SUM(c.credits_charged), 0) AS credits_charged,
-               COALESCE(SUM(c.credits_refunded), 0) AS credits_refunded,
-               COALESCE(SUM(c.provider_cost), 0) AS provider_cost,
-               COALESCE(MAX(c.provider_currency), '') AS provider_currency,
-               COALESCE(SUM(CASE WHEN c.status = 'succeeded' THEN 1 ELSE 0 END), 0) AS succeeded_calls,
-               COALESCE(SUM(CASE WHEN c.status <> 'succeeded' THEN 1 ELSE 0 END), 0) AS failed_calls,
-               COALESCE(AVG(NULLIF(c.latency_ms, 0)), 0) AS avg_latency_ms,
-               MAX(c.created_at) AS last_called_at
-        FROM tangent_ai_api_calls c
-        LEFT JOIN tangent_model_registry m ON m.model_key = c.model_id
-        GROUP BY c.route_key, c.provider, c.model_id, COALESCE(m.capability, 'unknown')
-        ORDER BY calls DESC, credits_charged DESC, c.route_key ASC
-        LIMIT %s
-        """,
-        (limit,),
-    )
-    metrics = [_metric_from_row(row) for row in rows]
+    api_call_rows, run_rows, model_rows = _load_metric_rows()
+    capability_map = build_capability_map(model_rows)
+    api_calls = [api_call_from_row(row) for row in api_call_rows]
+    metrics = build_metrics(api_calls, run_rows, capability_map)
     if capability:
-        metrics = [metric for metric in metrics if metric.capability == capability or capability in metric.capability]
-    totals = AdminAiRouteMetricsTotals(
-        calls=sum(metric.calls for metric in metrics),
-        creditsCharged=sum(metric.credits_charged for metric in metrics),
-        failedCalls=sum(metric.failed_calls for metric in metrics),
-        providerCost=sum(metric.provider_cost for metric in metrics),
-        succeededCalls=sum(metric.succeeded_calls for metric in metrics),
-    )
-    return AdminAiRouteMetricsResponse(ok=True, metrics=metrics[:limit], totals=totals)
+        normalized_capability = capability.strip().lower()
+        metrics = [
+            metric for metric in metrics
+            if metric.capability.lower() == normalized_capability or normalized_capability in metric.capability.lower()
+        ]
+    metrics.sort(key=lambda metric: (-metric.calls, -metric.credits_charged, metric.route_key))
+    return AdminAiRouteMetricsResponse(ok=True, metrics=metrics[:limit], totals=build_totals(metrics))
 
 
-def _fetchall(query: str, params: tuple[object, ...]) -> list[tuple[object, ...]]:
+def _load_metric_rows() -> tuple[list[tuple[object, ...]], list[tuple[object, ...]], list[tuple[object, ...]]]:
     with connect_to_postgres() as connection:
         with connection.cursor() as cursor:
-            cursor.execute(query, params)
-            return cursor.fetchall()
-
-
-def _metric_from_row(row: tuple[object, ...]) -> AdminAiRouteMetricRecord:
-    return AdminAiRouteMetricRecord(
-        avgLatencyMs=int(row[11] or 0),
-        capability=str(row[3] or 'unknown'),
-        calls=int(row[4] or 0),
-        creditsCharged=float(row[5] or 0),
-        failedCalls=int(row[10] or 0),
-        lastCalledAt=_to_iso(row[12]),
-        modelId=str(row[2]),
-        provider=str(row[1]),
-        providerCost=float(row[7] or 0),
-        providerCurrency=str(row[8]) if row[8] not in (None, '') else None,
-        routeKey=str(row[0] or ''),
-        succeededCalls=int(row[9] or 0),
-    )
-
-
-def _to_iso(value: object) -> Optional[str]:
-    if value is None:
-        return None
-    if hasattr(value, "isoformat"):
-        return value.isoformat()
-    return str(value)
+            cursor.execute(
+                """
+                SELECT id, workspace_id, user_id, run_id, board_id, node_id, model_id, provider,
+                       route_key, route_id, pricing_rule_id, status, latency_ms, credits_charged,
+                       credits_refunded, provider_cost, provider_currency, error_code, created_at
+                FROM tangent_ai_api_calls
+                ORDER BY created_at DESC
+                """
+            )
+            api_call_rows = cursor.fetchall()
+            cursor.execute(
+                """
+                SELECT id, workspace_id, created_by, board_id, node_id, run_type, model_id, provider,
+                       status, input_asset_ids, output_asset_ids, prompt_preview, estimated_credits,
+                       cost_credits, charged_account_id, charged_scope, pricing_rule_id, route_id,
+                       route_key, selected_tier_key, preflight_status, latency_ms, error_message,
+                       created_at, updated_at, provider_cost, provider_currency
+                FROM tangent_ai_runs
+                ORDER BY created_at DESC
+                """
+            )
+            run_rows = cursor.fetchall()
+            cursor.execute(
+                """
+                SELECT model_key, display_name, capability, capabilities, parameter_schema, cost_hint,
+                       estimated_latency, enabled, is_default, provider_key, default_tier_key,
+                       default_pricing_rule_id, created_at, updated_at
+                FROM tangent_model_registry
+                ORDER BY updated_at DESC, model_key ASC
+                """
+            )
+            model_rows = cursor.fetchall()
+    return api_call_rows, run_rows, model_rows

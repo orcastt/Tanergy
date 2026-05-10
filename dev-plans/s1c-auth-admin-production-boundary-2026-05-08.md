@@ -28,6 +28,16 @@ Clerk login
 - Production-like Web/API origin and CORS contract.
 - First verified session ensures default solo workspace and personal wallet.
 
+Current implementation checkpoint:
+
+- [x] First verified Postgres session now ensures a personal `credit_accounts` wallet.
+- [x] Bearer-mode `/api/v1/auth/session` ignores spoofed `x-tangent-user-id`.
+- [x] Clerk authorized-party validation now fails if configured origins exist and JWT `azp` is missing or mismatched.
+- [x] `s3_admin_bootstrap.py` can grant `admin_roles` by local user id or login email after first real login.
+- [x] Authenticated `/api/v1/auth/session` now returns the full validated workspace membership list and server-side workspace plan facts.
+- [x] Remote smoke helper exists: `services/api/scripts/s1c_remote_admin_smoke.py`.
+- [ ] Remote real-login admin smoke still needs deployed Web/API, migrated DB and a real Clerk session.
+
 Out of scope for this cut:
 
 - Native OTP/password flows.

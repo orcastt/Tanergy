@@ -82,3 +82,22 @@
 .management-table tbody tr[onClick] {
   cursor: pointer;
 }
+
+.admin-table-button {
+  min-height: 32px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.admin-workspaces-table th:nth-child(1) {
+  min-width: 220px;
+}
+
+.admin-workspaces-table th:nth-child(2) {
+  min-width: 180px;
+}
+
+.admin-workspaces-table th:nth-child(7) {
+  min-width: 110px;
+}

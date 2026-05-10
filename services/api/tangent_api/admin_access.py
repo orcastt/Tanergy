@@ -28,10 +28,13 @@ def load_active_admin_roles(user_id: str) -> list[AdminRoleRecord]:
         with connection.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT role, permissions, note, granted_by, created_at
-                FROM tangent_admin_roles
-                WHERE user_id = %s AND revoked_at IS NULL
-                ORDER BY created_at ASC
+                SELECT ar.role, ar.permissions, ar.note, ar.granted_by, ar.created_at
+                FROM tangent_admin_roles ar
+                JOIN tangent_users u ON u.id = ar.user_id
+                WHERE ar.user_id = %s
+                  AND ar.revoked_at IS NULL
+                  AND COALESCE(u.status, 'active') = 'active'
+                ORDER BY ar.created_at ASC
                 """,
                 (user_id,),
             )
@@ -398,8 +401,11 @@ def _count_active_admin_roles(role: str) -> int:
             cursor.execute(
                 """
                 SELECT COUNT(*)
-                FROM tangent_admin_roles
-                WHERE role = %s AND revoked_at IS NULL
+                FROM tangent_admin_roles ar
+                JOIN tangent_users u ON u.id = ar.user_id
+                WHERE ar.role = %s
+                  AND ar.revoked_at IS NULL
+                  AND COALESCE(u.status, 'active') = 'active'
                 """,
                 (role,),
             )

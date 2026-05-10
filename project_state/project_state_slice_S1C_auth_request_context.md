@@ -1,7 +1,7 @@
 # Project State Slice S1C: Auth And Request Context
 
-**Updated**: 2026-05-08
-**Status**: Clerk frontend routes plus FastAPI bearer verification first pass landed. The next active backend slice is production-boundary hardening: real-login admin access, admin_roles bootstrap, spoof tests, CORS/origin contract and first-session personal wallet creation.
+**Updated**: 2026-05-10
+**Status**: Clerk frontend routes plus FastAPI bearer verification first pass landed. First production-boundary hardening checkpoint now covers first-session personal wallet creation, strict Clerk authorized-party checks, bearer-mode spoof coverage, an email-capable admin bootstrap script, authenticated session memberships with server-returned workspace plan facts, and durable last-request IP sync into `tangent_users.last_ip_address`. Real deployed admin smoke still remains.
 
 ## Objective
 
@@ -15,18 +15,18 @@ Replace dev headers/mock identity with real server-side sessions and workspace m
 - [x] Add Next.js provider shell: `ClerkProvider`, route protection proxy and account/avatar control.
 - [x] Attach provider JWT to remote session, Board, Asset, Image Op and AI clients when `NEXT_PUBLIC_API_BASE_URL` points at FastAPI.
 - [x] Add FastAPI JWT verification dependency for provider-issued tokens.
-- [~] Map provider subject ids to local `tangent_users` and `tangent_user_identities`. `tangent_oauth_accounts` is still reserved for future direct provider-account linking flows.
+- [~] Map provider subject ids to local `tangent_users` and `tangent_user_identities`. `tangent_oauth_accounts` is still reserved for future direct provider-account linking flows. Latest authenticated session refresh now also updates `last_ip_address`.
 - [ ] Session token hashing and revocation.
 - [ ] Email OTP issue/verify flow.
 - [x] Default workspace creation first pass.
-- [ ] Personal wallet creation on first verified local user session.
+- [x] Personal wallet creation on first verified local user session.
 - [ ] Real-login admin smoke without local dev-bypass.
-- [ ] Admin operator bootstrap/grant path for the actual signed-in local TANGENT user after migrations.
-- [ ] Production-like Web/API origin and CORS contract for Clerk bearer requests.
+- [x] Admin operator bootstrap/grant path for the actual signed-in local TANGENT user after migrations. Script supports `--user-id` and `--email`.
+- [~] Production-like Web/API origin and CORS contract for Clerk bearer requests. `azp` must now match configured `CLERK_AUTHORIZED_PARTIES` / allowed origins; deployed smoke still pending.
 - [x] Request context middleware.
-- [ ] Active workspace selection matrix for users with multiple Team/Group memberships.
+- [~] Active workspace selection matrix for users with multiple Team/Group memberships. First-pass server session now returns all validated memberships, server-returned workspace plan keys and rejects non-member requested workspaces; fuller product UI rollout is still pending.
 - [ ] Rate limit and request logging for auth routes.
-- [~] Tests for spoofed workspace/user ids. Required-auth header spoof is covered; full workspace membership matrix is still pending.
+- [~] Tests for spoofed workspace/user ids. Required-auth missing-token and bearer-mode spoofed-user-header coverage exists; full workspace membership matrix is still pending.
 - [ ] Tests for invalid, expired and wrong-audience provider JWTs.
 - [ ] Google OAuth staging smoke returns a provider session/JWT and maps to the same local TANGENT user on repeat login.
 
@@ -78,6 +78,7 @@ services/api/tangent_api/auth_sessions.py
 request_context.py
   no longer accepts user/workspace headers as authority in required-auth mode
   resolves local user + workspace membership after token verification
+  forwards request IP from `x-forwarded-for` / `x-real-ip` / client host into auth session sync
   still preserves dev fallback when API auth is not required
 ```
 

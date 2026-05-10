@@ -39,6 +39,7 @@ export function TanergyClerkAuth({ mode }: TanergyClerkAuthProps) {
     ? 'Register with email, Google or GitHub, then enter your workspace.'
     : 'Log in with email, Google or GitHub to continue.'
   const showDevBypass = process.env.NODE_ENV !== 'production'
+    && process.env.NEXT_PUBLIC_TANGENT_ENABLE_DEV_AUTH_BYPASS === '1'
 
   async function continueAsLocalAdmin() {
     setDevBypassBusy(true)

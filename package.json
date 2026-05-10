@@ -8,6 +8,7 @@
     "packages/*"
   ],
   "scripts": {
+    "dev:api": "PYTHONPATH=services/api python3 services/api/scripts/run_local_api.py",
     "dev:web": "npm -C apps/web run dev",
     "build:web": "npm -C apps/web run build",
     "lint:web": "npm -C apps/web run lint",

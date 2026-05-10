@@ -1240,6 +1240,11 @@ class FakePostgresCursor:
             row = next((row for row in self.database.workspaces if row["id"] == workspace_id), None)
             if row:
                 self.row = (row.get("kind", "solo_workspace"),)
+        elif normalized.startswith("SELECT kind, owner_id, status FROM tangent_workspaces"):
+            workspace_id = params[0]
+            row = next((row for row in self.database.workspaces if row["id"] == workspace_id), None)
+            if row:
+                self.row = (row.get("kind", "solo_workspace"), row.get("owner_id"), row.get("status", "active"))
         elif normalized.startswith("SELECT plan_key, seat_capacity FROM tangent_subscriptions"):
             workspace_id = params[0]
             matches = [
@@ -1397,7 +1402,24 @@ class FakePostgresCursor:
                 row["revoked_at"] = "2026-05-08T00:26:00Z"
                 self.row = _workspace_invitation_tuple(row)
         elif normalized.startswith("INSERT INTO tangent_subscriptions"):
-            if len(params) == 11:
+            if len(params) == 12:
+                row = {
+                    "account_id": params[1],
+                    "current_period_end": params[11],
+                    "current_period_start": params[10],
+                    "id": params[0],
+                    "owner_id": params[3],
+                    "owner_type": params[2],
+                    "plan_family": params[5],
+                    "plan_key": params[7],
+                    "provider": "admin_manual",
+                    "provider_subscription_id": params[6],
+                    "seat_capacity": params[9],
+                    "status": params[8],
+                    "updated_at": "2026-05-06T00:50:00Z",
+                    "workspace_id": params[4],
+                }
+            elif len(params) == 11:
                 row = {
                     "account_id": params[1],
                     "current_period_end": params[10],
@@ -1461,14 +1483,19 @@ class FakePostgresCursor:
                 }
             self.database.subscriptions.append(row)
         elif normalized.startswith("UPDATE tangent_subscriptions SET plan_key = %s"):
-            if len(params) == 10:
+            if len(params) == 11:
+                plan_key, plan_family, owner_type, owner_id, workspace_id, provider_subscription_id, status, seat_capacity, current_period_start, current_period_end, subscription_id = params
+                provider = "admin_manual"
+            elif len(params) == 10:
                 plan_key, plan_family, owner_type, owner_id, workspace_id, provider_subscription_id, status, seat_capacity, current_period_end, subscription_id = params
                 provider = "admin_manual"
+                current_period_start = "2026-05-06T00:50:00Z"
             elif len(params) == 8:
                 plan_key, owner_id, workspace_id, provider, provider_subscription_id, seat_capacity, current_period_end, subscription_id = params
                 owner_type = "workspace" if workspace_id is not None else "user"
                 plan_family = "team" if workspace_id is not None else "collaborate"
                 status = "active"
+                current_period_start = "2026-05-06T00:50:00Z"
             elif len(params) == 6:
                 plan_key, owner_id, provider, provider_subscription_id, current_period_end, subscription_id = params
                 workspace_id = None
@@ -1476,6 +1503,7 @@ class FakePostgresCursor:
                 owner_type = "user"
                 plan_family = "collaborate"
                 status = "active"
+                current_period_start = "2026-05-06T00:50:00Z"
             else:
                 plan_key, provider, provider_subscription_id, current_period_end, subscription_id = params
                 owner_id = None
@@ -1484,6 +1512,7 @@ class FakePostgresCursor:
                 owner_type = None
                 plan_family = None
                 status = "active"
+                current_period_start = "2026-05-06T00:50:00Z"
             row = next((value for value in self.database.subscriptions if value["id"] == subscription_id), None)
             if row:
                 row["plan_key"] = plan_key
@@ -1496,14 +1525,31 @@ class FakePostgresCursor:
                 row["provider"] = provider
                 row["provider_subscription_id"] = provider_subscription_id
                 row["status"] = status
+                row["current_period_start"] = current_period_start
                 row["current_period_end"] = current_period_end
                 row["updated_at"] = "2026-05-06T00:51:00Z"
         elif normalized.startswith("UPDATE tangent_subscriptions SET status = 'canceled'"):
-            row = next((value for value in self.database.subscriptions if value["id"] == params[0]), None)
+            if len(params) == 1:
+                row = next((value for value in self.database.subscriptions if value["id"] == params[0]), None)
+                if row:
+                    row["status"] = "canceled"
+                    row["current_period_end"] = "2026-05-06T00:52:00Z"
+                    row["updated_at"] = "2026-05-06T00:52:00Z"
+            else:
+                workspace_id = params[0]
+                for row in self.database.subscriptions:
+                    if (
+                        (row.get("workspace_id") == workspace_id or (row.get("owner_type") == "workspace" and row.get("owner_id") == workspace_id))
+                        and row.get("status", "active") in {"active", "trialing"}
+                    ):
+                        row["status"] = "canceled"
+                        row["current_period_end"] = "2026-05-06T00:52:00Z"
+                        row["updated_at"] = "2026-05-06T00:52:00Z"
+        elif normalized.startswith("UPDATE tangent_workspaces SET status = 'deleted'"):
+            workspace_id = params[0]
+            row = next((value for value in self.database.workspaces if value["id"] == workspace_id), None)
             if row:
-                row["status"] = "canceled"
-                row["current_period_end"] = "2026-05-06T00:52:00Z"
-                row["updated_at"] = "2026-05-06T00:52:00Z"
+                row["status"] = "deleted"
         elif normalized.startswith("SELECT COALESCE(SUM(credits_delta), 0) FROM tangent_credit_ledger"):
             account_id = params[0]
             self.row = (
@@ -1572,12 +1618,26 @@ class FakePostgresCursor:
                 rows.append(_credit_ledger_tuple(row))
             rows.sort(key=lambda row: row[9], reverse=True)
             self.rows = rows[:limit]
-        elif normalized.startswith("SELECT role, permissions, note, granted_by, created_at FROM tangent_admin_roles"):
+        elif (
+            normalized.startswith("SELECT role, permissions, note, granted_by, created_at FROM tangent_admin_roles")
+            or normalized.startswith("SELECT ar.role, ar.permissions, ar.note, ar.granted_by, ar.created_at FROM tangent_admin_roles ar")
+        ):
             user_id = params[0]
+            has_user_rows = any(user["id"] == user_id for user in self.database.users)
             rows = [
                 (row["role"], row["permissions"], row["note"], row["granted_by"], row["created_at"])
                 for row in self.database.admin_roles
-                if row["user_id"] == user_id and row["revoked_at"] is None
+                if (
+                    row["user_id"] == user_id
+                    and row["revoked_at"] is None
+                    and (
+                        not has_user_rows
+                        or any(
+                            user["id"] == user_id and user.get("status", "active") == "active"
+                            for user in self.database.users
+                        )
+                    )
+                )
             ]
             rows.sort(key=lambda row: row[4])
             self.rows = rows

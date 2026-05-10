@@ -1,82 +1,33 @@
 'use client'
 
-import { hasRemotePersistenceApi, persistenceApiUrl, persistenceAuthHeadersAsync } from '@/features/api/persistenceApi'
-
-export type AdminRoleRecord = {
-  createdAt: string
-  grantedBy?: null | string
-  note?: null | string
-  permissions: Record<string, unknown>
-  role: string
-}
-
-export type AdminSummaryRecord = {
-  adminUserCount: number
-  boardsCount: number
-  usersCount: number
-  workspacesCount: number
-}
-
-export type AdminUserRecord = {
-  createdAt: string
-  displayName: string
-  email: string
-  id: string
-  lastLoginAt?: null | string
-  locale: string
-  status: string
-}
-
-export type AdminWorkspaceRecord = {
-  createdAt?: null | string
-  id: string
-  kind?: string
-  name: string
-  ownerId?: null | string
-  status: string
-}
-
-export type AdminBoardRecord = {
-  id: string
-  ownerId: string
-  savedAt: string
-  title: string
-  visibility: string
-  workspaceId: string
-}
-
-export type AdminAuditLogRecord = {
-  action: string
-  actorUserId?: null | string
-  createdAt: string
-  id: string
-  metadata: Record<string, unknown>
-  targetUserId?: null | string
-  workspaceId?: null | string
-}
-
-export type AdminAccess = {
-  apiMode: 'local-unavailable' | 'remote'
-  canAccessAdmin: boolean
-  error?: string
-  ok: boolean
-  roles: AdminRoleRecord[]
-  userId?: string
-}
-
-export type AdminSummaryResource = { error?: string; ok: boolean; summary?: AdminSummaryRecord }
-export type AdminUsersResource = { error?: string; ok: boolean; users: AdminUserRecord[] }
-export type AdminWorkspacesResource = { error?: string; ok: boolean; workspaces: AdminWorkspaceRecord[] }
-export type AdminBoardsResource = { boards: AdminBoardRecord[]; error?: string; ok: boolean }
-export type AdminAuditLogsResource = { error?: string; logs: AdminAuditLogRecord[]; ok: boolean }
-export type AdminRoleListResource = { error?: string; ok: boolean; roles: AdminRoleRecord[]; userId: string }
-export type AdminRoleMutationResource = {
-  auditId?: null | string
-  error?: string
-  ok: boolean
-  role?: AdminRoleRecord
-  userId: string
-}
+import { hasRemotePersistenceApi, persistenceAuthHeadersAsync } from '@/features/api/persistenceApi'
+export type {
+  AdminAccess,
+  AdminAuditLogRecord,
+  AdminAuditLogsResource,
+  AdminBoardRecord,
+  AdminBoardsResource,
+  AdminRoleListResource,
+  AdminRoleMutationResource,
+  AdminRoleRecord,
+  AdminSummaryResource,
+  AdminSummaryRecord,
+  AdminUserRecord,
+  AdminUsersResource,
+  AdminWorkspaceRecord,
+  AdminWorkspacesResource,
+} from './adminTypes'
+import type {
+  AdminAccess,
+  AdminAuditLogsResource,
+  AdminBoardsResource,
+  AdminRoleListResource,
+  AdminRoleMutationResource,
+  AdminRoleRecord,
+  AdminSummaryResource,
+  AdminUsersResource,
+  AdminWorkspacesResource,
+} from './adminTypes'
 
 type AdminMeResponse = {
   canAccessAdmin: boolean
@@ -84,6 +35,10 @@ type AdminMeResponse = {
   ok: boolean
   roles?: AdminRoleRecord[]
   userId?: string
+}
+
+type AdminRequestOptions = {
+  getAuthToken?: () => Promise<null | string>
 }
 
 type AdminRoleGrantInput = {
@@ -100,9 +55,18 @@ type AdminAuditQuery = {
   targetUserId?: string
 }
 
-export async function loadAdminJson<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const headers = await persistenceAuthHeadersAsync()
-  const response = await fetch(persistenceApiUrl(path), {
+export async function loadAdminJson<T>(
+  path: string,
+  init: RequestInit = {},
+  options: AdminRequestOptions = {},
+): Promise<T> {
+  if (!hasRemotePersistenceApi()) {
+    throw new Error('Admin API proxy requires NEXT_PUBLIC_API_BASE_URL.')
+  }
+  const headers = options.getAuthToken
+    ? await persistenceAuthHeadersAsync(undefined, { getAuthToken: options.getAuthToken })
+    : await persistenceAuthHeadersAsync()
+  const response = await fetch(toAdminProxyPath(path), {
     ...init,
     headers: {
       ...headers,
@@ -110,9 +74,14 @@ export async function loadAdminJson<T>(path: string, init: RequestInit = {}): Pr
       ...(init.headers ?? {}),
     },
   })
-  const payload = await response.json() as T & { error?: string }
-  if (!response.ok) throw new Error(payload.error || 'Admin resource lookup failed.')
+  const payload = await readAdminPayload<T>(response)
+  if (!response.ok) throw new Error(payload.error || payload.detail || 'Admin resource lookup failed.')
   return payload
+}
+
+function toAdminProxyPath(path: string) {
+  const normalizedPath = path.replace(/^\/api\/v1\/admin\/?/, '').replace(/^\/+/, '')
+  return `/api/admin-proxy/${normalizedPath}`
 }
 
 export function createQuery(params: Record<string, boolean | null | number | string | undefined>) {
@@ -125,7 +94,7 @@ export function createQuery(params: Record<string, boolean | null | number | str
   return query ? `?${query}` : ''
 }
 
-export async function loadAdminAccess(): Promise<AdminAccess> {
+export async function loadAdminAccess(options: AdminRequestOptions = {}): Promise<AdminAccess> {
   if (!hasRemotePersistenceApi()) {
     return {
       apiMode: 'local-unavailable',
@@ -135,7 +104,7 @@ export async function loadAdminAccess(): Promise<AdminAccess> {
       roles: [],
     }
   }
-  const payload = await loadAdminJson<AdminMeResponse>('/api/v1/admin/me')
+  const payload = await loadAdminJson<AdminMeResponse>('/api/v1/admin/me', {}, options)
   return { apiMode: 'remote', canAccessAdmin: payload.canAccessAdmin, error: payload.error, ok: payload.ok, roles: payload.roles ?? [], userId: payload.userId }
 }
 
@@ -174,4 +143,14 @@ export async function revokeAdminRole(userId: string, role: string): Promise<Adm
   return loadAdminJson<AdminRoleMutationResource>(`/api/v1/admin/roles/${encodeURIComponent(userId)}/${encodeURIComponent(role)}`, {
     method: 'DELETE',
   })
+}
+
+async function readAdminPayload<T>(response: Response): Promise<T & { detail?: string; error?: string }> {
+  const text = await response.text()
+  if (!text) return {} as T & { detail?: string; error?: string }
+  try {
+    return JSON.parse(text) as T & { detail?: string; error?: string }
+  } catch {
+    return { error: text } as T & { detail?: string; error?: string }
+  }
 }

@@ -325,6 +325,17 @@ def test_admin_ai_routes_return_filtered_resources_and_write_audit_logs(monkeypa
             "revoked_at": None,
         }
     ]
+    fake_db.users = [
+        {
+            "id": "user_admin",
+            "email": "admin@example.com",
+            "display_name": "Admin User",
+            "status": "active",
+            "locale": "en",
+            "created_at": "2026-05-05T00:00:00Z",
+            "last_login_at": "2026-05-05T00:00:00Z",
+        }
+    ]
     fake_db.model_registry = [
         {
             "model_key": "gpt-image-2",
@@ -454,6 +465,26 @@ def test_admin_ai_runtime_routes_return_persisted_runs_and_api_calls(monkeypatch
             "revoked_at": None,
         }
     ]
+    fake_db.users = [
+        {
+            "id": "user_admin",
+            "email": "admin@example.com",
+            "display_name": "Admin User",
+            "status": "active",
+            "locale": "en",
+            "created_at": "2026-05-05T00:00:00Z",
+            "last_login_at": "2026-05-05T00:00:00Z",
+        },
+        {
+            "id": "user_runtime",
+            "email": "runtime@example.com",
+            "display_name": "Runtime User",
+            "status": "active",
+            "locale": "en",
+            "created_at": "2026-05-05T00:00:00Z",
+            "last_login_at": "2026-05-05T00:00:00Z",
+        },
+    ]
     fake_db.credit_ledger = [
         {
             "account_id": "credit_user_user_runtime",
@@ -546,24 +577,326 @@ def test_admin_ai_runtime_routes_return_persisted_runs_and_api_calls(monkeypatch
         }
     ]
     filtered_runs = client.get(
-        f"/api/v1/admin/ai/runs?runId={run_id}&provider=geekai&pricingRuleId=price_gpt_image_2_1k_v1&preflightStatus=settled&workspaceId=workspace_group&boardId=board_runtime",
+        f"/api/v1/admin/ai/runs?runId={run_id}&routeId=route_gpt_image_2_primary&routeKey=geekai-primary&provider=geekai&pricingRuleId=price_gpt_image_2_1k_v1&preflightStatus=settled&workspaceId=workspace_group&boardId=board_runtime",
         headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
     )
     assert filtered_runs.status_code == 200
     assert [item["id"] for item in filtered_runs.json()["runs"]] == [run_id]
 
     filtered_api_calls = client.get(
-        f"/api/v1/admin/ai/api-calls?runId={run_id}&routeKey=geekai-primary&pricingRuleId=price_gpt_image_2_1k_v1&workspaceId=workspace_group&boardId=board_runtime",
+        f"/api/v1/admin/ai/api-calls?runId={run_id}&routeId=route_gpt_image_2_primary&routeKey=geekai-primary&pricingRuleId=price_gpt_image_2_1k_v1&workspaceId=workspace_group&boardId=board_runtime",
         headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
     )
     assert filtered_api_calls.status_code == 200
     assert [item["id"] for item in filtered_api_calls.json()["apiCalls"]] == [f"ai_call_{run_id}_a1"]
-    assert [entry["action"] for entry in fake_db.admin_audit_logs[-4:]] == [
+    assert fake_db.admin_audit_logs[-1]["metadata"]["routeId"] == "route_gpt_image_2_primary"
+
+    fake_db.ai_runs[run_id]["route_id"] = None
+    legacy_filtered_runs = client.get(
+        "/api/v1/admin/ai/runs?routeId=route_gpt_image_2_primary&routeKey=geekai-primary&provider=geekai",
+        headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
+    )
+    assert legacy_filtered_runs.status_code == 200
+    assert [item["id"] for item in legacy_filtered_runs.json()["runs"]] == [run_id]
+    assert fake_db.admin_audit_logs[-1]["metadata"]["routeId"] == "route_gpt_image_2_primary"
+    assert [entry["action"] for entry in fake_db.admin_audit_logs[-5:]] == [
         "admin.ai.runs.list",
         "admin.ai.api_calls.list",
         "admin.ai.runs.list",
         "admin.ai.api_calls.list",
+        "admin.ai.runs.list",
     ]
+
+
+def test_admin_ai_route_metrics_report_direct_fallback_and_terminal_health(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.admin_roles = [
+        {
+            "user_id": "user_admin",
+            "role": "admin",
+            "permissions": {"ai": True},
+            "note": "active",
+            "granted_by": "user_owner",
+            "created_at": "2026-05-05T00:00:00Z",
+            "revoked_at": None,
+        }
+    ]
+    fake_db.users = [
+        {
+            "id": "user_admin",
+            "email": "admin@example.com",
+            "display_name": "Admin User",
+            "status": "active",
+            "locale": "en",
+            "created_at": "2026-05-05T00:00:00Z",
+            "last_login_at": "2026-05-05T00:00:00Z",
+        }
+    ]
+    fake_db.model_registry = [
+        {
+            "model_key": "gpt-image-2",
+            "display_name": "GPT Image 2",
+            "capability": "image_generation",
+            "capabilities": ["image_generation", "image_edit"],
+            "parameter_schema": {"resolution": ["1K"]},
+            "cost_hint": "Fast tests",
+            "estimated_latency": "5-12s",
+            "enabled": True,
+            "is_default": True,
+            "provider_key": "geekai",
+            "default_tier_key": "1k",
+            "default_pricing_rule_id": "price_gpt_image_2_1k_v1",
+            "created_at": "2026-05-06T00:00:00Z",
+            "updated_at": "2026-05-06T00:00:00Z",
+        }
+    ]
+    fake_db.ai_runs = {
+        "run_direct": {
+            "id": "run_direct",
+            "workspace_id": "workspace_group",
+            "created_by": "user_runtime",
+            "board_id": "board_runtime",
+            "node_id": None,
+            "run_type": "image_generation",
+            "model_id": "gpt-image-2",
+            "provider": "geekai",
+            "status": "succeeded",
+            "input_asset_ids": [],
+            "output_asset_ids": ["asset_direct"],
+            "params": {"count": 1},
+            "prompt_preview": "Direct route win",
+            "cost_credits": 5,
+            "latency_ms": 410,
+            "error_code": None,
+            "error_message": None,
+            "workspace_kind": "group_workspace",
+            "workspace_seat_id": None,
+            "charged_account_id": "credit_user_runtime",
+            "charged_scope": "actor_personal",
+            "entitlement_source": "personal_topup_or_free",
+            "credits_charged": 5,
+            "credits_refunded": 0,
+            "provider_cost": 0.04,
+            "provider_currency": "USD",
+            "estimated_credits": 5,
+            "pricing_rule_id": "price_gpt_image_2_1k_v1",
+            "route_id": "route_primary",
+            "route_key": "primary",
+            "selected_tier_key": "1k",
+            "preflight_status": "settled",
+            "created_at": "2026-05-10T12:00:00Z",
+            "updated_at": "2026-05-10T12:00:05Z",
+        },
+        "run_fallback": {
+            "id": "run_fallback",
+            "workspace_id": "workspace_group",
+            "created_by": "user_runtime",
+            "board_id": "board_runtime",
+            "node_id": None,
+            "run_type": "image_generation",
+            "model_id": "gpt-image-2",
+            "provider": "openai",
+            "status": "succeeded",
+            "input_asset_ids": [],
+            "output_asset_ids": ["asset_backup"],
+            "params": {"count": 1},
+            "prompt_preview": "Fallback route win",
+            "cost_credits": 6,
+            "latency_ms": 600,
+            "error_code": None,
+            "error_message": None,
+            "workspace_kind": "group_workspace",
+            "workspace_seat_id": None,
+            "charged_account_id": "credit_user_runtime",
+            "charged_scope": "actor_personal",
+            "entitlement_source": "personal_topup_or_free",
+            "credits_charged": 6,
+            "credits_refunded": 0,
+            "provider_cost": 0.06,
+            "provider_currency": "USD",
+            "estimated_credits": 6,
+            "pricing_rule_id": "price_gpt_image_2_1k_v1",
+            "route_id": "route_backup",
+            "route_key": "backup",
+            "selected_tier_key": "1k",
+            "preflight_status": "settled",
+            "created_at": "2026-05-10T12:01:00Z",
+            "updated_at": "2026-05-10T12:01:05Z",
+        },
+        "run_failed": {
+            "id": "run_failed",
+            "workspace_id": "workspace_group",
+            "created_by": "user_runtime",
+            "board_id": "board_runtime",
+            "node_id": None,
+            "run_type": "image_generation",
+            "model_id": "gpt-image-2",
+            "provider": "geekai",
+            "status": "failed",
+            "input_asset_ids": [],
+            "output_asset_ids": [],
+            "params": {"count": 1},
+            "prompt_preview": "Terminal route failure",
+            "cost_credits": 0,
+            "latency_ms": 500,
+            "error_code": "provider_failed",
+            "error_message": "Provider timed out.",
+            "workspace_kind": "group_workspace",
+            "workspace_seat_id": None,
+            "charged_account_id": "credit_user_runtime",
+            "charged_scope": "actor_personal",
+            "entitlement_source": "personal_topup_or_free",
+            "credits_charged": 0,
+            "credits_refunded": 0,
+            "provider_cost": 0.02,
+            "provider_currency": "USD",
+            "estimated_credits": 5,
+            "pricing_rule_id": "price_gpt_image_2_1k_v1",
+            "route_id": "route_primary",
+            "route_key": "primary",
+            "selected_tier_key": "1k",
+            "preflight_status": "failed",
+            "created_at": "2026-05-10T12:02:00Z",
+            "updated_at": "2026-05-10T12:02:05Z",
+        },
+    }
+    fake_db.ai_api_calls = [
+        {
+            "id": "ai_call_run_direct_a1",
+            "workspace_id": "workspace_group",
+            "user_id": "user_runtime",
+            "run_id": "run_direct",
+            "board_id": "board_runtime",
+            "node_id": None,
+            "model_id": "gpt-image-2",
+            "provider": "geekai",
+            "route_key": "primary",
+            "route_id": "route_primary",
+            "pricing_rule_id": "price_gpt_image_2_1k_v1",
+            "status": "succeeded",
+            "latency_ms": 410,
+            "credits_charged": 5,
+            "credits_refunded": 0,
+            "provider_cost": 0.04,
+            "provider_currency": "USD",
+            "error_code": None,
+            "created_at": "2026-05-10T12:00:01Z",
+        },
+        {
+            "id": "ai_call_run_fallback_a1",
+            "workspace_id": "workspace_group",
+            "user_id": "user_runtime",
+            "run_id": "run_fallback",
+            "board_id": "board_runtime",
+            "node_id": None,
+            "model_id": "gpt-image-2",
+            "provider": "geekai",
+            "route_key": "primary",
+            "route_id": "route_primary",
+            "pricing_rule_id": "price_gpt_image_2_1k_v1",
+            "status": "failed",
+            "latency_ms": 300,
+            "credits_charged": 0,
+            "credits_refunded": 0,
+            "provider_cost": 0.01,
+            "provider_currency": "USD",
+            "error_code": "provider_failed",
+            "created_at": "2026-05-10T12:01:01Z",
+        },
+        {
+            "id": "ai_call_run_fallback_a2",
+            "workspace_id": "workspace_group",
+            "user_id": "user_runtime",
+            "run_id": "run_fallback",
+            "board_id": "board_runtime",
+            "node_id": None,
+            "model_id": "gpt-image-2",
+            "provider": "openai",
+            "route_key": "backup",
+            "route_id": "route_backup",
+            "pricing_rule_id": "price_gpt_image_2_1k_v1",
+            "status": "succeeded",
+            "latency_ms": 600,
+            "credits_charged": 6,
+            "credits_refunded": 0,
+            "provider_cost": 0.06,
+            "provider_currency": "USD",
+            "error_code": None,
+            "created_at": "2026-05-10T12:01:03Z",
+        },
+        {
+            "id": "ai_call_run_failed_a1",
+            "workspace_id": "workspace_group",
+            "user_id": "user_runtime",
+            "run_id": "run_failed",
+            "board_id": "board_runtime",
+            "node_id": None,
+            "model_id": "gpt-image-2",
+            "provider": "geekai",
+            "route_key": "primary",
+            "route_id": "route_primary",
+            "pricing_rule_id": "price_gpt_image_2_1k_v1",
+            "status": "failed",
+            "latency_ms": 500,
+            "credits_charged": 0,
+            "credits_refunded": 0,
+            "provider_cost": 0.02,
+            "provider_currency": "USD",
+            "error_code": "provider_failed",
+            "created_at": "2026-05-10T12:02:01Z",
+        },
+    ]
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setattr("tangent_api.admin_access.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.admin_ai_analytics.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    response = client.get(
+        "/api/v1/admin/ai/route-metrics?capability=image_generation",
+        headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["ok"] is True
+    assert [metric["routeId"] for metric in payload["metrics"]] == ["route_primary", "route_backup"]
+
+    primary_metric = payload["metrics"][0]
+    assert primary_metric["calls"] == 3
+    assert primary_metric["routeHitRuns"] == 3
+    assert primary_metric["directWins"] == 1
+    assert primary_metric["fallbackWins"] == 1
+    assert primary_metric["terminalFailures"] == 1
+    assert primary_metric["succeededCalls"] == 1
+    assert primary_metric["failedCalls"] == 2
+    assert primary_metric["creditsCharged"] == 5.0
+    assert primary_metric["providerCost"] == pytest.approx(0.07)
+    assert primary_metric["averageAttemptsPerRun"] == 1.0
+    assert primary_metric["directWinRate"] == 33.33
+    assert primary_metric["routeAttemptSuccessRate"] == 33.33
+    assert primary_metric["lastCalledAt"] == "2026-05-10T12:02:01Z"
+
+    backup_metric = payload["metrics"][1]
+    assert backup_metric["calls"] == 1
+    assert backup_metric["routeHitRuns"] == 1
+    assert backup_metric["directWins"] == 1
+    assert backup_metric["fallbackWins"] == 0
+    assert backup_metric["terminalFailures"] == 0
+    assert backup_metric["provider"] == "openai"
+
+    totals = payload["totals"]
+    assert totals["averageAttemptsPerRun"] == 1.0
+    assert totals["calls"] == 4
+    assert totals["creditsCharged"] == 11.0
+    assert totals["directWinRate"] == 50.0
+    assert totals["directWins"] == 2
+    assert totals["failedCalls"] == 2
+    assert totals["fallbackWins"] == 1
+    assert totals["providerCost"] == pytest.approx(0.13)
+    assert totals["routeAttemptSuccessRate"] == 50.0
+    assert totals["routeHitRuns"] == 4
+    assert totals["succeededCalls"] == 2
+    assert totals["terminalFailures"] == 1
+    assert fake_db.admin_audit_logs[-1]["action"] == "admin.ai.route_metrics.list"
 
 
 def test_admin_ai_control_plane_patch_routes_persist_updates_and_audit(monkeypatch):
@@ -839,6 +1172,26 @@ def test_admin_ai_api_calls_route_surfaces_failover_attempt_history(monkeypatch)
             "created_at": "2026-05-05T00:00:00Z",
             "revoked_at": None,
         }
+    ]
+    fake_db.users = [
+        {
+            "id": "user_admin",
+            "email": "admin@example.com",
+            "display_name": "Admin User",
+            "status": "active",
+            "locale": "en",
+            "created_at": "2026-05-05T00:00:00Z",
+            "last_login_at": "2026-05-05T00:00:00Z",
+        },
+        {
+            "id": "user_runtime",
+            "email": "runtime@example.com",
+            "display_name": "Runtime User",
+            "status": "active",
+            "locale": "en",
+            "created_at": "2026-05-05T00:00:00Z",
+            "last_login_at": "2026-05-05T00:00:00Z",
+        },
     ]
     fake_db.model_registry = [
         {

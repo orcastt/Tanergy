@@ -160,8 +160,10 @@ Admin/developer UI:
 - [x] Filter AiRuns by user, workspace/team, board, node, product model, route, pricing rule and charged account.
 - [x] Inspect Team wallet ledger and personal wallet ledger through admin finance read APIs and frontend panels.
 - [x] Inspect subscription, seat capacity, wallet balance, payment facts and Team member usage through admin finance panels.
-- [x] Manual admin billing bridge for Stripe-unavailable operations: user wallet top-up, Team wallet top-up, Collaborate/Group plan assignment, Team plan assignment and subscription cancellation, all audited through `/admin` finance controls.
+- [x] Manual admin billing bridge for Stripe-unavailable operations: user wallet top-up/deduction, Team wallet top-up/deduction, Collaborate/Group plan assignment, Team plan assignment, Team/Group creation, subscription cancellation and workspace deletion, all audited through `/admin` finance controls.
+- [x] Manual admin writes require an operation reason and use `effectMode` plus `durationCount * durationUnitDays` for plan windows instead of date-picker expiry edits.
 - [x] Split `/admin` into Overview, Users, Teams, Groups, AI API Routes, Finance and Access tabs backed by admin directory APIs and AI route metrics.
+- [ ] Rebuild admin operator console around the new inventory/detail mock: fast User inventory, one-call user detail bundle, Billing / Team Plan / Joined Team / Group Plan / Joined Group tabs, modal operations and no helper-copy UI. Detailed checklist lives in `dev-plans/s3-admin-operator-console-redesign-2026-05-09.md`.
 - Keep route/pricing publish/rollback audited.
 
 Tests/smoke:
@@ -179,7 +181,7 @@ Tests/smoke:
 - [x] Hosted checkout response contract first cut: checkout responses include provider session metadata, amount/currency/kind/client-reference handoff metadata, non-manual providers require hosted checkout configuration before payment creation, and hosted-provider payments cannot be manually completed.
 - [x] Provider-neutral checkout adapter first cut: `manual_test` and generic hosted checkout keep staging moving; optional `stripe` provider requires `TANGENT_STRIPE_SECRET_KEY` only when selected, creates Checkout Sessions through Stripe's server API, labels `checkout.adapter=stripe_checkout`, and keeps secrets server-side.
 - [x] Admin finance reconciliation first pass: server-gated summary/payment/wallet/subscription/credit-ledger/member-usage reads, frontend panels and audit events.
-- [x] Manual admin operations first pass: audited `admin_manual` top-up, plan assignment and subscription cancellation write payment, subscription, credit ledger and audit facts while Stripe is unavailable.
+- [x] Manual admin operations first pass: audited `admin_manual` top-up, credit adjustment, plan assignment, subscription cancellation and workspace deletion write payment, subscription, credit ledger and audit facts while Stripe is unavailable.
 - Payment provider webhooks become production authority for grants and subscription state after deployed staging smoke and provider-specific signatures are wired.
 - Renewal grants monthly included credits.
 - Cancellation/downgrade handles remaining credits and seat capacity.

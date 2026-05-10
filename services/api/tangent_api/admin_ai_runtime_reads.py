@@ -8,6 +8,7 @@ def list_admin_ai_runs(
     limit: int,
     model_id: Optional[str] = None,
     provider: Optional[str] = None,
+    route_id: Optional[str] = None,
     route_key: Optional[str] = None,
     run_type: Optional[str] = None,
     run_id: Optional[str] = None,
@@ -39,6 +40,19 @@ def list_admin_ai_runs(
         records = [record for record in records if record.model_id == model_id]
     if provider:
         records = [record for record in records if record.provider == provider]
+    if route_id:
+        if route_key or provider:
+            records = [
+                record for record in records
+                if record.route_id == route_id
+                or (
+                    record.route_id in (None, "")
+                    and (not route_key or record.route_key == route_key)
+                    and (not provider or record.provider == provider)
+                )
+            ]
+        else:
+            records = [record for record in records if record.route_id == route_id]
     if route_key:
         records = [record for record in records if record.route_key == route_key]
     if run_type:
@@ -63,6 +77,7 @@ def list_admin_ai_api_calls(
     model_id: Optional[str] = None,
     provider: Optional[str] = None,
     pricing_rule_id: Optional[str] = None,
+    route_id: Optional[str] = None,
     route_key: Optional[str] = None,
     run_id: Optional[str] = None,
     status: Optional[str] = None,
@@ -90,6 +105,19 @@ def list_admin_ai_api_calls(
         records = [record for record in records if record.board_id == board_id]
     if model_id:
         records = [record for record in records if record.model_id == model_id]
+    if route_id:
+        if route_key or provider:
+            records = [
+                record for record in records
+                if record.route_id == route_id
+                or (
+                    record.route_id in (None, "")
+                    and (not route_key or record.route_key == route_key)
+                    and (not provider or record.provider == provider)
+                )
+            ]
+        else:
+            records = [record for record in records if record.route_id == route_id]
     if provider:
         records = [record for record in records if record.provider == provider]
     if route_key:

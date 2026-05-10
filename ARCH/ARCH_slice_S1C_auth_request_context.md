@@ -1,8 +1,8 @@
 # ARCH Slice S1C: Auth And Request Context
 
-**Updated**: 2026-05-08
+**Updated**: 2026-05-10
 **Mode**: Architecture slice.
-**Status**: Clerk frontend/session bridge plus FastAPI bearer verification first pass are in place. The active next cut is auth/admin production boundary hardening: real-login admin access, admin_roles bootstrap, spoof tests, production-like CORS/origin rules and default personal-wallet creation.
+**Status**: Clerk frontend/session bridge plus FastAPI bearer verification first pass are in place. First auth/admin production-boundary checkpoint now covers default personal-wallet creation, strict Clerk authorized-party checks, bearer-mode spoof coverage and email-capable admin bootstrap; real deployed admin smoke remains.
 
 ## Goal
 
@@ -89,6 +89,7 @@ Current implementation note:
 - Clerk subject mapping currently uses `tangent_user_identities` with `provider='clerk'`.
 - `tangent_oauth_accounts` remains available for future direct Google/GitHub/Apple linking or provider portability work.
 - If `DATABASE_URL` is absent in local development, FastAPI can still derive deterministic ephemeral ids so auth-required smoke tests do not depend on Postgres bootstrapping.
+- Real authenticated session refresh now also persists the latest request IP into `tangent_users.last_ip_address` when Postgres is configured, so later admin/operator views can show last access facts without trusting frontend headers.
 
 ## Security Rules
 
@@ -116,6 +117,7 @@ Request
 ```
 
 Frontend-provided workspace ids are allowed as a selection hint only. The server must reject the request if the session user is not a member of that workspace.
+The first-pass authenticated session contract now returns the active workspace plus the full server-validated workspace membership list, including server-returned workspace plan keys where available, so Team/Group switching does not depend on frontend-invented authority.
 
 S3 wallet dependency:
 
@@ -128,6 +130,7 @@ Current first-pass behavior:
 
 - When `TANGENT_REQUIRE_API_AUTH=1`, `x-tangent-user-id` and `x-tangent-workspace-id` are no longer authority.
 - Bearer token or `__session` cookie becomes the only accepted identity source.
+- Authenticated request context now resolves request IP from `x-forwarded-for`, `x-real-ip` or the request client host before syncing the local user row.
 - When `TANGENT_REQUIRE_API_AUTH=0`, dev headers/local fallback still work for fast canvas iteration.
 
 ## Middleware

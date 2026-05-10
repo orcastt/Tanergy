@@ -82,9 +82,11 @@ def test_auth_required_mode_accepts_verified_bearer(monkeypatch):
     async def fake_resolve_authenticated_request_context(
         token: str,
         requested_workspace_id: Optional[str] = None,
+        request_ip: Optional[str] = None,
     ) -> ApiRequestContext:
         assert token == "valid-token"
         assert requested_workspace_id == "workspace_clerk_123"
+        assert request_ip == "203.0.113.10"
         return ApiRequestContext(
             auth_mode="required",
             is_dev_fallback=False,
@@ -96,6 +98,25 @@ def test_auth_required_mode_accepts_verified_bearer(monkeypatch):
             workspace_board_count=4,
             workspace_id="workspace_clerk_123",
             workspace_name="Tanergy Workspace",
+            workspace_plan_key="team_growth",
+            workspace_memberships=[
+                {
+                    "board_count": 4,
+                    "workspace_id": "workspace_clerk_123",
+                    "workspace_kind": "team_workspace",
+                    "workspace_name": "Tanergy Workspace",
+                    "workspace_plan_key": "team_growth",
+                    "workspace_role": "owner",
+                },
+                {
+                    "board_count": 1,
+                    "workspace_id": "workspace_group_456",
+                    "workspace_kind": "group_workspace",
+                    "workspace_name": "Creative Group",
+                    "workspace_plan_key": "collaborate_plus",
+                    "workspace_role": "editor",
+                },
+            ],
             workspace_role="owner",
         )
 
@@ -109,6 +130,8 @@ def test_auth_required_mode_accepts_verified_bearer(monkeypatch):
         "/api/v1/auth/session",
         headers={
             "Authorization": "Bearer valid-token",
+            "x-forwarded-for": "203.0.113.10, 10.0.0.10",
+            "x-tangent-user-id": "attacker-user",
             "x-tangent-workspace-id": "workspace_clerk_123",
         },
     )
@@ -117,10 +140,14 @@ def test_auth_required_mode_accepts_verified_bearer(monkeypatch):
     session = response.json()["session"]
     assert session["authMode"] == "required"
     assert session["isDevFallback"] is False
+    assert session["user"]["id"] == "user_clerk_123"
     assert session["user"]["displayName"] == "Clerk User"
     assert session["user"]["email"] == "user@example.com"
     assert session["activeWorkspace"]["id"] == "workspace_clerk_123"
     assert session["activeWorkspace"]["boardCount"] == 4
+    assert session["activeWorkspace"]["planKey"] == "team_growth"
+    assert [workspace["id"] for workspace in session["workspaces"]] == ["workspace_clerk_123", "workspace_group_456"]
+    assert [workspace["planKey"] for workspace in session["workspaces"]] == ["team_growth", "collaborate_plus"]
 
 
 def test_auth_malformed_bearer_header_returns_401(monkeypatch):

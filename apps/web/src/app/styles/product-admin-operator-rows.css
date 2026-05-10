@@ -1,0 +1,207 @@
+.admin-owned-plan-table td,
+.admin-joined-plan-table td {
+  vertical-align: top;
+}
+
+.admin-cell-count-pill {
+  justify-self: start;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(251, 191, 36, 0.18);
+  color: #9a5b16;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.admin-member-line {
+  justify-content: space-between;
+}
+
+.admin-invite-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.admin-member-line-main {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-member-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-member-stack-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-inline-action {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.admin-inline-action[data-tone='danger'] {
+  color: #dc2626;
+}
+
+.admin-invite-status {
+  color: #9a5b16;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.admin-group-plan-heading,
+.admin-group-plan-section {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-group-plan-meta {
+  gap: 8px;
+}
+
+.admin-owned-group-table th:nth-child(1) {
+  min-width: 180px;
+}
+
+.admin-owned-group-table td[rowspan] {
+  vertical-align: top;
+}
+
+.admin-user-detail-select {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--color-hairline);
+  border-radius: 12px;
+  background: var(--color-canvas);
+}
+
+.admin-operator-profile-table {
+  min-width: 780px;
+}
+
+.admin-operator-profile-table th {
+  width: 14%;
+}
+
+.admin-users-table .admin-table-button {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.admin-billing-history-table td,
+.admin-billing-history-table th {
+  overflow: hidden;
+}
+
+.admin-billing-item-cell strong {
+  color: var(--color-ink);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.admin-billing-delta {
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-billing-delta.is-positive {
+  color: #16a34a;
+}
+
+.admin-billing-delta.is-negative {
+  color: #dc2626;
+}
+
+.admin-operator-workspace-table th:nth-child(1) {
+  min-width: 220px;
+}
+
+.admin-operator-workspace-table th:nth-child(3),
+.admin-operator-workspace-table th:nth-child(4) {
+  min-width: 160px;
+}
+
+.admin-operator-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.admin-modal-backdrop {
+  position: fixed;
+  z-index: 80;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(10, 12, 16, 0.34);
+}
+
+.admin-modal {
+  display: grid;
+  width: min(680px, 100%);
+  max-height: calc(100vh - 48px);
+  gap: 18px;
+  overflow-y: auto;
+  border: 1px solid var(--color-hairline);
+  border-radius: 16px;
+  background: var(--color-canvas);
+  box-shadow: 0 24px 70px rgba(10, 12, 16, 0.22);
+  padding: 24px;
+}
+
+.admin-modal-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-modal-grid > label:last-child {
+  grid-column: 1 / -1;
+}
+
+.admin-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@media (max-width: 760px) {
+  .admin-member-line,
+  .admin-invite-line,
+  .admin-member-line-main {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-member-actions {
+    gap: 10px;
+  }
+
+  .admin-member-stack-actions {
+    gap: 12px;
+  }
+
+  .admin-modal-grid {
+    grid-template-columns: 1fr;
+  }
+}

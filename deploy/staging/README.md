@@ -76,7 +76,40 @@ For staging, `TANGENT_ALLOWED_ORIGINS` in `api.env` must include the Web origin,
 
 ```bash
 TANGENT_ALLOWED_ORIGINS=https://staging.example.com,http://localhost:3000
+CLERK_AUTHORIZED_PARTIES=https://staging.example.com
 ```
+
+When `CLERK_AUTHORIZED_PARTIES` or `TANGENT_ALLOWED_ORIGINS` is configured, FastAPI requires the Clerk JWT `azp` authorized party to match one of those origins.
+
+After the real operator signs in once and `/api/v1/auth/session` has created the local TANGENT user, grant admin access with either the local user id or the login email:
+
+```bash
+DATABASE_URL=postgresql://... \
+PYTHONPATH=services/api \
+python3 services/api/scripts/s3_admin_bootstrap.py \
+  --email operator@example.com \
+  --role owner \
+  --note "Staging operator bootstrap"
+```
+
+Then run the remote auth/admin smoke with a real Clerk token:
+
+```bash
+S1C_SMOKE_BASE_URL=https://api-staging.example.com \
+S1C_SMOKE_ORIGIN=https://staging.example.com \
+S1C_SMOKE_BEARER_TOKEN=<real-clerk-token> \
+python3 services/api/scripts/s1c_remote_admin_smoke.py
+```
+
+The remote smoke now checks:
+
+- `/api/v1/auth/session`
+- `/api/v1/admin/me`
+- `/api/v1/admin/operator/users?limit=3`
+- `/api/v1/admin/finance/summary`
+- `/api/v1/admin/ai/route-metrics?limit=5`
+
+It prints one JSON report with per-endpoint status, payload and CORS headers, and exits non-zero if any required admin check fails.
 
 ## Smoke Checklist
 
@@ -176,7 +209,7 @@ Web canvas:
 
 ## Current Gaps
 
-- Auth still needs real deployed smoke: local can use `dev-user` / `dev-workspace` plus dev bypass, but staging/prod must verify Clerk session, JWT issuer/JWKS/audience, exact allowed origins and the actual signed-in user's `admin_roles`.
+- Auth still needs real deployed smoke: local can use `dev-user` / `dev-workspace` plus dev bypass, but staging/prod must verify Clerk session, JWT issuer/JWKS/audience/authorized-party, exact allowed origins and the actual signed-in user's `admin_roles`.
 - Admin finance deploy smoke requires Alembic migrated to head before calling `/api/v1/admin/finance/summary`; stale DB schema can produce missing-column errors.
 - `TANGENT_POSTGRES_AUTO_CREATE_TABLES=0` is the preferred staging/prod path after running Alembic migrations. Temporary staging smoke can still use `1` while debugging a fresh database.
 - No AI provider proxy, model registry, run logs or credits yet.
