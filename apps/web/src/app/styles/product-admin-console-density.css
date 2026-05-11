@@ -9,7 +9,6 @@
 .admin-users-cell-ip,
 .admin-users-cell-register,
 .admin-users-cell-spent {
-  display: grid;
   gap: 2px;
   min-width: 0;
 }
@@ -19,6 +18,7 @@
 .admin-users-cell-spent strong,
 .admin-users-cell-email strong,
 .admin-users-cell-ip strong {
+  display: block;
   color: var(--color-ink);
   overflow: hidden;
   font-size: 11px;
@@ -38,6 +38,7 @@
 .admin-users-cell-ip small,
 .admin-users-cell-register small,
 .admin-users-cell-spent small {
+  display: block;
   overflow: hidden;
   color: var(--color-muted);
   font-size: 10px;
@@ -308,14 +309,27 @@
 }
 
 .admin-operator-profile-row-table {
+  min-width: 1220px;
+}
+
+.admin-users-table td.admin-users-cell-email,
+.admin-users-table td.admin-users-cell-id,
+.admin-users-table td.admin-users-cell-ip,
+.admin-users-table td.admin-users-cell-register,
+.admin-users-table td.admin-users-cell-spent {
+  display: table-cell;
   min-width: 0;
 }
 
 .admin-operator-profile-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 6px;
-  align-items: center;
+  justify-items: start;
+}
+
+.admin-operator-profile-row-table .admin-users-cell-email strong {
+  overflow-wrap: normal;
+  white-space: nowrap;
 }
 
 .admin-group-plan-summary {

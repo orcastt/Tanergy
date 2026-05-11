@@ -1,237 +1,284 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { AdminFinanceManualControls } from './AdminFinanceManualControls'
-import { useAdminFinanceResources } from './useAdminFinanceResources'
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import {
-  groupWorkspaceDirectoryKind,
-  loadAdminWorkspaceDirectoryResource,
-  primeAdminWorkspaceDirectoryResource,
-  readAdminWorkspaceDirectoryResource,
-  teamWorkspaceDirectoryKind,
-} from './adminDirectoryCache'
-import type { AdminDirectoryWorkspacesResource } from './adminTypes'
-import {
-  EmptyRow,
-  FilterSelect,
-  FilterTextInput,
-  MetaLine,
-  filterGridStyle,
-  formatDate,
-  formatNumber,
-  limitOptions,
-  schemaPreview,
-} from './adminAiShared'
+  loadAdminPlanCatalog,
+  type AdminPlanCatalogRecord,
+  updateAdminPlanCatalog,
+} from './adminFinanceClient'
+import { formatDate, selectStyle } from './adminAiShared'
 
-const paymentKinds = ['topup', 'workspace_topup', 'seat_purchase', 'team_subscription', 'collaborate_subscription']
-const ledgerReasons = ['topup_purchase', 'subscription_grant', 'usage_charge', 'usage_refund', 'seat_change_adjustment', 'admin_adjustment']
-const planFamilies = ['collaborate', 'team', 'enterprise', 'free']
-const ownerTypes = ['user', 'workspace']
-const emptyWorkspaces: AdminDirectoryWorkspacesResource = { limit: 100, offset: 0, ok: false, totalCount: 0, workspaces: [] }
-const financeTableTabs = [
-  { id: 'payments', label: 'Payments' },
-  { id: 'wallets', label: 'Wallets' },
-  { id: 'subscriptions', label: 'Subscriptions' },
-  { id: 'ledger', label: 'Credit ledger' },
-  { id: 'memberUsage', label: 'Member usage' },
-] as const
-type FinanceTableTab = (typeof financeTableTabs)[number]['id']
+type DraftFields = {
+  annualPriceUsd: string
+  billingPeriod: string
+  boardLimit: string
+  groupMemberLimit: string
+  groupWorkspaceLimit: string
+  includedCredits: string
+  monthlyPriceUsd: string
+  name: string
+  pageLimit: string
+  registrationCredits: string
+  seatMax: string
+  seatMin: string
+  seatRange: string
+}
+
+const emptyDrafts: Record<string, DraftFields> = {}
+const billingPeriodOptions = [
+  { label: 'none', value: 'none' },
+  { label: 'monthly_or_annual', value: 'monthly_or_annual' },
+  { label: 'contract', value: 'contract' },
+]
 
 export function AdminFinanceDashboard({
   enabled,
-  groupsSeed,
-  teamsSeed,
 }: {
   enabled: boolean
-  groupsSeed: AdminDirectoryWorkspacesResource
-  teamsSeed: AdminDirectoryWorkspacesResource
+  groupsSeed: unknown
+  teamsSeed: unknown
 }) {
-  const teamsQuery = useMemo(() => ({ kind: teamWorkspaceDirectoryKind, limit: 100 }), [])
-  const groupsQuery = useMemo(() => ({ kind: groupWorkspaceDirectoryKind, limit: 100 }), [])
-  const teamsSnapshot = readAdminWorkspaceDirectoryResource(teamsQuery)
-  const groupsSnapshot = readAdminWorkspaceDirectoryResource(groupsQuery)
-  const [teamsDirectory, setTeamsDirectory] = useState<AdminDirectoryWorkspacesResource>(teamsSeed.ok ? teamsSeed : teamsSnapshot.data ?? emptyWorkspaces)
-  const [groupsDirectory, setGroupsDirectory] = useState<AdminDirectoryWorkspacesResource>(groupsSeed.ok ? groupsSeed : groupsSnapshot.data ?? emptyWorkspaces)
-  const [limit, setLimit] = useState<(typeof limitOptions)[number]>(25)
-  const [workspaceId, setWorkspaceId] = useState('')
-  const [userId, setUserId] = useState('')
-  const [paymentKind, setPaymentKind] = useState('')
-  const [provider, setProvider] = useState('')
-  const [ledgerReason, setLedgerReason] = useState('')
-  const [ownerType, setOwnerType] = useState('')
-  const [planFamily, setPlanFamily] = useState('')
-  const [activeTable, setActiveTable] = useState<FinanceTableTab>('payments')
-
-  useEffect(() => {
-    if (teamsSeed.ok) primeAdminWorkspaceDirectoryResource(teamsQuery, teamsSeed)
-    if (groupsSeed.ok) primeAdminWorkspaceDirectoryResource(groupsQuery, groupsSeed)
-  }, [groupsQuery, groupsSeed, teamsQuery, teamsSeed])
+  const [plans, setPlans] = useState<AdminPlanCatalogRecord[]>([])
+  const [drafts, setDrafts] = useState<Record<string, DraftFields>>(emptyDrafts)
+  const [status, setStatus] = useState<'error' | 'loading' | 'ready'>('loading')
+  const [error, setError] = useState<string | null>(null)
+  const [savingPlanKey, setSavingPlanKey] = useState('')
+  const [message, setMessage] = useState('')
 
   useEffect(() => {
     if (!enabled) return
-    if (teamsDirectory.ok && groupsDirectory.ok) return
-
     let cancelled = false
-    Promise.allSettled([
-      loadAdminWorkspaceDirectoryResource(teamsQuery),
-      loadAdminWorkspaceDirectoryResource(groupsQuery),
-    ]).then((results) => {
-      if (cancelled) return
-      if (results[0].status === 'fulfilled') setTeamsDirectory(results[0].value)
-      if (results[1].status === 'fulfilled') setGroupsDirectory(results[1].value)
-    })
-
+    loadAdminPlanCatalog()
+      .then((resource) => {
+        if (cancelled) return
+        setPlans(resource.plans)
+        setDrafts(createDraftMap(resource.plans))
+        setError(resource.error ?? null)
+        setStatus('ready')
+      })
+      .catch((nextError: unknown) => {
+        if (cancelled) return
+        setPlans([])
+        setDrafts(emptyDrafts)
+        setError(nextError instanceof Error ? nextError.message : 'Plan catalog failed to load.')
+        setStatus('error')
+      })
     return () => {
       cancelled = true
     }
-  }, [enabled, groupsDirectory.ok, groupsQuery, teamsDirectory.ok, teamsQuery])
+  }, [enabled])
 
-  const workspaces = useMemo(
-    () => [...teamsDirectory.workspaces, ...groupsDirectory.workspaces],
-    [groupsDirectory.workspaces, teamsDirectory.workspaces],
+  const orderedPlans = useMemo(
+    () => [...plans].sort((left, right) => planOrder(left.planKey) - planOrder(right.planKey)),
+    [plans],
   )
-  const workspaceOptions = useMemo(
-    () => workspaces.map((workspace) => ({ label: `${workspace.name} (${workspace.kind})`, value: workspace.id })),
-    [workspaces],
-  )
-  const defaultWorkspaceId = workspaceOptions[0]?.value ?? ''
-  const selectedWorkspaceId = workspaceId || defaultWorkspaceId
-  const finance = useAdminFinanceResources(enabled, {
-    kind: paymentKind || undefined,
-    limit,
-    ownerType: ownerType || undefined,
-    planFamily: planFamily || undefined,
-    provider: provider || undefined,
-    reason: ledgerReason || undefined,
-    userId: userId || undefined,
-    workspaceId: selectedWorkspaceId || undefined,
-  })
-  const activeTableLabel = financeTableTabs.find((tab) => tab.id === activeTable)?.label ?? 'Payments'
+
+  async function savePlan(plan: AdminPlanCatalogRecord) {
+    const draft = drafts[plan.planKey]
+    if (!draft) return
+    setSavingPlanKey(plan.planKey)
+    setMessage('')
+    try {
+      const result = await updateAdminPlanCatalog(plan.planKey, {
+        annualPriceUsd: toNullableInt(draft.annualPriceUsd),
+        billingPeriod: draft.billingPeriod,
+        boardLimit: toNullableInt(draft.boardLimit),
+        groupMemberLimit: toNullableInt(draft.groupMemberLimit),
+        groupWorkspaceLimit: toNullableInt(draft.groupWorkspaceLimit),
+        includedCredits: toInt(draft.includedCredits),
+        monthlyPriceUsd: toNullableInt(draft.monthlyPriceUsd),
+        name: draft.name.trim(),
+        pageLimit: toNullableInt(draft.pageLimit),
+        registrationCredits: toInt(draft.registrationCredits),
+        seatMax: toNullableInt(draft.seatMax),
+        seatMin: toNullableInt(draft.seatMin),
+        seatRange: draft.seatRange.trim() || null,
+      })
+      const nextPlans = plans.map((item) => (item.planKey === plan.planKey ? result.plan : item))
+      setPlans(nextPlans)
+      setDrafts(createDraftMap(nextPlans))
+      setMessage(`${result.plan.name} saved.`)
+      setError(null)
+      setStatus('ready')
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : 'Plan update failed.')
+      setStatus('error')
+    } finally {
+      setSavingPlanKey('')
+    }
+  }
 
   return (
-    <>
-      <section className="management-panel management-panel-wide" aria-label="Finance reconciliation controls">
+    <section className="management-stack admin-plan-catalog-shell" aria-label="Subscription plan catalog">
+      <section className="management-panel management-panel-wide">
         <div className="management-panel-heading">
-          <div><h2>Finance reconciliation</h2></div>
+          <div><h2>Subscription plans</h2></div>
           <div className="management-actions">
-            <div className="management-segmented">{limitOptions.map((option) => <button key={option} className={option === limit ? 'is-active' : undefined} onClick={() => setLimit(option)} type="button">{option}</button>)}</div>
-            <button className="product-button product-button-secondary" onClick={finance.reload} type="button">Reload</button>
-            <span className={`management-status ${finance.status === 'ready' ? 'is-success' : ''}`}>{finance.status}</span>
+            {message ? <span className="management-inline-note">{message}</span> : null}
+            <span className={`management-status ${status === 'ready' ? 'is-success' : ''}`}>{status}</span>
           </div>
         </div>
-        {finance.error ? <p>{finance.error}</p> : null}
-        <div style={filterGridStyle(4)}>
-          <FilterSelect label="Workspace" onChange={setWorkspaceId} options={workspaceOptions} value={selectedWorkspaceId} />
-          <FilterTextInput label="User" leadingIcon="search" onChange={setUserId} placeholder="user_id" value={userId} />
-          <FilterSelect label="Payment kind" onChange={setPaymentKind} options={paymentKinds} value={paymentKind} />
-          <FilterTextInput label="Provider" onChange={setProvider} placeholder="manual_test, stripe" value={provider} />
-          <FilterSelect label="Ledger reason" onChange={setLedgerReason} options={ledgerReasons} value={ledgerReason} />
-          <FilterSelect label="Plan family" onChange={setPlanFamily} options={planFamilies} value={planFamily} />
-          <FilterSelect label="Owner type" onChange={setOwnerType} options={ownerTypes} value={ownerType} />
-          <button className="product-button product-button-secondary" onClick={() => {
-            setLedgerReason('')
-            setOwnerType('')
-            setPaymentKind('')
-            setPlanFamily('')
-            setProvider('')
-            setUserId('')
-          }} type="button">Clear filters</button>
-        </div>
+        {error ? <p>{error}</p> : null}
       </section>
 
-      <AdminFinanceManualControls
-        enabled={enabled}
-        onMutated={finance.reload}
-        selectedWorkspaceId={selectedWorkspaceId}
-        workspaces={workspaceOptions}
-      />
-
-      <section className="management-panel management-panel-wide" aria-label="Finance records">
-        <div className="management-panel-heading">
-          <div><h2>{activeTableLabel}</h2></div>
-          <div className="management-segmented management-console-tabs">
-            {financeTableTabs.map((tab) => (
-              <button key={tab.id} className={tab.id === activeTable ? 'is-active' : undefined} onClick={() => setActiveTable(tab.id)} type="button">
-                {tab.label}
+      {orderedPlans.map((plan) => {
+        const draft = drafts[plan.planKey]
+        if (!draft) return null
+        return (
+          <article className="management-panel management-panel-wide admin-plan-catalog-card" key={plan.planKey}>
+            <div className="management-panel-heading">
+              <div>
+                <h2>{plan.name}</h2>
+                <div className="admin-plan-catalog-meta">
+                  <span className="management-badge">{plan.planKey}</span>
+                  <span className="management-badge">{plan.planFamily}</span>
+                  {plan.updatedAt ? <span className="admin-users-range-label">{formatDate(plan.updatedAt)}</span> : null}
+                </div>
+              </div>
+              <button
+                className="product-button"
+                disabled={savingPlanKey === plan.planKey}
+                onClick={() => savePlan(plan)}
+                type="button"
+              >
+                {savingPlanKey === plan.planKey ? 'Saving' : 'Save'}
               </button>
-            ))}
-          </div>
-        </div>
-        <FinanceRecordsTable activeTable={activeTable} finance={finance} />
-      </section>
-    </>
+            </div>
+
+            <div className="admin-plan-catalog-grid">
+              <TextField label="Plan name" onChange={(value) => updateDraft(setDrafts, plan.planKey, 'name', value)} value={draft.name} />
+              <SelectField label="Billing period" onChange={(value) => updateDraft(setDrafts, plan.planKey, 'billingPeriod', value)} options={billingPeriodOptions} value={draft.billingPeriod} />
+              <NumberField label="Monthly price USD" onChange={(value) => updateDraft(setDrafts, plan.planKey, 'monthlyPriceUsd', value)} value={draft.monthlyPriceUsd} />
+              <NumberField label="Annual price USD" onChange={(value) => updateDraft(setDrafts, plan.planKey, 'annualPriceUsd', value)} value={draft.annualPriceUsd} />
+              <NumberField label="Included credits" onChange={(value) => updateDraft(setDrafts, plan.planKey, 'includedCredits', value)} value={draft.includedCredits} />
+              <NumberField label="Board limit" onChange={(value) => updateDraft(setDrafts, plan.planKey, 'boardLimit', value)} placeholder="blank = unlimited" value={draft.boardLimit} />
+              <NumberField label="Page limit" onChange={(value) => updateDraft(setDrafts, plan.planKey, 'pageLimit', value)} placeholder="blank = unlimited" value={draft.pageLimit} />
+              <NumberField label="Registration credits" onChange={(value) => updateDraft(setDrafts, plan.planKey, 'registrationCredits', value)} value={draft.registrationCredits} />
+              {plan.planFamily === 'collaborate' ? (
+                <>
+                  <NumberField label="Group limit" onChange={(value) => updateDraft(setDrafts, plan.planKey, 'groupWorkspaceLimit', value)} value={draft.groupWorkspaceLimit} />
+                  <NumberField label="Group member cap" onChange={(value) => updateDraft(setDrafts, plan.planKey, 'groupMemberLimit', value)} value={draft.groupMemberLimit} />
+                </>
+              ) : null}
+              {plan.planFamily === 'team' ? (
+                <>
+                  <NumberField label="Seat min" onChange={(value) => updateDraft(setDrafts, plan.planKey, 'seatMin', value)} value={draft.seatMin} />
+                  <NumberField label="Seat max" onChange={(value) => updateDraft(setDrafts, plan.planKey, 'seatMax', value)} value={draft.seatMax} />
+                  <TextField label="Seat range" onChange={(value) => updateDraft(setDrafts, plan.planKey, 'seatRange', value)} value={draft.seatRange} />
+                </>
+              ) : null}
+            </div>
+          </article>
+        )
+      })}
+    </section>
   )
 }
 
-function FinanceRecordsTable({
-  activeTable,
-  finance,
+function createDraftMap(plans: AdminPlanCatalogRecord[]) {
+  return Object.fromEntries(plans.map((plan) => [plan.planKey, {
+    annualPriceUsd: toFieldValue(plan.annualPriceUsd),
+    billingPeriod: plan.billingPeriod,
+    boardLimit: toFieldValue(plan.boardLimit),
+    groupMemberLimit: toFieldValue(plan.groupMemberLimit),
+    groupWorkspaceLimit: toFieldValue(plan.groupWorkspaceLimit),
+    includedCredits: String(plan.includedCredits ?? 0),
+    monthlyPriceUsd: toFieldValue(plan.monthlyPriceUsd),
+    name: plan.name,
+    pageLimit: toFieldValue(plan.pageLimit),
+    registrationCredits: String(plan.registrationCredits ?? 0),
+    seatMax: toFieldValue(plan.seatMax),
+    seatMin: toFieldValue(plan.seatMin),
+    seatRange: plan.seatRange ?? '',
+  } satisfies DraftFields]))
+}
+
+function updateDraft(
+  setDrafts: Dispatch<SetStateAction<Record<string, DraftFields>>>,
+  planKey: string,
+  field: keyof DraftFields,
+  value: string,
+) {
+  setDrafts((current) => ({
+    ...current,
+    [planKey]: {
+      ...current[planKey],
+      [field]: value,
+    },
+  }))
+}
+
+function NumberField({
+  label,
+  onChange,
+  placeholder,
+  value,
 }: {
-  activeTable: FinanceTableTab
-  finance: ReturnType<typeof useAdminFinanceResources>
+  label: string
+  onChange: (value: string) => void
+  placeholder?: string
+  value: string
 }) {
-  if (activeTable === 'wallets') return <WalletsPanel wallets={finance.wallets.wallets} />
-  if (activeTable === 'subscriptions') return <SubscriptionsPanel subscriptions={finance.subscriptions.subscriptions} />
-  if (activeTable === 'ledger') return <LedgerPanel ledger={finance.ledger.ledger} />
-  if (activeTable === 'memberUsage') return <MemberUsagePanel rows={finance.memberUsage.memberUsage} />
-  return <PaymentsPanel payments={finance.payments.payments} />
-}
-
-function PaymentsPanel({ payments }: { payments: ReturnType<typeof useAdminFinanceResources>['payments']['payments'] }) {
   return (
-    <div className="management-table-wrap"><table className="management-table">
-      <thead><tr><th>Payment</th><th>Amount</th><th>Status</th><th>Owner</th></tr></thead>
-      <tbody>{payments.length ? payments.map((payment) => (
-        <tr key={payment.id}><td><strong>{payment.kind}</strong><MetaLine>{payment.id}</MetaLine><MetaLine>{payment.provider} · {schemaPreview(payment.metadata)}</MetaLine></td><td>{formatMoney(payment.amountCents)} {payment.currency.toUpperCase()}</td><td><span className="management-badge">{payment.status}</span></td><td>{payment.ownerType ?? 'unknown'}<MetaLine>{payment.ownerId ?? payment.accountId}</MetaLine></td></tr>
-      )) : <EmptyRow colSpan={4} message="No payments match these filters." />}</tbody>
-    </table></div>
+    <label className="admin-plan-catalog-field">
+      <span className="management-field-label">{label}</span>
+      <input min="0" onChange={(event) => onChange(event.target.value)} placeholder={placeholder} style={selectStyle} type="number" value={value} />
+    </label>
   )
 }
 
-function WalletsPanel({ wallets }: { wallets: ReturnType<typeof useAdminFinanceResources>['wallets']['wallets'] }) {
+function TextField({
+  label,
+  onChange,
+  value,
+}: {
+  label: string
+  onChange: (value: string) => void
+  value: string
+}) {
   return (
-    <div className="management-table-wrap"><table className="management-table">
-      <thead><tr><th>Account</th><th>Owner</th><th>Balance</th><th>Status</th></tr></thead>
-      <tbody>{wallets.length ? wallets.map((wallet) => (
-        <tr key={wallet.accountId}><td><strong>{wallet.accountKind}</strong><MetaLine>{wallet.accountId}</MetaLine></td><td>{wallet.ownerType}<MetaLine>{wallet.ownerId}</MetaLine></td><td>{formatNumber(wallet.balanceCredits)}</td><td><span className="management-badge">{wallet.status}</span><MetaLine>{formatDate(wallet.updatedAt)}</MetaLine></td></tr>
-      )) : <EmptyRow colSpan={4} message="No wallets match these filters." />}</tbody>
-    </table></div>
+    <label className="admin-plan-catalog-field">
+      <span className="management-field-label">{label}</span>
+      <input onChange={(event) => onChange(event.target.value)} style={selectStyle} type="text" value={value} />
+    </label>
   )
 }
 
-function SubscriptionsPanel({ subscriptions }: { subscriptions: ReturnType<typeof useAdminFinanceResources>['subscriptions']['subscriptions'] }) {
+function SelectField({
+  label,
+  onChange,
+  options,
+  value,
+}: {
+  label: string
+  onChange: (value: string) => void
+  options: { label: string; value: string }[]
+  value: string
+}) {
   return (
-    <div className="management-table-wrap"><table className="management-table">
-      <thead><tr><th>Plan</th><th>Owner</th><th>Seats</th><th>Period</th></tr></thead>
-      <tbody>{subscriptions.length ? subscriptions.map((subscription) => (
-        <tr key={subscription.id}><td><strong>{subscription.planKey}</strong><MetaLine>{subscription.planFamily} · {subscription.status}</MetaLine></td><td>{subscription.ownerType}<MetaLine>{subscription.ownerId}</MetaLine></td><td>{subscription.seatCapacity}</td><td>{subscription.currentPeriodEnd ? formatDate(subscription.currentPeriodEnd) : 'Open ended'}<MetaLine>{subscription.provider}</MetaLine></td></tr>
-      )) : <EmptyRow colSpan={4} message="No subscriptions match these filters." />}</tbody>
-    </table></div>
+    <label className="admin-plan-catalog-field">
+      <span className="management-field-label">{label}</span>
+      <select onChange={(event) => onChange(event.target.value)} style={selectStyle} value={value}>
+        {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+      </select>
+    </label>
   )
 }
 
-function LedgerPanel({ ledger }: { ledger: ReturnType<typeof useAdminFinanceResources>['ledger']['ledger'] }) {
-  return (
-    <div className="management-table-wrap"><table className="management-table">
-      <thead><tr><th>Reason</th><th>Delta</th><th>Actor</th><th>Account</th></tr></thead>
-      <tbody>{ledger.length ? ledger.map((entry) => (
-        <tr key={entry.id}><td><strong>{entry.reason}</strong><MetaLine>{formatDate(entry.createdAt)}</MetaLine></td><td>{formatNumber(entry.creditsDelta)}</td><td>{entry.actorUserId ?? 'System'}<MetaLine>{entry.workspaceId}</MetaLine></td><td>{entry.accountKind ?? 'wallet'}<MetaLine>{entry.accountId}</MetaLine></td></tr>
-      )) : <EmptyRow colSpan={4} message="No ledger rows match these filters." />}</tbody>
-    </table></div>
-  )
+function planOrder(planKey: string) {
+  return ['free_canvas', 'collaborate_start', 'collaborate_plus', 'team_start', 'team_growth', 'enterprise'].indexOf(planKey)
 }
 
-function MemberUsagePanel({ rows }: { rows: ReturnType<typeof useAdminFinanceResources>['memberUsage']['memberUsage'] }) {
-  return (
-    <div className="management-table-wrap"><table className="management-table">
-      <thead><tr><th>Member</th><th>Role</th><th>Usage</th><th>Last charge</th></tr></thead>
-      <tbody>{rows.length ? rows.map((row) => (
-        <tr key={`${row.workspaceId}-${row.userId}`}><td><strong>{row.displayName}</strong><MetaLine>{row.email ?? row.userId}</MetaLine></td><td><span className="management-badge">{row.role}</span></td><td>{formatNumber(row.usageCredits)}<MetaLine>{row.chargeCount} charges</MetaLine></td><td>{row.lastUsageAt ? formatDate(row.lastUsageAt) : 'No usage yet'}</td></tr>
-      )) : <EmptyRow colSpan={4} message="No member usage rows for this workspace." />}</tbody>
-    </table></div>
-  )
+function toFieldValue(value: null | number | string | undefined) {
+  if (value === null || value === undefined || value === '') return ''
+  return String(value)
 }
 
-function formatMoney(amountCents: number) {
-  return `$${(amountCents / 100).toLocaleString('en-US', { maximumFractionDigits: 2, minimumFractionDigits: 2 })}`
+function toInt(value: string) {
+  return Math.max(0, Math.trunc(Number.parseFloat(value) || 0))
+}
+
+function toNullableInt(value: string) {
+  if (!value.trim()) return null
+  return Math.max(0, Math.trunc(Number.parseFloat(value) || 0))
 }

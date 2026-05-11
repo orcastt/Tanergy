@@ -6,6 +6,7 @@ import {
   NumberInput,
   PlanScheduleFields,
   StrictSelect,
+  TeamMonthlyScheduleFields,
   teamPlans,
   TextInput,
   Toggle,
@@ -38,7 +39,6 @@ export function AdminUserFinanceActions({
 }) {
   const [collaborateGrantIncluded, setCollaborateGrantIncluded] = useState(true)
   const [collaborateDurationCount, setCollaborateDurationCount] = useState('1')
-  const [collaborateDurationUnitDays, setCollaborateDurationUnitDays] = useState('30')
   const [collaborateEffectMode, setCollaborateEffectMode] = useState('immediate')
   const [collaboratePlanKey, setCollaboratePlanKey] = useState('collaborate_start')
   const [groupWorkspaceName, setGroupWorkspaceName] = useState('')
@@ -47,13 +47,11 @@ export function AdminUserFinanceActions({
   const [status, setStatus] = useState('ready')
   const [teamGrantIncluded, setTeamGrantIncluded] = useState(true)
   const [teamDurationCount, setTeamDurationCount] = useState('1')
-  const [teamDurationUnitDays, setTeamDurationUnitDays] = useState('30')
   const [teamEffectMode, setTeamEffectMode] = useState('immediate')
   const [teamExtraCredits, setTeamExtraCredits] = useState('0')
   const [teamPlanKey, setTeamPlanKey] = useState('team_start')
   const [teamSeats, setTeamSeats] = useState('2')
   const [teamWorkspaceName, setTeamWorkspaceName] = useState('')
-  const [topupAmountCents, setTopupAmountCents] = useState('0')
   const [topupCredits, setTopupCredits] = useState('100')
   const hasReason = Boolean(note.trim())
 
@@ -91,13 +89,11 @@ export function AdminUserFinanceActions({
         <section className="manual-finance-block">
           <h3>User wallet</h3>
           <NumberInput label="Credits" onChange={setTopupCredits} value={topupCredits} />
-          <NumberInput label="Amount cents" onChange={setTopupAmountCents} value={topupAmountCents} />
           <div className="management-actions is-start">
             <button
               className="product-button"
               disabled={!enabled || running || !userId || !hasReason}
               onClick={() => run('Top up user', () => adminManualTopupUser({
-                amountCents: toInt(topupAmountCents),
                 credits: toFloat(topupCredits),
                 note,
                 userId,
@@ -127,10 +123,8 @@ export function AdminUserFinanceActions({
           <div className="management-field-grid two">
             <PlanScheduleFields
               durationCount={collaborateDurationCount}
-              durationUnitDays={collaborateDurationUnitDays}
               effectMode={collaborateEffectMode}
               onDurationCountChange={setCollaborateDurationCount}
-              onDurationUnitDaysChange={setCollaborateDurationUnitDays}
               onEffectModeChange={setCollaborateEffectMode}
             />
           </div>
@@ -141,7 +135,7 @@ export function AdminUserFinanceActions({
               disabled={!enabled || running || !userId || !hasReason}
               onClick={() => run('Assign group plan', () => adminManualSetCollaboratePlan({
                 durationCount: toInt(collaborateDurationCount),
-                durationUnitDays: toInt(collaborateDurationUnitDays),
+                durationUnitDays: 30,
                 effectMode: collaborateEffectMode,
                 grantIncludedCredits: collaborateGrantIncluded,
                 note,
@@ -187,12 +181,10 @@ export function AdminUserFinanceActions({
           <NumberInput label="Seats" onChange={setTeamSeats} value={teamSeats} />
           <NumberInput label="Extra credits" onChange={setTeamExtraCredits} value={teamExtraCredits} />
           <div className="management-field-grid two">
-            <PlanScheduleFields
+            <TeamMonthlyScheduleFields
               durationCount={teamDurationCount}
-              durationUnitDays={teamDurationUnitDays}
               effectMode={teamEffectMode}
               onDurationCountChange={setTeamDurationCount}
-              onDurationUnitDaysChange={setTeamDurationUnitDays}
               onEffectModeChange={setTeamEffectMode}
             />
           </div>
@@ -202,7 +194,7 @@ export function AdminUserFinanceActions({
             disabled={!enabled || running || !userId || !teamWorkspaceName.trim() || !hasReason}
             onClick={() => run('Create team workspace', () => adminManualCreateTeamWorkspace({
               durationCount: toInt(teamDurationCount),
-              durationUnitDays: toInt(teamDurationUnitDays),
+              durationUnitDays: 30,
               effectMode: teamEffectMode,
               extraCredits: toFloat(teamExtraCredits),
               grantIncludedCredits: teamGrantIncluded,

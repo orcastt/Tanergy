@@ -27,6 +27,7 @@ export function GroupPlanRow({
 
 export function buildTeamPlanActions(workspace: AdminOperatorWorkspacePlan, onAction: (action: AdminOperatorAction) => void) {
   const isCurrentPlan = isCurrentPlanStatus(workspace.planStatus)
+  const atSeatCap = workspace.seatCapacity >= 15
   const actions = []
   if (!isCurrentPlan) {
     actions.push({
@@ -42,7 +43,9 @@ export function buildTeamPlanActions(workspace: AdminOperatorWorkspacePlan, onAc
     }
     actions.push({
       label: 'Buy seat',
+      disabled: atSeatCap,
       onClick: () => onAction({ mode: 'upgrade', targetPlanKey: workspace.planKey, title: `Buy seats for ${workspace.workspaceName}`, type: 'team-plan', workspace }),
+      title: atSeatCap ? 'Team seat cap is 15.' : undefined,
     })
     actions.push({
       label: workspace.planStatus === 'paused' ? 'Unfreeze' : 'Freeze',

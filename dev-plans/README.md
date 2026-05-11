@@ -1,6 +1,6 @@
 # Dev Plans Index
 
-**Updated**: 2026-05-09
+**Updated**: 2026-05-11
 
 Detailed product, architecture and state truth now lives in:
 
@@ -40,7 +40,7 @@ Detailed product, architecture and state truth now lives in:
 
 `Archive/` contains completed or superseded historical plans and handoffs. Do not use archive files as active truth.
 
-`Archive/overseas-cost-growth-forecast.md` remains useful as old market/cost research, but the active commercial implementation strategy is now `s3-billing-team-entitlements-strategy-2026-05-06.md`.
+`Archive/overseas-cost-growth-forecast.md` remains useful as old market/cost research, and `s3-billing-team-entitlements-strategy-2026-05-06.md` remains only a superseded benchmark reference. The active commercial implementation strategy is `s3-team-group-wallets-membership-billing-plan-2026-05-08.md`.
 
 ## Update Rules
 
@@ -52,7 +52,7 @@ Detailed product, architecture and state truth now lives in:
 
 # Dev Plans 索引
 
-**更新日期**：2026-05-09
+**更新日期**：2026-05-11
 
 详细的产品、架构和状态事实现在位于：
 
@@ -92,7 +92,7 @@ Detailed product, architecture and state truth now lives in:
 
 `Archive/` 包含已完成或已被取代的历史计划和 handoffs。不要把 archive 文件当作活跃事实来源。
 
-`Archive/overseas-cost-growth-forecast.md` 仍可作为旧市场 / 成本研究参考，但活跃商业实现策略现在是 `s3-billing-team-entitlements-strategy-2026-05-06.md`。
+`Archive/overseas-cost-growth-forecast.md` 仍可作为旧市场 / 成本研究参考，`s3-billing-team-entitlements-strategy-2026-05-06.md` 只保留为已被取代的基准参考。当前活跃商业实现策略是 `s3-team-group-wallets-membership-billing-plan-2026-05-08.md`。
 
 ## 更新规则
 

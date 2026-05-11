@@ -6,6 +6,7 @@ import {
   NumberInput,
   PlanScheduleFields,
   StrictSelect,
+  TeamMonthlyScheduleFields,
   teamPlans,
   Toggle,
   toFloat,
@@ -34,19 +35,16 @@ export function AdminFinanceManualControls({
   selectedWorkspaceId: string
   workspaces: WorkspaceOption[]
 }) {
-  const [amountCents, setAmountCents] = useState('0')
   const [credits, setCredits] = useState('100')
   const [groupGrantIncluded, setGroupGrantIncluded] = useState(true)
   const [note, setNote] = useState('')
   const [groupDurationCount, setGroupDurationCount] = useState('1')
-  const [groupDurationUnitDays, setGroupDurationUnitDays] = useState('30')
   const [groupEffectMode, setGroupEffectMode] = useState('immediate')
   const [planUserId, setPlanUserId] = useState('')
   const [selectedCollaboratePlan, setSelectedCollaboratePlan] = useState('collaborate_start')
   const [selectedTeamPlan, setSelectedTeamPlan] = useState('team_start')
   const [teamGrantIncluded, setTeamGrantIncluded] = useState(true)
   const [teamDurationCount, setTeamDurationCount] = useState('1')
-  const [teamDurationUnitDays, setTeamDurationUnitDays] = useState('30')
   const [teamEffectMode, setTeamEffectMode] = useState('immediate')
   const [subscriptionId, setSubscriptionId] = useState('')
   const [teamSeats, setTeamSeats] = useState('2')
@@ -88,15 +86,13 @@ export function AdminFinanceManualControls({
           <h3>User wallet</h3>
           <FilterTextInput label="User" leadingIcon="search" onChange={setTopupUserId} placeholder="user_id" value={topupUserId} />
           <NumberInput label="Credits" onChange={setCredits} value={credits} />
-          <NumberInput label="Amount cents" onChange={setAmountCents} value={amountCents} />
-          <button className="product-button" disabled={!enabled || running || !topupUserId || !hasReason} onClick={() => runMutation('Top up user', () => adminManualTopupUser({ amountCents: toInt(amountCents), credits: toFloat(credits), note, userId: topupUserId }))} type="button">Top up user</button>
+          <button className="product-button" disabled={!enabled || running || !topupUserId || !hasReason} onClick={() => runMutation('Top up user', () => adminManualTopupUser({ credits: toFloat(credits), note, userId: topupUserId }))} type="button">Top up user</button>
         </div>
         <div className="manual-finance-block">
           <h3>Team wallet</h3>
           <FilterSelect label="Workspace" onChange={setWorkspaceId} options={workspaces} value={resolvedWorkspaceId} />
           <NumberInput label="Credits" onChange={setCredits} value={credits} />
-          <NumberInput label="Amount cents" onChange={setAmountCents} value={amountCents} />
-          <button className="product-button" disabled={!enabled || running || !resolvedWorkspaceId || !hasReason} onClick={() => runMutation('Top up team', () => adminManualTopupWorkspace({ amountCents: toInt(amountCents), credits: toFloat(credits), note, workspaceId: resolvedWorkspaceId }))} type="button">Top up team</button>
+          <button className="product-button" disabled={!enabled || running || !resolvedWorkspaceId || !hasReason} onClick={() => runMutation('Top up team', () => adminManualTopupWorkspace({ credits: toFloat(credits), note, workspaceId: resolvedWorkspaceId }))} type="button">Top up team</button>
         </div>
         <div className="manual-finance-block">
           <h3>Group plan</h3>
@@ -104,30 +100,26 @@ export function AdminFinanceManualControls({
           <StrictSelect label="Plan" onChange={setSelectedCollaboratePlan} options={collaboratePlans} value={selectedCollaboratePlan} />
           <PlanScheduleFields
             durationCount={groupDurationCount}
-            durationUnitDays={groupDurationUnitDays}
             effectMode={groupEffectMode}
             onDurationCountChange={setGroupDurationCount}
-            onDurationUnitDaysChange={setGroupDurationUnitDays}
             onEffectModeChange={setGroupEffectMode}
           />
           <Toggle checked={groupGrantIncluded} label="Grant included credits" onChange={setGroupGrantIncluded} />
-          <button className="product-button" disabled={!enabled || running || !planUserId || !hasReason} onClick={() => runMutation('Set group plan', () => adminManualSetCollaboratePlan({ durationCount: toInt(groupDurationCount), durationUnitDays: toInt(groupDurationUnitDays), effectMode: groupEffectMode, grantIncludedCredits: groupGrantIncluded, note, planKey: selectedCollaboratePlan, userId: planUserId }))} type="button">Set group plan</button>
+          <button className="product-button" disabled={!enabled || running || !planUserId || !hasReason} onClick={() => runMutation('Set group plan', () => adminManualSetCollaboratePlan({ durationCount: toInt(groupDurationCount), durationUnitDays: 30, effectMode: groupEffectMode, grantIncludedCredits: groupGrantIncluded, note, planKey: selectedCollaboratePlan, userId: planUserId }))} type="button">Set group plan</button>
         </div>
         <div className="manual-finance-block">
           <h3>Team plan</h3>
           <FilterSelect label="Workspace" onChange={setWorkspaceId} options={workspaces} value={resolvedWorkspaceId} />
           <StrictSelect label="Plan" onChange={setSelectedTeamPlan} options={teamPlans} value={selectedTeamPlan} />
           <NumberInput label="Seats" onChange={setTeamSeats} value={teamSeats} />
-          <PlanScheduleFields
+          <TeamMonthlyScheduleFields
             durationCount={teamDurationCount}
-            durationUnitDays={teamDurationUnitDays}
             effectMode={teamEffectMode}
             onDurationCountChange={setTeamDurationCount}
-            onDurationUnitDaysChange={setTeamDurationUnitDays}
             onEffectModeChange={setTeamEffectMode}
           />
           <Toggle checked={teamGrantIncluded} label="Grant included credits" onChange={setTeamGrantIncluded} />
-          <button className="product-button" disabled={!enabled || running || !resolvedWorkspaceId || !hasReason} onClick={() => runMutation('Set team plan', () => adminManualSetTeamPlan({ durationCount: toInt(teamDurationCount), durationUnitDays: toInt(teamDurationUnitDays), effectMode: teamEffectMode, grantIncludedCredits: teamGrantIncluded, note, planKey: selectedTeamPlan, seatCapacity: toInt(teamSeats), workspaceId: resolvedWorkspaceId }))} type="button">Set team plan</button>
+          <button className="product-button" disabled={!enabled || running || !resolvedWorkspaceId || !hasReason} onClick={() => runMutation('Set team plan', () => adminManualSetTeamPlan({ durationCount: toInt(teamDurationCount), durationUnitDays: 30, effectMode: teamEffectMode, grantIncludedCredits: teamGrantIncluded, note, planKey: selectedTeamPlan, seatCapacity: toInt(teamSeats), workspaceId: resolvedWorkspaceId }))} type="button">Set team plan</button>
         </div>
       </div>
       <div className="manual-finance-cancel">

@@ -1,5 +1,12 @@
 import type { AdminOperatorWorkspacePlan } from './adminTypes'
 
+export type AdminOperatorCreditTarget = {
+  id: string
+  kind: 'personal' | 'team_wallet'
+  label: string
+  workspaceId?: string
+}
+
 export type AdminOperatorPlanOperationMode =
   | 'assign'
   | 'delete'
@@ -48,6 +55,8 @@ export type AdminOperatorAction =
   | { title: string; type: 'user-topup'; userId: string }
   | { title: string; type: 'workspace-deduct'; workspaceId: string }
   | { title: string; type: 'workspace-topup'; workspaceId: string }
+  | { targets: AdminOperatorCreditTarget[]; title: string; type: 'billing-deduct'; userId: string }
+  | { targets: AdminOperatorCreditTarget[]; title: string; type: 'billing-topup'; userId: string }
 
 export function getAdminOperatorActionKey(action: AdminOperatorAction) {
   switch (action.type) {
@@ -82,5 +91,8 @@ export function getAdminOperatorActionKey(action: AdminOperatorAction) {
     case 'user-topup':
     case 'user-status':
       return `${action.type}:${action.userId}`
+    case 'billing-deduct':
+    case 'billing-topup':
+      return `${action.type}:${action.userId}:${action.targets.map((target) => target.id).join(',')}`
   }
 }

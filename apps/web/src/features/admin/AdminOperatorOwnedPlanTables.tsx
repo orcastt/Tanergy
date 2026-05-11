@@ -174,14 +174,22 @@ function workspaceMemberActions(
   workspace: AdminOperatorWorkspacePlan,
   onAction: (action: AdminOperatorAction) => void,
 ) {
+  const isGroupFull = workspace.kind === 'group_workspace' && workspace.memberCount >= 15
+  const isTeamFull = workspace.kind === 'team_workspace' && workspace.seatCapacity > 0 && workspace.memberCount >= workspace.seatCapacity
+  const disabled = isGroupFull || isTeamFull
+  const title = isGroupFull ? 'Group member cap is 15.' : isTeamFull ? 'No Team seats remain.' : undefined
   return [
     {
+      disabled,
       label: 'Add member',
       onClick: () => onAction({ title: `Add member to ${workspace.workspaceName}`, type: 'workspace-member-add', workspaceId: workspace.id }),
+      title,
     },
     {
+      disabled,
       label: 'Invite',
       onClick: () => onAction({ title: `Invite to ${workspace.workspaceName}`, type: 'workspace-invite-create', workspaceId: workspace.id }),
+      title,
     },
   ]
 }

@@ -279,6 +279,7 @@ class AdminRoleListResponse(TangentApiModel):
 class AdminRoleGrantRequest(TangentApiModel):
     note: Optional[str] = None
     permissions: dict[str, Any] = Field(default_factory=dict)
+    reason: str = Field(min_length=1)
     role: str
     user_id: str = Field(alias="userId")
 

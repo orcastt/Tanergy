@@ -1,7 +1,7 @@
 # S3 Team/Group Wallets, Membership And Billing Plan
 
 **Created**: 2026-05-08
-**Status**: Active tactical plan.
+**Status**: Active tactical plan; local Team/Group wallet, membership, payer and admin-operator acceptance gates are green, with staging/provider-depth still remaining.
 **Owner slice**: S3, with S1A/S1C/S1D/S2 dependencies.
 
 ## Purpose
@@ -163,7 +163,7 @@ Admin/developer UI:
 - [x] Manual admin billing bridge for Stripe-unavailable operations: user wallet top-up/deduction, Team wallet top-up/deduction, Collaborate/Group plan assignment, Team plan assignment, Team/Group creation, subscription cancellation and workspace deletion, all audited through `/admin` finance controls.
 - [x] Manual admin writes require an operation reason and use `effectMode` plus `durationCount * durationUnitDays` for plan windows instead of date-picker expiry edits.
 - [x] Split `/admin` into Overview, Users, Teams, Groups, AI API Routes, Finance and Access tabs backed by admin directory APIs and AI route metrics.
-- [ ] Rebuild admin operator console around the new inventory/detail mock: fast User inventory, one-call user detail bundle, Billing / Team Plan / Joined Team / Group Plan / Joined Group tabs, modal operations and no helper-copy UI. Detailed checklist lives in `dev-plans/s3-admin-operator-console-redesign-2026-05-09.md`.
+- [x] Rebuild admin operator console around the new inventory/detail mock: fast User inventory, one-call user detail bundle, Billing / Team Plan / Joined Team / Group Plan / Joined Group tabs, modal operations and no helper-copy UI. Local acceptance against the reference inventory/detail shape passed on 2026-05-11; staging and higher-volume smoke remain tracked in `dev-plans/s3-admin-operator-console-redesign-2026-05-09.md`.
 - Keep route/pricing publish/rollback audited.
 
 Tests/smoke:
@@ -173,6 +173,7 @@ Tests/smoke:
 - [x] Local `/admin` finance UI smoke against disposable Postgres-backed API; payment, wallet, subscription, ledger and member usage reads returned 200.
 - [x] Local manual/hosted payment smoke: manual Team wallet top-up, manual Team seat checkout + assignment, hosted redirect URL and hosted manual-complete 409.
 - [x] Local live API smoke: `/api/v1/admin/directory/users`, `/api/v1/admin/directory/workspaces` and `/api/v1/admin/ai/route-metrics` returned 200 from `127.0.0.1:8100`; `/admin` returned 200 with the dev-bypass cookie.
+- [x] Local admin-operator contract gate: full frontend lint/typecheck/build, backend compileall and `TANGENT_SKIP_ENV_FILE_LOAD=1` pytest passed after Team seat caps, Group caps, paused Team entitlement, joined-Team actor ledger and admin role reason enforcement were tightened.
 - Admin can explain each smoke run.
 
 ## Phase 7: Payment, Renewal And Finance Depth

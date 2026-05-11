@@ -61,22 +61,6 @@ export type SubscriptionOverview = {
   totalSeatsUsed: number
 }
 
-const annualMonthlyPriceByPlan: Partial<Record<PlanKey, number>> = {
-  collaborate_plus: 20,
-  collaborate_start: 15,
-  free_canvas: 0,
-  team_growth: 40,
-  team_start: 20,
-}
-
-const monthlyPriceByPlan: Partial<Record<PlanKey, number>> = {
-  collaborate_plus: 25,
-  collaborate_start: 18,
-  free_canvas: 0,
-  team_growth: 45,
-  team_start: 25,
-}
-
 const subscriptionPlanCards: SubscriptionPlanCard[] = [
   {
     audience: 'Solo boards',
@@ -135,7 +119,7 @@ export function getTeamBillingCards(options: { includeJoined?: boolean } = {}) {
     .map((item, index) => {
       const planKey = item.planKey as Extract<PlanKey, 'team_growth' | 'team_start'>
       const totalCredits = planCatalog[planKey].includedCredits
-      const seatLimit = planKey === 'team_growth' ? 15 : 10
+      const seatLimit = planCatalog[planKey].seatMax ?? 15
       const seatsUsed = Math.max(
         item.relationship === 'created' ? 2 : 1,
         Math.min(item.memberInitials.length + 1, seatLimit - (item.relationship === 'joined' ? 2 : 0)),
@@ -166,7 +150,7 @@ export function getGroupBillingSummary(): GroupBillingSummary {
   const totalCredits = planCatalog[activePlanKey].includedCredits
 
   return {
-    groupLimit: 10,
+    groupLimit: planCatalog[activePlanKey].groupWorkspaceLimit ?? 10,
     groupsCreated: createdGroups.length,
     id: 'group-subscription',
     joinedGroups: joinedGroups.length,
@@ -262,8 +246,8 @@ export function formatPlanBadge(planKey: PlanKey) {
 export function formatPlanPrice(planKey: PlanKey, cycle: PricingCycle) {
   if (planKey === 'enterprise') return 'Custom'
   const amount = cycle === 'annual'
-    ? annualMonthlyPriceByPlan[planKey]
-    : monthlyPriceByPlan[planKey]
+    ? planCatalog[planKey].annualPriceUsd
+    : planCatalog[planKey].monthlyPriceUsd
   if (amount === undefined) return 'Custom'
   if (amount === 0) return '$0'
   const suffix = planKey.startsWith('team_') ? '/seat/mo' : '/mo'

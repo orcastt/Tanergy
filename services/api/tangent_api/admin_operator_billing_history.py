@@ -64,18 +64,52 @@ def _load_payment_rows(cursor: object, user_id: str, limit: int) -> list[AdminOp
 
 def _load_ledger_rows(cursor: object, user_id: str, limit: int) -> list[AdminOperatorBillingHistoryRow]:
     cursor.execute(
-        f"""
-        {RELEVANT_CONTEXT_CTE}
+        """
+        WITH owned_workspaces AS (
+            SELECT id, COALESCE(name, 'Workspace') AS workspace_name
+            FROM tangent_workspaces
+            WHERE owner_id = %s
+              AND COALESCE(status, 'active') <> 'deleted'
+              AND kind IN ('team_workspace', 'group_workspace')
+        ),
+        joined_team_workspaces AS (
+            SELECT w.id, COALESCE(w.name, 'Workspace') AS workspace_name
+            FROM tangent_workspace_members wm
+            JOIN tangent_workspaces w ON w.id = wm.workspace_id
+            WHERE wm.user_id = %s
+              AND w.kind = 'team_workspace'
+              AND COALESCE(w.status, 'active') <> 'deleted'
+              AND COALESCE(w.owner_id, '') <> %s
+        ),
+        relevant_accounts AS (
+            SELECT ca.id,
+                   ca.owner_type,
+                   ca.owner_id,
+                   COALESCE(ca.account_kind, CASE WHEN ca.owner_type = 'workspace' THEN 'team_wallet' ELSE 'personal_wallet' END) AS account_kind,
+                   COALESCE(owned_workspaces.workspace_name, joined_team_workspaces.workspace_name, '') AS workspace_name,
+                   CASE
+                     WHEN owned_workspaces.id IS NOT NULL THEN 'owned'
+                     WHEN joined_team_workspaces.id IS NOT NULL THEN 'joined_team'
+                     ELSE 'personal'
+                   END AS relevance
+            FROM tangent_credit_accounts ca
+            LEFT JOIN owned_workspaces ON owned_workspaces.id = ca.owner_id AND ca.owner_type = 'workspace'
+            LEFT JOIN joined_team_workspaces ON joined_team_workspaces.id = ca.owner_id AND ca.owner_type = 'workspace'
+            WHERE (ca.owner_type = 'user' AND ca.owner_id = %s)
+               OR (ca.owner_type = 'workspace' AND owned_workspaces.id IS NOT NULL)
+               OR (ca.owner_type = 'workspace' AND joined_team_workspaces.id IS NOT NULL)
+        )
         SELECT l.id, l.reason, l.credits_delta, l.workspace_id, ra.owner_type, ra.owner_id, ra.account_kind,
                COALESCE(workspace_from_ledger.name, ra.workspace_name, ''),
                l.created_at, l.metadata, l.source_type, l.source_id
         FROM tangent_credit_ledger l
         JOIN relevant_accounts ra ON ra.id = l.account_id
         LEFT JOIN tangent_workspaces workspace_from_ledger ON workspace_from_ledger.id = l.workspace_id
+        WHERE ra.relevance <> 'joined_team' OR l.actor_user_id = %s
         ORDER BY l.created_at DESC
         LIMIT %s
         """,
-        (user_id, user_id, limit),
+        (user_id, user_id, user_id, user_id, user_id, limit),
     )
     return [ledger_history_from_row(row) for row in cursor.fetchall()]
 

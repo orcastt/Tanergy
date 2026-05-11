@@ -41,6 +41,10 @@ export function resolveSubmitLabel(action: AdminOperatorAction, planOperation: A
     case 'board-delete':
     case 'delete-workspace':
       return 'Delete'
+    case 'billing-deduct':
+      return 'Deduct'
+    case 'billing-topup':
+      return 'Top up'
     case 'cancel-subscription':
       return 'Delete plan'
     case 'group-plan':
@@ -82,12 +86,14 @@ export function resolveSubmitLabel(action: AdminOperatorAction, planOperation: A
 export function canSubmitAction(
   action: AdminOperatorAction,
   fields: {
+    creditTargetId?: string
     inviteEmail: string
     targetUserId: string
     workspaceId: string
     workspaceName: string
   },
 ) {
+  if (action.type === 'billing-deduct' || action.type === 'billing-topup') return Boolean(fields.creditTargetId?.trim())
   if (action.type === 'create-group' || action.type === 'create-team') return Boolean(fields.workspaceName.trim())
   if (action.type === 'workspace-member-add') return Boolean(fields.targetUserId.trim())
   if (action.type === 'user-join-team' || action.type === 'user-join-group') return Boolean(fields.workspaceId.trim())
@@ -105,6 +111,11 @@ export function getPlanOperationOptions(action: AdminOperatorAction, planOperati
     if (!action.subscriptionId) return ['assign']
     const options: AdminOperatorPlanOperationMode[] = ['renew']
     if (action.currentPlanKey !== 'collaborate_plus') options.push('upgrade')
+    if (action.currentStatus === 'paused') {
+      options.push('unfreeze')
+    } else if (action.currentStatus === 'active' || action.currentStatus === 'trialing') {
+      options.push('freeze')
+    }
     options.push('delete')
     return options
   }
@@ -134,24 +145,31 @@ export function shouldShowGrantToggle(action: AdminOperatorAction, planOperation
   return (action.type === 'group-plan' || action.type === 'team-plan') && ['assign', 'renew', 'upgrade'].includes(planOperation)
 }
 
-export function calculatePlanPreview(action: AdminOperatorAction, planOperation: AdminOperatorPlanOperationMode, planKey: string, seatCapacity: number) {
+export function calculatePlanPreview(
+  action: AdminOperatorAction,
+  planOperation: AdminOperatorPlanOperationMode,
+  planKey: string,
+  seatCapacity: number,
+  durationCount: number,
+) {
+  const termMonths = Math.max(1, durationCount || 1)
   const included = planCatalog[planKey as keyof typeof planCatalog]?.includedCredits ?? 0
-  if (action.type === 'create-team') return included * Math.max(1, seatCapacity)
+  if (action.type === 'create-team') return included * Math.max(1, seatCapacity) * termMonths
   if (action.type === 'group-plan') {
     if (planOperation === 'upgrade') {
       const currentIncluded = planCatalog[(action.currentPlanKey || 'collaborate_start') as keyof typeof planCatalog]?.includedCredits ?? 0
-      return Math.max(0, included - currentIncluded)
+      return Math.max(0, included - currentIncluded) * termMonths
     }
-    if (planOperation === 'assign' || planOperation === 'renew') return included
+    if (planOperation === 'assign' || planOperation === 'renew') return included * termMonths
     return 0
   }
   if (action.type === 'team-plan') {
     if (planOperation === 'upgrade') {
       const currentIncluded = planCatalog[(action.workspace.planKey || 'team_start') as keyof typeof planCatalog]?.includedCredits ?? 0
       const currentSeats = Math.max(1, action.workspace.seatCapacity || 1)
-      return Math.max(0, included * Math.max(1, seatCapacity) - currentIncluded * currentSeats)
+      return Math.max(0, included * Math.max(1, seatCapacity) - currentIncluded * currentSeats) * termMonths
     }
-    if (planOperation === 'assign' || planOperation === 'renew') return included * Math.max(1, seatCapacity)
+    if (planOperation === 'assign' || planOperation === 'renew') return included * Math.max(1, seatCapacity) * termMonths
   }
   return 0
 }

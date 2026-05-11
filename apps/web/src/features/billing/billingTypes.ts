@@ -11,11 +11,19 @@ export type PlanKey =
 export type ChargeScope = 'actor_personal' | 'team_wallet' | 'workspace_pool'
 
 export type WorkspacePlanSummary = {
+  annualPriceUsd?: null | number
   billingPeriod: string
+  boardLimit?: null | number
+  groupMemberLimit?: null | number
+  groupWorkspaceLimit?: null | number
   includedCredits: number
   monthlyPriceUsd?: null | number
   name: string
+  pageLimit?: null | number
   planKey: PlanKey
+  registrationCredits?: number
+  seatMax?: null | number
+  seatMin?: null | number
   seatRange?: null | string
 }
 

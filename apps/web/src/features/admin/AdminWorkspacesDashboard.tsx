@@ -101,6 +101,14 @@ export function AdminWorkspacesDashboard({
         setDirectoryError(nextDirectory.error ?? null)
         setLoadedSignature(requestSignature)
         setLoadedReloadToken(reloadToken)
+        const nextSelectedWorkspaceId = nextDirectory.workspaces.some((workspace) => workspace.id === selectedWorkspaceId)
+          ? selectedWorkspaceId
+          : nextDirectory.workspaces[0]?.id ?? ''
+        if (nextSelectedWorkspaceId !== selectedWorkspaceId) {
+          setSelectedWorkspaceId(nextSelectedWorkspaceId)
+          setDetail(emptyDetail)
+          setDetailStatus(nextSelectedWorkspaceId ? 'loading' : 'ready')
+        }
       })
       .catch((error: unknown) => {
         if (cancelled) return
@@ -112,7 +120,7 @@ export function AdminWorkspacesDashboard({
     return () => {
       cancelled = true
     }
-  }, [directoryQuery, label, loadedReloadToken, reloadToken, requestSignature, shouldFetch])
+  }, [directoryQuery, label, loadedReloadToken, reloadToken, requestSignature, selectedWorkspaceId, shouldFetch])
 
   useEffect(() => {
     if (!enabled || !selectedWorkspace?.id) return
@@ -261,7 +269,7 @@ export function AdminWorkspacesDashboard({
         </div>
       </article>
 
-      <article className="management-panel">
+      <article className="management-panel management-panel-wide">
         {selectedWorkspace ? (
           <AdminWorkspaceDetailPanel
             detail={detail}

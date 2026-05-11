@@ -4,8 +4,8 @@ from uuid import uuid4
 from fastapi import HTTPException
 
 from tangent_api.billing_payment_schemas import BillingPaymentRecord
+from tangent_api.plan_catalog import included_credits_for_plan, monthly_price_usd_for_plan
 from tangent_api.request_context import ApiRequestContext
-from tangent_api.workspace_entitlements import PLAN_CATALOG
 
 COLLABORATE_PLAN_KEYS = {"collaborate_start", "collaborate_plus"}
 
@@ -17,7 +17,7 @@ def build_collaborate_subscription_metadata(
     plan_key: str,
 ) -> dict[str, object]:
     normalized_plan = _normalize_collaborate_plan_key(plan_key)
-    included_credits = int(PLAN_CATALOG[normalized_plan]["included_credits"] or 0)
+    included_credits = included_credits_for_plan(normalized_plan)
     return {
         **metadata,
         "checkoutWorkspaceId": context.workspace_id,
@@ -30,7 +30,7 @@ def build_collaborate_subscription_metadata(
 
 def calculate_collaborate_subscription_amount_cents(plan_key: str) -> int:
     normalized_plan = _normalize_collaborate_plan_key(plan_key)
-    monthly_price_usd = int(PLAN_CATALOG[normalized_plan]["monthly_price_usd"] or 0)
+    monthly_price_usd = int(monthly_price_usd_for_plan(normalized_plan) or 0)
     return monthly_price_usd * 100
 
 

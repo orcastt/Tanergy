@@ -4,12 +4,13 @@ from uuid import uuid4
 
 from fastapi import HTTPException
 
+from tangent_api.plan_catalog import included_credits_for_plan, seat_max_for_plan
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.storage.postgres_connection import connect_to_postgres, require_database_url
-from tangent_api.workspace_entitlements import PLAN_CATALOG
 from tangent_api.workspace_schemas import WorkspaceSeatAssignmentRecord, WorkspaceSeatAssignmentUpsertRequest
 
 ID_PATTERN = re.compile(r"^[a-zA-Z0-9._-]+$")
+TEAM_SEAT_MAX = 15
 
 
 def list_workspace_seat_assignments(context: ApiRequestContext) -> list[WorkspaceSeatAssignmentRecord]:
@@ -40,17 +41,10 @@ def upsert_workspace_seat_assignment(
     require_database_url()
     user_id = _normalize_id(input_data.user_id, "user id")
     plan_key = _normalize_team_plan_key(input_data.plan_key)
-    included_credits = input_data.included_credits
-    if included_credits is None:
-        included_credits = int(PLAN_CATALOG[plan_key]["included_credits"] or 0)
-    if included_credits < 0:
-        raise HTTPException(status_code=400, detail="Included credits must be non-negative.")
-
     with connect_to_postgres() as connection:
         with connection.cursor() as cursor:
             _assert_active_workspace_member(cursor, context.workspace_id, user_id)
-            team_account_id = _ensure_workspace_credit_account(cursor, context.workspace_id)
-            _assert_workspace_seat_capacity(cursor, context.workspace_id, plan_key, user_id)
+            included_credits = _assert_workspace_seat_capacity(cursor, context.workspace_id, plan_key, user_id)
             seat_id = f"seat_{uuid4()}"
             cursor.execute(
                 """
@@ -102,23 +96,6 @@ def upsert_workspace_seat_assignment(
             )
             row = cursor.fetchone()
         connection.commit()
-    from tangent_api.credit_ledger import grant_subscription_credits_to_account
-
-    grant_subscription_credits_to_account(
-        account_id=team_account_id,
-        actor_user_id=context.user_id,
-        workspace_id=context.workspace_id,
-        credits=included_credits,
-        source_id=f"seat_grant:{context.workspace_id}:{user_id}:{plan_key}:{input_data.current_period_start or 'current'}",
-        metadata={
-            "currentPeriodEnd": input_data.current_period_end,
-            "currentPeriodStart": input_data.current_period_start,
-            "planKey": plan_key,
-            "targetUserId": user_id,
-            "workspaceSeatId": str(row[0]) if row else seat_id,
-            "workspaceId": context.workspace_id,
-        },
-    )
     return _seat_assignment_from_row(row)
 
 
@@ -143,10 +120,12 @@ def revoke_workspace_seat_assignment(user_id: str, context: ApiRequestContext) -
     return normalized_user_id
 
 
-def _assert_workspace_seat_capacity(cursor: object, workspace_id: str, plan_key: str, user_id: str) -> None:
-    max_seats = _load_workspace_purchased_seat_count(cursor, workspace_id, plan_key)
+def _assert_workspace_seat_capacity(cursor: object, workspace_id: str, plan_key: str, user_id: str) -> int:
+    active_plan_key, max_seats = _load_active_team_subscription_capacity(cursor, workspace_id)
+    if active_plan_key != plan_key:
+        raise HTTPException(status_code=400, detail="Seat plan must match the active Team subscription.")
     if max_seats <= 0:
-        raise HTTPException(status_code=402, detail="No purchased seats are available for this plan.")
+        raise HTTPException(status_code=402, detail="No Team seats are available for this plan.")
     cursor.execute(
         """
         SELECT COUNT(*)
@@ -162,33 +141,32 @@ def _assert_workspace_seat_capacity(cursor: object, workspace_id: str, plan_key:
     active_assignments = int(row[0] or 0) if row else 0
     if active_assignments >= max_seats:
         raise HTTPException(status_code=402, detail="No purchased seats remain for this plan.")
+    return included_credits_for_plan(plan_key)
 
 
-def _load_workspace_purchased_seat_count(cursor: object, workspace_id: str, plan_key: str) -> int:
+def _load_active_team_subscription_capacity(cursor: object, workspace_id: str) -> tuple[str, int]:
     cursor.execute(
         """
-        SELECT amount_cents, metadata
-        FROM tangent_payments p
-        JOIN tangent_credit_accounts ca ON ca.id = p.account_id
-        WHERE ca.owner_type = 'workspace'
-          AND ca.owner_id = %s
-          AND p.kind = 'seat_purchase'
-          AND p.status = 'succeeded'
-        ORDER BY p.created_at DESC
+        SELECT plan_key, seat_capacity
+        FROM tangent_subscriptions
+        WHERE owner_type = 'workspace'
+          AND owner_id = %s
+          AND plan_family = 'team'
+          AND status IN ('active', 'trialing')
+          AND (current_period_end IS NULL OR current_period_end > NOW())
+        ORDER BY updated_at DESC
+        LIMIT 1
         """,
         (workspace_id,),
     )
-    rows = cursor.fetchall()
-    total = 0
-    for amount_cents, metadata in rows:
-        if not isinstance(metadata, dict):
-            continue
-        if str(metadata.get("workspaceId") or "") != workspace_id:
-            continue
-        if str(metadata.get("planKey") or "") != plan_key:
-            continue
-        total += int(metadata.get("quantity") or 0)
-    return total
+    row = cursor.fetchone()
+    if row is None:
+        raise HTTPException(status_code=402, detail="Active Team subscription is required to assign seats.")
+    plan_key = str(row[0] or "")
+    seat_capacity = int(row[1] or 0)
+    if plan_key not in {"team_start", "team_growth"}:
+        raise HTTPException(status_code=402, detail="Active Team subscription is required to assign seats.")
+    return plan_key, min(seat_capacity, seat_max_for_plan(plan_key) or TEAM_SEAT_MAX)
 
 
 def _assert_can_manage_team_seats(context: ApiRequestContext) -> None:

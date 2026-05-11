@@ -7,6 +7,7 @@ from fastapi import HTTPException
 
 from tangent_api.ai_schemas import AiRunChargeSummary
 from tangent_api.billing_balance import load_credit_balance_for_account, load_credit_reason_totals, split_credit_balance
+from tangent_api.plan_catalog import DEFAULT_PLAN_CATALOG, load_plan_spec
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.storage.postgres_connection import connect_to_postgres, require_database_url
 from tangent_api.workspace_schemas import (
@@ -20,50 +21,7 @@ from tangent_api.workspace_schemas import (
 )
 
 
-PLAN_CATALOG = {
-    "free_canvas": {
-        "billing_period": "none",
-        "included_credits": 0,
-        "monthly_price_usd": 0,
-        "name": "Free Canvas",
-        "seat_range": None,
-    },
-    "collaborate_start": {
-        "billing_period": "monthly_or_annual",
-        "included_credits": 1500,
-        "monthly_price_usd": 18,
-        "name": "Collaborate Start",
-        "seat_range": "1+ users",
-    },
-    "collaborate_plus": {
-        "billing_period": "monthly_or_annual",
-        "included_credits": 2000,
-        "monthly_price_usd": 25,
-        "name": "Collaborate Plus",
-        "seat_range": "1+ users",
-    },
-    "team_start": {
-        "billing_period": "monthly_or_annual",
-        "included_credits": 2500,
-        "monthly_price_usd": 25,
-        "name": "Team Start",
-        "seat_range": "2-15 seats",
-    },
-    "team_growth": {
-        "billing_period": "monthly_or_annual",
-        "included_credits": 5500,
-        "monthly_price_usd": 45,
-        "name": "Team Growth",
-        "seat_range": "2-15 seats",
-    },
-    "enterprise": {
-        "billing_period": "contract",
-        "included_credits": 0,
-        "monthly_price_usd": None,
-        "name": "Enterprise",
-        "seat_range": "custom",
-    },
-}
+PLAN_CATALOG = DEFAULT_PLAN_CATALOG
 
 ID_PATTERN = re.compile(r"^[a-zA-Z0-9._-]+$")
 
@@ -188,13 +146,21 @@ def build_workspace_summary(context: ApiRequestContext) -> BillingWorkspaceSumma
 
 
 def build_plan_summary(plan_key: str, included_credits_override: Optional[int] = None) -> WorkspacePlanSummary:
-    spec = PLAN_CATALOG.get(plan_key, PLAN_CATALOG["free_canvas"])
+    spec = load_plan_spec(plan_key)
     return WorkspacePlanSummary(
+        annualPriceUsd=spec.get("annual_price_usd"),
         billingPeriod=spec["billing_period"],
+        boardLimit=spec.get("board_limit"),
+        groupMemberLimit=spec.get("group_member_limit"),
+        groupWorkspaceLimit=spec.get("group_workspace_limit"),
         includedCredits=int(included_credits_override if included_credits_override is not None else spec["included_credits"] or 0),
         monthlyPriceUsd=spec["monthly_price_usd"],
         name=str(spec["name"]),
+        pageLimit=spec.get("page_limit"),
         planKey=plan_key,
+        registrationCredits=int(spec.get("registration_credits") or 0),
+        seatMax=spec.get("seat_max"),
+        seatMin=spec.get("seat_min"),
         seatRange=spec["seat_range"],
     )
 
@@ -322,6 +288,23 @@ def _resolve_database_entitlement(context: ApiRequestContext) -> Optional[Entitl
             if context.workspace_kind == "team_workspace":
                 cursor.execute(
                     """
+                    SELECT plan_key, seat_capacity
+                    FROM tangent_subscriptions
+                    WHERE owner_type = 'workspace'
+                      AND owner_id = %s
+                      AND plan_family = 'team'
+                      AND status IN ('active', 'trialing')
+                      AND (current_period_end IS NULL OR current_period_end > NOW())
+                    ORDER BY updated_at DESC
+                    LIMIT 1
+                    """,
+                    (context.workspace_id,),
+                )
+                subscription_row = cursor.fetchone()
+                if subscription_row is None:
+                    raise HTTPException(status_code=402, detail="Active Team subscription is required to use Team wallet.")
+                cursor.execute(
+                    """
                     SELECT id, plan_key, included_credits
                     FROM tangent_workspace_seat_assignments
                     WHERE workspace_id = %s
@@ -347,6 +330,7 @@ def _resolve_database_entitlement(context: ApiRequestContext) -> Optional[Entitl
                         plan_key=str(seat_row[1]),
                         workspace_seat_id=str(seat_row[0]),
                     )
+                raise HTTPException(status_code=402, detail="Active Team seat is required to use Team wallet.")
             owner_type = "workspace" if context.workspace_kind == "enterprise_workspace" else "user"
             owner_id = context.workspace_id if owner_type == "workspace" else context.user_id
             cursor.execute(

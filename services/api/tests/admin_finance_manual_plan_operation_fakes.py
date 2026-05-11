@@ -58,8 +58,8 @@ class PlanOperationCursor:
             self.database.subscriptions.append(
                 {
                     "account_id": params[1],
-                    "current_period_end": params[13],
-                    "current_period_start": params[12],
+                    "current_period_end": params[11],
+                    "current_period_start": params[10],
                     "id": params[0],
                     "owner_id": params[3],
                     "owner_type": params[2],
@@ -67,9 +67,9 @@ class PlanOperationCursor:
                     "paused_at": None,
                     "paused_by": None,
                     "plan_family": params[5],
-                    "plan_key": params[9],
-                    "seat_capacity": params[11],
-                    "status": params[10],
+                    "plan_key": params[7],
+                    "seat_capacity": params[9],
+                    "status": params[8],
                     "workspace_id": params[4],
                 }
             )
@@ -162,6 +162,7 @@ def install_plan_operation_db(monkeypatch, fake_db):
         "tangent_api.admin_finance_manual_plan_operations.ensure_credit_account",
         lambda cursor, owner_type, owner_id: f"credit_{owner_type}_{owner_id}",
     )
+    monkeypatch.setattr("tangent_api.admin_finance_manual_plan_context.has_postgres_column", lambda *_args, **_kwargs: True)
     monkeypatch.setattr("tangent_api.admin_operator_subscription_writes.require_database_url", lambda: None)
     monkeypatch.setattr("tangent_api.admin_operator_subscription_writes.connect_to_postgres", fake_db.connect)
     monkeypatch.setattr("tangent_api.admin_operator_subscription_writes.has_postgres_column", lambda *_args, **_kwargs: True)

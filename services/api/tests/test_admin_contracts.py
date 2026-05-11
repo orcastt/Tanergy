@@ -175,6 +175,82 @@ def test_admin_summary_returns_counts_and_writes_audit_log(monkeypatch):
     assert fake_db.admin_audit_logs[-1]["metadata"] == {"roles": ["owner"]}
 
 
+def test_admin_finance_plan_catalog_returns_default_plan_rows(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.admin_roles = [
+        {
+            "user_id": "user_finance",
+            "role": "finance",
+            "permissions": {"billing": True},
+            "note": "active",
+            "granted_by": "user_owner",
+            "created_at": "2026-05-05T00:00:00Z",
+            "revoked_at": None,
+        }
+    ]
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setattr("tangent_api.admin_access.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.plan_catalog.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    response = client.get(
+        "/api/v1/admin/finance/plan-catalog",
+        headers={"x-tangent-user-id": "user_finance", "x-tangent-workspace-id": "workspace_admin"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["plans"][0]["planKey"] == "free_canvas"
+    assert payload["plans"][0]["registrationCredits"] == 50
+    assert any(plan["planKey"] == "team_start" for plan in payload["plans"])
+    assert fake_db.admin_audit_logs[-1]["action"] == "admin.finance.plan_catalog.read"
+
+
+def test_admin_finance_plan_catalog_update_persists_override(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.admin_roles = [
+        {
+            "user_id": "user_admin",
+            "role": "admin",
+            "permissions": {"billing": True},
+            "note": "active",
+            "granted_by": "user_owner",
+            "created_at": "2026-05-05T00:00:00Z",
+            "revoked_at": None,
+        }
+    ]
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setattr("tangent_api.admin_access.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.plan_catalog.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    response = client.put(
+        "/api/v1/admin/finance/plan-catalog/team_start",
+        headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_admin"},
+        json={"boardLimit": 12, "monthlyPriceUsd": 29, "seatMax": 18},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["plan"]["planKey"] == "team_start"
+    assert payload["plan"]["boardLimit"] == 12
+    assert payload["plan"]["monthlyPriceUsd"] == 29
+    assert payload["plan"]["seatMax"] == 18
+    assert fake_db.admin_audit_logs[-1]["action"] == "admin.finance.plan_catalog.update"
+
+
+def test_billing_plans_route_exposes_subscription_catalog_defaults():
+    client = TestClient(app)
+
+    response = client.get("/api/v1/billing/plans")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["plans"][0]["planKey"] == "free_canvas"
+    assert payload["plans"][0]["boardLimit"] == 1
+    assert payload["plans"][0]["registrationCredits"] == 50
+
+
 def test_admin_users_returns_descending_users_and_writes_audit_log(monkeypatch):
     fake_db = FakePostgresDatabase()
     fake_db.admin_roles = [
@@ -1428,7 +1504,13 @@ def test_admin_role_grant_list_and_revoke_routes_require_owner(monkeypatch):
     granted = client.post(
         "/api/v1/admin/roles",
         headers={"x-tangent-user-id": "user_owner", "x-tangent-workspace-id": "dev-workspace"},
-        json={"userId": "user_target", "role": "admin", "permissions": {"users": True}, "note": "Promoted"},
+        json={
+            "userId": "user_target",
+            "role": "admin",
+            "permissions": {"users": True},
+            "note": "Promoted",
+            "reason": "support escalation",
+        },
     )
     assert granted.status_code == 200
     granted_payload = granted.json()
@@ -1444,7 +1526,7 @@ def test_admin_role_grant_list_and_revoke_routes_require_owner(monkeypatch):
     assert [role["role"] for role in listed.json()["roles"]] == ["admin"]
 
     revoked = client.delete(
-        "/api/v1/admin/roles/user_target/admin",
+        "/api/v1/admin/roles/user_target/admin?reason=rotation",
         headers={"x-tangent-user-id": "user_owner", "x-tangent-workspace-id": "dev-workspace"},
     )
     assert revoked.status_code == 200
@@ -1454,13 +1536,75 @@ def test_admin_role_grant_list_and_revoke_routes_require_owner(monkeypatch):
         "admin.roles.read",
         "admin.role.revoke",
     ]
+    assert fake_db.admin_audit_logs[-3]["metadata"]["reason"] == "support escalation"
+    assert fake_db.admin_audit_logs[-1]["metadata"]["reason"] == "rotation"
 
     blocked = client.post(
         "/api/v1/admin/roles",
         headers={"x-tangent-user-id": "user_target", "x-tangent-workspace-id": "dev-workspace"},
-        json={"userId": "user_owner", "role": "support"},
+        json={"userId": "user_owner", "reason": "try escalation", "role": "support"},
     )
     assert blocked.status_code == 403
+
+
+def test_admin_role_mutations_require_reason(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.admin_roles = [
+        {
+            "user_id": "user_owner",
+            "role": "owner",
+            "permissions": {"all": True},
+            "note": "bootstrap",
+            "granted_by": "seed_user",
+            "created_at": "2026-05-05T00:00:00Z",
+            "revoked_at": None,
+        },
+        {
+            "user_id": "user_target",
+            "role": "admin",
+            "permissions": {"users": True},
+            "note": "existing",
+            "granted_by": "user_owner",
+            "created_at": "2026-05-05T00:10:00Z",
+            "revoked_at": None,
+        },
+    ]
+    fake_db.users = [
+        {
+            "id": "user_owner",
+            "email": "owner@example.com",
+            "display_name": "Owner User",
+            "status": "active",
+            "locale": "en",
+            "created_at": "2026-05-05T00:00:00Z",
+            "last_login_at": None,
+        },
+        {
+            "id": "user_target",
+            "email": "target@example.com",
+            "display_name": "Target User",
+            "status": "active",
+            "locale": "en",
+            "created_at": "2026-05-05T00:01:00Z",
+            "last_login_at": None,
+        },
+    ]
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setattr("tangent_api.admin_access.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    grant = client.post(
+        "/api/v1/admin/roles",
+        headers={"x-tangent-user-id": "user_owner", "x-tangent-workspace-id": "dev-workspace"},
+        json={"userId": "user_target", "role": "finance"},
+    )
+    revoke = client.delete(
+        "/api/v1/admin/roles/user_target/admin",
+        headers={"x-tangent-user-id": "user_owner", "x-tangent-workspace-id": "dev-workspace"},
+    )
+
+    assert grant.status_code == 422
+    assert revoke.status_code == 422
 
 
 def test_admin_revoke_blocks_last_active_owner(monkeypatch):
@@ -1481,7 +1625,7 @@ def test_admin_revoke_blocks_last_active_owner(monkeypatch):
     client = TestClient(app)
 
     response = client.delete(
-        "/api/v1/admin/roles/user_owner/owner",
+        "/api/v1/admin/roles/user_owner/owner?reason=rotation",
         headers={"x-tangent-user-id": "user_owner", "x-tangent-workspace-id": "dev-workspace"},
     )
 

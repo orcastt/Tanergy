@@ -45,6 +45,9 @@ POST /api/v1/admin/operator/workspaces/{workspace_id}/invitations
 DELETE /api/v1/admin/operator/workspaces/{workspace_id}/invitations/{invitation_id}
 POST /api/v1/admin/operator/workspaces/{workspace_id}/boards/{board_id}/copy
 DELETE /api/v1/admin/operator/workspaces/{workspace_id}/boards/{board_id}
+GET  /api/v1/admin/finance/plan-catalog
+PUT  /api/v1/admin/finance/plan-catalog/{plan_key}
+GET  /api/v1/billing/plans
 ```
 
 Implemented first pass:
@@ -84,6 +87,8 @@ Implemented first pass:
 - Operator inventory/user detail now expose derived registration state plus `tangent_users.last_ip_address`, so the later dense-table redesign can render real access facts instead of placeholders.
 - Subscription freeze/unfreeze now persists `paused_at`, `paused_by` and `pause_reason`, and unfreeze extends `current_period_end` by the paused duration instead of silently resuming on the original expiry date.
 - Manual plan grants now follow operator semantics instead of the older blunt overwrite path: `assign` and `renew` grant the full included-credit pack for the target plan, while `upgrade` grants only the delta from the current included-credit pack to the target included-credit pack.
+- Finance now also exposes a DB-backed plan catalog editor. The catalog merges code defaults with `tangent_plan_catalog` overrides, and the admin write surface is `GET/PUT /api/v1/admin/finance/plan-catalog/{plan_key}` with a public read-only `GET /api/v1/billing/plans`.
+- Runtime billing and entitlement readers now consume the active plan catalog for free-registration credits, Team/Collaborate included credits, board/page limits, group caps, seat caps and plan pricing instead of relying only on static constants.
 
 ### AI Routes Progress Swimlane
 
@@ -203,6 +208,33 @@ Constraints:
 - One user may own or belong to many `team_workspace` records.
 - Each Team workspace has its own wallet, subscription, seat capacity, members, Boards, usage rollups and ledger.
 - Team seat assignment controls membership capacity and usage attribution; it does not create the payer account.
+
+## Plan Catalog Authority
+
+Canonical admin-editable plan fields now include:
+
+```text
+name
+billing_period
+monthly_price_usd
+annual_price_usd
+included_credits
+registration_credits
+board_limit
+page_limit
+group_workspace_limit
+group_member_limit
+seat_min
+seat_max
+seat_range
+```
+
+Authority rules:
+
+- The backend must treat the active plan catalog as the source of truth for commercial limits and included-credit math.
+- New-user bootstrap reads `free_canvas.registration_credits`.
+- Board creation/save guards read the active board/page limits.
+- Team and Collaborate purchase/manual-plan flows read the active included-credit and cap values.
 
 ## Payer Resolution Matrix
 

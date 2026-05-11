@@ -1,8 +1,19 @@
 .admin-owned-plan-table,
 .admin-joined-plan-table,
 .admin-billing-history-table {
-  min-width: 0;
   table-layout: fixed;
+}
+.admin-owned-plan-table {
+  min-width: 1040px;
+}
+.admin-owned-group-table {
+  min-width: 980px;
+}
+.admin-joined-plan-table {
+  min-width: 1180px;
+}
+.admin-billing-history-table {
+  min-width: 920px;
 }
 .admin-owned-plan-table th:nth-child(1),
 .admin-owned-plan-table th:nth-child(2) {
@@ -133,6 +144,62 @@
 
 .admin-plan-credit-cell {
   align-content: start;
+}
+
+.admin-stacked-credit {
+  display: grid;
+  gap: 3px;
+  width: min(100%, 118px);
+}
+
+.admin-stacked-credit span {
+  color: var(--color-ink);
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-stacked-credit-track {
+  position: relative;
+  height: 7px;
+  overflow: hidden;
+  border: 1px solid rgba(34, 197, 94, 0.48);
+  border-radius: 999px;
+  background: var(--color-canvas);
+}
+
+.admin-stacked-credit-track i {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  border-radius: inherit;
+}
+
+.admin-stacked-credit-remaining {
+  background: var(--color-canvas);
+}
+
+.admin-stacked-credit-used {
+  background: var(--color-success);
+}
+
+.admin-stacked-credit-personal {
+  background: #111827;
+}
+
+.admin-stacked-credit.is-muted span {
+  color: var(--color-muted);
+}
+
+.admin-stacked-credit.is-muted .admin-stacked-credit-track {
+  border-color: rgba(148, 163, 184, 0.42);
+}
+
+.admin-stacked-credit.is-muted .admin-stacked-credit-used {
+  background: #98a2b3;
 }
 
 .admin-plan-action-stack {

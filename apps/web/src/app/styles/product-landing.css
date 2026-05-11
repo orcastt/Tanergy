@@ -99,10 +99,11 @@
   grid-template-columns: minmax(0, 1.05fr) minmax(340px, 0.95fr);
   gap: clamp(40px, 6vw, 84px);
   align-items: center;
-  width: min(1180px, calc(100% - 40px));
+  width: 100%;
+  max-width: none;
   min-height: calc(100vh - 76px);
-  margin: 0 auto;
-  padding: clamp(64px, 10vw, 120px) 0;
+  margin: 0;
+  padding: clamp(64px, 10vw, 120px) clamp(20px, 5vw, 56px);
 }
 
 .tanergy-hero-copy {
@@ -321,9 +322,10 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 20px;
-  width: min(1180px, calc(100% - 40px));
-  margin: 0 auto;
-  padding: 88px 0;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 88px clamp(20px, 5vw, 56px);
 }
 
 .tanergy-feature-card {
@@ -362,12 +364,13 @@
 
 .tanergy-final-cta {
   display: flex;
-  width: min(1180px, calc(100% - 40px));
+  width: 100%;
+  max-width: none;
   align-items: flex-end;
   justify-content: space-between;
   gap: 28px;
-  margin: 0 auto;
-  padding: 16px 0 96px;
+  margin: 0;
+  padding: 16px clamp(20px, 5vw, 56px) 96px;
 }
 
 .tanergy-final-cta h2 {
@@ -620,8 +623,8 @@
   }
 
   .tanergy-hero {
-    width: min(100% - 28px, 1180px);
-    padding: 48px 0 64px;
+    width: 100%;
+    padding: 48px 16px 64px;
   }
 
   .tanergy-product-scene {
@@ -648,6 +651,6 @@
 
   .tanergy-feature-grid,
   .tanergy-final-cta {
-    width: min(100% - 28px, 1180px);
+    width: 100%;
   }
 }

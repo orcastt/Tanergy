@@ -2,9 +2,10 @@ from fastapi import HTTPException
 
 from tangent_api.admin_access import _insert_admin_audit_log
 from tangent_api.admin_operator_schemas import AdminOperatorWorkspaceMemberMutationResponse
+from tangent_api.plan_catalog import included_credits_for_plan
 from tangent_api.storage.postgres_connection import connect_to_postgres, require_database_url
-from tangent_api.workspace_entitlements import PLAN_CATALOG
 from tangent_api.workspace_invitations import (
+    _assert_group_member_capacity,
     _normalize_id,
     _resolve_team_invite_seat_policy,
     _upsert_team_invite_seat_assignment,
@@ -44,6 +45,8 @@ def create_admin_operator_workspace_member(
             existing = cursor.fetchone()
             if existing is not None:
                 raise HTTPException(status_code=400, detail="Workspace member already exists.")
+            if workspace["workspace_kind"] == "group_workspace":
+                _assert_group_member_capacity(cursor, workspace_id, normalized_user_id)
             seat_policy = _resolve_team_invite_seat_policy(
                 cursor,
                 workspace_id,
@@ -67,7 +70,7 @@ def create_admin_operator_workspace_member(
                 _upsert_team_invite_seat_assignment(
                     cursor,
                     assigned_by=actor_user_id,
-                    included_credits=int(seat_policy["included_credits"] or PLAN_CATALOG[seat_policy["plan_key"]]["included_credits"] or 0),
+                    included_credits=int(seat_policy["included_credits"] or included_credits_for_plan(str(seat_policy["plan_key"])) or 0),
                     plan_key=str(seat_policy["plan_key"]),
                     user_id=normalized_user_id,
                     workspace_id=workspace_id,

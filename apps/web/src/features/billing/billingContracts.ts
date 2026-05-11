@@ -3,6 +3,7 @@ import type {
   AiRunChargeSummary,
   BillingMeResponse,
   CreditLedgerResponse,
+  ChargeScope,
   PersonalCreditSummary,
   PlanKey,
   WorkspaceDashboardRecord,
@@ -13,52 +14,100 @@ import type {
 
 export const planCatalog: Record<PlanKey, WorkspacePlanSummary> = {
   collaborate_plus: {
+    annualPriceUsd: 20,
     billingPeriod: 'monthly_or_annual',
+    boardLimit: null,
+    groupMemberLimit: 15,
+    groupWorkspaceLimit: 20,
     includedCredits: 2000,
     monthlyPriceUsd: 25,
     name: 'Collaborate Plus',
+    pageLimit: null,
     planKey: 'collaborate_plus',
+    registrationCredits: 0,
+    seatMax: 1,
+    seatMin: 1,
     seatRange: '1+ users',
   },
   collaborate_start: {
+    annualPriceUsd: 15,
     billingPeriod: 'monthly_or_annual',
+    boardLimit: null,
+    groupMemberLimit: 15,
+    groupWorkspaceLimit: 10,
     includedCredits: 1500,
     monthlyPriceUsd: 18,
     name: 'Collaborate Start',
+    pageLimit: null,
     planKey: 'collaborate_start',
+    registrationCredits: 0,
+    seatMax: 1,
+    seatMin: 1,
     seatRange: '1+ users',
   },
   enterprise: {
+    annualPriceUsd: null,
     billingPeriod: 'contract',
+    boardLimit: null,
+    groupMemberLimit: null,
+    groupWorkspaceLimit: null,
     includedCredits: 0,
     monthlyPriceUsd: null,
     name: 'Enterprise',
+    pageLimit: null,
     planKey: 'enterprise',
+    registrationCredits: 0,
+    seatMax: null,
+    seatMin: null,
     seatRange: 'custom',
   },
   free_canvas: {
+    annualPriceUsd: 0,
     billingPeriod: 'none',
+    boardLimit: 1,
+    groupMemberLimit: 0,
+    groupWorkspaceLimit: 0,
     includedCredits: 0,
     monthlyPriceUsd: 0,
     name: 'Free Canvas',
+    pageLimit: 3,
     planKey: 'free_canvas',
+    registrationCredits: 50,
+    seatMax: 1,
+    seatMin: 1,
     seatRange: null,
   },
   team_growth: {
+    annualPriceUsd: 40,
     billingPeriod: 'monthly_or_annual',
+    boardLimit: null,
+    groupMemberLimit: 0,
+    groupWorkspaceLimit: 0,
     includedCredits: 5500,
     monthlyPriceUsd: 45,
     name: 'Team Growth',
+    pageLimit: null,
     planKey: 'team_growth',
-    seatRange: '2-15 seats',
+    registrationCredits: 0,
+    seatMax: 15,
+    seatMin: 1,
+    seatRange: '1-15 seats',
   },
   team_start: {
+    annualPriceUsd: 20,
     billingPeriod: 'monthly_or_annual',
+    boardLimit: null,
+    groupMemberLimit: 0,
+    groupWorkspaceLimit: 0,
     includedCredits: 2500,
     monthlyPriceUsd: 25,
     name: 'Team Start',
+    pageLimit: null,
     planKey: 'team_start',
-    seatRange: '2-15 seats',
+    registrationCredits: 0,
+    seatMax: 15,
+    seatMin: 1,
+    seatRange: '1-15 seats',
   },
 }
 
@@ -66,11 +115,12 @@ export function createLocalBillingMe(session: TangentSession): BillingMeResponse
   const workspaceKind = session.activeWorkspace.kind ?? 'solo_workspace'
   const plan = planCatalog[resolvePlanKey(workspaceKind, session.activeWorkspace.planKey)]
   const credits = createCreditSummary(session.user.id, plan.includedCredits)
+  const chargeScope = resolveChargeScope(workspaceKind)
   return {
-    chargeScope: workspaceKind === 'enterprise_workspace' ? 'workspace_pool' : 'actor_personal',
+    chargeScope,
     credits,
     ok: true,
-    payerLabel: workspaceKind === 'enterprise_workspace' ? 'Charges enterprise workspace credits' : 'Charges your credits',
+    payerLabel: resolvePayerLabel(chargeScope),
     plan,
     workspace: {
       id: session.activeWorkspace.id,
@@ -127,14 +177,14 @@ export function createAiChargeSummaryForContext(input: {
   workspaceKind: WorkspaceKind
 }): AiRunChargeSummary {
   const planKey = resolvePlanKey(input.workspaceKind, input.planKey)
-  const chargedScope = input.workspaceKind === 'enterprise_workspace' ? 'workspace_pool' : 'actor_personal'
+  const chargedScope = resolveChargeScope(input.workspaceKind)
   return {
-    chargedAccountId: chargedScope === 'workspace_pool'
-      ? `credit_workspace_${input.workspaceId}`
-      : `credit_user_${input.userId}`,
+    chargedAccountId: chargedScope === 'actor_personal'
+      ? `credit_user_${input.userId}`
+      : `credit_workspace_${input.workspaceId}`,
     chargedScope,
     entitlementSource: resolveEntitlementSource(input.workspaceKind),
-    payerLabel: chargedScope === 'workspace_pool' ? 'Charges enterprise workspace credits' : 'Charges your credits',
+    payerLabel: resolvePayerLabel(chargedScope),
     planKey,
     preflightStatus: 'mock_contract_only',
     workspaceKind: input.workspaceKind,
@@ -172,9 +222,10 @@ export function createLocalCreditLedger(session: TangentSession): CreditLedgerRe
   const workspaceKind = session.activeWorkspace.kind ?? 'solo_workspace'
   const plan = planCatalog[resolvePlanKey(workspaceKind, session.activeWorkspace.planKey)]
   const credits = createCreditSummary(session.user.id, plan.includedCredits)
-  const accountId = workspaceKind === 'enterprise_workspace'
-    ? `credit_workspace_${session.activeWorkspace.id}`
-    : `credit_user_${session.user.id}`
+  const chargeScope = resolveChargeScope(workspaceKind)
+  const accountId = chargeScope === 'actor_personal'
+    ? `credit_user_${session.user.id}`
+    : `credit_workspace_${session.activeWorkspace.id}`
   const grantCreatedAt = new Date(Date.UTC(2026, 4, 1, 9, 0, 0)).toISOString()
   const usageCreatedAt = new Date(Date.UTC(2026, 4, 6, 14, 30, 0)).toISOString()
 
@@ -243,10 +294,22 @@ function createCreditSummary(userId: string, includedTotal: number): PersonalCre
 }
 
 function resolveEntitlementSource(workspaceKind: WorkspaceKind) {
-  if (workspaceKind === 'team_workspace') return 'team_seat_allowance'
+  if (workspaceKind === 'team_workspace') return 'team_wallet'
   if (workspaceKind === 'group_workspace') return 'personal_collaborate_balance'
   if (workspaceKind === 'enterprise_workspace') return 'enterprise_contract'
   return 'personal_topup_or_free'
+}
+
+function resolveChargeScope(workspaceKind: WorkspaceKind): ChargeScope {
+  if (workspaceKind === 'team_workspace') return 'team_wallet'
+  if (workspaceKind === 'enterprise_workspace') return 'workspace_pool'
+  return 'actor_personal'
+}
+
+function resolvePayerLabel(chargeScope: ChargeScope) {
+  if (chargeScope === 'team_wallet') return 'Charges Team wallet'
+  if (chargeScope === 'workspace_pool') return 'Charges enterprise workspace credits'
+  return 'Charges your credits'
 }
 
 function checksum(value: string) {

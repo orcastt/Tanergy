@@ -44,6 +44,7 @@ type AdminRequestOptions = {
 type AdminRoleGrantInput = {
   note?: string
   permissions?: Record<string, unknown>
+  reason: string
   role: string
   userId: string
 }
@@ -134,15 +135,18 @@ export async function loadAdminRoles(userId: string): Promise<AdminRoleListResou
 
 export async function grantAdminRole(input: AdminRoleGrantInput): Promise<AdminRoleMutationResource> {
   return loadAdminJson<AdminRoleMutationResource>('/api/v1/admin/roles', {
-    body: JSON.stringify({ note: input.note, permissions: input.permissions ?? {}, role: input.role, userId: input.userId }),
+    body: JSON.stringify({ note: input.note, permissions: input.permissions ?? {}, reason: input.reason, role: input.role, userId: input.userId }),
     method: 'POST',
   })
 }
 
-export async function revokeAdminRole(userId: string, role: string): Promise<AdminRoleMutationResource> {
-  return loadAdminJson<AdminRoleMutationResource>(`/api/v1/admin/roles/${encodeURIComponent(userId)}/${encodeURIComponent(role)}`, {
-    method: 'DELETE',
-  })
+export async function revokeAdminRole(userId: string, role: string, reason: string): Promise<AdminRoleMutationResource> {
+  return loadAdminJson<AdminRoleMutationResource>(
+    `/api/v1/admin/roles/${encodeURIComponent(userId)}/${encodeURIComponent(role)}${createQuery({ reason })}`,
+    {
+      method: 'DELETE',
+    },
+  )
 }
 
 async function readAdminPayload<T>(response: Response): Promise<T & { detail?: string; error?: string }> {

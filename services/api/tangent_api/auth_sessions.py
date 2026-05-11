@@ -25,6 +25,8 @@ from tangent_api.auth_user_schema import (
     auth_user_last_ip_update_assignment_sql,
 )
 from tangent_api.billing_credit_accounts import ensure_credit_account
+from tangent_api.local_admin_bootstrap import ensure_local_real_login_admin
+from tangent_api.plan_catalog import registration_credits_for_plan
 from tangent_api.storage.postgres_connection import connect_to_postgres, require_database_url
 def resolve_local_auth_session(
     identity: VerifiedAuthIdentity,
@@ -104,6 +106,7 @@ def _load_or_create_postgres_session(
 
                 if session.workspace_id:
                     ensure_credit_account(cursor, "user", session.user_id)
+                    ensure_local_real_login_admin(cursor, session.user_id, normalized_request_ip)
                     memberships = load_workspace_memberships(cursor, session.user_id, session.workspace_id)
                     if not memberships:
                         memberships = [
@@ -133,7 +136,15 @@ def _load_or_create_postgres_session(
                         workspaces=memberships,
                     )
 
-                return _create_default_workspace(cursor, connection, session.user_id, identity, session.display_name, session.email)
+                return _create_default_workspace(
+                    cursor,
+                    connection,
+                    session.user_id,
+                    identity,
+                    session.display_name,
+                    session.email,
+                    normalized_request_ip,
+                )
 
             if identity_exists(cursor, identity):
                 require_active_auth_user_status(load_identity_user_status(cursor, identity))
@@ -178,7 +189,15 @@ def _load_or_create_postgres_session(
                 """,
                 (f"identity_{uuid4()}", user_id, identity.provider, identity.provider_subject, email),
             )
-            return _create_default_workspace(cursor, connection, user_id, identity, display_name, email)
+            return _create_default_workspace(
+                cursor,
+                connection,
+                user_id,
+                identity,
+                display_name,
+                email,
+                normalized_request_ip,
+            )
 def _load_auth_session_row(
     cursor: Any,
     identity: VerifiedAuthIdentity,
@@ -230,6 +249,7 @@ def _create_default_workspace(
     identity: VerifiedAuthIdentity,
     display_name: str,
     email: str,
+    request_ip: Optional[str],
 ) -> ResolvedAuthSession:
     workspace_id = f"workspace_{uuid4()}"
     workspace_name = "Tanergy Workspace"
@@ -257,6 +277,8 @@ def _create_default_workspace(
         (workspace_id, user_id, display_name),
     )
     ensure_credit_account(cursor, "user", user_id)
+    _grant_registration_credits_if_needed(cursor, user_id, workspace_id)
+    ensure_local_real_login_admin(cursor, user_id, request_ip)
     connection.commit()
     default_workspace = default_workspace_membership(workspace_id, workspace_name)
     return ResolvedAuthSession(
@@ -272,4 +294,49 @@ def _create_default_workspace(
         workspace_role="owner",
         board_count=0,
         workspaces=[default_workspace],
+    )
+
+
+def _grant_registration_credits_if_needed(cursor: Any, user_id: str, workspace_id: str) -> None:
+    credits = registration_credits_for_plan("free_canvas")
+    if credits <= 0:
+        return
+    account_id = f"credit_user_{user_id}"
+    source_id = f"registration_free_canvas_{user_id}"
+    cursor.execute(
+        """
+        SELECT 1
+        FROM tangent_credit_ledger
+        WHERE account_id = %s
+          AND source_id = %s
+        LIMIT 1
+        """,
+        (account_id, source_id),
+    )
+    if cursor.fetchone():
+        return
+    cursor.execute(
+        """
+        INSERT INTO tangent_credit_ledger (
+            id,
+            account_id,
+            workspace_id,
+            actor_user_id,
+            source_type,
+            source_id,
+            credits_delta,
+            reason,
+            metadata
+        )
+        VALUES (%s, %s, %s, %s, 'subscription', %s, %s, 'subscription_grant', %s::jsonb)
+        """,
+        (
+            f"credit_{uuid4()}",
+            account_id,
+            workspace_id,
+            user_id,
+            source_id,
+            float(credits),
+            '{"grantType":"registration","planKey":"free_canvas"}',
+        ),
     )

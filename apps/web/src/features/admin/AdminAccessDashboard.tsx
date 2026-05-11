@@ -36,6 +36,7 @@ export function AdminAccessDashboard({
   const [auditLogs, setAuditLogs] = useState<AdminAuditLogRecord[]>([])
   const [auditStatus, setAuditStatus] = useState<'error' | 'loading' | 'ready'>('loading')
   const [draftNote, setDraftNote] = useState('')
+  const [draftReason, setDraftReason] = useState('')
   const [draftRole, setDraftRole] = useState<(typeof roleOptions)[number]>('admin')
   const [loadedRolesUserId, setLoadedRolesUserId] = useState('')
   const [mutationMessage, setMutationMessage] = useState('')
@@ -111,10 +112,12 @@ export function AdminAccessDashboard({
   }, [auditAction, enabled, reloadToken, selectedUser?.id])
 
   async function grantRole() {
-    if (!selectedUser || !isOwner) return
+    const reason = draftReason.trim()
+    if (!selectedUser || !isOwner || !reason) return
     try {
-      await grantAdminRole({ note: draftNote || undefined, role: draftRole, userId: selectedUser.id })
+      await grantAdminRole({ note: draftNote || undefined, reason, role: draftRole, userId: selectedUser.id })
       setDraftNote('')
+      setDraftReason('')
       setMutationMessage(`Granted ${draftRole}.`)
       setReloadToken((value) => value + 1)
     } catch (error) {
@@ -123,9 +126,11 @@ export function AdminAccessDashboard({
   }
 
   async function revokeRole(role: string) {
-    if (!selectedUser || !isOwner) return
+    const reason = draftReason.trim()
+    if (!selectedUser || !isOwner || !reason) return
     try {
-      await revokeAdminRole(selectedUser.id, role)
+      await revokeAdminRole(selectedUser.id, role, reason)
+      setDraftReason('')
       setMutationMessage(`Revoked ${role}.`)
       setReloadToken((value) => value + 1)
     } catch (error) {
@@ -155,7 +160,7 @@ export function AdminAccessDashboard({
               <dd>
                 Granted {formatDate(role.createdAt)}
                 {role.grantedBy ? <MetaLine>by {role.grantedBy}</MetaLine> : null}
-                {isOwner ? <button className="product-button product-button-secondary compact" onClick={() => revokeRole(role.role)} type="button">Revoke</button> : null}
+                {isOwner ? <button className="product-button product-button-secondary compact" disabled={!draftReason.trim()} onClick={() => revokeRole(role.role)} type="button">Revoke</button> : null}
               </dd>
             </div>
           ))}
@@ -165,8 +170,9 @@ export function AdminAccessDashboard({
             <select onChange={(event) => setDraftRole(event.target.value as (typeof roleOptions)[number])} style={selectStyle} value={draftRole}>
               {roleOptions.map((role) => <option key={role} value={role}>{role}</option>)}
             </select>
+            <input onChange={(event) => setDraftReason(event.target.value)} placeholder="Operation reason" style={selectStyle} value={draftReason} />
             <input onChange={(event) => setDraftNote(event.target.value)} placeholder="Optional note" style={selectStyle} value={draftNote} />
-            <button className="product-button" disabled={!selectedUser} onClick={grantRole} type="button">Grant role</button>
+            <button className="product-button" disabled={!selectedUser || !draftReason.trim()} onClick={grantRole} type="button">Grant role</button>
           </div>
         ) : <p>Owner role is required to grant or revoke admin access.</p>}
       </article>

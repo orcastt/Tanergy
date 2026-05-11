@@ -22,6 +22,8 @@ from tangent_api.billing_payments import (
     list_billing_payments,
 )
 from tangent_api.billing_webhooks import process_billing_webhook
+from tangent_api.plan_catalog import list_plan_catalog
+from tangent_api.plan_catalog_schemas import PlanCatalogResponse
 from tangent_api.request_context import ApiRequestContext, get_request_context
 from tangent_api.workspace_entitlements import build_billing_me_response
 from tangent_api.workspace_schemas import BillingMeResponse
@@ -54,6 +56,11 @@ def get_billing_payments(
             workspace_scoped=workspace_scoped,
         ),
     )
+
+
+@router.get("/plans", response_model=PlanCatalogResponse)
+def get_billing_plans() -> PlanCatalogResponse:
+    return PlanCatalogResponse(ok=True, plans=list_plan_catalog())
 
 
 @router.post("/topups/checkout", response_model=BillingPaymentMutationResponse)

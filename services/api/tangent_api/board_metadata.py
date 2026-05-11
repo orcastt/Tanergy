@@ -39,7 +39,7 @@ def normalize_board_visibility(value: Optional[str]) -> str:
 
 def get_board_document_metrics(document: Any) -> dict[str, int]:
     if not isinstance(document, dict):
-        return {"asset_count": 0, "shape_count": 0}
+        return {"asset_count": 0, "page_count": 1, "shape_count": 0}
     assets = document.get("assets")
     shapes = document.get("shapes")
     canvas_document = document.get("canvasDocument")
@@ -54,8 +54,10 @@ def get_board_document_metrics(document: Any) -> dict[str, int]:
             page_shapes = page_document.get("shapes") if isinstance(page_document, dict) else None
             if isinstance(page_shapes, list):
                 page_shape_count += len(page_shapes)
+    page_count = len(pages) if isinstance(pages, list) and pages else 1
     return {
         "asset_count": len(assets) if isinstance(assets, list) else 0,
+        "page_count": page_count,
         "shape_count": page_shape_count
         if page_shape_count > 0
         else len(shapes) if isinstance(shapes, list) else len(canvas_shapes) if isinstance(canvas_shapes, list) else 0,

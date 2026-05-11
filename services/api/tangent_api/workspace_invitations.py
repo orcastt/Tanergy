@@ -7,9 +7,9 @@ from uuid import uuid4
 
 from fastapi import HTTPException
 
+from tangent_api.plan_catalog import group_member_limit_for_plan, included_credits_for_plan
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.storage.postgres_connection import require_database_url
-from tangent_api.workspace_entitlements import PLAN_CATALOG
 from tangent_api.workspace_schemas import (
     WorkspaceInvitationAcceptRecord,
     WorkspaceInvitationCreateRecord,
@@ -20,6 +20,7 @@ ACTIVE_MEMBER_ROLES = {"owner", "admin", "editor", "viewer", "member", "guest"}
 MANAGER_ROLES = {"owner", "admin"}
 PRODUCT_INVITE_ROLES = {"admin", "editor", "viewer"}
 LEGACY_INVITE_ROLES = {"member", "guest"}
+GROUP_MEMBER_MAX = 15
 
 
 def create_workspace_invitation(
@@ -47,6 +48,8 @@ def create_workspace_invitation(
 
     with connect_to_postgres() as connection:
         with connection.cursor() as cursor:
+            if context.workspace_kind == "group_workspace":
+                _assert_group_member_capacity(cursor, context.workspace_id, None)
             cursor.execute(
                 """
                 INSERT INTO tangent_workspace_invitations (
@@ -104,6 +107,8 @@ def accept_workspace_invitation(token: str, context: ApiRequestContext) -> Works
             _assert_invitation_target(row, context)
             invitation = _invitation_from_row(row)
             workspace_kind = _load_workspace_kind(cursor, invitation.workspace_id, invitation.metadata)
+            if workspace_kind == "group_workspace":
+                _assert_group_member_capacity(cursor, invitation.workspace_id, context.user_id)
             seat_policy = _resolve_team_invite_seat_policy(
                 cursor,
                 invitation.workspace_id,
@@ -303,9 +308,27 @@ def _resolve_team_invite_seat_policy(
     if active_seats >= seat_capacity:
         raise HTTPException(status_code=402, detail="No Team seats remain for this invite.")
     return {
-        "included_credits": int(PLAN_CATALOG[plan_key]["included_credits"] or 0),
+        "included_credits": included_credits_for_plan(plan_key),
         "plan_key": plan_key,
     }
+
+
+def _assert_group_member_capacity(cursor: object, workspace_id: str, target_user_id: Optional[str]) -> None:
+    cursor.execute(
+        """
+        SELECT COUNT(*)
+        FROM tangent_workspace_members
+        WHERE workspace_id = %s
+          AND role IN ('owner', 'admin', 'editor', 'viewer', 'member', 'guest')
+          AND (%s IS NULL OR user_id <> %s)
+        """,
+        (workspace_id, target_user_id, target_user_id),
+    )
+    row = cursor.fetchone()
+    active_members = int(row[0] or 0) if row else 0
+    group_member_max = group_member_limit_for_plan("collaborate_plus") or GROUP_MEMBER_MAX
+    if active_members >= group_member_max:
+        raise HTTPException(status_code=400, detail=f"Group member cap is {group_member_max}.")
 
 
 def _upsert_team_invite_seat_assignment(

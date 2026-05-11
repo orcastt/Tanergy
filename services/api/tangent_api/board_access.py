@@ -2,6 +2,7 @@ from typing import Literal, Optional
 
 from fastapi import HTTPException
 
+from tangent_api.plan_catalog import board_limit_for_plan, page_limit_for_plan
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.schemas import BoardRecord
 
@@ -98,6 +99,15 @@ def can_own_board(
 def assert_can_create_board(context: ApiRequestContext) -> None:
     if not can_create_board(context):
         raise HTTPException(status_code=403, detail="Workspace role cannot create or save boards.")
+    board_limit = board_limit_for_plan(context.workspace_plan_key or "free_canvas")
+    if board_limit is not None and context.workspace_board_count >= board_limit:
+        raise HTTPException(status_code=402, detail=f"Plan allows up to {board_limit} boards.")
+
+
+def assert_board_page_limit(page_count: int, context: ApiRequestContext) -> None:
+    page_limit = page_limit_for_plan(context.workspace_plan_key or "free_canvas")
+    if page_limit is not None and page_count > page_limit:
+        raise HTTPException(status_code=400, detail=f"Plan allows up to {page_limit} pages per board.")
 
 
 def assert_can_read_board(

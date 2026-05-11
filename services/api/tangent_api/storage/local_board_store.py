@@ -10,6 +10,7 @@ from uuid import uuid4
 from fastapi import HTTPException
 
 from tangent_api.board_access import (
+    assert_board_page_limit,
     assert_can_create_board,
     assert_can_manage_board,
     assert_can_own_board,
@@ -58,6 +59,7 @@ def save_board(input_data: BoardSaveRequest, context: ApiRequestContext) -> Boar
 
     board_id = _sanitize_board_id(input_data.board_id) or f"board_{uuid4()}"
     metrics = get_board_document_metrics(input_data.document)
+    assert_board_page_limit(metrics.get("page_count", 1), context)
     existing = _read_existing_board(board_id, context)
     if existing:
         assert_can_write_board(existing, context, _get_board_member_role(existing.id, existing, context))

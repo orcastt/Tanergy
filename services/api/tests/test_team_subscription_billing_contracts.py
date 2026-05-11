@@ -54,6 +54,9 @@ def test_team_subscription_checkout_complete_provisions_team_workspace(monkeypat
     assert fake_db.workspaces[0]["owner_id"] == "user_team_buyer"
     assert fake_db.workspace_members[0]["role"] == "owner"
     assert fake_db.workspace_members[0]["user_id"] == "user_team_buyer"
+    assert fake_db.workspace_seat_assignments[0]["user_id"] == "user_team_buyer"
+    assert fake_db.workspace_seat_assignments[0]["plan_key"] == "team_start"
+    assert fake_db.workspace_seat_assignments[0]["status"] == "active"
     assert fake_db.credit_accounts[-1]["account_kind"] == "team_wallet"
     assert fake_db.subscriptions[0]["account_id"] == f"credit_workspace_{workspace_id}"
     assert fake_db.subscriptions[0]["owner_type"] == "workspace"
@@ -64,6 +67,29 @@ def test_team_subscription_checkout_complete_provisions_team_workspace(monkeypat
     assert fake_db.credit_ledger[-1]["account_id"] == f"credit_workspace_{workspace_id}"
     assert fake_db.credit_ledger[-1]["credits_delta"] == 5000
     assert fake_db.credit_ledger[-1]["workspace_id"] == workspace_id
+
+
+def test_team_subscription_checkout_rejects_above_seat_cap(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", FakePostgresDatabase().connect)
+    client = TestClient(app)
+
+    checkout = client.post(
+        "/api/v1/billing/teams/checkout",
+        headers={
+            "x-tangent-user-id": "user_team_buyer",
+            "x-tangent-workspace-id": "workspace_personal",
+            "x-tangent-workspace-kind": "solo_workspace",
+        },
+        json={
+            "planKey": "team_start",
+            "quantity": 16,
+            "teamName": "Too Big Team",
+        },
+    )
+
+    assert checkout.status_code == 400
+    assert checkout.json()["detail"] == "Team seat quantity cannot exceed 15."
 
 
 def test_team_subscription_completion_requires_original_buyer(monkeypatch):

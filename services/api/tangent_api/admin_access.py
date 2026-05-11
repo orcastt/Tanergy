@@ -195,10 +195,12 @@ def grant_admin_role(
     role: str,
     permissions: Optional[dict[str, Any]] = None,
     note: Optional[str] = None,
+    reason: str,
     workspace_id: Optional[str] = None,
 ) -> tuple[AdminRoleRecord, str]:
     require_database_url()
     normalized_role = _normalize_admin_role_name(role)
+    normalized_reason = _normalize_admin_mutation_reason(reason)
     coerced_permissions = _coerce_json_dict(permissions)
 
     with connect_to_postgres() as connection:
@@ -234,7 +236,7 @@ def grant_admin_role(
                 cursor,
                 action="admin.role.grant",
                 actor_user_id=actor_user_id,
-                metadata={"permissions": coerced_permissions, "role": normalized_role},
+                metadata={"permissions": coerced_permissions, "reason": normalized_reason, "role": normalized_role},
                 target_user_id=target_user_id,
                 workspace_id=workspace_id,
             )
@@ -251,10 +253,12 @@ def revoke_admin_role(
     actor_user_id: str,
     target_user_id: str,
     role: str,
+    reason: str,
     workspace_id: Optional[str] = None,
 ) -> tuple[AdminRoleRecord, str]:
     require_database_url()
     normalized_role = _normalize_admin_role_name(role)
+    normalized_reason = _normalize_admin_mutation_reason(reason)
     active_roles = load_active_admin_roles(target_user_id)
     target_role = next((item for item in active_roles if item.role == normalized_role), None)
     if target_role is None:
@@ -276,7 +280,7 @@ def revoke_admin_role(
                 cursor,
                 action="admin.role.revoke",
                 actor_user_id=actor_user_id,
-                metadata={"role": normalized_role},
+                metadata={"reason": normalized_reason, "role": normalized_role},
                 target_user_id=target_user_id,
                 workspace_id=workspace_id,
             )
@@ -393,6 +397,13 @@ def _normalize_admin_role_name(role: str) -> str:
     if normalized not in ADMIN_ACCESS_ROLES:
         raise HTTPException(status_code=400, detail="Invalid admin role.")
     return normalized
+
+
+def _normalize_admin_mutation_reason(value: str) -> str:
+    normalized = " ".join(value.strip().split())
+    if not normalized:
+        raise HTTPException(status_code=400, detail="Admin role mutation reason is required.")
+    return normalized[:500]
 
 
 def _count_active_admin_roles(role: str) -> int:

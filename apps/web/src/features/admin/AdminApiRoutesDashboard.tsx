@@ -126,7 +126,7 @@ export function AdminApiRoutesDashboard({ enabled }: { enabled: boolean }) {
         </div>
 
         <div className="admin-route-editor-grid">
-          <article className="management-panel management-panel-wide admin-route-sidebar">
+          <article className="management-panel admin-route-sidebar">
             <AdminApiRoutesTable metricsByRoute={metricsByRoute} onSelectRoute={setSelectedRouteId} routeId={selectedRoute?.routeId ?? ''} routes={visibleRoutes} />
           </article>
 

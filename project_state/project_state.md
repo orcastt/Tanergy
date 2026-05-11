@@ -1,8 +1,8 @@
 # TANGENT Project State Index
 
-**Updated**: 2026-05-10
+**Updated**: 2026-05-11
 **Branch**: `feature/s1x-konva-handfeel-spike`
-**Latest local checkpoint**: S1X Konva route stabilization + S1D permission/share hardening + S2/S3 DB-backed AI control-plane scaffolds + first-pass billing/team/usage/admin surfaces + GeekAI local canvas UX proof. The active business-system checkpoint is now the S3 Team/Group wallet pivot: Team plans should use isolated Team workspaces and Team wallets, while Group/Collaborate uses personal wallets. The next highest-priority backend slice is S1C auth/admin production boundary hardening.
+**Latest local checkpoint**: S1X Konva route stabilization + S1D permission/share hardening + S2/S3 DB-backed AI control-plane scaffolds + first-pass billing/team/usage/admin surfaces + S3 admin-operator acceptance pass + GeekAI local canvas UX proof. The active business-system checkpoint is now the S3 Team/Group wallet pivot: Team plans use isolated Team workspaces and Team wallets, while Group/Collaborate uses personal wallets. The next highest-priority backend slice is S1C auth/admin production boundary hardening plus staging smoke.
 
 This folder replaces the former root-level long project ledger and short mirror files. The root `project_state.md` is now only a pointer.
 
@@ -101,6 +101,7 @@ Done locally:
   S3 local admin/payment smoke: disposable Postgres-backed `/admin` finance reads, manual Team wallet top-up, manual Team seat checkout/assignment and hosted redirect/manual-complete rejection passed
   S3 manual admin billing bridge: `/admin` finance can top up/deduct user/Team wallets, assign Group/Collaborate or Team plans, create Team/Group workspaces, cancel subscriptions and delete workspaces through audited `admin_manual` backend operations while Stripe is unavailable; `/admin` now separates Users, Teams, Groups, AI API Routes, Finance and Access with server-backed directory and route metrics
   S3 admin operator first pass: `/api/v1/admin/operator/users`, `/api/v1/admin/operator/users/{user_id}`, `/admin?tab=users`, five-tab `/admin/users/[userId]` detail and centered manual-finance modals now follow the operator redesign plan
+  S3 admin operator acceptance pass: Account profile/User inventory table alignment, billing target selection, register state, block/unblock, Group freeze/unfreeze, Team/Group caps, joined-Team actor billing history and admin role reason audits are locally green against full frontend/backend gates
   S3 admin operator native workspace actions: arbitrary Team/Group invite list/create/revoke, direct member add and board copy/delete are now wired into the owned workspace rows
   S3 admin operator demo seed: `services/api/scripts/seed_admin_operator_demo.py` can now populate dense local QA data for User inventory, Team Plan, Joined Team, Group Plan, Joined Group, billing history and pending invites
   S2/S3 DB-backed AI control-plane registry/provider-route/pricing-rule read/save + versioned publish/rollback + AiRun quote/preflight + persisted lifecycle/failover + live-adapter scaffold checkpoint
@@ -122,7 +123,7 @@ Not production-complete:
   true rendered Konva page-thumbnail assets/page duplicate/Move selection to new page
   local GeekAI path folded into the server AiRun/provider-route/billing control plane
   full real AI provider coverage and durable text-output persistence
-  full Admin/Billing/Analytics depth, including billing-history reconciliation, external billing reconciliation and richer finance views
+  full Admin/Billing/Analytics depth, including external billing reconciliation and richer finance views
   collaboration
 ```
 
@@ -149,7 +150,7 @@ If external resources are not ready:
 2. Keep S1X on regression-only fixes while the new share/admin checkpoints settle.
 3. Harden S1D permissions into the target `Can view/edit/manage/owner` model with Group/Team workspace separation.
 4. Start S1E `.tgy` Board Package export/import if Board/Asset guard work remains stable.
-5. Continue the S3 Team/Group wallet slice: deployed staging admin/payment smoke, billing-history reconciliation and real payment webhook depth.
+5. Continue the S3 Team/Group wallet slice: deployed staging admin/payment smoke, real-login admin_roles verification and real payment webhook depth.
 6. Start the S1C auth/admin production boundary cut: real Clerk login on staging/prod, admin_roles bootstrap, spoof tests, CORS/origin contract and default solo workspace + personal wallet registration closure.
 7. Fold the current GeekAI local fast path into the server provider-route adapter layer while preserving timeout-safe per-attempt observability and no-double-charge settlement before real provider charging.
 

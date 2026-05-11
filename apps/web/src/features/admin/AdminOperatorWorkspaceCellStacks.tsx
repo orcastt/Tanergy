@@ -4,6 +4,8 @@ import type { AdminOperatorAction } from './adminOperatorActions'
 import type { AdminOperatorWorkspacePlan } from './adminTypes'
 import type { WorkspaceInvitationRecord } from '@/features/billing/billingTypes'
 
+type StackAction = { disabled?: boolean; label: string; onClick: () => void; title?: string }
+
 export function MemberStack({
   bottomActions = [],
   manageMembers = false,
@@ -15,7 +17,7 @@ export function MemberStack({
   totalLabel,
   workspaceId,
 }: {
-  bottomActions?: Array<{ label: string; onClick: () => void }>
+  bottomActions?: StackAction[]
   manageMembers?: boolean
   invitations?: WorkspaceInvitationRecord[]
   members: AdminOperatorWorkspacePlan['members']
@@ -99,7 +101,14 @@ export function MemberStack({
       {bottomActions.length ? (
         <div className="admin-member-stack-actions">
           {bottomActions.map((action) => (
-            <button className="admin-inline-action" key={action.label} onClick={action.onClick} type="button">
+            <button
+              className="admin-inline-action"
+              disabled={action.disabled}
+              key={action.label}
+              onClick={action.onClick}
+              title={action.title}
+              type="button"
+            >
               {action.label}
             </button>
           ))}
@@ -166,7 +175,7 @@ export function BoardStack({
 export function ActionStack({
   actions,
 }: {
-  actions: Array<{ label: string; onClick: () => void }>
+  actions: StackAction[]
 }) {
   if (!actions.length) return <span>-</span>
   return (
@@ -175,8 +184,10 @@ export function ActionStack({
         <button
           className="product-button product-button-secondary admin-table-button admin-plan-action-button"
           data-tone={buttonTone(action.label)}
+          disabled={action.disabled}
           key={action.label}
           onClick={action.onClick}
+          title={action.title}
           type="button"
         >
           {action.label}

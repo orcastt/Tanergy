@@ -93,7 +93,11 @@
 }
 
 .admin-users-directory .management-table-wrap {
-  overflow-x: hidden;
+  overflow-x: auto;
+}
+
+.admin-users-directory .admin-users-table {
+  min-width: 1320px;
 }
 
 .admin-users-table th,
@@ -244,6 +248,12 @@
 .admin-user-status-text.is-inactive {
   color: var(--color-muted);
   text-transform: capitalize;
+}
+
+.admin-user-status-cell {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
 }
 
 .admin-detail-button {

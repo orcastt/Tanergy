@@ -6,10 +6,10 @@ from fastapi import HTTPException
 
 from tangent_api.admin_finance_manual_ops import assert_user_exists, assert_workspace_exists, grant_included_credits as grant_plan_credits, insert_audit, load_credit_balance, upsert_subscription
 from tangent_api.admin_finance_manual_schemas import AdminManualFinanceMutationResponse
-from tangent_api.admin_finance_manual_utils import COLLABORATE_PLAN_KEYS, TEAM_PLAN_KEYS, manual_response, normalize_id, normalize_plan_key, normalize_subscription_status, resolve_subscription_window
+from tangent_api.admin_finance_manual_utils import COLLABORATE_PLAN_KEYS, TEAM_PLAN_KEYS, manual_response, normalize_id, normalize_plan_key, normalize_subscription_status, resolve_collaborate_term_months, resolve_subscription_window, resolve_team_term_months
 from tangent_api.billing_credit_accounts import ensure_credit_account
+from tangent_api.plan_catalog import included_credits_for_plan
 from tangent_api.storage.postgres_connection import connect_to_postgres, require_database_url
-from tangent_api.workspace_entitlements import PLAN_CATALOG
 
 
 def manual_set_collaborate_plan(
@@ -28,6 +28,7 @@ def manual_set_collaborate_plan(
     require_database_url()
     normalized_plan = normalize_plan_key(plan_key, COLLABORATE_PLAN_KEYS, "Collaborate")
     normalized_status = normalize_subscription_status(status)
+    duration_months = resolve_collaborate_term_months(duration_count, duration_unit_days)
     resolved_period_end = parse_period_end(period_end)
     resolved_period_start, resolved_period_end = resolve_subscription_window(
         duration_count=duration_count,
@@ -59,7 +60,7 @@ def manual_set_collaborate_plan(
                 cursor,
                 account_id=account_id,
                 actor_user_id=actor_user_id,
-                credits=float(PLAN_CATALOG[normalized_plan]["included_credits"] or 0),
+                credits=float(included_credits_for_plan(normalized_plan)) * duration_months,
                 enabled=grant_included_credits,
                 metadata={
                     "note": note,
@@ -116,6 +117,7 @@ def manual_set_team_plan(
     require_database_url()
     normalized_plan = normalize_plan_key(plan_key, TEAM_PLAN_KEYS, "Team")
     normalized_status = normalize_subscription_status(status)
+    duration_months = resolve_team_term_months(duration_count, duration_unit_days)
     resolved_period_end = parse_period_end(period_end)
     resolved_period_start, resolved_period_end = resolve_subscription_window(
         duration_count=duration_count,
@@ -143,7 +145,7 @@ def manual_set_team_plan(
                 status=normalized_status,
                 workspace_id=workspace_id,
             )
-            credits = float(PLAN_CATALOG[normalized_plan]["included_credits"] or 0) * seat_capacity
+            credits = float(included_credits_for_plan(normalized_plan)) * seat_capacity * duration_months
             ledger_entry_id = grant_plan_credits(
                 cursor,
                 account_id=account_id,

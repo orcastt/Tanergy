@@ -1078,6 +1078,54 @@ class FakePostgresCursor:
                     }
                 )
                 self.row = (account_id,)
+        elif normalized.startswith("INSERT INTO tangent_plan_catalog"):
+            (
+                plan_key,
+                plan_family,
+                name,
+                billing_period,
+                included_credits,
+                monthly_price_usd,
+                annual_price_usd,
+                seat_range,
+                seat_min,
+                seat_max,
+                board_limit,
+                page_limit,
+                registration_credits,
+                group_workspace_limit,
+                group_member_limit,
+                metadata_value,
+            ) = params
+            metadata = json.loads(metadata_value) if isinstance(metadata_value, str) else metadata_value
+            existing = next((row for row in self.database.plan_catalog if row["plan_key"] == plan_key), None)
+            next_row = {
+                "annual_price_usd": annual_price_usd,
+                "billing_period": billing_period,
+                "board_limit": board_limit,
+                "created_at": existing.get("created_at") if existing else "2026-05-11T00:10:00Z",
+                "group_member_limit": group_member_limit,
+                "group_workspace_limit": group_workspace_limit,
+                "included_credits": included_credits,
+                "metadata": metadata or {},
+                "monthly_price_usd": monthly_price_usd,
+                "name": name,
+                "page_limit": page_limit,
+                "plan_family": plan_family,
+                "plan_key": plan_key,
+                "registration_credits": registration_credits,
+                "seat_max": seat_max,
+                "seat_min": seat_min,
+                "seat_range": seat_range,
+                "updated_at": "2026-05-11T00:11:00Z",
+            }
+            if existing:
+                existing.update(next_row)
+                row = existing
+            else:
+                self.database.plan_catalog.append(next_row)
+                row = next_row
+            self.row = _plan_catalog_tuple(row)
         elif normalized.startswith("SELECT id, workspace_id FROM tangent_assets WHERE id = ANY"):
             asset_ids, workspace_id = params
             asset_id_set = set(asset_ids)
@@ -1216,6 +1264,33 @@ class FakePostgresCursor:
                 if row["workspace_id"] != workspace_id or row["user_id"] != user_id
             ]
             self.rowcount = before - len(self.database.workspace_members)
+        elif normalized.startswith("SELECT COUNT(*) FROM tangent_workspaces WHERE owner_id = %s"):
+            owner_id = params[0]
+            self.row = (
+                sum(
+                    1
+                    for row in self.database.workspaces
+                    if (
+                        row.get("owner_id") == owner_id
+                        and row.get("kind") == "group_workspace"
+                        and row.get("status", "active") != "deleted"
+                    )
+                ),
+            )
+        elif normalized.startswith("SELECT COUNT(*) FROM tangent_workspace_members WHERE workspace_id = %s"):
+            workspace_id = params[0]
+            target_user_id = params[1] if len(params) > 1 else None
+            self.row = (
+                sum(
+                    1
+                    for row in self.database.workspace_members
+                    if (
+                        row["workspace_id"] == workspace_id
+                        and row.get("role") in {"admin", "editor", "guest", "member", "owner", "viewer"}
+                        and (target_user_id is None or row["user_id"] != target_user_id)
+                    )
+                ),
+            )
         elif normalized.startswith("SELECT amount_cents, metadata FROM tangent_payments"):
             account_or_workspace_id = params[0]
             if "JOIN tangent_credit_accounts" in normalized:
@@ -1260,6 +1335,20 @@ class FakePostgresCursor:
             if matches:
                 row = matches[0]
                 self.row = (row.get("plan_key"), row.get("seat_capacity", 0))
+        elif normalized.startswith("SELECT seat_capacity FROM tangent_subscriptions"):
+            workspace_id = params[0]
+            matches = [
+                row for row in self.database.subscriptions
+                if (
+                    row.get("owner_type") == "workspace"
+                    and row.get("owner_id") == workspace_id
+                    and row.get("plan_family") == "team"
+                    and row.get("status", "active") in {"active", "trialing"}
+                )
+            ]
+            matches.sort(key=lambda row: row.get("updated_at", ""), reverse=True)
+            if matches:
+                self.row = (matches[0].get("seat_capacity", 0),)
         elif normalized.startswith("SELECT ca.id, s.plan_key FROM tangent_credit_accounts ca JOIN tangent_subscriptions s"):
             owner_type, owner_id = params
             accounts = [
@@ -1307,6 +1396,15 @@ class FakePostgresCursor:
             row = next((row for row in self.database.subscriptions if row["id"] == params[0]), None)
             if row:
                 self.row = (row["id"], row.get("account_id"), row.get("owner_type"), row.get("owner_id"), row.get("workspace_id"))
+        elif normalized.startswith("SELECT id, seat_capacity, plan_key FROM tangent_subscriptions"):
+            account_id = params[0]
+            matches = [
+                row for row in self.database.subscriptions
+                if row["account_id"] == account_id and row.get("status", "active") in {"active", "trialing"}
+            ]
+            matches.sort(key=lambda row: row.get("updated_at", ""), reverse=True)
+            if matches:
+                self.row = (matches[0]["id"], matches[0].get("seat_capacity", 0), matches[0].get("plan_key"))
         elif normalized.startswith("SELECT id FROM tangent_subscriptions"):
             account_id = params[0]
             matches = [
@@ -1316,6 +1414,15 @@ class FakePostgresCursor:
             matches.sort(key=lambda row: row.get("updated_at", ""), reverse=True)
             if matches:
                 self.row = (matches[0]["id"],)
+        elif normalized.startswith("SELECT id, seat_capacity FROM tangent_subscriptions"):
+            account_id = params[0]
+            matches = [
+                row for row in self.database.subscriptions
+                if row["account_id"] == account_id and row.get("status", "active") in {"active", "trialing"}
+            ]
+            matches.sort(key=lambda row: row.get("updated_at", ""), reverse=True)
+            if matches:
+                self.row = (matches[0]["id"], matches[0].get("seat_capacity", 0))
         elif normalized.startswith("SELECT id FROM tangent_credit_accounts WHERE owner_type = %s"):
             owner_type, owner_id = params[0], params[1]
             account_kind = params[2] if len(params) > 2 else None
@@ -1555,6 +1662,17 @@ class FakePostgresCursor:
             self.row = (
                 sum(float(row.get("credits_delta", 0)) for row in self.database.credit_ledger if row["account_id"] == account_id),
             )
+        elif normalized.startswith("SELECT 1 FROM tangent_credit_ledger WHERE account_id = %s AND source_id = %s LIMIT 1"):
+            account_id, source_id = params
+            row = next(
+                (
+                    entry for entry in self.database.credit_ledger
+                    if entry["account_id"] == account_id and entry.get("source_id") == source_id
+                ),
+                None,
+            )
+            if row:
+                self.row = (1,)
         elif normalized.startswith("SELECT reason, COALESCE(SUM(credits_delta), 0) FROM tangent_credit_ledger"):
             account_id = params[0]
             totals = {}
@@ -1564,6 +1682,10 @@ class FakePostgresCursor:
                 totals.setdefault(row["reason"], 0.0)
                 totals[row["reason"]] += float(row.get("credits_delta", 0))
             self.rows = [(reason, value) for reason, value in totals.items()]
+        elif normalized.startswith("SELECT plan_key, plan_family, name, billing_period, included_credits, monthly_price_usd, annual_price_usd, seat_range, seat_min, seat_max, board_limit, page_limit, registration_credits, group_workspace_limit, group_member_limit, metadata, created_at, updated_at FROM tangent_plan_catalog"):
+            rows = [_plan_catalog_tuple(row) for row in self.database.plan_catalog]
+            rows.sort(key=lambda row: row[0])
+            self.rows = rows
         elif normalized.startswith("SELECT actor_user_id, COALESCE(SUM(CASE WHEN credits_delta < 0 THEN -credits_delta ELSE 0 END), 0) FROM tangent_credit_ledger"):
             workspace_id = params[0]
             totals = {}
@@ -1880,6 +2002,7 @@ class FakePostgresDatabase:
         self.model_provider_routes = []
         self.model_registry = []
         self.payments = []
+        self.plan_catalog = []
         self.snapshots = {}
         self.subscriptions = []
         self.users = []
@@ -2009,6 +2132,29 @@ def _workspace_invitation_tuple(row):
         row.get("token_hash"),
         row.get("target_user_id"),
         row.get("metadata", {}),
+    )
+
+
+def _plan_catalog_tuple(row):
+    return (
+        row["plan_key"],
+        row.get("plan_family", "free"),
+        row.get("name", row["plan_key"]),
+        row.get("billing_period", "monthly_or_annual"),
+        row.get("included_credits", 0),
+        row.get("monthly_price_usd"),
+        row.get("annual_price_usd"),
+        row.get("seat_range"),
+        row.get("seat_min"),
+        row.get("seat_max"),
+        row.get("board_limit"),
+        row.get("page_limit"),
+        row.get("registration_credits", 0),
+        row.get("group_workspace_limit"),
+        row.get("group_member_limit"),
+        row.get("metadata", {}),
+        row.get("created_at", "1970-01-01T00:00:00Z"),
+        row.get("updated_at", "1970-01-01T00:00:00Z"),
     )
 
 

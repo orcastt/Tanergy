@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import {
   NumberInput,
-  PlanScheduleFields,
   StrictSelect,
+  TeamMonthlyScheduleFields,
   Toggle,
   teamPlans,
   TextInput,
@@ -34,13 +34,11 @@ export function AdminWorkspaceFinanceActions({
   subscriptionId?: null | string
   workspaceKind?: WorkspaceKind
 }) {
-  const [amountCents, setAmountCents] = useState('0')
   const [credits, setCredits] = useState('100')
   const [grantIncluded, setGrantIncluded] = useState(true)
   const [note, setNote] = useState('')
   const [planKey, setPlanKey] = useState('team_start')
   const [durationCount, setDurationCount] = useState('1')
-  const [durationUnitDays, setDurationUnitDays] = useState('30')
   const [effectMode, setEffectMode] = useState('immediate')
   const [seatCapacity, setSeatCapacity] = useState('2')
   const [status, setStatus] = useState('ready')
@@ -75,14 +73,12 @@ export function AdminWorkspaceFinanceActions({
         <div className="manual-finance-block">
           <div className="management-field-grid two">
             <NumberInput label="Credits" onChange={setCredits} value={credits} />
-            <NumberInput label="Amount cents" onChange={setAmountCents} value={amountCents} />
           </div>
           <div className="management-actions is-start">
             <button
               className="product-button"
               disabled={!enabled || running || !workspaceId || !hasReason}
               onClick={() => run('Top up team', () => adminManualTopupWorkspace({
-                amountCents: toInt(amountCents),
                 credits: toFloat(credits),
                 note,
                 workspaceId,
@@ -107,12 +103,10 @@ export function AdminWorkspaceFinanceActions({
           <div className="management-field-grid two">
             <StrictSelect label="Plan" onChange={setPlanKey} options={teamPlans} value={planKey} />
             <NumberInput label="Seats" onChange={setSeatCapacity} value={seatCapacity} />
-            <PlanScheduleFields
+            <TeamMonthlyScheduleFields
               durationCount={durationCount}
-              durationUnitDays={durationUnitDays}
               effectMode={effectMode}
               onDurationCountChange={setDurationCount}
-              onDurationUnitDaysChange={setDurationUnitDays}
               onEffectModeChange={setEffectMode}
             />
             <Toggle checked={grantIncluded} label="Grant included credits" onChange={setGrantIncluded} />
@@ -123,7 +117,7 @@ export function AdminWorkspaceFinanceActions({
               disabled={!enabled || running || !workspaceId || !hasReason}
               onClick={() => run('Assign team plan', () => adminManualSetTeamPlan({
                 durationCount: toInt(durationCount),
-                durationUnitDays: toInt(durationUnitDays),
+                durationUnitDays: 30,
                 effectMode,
                 grantIncludedCredits: grantIncluded,
                 note,

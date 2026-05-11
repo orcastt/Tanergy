@@ -207,3 +207,50 @@ def test_team_workspace_invite_accept_requires_available_seat(monkeypatch):
     assert accepted.json()["detail"] == "No Team seats remain for this invite."
     assert [row["user_id"] for row in fake_db.workspace_seat_assignments] == ["user_existing_editor"]
     assert fake_db.workspace_members == []
+
+
+def test_group_workspace_invite_accept_enforces_member_cap(monkeypatch):
+    token = "group-full-token"
+    fake_db = FakePostgresDatabase()
+    fake_db.workspace_members = [
+        {
+            "display_name": f"Member {index}",
+            "role": "viewer",
+            "user_id": f"user_group_member_{index}",
+            "workspace_id": "workspace_group",
+        }
+        for index in range(15)
+    ]
+    fake_db.workspace_invitations = [
+        {
+            "accepted_at": None,
+            "accepted_by": None,
+            "created_at": "2026-05-08T00:00:00Z",
+            "email": None,
+            "expires_at": "2999-01-01T00:00:00Z",
+            "id": "invite_full_group",
+            "invited_by": "user_group_owner",
+            "metadata": {"workspaceKind": "group_workspace"},
+            "revoked_at": None,
+            "role": "viewer",
+            "target_user_id": None,
+            "token_hash": hashlib.sha256(token.encode("utf-8")).hexdigest(),
+            "workspace_id": "workspace_group",
+        }
+    ]
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    accepted = client.post(
+        f"/api/v1/workspaces/invitations/{token}/accept",
+        headers={
+            "x-tangent-user-id": "user_group_new",
+            "x-tangent-workspace-id": "workspace_personal",
+            "x-tangent-workspace-kind": "solo_workspace",
+        },
+    )
+
+    assert accepted.status_code == 400
+    assert accepted.json()["detail"] == "Group member cap is 15."
+    assert len(fake_db.workspace_members) == 15

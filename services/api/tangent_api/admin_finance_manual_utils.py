@@ -9,6 +9,9 @@ COLLABORATE_PLAN_KEYS = {"collaborate_start", "collaborate_plus"}
 EFFECT_MODES = {"immediate", "next_week"}
 MUTABLE_SUBSCRIPTION_STATUSES = {"active", "trialing"}
 TEAM_PLAN_KEYS = {"team_start", "team_growth"}
+MONTHLY_TERM_MONTH_MAX = 12
+MONTHLY_TERM_MONTH_MIN = 1
+MONTHLY_TERM_UNIT_DAYS = 30
 
 
 def manual_response(account_id: str, audit_id: str, balance: float, ledger_entry_id: Optional[str], message: str, subscription_id: str) -> AdminManualFinanceMutationResponse:
@@ -49,6 +52,26 @@ def normalize_effect_mode(effect_mode: str) -> str:
     if normalized not in EFFECT_MODES:
         raise HTTPException(status_code=400, detail="Effect mode must be immediate or next_week.")
     return normalized
+
+
+def resolve_monthly_term_months(duration_count: int, duration_unit_days: int, label: str) -> int:
+    months = int(duration_count or 0)
+    if months < MONTHLY_TERM_MONTH_MIN or months > MONTHLY_TERM_MONTH_MAX:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{label} duration must be between {MONTHLY_TERM_MONTH_MIN} and {MONTHLY_TERM_MONTH_MAX} months.",
+        )
+    if int(duration_unit_days or 0) != MONTHLY_TERM_UNIT_DAYS:
+        raise HTTPException(status_code=400, detail=f"{label} duration unit must stay fixed at 30 days.")
+    return months
+
+
+def resolve_team_term_months(duration_count: int, duration_unit_days: int) -> int:
+    return resolve_monthly_term_months(duration_count, duration_unit_days, "Team")
+
+
+def resolve_collaborate_term_months(duration_count: int, duration_unit_days: int) -> int:
+    return resolve_monthly_term_months(duration_count, duration_unit_days, "Collaborate")
 
 
 def resolve_subscription_window(

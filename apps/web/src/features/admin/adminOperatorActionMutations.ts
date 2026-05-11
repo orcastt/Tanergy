@@ -54,6 +54,7 @@ export type MemberRole = 'admin' | 'editor' | 'viewer'
 
 export type AdminOperatorActionFormValues = {
   amountCents: number
+  creditTargetId: string
   credits: number
   durationCount: number
   durationUnitDays: number
@@ -108,6 +109,31 @@ export function runAdminOperatorActionMutation(
   form: AdminOperatorActionFormValues,
 ): Promise<AdminOperatorMutationResult> {
   switch (action.type) {
+    case 'billing-topup':
+      {
+        const target = resolveCreditTarget(action, form.creditTargetId)
+        if (target.kind === 'team_wallet') {
+          return adminManualTopupWorkspace({
+            amountCents: form.amountCents,
+            credits: form.credits,
+            note: form.note,
+            workspaceId: requireWorkspaceTarget(target),
+          })
+        }
+        return adminManualTopupUser({ amountCents: form.amountCents, credits: form.credits, note: form.note, userId: action.userId })
+      }
+    case 'billing-deduct':
+      {
+        const target = resolveCreditTarget(action, form.creditTargetId)
+        if (target.kind === 'team_wallet') {
+          return adminManualAdjustWorkspaceCredits({
+            creditsDelta: -form.credits,
+            note: form.note,
+            workspaceId: requireWorkspaceTarget(target),
+          })
+        }
+        return adminManualAdjustUserCredits({ creditsDelta: -form.credits, note: form.note, userId: action.userId })
+      }
     case 'user-topup':
       return adminManualTopupUser({ amountCents: form.amountCents, credits: form.credits, note: form.note, userId: action.userId })
     case 'user-deduct':
@@ -205,4 +231,22 @@ function shouldSendPlanKey(planOperation: AdminOperatorPlanOperationMode) {
 
 function shouldSendSeatCapacity(planOperation: AdminOperatorPlanOperationMode) {
   return planOperation === 'assign' || planOperation === 'renew' || planOperation === 'upgrade'
+}
+
+function resolveCreditTarget(
+  action: Extract<AdminOperatorAction, { type: 'billing-deduct' | 'billing-topup' }>,
+  creditTargetId: string,
+) {
+  return action.targets.find((target) => target.id === creditTargetId) ?? action.targets[0] ?? {
+    id: 'personal',
+    kind: 'personal' as const,
+    label: 'Personal credits',
+  }
+}
+
+function requireWorkspaceTarget(target: { label: string; workspaceId?: string }) {
+  if (!target.workspaceId) {
+    throw new Error(`${target.label} is missing a Team workspace id.`)
+  }
+  return target.workspaceId
 }

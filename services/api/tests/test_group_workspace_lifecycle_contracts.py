@@ -72,3 +72,55 @@ def test_group_workspace_create_requires_collaborate_subscription(monkeypatch):
     assert response.status_code == 402
     assert response.json()["detail"] == "Collaborate subscription is required to create a Group workspace."
     assert fake_db.workspaces == []
+
+
+def test_collaborate_start_group_create_enforces_group_limit(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.credit_accounts = [
+        {
+            "account_kind": "personal_wallet",
+            "id": "credit_user_user_group_owner",
+            "owner_id": "user_group_owner",
+            "owner_type": "user",
+            "status": "active",
+        }
+    ]
+    fake_db.subscriptions = [
+        {
+            "account_id": "credit_user_user_group_owner",
+            "id": "subscription_collab",
+            "owner_id": "user_group_owner",
+            "owner_type": "user",
+            "plan_family": "collaborate",
+            "plan_key": "collaborate_start",
+            "status": "active",
+            "updated_at": "2026-05-08T00:00:00Z",
+        }
+    ]
+    fake_db.workspaces = [
+        {
+            "id": f"workspace_group_{index}",
+            "kind": "group_workspace",
+            "name": f"Group {index}",
+            "owner_id": "user_group_owner",
+            "status": "active",
+        }
+        for index in range(10)
+    ]
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/workspaces/groups",
+        headers={
+            "x-tangent-user-id": "user_group_owner",
+            "x-tangent-workspace-id": "workspace_personal",
+            "x-tangent-workspace-kind": "solo_workspace",
+        },
+        json={"name": "Overflow Group"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Collaborate plan allows up to 10 Groups."
+    assert len(fake_db.workspaces) == 10

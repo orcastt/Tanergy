@@ -6,10 +6,11 @@ from uuid import uuid4
 from fastapi import HTTPException
 
 from tangent_api.billing_payment_schemas import BillingPaymentRecord
+from tangent_api.plan_catalog import included_credits_for_plan, monthly_price_usd_for_plan, seat_max_for_plan
 from tangent_api.request_context import ApiRequestContext
-from tangent_api.workspace_entitlements import PLAN_CATALOG
 
 TEAM_PLAN_KEYS = {"team_start", "team_growth"}
+TEAM_SEAT_MAX = 15
 
 
 def build_team_subscription_metadata(
@@ -23,7 +24,7 @@ def build_team_subscription_metadata(
     normalized_plan = _normalize_team_plan_key(plan_key)
     normalized_quantity = _normalize_team_quantity(quantity)
     normalized_team_name = _normalize_team_name(team_name)
-    included_credits = int(PLAN_CATALOG[normalized_plan]["included_credits"] or 0)
+    included_credits = included_credits_for_plan(normalized_plan)
     return {
         **metadata,
         "checkoutWorkspaceId": context.workspace_id,
@@ -39,7 +40,7 @@ def build_team_subscription_metadata(
 def calculate_team_subscription_amount_cents(plan_key: str, quantity: int) -> int:
     normalized_plan = _normalize_team_plan_key(plan_key)
     normalized_quantity = _normalize_team_quantity(quantity)
-    monthly_price_usd = int(PLAN_CATALOG[normalized_plan]["monthly_price_usd"] or 0)
+    monthly_price_usd = int(monthly_price_usd_for_plan(normalized_plan) or 0)
     return monthly_price_usd * 100 * normalized_quantity
 
 
@@ -64,6 +65,7 @@ def provision_team_subscription_payment(
 
     _upsert_team_workspace(cursor, workspace_id, team_name, context)
     _upsert_team_owner_membership(cursor, workspace_id, context)
+    _upsert_team_owner_seat_assignment(cursor, workspace_id, context, plan_key)
     account_id = _ensure_team_wallet(cursor, workspace_id, requested_account_id)
 
     provisioned_metadata = {
@@ -100,7 +102,7 @@ def upsert_team_workspace_subscription(cursor: object, payment: BillingPaymentRe
     seat_capacity = int(payment.metadata.get("quantity") or 1)
     cursor.execute(
         """
-        SELECT id
+        SELECT id, seat_capacity, plan_key
         FROM tangent_subscriptions
         WHERE account_id = %s
           AND status IN ('active', 'trialing')
@@ -145,6 +147,16 @@ def upsert_team_workspace_subscription(cursor: object, payment: BillingPaymentRe
             ),
         )
         return
+    current_capacity = int(row[1] or 0)
+    current_plan_key = str(row[2] or plan_key)
+    next_plan_key = current_plan_key if payment.kind == "seat_purchase" else plan_key
+    if payment.kind == "seat_purchase" and current_plan_key != plan_key:
+        raise HTTPException(status_code=400, detail="Seat purchase plan must match the active Team subscription.")
+    next_capacity = _resolve_next_seat_capacity(
+        current_capacity=current_capacity,
+        payment_kind=payment.kind,
+        quantity=seat_capacity,
+    )
     cursor.execute(
         """
         UPDATE tangent_subscriptions
@@ -156,19 +168,19 @@ def upsert_team_workspace_subscription(cursor: object, payment: BillingPaymentRe
             provider = %s,
             provider_subscription_id = %s,
             status = 'active',
-            seat_capacity = GREATEST(seat_capacity, %s),
+            seat_capacity = %s,
             current_period_start = COALESCE(current_period_start, NOW()),
             current_period_end = %s,
             updated_at = NOW()
         WHERE id = %s
         """,
         (
-            plan_key,
+            next_plan_key,
             workspace_id,
             workspace_id,
             payment.provider,
             payment.id,
-            seat_capacity,
+            next_capacity,
             current_period_end,
             row[0],
         ),
@@ -219,6 +231,40 @@ def _upsert_team_owner_membership(cursor: object, workspace_id: str, context: Ap
     )
 
 
+def _upsert_team_owner_seat_assignment(cursor: object, workspace_id: str, context: ApiRequestContext, plan_key: str) -> None:
+    included_credits = included_credits_for_plan(plan_key)
+    cursor.execute(
+        """
+        INSERT INTO tangent_workspace_seat_assignments (
+            id,
+            workspace_id,
+            user_id,
+            plan_key,
+            status,
+            included_credits,
+            current_period_start,
+            current_period_end,
+            assigned_by
+        )
+        VALUES (%s, %s, %s, %s, 'active', %s, NULL, NULL, %s)
+        ON CONFLICT (workspace_id, user_id, plan_key)
+        DO UPDATE SET
+            status = 'active',
+            included_credits = EXCLUDED.included_credits,
+            assigned_by = EXCLUDED.assigned_by,
+            updated_at = NOW()
+        """,
+        (
+            f"seat_{uuid4()}",
+            workspace_id,
+            context.user_id,
+            plan_key,
+            included_credits,
+            context.user_id,
+        ),
+    )
+
+
 def _ensure_team_wallet(cursor: object, workspace_id: str, account_id: str) -> str:
     cursor.execute(
         """
@@ -253,7 +299,21 @@ def _normalize_team_plan_key(plan_key: str) -> str:
 def _normalize_team_quantity(quantity: int) -> int:
     if quantity < 1:
         raise HTTPException(status_code=400, detail="Team seat quantity must be at least one.")
+    max_seats = seat_max_for_plan("team_growth") or TEAM_SEAT_MAX
+    if quantity > max_seats:
+        raise HTTPException(status_code=400, detail=f"Team seat quantity cannot exceed {max_seats}.")
     return quantity
+
+
+def _resolve_next_seat_capacity(*, current_capacity: int, payment_kind: str, quantity: int) -> int:
+    if payment_kind == "seat_purchase":
+        next_capacity = current_capacity + quantity
+    else:
+        next_capacity = max(current_capacity, quantity)
+    max_seats = seat_max_for_plan("team_growth") or TEAM_SEAT_MAX
+    if next_capacity > max_seats:
+        raise HTTPException(status_code=400, detail=f"Team seat capacity cannot exceed {max_seats}.")
+    return next_capacity
 
 
 def _normalize_team_name(team_name: str) -> str:

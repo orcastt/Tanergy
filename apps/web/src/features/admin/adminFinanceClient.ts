@@ -108,6 +108,44 @@ export type AdminFinanceManualMutationResource = {
   workspaceId?: null | string
 }
 
+export type AdminPlanCatalogRecord = {
+  annualPriceUsd?: null | number
+  billingPeriod: string
+  boardLimit?: null | number
+  createdAt?: null | string
+  groupMemberLimit?: null | number
+  groupWorkspaceLimit?: null | number
+  includedCredits: number
+  metadata: Record<string, unknown>
+  monthlyPriceUsd?: null | number
+  name: string
+  pageLimit?: null | number
+  planFamily: string
+  planKey: string
+  registrationCredits: number
+  seatMax?: null | number
+  seatMin?: null | number
+  seatRange?: null | string
+  updatedAt?: null | string
+}
+
+export type AdminPlanCatalogResource = {
+  error?: string
+  ok: boolean
+  plans: AdminPlanCatalogRecord[]
+}
+
+export type AdminPlanCatalogUpdateInput = Partial<Pick<
+  AdminPlanCatalogRecord,
+  'annualPriceUsd' | 'billingPeriod' | 'boardLimit' | 'groupMemberLimit' | 'groupWorkspaceLimit' | 'includedCredits' | 'metadata' | 'monthlyPriceUsd' | 'name' | 'pageLimit' | 'registrationCredits' | 'seatMax' | 'seatMin' | 'seatRange'
+>>
+
+export type AdminPlanCatalogMutationResource = {
+  auditId?: null | string
+  ok: boolean
+  plan: AdminPlanCatalogRecord
+}
+
 export type AdminFinanceQuery = {
   accountId?: string
   accountKind?: string
@@ -215,6 +253,17 @@ export function loadAdminFinanceSubscriptions(query: AdminFinanceQuery) {
 
 export function loadAdminFinanceMemberUsage(query: AdminFinanceQuery) {
   return loadAdminJson<AdminFinanceMemberUsageResource>(`/api/v1/admin/finance/member-usage${createQuery(query)}`)
+}
+
+export function loadAdminPlanCatalog() {
+  return loadAdminJson<AdminPlanCatalogResource>('/api/v1/admin/finance/plan-catalog')
+}
+
+export function updateAdminPlanCatalog(planKey: string, input: AdminPlanCatalogUpdateInput) {
+  return loadAdminJson<AdminPlanCatalogMutationResource>(`/api/v1/admin/finance/plan-catalog/${encodeURIComponent(planKey)}`, {
+    body: JSON.stringify(input),
+    method: 'PUT',
+  })
 }
 
 export function adminManualTopupUser(input: AdminManualUserTopupInput) {

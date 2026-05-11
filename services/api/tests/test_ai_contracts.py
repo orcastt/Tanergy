@@ -139,6 +139,19 @@ def test_ai_run_mock_settles_team_workspace_against_team_wallet(monkeypatch):
             "workspace_id": "workspace_team",
         }
     ]
+    fake_db.subscriptions = [
+        {
+            "account_id": "credit_db_team_wallet",
+            "id": "subscription_team_start",
+            "owner_id": "workspace_team",
+            "owner_type": "workspace",
+            "plan_family": "team",
+            "plan_key": "team_start",
+            "seat_capacity": 2,
+            "status": "active",
+            "updated_at": "2026-05-06T00:00:00Z",
+        }
+    ]
     fake_db.credit_ledger = [
         {
             "account_id": "credit_db_team_wallet",

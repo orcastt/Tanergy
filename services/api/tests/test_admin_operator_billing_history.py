@@ -4,6 +4,7 @@ from tangent_api.admin_operator_billing_history_rows import (
     payment_history_from_row,
     subscription_history_from_row,
 )
+from tangent_api.admin_operator_billing_history import load_admin_operator_billing_history
 
 
 def test_payment_history_row_maps_team_subscription_details():
@@ -120,3 +121,72 @@ def test_audit_history_row_falls_back_to_role_transition_without_note():
     entry = audit_history_from_row(row)
 
     assert entry.reason == "editor -> admin"
+
+
+def test_billing_history_includes_joined_team_actor_ledger(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    fake_connection = BillingHistoryConnection()
+    monkeypatch.setattr("tangent_api.admin_operator_billing_history.connect_to_postgres", lambda: fake_connection)
+
+    rows = load_admin_operator_billing_history("user_target", limit=20)
+
+    assert [row.id for row in rows] == ["ledger_joined_team_usage"]
+    assert rows[0].team_credits_delta == -15
+    assert rows[0].personal_credits_delta == 0
+    assert rows[0].workspace_id == "workspace_team_joined"
+    assert fake_connection.cursor_obj.saw_joined_team_filter is True
+
+
+class BillingHistoryConnection:
+    def __init__(self):
+        self.cursor_obj = BillingHistoryCursor()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback):
+        return False
+
+    def cursor(self):
+        return self.cursor_obj
+
+
+class BillingHistoryCursor:
+    def __init__(self):
+        self.rows = []
+        self.saw_joined_team_filter = False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback):
+        return False
+
+    def execute(self, query, params=None):
+        normalized = " ".join(query.split())
+        self.rows = []
+        if "FROM tangent_credit_ledger l" in normalized:
+            self.saw_joined_team_filter = (
+                "tangent_workspace_members wm" in normalized
+                and "l.actor_user_id = %s" in normalized
+                and params == ("user_target", "user_target", "user_target", "user_target", "user_target", 20)
+            )
+            self.rows = [
+                (
+                    "ledger_joined_team_usage",
+                    "usage_charge",
+                    -15,
+                    "workspace_team_joined",
+                    "workspace",
+                    "workspace_team_joined",
+                    "team_wallet",
+                    "Joined Team",
+                    "2026-05-10T12:00:00Z",
+                    {"runId": "run_joined_team"},
+                    "ai_run",
+                    "run_joined_team",
+                )
+            ]
+
+    def fetchall(self):
+        return self.rows

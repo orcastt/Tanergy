@@ -9,6 +9,12 @@ from tangent_api.workspace_schemas import WorkspaceSeatAssignmentUpsertRequest
 from tests.persistence_fakes import FakePostgresDatabase
 
 
+@pytest.fixture(autouse=True)
+def clear_database_url(monkeypatch):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    yield
+
+
 def test_billing_me_returns_team_wallet_contract():
     client = TestClient(app)
 
@@ -98,6 +104,19 @@ def test_workspace_entitlement_uses_database_team_seat_assignment(monkeypatch):
             "workspace_id": "workspace_team",
         }
     ]
+    fake_db.subscriptions = [
+        {
+            "account_id": "credit_db_team_wallet",
+            "id": "subscription_team_growth",
+            "owner_id": "workspace_team",
+            "owner_type": "workspace",
+            "plan_family": "team",
+            "plan_key": "team_growth",
+            "seat_capacity": 2,
+            "status": "active",
+            "updated_at": "2026-05-06T00:00:00Z",
+        }
+    ]
     monkeypatch.setenv("DATABASE_URL", "postgresql://test")
     monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
     monkeypatch.setattr("tangent_api.workspace_seats.connect_to_postgres", fake_db.connect)
@@ -120,6 +139,58 @@ def test_workspace_entitlement_uses_database_team_seat_assignment(monkeypatch):
     assert payload["charge"]["workspaceSeatId"] == "seat_db_growth_1"
     assert payload["plan"]["planKey"] == "team_growth"
     assert payload["plan"]["includedCredits"] == 6200
+
+
+def test_workspace_entitlement_rejects_paused_team_subscription(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.credit_accounts = [
+        {
+            "account_kind": "team_wallet",
+            "id": "credit_db_team_wallet",
+            "owner_id": "workspace_team",
+            "owner_type": "workspace",
+            "status": "active",
+        }
+    ]
+    fake_db.workspace_seat_assignments = [
+        {
+            "id": "seat_db_growth_1",
+            "included_credits": 5500,
+            "plan_key": "team_growth",
+            "status": "active",
+            "updated_at": "2026-05-06T00:00:00Z",
+            "user_id": "user_team_member",
+            "workspace_id": "workspace_team",
+        }
+    ]
+    fake_db.subscriptions = [
+        {
+            "account_id": "credit_db_team_wallet",
+            "id": "subscription_team_growth",
+            "owner_id": "workspace_team",
+            "owner_type": "workspace",
+            "plan_family": "team",
+            "plan_key": "team_growth",
+            "seat_capacity": 2,
+            "status": "paused",
+            "updated_at": "2026-05-06T00:00:00Z",
+        }
+    ]
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    response = client.get(
+        "/api/v1/workspaces/current/entitlement",
+        headers={
+            "x-tangent-user-id": "user_team_member",
+            "x-tangent-workspace-id": "workspace_team",
+            "x-tangent-workspace-kind": "team_workspace",
+        },
+    )
+
+    assert response.status_code == 402
+    assert response.json()["detail"] == "Active Team subscription is required to use Team wallet."
 
 
 def test_billing_me_uses_database_personal_subscription(monkeypatch):
@@ -475,6 +546,19 @@ def test_billing_topup_checkout_complete_and_list_payments(monkeypatch):
 
 def test_team_seat_checkout_complete_updates_subscription_and_workspace_payments(monkeypatch):
     fake_db = FakePostgresDatabase()
+    fake_db.subscriptions = [
+        {
+            "account_id": "credit_workspace_workspace_team",
+            "id": "subscription_team_growth",
+            "owner_id": "workspace_team",
+            "owner_type": "workspace",
+            "plan_family": "team",
+            "plan_key": "team_growth",
+            "seat_capacity": 1,
+            "status": "active",
+            "updated_at": "2026-05-06T00:00:00Z",
+        }
+    ]
     monkeypatch.setenv("DATABASE_URL", "postgresql://test")
     monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
     client = TestClient(app)
@@ -520,7 +604,7 @@ def test_team_seat_checkout_complete_updates_subscription_and_workspace_payments
     assert fake_db.subscriptions[0]["plan_family"] == "team"
     assert fake_db.subscriptions[0]["plan_key"] == "team_growth"
     assert fake_db.subscriptions[0]["provider_subscription_id"] == payment["id"]
-    assert fake_db.subscriptions[0]["seat_capacity"] == 3
+    assert fake_db.subscriptions[0]["seat_capacity"] == 4
     assert fake_db.credit_ledger[-1]["account_id"] == "credit_workspace_workspace_team"
     assert fake_db.credit_ledger[-1]["credits_delta"] == 16500
     assert fake_db.credit_ledger[-1]["reason"] == "subscription_grant"
@@ -536,6 +620,42 @@ def test_team_seat_checkout_complete_updates_subscription_and_workspace_payments
 
     assert listed.status_code == 200
     assert [row["id"] for row in listed.json()["payments"]] == [payment["id"]]
+
+
+def test_team_seat_checkout_rejects_mismatched_active_plan(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.subscriptions = [
+        {
+            "account_id": "credit_workspace_workspace_team",
+            "id": "subscription_team_start",
+            "owner_id": "workspace_team",
+            "owner_type": "workspace",
+            "plan_family": "team",
+            "plan_key": "team_start",
+            "seat_capacity": 2,
+            "status": "active",
+            "updated_at": "2026-05-06T00:00:00Z",
+        }
+    ]
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    checkout = client.post(
+        "/api/v1/billing/workspaces/current/seats/checkout",
+        headers={
+            "x-tangent-user-id": "user_team_owner",
+            "x-tangent-workspace-id": "workspace_team",
+            "x-tangent-workspace-kind": "team_workspace",
+        },
+        json={
+            "planKey": "team_growth",
+            "quantity": 1,
+        },
+    )
+
+    assert checkout.status_code == 400
+    assert checkout.json()["detail"] == "Seat purchase plan must match the active Team subscription."
 
 
 def test_team_owner_can_assign_and_list_seats(monkeypatch):
@@ -565,6 +685,19 @@ def test_team_owner_can_assign_and_list_seats(monkeypatch):
             "provider": "manual_test",
             "provider_payment_id": "payment_provider_seat_growth",
             "status": "succeeded",
+        }
+    ]
+    fake_db.subscriptions = [
+        {
+            "account_id": "credit_workspace_legacy_team",
+            "id": "subscription_team_growth",
+            "owner_id": "workspace_team",
+            "owner_type": "workspace",
+            "plan_family": "team",
+            "plan_key": "team_growth",
+            "seat_capacity": 2,
+            "status": "active",
+            "updated_at": "2026-05-06T00:00:00Z",
         }
     ]
     fake_db.workspace_members = [
@@ -597,15 +730,14 @@ def test_team_owner_can_assign_and_list_seats(monkeypatch):
     assert assigned.status_code == 200
     seat = assigned.json()["seat"]
     assert seat["assignedBy"] == "user_team_owner"
-    assert seat["includedCredits"] == 6100
+    assert seat["includedCredits"] == 5500
     assert seat["planKey"] == "team_growth"
     assert seat["status"] == "active"
     assert seat["userId"] == "user_team_member"
     assert fake_db.credit_accounts[0]["account_kind"] == "team_wallet"
     assert fake_db.credit_accounts[0]["owner_id"] == "workspace_team"
     assert fake_db.credit_accounts[0]["owner_type"] == "workspace"
-    assert fake_db.credit_ledger[-1]["account_id"] == "credit_workspace_legacy_team"
-    assert fake_db.credit_ledger[-1]["metadata"]["targetUserId"] == "user_team_member"
+    assert fake_db.credit_ledger == []
 
     listed = client.get(
         "/api/v1/workspaces/current/seats",
@@ -682,6 +814,19 @@ def test_team_seat_assignment_revokes_previous_plan_for_same_member(monkeypatch)
             "provider": "manual_test",
             "provider_payment_id": "payment_provider_seat_growth",
             "status": "succeeded",
+        }
+    ]
+    fake_db.subscriptions = [
+        {
+            "account_id": "credit_workspace_workspace_team",
+            "id": "subscription_team_growth",
+            "owner_id": "workspace_team",
+            "owner_type": "workspace",
+            "plan_family": "team",
+            "plan_key": "team_growth",
+            "seat_capacity": 1,
+            "status": "active",
+            "updated_at": "2026-05-06T00:00:00Z",
         }
     ]
     fake_db.workspace_members = [

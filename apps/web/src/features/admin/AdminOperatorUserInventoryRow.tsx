@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { buildStableListKey, formatCompactDate, formatNumber, truncateMiddle } from './adminAiShared'
+import type { AdminOperatorAction } from './adminOperatorActions'
 import type {
   AdminOperatorCreditSummary,
   AdminOperatorUserPlan,
@@ -10,9 +11,11 @@ import type {
 } from './adminTypes'
 
 export function AdminOperatorUserInventoryRow({
+  onAction,
   onWarmDetail,
   user,
 }: {
+  onAction: (action: AdminOperatorAction) => void
   onWarmDetail: (user: AdminOperatorUserRecord) => void
   user: AdminOperatorUserRecord
 }) {
@@ -33,6 +36,7 @@ export function AdminOperatorUserInventoryRow({
       </td>
       <td className="admin-users-cell-register">
         <strong>{formatCompactDate(user.createdAt)}</strong>
+        <small>{formatRegistrationState(user.registrationState)}</small>
       </td>
       <td><TeamPlanStack rows={teamPlanRows} /></td>
       <td><TeamCreditStack rows={teamPlanRows} /></td>
@@ -41,7 +45,24 @@ export function AdminOperatorUserInventoryRow({
       <td className="admin-users-cell-spent">
         <strong>{formatNumber(user.totalCreditsSpent)}</strong>
       </td>
-      <td><StatusText status={user.status} /></td>
+      <td>
+        <div className="admin-user-status-cell">
+          <StatusText status={user.status} />
+          <button
+            className="admin-inline-action"
+            data-tone={user.status === 'active' ? 'danger' : undefined}
+            onClick={() => onAction({
+              nextStatus: user.status === 'active' ? 'suspended' : 'active',
+              title: user.status === 'active' ? 'Block user' : 'Unblock user',
+              type: 'user-status',
+              userId: user.id,
+            })}
+            type="button"
+          >
+            {user.status === 'active' ? 'Block' : 'Unblock'}
+          </button>
+        </div>
+      </td>
       <td>
         <Link
           className="admin-detail-button"
@@ -133,6 +154,10 @@ function StatusText({ status }: { status: string }) {
   const isActive = status === 'active'
   const label = isActive ? 'Active' : status.replaceAll('_', ' ')
   return <span className={`admin-user-status-text ${isActive ? 'is-active' : 'is-inactive'}`}>{label}</span>
+}
+
+function formatRegistrationState(value: string) {
+  return value ? value.replaceAll('_', ' ') : 'unknown'
 }
 
 function periodText(periodStart?: null | string, periodEnd?: null | string) {

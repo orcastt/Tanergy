@@ -1,7 +1,7 @@
 # S3 Admin Operator Console Redesign Plan
 
 **Created**: 2026-05-09
-**Status**: Active tactical plan; Phase A/E/F plus the first arbitrary-workspace invite/member/board row loop are now implemented locally.
+**Status**: Active tactical plan; local operator acceptance against the Admin_user_inventory reference is now green, with staging and higher-volume smoke still remaining.
 **Owner slice**: S3 Admin/Billing/Analytics, with S1C/S1D/S2 dependencies.
 
 ## Purpose
@@ -105,15 +105,12 @@ Already reusable:
 - `/api/v1/admin/finance/manual/*` can top up/deduct user and Team wallets, assign plans, create Team/Group workspaces, cancel subscriptions and delete workspaces with required reasons.
 - `/api/v1/admin/directory/*` can list users, owned workspaces, workspace members and boards.
 
-Missing or too thin:
+Still needs production hardening:
 
-- IP/last seen facts are not reliably stored for inventory.
-- Operator inventory now returns active plus expired Team and Collaborate plan arrays, but it still depends on existing subscription facts and thin IP/registration state.
-- User detail now has an operator bundle route and a first-pass server-seeded detail page, but billing history still needs fuller payment/subscription/audit merge semantics.
-- Joined Team/Group lists by user membership now exist in the operator detail bundle; role-aware member/board actions are still pending.
-- Freeze/unfreeze is not an explicit subscription operation yet.
-- User block/unblock/delete is not an admin write endpoint yet.
-- Member/board actions in admin detail need role-aware operations and guardrails before being enabled.
+- Higher-volume indexing and pagination smoke against production-shaped data.
+- Staging-facing operator smoke after the API host is reachable.
+- Server-provided fine-grained action-permission facts for joined Team/Group rows; the current frontend still derives visibility from workspace role.
+- Richer registration-state taxonomy if invite-before-login or partially registered users need separate operator states.
 
 ## Implementation Checkpoint: 2026-05-09
 
@@ -132,8 +129,8 @@ Implemented:
 
 Still pending:
 
-- Joined Team/Group top-level manual join flow if the mock keeps that affordance instead of row-level add-member only.
-- Demo seed data for visual QA with richer Team/Group histories.
+- Staging smoke with real login/admin role once the staging API host is reachable.
+- Higher-volume visual QA with production-shaped Team/Group histories.
 
 ## Backend Plan
 
@@ -174,12 +171,12 @@ Current bridge behavior:
 
 - `/admin` and `/admin/users/[userId]` should keep server bootstrap as access-only and let cached operator resources paint immediately when available.
 - The client keeps local tab state and cached detail bundles after the first load.
-- Existing `admin/directory` and `admin/bootstrap` reads remain reusable for the first pass, but they do not satisfy the final operator bundle shape yet.
+- Existing `admin/directory` and `admin/bootstrap` reads remain reusable, but the operator console now reads inventory/detail from dedicated operator bundles instead of composing those facts piecemeal.
 
-The final operator bundle still needs:
+The operator bundle now includes:
 
 - joined Team and Group membership arrays by user
-- billing history merged from payments, ledger and audit rows
+- billing history merged from payments, ledger, subscription and audit rows
 - explicit freeze/unfreeze state for subscriptions
 - user IP / registration-state facts for inventory rows
 - modal write endpoints for status, delete and subscription pause control
@@ -321,17 +318,26 @@ Examples:
 - All writes are server-gated by `admin_roles` and audited with reason.
 - Empty local data can be populated by the opt-in demo seed.
 
-## Implementation Order
+Local checkpoint on 2026-05-11:
 
-1. Backend read model schemas and tests for inventory/detail bundle.
-2. Minimal schema delta for IP and freeze/unfreeze state.
-3. Admin write endpoints for block/unblock/delete/freeze/unfreeze.
-4. Dev-only demo seed script.
-5. Frontend inventory table using real bundle fields.
-6. Frontend user detail five-tab layout and modal shell.
-7. Hook existing manual finance writes into the new modals.
-8. Role-aware joined Team/Group management actions.
-9. Local smoke with demo data and real Neon/local Postgres.
+- Account profile and User inventory table cells now keep table-cell layout and no longer rotate profile content into vertical stacks.
+- Billing top-up/deduct can choose personal credits or an owned Team wallet.
+- Team seat cap 15, Collaborate 10/20 Group limits and Group 15-member cap are enforced in backend and surfaced in UI.
+- Admin role grant/revoke now require a reason and write it into audit metadata.
+- Billing history includes joined-Team actor ledger rows from the Team wallet.
+- Local gates passed: frontend lint/typecheck/build, backend compileall and full `TANGENT_SKIP_ENV_FILE_LOAD=1` pytest.
+
+## Original Implementation Order
+
+1. Backend read model schemas and tests for inventory/detail bundle. Done locally.
+2. Minimal schema delta for IP and freeze/unfreeze state. Done locally.
+3. Admin write endpoints for block/unblock/delete/freeze/unfreeze. Done locally.
+4. Dev-only demo seed script. Done locally.
+5. Frontend inventory table using real bundle fields. Done locally.
+6. Frontend user detail five-tab layout and modal shell. Done locally.
+7. Hook existing manual finance writes into the new modals. Done locally.
+8. Role-aware joined Team/Group management actions. First pass done locally.
+9. Local smoke with demo data and real Neon/local Postgres. Local gates are green; staging remains.
 
 ## Open Decisions
 

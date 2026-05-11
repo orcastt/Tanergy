@@ -584,6 +584,7 @@ def post_admin_role(
         role=payload.role,
         permissions=payload.permissions,
         note=payload.note,
+        reason=payload.reason,
         workspace_id=context.workspace_id,
     )
     return AdminRoleMutationResponse(auditId=audit_id, ok=True, role=granted, userId=payload.user_id)
@@ -593,6 +594,7 @@ def post_admin_role(
 def delete_admin_role(
     user_id: str,
     role: str,
+    reason: str = Query(min_length=1),
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminRoleMutationResponse:
     require_admin_role(context, allowed_roles={"owner"})
@@ -600,6 +602,7 @@ def delete_admin_role(
         actor_user_id=context.user_id,
         target_user_id=user_id,
         role=role,
+        reason=reason,
         workspace_id=context.workspace_id,
     )
     return AdminRoleMutationResponse(auditId=audit_id, ok=True, role=revoked, userId=user_id)

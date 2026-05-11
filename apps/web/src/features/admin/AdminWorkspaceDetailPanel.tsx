@@ -19,6 +19,27 @@ export function AdminWorkspaceDetailPanel({
   onMutated: () => void
   workspace: AdminDirectoryWorkspacesResource['workspaces'][number]
 }) {
+  const summaryItems = kind === 'team'
+    ? [
+        { label: 'Plan', value: workspace.planKey ?? 'free' },
+        { label: 'Members', value: formatNumber(workspace.memberCount) },
+        { label: 'Boards', value: formatNumber(workspace.boardCount) },
+        { label: 'Team wallet', value: formatNumber(workspace.walletCredits) },
+        { label: 'Usage credits', value: formatNumber(workspace.usageCredits) },
+        { label: 'Seat capacity', value: workspace.seatCapacity || 'Not assigned' },
+      ]
+    : [
+        { label: 'Collaborate plan', value: workspace.ownerCollaboratePlanKey ?? 'free' },
+        { label: 'Members', value: formatNumber(workspace.memberCount) },
+        { label: 'Boards', value: formatNumber(workspace.boardCount) },
+        {
+          label: 'Subscription ends',
+          value: workspace.subscriptionPeriodEnd ? formatDate(workspace.subscriptionPeriodEnd) : 'Open ended',
+        },
+        { label: 'Group usage', value: formatNumber(workspace.usageCredits) },
+        { label: 'Owner', value: workspace.ownerEmail || workspace.ownerId || 'Unknown owner' },
+      ]
+
   return (
     <>
       <div className="management-panel-heading">
@@ -28,20 +49,24 @@ export function AdminWorkspaceDetailPanel({
         </div>
         <span className={`management-status ${detailStatus === 'ready' ? 'is-success' : ''}`}>{detailStatus}</span>
       </div>
-      <dl className="management-definition-list">
-        <div><dt>Wallet credits</dt><dd>{formatNumber(workspace.walletCredits)}</dd></div>
-        <div><dt>Usage credits</dt><dd>{formatNumber(workspace.usageCredits)}</dd></div>
-        <div><dt>Subscription ends</dt><dd>{workspace.subscriptionPeriodEnd ? formatDate(workspace.subscriptionPeriodEnd) : 'Open ended'}</dd></div>
-        <div><dt>Seat capacity</dt><dd>{workspace.seatCapacity || 'Not assigned'}</dd></div>
-      </dl>
-      <div className="management-section-gap">
-        <AdminWorkspaceFinanceActions
-          enabled={enabled}
-          onMutated={onMutated}
-          subscriptionId={kind === 'group' ? workspace.ownerCollaborateSubscriptionId : workspace.subscriptionId}
-          workspaceId={workspace.id}
-          workspaceKind={kind}
-        />
+      <div className="admin-workspace-summary-grid">
+        {summaryItems.map((item) => (
+          <div className="management-mini-stat" key={item.label}>
+            <span>{item.label}</span>
+            <strong>{item.value}</strong>
+          </div>
+        ))}
+      </div>
+      <div className="admin-workspace-detail-grid">
+        <div className="admin-workspace-detail-span">
+          <AdminWorkspaceFinanceActions
+            enabled={enabled}
+            onMutated={onMutated}
+            subscriptionId={kind === 'group' ? workspace.ownerCollaborateSubscriptionId : workspace.subscriptionId}
+            workspaceId={workspace.id}
+            workspaceKind={kind}
+          />
+        </div>
         <MembersTable detail={detail} />
         <BoardsTable detail={detail} />
       </div>

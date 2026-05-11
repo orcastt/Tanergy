@@ -50,7 +50,7 @@ def test_admin_manual_finance_sets_and_cancels_plans(monkeypatch):
         "/api/v1/admin/finance/manual/collaborate-plan",
         headers=headers,
         json={
-            "durationCount": 1,
+            "durationCount": 2,
             "durationUnitDays": 30,
             "effectMode": "next_week",
             "grantIncludedCredits": True,
@@ -75,7 +75,7 @@ def test_admin_manual_finance_sets_and_cancels_plans(monkeypatch):
     assert collaborate.status_code == 200
     assert team.status_code == 200
     assert {row["plan_key"] for row in fake_db.subscriptions} == {"collaborate_plus", "team_growth"}
-    assert sum(row["credits_delta"] for row in fake_db.credit_ledger) == 13000
+    assert sum(row["credits_delta"] for row in fake_db.credit_ledger) == 15000
     assert next(row for row in fake_db.subscriptions if row["plan_key"] == "collaborate_plus")["current_period_end"]
     assert _iso(next(row for row in fake_db.subscriptions if row["plan_key"] == "team_growth")["current_period_end"]).startswith("2026-07-31")
 
@@ -104,6 +104,8 @@ def test_admin_manual_finance_creates_and_deletes_workspaces(monkeypatch):
         "/api/v1/admin/finance/manual/team-workspace",
         headers=headers,
         json={
+            "durationCount": 4,
+            "durationUnitDays": 30,
             "extraCredits": 250,
             "grantIncludedCredits": True,
             "note": "create creator team",
@@ -126,6 +128,8 @@ def test_admin_manual_finance_creates_and_deletes_workspaces(monkeypatch):
     created_subscription = next(row for row in fake_db.subscriptions if row.get("workspace_id") == created_team["id"])
     assert created_subscription["plan_key"] == "team_start"
     assert _iso(created_subscription["current_period_end"]).startswith("2026-08-15")
+    created_team_ledger = [row for row in fake_db.credit_ledger if row.get("workspace_id") == created_team["id"]]
+    assert sum(row["credits_delta"] for row in created_team_ledger) == 30250
 
     deleted = client.post(
         "/api/v1/admin/finance/manual/workspace-delete",

@@ -5,7 +5,7 @@ import { BillingHistoryTable, CreditBar, formatPlanKey, periodText } from './Adm
 import { GroupPlanRow } from './adminOperatorDetailActionBuilders'
 import { JoinedGroupTable, JoinedTeamTable } from './AdminOperatorJoinedPlanTables'
 import { OwnedGroupsTable, OwnedTeamPlansTable } from './AdminOperatorOwnedPlanTables'
-import type { AdminOperatorAction } from './adminOperatorActions'
+import type { AdminOperatorAction, AdminOperatorCreditTarget } from './adminOperatorActions'
 import type {
   AdminOperatorUserDetail,
   AdminOperatorWorkspacePlan,
@@ -23,6 +23,7 @@ export function AdminOperatorBillingPanel({
   const user = detail?.user ?? null
   const teamPlans = detail?.ownedTeams ?? []
   const groupPlans = [...(detail?.groupPlansActive ?? []), ...(detail?.groupPlansExpired ?? [])]
+  const creditTargets = user ? buildBillingCreditTargets(teamPlans) : []
   return (
     <section className="management-stack">
       <article className="management-panel admin-operator-profile">
@@ -74,6 +75,7 @@ export function AdminOperatorBillingPanel({
                   </td>
                   <td className="admin-users-cell-register">
                     <strong>{formatCompactDate(user.createdAt)}</strong>
+                    <small>{formatRegistrationState(user.registrationState)}</small>
                   </td>
                   <td><WorkspacePlanStack rows={teamPlans} /></td>
                   <td><WorkspaceCreditStack rows={teamPlans} /></td>
@@ -99,8 +101,8 @@ export function AdminOperatorBillingPanel({
                       >
                         {user.status === 'active' ? 'Block' : 'Unblock'}
                       </button>
-                      <button className="product-button product-button-secondary admin-table-button admin-plan-action-button" data-tone="primary" onClick={() => onAction({ title: 'Top up personal credits', type: 'user-topup', userId: user.id })} type="button">Top up</button>
-                      <button className="product-button product-button-secondary admin-table-button admin-plan-action-button" data-tone="neutral" onClick={() => onAction({ title: 'Deduct personal credits', type: 'user-deduct', userId: user.id })} type="button">Deduct</button>
+                      <button className="product-button product-button-secondary admin-table-button admin-plan-action-button" data-tone="primary" onClick={() => onAction({ targets: creditTargets, title: 'Top up credits', type: 'billing-topup', userId: user.id })} type="button">Top up</button>
+                      <button className="product-button product-button-secondary admin-table-button admin-plan-action-button" data-tone="neutral" onClick={() => onAction({ targets: creditTargets, title: 'Deduct credits', type: 'billing-deduct', userId: user.id })} type="button">Deduct</button>
                     </div>
                   </td>
                 </tr>
@@ -184,12 +186,24 @@ export function AdminOperatorGroupPlanPanel({
   const historyPlans = [...(detail?.groupPlansActive ?? []).slice(1), ...(detail?.groupPlansExpired ?? [])]
   const createdGroups = detail?.ownedGroups ?? []
   const groupLimit = primaryPlan?.planKey === 'collaborate_plus' ? 20 : 10
+  const activePlan = primaryPlan && isActivePlan(primaryPlan.status) ? primaryPlan : null
+  const groupLimitReached = createdGroups.length >= groupLimit
+  const canFreezePlan = primaryPlan?.status === 'active' || primaryPlan?.status === 'trialing' || primaryPlan?.status === 'paused'
+  const freezeActionMode = primaryPlan?.status === 'paused' ? 'unfreeze' : 'freeze'
+  const freezeActionLabel = primaryPlan?.status === 'paused' ? 'Unfreeze' : 'Freeze'
   return (
     <section className="management-panel admin-operator-section">
       <div className="management-panel-heading compact">
         <div className="admin-group-plan-heading"><h2>Group Plan</h2></div>
         <div className="management-actions">
-          <button className="product-button product-button-secondary" onClick={() => onAction({ type: 'create-group', userId })} type="button">Create new group</button>
+          <button
+            className="product-button product-button-secondary"
+            disabled={!activePlan || groupLimitReached}
+            onClick={() => onAction({ type: 'create-group', userId })}
+            type="button"
+          >
+            Create new group
+          </button>
           <button
             className="product-button product-button-secondary"
             onClick={() => onAction({
@@ -206,6 +220,25 @@ export function AdminOperatorGroupPlanPanel({
           >
             Change plan
           </button>
+          {primaryPlan?.subscriptionId && canFreezePlan ? (
+            <button
+              className="product-button product-button-secondary"
+              onClick={() => onAction({
+                currentPlanKey: primaryPlan.planKey,
+                currentStatus: primaryPlan.status,
+                mode: freezeActionMode,
+                periodEnd: primaryPlan.periodEnd,
+                periodStart: primaryPlan.periodStart,
+                subscriptionId: primaryPlan.subscriptionId,
+                title: `${freezeActionLabel} ${primaryPlan.planKey}`,
+                type: 'group-plan',
+                userId,
+              })}
+              type="button"
+            >
+              {freezeActionLabel}
+            </button>
+          ) : null}
         </div>
       </div>
       <div className="admin-group-plan-section">
@@ -282,8 +315,28 @@ function isCurrentPlan(status: string) {
   return status === 'active' || status === 'trialing' || status === 'paused'
 }
 
+function isActivePlan(status: string) {
+  return status === 'active' || status === 'trialing'
+}
+
 function StatusText({ status }: { status: string }) {
   const isActive = status === 'active'
   const label = isActive ? 'Active' : status.replaceAll('_', ' ')
   return <span className={`admin-user-status-text ${isActive ? 'is-active' : 'is-inactive'}`}>{label}</span>
+}
+
+function buildBillingCreditTargets(teams: AdminOperatorWorkspacePlan[]): AdminOperatorCreditTarget[] {
+  return [
+    { id: 'personal', kind: 'personal', label: 'Personal credits' },
+    ...teams.map((team) => ({
+      id: `team:${team.id}`,
+      kind: 'team_wallet' as const,
+      label: `${team.workspaceName || formatPlanKey(team.planKey)} Team wallet`,
+      workspaceId: team.id,
+    })),
+  ]
+}
+
+function formatRegistrationState(value: string) {
+  return value ? value.replaceAll('_', ' ') : 'unknown'
 }

@@ -2,9 +2,15 @@ from uuid import uuid4
 
 from fastapi import HTTPException
 
+from tangent_api.plan_catalog import group_workspace_limit_for_plan
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.storage.postgres_connection import require_database_url
 from tangent_api.workspace_schemas import BillingWorkspaceSummary
+
+COLLABORATE_GROUP_LIMITS = {
+    "collaborate_plus": 20,
+    "collaborate_start": 10,
+}
 
 
 def create_group_workspace(name: str, context: ApiRequestContext) -> BillingWorkspaceSummary:
@@ -14,7 +20,8 @@ def create_group_workspace(name: str, context: ApiRequestContext) -> BillingWork
 
     with connect_to_postgres() as connection:
         with connection.cursor() as cursor:
-            _assert_active_collaborate_subscription(cursor, context.user_id)
+            plan_key = _load_active_collaborate_subscription(cursor, context.user_id)
+            _assert_group_create_capacity(cursor, context.user_id, plan_key)
             workspace_id = f"workspace_{uuid4()}"
             cursor.execute(
                 """
@@ -52,7 +59,7 @@ def create_group_workspace(name: str, context: ApiRequestContext) -> BillingWork
     return BillingWorkspaceSummary(id=workspace_id, kind="group_workspace", name=normalized_name, role="owner")
 
 
-def _assert_active_collaborate_subscription(cursor: object, user_id: str) -> None:
+def _load_active_collaborate_subscription(cursor: object, user_id: str) -> str:
     cursor.execute(
         """
         SELECT ca.id, s.plan_key
@@ -68,8 +75,28 @@ def _assert_active_collaborate_subscription(cursor: object, user_id: str) -> Non
         """,
         ("user", user_id),
     )
-    if cursor.fetchone() is None:
+    row = cursor.fetchone()
+    if row is None:
         raise HTTPException(status_code=402, detail="Collaborate subscription is required to create a Group workspace.")
+    return str(row[1] or "collaborate_start")
+
+
+def _assert_group_create_capacity(cursor: object, user_id: str, plan_key: str) -> None:
+    limit = group_workspace_limit_for_plan(plan_key) or COLLABORATE_GROUP_LIMITS.get(plan_key, 10)
+    cursor.execute(
+        """
+        SELECT COUNT(*)
+        FROM tangent_workspaces
+        WHERE owner_id = %s
+          AND kind = 'group_workspace'
+          AND COALESCE(status, 'active') <> 'deleted'
+        """,
+        (user_id,),
+    )
+    row = cursor.fetchone()
+    current_count = int(row[0] or 0) if row else 0
+    if current_count >= limit:
+        raise HTTPException(status_code=400, detail=f"Collaborate plan allows up to {limit} Groups.")
 
 
 def _normalize_workspace_name(name: str) -> str:

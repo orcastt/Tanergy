@@ -21,14 +21,15 @@ from tangent_api.admin_finance_manual_schemas import AdminManualFinanceMutationR
 from tangent_api.admin_finance_manual_utils import (
     COLLABORATE_PLAN_KEYS,
     TEAM_PLAN_KEYS,
+    resolve_monthly_term_months,
     normalize_id,
     normalize_plan_key,
     normalize_subscription_status,
     resolve_subscription_window,
 )
 from tangent_api.billing_credit_accounts import ensure_credit_account
+from tangent_api.plan_catalog import included_credits_for_plan
 from tangent_api.storage.postgres_connection import connect_to_postgres, require_database_url
-from tangent_api.workspace_entitlements import PLAN_CATALOG
 
 
 def manual_operate_group_plan(
@@ -172,6 +173,9 @@ def _operate_plan(
         action=action,
         current_plan_key=context.plan_key,
         current_seat_capacity=context.seat_capacity,
+        duration_count=duration_count,
+        duration_unit_days=duration_unit_days,
+        plan_family=context.plan_family,
         target_plan_key=normalized_plan_key,
         target_seat_capacity=seat_capacity,
     )
@@ -260,13 +264,21 @@ def _calculate_granted_credits(
     action: str,
     current_plan_key: Optional[str],
     current_seat_capacity: int,
+    duration_count: int,
+    duration_unit_days: int,
+    plan_family: str,
     target_plan_key: str,
     target_seat_capacity: int,
 ) -> float:
-    target_total = float(PLAN_CATALOG[target_plan_key]["included_credits"] or 0) * target_seat_capacity
+    duration_multiplier = resolve_monthly_term_months(
+        duration_count,
+        duration_unit_days,
+        "Team" if plan_family == "team" else "Collaborate",
+    ) if plan_family in {"team", "collaborate"} else 1
+    target_total = float(included_credits_for_plan(target_plan_key)) * target_seat_capacity * duration_multiplier
     if action != "upgrade" or not current_plan_key:
         return target_total
-    current_total = float(PLAN_CATALOG.get(current_plan_key, {}).get("included_credits") or 0) * max(1, current_seat_capacity)
+    current_total = float(included_credits_for_plan(current_plan_key)) * max(1, current_seat_capacity) * duration_multiplier
     return max(0.0, target_total - current_total)
 
 

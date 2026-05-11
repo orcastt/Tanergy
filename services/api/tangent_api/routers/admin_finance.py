@@ -19,6 +19,8 @@ from tangent_api.admin_finance_schemas import (
     AdminFinanceSummaryResponse,
     AdminFinanceWalletsResponse,
 )
+from tangent_api.plan_catalog import list_plan_catalog, update_plan_catalog_entry
+from tangent_api.plan_catalog_schemas import PlanCatalogMutationResponse, PlanCatalogResponse, PlanCatalogUpdateRequest
 from tangent_api.request_context import ApiRequestContext, get_request_context
 from tangent_api.routers.admin_finance_manual import router as manual_router
 
@@ -26,6 +28,7 @@ router = APIRouter(prefix="/api/v1/admin/finance", tags=["admin"])
 router.include_router(manual_router)
 
 FINANCE_READ_ROLES = {"owner", "admin", "finance", "analyst"}
+FINANCE_WRITE_ROLES = {"owner", "admin", "finance"}
 
 
 @router.get("/summary", response_model=AdminFinanceSummaryResponse)
@@ -134,6 +137,40 @@ def get_admin_finance_member_usage(
     member_usage = list_admin_finance_member_usage(workspace_id, limit=limit)
     _write_read_audit(context, "admin.finance.member_usage.list", roles, {"limit": limit, "workspaceId": workspace_id})
     return AdminFinanceMemberUsageResponse(ok=True, memberUsage=member_usage)
+
+
+@router.get("/plan-catalog", response_model=PlanCatalogResponse)
+def get_admin_finance_plan_catalog(
+    context: ApiRequestContext = Depends(get_request_context),
+) -> PlanCatalogResponse:
+    roles = require_admin_role(context, allowed_roles=FINANCE_READ_ROLES)
+    plans = list_plan_catalog()
+    _write_read_audit(context, "admin.finance.plan_catalog.read", roles, {})
+    return PlanCatalogResponse(ok=True, plans=plans)
+
+
+@router.put("/plan-catalog/{plan_key}", response_model=PlanCatalogMutationResponse)
+def put_admin_finance_plan_catalog(
+    plan_key: str,
+    payload: PlanCatalogUpdateRequest,
+    context: ApiRequestContext = Depends(get_request_context),
+) -> PlanCatalogMutationResponse:
+    roles = require_admin_role(context, allowed_roles=FINANCE_WRITE_ROLES)
+    patch = payload.model_dump(by_alias=False, exclude_unset=True)
+    plan = update_plan_catalog_entry(plan_key, patch)
+    write_admin_audit_log(
+        action="admin.finance.plan_catalog.update",
+        actor_user_id=context.user_id,
+        metadata={
+            "planKey": plan_key,
+            "roles": [getattr(role, "role", "") for role in roles],
+            "updatedFields": sorted(payload.model_dump(by_alias=False, exclude_unset=True).keys()),
+        },
+        workspace_id=context.workspace_id,
+    )
+    return PlanCatalogMutationResponse(ok=True, plan=plan)
+
+
 def _write_read_audit(
     context: ApiRequestContext,
     action: str,
@@ -149,5 +186,5 @@ def _write_read_audit(
 
 
 def _safe_metadata(metadata: dict[str, object]) -> dict[str, object]:
-    blocked = {"context", "roles", "payments", "wallets", "ledger", "subscriptions", "member_usage"}
+    blocked = {"context", "roles", "payments", "wallets", "ledger", "subscriptions", "member_usage", "plans"}
     return {key: value for key, value in metadata.items() if key not in blocked and value not in (None, "")}

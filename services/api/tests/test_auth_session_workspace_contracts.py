@@ -1,3 +1,4 @@
+import json
 import time
 
 import pytest
@@ -152,7 +153,68 @@ def test_verified_session_creates_default_workspace_and_personal_wallet(monkeypa
             "workspace_id": session.workspace_id,
         }
     ]
+    assert fake_db.credit_ledger == [
+        {
+            "account_id": f"credit_user_{session.user_id}",
+            "actor_user_id": session.user_id,
+            "credits_delta": 50.0,
+            "metadata": {"grantType": "registration", "planKey": "free_canvas"},
+            "reason": "subscription_grant",
+            "source_id": f"registration_free_canvas_{session.user_id}",
+            "source_type": "subscription",
+            "workspace_id": session.workspace_id,
+        }
+    ]
     assert wallet_calls == [("user", session.user_id)]
+    assert fake_db.commits == 1
+
+
+def test_existing_verified_session_bootstraps_local_admin_role_from_loopback_request(monkeypatch):
+    fake_db = AuthBootstrapFakeDatabase()
+    wallet_calls = []
+    monkeypatch.delenv("TANGENT_REQUIRE_API_AUTH", raising=False)
+    monkeypatch.setattr("tangent_api.auth_sessions.require_database_url", lambda: None)
+    monkeypatch.setattr("tangent_api.auth_sessions.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr(
+        "tangent_api.auth_sessions._load_auth_session_row",
+        lambda cursor, identity, requested_workspace_id: (
+            "user_existing",
+            "user@example.com",
+            "Clerk User",
+            "CU",
+            True,
+            "workspace_existing",
+            "Tanergy Workspace",
+            "solo_workspace",
+            "owner",
+        ),
+    )
+    monkeypatch.setattr(
+        "tangent_api.auth_sessions.load_workspace_memberships",
+        lambda cursor, user_id, active_workspace_id: [
+            ResolvedWorkspaceMembership(0, "workspace_existing", "solo_workspace", "Tanergy Workspace", "free_canvas", "owner")
+        ],
+    )
+    monkeypatch.setattr(
+        "tangent_api.auth_sessions.ensure_credit_account",
+        lambda cursor, owner_type, owner_id: wallet_calls.append((owner_type, owner_id)) or f"credit_{owner_type}_{owner_id}",
+    )
+
+    session = resolve_local_auth_session(_identity(), request_ip="127.0.0.1")
+
+    assert session.user_id == "user_existing"
+    assert wallet_calls == [("user", "user_existing")]
+    assert fake_db.admin_roles == [
+        {
+            "granted_by": "user_existing",
+            "note": "Local real-login admin bootstrap",
+            "permissions": {"bootstrap": True, "scope": "local_real_login"},
+            "revoked_at": None,
+            "role": "owner",
+            "user_id": "user_existing",
+        }
+    ]
+    assert fake_db.admin_audit_logs[-1]["action"] == "admin.bootstrap.real_login"
     assert fake_db.commits == 1
 
 
@@ -217,7 +279,21 @@ class AuthBootstrapFakeCursor:
         self.row = None
         if normalized.startswith("SELECT u.id"):
             return
+        if normalized.startswith("SELECT 1 FROM tangent_admin_roles"):
+            self.row = next(
+                (
+                    (1,)
+                    for row in self.database.admin_roles
+                    if row["user_id"] == params[0] and row["revoked_at"] is None
+                ),
+                None,
+            )
+            return
         if normalized.startswith("SELECT 1 FROM tangent_user_identities"):
+            return
+        if normalized.startswith("UPDATE tangent_users SET"):
+            return
+        if normalized.startswith("UPDATE tangent_user_identities SET"):
             return
         if normalized.startswith("INSERT INTO tangent_users"):
             self.database.users.append(
@@ -261,6 +337,53 @@ class AuthBootstrapFakeCursor:
                 }
             )
             return
+        if normalized.startswith("SELECT 1 FROM tangent_credit_ledger"):
+            self.row = next(
+                (
+                    (1,)
+                    for row in self.database.credit_ledger
+                    if row["account_id"] == params[0] and row["source_id"] == params[1]
+                ),
+                None,
+            )
+            return
+        if normalized.startswith("INSERT INTO tangent_credit_ledger"):
+            self.database.credit_ledger.append(
+                {
+                    "account_id": params[1],
+                    "actor_user_id": params[3],
+                    "credits_delta": params[5],
+                    "metadata": json.loads(params[6]),
+                    "reason": "subscription_grant",
+                    "source_id": params[4],
+                    "source_type": "subscription",
+                    "workspace_id": params[2],
+                }
+            )
+            return
+        if normalized.startswith("INSERT INTO tangent_admin_roles"):
+            self.database.admin_roles.append(
+                {
+                    "granted_by": params[3],
+                    "note": params[2],
+                    "permissions": json.loads(params[1]),
+                    "revoked_at": None,
+                    "role": "owner",
+                    "user_id": params[0],
+                }
+            )
+            return
+        if normalized.startswith("INSERT INTO tangent_admin_audit_logs"):
+            self.database.admin_audit_logs.append(
+                {
+                    "action": params[4],
+                    "actor_user_id": params[1],
+                    "metadata": json.loads(params[5]),
+                    "target_user_id": params[2],
+                    "workspace_id": params[3],
+                }
+            )
+            return
         raise AssertionError(f"Unhandled auth session query: {normalized}")
 
     def fetchone(self):
@@ -269,7 +392,10 @@ class AuthBootstrapFakeCursor:
 
 class AuthBootstrapFakeDatabase:
     def __init__(self):
+        self.admin_audit_logs = []
+        self.admin_roles = []
         self.commits = 0
+        self.credit_ledger = []
         self.identities = []
         self.users = []
         self.workspaces = []

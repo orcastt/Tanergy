@@ -4,9 +4,13 @@ import { useRouter } from 'next/navigation'
 import type { FormEvent } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { EmptyRow, FilterTextInput, limitOptions } from './adminAiShared'
+import { AdminOperatorActionModal } from './AdminOperatorActionModal'
+import { getAdminOperatorActionKey, type AdminOperatorAction } from './adminOperatorActions'
+import type { AdminOperatorMutationResult } from './adminOperatorActionMutations'
 import { loadAdminOperatorUserDetailResource } from './adminOperatorDetailCache'
 import { AdminOperatorUserInventoryRow } from './AdminOperatorUserInventoryRow'
 import {
+  applyAdminOperatorUserMutation,
   primeAdminOperatorUsersResource,
   loadAdminOperatorUsersResource,
 } from './adminOperatorUsersCache'
@@ -20,6 +24,7 @@ export function AdminUsersDashboard({ enabled, seedResource }: { enabled: boolea
   const router = useRouter()
   const warmedUserIds = useRef(new Set<string>())
   const initialState = getInitialAdminOperatorUsersState(seedResource)
+  const [activeAction, setActiveAction] = useState<AdminOperatorAction | null>(null)
   const [limit, setLimit] = useState<(typeof limitOptions)[number]>(initialState.limit)
   const [offset, setOffset] = useState(initialState.offset)
   const [searchDraft, setSearchDraft] = useState(initialState.searchDraft)
@@ -164,6 +169,16 @@ export function AdminUsersDashboard({ enabled, seedResource }: { enabled: boolea
     }
   }
 
+  function handleInventoryActionDone(result: AdminOperatorMutationResult) {
+    if (!isUserMutation(result)) return
+    const nextResource = applyAdminOperatorUserMutation(effectiveResource, result)
+    setUsingSeedResource(false)
+    setResource(nextResource)
+    setLoadedSignature(requestSignature)
+    setError(null)
+    primeAdminOperatorUsersResource({ limit, offset, search: searchQuery || undefined }, nextResource)
+  }
+
   return (
     <section className="management-panel management-panel-wide admin-users-directory" aria-label="User inventory">
         <div className="management-panel-heading">
@@ -247,12 +262,25 @@ export function AdminUsersDashboard({ enabled, seedResource }: { enabled: boolea
             <tbody>
               {effectiveStatus === 'loading' ? <EmptyRow colSpan={11} message="Loading users..." /> : null}
               {effectiveStatus !== 'loading' && visibleUsers.length ? visibleUsers.map((user) => (
-                <AdminOperatorUserInventoryRow key={user.id} onWarmDetail={warmDetail} user={user} />
+                <AdminOperatorUserInventoryRow key={user.id} onAction={setActiveAction} onWarmDetail={warmDetail} user={user} />
               )) : null}
               {effectiveStatus !== 'loading' && !visibleUsers.length ? <EmptyRow colSpan={11} message="No users match this search." /> : null}
             </tbody>
           </table>
         </div>
+        {activeAction ? (
+          <AdminOperatorActionModal
+            action={activeAction}
+            enabled={enabled}
+            key={getAdminOperatorActionKey(activeAction)}
+            onClose={() => setActiveAction(null)}
+            onDone={handleInventoryActionDone}
+          />
+        ) : null}
     </section>
   )
+}
+
+function isUserMutation(result: AdminOperatorMutationResult): result is Extract<AdminOperatorMutationResult, { status: string; userId: string }> {
+  return 'userId' in result && 'status' in result && typeof result.userId === 'string' && typeof result.status === 'string'
 }

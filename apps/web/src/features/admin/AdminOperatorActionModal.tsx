@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { selectStyle } from './adminAiShared'
 import { AdminOperatorWorkspacePicker } from './AdminOperatorWorkspacePicker'
 import {
   calculatePlanPreview,
@@ -20,10 +21,13 @@ import {
   shouldShowSeatCapacityField,
   toMemberRole,
 } from './adminOperatorActionMutations'
-import { collaboratePlans, NumberInput, PlanScheduleFields, StrictSelect, teamPlans, TextInput, Toggle, toFloat, toInt } from './AdminFinanceFields'
-import type { AdminOperatorAction } from './adminOperatorActions'
+import { collaboratePlans, NumberInput, PlanScheduleFields, StrictSelect, TeamMonthlyScheduleFields, teamPlans, TextInput, Toggle, toFloat, toInt } from './AdminFinanceFields'
+import type { AdminOperatorAction, AdminOperatorCreditTarget } from './adminOperatorActions'
 import { GroupPlanActionMatrix, PlanActionChoices, PlanModalSummary, PlanPreviewPill } from './adminOperatorPlanModalSections'
 import type { AdminOperatorMutationResult } from './adminOperatorActionMutations'
+
+const TEAM_SEAT_MAX = 15
+const TEAM_DURATION_UNIT_DAYS = 30
 
 export function AdminOperatorActionModal({
   action,
@@ -37,10 +41,9 @@ export function AdminOperatorActionModal({
   onDone: (result: AdminOperatorMutationResult) => void
 }) {
   const [note, setNote] = useState('')
-  const [amountCents, setAmountCents] = useState('0')
+  const [creditTargetId, setCreditTargetId] = useState(resolveInitialCreditTargetId(action))
   const [credits, setCredits] = useState('100')
   const [durationCount, setDurationCount] = useState('1')
-  const [durationUnitDays, setDurationUnitDays] = useState('30')
   const [effectMode, setEffectMode] = useState('immediate')
   const [expiresInDays, setExpiresInDays] = useState('7')
   const [grantIncluded, setGrantIncluded] = useState(true)
@@ -66,12 +69,13 @@ export function AdminOperatorActionModal({
   const showSeatCapacity = shouldShowSeatCapacityField(currentAction, planOperation)
   const showSchedule = shouldShowScheduleFields(currentAction, planOperation)
   const showGrantToggle = shouldShowGrantToggle(currentAction, planOperation)
-  const planPreview = calculatePlanPreview(currentAction, planOperation, planKey, toInt(seatCapacity))
+  const planPreview = calculatePlanPreview(currentAction, planOperation, planKey, toInt(seatCapacity), toInt(durationCount))
   const planOptions = currentAction.type === 'group-plan'
     ? (planOperation === 'upgrade' ? ['collaborate_plus'] : collaboratePlans)
     : (currentAction.type === 'team-plan' && currentAction.targetPlanKey ? [currentAction.targetPlanKey] : teamPlans)
   const saveLabel = resolveSubmitLabel(currentAction, planOperation)
-  const missingSeatCapacity = showSeatCapacity && toInt(seatCapacity) <= 0
+  const invalidSeatCapacity = showSeatCapacity && (toInt(seatCapacity) <= 0 || toInt(seatCapacity) > TEAM_SEAT_MAX)
+  const isBillingCreditAction = action.type === 'billing-topup' || action.type === 'billing-deduct'
 
   async function submit() {
     if (!enabled || running) return
@@ -79,10 +83,11 @@ export function AdminOperatorActionModal({
     setStatus('saving...')
     try {
       const result = await runAdminOperatorActionMutation(currentAction, {
-        amountCents: toInt(amountCents),
+        amountCents: 0,
+        creditTargetId,
         credits: toFloat(credits),
         durationCount: toInt(durationCount),
-        durationUnitDays: toInt(durationUnitDays),
+        durationUnitDays: TEAM_DURATION_UNIT_DAYS,
         effectMode,
         expiresInDays: toInt(expiresInDays),
         grantIncluded,
@@ -123,10 +128,21 @@ export function AdminOperatorActionModal({
         ) : null}
 
         <div className="admin-modal-grid">
+          {isBillingCreditAction ? (
+            <>
+              <CreditTargetSelect
+                label={action.type === 'billing-topup' ? 'Top to' : 'From'}
+                onChange={setCreditTargetId}
+                targets={action.targets}
+                value={creditTargetId}
+              />
+              <NumberInput label="Credits" onChange={setCredits} value={credits} />
+            </>
+          ) : null}
+
           {action.type === 'user-topup' || action.type === 'workspace-topup' ? (
             <>
               <NumberInput label="Credits" onChange={setCredits} value={credits} />
-              <NumberInput label="Amount cents" onChange={setAmountCents} value={amountCents} />
             </>
           ) : null}
 
@@ -190,18 +206,25 @@ export function AdminOperatorActionModal({
           ) : null}
 
           {(action.type === 'create-team' || action.type === 'team-plan') && showSeatCapacity ? (
-            <NumberInput label="Seats" min="1" onChange={setSeatCapacity} value={seatCapacity} />
+            <NumberInput label="Seats" max={String(TEAM_SEAT_MAX)} min="1" onChange={setSeatCapacity} value={seatCapacity} />
           ) : null}
 
           {(action.type === 'create-team' || action.type === 'group-plan' || action.type === 'team-plan') && showSchedule ? (
-            <PlanScheduleFields
-              durationCount={durationCount}
-              durationUnitDays={durationUnitDays}
-              effectMode={effectMode}
-              onDurationCountChange={setDurationCount}
-              onDurationUnitDaysChange={setDurationUnitDays}
-              onEffectModeChange={setEffectMode}
-            />
+            currentAction.type === 'create-team' || currentAction.type === 'team-plan' ? (
+              <TeamMonthlyScheduleFields
+                durationCount={durationCount}
+                effectMode={effectMode}
+                onDurationCountChange={setDurationCount}
+                onEffectModeChange={setEffectMode}
+              />
+            ) : (
+              <PlanScheduleFields
+                durationCount={durationCount}
+                effectMode={effectMode}
+                onDurationCountChange={setDurationCount}
+                onEffectModeChange={setEffectMode}
+              />
+            )
           ) : null}
 
           {(action.type === 'create-team' || action.type === 'group-plan' || action.type === 'team-plan') && showGrantToggle ? (
@@ -222,7 +245,7 @@ export function AdminOperatorActionModal({
           <button className="product-button product-button-secondary" onClick={onClose} type="button">Cancel</button>
           <button
             className="product-button"
-            disabled={!enabled || running || !note.trim() || !canSubmitAction(currentAction, { inviteEmail, targetUserId, workspaceId, workspaceName }) || missingSeatCapacity}
+            disabled={!enabled || running || !note.trim() || !canSubmitAction(currentAction, { creditTargetId, inviteEmail, targetUserId, workspaceId, workspaceName }) || invalidSeatCapacity}
             onClick={submit}
             type="button"
           >
@@ -232,4 +255,32 @@ export function AdminOperatorActionModal({
       </section>
     </div>
   )
+}
+
+function CreditTargetSelect({
+  label,
+  onChange,
+  targets,
+  value,
+}: {
+  label: string
+  onChange: (value: string) => void
+  targets: AdminOperatorCreditTarget[]
+  value: string
+}) {
+  return (
+    <label style={{ display: 'grid', gap: 6 }}>
+      <span className="management-field-label">{label}</span>
+      <select onChange={(event) => onChange(event.target.value)} style={selectStyle} value={value}>
+        {targets.map((target) => <option key={target.id} value={target.id}>{target.label}</option>)}
+      </select>
+    </label>
+  )
+}
+
+function resolveInitialCreditTargetId(action: AdminOperatorAction | null) {
+  if (action?.type === 'billing-topup' || action?.type === 'billing-deduct') {
+    return action.targets[0]?.id ?? 'personal'
+  }
+  return 'personal'
 }

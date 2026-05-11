@@ -3,16 +3,37 @@
 import { selectStyle } from './adminAiShared'
 
 export const collaboratePlans = ['collaborate_start', 'collaborate_plus']
-export const durationUnitDayOptions = ['7', '30', '365'] as const
 export const effectModes = ['immediate', 'next_week'] as const
+export const effectModeOptions = [
+  { label: 'Now', value: 'immediate' },
+  { label: 'Next week', value: 'next_week' },
+] as const
 export const teamPlans = ['team_start', 'team_growth']
+export const durationMonthOptions = Array.from({ length: 12 }, (_value, index) => ({
+  label: `${index + 1} ${index === 0 ? 'month' : 'months'}`,
+  value: String(index + 1),
+}))
 export const subscriptionStatuses = ['active', 'trialing'] as const
 
-export function NumberInput({ label, min = '0', onChange, value }: { label: string; min?: string; onChange: (value: string) => void; value: string }) {
+type SelectOption = string | { label: string; value: string }
+
+export function NumberInput({
+  label,
+  max,
+  min = '0',
+  onChange,
+  value,
+}: {
+  label: string
+  max?: string
+  min?: string
+  onChange: (value: string) => void
+  value: string
+}) {
   return (
     <label style={{ display: 'grid', gap: 6 }}>
       <span className="management-field-label">{label}</span>
-      <input min={min} onChange={(event) => onChange(event.target.value)} style={selectStyle} type="number" value={value} />
+      <input max={max} min={min} onChange={(event) => onChange(event.target.value)} style={selectStyle} type="number" value={value} />
     </label>
   )
 }
@@ -26,12 +47,15 @@ export function TextInput({ label, onChange, placeholder, value }: { label: stri
   )
 }
 
-export function StrictSelect({ label, onChange, options, value }: { label: string; onChange: (value: string) => void; options: readonly string[] | string[]; value: string }) {
+export function StrictSelect({ label, onChange, options, value }: { label: string; onChange: (value: string) => void; options: readonly SelectOption[] | SelectOption[]; value: string }) {
   return (
     <label style={{ display: 'grid', gap: 6 }}>
       <span className="management-field-label">{label}</span>
       <select onChange={(event) => onChange(event.target.value)} style={selectStyle} value={value}>
-        {options.map((option) => <option key={option} value={option}>{option}</option>)}
+        {options.map((option) => {
+          const resolved = typeof option === 'string' ? { label: option, value: option } : option
+          return <option key={resolved.value} value={resolved.value}>{resolved.label}</option>
+        })}
       </select>
     </label>
   )
@@ -39,24 +63,38 @@ export function StrictSelect({ label, onChange, options, value }: { label: strin
 
 export function PlanScheduleFields({
   durationCount,
-  durationUnitDays,
   effectMode,
   onDurationCountChange,
-  onDurationUnitDaysChange,
   onEffectModeChange,
 }: {
   durationCount: string
-  durationUnitDays: string
   effectMode: string
   onDurationCountChange: (value: string) => void
-  onDurationUnitDaysChange: (value: string) => void
   onEffectModeChange: (value: string) => void
 }) {
   return (
     <>
-      <StrictSelect label="Effective" onChange={onEffectModeChange} options={effectModes} value={effectMode} />
-      <NumberInput label="Duration count" min="0" onChange={onDurationCountChange} value={durationCount} />
-      <StrictSelect label="Days per unit" onChange={onDurationUnitDaysChange} options={durationUnitDayOptions} value={durationUnitDays} />
+      <StrictSelect label="Effective" onChange={onEffectModeChange} options={effectModeOptions} value={effectMode} />
+      <StrictSelect label="Duration" onChange={onDurationCountChange} options={durationMonthOptions} value={durationCount} />
+    </>
+  )
+}
+
+export function TeamMonthlyScheduleFields({
+  durationCount,
+  effectMode,
+  onDurationCountChange,
+  onEffectModeChange,
+}: {
+  durationCount: string
+  effectMode: string
+  onDurationCountChange: (value: string) => void
+  onEffectModeChange: (value: string) => void
+}) {
+  return (
+    <>
+      <StrictSelect label="Effective" onChange={onEffectModeChange} options={effectModeOptions} value={effectMode} />
+      <StrictSelect label="Duration" onChange={onDurationCountChange} options={durationMonthOptions} value={durationCount} />
     </>
   )
 }
