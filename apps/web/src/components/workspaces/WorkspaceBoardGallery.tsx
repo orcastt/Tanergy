@@ -12,13 +12,10 @@ import {
   deleteLocalBoardDocument,
   ensureLocalBoardShareLink,
   listLocalBoardDocuments,
-  loadLocalBoardDocument,
   renameLocalBoardDocument,
-  saveLocalBoardDocument,
   updateLocalBoardMetadata,
 } from '@/features/boards/localBoardClient'
 import { readCachedBoardList } from '@/features/boards/boardResourceCache'
-import { migrateTldrawV1BoardToKonvaV2 } from '@/features/boards/tldrawToKonvaMigration'
 import { mapSettledWithConcurrency } from '@/features/shared/asyncConcurrency'
 import { getBoardCapabilities } from './boardCapabilities'
 import { getShareUrl } from './boardMemberUtils'
@@ -31,7 +28,6 @@ import { WorkspaceBoardToolbar, type WorkspaceBoardSortMode } from './WorkspaceB
 import {
   createBoardId,
   filterAndSortBoards,
-  getBoardDisplayCardColor,
 } from './workspaceBoardUtils'
 import { formatWorkspacePlanName } from '@/features/workspaces/workspacePresentation'
 
@@ -255,50 +251,6 @@ export function WorkspaceBoardGallery() {
     }
   }
 
-  const copyBoardToKonva = async (board: BoardPersistenceSummary) => {
-    if (!getCapabilities(board).canCopyBoard) {
-      setError('Only a Board owner or workspace manager can copy this board.')
-      return
-    }
-    setPendingBoardId(board.id)
-    setError(null)
-    try {
-      const workspace = getWorkspaceForBoard(board)
-      const source = await loadLocalBoardDocument(board.id, workspace ?? undefined)
-      if (!source.board) throw new Error('Source Board was not found.')
-      const nextBoardId = createBoardId()
-      const nextTitle = `${board.title} Konva copy`
-      const migrated = migrateTldrawV1BoardToKonvaV2(source.board.document, {
-        boardId: nextBoardId,
-        title: nextTitle,
-      })
-      const response = await saveLocalBoardDocument({
-        boardId: nextBoardId,
-        cardColor: getBoardDisplayCardColor(board),
-        description: board.description,
-        document: migrated.document,
-        title: nextTitle,
-      }, workspace ?? undefined)
-      if (!response.board) throw new Error('Konva copy failed.')
-      const metadata = await updateLocalBoardMetadata({
-        boardId: nextBoardId,
-        cardColor: getBoardDisplayCardColor(board),
-        description: board.description,
-        visibility: board.visibility ?? 'private',
-      }, workspace ?? undefined)
-      const copiedBoard = metadata.board ?? response.board
-      setBoards((current) => [copiedBoard, ...current])
-      setNotice(`Created Konva v2 copy with ${migrated.migratedShapeCount} migrated shapes.`)
-      const query = new URLSearchParams()
-      if (workspace) query.set('workspace', workspace.id)
-      router.push(`/boards/${encodeURIComponent(nextBoardId)}${query.toString() ? `?${query.toString()}` : ''}`)
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : 'Konva copy failed.')
-    } finally {
-      setPendingBoardId(null)
-    }
-  }
-
   const updateBoardMetadata = async (input: BoardMetadataUpdateInput) => {
     const sourceBoard = boards.find((board) => board.id === input.boardId)
     const workspace = sourceBoard ? getWorkspaceForBoard(sourceBoard) : null
@@ -396,7 +348,6 @@ export function WorkspaceBoardGallery() {
                     key={workspace.id}
                     onCancelRename={cancelRename}
                     onCopy={(board) => void copyBoard(board)}
-                    onCopyToKonva={(board) => void copyBoardToKonva(board)}
                     onCreate={() => void createBoard(workspace)}
                     onDelete={(board) => void deleteBoard(board)}
                     onMakePrivate={makeBoardPrivate}

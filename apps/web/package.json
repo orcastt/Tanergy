@@ -10,10 +10,6 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^7.3.0",
-    "@tldraw/tldraw": "latest",
-    "@tldraw/tlschema": "latest",
-    "@tldraw/utils": "latest",
-    "@tldraw/validate": "latest",
     "clsx": "latest",
     "konva": "^10.3.0",
     "next": "latest",
@@ -21,7 +17,6 @@
     "react": "latest",
     "react-dom": "latest",
     "react-konva": "^19.2.3",
-    "tldraw": "latest",
     "yjs": "^13.6.30",
     "zustand": "latest"
   },

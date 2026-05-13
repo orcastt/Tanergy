@@ -1,6 +1,6 @@
 # ARCH Slice S1X: Canvas Engine Migration
 
-**Status**: Konva v2 formal Board route is accepted as the production path for new/saved Boards. Page polish, v1-to-v2 copy tooling, runtimeGraph mock dataflow and public share view are first-pass stable; Yjs collaboration, export/background polish and real AiRun remain.
+**Status**: Konva v2 formal Board route is accepted as the production path for active Boards, and the remaining tldraw web runtime/reference code has now been removed from `apps/web`. Page polish, runtimeGraph mock dataflow and public share view are first-pass stable; Yjs collaboration, export/background polish and real AiRun remain.
 **Branch**: `feature/s1x-konva-handfeel-spike`
 **Reason**: Public staging exposed the tldraw production license requirement. TANGENT should not make the paid SDK the long-term core canvas dependency unless the business explicitly accepts that cost.
 
@@ -26,7 +26,7 @@ FastAPI + Postgres           Board metadata, snapshots, permissions, audit facts
 R2/S3-compatible storage     Images, thumbnails and future capture artifacts
 ```
 
-tldraw remains available locally as the baseline for parity testing until the replacement reaches acceptance.
+That historical tldraw baseline has now been retired from the active web app. This slice keeps the migration rationale and behavior inventory as reference material for why the Konva contract looks the way it does.
 
 ## Current Implementation Checkpoint
 

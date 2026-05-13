@@ -1,4 +1,10 @@
-import type { JsonValue } from '@tldraw/utils'
+export type JsonPrimitive = boolean | null | number | string
+
+export type JsonValue = JsonObject | JsonPrimitive | JsonValue[]
+
+export interface JsonObject {
+  [key: string]: JsonValue
+}
 
 export type NodeType = 'prompt' | 'prompt_optimizer' | 'image_gen' | 'image_gen_4' | 'analysis' | 'image' | 'chat'
 
@@ -7,8 +13,6 @@ export type NodePortDirection = 'in' | 'out'
 export type NodePortDataType = 'text' | 'image'
 
 export type NodeRunStatus = 'idle' | 'running' | 'succeeded' | 'failed'
-
-export type JsonObject = Record<string, JsonValue>
 
 export type NodeCategory = 'image' | 'text' | 'transform' | 'utility'
 

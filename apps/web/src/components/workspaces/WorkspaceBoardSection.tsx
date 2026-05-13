@@ -23,7 +23,6 @@ type WorkspaceBoardSectionProps = {
   workspace: TangentWorkspace
   onCancelRename: () => void
   onCopy: (board: WorkspaceBoardDisplayItem) => void
-  onCopyToKonva: (board: WorkspaceBoardDisplayItem) => void
   onCreate: () => void
   onDelete: (board: WorkspaceBoardDisplayItem) => void
   onMakePrivate: (board: WorkspaceBoardDisplayItem) => void
@@ -50,7 +49,6 @@ export function WorkspaceBoardSection({
   workspace,
   onCancelRename,
   onCopy,
-  onCopyToKonva,
   onCreate,
   onDelete,
   onMakePrivate,
@@ -121,7 +119,6 @@ export function WorkspaceBoardSection({
                 key={board.id}
                 onCancelRename={onCancelRename}
                 onCopy={() => onCopy(board)}
-                onCopyToKonva={() => onCopyToKonva(board)}
                 onDelete={() => onDelete(board)}
                 onMakePrivate={() => onMakePrivate(board)}
                 onMakePublic={() => onMakePublic(board)}

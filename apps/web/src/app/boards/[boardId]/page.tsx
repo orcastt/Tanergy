@@ -1,32 +1,19 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import { useTangentSession } from '@/features/auth/useTangentSession'
 import type { BoardPersistenceRecord, BoardPersistenceSummary } from '@/features/boards/boardTypes'
 import {
   detectBoardCanvasEngine,
-  getDefaultBoardCanvasEngine,
-  isTldrawReferenceEnabled,
-  parseBoardCanvasEngine,
 } from '@/features/boards/boardCanvasEngine'
 import {
   loadLocalBoardDocument,
   loadSharedBoardDocument,
   renameLocalBoardDocument,
-  saveLocalBoardDocument,
 } from '@/features/boards/localBoardClient'
-import { migrateTldrawV1BoardToKonvaV2 } from '@/features/boards/tldrawToKonvaMigration'
-
-const CanvasSpike = dynamic(
-  () => import('@/components/canvas/CanvasSpike').then((module) => module.CanvasSpike),
-  {
-    loading: () => <BoardRouteState title="Loading Board" detail="Opening canvas..." />,
-    ssr: false,
-  }
-)
 const KonvaCanvasSpike = dynamic(
   () => import('@/components/konva-canvas/KonvaCanvasSpike').then((module) => module.KonvaCanvasSpike),
   {
@@ -48,10 +35,8 @@ export default function BoardCanvasPage() {
   const isNewBoard = searchParams.get('new') === '1'
   const shareId = searchParams.get('share')
   const requestedWorkspaceId = searchParams.get('workspace')
-  const requestedEngine = parseBoardCanvasEngine(searchParams.get('engine'))
   const [loadState, setLoadState] = useState<BoardLoadState>({ status: isNewBoard ? 'idle' : 'loading' })
   const [boardTitleOverride, setBoardTitleOverride] = useState<{ boardId: string; title: string } | null>(null)
-  const tldrawReferenceEnabled = isTldrawReferenceEnabled()
   const detectedEngine = loadState.status === 'loaded' ? detectBoardCanvasEngine(loadState.board.document) : null
   const effectiveBoardId = loadState.status === 'loaded' ? loadState.board.id : boardId
   const candidateWorkspaces = useMemo(() => {
@@ -78,11 +63,6 @@ export default function BoardCanvasPage() {
     }
     return candidateWorkspaces[0] ?? session.activeWorkspace
   }, [candidateWorkspaces, loadState, session.activeWorkspace, session.workspaces])
-  const engine = useMemo(
-    () => detectedEngine ?? requestedEngine ?? getDefaultBoardCanvasEngine(),
-    [detectedEngine, requestedEngine]
-  )
-  const wantsKonvaCopy = loadState.status === 'loaded' && detectedEngine === 'tldraw' && requestedEngine === 'konva'
   const loadedBoard = loadState.status === 'loaded' ? loadState.board : null
   const boardTitle = boardTitleOverride?.boardId === effectiveBoardId
     ? boardTitleOverride.title
@@ -157,56 +137,20 @@ export default function BoardCanvasPage() {
     return (
       <BoardRouteState
         title="Unsupported Board Document"
-        detail="This saved Board is not a tldraw v1 or Konva v2 document, so it was not opened automatically."
-      />
-    )
-  }
-
-  if (loadState.status === 'loaded' && detectedEngine === 'tldraw' && (!tldrawReferenceEnabled || wantsKonvaCopy)) {
-    return (
-      <LegacyTldrawMigrationState
-        board={loadState.board}
-        detail={tldrawReferenceEnabled
-          ? 'This saved Board is a legacy tldraw v1 document. Copy it to a new Konva v2 Board to continue migration testing.'
-          : 'This saved Board is a legacy tldraw v1 document. Production Boards must be opened through Konva v2.'}
-        workspace={resolvedWorkspace}
-      />
-    )
-  }
-
-  if (engine === 'konva') {
-    return (
-      <KonvaCanvasSpike
-        autoLoadBoard={false}
-        boardId={effectiveBoardId}
-        boardTitle={boardTitle}
-        initialBoard={loadedBoard && detectedEngine === 'konva' ? loadedBoard : null}
-        mode="board"
-        onBoardLoaded={(title) => setBoardTitleOverride({ boardId: effectiveBoardId, title })}
-        onBoardSaved={clearNewBoardQuery}
-        onBoardTitleRename={renameBoardTitle}
-        seedOnMount={false}
-        workspace={resolvedWorkspace}
-      />
-    )
-  }
-
-  if (!tldrawReferenceEnabled) {
-    return (
-      <BoardRouteState
-        title="tldraw Reference Disabled"
-        detail="tldraw is only available as a development reference route, not as a production Board engine."
+        detail="This saved Board is not a supported Konva v2 document, so it was not opened automatically."
       />
     )
   }
 
   return (
-    <CanvasSpike
-      autoLoadBoard={loadState.status === 'loaded' && detectedEngine === 'tldraw'}
+    <KonvaCanvasSpike
+      autoLoadBoard={false}
       boardId={effectiveBoardId}
       boardTitle={boardTitle}
-      headerTitle={boardTitle}
+      initialBoard={loadedBoard && detectedEngine === 'konva' ? loadedBoard : null}
+      mode="board"
       onBoardLoaded={(title) => setBoardTitleOverride({ boardId: effectiveBoardId, title })}
+      onBoardSaved={clearNewBoardQuery}
       onBoardTitleRename={renameBoardTitle}
       seedOnMount={false}
       workspace={resolvedWorkspace}
@@ -221,62 +165,6 @@ function BoardRouteState({ detail, title }: { detail: string; title: string }) {
       <span>{detail}</span>
     </main>
   )
-}
-
-function LegacyTldrawMigrationState({
-  board,
-  detail,
-  workspace,
-}: {
-  board: BoardPersistenceRecord
-  detail: string
-  workspace?: TangentWorkspace
-}) {
-  const router = useRouter()
-  const [error, setError] = useState<string | null>(null)
-  const [isCopying, setIsCopying] = useState(false)
-
-  const copyToKonva = async () => {
-    setIsCopying(true)
-    setError(null)
-    try {
-      const boardId = createKonvaCopyBoardId(board.id)
-      const title = `${board.title} Konva copy`
-      const migrated = migrateTldrawV1BoardToKonvaV2(board.document, { boardId, title })
-      await saveLocalBoardDocument({
-        boardId,
-        cardColor: board.cardColor ?? null,
-        description: board.description ?? null,
-        document: migrated.document,
-        title,
-      }, workspace)
-      const query = new URLSearchParams()
-      if (workspace?.id) query.set('workspace', workspace.id)
-      router.push(`/boards/${encodeURIComponent(boardId)}${query.toString() ? `?${query.toString()}` : ''}`)
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : 'Konva copy failed.')
-    } finally {
-      setIsCopying(false)
-    }
-  }
-
-  return (
-    <main className="canvas-board-route-state">
-      <strong>Legacy tldraw Board</strong>
-      <span>{detail}</span>
-      <button className="product-button product-button-primary" disabled={isCopying} onClick={() => void copyToKonva()} type="button">
-        {isCopying ? 'Copying...' : 'Copy to Konva v2'}
-      </button>
-      {error ? <span role="alert">{error}</span> : null}
-    </main>
-  )
-}
-
-function createKonvaCopyBoardId(boardId: string) {
-  const suffix = typeof crypto !== 'undefined' && 'randomUUID' in crypto
-    ? crypto.randomUUID().slice(0, 8)
-    : `${Date.now()}`
-  return `${boardId.replace(/[^a-zA-Z0-9._-]+/g, '-')}-konva-${suffix}`
 }
 
 function formatBoardTitle(boardId: string) {

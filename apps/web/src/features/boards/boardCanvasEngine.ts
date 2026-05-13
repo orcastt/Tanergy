@@ -1,13 +1,10 @@
-export type BoardCanvasEngine = 'konva' | 'tldraw'
+export type BoardCanvasEngine = 'konva'
 
 export function detectBoardCanvasEngine(document: unknown): BoardCanvasEngine | null {
   if (!document || typeof document !== 'object') return null
   const candidate = document as {
-    camera?: unknown
     canvasDocument?: unknown
     renderer?: unknown
-    runtimeEdges?: unknown
-    shapes?: unknown
     version?: unknown
   }
   if (
@@ -18,26 +15,13 @@ export function detectBoardCanvasEngine(document: unknown): BoardCanvasEngine | 
   ) {
     return 'konva'
   }
-  if (
-    candidate.version === 1 &&
-    Array.isArray(candidate.shapes) &&
-    Array.isArray(candidate.runtimeEdges) &&
-    candidate.camera &&
-    typeof candidate.camera === 'object'
-  ) {
-    return 'tldraw'
-  }
   return null
 }
 
 export function parseBoardCanvasEngine(value: string | null): BoardCanvasEngine | null {
-  return value === 'konva' || value === 'tldraw' ? value : null
+  return value === 'konva' ? value : null
 }
 
 export function getDefaultBoardCanvasEngine(): BoardCanvasEngine {
-  return process.env.NEXT_PUBLIC_BOARD_CANVAS_ENGINE === 'tldraw' ? 'tldraw' : 'konva'
-}
-
-export function isTldrawReferenceEnabled() {
-  return process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_ENABLE_TLDRAW_REFERENCE === '1'
+  return 'konva'
 }

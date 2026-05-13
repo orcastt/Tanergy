@@ -13,13 +13,12 @@ npm -C apps/web run dev
 Open:
 
 ```text
-http://localhost:3000/spikes/canvas
+http://localhost:3000/spikes/konva-canvas
 ```
 
-This Step 1 spike validates tldraw as the whiteboard base: pan/zoom, drawing, shapes,
-sticky notes, frames, image objects, mock link cards, arrows, and Prompt / Generate /
-Edit AI node cards. Step 1.5 now validates real `node_card` prototypes for Prompt,
-Image Gen, Image Gen 4, Analysis, and Image.
+The active canvas surface is now the Konva runtime: pan/zoom, drawing, shapes,
+sticky notes, frames, image objects, arrows, pages, node cards, share view,
+save/history, and collaboration scaffolding all validate there.
 
 Next gate: Step 1.5 validates complex AI nodes before formal feature work:
 

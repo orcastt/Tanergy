@@ -44,7 +44,7 @@ relevant slice files
 
 ## Active Source
 
-- `apps/web/` — Next.js web app, Konva v2 production canvas and gated tldraw reference.
+- `apps/web/` — Next.js web app and Konva v2 production canvas.
 - `services/api/` — FastAPI service, storage adapters and migrations.
 - `packages/shared/` — shared packages if needed.
 - `legacy/old-tangent-desktop-2026-04-29/` — archived old app; do not read or edit unless explicitly asked.

@@ -1,13 +1,16 @@
 'use client'
 
 import type { SyntheticEvent } from 'react'
-import type { RuntimeAssetMigrationResult } from '@/features/assets/runtimeAssetMigration'
 import {
   getBoardStatusDetail,
   getBoardStatusLabel,
   type BoardAction,
   type BoardSaveStatus,
 } from './boardSaveStatus'
+
+type BoardMigrationSummary = {
+  migrated: number
+}
 
 export type BoardModeSaveStatusProps = {
   editorAvailable: boolean
@@ -16,7 +19,7 @@ export type BoardModeSaveStatusProps = {
   issuePath?: string
   lastAction: BoardAction | null
   lastSavedAt: string | null
-  migration: RuntimeAssetMigrationResult | null
+  migration: BoardMigrationSummary | null
   onHistory: () => void
   onLoad: () => void
   onRefreshPreview: () => void
