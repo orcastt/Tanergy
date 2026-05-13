@@ -1,7 +1,15 @@
 .workspace-board-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  align-items: stretch;
+  grid-auto-flow: row;
   gap: 24px;
+}
+
+.workspace-board-grid > * {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
 }
 
 .workspace-board-list {
@@ -11,6 +19,9 @@
 
 .workspace-new-card,
 .workspace-board-card {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   border-radius: 12px;
   color: var(--color-ink);
 }
@@ -72,6 +83,7 @@
   padding: 24px;
   border: 1px solid rgba(24, 29, 38, 0.08);
   background: var(--color-canvas);
+  overflow: hidden;
   transition: border-color 160ms ease, transform 160ms ease;
 }
 
@@ -163,6 +175,9 @@
 
 .workspace-board-title strong {
   display: block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .workspace-board-meta {

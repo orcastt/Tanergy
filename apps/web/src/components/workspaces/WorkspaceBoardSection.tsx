@@ -3,7 +3,6 @@
 import type { FormEvent } from 'react'
 import type { TangentSession, TangentWorkspace } from '@/features/auth/sessionTypes'
 import { WorkspaceBoardItem, type WorkspaceBoardViewMode } from './WorkspaceBoardItem'
-import { NewBoardTile } from './WorkspaceBoardStates'
 import type { BoardPersistenceSummary } from '@/features/boards/boardTypes'
 import { getBoardCapabilities } from './boardCapabilities'
 import { getInitials } from './boardMemberUtils'
@@ -74,14 +73,37 @@ export function WorkspaceBoardSection({
           <div className="boards-collection-copy">
             <h2>{workspace.name}</h2>
           </div>
+          {showNewBoardTile ? (
+            <div className="boards-collection-actions">
+              <button
+                className="product-button product-button-secondary boards-collection-create-button"
+                onClick={onCreate}
+                type="button"
+              >
+                <span aria-hidden="true">+</span>
+                <span>New board</span>
+              </button>
+            </div>
+          ) : null}
         </header>
       )}
+      {hideHeader && showNewBoardTile ? (
+        <div className="boards-collection-create-row">
+          <button
+            className="product-button product-button-secondary boards-collection-create-button"
+            onClick={onCreate}
+            type="button"
+          >
+            <span aria-hidden="true">+</span>
+            <span>New board</span>
+          </button>
+        </div>
+      ) : null}
 
       {boards.length === 0 && !showNewBoardTile ? (
         <div className="boards-collection-empty">No boards</div>
       ) : (
         <div className={sectionClasses}>
-          {showNewBoardTile ? <NewBoardTile onCreate={onCreate} viewMode={viewMode} /> : null}
           {boards.map((board) => {
             const capabilities = getBoardCapabilities(board, session)
             const collaborators = buildBoardCollaborators(board, workspace, session)

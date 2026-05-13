@@ -1,15 +1,16 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import type Konva from 'konva'
 import type { CanvasCamera, CanvasDocument } from '@/features/canvas-engine'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import {
   loadLocalBoardDocument,
   saveLocalBoardDocument,
+  updateLocalBoardMetadata,
   type LocalBoardSaveResponse,
 } from '@/features/boards/localBoardClient'
-import type { BoardPersistenceRecord, BoardSnapshotReason, BoardSnapshotRecord } from '@/features/boards/boardTypes'
+import type { BoardPersistenceRecord, BoardPersistenceSummary, BoardSnapshotReason, BoardSnapshotRecord } from '@/features/boards/boardTypes'
 import {
   createGuardedKonvaBoardDocument,
   restoreKonvaBoardDocument,
@@ -43,6 +44,7 @@ type KonvaBoardSaveAuditProps = {
   document: CanvasDocument
   mode?: 'board' | 'dev'
   onBoardLoaded?: (board: BoardPersistenceRecord) => void
+  onBoardSaved?: (board: BoardPersistenceSummary) => void
   onDocumentRestore: (restore: KonvaBoardRestorePayload) => void
   stage: Konva.Stage | null
   getPageEnvelope?: (document: CanvasDocument) => KonvaBoardDocumentSerializationOptions
@@ -54,8 +56,11 @@ type KonvaBoardSaveAuditProps = {
 const defaultBoardId = 'konva-spike-local'
 const defaultBoardTitle = 'Konva Spike Local'
 type SaveLocalOptions = { refreshThumbnail?: boolean }
+export type KonvaBoardSaveAuditHandle = {
+  acknowledgeExternalDocument: (signature: string | null) => void
+}
 
-export function KonvaBoardSaveAudit({
+export const KonvaBoardSaveAudit = forwardRef<KonvaBoardSaveAuditHandle, KonvaBoardSaveAuditProps>(function KonvaBoardSaveAudit({
   activePageId,
   autoLoad = false,
   boardId = defaultBoardId,
@@ -66,16 +71,18 @@ export function KonvaBoardSaveAudit({
   historyTitle,
   mode = 'dev',
   onBoardLoaded,
+  onBoardSaved,
   onDocumentRestore,
   pageRevision = 0,
   stage,
   workspace,
-}: KonvaBoardSaveAuditProps) {
+}, ref) {
   const autoLoadedBoardId = useRef<string | null>(null)
   const isRestoring = useRef(false)
   const isSaving = useRef(false)
   const dirtyCheckTimer = useRef<number | null>(null)
   const lastSavedSignature = useRef<string | null>(null)
+  const suppressedDirtySignatureRef = useRef<string | null>(null)
   const recordHistoryRef = useRef<((result: KonvaBoardDocumentSerializationResult | undefined, reason: BoardSnapshotReason, options?: { silent?: boolean; thumbnailUrl?: string | null }) => Promise<void>) | null>(null)
   const saveNowRef = useRef<((source: 'autosave') => void) | null>(null)
   const latestCameraRef = useRef(camera)
@@ -90,6 +97,16 @@ export function KonvaBoardSaveAudit({
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
   const { clearAutosaveTimer, scheduleAutosave } = useBoardAutosaveTimer(mode, saveNowRef)
   useBoardBeforeUnloadWarning(mode, status, isSaving, lastAction)
+
+  useImperativeHandle(ref, () => ({
+    acknowledgeExternalDocument(signature) {
+      clearAutosaveTimer()
+      suppressedDirtySignatureRef.current = signature
+      setLastAction('load')
+      setSaveError(null)
+      setStatus((current) => current === 'loading' ? current : 'loaded')
+    },
+  }), [clearAutosaveTimer])
 
   useEffect(() => {
     latestCameraRef.current = camera
@@ -118,6 +135,20 @@ export function KonvaBoardSaveAudit({
     return captureKonvaBoardThumbnailUrl(currentStage, getPreparedDocument(), boardTitle)
   }, [boardTitle, getPreparedDocument])
 
+  const refreshThumbnailInBackground = useCallback((currentThumbnailUrl: string | null) => {
+    if (mode !== 'board') return
+    void captureThumbnail()
+      .then((nextThumbnailUrl) => {
+        if (!nextThumbnailUrl || nextThumbnailUrl === currentThumbnailUrl) return null
+        return updateLocalBoardMetadata({ boardId, thumbnailUrl: nextThumbnailUrl }, workspace)
+      })
+      .then((response) => {
+        if (!response?.board) return
+        setSaveResult((current) => current ? { ...current, board: response.board } : current)
+      })
+      .catch(() => {})
+  }, [boardId, captureThumbnail, mode, workspace])
+
   const markDirty = useCallback(() => {
     if (mode !== 'board' || isRestoring.current) return
     setStatus((current) => current === 'loading' ? current : 'dirty')
@@ -130,6 +161,7 @@ export function KonvaBoardSaveAudit({
     if (isSaving.current) return
     clearAutosaveTimer()
     isSaving.current = true
+    suppressedDirtySignatureRef.current = null
     setIsRunning(true)
     try {
       setSaveError(null)
@@ -142,8 +174,8 @@ export function KonvaBoardSaveAudit({
       }
       const savedSignature = getDocumentSignature(nextResult.document)
       const currentThumbnailUrl = saveResult?.board?.thumbnailUrl ?? null
-      const needsThumbnail = mode === 'board' && (!currentThumbnailUrl || options.refreshThumbnail)
-      const capturedThumbnailUrl = needsThumbnail
+      const shouldRefreshThumbnailNow = mode === 'board' && Boolean(options.refreshThumbnail)
+      const capturedThumbnailUrl = shouldRefreshThumbnailNow
         ? await captureThumbnail().catch(() => currentThumbnailUrl)
         : currentThumbnailUrl
       const thumbnailUrl = capturedThumbnailUrl ?? currentThumbnailUrl
@@ -165,7 +197,16 @@ export function KonvaBoardSaveAudit({
       setLastSavedAt(savedBoard.savedAt)
       setResult(hasNewChanges ? currentResult : nextResult)
       setStatus(hasNewChanges ? 'dirty' : 'saved')
-      await recordHistoryRef.current?.(nextResult, historyReason, { silent: historyReason === 'autosave', thumbnailUrl: savedBoard.thumbnailUrl ?? thumbnailUrl })
+      onBoardSaved?.(savedBoard)
+      const historyPromise = recordHistoryRef.current?.(
+        nextResult,
+        historyReason,
+        { silent: historyReason === 'autosave', thumbnailUrl: savedBoard.thumbnailUrl ?? thumbnailUrl },
+      )
+      void historyPromise?.catch(() => {})
+      if (mode === 'board' && !options.refreshThumbnail && !savedBoard.thumbnailUrl) {
+        refreshThumbnailInBackground(currentThumbnailUrl)
+      }
       if (hasNewChanges) scheduleAutosave()
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Konva board save failed.')
@@ -174,7 +215,7 @@ export function KonvaBoardSaveAudit({
       isSaving.current = false
       setIsRunning(false)
     }
-  }, [boardId, boardTitle, captureThumbnail, clearAutosaveTimer, createGuardedDocument, getPreparedDocument, mode, prepareDocument, saveResult, scheduleAutosave, workspace])
+  }, [boardId, boardTitle, captureThumbnail, clearAutosaveTimer, createGuardedDocument, getPreparedDocument, mode, onBoardSaved, prepareDocument, refreshThumbnailInBackground, saveResult, scheduleAutosave, workspace])
 
   useEffect(() => {
     saveNowRef.current = (source) => void saveLocal(source)
@@ -191,6 +232,7 @@ export function KonvaBoardSaveAudit({
   const loadLocal = useCallback(async () => {
     clearAutosaveTimer()
     isRestoring.current = true
+    suppressedDirtySignatureRef.current = null
     setIsRunning(true)
     try {
       setSaveError(null)
@@ -224,6 +266,7 @@ export function KonvaBoardSaveAudit({
 
   const handleSnapshotRestored = useCallback((snapshot: BoardSnapshotRecord) => {
     const restoredResult = createGuardedDocument(getPreparedDocument())
+    suppressedDirtySignatureRef.current = null
     lastSavedSignature.current = null
     setResult(restoredResult)
     setSaveResult(createRestoredHistorySaveResponse(snapshot))
@@ -274,6 +317,8 @@ export function KonvaBoardSaveAudit({
       if (isRestoring.current) return
       const nextResult = createGuardedDocument(getPreparedDocument())
       const nextSignature = getDocumentSignature(nextResult.document)
+      if (suppressedDirtySignatureRef.current === nextSignature) return
+      suppressedDirtySignatureRef.current = null
       if (lastSavedSignature.current !== nextSignature) markDirty()
     }, 420)
   }, [camera, createGuardedDocument, document, getPreparedDocument, markDirty, mode, pageRevision])
@@ -334,4 +379,6 @@ export function KonvaBoardSaveAudit({
       saveLabel="Save Konva"
     />
   )
-}
+})
+
+KonvaBoardSaveAudit.displayName = 'KonvaBoardSaveAudit'

@@ -17,6 +17,7 @@ from tangent_api.storage.asset_store_common import (
     extension_for_mime,
     file_url,
     parse_image_data_url,
+    read_upload_file_with_limit,
 )
 
 
@@ -65,7 +66,7 @@ async def create_asset_from_upload(
 ) -> AssetRecord:
     mime = file.content_type or ""
     assert_image_mime(mime)
-    content = await file.read()
+    content = await read_upload_file_with_limit(file)
     assert_asset_size(len(content))
 
     asset_id = f"asset_{uuid4()}"

@@ -24,6 +24,7 @@ from tangent_api.workspace_schemas import (
 PLAN_CATALOG = DEFAULT_PLAN_CATALOG
 
 ID_PATTERN = re.compile(r"^[a-zA-Z0-9._-]+$")
+WORKSPACE_DASHBOARD_MEMBER_LIMIT = 200
 
 
 @dataclass(frozen=True)
@@ -39,20 +40,17 @@ def build_billing_me_response(context: ApiRequestContext) -> BillingMeResponse:
     plan = build_plan_summary(entitlement.plan_key, entitlement.included_credits_override)
     charge = _build_ai_charge_summary(context, entitlement)
     included_total = plan.included_credits
-    total_balance = 0.0
-    reason_totals: dict[str, float] = {}
     if os.getenv("DATABASE_URL"):
         total_balance = load_credit_balance_for_account(charge.charged_account_id)
         reason_totals = load_credit_reason_totals(charge.charged_account_id)
-    if total_balance > 0 and reason_totals.get("subscription_grant", 0) > 0:
-        included_remaining, top_up_balance = split_credit_balance(total_balance, included_total)
-        usage = max(0, included_total - included_remaining)
-    elif total_balance > 0:
-        usage = _mock_usage_for_user(context.user_id, included_total)
-        included_remaining = max(0, included_total - usage)
-        top_up_balance = int(round(total_balance))
+        usage = _usage_from_reason_totals(reason_totals)
+        if total_balance > 0 and reason_totals.get("subscription_grant", 0) > 0:
+            included_remaining, top_up_balance = split_credit_balance(total_balance, included_total)
+        else:
+            included_remaining = 0
+            top_up_balance = max(0, int(round(total_balance)))
     else:
-        usage = _mock_usage_for_user(context.user_id, included_total)
+        usage = _demo_usage_for_user(context.user_id, included_total)
         included_remaining = max(0, included_total - usage)
         top_up_balance = 0
     return BillingMeResponse(
@@ -245,10 +243,16 @@ def _payer_label(charged_scope: str) -> str:
     return "Charges your credits"
 
 
-def _mock_usage_for_user(user_id: str, included_total: int) -> int:
+def _demo_usage_for_user(user_id: str, included_total: int) -> int:
     if included_total <= 0:
         return 0
     return min(included_total, 120 + (sum(ord(char) for char in user_id) % 380))
+
+
+def _usage_from_reason_totals(reason_totals: dict[str, float]) -> int:
+    charged = float(reason_totals.get("usage_charge", 0) or 0)
+    refunded = float(reason_totals.get("usage_refund", 0) or 0)
+    return max(0, int(round(-(charged + refunded))))
 
 
 def _assert_can_manage_workspace_members(context: ApiRequestContext) -> None:
@@ -364,7 +368,7 @@ def _load_workspace_dashboard_members(
     can_see_member_usage: bool,
 ) -> list[WorkspaceDashboardMember]:
     if not os.getenv("DATABASE_URL"):
-        return [_fallback_workspace_dashboard_member(context, can_see_member_usage)]
+        return [_demo_workspace_dashboard_member(context, can_see_member_usage)]
     with connect_to_postgres() as connection:
         with connection.cursor() as cursor:
             cursor.execute(
@@ -388,28 +392,27 @@ def _load_workspace_dashboard_members(
                     ELSE 6
                 END,
                 wm.joined_at ASC
+                LIMIT %s
                 """,
-                (context.workspace_id,),
+                (context.workspace_id, WORKSPACE_DASHBOARD_MEMBER_LIMIT),
             )
-            rows = cursor.fetchall()
+            rows = cursor.fetchall()[:WORKSPACE_DASHBOARD_MEMBER_LIMIT]
     if not rows:
-        return [_fallback_workspace_dashboard_member(context, can_see_member_usage)]
-    usage_by_user = _load_workspace_usage_map(context.workspace_id) if can_see_member_usage else {}
+        usage_by_user = _load_workspace_usage_map(context.workspace_id, [context.user_id]) if can_see_member_usage else {}
+        return [_context_workspace_dashboard_member(context, can_see_member_usage, usage_by_user.get(context.user_id, 0))]
+    member_user_ids = [str(row[0]) for row in rows if row[0] not in (None, "")]
+    usage_by_user = _load_workspace_usage_map(context.workspace_id, member_user_ids) if can_see_member_usage else {}
     return [
         _workspace_dashboard_member_from_row(row, usage_by_user.get(str(row[0])), can_see_member_usage)
         for row in rows
     ]
 
 
-def _fallback_workspace_dashboard_member(
+def _context_workspace_dashboard_member(
     context: ApiRequestContext,
     can_see_member_usage: bool,
+    usage: int = 0,
 ) -> WorkspaceDashboardMember:
-    entitlement = resolve_entitlement(context)
-    usage = _mock_usage_for_user(
-        context.user_id,
-        build_plan_summary(entitlement.plan_key, entitlement.included_credits_override).included_credits,
-    )
     return WorkspaceDashboardMember(
         displayName=context.user_display_name,
         email=context.user_email,
@@ -421,24 +424,45 @@ def _fallback_workspace_dashboard_member(
     )
 
 
-def _load_workspace_usage_map(workspace_id: str) -> dict[str, int]:
+def _demo_workspace_dashboard_member(
+    context: ApiRequestContext,
+    can_see_member_usage: bool,
+) -> WorkspaceDashboardMember:
+    entitlement = resolve_entitlement(context)
+    usage = _demo_usage_for_user(
+        context.user_id,
+        build_plan_summary(entitlement.plan_key, entitlement.included_credits_override).included_credits,
+    )
+    return _context_workspace_dashboard_member(context, can_see_member_usage, usage)
+
+
+def _load_workspace_usage_map(workspace_id: str, user_ids: Optional[list[str]] = None) -> dict[str, int]:
     if not os.getenv("DATABASE_URL"):
         return {}
+    normalized_user_ids = sorted({user_id for user_id in (user_ids or []) if user_id})
+    user_filter = "AND actor_user_id = ANY(%s)" if normalized_user_ids else ""
+    params: tuple[object, ...] = (workspace_id, normalized_user_ids) if normalized_user_ids else (workspace_id,)
     with connect_to_postgres() as connection:
         with connection.cursor() as cursor:
             cursor.execute(
-                """
+                f"""
                 SELECT actor_user_id,
                        COALESCE(SUM(CASE WHEN credits_delta < 0 THEN -credits_delta ELSE 0 END), 0)
                 FROM tangent_credit_ledger
                 WHERE workspace_id = %s
                   AND actor_user_id IS NOT NULL
+                  {user_filter}
                 GROUP BY actor_user_id
                 """,
-                (workspace_id,),
+                params,
             )
             rows = cursor.fetchall()
-    return {str(row[0]): int(float(row[1] or 0)) for row in rows}
+    allowed = set(normalized_user_ids)
+    return {
+        str(row[0]): int(float(row[1] or 0))
+        for row in rows
+        if not allowed or str(row[0]) in allowed
+    }
 
 
 def _workspace_dashboard_member_from_row(

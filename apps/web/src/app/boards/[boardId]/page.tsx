@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import { useTangentSession } from '@/features/auth/useTangentSession'
-import type { BoardPersistenceRecord } from '@/features/boards/boardTypes'
+import type { BoardPersistenceRecord, BoardPersistenceSummary } from '@/features/boards/boardTypes'
 import {
   detectBoardCanvasEngine,
   getDefaultBoardCanvasEngine,
@@ -23,12 +23,14 @@ import { migrateTldrawV1BoardToKonvaV2 } from '@/features/boards/tldrawToKonvaMi
 const CanvasSpike = dynamic(
   () => import('@/components/canvas/CanvasSpike').then((module) => module.CanvasSpike),
   {
+    loading: () => <BoardRouteState title="Loading Board" detail="Opening canvas..." />,
     ssr: false,
   }
 )
 const KonvaCanvasSpike = dynamic(
   () => import('@/components/konva-canvas/KonvaCanvasSpike').then((module) => module.KonvaCanvasSpike),
   {
+    loading: () => <BoardRouteState title="Loading Board" detail="Opening canvas..." />,
     ssr: false,
   }
 )
@@ -40,7 +42,7 @@ type BoardLoadState =
 export default function BoardCanvasPage() {
   const params = useParams<{ boardId?: string | string[] }>()
   const searchParams = useSearchParams()
-  const { session } = useTangentSession()
+  const { error: sessionError, session, status: sessionStatus } = useTangentSession()
   const rawBoardId = Array.isArray(params.boardId) ? params.boardId[0] : params.boardId
   const boardId = rawBoardId ? decodeURIComponent(rawBoardId) : 'untitled-board'
   const isNewBoard = searchParams.get('new') === '1'
@@ -53,6 +55,7 @@ export default function BoardCanvasPage() {
   const detectedEngine = loadState.status === 'loaded' ? detectBoardCanvasEngine(loadState.board.document) : null
   const effectiveBoardId = loadState.status === 'loaded' ? loadState.board.id : boardId
   const candidateWorkspaces = useMemo(() => {
+    if (!shareId && sessionStatus !== 'ready') return []
     const ordered: TangentWorkspace[] = []
     const seen = new Set<string>()
     const pushWorkspace = (workspace: TangentWorkspace | null | undefined) => {
@@ -65,7 +68,7 @@ export default function BoardCanvasPage() {
     pushWorkspace(session.activeWorkspace)
     session.workspaces.forEach((workspace) => pushWorkspace(workspace))
     return ordered
-  }, [requestedWorkspaceId, session.activeWorkspace, session.workspaces])
+  }, [requestedWorkspaceId, session.activeWorkspace, session.workspaces, sessionStatus, shareId])
   const resolvedWorkspace = useMemo(() => {
     if (loadState.status === 'loaded') {
       return candidateWorkspaces.find((workspace) => workspace.id === loadState.board.workspaceId)
@@ -80,15 +83,28 @@ export default function BoardCanvasPage() {
     [detectedEngine, requestedEngine]
   )
   const wantsKonvaCopy = loadState.status === 'loaded' && detectedEngine === 'tldraw' && requestedEngine === 'konva'
+  const loadedBoard = loadState.status === 'loaded' ? loadState.board : null
   const boardTitle = boardTitleOverride?.boardId === effectiveBoardId
     ? boardTitleOverride.title
     : loadState.status === 'loaded'
       ? loadState.board.title
       : formatBoardTitle(boardId)
+  const clearNewBoardQuery = useCallback((board: BoardPersistenceSummary) => {
+    if (!isNewBoard || typeof window === 'undefined') return
+    const query = new URLSearchParams(searchParams.toString())
+    query.delete('new')
+    if (board.workspaceId) query.set('workspace', board.workspaceId)
+    const nextUrl = `/boards/${encodeURIComponent(board.id)}${query.toString() ? `?${query.toString()}` : ''}`
+    window.history.replaceState(window.history.state, '', nextUrl)
+  }, [isNewBoard, searchParams])
 
   useEffect(() => {
     let cancelled = false
     const loadBoard = async () => {
+      if (!shareId && sessionStatus !== 'ready') {
+        if (!cancelled) setLoadState({ status: 'loading' })
+        return
+      }
       if (isNewBoard) {
         if (!cancelled) setLoadState({ status: 'idle' })
         return
@@ -108,7 +124,7 @@ export default function BoardCanvasPage() {
     return () => {
       cancelled = true
     }
-  }, [boardId, candidateWorkspaces, isNewBoard, shareId])
+  }, [boardId, candidateWorkspaces, isNewBoard, sessionStatus, shareId])
 
   const renameBoardTitle = useCallback(async (title: string) => {
     const nextTitle = title.trim()
@@ -124,6 +140,14 @@ export default function BoardCanvasPage() {
       return nextTitle
     }
   }, [boardTitle, effectiveBoardId, isNewBoard, loadState.status, resolvedWorkspace])
+
+  if (!shareId && sessionStatus === 'error') {
+    return <BoardRouteState title="Board unavailable" detail={sessionError ?? 'Workspace session failed to load.'} />
+  }
+
+  if (!shareId && sessionStatus !== 'ready') {
+    return <BoardRouteState title="Loading Board" detail="Loading workspace access..." />
+  }
 
   if (loadState.status === 'loading') {
     return <BoardRouteState title="Loading Board" detail={formatBoardTitle(boardId)} />
@@ -153,11 +177,13 @@ export default function BoardCanvasPage() {
   if (engine === 'konva') {
     return (
       <KonvaCanvasSpike
-        autoLoadBoard={loadState.status === 'loaded' && detectedEngine === 'konva'}
+        autoLoadBoard={false}
         boardId={effectiveBoardId}
         boardTitle={boardTitle}
+        initialBoard={loadedBoard && detectedEngine === 'konva' ? loadedBoard : null}
         mode="board"
         onBoardLoaded={(title) => setBoardTitleOverride({ boardId: effectiveBoardId, title })}
+        onBoardSaved={clearNewBoardQuery}
         onBoardTitleRename={renameBoardTitle}
         seedOnMount={false}
         workspace={resolvedWorkspace}
@@ -264,15 +290,17 @@ async function loadBoardAcrossWorkspaces(
   boardId: string,
   workspaces: TangentWorkspace[]
 ) {
-  let lastError: unknown = null
-
-  for (const workspace of workspaces) {
-    try {
-      return await loadLocalBoardDocument(boardId, workspace)
-    } catch (error) {
-      lastError = error
-    }
+  if (workspaces.length === 0) {
+    throw new Error('Board load failed.')
   }
 
-  throw lastError instanceof Error ? lastError : new Error('Board load failed.')
+  try {
+    return await Promise.any(workspaces.map((workspace) => loadLocalBoardDocument(boardId, workspace)))
+  } catch (error) {
+    if (error instanceof AggregateError) {
+      const failed = error.errors.find((candidate) => candidate instanceof Error)
+      throw failed instanceof Error ? failed : new Error('Board load failed.')
+    }
+    throw error instanceof Error ? error : new Error('Board load failed.')
+  }
 }

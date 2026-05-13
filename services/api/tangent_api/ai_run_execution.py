@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Optional
 
 from fastapi import HTTPException
 
@@ -8,6 +9,8 @@ from tangent_api.ai_provider_types import AiProviderAttemptResult
 from tangent_api.ai_schemas import AiRunChargeSummary, AiRunRecord, AiRunRequest
 from tangent_api.credit_ledger import settle_usage_charge_to_account
 from tangent_api.request_context import ApiRequestContext
+
+MAX_AI_RUN_TEXT_OUTPUT_CHARS = 12_000
 
 
 @dataclass(frozen=True)
@@ -39,7 +42,7 @@ def finalize_mock_run(
                     "route_id": execution.route_id,
                     "route_key": execution.route_key,
                     "status": execution.status,
-                    "text_output": execution.text_output,
+                    "text_output": _limit_text_output(execution.text_output),
                 }
             ),
         )
@@ -62,7 +65,7 @@ def finalize_mock_run(
         "route_id": execution.route_id,
         "route_key": execution.route_key,
         "status": "succeeded",
-        "text_output": execution.text_output,
+        "text_output": _limit_text_output(execution.text_output),
     }
     if should_charge_mock_ai_run:
         try:
@@ -133,3 +136,9 @@ def charge_with_preflight_status(charge: AiRunChargeSummary, status: str) -> AiR
         workspaceKind=charge.workspace_kind,
         workspaceSeatId=charge.workspace_seat_id,
     )
+
+
+def _limit_text_output(value: Optional[str]) -> Optional[str]:
+    if value is None or len(value) <= MAX_AI_RUN_TEXT_OUTPUT_CHARS:
+        return value
+    return value[:MAX_AI_RUN_TEXT_OUTPUT_CHARS]

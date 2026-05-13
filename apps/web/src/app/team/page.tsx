@@ -1,20 +1,15 @@
 import { AppShell } from '@/components/app-shell/AppShell'
-import { WorkspaceDirectoryView } from '@/components/workspaces/WorkspaceDirectoryView'
-import { getWorkspaceDirectoryItems } from '@/features/workspaces/workspaceDirectoryMock'
+import { WorkspaceDirectoryPage } from '@/components/workspaces/WorkspaceDirectoryPage'
 
 export default function TeamPage() {
   return (
     <AppShell>
-      <WorkspaceDirectoryView
+      <WorkspaceDirectoryPage
         createLabel="Create a Team"
         emptyCreatedLabel="No teams created."
         emptyJoinedLabel="No joined teams."
         joinLabel="Join Team"
         kind="team_workspace"
-        items={getWorkspaceDirectoryItems('team_workspace').map((item) => ({
-          ...item,
-          href: `/team/${encodeURIComponent(item.id)}`,
-        }))}
         title="Team"
       />
     </AppShell>

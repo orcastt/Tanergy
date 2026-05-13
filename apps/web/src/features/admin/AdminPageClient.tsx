@@ -4,11 +4,12 @@ import Link from 'next/link'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { AdminAccessDashboard } from './AdminAccessDashboard'
 import { AdminApiRoutesDashboard } from './AdminApiRoutesDashboard'
-import { adminConsoleTabs, AdminConsoleTabs, type AdminConsoleTab } from './AdminConsoleTabs'
+import { AdminConsoleTabs, type AdminConsoleTab } from './AdminConsoleTabs'
 import { AdminFinanceDashboard } from './AdminFinanceDashboard'
 import { AdminOverviewDashboard } from './AdminOverviewDashboard'
 import { AdminUsersDashboard } from './AdminUsersDashboard'
 import { AdminWorkspacesDashboard } from './AdminWorkspacesDashboard'
+import { discardStaleAdminLocalStorage } from './adminStorageCleanup'
 import type {
   AdminAccess,
   AdminDirectoryUsersResource,
@@ -41,6 +42,8 @@ export function AdminPageClient({
   const [mountedTabs, setMountedTabs] = useState<AdminConsoleTab[]>([activeTab])
 
   useEffect(() => {
+    discardStaleAdminLocalStorage()
+
     function handlePopState() {
       const nextTab = readAdminTabFromLocation()
       setClientTab(nextTab)
@@ -52,21 +55,6 @@ export function AdminPageClient({
       window.removeEventListener('popstate', handlePopState)
     }
   }, [])
-
-  useEffect(() => {
-    if (!resourcesEnabled) return
-    const warmAllTabs = () => setMountedTabs((current) => ensureAllMountedTabs(current))
-    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-      const idleHandle = window.requestIdleCallback(warmAllTabs, { timeout: 800 })
-      return () => {
-        window.cancelIdleCallback(idleHandle)
-      }
-    }
-    const timeout = setTimeout(warmAllTabs, 250)
-    return () => {
-      clearTimeout(timeout)
-    }
-  }, [resourcesEnabled])
 
   const handleTabChange = useCallback((nextTab: AdminConsoleTab) => {
     setClientTab(nextTab)
@@ -162,14 +150,6 @@ function AdminTabPanel({
 
 function ensureMountedTab(current: AdminConsoleTab[], nextTab: AdminConsoleTab) {
   return current.includes(nextTab) ? current : [...current, nextTab]
-}
-
-function ensureAllMountedTabs(current: AdminConsoleTab[]) {
-  const nextTabs = [...current]
-  for (const tab of adminConsoleTabs.map((entry) => entry.id)) {
-    if (!nextTabs.includes(tab)) nextTabs.push(tab)
-  }
-  return nextTabs
 }
 
 function hrefForAdminTab(tab: AdminConsoleTab) {

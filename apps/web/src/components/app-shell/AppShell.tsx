@@ -42,6 +42,9 @@ export function AppShell({ children }: AppShellProps) {
   const sideItems = canAccessAdmin
     ? [...sideNavItems, { href: '/admin', icon: 'A', label: 'Admin', type: 'link' as const }]
     : sideNavItems
+  const workspaceName = sessionStatus === 'ready' ? session.activeWorkspace.name : 'Loading workspace'
+  const workspaceKindLabel = sessionStatus === 'ready' ? formatWorkspaceKindLabel(session.activeWorkspace.kind) : 'Syncing account'
+  const userInitials = sessionStatus === 'ready' ? session.user.avatarInitials : '...'
 
   const createBoard = () => {
     setIsMenuOpen(false)
@@ -133,8 +136,8 @@ export function AppShell({ children }: AppShellProps) {
             <div className="product-sidebar-avatar" aria-hidden="true" />
             <div className="product-sidebar-workspace-copy">
               <strong>TANGENT</strong>
-              <span>{session.activeWorkspace.name}</span>
-              <small>{formatWorkspaceKindLabel(session.activeWorkspace.kind)}</small>
+              <span>{workspaceName}</span>
+              <small>{workspaceKindLabel}</small>
             </div>
           </section>
 
@@ -163,7 +166,7 @@ export function AppShell({ children }: AppShellProps) {
               className={`product-sidebar-link${isActivePath(pathname, '/account') ? ' is-active' : ''}`}
               href="/account"
             >
-              <span aria-hidden="true">{session.user.avatarInitials}</span>
+              <span aria-hidden="true">{userInitials}</span>
               Account
             </Link>
             <SignOutButton redirectUrl="/">
@@ -177,7 +180,7 @@ export function AppShell({ children }: AppShellProps) {
         <main className="product-main">
           {sessionStatus === 'error' ? (
             <div className="product-session-warning" role="status">
-              {sessionError ?? 'Session lookup failed. Using local fallback display.'}
+              {sessionError ?? 'Session lookup failed.'}
             </div>
           ) : null}
           {children}

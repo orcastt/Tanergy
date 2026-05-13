@@ -32,6 +32,8 @@ def execute_ai_provider_attempt(
         adapter = _LIVE_PROVIDER_ADAPTERS.get(route.provider_key)
         if adapter is not None:
             return adapter(run, payload, route, context)
+    if not _should_allow_stub_provider_adapter():
+        return _stub_provider_disabled_result(route)
     return _run_stub_provider_adapter(run, payload, route, context)
 
 
@@ -157,6 +159,38 @@ def _should_use_live_provider(provider_key: str) -> bool:
         "TANGENT_AI_PROVIDER_EXECUTION_MODE",
         "",
     ).strip().lower() == "live"
+
+
+def _should_allow_stub_provider_adapter() -> bool:
+    if os.getenv("TANGENT_AI_ALLOW_STUB_PROVIDER", "").strip() == "1":
+        return True
+    return not _is_production_runtime()
+
+
+def _is_production_runtime() -> bool:
+    return any(
+        os.getenv(name, "").strip().lower() in {"prod", "production"}
+        for name in ("TANGENT_ENV", "ENVIRONMENT", "APP_ENV", "PYTHON_ENV")
+    )
+
+
+def _stub_provider_disabled_result(route: AiProviderRouteCandidate) -> AiProviderAttemptResult:
+    return AiProviderAttemptResult(
+        created_at=_timestamp(),
+        error_code="provider_stub_disabled",
+        error_message="Stub AI provider execution is disabled in production. Configure live provider mode and credentials.",
+        latency_ms=0,
+        output_asset_ids=[],
+        provider=route.provider_key,
+        provider_cost=None,
+        provider_currency=None,
+        retryable=False,
+        route_id=route.route_id,
+        route_key=route.route_key,
+        status="failed",
+        text_output=None,
+        work_started=False,
+    )
 
 
 def _provider_api_key(provider_key: str) -> Optional[str]:

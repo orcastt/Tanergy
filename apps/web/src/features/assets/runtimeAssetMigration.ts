@@ -3,7 +3,7 @@
 import type { Editor, TLAssetId, TLImageAsset } from 'tldraw'
 import { toSerializableTangentAssetRecord, type TangentAssetRecord } from './assetTypes'
 import { uploadImageDataUrlAsset } from './assetUploadClient'
-import { acceptedImageMimeTypes } from './imageAssetInputs'
+import { acceptedImageMimeTypes, imageMaxBytes } from './imageAssetInputs'
 
 type RuntimeImageAsset = TLImageAsset & {
   meta?: {
@@ -67,17 +67,28 @@ function isPersistableAssetUrl(src: string) {
 }
 
 async function getMigratableDataUrl(src: string) {
-  if (src.startsWith('data:')) return isAllowedDataUrl(src) ? src : null
+  if (src.startsWith('data:')) return isAllowedDataUrl(src) && getDataUrlByteLength(src) <= imageMaxBytes ? src : null
   if (!src.startsWith('blob:')) return null
 
   const response = await fetch(src)
   const blob = await response.blob()
   if (!acceptedImageMimeTypes.includes(blob.type)) return null
+  if (blob.size > imageMaxBytes) return null
   return readBlobAsDataUrl(blob)
 }
 
 function isAllowedDataUrl(src: string) {
   return acceptedImageMimeTypes.some((mime) => src.startsWith(`data:${mime};base64,`))
+}
+
+function getDataUrlByteLength(src: string) {
+  const marker = ';base64,'
+  const markerIndex = src.indexOf(marker)
+  if (markerIndex < 0) return Number.POSITIVE_INFINITY
+  const base64 = src.slice(markerIndex + marker.length).replace(/\s/g, '')
+  if (!base64) return 0
+  const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0
+  return Math.floor(base64.length * 3 / 4) - padding
 }
 
 function readBlobAsDataUrl(blob: Blob) {

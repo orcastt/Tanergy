@@ -1,23 +1,33 @@
 from __future__ import annotations
 
+import logging
 import os
 import threading
+import time
 from typing import Any, Optional
 
 from fastapi import HTTPException
 
+_LOGGER = logging.getLogger(__name__)
 _POOL_LOCK = threading.Lock()
 _POSTGRES_POOL: Optional["_ReusablePostgresPool"] = None
+_SLOW_QUERY_CURSOR_CLASSES: dict[Any, type] = {}
 
 
 def require_database_url() -> str:
-    database_url = os.getenv("DATABASE_URL")
+    database_url = _configured_database_url()
     if not database_url:
         raise HTTPException(
             status_code=501,
-            detail="Postgres persistence is not configured. Missing config: DATABASE_URL.",
+            detail="Postgres persistence is not configured. Missing config: DATABASE_URL or DATABASE_POOL_URL.",
         )
     return database_url
+
+
+def resolve_database_connection_url() -> str:
+    database_url = require_database_url()
+    pool_url = os.getenv("DATABASE_POOL_URL", "").strip()
+    return pool_url or database_url
 
 
 def should_auto_create_tables() -> bool:
@@ -128,6 +138,7 @@ class _ReusablePostgresPool:
         return self._psycopg.connect(
             self.database_url,
             connect_timeout=_resolve_pool_integer("TANGENT_DATABASE_CONNECT_TIMEOUT", default=8, minimum=1),
+            cursor_factory=_slow_query_cursor_class(self._psycopg),
         )
 
     def _close_tracked_connection(self, connection: Any) -> None:
@@ -144,7 +155,7 @@ class _ReusablePostgresPool:
 
 def _get_postgres_pool() -> _ReusablePostgresPool:
     global _POSTGRES_POOL
-    database_url = require_database_url()
+    database_url = resolve_database_connection_url()
     with _POOL_LOCK:
         if _POSTGRES_POOL is None or _POSTGRES_POOL.database_url != database_url:
             if _POSTGRES_POOL is not None:
@@ -177,6 +188,46 @@ def _resolve_pool_integer(name: str, *, default: int, minimum: int) -> int:
     except ValueError:
         return default
     return max(minimum, value)
+
+
+def _configured_database_url() -> str:
+    return os.getenv("DATABASE_URL", "").strip() or os.getenv("DATABASE_POOL_URL", "").strip()
+
+
+def _slow_query_cursor_class(psycopg: Any) -> type:
+    cached = _SLOW_QUERY_CURSOR_CLASSES.get(psycopg)
+    if cached is not None:
+        return cached
+
+    class SlowQueryCursor(psycopg.Cursor):
+        def execute(self, query, params=None, *, prepare=None, binary=None):  # type: ignore[no-untyped-def]
+            started_at = time.perf_counter()
+            try:
+                return super().execute(query, params, prepare=prepare, binary=binary)
+            finally:
+                elapsed_ms = (time.perf_counter() - started_at) * 1000
+                threshold_ms = _resolve_pool_integer("TANGENT_DATABASE_SLOW_QUERY_MS", default=200, minimum=0)
+                if threshold_ms and elapsed_ms >= threshold_ms:
+                    _LOGGER.warning(
+                        "Slow Postgres query %.1fms threshold=%sms query=%s",
+                        elapsed_ms,
+                        threshold_ms,
+                        _summarize_sql(query),
+                    )
+
+    _SLOW_QUERY_CURSOR_CLASSES[psycopg] = SlowQueryCursor
+    return SlowQueryCursor
+
+
+def _summarize_sql(query: Any) -> str:
+    if isinstance(query, bytes):
+        raw = query.decode("utf-8", errors="replace")
+    else:
+        raw = str(query)
+    summary = " ".join(raw.split())
+    if len(summary) <= 240:
+        return summary
+    return f"{summary[:237]}..."
 
 
 def _import_psycopg():

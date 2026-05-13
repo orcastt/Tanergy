@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
-import * as Y from 'yjs'
 import {
   appendFrameSample,
   createFrameSample,
@@ -11,13 +10,11 @@ import {
 type UseKonvaCanvasMetricsOptions = {
   document: CanvasDocument
   shellRef: RefObject<HTMLDivElement | null>
-  ydoc: Y.Doc
 }
 
 export function useKonvaCanvasMetrics({
   document,
   shellRef,
-  ydoc,
 }: UseKonvaCanvasMetricsOptions) {
   const [size, setSize] = useState({ height: 720, width: 1280 })
   const [shellRect, setShellRect] = useState<DOMRect | null>(null)
@@ -55,10 +52,9 @@ export function useKonvaCanvasMetrics({
   useEffect(() => {
     const timer = window.setInterval(() => {
       setDiagnostics(getCanvasDiagnosticsSnapshot(document, frameSamplesRef.current))
-      ydoc.getMap('meta').set('lastObjectCount', document.shapes.length)
     }, 500)
     return () => window.clearInterval(timer)
-  }, [document, ydoc])
+  }, [document])
 
   return { diagnostics, setShellRect, shellRect, size }
 }

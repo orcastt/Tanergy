@@ -25,6 +25,7 @@ cp deploy/staging/api.env.example deploy/staging/api.env
 Edit `deploy/staging/api.env` and fill:
 
 - `DATABASE_URL`
+- `DATABASE_POOL_URL` when your Postgres provider exposes a pooled runtime URL, such as Neon pooling
 - `TANGENT_ALLOWED_ORIGINS`
 - `S3_ENDPOINT`
 - `S3_BUCKET`
@@ -42,6 +43,8 @@ curl http://127.0.0.1:8000/health
 ```
 
 The compose file binds FastAPI to `127.0.0.1:8000`. Put Caddy, Nginx, or a platform proxy in front of it for HTTPS.
+
+Keep Alembic migrations on `DATABASE_URL`. At runtime the API prefers `DATABASE_POOL_URL` when it is set, and logs SQL taking longer than `TANGENT_DATABASE_SLOW_QUERY_MS` milliseconds without logging query parameters.
 
 For a disposable staging database, S1A migration smoke can run:
 

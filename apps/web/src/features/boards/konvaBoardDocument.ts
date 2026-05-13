@@ -55,6 +55,17 @@ export type KonvaBoardRestorePayload = {
   result: KonvaBoardRestoreResult
 }
 
+export type KonvaBoardHydratedPagesPayload = {
+  activePageId: string
+  pages: SerializedKonvaBoardPage[]
+}
+
+export type KonvaBoardPagesRestoreOptions = {
+  activePageId?: string
+  pages: SerializedKonvaBoardPage[]
+  serializedAt?: string
+}
+
 export function serializeKonvaBoardDocument(
   document: CanvasDocument,
   options: KonvaBoardDocumentSerializationOptions = {}
@@ -97,6 +108,40 @@ export function createGuardedKonvaBoardDocument(
 }
 
 export function restoreKonvaBoardDocument(document: unknown): KonvaBoardRestorePayload {
+  const hydrated = hydrateKonvaBoardPages(document)
+  return restoreKonvaBoardPages({
+    activePageId: hydrated.activePageId,
+    pages: hydrated.pages,
+  })
+}
+
+export function restoreKonvaBoardPages(options: KonvaBoardPagesRestoreOptions): KonvaBoardRestorePayload {
+  if (!Array.isArray(options.pages) || options.pages.length === 0) {
+    throw new Error('Konva board pages are not restorable.')
+  }
+  const seedDocument = cloneJsonValue(options.pages[0]?.canvasDocument) as CanvasDocument
+  const pages = normalizeKonvaBoardPages({
+    activePageId: options.activePageId,
+    canvasDocument: seedDocument,
+    pages: options.pages,
+    serializedAt: options.serializedAt,
+  })
+  const activePage = pages.find((page) => page.id === (options.activePageId ?? pages[0]?.id)) ?? pages[0]
+  if (!activePage) throw new Error('Konva board document has no active page.')
+  return {
+    activePageId: activePage.id,
+    document: cloneJsonValue(activePage.canvasDocument) as CanvasDocument,
+    pages,
+    result: {
+      assetCount: collectKonvaBoardAssets(pages.map((page) => page.canvasDocument)).length,
+      edgeCount: pages.reduce((total, page) => total + page.canvasDocument.runtimeEdges.length, 0),
+      pageCount: pages.length,
+      shapeCount: pages.reduce((total, page) => total + page.canvasDocument.shapes.length, 0),
+    },
+  }
+}
+
+export function hydrateKonvaBoardPages(document: unknown): KonvaBoardHydratedPagesPayload {
   if (!isSerializedKonvaBoardDocument(document)) throw new Error('Konva board document is not restorable.')
   const audit = auditBoardDocument(document)
   if (!audit.ok) throw new Error(audit.issues.find((issue) => issue.blocking)?.message ?? 'Board document is blocked.')
@@ -104,17 +149,9 @@ export function restoreKonvaBoardDocument(document: unknown): KonvaBoardRestoreP
   useCanvasSettingsStore.getState().replace(document.canvasSettings ?? defaultCanvasSettings)
   const pages = normalizeKonvaBoardPages(document)
   const activePage = getActiveKonvaBoardPage({ ...document, pages })
-  const canvasDocument = cloneJsonValue(activePage.canvasDocument) as CanvasDocument
   return {
     activePageId: activePage.id,
-    document: canvasDocument,
     pages,
-    result: {
-      assetCount: document.assets.length,
-      edgeCount: pages.reduce((total, page) => total + page.canvasDocument.runtimeEdges.length, 0),
-      pageCount: pages.length,
-      shapeCount: pages.reduce((total, page) => total + page.canvasDocument.shapes.length, 0),
-    },
   }
 }
 

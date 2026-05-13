@@ -2,12 +2,16 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { getAuth } from '@clerk/nextjs/server'
 import { mockSession } from '@/features/auth/mockSession'
 import type { TangentSession } from '@/features/auth/sessionTypes'
+import { buildServerClerkApiHeaders } from '@/features/auth/serverClerkAuth'
 import { getApiRequestContext, type ApiRequestContext } from '../../_lib/apiRequestContext'
 
 export const runtime = 'nodejs'
 
 export async function GET(request: NextRequest) {
   try {
+    const remoteResponse = await loadRemoteSession(request)
+    if (remoteResponse) return remoteResponse
+
     const clerkAuth = getOptionalClerkAuth(request)
     if (clerkAuth.userId) {
       return NextResponse.json({ ok: true, session: createSessionFromClerk(clerkAuth.userId, clerkAuth.sessionClaims) })
@@ -18,7 +22,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ ok: true, session: createSessionFromContext(context) })
     }
 
-    if (process.env.TANGENT_REQUIRE_WEB_AUTH === '1') {
+    if (process.env.NODE_ENV === 'production' || process.env.TANGENT_REQUIRE_WEB_AUTH === '1') {
       return NextResponse.json({ error: 'Missing Clerk session.', ok: false }, { status: 401 })
     }
 
@@ -28,6 +32,28 @@ export async function GET(request: NextRequest) {
     const message = error instanceof Error ? error.message : 'Session lookup failed.'
     return NextResponse.json({ error: message, ok: false }, { status: message.includes('authenticated') ? 401 : 400 })
   }
+}
+
+async function loadRemoteSession(request: NextRequest) {
+  const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL ?? '').replace(/\/+$/, '')
+  if (!apiBaseUrl) return null
+
+  const response = await fetch(`${apiBaseUrl}/api/v1/auth/session${request.nextUrl.search}`, {
+    cache: 'no-store',
+    headers: await buildProxyHeaders(request),
+    method: 'GET',
+  })
+
+  const payload = await readJson(response)
+  if (!response.ok) {
+    const error = payload?.error
+    return NextResponse.json(
+      { error: typeof error === 'string' ? error : 'Session lookup failed.', ok: false },
+      { status: response.status },
+    )
+  }
+
+  return NextResponse.json(payload, { status: response.status })
 }
 
 function getOptionalClerkAuth(request: NextRequest) {
@@ -135,4 +161,35 @@ function getStringClaim(claims: Record<string, unknown> | null, key: string) {
 
 function isClerkEmailVerified(claims: Record<string, unknown> | null) {
   return claims?.email_verified === true || claims?.email_verified === 'true'
+}
+
+async function buildProxyHeaders(request: NextRequest) {
+  const headers = new Headers(await buildServerClerkApiHeaders())
+
+  copyHeader(request, headers, 'authorization')
+  copyHeader(request, headers, 'content-type')
+  copyHeader(request, headers, 'cookie')
+  copyHeader(request, headers, 'x-tangent-user-id')
+  copyHeader(request, headers, 'x-tangent-workspace-id')
+  copyHeader(request, headers, 'x-tangent-workspace-kind')
+  copyHeader(request, headers, 'x-tangent-workspace-name')
+  copyHeader(request, headers, 'x-tangent-workspace-role')
+  copyHeader(request, headers, 'x-tangent-plan-key')
+
+  return headers
+}
+
+function copyHeader(request: NextRequest, headers: Headers, name: string) {
+  const value = request.headers.get(name)
+  if (value) headers.set(name, value)
+}
+
+async function readJson(response: Response): Promise<Record<string, unknown>> {
+  const text = await response.text()
+  if (!text) return {}
+  try {
+    return JSON.parse(text) as Record<string, unknown>
+  } catch {
+    return { error: text }
+  }
 }

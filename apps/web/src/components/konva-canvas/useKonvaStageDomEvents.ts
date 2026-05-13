@@ -1,6 +1,6 @@
 import { useCallback, useRef, type DragEvent, type MouseEvent, type PointerEvent, type RefObject } from 'react'
 import { screenToWorld, type CanvasCamera, type CanvasDocument, type CanvasPoint } from '@/features/canvas-engine'
-import { getKonvaContextTargetSelection } from './konvaContextSelection'
+import { getKonvaContextTargetSelection, getKonvaHoveredShapeId } from './konvaContextSelection'
 
 type ContextMenuState = { worldX: number; worldY: number; x: number; y: number }
 type DropHintKind = 'image' | 'pdf' | null
@@ -14,6 +14,8 @@ type UseKonvaStageDomEventsOptions = {
   onContextMenuChange: (contextMenu: ContextMenuState) => void
   onCanvasDoubleClick: (screenPoint: CanvasPoint, worldPoint: CanvasPoint) => void
   onNodeMenuClose: () => void
+  onHoveredShapeIdChange?: (shapeId: string | null) => void
+  onPointerWorldChange?: (point: CanvasPoint | null) => void
   onSelectionChange: (shapeIds: string[]) => void
   onShellRectChange: (rect: DOMRect) => void
   onDropHintChange: (kind: DropHintKind) => void
@@ -29,7 +31,9 @@ export function useKonvaStageDomEvents({
   onCanvasDoubleClick,
   onContextMenuChange,
   onDropHintChange,
+  onHoveredShapeIdChange,
   onNodeMenuClose,
+  onPointerWorldChange,
   onSelectionChange,
   onShellRectChange,
   onToolChange,
@@ -100,12 +104,20 @@ export function useKonvaStageDomEvents({
 
   const handlePointerMoveCapture = useCallback((event: PointerEvent<HTMLElement>) => {
     const rect = event.currentTarget.getBoundingClientRect()
-    lastPastePointRef.current = screenToWorld({ x: event.clientX - rect.left, y: event.clientY - rect.top }, camera)
-  }, [camera, lastPastePointRef])
+    const point = screenToWorld({ x: event.clientX - rect.left, y: event.clientY - rect.top }, camera)
+    lastPastePointRef.current = point
+    onHoveredShapeIdChange?.(getKonvaHoveredShapeId(document.shapes, point))
+    onPointerWorldChange?.(point)
+  }, [camera, document.shapes, lastPastePointRef, onHoveredShapeIdChange, onPointerWorldChange])
 
   const handlePointerDownCapture = useCallback((event: PointerEvent<HTMLElement>) => {
     if (nodeMenuOpen && !(event.target as Element).closest('.konva-node-create-menu')) onNodeMenuClose()
   }, [nodeMenuOpen, onNodeMenuClose])
+
+  const handlePointerLeave = useCallback(() => {
+    onHoveredShapeIdChange?.(null)
+    onPointerWorldChange?.(null)
+  }, [onHoveredShapeIdChange, onPointerWorldChange])
 
   return {
     handleContextMenu,
@@ -115,6 +127,7 @@ export function useKonvaStageDomEvents({
     handleDragOver,
     handleDrop,
     handlePointerDownCapture,
+    handlePointerLeave,
     handlePointerMoveCapture,
   }
 }

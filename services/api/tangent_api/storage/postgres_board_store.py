@@ -204,21 +204,23 @@ class PostgresBoardStore:
             return [], None
         member_roles = self._load_workspace_board_member_roles(context) if context.workspace_role == "guest" else {}
         with connect_to_postgres() as connection:
-            with connection.cursor() as cursor:
-                ensure_board_schema(cursor)
-                cursor.execute(
-                    f"""
-                    SELECT {BOARD_SELECT_COLUMNS}
+            with connection.cursor() as db_cursor:
+                ensure_board_schema(db_cursor)
+                db_cursor.execute(
+                    """
+                    SELECT id, workspace_id, owner_id, title, byte_size, asset_count, shape_count,
+                           description, card_color, thumbnail_url, last_opened_at, saved_at, created_at,
+                           is_starred, is_pinned, visibility, share_id
                     FROM tangent_boards
                     WHERE workspace_id = %s
                     ORDER BY saved_at DESC
                     """,
                     (context.workspace_id,),
                 )
-                rows = cursor.fetchall()
-        records = [board_record_from_row(row) for row in rows]
+                rows = db_cursor.fetchall()
+        records = [_board_summary_from_row(row) for row in rows]
         summaries = [
-            summarize_board_record(record)
+            record
             for record in records
             if can_read_board(record, context, member_roles.get(record.id))
         ]
@@ -826,6 +828,40 @@ def _paginate_board_summaries(
 
 def _encode_board_cursor(board: BoardSummary) -> str:
     return f"{board.saved_at.replace('+00:00', 'Z')}|{board.id}"
+
+
+def _board_summary_from_row(row: tuple[object, ...]) -> BoardSummary:
+    return BoardSummary(
+        assetCount=int(row[5] or 0),
+        byteSize=int(row[4] or 0),
+        cardColor=row[8],
+        createdAt=_optional_iso(row[12]),
+        description=row[7],
+        id=str(row[0]),
+        isPinned=bool(row[14]),
+        isStarred=bool(row[13]),
+        lastOpenedAt=_optional_iso(row[10]),
+        ownerId=str(row[2]),
+        savedAt=_required_iso(row[11]),
+        shapeCount=int(row[6] or 0),
+        shareId=normalize_board_share_id(str(row[16])) if row[16] else None,
+        thumbnailUrl=normalize_board_thumbnail_url(row[9]),
+        title=str(row[3] or "Untitled Board"),
+        visibility=normalize_board_visibility(str(row[15]) if row[15] else None),
+        workspaceId=str(row[1]),
+    )
+
+
+def _optional_iso(value: object) -> Optional[str]:
+    if value is None:
+        return None
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return str(value)
+
+
+def _required_iso(value: object) -> str:
+    return _optional_iso(value) or datetime.now(timezone.utc).isoformat()
 
 
 def _copy_title(title: str) -> str:

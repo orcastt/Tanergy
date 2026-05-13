@@ -1,7 +1,8 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { loadBillingPlans } from '@/features/billing/billingClient'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import { useTangentSession } from '@/features/auth/useTangentSession'
 import type { BoardCardColor } from '@/features/boards/boardTypes'
@@ -16,7 +17,9 @@ import {
   saveLocalBoardDocument,
   updateLocalBoardMetadata,
 } from '@/features/boards/localBoardClient'
+import { readCachedBoardList } from '@/features/boards/boardResourceCache'
 import { migrateTldrawV1BoardToKonvaV2 } from '@/features/boards/tldrawToKonvaMigration'
+import { mapSettledWithConcurrency } from '@/features/shared/asyncConcurrency'
 import { getBoardCapabilities } from './boardCapabilities'
 import { getShareUrl } from './boardMemberUtils'
 import { WorkspaceBoardHeader } from './WorkspaceBoardHeader'
@@ -30,32 +33,40 @@ import {
   filterAndSortBoards,
   getBoardDisplayCardColor,
 } from './workspaceBoardUtils'
+import { formatWorkspacePlanName } from '@/features/workspaces/workspacePresentation'
 
 type ViewMode = WorkspaceBoardViewMode
 type SortMode = WorkspaceBoardSortMode
+const maxConcurrentBoardListLoads = 4
 
 export function WorkspaceBoardGallery() {
   const router = useRouter()
-  const { session } = useTangentSession()
+  const { error: sessionError, session, status: sessionStatus } = useTangentSession()
   const [boards, setBoards] = useState<BoardPersistenceSummary[]>([])
   const [editingBoardId, setEditingBoardId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [panelBoardId, setPanelBoardId] = useState<string | null>(null)
   const [pendingBoardId, setPendingBoardId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortMode, setSortMode] = useState<SortMode>('opened')
   const [viewMode, setViewMode] = useState<ViewMode>('gallery')
+  const visibleBoardCountRef = useRef(0)
 
+  const activeWorkspaces = useMemo(
+    () => sessionStatus === 'ready' ? session.workspaces : [],
+    [session.workspaces, sessionStatus],
+  )
   const workspaceSignature = useMemo(
-    () => session.workspaces.map((workspace) => `${workspace.id}:${workspace.kind}:${workspace.planKey ?? ''}`).join('|'),
-    [session.workspaces]
+    () => activeWorkspaces.map((workspace) => `${workspace.id}:${workspace.kind}:${workspace.planKey ?? ''}`).join('|'),
+    [activeWorkspaces]
   )
   const workspaceById = useMemo(
-    () => new Map(session.workspaces.map((workspace) => [workspace.id, workspace])),
-    [session.workspaces]
+    () => new Map(activeWorkspaces.map((workspace) => [workspace.id, workspace])),
+    [activeWorkspaces]
   )
 
   const filteredBoards = useMemo(() => filterAndSortBoards(boards, searchQuery, sortMode), [boards, searchQuery, sortMode])
@@ -65,45 +76,71 @@ export function WorkspaceBoardGallery() {
   )
 
   const boardScopes = useMemo(
-    () => createBoardScopes(session.workspaces, filteredBoards, searchQuery.trim().length > 0),
-    [filteredBoards, searchQuery, session.workspaces]
+    () => createBoardScopes(activeWorkspaces, filteredBoards, searchQuery.trim().length > 0),
+    [activeWorkspaces, filteredBoards, searchQuery]
   )
 
-  const refreshBoards = useCallback(async () => {
-    setIsLoading(true)
+  useEffect(() => {
+    visibleBoardCountRef.current = boards.length
+  }, [boards.length])
+
+  const refreshBoards = useCallback(async (hasVisibleData = visibleBoardCountRef.current > 0) => {
+    if (sessionStatus !== 'ready') return
+    if (hasVisibleData) {
+      setIsRefreshing(true)
+    } else {
+      setIsLoading(true)
+    }
     try {
-      const results = await Promise.allSettled(
-        session.workspaces.map(async (workspace) => {
+      const results = await mapSettledWithConcurrency(
+        activeWorkspaces,
+        maxConcurrentBoardListLoads,
+        async (workspace) => {
           const response = await listLocalBoardDocuments(workspace)
-          return response.boards
-        })
+          return { boards: response.boards, workspaceId: workspace.id }
+        },
       )
-      const nextBoards: BoardPersistenceSummary[] = []
+      const nextBoardsByWorkspace = new Map<string, BoardPersistenceSummary[]>()
       const failedWorkspaces: string[] = []
 
       results.forEach((result, index) => {
+        const workspace = activeWorkspaces[index]
+        if (!workspace) return
         if (result.status === 'fulfilled') {
-          nextBoards.push(...result.value)
+          nextBoardsByWorkspace.set(result.value.workspaceId, result.value.boards)
           return
         }
-        failedWorkspaces.push(session.workspaces[index]?.name ?? 'Unknown')
+        failedWorkspaces.push(workspace.name || 'Unknown')
       })
 
-      setBoards(nextBoards)
+      if (nextBoardsByWorkspace.size > 0 || activeWorkspaces.length === 0) {
+        setBoards((current) => mergeWorkspaceBoardResults(current, activeWorkspaces, nextBoardsByWorkspace))
+      }
       setError(failedWorkspaces.length > 0 ? `Some board spaces failed to load: ${failedWorkspaces.join(', ')}` : null)
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : 'Board list failed.')
     } finally {
       setIsLoading(false)
+      setIsRefreshing(false)
     }
-  }, [session.workspaces])
+  }, [activeWorkspaces, sessionStatus])
 
   useEffect(() => {
+    if (sessionStatus !== 'ready') return
+    const cachedBoards = collectCachedBoards(activeWorkspaces)
+    const hasCachedBoards = cachedBoards.length > 0
+    if (hasCachedBoards) {
+      visibleBoardCountRef.current = Math.max(visibleBoardCountRef.current, cachedBoards.length)
+    }
     const timeout = window.setTimeout(() => {
-      void refreshBoards()
+      if (hasCachedBoards) {
+        setBoards((current) => current.length === 0 ? cachedBoards : current)
+        setIsLoading(false)
+      }
+      void refreshBoards(hasCachedBoards || visibleBoardCountRef.current > 0)
     }, 0)
     return () => window.clearTimeout(timeout)
-  }, [refreshBoards, workspaceSignature])
+  }, [activeWorkspaces, refreshBoards, sessionStatus, workspaceSignature])
 
   useEffect(() => {
     if (!notice) return
@@ -120,7 +157,16 @@ export function WorkspaceBoardGallery() {
     return board ? getWorkspaceForBoard(board) : null
   }, [boards, getWorkspaceForBoard])
 
-  const createBoard = (workspace?: TangentWorkspace) => {
+  const createBoard = async (workspace?: TangentWorkspace) => {
+    const targetWorkspace = workspace ?? session.activeWorkspace
+    if (targetWorkspace) {
+      const boardLimitError = await resolveBoardCreateLimitError(targetWorkspace, boards)
+      if (boardLimitError) {
+        setError(boardLimitError)
+        return
+      }
+    }
+    setError(null)
     const query = new URLSearchParams({ new: '1' })
     if (workspace) query.set('workspace', workspace.id)
     router.push(`/boards/${encodeURIComponent(createBoardId())}?${query.toString()}`)
@@ -325,8 +371,11 @@ export function WorkspaceBoardGallery() {
 
       {error ? <div className="workspace-error" role="alert">{error}</div> : null}
       {notice ? <div className="workspace-toast" role="status">{notice}</div> : null}
+      {isRefreshing && boards.length > 0 ? <div className="workspace-empty-inline" role="status">Refreshing boards…</div> : null}
 
-      {isLoading ? (
+      {sessionStatus === 'error' ? (
+        <div className="workspace-error" role="alert">{sessionError ?? 'Workspace session failed to load.'}</div>
+      ) : sessionStatus === 'loading' || (isLoading && boards.length === 0) ? (
         <WorkspaceLoadingState />
       ) : filteredBoards.length === 0 && searchQuery.trim() ? (
         <div className="workspace-empty-inline">No boards match your search.</div>
@@ -348,7 +397,7 @@ export function WorkspaceBoardGallery() {
                     onCancelRename={cancelRename}
                     onCopy={(board) => void copyBoard(board)}
                     onCopyToKonva={(board) => void copyBoardToKonva(board)}
-                    onCreate={() => createBoard(workspace)}
+                    onCreate={() => void createBoard(workspace)}
                     onDelete={(board) => void deleteBoard(board)}
                     onMakePrivate={makeBoardPrivate}
                     onMakePublic={makeBoardPublic}
@@ -389,6 +438,56 @@ export function WorkspaceBoardGallery() {
       />
     </div>
   )
+}
+
+async function resolveBoardCreateLimitError(workspace: TangentWorkspace, boards: BoardPersistenceSummary[]) {
+  if (!workspace.planKey) return null
+  try {
+    const response = await loadBillingPlans()
+    const plan = response.plans.find((item) => item.planKey === workspace.planKey)
+    const boardLimit = plan?.boardLimit
+    const boardCount = resolveWorkspaceBoardCount(workspace, boards)
+    if (typeof boardLimit !== 'number' || boardCount < boardLimit) return null
+    const planName = plan?.name?.trim() || formatWorkspacePlanName(workspace.planKey)
+    return `${planName} allows up to ${boardLimit} ${boardLimit === 1 ? 'board' : 'boards'}.`
+  } catch {
+    return null
+  }
+}
+
+function collectCachedBoards(workspaces: TangentWorkspace[]) {
+  return workspaces.flatMap((workspace) => readCachedBoardList(workspace.id) ?? [])
+}
+
+function resolveWorkspaceBoardCount(workspace: TangentWorkspace, boards: BoardPersistenceSummary[]) {
+  const cachedBoardCount = readCachedBoardList(workspace.id)?.length ?? 0
+  const liveBoardCount = boards.filter((board) => board.workspaceId === workspace.id).length
+  return Math.max(workspace.boardCount, cachedBoardCount, liveBoardCount)
+}
+
+function mergeWorkspaceBoardResults(
+  currentBoards: BoardPersistenceSummary[],
+  workspaces: TangentWorkspace[],
+  nextBoardsByWorkspace: Map<string, BoardPersistenceSummary[]>,
+) {
+  const currentBoardsByWorkspace = new Map<string, BoardPersistenceSummary[]>()
+  currentBoards.forEach((board) => {
+    const bucket = currentBoardsByWorkspace.get(board.workspaceId)
+    if (bucket) {
+      bucket.push(board)
+      return
+    }
+    currentBoardsByWorkspace.set(board.workspaceId, [board])
+  })
+
+  const workspaceIds = new Set(workspaces.map((workspace) => workspace.id))
+  const merged = currentBoards.filter((board) => !workspaceIds.has(board.workspaceId))
+
+  workspaces.forEach((workspace) => {
+    merged.push(...(nextBoardsByWorkspace.get(workspace.id) ?? currentBoardsByWorkspace.get(workspace.id) ?? []))
+  })
+
+  return merged
 }
 
 function createBoardScopes(

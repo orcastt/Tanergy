@@ -6,6 +6,7 @@ import httpx
 
 from tangent_api.ai_provider_assets import (
     ProviderImageOutput,
+    decode_b64_image,
     load_provider_input_assets,
     persist_provider_output_assets,
 )
@@ -13,6 +14,8 @@ from tangent_api.ai_provider_types import AiProviderAttemptResult
 from tangent_api.ai_schemas import AiRunRecord, AiRunRequest
 from tangent_api.ai_route_catalog import AiProviderRouteCandidate
 from tangent_api.request_context import ApiRequestContext
+
+MAX_PROVIDER_JSON_BYTES = 8 * 1024 * 1024
 
 
 def run_google_attempt(
@@ -46,11 +49,13 @@ def run_google_attempt(
                 json=body,
             )
             response.raise_for_status()
-            payload_body = response.json()
+            payload_body = _parse_provider_json(response)
     except httpx.HTTPStatusError as exc:
         return _http_failure(route, exc, started_at)
     except httpx.HTTPError as exc:
         return _failure(route, "provider_transport_error", str(exc), retryable=True, started_at=started_at, work_started=False)
+    except ValueError as exc:
+        return _failure(route, "provider_response_invalid", str(exc), retryable=True, started_at=started_at, work_started=True)
 
     text_output, image_outputs = _parse_google_response(payload_body)
     asset_ids = persist_provider_output_assets(image_outputs, context, payload, route.provider_key)
@@ -119,10 +124,7 @@ def _parse_google_response(body: dict[str, object]) -> tuple[Optional[str], list
             mime = inline_data.get("mimeType")
             if isinstance(data, str) and data:
                 images.append(
-                    ProviderImageOutput(
-                        content=base64.b64decode(data),
-                        mime=str(mime or "image/png"),
-                    )
+                    decode_b64_image(data, mime=str(mime or "image/png"))
                 )
     text_output = "\n\n".join(texts) if texts else None
     return text_output, images
@@ -139,6 +141,22 @@ def _http_failure(route: AiProviderRouteCandidate, exc: httpx.HTTPStatusError, s
         started_at=started_at,
         work_started=status_code < 500,
     )
+
+
+def _parse_provider_json(response: httpx.Response) -> dict[str, object]:
+    content_length = response.headers.get("content-length")
+    if content_length:
+        try:
+            if int(content_length) > MAX_PROVIDER_JSON_BYTES:
+                raise ValueError("Provider response exceeded the JSON size limit.")
+        except ValueError as exc:
+            raise ValueError("Provider response exceeded the JSON size limit.") from exc
+    if len(response.content) > MAX_PROVIDER_JSON_BYTES:
+        raise ValueError("Provider response exceeded the JSON size limit.")
+    body = response.json()
+    if not isinstance(body, dict):
+        raise ValueError("Provider response was not a JSON object.")
+    return body
 
 
 def _failure(

@@ -69,7 +69,6 @@ export function AdminOperatorUserInventoryRow({
           href={detailHref}
           onClick={() => onWarmDetail(user)}
           onFocus={() => onWarmDetail(user)}
-          onMouseEnter={() => onWarmDetail(user)}
           prefetch={false}
         >
           Detail

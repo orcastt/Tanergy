@@ -81,7 +81,14 @@ export async function listLocalBoards(context: ApiRequestContext) {
 
   const boards = []
   for (const entry of entries) {
-    if (!entry.isFile() || !entry.name.endsWith('.json')) continue
+    if (
+      !entry.isFile()
+      || !entry.name.endsWith('.json')
+      || entry.name.endsWith('.shares.json')
+      || entry.name.endsWith('.members.json')
+    ) {
+      continue
+    }
     try {
       const raw = await readFile(path.join(boardsRoot, entry.name), 'utf8')
       const board = normalizeBoardRecord(JSON.parse(raw) as Partial<BoardPersistenceRecord>, context)

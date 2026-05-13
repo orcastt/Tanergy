@@ -5,7 +5,6 @@ import {
   persistenceApiUrl,
   persistenceAuthHeadersAsync,
 } from '@/features/api/persistenceApi'
-import { getCurrentSessionSnapshot } from '@/features/auth/mockSession'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import type {
   BillingCollaborateSubscriptionCheckoutInput,
@@ -20,6 +19,7 @@ import type {
   CreditLedgerQuery,
   CreditLedgerResponse,
   CreditTopupInput,
+  PlanCatalogResponse,
   WorkspaceCreateInput,
   WorkspaceCreateResponse,
   WorkspaceDashboardResponse,
@@ -32,29 +32,44 @@ import type {
   WorkspaceSeatAssignmentsResponse,
   WorkspaceSeatUpsertInput,
 } from './billingTypes'
-import {
-  createLocalBillingMe,
-  createLocalCreditLedger,
-  createLocalWorkspaceDashboard,
-  createLocalWorkspaceSeats,
-} from './billingContracts'
+import { clearCachedBillingResources, loadCachedBillingResource } from './billingResourceCache'
 
 type BillingClientOptions = {
+  force?: boolean
   workspace?: TangentWorkspace
 }
 
 export async function loadBillingMe(options: BillingClientOptions = {}): Promise<BillingMeResponse> {
-  if (!hasRemotePersistenceApi()) return createLocalBillingMe(getCurrentSessionSnapshot())
-  return loadJson<BillingMeResponse>('/api/v1/billing/me', {}, options)
+  assertRemoteBillingApi('Billing profile')
+  const workspaceKey = options.workspace?.id ?? 'current'
+  return loadCachedBillingResource(
+    `me:${workspaceKey}`,
+    () => loadJson<BillingMeResponse>('/api/v1/billing/me', {}, options),
+    { force: options.force, ttlMs: 45_000 },
+  )
+}
+
+export async function loadBillingPlans(options: { force?: boolean } = {}): Promise<PlanCatalogResponse> {
+  assertRemoteBillingApi('Billing plan catalog')
+  return loadCachedBillingResource(
+    'plans',
+    () => loadJson<PlanCatalogResponse>('/api/v1/billing/plans'),
+    { force: options.force, ttlMs: 300_000 },
+  )
 }
 
 export async function loadWorkspaceDashboard(options: BillingClientOptions = {}): Promise<WorkspaceDashboardResponse> {
-  if (!hasRemotePersistenceApi()) return { dashboard: createLocalWorkspaceDashboard(getCurrentSessionSnapshot()), ok: true }
-  return loadJson<WorkspaceDashboardResponse>('/api/v1/workspaces/current/dashboard', {}, options)
+  assertRemoteBillingApi('Workspace dashboard')
+  const workspaceKey = options.workspace?.id ?? 'current'
+  return loadCachedBillingResource(
+    `dashboard:${workspaceKey}`,
+    () => loadJson<WorkspaceDashboardResponse>('/api/v1/workspaces/current/dashboard', {}, options),
+    { force: options.force, ttlMs: 45_000 },
+  )
 }
 
 export async function loadWorkspaceSeats(options: BillingClientOptions = {}): Promise<WorkspaceSeatAssignmentsResponse> {
-  if (!hasRemotePersistenceApi()) return createLocalWorkspaceSeats(getCurrentSessionSnapshot())
+  assertRemoteBillingApi('Workspace seats')
   return loadJson<WorkspaceSeatAssignmentsResponse>('/api/v1/workspaces/current/seats', {}, options)
 }
 
@@ -67,6 +82,7 @@ export async function upsertWorkspaceSeat(
     body: JSON.stringify(input),
     method: 'POST',
   }, options)
+  clearWorkspaceBillingCaches(options.workspace)
   return payload.seat
 }
 
@@ -75,6 +91,7 @@ export async function revokeWorkspaceSeat(userId: string, options: BillingClient
   await loadJson<{ ok: boolean; userId: string }>(`/api/v1/workspaces/current/seats/${encodeURIComponent(userId)}`, {
     method: 'DELETE',
   }, options)
+  clearWorkspaceBillingCaches(options.workspace)
 }
 
 export async function updateWorkspaceMemberRole(
@@ -91,6 +108,7 @@ export async function updateWorkspaceMemberRole(
     },
     options,
   )
+  clearWorkspaceBillingCaches(options.workspace)
   return payload.member
 }
 
@@ -99,18 +117,21 @@ export async function removeWorkspaceMember(userId: string, options: BillingClie
   await loadJson<{ ok: boolean; userId: string }>(`/api/v1/workspaces/current/members/${encodeURIComponent(userId)}`, {
     method: 'DELETE',
   }, options)
+  clearWorkspaceBillingCaches(options.workspace)
 }
 
 export async function createGroupWorkspace(input: WorkspaceCreateInput): Promise<WorkspaceCreateResponse> {
   if (!hasRemotePersistenceApi()) throw new Error('Group creation requires the remote workspace API.')
-  return loadJson<WorkspaceCreateResponse>('/api/v1/workspaces/groups', {
+  const payload = await loadJson<WorkspaceCreateResponse>('/api/v1/workspaces/groups', {
     body: JSON.stringify(input),
     method: 'POST',
   })
+  clearCachedBillingResources()
+  return payload
 }
 
 export async function listWorkspaceInvitations(options: BillingClientOptions = {}): Promise<WorkspaceInvitationsResponse> {
-  if (!hasRemotePersistenceApi()) return { invitations: [], ok: true }
+  assertRemoteBillingApi('Workspace invitations')
   return loadJson<WorkspaceInvitationsResponse>('/api/v1/workspaces/current/invitations', {}, options)
 }
 
@@ -142,9 +163,9 @@ export async function revokeWorkspaceInvitation(
   }, options)
 }
 
-export async function loadCreditLedger(query: CreditLedgerQuery = {}): Promise<CreditLedgerResponse> {
-  if (!hasRemotePersistenceApi()) return createLocalCreditLedger(getCurrentSessionSnapshot())
-  return loadJson<CreditLedgerResponse>(`/api/v1/credits/ledger${createQuery({ limit: query.limit ?? 20, actorUserId: query.actorUserId, reason: query.reason, sourceId: query.sourceId, sourceType: query.sourceType, workspaceId: query.workspaceId })}`)
+export async function loadCreditLedger(query: CreditLedgerQuery = {}, options: BillingClientOptions = {}): Promise<CreditLedgerResponse> {
+  assertRemoteBillingApi('Credit ledger')
+  return loadJson<CreditLedgerResponse>(`/api/v1/credits/ledger${createQuery({ limit: query.limit ?? 20, actorUserId: query.actorUserId, reason: query.reason, sourceId: query.sourceId, sourceType: query.sourceType, workspaceId: query.workspaceId })}`, {}, options)
 }
 
 export async function createCreditTopup(input: CreditTopupInput): Promise<CreditLedgerMutationResponse> {
@@ -155,14 +176,17 @@ export async function createCreditTopup(input: CreditTopupInput): Promise<Credit
   })
 }
 
-export async function loadBillingPayments(query: BillingPaymentQuery = {}): Promise<BillingPaymentsResponse> {
-  if (!hasRemotePersistenceApi()) return { ok: true, payments: [] }
+export async function loadBillingPayments(
+  query: BillingPaymentQuery = {},
+  options: BillingClientOptions = {},
+): Promise<BillingPaymentsResponse> {
+  assertRemoteBillingApi('Billing payments')
   return loadJson<BillingPaymentsResponse>(`/api/v1/billing/payments${createQuery({
     kind: query.kind,
     limit: query.limit ?? 12,
     status: query.status,
     workspaceScoped: query.workspaceScoped ? 'true' : undefined,
-  })}`)
+  })}`, {}, options)
 }
 
 export async function createBillingTopupCheckout(
@@ -223,9 +247,11 @@ export async function completeBillingPayment(
   options: BillingClientOptions = {},
 ): Promise<BillingPaymentMutationResponse> {
   if (!hasRemotePersistenceApi()) throw new Error('Payment completion requires the remote billing API.')
-  return loadJson<BillingPaymentMutationResponse>(`/api/v1/billing/payments/${encodeURIComponent(paymentId)}/complete`, {
+  const payload = await loadJson<BillingPaymentMutationResponse>(`/api/v1/billing/payments/${encodeURIComponent(paymentId)}/complete`, {
     method: 'POST',
   }, options)
+  clearWorkspaceBillingCaches(options.workspace)
+  return payload
 }
 
 function createQuery(params: Record<string, null | number | string | undefined>) {
@@ -255,4 +281,19 @@ async function loadJson<T>(
   const payload = await response.json() as T & { error?: string }
   if (!response.ok) throw new Error(payload.error || 'Billing resource lookup failed.')
   return payload
+}
+
+function clearWorkspaceBillingCaches(workspace?: TangentWorkspace) {
+  clearCachedBillingResources('plans')
+  if (!workspace?.id) {
+    clearCachedBillingResources()
+    return
+  }
+  clearCachedBillingResources(`dashboard:${workspace.id}`)
+  clearCachedBillingResources(`me:${workspace.id}`)
+}
+
+function assertRemoteBillingApi(resource: string) {
+  if (hasRemotePersistenceApi()) return
+  throw new Error(`${resource} requires NEXT_PUBLIC_API_BASE_URL.`)
 }

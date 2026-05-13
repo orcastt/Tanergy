@@ -1,6 +1,7 @@
 import type Konva from 'konva'
 import { boundsToRect, expandBounds, getShapeBounds, type CanvasBounds, type CanvasDocument, type CanvasImageShape, type CanvasNodeShape } from '@/features/canvas-engine'
 import { getRuntimeGraphGeneratedOutputRefs } from '@/features/node-runtime/runtimeGraphAssets'
+import { mapWithConcurrency } from '@/features/shared/asyncConcurrency'
 import { konvaCaptureExcludeName, konvaRuntimeEdgeNodeIdPrefix, konvaRuntimeEdgeNodeName } from './konvaCaptureNames'
 import { getKonvaNodePortWorldPoint } from './konvaNodePorts'
 import { getKonvaRuntimeEdgeBounds } from './konvaRuntimeEdgeGeometry'
@@ -22,6 +23,8 @@ export type KonvaSelectionCaptureOptions = {
 const defaultPadding = 24
 const defaultPixelRatio = 3
 const defaultMaxPixelEdge = 8192
+const maxCapturePixels = 24 * 1024 * 1024
+const maxConcurrentCaptureImageLoads = 8
 export { konvaCaptureExcludeName } from './konvaCaptureNames'
 const shapeNodeName = 'konva-canvas-shape'
 const shapeNodeIdPrefix = 'shape:'
@@ -66,8 +69,10 @@ export async function captureKonvaSelectionPng({
     rect.width,
     rect.height,
     options.pixelRatio ?? defaultPixelRatio,
-    options.maxPixelEdge ?? defaultMaxPixelEdge
+    options.maxPixelEdge ?? defaultMaxPixelEdge,
+    maxCapturePixels,
   )
+  assertSafeCapturePixelCount(rect.width, rect.height, pixelRatio)
   const captureStage = createOffscreenSelectionStage(stage, document, selectedIds)
 
   try {
@@ -200,14 +205,14 @@ async function hydrateOffscreenCaptureImages(stage: Konva.Stage, document: Canva
     .filter((shape) => selected.has(shape.id))
     .flatMap((shape) => getOriginalCaptureImageSources(shape).map((src, index) => ({ index, shapeId: shape.id, src })))
   if (tasks.length === 0) return
-  await Promise.all(tasks.map(async (task) => {
+  await mapWithConcurrency(tasks, maxConcurrentCaptureImageLoads, async (task) => {
     const group = findShapeNode(stage, task.shapeId)
     const imageNode = group ? findImageNodes(group)[task.index] : null
     if (!imageNode) return
     const image = await loadCaptureImage(task.src).catch(() => null)
     if (!image) return
     imageNode.setAttr('image', image)
-  }))
+  })
   stage.batchDraw()
 }
 
@@ -256,10 +261,18 @@ function isString(value: string | undefined): value is string {
   return typeof value === 'string' && value.length > 0
 }
 
-function getSafePixelRatio(width: number, height: number, preferred: number, maxPixelEdge: number) {
+function getSafePixelRatio(width: number, height: number, preferred: number, maxPixelEdge: number, maxPixels: number) {
   const safePreferred = Number.isFinite(preferred) && preferred > 0 ? preferred : defaultPixelRatio
   const maxEdge = Math.max(width, height, 1)
-  return Math.max(0.5, Math.min(safePreferred, maxPixelEdge / maxEdge))
+  const pixelLimitRatio = Math.sqrt(maxPixels / Math.max(1, width * height))
+  return Math.max(0.5, Math.min(safePreferred, maxPixelEdge / maxEdge, pixelLimitRatio))
+}
+
+function assertSafeCapturePixelCount(width: number, height: number, pixelRatio: number) {
+  const outputPixels = Math.ceil(width * pixelRatio) * Math.ceil(height * pixelRatio)
+  if (outputPixels > maxCapturePixels) {
+    throw new Error('Selection is too large to export safely. Reduce the selected area and try again.')
+  }
 }
 
 async function dataUrlToBlob(dataUrl: string) {

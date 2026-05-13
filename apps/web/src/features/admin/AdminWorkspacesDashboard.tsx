@@ -21,6 +21,8 @@ type DirectoryStatus = 'error' | 'loading' | 'ready' | 'refreshing'
 
 const emptyDirectory: AdminDirectoryWorkspacesResource = { limit: 25, offset: 0, ok: false, totalCount: 0, workspaces: [] }
 const emptyDetail: AdminDirectoryWorkspaceDetailResource = { boards: [], members: [], ok: false }
+const workspaceDetailMaxEntries = 24
+const workspaceDetailStoragePrefix = 'tanergy.admin-workspace-detail.'
 const workspaceDetailStore = new Map<string, {
   data?: AdminDirectoryWorkspaceDetailResource
   error?: string | null
@@ -133,8 +135,10 @@ export function AdminWorkspacesDashboard({
       () => loadAdminDirectoryWorkspaceDetail(selectedWorkspace.id),
       {
         force: detailReloadToken !== loadedDetailReloadToken,
-        storage: 'local',
-        storageKey: `tanergy.admin-workspace-detail.${detailKey}`,
+        maxEntries: workspaceDetailMaxEntries,
+        storage: 'session',
+        storageKey: `${workspaceDetailStoragePrefix}${detailKey}`,
+        storagePrefix: workspaceDetailStoragePrefix,
         ttlMs: 300_000,
       },
     )

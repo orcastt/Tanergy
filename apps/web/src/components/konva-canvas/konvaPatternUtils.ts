@@ -4,13 +4,18 @@ export type KonvaPatternTile = {
 }
 
 const patternTileCache = new Map<string, KonvaPatternTile>()
+const maxPatternTiles = 96
 
 export function getPatternTile(stroke: string): KonvaPatternTile | undefined {
   if (typeof document === 'undefined') return undefined
   const pixelRatio = getPatternPixelRatio()
   const key = `${normalizeColor(stroke)}:${pixelRatio}`
   const cached = patternTileCache.get(key)
-  if (cached) return cached
+  if (cached) {
+    patternTileCache.delete(key)
+    patternTileCache.set(key, cached)
+    return cached
+  }
 
   const tileSize = 18
   const canvas = document.createElement('canvas')
@@ -36,6 +41,11 @@ export function getPatternTile(stroke: string): KonvaPatternTile | undefined {
 
   const tile = { image: canvas, scale: 1 / pixelRatio }
   patternTileCache.set(key, tile)
+  while (patternTileCache.size > maxPatternTiles) {
+    const oldest = patternTileCache.keys().next().value
+    if (!oldest) break
+    patternTileCache.delete(oldest)
+  }
   return tile
 }
 

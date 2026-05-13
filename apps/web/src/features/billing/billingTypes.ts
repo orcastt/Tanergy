@@ -27,6 +27,19 @@ export type WorkspacePlanSummary = {
   seatRange?: null | string
 }
 
+export type PlanCatalogRecord = WorkspacePlanSummary & {
+  createdAt?: null | string
+  metadata: Record<string, unknown>
+  planFamily: string
+  registrationCredits: number
+  updatedAt?: null | string
+}
+
+export type PlanCatalogResponse = {
+  ok: boolean
+  plans: PlanCatalogRecord[]
+}
+
 export type PersonalCreditSummary = {
   includedRemaining: number
   includedTotal: number

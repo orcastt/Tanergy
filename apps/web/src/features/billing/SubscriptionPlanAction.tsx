@@ -7,6 +7,7 @@ import {
   createTeamSubscriptionCheckout,
 } from './billingClient'
 import { continueBillingCheckout } from './billingCheckoutFlow'
+import { requestCurrentSessionRefresh } from '@/features/auth/sessionClient'
 import type { PlanKey } from './billingTypes'
 
 type SubscriptionPlanActionProps = {
@@ -58,6 +59,7 @@ export function SubscriptionPlanAction({
         setStatus(message)
         return
       }
+      requestCurrentSessionRefresh()
       const workspaceName = completed?.payment?.metadata.workspaceName
       setStatus(typeof workspaceName === 'string' ? `${workspaceName} is active.` : `${planName} is active.`)
     } catch (error) {

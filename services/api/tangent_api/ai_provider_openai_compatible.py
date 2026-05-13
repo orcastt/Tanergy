@@ -15,6 +15,8 @@ from tangent_api.ai_schemas import AiRunRecord, AiRunRequest
 from tangent_api.ai_route_catalog import AiProviderRouteCandidate
 from tangent_api.request_context import ApiRequestContext
 
+MAX_PROVIDER_JSON_BYTES = 8 * 1024 * 1024
+
 
 def run_openai_compatible_attempt(
     run: AiRunRecord,
@@ -44,11 +46,13 @@ def run_openai_compatible_attempt(
             else:
                 response = _post_image_generation(client, api_key, payload, route)
             response.raise_for_status()
-            body = response.json()
+            body = _parse_provider_json(response)
     except httpx.HTTPStatusError as exc:
         return _http_failure(route, exc, started_at)
     except httpx.HTTPError as exc:
         return _failure(route, "provider_transport_error", str(exc), retryable=True, started_at=started_at, work_started=False)
+    except ValueError as exc:
+        return _failure(route, "provider_response_invalid", str(exc), retryable=True, started_at=started_at, work_started=True)
 
     outputs = []
     for item in body.get("data") or []:
@@ -143,6 +147,22 @@ def _http_failure(route: AiProviderRouteCandidate, exc: httpx.HTTPStatusError, s
         started_at=started_at,
         work_started=status_code < 500,
     )
+
+
+def _parse_provider_json(response: httpx.Response) -> dict[str, object]:
+    content_length = response.headers.get("content-length")
+    if content_length:
+        try:
+            if int(content_length) > MAX_PROVIDER_JSON_BYTES:
+                raise ValueError("Provider response exceeded the JSON size limit.")
+        except ValueError as exc:
+            raise ValueError("Provider response exceeded the JSON size limit.") from exc
+    if len(response.content) > MAX_PROVIDER_JSON_BYTES:
+        raise ValueError("Provider response exceeded the JSON size limit.")
+    body = response.json()
+    if not isinstance(body, dict):
+        raise ValueError("Provider response was not a JSON object.")
+    return body
 
 
 def _failure(

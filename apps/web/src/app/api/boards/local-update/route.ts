@@ -1,13 +1,16 @@
 import { NextResponse } from 'next/server'
 import type { BoardCardColor, BoardMetadataUpdateInput, BoardVisibility } from '@/features/boards/boardTypes'
 import { getApiRequestContext } from '../../_lib/apiRequestContext'
+import { readJsonRequestWithLimit, requestBodyErrorStatus } from '../../_lib/requestBodyLimits'
 import { getBoardStorageAdapter } from '../_lib/boardStorageAdapter'
 
 export const runtime = 'nodejs'
 
+const maxBoardMetadataRequestBytes = 16 * 1024
+
 export async function POST(request: Request) {
   try {
-    const body = await request.json() as {
+    const body = await readJsonRequestWithLimit<{
       boardId?: string
       cardColor?: BoardCardColor | null
       description?: string | null
@@ -17,7 +20,7 @@ export async function POST(request: Request) {
       thumbnailUrl?: string | null
       title?: string
       visibility?: BoardVisibility
-    }
+    }>(request, maxBoardMetadataRequestBytes)
     if (!body.boardId) throw new Error('Missing boardId.')
     const input: BoardMetadataUpdateInput = { boardId: body.boardId }
     if (Object.hasOwn(body, 'cardColor')) input.cardColor = body.cardColor
@@ -33,7 +36,7 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Local board update failed.', ok: false },
-      { status: 400 }
+      { status: requestBodyErrorStatus(error) }
     )
   }
 }

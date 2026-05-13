@@ -34,8 +34,10 @@ type UseKonvaCanvasShortcutsOptions = {
   onCopySelectionSvg?: () => void
   onEdgeSelectionChange?: (edgeId: string | null) => void
   onPanningChange: (isPanning: boolean) => void
+  onRedo?: () => void
   onSelectionChange: (shapeIds: string[]) => void
   onToolChange: (tool: KonvaCanvasTool) => void
+  onUndo?: () => void
   workspace?: TangentWorkspace
 }
 
@@ -60,8 +62,8 @@ export function useKonvaCanvasShortcuts(options: UseKonvaCanvasShortcutsOptions)
       }
       if (command && key === 'z') {
         event.preventDefault()
-        if (event.shiftKey) options.history.redo()
-        else options.history.undo()
+        if (event.shiftKey) (options.onRedo ?? options.history.redo)()
+        else (options.onUndo ?? options.history.undo)()
         return
       }
       if (command && key === 'c') {

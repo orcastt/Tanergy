@@ -44,6 +44,9 @@ def test_alembic_revision_chain_is_linear():
         load_migration("20260508_0012_team_group_wallet_contracts.py"),
         load_migration("20260508_0013_workspace_invites_roles.py"),
         load_migration("20260510_0014_admin_operator_access_pause_facts.py"),
+        load_migration("20260511_0015_plan_catalog_admin_controls.py"),
+        load_migration("20260511_0016_ai_text_route_seed.py"),
+        load_migration("20260512_0017_board_collaboration_presence.py"),
     ]
 
     for previous, current in zip(migrations, migrations[1:]):
@@ -62,6 +65,9 @@ def test_s1a_migrations_keep_required_schema_contracts():
     team_group_wallets = load_migration("20260508_0012_team_group_wallet_contracts.py")
     workspace_invite_roles = load_migration("20260508_0013_workspace_invites_roles.py")
     admin_operator_facts = load_migration("20260510_0014_admin_operator_access_pause_facts.py")
+    plan_catalog_controls = load_migration("20260511_0015_plan_catalog_admin_controls.py")
+    text_route_seed = load_migration("20260511_0016_ai_text_route_seed.py")
+    board_collaboration_presence = load_migration("20260512_0017_board_collaboration_presence.py")
     core_sql = "\n".join(core.UPGRADE)
     future_sql = "\n".join(future.UPGRADE)
     hardening_sql = "\n".join(hardening.UPGRADE)
@@ -73,6 +79,9 @@ def test_s1a_migrations_keep_required_schema_contracts():
     team_group_wallets_sql = "\n".join(team_group_wallets.UPGRADE)
     workspace_invite_roles_sql = "\n".join(workspace_invite_roles.UPGRADE)
     admin_operator_facts_sql = "\n".join(admin_operator_facts.UPGRADE)
+    plan_catalog_controls_sql = "\n".join(plan_catalog_controls.UPGRADE)
+    text_route_seed_sql = "\n".join(text_route_seed.UPGRADE)
+    board_collaboration_presence_sql = "\n".join(board_collaboration_presence.UPGRADE)
 
     for table_name in [
         "tangent_workspace_members",
@@ -178,6 +187,30 @@ def test_s1a_migrations_keep_required_schema_contracts():
         "tangent_subscriptions_paused_idx",
     ]:
         assert contract in admin_operator_facts_sql
+
+    for contract in [
+        "tangent_plan_catalog",
+        "tangent_plan_catalog_family_idx",
+        "'collaborate_plus'",
+        "'team_growth'",
+    ]:
+        assert contract in plan_catalog_controls_sql
+
+    for contract in [
+        "hunyuan-3.0-preview",
+        "route_hunyuan_text_primary",
+        "price_hunyuan_text_v1",
+        "default_pricing_rule_id = 'price_hunyuan_text_v1'",
+    ]:
+        assert contract in text_route_seed_sql
+
+    for contract in [
+        "tangent_board_collaboration_sessions",
+        "client_instance_id",
+        "permission IN ('view', 'edit', 'manage', 'owner')",
+        "tangent_board_collaboration_active_idx",
+    ]:
+        assert contract in board_collaboration_presence_sql
 
 
 def test_s1a_smoke_runner_requires_explicit_database(monkeypatch):

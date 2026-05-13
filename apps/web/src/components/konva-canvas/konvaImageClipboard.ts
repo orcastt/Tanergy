@@ -1,4 +1,6 @@
 import {
+  acceptedImageMimeTypes,
+  imageMaxBytes,
   readImageFileMetadata,
   validateImageFile,
 } from '@/features/assets/imageAssetInputs'
@@ -198,11 +200,22 @@ function getImageUrlFromClipboardText(text: string) {
 }
 
 function dataUrlToFile(dataUrl: string) {
-  const match = /^data:([^;,]+);base64,(.+)$/s.exec(dataUrl)
+  const match = /^data:([^;,]+);base64,([a-zA-Z0-9+/=\s]+)$/s.exec(dataUrl)
   if (!match) return null
-  const binary = atob(match[2] ?? '')
+  const mime = (match[1] ?? '').toLowerCase()
+  if (!acceptedImageMimeTypes.includes(mime)) return null
+  const base64 = (match[2] ?? '').replace(/\s+/g, '')
+  if (getBase64ByteLength(base64) > imageMaxBytes) return null
+  const binary = atob(base64)
   const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0))
-  return new File([bytes], getClipboardFileName(match[1] ?? 'image/png'), { type: match[1] })
+  if (bytes.byteLength > imageMaxBytes) return null
+  return new File([bytes], getClipboardFileName(mime), { type: mime })
+}
+
+function getBase64ByteLength(base64: string) {
+  if (!base64 || base64.length % 4 !== 0) return Number.POSITIVE_INFINITY
+  const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0
+  return Math.floor((base64.length * 3) / 4) - padding
 }
 
 function decodeImageDimensions(src: string) {

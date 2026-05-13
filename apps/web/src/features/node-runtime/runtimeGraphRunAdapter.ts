@@ -85,14 +85,15 @@ export function stopRuntimeGraphNodeRun(document: CanvasDocument, shapeId: strin
 
 export async function executeRuntimeGraphNodeRun(
   runInput: RuntimeGraphNodeRunStart,
-  options?: {
-    onServerRunAccepted?: (run: AiRunRecord) => void
-    workspace?: TangentWorkspace
-  }
-): Promise<RuntimeGraphNodeRunCompletion> {
-  if (runInput.status !== 'started' || !runInput.request) throw new Error('Runtime node run was not started.')
-  const createdRun = await createAiRun(runInput.request, { workspace: options?.workspace })
-  options?.onServerRunAccepted?.(createdRun)
+	  options?: {
+	    onServerRunAccepted?: (run: AiRunRecord) => void
+	    signal?: AbortSignal
+	    workspace?: TangentWorkspace
+	  }
+	): Promise<RuntimeGraphNodeRunCompletion> {
+	  if (runInput.status !== 'started' || !runInput.request) throw new Error('Runtime node run was not started.')
+	  const createdRun = await createAiRun(runInput.request, { signal: options?.signal, workspace: options?.workspace })
+	  options?.onServerRunAccepted?.(createdRun)
 
   if (!hasRemotePersistenceApi()) {
     const generatedAssets = createdRun.runType === 'image_generation'
@@ -103,7 +104,7 @@ export async function executeRuntimeGraphNodeRun(
     return { generatedAssets, run: createdRun, runInput }
   }
 
-  const settledRun = await waitForAiRunCompletion(createdRun.runId, { workspace: options?.workspace })
+	  const settledRun = await waitForAiRunCompletion(createdRun.runId, { signal: options?.signal, workspace: options?.workspace })
   if (settledRun.status !== 'succeeded') {
     throw getAiRunTerminalError(settledRun)
   }

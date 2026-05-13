@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import {
   acceptWorkspaceInvitation,
@@ -7,12 +8,14 @@ import {
   createTeamSubscriptionCheckout,
 } from '@/features/billing/billingClient'
 import { continueBillingCheckout } from '@/features/billing/billingCheckoutFlow'
+import { requestCurrentSessionRefresh } from '@/features/auth/sessionClient'
 import type { PlanKey, WorkspaceKind } from '@/features/billing/billingTypes'
-import { getCurrentSessionSnapshot } from '@/features/auth/mockSession'
+import { useTangentSession } from '@/features/auth/useTangentSession'
 import type {
   WorkspaceDirectoryItem,
   WorkspaceMembershipRole,
-} from '@/features/workspaces/workspaceDirectoryMock'
+} from '@/features/workspaces/workspacePresentation'
+import { normalizeWorkspaceMembershipRole } from '@/features/workspaces/workspacePresentation'
 
 type WorkspaceDirectoryActionsProps = {
   createLabel: string
@@ -27,16 +30,19 @@ export function WorkspaceDirectoryActions({
   kind,
   onWorkspaceAdded,
 }: WorkspaceDirectoryActionsProps) {
+  const router = useRouter()
+  const { session, status: sessionStatus } = useTangentSession()
   const [status, setStatus] = useState<null | string>(null)
   const [isPending, setIsPending] = useState(false)
+  const isDisabled = isPending || sessionStatus !== 'ready'
 
   return (
     <>
       <div className="workspace-directory-header-actions">
-        <button className="product-button product-button-primary" disabled={isPending} onClick={createWorkspace} type="button">
+        <button className="product-button product-button-primary" disabled={isDisabled} onClick={createWorkspace} type="button">
           {createLabel}
         </button>
-        <button className="product-button product-button-secondary" disabled={isPending} onClick={joinWorkspace} type="button">
+        <button className="product-button product-button-secondary" disabled={isDisabled} onClick={joinWorkspace} type="button">
           {joinLabel}
         </button>
       </div>
@@ -45,6 +51,7 @@ export function WorkspaceDirectoryActions({
   )
 
   async function createWorkspace() {
+    if (sessionStatus !== 'ready') return
     setIsPending(true)
     setStatus(null)
     try {
@@ -68,12 +75,15 @@ export function WorkspaceDirectoryActions({
       boardCount: 0,
       id: response.workspace.id,
       kind: 'group_workspace',
-      memberInitials: [getCurrentSessionSnapshot().user.avatarInitials],
+      memberCount: 1,
+      memberInitials: [session.user.avatarInitials],
       membershipRole: normalizeMembershipRole(response.workspace.role),
       name: response.workspace.name,
       planKey: 'collaborate_start',
       relationship: 'created',
     })
+    requestCurrentSessionRefresh()
+    router.refresh()
     setStatus(`${response.workspace.name} created.`)
   }
 
@@ -95,16 +105,20 @@ export function WorkspaceDirectoryActions({
       boardCount: 0,
       id: workspaceId,
       kind: 'team_workspace',
-      memberInitials: [getCurrentSessionSnapshot().user.avatarInitials],
+      memberCount: quantity,
+      memberInitials: [session.user.avatarInitials],
       membershipRole: 'owner',
       name: workspaceName,
       planKey,
       relationship: 'created',
     })
+    requestCurrentSessionRefresh()
+    router.refresh()
     setStatus(`${workspaceName} is active.`)
   }
 
   async function joinWorkspace() {
+    if (sessionStatus !== 'ready') return
     setIsPending(true)
     setStatus(null)
     try {
@@ -118,12 +132,15 @@ export function WorkspaceDirectoryActions({
         boardCount: 0,
         id: response.result.workspaceId,
         kind: workspaceKind,
-        memberInitials: [getCurrentSessionSnapshot().user.avatarInitials],
+        memberCount: 1,
+        memberInitials: [session.user.avatarInitials],
         membershipRole: normalizeMembershipRole(response.result.role),
-        name: `Joined ${workspaceKind === 'team_workspace' ? 'Team' : 'Group'}`,
+        name: `Joined ${workspaceKind === 'team_workspace' ? 'team' : 'group'}`,
         planKey: workspaceKind === 'team_workspace' ? 'team_start' : 'collaborate_start',
         relationship: 'joined',
       })
+      requestCurrentSessionRefresh()
+      router.refresh()
       setStatus('Invite accepted.')
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Invite accept failed.')
@@ -134,8 +151,7 @@ export function WorkspaceDirectoryActions({
 }
 
 function normalizeMembershipRole(role: string): WorkspaceMembershipRole {
-  if (role === 'admin' || role === 'editor' || role === 'owner' || role === 'viewer') return role
-  return 'viewer'
+  return normalizeWorkspaceMembershipRole(role)
 }
 
 function normalizeQuantity(value: string) {

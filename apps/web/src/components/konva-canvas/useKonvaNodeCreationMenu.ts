@@ -68,18 +68,21 @@ export function useKonvaNodeCreationMenu({
   size,
   workspace,
 }: UseKonvaNodeCreationMenuOptions) {
-  const [nodeMenu, setNodeMenu] = useState<{ world: CanvasPoint; x: number; y: number } | null>(null)
-  const latestDocumentRef = useRef(document)
-  const activeChatControllersRef = useRef(new Map<string, AbortController>())
+	  const [nodeMenu, setNodeMenu] = useState<{ world: CanvasPoint; x: number; y: number } | null>(null)
+	  const latestDocumentRef = useRef(document)
+	  const activeChatControllersRef = useRef(new Map<string, AbortController>())
+	  const activeRunControllersRef = useRef(new Map<string, AbortController>())
 
   useEffect(() => {
     latestDocumentRef.current = document
   }, [document])
 
-  useEffect(() => () => {
-    activeChatControllersRef.current.forEach((controller) => controller.abort())
-    activeChatControllersRef.current.clear()
-  }, [])
+	  useEffect(() => () => {
+	    activeChatControllersRef.current.forEach((controller) => controller.abort())
+	    activeChatControllersRef.current.clear()
+	    activeRunControllersRef.current.forEach((controller) => controller.abort())
+	    activeRunControllersRef.current.clear()
+	  }, [])
 
   const createNodeCard = useCallback((type: NodeType, position?: CanvasPoint) => {
     const nodePosition = position ?? lastPastePointRef.current ?? screenToWorld({ x: size.width / 2, y: size.height / 2 }, camera)
@@ -174,10 +177,12 @@ export function useKonvaNodeCreationMenu({
       return
     }
 
-    if (node.props.runtimeSummary.status === 'running') {
-      const serverRunId = typeof node.props.runtimeSummary.serverRunId === 'string' && node.props.runtimeSummary.serverRunId.trim()
-        ? node.props.runtimeSummary.serverRunId
-        : null
+	    if (node.props.runtimeSummary.status === 'running') {
+	      activeRunControllersRef.current.get(shapeId)?.abort()
+	      activeRunControllersRef.current.delete(shapeId)
+	      const serverRunId = typeof node.props.runtimeSummary.serverRunId === 'string' && node.props.runtimeSummary.serverRunId.trim()
+	        ? node.props.runtimeSummary.serverRunId
+	        : null
       const stoppedDocument = stopRuntimeGraphNodeRun(document, shapeId)
       latestDocumentRef.current = stoppedDocument
       onDocumentChange(stoppedDocument)
@@ -187,23 +192,44 @@ export function useKonvaNodeCreationMenu({
       return
     }
 
-    const runInput = startRuntimeGraphNodeRun(document, shapeId, boardId)
-    latestDocumentRef.current = runInput.document
-    onDocumentChange(runInput.document)
-    if (runInput.status !== 'started') return
-    void executeRuntimeGraphNodeRun(runInput, {
-      onServerRunAccepted: (run) => {
-        const next = syncRuntimeGraphAcceptedRun(latestDocumentRef.current, runInput, run)
-        latestDocumentRef.current = next.document
-        onDocumentChange(next.document)
+	    const runInput = startRuntimeGraphNodeRun(document, shapeId, boardId)
+	    latestDocumentRef.current = runInput.document
+	    onDocumentChange(runInput.document)
+	    if (runInput.status !== 'started') return
+	    activeRunControllersRef.current.get(shapeId)?.abort()
+	    const controller = new AbortController()
+	    activeRunControllersRef.current.set(shapeId, controller)
+	    void executeRuntimeGraphNodeRun(runInput, {
+	      onServerRunAccepted: (run) => {
+	        if (controller.signal.aborted) {
+	          if (run.status === 'queued' || run.status === 'running') {
+	            void cancelAiRun(run.runId, { workspace }).catch(() => {})
+	          }
+	          return
+	        }
+	        const next = syncRuntimeGraphAcceptedRun(latestDocumentRef.current, runInput, run)
+	        latestDocumentRef.current = next.document
+	        onDocumentChange(next.document)
         if (!next.accepted && (run.status === 'queued' || run.status === 'running')) {
-          void cancelAiRun(run.runId, { workspace }).catch(() => {})
-        }
-      },
-      workspace,
-    })
-      .then((completion) => onDocumentChange((current) => completeRuntimeGraphNodeRun(current, completion)))
-      .catch((error) => onDocumentChange((current) => failRuntimeGraphNodeRun(current, runInput, error)))
+	          void cancelAiRun(run.runId, { workspace }).catch(() => {})
+	        }
+	      },
+	      signal: controller.signal,
+	      workspace,
+	    })
+	      .then((completion) => {
+	        if (controller.signal.aborted) return
+	        onDocumentChange((current) => completeRuntimeGraphNodeRun(current, completion))
+	      })
+	      .catch((error) => {
+	        if (controller.signal.aborted) return
+	        onDocumentChange((current) => failRuntimeGraphNodeRun(current, runInput, error))
+	      })
+	      .finally(() => {
+	        if (activeRunControllersRef.current.get(shapeId) === controller) {
+	          activeRunControllersRef.current.delete(shapeId)
+	        }
+	      })
   }, [boardId, document, history, onDocumentChange, workspace])
 
   const sendChatMessage = useCallback((shapeId: string, draftOverride?: string) => {

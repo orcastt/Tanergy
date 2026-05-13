@@ -8,8 +8,8 @@ import {
 } from '@/features/billing/billingClient'
 import { planCatalog } from '@/features/billing/billingContracts'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
-import { formatWorkspaceMembershipRole, type WorkspaceMembershipRole } from '@/features/workspaces/workspaceDirectoryMock'
-import type { WorkspaceDashboardMember } from '@/features/workspaces/workspaceDashboardMock'
+import { formatWorkspaceMembershipRole, type WorkspaceMembershipRole } from '@/features/workspaces/workspacePresentation'
+import type { WorkspaceDashboardMember } from '@/features/workspaces/workspaceDashboardTypes'
 
 type WorkspaceMembersPanelProps = {
   members: WorkspaceDashboardMember[]

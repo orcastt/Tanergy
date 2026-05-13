@@ -306,6 +306,33 @@ class FakePostgresCursor:
             }
             self.database.ai_control_plane_versions.append(row)
             self.row = _ai_control_plane_version_tuple(row)
+        elif normalized.startswith("SELECT id, workspace_id, owner_id, title, byte_size, asset_count, shape_count") and "ORDER BY saved_at DESC" in normalized:
+            workspace_id = params[0]
+            rows = [
+                (
+                    row[0],
+                    row[1],
+                    row[2],
+                    row[3],
+                    row[5],
+                    row[6],
+                    row[7],
+                    row[8],
+                    row[9],
+                    row[10],
+                    row[11],
+                    row[12],
+                    row[13],
+                    row[14],
+                    row[15],
+                    row[16],
+                    row[17],
+                )
+                for (workspace, _board_id), row in self.database.boards.items()
+                if workspace == workspace_id
+            ]
+            rows.sort(key=lambda row: row[11], reverse=True)
+            self.rows = rows
         elif normalized.startswith("SELECT id, workspace_id, owner_id, title, document") and "FROM tangent_board_share_links sl JOIN tangent_boards b" in normalized:
             share_id = params[0]
             matches = [
@@ -708,6 +735,10 @@ class FakePostgresCursor:
                 key: row for key, row in self.database.board_members.items()
                 if key[0] != params[0] or key[1] != params[1]
             }
+            self.database.board_collaboration_sessions = [
+                row for row in self.database.board_collaboration_sessions
+                if row["workspace_id"] != params[0] or row["board_id"] != params[1]
+            ]
             self.database.board_share_links = [
                 row for row in self.database.board_share_links
                 if row["workspace_id"] != params[0] or row["board_id"] != params[1]
@@ -740,6 +771,76 @@ class FakePostgresCursor:
                     invited_by,
                     joined_at,
                 )
+        elif normalized.startswith("INSERT INTO tangent_board_collaboration_sessions"):
+            (
+                session_id,
+                workspace_id,
+                board_id,
+                user_id,
+                client_instance_id,
+                display_name,
+                avatar_initials,
+                workspace_role,
+                permission,
+                presence_value,
+                last_heartbeat_at,
+                expires_at,
+            ) = params
+            presence = json.loads(presence_value) if isinstance(presence_value, str) else presence_value
+            existing = next(
+                (
+                    row for row in self.database.board_collaboration_sessions
+                    if (
+                        row["workspace_id"] == workspace_id
+                        and row["board_id"] == board_id
+                        and row["user_id"] == user_id
+                        and row["client_instance_id"] == client_instance_id
+                    )
+                ),
+                None,
+            )
+            next_row = {
+                "avatar_initials": avatar_initials,
+                "board_id": board_id,
+                "client_instance_id": client_instance_id,
+                "created_at": existing["created_at"] if existing else f"2026-05-12T00:15:{len(self.database.board_collaboration_sessions):02d}Z",
+                "display_name": display_name,
+                "disconnected_at": None,
+                "expires_at": expires_at,
+                "id": existing["id"] if existing else session_id,
+                "last_heartbeat_at": last_heartbeat_at,
+                "permission": permission,
+                "presence": presence or {},
+                "user_id": user_id,
+                "workspace_id": workspace_id,
+                "workspace_role": workspace_role,
+            }
+            if existing:
+                existing.update(next_row)
+            else:
+                self.database.board_collaboration_sessions.append(next_row)
+            self.row = _board_collaboration_session_tuple(next_row)
+        elif normalized.startswith("INSERT INTO tangent_board_realtime_documents"):
+            workspace_id, board_id, room_key, document_updates_value = params
+            document_updates = json.loads(document_updates_value) if isinstance(document_updates_value, str) else document_updates_value
+            existing = next(
+                (
+                    row for row in self.database.board_realtime_documents
+                    if row["workspace_id"] == workspace_id and row["board_id"] == board_id
+                ),
+                None,
+            )
+            next_row = {
+                "board_id": board_id,
+                "document_updates": document_updates or [],
+                "room_key": room_key,
+                "updated_at": f"2026-05-12T00:18:{len(self.database.board_realtime_documents):02d}Z",
+                "workspace_id": workspace_id,
+            }
+            if existing:
+                existing.update(next_row)
+            else:
+                self.database.board_realtime_documents.append(next_row)
         elif normalized.startswith(
             "SELECT bm.user_id, bm.role, COALESCE(wm.display_name, u.display_name, u.email), u.email, bm.invited_by, bm.joined_at, COALESCE(wm.role, 'member') FROM tangent_board_members bm"
         ):
@@ -1006,6 +1107,30 @@ class FakePostgresCursor:
                     title,
                     row["access_role"],
                 )
+        elif normalized.startswith("SELECT id, workspace_id, board_id, created_by, title, document_hash"):
+            workspace_id, board_id = params
+            rows = [
+                (
+                    row[0],
+                    row[1],
+                    row[2],
+                    row[3],
+                    row[4],
+                    row[6],
+                    row[7],
+                    row[8],
+                    row[9],
+                    row[10],
+                    row[11],
+                    row[12],
+                    row[13],
+                    row[14],
+                )
+                for (workspace, board, _snapshot_id), row in self.database.snapshots.items()
+                if workspace == workspace_id and board == board_id
+            ]
+            rows.sort(key=lambda row: row[13], reverse=True)
+            self.rows = rows
         elif normalized.startswith("SELECT id, workspace_id, board_id, created_by") and "AND id = %s" in normalized:
             self.row = self.database.snapshots.get((params[0], params[1], params[2]))
         elif normalized.startswith("SELECT id, workspace_id, board_id, created_by"):
@@ -1291,6 +1416,72 @@ class FakePostgresCursor:
                     )
                 ),
             )
+        elif normalized.startswith("UPDATE tangent_board_collaboration_sessions SET disconnected_at = %s WHERE workspace_id = %s AND board_id = %s AND disconnected_at IS NULL AND expires_at <= %s"):
+            disconnected_at, workspace_id, board_id, expires_at = params
+            for row in self.database.board_collaboration_sessions:
+                if (
+                    row["workspace_id"] == workspace_id
+                    and row["board_id"] == board_id
+                    and row.get("disconnected_at") is None
+                    and row.get("expires_at") <= expires_at
+                ):
+                    row["disconnected_at"] = disconnected_at
+                    self.rowcount += 1
+        elif normalized.startswith("UPDATE tangent_board_collaboration_sessions SET disconnected_at = %s WHERE workspace_id = %s AND board_id = %s AND id = %s AND user_id = %s AND disconnected_at IS NULL"):
+            disconnected_at, workspace_id, board_id, session_id, user_id = params
+            row = next(
+                (
+                    entry for entry in self.database.board_collaboration_sessions
+                    if (
+                        entry["workspace_id"] == workspace_id
+                        and entry["board_id"] == board_id
+                        and entry["id"] == session_id
+                        and entry["user_id"] == user_id
+                        and entry.get("disconnected_at") is None
+                    )
+                ),
+                None,
+            )
+            if row:
+                row["disconnected_at"] = disconnected_at
+                self.rowcount = 1
+        elif normalized.startswith("DELETE FROM tangent_board_collaboration_sessions WHERE disconnected_at IS NOT NULL AND disconnected_at <= %s"):
+            cutoff = params[0]
+            before = len(self.database.board_collaboration_sessions)
+            self.database.board_collaboration_sessions = [
+                row
+                for row in self.database.board_collaboration_sessions
+                if row.get("disconnected_at") is None or row.get("disconnected_at") > cutoff
+            ]
+            self.rowcount = before - len(self.database.board_collaboration_sessions)
+        elif normalized.startswith("SELECT id, workspace_id, board_id, user_id, client_instance_id, display_name, avatar_initials, workspace_role, permission, presence, created_at, last_heartbeat_at, expires_at FROM tangent_board_collaboration_sessions WHERE workspace_id = %s AND board_id = %s AND disconnected_at IS NULL AND expires_at > %s ORDER BY last_heartbeat_at DESC, created_at DESC"):
+            workspace_id, board_id, expires_at = params[0], params[1], params[2]
+            limit = params[3] if len(params) > 3 else None
+            rows = [
+                _board_collaboration_session_tuple(row)
+                for row in self.database.board_collaboration_sessions
+                if (
+                    row["workspace_id"] == workspace_id
+                    and row["board_id"] == board_id
+                    and row.get("disconnected_at") is None
+                    and row.get("expires_at") > expires_at
+                )
+            ]
+            rows.sort(key=lambda row: (row[11], row[10]), reverse=True)
+            if isinstance(limit, int):
+                rows = rows[:limit]
+            self.rows = rows
+        elif normalized.startswith("SELECT document_updates FROM tangent_board_realtime_documents WHERE workspace_id = %s AND board_id = %s"):
+            workspace_id, board_id = params
+            row = next(
+                (
+                    entry for entry in self.database.board_realtime_documents
+                    if entry["workspace_id"] == workspace_id and entry["board_id"] == board_id
+                ),
+                None,
+            )
+            if row:
+                self.row = (row.get("document_updates", []),)
         elif normalized.startswith("SELECT amount_cents, metadata FROM tangent_payments"):
             account_or_workspace_id = params[0]
             if "JOIN tangent_credit_accounts" in normalized:
@@ -1992,6 +2183,8 @@ class FakePostgresDatabase:
         self.api_cost_ledger = []
         self.ai_runs = {}
         self.assets = {}
+        self.board_collaboration_sessions = []
+        self.board_realtime_documents = []
         self.board_members = {}
         self.board_share_links = []
         self.boards = {}
@@ -2155,6 +2348,24 @@ def _plan_catalog_tuple(row):
         row.get("metadata", {}),
         row.get("created_at", "1970-01-01T00:00:00Z"),
         row.get("updated_at", "1970-01-01T00:00:00Z"),
+    )
+
+
+def _board_collaboration_session_tuple(row):
+    return (
+        row["id"],
+        row["workspace_id"],
+        row["board_id"],
+        row["user_id"],
+        row["client_instance_id"],
+        row["display_name"],
+        row["avatar_initials"],
+        row["workspace_role"],
+        row["permission"],
+        row.get("presence", {}),
+        row.get("created_at", "1970-01-01T00:00:00Z"),
+        row.get("last_heartbeat_at", "1970-01-01T00:00:00Z"),
+        row.get("expires_at", "1970-01-01T00:00:00Z"),
     )
 
 

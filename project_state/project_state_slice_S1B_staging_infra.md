@@ -1,6 +1,6 @@
 # Project State Slice S1B: Staging Infrastructure And Online Prep
 
-**Updated**: 2026-05-08
+**Updated**: 2026-05-13
 **Status**: In progress; staging Web/API/Neon/R2 smoke passed, Konva-first redeploy smoke pending.
 
 ## Objective
@@ -59,6 +59,7 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - Public Board route exposed the tldraw production license requirement before S1X. S1X now has a Konva-first route and production tldraw reference gate locally; staging needs redeploy/smoke with that setting.
 - `TANGENT_REQUIRE_API_AUTH=0` remains intentional until S1C Clerk/JWT verification lands.
 - User-confirmed Clerk and Google OAuth provider setup exists; staging browser/API smoke still needs to prove the full session/JWT path.
+- Runtime Postgres connections now prefer `DATABASE_POOL_URL` when present while keeping Alembic on `DATABASE_URL`; backend cursors log SQL taking longer than `TANGENT_DATABASE_SLOW_QUERY_MS` without logging parameters. This is the first targeted Neon/slow-query observability cleanup from the project-wide memory/performance audit.
 
 ## Handoff Notes
 
@@ -69,6 +70,7 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
   - staging/prod Web must use the real HTTPS domain
   - staging/prod API must use the real HTTPS API domain
 - Every deployment needs `NEXT_PUBLIC_API_BASE_URL`, FastAPI `TANGENT_ALLOWED_ORIGINS`, and Clerk allowed origins/redirect URLs to agree on the exact domains.
+- For Neon or other serverless Postgres providers, set `DATABASE_POOL_URL` to the provider's pooled connection string for the API runtime and keep `DATABASE_URL` as the direct migration/admin URL.
 - Local `/api/auth/dev-bypass` and `tangent_dev_auth` are development helpers only; do not count them as staging/prod Auth smoke.
 - Do not expose server keys to Vercel public env.
 - Keep firewall narrow: public 80/443, SSH restricted where possible.

@@ -2,7 +2,7 @@
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 0 32px 104px;
+  padding: 0 40px 112px;
 }
 
 .workspace-commerce-header,
@@ -13,7 +13,8 @@
 .workspace-commerce-section-head,
 .workspace-commerce-usage-tag-row,
 .workspace-commerce-ledger-head,
-.workspace-commerce-ledger-row {
+.workspace-commerce-ledger-row,
+.workspace-commerce-compare-row {
   display: flex;
   align-items: center;
 }
@@ -30,13 +31,14 @@
 .workspace-commerce-rail-list,
 .workspace-commerce-summary-card,
 .workspace-commerce-ledger,
-.workspace-commerce-ledger-table {
+.workspace-commerce-ledger-table,
+.workspace-commerce-compare-table {
   display: grid;
 }
 
 .workspace-commerce-page,
 .workspace-commerce-stack {
-  gap: 28px;
+  gap: 32px;
 }
 
 .workspace-commerce-action-stack {
@@ -46,7 +48,7 @@
 
 .workspace-commerce-header {
   gap: 18px;
-  padding-bottom: 8px;
+  padding-bottom: 12px;
 }
 
 .workspace-commerce-header-row,
@@ -65,7 +67,14 @@
 
 .workspace-commerce-header-copy {
   display: grid;
-  gap: 6px;
+  gap: 8px;
+  max-width: 820px;
+}
+
+.workspace-commerce-status {
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .workspace-commerce-switch {
@@ -79,7 +88,7 @@
 .workspace-commerce-switch button,
 .workspace-commerce-primary-button,
 .workspace-commerce-secondary-button {
-  min-height: 40px;
+  min-height: 42px;
   border-radius: 12px;
   font-size: 13px;
   font-weight: 500;
@@ -105,17 +114,23 @@
 .workspace-commerce-plan-grid,
 .workspace-commerce-card-list {
   display: grid;
-  gap: 16px;
+  gap: 18px;
 }
 
 .workspace-commerce-summary-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.workspace-commerce-active-grid,
-.workspace-commerce-plan-grid,
+.workspace-commerce-active-grid {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.workspace-commerce-plan-grid {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
 .workspace-commerce-card-list {
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
 }
 
 .workspace-commerce-section {
@@ -124,19 +139,19 @@
 
 .workspace-commerce-section-head {
   gap: 16px;
-  padding-bottom: 10px;
+  padding-bottom: 12px;
   border-bottom: 1px solid rgba(24, 29, 38, 0.08);
 }
 
 .workspace-commerce-section-head h2,
 .workspace-commerce-card-top h3,
 .workspace-commerce-card-head h3,
-.workspace-commerce-enterprise h3 {
+.workspace-commerce-plan-card h3 {
   margin: 0;
   color: var(--color-ink);
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 400;
-  line-height: 1.18;
+  line-height: 1.14;
 }
 
 .workspace-commerce-summary-card,
@@ -145,7 +160,7 @@
 .workspace-commerce-usage-card,
 .workspace-commerce-rail-card,
 .workspace-commerce-ledger-table,
-.workspace-commerce-enterprise {
+.workspace-commerce-compare-table {
   border: 1px solid rgba(24, 29, 38, 0.08);
   border-radius: 12px;
   background: #ffffff;
@@ -154,18 +169,19 @@
 .workspace-commerce-summary-card,
 .workspace-commerce-rail-card {
   gap: 10px;
-  padding: 18px;
+  padding: 22px;
 }
 
 .workspace-commerce-summary-card {
-  min-height: 136px;
+  min-height: 148px;
 }
 
 .workspace-commerce-summary-label,
 .workspace-commerce-card-eyebrow,
 .workspace-commerce-note,
 .workspace-commerce-ledger-head,
-.workspace-commerce-usage-tag {
+.workspace-commerce-usage-tag,
+.workspace-commerce-compare-row.is-head {
   color: var(--color-muted);
   font-size: 12px;
   font-weight: 600;
@@ -175,15 +191,16 @@
 
 .workspace-commerce-summary-value {
   color: var(--color-ink);
-  font-size: 28px;
+  font-size: 30px;
   font-weight: 400;
-  line-height: 1.1;
+  line-height: 1.08;
 }
 
 .workspace-commerce-summary-meta,
 .workspace-commerce-plan-list,
 .workspace-commerce-rail-row span,
-.workspace-commerce-rail-row small {
+.workspace-commerce-rail-row small,
+.workspace-commerce-compare-row span {
   color: var(--color-muted);
   font-size: 13px;
   line-height: 1.5;
@@ -192,18 +209,18 @@
 .workspace-commerce-active-card,
 .workspace-commerce-usage-card,
 .workspace-commerce-plan-card {
-  gap: 18px;
-  padding: 20px;
+  gap: 20px;
+  padding: 28px;
 }
 
 .workspace-commerce-active-card[data-tone='group'],
 .workspace-commerce-usage-card[data-tone='group'] {
-  background: #fff1e7;
+  background: #ffd8bc;
 }
 
 .workspace-commerce-active-card[data-tone='team'],
 .workspace-commerce-usage-card[data-tone='team'] {
-  background: #fbf5db;
+  background: #ffdf55;
 }
 
 .workspace-commerce-plan-card[data-plan='free_canvas'] {
@@ -212,7 +229,16 @@
 
 .workspace-commerce-plan-card[data-plan='collaborate_start'],
 .workspace-commerce-plan-card[data-plan='collaborate_plus'] {
-  background: #faf4ea;
+  background: #ffe3d2;
+}
+
+.workspace-commerce-plan-card[data-plan='team_start'],
+.workspace-commerce-plan-card[data-plan='team_growth'] {
+  background: #f5f7db;
+}
+
+.workspace-commerce-plan-card[data-plan='enterprise'] {
+  background: #f3f4f5;
 }
 
 .workspace-commerce-plan-card.is-current {
@@ -238,7 +264,7 @@
 
 .workspace-commerce-plan-price strong {
   color: var(--color-ink);
-  font-size: 38px;
+  font-size: 46px;
   font-weight: 400;
   line-height: 1;
 }
@@ -329,6 +355,8 @@
 .workspace-commerce-card-footer {
   justify-content: space-between;
   align-items: center;
+  padding-top: 18px;
+  border-top: 1px solid rgba(24, 29, 38, 0.08);
 }
 
 .workspace-commerce-card-actions {
@@ -338,7 +366,7 @@
 
 .workspace-commerce-usage-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.52fr) minmax(280px, 0.78fr);
+  grid-template-columns: minmax(0, 1.52fr) minmax(300px, 0.78fr);
   gap: 24px;
   align-items: start;
 }
@@ -369,6 +397,10 @@
   gap: 16px;
 }
 
+.workspace-commerce-rail-card {
+  gap: 12px;
+}
+
 .workspace-commerce-rail-list {
   gap: 12px;
 }
@@ -385,9 +417,10 @@
   border-top: 0;
 }
 
-.workspace-commerce-rail-row strong {
+.workspace-commerce-rail-row strong,
+.workspace-commerce-rail-card strong {
   color: var(--color-ink);
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
 }
 
@@ -395,23 +428,31 @@
   gap: 16px;
 }
 
-.workspace-commerce-ledger-table {
+.workspace-commerce-ledger-table,
+.workspace-commerce-compare-table {
   overflow: hidden;
 }
 
 .workspace-commerce-ledger-head,
-.workspace-commerce-ledger-row {
+.workspace-commerce-ledger-row,
+.workspace-commerce-compare-row {
   gap: 16px;
-  padding: 14px 18px;
+  padding: 16px 20px;
   border-bottom: 1px solid rgba(24, 29, 38, 0.08);
 }
 
 .workspace-commerce-ledger-head,
 .workspace-commerce-ledger-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, 1fr) minmax(120px, 0.8fr);
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, 1fr) minmax(140px, 0.8fr);
 }
 
+.workspace-commerce-compare-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.2fr) repeat(6, minmax(0, 1fr));
+}
+
+.workspace-commerce-compare-row:last-child,
 .workspace-commerce-ledger-row:last-child {
   border-bottom: 0;
 }
@@ -422,17 +463,13 @@
   line-height: 1.5;
 }
 
+.workspace-commerce-compare-row span:first-child {
+  color: var(--color-ink);
+}
+
 .workspace-commerce-ledger-amount {
   color: var(--color-signature-coral);
   font-weight: 600;
-}
-
-.workspace-commerce-enterprise {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 20px;
 }
 
 @media (max-width: 1180px) {
@@ -440,7 +477,8 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .workspace-commerce-usage-layout {
+  .workspace-commerce-usage-layout,
+  .workspace-commerce-compare-row {
     grid-template-columns: 1fr;
   }
 }
@@ -464,8 +502,8 @@
     grid-template-columns: 1fr;
   }
 
-  .workspace-commerce-enterprise,
-  .workspace-commerce-card-footer {
+  .workspace-commerce-card-footer,
+  .workspace-commerce-section-head {
     align-items: flex-start;
     flex-direction: column;
   }

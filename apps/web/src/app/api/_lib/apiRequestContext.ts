@@ -17,7 +17,7 @@ export function getApiRequestContext(request: Request): ApiRequestContext {
   const explicitPlanKey = request.headers.get('x-tangent-plan-key')
   const hasExplicitContext = Boolean(explicitUserId && explicitWorkspaceId)
 
-  if (process.env.TANGENT_REQUIRE_API_AUTH === '1' && !hasExplicitContext) {
+  if (requiresApiContext() && !hasExplicitContext) {
     throw new Error('Missing authenticated API context.')
   }
 
@@ -32,6 +32,10 @@ export function getApiRequestContext(request: Request): ApiRequestContext {
     workspaceKind,
     workspacePlanKey: normalizePlanKey(explicitPlanKey ?? process.env.TANGENT_DEV_WORKSPACE_PLAN_KEY, workspaceKind),
   }
+}
+
+function requiresApiContext() {
+  return process.env.NODE_ENV === 'production' || process.env.TANGENT_REQUIRE_API_AUTH === '1'
 }
 
 function normalizeContextId(value: string, label: string) {

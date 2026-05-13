@@ -2,100 +2,226 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { hasRemotePersistenceApi } from '@/features/api/persistenceApi'
-import { loadWorkspaceDashboard } from '@/features/billing/billingClient'
-import type { WorkspaceDashboardRecord as RemoteWorkspaceDashboardRecord } from '@/features/billing/billingTypes'
-import type { TangentWorkspace, WorkspaceRole } from '@/features/auth/sessionTypes'
 import {
-  getGroupWorkspaceDashboardRecord,
-  getTeamWorkspaceDashboardRecord,
-  type GroupWorkspaceDashboardRecord,
-  type TeamWorkspaceDashboardRecord,
-  type WorkspaceDashboardMember,
-} from '@/features/workspaces/workspaceDashboardMock'
-import type { WorkspaceMembershipRole } from '@/features/workspaces/workspaceDirectoryMock'
+  loadBillingMe,
+  loadWorkspaceDashboard,
+} from '@/features/billing/billingClient'
+import type {
+  BillingMeResponse,
+  WorkspaceDashboardRecord as RemoteWorkspaceDashboardRecord,
+} from '@/features/billing/billingTypes'
+import type { TangentWorkspace, WorkspaceRole } from '@/features/auth/sessionTypes'
+import { listLocalBoardDocuments } from '@/features/boards/localBoardClient'
+import type { BoardPersistenceSummary } from '@/features/boards/boardTypes'
+import type {
+  GroupWorkspaceDashboardRecord,
+  TeamWorkspaceDashboardRecord,
+  WorkspaceDashboardMember,
+} from '@/features/workspaces/workspaceDashboardTypes'
+import type { WorkspaceMembershipRole } from '@/features/workspaces/workspacePresentation'
 
 type WorkspaceDashboardKind = 'group' | 'team'
-type RuntimeStatus = 'error' | 'loading' | 'local' | 'ready'
+type RuntimeStatus = 'error' | 'loading' | 'ready'
 
 export function useWorkspaceDashboardRuntime(kind: WorkspaceDashboardKind, workspaceId: string) {
-  const localTeam = useMemo(() => kind === 'team' ? getTeamWorkspaceDashboardRecord(workspaceId) : null, [kind, workspaceId])
-  const localGroup = useMemo(() => kind === 'group' ? getGroupWorkspaceDashboardRecord(workspaceId) : null, [kind, workspaceId])
-  const fallbackWorkspace = useMemo(() => buildFallbackWorkspace(kind, workspaceId, localTeam, localGroup), [kind, localGroup, localTeam, workspaceId])
+  const remoteApiAvailable = hasRemotePersistenceApi()
+  const defaultWorkspace = useMemo(() => buildDefaultWorkspace(kind, workspaceId), [kind, workspaceId])
+  const [remoteBilling, setRemoteBilling] = useState<BillingMeResponse | null>(null)
+  const [remoteBoards, setRemoteBoards] = useState<BoardPersistenceSummary[]>([])
   const [remoteDashboard, setRemoteDashboard] = useState<RemoteWorkspaceDashboardRecord | null>(null)
-  const [status, setStatus] = useState<RuntimeStatus>(hasRemotePersistenceApi() ? 'loading' : 'local')
-  const [error, setError] = useState<string | null>(null)
+  const [remoteBoardsLoaded, setRemoteBoardsLoaded] = useState(false)
+  const [status, setStatus] = useState<RuntimeStatus>(remoteApiAvailable ? 'loading' : 'error')
+  const [error, setError] = useState<string | null>(remoteApiAvailable ? null : 'Persistence API is unavailable.')
   const [reloadToken, setReloadToken] = useState(0)
 
   useEffect(() => {
-    if (!hasRemotePersistenceApi()) return
+    if (!remoteApiAvailable) return
     let cancelled = false
-    loadWorkspaceDashboard({ workspace: fallbackWorkspace })
-      .then((payload) => {
+
+    Promise.allSettled([
+      loadWorkspaceDashboard({ force: reloadToken > 0, workspace: defaultWorkspace }),
+      loadBillingMe({ force: reloadToken > 0, workspace: defaultWorkspace }),
+      listLocalBoardDocuments(defaultWorkspace),
+    ])
+      .then(([dashboardResult, billingResult, boardsResult]) => {
         if (cancelled) return
-        setRemoteDashboard(payload.dashboard)
-        setError(null)
+        const nextDashboard = dashboardResult.status === 'fulfilled' ? dashboardResult.value.dashboard : null
+        const nextBilling = billingResult.status === 'fulfilled' ? billingResult.value : null
+        const nextBoards = boardsResult.status === 'fulfilled' ? boardsResult.value.boards : []
+        setRemoteDashboard(nextDashboard)
+        setRemoteBilling(nextBilling)
+        setRemoteBoards(nextBoards)
+        setRemoteBoardsLoaded(boardsResult.status === 'fulfilled')
+
+        const failures = [dashboardResult, billingResult, boardsResult].filter((result) => result.status === 'rejected')
+        if (failures.length === 3) {
+          setError(firstFailureMessage(failures[0]))
+          setStatus('error')
+          return
+        }
+
+        setError(failures.length ? firstFailureMessage(failures[0]) : null)
         setStatus('ready')
       })
       .catch((nextError: unknown) => {
         if (cancelled) return
+        setRemoteBoards([])
+        setRemoteBilling(null)
         setRemoteDashboard(null)
+        setRemoteBoardsLoaded(false)
         setError(nextError instanceof Error ? nextError.message : 'Workspace dashboard failed to load.')
-        setStatus(localTeam || localGroup ? 'local' : 'error')
+        setStatus('error')
       })
+
     return () => {
       cancelled = true
     }
-  }, [fallbackWorkspace, localGroup, localTeam, reloadToken])
+  }, [defaultWorkspace, reloadToken, remoteApiAvailable])
 
   const workspace = useMemo<TangentWorkspace>(() => {
-    const remoteWorkspace = remoteDashboard?.workspace
-    if (!remoteWorkspace) return fallbackWorkspace
+    const remoteWorkspace = remoteBilling?.workspace ?? remoteDashboard?.workspace
+    if (!remoteWorkspace) return defaultWorkspace
     return {
-      ...fallbackWorkspace,
+      ...defaultWorkspace,
+      boardCount: remoteBoardsLoaded
+        ? remoteBoards.length
+        : remoteDashboard?.boardCount ?? defaultWorkspace.boardCount,
       id: remoteWorkspace.id,
       kind: remoteWorkspace.kind,
       name: remoteWorkspace.name,
+      planKey: normalizeWorkspacePlanKey(remoteBilling?.plan.planKey, defaultWorkspace.planKey),
       role: normalizeWorkspaceRole(remoteWorkspace.role),
     }
-  }, [fallbackWorkspace, remoteDashboard])
+  }, [defaultWorkspace, remoteBilling, remoteBoards.length, remoteBoardsLoaded, remoteDashboard])
 
-  const remoteMembers = useMemo(() => remoteDashboard ? mapRemoteMembers(remoteDashboard) : null, [remoteDashboard])
+  const resolvedBoards = useMemo(
+    () => remoteBoardsLoaded ? remoteBoards.map((board) => ({
+      cardColor: board.cardColor ?? 'soft',
+      id: board.id,
+      title: board.title,
+    })) : null,
+    [remoteBoards, remoteBoardsLoaded],
+  )
+
   const teamRecord = useMemo(() => {
     if (kind !== 'team') return null
-    if (localTeam) return remoteMembers ? { ...localTeam, members: remoteMembers, name: workspace.name, seatsUsed: remoteDashboard?.memberCount ?? localTeam.seatsUsed } : localTeam
-    if (!remoteDashboard) return null
-    return buildRemoteTeamRecord(workspace, remoteDashboard, remoteMembers ?? [])
-  }, [kind, localTeam, remoteDashboard, remoteMembers, workspace])
+    if (!remoteBilling && !remoteDashboard) return null
+    return buildTeamRecord({
+      billing: remoteBilling,
+      boards: resolvedBoards ?? [],
+      dashboard: remoteDashboard,
+      workspace,
+    })
+  }, [kind, remoteBilling, remoteDashboard, resolvedBoards, workspace])
+
   const groupRecord = useMemo(() => {
     if (kind !== 'group') return null
-    if (localGroup) return remoteMembers ? { ...localGroup, members: remoteMembers, name: workspace.name } : localGroup
-    if (!remoteDashboard) return null
-    return buildRemoteGroupRecord(workspace, remoteDashboard, remoteMembers ?? [])
-  }, [kind, localGroup, remoteDashboard, remoteMembers, workspace])
+    if (!remoteBilling && !remoteDashboard) return null
+    return buildGroupRecord({
+      billing: remoteBilling,
+      boards: resolvedBoards ?? [],
+      dashboard: remoteDashboard,
+      workspace,
+    })
+  }, [kind, remoteBilling, remoteDashboard, resolvedBoards, workspace])
 
   return {
     error,
     groupRecord,
-    reload: useCallback(() => setReloadToken((value) => value + 1), []),
+    reload: useCallback(() => {
+      if (!remoteApiAvailable) {
+        setError('Persistence API is unavailable.')
+        setStatus('error')
+        return
+      }
+      setStatus((current) => (current === 'ready' ? 'ready' : 'loading'))
+      setReloadToken((value) => value + 1)
+    }, [remoteApiAvailable]),
     status,
     teamRecord,
     workspace,
   }
 }
 
-function buildFallbackWorkspace(
+function buildDefaultWorkspace(
   kind: WorkspaceDashboardKind,
   workspaceId: string,
-  localTeam: TeamWorkspaceDashboardRecord | null,
-  localGroup: GroupWorkspaceDashboardRecord | null,
 ): TangentWorkspace {
   return {
-    boardCount: localTeam?.boards.length ?? localGroup?.boards.length ?? 0,
+    boardCount: 0,
     id: workspaceId,
     kind: kind === 'team' ? 'team_workspace' : 'group_workspace',
-    name: localTeam?.name ?? localGroup?.name ?? (kind === 'team' ? 'Team workspace' : 'Group workspace'),
-    planKey: localTeam?.planKey ?? localGroup?.planKey ?? (kind === 'team' ? 'team_start' : 'collaborate_start'),
+    name: kind === 'team' ? 'Team workspace' : 'Group workspace',
+    planKey: kind === 'team' ? 'team_start' : 'collaborate_start',
     role: 'owner',
+  }
+}
+
+function buildTeamRecord({
+  billing,
+  boards,
+  dashboard,
+  workspace,
+}: {
+  billing: BillingMeResponse | null
+  boards: TeamWorkspaceDashboardRecord['boards']
+  dashboard: RemoteWorkspaceDashboardRecord | null
+  workspace: TangentWorkspace
+}): TeamWorkspaceDashboardRecord | null {
+  if (!billing && !dashboard) return null
+  const members = dashboard ? mapRemoteMembers(dashboard) : []
+  const totalCredits = billing ? billing.credits.includedTotal + billing.credits.topUpBalance : 0
+  const remainingCredits = billing ? billing.credits.includedRemaining + billing.credits.topUpBalance : totalCredits
+
+  return {
+    boards,
+    id: workspace.id,
+    inviteCode: `${workspace.id}-invite`,
+    memberUsageLimit: Math.max(
+      ...members.map((member) => member.usageCredits ?? 0),
+      billing?.credits.usedThisCycle ?? 0,
+      100,
+    ),
+    members,
+    name: workspace.name,
+    planKey: workspace.planKey === 'team_growth' ? 'team_growth' : 'team_start',
+    seatLimit: billing?.plan.seatMax ?? Math.max(dashboard?.memberCount ?? 1, 1),
+    seatsUsed: dashboard?.memberCount ?? members.length,
+    totalCredits,
+    totalCreditsRemaining: remainingCredits,
+  }
+}
+
+function buildGroupRecord({
+  billing,
+  boards,
+  dashboard,
+  workspace,
+}: {
+  billing: BillingMeResponse | null
+  boards: GroupWorkspaceDashboardRecord['boards']
+  dashboard: RemoteWorkspaceDashboardRecord | null
+  workspace: TangentWorkspace
+}): GroupWorkspaceDashboardRecord | null {
+  if (!billing && !dashboard) return null
+  const members = dashboard ? mapRemoteMembers(dashboard) : []
+  const totalCredits = billing ? billing.credits.includedTotal + billing.credits.topUpBalance : 0
+  const remainingCredits = billing ? billing.credits.includedRemaining + billing.credits.topUpBalance : totalCredits
+
+  return {
+    actions: [
+      { href: '/usage?scope=group', label: 'Open usage' },
+      { href: '/billing', label: 'Subscription' },
+      { href: '/group', label: 'All groups' },
+      { href: '/workspaces', label: 'Boards' },
+    ],
+    boards,
+    id: workspace.id,
+    members,
+    name: workspace.name,
+    planKey: workspace.planKey === 'collaborate_plus' ? 'collaborate_plus' : 'collaborate_start',
+    totalCredits,
+    totalCreditsRemaining: remainingCredits,
   }
 }
 
@@ -111,51 +237,6 @@ function mapRemoteMembers(dashboard: RemoteWorkspaceDashboardRecord): WorkspaceD
   }))
 }
 
-function buildRemoteTeamRecord(
-  workspace: TangentWorkspace,
-  dashboard: RemoteWorkspaceDashboardRecord,
-  members: WorkspaceDashboardMember[],
-): TeamWorkspaceDashboardRecord {
-  const totalUsage = dashboard.totalUsageThisCycle ?? members.reduce((total, member) => total + (member.usageCredits ?? 0), 0)
-  const totalCredits = workspace.planKey === 'team_growth' ? 5500 : 2500
-  return {
-    boards: [],
-    id: workspace.id,
-    inviteCode: `${workspace.id}-invite`,
-    memberUsageLimit: Math.max(900, totalUsage || 900),
-    members,
-    name: workspace.name,
-    planKey: workspace.planKey === 'team_growth' ? 'team_growth' : 'team_start',
-    seatLimit: Math.max(dashboard.memberCount, workspace.planKey === 'team_growth' ? 15 : 10),
-    seatsUsed: dashboard.memberCount,
-    totalCredits,
-    totalCreditsRemaining: Math.max(0, totalCredits - totalUsage),
-  }
-}
-
-function buildRemoteGroupRecord(
-  workspace: TangentWorkspace,
-  dashboard: RemoteWorkspaceDashboardRecord,
-  members: WorkspaceDashboardMember[],
-): GroupWorkspaceDashboardRecord {
-  const totalCredits = workspace.planKey === 'collaborate_plus' ? 1200 : 400
-  return {
-    actions: [
-      { href: '/usage?scope=group', label: 'Open usage' },
-      { href: '/billing', label: 'Subscription' },
-      { href: '/group', label: 'All groups' },
-      { href: '/workspaces', label: 'Boards' },
-    ],
-    boards: [],
-    id: workspace.id,
-    members,
-    name: workspace.name,
-    planKey: workspace.planKey === 'collaborate_plus' ? 'collaborate_plus' : 'collaborate_start',
-    totalCredits,
-    totalCreditsRemaining: Math.max(0, totalCredits - (dashboard.totalUsageThisCycle ?? 0)),
-  }
-}
-
 function normalizeRole(role: string): WorkspaceMembershipRole {
   if (role === 'owner' || role === 'admin' || role === 'editor' || role === 'viewer') return role
   if (role === 'member') return 'editor'
@@ -167,6 +248,18 @@ function normalizeWorkspaceRole(role: string): WorkspaceRole {
   return 'viewer'
 }
 
+function normalizeWorkspacePlanKey(planKey: string | null | undefined, fallback: TangentWorkspace['planKey']) {
+  if (planKey === 'team_growth' || planKey === 'team_start' || planKey === 'collaborate_plus' || planKey === 'collaborate_start' || planKey === 'free_canvas' || planKey === 'enterprise') {
+    return planKey
+  }
+  return fallback
+}
+
 function initials(value: string) {
   return value.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('') || 'NA'
+}
+
+function firstFailureMessage(result: PromiseRejectedResult | PromiseSettledResult<unknown>) {
+  if (result.status !== 'rejected') return null
+  return result.reason instanceof Error ? result.reason.message : 'Workspace dashboard failed to load.'
 }

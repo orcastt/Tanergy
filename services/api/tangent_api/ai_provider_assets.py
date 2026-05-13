@@ -7,6 +7,7 @@ import httpx
 
 from tangent_api.ai_schemas import AiRunRequest
 from tangent_api.request_context import ApiRequestContext
+from tangent_api.storage.asset_store_common import MAX_ASSET_BYTES
 from tangent_api.storage.asset_storage_adapter import get_asset_storage_adapter
 
 _RESOLUTION_PIXELS = {
@@ -23,6 +24,7 @@ _ASPECT_RATIOS = {
     "3:2": (3, 2),
     "9:16": (9, 16),
 }
+MAX_PROVIDER_INPUT_ASSETS = 8
 
 
 @dataclass(frozen=True)
@@ -46,9 +48,12 @@ class ProviderImageOutput:
 
 
 def load_provider_input_assets(payload: AiRunRequest, context: ApiRequestContext) -> list[ProviderInputAsset]:
+    asset_ids = _unique_input_asset_ids(payload.input_asset_ids)
+    if len(asset_ids) > MAX_PROVIDER_INPUT_ASSETS:
+        raise ValueError("Provider input image count exceeds the limit.")
     storage = get_asset_storage_adapter()
     assets: list[ProviderInputAsset] = []
-    for asset_id in payload.input_asset_ids:
+    for asset_id in asset_ids:
         record = storage.get_record(asset_id, context)
         file_name = original_file_name(record.original_url)
         assets.append(
@@ -63,6 +68,18 @@ def load_provider_input_assets(payload: AiRunRequest, context: ApiRequestContext
             )
         )
     return assets
+
+
+def _unique_input_asset_ids(input_asset_ids: list[str]) -> list[str]:
+    unique_ids: list[str] = []
+    seen: set[str] = set()
+    for item in input_asset_ids:
+        asset_id = item.strip()
+        if not asset_id or asset_id in seen:
+            continue
+        seen.add(asset_id)
+        unique_ids.append(asset_id)
+    return unique_ids
 
 
 def persist_provider_output_assets(
@@ -93,10 +110,11 @@ def persist_provider_output_assets(
 
 def download_provider_image(url: str, timeout_seconds: float, headers: Optional[dict[str, str]] = None) -> ProviderImageOutput:
     with httpx.Client(timeout=timeout_seconds) as client:
-        response = client.get(url, headers=headers)
-        response.raise_for_status()
-    mime = response.headers.get("content-type", "").split(";")[0].strip() or detect_image_mime(response.content)
-    return ProviderImageOutput(content=response.content, mime=mime or "image/png")
+        with client.stream("GET", url, headers=headers) as response:
+            response.raise_for_status()
+            content = _read_provider_image_response(response)
+    mime = response.headers.get("content-type", "").split(";")[0].strip() or detect_image_mime(content)
+    return ProviderImageOutput(content=content, mime=mime or "image/png")
 
 
 def resolve_requested_dimensions(
@@ -145,10 +163,46 @@ def build_output_title(prompt: Optional[str], index: int) -> str:
 
 def decode_b64_image(data: str, mime: Optional[str] = None) -> ProviderImageOutput:
     import base64
+    import binascii
 
-    content = base64.b64decode(data)
+    normalized = "".join(data.split())
+    if _estimate_base64_byte_length(normalized) > MAX_ASSET_BYTES:
+        raise ValueError("Provider image output exceeds the asset size limit.")
+    try:
+        content = base64.b64decode(normalized, validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise ValueError("Provider returned invalid base64 image output.") from exc
+    if len(content) > MAX_ASSET_BYTES:
+        raise ValueError("Provider image output exceeds the asset size limit.")
     return ProviderImageOutput(content=content, mime=mime or detect_image_mime(content) or "image/png")
+
+
+def _read_provider_image_response(response: httpx.Response) -> bytes:
+    content_length = response.headers.get("content-length")
+    if content_length:
+        try:
+            if int(content_length) > MAX_ASSET_BYTES:
+                raise ValueError("Provider image output exceeds the asset size limit.")
+        except ValueError:
+            raise ValueError("Provider image output exceeds the asset size limit.")
+    chunks: list[bytes] = []
+    total = 0
+    for chunk in response.iter_bytes():
+        if not chunk:
+            continue
+        total += len(chunk)
+        if total > MAX_ASSET_BYTES:
+            raise ValueError("Provider image output exceeds the asset size limit.")
+        chunks.append(chunk)
+    return b"".join(chunks)
 
 
 def _even(value: int) -> int:
     return value if value % 2 == 0 else value + 1
+
+
+def _estimate_base64_byte_length(value: str) -> int:
+    if not value or len(value) % 4 != 0:
+        raise ValueError("Provider returned invalid base64 image output.")
+    padding = 2 if value.endswith("==") else 1 if value.endswith("=") else 0
+    return (len(value) * 3 // 4) - padding

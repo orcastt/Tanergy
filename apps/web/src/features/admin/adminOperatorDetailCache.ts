@@ -13,6 +13,7 @@ const detailStore = new Map<string, {
   promise?: Promise<AdminOperatorUserDetailResource>
   updatedAt: number
 }>()
+const detailMaxEntries = 48
 
 export function primeAdminOperatorUserDetail(userId: string, resource: AdminOperatorUserDetailResource) {
   primeClientResource(detailStore, userId, resource, cacheOptions(userId))
@@ -21,7 +22,7 @@ export function primeAdminOperatorUserDetail(userId: string, resource: AdminOper
 export function clearAdminOperatorUserDetail(userId: string) {
   detailStore.delete(userId)
   if (typeof window !== 'undefined') {
-    window.localStorage.removeItem(cacheOptions(userId).storageKey)
+    window.sessionStorage.removeItem(cacheOptions(userId).storageKey)
   }
 }
 
@@ -75,8 +76,10 @@ export function loadAdminOperatorUserDetailResource(userId: string, options: { f
 
 function cacheOptions(userId: string) {
   return {
-    storage: 'local' as const,
+    storage: 'session' as const,
     storageKey: `tanergy.admin-operator.user-detail.${userId}`,
+    storagePrefix: 'tanergy.admin-operator.user-detail.',
+    maxEntries: detailMaxEntries,
     ttlMs: 300_000,
   }
 }

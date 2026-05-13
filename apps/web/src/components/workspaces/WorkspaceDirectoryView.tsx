@@ -7,7 +7,7 @@ import { WorkspaceDirectoryActions } from './WorkspaceDirectoryActions'
 import {
   formatWorkspaceMembershipRole,
   type WorkspaceDirectoryItem,
-} from '@/features/workspaces/workspaceDirectoryMock'
+} from '@/features/workspaces/workspacePresentation'
 
 type DirectoryViewMode = 'gallery' | 'list'
 
@@ -15,9 +15,11 @@ type WorkspaceDirectoryViewProps = {
   createLabel: string
   emptyCreatedLabel: string
   emptyJoinedLabel: string
+  isLoading?: boolean
   joinLabel: string
   kind: Extract<WorkspaceKind, 'group_workspace' | 'team_workspace'>
   items: WorkspaceDirectoryItem[]
+  statusMessage?: null | string
   title: string
 }
 
@@ -25,14 +27,17 @@ export function WorkspaceDirectoryView({
   createLabel,
   emptyCreatedLabel,
   emptyJoinedLabel,
+  isLoading = false,
   joinLabel,
   kind,
   items,
+  statusMessage = null,
   title,
 }: WorkspaceDirectoryViewProps) {
-  const [directoryItems, setDirectoryItems] = useState(items)
+  const [optimisticItems, setOptimisticItems] = useState<WorkspaceDirectoryItem[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState<DirectoryViewMode>('gallery')
+  const directoryItems = useMemo(() => mergeWorkspaceItems(items, optimisticItems), [items, optimisticItems])
 
   const filteredItems = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
@@ -59,6 +64,7 @@ export function WorkspaceDirectoryView({
           />
         </div>
       </section>
+      {statusMessage ? <p className="workspace-directory-status" role="status">{statusMessage}</p> : null}
 
       <section className="workspace-toolbar workspace-directory-toolbar" aria-label={`${title} tools`}>
         <label className="workspace-search-field">
@@ -83,12 +89,14 @@ export function WorkspaceDirectoryView({
       <div className="workspace-directory-stack">
         <DirectorySection
           emptyLabel={emptyCreatedLabel}
+          isLoading={isLoading}
           items={createdItems}
           title="Created by me"
           viewMode={viewMode}
         />
         <DirectorySection
           emptyLabel={emptyJoinedLabel}
+          isLoading={isLoading}
           items={joinedItems}
           title="Joined"
           viewMode={viewMode}
@@ -100,7 +108,7 @@ export function WorkspaceDirectoryView({
   function appendDirectoryItem(item: WorkspaceDirectoryItem) {
     if (item.kind !== kind) return
     const href = item.kind === 'team_workspace' ? `/team/${encodeURIComponent(item.id)}` : `/group/${encodeURIComponent(item.id)}`
-    setDirectoryItems((current) => [
+    setOptimisticItems((current) => [
       { ...item, href },
       ...current.filter((existing) => existing.id !== item.id),
     ])
@@ -109,11 +117,13 @@ export function WorkspaceDirectoryView({
 
 function DirectorySection({
   emptyLabel,
+  isLoading,
   items,
   title,
   viewMode,
 }: {
   emptyLabel: string
+  isLoading: boolean
   items: WorkspaceDirectoryItem[]
   title: string
   viewMode: DirectoryViewMode
@@ -123,19 +133,24 @@ function DirectorySection({
       <header className="workspace-directory-section-header">
         <h2>{title}</h2>
       </header>
-      {items.length === 0 ? (
+      {isLoading && items.length === 0 ? (
+        <div className="workspace-directory-loading">Refreshing live workspace details…</div>
+      ) : items.length === 0 ? (
         <div className="workspace-directory-empty">{emptyLabel}</div>
       ) : (
-        <div className={viewMode === 'gallery' ? 'workspace-directory-grid' : 'workspace-directory-list'}>
-          {items.map((item) => (
-            <DirectoryCard
-              href={item.href ?? null}
-              item={item}
-              key={item.id}
-              viewMode={viewMode}
-            />
-          ))}
-        </div>
+        <>
+          {isLoading ? <div className="workspace-directory-loading">Refreshing live workspace details…</div> : null}
+          <div className={viewMode === 'gallery' ? 'workspace-directory-grid' : 'workspace-directory-list'}>
+            {items.map((item) => (
+              <DirectoryCard
+                href={item.href ?? null}
+                item={item}
+                key={item.id}
+                viewMode={viewMode}
+              />
+            ))}
+          </div>
+        </>
       )}
     </section>
   )
@@ -165,7 +180,7 @@ function DirectoryCard({
         </div>
         <div className="workspace-directory-card-meta">
           <span>{formatBoardCount(item.boardCount)}</span>
-          <span>{formatMemberCount(item.memberInitials.length)}</span>
+          <span>{formatMemberCount(item.memberCount)}</span>
         </div>
       </div>
       <div className="workspace-directory-card-footer">
@@ -205,4 +220,16 @@ function formatBoardCount(value: number) {
 
 function formatMemberCount(value: number) {
   return value === 1 ? '1 member' : `${value} members`
+}
+
+function mergeWorkspaceItems(
+  baseItems: WorkspaceDirectoryItem[],
+  optimisticItems: WorkspaceDirectoryItem[],
+) {
+  const seen = new Set<string>()
+  return [...optimisticItems.filter((item) => !baseItems.some((existing) => existing.id === item.id)), ...baseItems].filter((item) => {
+    if (seen.has(item.id)) return false
+    seen.add(item.id)
+    return true
+  })
 }

@@ -1,13 +1,8 @@
 import type { TangentSession } from '@/features/auth/sessionTypes'
 import type {
   AiRunChargeSummary,
-  BillingMeResponse,
-  CreditLedgerResponse,
   ChargeScope,
-  PersonalCreditSummary,
   PlanKey,
-  WorkspaceDashboardRecord,
-  WorkspaceSeatAssignmentsResponse,
   WorkspaceKind,
   WorkspacePlanSummary,
 } from './billingTypes'
@@ -111,55 +106,6 @@ export const planCatalog: Record<PlanKey, WorkspacePlanSummary> = {
   },
 }
 
-export function createLocalBillingMe(session: TangentSession): BillingMeResponse {
-  const workspaceKind = session.activeWorkspace.kind ?? 'solo_workspace'
-  const plan = planCatalog[resolvePlanKey(workspaceKind, session.activeWorkspace.planKey)]
-  const credits = createCreditSummary(session.user.id, plan.includedCredits)
-  const chargeScope = resolveChargeScope(workspaceKind)
-  return {
-    chargeScope,
-    credits,
-    ok: true,
-    payerLabel: resolvePayerLabel(chargeScope),
-    plan,
-    workspace: {
-      id: session.activeWorkspace.id,
-      kind: workspaceKind,
-      name: session.activeWorkspace.name,
-      role: session.activeWorkspace.role,
-    },
-  }
-}
-
-export function createLocalWorkspaceDashboard(session: TangentSession): WorkspaceDashboardRecord {
-  const workspaceKind = session.activeWorkspace.kind ?? 'solo_workspace'
-  const canSeeMemberUsage = workspaceKind === 'team_workspace' && ['admin', 'owner'].includes(session.activeWorkspace.role)
-  const plan = planCatalog[resolvePlanKey(workspaceKind, session.activeWorkspace.planKey)]
-  const credits = createCreditSummary(session.user.id, plan.includedCredits)
-  return {
-    boardCount: session.activeWorkspace.boardCount,
-    canSeeMemberUsage,
-    dashboardKind: canSeeMemberUsage ? 'team_usage' : 'group_structure',
-    memberCount: 1,
-    members: [
-      {
-        displayName: session.user.displayName,
-        email: session.user.email,
-        role: session.activeWorkspace.role,
-        usageThisCycle: canSeeMemberUsage ? credits.usedThisCycle : null,
-        userId: session.user.id,
-      },
-    ],
-    totalUsageThisCycle: canSeeMemberUsage ? credits.usedThisCycle : null,
-    workspace: {
-      id: session.activeWorkspace.id,
-      kind: workspaceKind,
-      name: session.activeWorkspace.name,
-      role: session.activeWorkspace.role,
-    },
-  }
-}
-
 export function createLocalAiChargeSummary(session: TangentSession): AiRunChargeSummary {
   const workspaceKind = session.activeWorkspace.kind ?? 'solo_workspace'
   return createAiChargeSummaryForContext({
@@ -192,82 +138,6 @@ export function createAiChargeSummaryForContext(input: {
   }
 }
 
-export function createLocalWorkspaceSeats(session: TangentSession): WorkspaceSeatAssignmentsResponse {
-  const workspaceKind = session.activeWorkspace.kind ?? 'solo_workspace'
-  if (workspaceKind !== 'team_workspace') return { ok: true, seats: [] }
-
-  const planKey = resolvePlanKey(workspaceKind, session.activeWorkspace.planKey)
-  const now = new Date()
-  const periodStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString()
-  const periodEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59)).toISOString()
-  return {
-    ok: true,
-    seats: [
-      {
-        assignedBy: session.user.id,
-        currentPeriodEnd: periodEnd,
-        currentPeriodStart: periodStart,
-        id: `seat_${session.activeWorkspace.id}_${session.user.id}`,
-        includedCredits: planCatalog[planKey].includedCredits,
-        planKey,
-        status: 'active',
-        userId: session.user.id,
-        workspaceId: session.activeWorkspace.id,
-      },
-    ],
-  }
-}
-
-export function createLocalCreditLedger(session: TangentSession): CreditLedgerResponse {
-  const workspaceKind = session.activeWorkspace.kind ?? 'solo_workspace'
-  const plan = planCatalog[resolvePlanKey(workspaceKind, session.activeWorkspace.planKey)]
-  const credits = createCreditSummary(session.user.id, plan.includedCredits)
-  const chargeScope = resolveChargeScope(workspaceKind)
-  const accountId = chargeScope === 'actor_personal'
-    ? `credit_user_${session.user.id}`
-    : `credit_workspace_${session.activeWorkspace.id}`
-  const grantCreatedAt = new Date(Date.UTC(2026, 4, 1, 9, 0, 0)).toISOString()
-  const usageCreatedAt = new Date(Date.UTC(2026, 4, 6, 14, 30, 0)).toISOString()
-
-  return {
-    accountId,
-    balanceCredits: credits.includedRemaining + credits.topUpBalance,
-    entries: [
-      {
-        accountId,
-        actorUserId: session.user.id,
-        createdAt: usageCreatedAt,
-        creditsDelta: -credits.usedThisCycle,
-        id: `credit_usage_${session.user.id}`,
-        metadata: {
-          note: 'Mock AI usage summary',
-          planKey: plan.planKey,
-        },
-        reason: 'usage_charge',
-        sourceId: 'mock-run-batch',
-        sourceType: 'ai_run',
-        workspaceId: session.activeWorkspace.id,
-      },
-      {
-        accountId,
-        actorUserId: session.user.id,
-        createdAt: grantCreatedAt,
-        creditsDelta: credits.includedTotal,
-        id: `credit_grant_${session.user.id}`,
-        metadata: {
-          billingPeriod: plan.billingPeriod,
-          planKey: plan.planKey,
-        },
-        reason: 'subscription_grant',
-        sourceId: `subscription_${plan.planKey}`,
-        sourceType: 'subscription',
-        workspaceId: session.activeWorkspace.id,
-      },
-    ],
-    ok: true,
-  }
-}
-
 export function resolvePlanKey(workspaceKind: WorkspaceKind, explicitPlanKey?: PlanKey): PlanKey {
   if (explicitPlanKey && isPlanKeyAllowedForWorkspaceKind(explicitPlanKey, workspaceKind)) return explicitPlanKey
   if (workspaceKind === 'group_workspace') return 'collaborate_start'
@@ -281,16 +151,6 @@ function isPlanKeyAllowedForWorkspaceKind(planKey: PlanKey, workspaceKind: Works
   if (workspaceKind === 'team_workspace') return ['team_growth', 'team_start'].includes(planKey)
   if (workspaceKind === 'enterprise_workspace') return planKey === 'enterprise'
   return planKey === 'free_canvas'
-}
-
-function createCreditSummary(userId: string, includedTotal: number): PersonalCreditSummary {
-  const usedThisCycle = includedTotal <= 0 ? 0 : Math.min(includedTotal, 120 + checksum(userId) % 380)
-  return {
-    includedRemaining: Math.max(0, includedTotal - usedThisCycle),
-    includedTotal,
-    topUpBalance: 0,
-    usedThisCycle,
-  }
 }
 
 function resolveEntitlementSource(workspaceKind: WorkspaceKind) {
@@ -310,8 +170,4 @@ function resolvePayerLabel(chargeScope: ChargeScope) {
   if (chargeScope === 'team_wallet') return 'Charges Team wallet'
   if (chargeScope === 'workspace_pool') return 'Charges enterprise workspace credits'
   return 'Charges your credits'
-}
-
-function checksum(value: string) {
-  return Array.from(value).reduce((total, char) => total + char.charCodeAt(0), 0)
 }

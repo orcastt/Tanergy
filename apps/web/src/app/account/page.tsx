@@ -1,9 +1,11 @@
+'use client'
+
 import Link from 'next/link'
 import { AppShell } from '@/components/app-shell/AppShell'
-import { getCurrentSessionSnapshot } from '@/features/auth/mockSession'
+import { useTangentSession } from '@/features/auth/useTangentSession'
 
 export default function AccountPage() {
-  const session = getCurrentSessionSnapshot()
+  const { error, session, status } = useTangentSession()
   const profileRows = [
     { label: 'User ID', value: session.user.id },
     { label: 'Email', value: session.user.email },
@@ -18,10 +20,11 @@ export default function AccountPage() {
           <p className="product-kicker">Account</p>
           <h1 className="product-page-title">Personal profile and session boundary.</h1>
           <p className="product-section-copy">
-            This page is a clean account center for the current mock session. It shows the
-            future Auth seams without pretending that email delivery, OAuth or logout sessions
-            are already live.
+            This page now reads the live web session contract, so profile, workspace, and auth mode
+            stay aligned with the backend instead of falling back to mock account data.
           </p>
+          {status === 'loading' ? <p className="workspace-detail-status">Loading live account session…</p> : null}
+          {status === 'error' ? <p className="workspace-detail-status">{error ?? 'Session lookup failed.'}</p> : null}
         </section>
 
         <section className="management-summary-grid" aria-label="Account summary">

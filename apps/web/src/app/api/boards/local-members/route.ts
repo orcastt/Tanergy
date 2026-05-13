@@ -5,9 +5,12 @@ import type {
   BoardMemberUpdateInput,
 } from '@/features/boards/boardTypes'
 import { getApiRequestContext } from '../../_lib/apiRequestContext'
+import { readJsonRequestWithLimit, requestBodyErrorStatus } from '../../_lib/requestBodyLimits'
 import { getBoardStorageAdapter } from '../_lib/boardStorageAdapter'
 
 export const runtime = 'nodejs'
+
+const maxBoardMemberRequestBytes = 16 * 1024
 
 export async function GET(request: Request) {
   try {
@@ -35,7 +38,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json() as Partial<BoardMemberCreateInput & BoardMemberInviteByEmailInput>
+    const body = await readJsonRequestWithLimit<Partial<BoardMemberCreateInput & BoardMemberInviteByEmailInput>>(request, maxBoardMemberRequestBytes)
     if (!body.boardId || !body.role) throw new Error('Missing board member fields.')
     const member = 'email' in body && typeof body.email === 'string'
       ? await getBoardStorageAdapter().inviteLocalBoardMemberByEmail(
@@ -56,14 +59,14 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Board member create failed.', ok: false },
-      { status: 400 }
+      { status: requestBodyErrorStatus(error) }
     )
   }
 }
 
 export async function PATCH(request: Request) {
   try {
-    const body = await request.json() as Partial<BoardMemberUpdateInput>
+    const body = await readJsonRequestWithLimit<Partial<BoardMemberUpdateInput>>(request, maxBoardMemberRequestBytes)
     if (!body.boardId || !body.userId) throw new Error('Missing board member fields.')
     const member = await getBoardStorageAdapter().upsertLocalBoardMember(
       body.boardId,
@@ -76,14 +79,14 @@ export async function PATCH(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Board member update failed.', ok: false },
-      { status: 400 }
+      { status: requestBodyErrorStatus(error) }
     )
   }
 }
 
 export async function DELETE(request: Request) {
   try {
-    const body = await request.json() as { boardId?: string; userId?: string }
+    const body = await readJsonRequestWithLimit<{ boardId?: string; userId?: string }>(request, maxBoardMemberRequestBytes)
     if (!body.boardId || !body.userId) throw new Error('Missing boardId or userId.')
     const userId = await getBoardStorageAdapter().removeLocalBoardMember(
       body.boardId,
@@ -94,7 +97,7 @@ export async function DELETE(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Board member remove failed.', ok: false },
-      { status: 400 }
+      { status: requestBodyErrorStatus(error) }
     )
   }
 }

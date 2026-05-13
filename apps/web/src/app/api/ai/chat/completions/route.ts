@@ -1,14 +1,31 @@
 import { NextResponse } from 'next/server'
 import type { AiChatCompletionRequest, AiChatMessage, AiChatMessageContentPart } from '@/features/ai/aiTypes'
 import { getApiRequestContext } from '../../../_lib/apiRequestContext'
+import { readJsonRequestWithLimit, requestBodyErrorStatus } from '../../../_lib/requestBodyLimits'
+import {
+  assertAiInlineImageByteLength,
+  getResponseContentLength,
+  normalizeAiInlineImageDataUrl,
+  normalizeAiInlineImageMime,
+  readAiInlineResponseBufferWithLimit,
+  readJsonResponseWithLimit,
+  readTextResponseWithLimit,
+} from '../../_lib/aiInlineImageGuards'
 
 export const runtime = 'nodejs'
 
 const defaultGeekAiBaseUrl = 'https://geekai.co/api/v1'
+const maxChatMessages = 32
+const maxChatContentParts = 64
+const maxChatImageParts = 8
+const maxChatRequestBytes = 1024 * 1024
+const maxChatProviderStreamBytes = 2 * 1024 * 1024
+const chatProviderStreamTimeoutMs = 120_000
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json() as AiChatCompletionRequest
+    assertLocalChatProviderRouteAllowed()
+    const body = await readJsonRequestWithLimit<AiChatCompletionRequest>(request, maxChatRequestBytes)
     if (!body.model?.trim()) {
       return NextResponse.json({ error: 'Missing chat model.' }, { status: 400 })
     }
@@ -44,11 +61,11 @@ export async function POST(request: Request) {
     }
 
     if (!body.stream || !geekAiResponse.body) {
-      const payload = await geekAiResponse.json()
+      const payload = await readJsonResponseWithLimit(geekAiResponse)
       return NextResponse.json(payload, { status: geekAiResponse.status })
     }
 
-    return new Response(geekAiResponse.body, {
+    return new Response(createCappedProviderStream(geekAiResponse.body), {
       headers: {
         'Cache-Control': 'no-cache, no-transform',
         'Content-Type': geekAiResponse.headers.get('content-type') ?? 'text/event-stream; charset=utf-8',
@@ -58,19 +75,41 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Chat completion failed.' },
-      { status: 400 }
+      { status: requestBodyErrorStatus(error) }
     )
   }
 }
 
+function assertLocalChatProviderRouteAllowed() {
+  if (process.env.NODE_ENV === 'production' && process.env.TANGENT_ENABLE_NEXT_AI_PROVIDER_ROUTES !== '1') {
+    throw new Error('Next AI provider routes are disabled in production. Use the backend AiRun API.')
+  }
+}
+
 async function normalizeMessagesForGeekAi(request: Request, messages: AiChatMessage[]) {
-  return Promise.all(messages.map(async (message) => {
-    if (!Array.isArray(message.content)) return message
-    return {
-      ...message,
-      content: await Promise.all(message.content.map(async (part) => normalizeMessagePart(request, part))),
+  if (messages.length > maxChatMessages) throw new Error('Chat request includes too many messages.')
+  let imagePartCount = 0
+  const normalizedMessages: AiChatMessage[] = []
+  for (const message of messages) {
+    if (!Array.isArray(message.content)) {
+      normalizedMessages.push(message)
+      continue
     }
-  }))
+    if (message.content.length > maxChatContentParts) throw new Error('Chat request includes too many content parts.')
+    const content: AiChatMessageContentPart[] = []
+    for (const part of message.content) {
+      if (part.type === 'image_url') {
+        imagePartCount += 1
+        if (imagePartCount > maxChatImageParts) throw new Error('Chat request includes too many reference images.')
+      }
+      content.push(await normalizeMessagePart(request, part))
+    }
+    normalizedMessages.push({
+      ...message,
+      content,
+    })
+  }
+  return normalizedMessages
 }
 
 async function normalizeMessagePart(request: Request, part: AiChatMessageContentPart) {
@@ -87,7 +126,7 @@ async function normalizeMessagePart(request: Request, part: AiChatMessageContent
 }
 
 async function resolveGeekAiImageUrl(request: Request, rawUrl: string) {
-  if (rawUrl.startsWith('data:')) return rawUrl
+  if (rawUrl.startsWith('data:')) return normalizeAiInlineImageDataUrl(rawUrl)
   const requestUrl = new URL(request.url)
   const resolvedUrl = new URL(rawUrl, requestUrl)
   if (!shouldInlineImageUrl(requestUrl, resolvedUrl)) return resolvedUrl.toString()
@@ -99,8 +138,9 @@ async function resolveGeekAiImageUrl(request: Request, rawUrl: string) {
     throw new Error(`Failed to load reference image (${assetResponse.status}).`)
   }
 
-  const bytes = Buffer.from(await assetResponse.arrayBuffer())
-  const mime = assetResponse.headers.get('content-type')?.split(';')[0]?.trim() || 'image/png'
+  const mime = normalizeAiInlineImageMime(assetResponse.headers.get('content-type'))
+  assertAiInlineImageByteLength(getResponseContentLength(assetResponse.headers))
+  const bytes = await readAiInlineResponseBufferWithLimit(assetResponse)
   return `data:${mime};base64,${bytes.toString('base64')}`
 }
 
@@ -127,14 +167,66 @@ function getForwardHeaders(request: Request) {
 async function getGeekAiError(response: Response) {
   const contentType = response.headers.get('content-type') ?? ''
   if (contentType.includes('application/json')) {
-    const payload = await response.json() as { error?: { message?: string }; message?: string }
+    const payload = await readJsonResponseWithLimit<{ error?: { message?: string }; message?: string }>(response)
     return payload.error?.message ?? payload.message ?? 'GeekAI request failed.'
   }
-  return (await response.text()) || 'GeekAI request failed.'
+  return (await readTextResponseWithLimit(response)) || 'GeekAI request failed.'
 }
 
 function getGeekAiBaseUrl() {
   return (process.env.GEEKAI_BASE_URL ?? defaultGeekAiBaseUrl).replace(/\/+$/, '')
+}
+
+function createCappedProviderStream(source: ReadableStream<Uint8Array>) {
+  const reader = source.getReader()
+  let totalBytes = 0
+  let timeout: ReturnType<typeof setTimeout> | null = null
+  let didFinish = false
+
+  const cleanup = () => {
+    didFinish = true
+    if (timeout !== null) {
+      clearTimeout(timeout)
+      timeout = null
+    }
+  }
+
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      timeout = setTimeout(() => {
+        if (didFinish) return
+        cleanup()
+        void reader.cancel().catch(() => {})
+        controller.error(new Error('Chat completion stream timed out.'))
+      }, chatProviderStreamTimeoutMs)
+    },
+    async pull(controller) {
+      try {
+        const { done, value } = await reader.read()
+        if (done) {
+          cleanup()
+          controller.close()
+          return
+        }
+        if (!value) return
+        totalBytes += value.byteLength
+        if (totalBytes > maxChatProviderStreamBytes) {
+          cleanup()
+          await reader.cancel().catch(() => {})
+          controller.error(new Error('Chat completion stream exceeded the response size limit.'))
+          return
+        }
+        controller.enqueue(value)
+      } catch (error) {
+        cleanup()
+        controller.error(error)
+      }
+    },
+    async cancel(reason) {
+      cleanup()
+      await reader.cancel(reason).catch(() => {})
+    },
+  })
 }
 
 function getOptionalOrigin(value: null | string | undefined) {

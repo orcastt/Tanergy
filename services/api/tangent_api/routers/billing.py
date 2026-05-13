@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Header, Query, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 
 from tangent_api.billing_payment_schemas import (
     BillingCollaborateSubscriptionCheckoutRequest,
@@ -27,6 +27,8 @@ from tangent_api.plan_catalog_schemas import PlanCatalogResponse
 from tangent_api.request_context import ApiRequestContext, get_request_context
 from tangent_api.workspace_entitlements import build_billing_me_response
 from tangent_api.workspace_schemas import BillingMeResponse
+
+MAX_BILLING_WEBHOOK_BYTES = 512 * 1024
 
 router = APIRouter(prefix="/api/v1/billing", tags=["billing"])
 
@@ -152,6 +154,26 @@ async def post_billing_webhook(
 ) -> BillingWebhookMutationResponse:
     return process_billing_webhook(
         provider,
-        raw_body=await request.body(),
+        raw_body=await _read_billing_webhook_body(request),
         signature=x_tangent_webhook_signature,
     )
+
+
+async def _read_billing_webhook_body(request: Request) -> bytes:
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            if int(content_length) > MAX_BILLING_WEBHOOK_BYTES:
+                raise HTTPException(status_code=413, detail="Billing webhook body is too large.")
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="Invalid billing webhook content length.") from exc
+    chunks: list[bytes] = []
+    total = 0
+    async for chunk in request.stream():
+        if not chunk:
+            continue
+        total += len(chunk)
+        if total > MAX_BILLING_WEBHOOK_BYTES:
+            raise HTTPException(status_code=413, detail="Billing webhook body is too large.")
+        chunks.append(chunk)
+    return b"".join(chunks)

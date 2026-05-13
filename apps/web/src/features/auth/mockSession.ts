@@ -59,8 +59,32 @@ export const mockSession: TangentSession = {
   workspaces: mockWorkspaces,
 }
 
+const loadingWorkspace: TangentWorkspace = {
+  boardCount: 0,
+  id: 'loading-workspace',
+  kind: 'solo_workspace',
+  name: 'Loading workspace',
+  role: 'viewer',
+}
+
 export function getCurrentSessionSnapshot() {
   return mockSession
+}
+
+export function createLoadingSessionSnapshot(): TangentSession {
+  return {
+    activeWorkspace: loadingWorkspace,
+    authMode: 'dev',
+    isDevFallback: false,
+    user: {
+      avatarInitials: '...',
+      displayName: 'Loading',
+      email: '',
+      emailVerified: false,
+      id: 'loading-user',
+    },
+    workspaces: [],
+  }
 }
 
 export function getSessionRequestHeaders(workspace: TangentWorkspace = mockSession.activeWorkspace): Record<string, string> {

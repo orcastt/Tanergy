@@ -11,6 +11,12 @@ from tangent_api.board_metadata import (
     normalize_board_visibility,
 )
 from tangent_api.board_schemas import (
+    BoardCollaborationPresence,
+    BoardCollaborationPresenceCursor,
+    BoardCollaborationSessionDeleteResponse,
+    BoardCollaborationSessionRecord,
+    BoardCollaborationSessionsResponse,
+    BoardCollaborationSessionUpsertRequest,
     BoardCopyResponse,
     BoardDeleteResponse,
     BoardDocumentGuardIssue,

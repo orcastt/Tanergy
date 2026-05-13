@@ -15,6 +15,7 @@ from tangent_api.storage.asset_store_common import (
     file_url,
     mime_for_file_name,
     parse_image_data_url,
+    read_upload_file_with_limit,
 )
 from tangent_api.storage.s3_client import (
     S3AssetStorageConfig,
@@ -71,7 +72,7 @@ class S3AssetStore:
     ) -> AssetRecord:
         mime = file.content_type or ""
         assert_image_mime(mime)
-        content = await file.read()
+        content = await read_upload_file_with_limit(file)
         assert_asset_size(len(content))
 
         asset_id = f"asset_{uuid4()}"

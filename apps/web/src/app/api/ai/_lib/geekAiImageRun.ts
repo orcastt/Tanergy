@@ -1,14 +1,21 @@
-import { Buffer } from 'node:buffer'
 import type { ApiRequestContext } from '../../_lib/apiRequestContext'
 import { getAssetStorageAdapter } from '../../assets/_lib/assetStorageAdapter'
 import { getImageDimensionsFromBytes, getImageExtensionFromMime } from '../../assets/_lib/imageByteMetadata'
 import { fetchRemoteImageForAsset } from '../../assets/_lib/remoteImageImport'
+import {
+  arrayBufferFromBuffer,
+  normalizeAiInlineBase64DataUrl,
+  parseAiInlineImageDataUrl,
+  readJsonResponseWithLimit,
+  toAiInlineImageDataUrl,
+} from './aiInlineImageGuards'
 import { getAiModelDefinition, asAiRunParams } from '@/features/ai/mockAiContracts'
 import type { AiRunRecord, AiRunRequest } from '@/features/ai/aiTypes'
 import type { AiRunChargeSummary } from '@/features/billing/billingTypes'
 
 const defaultGeekAiBaseUrl = 'https://geekai.co/api/v1'
 const defaultGeneratedMime = 'image/png'
+const maxImageReferenceInputs = 8
 const pollIntervalMs = 1400
 const pollTimeoutMs = 45000
 
@@ -372,16 +379,20 @@ async function resolveInputImages(
   options?: { preferPreview?: boolean }
 ) {
   const uniqueIds = [...new Set(assetIds.filter(Boolean))]
-  return Promise.all(uniqueIds.map(async (assetId) => {
+  if (uniqueIds.length > maxImageReferenceInputs) {
+    throw new Error(`Image generation accepts up to ${maxImageReferenceInputs} reference images.`)
+  }
+  const imageUrls: string[] = []
+  for (const assetId of uniqueIds) {
     const record = await getAssetStorageAdapter().getRecord(assetId, context)
     const fileUrl = options?.preferPreview
       ? record.thumbnail1024Url ?? record.thumbnail512Url ?? record.originalUrl
       : record.originalUrl
     const fileName = getAssetFileName(fileUrl)
     const { file, mime } = await getAssetStorageAdapter().readFile(assetId, fileName, context)
-    const bytes = Buffer.from(file)
-    return `data:${mime};base64,${bytes.toString('base64')}`
-  }))
+    imageUrls.push(toAiInlineImageDataUrl(mime, file))
+  }
+  return imageUrls
 }
 
 async function settleImageTask(payload: GeekAiImageResponse) {
@@ -408,7 +419,7 @@ function extractImageSources(payload: GeekAiImageResponse) {
   return (payload.data ?? []).flatMap((item) => {
     if (typeof item.url === 'string' && item.url.trim()) return [item.url.trim()]
     if (typeof item.b64_json === 'string' && item.b64_json.trim()) {
-      return [`data:${defaultGeneratedMime};base64,${item.b64_json.trim()}`]
+      return [normalizeAiInlineBase64DataUrl(item.b64_json, defaultGeneratedMime)]
     }
     return []
   })
@@ -451,7 +462,7 @@ async function postGeekAiJson<T extends { error?: { message?: string }; message?
     },
     method: 'POST',
   })
-  const payload = await response.json() as T
+  const payload = await readJsonResponseWithLimit<T>(response)
   if (!response.ok) {
     throw new Error(payload.error?.message ?? payload.message ?? 'GeekAI request failed.')
   }
@@ -464,7 +475,7 @@ async function getGeekAiJson<T extends { error?: { message?: string }; message?:
       Authorization: `Bearer ${getGeekAiApiKey()}`,
     },
   })
-  const payload = await response.json() as T
+  const payload = await readJsonResponseWithLimit<T>(response)
   if (!response.ok) {
     throw new Error(payload.error?.message ?? payload.message ?? 'GeekAI request failed.')
   }
@@ -472,13 +483,10 @@ async function getGeekAiJson<T extends { error?: { message?: string }; message?:
 }
 
 function parseDataUrl(dataUrl: string) {
-  const match = /^data:([^;,]+);base64,(.+)$/s.exec(dataUrl)
-  if (!match) throw new Error('Invalid generated image data URL.')
-  const buffer = Buffer.from(match[2] ?? '', 'base64')
-  const bytes = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer
+  const parsed = parseAiInlineImageDataUrl(dataUrl)
   return {
-    bytes,
-    mime: match[1] ?? defaultGeneratedMime,
+    bytes: arrayBufferFromBuffer(parsed.buffer),
+    mime: parsed.mime,
   }
 }
 

@@ -3,6 +3,7 @@ import time
 from fastapi.testclient import TestClient
 
 from tangent_api.main import app
+from tangent_api import ai_provider_assets
 from tangent_api.ai_provider_types import AiProviderAttemptResult
 from tangent_api.request_context import ApiRequestContext
 from tests.persistence_fakes import FakePostgresDatabase
@@ -56,6 +57,17 @@ def test_ai_run_mock_contract_round_trip():
     assert loaded["runId"] == run["runId"]
     assert loaded["status"] == "succeeded"
     assert len(loaded["outputAssetIds"]) == 4
+
+
+def test_provider_base64_image_decode_rejects_estimated_oversize_payload(monkeypatch):
+    monkeypatch.setattr(ai_provider_assets, "MAX_ASSET_BYTES", 2)
+
+    try:
+        ai_provider_assets.decode_b64_image("AAAA")
+    except ValueError as exc:
+        assert "asset size limit" in str(exc)
+    else:
+        raise AssertionError("Expected oversized provider image output to be rejected.")
 
 
 def test_ai_run_mock_can_settle_against_credit_ledger(monkeypatch):

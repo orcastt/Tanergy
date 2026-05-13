@@ -1,11 +1,17 @@
-import { Buffer } from 'node:buffer'
 import type { ApiRequestContext } from '../../_lib/apiRequestContext'
 import { getAssetStorageAdapter } from '../../assets/_lib/assetStorageAdapter'
+import {
+  parseAiInlineImageDataUrl,
+  readJsonResponseWithLimit,
+  toAiInlineImageDataUrl,
+} from './aiInlineImageGuards'
 import { getAiModelDefinition } from '@/features/ai/mockAiContracts'
 import type { AiRunRecord, AiRunRequest } from '@/features/ai/aiTypes'
 import type { AiRunChargeSummary } from '@/features/billing/billingTypes'
 
 const defaultGeekAiBaseUrl = 'https://geekai.co/api/v1'
+const maxAnalysisTextOutputChars = 12000
+const maxAnalysisReferenceImages = 8
 
 type GeekAiResponsesResponse = {
   error?: {
@@ -52,9 +58,9 @@ export async function createGeekAiAnalysisRun(input: {
   const referenceImages = await resolveInputImages(input.request.inputAssetIds ?? [], input.context)
   if (referenceImages.length === 0) throw new Error('Missing analysis image input.')
 
-  const textOutput = model.id === 'gemini-2.5-flash'
+  const textOutput = limitAnalysisTextOutput(model.id === 'gemini-2.5-flash'
     ? await runChatCompletionsAnalysis({ imageUrls: referenceImages, modelId: model.id, prompt })
-    : await runResponsesAnalysis({ imageUrls: referenceImages, modelId: model.id, prompt })
+    : await runResponsesAnalysis({ imageUrls: referenceImages, modelId: model.id, prompt }))
   if (!textOutput) throw new Error('GeekAI did not return any analysis text.')
 
   return {
@@ -134,14 +140,18 @@ async function runChatCompletionsAnalysis(input: { imageUrls: string[]; modelId:
 
 async function resolveInputImages(assetIds: string[], context: ApiRequestContext) {
   const uniqueIds = [...new Set(assetIds.filter(Boolean))]
-  return Promise.all(uniqueIds.map(async (assetId) => {
+  if (uniqueIds.length > maxAnalysisReferenceImages) {
+    throw new Error(`Image analysis accepts up to ${maxAnalysisReferenceImages} reference images.`)
+  }
+  const imageUrls: string[] = []
+  for (const assetId of uniqueIds) {
     const record = await getAssetStorageAdapter().getRecord(assetId, context)
     const fileUrl = record.thumbnail1024Url ?? record.thumbnail512Url ?? record.originalUrl
     const fileName = getAssetFileName(fileUrl)
     const { file, mime } = await getAssetStorageAdapter().readFile(assetId, fileName, context)
-    const bytes = Buffer.from(file)
-    return `data:${mime};base64,${bytes.toString('base64')}`
-  }))
+    imageUrls.push(toAiInlineImageDataUrl(mime, file))
+  }
+  return imageUrls
 }
 
 function extractResponseText(payload: GeekAiResponsesResponse) {
@@ -161,9 +171,12 @@ function extractChatCompletionText(payload: GeekAiChatCompletionResponse) {
   return ''
 }
 
+function limitAnalysisTextOutput(value: string) {
+  return value.length > maxAnalysisTextOutputChars ? value.slice(0, maxAnalysisTextOutputChars) : value
+}
+
 function normalizeChatCompletionImageUrl(value: string) {
-  const match = /^data:[^;,]+;base64,(.+)$/s.exec(value)
-  return match?.[1]?.trim() ? match[1].trim() : value
+  return value.startsWith('data:') ? parseAiInlineImageDataUrl(value).base64 : value
 }
 
 async function postGeekAiJson<T extends { error?: { message?: string } | null; message?: string }>(path: string, body: Record<string, unknown>) {
@@ -175,7 +188,7 @@ async function postGeekAiJson<T extends { error?: { message?: string } | null; m
     },
     method: 'POST',
   })
-  const payload = await response.json() as T
+  const payload = await readJsonResponseWithLimit<T>(response)
   if (!response.ok) {
     throw new Error(payload.error?.message ?? payload.message ?? 'GeekAI request failed.')
   }

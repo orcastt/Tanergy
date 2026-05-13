@@ -1,20 +1,23 @@
 import { NextResponse } from 'next/server'
 import { summarizeBoardRecord, type BoardCardColor } from '@/features/boards/boardTypes'
 import { getApiRequestContext } from '../../_lib/apiRequestContext'
+import { readJsonRequestWithLimit, requestBodyErrorStatus } from '../../_lib/requestBodyLimits'
 import { getBoardStorageAdapter } from '../_lib/boardStorageAdapter'
 
 export const runtime = 'nodejs'
 
+const maxBoardSaveRequestBytes = 3 * 1024 * 1024
+
 export async function POST(request: Request) {
   try {
-    const body = await request.json() as {
+    const body = await readJsonRequestWithLimit<{
       boardId?: string
       cardColor?: BoardCardColor | null
       description?: string | null
       document?: unknown
       thumbnailUrl?: string | null
       title?: string
-    }
+    }>(request, maxBoardSaveRequestBytes)
     if (!Object.hasOwn(body, 'document')) throw new Error('Missing board document.')
 
     const { audit, board } = await getBoardStorageAdapter().saveLocalBoard({
@@ -34,7 +37,7 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Local board save failed.', ok: false },
-      { status: 400 }
+      { status: requestBodyErrorStatus(error) }
     )
   }
 }

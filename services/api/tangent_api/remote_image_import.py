@@ -1,7 +1,7 @@
 import ipaddress
 import socket
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
@@ -11,6 +11,7 @@ from tangent_api.image_dimensions import get_image_dimensions
 from tangent_api.storage.asset_store_common import assert_asset_size, assert_image_mime
 
 REMOTE_IMPORT_TIMEOUT_SECONDS = 8
+REMOTE_IMPORT_CHUNK_BYTES = 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -31,7 +32,8 @@ def fetch_remote_image(url: str) -> RemoteImageImport:
     try:
         with urlopen(request, timeout=REMOTE_IMPORT_TIMEOUT_SECONDS) as response:
             mime = _parse_content_type(response.headers.get("content-type"))
-            content = response.read()
+            _assert_content_length(response.headers.get("content-length"))
+            content = _read_response_with_limit(response)
     except HTTPException:
         raise
     except Exception as exc:
@@ -74,6 +76,29 @@ def _parse_content_type(value: Optional[str]) -> str:
     if not mime:
         raise HTTPException(status_code=400, detail="Remote URL did not return an image.")
     return mime
+
+
+def _assert_content_length(value: Optional[str]) -> None:
+    if not value:
+        return
+    try:
+        byte_size = int(value)
+    except ValueError:
+        return
+    assert_asset_size(byte_size)
+
+
+def _read_response_with_limit(response: Any) -> bytes:
+    chunks: list[bytes] = []
+    total_bytes = 0
+    while True:
+        chunk = response.read(REMOTE_IMPORT_CHUNK_BYTES)
+        if not chunk:
+            break
+        total_bytes += len(chunk)
+        assert_asset_size(total_bytes)
+        chunks.append(chunk)
+    return b"".join(chunks)
 
 
 def _remote_file_name(path: str, mime: str) -> str:

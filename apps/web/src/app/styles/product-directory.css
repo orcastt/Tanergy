@@ -2,11 +2,11 @@
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 0 32px 104px;
+  padding: 0 40px 112px;
 }
 
 .workspace-directory-header {
-  padding-bottom: 28px;
+  padding-bottom: 36px;
 }
 
 .workspace-directory-header-main,
@@ -25,13 +25,22 @@
 
 .workspace-directory-header-main {
   gap: 24px;
+  align-items: end;
 }
 
-.workspace-directory-status {
-  margin: 12px 0 0;
+.workspace-directory-status,
+.workspace-directory-loading {
   color: var(--color-muted);
   font-size: 13px;
   line-height: 1.45;
+}
+
+.workspace-directory-status {
+  margin: 0 0 20px;
+}
+
+.workspace-directory-loading {
+  margin-bottom: 16px;
 }
 
 .workspace-directory-header-actions {
@@ -40,21 +49,28 @@
 }
 
 .workspace-directory-toolbar {
-  margin-bottom: 40px;
+  margin-bottom: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 .workspace-directory-stack {
   display: grid;
-  gap: 44px;
+  gap: 52px;
 }
 
 .workspace-directory-section {
   display: grid;
-  gap: 20px;
+  gap: 18px;
 }
 
 .workspace-directory-section-header {
-  padding-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 16px;
+  padding-bottom: 14px;
   border-bottom: 1px solid rgba(24, 29, 38, 0.08);
 }
 
@@ -70,7 +86,7 @@
 
 .workspace-directory-empty {
   display: grid;
-  min-height: 132px;
+  min-height: 164px;
   place-items: center;
   border: 1px dashed rgba(24, 29, 38, 0.18);
   border-radius: 12px;
@@ -81,21 +97,21 @@
 
 .workspace-directory-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
   gap: 24px;
 }
 
 .workspace-directory-list {
   display: grid;
-  gap: 14px;
+  gap: 16px;
 }
 
 .workspace-directory-card {
   display: grid;
-  aspect-ratio: 3 / 2;
+  min-height: 340px;
   grid-template-rows: auto 1fr auto;
-  gap: 20px;
-  padding: 24px;
+  gap: 22px;
+  padding: 28px;
   border: 1px solid rgba(24, 29, 38, 0.08);
   border-radius: 12px;
   background: #ffffff;
@@ -108,40 +124,39 @@
 }
 
 .workspace-directory-card.is-link:hover {
-  border-color: rgba(24, 29, 38, 0.18);
+  border-color: rgba(24, 29, 38, 0.16);
   background: #fcfcfc;
   transform: translateY(-2px);
 }
 
 .workspace-directory-card.is-list {
-  aspect-ratio: auto;
-  min-height: 120px;
-  grid-template-columns: 88px minmax(0, 1fr) auto;
+  min-height: 138px;
+  grid-template-columns: 104px minmax(0, 1fr) auto;
   grid-template-rows: 1fr;
   align-items: center;
 }
 
 .workspace-directory-card-preview {
   display: grid;
-  width: 78px;
-  height: 78px;
+  width: 92px;
+  height: 92px;
   place-items: center;
   border-radius: 12px;
   border: 1px solid rgba(24, 29, 38, 0.08);
-  background: #f3f4f5;
+  background: #f8f9fa;
 }
 
 .workspace-directory-card-preview[data-kind='team_workspace'] {
-  background: #fbf5db;
+  background: #ffdf55;
 }
 
 .workspace-directory-card-preview[data-kind='group_workspace'] {
-  background: #fff1e7;
+  background: #ffd8bc;
 }
 
 .workspace-directory-card-preview span {
   color: var(--color-ink);
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 500;
   letter-spacing: 0;
 }
@@ -149,7 +164,7 @@
 .workspace-directory-card-body {
   display: grid;
   align-content: start;
-  gap: 14px;
+  gap: 16px;
   min-width: 0;
 }
 
@@ -162,27 +177,31 @@
   margin: 0;
   min-width: 0;
   color: var(--color-ink);
-  font-size: 28px;
+  font-size: 34px;
   font-weight: 400;
-  line-height: 1.15;
+  line-height: 1.12;
 }
 
 .workspace-directory-card-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 16px;
+  gap: 8px 18px;
   color: var(--color-muted);
-  font-size: 13px;
-  line-height: 1.45;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .workspace-directory-card-footer {
-  justify-content: flex-start;
+  justify-content: space-between;
   min-width: 0;
+  padding-top: 18px;
+  border-top: 1px solid rgba(24, 29, 38, 0.08);
 }
 
 .workspace-directory-card.is-list .workspace-directory-card-footer {
   justify-content: flex-end;
+  padding-top: 0;
+  border-top: 0;
 }
 
 .workspace-directory-role {
@@ -224,9 +243,9 @@
 
 .workspace-directory-members span {
   display: inline-grid;
-  width: 32px;
-  height: 32px;
-  margin-left: -8px;
+  width: 36px;
+  height: 36px;
+  margin-left: -10px;
   place-items: center;
   border: 1px solid #ffffff;
   border-radius: 50%;
@@ -251,7 +270,7 @@
   }
 
   .workspace-directory-card.is-list {
-    grid-template-columns: 72px minmax(0, 1fr);
+    grid-template-columns: 88px minmax(0, 1fr);
   }
 
   .workspace-directory-card.is-list .workspace-directory-card-footer {
@@ -275,7 +294,7 @@
   }
 
   .workspace-directory-card-top h3 {
-    font-size: 24px;
+    font-size: 28px;
   }
 
   .workspace-directory-card.is-list {

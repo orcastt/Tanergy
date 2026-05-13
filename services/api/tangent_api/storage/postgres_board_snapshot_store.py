@@ -119,7 +119,6 @@ class PostgresBoardSnapshotStore:
                         board_id,
                         created_by,
                         title,
-                        document,
                         document_hash,
                         byte_size,
                         asset_count,
@@ -136,7 +135,7 @@ class PostgresBoardSnapshotStore:
                     (context.workspace_id, board_id),
                 )
                 rows = cursor.fetchall()
-        return [_summarize_snapshot(_snapshot_from_row(row)) for row in rows]
+        return [_snapshot_summary_from_row(row) for row in rows]
 
     def load_snapshot(
         self,
@@ -265,6 +264,27 @@ def _snapshot_from_row(row: tuple[Any, ...]) -> BoardSnapshotRecord:
         retentionTier=row[12],
         shapeCount=row[9] or 0,
         thumbnailUrl=row[10],
+        title=row[4],
+        workspaceId=row[1],
+    )
+
+
+def _snapshot_summary_from_row(row: tuple[Any, ...]) -> BoardSnapshotSummary:
+    expires_at = row[12].isoformat() if hasattr(row[12], "isoformat") else row[12]
+    created_at = row[13].isoformat() if hasattr(row[13], "isoformat") else str(row[13])
+    return BoardSnapshotSummary(
+        assetCount=row[7] or 0,
+        boardId=row[2],
+        byteSize=row[6],
+        createdAt=created_at,
+        createdBy=row[3],
+        documentHash=row[5],
+        expiresAt=expires_at,
+        id=row[0],
+        reason=row[10],
+        retentionTier=row[11],
+        shapeCount=row[8] or 0,
+        thumbnailUrl=row[9],
         title=row[4],
         workspaceId=row[1],
     )

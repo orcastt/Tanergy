@@ -14,19 +14,28 @@ export function persistenceApiUrl(path: string) {
   return `${apiBaseUrl}${normalizedPath}`
 }
 
+export function persistenceWebSocketUrl(path: string) {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`
+  const base = apiBaseUrl || (typeof window !== 'undefined' ? window.location.origin : '')
+  if (!base) return normalizedPath
+  const url = new URL(normalizedPath, base)
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
+  return url.toString()
+}
+
 export function persistenceAssetUrl(url: string | undefined) {
   if (!url || !apiBaseUrl || !url.startsWith('/api/v1/')) return url
   return `${apiBaseUrl}${url}`
 }
 
 export function persistenceAuthHeaders(workspace?: TangentWorkspace): HeadersInit {
-  return getSessionRequestHeaders(workspace)
+  return getLocalDevSessionHeaders(workspace)
 }
 
 export function persistenceJsonHeaders(workspace?: TangentWorkspace): HeadersInit {
   return {
     'Content-Type': 'application/json',
-    ...getSessionRequestHeaders(workspace),
+    ...getLocalDevSessionHeaders(workspace),
   }
 }
 
@@ -46,6 +55,10 @@ export async function persistenceJsonHeadersAsync(
   options: PersistenceAuthOptions = {},
 ): Promise<HeadersInit> {
   return withClerkAuthorization(getBaseJsonHeaders(workspace), options)
+}
+
+export async function getPersistenceAuthToken(options: PersistenceAuthOptions = {}) {
+  return options.getAuthToken?.() ?? getBrowserClerkToken()
 }
 
 async function withClerkAuthorization(headers: HeadersInit, options: PersistenceAuthOptions = {}): Promise<HeadersInit> {
@@ -86,16 +99,32 @@ async function getBrowserClerkToken() {
 }
 
 function getBaseRequestHeaders(workspace?: TangentWorkspace): HeadersInit {
-  return workspace ? getSessionRequestHeaders(workspace) : {}
+  return workspace ? getLocalDevSessionHeaders(workspace) : {}
 }
 
 function getBaseJsonHeaders(workspace?: TangentWorkspace): HeadersInit {
   return workspace
     ? {
       'Content-Type': 'application/json',
-      ...getSessionRequestHeaders(workspace),
+      ...getLocalDevSessionHeaders(workspace),
     }
     : { 'Content-Type': 'application/json' }
+}
+
+function getLocalDevSessionHeaders(workspace?: TangentWorkspace): Record<string, string> {
+  if (process.env.NODE_ENV === 'production') return workspace ? getWorkspaceSelectionHeaders(workspace) : {}
+  return getSessionRequestHeaders(workspace)
+}
+
+function getWorkspaceSelectionHeaders(workspace: TangentWorkspace): Record<string, string> {
+  const headers: Record<string, string> = {
+    'x-tangent-workspace-id': workspace.id,
+    'x-tangent-workspace-kind': workspace.kind,
+    'x-tangent-workspace-name': workspace.name,
+    'x-tangent-workspace-role': workspace.role,
+  }
+  if (workspace.planKey) headers['x-tangent-plan-key'] = workspace.planKey
+  return headers
 }
 
 function sleep(ms: number) {

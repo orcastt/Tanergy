@@ -51,6 +51,19 @@ def test_auth_required_mode_requires_bearer_token(monkeypatch):
     assert explicit_headers.status_code == 401
 
 
+def test_auth_production_runtime_requires_bearer_token(monkeypatch):
+    monkeypatch.delenv("TANGENT_REQUIRE_API_AUTH", raising=False)
+    monkeypatch.setenv("TANGENT_ENV", "production")
+    client = TestClient(app)
+
+    response = client.get(
+        "/api/v1/auth/session",
+        headers={"x-tangent-user-id": "dev-user", "x-tangent-workspace-id": "dev-workspace"},
+    )
+
+    assert response.status_code == 401
+
+
 def test_auth_session_explicit_workspace_context(monkeypatch):
     monkeypatch.delenv("TANGENT_REQUIRE_API_AUTH", raising=False)
     client = TestClient(app)

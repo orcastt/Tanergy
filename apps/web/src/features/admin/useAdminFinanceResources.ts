@@ -26,6 +26,7 @@ const emptyWallets: AdminFinanceWalletsResource = { ok: false, wallets: [] }
 const emptyLedger: AdminFinanceLedgerResource = { ok: false, ledger: [] }
 const emptySubscriptions: AdminFinanceSubscriptionsResource = { ok: false, subscriptions: [] }
 const emptyMemberUsage: AdminFinanceMemberUsageResource = { ok: false, memberUsage: [] }
+const financeResourceMaxEntries = 16
 type AdminFinanceBundle = {
   ledger: AdminFinanceLedgerResource
   memberUsage: AdminFinanceMemberUsageResource
@@ -88,8 +89,10 @@ export function useAdminFinanceResources(enabled: boolean, query: AdminFinanceQu
   ])
   const requestKey = useMemo(() => JSON.stringify(scopedQuery), [scopedQuery])
   const snapshot = readClientResource(financeResourceStore, requestKey, {
-    storage: 'local',
+    maxEntries: financeResourceMaxEntries,
+    storage: 'session',
     storageKey: financeStorageKey(requestKey),
+    storagePrefix: 'tanergy.admin-finance.',
     ttlMs: 300_000,
   })
   const [summary, setSummary] = useState<AdminFinanceSummaryResource>(snapshot.data?.summary ?? emptySummary)
@@ -129,8 +132,10 @@ export function useAdminFinanceResources(enabled: boolean, query: AdminFinanceQu
       },
       {
         force: reloadToken > 0,
-        storage: 'local',
+        maxEntries: financeResourceMaxEntries,
+        storage: 'session',
         storageKey: financeStorageKey(requestKey),
+        storagePrefix: 'tanergy.admin-finance.',
         ttlMs: 300_000,
       },
     )

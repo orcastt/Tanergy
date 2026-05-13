@@ -1,11 +1,15 @@
 'use client'
 
 import { persistenceAuthHeaders } from '@/features/api/persistenceApi'
+import { clearCachedBillingResources } from '@/features/billing/billingResourceCache'
+import { clearCachedBoardResources } from '@/features/boards/boardResourceCache'
 import type { AuthSessionResponse } from './sessionTypes'
 
 type LoadCurrentSessionOptions = {
   getAuthToken?: () => Promise<null | string>
 }
+
+export const SESSION_REFRESH_EVENT = 'tanergy:session-refresh'
 
 export async function loadCurrentSession(options: LoadCurrentSessionOptions = {}) {
   const token = await options.getAuthToken?.()
@@ -28,4 +32,12 @@ async function readSessionPayload(response: Response): Promise<AuthSessionRespon
   } catch {
     return { error: text, ok: false }
   }
+}
+
+export function requestCurrentSessionRefresh() {
+  if (typeof window === 'undefined') return
+  window.localStorage.removeItem('tanergy.session.current')
+  clearCachedBillingResources()
+  clearCachedBoardResources()
+  window.dispatchEvent(new Event(SESSION_REFRESH_EVENT))
 }

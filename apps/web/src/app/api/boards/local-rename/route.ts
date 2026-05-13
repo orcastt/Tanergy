@@ -1,15 +1,18 @@
 import { NextResponse } from 'next/server'
 import { getApiRequestContext } from '../../_lib/apiRequestContext'
+import { readJsonRequestWithLimit, requestBodyErrorStatus } from '../../_lib/requestBodyLimits'
 import { getBoardStorageAdapter } from '../_lib/boardStorageAdapter'
 
 export const runtime = 'nodejs'
 
+const maxBoardRenameRequestBytes = 8 * 1024
+
 export async function POST(request: Request) {
   try {
-    const body = await request.json() as {
+    const body = await readJsonRequestWithLimit<{
       boardId?: string
       title?: string
-    }
+    }>(request, maxBoardRenameRequestBytes)
     if (!body.boardId) throw new Error('Missing boardId.')
     const board = await getBoardStorageAdapter().renameLocalBoard(
       body.boardId,
@@ -20,7 +23,7 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Local board rename failed.', ok: false },
-      { status: 400 }
+      { status: requestBodyErrorStatus(error) }
     )
   }
 }

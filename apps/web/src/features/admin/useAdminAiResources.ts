@@ -57,6 +57,7 @@ const emptyRoutes: AdminAiProviderRoutesResource = { ok: false, routes: [] }
 const emptyPricingRules: AdminAiPricingRulesResource = { ok: false, pricingRules: [] }
 const emptyRuns: AdminAiRunsResource = { ok: false, runs: [] }
 const emptyApiCalls: AdminAiApiCallsResource = { apiCalls: [], ok: false }
+const adminAiResourceMaxEntries = 16
 type AdminAiBundle = {
   apiCalls: AdminAiApiCallsResource
   error: null | string
@@ -143,8 +144,10 @@ export function useAdminAiResources(enabled: boolean, options: AdminAiResourceOp
   ])
   const requestKey = useMemo(() => JSON.stringify(requestOptions), [requestOptions])
   const snapshot = readClientResource(adminAiResourceStore, requestKey, {
-    storage: 'local',
+    maxEntries: adminAiResourceMaxEntries,
+    storage: 'session',
     storageKey: aiStorageKey(requestKey),
+    storagePrefix: 'tanergy.admin-ai.',
     ttlMs: 300_000,
   })
   const [models, setModels] = useState<AdminAiModelsResource>(snapshot.data?.models ?? emptyModels)
@@ -226,8 +229,10 @@ export function useAdminAiResources(enabled: boolean, options: AdminAiResourceOp
       },
       {
         force: reloadToken > 0,
-        storage: 'local',
+        maxEntries: adminAiResourceMaxEntries,
+        storage: 'session',
         storageKey: aiStorageKey(requestKey),
+        storagePrefix: 'tanergy.admin-ai.',
         ttlMs: 300_000,
       },
     ).then((bundle) => {

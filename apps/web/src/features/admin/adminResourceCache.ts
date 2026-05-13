@@ -11,6 +11,7 @@ type AdminUserDetailBundle = {
 }
 
 const adminUserDetailStore = new Map<string, { data?: AdminUserDetailBundle; error?: string | null; promise?: Promise<AdminUserDetailBundle>; updatedAt: number }>()
+const adminUserDetailMaxEntries = 48
 
 export function primeAdminUserDetailBundle(
   userId: string,
@@ -25,16 +26,20 @@ export function primeAdminUserDetailBundle(
   }
 
   primeClientResource(adminUserDetailStore, userId, nextBundle, {
-    storage: 'local',
+    maxEntries: adminUserDetailMaxEntries,
+    storage: 'session',
     storageKey: storageKey(userId),
+    storagePrefix: 'tanergy.admin.user-detail.',
     ttlMs: 120_000,
   })
 }
 
 export function readAdminUserDetailBundle(userId: string) {
   return readClientResource(adminUserDetailStore, userId, {
-    storage: 'local',
+    maxEntries: adminUserDetailMaxEntries,
+    storage: 'session',
     storageKey: storageKey(userId),
+    storagePrefix: 'tanergy.admin.user-detail.',
     ttlMs: 120_000,
   })
 }
@@ -59,8 +64,10 @@ export function loadAdminUserDetailBundle(userId: string, options: { force?: boo
     {
       canReuse: (bundle) => bundle.complete,
       force: options.force,
-      storage: 'local',
+      maxEntries: adminUserDetailMaxEntries,
+      storage: 'session',
       storageKey: storageKey(userId),
+      storagePrefix: 'tanergy.admin.user-detail.',
       ttlMs: 120_000,
     },
   )

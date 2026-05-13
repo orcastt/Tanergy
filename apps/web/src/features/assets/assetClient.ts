@@ -2,8 +2,11 @@
 
 import { hasRemotePersistenceApi, persistenceApiUrl, persistenceAuthHeadersAsync } from '@/features/api/persistenceApi'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
+import { mapWithConcurrency } from '@/features/shared/asyncConcurrency'
 import { normalizeAssetUrls } from './assetUploadClient'
 import type { TangentAssetRecord, TangentAssetResponse } from './assetTypes'
+
+const maxConcurrentAssetRecordLoads = 8
 
 export async function loadAssetRecord(assetId: string, workspace?: TangentWorkspace) {
   const response = await fetch(
@@ -24,7 +27,7 @@ export async function loadAssetRecords(assetIds: string[], workspace?: TangentWo
   if (orderedIds.length === 0) return [] satisfies TangentAssetRecord[]
 
   const uniqueIds = [...new Set(orderedIds)]
-  const records = await Promise.all(uniqueIds.map((assetId) => loadAssetRecord(assetId, workspace)))
+  const records = await mapWithConcurrency(uniqueIds, maxConcurrentAssetRecordLoads, (assetId) => loadAssetRecord(assetId, workspace))
   const recordMap = new Map(records.map((asset) => [asset.id, asset]))
 
   return orderedIds.flatMap((assetId) => {

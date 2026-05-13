@@ -34,6 +34,15 @@ import {
   persistenceJsonHeadersAsync,
 } from '@/features/api/persistenceApi'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
+import {
+  loadCachedBoardListResource,
+  loadCachedBoardRecordResource,
+  primeBoardRecordResource,
+  removeBoardFromCaches,
+  upsertBoardSummaryInCaches,
+} from './boardResourceCache'
+import { detectBoardCanvasEngine } from './boardCanvasEngine'
+import { readBoardApiPayload, resolveBoardApiError } from './localBoardApiErrors'
 
 export type LocalBoardSaveResponse = BoardSaveResponse
 
@@ -57,6 +66,10 @@ export type LocalBoardShareLinkResponse = BoardShareLinkResponse
 export type LocalBoardShareLinkDeleteResponse = BoardShareLinkDeleteResponse
 export type LocalBoardShareLinkResolveResponse = BoardShareLinkResolveResponse
 
+type BoardRequestOptions = {
+  force?: boolean
+}
+
 export async function saveLocalBoardDocument(input: SerializedBoardSaveInput, workspace?: TangentWorkspace) {
   const headers = hasRemotePersistenceApi() ? await persistenceJsonHeadersAsync(workspace) : persistenceJsonHeaders(workspace)
   const response = await fetch(
@@ -67,26 +80,59 @@ export async function saveLocalBoardDocument(input: SerializedBoardSaveInput, wo
       method: 'POST',
     }
   )
-  const payload = await response.json() as LocalBoardSaveResponse
+  const payload = await readBoardApiPayload<LocalBoardSaveResponse>(response) as LocalBoardSaveResponse
   if (!response.ok || !payload.ok || !payload.board) {
-    throw new Error(payload.error || payload.audit?.issues[0]?.message || 'Local board save failed.')
+    throw new Error(resolveBoardApiError(payload, 'Local board save failed.'))
   }
+  upsertBoardSummaryInCaches(payload.board, workspace?.id ?? payload.board.workspaceId)
+  primeBoardRecordResource({
+    ...payload.board,
+    document: input.document,
+  }, workspace?.id ?? payload.board.workspaceId)
   return payload
 }
 
-export async function loadLocalBoardDocument(boardId: string, workspace?: TangentWorkspace) {
-  const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync(workspace) : persistenceAuthHeaders(workspace)
-  const response = await fetch(
-    hasRemotePersistenceApi()
-      ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(boardId)}`)
-      : `/api/boards/local-load?boardId=${encodeURIComponent(boardId)}`,
-    { headers }
+export async function loadLocalBoardDocument(boardId: string, workspace?: TangentWorkspace, options: BoardRequestOptions = {}) {
+  const board = await loadCachedBoardRecordResource(
+    boardId,
+    workspace?.id,
+    async () => {
+      const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync(workspace) : persistenceAuthHeaders(workspace)
+      const response = await fetch(
+        hasRemotePersistenceApi()
+          ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(boardId)}`)
+          : `/api/boards/local-load?boardId=${encodeURIComponent(boardId)}`,
+        { headers }
+      )
+      const payload = await readBoardApiPayload<LocalBoardLoadResponse>(response) as LocalBoardLoadResponse
+      if (!response.ok || !payload.ok || !payload.board) {
+        throw new Error(resolveBoardApiError(payload, 'Local board load failed.'))
+      }
+      upsertBoardSummaryInCaches({
+        assetCount: payload.board.assetCount,
+        byteSize: payload.board.byteSize,
+        canvasEngine: detectBoardCanvasEngine(payload.board.document),
+        cardColor: payload.board.cardColor,
+        createdAt: payload.board.createdAt,
+        description: payload.board.description,
+        id: payload.board.id,
+        isPinned: payload.board.isPinned,
+        isStarred: payload.board.isStarred,
+        lastOpenedAt: payload.board.lastOpenedAt,
+        ownerId: payload.board.ownerId,
+        savedAt: payload.board.savedAt,
+        shapeCount: payload.board.shapeCount,
+        shareId: payload.board.shareId,
+        thumbnailUrl: payload.board.thumbnailUrl,
+        title: payload.board.title,
+        visibility: payload.board.visibility,
+        workspaceId: payload.board.workspaceId,
+      }, workspace?.id ?? payload.board.workspaceId)
+      return payload.board
+    },
+    options,
   )
-  const payload = await response.json() as LocalBoardLoadResponse
-  if (!response.ok || !payload.ok || !payload.board) {
-    throw new Error(payload.error || 'Local board load failed.')
-  }
-  return payload
+  return { board, ok: true }
 }
 
 export async function loadSharedBoardDocument(shareId: string) {
@@ -95,26 +141,33 @@ export async function loadSharedBoardDocument(shareId: string) {
       ? persistenceApiUrl(`/api/v1/boards/share-links/${encodeURIComponent(shareId)}/board`)
       : `/api/boards/local-share-board?shareId=${encodeURIComponent(shareId)}`
   )
-  const payload = await response.json() as LocalBoardLoadResponse
+  const payload = await readBoardApiPayload<LocalBoardLoadResponse>(response) as LocalBoardLoadResponse
   if (!response.ok || !payload.ok || !payload.board) {
-    throw new Error(payload.error || 'Shared board load failed.')
+    throw new Error(resolveBoardApiError(payload, 'Shared board load failed.'))
   }
   return payload
 }
 
-export async function listLocalBoardDocuments(workspace?: TangentWorkspace) {
-  const headers = hasRemotePersistenceApi()
-    ? await persistenceAuthHeadersAsync(workspace)
-    : persistenceAuthHeaders(workspace)
-  const response = await fetch(
-    hasRemotePersistenceApi() ? persistenceApiUrl('/api/v1/boards') : '/api/boards/local-list',
-    { headers }
+export async function listLocalBoardDocuments(workspace?: TangentWorkspace, options: BoardRequestOptions = {}) {
+  const boards = await loadCachedBoardListResource(
+    workspace?.id,
+    async () => {
+      const headers = hasRemotePersistenceApi()
+        ? await persistenceAuthHeadersAsync(workspace)
+        : persistenceAuthHeaders(workspace)
+      const response = await fetch(
+        hasRemotePersistenceApi() ? persistenceApiUrl('/api/v1/boards') : '/api/boards/local-list',
+        { headers }
+      )
+      const payload = await readBoardApiPayload<LocalBoardListResponse>(response) as LocalBoardListResponse
+      if (!response.ok || !payload.ok) {
+        throw new Error(resolveBoardApiError(payload, 'Local board list failed.'))
+      }
+      return payload.boards
+    },
+    options,
   )
-  const payload = await response.json() as LocalBoardListResponse
-  if (!response.ok || !payload.ok) {
-    throw new Error(payload.error || 'Local board list failed.')
-  }
-  return payload
+  return { boards, ok: true }
 }
 
 export async function renameLocalBoardDocument(boardId: string, title: string, workspace?: TangentWorkspace) {
@@ -133,10 +186,11 @@ export async function updateLocalBoardMetadata(input: BoardMetadataUpdateInput, 
       method: hasRemotePersistenceApi() ? 'PATCH' : 'POST',
     }
   )
-  const payload = await response.json() as LocalBoardRenameResponse
+  const payload = await readBoardApiPayload<LocalBoardRenameResponse>(response) as LocalBoardRenameResponse
   if (!response.ok || !payload.ok || !payload.board) {
-    throw new Error(payload.error || 'Local board update failed.')
+    throw new Error(resolveBoardApiError(payload, 'Local board update failed.'))
   }
+  upsertBoardSummaryInCaches(payload.board, workspace?.id ?? payload.board.workspaceId)
   return payload
 }
 
@@ -152,10 +206,11 @@ export async function deleteLocalBoardDocument(boardId: string, workspace?: Tang
       method: hasRemotePersistenceApi() ? 'DELETE' : 'POST',
     }
   )
-  const payload = await response.json() as LocalBoardDeleteResponse
+  const payload = await readBoardApiPayload<LocalBoardDeleteResponse>(response) as LocalBoardDeleteResponse
   if (!response.ok || !payload.ok) {
-    throw new Error(payload.error || 'Local board delete failed.')
+    throw new Error(resolveBoardApiError(payload, 'Local board delete failed.'))
   }
+  removeBoardFromCaches(boardId, workspace?.id)
   return payload
 }
 
@@ -171,10 +226,11 @@ export async function copyLocalBoardDocument(boardId: string, workspace?: Tangen
       method: 'POST',
     }
   )
-  const payload = await response.json() as LocalBoardCopyResponse
+  const payload = await readBoardApiPayload<LocalBoardCopyResponse>(response) as LocalBoardCopyResponse
   if (!response.ok || !payload.ok || !payload.board) {
-    throw new Error(payload.error || 'Local board copy failed.')
+    throw new Error(resolveBoardApiError(payload, 'Local board copy failed.'))
   }
+  upsertBoardSummaryInCaches(payload.board, workspace?.id ?? payload.board.workspaceId)
   return payload
 }
 
@@ -186,9 +242,9 @@ export async function listLocalBoardMembers(boardId: string, workspace?: Tangent
       : `/api/boards/local-members?boardId=${encodeURIComponent(boardId)}`,
     { headers }
   )
-  const payload = await response.json() as LocalBoardMembersResponse
+  const payload = await readBoardApiPayload<LocalBoardMembersResponse>(response) as LocalBoardMembersResponse
   if (!response.ok || !payload.ok) {
-    throw new Error(payload.error || 'Board member list failed.')
+    throw new Error(resolveBoardApiError(payload, 'Board member list failed.'))
   }
   return payload
 }
@@ -205,9 +261,9 @@ export async function createLocalBoardMember(input: BoardMemberCreateInput, work
       method: 'POST',
     }
   )
-  const payload = await response.json() as LocalBoardMemberResponse
+  const payload = await readBoardApiPayload<LocalBoardMemberResponse>(response) as LocalBoardMemberResponse
   if (!response.ok || !payload.ok || !payload.member) {
-    throw new Error(payload.error || 'Board member create failed.')
+    throw new Error(resolveBoardApiError(payload, 'Board member create failed.'))
   }
   return payload
 }
@@ -218,9 +274,9 @@ export async function searchLocalBoardMemberCandidates(boardId: string, query: s
     ? persistenceApiUrl(`/api/v1/boards/${encodeURIComponent(boardId)}/member-candidates?query=${encodeURIComponent(query)}`)
     : `/api/boards/local-members?boardId=${encodeURIComponent(boardId)}&query=${encodeURIComponent(query)}`
   const response = await fetch(url, { headers })
-  const payload = await response.json() as LocalBoardMemberCandidatesResponse
+  const payload = await readBoardApiPayload<LocalBoardMemberCandidatesResponse>(response) as LocalBoardMemberCandidatesResponse
   if (!response.ok || !payload.ok) {
-    throw new Error(payload.error || 'Board member lookup failed.')
+    throw new Error(resolveBoardApiError(payload, 'Board member lookup failed.'))
   }
   return payload
 }
@@ -237,9 +293,9 @@ export async function inviteLocalBoardMemberByEmail(input: BoardMemberInviteByEm
       method: 'POST',
     }
   )
-  const payload = await response.json() as LocalBoardMemberResponse
+  const payload = await readBoardApiPayload<LocalBoardMemberResponse>(response) as LocalBoardMemberResponse
   if (!response.ok || !payload.ok || !payload.member) {
-    throw new Error(payload.error || 'Board email invite failed.')
+    throw new Error(resolveBoardApiError(payload, 'Board email invite failed.'))
   }
   return payload
 }
@@ -256,9 +312,9 @@ export async function updateLocalBoardMember(input: BoardMemberUpdateInput, work
       method: hasRemotePersistenceApi() ? 'PATCH' : 'PATCH',
     }
   )
-  const payload = await response.json() as LocalBoardMemberResponse
+  const payload = await readBoardApiPayload<LocalBoardMemberResponse>(response) as LocalBoardMemberResponse
   if (!response.ok || !payload.ok || !payload.member) {
-    throw new Error(payload.error || 'Board member update failed.')
+    throw new Error(resolveBoardApiError(payload, 'Board member update failed.'))
   }
   return payload
 }
@@ -275,9 +331,9 @@ export async function deleteLocalBoardMember(boardId: string, userId: string, wo
       method: 'DELETE',
     }
   )
-  const payload = await response.json() as LocalBoardMemberDeleteResponse
+  const payload = await readBoardApiPayload<LocalBoardMemberDeleteResponse>(response) as LocalBoardMemberDeleteResponse
   if (!response.ok || !payload.ok || !payload.userId) {
-    throw new Error(payload.error || 'Board member remove failed.')
+    throw new Error(resolveBoardApiError(payload, 'Board member remove failed.'))
   }
   return payload
 }
@@ -299,9 +355,9 @@ export async function ensureLocalBoardShareLink(
       method: 'POST',
     }
   )
-  const payload = await response.json() as LocalBoardShareLinkResponse
+  const payload = await readBoardApiPayload<LocalBoardShareLinkResponse>(response) as LocalBoardShareLinkResponse
   if (!response.ok || !payload.ok || !payload.shareLink) {
-    throw new Error(payload.error || 'Board share link failed.')
+    throw new Error(resolveBoardApiError(payload, 'Board share link failed.'))
   }
   return payload
 }
@@ -318,9 +374,9 @@ export async function revokeLocalBoardShareLink(boardId: string, shareId: string
       method: 'DELETE',
     }
   )
-  const payload = await response.json() as LocalBoardShareLinkDeleteResponse
+  const payload = await readBoardApiPayload<LocalBoardShareLinkDeleteResponse>(response) as LocalBoardShareLinkDeleteResponse
   if (!response.ok || !payload.ok || !payload.shareId) {
-    throw new Error(payload.error || 'Board share link revoke failed.')
+    throw new Error(resolveBoardApiError(payload, 'Board share link revoke failed.'))
   }
   return payload
 }
@@ -331,9 +387,9 @@ export async function resolveLocalBoardShareLink(shareId: string) {
       ? persistenceApiUrl(`/api/v1/boards/share-links/${encodeURIComponent(shareId)}`)
       : `/api/boards/local-share-link?shareId=${encodeURIComponent(shareId)}`
   )
-  const payload = await response.json() as LocalBoardShareLinkResolveResponse
+  const payload = await readBoardApiPayload<LocalBoardShareLinkResolveResponse>(response) as LocalBoardShareLinkResolveResponse
   if (!response.ok || !payload.ok || !payload.shareLink) {
-    throw new Error(payload.error || 'Board share link resolve failed.')
+    throw new Error(resolveBoardApiError(payload, 'Board share link resolve failed.'))
   }
   return payload
 }
@@ -350,9 +406,9 @@ export async function createBoardSnapshot(input: SerializedBoardSnapshotCreateIn
       method: 'POST',
     }
   )
-  const payload = await response.json() as LocalBoardSnapshotCreateResponse
+  const payload = await readBoardApiPayload<LocalBoardSnapshotCreateResponse>(response) as LocalBoardSnapshotCreateResponse
   if (!response.ok || !payload.ok || !payload.snapshot) {
-    throw new Error(payload.error || 'Board history failed.')
+    throw new Error(resolveBoardApiError(payload, 'Board history failed.'))
   }
   return payload
 }
@@ -365,9 +421,9 @@ export async function listBoardSnapshots(boardId: string, workspace?: TangentWor
       : `/api/boards/local-snapshots?boardId=${encodeURIComponent(boardId)}`,
     { headers }
   )
-  const payload = await response.json() as LocalBoardSnapshotListResponse
+  const payload = await readBoardApiPayload<LocalBoardSnapshotListResponse>(response) as LocalBoardSnapshotListResponse
   if (!response.ok || !payload.ok) {
-    throw new Error(payload.error || 'Board history list failed.')
+    throw new Error(resolveBoardApiError(payload, 'Board history list failed.'))
   }
   return payload
 }
@@ -380,9 +436,9 @@ export async function loadBoardSnapshot(boardId: string, snapshotId: string, wor
       : `/api/boards/local-snapshot?boardId=${encodeURIComponent(boardId)}&snapshotId=${encodeURIComponent(snapshotId)}`,
     { headers }
   )
-  const payload = await response.json() as LocalBoardSnapshotLoadResponse
+  const payload = await readBoardApiPayload<LocalBoardSnapshotLoadResponse>(response) as LocalBoardSnapshotLoadResponse
   if (!response.ok || !payload.ok || !payload.snapshot) {
-    throw new Error(payload.error || 'Board history load failed.')
+    throw new Error(resolveBoardApiError(payload, 'Board history load failed.'))
   }
   return payload
 }
@@ -398,9 +454,9 @@ export async function clearBoardSnapshots(boardId: string, workspace?: TangentWo
       method: 'DELETE',
     }
   )
-  const payload = await response.json() as LocalBoardSnapshotClearResponse
+  const payload = await readBoardApiPayload<LocalBoardSnapshotClearResponse>(response) as LocalBoardSnapshotClearResponse
   if (!response.ok || !payload.ok) {
-    throw new Error(payload.error || 'Board history clear failed.')
+    throw new Error(resolveBoardApiError(payload, 'Board history clear failed.'))
   }
   return payload
 }

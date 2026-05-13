@@ -1,18 +1,21 @@
 import { NextResponse } from 'next/server'
 import { getApiRequestContext } from '../../_lib/apiRequestContext'
+import { readJsonRequestWithLimit, requestBodyErrorStatus } from '../../_lib/requestBodyLimits'
 import { getBoardStorageAdapter } from '../_lib/boardStorageAdapter'
 
 export const runtime = 'nodejs'
 
+const maxBoardSnapshotRequestBytes = 3 * 1024 * 1024
+
 export async function POST(request: Request) {
   try {
-    const body = await request.json() as {
+    const body = await readJsonRequestWithLimit<{
       boardId?: string
       document?: unknown
       reason?: string
       thumbnailUrl?: string | null
       title?: string
-    }
+    }>(request, maxBoardSnapshotRequestBytes)
     if (!body.boardId) throw new Error('Missing boardId.')
     if (!Object.hasOwn(body, 'document')) throw new Error('Missing board document.')
     const reason = body.reason === 'autosave' ||
@@ -33,7 +36,7 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Board history failed.', ok: false },
-      { status: 400 }
+      { status: requestBodyErrorStatus(error) }
     )
   }
 }

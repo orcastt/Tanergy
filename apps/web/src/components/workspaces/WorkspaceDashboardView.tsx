@@ -11,8 +11,8 @@ import {
   type WorkspaceDashboardAction,
   type WorkspaceDashboardBoard,
   type TeamWorkspaceDashboardRecord,
-} from '@/features/workspaces/workspaceDashboardMock'
-import { formatWorkspacePlanName } from '@/features/workspaces/workspaceDirectoryMock'
+} from '@/features/workspaces/workspaceDashboardTypes'
+import { formatWorkspacePlanName } from '@/features/workspaces/workspacePresentation'
 import { useWorkspaceDashboardRuntime } from './useWorkspaceDashboardRuntime'
 
 type WorkspaceDashboardViewProps = {
@@ -92,7 +92,7 @@ function TeamDashboardLayout({
   workspace: TangentWorkspace
   viewMode: BoardViewMode
 }) {
-  const creditPercent = Math.min(100, Math.round((record.totalCreditsRemaining / record.totalCredits) * 100))
+  const creditPercent = getCreditPercent(record.totalCreditsRemaining, record.totalCredits)
 
   return (
     <div className="workspace-detail-stack">
@@ -120,7 +120,7 @@ function TeamDashboardLayout({
               </div>
             ))}
           </div>
-          <div className="workspace-detail-pagination"><span>1</span><span>2</span><span>3</span><span>...</span><span>10</span></div>
+          <small className="workspace-detail-status">{record.members.length} members synced from the live workspace contract.</small>
         </section>
       </section>
 
@@ -145,7 +145,7 @@ function GroupDashboardLayout({
   workspace: TangentWorkspace
   viewMode: BoardViewMode
 }) {
-  const creditPercent = Math.min(100, Math.round((record.totalCreditsRemaining / record.totalCredits) * 100))
+  const creditPercent = getCreditPercent(record.totalCreditsRemaining, record.totalCredits)
 
   return (
     <div className="workspace-detail-stack">
@@ -183,6 +183,11 @@ function GroupDashboardLayout({
       </section>
     </div>
   )
+}
+
+function getCreditPercent(remaining: number, total: number) {
+  if (!Number.isFinite(total) || total <= 0) return 0
+  return Math.min(100, Math.round((remaining / total) * 100))
 }
 
 function DashboardActionsPanel({
@@ -228,14 +233,16 @@ function DashboardBoardPanel({
         ? `workspace-detail-board-grid${kind === 'group' ? ' is-group' : ''}`
         : 'workspace-detail-board-list'}
       >
-        {boards.slice(0, kind === 'group' ? 12 : 9).map((board) => (
+        {boards.length === 0 ? (
+          <div className="workspace-detail-status">No boards in this workspace yet.</div>
+        ) : boards.slice(0, kind === 'group' ? 12 : 9).map((board) => (
           <button className={`workspace-detail-board-card ${viewMode === 'list' ? 'is-list' : ''}`} data-card-color={board.cardColor} key={board.id} type="button">
             <span className="workspace-detail-board-thumb" aria-hidden="true" />
             <strong>{board.title}</strong>
           </button>
         ))}
       </div>
-      <div className="workspace-detail-pagination"><span>1</span><span>2</span><span>3</span><span>...</span><span>10</span></div>
+      {boards.length ? <small className="workspace-detail-status">{boards.length} boards synced.</small> : null}
     </section>
   )
 }

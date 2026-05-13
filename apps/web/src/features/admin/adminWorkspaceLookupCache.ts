@@ -11,6 +11,8 @@ const workspaceLookupStore = new Map<string, {
 }>()
 
 const workspaceById = new Map<string, AdminDirectoryWorkspaceRecord>()
+const workspaceLookupMaxEntries = 24
+const workspaceRecordMaxEntries = 200
 
 export function loadAdminWorkspaceLookup(query: {
   kind: 'group_workspace' | 'team_workspace'
@@ -27,8 +29,10 @@ export function loadAdminWorkspaceLookup(query: {
       return resource.workspaces
     },
     {
-      storage: 'local',
+      maxEntries: workspaceLookupMaxEntries,
+      storage: 'session',
       storageKey: `tanergy.admin.workspace-lookup.${signature}`,
+      storagePrefix: 'tanergy.admin.workspace-lookup.',
       ttlMs: 120_000,
     },
   )
@@ -41,8 +45,10 @@ export function readAdminWorkspaceLookup(query: {
 }) {
   const signature = workspaceLookupKey(query)
   return readClientResource(workspaceLookupStore, signature, {
-    storage: 'local',
+    maxEntries: workspaceLookupMaxEntries,
+    storage: 'session',
     storageKey: `tanergy.admin.workspace-lookup.${signature}`,
+    storagePrefix: 'tanergy.admin.workspace-lookup.',
     ttlMs: 120_000,
   })
 }
@@ -52,7 +58,15 @@ export function readAdminWorkspaceLookupRecord(workspaceId: string) {
 }
 
 function primeWorkspaceRecords(records: AdminDirectoryWorkspaceRecord[]) {
-  for (const record of records) workspaceById.set(record.id, record)
+  for (const record of records) {
+    workspaceById.delete(record.id)
+    workspaceById.set(record.id, record)
+  }
+  while (workspaceById.size > workspaceRecordMaxEntries) {
+    const oldest = workspaceById.keys().next().value
+    if (!oldest) break
+    workspaceById.delete(oldest)
+  }
 }
 
 function workspaceLookupKey(query: {

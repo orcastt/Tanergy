@@ -10,7 +10,7 @@ import type { ApiRequestContext } from '../../_lib/apiRequestContext'
 
 const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const maxAssetBytes = 100 * 1024 * 1024
-const storageRoot = process.env.TANGENT_ASSET_STORAGE_DIR ?? path.join(process.cwd(), '.tangent-assets')
+const storageRoot = process.env.TANGENT_ASSET_STORAGE_DIR ?? getDefaultLocalStorageRoot('.tangent-assets')
 const assetsRoot = path.join(storageRoot, 'assets')
 
 type ParsedDataUrl = {
@@ -120,11 +120,17 @@ async function readStoredAssetRecord(assetId: string, context: ApiRequestContext
 }
 
 function parseImageDataUrl(dataUrl: string): ParsedDataUrl {
-  const match = /^data:([^;,]+);base64,(.+)$/s.exec(dataUrl)
+  const match = /^data:([^;,]+);base64,([a-zA-Z0-9+/=\s]+)$/s.exec(dataUrl)
   if (!match) throw new Error('Invalid image data URL.')
+  const mime = match[1]?.toLowerCase() ?? ''
+  assertImageMime(mime)
+  const base64 = (match[2] ?? '').replace(/\s+/g, '')
+  assertAssetSize(estimateBase64ByteLength(base64))
+  const buffer = Buffer.from(base64, 'base64')
+  assertAssetSize(buffer.byteLength)
   return {
-    buffer: Buffer.from(match[2] ?? '', 'base64'),
-    mime: match[1] ?? '',
+    buffer,
+    mime,
   }
 }
 
@@ -138,6 +144,7 @@ async function writeThumbnail(
   if (!thumbnail?.dataUrl) return
   const parsed = parseImageDataUrl(thumbnail.dataUrl)
   assertImageMime(parsed.mime)
+  assertAssetSize(parsed.buffer.byteLength)
   const fileName = `thumb-${size}.${getExtension(parsed.mime)}`
   await writeFile(path.join(assetDir, fileName), parsed.buffer)
   urls[`thumbnail${size}Url` as keyof typeof urls] = createFileUrl(assetId, fileName)
@@ -159,6 +166,12 @@ function assertAssetSize(byteSize: number) {
   if (byteSize > maxAssetBytes) throw new Error('Image must be 100MB or smaller.')
 }
 
+function estimateBase64ByteLength(base64: string) {
+  if (!base64 || base64.length % 4 !== 0) throw new Error('Invalid image data URL.')
+  const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0
+  return Math.floor((base64.length * 3) / 4) - padding
+}
+
 function getExtension(mime: string) {
   if (mime === 'image/png') return 'png'
   if (mime === 'image/webp') return 'webp'
@@ -169,6 +182,10 @@ function getMimeFromFileName(fileName: string) {
   if (fileName.endsWith('.png')) return 'image/png'
   if (fileName.endsWith('.webp')) return 'image/webp'
   return 'image/jpeg'
+}
+
+function getDefaultLocalStorageRoot(directoryName: string) {
+  return path.join(/*turbopackIgnore: true*/ process.cwd(), '..', '..', directoryName)
 }
 
 function normalizeAssetRecord(record: Partial<TangentAssetRecord>, context: ApiRequestContext): TangentAssetRecord {

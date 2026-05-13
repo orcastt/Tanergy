@@ -1,0 +1,468 @@
+'use client'
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { distanceBetweenPoints, type CanvasPoint } from '@/features/canvas-engine'
+import type { TangentWorkspace } from '@/features/auth/sessionTypes'
+import {
+  type BoardRealtimeAwarenessConnection,
+  type BoardRealtimeAwarenessState,
+  type BoardRealtimeAwarenessStatus,
+  connectBoardRealtimeAwareness,
+  createBoardRealtimeClientInstanceId,
+  createBoardRealtimeRoomDescriptor,
+  hasSupportedBoardRealtimeTransport,
+} from '@/features/collaboration/boardRealtimeTransport'
+import type { LocalBoardAwarenessState } from '@/features/collaboration/localBoardAwareness'
+import {
+  claimBoardCollaborationSession,
+  releaseBoardCollaborationSession,
+} from '@/features/boards/boardCollaborationClient'
+import type {
+  BoardCollaborationPresence,
+  BoardCollaborationSessionRecord,
+  BoardCollaborationSessionsResponse,
+  BoardCollaborationShapeOccupancy,
+} from '@/features/boards/boardCollaborationTypes'
+import {
+  deriveBoardShapeOccupancy,
+  normalizePresenceShapeId,
+  normalizePresenceShapeIds,
+} from '@/features/boards/boardCollaborationPresenceUtils'
+
+type UseBoardCollaborationPresenceOptions = {
+  activePageId?: string | null
+  boardId?: string
+  enabled?: boolean
+  selectedIds?: string[]
+  tool?: string | null
+  workspace?: TangentWorkspace
+}
+
+type CollaborationStatus = 'error' | 'idle' | 'loading' | 'ready'
+
+type CollaborationState = {
+  activeSessions: BoardCollaborationSessionRecord[]
+  boardSavedAt: string | null
+  canEdit: boolean
+  error: string | null
+  permission: BoardCollaborationSessionsResponse['permission'] | null
+  roomKey: string | null
+  shapeOccupancy: BoardCollaborationShapeOccupancy[]
+  status: CollaborationStatus
+  transportState: BoardRealtimeAwarenessState
+  transportStatus: BoardRealtimeAwarenessStatus
+}
+
+const heartbeatIntervalMs = 20_000
+const presenceDebounceMs = 600
+const cursorSyncDistance = 10
+const maxRealtimeAwarenessStates = 64
+
+export function useBoardCollaborationPresence({
+  activePageId = null,
+  boardId,
+  enabled = true,
+  selectedIds = [],
+  tool = null,
+  workspace,
+}: UseBoardCollaborationPresenceOptions) {
+  const [clientInstanceId] = useState(createBoardRealtimeClientInstanceId)
+  const shouldConnect = enabled && Boolean(boardId && workspace?.id)
+  const [state, setState] = useState<CollaborationState>({
+    activeSessions: [],
+    boardSavedAt: null,
+    canEdit: true,
+    error: null,
+    permission: null,
+    roomKey: null,
+    shapeOccupancy: [],
+    status: enabled && boardId && workspace ? 'loading' : 'idle',
+    transportState: resolveInitialTransportState(shouldConnect, boardId),
+    transportStatus: resolveInitialTransportState(shouldConnect, boardId).status,
+  })
+  const currentSessionIdRef = useRef<string | null>(null)
+  const latestCursorRef = useRef<BoardCollaborationPresence['cursor']>(null)
+  const latestEditingShapeIdsRef = useRef<string[]>([])
+  const latestHoveredShapeIdRef = useRef<string | null>(null)
+  const latestPresenceRef = useRef<BoardCollaborationPresence>({
+    activePageId: null,
+    cursor: null,
+    editingShapeIds: [],
+    hoveredShapeId: null,
+    selectionIds: [],
+    state: 'idle',
+    tool: null,
+  })
+  const awarenessConnectionRef = useRef<BoardRealtimeAwarenessConnection | null>(null)
+  const realtimeAwarenessRef = useRef<Map<string, LocalBoardAwarenessState>>(new Map())
+  const debounceTimerRef = useRef<number | null>(null)
+	  const requestIdRef = useRef(0)
+	  const claimControllerRef = useRef<AbortController | null>(null)
+	  const releaseKeyRef = useRef<string | null>(null)
+  const presence = useMemo<BoardCollaborationPresence>(() => ({
+    activePageId,
+    cursor: latestCursorRef.current,
+    editingShapeIds: latestEditingShapeIdsRef.current,
+    hoveredShapeId: latestHoveredShapeIdRef.current,
+    selectionIds: selectedIds.slice(0, 12),
+    state: derivePresenceState(tool, selectedIds, latestEditingShapeIdsRef.current),
+    tool: tool?.trim() ? tool.trim() : null,
+  }), [activePageId, selectedIds, tool])
+
+  useEffect(() => {
+    latestPresenceRef.current = presence
+    awarenessConnectionRef.current?.setLocalState(presence)
+    setState((current) => {
+      const activeSessions = mergeRealtimeAwareness(
+        patchOptimisticSelfSession(current.activeSessions, currentSessionIdRef.current, presence),
+        realtimeAwarenessRef.current,
+      )
+      return {
+        ...current,
+        activeSessions,
+        shapeOccupancy: deriveBoardShapeOccupancy(activeSessions, realtimeAwarenessRef.current),
+      }
+    })
+  }, [presence])
+
+	  const syncPresence = useCallback(async (markLoading = false) => {
+	    if (!shouldConnect || !boardId || !workspace) return
+	    const requestId = ++requestIdRef.current
+	    claimControllerRef.current?.abort()
+	    const controller = new AbortController()
+	    claimControllerRef.current = controller
+	    if (markLoading) {
+      setState((current) => ({
+        ...current,
+        error: null,
+        status: current.activeSessions.length > 0 ? 'ready' : 'loading',
+      }))
+    }
+    try {
+	      const response = await claimBoardCollaborationSession(
+	        boardId,
+	        {
+	          clientInstanceId,
+	          presence: latestPresenceRef.current,
+	          ttlSeconds: 45,
+	        },
+	        workspace,
+	        { signal: controller.signal },
+	      )
+	      if (claimControllerRef.current === controller) claimControllerRef.current = null
+	      if (requestId !== requestIdRef.current) return
+      currentSessionIdRef.current = response.selfSession?.id ?? currentSessionIdRef.current
+      setState((current) => {
+        realtimeAwarenessRef.current = createRealtimeAwarenessMap(
+          [...realtimeAwarenessRef.current.values()],
+          response.activeSessions,
+        )
+        const activeSessions = mergeRealtimeAwareness(response.activeSessions, realtimeAwarenessRef.current)
+        return {
+          ...current,
+          activeSessions,
+          boardSavedAt: response.boardSavedAt,
+          canEdit: response.canEdit,
+          error: null,
+          permission: response.permission,
+          roomKey: response.roomKey,
+          shapeOccupancy: deriveBoardShapeOccupancy(activeSessions, realtimeAwarenessRef.current),
+          status: 'ready',
+        }
+      })
+	    } catch (error) {
+	      if (claimControllerRef.current === controller) claimControllerRef.current = null
+	      if (controller.signal.aborted) return
+	      if (requestId !== requestIdRef.current) return
+      setState((current) => ({
+        ...current,
+        error: error instanceof Error ? error.message : 'Board presence failed to load.',
+        status: current.activeSessions.length > 0 ? 'ready' : 'error',
+      }))
+    }
+  }, [boardId, clientInstanceId, shouldConnect, workspace])
+
+  useEffect(() => {
+    if (!shouldConnect || !boardId || !workspace) {
+      const transportState = resolveInitialTransportState(false, boardId)
+      setState({
+        activeSessions: [],
+        boardSavedAt: null,
+        canEdit: true,
+        error: null,
+        permission: null,
+        roomKey: null,
+        shapeOccupancy: [],
+        status: 'idle',
+        transportState,
+        transportStatus: transportState.status,
+      })
+      return
+    }
+    const releaseKey = `${workspace.id}:${boardId}:${clientInstanceId}`
+    releaseKeyRef.current = releaseKey
+    void syncPresence(true)
+    const intervalId = window.setInterval(() => {
+      void syncPresence(false)
+    }, heartbeatIntervalMs)
+	    return () => {
+	      window.clearInterval(intervalId)
+	      requestIdRef.current += 1
+	      claimControllerRef.current?.abort()
+	      claimControllerRef.current = null
+	      if (debounceTimerRef.current !== null) {
+        window.clearTimeout(debounceTimerRef.current)
+        debounceTimerRef.current = null
+      }
+      const sessionId = currentSessionIdRef.current
+      currentSessionIdRef.current = null
+      if (sessionId && releaseKeyRef.current === releaseKey) {
+        void releaseBoardCollaborationSession(boardId, sessionId, workspace).catch(() => {})
+      }
+    }
+  }, [boardId, clientInstanceId, shouldConnect, syncPresence, workspace])
+
+  useEffect(() => {
+    if (!shouldConnect || !state.roomKey) {
+      awarenessConnectionRef.current?.disconnect()
+      awarenessConnectionRef.current = null
+      realtimeAwarenessRef.current.clear()
+      setState((current) => {
+        const transportState = resolveInitialTransportState(shouldConnect, boardId)
+        return {
+          ...current,
+          shapeOccupancy: [],
+          transportState,
+          transportStatus: transportState.status,
+        }
+      })
+      return
+    }
+    const connection = connectBoardRealtimeAwareness(
+      createBoardRealtimeRoomDescriptor(state.roomKey, { boardId }),
+      clientInstanceId,
+      { workspace },
+    )
+    awarenessConnectionRef.current = connection
+    setState((current) => ({
+      ...current,
+      transportState: connection.getState(),
+      transportStatus: connection.getState().status,
+    }))
+    connection.setLocalState(latestPresenceRef.current)
+    const unsubscribe = connection.subscribe((states) => {
+      setState((current) => {
+        realtimeAwarenessRef.current = createRealtimeAwarenessMap(states, current.activeSessions)
+        const activeSessions = mergeRealtimeAwareness(current.activeSessions, realtimeAwarenessRef.current)
+        return {
+          ...current,
+          activeSessions,
+          shapeOccupancy: deriveBoardShapeOccupancy(activeSessions, realtimeAwarenessRef.current),
+        }
+      })
+    })
+    const unsubscribeState = connection.subscribeState((nextState) => {
+      setState((current) => ({
+        ...current,
+        transportState: nextState,
+        transportStatus: nextState.status,
+      }))
+    })
+    return () => {
+      unsubscribe()
+      unsubscribeState()
+      if (awarenessConnectionRef.current === connection) awarenessConnectionRef.current = null
+      connection.disconnect()
+      realtimeAwarenessRef.current.clear()
+    }
+  }, [boardId, clientInstanceId, shouldConnect, state.roomKey, workspace])
+
+  useEffect(() => {
+    if (!shouldConnect) return
+    if (debounceTimerRef.current !== null) {
+      window.clearTimeout(debounceTimerRef.current)
+    }
+    debounceTimerRef.current = window.setTimeout(() => {
+      debounceTimerRef.current = null
+      void syncPresence(false)
+    }, presenceDebounceMs)
+    return () => {
+      if (debounceTimerRef.current !== null) {
+        window.clearTimeout(debounceTimerRef.current)
+        debounceTimerRef.current = null
+      }
+    }
+  }, [presence, shouldConnect, syncPresence])
+
+  const applyLocalPresencePatch = useCallback((patch: Partial<BoardCollaborationPresence>) => {
+    latestPresenceRef.current = {
+      ...latestPresenceRef.current,
+      ...patch,
+    }
+    setState((current) => {
+      const activeSessions = mergeRealtimeAwareness(
+        patchOptimisticSelfSession(
+          current.activeSessions,
+          currentSessionIdRef.current,
+          latestPresenceRef.current,
+        ),
+        realtimeAwarenessRef.current,
+      )
+      return {
+        ...current,
+        activeSessions,
+        shapeOccupancy: deriveBoardShapeOccupancy(activeSessions, realtimeAwarenessRef.current),
+      }
+    })
+    awarenessConnectionRef.current?.setLocalState(latestPresenceRef.current)
+  }, [])
+
+  const setCursor = useCallback((point: CanvasPoint | null) => {
+    if (!shouldConnect) return
+    const nextCursor = point
+      ? {
+          x: Math.round(point.x * 1000) / 1000,
+          y: Math.round(point.y * 1000) / 1000,
+        }
+      : null
+    const currentCursor = latestCursorRef.current
+    if (
+      currentCursor
+      && nextCursor
+      && distanceBetweenPoints(currentCursor, nextCursor) < cursorSyncDistance
+    ) {
+      return
+    }
+    if (!currentCursor && !nextCursor) return
+    latestCursorRef.current = nextCursor
+    applyLocalPresencePatch({ cursor: nextCursor })
+  }, [applyLocalPresencePatch, shouldConnect])
+
+  const setHoveredShapeId = useCallback((shapeId: string | null) => {
+    if (!shouldConnect) return
+    const nextHoveredShapeId = normalizePresenceShapeId(shapeId)
+    if (latestHoveredShapeIdRef.current === nextHoveredShapeId) return
+    latestHoveredShapeIdRef.current = nextHoveredShapeId
+    applyLocalPresencePatch({ hoveredShapeId: nextHoveredShapeId })
+  }, [applyLocalPresencePatch, shouldConnect])
+
+  const setEditingShapeIds = useCallback((shapeIds: string[]) => {
+    if (!shouldConnect) return
+    const nextEditingShapeIds = normalizePresenceShapeIds(shapeIds)
+    if (JSON.stringify(latestEditingShapeIdsRef.current) === JSON.stringify(nextEditingShapeIds)) return
+    latestEditingShapeIdsRef.current = nextEditingShapeIds
+    applyLocalPresencePatch({ editingShapeIds: nextEditingShapeIds })
+  }, [applyLocalPresencePatch, shouldConnect])
+
+  return {
+    ...state,
+    activeCount: state.activeSessions.length,
+    clientInstanceId,
+    otherSessions: state.activeSessions.filter((session) => !session.isSelf),
+    setCursor,
+    setEditingShapeIds,
+    setHoveredShapeId,
+  }
+}
+
+function derivePresenceState(tool: string | null, selectedIds: string[], editingShapeIds: string[]) {
+  if (editingShapeIds.length > 0) return 'typing' as const
+  if (tool === 'draw') return 'drawing' as const
+  if (tool === 'hand') return 'panning' as const
+  if (selectedIds.length > 0) return 'selecting' as const
+  return 'viewing' as const
+}
+
+function patchOptimisticSelfSession(
+  sessions: BoardCollaborationSessionRecord[],
+  sessionId: string | null,
+  presence: BoardCollaborationPresence,
+) {
+  if (!sessionId) return sessions
+  let changed = false
+  const nextSessions = sessions.map((session) => {
+    if (session.id !== sessionId || !session.isSelf) return session
+    changed = true
+    return {
+      ...session,
+      lastHeartbeatAt: new Date().toISOString(),
+      presence,
+    }
+  })
+  return changed ? nextSessions : sessions
+}
+
+function mergeRealtimeAwareness(
+  sessions: BoardCollaborationSessionRecord[],
+  awarenessStates: Map<string, LocalBoardAwarenessState>,
+) {
+  if (awarenessStates.size === 0) return sessions
+  let changed = false
+  const nextSessions = sessions.map((session) => {
+    const awareness = awarenessStates.get(session.clientInstanceId)
+    if (!awareness || isSamePresence(session.presence, awareness.presence)) return session
+    changed = true
+    return {
+      ...session,
+      lastHeartbeatAt: isNewerIsoString(awareness.updatedAt, session.lastHeartbeatAt)
+        ? awareness.updatedAt
+        : session.lastHeartbeatAt,
+      presence: awareness.presence,
+    }
+  })
+  return changed ? nextSessions : sessions
+}
+
+function createRealtimeAwarenessMap(
+  states: Iterable<LocalBoardAwarenessState>,
+  sessions: BoardCollaborationSessionRecord[],
+) {
+  const activeClientIds = new Set(sessions.map((session) => session.clientInstanceId))
+  return new Map([...states]
+    .filter((state) => activeClientIds.has(state.clientInstanceId))
+    .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))
+    .slice(0, maxRealtimeAwarenessStates)
+    .map((state) => [state.clientInstanceId, state]))
+}
+
+function isNewerIsoString(left: string, right: string) {
+  const leftTime = Date.parse(left)
+  const rightTime = Date.parse(right)
+  if (Number.isNaN(leftTime) || Number.isNaN(rightTime)) return left > right
+  return leftTime > rightTime
+}
+
+function isSamePresence(left: BoardCollaborationPresence, right: BoardCollaborationPresence) {
+  return JSON.stringify(left) === JSON.stringify(right)
+}
+
+function resolveInitialTransportState(
+  shouldConnect: boolean,
+  boardId?: string,
+): BoardRealtimeAwarenessState {
+  if (!shouldConnect) {
+    return {
+      error: null,
+      initialSyncComplete: true,
+      lastActivityAt: null,
+      lastSyncedAt: null,
+      status: 'unsupported',
+    }
+  }
+  if (!hasSupportedBoardRealtimeTransport(boardId)) {
+    return {
+      error: null,
+      initialSyncComplete: true,
+      lastActivityAt: null,
+      lastSyncedAt: null,
+      status: 'unsupported',
+    }
+  }
+  return {
+    error: null,
+    initialSyncComplete: false,
+    lastActivityAt: null,
+    lastSyncedAt: null,
+    status: 'connecting',
+  }
+}

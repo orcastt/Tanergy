@@ -2,10 +2,15 @@
 
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import {
-  loadAdminPlanCatalog,
   type AdminPlanCatalogRecord,
   updateAdminPlanCatalog,
 } from './adminFinanceClient'
+import {
+  loadAdminPlanCatalogResource,
+  primeAdminPlanCatalogResource,
+  readAdminPlanCatalogResource,
+} from './adminPlanCatalogCache'
+import { clearCachedBillingResources } from '@/features/billing/billingResourceCache'
 import { formatDate, selectStyle } from './adminAiShared'
 
 type DraftFields = {
@@ -24,7 +29,6 @@ type DraftFields = {
   seatRange: string
 }
 
-const emptyDrafts: Record<string, DraftFields> = {}
 const billingPeriodOptions = [
   { label: 'none', value: 'none' },
   { label: 'monthly_or_annual', value: 'monthly_or_annual' },
@@ -38,17 +42,20 @@ export function AdminFinanceDashboard({
   groupsSeed: unknown
   teamsSeed: unknown
 }) {
-  const [plans, setPlans] = useState<AdminPlanCatalogRecord[]>([])
-  const [drafts, setDrafts] = useState<Record<string, DraftFields>>(emptyDrafts)
-  const [status, setStatus] = useState<'error' | 'loading' | 'ready'>('loading')
-  const [error, setError] = useState<string | null>(null)
+  const cachedCatalog = readAdminPlanCatalogResource()
+  const cachedPlans = cachedCatalog.data?.plans ?? []
+  const [plans, setPlans] = useState<AdminPlanCatalogRecord[]>(cachedPlans)
+  const [drafts, setDrafts] = useState<Record<string, DraftFields>>(() => createDraftMap(cachedPlans))
+  const [status, setStatus] = useState<'error' | 'loading' | 'ready' | 'refreshing'>(cachedCatalog.data ? 'ready' : cachedCatalog.status === 'error' ? 'error' : 'loading')
+  const [error, setError] = useState<string | null>(cachedCatalog.error ?? null)
+  const [reloadToken, setReloadToken] = useState(0)
   const [savingPlanKey, setSavingPlanKey] = useState('')
   const [message, setMessage] = useState('')
 
   useEffect(() => {
     if (!enabled) return
     let cancelled = false
-    loadAdminPlanCatalog()
+    loadAdminPlanCatalogResource({ force: reloadToken > 0 })
       .then((resource) => {
         if (cancelled) return
         setPlans(resource.plans)
@@ -58,15 +65,19 @@ export function AdminFinanceDashboard({
       })
       .catch((nextError: unknown) => {
         if (cancelled) return
-        setPlans([])
-        setDrafts(emptyDrafts)
         setError(nextError instanceof Error ? nextError.message : 'Plan catalog failed to load.')
         setStatus('error')
       })
     return () => {
       cancelled = true
     }
-  }, [enabled])
+  }, [enabled, reloadToken])
+
+  function refreshPlans() {
+    setMessage('')
+    setStatus((current) => (current === 'ready' ? 'refreshing' : 'loading'))
+    setReloadToken((value) => value + 1)
+  }
 
   const orderedPlans = useMemo(
     () => [...plans].sort((left, right) => planOrder(left.planKey) - planOrder(right.planKey)),
@@ -97,6 +108,8 @@ export function AdminFinanceDashboard({
       const nextPlans = plans.map((item) => (item.planKey === plan.planKey ? result.plan : item))
       setPlans(nextPlans)
       setDrafts(createDraftMap(nextPlans))
+      primeAdminPlanCatalogResource({ ok: true, plans: nextPlans })
+      clearCachedBillingResources('plans')
       setMessage(`${result.plan.name} saved.`)
       setError(null)
       setStatus('ready')
@@ -115,6 +128,14 @@ export function AdminFinanceDashboard({
           <div><h2>Subscription plans</h2></div>
           <div className="management-actions">
             {message ? <span className="management-inline-note">{message}</span> : null}
+            <button
+              className="product-button product-button-secondary"
+              disabled={status === 'loading' || status === 'refreshing'}
+              onClick={refreshPlans}
+              type="button"
+            >
+              Refresh
+            </button>
             <span className={`management-status ${status === 'ready' ? 'is-success' : ''}`}>{status}</span>
           </div>
         </div>
@@ -208,12 +229,7 @@ function updateDraft(
   }))
 }
 
-function NumberField({
-  label,
-  onChange,
-  placeholder,
-  value,
-}: {
+function NumberField({ label, onChange, placeholder, value }: {
   label: string
   onChange: (value: string) => void
   placeholder?: string
@@ -227,11 +243,7 @@ function NumberField({
   )
 }
 
-function TextField({
-  label,
-  onChange,
-  value,
-}: {
+function TextField({ label, onChange, value }: {
   label: string
   onChange: (value: string) => void
   value: string
@@ -244,12 +256,7 @@ function TextField({
   )
 }
 
-function SelectField({
-  label,
-  onChange,
-  options,
-  value,
-}: {
+function SelectField({ label, onChange, options, value }: {
   label: string
   onChange: (value: string) => void
   options: { label: string; value: string }[]

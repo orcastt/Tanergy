@@ -11,6 +11,7 @@ const usersOperatorStore = new Map<string, {
   promise?: Promise<AdminOperatorUsersResource>
   updatedAt: number
 }>()
+const usersOperatorMaxEntries = 24
 
 export function readAdminOperatorUsersResource(query: { limit: number; offset: number; search?: string }) {
   const signature = queryKey(query)
@@ -38,10 +39,10 @@ export function loadAdminOperatorUsersResource(query: { limit: number; offset: n
 export function invalidateAdminOperatorUsersCache() {
   usersOperatorStore.clear()
   if (typeof window === 'undefined') return
-  for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
-    const key = window.localStorage.key(index)
+  for (let index = window.sessionStorage.length - 1; index >= 0; index -= 1) {
+    const key = window.sessionStorage.key(index)
     if (key?.startsWith('tanergy.admin-operator-users.')) {
-      window.localStorage.removeItem(key)
+      window.sessionStorage.removeItem(key)
     }
   }
 }
@@ -72,8 +73,10 @@ function usersStorageKey(signature: string) {
 
 function cacheOptions(signature: string) {
   return {
-    storage: 'local' as const,
+    maxEntries: usersOperatorMaxEntries,
+    storage: 'session' as const,
     storageKey: usersStorageKey(signature),
+    storagePrefix: 'tanergy.admin-operator-users.',
     ttlMs: 300_000,
   }
 }

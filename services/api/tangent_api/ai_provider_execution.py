@@ -1,6 +1,8 @@
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import os
+from threading import BoundedSemaphore
 from typing import Optional
 
 from tangent_api.ai_provider_adapters import execute_ai_provider_attempt
@@ -26,6 +28,8 @@ class AiProviderExecutionOutcome:
 
 
 PROVIDER_ATTEMPT_EXECUTOR = ThreadPoolExecutor(max_workers=8, thread_name_prefix="tangent-provider")
+PROVIDER_ATTEMPT_QUEUE_LIMIT = int(os.getenv("TANGENT_AI_PROVIDER_ATTEMPT_QUEUE_LIMIT", "64"))
+PROVIDER_ATTEMPT_QUEUE_SEMAPHORE = BoundedSemaphore(PROVIDER_ATTEMPT_QUEUE_LIMIT)
 
 
 def run_ai_provider_execution(
@@ -68,7 +72,44 @@ def _execute_route_attempt(
     route: AiProviderRouteCandidate,
     context: ApiRequestContext,
 ) -> AiProviderAttemptResult:
-    future = PROVIDER_ATTEMPT_EXECUTOR.submit(execute_ai_provider_attempt, run, payload, route, context)
+    if not PROVIDER_ATTEMPT_QUEUE_SEMAPHORE.acquire(blocking=False):
+        return AiProviderAttemptResult(
+            created_at=_now_iso(),
+            error_code="provider_queue_full",
+            error_message="Provider execution queue is full. Try again shortly.",
+            latency_ms=0,
+            output_asset_ids=[],
+            provider=route.provider_key,
+            provider_cost=None,
+            provider_currency=None,
+            retryable=False,
+            route_id=route.route_id,
+            route_key=route.route_key,
+            status="failed",
+            text_output=None,
+            work_started=False,
+        )
+    try:
+        future = PROVIDER_ATTEMPT_EXECUTOR.submit(execute_ai_provider_attempt, run, payload, route, context)
+    except Exception as exc:
+        PROVIDER_ATTEMPT_QUEUE_SEMAPHORE.release()
+        return AiProviderAttemptResult(
+            created_at=_now_iso(),
+            error_code="provider_adapter_exception",
+            error_message=str(exc),
+            latency_ms=0,
+            output_asset_ids=[],
+            provider=route.provider_key,
+            provider_cost=None,
+            provider_currency=None,
+            retryable=False,
+            route_id=route.route_id,
+            route_key=route.route_key,
+            status="failed",
+            text_output=None,
+            work_started=False,
+        )
+    future.add_done_callback(lambda _future: PROVIDER_ATTEMPT_QUEUE_SEMAPHORE.release())
     timeout_seconds = max(0.001, route.timeout_ms / 1000)
     try:
         return future.result(timeout=timeout_seconds)

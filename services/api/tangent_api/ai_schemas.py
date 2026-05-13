@@ -1,6 +1,6 @@
 from typing import Any, Optional
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from tangent_api.schema_base import TangentApiModel
 
@@ -38,13 +38,46 @@ class AiRunChargeSummary(TangentApiModel):
 
 class AiRunRequest(TangentApiModel):
     board_id: Optional[str] = Field(default=None, alias="boardId")
-    input_asset_ids: list[str] = Field(default_factory=list, alias="inputAssetIds")
+    input_asset_ids: list[str] = Field(default_factory=list, alias="inputAssetIds", max_length=8)
     node_id: Optional[str] = Field(default=None, alias="nodeId")
     node_type: Optional[str] = Field(default=None, alias="nodeType")
     params: dict[str, Any] = Field(default_factory=dict)
     prompt: Optional[str] = None
     run_type: str = Field(alias="runType")
     selected_model_id: Optional[str] = Field(default=None, alias="selectedModelId")
+
+    @field_validator("input_asset_ids", mode="before")
+    @classmethod
+    def _normalize_input_asset_ids(cls, value):
+        if value is None:
+            return []
+        if not isinstance(value, list):
+            raise ValueError("inputAssetIds must be a list.")
+        unique_ids: list[str] = []
+        seen: set[str] = set()
+        for item in value:
+            if not isinstance(item, str):
+                raise ValueError("inputAssetIds must contain asset ids.")
+            asset_id = item.strip()
+            if not asset_id or asset_id in seen:
+                continue
+            seen.add(asset_id)
+            unique_ids.append(asset_id)
+        if len(unique_ids) > 8:
+            raise ValueError("inputAssetIds must contain at most 8 assets.")
+        return unique_ids
+
+    @field_validator("prompt", mode="before")
+    @classmethod
+    def _normalize_prompt(cls, value):
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise ValueError("prompt must be a string.")
+        prompt = value.strip()
+        if len(prompt) > 8000:
+            raise ValueError("prompt must be 8000 characters or fewer.")
+        return prompt or None
 
 
 class AiRunRecord(TangentApiModel):

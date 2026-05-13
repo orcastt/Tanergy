@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server'
 import type { BoardShareAccessRole } from '@/features/boards/boardTypes'
 import { getApiRequestContext } from '../../_lib/apiRequestContext'
+import { readJsonRequestWithLimit, requestBodyErrorStatus } from '../../_lib/requestBodyLimits'
 import { getBoardStorageAdapter } from '../_lib/boardStorageAdapter'
 
 export const runtime = 'nodejs'
+
+const maxBoardShareLinkRequestBytes = 8 * 1024
 
 export async function GET(request: Request) {
   try {
@@ -21,7 +24,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json() as { accessRole?: BoardShareAccessRole; boardId?: string; expiresAt?: string | null }
+    const body = await readJsonRequestWithLimit<{ accessRole?: BoardShareAccessRole; boardId?: string; expiresAt?: string | null }>(request, maxBoardShareLinkRequestBytes)
     if (!body.boardId) throw new Error('Missing boardId.')
     const shareLink = await getBoardStorageAdapter().ensureLocalBoardShareLink(
       body.boardId,
@@ -33,14 +36,14 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Board share link create failed.', ok: false },
-      { status: 400 }
+      { status: requestBodyErrorStatus(error) }
     )
   }
 }
 
 export async function DELETE(request: Request) {
   try {
-    const body = await request.json() as { boardId?: string; shareId?: string }
+    const body = await readJsonRequestWithLimit<{ boardId?: string; shareId?: string }>(request, maxBoardShareLinkRequestBytes)
     if (!body.boardId || !body.shareId) throw new Error('Missing boardId or shareId.')
     const revokedShareId = await getBoardStorageAdapter().revokeLocalBoardShareLink(
       body.boardId,
@@ -51,7 +54,7 @@ export async function DELETE(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Board share link revoke failed.', ok: false },
-      { status: 400 }
+      { status: requestBodyErrorStatus(error) }
     )
   }
 }

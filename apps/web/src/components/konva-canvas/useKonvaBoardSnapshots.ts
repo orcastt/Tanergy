@@ -95,13 +95,15 @@ export function useKonvaBoardSnapshots({
       if (!snapshot) throw new Error('Board history failed.')
       lastSnapshotSignature.current = signature
       if (!options.silent) setSnapshotMessage(`History saved at ${formatTime(snapshot.createdAt)}`)
-      await refreshSnapshots()
+      if (isHistoryOpen) {
+        setSnapshots((current) => [snapshot, ...current.filter((item) => item.id !== snapshot.id)])
+      }
     } catch (error) {
       setSnapshotError(error instanceof Error ? error.message : 'Board history failed.')
     } finally {
       setIsSnapshotRunning(false)
     }
-  }, [boardId, boardTitle, mode, refreshSnapshots, workspace])
+  }, [boardId, boardTitle, isHistoryOpen, mode, workspace])
 
   const saveSnapshot = useCallback(async (reason: BoardSnapshotReason) => {
     if (mode !== 'board') return

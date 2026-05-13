@@ -279,6 +279,67 @@ class BoardShareLinkResolveResponse(TangentApiModel):
     share_link: Optional[BoardShareLinkResolveRecord] = Field(default=None, alias="shareLink")
 
 
+class BoardCollaborationPresenceCursor(TangentApiModel):
+    x: float
+    y: float
+
+
+class BoardCollaborationPresence(TangentApiModel):
+    active_page_id: Optional[str] = Field(default=None, alias="activePageId")
+    cursor: Optional[BoardCollaborationPresenceCursor] = None
+    editing_shape_ids: list[str] = Field(default_factory=list, alias="editingShapeIds")
+    hovered_shape_id: Optional[str] = Field(default=None, alias="hoveredShapeId")
+    selection_ids: list[str] = Field(default_factory=list, alias="selectionIds")
+    state: Optional[str] = None
+    tool: Optional[str] = None
+
+
+class BoardCollaborationSessionUpsertRequest(TangentApiModel):
+    client_instance_id: str = Field(alias="clientInstanceId")
+    presence: BoardCollaborationPresence = Field(default_factory=BoardCollaborationPresence)
+    ttl_seconds: Optional[int] = Field(default=45, alias="ttlSeconds")
+
+
+class BoardCollaborationSessionRecord(TangentApiModel):
+    avatar_initials: str = Field(alias="avatarInitials")
+    board_id: str = Field(alias="boardId")
+    client_instance_id: str = Field(alias="clientInstanceId")
+    created_at: str = Field(alias="createdAt")
+    display_name: str = Field(alias="displayName")
+    expires_at: str = Field(alias="expiresAt")
+    id: str
+    is_self: bool = Field(alias="isSelf")
+    last_heartbeat_at: str = Field(alias="lastHeartbeatAt")
+    permission: str
+    presence: BoardCollaborationPresence = Field(default_factory=BoardCollaborationPresence)
+    user_id: str = Field(alias="userId")
+    workspace_id: str = Field(alias="workspaceId")
+    workspace_role: str = Field(alias="workspaceRole")
+
+
+class BoardCollaborationSessionsResponse(TangentApiModel):
+    active_sessions: list[BoardCollaborationSessionRecord] = Field(default_factory=list, alias="activeSessions")
+    board_id: str = Field(alias="boardId")
+    board_saved_at: str = Field(alias="boardSavedAt")
+    can_edit: bool = Field(alias="canEdit")
+    error: Optional[str] = None
+    ok: bool
+    permission: str
+    room_key: str = Field(alias="roomKey")
+    self_session: Optional[BoardCollaborationSessionRecord] = Field(default=None, alias="selfSession")
+    workspace_id: str = Field(alias="workspaceId")
+
+
+class BoardCollaborationSessionDeleteResponse(TangentApiModel):
+    active_sessions: list[BoardCollaborationSessionRecord] = Field(default_factory=list, alias="activeSessions")
+    board_id: str = Field(alias="boardId")
+    board_saved_at: str = Field(alias="boardSavedAt")
+    error: Optional[str] = None
+    ok: bool
+    session_id: str = Field(alias="sessionId")
+    workspace_id: str = Field(alias="workspaceId")
+
+
 def summarize_board_record(record: BoardRecord) -> BoardSummary:
     metrics = get_board_document_metrics(record.document)
     return BoardSummary(

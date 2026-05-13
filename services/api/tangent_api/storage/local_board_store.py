@@ -145,6 +145,8 @@ def list_boards_paginated(
 
     summaries: list[BoardSummary] = []
     for path in boards_root.glob("*.json"):
+        if path.name.endswith((".members.json", ".shares.json")):
+            continue
         try:
             record = BoardRecord.model_validate(json.loads(path.read_text(encoding="utf-8")))
         except Exception:

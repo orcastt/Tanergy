@@ -134,7 +134,9 @@ async function enforceSnapshotLimit(context: ApiRequestContext, boardId: string)
   const autosaves = snapshots.filter((snapshot) => getSnapshotRetentionKind(snapshot.reason) === 'autosave')
   const userSaves = snapshots.filter((snapshot) => getSnapshotRetentionKind(snapshot.reason) === 'user')
   const expired = [...autosaves.slice(limit), ...userSaves.slice(limit)]
-  await Promise.all(expired.map((snapshot) => rm(getSnapshotPath(context.workspaceId, boardId, snapshot.id), { force: true })))
+  for (const snapshot of expired) {
+    await rm(getSnapshotPath(context.workspaceId, boardId, snapshot.id), { force: true })
+  }
 }
 
 function getSnapshotRetentionKind(reason: BoardSnapshotRecord['reason']) {

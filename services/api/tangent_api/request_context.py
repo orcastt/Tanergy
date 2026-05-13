@@ -2,11 +2,11 @@ import os
 import re
 from typing import Optional
 
-from fastapi import Header, HTTPException, Request
+from fastapi import Header, HTTPException, Request, WebSocket
 from pydantic import BaseModel, Field
 
 from tangent_api.auth_provider import verify_bearer_token
-from tangent_api.auth_request_metadata import extract_request_ip
+from tangent_api.auth_request_metadata import extract_request_ip, normalize_last_ip_address
 from tangent_api.auth_sessions import resolve_local_auth_session
 
 ID_PATTERN = re.compile(r"^[a-zA-Z0-9._-]+$")
@@ -47,7 +47,7 @@ async def get_request_context(
     x_tangent_workspace_role: Optional[str] = Header(default=None),
     x_tangent_plan_key: Optional[str] = Header(default=None),
 ) -> ApiRequestContext:
-    require_auth = os.getenv("TANGENT_REQUIRE_API_AUTH") == "1"
+    require_auth = _requires_api_auth()
     token = _extract_request_token(request)
 
     if token:
@@ -121,6 +121,80 @@ async def get_request_context(
     )
 
 
+async def get_websocket_context(websocket: WebSocket) -> ApiRequestContext:
+    require_auth = _requires_api_auth()
+    token = _extract_connection_token(
+        authorization_header=websocket.headers.get("authorization"),
+        session_cookie=websocket.cookies.get("__session"),
+        query_token=websocket.query_params.get("token"),
+    )
+
+    if token:
+        return await resolve_authenticated_request_context(
+            token,
+            request_ip=_extract_websocket_ip(websocket),
+            requested_workspace_id=_normalize_optional_context_id(websocket.query_params.get("workspaceId"), "workspace id"),
+        )
+
+    if require_auth:
+        raise HTTPException(status_code=401, detail="Missing bearer auth token.")
+
+    has_explicit_context = bool(websocket.query_params.get("userId") and websocket.query_params.get("workspaceId"))
+    workspace_id = _normalize_context_id(
+        websocket.query_params.get("workspaceId")
+        or os.getenv("TANGENT_DEV_WORKSPACE_ID")
+        or "dev-workspace",
+        "workspace id",
+    )
+    workspace_kind = _normalize_workspace_kind(
+        websocket.query_params.get("workspaceKind")
+        or os.getenv("TANGENT_DEV_WORKSPACE_KIND")
+        or "solo_workspace"
+    )
+    workspace_role = _normalize_workspace_role(
+        websocket.query_params.get("workspaceRole")
+        or os.getenv("TANGENT_DEV_WORKSPACE_ROLE")
+        or "owner"
+    )
+    workspace_name = _normalize_workspace_name(
+        websocket.query_params.get("workspaceName")
+        or os.getenv("TANGENT_DEV_WORKSPACE_NAME")
+        or "Personal workspace"
+    )
+    workspace_plan_key = _normalize_workspace_plan_key(
+        websocket.query_params.get("planKey") or os.getenv("TANGENT_DEV_WORKSPACE_PLAN_KEY"),
+        workspace_kind,
+    )
+    return ApiRequestContext(
+        auth_mode="dev",
+        is_dev_fallback=not has_explicit_context,
+        user_avatar_initials="DU",
+        user_display_name="Dev User",
+        user_email="dev@tangent.local",
+        user_email_verified=False,
+        user_id=_normalize_context_id(
+            websocket.query_params.get("userId") or os.getenv("TANGENT_DEV_USER_ID") or "dev-user",
+            "user id",
+        ),
+        workspace_board_count=0,
+        workspace_id=workspace_id,
+        workspace_kind=workspace_kind,
+        workspace_memberships=[
+            ApiWorkspaceContext(
+                board_count=0,
+                workspace_id=workspace_id,
+                workspace_kind=workspace_kind,
+                workspace_name=workspace_name,
+                workspace_plan_key=workspace_plan_key,
+                workspace_role=workspace_role,
+            )
+        ],
+        workspace_name=workspace_name,
+        workspace_plan_key=workspace_plan_key,
+        workspace_role=workspace_role,
+    )
+
+
 async def resolve_authenticated_request_context(
     token: str,
     requested_workspace_id: Optional[str] = None,
@@ -165,17 +239,51 @@ async def resolve_authenticated_request_context(
 
 
 def _extract_request_token(request: Request) -> Optional[str]:
-    authorization = request.headers.get("authorization")
-    if authorization:
-        scheme, _, token = authorization.partition(" ")
+    return _extract_connection_token(
+        authorization_header=request.headers.get("authorization"),
+        session_cookie=request.cookies.get("__session"),
+        query_token=None,
+    )
+
+
+def _requires_api_auth() -> bool:
+    if os.getenv("TANGENT_REQUIRE_API_AUTH") == "1":
+        return True
+    return any(
+        os.getenv(name, "").strip().lower() in {"prod", "production"}
+        for name in ("TANGENT_ENV", "ENVIRONMENT", "APP_ENV", "PYTHON_ENV")
+    )
+
+
+def _extract_connection_token(
+    authorization_header: Optional[str],
+    session_cookie: Optional[str],
+    query_token: Optional[str],
+) -> Optional[str]:
+    if authorization_header:
+        scheme, _, token = authorization_header.partition(" ")
         if scheme.lower() != "bearer" or not token.strip():
             raise HTTPException(status_code=401, detail="Malformed bearer auth header.")
         return token.strip()
 
-    session_cookie = request.cookies.get("__session")
     if isinstance(session_cookie, str) and session_cookie.strip():
         return session_cookie.strip()
+    if isinstance(query_token, str) and query_token.strip():
+        return query_token.strip()
     return None
+
+
+def _extract_websocket_ip(websocket: WebSocket) -> Optional[str]:
+    for header_name in ("x-forwarded-for", "x-real-ip"):
+        raw_value = websocket.headers.get(header_name)
+        if not raw_value:
+            continue
+        candidate = raw_value.split(",")[0].strip()
+        normalized = normalize_last_ip_address(candidate)
+        if normalized:
+            return normalized
+    client = getattr(websocket, "client", None)
+    return normalize_last_ip_address(getattr(client, "host", None))
 
 
 def _normalize_context_id(value: str, label: str) -> str:

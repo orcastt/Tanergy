@@ -3,7 +3,10 @@ import { Image as KonvaImage, Rect } from 'react-konva'
 import type { CanvasImageShape } from '@/features/canvas-engine'
 
 const loadedCanvasImageCache = new Map<string, HTMLImageElement>()
-const maxLoadedCanvasImages = 160
+const maxLoadedCanvasImages = 48
+const maxLoadedCanvasImagePixels = 120 * 1024 * 1024
+const maxLoadedCanvasImagePixelsPerImage = 50 * 1024 * 1024
+const imageLoadTimeoutMs = 15_000
 
 type KonvaImageShapeProps = {
   opacity: number
@@ -67,19 +70,33 @@ function useLoadedImage(src: string | null) {
     }
     let cancelled = false
     const nextImage = new window.Image()
+    const timeout = window.setTimeout(() => {
+      if (cancelled) return
+      cancelled = true
+      nextImage.onload = null
+      nextImage.onerror = null
+      nextImage.src = ''
+      setLoaded(null)
+    }, imageLoadTimeoutMs)
     nextImage.decoding = 'async'
     if (src.startsWith('/') || src.startsWith(window.location.origin)) nextImage.crossOrigin = 'anonymous'
     nextImage.onload = () => {
       if (cancelled) return
+      window.clearTimeout(timeout)
       rememberLoadedCanvasImage(src, nextImage)
       setLoaded({ image: nextImage, src })
     }
     nextImage.onerror = () => {
+      window.clearTimeout(timeout)
       if (!cancelled) setLoaded(null)
     }
     nextImage.src = src
     return () => {
       cancelled = true
+      window.clearTimeout(timeout)
+      nextImage.onload = null
+      nextImage.onerror = null
+      nextImage.src = ''
     }
   }, [src])
 
@@ -89,13 +106,29 @@ function useLoadedImage(src: string | null) {
 }
 
 function rememberLoadedCanvasImage(src: string, image: HTMLImageElement) {
+  if (isTransientImageSource(src)) return
+  if (getImagePixelCount(image) > maxLoadedCanvasImagePixelsPerImage) return
   loadedCanvasImageCache.delete(src)
   loadedCanvasImageCache.set(src, image)
-  while (loadedCanvasImageCache.size > maxLoadedCanvasImages) {
+  while (loadedCanvasImageCache.size > maxLoadedCanvasImages || getCachedImagePixelCount() > maxLoadedCanvasImagePixels) {
     const oldest = loadedCanvasImageCache.keys().next().value
     if (!oldest) break
     loadedCanvasImageCache.delete(oldest)
   }
+}
+
+function getCachedImagePixelCount() {
+  let total = 0
+  for (const image of loadedCanvasImageCache.values()) total += getImagePixelCount(image)
+  return total
+}
+
+function getImagePixelCount(image: HTMLImageElement) {
+  return Math.max(1, image.naturalWidth) * Math.max(1, image.naturalHeight)
+}
+
+function isTransientImageSource(src: string) {
+  return src.startsWith('data:') || src.startsWith('blob:')
 }
 
 function useKonvaImageSource(shape: CanvasImageShape, zoom: number, previewMode: boolean) {

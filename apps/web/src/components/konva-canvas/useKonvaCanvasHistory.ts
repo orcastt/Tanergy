@@ -8,12 +8,21 @@ export type KonvaCanvasHistoryPageState = {
 }
 
 type CanvasHistorySnapshot = {
+  byteSize: number
   pageState: KonvaCanvasHistoryPageState | null
   runtimeEdges: CanvasRuntimeEdge[]
   selectedIds: string[]
   shapes: CanvasShape[]
   signature: string
 }
+
+type CanvasHistoryIdentity = {
+  byteSize: number
+  signature: string
+}
+
+const maxHistoryEntries = 60
+const maxHistoryBytes = 24 * 1024 * 1024
 
 type UseKonvaCanvasHistoryOptions = {
   document: CanvasDocument
@@ -48,11 +57,11 @@ export function useKonvaCanvasHistory({
 
   const checkpoint = useCallback((snapshotDocument: CanvasDocument = documentRef.current) => {
     const pageState = getPageStateRef.current?.(snapshotDocument) ?? null
-    const signature = createSnapshotSignature(snapshotDocument.shapes, snapshotDocument.runtimeEdges, selectedIdsRef.current, pageState)
+    const identity = createSnapshotIdentity(snapshotDocument.shapes, snapshotDocument.runtimeEdges, selectedIdsRef.current, pageState)
     const previous = undoStackRef.current.at(-1)
-    if (previous?.signature === signature) return
-    const snapshot = createSnapshot(snapshotDocument, selectedIdsRef.current, signature, pageState)
-    undoStackRef.current = [...undoStackRef.current, snapshot].slice(-80)
+    if (previous?.signature === identity.signature) return
+    const snapshot = createSnapshot(snapshotDocument, selectedIdsRef.current, identity, pageState)
+    undoStackRef.current = trimHistoryStack([...undoStackRef.current, snapshot])
     redoStackRef.current = []
   }, [])
 
@@ -65,7 +74,7 @@ export function useKonvaCanvasHistory({
     const snapshot = undoStackRef.current.at(-1)
     if (!snapshot) return
     undoStackRef.current = undoStackRef.current.slice(0, -1)
-    redoStackRef.current = [...redoStackRef.current, createSnapshot(documentRef.current, selectedIdsRef.current, undefined, getPageStateRef.current?.(documentRef.current) ?? null)]
+    redoStackRef.current = trimHistoryStack([...redoStackRef.current, createSnapshot(documentRef.current, selectedIdsRef.current, undefined, getPageStateRef.current?.(documentRef.current) ?? null)])
     restoreSnapshot(snapshot, onDocumentChange, onSelectionChange, onPageStateRestoreRef.current)
   }, [onDocumentChange, onSelectionChange])
 
@@ -73,7 +82,7 @@ export function useKonvaCanvasHistory({
     const snapshot = redoStackRef.current.at(-1)
     if (!snapshot) return
     redoStackRef.current = redoStackRef.current.slice(0, -1)
-    undoStackRef.current = [...undoStackRef.current, createSnapshot(documentRef.current, selectedIdsRef.current, undefined, getPageStateRef.current?.(documentRef.current) ?? null)]
+    undoStackRef.current = trimHistoryStack([...undoStackRef.current, createSnapshot(documentRef.current, selectedIdsRef.current, undefined, getPageStateRef.current?.(documentRef.current) ?? null)])
     restoreSnapshot(snapshot, onDocumentChange, onSelectionChange, onPageStateRestoreRef.current)
   }, [onDocumentChange, onSelectionChange])
 
@@ -83,16 +92,17 @@ export function useKonvaCanvasHistory({
 function createSnapshot(
   document: CanvasDocument,
   selectedIds: string[],
-  signature?: string,
+  identity?: CanvasHistoryIdentity,
   pageState: KonvaCanvasHistoryPageState | null = null
 ): CanvasHistorySnapshot {
-  const nextSignature = signature ?? createSnapshotSignature(document.shapes, document.runtimeEdges, selectedIds, pageState)
+  const nextIdentity = identity ?? createSnapshotIdentity(document.shapes, document.runtimeEdges, selectedIds, pageState)
   return {
+    byteSize: nextIdentity.byteSize,
     pageState: pageState ? clonePageState(pageState) : null,
     runtimeEdges: cloneRuntimeEdges(document.runtimeEdges),
     selectedIds: [...selectedIds],
     shapes: cloneShapes(document.shapes),
-    signature: nextSignature,
+    signature: nextIdentity.signature,
   }
 }
 
@@ -131,6 +141,31 @@ function clonePageState(state: KonvaCanvasHistoryPageState) {
     : JSON.parse(JSON.stringify(state)) as KonvaCanvasHistoryPageState
 }
 
-function createSnapshotSignature(shapes: CanvasShape[], runtimeEdges: CanvasRuntimeEdge[], selectedIds: string[], pageState: KonvaCanvasHistoryPageState | null) {
-  return `${JSON.stringify(pageState ?? { runtimeEdges, shapes })}\n${selectedIds.join('\0')}`
+function createSnapshotIdentity(shapes: CanvasShape[], runtimeEdges: CanvasRuntimeEdge[], selectedIds: string[], pageState: KonvaCanvasHistoryPageState | null): CanvasHistoryIdentity {
+  const documentPayload = JSON.stringify(pageState ?? { runtimeEdges, shapes })
+  const selectionPayload = selectedIds.join('\0')
+  return {
+    byteSize: documentPayload.length + selectionPayload.length,
+    signature: `${documentPayload.length}:${hashString(documentPayload)}:${selectionPayload.length}:${hashString(selectionPayload)}`,
+  }
+}
+
+function trimHistoryStack(stack: CanvasHistorySnapshot[]) {
+  let nextStack = stack.slice(-maxHistoryEntries)
+  let totalBytes = nextStack.reduce((total, snapshot) => total + snapshot.byteSize, 0)
+  while (nextStack.length > 1 && totalBytes > maxHistoryBytes) {
+    const [removed, ...rest] = nextStack
+    totalBytes -= removed.byteSize
+    nextStack = rest
+  }
+  return nextStack
+}
+
+function hashString(value: string) {
+  let hash = 2166136261
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return (hash >>> 0).toString(36)
 }

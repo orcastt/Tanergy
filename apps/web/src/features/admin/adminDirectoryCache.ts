@@ -11,6 +11,7 @@ import type { AdminSummaryResource } from './adminTypes'
 import { loadClientResource, primeClientResource, readClientResource } from '@/features/shared/clientResourceCache'
 
 const ttlMs = 300_000
+const directoryQueryMaxEntries = 24
 
 type CacheEntry<T> = {
   data?: T
@@ -46,7 +47,8 @@ type WorkspacesQuery = {
 
 export function readAdminSummaryResource() {
   return readClientResource(summaryStore, 'summary', {
-    storage: 'local',
+    maxEntries: 1,
+    storage: 'session',
     storageKey: 'tanergy.admin-summary',
     ttlMs,
   })
@@ -54,7 +56,8 @@ export function readAdminSummaryResource() {
 
 export function primeAdminSummaryResource(resource: AdminSummaryResource) {
   primeClientResource(summaryStore, 'summary', resource, {
-    storage: 'local',
+    maxEntries: 1,
+    storage: 'session',
     storageKey: 'tanergy.admin-summary',
     ttlMs,
   })
@@ -63,7 +66,8 @@ export function primeAdminSummaryResource(resource: AdminSummaryResource) {
 export function loadAdminSummaryResource(options: LoadOptions = {}) {
   return loadClientResource(summaryStore, 'summary', loadAdminSummary, {
     force: options.force,
-    storage: 'local',
+    maxEntries: 1,
+    storage: 'session',
     storageKey: 'tanergy.admin-summary',
     ttlMs,
   })
@@ -72,8 +76,10 @@ export function loadAdminSummaryResource(options: LoadOptions = {}) {
 export function readAdminUsersDirectoryResource(query: UsersQuery) {
   const key = usersQueryKey(query)
   return readClientResource(usersStore, key, {
-    storage: 'local',
+    maxEntries: directoryQueryMaxEntries,
+    storage: 'session',
     storageKey: usersStorageKey(key),
+    storagePrefix: 'tanergy.admin-users.',
     ttlMs,
   })
 }
@@ -81,8 +87,10 @@ export function readAdminUsersDirectoryResource(query: UsersQuery) {
 export function primeAdminUsersDirectoryResource(query: UsersQuery, resource: AdminDirectoryUsersResource) {
   const key = usersQueryKey(query)
   primeClientResource(usersStore, key, resource, {
-    storage: 'local',
+    maxEntries: directoryQueryMaxEntries,
+    storage: 'session',
     storageKey: usersStorageKey(key),
+    storagePrefix: 'tanergy.admin-users.',
     ttlMs,
   })
 }
@@ -91,8 +99,10 @@ export function loadAdminUsersDirectoryResource(query: UsersQuery, options: Load
   const key = usersQueryKey(query)
   return loadClientResource(usersStore, key, () => loadAdminDirectoryUsers(query), {
     force: options.force,
-    storage: 'local',
+    maxEntries: directoryQueryMaxEntries,
+    storage: 'session',
     storageKey: usersStorageKey(key),
+    storagePrefix: 'tanergy.admin-users.',
     ttlMs,
   })
 }
@@ -100,8 +110,10 @@ export function loadAdminUsersDirectoryResource(query: UsersQuery, options: Load
 export function readAdminWorkspaceDirectoryResource(query: WorkspacesQuery) {
   const key = workspacesQueryKey(query)
   return readClientResource(workspacesStore, key, {
-    storage: 'local',
+    maxEntries: directoryQueryMaxEntries,
+    storage: 'session',
     storageKey: workspacesStorageKey(key),
+    storagePrefix: 'tanergy.admin-workspaces.',
     ttlMs,
   })
 }
@@ -109,8 +121,10 @@ export function readAdminWorkspaceDirectoryResource(query: WorkspacesQuery) {
 export function primeAdminWorkspaceDirectoryResource(query: WorkspacesQuery, resource: AdminDirectoryWorkspacesResource) {
   const key = workspacesQueryKey(query)
   primeClientResource(workspacesStore, key, resource, {
-    storage: 'local',
+    maxEntries: directoryQueryMaxEntries,
+    storage: 'session',
     storageKey: workspacesStorageKey(key),
+    storagePrefix: 'tanergy.admin-workspaces.',
     ttlMs,
   })
 }
@@ -119,8 +133,10 @@ export function loadAdminWorkspaceDirectoryResource(query: WorkspacesQuery, opti
   const key = workspacesQueryKey(query)
   return loadClientResource(workspacesStore, key, () => loadAdminDirectoryWorkspaces(query), {
     force: options.force,
-    storage: 'local',
+    maxEntries: directoryQueryMaxEntries,
+    storage: 'session',
     storageKey: workspacesStorageKey(key),
+    storagePrefix: 'tanergy.admin-workspaces.',
     ttlMs,
   })
 }

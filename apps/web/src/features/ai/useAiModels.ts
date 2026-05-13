@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import type { AiCapability, AiModelOption } from './aiTypes'
-import { getAiModelFallback, loadAiModels } from './aiClient'
+import { canUseAiModelFallback, getAiModelFallback, loadAiModels } from './aiClient'
 
 const modelCache = new Map<AiCapability, AiModelOption[]>()
 const pendingModelLoads = new Map<AiCapability, Promise<AiModelOption[]>>()
 
 export function useAiModels(capability: AiCapability = 'image_generation') {
-  const [models, setModels] = useState(() => modelCache.get(capability) ?? getAiModelFallback(capability))
+  const [models, setModels] = useState(() => modelCache.get(capability) ?? getAllowedModelFallback(capability))
 
   useEffect(() => {
     let isMounted = true
@@ -17,7 +17,7 @@ export function useAiModels(capability: AiCapability = 'image_generation') {
         if (isMounted) setModels(nextModels)
       })
       .catch(() => {
-        if (isMounted) setModels(modelCache.get(capability) ?? getAiModelFallback(capability))
+        if (isMounted) setModels(modelCache.get(capability) ?? getAllowedModelFallback(capability))
       })
     return () => {
       isMounted = false
@@ -25,6 +25,10 @@ export function useAiModels(capability: AiCapability = 'image_generation') {
   }, [capability])
 
   return models
+}
+
+function getAllowedModelFallback(capability: AiCapability) {
+  return canUseAiModelFallback() ? getAiModelFallback(capability) : []
 }
 
 function loadCachedAiModels(capability: AiCapability) {

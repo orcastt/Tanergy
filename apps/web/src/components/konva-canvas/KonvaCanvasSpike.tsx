@@ -5,16 +5,23 @@ import type Konva from 'konva'
 import * as Y from 'yjs'
 import { createEmptyCanvasDocument, screenToWorld, type CanvasCamera, type CanvasDocument, type CanvasNodeShape, type CanvasPoint, type CanvasShape, type CanvasShapeStyle } from '@/features/canvas-engine'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
-import type { BoardPersistenceRecord } from '@/features/boards/boardTypes'
+import type { BoardPersistenceRecord, BoardPersistenceSummary } from '@/features/boards/boardTypes'
+import { loadLocalBoardDocument } from '@/features/boards/localBoardClient'
+import { defaultCanvasSettings, useCanvasSettingsStore } from '@/features/canvas-settings/canvasSettingsStore'
 import { useResolvedCanvasThemeMode } from '@/features/canvas-settings/canvasTheme'
-import { restoreKonvaBoardDocument } from '@/features/boards/konvaBoardDocument'
+import {
+  restoreKonvaBoardDocument,
+  restoreKonvaBoardPages,
+} from '@/features/boards/konvaBoardDocument'
 import { CanvasSettingsPanel } from '@/components/canvas/CanvasSettingsPanel'
 import { CanvasTooltipLayer } from '@/components/canvas/CanvasTooltipLayer'
 import { KonvaCanvasHeader } from './KonvaCanvasHeader'
-import { KonvaBoardSaveAudit } from './KonvaBoardSaveAudit'
+import { KonvaBoardSaveAudit, type KonvaBoardSaveAuditHandle } from './KonvaBoardSaveAudit'
+import { KonvaCollaborationOverlay } from './KonvaCollaborationOverlay'
 import { KonvaCanvasDiagnostics } from './KonvaCanvasDiagnostics'
 import type { KonvaContextMenuAction } from './KonvaContextMenu'
 import { KonvaContextMenuHost } from './KonvaContextMenuHost'
+import { KonvaLocalSyncBanner } from './KonvaLocalSyncBanner'
 import { KonvaCanvasNavigator } from './KonvaCanvasNavigator'
 import { KonvaCanvasPagesPanel } from './KonvaCanvasPagesPanel'
 import { KonvaCanvasProperties } from './KonvaCanvasProperties'
@@ -44,6 +51,11 @@ import { useKonvaNodeCreationMenu } from './useKonvaNodeCreationMenu'
 import { useKonvaSelectionExportActions } from './useKonvaSelectionExportActions'
 import { useKonvaStageDomEvents } from './useKonvaStageDomEvents'
 import { removeKonvaRuntimeEdge } from './konvaRuntimeEdges'
+import { useBoardCollaborationPresence } from './useBoardCollaborationPresence'
+import {
+  useKonvaLocalYjsSync,
+  type KonvaLocalYjsRemoteRestorePayload,
+} from './useKonvaLocalYjsSync'
 
 type KonvaCanvasSpikeProps = {
   autoLoadBoard?: boolean
@@ -52,6 +64,7 @@ type KonvaCanvasSpikeProps = {
   initialBoard?: BoardPersistenceRecord | null
   mode?: 'board' | 'dev'
   onBoardLoaded?: (title: string) => void
+  onBoardSaved?: (board: BoardPersistenceSummary) => void
   onBoardTitleRename?: (title: string) => Promise<string | void> | string | void
   readOnly?: boolean
   seedOnMount?: boolean
@@ -65,13 +78,16 @@ export function KonvaCanvasSpike({
   initialBoard = null,
   mode = 'dev',
   onBoardLoaded,
+  onBoardSaved,
   onBoardTitleRename,
   readOnly = false,
   seedOnMount = true,
   workspace,
 }: KonvaCanvasSpikeProps = {}) {
   const shellRef = useRef<HTMLDivElement | null>(null)
-  const [ydoc] = useState(() => new Y.Doc())
+  const ydoc = useMemo(() => new Y.Doc({
+    guid: `konva:${workspace?.id ?? 'local'}:${boardId}`,
+  }), [boardId, workspace?.id])
   const [document, setDocument] = useState<CanvasDocument>(() => createInitialDocument({
     boardTitle,
     initialBoard,
@@ -79,7 +95,7 @@ export function KonvaCanvasSpike({
   }))
   const [camera, setCamera] = useState<CanvasCamera>(document.camera)
   const [activeToolState, setActiveToolState] = useState<KonvaCanvasTool>('select')
-  const activeTool = readOnly ? 'hand' : activeToolState
+  const activeToolPreference = readOnly ? 'hand' : activeToolState
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [isSpacePanning, setIsSpacePanning] = useState(false)
   const [nextStyle, setNextStyle] = useState<CanvasShapeStyle>(konvaDefaultShapeStyle)
@@ -95,6 +111,12 @@ export function KonvaCanvasSpike({
   const themeMode = useResolvedCanvasThemeMode()
   const [, setClipboardShapeCount] = useState(0)
   const clipboardRef = useRef<CanvasShape[]>([])
+  const interactionLockedRef = useRef(readOnly)
+  const saveAuditRef = useRef<KonvaBoardSaveAuditHandle | null>(null)
+  const lastKnownBoardSavedAtRef = useRef<string | null>(initialBoard?.savedAt ?? null)
+  const remoteSyncInFlightRef = useRef(false)
+  const requestedRemoteBoardSavedAtRef = useRef<string | null>(null)
+  const wasReadOnlyRef = useRef(false)
   const lastPastePointRef = useRef<CanvasPoint | null>(null)
   const restoredInitialBoardId = useRef<string | null>(null)
   const boardPageHistoryRef = useRef<{
@@ -108,14 +130,13 @@ export function KonvaCanvasSpike({
     setCropEditingImageId((current) => (shapeIds.length === 1 && shapeIds[0] === current ? current : null))
   }, [])
   const handleToolChange = useCallback((tool: KonvaCanvasTool) => {
-    if (readOnly) return
+    if (interactionLockedRef.current) return
     setActiveToolState(tool)
-  }, [readOnly])
+  }, [])
   useKonvaBrowserSelectionGuard(shellRef)
   const { diagnostics, setShellRect, shellRect, size } = useKonvaCanvasMetrics({
     document,
     shellRef,
-    ydoc,
   })
   const history = useKonvaCanvasHistory({
     document,
@@ -154,22 +175,153 @@ export function KonvaCanvasSpike({
     onDocumentChange: setDocument,
     onTransientClear: clearTransientState,
   })
+  const collaborationEnabled = mode === 'board'
+    && Boolean(workspace?.id)
+    && (!initialBoard || workspace?.id === initialBoard.workspaceId)
+  const collaboration = useBoardCollaborationPresence({
+    activePageId: boardPages.activePageId,
+    boardId: mode === 'board' ? boardId : undefined,
+    enabled: collaborationEnabled,
+    selectedIds,
+    tool: activeToolPreference,
+    workspace,
+  })
+  const setCollaborationEditingShapeIds = collaboration.setEditingShapeIds
+  const remoteEditingOwners = useMemo(() => createRemoteEditingOwnerMap(collaboration.shapeOccupancy), [collaboration.shapeOccupancy])
+  const effectiveReadOnly = readOnly || (collaboration.status === 'ready' && !collaboration.canEdit)
+  const activeTool = effectiveReadOnly ? 'hand' : activeToolState
+  const restoreBoardRecord = useCallback((
+    board: BoardPersistenceRecord,
+    options: { clearTransient?: boolean } = {},
+  ) => {
+    const restored = restoreKonvaBoardDocument(board.document)
+    if (options.clearTransient ?? true) clearTransientState()
+    history.clear()
+    boardPages.restorePages(restored)
+    restoredInitialBoardId.current = board.id
+    lastKnownBoardSavedAtRef.current = board.savedAt
+    onBoardLoaded?.(board.title)
+  }, [boardPages, clearTransientState, history, onBoardLoaded])
+  const restoreCollaborativeDocument = useCallback((
+    remoteDocument: KonvaLocalYjsRemoteRestorePayload,
+    options: {
+      basePages?: NonNullable<KonvaLocalYjsRemoteRestorePayload['pages']>
+      changedPageIds?: readonly string[]
+      clearTransient?: boolean
+      mode?: 'active-page' | 'page-batch' | 'full-board'
+    } = {},
+  ) => {
+    useCanvasSettingsStore.getState().replace(remoteDocument.canvasSettings ?? defaultCanvasSettings)
+    const remotePages = remoteDocument.pages
+    const remoteActivePageId = remoteDocument.activePageId
+    const basePages = options.basePages ? [...options.basePages] : undefined
+    const applied = boardPages.applyRemotePageChanges(remotePages, {
+      basePages,
+      changedPageIds: options.changedPageIds,
+      preserveCamera: true,
+      remoteActivePageId: typeof remoteActivePageId === 'string' ? remoteActivePageId : undefined,
+    })
+    if (applied.applied) {
+      if (applied.activePageChanged) {
+        history.clear()
+      }
+      return
+    }
+    const restore = restoreKonvaBoardPages({
+      activePageId: remoteActivePageId,
+      pages: remotePages,
+    })
+    if (options.clearTransient ?? true) clearTransientState()
+    history.clear()
+    boardPages.restorePages(restore, {
+      bumpCollaborationRevision: false,
+      preserveActivePage: true,
+      preserveCamera: true,
+    })
+  }, [boardPages, clearTransientState, history])
+  useEffect(() => {
+    interactionLockedRef.current = effectiveReadOnly
+  }, [effectiveReadOnly])
+  useEffect(() => () => {
+    ydoc.destroy()
+  }, [ydoc])
   useEffect(() => {
     boardPageHistoryRef.current.getPageState = boardPages.getHistoryState
     boardPageHistoryRef.current.restorePageState = boardPages.restoreHistoryState
   }, [boardPages.getHistoryState, boardPages.restoreHistoryState])
   useEffect(() => {
-    if (!initialBoard || restoredInitialBoardId.current === initialBoard.id) return
-    try {
-      const restored = restoreKonvaBoardDocument(initialBoard.document)
-      history.clear()
-      boardPages.restorePages(restored)
-      restoredInitialBoardId.current = initialBoard.id
-      onBoardLoaded?.(initialBoard.title)
-    } catch {
-      restoredInitialBoardId.current = initialBoard.id
+    if (effectiveReadOnly && !wasReadOnlyRef.current) {
+      const timeoutId = window.setTimeout(() => {
+        clearTransientState()
+        setSettingsOpen(false)
+      }, 0)
+      wasReadOnlyRef.current = true
+      return () => window.clearTimeout(timeoutId)
     }
-  }, [boardPages, history, initialBoard, onBoardLoaded])
+    wasReadOnlyRef.current = effectiveReadOnly
+  }, [clearTransientState, effectiveReadOnly])
+  useEffect(() => {
+    if (!initialBoard || restoredInitialBoardId.current === initialBoard.id) return
+    const timeoutId = window.setTimeout(() => {
+      try {
+        restoreBoardRecord(initialBoard, { clearTransient: false })
+      } catch {
+        restoredInitialBoardId.current = initialBoard.id
+        lastKnownBoardSavedAtRef.current = initialBoard.savedAt
+      }
+    }, 0)
+    return () => window.clearTimeout(timeoutId)
+  }, [initialBoard, restoreBoardRecord])
+  useEffect(() => {
+    const remoteBoardSavedAt = collaboration.boardSavedAt
+    if (!collaborationEnabled || !boardId || !workspace || !effectiveReadOnly || !remoteBoardSavedAt) return
+    if (!isBoardSavedAtNewer(remoteBoardSavedAt, lastKnownBoardSavedAtRef.current)) return
+    if (remoteSyncInFlightRef.current || requestedRemoteBoardSavedAtRef.current === remoteBoardSavedAt) return
+    requestedRemoteBoardSavedAtRef.current = remoteBoardSavedAt
+    remoteSyncInFlightRef.current = true
+    void loadLocalBoardDocument(boardId, workspace, { force: true })
+      .then((response) => {
+        if (!response.board || !isBoardSavedAtNewer(response.board.savedAt, lastKnownBoardSavedAtRef.current)) return
+        restoreBoardRecord(response.board)
+      })
+      .catch(() => {
+        requestedRemoteBoardSavedAtRef.current = null
+      })
+      .finally(() => {
+        remoteSyncInFlightRef.current = false
+      })
+  }, [boardId, collaboration.boardSavedAt, collaborationEnabled, effectiveReadOnly, restoreBoardRecord, workspace])
+  const localYjsSync = useKonvaLocalYjsSync({
+    activePageId: boardPages.activePageId,
+    boardId: mode === 'board' ? boardId : undefined,
+    canWrite: collaborationEnabled && !effectiveReadOnly,
+    clientInstanceId: collaboration.clientInstanceId,
+    document,
+    enabled: collaborationEnabled,
+    getPageEnvelope: boardPages.getPageEnvelope,
+    onRemoteDocumentRestore: (restore, meta) => {
+      saveAuditRef.current?.acknowledgeExternalDocument(meta.signature)
+      restoreCollaborativeDocument(restore, {
+        basePages: meta.basePages ?? undefined,
+        changedPageIds: meta.changedPageIds,
+        mode: meta.mode,
+      })
+    },
+    pageChangedPageIds: boardPages.collaborationChange.changedPageIds,
+    pageRevision: boardPages.collaborationRevision,
+    requiresFullBoardSync: boardPages.collaborationChange.requiresFullBoardSync,
+    roomKey: collaboration.roomKey,
+    workspace,
+    ydoc,
+  })
+  const editingPresenceShapeIds = useMemo(() => dedupeEditingPresenceShapeIds([
+    cropEditingImageId,
+    editingNodeText?.shapeId,
+    editingTextId,
+  ]), [cropEditingImageId, editingNodeText?.shapeId, editingTextId])
+  useEffect(() => {
+    setCollaborationEditingShapeIds(editingPresenceShapeIds)
+  }, [editingPresenceShapeIds, setCollaborationEditingShapeIds])
   const { fileInput, promptImageNodeUpload, uploadDropFileAtPoint } = useKonvaImageNodeUpload({
     document,
     history,
@@ -185,7 +337,9 @@ export function KonvaCanvasSpike({
     onCanvasDoubleClick: openNodeMenu,
     onContextMenuChange: setContextMenu,
     onDropHintChange: setDropHintKind,
+    onHoveredShapeIdChange: collaboration.setHoveredShapeId,
     onNodeMenuClose: closeNodeMenu,
+    onPointerWorldChange: collaboration.setCursor,
     onSelectionChange: handleSelectionChange,
     onShellRectChange: setShellRect,
     onToolChange: handleToolChange,
@@ -232,9 +386,14 @@ export function KonvaCanvasSpike({
   const cropImage = useCallback(() => {
     const imageId = getCropImageIdForSelection(document, selectedIds)
     if (!imageId) return
+    const editingOwner = remoteEditingOwners.get(imageId)
+    if (editingOwner) {
+      setSelectionActionError(`${editingOwner} is already editing this item.`)
+      return
+    }
     handleToolChange('select')
     setCropEditingImageId((current) => (current === imageId ? null : imageId))
-  }, [document, handleToolChange, selectedIds])
+  }, [document, handleToolChange, remoteEditingOwners, selectedIds])
   const handleCreatePage = useCallback(() => {
     history.checkpoint(document)
     boardPages.createPage()
@@ -277,25 +436,27 @@ export function KonvaCanvasSpike({
   })
   const handleSelectionExportStageReady = selectionExport.handleStageReady
   const handleStageReady = useCallback((nextStage: Konva.Stage | null) => {
-    if (!readOnly) handleSelectionExportStageReady(nextStage)
+    if (!effectiveReadOnly) handleSelectionExportStageReady(nextStage)
     setStage(nextStage)
-  }, [handleSelectionExportStageReady, readOnly])
+  }, [effectiveReadOnly, handleSelectionExportStageReady])
   useKonvaCanvasShortcuts({
     clipboardRef,
     document,
-    enabled: !readOnly,
+    enabled: !effectiveReadOnly,
     history,
-    onClipboardChange: setClipboardShapeCount,
-    onDocumentChange: setDocument,
-    onEdgeSelectionChange: setSelectedEdgeId,
-    getPastePoint: () => lastPastePointRef.current ?? screenToWorld({ x: size.width / 2, y: size.height / 2 }, camera),
-    onPanningChange: setIsSpacePanning,
-    onSelectionChange: handleSelectionChange,
-    onToolChange: handleToolChange,
-    onCopySelectionSvg: () => { void selectionExport.handleCopySelectionSvg() },
-    selectedEdgeId,
-    selectedIds,
-    workspace,
+      onClipboardChange: setClipboardShapeCount,
+      onRedo: collaborationEnabled ? localYjsSync.redoLocalChange : undefined,
+      onDocumentChange: setDocument,
+      onEdgeSelectionChange: setSelectedEdgeId,
+      getPastePoint: () => lastPastePointRef.current ?? screenToWorld({ x: size.width / 2, y: size.height / 2 }, camera),
+      onPanningChange: setIsSpacePanning,
+      onSelectionChange: handleSelectionChange,
+      onToolChange: handleToolChange,
+      onUndo: collaborationEnabled ? localYjsSync.undoLocalChange : undefined,
+      onCopySelectionSvg: () => { void selectionExport.handleCopySelectionSvg() },
+      selectedEdgeId,
+      selectedIds,
+      workspace,
   })
   const runContextAction = (action: KonvaContextMenuAction) => {
     const pastePoint = contextMenu ? { x: contextMenu.worldX, y: contextMenu.worldY } : undefined
@@ -335,11 +496,13 @@ export function KonvaCanvasSpike({
   return (
     <main className="konva-canvas-shell" data-theme={themeMode}>
       <KonvaCanvasHeader
-        boardId={!readOnly && mode === 'board' ? boardId : undefined}
+        boardId={!effectiveReadOnly && mode === 'board' ? boardId : undefined}
         boardTitle={boardTitle}
-        onBoardTitleRename={readOnly ? undefined : onBoardTitleRename}
+        collaboration={collaboration}
+        localSync={collaborationEnabled ? localYjsSync : undefined}
+        onBoardTitleRename={effectiveReadOnly ? undefined : onBoardTitleRename}
       />
-      {readOnly ? null : (
+      {effectiveReadOnly ? null : (
         <KonvaCanvasToolbar
           activeTool={activeTool}
           isSettingsOpen={settingsOpen}
@@ -357,17 +520,18 @@ export function KonvaCanvasSpike({
         className="konva-canvas-stage-wrap"
         data-drop-active={dropHintKind ? 'true' : 'false'}
         data-space-panning={isSpacePanning}
-        onContextMenu={readOnly ? undefined : stageDomEvents.handleContextMenu}
-        onDoubleClick={readOnly ? undefined : stageDomEvents.handleDoubleClick}
-        onDragEnter={readOnly ? undefined : stageDomEvents.handleDragEnter}
-        onDragLeave={readOnly ? undefined : stageDomEvents.handleDragLeave}
-        onDragOver={readOnly ? undefined : stageDomEvents.handleDragOver}
-        onDrop={readOnly ? undefined : stageDomEvents.handleDrop}
-        onPointerDownCapture={readOnly ? undefined : stageDomEvents.handlePointerDownCapture}
-        onPointerMoveCapture={readOnly ? undefined : stageDomEvents.handlePointerMoveCapture}
+        onContextMenu={effectiveReadOnly ? undefined : stageDomEvents.handleContextMenu}
+        onDoubleClick={effectiveReadOnly ? undefined : stageDomEvents.handleDoubleClick}
+        onDragEnter={effectiveReadOnly ? undefined : stageDomEvents.handleDragEnter}
+        onDragLeave={effectiveReadOnly ? undefined : stageDomEvents.handleDragLeave}
+        onDragOver={effectiveReadOnly ? undefined : stageDomEvents.handleDragOver}
+        onDrop={effectiveReadOnly ? undefined : stageDomEvents.handleDrop}
+        onPointerDownCapture={effectiveReadOnly ? undefined : stageDomEvents.handlePointerDownCapture}
+        onPointerLeave={stageDomEvents.handlePointerLeave}
+        onPointerMoveCapture={collaborationEnabled || !effectiveReadOnly ? stageDomEvents.handlePointerMoveCapture : undefined}
         ref={shellRef}
       >
-        {readOnly || !dropHintKind ? null : (
+        {effectiveReadOnly || !dropHintKind ? null : (
           <div className="konva-canvas-drop-hint" aria-hidden="true" data-kind={dropHintKind}>
             <div className="konva-canvas-drop-hint__icon">
               <span />
@@ -377,6 +541,9 @@ export function KonvaCanvasSpike({
               <small>{dropHintKind === 'image' ? 'Empty canvas lands at the current view center.' : 'PDF files attach to chat references rather than the blank canvas.'}</small>
             </div>
           </div>
+        )}
+        {effectiveReadOnly ? null : (
+          <KonvaLocalSyncBanner localSync={localYjsSync} />
         )}
         <KonvaCanvasPagesPanel
           activeDocument={document}
@@ -388,9 +555,9 @@ export function KonvaCanvasSpike({
           onRenamePage={handleRenamePage}
           onSelectPage={boardPages.selectPage}
           pages={boardPages.pages}
-          readOnly={readOnly}
+          readOnly={effectiveReadOnly}
         />
-        {readOnly ? (
+        {effectiveReadOnly ? (
           <KonvaCanvasViewerStage
             camera={camera}
             document={document}
@@ -435,6 +602,11 @@ export function KonvaCanvasSpike({
             onNodeFieldChange={setNodeField}
             onNodeRunToggle={toggleNodeRun}
             onNodeTextEditStart={(shapeId, fieldName) => {
+              const editingOwner = remoteEditingOwners.get(shapeId)
+              if (editingOwner) {
+                setSelectionActionError(`${editingOwner} is already editing this card.`)
+                return
+              }
               const shape = document.shapes.find((item) => item.id === shapeId)
               if (!shape || shape.type !== 'node_card') return
               handleSelectionChange([shapeId])
@@ -445,6 +617,11 @@ export function KonvaCanvasSpike({
             onSelectionChange={handleSelectionChange}
             onStageReady={handleStageReady}
             onTextEditStart={(shapeId) => {
+              const editingOwner = remoteEditingOwners.get(shapeId)
+              if (editingOwner) {
+                setSelectionActionError(`${editingOwner} is already editing this item.`)
+                return
+              }
               const shape = document.shapes.find((item) => item.id === shapeId)
               if (shape?.type === 'node_card' && shape.props.nodeType === 'image') {
                 promptImageNodeUpload(shapeId)
@@ -465,13 +642,22 @@ export function KonvaCanvasSpike({
             width={size.width}
           />
         )}
-        {!readOnly && nodeMenu ? (
+        <KonvaCollaborationOverlay
+          activePageId={boardPages.activePageId}
+          camera={camera}
+          document={document}
+          occupancy={collaboration.shapeOccupancy}
+          sessions={collaboration.activeSessions}
+          stageHeight={size.height}
+          stageWidth={size.width}
+        />
+        {!effectiveReadOnly && nodeMenu ? (
           <KonvaNodeCreateMenu
             onCreateNode={(type) => createNodeCard(type, nodeMenu.world)}
             style={{ left: nodeMenu.x, top: nodeMenu.y }}
           />
         ) : null}
-        {!readOnly && editingTextShape ? (
+        {!effectiveReadOnly && editingTextShape ? (
           <>
             <button aria-label="Finish text editing" className="konva-canvas-text-editor-backdrop" onClick={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()} type="button" />
             <KonvaTextEditor
@@ -486,7 +672,7 @@ export function KonvaCanvasSpike({
             />
           </>
         ) : null}
-        {!readOnly && editingNodeText && editingNodeTextShape ? (
+        {!effectiveReadOnly && editingNodeText && editingNodeTextShape ? (
           <>
             <button aria-label="Finish node text editing" className="konva-canvas-text-editor-backdrop" onClick={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()} type="button" />
             <KonvaNodeTextEditor
@@ -505,7 +691,7 @@ export function KonvaCanvasSpike({
             />
           </>
         ) : null}
-        {readOnly ? null : (
+        {effectiveReadOnly ? null : (
           <KonvaCanvasProperties
             activeTool={activeTool}
             document={document}
@@ -517,7 +703,7 @@ export function KonvaCanvasSpike({
             selectedIds={selectedIds}
           />
         )}
-        {readOnly ? null : (
+        {effectiveReadOnly ? null : (
           <KonvaSelectionToolbar
             actionError={selectionActionError}
             camera={camera}
@@ -546,8 +732,9 @@ export function KonvaCanvasSpike({
           stageHeight={size.height}
           stageWidth={size.width}
         />
-        {readOnly ? null : (
+        {effectiveReadOnly ? null : (
           <KonvaBoardSaveAudit
+            ref={saveAuditRef}
             autoLoad={autoLoadBoard}
             boardId={boardId}
             boardTitle={boardTitle}
@@ -557,7 +744,14 @@ export function KonvaCanvasSpike({
             activePageId={boardPages.activePageId}
             historyTitle={boardPages.activePageTitle}
             mode={mode}
-            onBoardLoaded={(board) => onBoardLoaded?.(board.title)}
+            onBoardLoaded={(board) => {
+              lastKnownBoardSavedAtRef.current = board.savedAt
+              onBoardLoaded?.(board.title)
+            }}
+            onBoardSaved={(board) => {
+              lastKnownBoardSavedAtRef.current = board.savedAt
+              onBoardSaved?.(board)
+            }}
             onDocumentRestore={(restore) => {
               history.clear()
               boardPages.restorePages(restore)
@@ -569,7 +763,7 @@ export function KonvaCanvasSpike({
         )}
         {settingsOpen ? <CanvasSettingsPanel boardMode={mode === 'board'} onClose={() => setSettingsOpen(false)} /> : null}
         <KonvaCanvasDiagnostics diagnostics={diagnostics} pointCount={pointCount} zoom={camera.zoom} />
-        {readOnly ? null : (
+        {effectiveReadOnly ? null : (
           <KonvaContextMenuHost
             activePageId={boardPages.activePageId}
             canLockSelection={canLockSelection}
@@ -585,7 +779,7 @@ export function KonvaCanvasSpike({
           />
         )}
         <CanvasTooltipLayer />
-        {readOnly ? null : fileInput}
+        {effectiveReadOnly ? null : fileInput}
       </section>
     </main>
   )
@@ -612,4 +806,30 @@ function createInitialDocument({
     name: boardTitle,
     shapes: seedOnMount ? createSeedShapes() : [],
   })
+}
+
+function isBoardSavedAtNewer(nextSavedAt: string, currentSavedAt: string | null) {
+  const nextTime = Date.parse(nextSavedAt)
+  if (Number.isNaN(nextTime)) return false
+  if (!currentSavedAt) return true
+  const currentTime = Date.parse(currentSavedAt)
+  if (Number.isNaN(currentTime)) return true
+  return nextTime > currentTime
+}
+
+function dedupeEditingPresenceShapeIds(shapeIds: Array<string | null | undefined>) {
+  return [...new Set(shapeIds.filter((shapeId): shapeId is string => typeof shapeId === 'string' && shapeId.length > 0))]
+}
+
+function createRemoteEditingOwnerMap(
+  occupancy: ReturnType<typeof useBoardCollaborationPresence>['shapeOccupancy'],
+) {
+  const owners = new Map<string, string>()
+  for (const entry of occupancy) {
+    if (entry.kind !== 'editing' || entry.isSelf) continue
+    for (const shapeId of entry.shapeIds) {
+      if (!owners.has(shapeId)) owners.set(shapeId, entry.displayName)
+    }
+  }
+  return owners
 }

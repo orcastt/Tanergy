@@ -19,6 +19,7 @@ import type { AdminOperatorUserRecord, AdminOperatorUsersResource } from './admi
 import { writeAdminUsersViewState } from './adminUsersViewState'
 
 type UsersDashboardStatus = 'error' | 'loading' | 'ready' | 'refreshing'
+const maxWarmedUserIds = 24
 
 export function AdminUsersDashboard({ enabled, seedResource }: { enabled: boolean; seedResource: AdminOperatorUsersResource }) {
   const router = useRouter()
@@ -137,6 +138,10 @@ export function AdminUsersDashboard({ enabled, seedResource }: { enabled: boolea
     }
   }, [effectiveStatus, visibleUsers.length])
 
+  useEffect(() => {
+    warmedUserIds.current.clear()
+  }, [requestSignature])
+
   function submitSearch(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault()
     setOffset(0)
@@ -163,6 +168,10 @@ export function AdminUsersDashboard({ enabled, seedResource }: { enabled: boolea
     persistViewState()
     const detailHref = `/admin/users/${encodeURIComponent(user.id)}`
     if (!warmedUserIds.current.has(user.id)) {
+      if (warmedUserIds.current.size >= maxWarmedUserIds) {
+        const oldest = warmedUserIds.current.values().next().value
+        if (oldest) warmedUserIds.current.delete(oldest)
+      }
       warmedUserIds.current.add(user.id)
       router.prefetch(detailHref)
       void loadAdminOperatorUserDetailResource(user.id)

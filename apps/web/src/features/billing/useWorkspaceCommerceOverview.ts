@@ -1,0 +1,208 @@
+'use client'
+
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { TangentWorkspace } from '@/features/auth/sessionTypes'
+import { useTangentSession } from '@/features/auth/useTangentSession'
+import {
+  loadBillingMe,
+  loadBillingPlans,
+  loadWorkspaceDashboard,
+} from './billingClient'
+import type { PlanCatalogRecord, PlanKey } from './billingTypes'
+import {
+  normalizeWorkspaceMembershipRole,
+  workspaceRelationshipFromRole,
+  type WorkspaceRelationship,
+} from '@/features/workspaces/workspacePresentation'
+import { mapWithConcurrency } from '@/features/shared/asyncConcurrency'
+
+export type CommercePlanMap = Partial<Record<PlanKey, PlanCatalogRecord>>
+
+export type CommerceTeamCard = {
+  boardCount: number
+  canManageBilling: boolean
+  id: string
+  memberCount: number
+  membershipRole: ReturnType<typeof normalizeWorkspaceMembershipRole>
+  name: string
+  planKey: Extract<PlanKey, 'team_growth' | 'team_start'>
+  relationship: WorkspaceRelationship
+  remainingCredits: number
+  seatLimit: number
+  seatsUsed: number
+  topUpBalance: number
+  totalCredits: number
+  usedThisCycle: number
+  workspace: TangentWorkspace
+}
+
+export type CommerceGroupSummary = {
+  groupLimit: number
+  groupsCreated: number
+  joinedGroups: number
+  name: string
+  planKey: Extract<PlanKey, 'collaborate_plus' | 'collaborate_start' | 'free_canvas'>
+  remainingCredits: number
+  topUpBalance: number
+  totalCredits: number
+  usedThisCycle: number
+  workspace: TangentWorkspace
+}
+
+export type WorkspaceCommerceOverview = {
+  groupSummary: CommerceGroupSummary
+  planMap: CommercePlanMap
+  plans: PlanCatalogRecord[]
+  teamCards: CommerceTeamCard[]
+  totalIncludedCredits: number
+  totalSeatLimit: number
+  totalSeatsUsed: number
+}
+
+type Status = 'loading' | 'ready' | 'error'
+const maxConcurrentCommerceWorkspaceLoads = 4
+
+export function useWorkspaceCommerceOverview() {
+  const { error: sessionError, session, status: sessionStatus } = useTangentSession()
+  const [error, setError] = useState<string | null>(null)
+  const [overview, setOverview] = useState<WorkspaceCommerceOverview | null>(null)
+  const [reloadToken, setReloadToken] = useState(0)
+  const workspaceSignature = useMemo(
+    () => session.workspaces.map((workspace) => `${workspace.id}:${workspace.kind}:${workspace.planKey ?? ''}:${workspace.role}:${workspace.boardCount}`).join('|'),
+    [session.workspaces],
+  )
+  const [status, setStatus] = useState<Status>('loading')
+
+  useEffect(() => {
+    if (sessionStatus !== 'ready') return
+
+    let cancelled = false
+
+    loadWorkspaceCommerceOverview(session.workspaces, reloadToken > 0)
+      .then((nextOverview) => {
+        if (cancelled) return
+        setOverview(nextOverview)
+        setError(null)
+        setStatus('ready')
+      })
+      .catch((nextError: unknown) => {
+        if (cancelled) return
+        setOverview(null)
+        setError(nextError instanceof Error ? nextError.message : 'Workspace billing failed to load.')
+        setStatus('error')
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [reloadToken, session.workspaces, sessionStatus, workspaceSignature])
+
+  return {
+    error: sessionStatus === 'error' ? (sessionError ?? 'Session lookup failed.') : error,
+    overview,
+    reload: useCallback(() => {
+      setStatus('loading')
+      setReloadToken((value) => value + 1)
+    }, []),
+    status: sessionStatus === 'error' ? 'error' : sessionStatus !== 'ready' ? 'loading' : status,
+  }
+}
+
+async function loadWorkspaceCommerceOverview(workspaces: TangentWorkspace[], force = false): Promise<WorkspaceCommerceOverview> {
+  const planResponse = await loadBillingPlans({ force })
+  const planMap = Object.fromEntries(planResponse.plans.map((plan) => [plan.planKey, plan])) as CommercePlanMap
+  const personalWorkspace = selectPersonalWorkspace(workspaces)
+  const [groupSummary, teamCards] = await Promise.all([
+    loadGroupSummary(personalWorkspace, workspaces, planMap, force),
+    loadTeamCards(workspaces.filter((workspace) => workspace.kind === 'team_workspace'), force),
+  ])
+  const ownedTeams = teamCards.filter((card) => card.relationship === 'created')
+
+  return {
+    groupSummary,
+    planMap,
+    plans: planResponse.plans,
+    teamCards,
+    totalIncludedCredits: groupSummary.totalCredits + ownedTeams.reduce((total, card) => total + card.totalCredits, 0),
+    totalSeatLimit: ownedTeams.reduce((total, card) => total + card.seatLimit, 0),
+    totalSeatsUsed: ownedTeams.reduce((total, card) => total + card.seatsUsed, 0),
+  }
+}
+
+async function loadGroupSummary(
+  personalWorkspace: TangentWorkspace,
+  workspaces: TangentWorkspace[],
+  planMap: CommercePlanMap,
+  force = false,
+): Promise<CommerceGroupSummary> {
+  const createdGroups = workspaces.filter((workspace) => workspace.kind === 'group_workspace' && workspace.role === 'owner')
+  const joinedGroups = workspaces.filter((workspace) => workspace.kind === 'group_workspace' && workspace.role !== 'owner')
+  const billing = await loadBillingMe({ force, workspace: personalWorkspace })
+  const planKey = normalizeGroupPlanKey(billing.plan.planKey)
+  const plan = planMap[planKey]
+  const totalCredits = billing.credits.includedTotal + billing.credits.topUpBalance
+
+  return {
+    groupLimit: plan?.groupWorkspaceLimit ?? 0,
+    groupsCreated: createdGroups.length,
+    joinedGroups: joinedGroups.length,
+    name: personalWorkspace.kind === 'solo_workspace' ? 'Personal collaboration' : personalWorkspace.name,
+    planKey,
+    remainingCredits: billing.credits.includedRemaining + billing.credits.topUpBalance,
+    topUpBalance: billing.credits.topUpBalance,
+    totalCredits,
+    usedThisCycle: billing.credits.usedThisCycle,
+    workspace: personalWorkspace,
+  }
+}
+
+async function loadTeamCards(
+  teamWorkspaces: TangentWorkspace[],
+  force = false,
+): Promise<CommerceTeamCard[]> {
+  return mapWithConcurrency(teamWorkspaces, maxConcurrentCommerceWorkspaceLoads, async (workspace) => {
+    const relationship = workspaceRelationshipFromRole(workspace.role)
+    const [billing, dashboard] = await Promise.all([
+      loadBillingMe({ force, workspace }),
+      loadWorkspaceDashboard({ force, workspace }),
+    ])
+    const planKey = normalizeTeamPlanKey(billing.plan.planKey)
+    return {
+      boardCount: dashboard.dashboard.boardCount,
+      canManageBilling: relationship === 'created' && (workspace.role === 'owner' || workspace.role === 'admin'),
+      id: workspace.id,
+      memberCount: dashboard.dashboard.memberCount,
+      membershipRole: normalizeWorkspaceMembershipRole(workspace.role),
+      name: workspace.name,
+      planKey,
+      relationship,
+      remainingCredits: billing.credits.includedRemaining + billing.credits.topUpBalance,
+      seatLimit: billing.plan.seatMax ?? Math.max(dashboard.dashboard.memberCount, 1),
+      seatsUsed: dashboard.dashboard.memberCount,
+      topUpBalance: billing.credits.topUpBalance,
+      totalCredits: billing.credits.includedTotal + billing.credits.topUpBalance,
+      usedThisCycle: billing.credits.usedThisCycle,
+      workspace: {
+        ...workspace,
+        boardCount: dashboard.dashboard.boardCount,
+        planKey,
+      },
+    }
+  })
+}
+
+function selectPersonalWorkspace(workspaces: TangentWorkspace[]) {
+  return workspaces.find((workspace) => workspace.kind === 'group_workspace' && workspace.role === 'owner')
+    ?? workspaces.find((workspace) => workspace.kind === 'group_workspace')
+    ?? workspaces.find((workspace) => workspace.kind === 'solo_workspace')
+    ?? workspaces[0]!
+}
+
+function normalizeGroupPlanKey(value: string): Extract<PlanKey, 'collaborate_plus' | 'collaborate_start' | 'free_canvas'> {
+  if (value === 'collaborate_plus' || value === 'collaborate_start' || value === 'free_canvas') return value
+  return 'free_canvas'
+}
+
+function normalizeTeamPlanKey(value: string): Extract<PlanKey, 'team_growth' | 'team_start'> {
+  return value === 'team_growth' ? 'team_growth' : 'team_start'
+}

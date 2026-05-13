@@ -46,6 +46,9 @@ type ThumbnailEntry = {
 
 const thumbnailCache = new Map<string, ThumbnailEntry>()
 const listeners = new Set<(assetId: string) => void>()
+const maxThumbnailCacheEntries = 120
+const maxThumbnailSourcePixels = 50 * 1024 * 1024
+const thumbnailDecodeTimeoutMs = 10_000
 
 export function useAssetPreview(editor: Editor, intent: AssetPreviewIntent) {
   const [, setCacheVersion] = useState(0)
@@ -200,14 +203,32 @@ function requestAssetThumbnail(assetId: string | null, src: string, size: Thumbn
 
 function getCacheEntry(assetId: string, src: string) {
   const current = thumbnailCache.get(assetId)
-  if (current?.source === src) return current
+  if (current?.source === src) {
+    thumbnailCache.delete(assetId)
+    thumbnailCache.set(assetId, current)
+    return current
+  }
   const next: ThumbnailEntry = { failed: {}, pending: {}, source: src, thumbnails: {} }
   thumbnailCache.set(assetId, next)
+  trimThumbnailCache()
   return next
+}
+
+function trimThumbnailCache() {
+  while (thumbnailCache.size > maxThumbnailCacheEntries) {
+    const entries = [...thumbnailCache.entries()]
+    const oldestEntry = entries.find(([, entry]) => Object.keys(entry.pending).length === 0) ?? entries[0]
+    if (!oldestEntry) break
+    thumbnailCache.delete(oldestEntry[0])
+  }
 }
 
 async function createThumbnail(src: string, maxSize: ThumbnailSize) {
   const image = await decodeImage(src)
+  const sourcePixels = image.naturalWidth * image.naturalHeight
+  if (sourcePixels > maxThumbnailSourcePixels) {
+    throw new Error('Image preview is too large to thumbnail safely.')
+  }
   const longestEdge = Math.max(image.naturalWidth, image.naturalHeight, 1)
   const scale = Math.min(1, maxSize / longestEdge)
   if (scale >= 0.92) {
@@ -229,9 +250,32 @@ async function createThumbnail(src: string, maxSize: ThumbnailSize) {
 function decodeImage(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new window.Image()
+    let settled = false
+    const cleanup = () => {
+      window.clearTimeout(timeout)
+      image.onerror = null
+      image.onload = null
+    }
+    const timeout = window.setTimeout(() => {
+      if (settled) return
+      settled = true
+      cleanup()
+      image.src = ''
+      reject(new Error('Image preview decode timed out.'))
+    }, thumbnailDecodeTimeoutMs)
     image.decoding = 'async'
-    image.onerror = () => reject(new Error('Failed to decode image preview.'))
-    image.onload = () => resolve(image)
+    image.onerror = () => {
+      if (settled) return
+      settled = true
+      cleanup()
+      reject(new Error('Failed to decode image preview.'))
+    }
+    image.onload = () => {
+      if (settled) return
+      settled = true
+      cleanup()
+      resolve(image)
+    }
     image.src = src
   })
 }

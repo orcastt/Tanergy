@@ -16,8 +16,8 @@ export function getBoardCapabilities(board: BoardPersistenceSummary, session: Ta
   const canAdministerWorkspace = ['admin', 'owner'].includes(workspaceRole)
   const canManageBoard = isBoardOwner || canAdministerWorkspace
   return {
-    canCopyBoard: isBoardOwner || canAdministerWorkspace,
-    canDeleteBoard: isBoardOwner || canAdministerWorkspace,
+    canCopyBoard: isBoardOwner,
+    canDeleteBoard: isBoardOwner,
     canManageBoard,
     canShareBoard: canManageBoard,
     isBoardOwner,

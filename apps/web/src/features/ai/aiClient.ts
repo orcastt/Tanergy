@@ -24,7 +24,7 @@ export async function loadAiModels(capability: AiCapability = 'image_generation'
   return payload.models
 }
 
-export async function createAiRun(input: AiRunRequest, options?: { workspace?: TangentWorkspace }) {
+export async function createAiRun(input: AiRunRequest, options?: { signal?: AbortSignal; workspace?: TangentWorkspace }) {
   const headers = hasRemotePersistenceApi()
     ? await persistenceJsonHeadersAsync(options?.workspace)
     : persistenceJsonHeaders(options?.workspace)
@@ -32,6 +32,7 @@ export async function createAiRun(input: AiRunRequest, options?: { workspace?: T
     body: JSON.stringify(input),
     headers,
     method: 'POST',
+    signal: options?.signal,
   })
   const payload = await response.json() as AiRunResponse
   if (!response.ok || !payload.ok || !payload.run) {
@@ -40,12 +41,13 @@ export async function createAiRun(input: AiRunRequest, options?: { workspace?: T
   return payload.run
 }
 
-export async function getAiRun(runId: string, options?: { workspace?: TangentWorkspace }) {
+export async function getAiRun(runId: string, options?: { signal?: AbortSignal; workspace?: TangentWorkspace }) {
   const headers = hasRemotePersistenceApi()
     ? await persistenceAuthHeadersAsync(options?.workspace)
     : persistenceAuthHeaders(options?.workspace)
   const response = await fetch(getAiUrl(`/runs/${encodeURIComponent(runId)}`), {
     headers,
+    signal: options?.signal,
   })
   const payload = await response.json() as AiRunResponse
   if (!response.ok || !payload.ok || !payload.run) {
@@ -54,12 +56,13 @@ export async function getAiRun(runId: string, options?: { workspace?: TangentWor
   return payload.run
 }
 
-export async function cancelAiRun(runId: string, options?: { workspace?: TangentWorkspace }) {
+export async function cancelAiRun(runId: string, options?: { signal?: AbortSignal; workspace?: TangentWorkspace }) {
   if (!hasRemotePersistenceApi()) return null
   const headers = await persistenceJsonHeadersAsync(options?.workspace)
   const response = await fetch(getAiUrl(`/runs/${encodeURIComponent(runId)}/cancel`), {
     headers,
     method: 'POST',
+    signal: options?.signal,
   })
   const payload = await response.json() as AiRunResponse
   if (!response.ok || !payload.ok || !payload.run) {
@@ -70,6 +73,10 @@ export async function cancelAiRun(runId: string, options?: { workspace?: Tangent
 
 export function getAiModelFallback(capability: AiCapability = 'image_generation') {
   return getAiModels(capability)
+}
+
+export function canUseAiModelFallback() {
+  return process.env.NODE_ENV !== 'production' && !hasRemotePersistenceApi()
 }
 
 function getAiUrl(path: string) {
