@@ -47,6 +47,7 @@ def test_alembic_revision_chain_is_linear():
         load_migration("20260511_0015_plan_catalog_admin_controls.py"),
         load_migration("20260511_0016_ai_text_route_seed.py"),
         load_migration("20260512_0017_board_collaboration_presence.py"),
+        load_migration("20260512_0018_board_realtime_documents.py"),
     ]
 
     for previous, current in zip(migrations, migrations[1:]):
@@ -68,6 +69,7 @@ def test_s1a_migrations_keep_required_schema_contracts():
     plan_catalog_controls = load_migration("20260511_0015_plan_catalog_admin_controls.py")
     text_route_seed = load_migration("20260511_0016_ai_text_route_seed.py")
     board_collaboration_presence = load_migration("20260512_0017_board_collaboration_presence.py")
+    board_realtime_documents = load_migration("20260512_0018_board_realtime_documents.py")
     core_sql = "\n".join(core.UPGRADE)
     future_sql = "\n".join(future.UPGRADE)
     hardening_sql = "\n".join(hardening.UPGRADE)
@@ -82,6 +84,7 @@ def test_s1a_migrations_keep_required_schema_contracts():
     plan_catalog_controls_sql = "\n".join(plan_catalog_controls.UPGRADE)
     text_route_seed_sql = "\n".join(text_route_seed.UPGRADE)
     board_collaboration_presence_sql = "\n".join(board_collaboration_presence.UPGRADE)
+    board_realtime_documents_sql = "\n".join(board_realtime_documents.UPGRADE)
 
     for table_name in [
         "tangent_workspace_members",
@@ -211,6 +214,34 @@ def test_s1a_migrations_keep_required_schema_contracts():
         "tangent_board_collaboration_active_idx",
     ]:
         assert contract in board_collaboration_presence_sql
+
+    for contract in [
+        "tangent_board_realtime_documents",
+        "room_key",
+        "document_updates JSONB NOT NULL DEFAULT '[]'::jsonb",
+        "tangent_board_realtime_updated_idx",
+    ]:
+        assert contract in board_realtime_documents_sql
+
+
+def test_text_route_seed_uses_driver_sql_for_json_literals(monkeypatch):
+    text_route_seed = load_migration("20260511_0016_ai_text_route_seed.py")
+    executed: list[str] = []
+
+    class FakeConnection:
+        def exec_driver_sql(self, statement: str) -> None:
+            executed.append(statement)
+
+    class FakeOp:
+        def get_bind(self) -> FakeConnection:
+            return FakeConnection()
+
+    monkeypatch.setattr(text_route_seed, "op", FakeOp())
+
+    text_route_seed.upgrade()
+
+    assert len(executed) == len(text_route_seed.UPGRADE)
+    assert any('{"maxAttempts":2}' in statement for statement in executed)
 
 
 def test_s1a_smoke_runner_requires_explicit_database(monkeypatch):
