@@ -10,19 +10,15 @@ export function KonvaLocalSyncBanner({ localSync }: KonvaLocalSyncBannerProps) {
   return (
     <div className="konva-local-sync-banner" role="status">
       <div className="konva-local-sync-banner__content">
-        <strong>Another session updated this board.</strong>
-        <small>
-          {remoteTime
-            ? `Remote changes arrived at ${remoteTime} while your local edits were still pending.`
-            : 'Remote changes arrived while your local edits were still pending.'}
-        </small>
+        <strong>Remote update</strong>
+        {remoteTime ? <small>{remoteTime}</small> : null}
       </div>
       <div className="konva-local-sync-banner__actions">
         <button className="konva-local-sync-banner__action" onClick={localSync.applyPendingRemoteSnapshot} type="button">
-          Load remote
+          Use remote
         </button>
         <button className="konva-local-sync-banner__action is-primary" onClick={localSync.publishLocalSnapshot} type="button">
-          Keep current
+          Keep mine
         </button>
       </div>
     </div>

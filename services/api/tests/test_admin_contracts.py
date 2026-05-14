@@ -203,7 +203,6 @@ def test_admin_finance_plan_catalog_returns_default_plan_rows(monkeypatch):
     assert payload["plans"][0]["planKey"] == "free_canvas"
     assert payload["plans"][0]["registrationCredits"] == 50
     assert any(plan["planKey"] == "team_start" for plan in payload["plans"])
-    assert fake_db.admin_audit_logs[-1]["action"] == "admin.finance.plan_catalog.read"
 
 
 def test_admin_finance_plan_catalog_update_persists_override(monkeypatch):
@@ -972,7 +971,6 @@ def test_admin_ai_route_metrics_report_direct_fallback_and_terminal_health(monke
     assert totals["routeHitRuns"] == 4
     assert totals["succeededCalls"] == 2
     assert totals["terminalFailures"] == 1
-    assert fake_db.admin_audit_logs[-1]["action"] == "admin.ai.route_metrics.list"
 
 
 def test_admin_ai_control_plane_patch_routes_persist_updates_and_audit(monkeypatch):

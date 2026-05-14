@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 
-from tangent_api.admin_access import load_active_admin_roles, load_admin_summary, write_admin_audit_log
+from tangent_api.admin_access import load_active_admin_roles, load_admin_summary
 from tangent_api.admin_bootstrap_schemas import AdminPageBootstrapResponse, AdminUserDetailBootstrapResponse
 from tangent_api.admin_directory import list_admin_directory_workspaces_page
 from tangent_api.admin_directory_schemas import (
@@ -83,19 +83,6 @@ def get_admin_page_bootstrap(
             workspaces=group_rows,
         )
 
-    _write_bootstrap_audit(
-        context=context,
-        action="admin.bootstrap.read",
-        roles=access.roles,
-        metadata={
-            "includeSummary": include_summary,
-            "includeUsers": include_users,
-            "includeOperatorUsers": include_operator_users,
-            "includeTeams": include_teams,
-            "includeGroups": include_groups,
-            "limit": limit,
-        },
-    )
     return AdminPageBootstrapResponse(access=access, groups=groups, ok=True, operatorUsers=operator_users, summary=summary, teams=teams, users=users)
 
 
@@ -143,12 +130,6 @@ def get_admin_user_detail_bootstrap(
         workspaces=group_rows,
     )
 
-    _write_bootstrap_audit(
-        context=context,
-        action="admin.bootstrap.user.read",
-        roles=access.roles,
-        metadata={"limit": limit, "userId": user_id},
-    )
     return AdminUserDetailBootstrapResponse(access=access, groups=groups, ok=True, teams=teams, user=user)
 
 
@@ -159,22 +140,4 @@ def _load_access(context: ApiRequestContext) -> AdminMeResponse:
         ok=True,
         roles=roles,
         userId=context.user_id,
-    )
-
-
-def _write_bootstrap_audit(
-    *,
-    action: str,
-    context: ApiRequestContext,
-    metadata: dict[str, object],
-    roles: list[object],
-) -> None:
-    write_admin_audit_log(
-        action=action,
-        actor_user_id=context.user_id,
-        metadata={
-            **metadata,
-            "roles": [getattr(role, "role", "") for role in roles],
-        },
-        workspace_id=context.workspace_id,
     )

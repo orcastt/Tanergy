@@ -80,12 +80,13 @@ def run_google_attempt(
 
 
 def _request_body(payload: AiRunRequest, context: ApiRequestContext) -> Optional[dict[str, object]]:
-    if payload.run_type not in {"image_generation", "image_edit", "image_analysis"}:
+    if payload.run_type not in {"image_generation", "image_edit", "image_analysis", "text"}:
         return None
     parts: list[dict[str, object]] = []
     prompt = (payload.prompt or "Untitled prompt").strip() or "Untitled prompt"
     parts.append({"text": prompt})
-    for asset in load_provider_input_assets(payload, context):
+    prefer_preview = payload.run_type in {"image_analysis", "text"}
+    for asset in load_provider_input_assets(payload, context, prefer_preview=prefer_preview):
         parts.append(
             {
                 "inlineData": {
@@ -97,10 +98,14 @@ def _request_body(payload: AiRunRequest, context: ApiRequestContext) -> Optional
     response_modalities = ["TEXT"]
     if payload.run_type in {"image_generation", "image_edit"}:
         response_modalities = ["TEXT", "IMAGE"]
-    return {
+    body: dict[str, object] = {
         "contents": [{"parts": parts, "role": "user"}],
         "generationConfig": {"responseModalities": response_modalities},
     }
+    system_prompt = (payload.system_prompt or "").strip()
+    if system_prompt:
+        body["systemInstruction"] = {"parts": [{"text": system_prompt}]}
+    return body
 
 
 def _parse_google_response(body: dict[str, object]) -> tuple[Optional[str], list[ProviderImageOutput]]:

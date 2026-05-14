@@ -132,8 +132,8 @@ export const KonvaBoardSaveAudit = forwardRef<KonvaBoardSaveAuditHandle, KonvaBo
   const captureThumbnail = useCallback(async () => {
     const currentStage = latestStageRef.current
     if (!currentStage) return null
-    return captureKonvaBoardThumbnailUrl(currentStage, getPreparedDocument(), boardTitle)
-  }, [boardTitle, getPreparedDocument])
+    return captureKonvaBoardThumbnailUrl(currentStage, getPreparedDocument(), boardTitle, workspace)
+  }, [boardTitle, getPreparedDocument, workspace])
 
   const refreshThumbnailInBackground = useCallback((currentThumbnailUrl: string | null) => {
     if (mode !== 'board') return
@@ -224,10 +224,10 @@ export const KonvaBoardSaveAudit = forwardRef<KonvaBoardSaveAuditHandle, KonvaBo
   useBoardKeyboardSaveShortcut(mode, saveLocal)
 
   const restoreDocument = useCallback((nextDocument: unknown) => {
-    const restored = restoreKonvaBoardDocument(nextDocument)
+    const restored = restoreKonvaBoardDocument(nextDocument, { workspaceId: workspace?.id })
     onDocumentRestore(restored)
     return restored.result
-  }, [onDocumentRestore])
+  }, [onDocumentRestore, workspace?.id])
 
   const loadLocal = useCallback(async () => {
     clearAutosaveTimer()
@@ -241,7 +241,7 @@ export const KonvaBoardSaveAudit = forwardRef<KonvaBoardSaveAuditHandle, KonvaBo
       const loaded = await loadLocalBoardDocument(boardId, workspace)
       const board = loaded.board
       if (!board) throw new Error('Konva board load failed.')
-      const restored = restoreKonvaBoardDocument(board.document)
+      const restored = restoreKonvaBoardDocument(board.document, { workspaceId: board.workspaceId })
       onDocumentRestore(restored)
       onBoardLoaded?.(board)
       const restoredResult = createGuardedKonvaBoardDocument(restored.document, {

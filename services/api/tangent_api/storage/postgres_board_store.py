@@ -210,7 +210,14 @@ class PostgresBoardStore:
                     """
                     SELECT id, workspace_id, owner_id, title, byte_size, asset_count, shape_count,
                            description, card_color, thumbnail_url, last_opened_at, saved_at, created_at,
-                           is_starred, is_pinned, visibility, share_id
+                           is_starred, is_pinned, visibility, share_id,
+                           CASE
+                               WHEN document->>'version' = '2'
+                                AND document->>'renderer' = 'konva'
+                                AND jsonb_typeof(document->'canvasDocument') = 'object'
+                               THEN 'konva'
+                               ELSE NULL
+                           END AS canvas_engine
                     FROM tangent_boards
                     WHERE workspace_id = %s
                     ORDER BY saved_at DESC
@@ -835,6 +842,7 @@ def _board_summary_from_row(row: tuple[object, ...]) -> BoardSummary:
         assetCount=int(row[5] or 0),
         byteSize=int(row[4] or 0),
         cardColor=row[8],
+        canvasEngine=row[17] if len(row) > 17 else None,
         createdAt=_optional_iso(row[12]),
         description=row[7],
         id=str(row[0]),

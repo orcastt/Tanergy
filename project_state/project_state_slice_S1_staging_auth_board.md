@@ -1,7 +1,7 @@
 # Project State Slice S1: Staging, Auth And Board
 
-**Updated**: 2026-05-06
-**Status**: Active umbrella. Use S1A/S1B/S1C/S1D/S1X slice files for detailed truth; this file only summarizes the launch boundary.
+**Updated**: 2026-05-14
+**Status**: Active umbrella. Use S1A/S1B/S1C/S1D/S1X slice files for detailed truth; this file summarizes the current launch boundary where staging Web/API/Neon/R2 plus real session/admin smoke are green, while Google/email and final signed-in board acceptance remain.
 
 ## Purpose
 
@@ -26,7 +26,7 @@ Group/Team business depth, real payments and collaboration remain outside this s
 - Email provider and sender-domain setup.
 - Auth provider setup for Google OAuth, likely Clerk first.
 - Google Cloud OAuth production client setup before public launch.
-- Konva-first Board route deployed with tldraw reference disabled by default.
+- Konva-only Board route deployed, with legacy Board documents blocked in the active app path.
 
 ## First Checks When Resources Exist
 
@@ -36,7 +36,7 @@ Group/Team business depth, real payments and collaboration remain outside this s
 4. Board save/load/history create/list/load.
 5. Guard rejects `data:` / `blob:`.
 6. Web app uses `NEXT_PUBLIC_API_BASE_URL`.
-7. `/boards/[boardId]` opens Konva v2 in production-like env without tldraw license dependency.
+7. `/boards/[boardId]` opens Konva v2 in production-like env without any legacy paid-canvas dependency.
 
 ## Local Work That Can Start Before Resources
 
@@ -52,13 +52,13 @@ Group/Team business depth, real payments and collaboration remain outside this s
 | Sub-slice | Status | Output |
 | --- | --- | --- |
 | S1A DB schema + migrations | `project_state_slice_S1A_db_schema.md` | Implemented and locally smoke-tested; staging DB smoke pending S1B | Formal Alembic migrations and schema contracts for identity, workspace, Board, History and Asset facts. |
-| S1B Staging infra smoke | `project_state_slice_S1B_staging_infra.md` | Waiting on resources | Public FastAPI health, CORS, staging Postgres, R2/S3 and Web API base URL smoke. |
-| S1C Auth/request context | `project_state_slice_S1C_auth_request_context.md` | Clerk/FastAPI bearer first pass landed; hardening pending | Register/login/logout/session and default workspace creation. |
+| S1B Staging infra smoke | `project_state_slice_S1B_staging_infra.md` | Web/API/Neon/R2, Konva redeploy and real session/admin smoke green; Google/email/live-AI pending | Public FastAPI health, CORS, staging Postgres, R2/S3 and Web API base URL smoke. |
+| S1C Auth/request context | `project_state_slice_S1C_auth_request_context.md` | Clerk/FastAPI bearer first pass plus real session/admin smoke landed; hardening pending | Register/login/logout/session and default workspace creation. |
 | S1D Auth-backed Board CRUD | `project_state_slice_S1D_auth_board_crud.md` | First-pass CRUD/member/share/public-share stable | Server-scoped Board list/load/save/history/copy/delete and owner/admin/editor/viewer checks. |
 
 S2/S3/S4 should not consume mock identity once S1 starts. They can keep planning, but implementation should use the S1 user/workspace/board contracts.
 
-Current launch note: S1X has mitigated the tldraw production blocker locally by making Konva v2 the production Board default and gating tldraw reference usage. Do not ship new tldraw-only product behavior while S1 moves to staging/Auth/Board ownership.
+Current launch note: S1X has closed the old paid-canvas blocker locally by making Konva v2 the only active Board runtime and blocking legacy v1 Board docs/history from the active app path. Do not reintroduce legacy canvas compatibility behavior while S1 moves to staging/Auth/Board ownership.
 
 ## Still Not Production-Complete
 

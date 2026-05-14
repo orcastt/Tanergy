@@ -1,8 +1,8 @@
 # ARCH Slice S1B: Staging Infrastructure And Online Prep
 
-**Updated**: 2026-05-08
+**Updated**: 2026-05-14
 **Mode**: Architecture slice.
-**Status**: In progress; staging Web/API/Neon/R2 smoke passed, while Auth/email/OAuth and Konva-first redeploy smoke remain.
+**Status**: In progress; rebuilt staging Web/API/Neon/R2 smoke, the Konva-only redeploy and real Clerk session/admin smoke are green again, production runbook/templates now exist, and the remaining gates are Google/email verification, final signed-in browser acceptance and one live provider path under strict staging auth.
 
 ## Goal
 
@@ -110,6 +110,30 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
    - Never expose API keys in frontend code.
    - Rotate staging keys before production.
 
+## Production Split
+
+Production is now documented in:
+
+```text
+deploy/production/README.md
+deploy/production/api.env.example
+```
+
+Recommended production boundary:
+
+- separate Vercel project or at minimum separate production env/domain wiring
+- separate API env file and compose stack
+- separate Postgres database credentials, preferably a separate database or Neon project
+- separate R2 bucket and write credentials
+- separate Clerk production keys and redirect/origin settings
+- separate email and payment secrets
+
+Promotion policy:
+
+- staging remains the internal acceptance lane
+- production opens only after staging real-login, email/OAuth, admin and live-AI smokes are green
+- deploy the same reviewed commit SHA from staging to production
+
 ## Official References
 
 - Vercel pricing/docs: https://vercel.com/pricing
@@ -143,4 +167,5 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - Asset upload/read succeeds through R2.
 - Board save/load/history works through staging API.
 - Guard rejects `data:` and `blob:` documents.
+- A production runbook and env template exist before public launch.
 - Rollback path is documented.

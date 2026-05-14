@@ -1,6 +1,7 @@
 from typing import Optional
 
 from tangent_api.admin_operator_billing_history import load_admin_operator_billing_history
+from tangent_api.admin_operator_inventory_reads import list_admin_operator_inventory_users
 from tangent_api.admin_operator_sql import (
     admin_operator_subscription_snapshot_sql,
     admin_operator_user_ip_field_sql,
@@ -31,11 +32,7 @@ def list_admin_operator_users(
     offset: int,
     search: Optional[str] = None,
 ) -> tuple[list[AdminOperatorUserRow], int]:
-    rows = _fetchall(_users_query(search), _users_params(limit=limit, offset=offset, search=search))
-    total_count = int(rows[0][0] or 0) if rows else 0
-    users = [user_from_row(row[1:]) for row in rows]
-    _attach_user_collections(users)
-    return users, total_count
+    return list_admin_operator_inventory_users(limit=limit, offset=offset, search=search)
 
 
 def get_admin_operator_user_detail(user_id: str) -> Optional[AdminOperatorUserDetail]:
@@ -89,30 +86,6 @@ def _attach_user_collections(users: list[AdminOperatorUserRow], *, include_works
         user.group_plans_active = [plan for plan in group_plans.get(user.id, []) if _is_current(plan.status)]
         user.group_plans_expired = [plan for plan in group_plans.get(user.id, []) if not _is_current(plan.status)]
         user.owned_team_count = len(team_plans.get(user.id, []))
-
-
-def _users_query(search: Optional[str]) -> str:
-    where = ["COALESCE(status, 'active') <> 'deleted'"]
-    if search and search.strip():
-        where.append("(email ILIKE %s OR COALESCE(display_name, '') ILIKE %s OR id ILIKE %s)")
-    return f"""
-        SELECT COUNT(*) OVER() AS total_count,
-               id, email, COALESCE(display_name, ''), COALESCE(status, 'active'),
-               created_at, last_login_at, COALESCE(email_verified, FALSE), {admin_operator_user_ip_field_sql()}
-        FROM tangent_users
-        WHERE {' AND '.join(where)}
-        ORDER BY created_at DESC, id ASC
-        LIMIT %s OFFSET %s
-    """
-
-
-def _users_params(*, limit: int, offset: int, search: Optional[str]) -> tuple[object, ...]:
-    params: list[object] = []
-    if search and search.strip():
-        pattern = f"%{search.strip()}%"
-        params.extend([pattern, pattern, pattern])
-    params.extend([limit, offset])
-    return tuple(params)
 
 
 def _load_personal_credit(user_ids: list[str]) -> dict[str, AdminOperatorCreditSummary]:

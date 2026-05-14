@@ -8,7 +8,7 @@ from uuid import uuid4
 from fastapi import HTTPException
 
 from tangent_api.board_asset_references import assert_no_postgres_foreign_asset_refs
-from tangent_api.board_guard import audit_board_document
+from tangent_api.board_guard import audit_board_document, is_legacy_tldraw_board_document
 from tangent_api.board_metadata import get_board_snapshot_display_title, normalize_board_thumbnail_url
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.schemas import (
@@ -173,7 +173,13 @@ class PostgresBoardSnapshotStore:
                 row = cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Board history entry not found in workspace.")
-        return _snapshot_from_row(row)
+        snapshot = _snapshot_from_row(row)
+        if is_legacy_tldraw_board_document(snapshot.document):
+            raise HTTPException(
+                status_code=422,
+                detail="Legacy tldraw board history is no longer restorable in the Konva-only app path.",
+            )
+        return snapshot
 
     def clear_snapshots(self, board_id: str, context: ApiRequestContext) -> int:
         self.boards._load_board_without_touch(board_id, context, required_access="manage")

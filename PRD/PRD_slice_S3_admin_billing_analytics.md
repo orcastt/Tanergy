@@ -1,8 +1,8 @@
 # PRD Slice S3: Team, Group, Wallets, Billing And Admin
 
-**Updated**: 2026-05-10
+**Updated**: 2026-05-14
 **Mode**: Product slice.
-**Status**: Active commercial-architecture slice. Existing admin, ledger, seat and AI-control-plane scaffolds remain useful, but the Team charging rule has pivoted from member-personal credits to a Team wallet.
+**Status**: Active commercial-architecture slice. Existing admin, ledger, seat and AI-control-plane scaffolds remain useful, but the Team charging rule has pivoted from member-personal credits to a Team wallet. Real staging session/admin smoke is now green; the next release-facing gates are live AI/payment depth, Google/email verification and broader browser acceptance.
 
 ## Goal
 

@@ -1,6 +1,7 @@
 # S1C Auth/Admin Production Boundary Plan
 
 **Created**: 2026-05-08
+**Updated**: 2026-05-14
 **Status**: Active tactical plan.
 **Owner slice**: S1C, with S1B/S1D/S3 dependencies.
 
@@ -36,7 +37,13 @@ Current implementation checkpoint:
 - [x] `s3_admin_bootstrap.py` can grant `admin_roles` by local user id or login email after first real login.
 - [x] Authenticated `/api/v1/auth/session` now returns the full validated workspace membership list and server-side workspace plan facts.
 - [x] Remote smoke helper exists: `services/api/scripts/s1c_remote_admin_smoke.py`.
-- [ ] Remote real-login admin smoke still needs deployed Web/API, migrated DB and a real Clerk session.
+- [x] Remote real-login admin smoke now passes on staging for session/admin/operator/finance/AI-route reads.
+- [ ] Google/email flow verification and broader signed-in browser acceptance still remain.
+
+Current execution note:
+
+- This plan is now past the basic reachability gate together with S1B staging smoke.
+- The current follow-through is broader signed-in browser acceptance plus Google/email/logout verification, not dev-bypass recovery.
 
 Out of scope for this cut:
 
@@ -102,6 +109,10 @@ Manual smoke:
 3. Bootstrap/grant admin role to that local user.
 4. Open `/admin` without dev-bypass and confirm directory, finance and AI route panels load.
 5. Sign in as a non-admin and confirm `/admin` is denied.
+
+2026-05-14 checkpoint:
+
+- Real staging smoke now returns green for `/api/auth/session`, `/api/admin-proxy/me`, `/api/admin-proxy/operator/users?limit=3`, `/api/admin-proxy/finance/summary` and `/api/admin-proxy/ai/route-metrics?limit=5`.
 
 ## Dependencies
 

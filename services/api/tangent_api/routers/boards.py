@@ -11,6 +11,7 @@ from tangent_api.realtime.board_realtime_limits import (
     normalize_realtime_update,
 )
 from tangent_api.realtime.board_realtime_hub import board_realtime_hub
+from tangent_api.realtime.board_realtime_persistence import board_realtime_persistence
 from tangent_api.request_context import ApiRequestContext, get_request_context, get_websocket_context
 from tangent_api.schemas import (
     BoardCollaborationSessionDeleteResponse,
@@ -45,7 +46,6 @@ from tangent_api.schemas import (
     BoardValidateResponse,
 )
 from tangent_api.storage.board_collaboration_storage_adapter import get_board_collaboration_storage_adapter
-from tangent_api.storage.board_realtime_storage_adapter import get_board_realtime_storage_adapter
 from tangent_api.storage.board_storage_adapter import get_board_storage_adapter
 
 router = APIRouter(prefix="/api/v1/boards", tags=["boards"])
@@ -317,8 +317,7 @@ async def board_realtime_room(websocket: WebSocket, board_id: str) -> None:
         await websocket.close(code=4403, reason="Room key mismatch.")
         return
 
-    realtime_storage = get_board_realtime_storage_adapter()
-    persisted_updates = realtime_storage.load_document(collaboration.workspace_id, board_id)
+    persisted_updates = board_realtime_persistence.load_document(collaboration.workspace_id, board_id)
     await websocket.accept()
     room, connection_id = await board_realtime_hub.connect(
         room_key,
@@ -342,18 +341,19 @@ async def board_realtime_room(websocket: WebSocket, board_id: str) -> None:
                         document_version,
                     )
                     if accepted:
-                        realtime_storage.write_document(
+                        await board_realtime_persistence.queue_document(
                             collaboration.workspace_id,
                             board_id,
                             room_key,
                             document_updates,
                         )
-                    elif request_compaction:
+                    else:
                         await websocket.send_json({
                             "documentVersion": current_document_version,
-                            "requestCompaction": True,
-                            "type": "document-compact-request",
-                            "updateCount": len(document_updates),
+                            "requestCompaction": request_compaction,
+                            "seedRoom": len(document_updates) == 0,
+                            "type": "sync-state",
+                            "updates": document_updates,
                         })
                 continue
             if message_type == "yjs-update":
@@ -370,7 +370,7 @@ async def board_realtime_room(websocket: WebSocket, board_id: str) -> None:
                         update,
                     )
                     if accepted:
-                        realtime_storage.write_document(
+                        await board_realtime_persistence.queue_document(
                             collaboration.workspace_id,
                             board_id,
                             room_key,
@@ -398,7 +398,15 @@ async def board_realtime_room(websocket: WebSocket, board_id: str) -> None:
     except WebSocketDisconnect:
         pass
     finally:
-        await board_realtime_hub.disconnect(room_key, connection_id)
+        snapshot = await room.snapshot_document()
+        room_became_empty = await board_realtime_hub.disconnect(room_key, connection_id)
+        if snapshot and room_became_empty:
+            await board_realtime_persistence.finalize_document(
+                collaboration.workspace_id,
+                board_id,
+                room_key,
+                snapshot,
+            )
 
 
 @router.post("/{board_id}/share-link", response_model=BoardShareLinkResponse)

@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server'
 import type { AiChatCompletionRequest, AiChatMessage, AiChatMessageContentPart } from '@/features/ai/aiTypes'
+import { assertLocalAiBridgeAvailable } from '@/features/api/runtimeBridgePolicy'
 import { getApiRequestContext } from '../../../_lib/apiRequestContext'
 import { readJsonRequestWithLimit, requestBodyErrorStatus } from '../../../_lib/requestBodyLimits'
 import {
   assertAiInlineImageByteLength,
+  assertAiInlineImageTotalByteLength,
   getResponseContentLength,
-  normalizeAiInlineImageDataUrl,
+  parseAiInlineImageDataUrl,
   normalizeAiInlineImageMime,
   readAiInlineResponseBufferWithLimit,
   readJsonResponseWithLimit,
@@ -24,7 +26,7 @@ const chatProviderStreamTimeoutMs = 120_000
 
 export async function POST(request: Request) {
   try {
-    assertLocalChatProviderRouteAllowed()
+    assertLocalAiBridgeAvailable()
     const body = await readJsonRequestWithLimit<AiChatCompletionRequest>(request, maxChatRequestBytes)
     if (!body.model?.trim()) {
       return NextResponse.json({ error: 'Missing chat model.' }, { status: 400 })
@@ -80,15 +82,10 @@ export async function POST(request: Request) {
   }
 }
 
-function assertLocalChatProviderRouteAllowed() {
-  if (process.env.NODE_ENV === 'production' && process.env.TANGENT_ENABLE_NEXT_AI_PROVIDER_ROUTES !== '1') {
-    throw new Error('Next AI provider routes are disabled in production. Use the backend AiRun API.')
-  }
-}
-
 async function normalizeMessagesForGeekAi(request: Request, messages: AiChatMessage[]) {
   if (messages.length > maxChatMessages) throw new Error('Chat request includes too many messages.')
   let imagePartCount = 0
+  const usage = { totalInlineBytes: 0 }
   const normalizedMessages: AiChatMessage[] = []
   for (const message of messages) {
     if (!Array.isArray(message.content)) {
@@ -102,7 +99,7 @@ async function normalizeMessagesForGeekAi(request: Request, messages: AiChatMess
         imagePartCount += 1
         if (imagePartCount > maxChatImageParts) throw new Error('Chat request includes too many reference images.')
       }
-      content.push(await normalizeMessagePart(request, part))
+      content.push(await normalizeMessagePart(request, part, usage))
     }
     normalizedMessages.push({
       ...message,
@@ -112,7 +109,11 @@ async function normalizeMessagesForGeekAi(request: Request, messages: AiChatMess
   return normalizedMessages
 }
 
-async function normalizeMessagePart(request: Request, part: AiChatMessageContentPart) {
+async function normalizeMessagePart(
+  request: Request,
+  part: AiChatMessageContentPart,
+  usage: { totalInlineBytes: number }
+) {
   if (part.type !== 'image_url') return part
   const rawUrl = part.image_url?.url?.trim()
   if (!rawUrl) return part
@@ -120,13 +121,18 @@ async function normalizeMessagePart(request: Request, part: AiChatMessageContent
     ...part,
     image_url: {
       ...part.image_url,
-      url: await resolveGeekAiImageUrl(request, rawUrl),
+      url: await resolveGeekAiImageUrl(request, rawUrl, usage),
     },
   }
 }
 
-async function resolveGeekAiImageUrl(request: Request, rawUrl: string) {
-  if (rawUrl.startsWith('data:')) return normalizeAiInlineImageDataUrl(rawUrl)
+async function resolveGeekAiImageUrl(request: Request, rawUrl: string, usage: { totalInlineBytes: number }) {
+  if (rawUrl.startsWith('data:')) {
+    const parsed = parseAiInlineImageDataUrl(rawUrl)
+    usage.totalInlineBytes += parsed.buffer.byteLength
+    assertAiInlineImageTotalByteLength(usage.totalInlineBytes)
+    return `data:${parsed.mime};base64,${parsed.base64}`
+  }
   const requestUrl = new URL(request.url)
   const resolvedUrl = new URL(rawUrl, requestUrl)
   if (!shouldInlineImageUrl(requestUrl, resolvedUrl)) return resolvedUrl.toString()
@@ -141,6 +147,8 @@ async function resolveGeekAiImageUrl(request: Request, rawUrl: string) {
   const mime = normalizeAiInlineImageMime(assetResponse.headers.get('content-type'))
   assertAiInlineImageByteLength(getResponseContentLength(assetResponse.headers))
   const bytes = await readAiInlineResponseBufferWithLimit(assetResponse)
+  usage.totalInlineBytes += bytes.byteLength
+  assertAiInlineImageTotalByteLength(usage.totalInlineBytes)
   return `data:${mime};base64,${bytes.toString('base64')}`
 }
 

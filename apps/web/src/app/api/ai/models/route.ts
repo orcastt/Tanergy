@@ -1,13 +1,15 @@
 import { NextResponse } from 'next/server'
 import { getAiModels } from '@/features/ai/mockAiContracts'
 import type { AiCapability } from '@/features/ai/aiTypes'
+import { assertLocalAiBridgeAvailable } from '@/features/api/runtimeBridgePolicy'
 import { getApiRequestContext } from '../../_lib/apiRequestContext'
+import { requestBodyErrorStatus } from '../../_lib/requestBodyLimits'
 
 export const runtime = 'nodejs'
 
 export function GET(request: Request) {
   try {
-    assertLocalAiModelsAllowed()
+    assertLocalAiBridgeAvailable()
     getApiRequestContext(request)
     const { searchParams } = new URL(request.url)
     const capability = searchParams.get('capability') as AiCapability | null
@@ -15,13 +17,7 @@ export function GET(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'AI model registry failed.', models: [], ok: false },
-      { status: 400 }
+      { status: requestBodyErrorStatus(error) }
     )
-  }
-}
-
-function assertLocalAiModelsAllowed() {
-  if (process.env.NODE_ENV === 'production' && process.env.TANGENT_ENABLE_LOCAL_AI_ROUTES !== '1') {
-    throw new Error('Local AI model registry is disabled in production. Use the backend AiRun API.')
   }
 }

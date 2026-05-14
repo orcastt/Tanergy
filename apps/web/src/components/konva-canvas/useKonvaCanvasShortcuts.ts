@@ -6,6 +6,7 @@ import {
   withCanvasShapes,
 } from '@/features/canvas-engine'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
+import type { KonvaPendingImagePaste } from './KonvaPendingImagePasteLayer'
 import { deleteKonvaShapes, duplicateKonvaShapes, reorderKonvaShapes } from './konvaCanvasStyle'
 import { pasteKonvaClipboardData, writeKonvaShapesToSystemClipboard } from './konvaClipboardCommands'
 import { konvaToolShortcuts, type KonvaCanvasTool } from './konvaCanvasTypes'
@@ -25,9 +26,14 @@ type UseKonvaCanvasShortcutsOptions = {
   clipboardRef: MutableRefObject<CanvasShape[]>
   document: CanvasDocument
   enabled?: boolean
+  getActivePageId?: () => string
   history: KonvaCanvasHistory
+  onImagePasteComplete?: (pendingId: string) => void
+  onImagePasteStateChange?: (state: KonvaPendingImagePaste) => void
+  onPageDocumentChange?: (pageId: string, updater: (document: CanvasDocument) => CanvasDocument) => boolean
   selectedIds: string[]
   selectedEdgeId?: string | null
+  pageId: string
   getPastePoint: () => CanvasPoint
   onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
   onClipboardChange?: (shapeCount: number) => void
@@ -253,12 +259,17 @@ function expandFrameChildren(shapes: CanvasDocument['shapes'], shapeIds: string[
 
 async function pasteFromClipboardData(options: UseKonvaCanvasShortcutsOptions, data: DataTransfer) {
   await pasteKonvaClipboardData({
+    getActivePageId: options.getActivePageId,
     clipboardRef: options.clipboardRef,
     document: options.document,
     history: options.history,
     onClipboardChange: options.onClipboardChange,
     onDocumentChange: options.onDocumentChange,
+    onImagePasteComplete: options.onImagePasteComplete,
+    onImagePasteStateChange: options.onImagePasteStateChange,
+    onPageDocumentChange: options.onPageDocumentChange,
     onSelectionChange: options.onSelectionChange,
+    pageId: options.pageId,
     point: options.getPastePoint(),
     selectedIds: options.selectedIds,
     workspace: options.workspace,

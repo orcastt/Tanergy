@@ -1,4 +1,6 @@
 import json
+import os
+import time
 from typing import Any, Optional
 from uuid import uuid4
 
@@ -16,13 +18,23 @@ from tangent_api.schemas import (
 from tangent_api.storage.postgres_connection import connect_to_postgres, require_database_url
 
 ADMIN_ACCESS_ROLES = {"owner", "admin", "support", "analyst", "finance", "moderator"}
+_ADMIN_ROLE_CACHE_MAX = 256
+_ADMIN_ROLE_CACHE: dict[tuple[str, str, int], tuple[float, list[AdminRoleRecord]]] = {}
 
 
 def load_active_admin_roles(user_id: str) -> list[AdminRoleRecord]:
     try:
-        require_database_url()
+        database_url = require_database_url()
     except HTTPException:
         return []
+
+    cache_key = (database_url, user_id, id(connect_to_postgres))
+    ttl_seconds = _admin_role_cache_seconds()
+    if ttl_seconds > 0:
+        cached = _ADMIN_ROLE_CACHE.get(cache_key)
+        now = time.monotonic()
+        if cached and now - cached[0] <= ttl_seconds:
+            return list(cached[1])
 
     with connect_to_postgres() as connection:
         with connection.cursor() as cursor:
@@ -40,7 +52,12 @@ def load_active_admin_roles(user_id: str) -> list[AdminRoleRecord]:
             )
             rows = cursor.fetchall()
 
-    return [_row_to_admin_role(row) for row in rows]
+    roles = [_row_to_admin_role(row) for row in rows]
+    if ttl_seconds > 0:
+        if len(_ADMIN_ROLE_CACHE) >= _ADMIN_ROLE_CACHE_MAX:
+            _ADMIN_ROLE_CACHE.clear()
+        _ADMIN_ROLE_CACHE[cache_key] = (time.monotonic(), roles)
+    return list(roles)
 
 
 def is_global_admin(user_id: str) -> bool:
@@ -242,6 +259,7 @@ def grant_admin_role(
             )
         connection.commit()
 
+    clear_admin_role_cache(target_user_id)
     granted = next((item for item in load_active_admin_roles(target_user_id) if item.role == normalized_role), None)
     if granted is None:
         raise HTTPException(status_code=404, detail="Admin role grant failed.")
@@ -285,7 +303,25 @@ def revoke_admin_role(
                 workspace_id=workspace_id,
             )
         connection.commit()
+    clear_admin_role_cache(target_user_id)
     return target_role, audit_id
+
+
+def clear_admin_role_cache(user_id: Optional[str] = None) -> None:
+    if user_id is None:
+        _ADMIN_ROLE_CACHE.clear()
+        return
+    for key in [key for key in _ADMIN_ROLE_CACHE if key[1] == user_id]:
+        _ADMIN_ROLE_CACHE.pop(key, None)
+
+
+def _admin_role_cache_seconds() -> float:
+    raw = os.getenv("TANGENT_ADMIN_ROLE_CACHE_SECONDS", "5").strip()
+    try:
+        value = float(raw)
+    except ValueError:
+        return 5
+    return max(0, min(value, 60))
 
 
 def write_admin_audit_log(

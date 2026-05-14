@@ -1,9 +1,13 @@
+from typing import List, Optional
+
 import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from tangent_api.main import app
+from tangent_api.request_context import ApiRequestContext, ApiWorkspaceContext
 from tangent_api.remote_image_import import RemoteImageImport
+from tangent_api.storage.asset_storage_adapter import get_asset_storage_adapter
 from tangent_api.storage import asset_store_common
 from tests.persistence_fakes import FakePostgresDatabase, FakeS3Client
 
@@ -218,6 +222,79 @@ def test_asset_s3_compatible_contract(monkeypatch):
     file_response = client.get(asset["originalUrl"])
     assert file_response.status_code == 200
     assert file_response.content == b"\x00\x00\x00"
+
+
+def test_asset_s3_postgres_metadata_resolves_files_across_workspace_membership(monkeypatch):
+    fake_s3 = FakeS3Client()
+    fake_db = FakePostgresDatabase()
+    monkeypatch.setenv("TANGENT_ASSET_STORAGE_DRIVER", "s3-compatible")
+    monkeypatch.setenv("TANGENT_ASSET_METADATA_DRIVER", "postgres")
+    monkeypatch.setenv("S3_ENDPOINT", "https://r2.example.test")
+    monkeypatch.setenv("S3_BUCKET", "tangent-assets")
+    monkeypatch.setenv("S3_ACCESS_KEY_ID", "test-access-key")
+    monkeypatch.setenv("S3_SECRET_ACCESS_KEY", "test-secret-key")
+    monkeypatch.setattr(
+        "tangent_api.storage.s3_asset_store.create_s3_client",
+        lambda config: fake_s3,
+    )
+    monkeypatch.setattr(
+        "tangent_api.storage.postgres_asset_metadata_store.connect_to_postgres",
+        fake_db.connect,
+    )
+    adapter = get_asset_storage_adapter()
+
+    owner_context = make_asset_context("user_owner", "workspace_team")
+    asset = adapter.create_from_bytes(
+        b"\x89PNG\r\n\x1a\n",
+        "image/png",
+        owner_context,
+        "upload",
+        "Cross workspace asset",
+        1,
+        1,
+    )
+
+    reader_context = make_asset_context(
+        "user_owner",
+        "workspace_personal",
+        memberships=["workspace_personal", "workspace_team"],
+    )
+    content = adapter.get_file_bytes(asset.id, "original.png", reader_context)
+    assert content == b"\x89PNG\r\n\x1a\n"
+
+
+def make_asset_context(
+    user_id: str,
+    workspace_id: str,
+    memberships: Optional[List[str]] = None,
+) -> ApiRequestContext:
+    membership_ids = memberships or [workspace_id]
+    return ApiRequestContext(
+        auth_mode="required",
+        is_dev_fallback=False,
+        user_avatar_initials="TU",
+        user_display_name="Test User",
+        user_email=f"{user_id}@example.com",
+        user_email_verified=True,
+        user_id=user_id,
+        workspace_board_count=0,
+        workspace_id=workspace_id,
+        workspace_kind="solo_workspace",
+        workspace_memberships=[
+            ApiWorkspaceContext(
+                board_count=0,
+                workspace_id=item,
+                workspace_kind="solo_workspace",
+                workspace_name=item,
+                workspace_plan_key="free_canvas",
+                workspace_role="owner",
+            )
+            for item in membership_ids
+        ],
+        workspace_name=workspace_id,
+        workspace_plan_key="free_canvas",
+        workspace_role="owner",
+    )
     assert file_response.headers["content-type"].startswith("image/png")
 
     missing_file = client.get(f"/api/v1/assets/files/{asset['id']}/missing.png")

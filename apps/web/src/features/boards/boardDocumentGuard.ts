@@ -4,6 +4,7 @@ export type BoardDocumentGuardIssueCode =
   | 'document-not-json'
   | 'document-too-large'
   | 'konva-v2-invalid'
+  | 'legacy-tldraw-document'
   | 'large-base64-string'
   | 'runtime-url'
 
@@ -51,6 +52,14 @@ export function auditBoardDocument(
   }
 
   walkDocument(document, [], issues, resolvedOptions)
+  if (isLegacyTldrawBoardDocument(document)) {
+    issues.push({
+      blocking: true,
+      code: 'legacy-tldraw-document',
+      message: 'Legacy tldraw board documents are no longer supported in the Konva-only app path.',
+      path: 'document',
+    })
+  }
   issues.push(...auditKonvaBoardDocumentSchema(document))
 
   return {
@@ -66,6 +75,22 @@ export function assertBoardDocumentCanPersist(document: unknown) {
     throw new Error(audit.issues.find((issue) => issue.blocking)?.message ?? 'Board document is not persistable.')
   }
   return audit
+}
+
+export function isLegacyTldrawBoardDocument(document: unknown) {
+  if (!document || typeof document !== 'object') return false
+  const candidate = document as {
+    camera?: unknown
+    runtimeEdges?: unknown
+    shapes?: unknown
+    version?: unknown
+  }
+  return (
+    candidate.version === 1
+    && Array.isArray(candidate.shapes)
+    && Array.isArray(candidate.runtimeEdges)
+    && Boolean(candidate.camera && typeof candidate.camera === 'object')
+  )
 }
 
 function safeStringify(document: unknown, issues: BoardDocumentGuardIssue[]) {

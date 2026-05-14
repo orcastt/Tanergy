@@ -1,6 +1,6 @@
 # ARCH Slice S1: Persistence, Auth And Deploy
 
-**Updated**: 2026-05-06
+**Updated**: 2026-05-14
 **Mode**: Architecture slice.
 
 ## Scope
@@ -52,9 +52,9 @@ S1 is the identity and ownership foundation. It should not implement every futur
 - S3-compatible Asset adapter exists.
 - Alembic P0 migration scaffold exists.
 - S1A formal schema migrations are implemented locally through revision `20260502_0006` and passed disposable Docker Postgres smoke.
-- Staging server, managed Postgres, R2 bucket, domain and TLS have first smoke coverage; email/Auth/OAuth and Konva redeploy smoke still need final staging verification.
-- Clerk frontend/session bridge and FastAPI bearer verification first pass are in place; hardening remains.
-- S1X now provides a Konva-first Board route and production tldraw reference gate locally; staging must redeploy/smoke that path before public use.
+- Staging server, managed Postgres, R2 bucket, domain and TLS have first smoke coverage; real signed-in Clerk session/admin smoke is now green, while Google/email flow verification and full browser acceptance still need final staging verification.
+- Clerk frontend/session bridge and FastAPI bearer verification first pass are in place; hardening remains around logout/revocation and Google/email coverage.
+- S1X now provides a Konva-only Board route locally, with legacy v1 Board docs/history blocked from the active app path; staging must redeploy/smoke that same truth before public use.
 
 ## Core Tables
 
@@ -170,7 +170,7 @@ Included:
 - Server-side board/member role model needed by future sharing and collaboration.
 - Staging Postgres/R2/domain/CORS smoke.
 - Google OAuth through Auth provider, with FastAPI JWT verification and local user mapping.
-- Konva-first Board route on staging, with tldraw disabled unless explicitly enabled for reference testing.
+- Konva-only Board route on staging, with legacy Board documents blocked in the active app path.
 
 Deferred:
 
@@ -184,8 +184,8 @@ Deferred:
 | Sub-slice | File | Status | Output |
 | --- | --- | --- | --- |
 | S1A DB schema + migrations | `ARCH_slice_S1A_db_schema.md` | S1A core done through `0006`; current head includes S3 `0007` | Formal schema, constraints, indexes and future-compatible join points. |
-| S1B staging infra smoke | `ARCH_slice_S1B_staging_infra.md` | Web/API/Neon/R2 smoke passed; Auth/email/OAuth/Konva redeploy pending | Public Web/API, Postgres, R2, DNS/TLS and email provider smoke. |
-| S1C Auth/request context | `ARCH_slice_S1C_auth_request_context.md` | Clerk/FastAPI bearer first pass landed; hardening pending | Real sessions, default workspace and server-side request context. |
+| S1B staging infra smoke | `ARCH_slice_S1B_staging_infra.md` | Web/API/Neon/R2, Konva redeploy and real session/admin smoke passed; Google/email/live-AI pending | Public Web/API, Postgres, R2, DNS/TLS and email provider smoke. |
+| S1C Auth/request context | `ARCH_slice_S1C_auth_request_context.md` | Clerk/FastAPI bearer first pass landed; real session/admin smoke passed | Real sessions, default workspace and server-side request context. |
 | S1D Auth-backed Board CRUD | `ARCH_slice_S1D_auth_board_crud.md` | First-pass CRUD/member/share/public-share stable | Board/History/Asset APIs scoped by user, workspace and role. |
 
 ## API Rules
@@ -198,7 +198,7 @@ Deferred:
 
 ## Validation Target
 
-- Fresh user can register, verify/login, and land in `/workspaces`.
+  - Fresh user can register, verify/login, and land in `/workspaces`.
 - Fresh user can sign up/login with Google OAuth and land in `/workspaces`.
 - User receives one default workspace and owner membership.
 - Board create/open/rename/copy/delete/list/save/history works through FastAPI with staging Postgres/R2.
@@ -214,4 +214,5 @@ Deferred:
 4. Board save/load/history works against staging Postgres.
 5. Guard rejects `data:` / `blob:` documents.
 6. Rollback path documented.
-7. `/boards/[boardId]` opens Konva v2 in production-like staging without tldraw license dependency.
+7. `/boards/[boardId]` opens Konva v2 in production-like staging without any legacy paid-canvas dependency.
+8. Real signed-in session/admin smoke is green and does not rely on dev-bypass.

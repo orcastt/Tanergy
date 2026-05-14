@@ -37,6 +37,18 @@ def normalize_board_visibility(value: Optional[str]) -> str:
     return value if value in BOARD_VISIBILITY else "private"
 
 
+def detect_board_canvas_engine(document: Any) -> Optional[str]:
+    if not isinstance(document, dict):
+        return None
+    if document.get("version") != 2:
+        return None
+    if document.get("renderer") != "konva":
+        return None
+    if not isinstance(document.get("canvasDocument"), dict):
+        return None
+    return "konva"
+
+
 def get_board_document_metrics(document: Any) -> dict[str, int]:
     if not isinstance(document, dict):
         return {"asset_count": 0, "page_count": 1, "shape_count": 0}

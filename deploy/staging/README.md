@@ -12,6 +12,54 @@ It is for a small private staging environment, not production launch.
 - Object storage: Cloudflare R2 or another S3-compatible bucket.
 - DNS / TLS: Cloudflare + a reverse proxy on the VPS.
 
+## Source Firewall First
+
+Do not rely on Cloudflare to protect SSH.
+
+Lock the Hetzner/UFW source host down first:
+
+```bash
+ufw default deny incoming
+ufw allow 80/tcp
+ufw allow 443/tcp
+ufw allow from <your-public-ip> to any port 22 proto tcp
+ufw enable
+ufw status verbose
+```
+
+Rules:
+
+- Public Internet should only reach `80/tcp` and `443/tcp`.
+- `22/tcp` should be restricted to the maintainer's fixed public IP.
+- SSH should never be routed through Cloudflare.
+- Keep password SSH disabled once the key path is proven.
+
+Current staging note:
+
+- `api-staging.tanergy.cc` points to the Hetzner source host.
+- `staging.tanergy.cc` stays on the Vercel web deployment.
+- Both DNS records may be Cloudflare-proxied, but `staging` should stay a proxied Vercel CNAME, not be repointed to the Hetzner API host.
+
+## Cloudflare Edge Hardening
+
+After the source firewall is correct:
+
+1. Proxy the public hostnames through Cloudflare:
+   - `staging.<domain>` -> existing Vercel CNAME, proxied
+   - `api-staging.<domain>` -> Hetzner `A` record, proxied
+2. Set SSL/TLS mode to `Full (strict)`.
+3. Enable WAF managed rules.
+4. Enable bot protection if the current plan exposes it.
+5. Add rate limits for the hot paths:
+   - `/sign-in*`
+   - `/api/auth/*`
+   - `/api/v1/ai/*`
+   - `/api/v1/admin/*`
+   - `/api/v1/boards/*`
+6. Add uptime/health monitoring for `/health`, 5xx spikes and origin-unreachable events.
+
+Do not use `Flexible` SSL for staging or production. The source host should present a valid certificate to Cloudflare.
+
 ## API Server
 
 On the staging server:
@@ -65,7 +113,7 @@ Set the Web app environment:
 NEXT_PUBLIC_API_BASE_URL=https://api-staging.example.com
 ```
 
-The canvas spike keeps the Next local API bridge only when `NEXT_PUBLIC_API_BASE_URL` is unset.
+The canvas spike keeps the Next local API bridge only when `NEXT_PUBLIC_API_BASE_URL` is unset. When that base URL is configured, the web app fails closed to the backend APIs instead of silently falling back to local AI or asset routes.
 
 Local development may use a different port when another service occupies `8000`:
 
@@ -203,7 +251,7 @@ Expected:
 
 Web canvas:
 
-1. Open `/spikes/canvas`.
+1. Open `/boards/<boardId>` with a real saved board.
 2. Import or paste a small PNG/JPEG/WebP.
 3. Click `Save local`.
 4. Refresh the page.
@@ -212,9 +260,18 @@ Web canvas:
 
 ## Current Gaps
 
-- Auth still needs real deployed smoke: local can use `dev-user` / `dev-workspace` plus dev bypass, but staging/prod must verify Clerk session, JWT issuer/JWKS/audience/authorized-party, exact allowed origins and the actual signed-in user's `admin_roles`.
+- Auth still needs full deployed browser smoke: local can use `dev-user` / `dev-workspace` plus dev bypass, but staging/prod must verify Clerk session, JWT issuer/JWKS/audience/authorized-party, exact allowed origins and the actual signed-in user's `admin_roles`.
 - Admin finance deploy smoke requires Alembic migrated to head before calling `/api/v1/admin/finance/summary`; stale DB schema can produce missing-column errors.
 - `TANGENT_POSTGRES_AUTO_CREATE_TABLES=0` is the preferred staging/prod path after running Alembic migrations. Temporary staging smoke can still use `1` while debugging a fresh database.
-- No AI provider proxy, model registry, run logs or credits yet.
+- Staging AI smoke now expects a real live provider credential such as `GEEKAI_API_KEY`; deployed environments should fail closed instead of silently returning mock `asset_mock_*` success.
+- Cloudflare SSL mode, WAF managed rules and rate limits still need either dashboard setup or a wider-scoped API token than DNS-only automation.
 - No backup / restore automation yet.
-- tldraw production deployment still needs the proper license path before public production.
+- The active web app is Konva-only; staging/prod should not depend on any tldraw runtime or license path.
+
+Production preparation now lives in:
+
+```text
+deploy/production/README.md
+```
+
+Do not open a real production site until the staging real-login, email/OAuth and live-AI smokes are green.

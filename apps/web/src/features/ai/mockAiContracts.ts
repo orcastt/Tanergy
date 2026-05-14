@@ -68,7 +68,7 @@ export const mockAiModels: AiModelOption[] = [
     costHint: 'Nano Banana 2 backend for fast image generation and edits.',
     displayName: 'Nano Banana 2',
     estimatedLatency: '4-10s',
-    id: 'gemini-3.1-flash-image-preview',
+    id: 'nano-banana-2',
     isDefault: false,
     isEnabled: true,
     parameterSchema: {
@@ -201,7 +201,9 @@ export function createMockAiRun(
     status: 'succeeded',
     textOutput: input.runType === 'image_analysis'
       ? createMockAnalysisText(prompt, inputAssetIds)
-      : null,
+      : input.runType === 'text'
+        ? createMockTextOutput(prompt, input.systemPrompt ?? input.params?.systemPrompt)
+        : null,
     workspaceKind: charge.workspaceKind,
     workspaceSeatId: charge.workspaceSeatId ?? null,
   }
@@ -225,6 +227,14 @@ function createMockAssetId(runId: string, index: number, prompt: string, refCoun
 function createMockAnalysisText(prompt: string, inputAssetIds: string[]) {
   const assetList = inputAssetIds.join(', ') || 'none'
   return `Mock analysis: read ${inputAssetIds.length} image(s). Reverse prompt: ${prompt}. Source assets: ${assetList}`
+}
+
+function createMockTextOutput(prompt: string, systemPrompt: unknown) {
+  const normalizedSystemPrompt = typeof systemPrompt === 'string' ? systemPrompt.toLowerCase() : ''
+  if (normalizedSystemPrompt.includes('prompt optimizer')) {
+    return `${prompt}. Cinematic composition, realistic materials, clean subject separation, layered lighting, rich color contrast, and polished production detail.`
+  }
+  return `Optimized text output: ${prompt}`
 }
 
 function createRunId() {

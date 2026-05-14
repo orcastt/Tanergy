@@ -16,6 +16,10 @@ import {
   hasSupportedBoardRealtimeTransport,
 } from '@/features/collaboration/boardRealtimeTransport'
 import {
+  createConnectingBoardRealtimeState,
+  createUnsupportedBoardRealtimeState,
+} from '@/features/collaboration/boardRealtimeState'
+import {
   createKonvaYjsUndoManager,
   readKonvaYjsRoomRecord,
   type KonvaYjsRoomRecord,
@@ -554,22 +558,8 @@ function resolveTransportState(
   boardId?: string,
 ): BoardRealtimeDocumentState | null {
   if (!enabled || !roomKey) return null
-  if (!hasSupportedBoardRealtimeTransport(boardId)) {
-    return {
-      error: null,
-      initialSyncComplete: true,
-      lastActivityAt: null,
-      lastSyncedAt: null,
-      status: 'unsupported',
-    }
-  }
-  return {
-    error: null,
-    initialSyncComplete: false,
-    lastActivityAt: null,
-    lastSyncedAt: null,
-    status: 'connecting',
-  }
+  if (!hasSupportedBoardRealtimeTransport(boardId)) return createUnsupportedBoardRealtimeState()
+  return createConnectingBoardRealtimeState()
 }
 
 function dedupePageIds(pageIds: readonly string[]) {

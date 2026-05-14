@@ -3,9 +3,9 @@ import { Image as KonvaImage, Rect } from 'react-konva'
 import type { CanvasImageShape } from '@/features/canvas-engine'
 
 const loadedCanvasImageCache = new Map<string, HTMLImageElement>()
-const maxLoadedCanvasImages = 48
-const maxLoadedCanvasImagePixels = 120 * 1024 * 1024
-const maxLoadedCanvasImagePixelsPerImage = 50 * 1024 * 1024
+const maxLoadedCanvasImages = 32
+const maxLoadedCanvasImagePixels = 64 * 1024 * 1024
+const maxLoadedCanvasImagePixelsPerImage = 24 * 1024 * 1024
 const imageLoadTimeoutMs = 15_000
 
 type KonvaImageShapeProps = {

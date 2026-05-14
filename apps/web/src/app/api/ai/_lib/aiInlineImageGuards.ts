@@ -1,12 +1,22 @@
 import { Buffer } from 'node:buffer'
 
 export const aiInlineImageMaxBytes = 20 * 1024 * 1024
+export const aiInlineImageTotalMaxBytes = 48 * 1024 * 1024
 
 const allowedAiInlineImageMimes = new Set(['image/jpeg', 'image/png', 'image/webp'])
 
 export function assertAiInlineImageByteLength(byteLength: null | number) {
   if (byteLength !== null && byteLength > aiInlineImageMaxBytes) {
     throw new Error('Reference image must be 20MB or smaller.')
+  }
+}
+
+export function assertAiInlineImageTotalByteLength(
+  byteLength: number,
+  message = 'Reference images exceed the total allowed size.',
+) {
+  if (byteLength > aiInlineImageTotalMaxBytes) {
+    throw new Error(message)
   }
 }
 

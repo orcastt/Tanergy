@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { loadBillingPlans } from '@/features/billing/billingClient'
+import { requestCurrentSessionRefresh } from '@/features/auth/sessionClient'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import { useTangentSession } from '@/features/auth/useTangentSession'
 import type { BoardCardColor } from '@/features/boards/boardTypes'
@@ -44,6 +45,7 @@ export function WorkspaceBoardGallery() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [loadedWorkspaceIdsBySignature, setLoadedWorkspaceIdsBySignature] = useState<Record<string, string[]>>({})
   const [notice, setNotice] = useState<string | null>(null)
   const [panelBoardId, setPanelBoardId] = useState<string | null>(null)
   const [pendingBoardId, setPendingBoardId] = useState<string | null>(null)
@@ -60,10 +62,15 @@ export function WorkspaceBoardGallery() {
     () => activeWorkspaces.map((workspace) => `${workspace.id}:${workspace.kind}:${workspace.planKey ?? ''}`).join('|'),
     [activeWorkspaces]
   )
+  const loadedWorkspaceIds = useMemo(
+    () => loadedWorkspaceIdsBySignature[workspaceSignature] ?? [],
+    [loadedWorkspaceIdsBySignature, workspaceSignature]
+  )
   const workspaceById = useMemo(
     () => new Map(activeWorkspaces.map((workspace) => [workspace.id, workspace])),
     [activeWorkspaces]
   )
+  const loadedWorkspaceIdSet = useMemo(() => new Set(loadedWorkspaceIds), [loadedWorkspaceIds])
 
   const filteredBoards = useMemo(() => filterAndSortBoards(boards, searchQuery, sortMode), [boards, searchQuery, sortMode])
   const panelBoard = useMemo(
@@ -98,17 +105,25 @@ export function WorkspaceBoardGallery() {
       )
       const nextBoardsByWorkspace = new Map<string, BoardPersistenceSummary[]>()
       const failedWorkspaces: string[] = []
+      const succeededWorkspaceIds: string[] = []
 
       results.forEach((result, index) => {
         const workspace = activeWorkspaces[index]
         if (!workspace) return
         if (result.status === 'fulfilled') {
           nextBoardsByWorkspace.set(result.value.workspaceId, result.value.boards)
+          succeededWorkspaceIds.push(result.value.workspaceId)
           return
         }
         failedWorkspaces.push(workspace.name || 'Unknown')
       })
 
+      if (succeededWorkspaceIds.length > 0) {
+        setLoadedWorkspaceIdsBySignature((current) => ({
+          ...current,
+          [workspaceSignature]: [...new Set([...(current[workspaceSignature] ?? []), ...succeededWorkspaceIds])],
+        }))
+      }
       if (nextBoardsByWorkspace.size > 0 || activeWorkspaces.length === 0) {
         setBoards((current) => mergeWorkspaceBoardResults(current, activeWorkspaces, nextBoardsByWorkspace))
       }
@@ -119,7 +134,7 @@ export function WorkspaceBoardGallery() {
       setIsLoading(false)
       setIsRefreshing(false)
     }
-  }, [activeWorkspaces, sessionStatus])
+  }, [activeWorkspaces, sessionStatus, workspaceSignature])
 
   useEffect(() => {
     if (sessionStatus !== 'ready') return
@@ -156,7 +171,7 @@ export function WorkspaceBoardGallery() {
   const createBoard = async (workspace?: TangentWorkspace) => {
     const targetWorkspace = workspace ?? session.activeWorkspace
     if (targetWorkspace) {
-      const boardLimitError = await resolveBoardCreateLimitError(targetWorkspace, boards)
+      const boardLimitError = await resolveBoardCreateLimitError(targetWorkspace, boards, loadedWorkspaceIdSet)
       if (boardLimitError) {
         setError(boardLimitError)
         return
@@ -215,7 +230,7 @@ export function WorkspaceBoardGallery() {
 
   const deleteBoard = async (board: BoardPersistenceSummary) => {
     if (!getCapabilities(board).canDeleteBoard) {
-      setError('Only a Board owner or workspace manager can delete this board.')
+      setError('Only the board owner can delete this board.')
       return
     }
     if (!window.confirm(`Delete "${board.title}"? This cannot be undone.`)) return
@@ -224,6 +239,7 @@ export function WorkspaceBoardGallery() {
     try {
       await deleteLocalBoardDocument(board.id, getWorkspaceForBoard(board) ?? undefined)
       setBoards((current) => current.filter((item) => item.id !== board.id))
+      requestCurrentSessionRefresh()
       if (editingBoardId === board.id) cancelRename()
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : 'Board delete failed.')
@@ -234,7 +250,7 @@ export function WorkspaceBoardGallery() {
 
   const copyBoard = async (board: BoardPersistenceSummary) => {
     if (!getCapabilities(board).canCopyBoard) {
-      setError('Only a Board owner or workspace manager can copy this board.')
+      setError('Only the board owner can copy this board.')
       return
     }
     setPendingBoardId(board.id)
@@ -243,6 +259,7 @@ export function WorkspaceBoardGallery() {
       const response = await copyLocalBoardDocument(board.id, getWorkspaceForBoard(board) ?? undefined)
       if (!response.board) throw new Error('Board copy failed.')
       setBoards((current) => [response.board!, ...current])
+      requestCurrentSessionRefresh()
       setNotice(`Copied "${board.title}".`)
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : 'Board copy failed.')
@@ -391,13 +408,17 @@ export function WorkspaceBoardGallery() {
   )
 }
 
-async function resolveBoardCreateLimitError(workspace: TangentWorkspace, boards: BoardPersistenceSummary[]) {
+async function resolveBoardCreateLimitError(
+  workspace: TangentWorkspace,
+  boards: BoardPersistenceSummary[],
+  loadedWorkspaceIds: ReadonlySet<string>,
+) {
   if (!workspace.planKey) return null
   try {
     const response = await loadBillingPlans()
     const plan = response.plans.find((item) => item.planKey === workspace.planKey)
     const boardLimit = plan?.boardLimit
-    const boardCount = resolveWorkspaceBoardCount(workspace, boards)
+    const boardCount = resolveWorkspaceBoardCount(workspace, boards, loadedWorkspaceIds)
     if (typeof boardLimit !== 'number' || boardCount < boardLimit) return null
     const planName = plan?.name?.trim() || formatWorkspacePlanName(workspace.planKey)
     return `${planName} allows up to ${boardLimit} ${boardLimit === 1 ? 'board' : 'boards'}.`
@@ -410,9 +431,16 @@ function collectCachedBoards(workspaces: TangentWorkspace[]) {
   return workspaces.flatMap((workspace) => readCachedBoardList(workspace.id) ?? [])
 }
 
-function resolveWorkspaceBoardCount(workspace: TangentWorkspace, boards: BoardPersistenceSummary[]) {
+function resolveWorkspaceBoardCount(
+  workspace: TangentWorkspace,
+  boards: BoardPersistenceSummary[],
+  loadedWorkspaceIds: ReadonlySet<string>,
+) {
   const cachedBoardCount = readCachedBoardList(workspace.id)?.length ?? 0
   const liveBoardCount = boards.filter((board) => board.workspaceId === workspace.id).length
+  if (loadedWorkspaceIds.has(workspace.id)) {
+    return Math.max(cachedBoardCount, liveBoardCount)
+  }
   return Math.max(workspace.boardCount, cachedBoardCount, liveBoardCount)
 }
 
@@ -423,16 +451,12 @@ function mergeWorkspaceBoardResults(
 ) {
   const currentBoardsByWorkspace = new Map<string, BoardPersistenceSummary[]>()
   currentBoards.forEach((board) => {
-    const bucket = currentBoardsByWorkspace.get(board.workspaceId)
-    if (bucket) {
-      bucket.push(board)
-      return
-    }
-    currentBoardsByWorkspace.set(board.workspaceId, [board])
+    const bucket = currentBoardsByWorkspace.get(board.workspaceId) ?? []
+    bucket.push(board)
+    currentBoardsByWorkspace.set(board.workspaceId, bucket)
   })
 
-  const workspaceIds = new Set(workspaces.map((workspace) => workspace.id))
-  const merged = currentBoards.filter((board) => !workspaceIds.has(board.workspaceId))
+  const merged: BoardPersistenceSummary[] = []
 
   workspaces.forEach((workspace) => {
     merged.push(...(nextBoardsByWorkspace.get(workspace.id) ?? currentBoardsByWorkspace.get(workspace.id) ?? []))

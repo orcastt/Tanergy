@@ -1,8 +1,8 @@
 # P0 Alpha Stabilization And Acceptance
 
-**Updated**: 2026-05-08
+**Updated**: 2026-05-14
 **Status**: Active stabilization spine for the current release pass.
-**Branch**: `feature/s1x-konva-handfeel-spike`
+**Branch**: `feature/s1c-auth-admin-production-boundary`
 
 ## Goal
 
@@ -14,8 +14,8 @@ Only these four lanes are release-critical for the current pass:
 
 | Lane | Release requirement | Current state | Remaining gate |
 | --- | --- | --- | --- |
-| Canvas / Board / Page / Share / Auth | Public landing, Clerk entry, protected workspace shell, Konva-first Board route, page/history flows, public share view, permission-scoped Board CRUD | First-pass stable locally; staging/Auth hardening still open | Finish Auth/staging smoke, permission edge cases and regression sweep |
-| One real AI provider path | One server-backed AI image path through AiRun, preflight, provider execution, Asset output and settlement | Runtime shell, quote, ledger and provider adapter scaffold exist; GeekAI local fast path proves chat, prompt optimization, image generation/edit/reference and analysis UX in the canvas | Fold GeekAI into the server provider-route/billing control plane and hand-test one live provider path end to end |
+| Canvas / Board / Page / Share / Auth | Public landing, Clerk entry, protected workspace shell, Konva-only Board route, page/history flows, public share view, permission-scoped Board CRUD | Staging Web/API/Neon/R2 plus real session/admin smoke are green; signed-in board/browser and Google/email acceptance remain | Finish the remaining browser/Auth regression sweep and deployment cleanup |
+| One real AI provider path | One server-backed AI image path through AiRun, preflight, provider execution, Asset output and settlement | Runtime shell, quote, ledger and provider adapter scaffold exist; GeekAI local fast path proves chat, prompt optimization, image generation/edit/reference and analysis UX in the canvas, Prompt Optimizer now has a backend short-text `AiRun` path with durable `text_output`, and the active image-generation lane is refreshed onto GPT Image 2 / Nano Banana 2 / Doubao Seedream / Jimeng | Finish staging/browser smoke, then hand-test one live provider path end to end |
 | Billing mock + usage / ledger visible | User can see plan, payer, included credits, top-up balance, ledger activity and workspace usage visibility rules | First-pass stable locally, but Team wallet semantics are now the next S3 gate | Keep mock/manual payment path honest; real payments stay deferred |
 | Admin minimum operating surface | Server-gated `/admin`, summary/users/workspaces/boards/audit plus first-pass AI model/route/pricing/runtime inspection | First-pass stable locally | Keep server-gated, audited and bounded; deeper finance/admin tooling stays deferred |
 
@@ -30,7 +30,7 @@ Release rule:
 - Public landing at `/`.
 - Clerk sign-in and sign-up entry.
 - Protected product shell for `/workspaces`, `/boards/[boardId]`, `/billing`, `/team`, `/usage`, `/account`, `/settings`, `/collections`, `/admin`.
-- Konva-first formal Board route.
+- Konva-only formal Board route.
 - Board save, autosave, history, restore and clean.
 - Page drawer create/switch/rename/delete/reorder.
 - `Move to page` first pass.
@@ -43,6 +43,7 @@ Release rule:
 - Server-side payer resolution and ledger-aware settlement boundary.
 - Persisted `ai_runs`, attempt-level `ai_api_calls` and `api_cost_ledger`.
 - First live provider adapter path for one image-generation flow.
+- Active image-generation surface is limited to GPT Image 2, Nano Banana 2, Doubao Seedream 5.0 Lite and Jimeng 4.0, with the long-running image timeout boundary at 240s.
 - Generated result persists as Asset refs; Board/node state stores only compact summaries and refs.
 - Current GeekAI canvas-facing path is accepted as UX proof only; production reliance requires the unified server AiRun route and settlement path.
 
@@ -66,7 +67,7 @@ Release rule:
 These are intentionally not part of the current P0 alpha promise:
 
 - Real-time collaboration / Yjs room sync / presence / multi-user live canvas.
-- Full production provider coverage across image gen, image gen 4, analysis, text persistence and refund depth beyond the current GeekAI local proof and first live server smoke route.
+- Full production provider coverage across image gen, image gen 4, analysis, text persistence and refund depth beyond the current GeekAI local proof, the refreshed four-model image lane and the first live server smoke route.
 - Real external payment provider integration, invoices, webhooks, renewals and reconciliation.
 - Full Team governance, Team wallet payment automation, enterprise pooled charging, advanced billing operations and finance workflows.
 - Collections as a real asset-library product.
@@ -87,7 +88,7 @@ Freeze rule:
 | `/` | Public | Shipping now | Primary landing page before Auth |
 | `/sign-in` / `/sign-up` | Public | Shipping now | Clerk entry surfaces |
 | `/workspaces` | Authenticated product user | Shipping now | Main workspace gallery/list shell |
-| `/boards/[boardId]` | Authenticated product user | Shipping now | Formal Konva-first Board runtime |
+| `/boards/[boardId]` | Authenticated product user | Shipping now | Formal Konva-only Board runtime |
 | `/share/[shareId]` | Public viewer | Shipping now | View-only shared Board entry |
 | `/billing` | Authenticated product user | Shipping now | First-pass billing and top-up visibility |
 | `/team` | Authenticated product user | Shipping now | Group/Team visibility and seat/member first pass |
@@ -98,7 +99,7 @@ Freeze rule:
 | `/settings` | Authenticated product user | Secondary / frozen | Hidden from primary nav; still a truthful environment/preferences surface |
 | `/home` | None | Retired | Redirects to `/` |
 | `/dashboard` | None | Redirect only | Redirects to `/workspaces` |
-| `/spikes/canvas` / `/spikes/konva-canvas` | Internal dev only | Dev-only | Never treat as product entry |
+| `/spikes/konva-canvas` | Internal dev only | Dev-only | Never treat as product entry |
 
 ## Document Archive Actions
 
@@ -124,7 +125,7 @@ Freeze rule:
 ### Accepted now as first-pass product behavior
 
 1. Public landing -> Auth entry -> protected workspace flow.
-2. Konva-first Board editing, save/load/history and public share viewing.
+2. Konva-only Board editing, save/load/history and public share viewing.
 3. Page management first pass.
 4. First-pass billing, team and usage visibility surfaces.
 5. First-pass server-gated admin/operator surface.
@@ -189,13 +190,13 @@ Current acceptance split:
   - runtime/admin observability
   - local GeekAI UX proof for chat, prompt optimization, image generation/edit/reference and analysis
 - Remaining gate before P0 alpha is complete:
-  - one real provider-backed server AiRun image path from run request to Asset output and settlement
+- one real provider-backed server AiRun image path from run request to Asset output and settlement, using one of the refreshed active image models
 
 ## Remaining Gates Before Calling P0 Alpha Done
 
-1. Finish Auth/staging hardening on the release spine.
+1. Finish the remaining staging / real DB / real login browser smoke on the release spine.
 2. Finish permission regression sweep for Board/share/page flows.
-3. Fold GeekAI into the server provider-route/billing control plane and hand-test one real AI provider path.
+3. Hand-test one real AI provider path through the refreshed four-model image lane.
 4. Keep billing/admin language honest: first-pass visible, not fully commercialized.
 5. Keep collaboration and other frozen lanes out of the release promise.
 
@@ -203,9 +204,9 @@ Current acceptance split:
 
 # P0 Alpha 稳定化与验收
 
-**更新日期**：2026-05-08
+**更新日期**：2026-05-14
 **状态**：当前发布轮次的活跃稳定化主线文档。
-**分支**：`feature/s1x-konva-handfeel-spike`
+**分支**：`feature/s1c-auth-admin-production-boundary`
 
 ## 目标
 
@@ -217,8 +218,8 @@ Current acceptance split:
 
 | 线路 | 发布要求 | 当前状态 | 剩余闸门 |
 | --- | --- | --- | --- |
-| Canvas / Board / Page / Share / Auth | 公开 landing、Clerk 登录入口、受保护的 workspace shell、Konva-first Board 路由、page/history 流程、公开 share 查看和按权限收口的 Board CRUD | 本地第一阶段稳定；staging/Auth hardening 仍未完成 | 完成 Auth/staging smoke、权限边界和回归扫测 |
-| 一个真实 AI provider 路径 | 一条经由 AiRun、preflight、provider execution、Asset 输出和 settlement 的服务端 AI 图像路径 | runtime shell、quote、ledger 和 provider adapter scaffold 已存在；GeekAI 本地 fast path 已在画布里证明 chat、prompt optimization、image generation/edit/reference 和 analysis UX | 把 GeekAI 收口进服务端 provider-route/billing control plane，并端到端手测一条真实 provider 路径 |
+| Canvas / Board / Page / Share / Auth | 公开 landing、Clerk 登录入口、受保护的 workspace shell、Konva-only Board 路由、page/history 流程、公开 share 查看和按权限收口的 Board CRUD | staging Web/API/Neon/R2 与真实 session/admin smoke 已转绿；signed-in board/browser 与 Google/email 验收仍待完成 | 完成剩余浏览器/Auth 回归和部署清理 |
+| 一个真实 AI provider 路径 | 一条经由 AiRun、preflight、provider execution、Asset 输出和 settlement 的服务端 AI 图像路径 | runtime shell、quote、ledger 和 provider adapter scaffold 已存在；GeekAI 本地 fast path 已在画布里证明 chat、prompt optimization、image generation/edit/reference 和 analysis UX，Prompt Optimizer 也已有带 durable `text_output` 的后端短文本 `AiRun`，活跃生图线已刷新到 GPT Image 2 / Nano Banana 2 / Doubao Seedream / Jimeng | 先完成 staging/browser smoke，再端到端手测一条真实 provider 路径 |
 | Billing mock + usage / ledger 可见 | 用户能看到 plan、payer、included credits、top-up 余额、ledger 活动和 workspace usage 可见性规则 | 本地第一阶段稳定，但 Team wallet semantics 是下一道 S3 闸门 | 保持 mock/manual payment 路径诚实；真实支付继续后置 |
 | Admin 最小可运营面 | 服务端门控的 `/admin`，带 summary/users/workspaces/boards/audit，以及第一阶段 AI model/route/pricing/runtime 检查面 | 本地第一阶段稳定 | 持续保持 server-gated、audited 且边界有限；更深 finance/admin 能力后置 |
 
@@ -233,7 +234,7 @@ Current acceptance split:
 - `/` 公开 landing。
 - Clerk sign-in 和 sign-up 入口。
 - `/workspaces`、`/boards/[boardId]`、`/billing`、`/team`、`/usage`、`/account`、`/settings`、`/collections`、`/admin` 的受保护 product shell。
-- Konva-first 正式 Board 路由。
+- Konva-only 正式 Board 路由。
 - Board save、autosave、history、restore 和 clean。
 - Page 抽屉的 create/switch/rename/delete/reorder。
 - `Move to page` 第一阶段。
@@ -246,6 +247,7 @@ Current acceptance split:
 - 服务端 payer resolution 和带 ledger 感知的 settlement 边界。
 - 持久化的 `ai_runs`、按 attempt 分行的 `ai_api_calls` 和 `api_cost_ledger`。
 - 一条 image-generation 流程的第一条 live provider adapter 路径。
+- 活跃生图产品面当前只包含 GPT Image 2、Nano Banana 2、Doubao Seedream 5.0 Lite 和 Jimeng 4.0，长耗时生图超时边界是 240s。
 - 生成结果以 Asset refs 方式落地；Board/node state 只保存 compact summaries 和 refs。
 - 当前 GeekAI 画布路径只按 UX proof 验收；生产依赖必须走统一的服务端 AiRun route 和 settlement path。
 
@@ -269,7 +271,7 @@ Current acceptance split:
 下面这些内容明确不属于当前 P0 alpha 承诺：
 
 - real-time collaboration / Yjs 房间同步 / presence / 多人实时画布。
-- 超出当前 GeekAI 本地证明和第一条服务端 live smoke route 的完整生产 provider 覆盖，包括 image gen、image gen 4、analysis、text persistence 和 refund depth。
+- 超出当前 GeekAI 本地证明、刷新后的四模型生图线和第一条服务端 live smoke route 的完整生产 provider 覆盖，包括 image gen、image gen 4、analysis、text persistence 和 refund depth。
 - 真实外部 payment provider integration、发票、webhooks、renewals 和 reconciliation。
 - 完整的 Team governance、Team wallet payment automation、enterprise pooled charging、高级 billing operations 和 finance workflows。
 - 作为真实资产库产品的 Collections。
@@ -290,7 +292,7 @@ Current acceptance split:
 | `/` | 公开访客 | 当前交付 | Auth 前的主 landing page |
 | `/sign-in` / `/sign-up` | 公开访客 | 当前交付 | Clerk 入口界面 |
 | `/workspaces` | 已认证产品用户 | 当前交付 | 主 workspace gallery/list shell |
-| `/boards/[boardId]` | 已认证产品用户 | 当前交付 | 正式 Konva-first Board runtime |
+| `/boards/[boardId]` | 已认证产品用户 | 当前交付 | 正式 Konva-only Board runtime |
 | `/share/[shareId]` | 公开查看者 | 当前交付 | 只读 shared Board 入口 |
 | `/billing` | 已认证产品用户 | 当前交付 | 第一阶段 billing 与 top-up 可见面 |
 | `/team` | 已认证产品用户 | 当前交付 | Group/Team 可见性与 seat/member 第一阶段 |
@@ -301,7 +303,7 @@ Current acceptance split:
 | `/settings` | 已认证产品用户 | 次级 / 冻结 | 从主导航隐藏；仍保留为诚实的 environment/preferences 页面 |
 | `/home` | 无 | 退役 | 重定向到 `/` |
 | `/dashboard` | 无 | 仅重定向 | 重定向到 `/workspaces` |
-| `/spikes/canvas` / `/spikes/konva-canvas` | 仅内部开发 | 仅开发 | 绝不作为产品入口对外描述 |
+| `/spikes/konva-canvas` | 仅内部开发 | 仅开发 | 绝不作为产品入口对外描述 |
 
 ## 文档归档动作
 
@@ -327,7 +329,7 @@ Current acceptance split:
 ### 现在可以作为第一阶段产品行为验收的
 
 1. Public landing -> Auth entry -> protected workspace 流程。
-2. Konva-first Board 编辑、save/load/history 和 public share viewing。
+2. Konva-only Board 编辑、save/load/history 和 public share viewing。
 3. Page management 第一阶段。
 4. 第一阶段 billing、team 和 usage 可见面。
 5. 第一阶段 server-gated admin/operator 面。
@@ -398,6 +400,6 @@ Current acceptance split:
 
 1. 完成发布主线上的 Auth/staging hardening。
 2. 完成 Board/share/page flows 的权限回归扫测。
-3. 把 GeekAI 收口到服务端 provider-route/billing control plane，并手测一条真实 AI provider 路径。
+3. 通过刷新后的四模型生图线，把 GeekAI 收口到服务端 provider-route/billing control plane，并手测一条真实 AI provider 路径。
 4. 保持 billing/admin 语言诚实：是第一阶段可见面，不是完整商业系统。
 5. 把 collaboration 和其他 frozen lanes 持续排除在本轮发布承诺之外。

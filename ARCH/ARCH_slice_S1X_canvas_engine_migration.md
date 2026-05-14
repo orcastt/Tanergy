@@ -1,20 +1,21 @@
 # ARCH Slice S1X: Canvas Engine Migration
 
-**Status**: Konva v2 formal Board route is accepted as the production path for active Boards, and the remaining tldraw web runtime/reference code has now been removed from `apps/web`. Page polish, runtimeGraph mock dataflow and public share view are first-pass stable; Yjs collaboration, export/background polish and real AiRun remain.
-**Branch**: `feature/s1x-konva-handfeel-spike`
-**Reason**: Public staging exposed the tldraw production license requirement. TANGENT should not make the paid SDK the long-term core canvas dependency unless the business explicitly accepts that cost.
+**Updated**: 2026-05-14
+**Status**: Konva v2 formal Board route is accepted as the production path for active Boards, and the remaining tldraw web runtime/reference code has now been removed from `apps/web`. Page polish, runtimeGraph mock dataflow, public share view and the Konva-only staging path are first-pass stable; Yjs collaboration, export/background polish and real AiRun remain.
+**Branch**: `feature/s1c-auth-admin-production-boundary`
+**Reason**: This slice began as the exit from the old paid-canvas dependency. That runtime migration is now closed in the active web app, and the remaining work is Konva-only stabilization plus collaboration/provider follow-through.
 
 ## P0 Alpha Stabilization Boundary
 
 This slice is now in stabilization mode:
 
-- Konva-first `/boards/[boardId]` is the production-facing canvas path.
+- Konva-only `/boards/[boardId]` is the production-facing canvas path.
 - Share viewing, page safety and Board persistence are in scope.
 - Yjs room sync, rendered page-thumbnail assets, page duplicate and broader export polish remain deferred.
 
 ## Decision
 
-Treat the current tldraw implementation as the reference implementation, not as discarded work.
+Treat historical pre-Konva behavior as migration context, not as an active runtime dependency.
 
 The migration target is:
 
@@ -26,7 +27,7 @@ FastAPI + Postgres           Board metadata, snapshots, permissions, audit facts
 R2/S3-compatible storage     Images, thumbnails and future capture artifacts
 ```
 
-That historical tldraw baseline has now been retired from the active web app. This slice keeps the migration rationale and behavior inventory as reference material for why the Konva contract looks the way it does.
+That historical baseline has now been retired from the active web app. This slice keeps the migration rationale and behavior inventory only to explain why the Konva contract looks the way it does.
 
 ## Current Implementation Checkpoint
 
@@ -150,18 +151,19 @@ Current Phase 4 Node/Port/Edge foundation boundary:
 
 Current Phase 5A persistence boundary:
 
-- Konva persistence is parallel to the existing tldraw board save component. `KonvaBoardSaveAudit` is mounted in `/spikes/konva-canvas` and, through the formal route detector, in `/boards/[boardId]` when the Board document is Konva v2 or when a new Board defaults to Konva. It uses the shared Board API client, but serializes through `features/boards/konvaBoardDocument.ts` instead of `boardDocumentSerializer.ts`.
-- `/boards/[boardId]` is now a dual-engine shell for local development and migration safety. `boardCanvasEngine.ts` detects persisted document engine from the loaded Board document: tldraw v1 documents can keep using `CanvasSpike` only when the tldraw reference gate is enabled, Konva v2 documents use `KonvaCanvasSpike`, and new/missing Boards default to Konva unless configured otherwise before a document exists. Production defaults block tldraw route/Board engine usage unless `NEXT_PUBLIC_ENABLE_TLDRAW_REFERENCE=1` is explicitly set. Unknown saved documents render an unsupported state instead of opening a blank default engine. Legacy v1 Boards can be copied into a new Konva v2 Board through explicit migration UI; the original v1 record is not overwritten.
-- The persisted Konva envelope is versioned separately from tldraw v1: `{ version: 2, renderer: 'konva', activePageId, pages, canvasDocument, canvasSettings, assets, serializedAt }`. `canvasDocument` remains the active page mirror for older consumers and active-page thumbnail capture. `pages[]` is now the page-switching contract; the right-side collapsible Pages drawer writes the current `CanvasDocument` back into the active page before save/snapshot/switch/page mutations, and restore/load returns both the active page document and normalized page list. Page delete/reorder are local page-list mutations, and right-click Move to page moves selected shapes into the target page document after expanding grouped members and frame children. Runtime edges whose source and target shapes both move are copied to the target page; edges touching only one moved endpoint are removed because cross-page runtime edges are not in scope yet. The drawer currently renders lightweight geometry thumbnails from page shapes; true rendered per-page thumbnail assets, page duplicate, Move selection to new page and page-scoped collaboration are follow-ups. `assets` is a compact derived list across page documents used for Board summaries; raw image bytes stay in Asset storage.
-- Restore validates the v2 envelope, runs the existing Board guard, replaces Konva document/camera/settings and clears transient selection, edge selection, crop, edit and context-menu state. It does not route Konva documents through tldraw `Editor` shape/asset restore.
+- Konva persistence is now the only active Board persistence path in the web app. `KonvaBoardSaveAudit` is mounted in `/spikes/konva-canvas` and `/boards/[boardId]`, uses the shared Board API client, and serializes through `features/boards/konvaBoardDocument.ts`.
+- `/boards/[boardId]` is now a Konva-only shell. `boardCanvasEngine.ts` recognizes only persisted Konva v2 documents; legacy v1 or unknown documents render an unsupported state, while the guard layer blocks legacy restore/save paths instead of silently opening a fallback runtime.
+- The persisted Konva envelope is `{ version: 2, renderer: 'konva', activePageId, pages, canvasDocument, canvasSettings, assets, serializedAt }`. `canvasDocument` remains the active page mirror for older consumers and active-page thumbnail capture. `pages[]` is now the page-switching contract; the right-side collapsible Pages drawer writes the current `CanvasDocument` back into the active page before save/snapshot/switch/page mutations, and restore/load returns both the active page document and normalized page list. Page delete/reorder are local page-list mutations, and right-click Move to page moves selected shapes into the target page document after expanding grouped members and frame children. Runtime edges whose source and target shapes both move are copied to the target page; edges touching only one moved endpoint are removed because cross-page runtime edges are not in scope yet. The drawer currently renders lightweight geometry thumbnails from page shapes; true rendered per-page thumbnail assets, page duplicate, Move selection to new page and page-scoped collaboration are follow-ups. `assets` is a compact derived list across page documents used for Board summaries; raw image bytes stay in Asset storage.
+- Restore validates the v2 envelope, runs the existing Board guard, replaces Konva document/camera/settings and clears transient selection, edge selection, crop, edit and context-menu state. Legacy tldraw documents/history are rejected before they can enter the active restore path.
+- Restore also normalizes any persisted backend asset file URLs onto the web proxy path before image render, so same-board assets continue to display when the backend requires bearer auth and browser `Image()` elements cannot call the API origin directly.
 - Board thumbnails for Konva use `captureKonvaBoardThumbnailUrl`: all shapes are captured through the offscreen Konva clone/export path and uploaded with `origin=board_thumbnail`. This keeps thumbnail generation separate from user `merge_capture` assets.
 - Existing Board save/autosave/history/before-unload hooks remain the lifecycle layer. Board History now has create/list/load/clear-all transport: `DELETE /api/v1/boards/{board_id}/snapshots` and the local Next equivalent delete all snapshots scoped to the current workspace and board, then the frontend resets the last snapshot signature so the next autosave can recreate history. Konva dirty tracking is document-signature based for the first pass; later Board route migration should replace this with a renderer-neutral dirty event source.
 - The Board guard has a v2 schema-aware layer on top of the generic no-runtime-URL/no-large-base64 scan. `boardKonvaDocumentGuard.ts` and `board_konva_guard.py` validate the Konva envelope, active page/page list, camera, metadata, assets, shape ids/types/required props and runtime edge shape references and emit blocking `konva-v2-invalid` issues before save/snapshot persistence. `boardTypes.ts` and FastAPI `board_metadata.py` count shapes from `pages[].canvasDocument.shapes` when the pages contract is present.
 - `tldrawToKonvaMigration.ts` is an explicit copy adapter, not an implicit open-path conversion. It converts serialized v1 shapes/assets/runtime edges into a new Konva v2 envelope with one active page. Supported first-pass mappings are geo/note/frame/text/image/arrow/line/draw/node_card plus `ai_card` placeholders; unsupported legacy shapes become labeled placeholders so data loss is visible.
 
-It does not remove any tldraw reference code or force-migrate existing tldraw v1 Boards, but tldraw is no longer a production Board engine by default.
+The active web app no longer ships a Tldraw runtime path. Historical migration helpers may remain as background material, but legacy v1 Boards are not a supported in-app runtime path.
 
-## Current tldraw Reference Contract
+## Historical Baseline That Shaped Konva
 
 The replacement engine must preserve these current product behaviors unless a deliberate product decision changes them.
 
@@ -176,7 +178,7 @@ The replacement engine must preserve these current product behaviors unless a de
 - Left properties drawer is fixed and decoupled from canvas pointer events; it keeps the last selected drawing tool properties until another tool is chosen.
 - Canvas Settings panel opens from a gear icon and controls per-board background/grid/snap behavior.
 - Board Save/History controls remain visible and support Save now, Snapshot, Refresh preview and History.
-- Selection toolbar for generated node/capture/alignment actions is part of the current experience and must be reintroduced before tldraw removal.
+- Selection toolbar for generated node/capture/alignment actions is part of the current experience and must remain in place before the migration closeout is considered complete.
 
 ### Drawing Handfeel
 
@@ -189,7 +191,7 @@ The first Konva spike is judged by handfeel, not feature count.
 - Drawing after zoom/pan must land exactly under the cursor.
 - Continuous drawing should not cause tool panels to flicker or reset.
 - 1,000 strokes and mixed nodes should remain interactive on staging hardware.
-- Target acceptance: at least 80% of the current tldraw handfeel before migrating node/business logic.
+- Target acceptance: at least 80% of the historical pre-Konva handfeel before migrating node/business logic.
 
 Likely implementation building blocks:
 
@@ -204,7 +206,7 @@ viewport transform stored outside React render loops
 
 ## Smooth Canvas Performance Architecture
 
-The Konva replacement must be designed for smoothness from the first spike. The goal is not only "same features as tldraw", but the same feeling: pointer input should be immediate, React UI should not re-render on every pointer event, and collaboration updates should not interrupt local drawing.
+The Konva replacement must be designed for smoothness from the first spike. The goal is not only "same features as the historical baseline", but the same feeling: pointer input should be immediate, React UI should not re-render on every pointer event, and collaboration updates should not interrupt local drawing.
 
 ### Performance Principles
 
@@ -535,7 +537,7 @@ S1X is not accepted until these gates pass:
 4. Board History can create/list/load snapshots from the new document.
 5. Captured thumbnail works from Konva export.
 6. Two browser tabs can edit the same prototype Board with Yjs and show cursor/selection presence.
-7. tldraw route can remain as fallback until the Konva route passes staging smoke.
+7. The retired legacy-route stage must not be reintroduced; staging smoke should verify the Konva-only route plus guard-based rejection of legacy documents.
 
 ## Detailed Parity Matrix
 
@@ -545,7 +547,7 @@ The detailed Chinese feature-by-feature replication matrix lives in:
 dev-plans/s1x-canvas-engine-migration-reference-2026-05-03.md
 ```
 
-That tactical plan is the working checklist for matching the current tldraw behavior across:
+That tactical plan is the working checklist for matching the historical baseline behavior across:
 
 - handfeel and pan/zoom
 - toolbar and fixed properties drawer
@@ -559,11 +561,11 @@ That tactical plan is the working checklist for matching the current tldraw beha
 - image paste/copy/Alt-drag and placement rules: web image paste to pointer, image-to-node on the right, screenshot/capture node below the selected bounds, To Canvas image on the right
 - save/autosave/snapshot/history/thumbnail
 - Yjs collaboration proof
-- final dual-engine replacement and tldraw removal gates
+- final migration closeout and legacy-document safety gates
 
 ## Freeze Rules
 
-- No new tldraw-only feature work except emergency regression fixes.
-- No deletion of tldraw reference code until Konva parity is accepted.
+- No reintroduction of legacy-canvas compatibility layers into the active app path.
+- Historical archive material may stay for reference, but the active runtime boundary must remain Konva-only.
 - Any new Board/Node/Asset product logic must land in renderer-neutral modules first.
 - Do not add another paid/proprietary canvas or collaboration SDK as a core dependency.

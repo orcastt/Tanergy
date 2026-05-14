@@ -1,11 +1,11 @@
 # Project State Slice S1B: Staging Infrastructure And Online Prep
 
-**Updated**: 2026-05-13
-**Status**: In progress; staging Web/API/Neon/R2 smoke passed, Konva-first redeploy smoke pending.
+**Updated**: 2026-05-14
+**Status**: In progress; the rebuilt Hetzner staging API host is back online, public HTTPS API smoke is green again, local-against-real-DB plus public API smoke now pass against Neon + R2, the public Vercel alias now points to a fresh Konva-only web deploy, real Clerk session/admin smoke is green, and a production deploy runbook/env template are now prepared. Remaining gates are Google/email verification, one live provider AI smoke, and full browser acceptance after login.
 
 ## Objective
 
-Stand up public staging Web/API with Postgres, R2 and email provider wiring, then redeploy the Konva-first Board route with tldraw disabled by default.
+Stand up public staging Web/API with Postgres, R2 and email provider wiring, then redeploy the Konva-only Board route and verify legacy Board documents remain blocked in the active app path.
 
 ## Detailed Runbook
 
@@ -27,11 +27,11 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 
 ## Auth And Google OAuth Setup
 
-- [ ] Add staging Web redirect URL to Auth provider.
+- [x] Add staging Web redirect URL to Auth provider.
 - [ ] Add local dev redirect URL to Auth provider.
-- [ ] Add `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` or provider equivalent to Vercel.
-- [ ] Add `CLERK_SECRET_KEY` or provider equivalent to server-only secrets.
-- [ ] Add JWT issuer/audience/JWKS config to FastAPI secrets.
+- [x] Add `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` or provider equivalent to Vercel.
+- [x] Add `CLERK_SECRET_KEY` or provider equivalent to server-only secrets.
+- [x] Add JWT issuer/audience/JWKS config to FastAPI secrets.
 - [ ] Keep Google Client Secret only inside Auth provider/server-side config.
 
 ## Smoke Tests
@@ -42,28 +42,45 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - [x] Asset upload/read through R2.
 - [x] Board save/load/history through staging API.
 - [x] Vercel Web domain opens Workspace/Board routes.
-- [ ] Konva-first `/boards/[boardId]` route opens new Boards on staging without tldraw license blocker.
-- [ ] Production-like env keeps tldraw reference disabled unless explicitly enabled.
+- [x] Konva-only `/boards/[boardId]` route opens new Boards on staging without any legacy canvas dependency.
+- [x] Production-like env blocks legacy v1/unknown Board documents in the active app path.
 - [ ] OTP email delivered to test inbox.
 - [ ] Google OAuth login on staging returns provider session/JWT.
 - [ ] FastAPI rejects invalid/expired provider JWT.
 
 ## Current Staging Result
 
-- FastAPI is deployed on the Hetzner staging host behind Caddy.
-- Public API health is live at the staging API domain.
-- Neon migration reached S1A head.
-- Temporary dev user/workspace seed exists for pre-Auth smoke.
-- Board save/load/history, guard rejection and R2 asset upload/read passed.
-- Vercel staging domain opens the Web app and calls the staging FastAPI origin.
-- Public Board route exposed the tldraw production license requirement before S1X. S1X now has a Konva-first route and production tldraw reference gate locally; staging needs redeploy/smoke with that setting.
-- `TANGENT_REQUIRE_API_AUTH=0` remains intentional until S1C Clerk/JWT verification lands.
-- User-confirmed Clerk and Google OAuth provider setup exists; staging browser/API smoke still needs to prove the full session/JWT path.
-- Runtime Postgres connections now prefer `DATABASE_POOL_URL` when present while keeping Alembic on `DATABASE_URL`; backend cursors log SQL taking longer than `TANGENT_DATABASE_SLOW_QUERY_MS` without logging parameters. This is the first targeted Neon/slow-query observability cleanup from the project-wide memory/performance audit.
+- The rebuilt Hetzner host now runs Ubuntu 24.04 with Docker, Caddy, UFW, fail2ban and a non-root `deploy` user; SSH password login is disabled and the compromised old staging key was replaced.
+- Source-host firewall is now explicitly tightened: public traffic is limited to `80/tcp` and `443/tcp`, while `22/tcp` is restricted to the maintainer's current public IP instead of remaining open to the Internet.
+- FastAPI is deployed again behind Caddy at `https://api-staging.tanergy.cc`.
+- Public API health is live again at the staging API domain.
+- Neon migration is now at Alembic head on the rebuilt host.
+- Temporary dev user/workspace seed still exists for the pre-Auth smoke lane.
+- Local-against-real-DB and public API smoke both passed for:
+  - `/health`
+  - CORS from `https://staging.tanergy.cc`
+  - R2 asset upload/read
+  - Board save/load
+  - Board snapshot create/load
+  - Board guard rejection on inline `data:` payloads
+- Root `.vercelignore` now excludes local board snapshots, asset caches and nested Next build output, which cut the staging web upload from roughly `268.6MB` down to about `470KB` and unblocked production publishing from the repo root.
+- Vercel production now has the missing server-side `CLERK_SECRET_KEY`, and `https://staging.tanergy.cc` has been re-aliased to a fresh deploy after the secret fix.
+- Cloudflare DNS now proxies both public staging records, but the source split remains intentional:
+  - `staging.tanergy.cc` stays a proxied Vercel CNAME
+  - `api-staging.tanergy.cc` stays a proxied Hetzner A record
+- `https://staging.tanergy.cc/boards/[boardId]` now returns `200` in the signed-out Clerk-protected state instead of `500`, and the active deployment no longer exposes the old tldraw license/runtime surface.
+- Real signed-in staging smoke is now green for `/api/auth/session`, `/api/admin-proxy/me`, `/api/admin-proxy/operator/users?limit=3`, `/api/admin-proxy/finance/summary` and `/api/admin-proxy/ai/route-metrics?limit=5`.
+- The newest Konva-only board behavior still needs a broader signed-in browser acceptance pass against the rebuilt API host.
+- Runtime Postgres connections now prefer `DATABASE_POOL_URL` when present while keeping Alembic on `DATABASE_URL`; backend cursors log SQL taking longer than `TANGENT_DATABASE_SLOW_QUERY_MS` without logging parameters.
+- Clerk/Google/email runtime secrets have been restored enough for real session/admin smoke; remaining work is final Google/email verification and any last secret cleanup before wider staging use.
+- Cloudflare edge hardening is only partially complete: DNS proxying is on, but SSL mode, WAF managed rules and rate limits still need dashboard setup or a wider-scoped API token.
+- `deploy/production/README.md` and `deploy/production/api.env.example` now define the production boundary: separate web/API domains, separate database/storage/auth/payment secrets and a stage-to-prod promotion flow from one reviewed commit.
+- Staging live AI acceptance is now explicitly blocked on a real provider credential such as `GEEKAI_API_KEY`; deployed environments should no longer fake-success through local mock asset ids.
 
 ## Handoff Notes
 
 - Keep staging/prod env vars separate.
+- The rebuilt staging host now expects the new local SSH key `~/.ssh/tanergy_staging_20260514_ed25519`; do not reuse the retired staging key.
 - Preserve the local vs deployed route split:
   - local Web uses `http://127.0.0.1:3000` or `http://localhost:3000`
   - local API may use `http://127.0.0.1:8100` when another service occupies `8000`
@@ -74,5 +91,8 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - Local `/api/auth/dev-bypass` and `tangent_dev_auth` are development helpers only; do not count them as staging/prod Auth smoke.
 - Do not expose server keys to Vercel public env.
 - Keep firewall narrow: public 80/443, SSH restricted where possible.
+- Do not repoint `staging.tanergy.cc` from Vercel to the Hetzner API host just because both records are now proxied through Cloudflare. The web/API source split is still intentional.
+- Keep production separate from staging: separate Vercel env/project, separate API env file or host, separate DB credentials, separate R2 write keys, separate Clerk keys and separate payment mode/webhooks.
+- `services/api/tangent_api/env_bootstrap.py` now tolerates wheel-installed/container layouts instead of assuming the source tree always lives four parents above the module path. This was required to get the rebuilt staging container to boot cleanly.
 - Production Google OAuth requires Google Cloud Console setup, verified domain, app branding, privacy policy and terms URLs.
 - Use `dev-plans/s1-launch-readiness-and-acceptance-report-2026-05-05.md` for the current deploy/database/Auth/AI/Admin/collaboration acceptance checklist.

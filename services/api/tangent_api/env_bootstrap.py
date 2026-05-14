@@ -8,16 +8,47 @@ def load_repo_env() -> None:
     if os.getenv("TANGENT_SKIP_ENV_FILE_LOAD") == "1":
         return
 
-    repo_root = Path(__file__).resolve().parents[3]
     protected_keys = set(os.environ)
-
-    for path in (
-        repo_root / ".env",
-        repo_root / ".env.local",
-        repo_root / "services/api/.env",
-        repo_root / "services/api/.env.local",
-    ):
+    for path in _env_candidate_paths(Path(__file__).resolve()):
         _load_env_file(path, protected_keys)
+
+
+def _env_candidate_paths(module_path: Path) -> tuple[Path, ...]:
+    repo_root = _find_repo_root(module_path)
+    service_root = _find_service_root(module_path)
+    candidates: list[Path] = []
+
+    if repo_root is not None:
+        candidates.extend(
+            (
+                repo_root / ".env",
+                repo_root / ".env.local",
+            )
+        )
+    if service_root is not None:
+        candidates.extend(
+            (
+                service_root / ".env",
+                service_root / ".env.local",
+            )
+        )
+    return tuple(candidates)
+
+
+def _find_repo_root(module_path: Path) -> Path | None:
+    for parent in module_path.parents:
+        if (parent / ".git").exists():
+            return parent
+        if (parent / "ARCH").is_dir() and (parent / "PRD").is_dir():
+            return parent
+    return None
+
+
+def _find_service_root(module_path: Path) -> Path | None:
+    for parent in module_path.parents:
+        if (parent / "alembic.ini").is_file() and (parent / "tangent_api").is_dir():
+            return parent
+    return None
 
 
 def _load_env_file(path: Path, protected_keys: set[str]) -> None:

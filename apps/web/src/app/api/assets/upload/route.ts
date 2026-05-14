@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server'
 import { isTangentAssetOrigin, type TangentAssetOrigin } from '@/features/assets/assetTypes'
+import { assertLocalAssetBridgeAvailable } from '@/features/api/runtimeBridgePolicy'
 import { getApiRequestContext } from '../../_lib/apiRequestContext'
+import {
+  assertRequestContentLength,
+  readFileArrayBufferWithLimit,
+  requestBodyErrorStatus,
+} from '../../_lib/requestBodyLimits'
 import { getAssetStorageAdapter } from '../_lib/assetStorageAdapter'
 
 export const runtime = 'nodejs'
@@ -11,6 +17,7 @@ const maxUploadRequestBytes = maxUploadImageBytes + 1024 * 1024
 
 export async function POST(request: Request) {
   try {
+    assertLocalAssetBridgeAvailable()
     assertRequestContentLength(request, maxUploadRequestBytes, 'Upload request is too large.')
     const form = await request.formData()
     const file = form.get('file')
@@ -19,7 +26,7 @@ export async function POST(request: Request) {
     if (file.size > maxUploadImageBytes) throw new Error('Image must be 100MB or smaller.')
 
     const record = await getAssetStorageAdapter().createFromUpload({
-      bytes: await file.arrayBuffer(),
+      bytes: await readFileArrayBufferWithLimit(file, maxUploadImageBytes, 'Image must be 100MB or smaller.'),
       fileName: file.name,
       height: getOptionalNumber(form.get('height')),
       mime: file.type,
@@ -31,16 +38,9 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Asset upload failed.' },
-      { status: 400 }
+      { status: requestBodyErrorStatus(error) }
     )
   }
-}
-
-function assertRequestContentLength(request: Request, maxBytes: number, message: string) {
-  const raw = request.headers.get('content-length')
-  if (!raw) return
-  const byteLength = Number(raw)
-  if (Number.isFinite(byteLength) && byteLength > maxBytes) throw new Error(message)
 }
 
 function getOptionalNumber(value: FormDataEntryValue | null) {

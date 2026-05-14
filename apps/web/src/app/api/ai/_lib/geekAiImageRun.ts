@@ -3,6 +3,7 @@ import { getAssetStorageAdapter } from '../../assets/_lib/assetStorageAdapter'
 import { getImageDimensionsFromBytes, getImageExtensionFromMime } from '../../assets/_lib/imageByteMetadata'
 import { fetchRemoteImageForAsset } from '../../assets/_lib/remoteImageImport'
 import {
+  assertAiInlineImageTotalByteLength,
   arrayBufferFromBuffer,
   normalizeAiInlineBase64DataUrl,
   parseAiInlineImageDataUrl,
@@ -16,8 +17,10 @@ import type { AiRunChargeSummary } from '@/features/billing/billingTypes'
 const defaultGeekAiBaseUrl = 'https://geekai.co/api/v1'
 const defaultGeneratedMime = 'image/png'
 const maxImageReferenceInputs = 8
+const legacyNanoBananaModelId = 'gemini-3.1-flash-image-preview'
+const nanoBanana2ModelId = 'nano-banana-2'
 const pollIntervalMs = 1400
-const pollTimeoutMs = 45000
+const pollTimeoutMs = 240000
 
 type GeekAiImageResponse = {
   choices?: never
@@ -36,21 +39,6 @@ type GeekAiImageResponse = {
   task_status?: 'failed' | 'pending' | 'running' | 'succeed'
 }
 
-type GeekAiChatMessageContent = string | Array<{ text?: string; type?: string }>
-
-type GeekAiChatCompletionResponse = {
-  choices?: Array<{
-    message?: {
-      content?: GeekAiChatMessageContent
-      image?: string | { url?: string }
-    }
-  }>
-  error?: {
-    message?: string
-  }
-  message?: string
-}
-
 export async function createGeekAiImageRun(input: {
   context: ApiRequestContext
   charge: AiRunChargeSummary
@@ -60,31 +48,29 @@ export async function createGeekAiImageRun(input: {
   const prompt = input.request.prompt?.trim()
   if (!prompt) throw new Error('Missing image prompt.')
 
-  const model = getAiModelDefinition(input.request.selectedModelId)
+  const model = getAiModelDefinition(normalizeImageModelId(input.request.selectedModelId))
   const count = clampCount(Number(asAiRunParams(input.request.params).count ?? 1))
   const params = asAiRunParams(input.request.params)
   const gptSize = normalizeGptImageSize(getString(params.size) ?? mapLegacyGptSize(getString(params.aspectRatio)))
   const gptQuality = normalizeGptImageQuality(getString(params.quality) ?? mapLegacyGptQuality(getString(params.resolution)))
-  const geminiAspectRatio = normalizeGeminiAspectRatio(getString(params.aspectRatio))
-  const geminiImageSize = normalizeGeminiImageSize(getString(params.imageSize) ?? mapLegacyGeminiImageSize(getString(params.resolution)))
+  const nanoBananaAspectRatio = normalizeNanoBananaAspectRatio(getString(params.aspectRatio))
+  const nanoBananaImageSize = normalizeNanoBananaImageSize(getString(params.imageSize) ?? mapLegacyNanoBananaImageSize(getString(params.resolution)))
   const seedreamSize = normalizeSeedreamSize(getString(params.seedreamSize) ?? getString(params.size))
   const seedreamOutputFormat = normalizeSeedreamOutputFormat(getString(params.seedreamOutputFormat))
   const jimengSize = normalizeJimengSize(getString(params.jimengSize) ?? getString(params.size))
   const jimengStrength = normalizeJimengStrength(params.jimengStrength)
-  const referenceImages = await resolveInputImages(input.request.inputAssetIds ?? [], input.context, {
-    preferPreview: model.id === 'gemini-3.1-flash-image-preview',
-  })
+  const referenceImages = await resolveInputImages(input.request.inputAssetIds ?? [], input.context)
 
   const generatedSources = (await runSelectedImageModel({
     count,
-    geminiAspectRatio,
-    geminiImageSize,
     gptQuality,
     gptSize,
     inputImages: referenceImages,
     jimengSize,
     jimengStrength,
     modelId: model.id,
+    nanoBananaAspectRatio,
+    nanoBananaImageSize,
     prompt,
     seedreamOutputFormat,
     seedreamSize,
@@ -125,23 +111,23 @@ export async function createGeekAiImageRun(input: {
 
 async function runSelectedImageModel(input: {
   count: number
-  geminiAspectRatio: string
-  geminiImageSize: string
   gptQuality: string
   gptSize: string
   inputImages: string[]
   jimengSize: string
   jimengStrength: string
   modelId: string
+  nanoBananaAspectRatio: string
+  nanoBananaImageSize: string
   prompt: string
   seedreamOutputFormat: string
   seedreamSize: string
 }) {
-  if (input.modelId === 'gemini-3.1-flash-image-preview') {
-    return runGemini31FlashImagePreview({
-      aspectRatio: input.geminiAspectRatio,
+  if (input.modelId === nanoBanana2ModelId) {
+    return runNanoBanana2({
+      aspectRatio: input.nanoBananaAspectRatio,
       count: input.count,
-      imageSize: input.geminiImageSize,
+      imageSize: input.nanoBananaImageSize,
       inputImages: input.inputImages,
       prompt: input.prompt,
     })
@@ -171,6 +157,36 @@ async function runSelectedImageModel(input: {
     quality: input.gptQuality,
     size: input.gptSize,
   })
+}
+
+async function runNanoBanana2(input: {
+  aspectRatio: string
+  count: number
+  imageSize: string
+  inputImages: string[]
+  prompt: string
+}) {
+  const sharedBody = {
+    aspect_ratio: input.aspectRatio,
+    model: nanoBanana2ModelId,
+    prompt: input.prompt,
+    retries: 0,
+    size: input.imageSize,
+  }
+
+  const outputs: string[] = []
+  for (let index = 0; index < input.count; index += 1) {
+    if (input.inputImages.length === 0) {
+      outputs.push(...await runSingleImageGeneration(sharedBody))
+      continue
+    }
+    const payload = await postGeekAiJson<GeekAiImageResponse>('/images/edits', {
+      ...sharedBody,
+      image: input.inputImages.length === 1 ? input.inputImages[0] : input.inputImages,
+    })
+    outputs.push(...extractImageSources(await settleImageTask(payload)))
+  }
+  return outputs
 }
 
 async function runGptImage2(input: {
@@ -226,43 +242,6 @@ async function runSingleGptImage2(sharedBody: Record<string, unknown>, inputImag
     } as Record<string, unknown>)
     return extractImageSources(await settleImageTask(payload))
   }
-}
-
-async function runGemini31FlashImagePreview(input: {
-  aspectRatio: string
-  count: number
-  imageSize: string
-  inputImages: string[]
-  prompt: string
-}) {
-  const outputs: string[] = []
-  for (let index = 0; index < input.count; index += 1) {
-    const payload = await postGeekAiJson<GeekAiChatCompletionResponse>('/chat/completions', {
-      background: false,
-      image: {
-        aspect_ratio: input.aspectRatio,
-        image_size: input.imageSize,
-      },
-      messages: [
-        {
-          content: [
-            { text: input.prompt, type: 'text' },
-            ...input.inputImages.map((url) => ({
-              image_url: { url: normalizeGeminiChatInputImage(url) },
-              type: 'image_url',
-            })),
-          ],
-          role: 'user',
-        },
-      ],
-      model: 'gemini-3.1-flash-image-preview',
-      stream: false,
-    })
-    const source = extractChatCompletionImageSource(payload)
-    if (!source) throw new Error('GeekAI did not return a generated image.')
-    outputs.push(source)
-  }
-  return outputs
 }
 
 async function runDoubaoSeedreamLite(input: {
@@ -375,21 +354,21 @@ async function persistGeneratedImage(input: {
 
 async function resolveInputImages(
   assetIds: string[],
-  context: ApiRequestContext,
-  options?: { preferPreview?: boolean }
+  context: ApiRequestContext
 ) {
   const uniqueIds = [...new Set(assetIds.filter(Boolean))]
   if (uniqueIds.length > maxImageReferenceInputs) {
     throw new Error(`Image generation accepts up to ${maxImageReferenceInputs} reference images.`)
   }
   const imageUrls: string[] = []
+  let totalInlineBytes = 0
   for (const assetId of uniqueIds) {
     const record = await getAssetStorageAdapter().getRecord(assetId, context)
-    const fileUrl = options?.preferPreview
-      ? record.thumbnail1024Url ?? record.thumbnail512Url ?? record.originalUrl
-      : record.originalUrl
+    const fileUrl = record.originalUrl
     const fileName = getAssetFileName(fileUrl)
     const { file, mime } = await getAssetStorageAdapter().readFile(assetId, fileName, context)
+    totalInlineBytes += file.byteLength
+    assertAiInlineImageTotalByteLength(totalInlineBytes, 'Reference images exceed the total allowed size for image generation.')
     imageUrls.push(toAiInlineImageDataUrl(mime, file))
   }
   return imageUrls
@@ -423,34 +402,6 @@ function extractImageSources(payload: GeekAiImageResponse) {
     }
     return []
   })
-}
-
-function extractChatCompletionImageSource(payload: GeekAiChatCompletionResponse) {
-  const imageValue = payload.choices?.[0]?.message?.image
-  if (typeof imageValue === 'string' && imageValue.trim()) return imageValue.trim()
-  if (imageValue && typeof imageValue === 'object' && !Array.isArray(imageValue)) {
-    const url = typeof imageValue.url === 'string' ? imageValue.url.trim() : ''
-    if (url) return url
-  }
-  const content = payload.choices?.[0]?.message?.content
-  return extractImageUrlFromChatContent(content)
-}
-
-function extractImageUrlFromChatContent(content: GeekAiChatMessageContent | undefined) {
-  const joined = typeof content === 'string'
-    ? content
-    : Array.isArray(content)
-      ? content.map((part) => typeof part?.text === 'string' ? part.text : '').join('\n')
-      : ''
-  const markdownMatch = /!\[[^\]]*]\((https?:\/\/[^)\s]+)\)/.exec(joined)
-  if (markdownMatch?.[1]) return markdownMatch[1]
-  const urlMatch = /(https?:\/\/\S+)/.exec(joined)
-  return urlMatch?.[1]?.replace(/[)>.,]+$/g, '') ?? null
-}
-
-function normalizeGeminiChatInputImage(value: string) {
-  const match = /^data:[^;,]+;base64,(.+)$/s.exec(value)
-  return match?.[1]?.trim() ? match[1].trim() : value
 }
 
 async function postGeekAiJson<T extends { error?: { message?: string }; message?: string }>(path: string, body: Record<string, unknown>) {
@@ -499,14 +450,14 @@ function createCostHint(modelId: string, modelLabel: string, params: Record<stri
   const parts = [modelLabel]
   const size = normalizeGptImageSize(getString(params.size) ?? mapLegacyGptSize(getString(params.aspectRatio)))
   const quality = normalizeGptImageQuality(getString(params.quality) ?? mapLegacyGptQuality(getString(params.resolution)))
-  const aspectRatio = normalizeGeminiAspectRatio(getString(params.aspectRatio))
-  const imageSize = normalizeGeminiImageSize(getString(params.imageSize) ?? mapLegacyGeminiImageSize(getString(params.resolution)))
+  const aspectRatio = normalizeNanoBananaAspectRatio(getString(params.aspectRatio))
+  const imageSize = normalizeNanoBananaImageSize(getString(params.imageSize) ?? mapLegacyNanoBananaImageSize(getString(params.resolution)))
   const seedreamSize = normalizeSeedreamSize(getString(params.seedreamSize) ?? getString(params.size))
   const seedreamOutputFormat = normalizeSeedreamOutputFormat(getString(params.seedreamOutputFormat))
   const jimengSize = normalizeJimengSize(getString(params.jimengSize) ?? getString(params.size))
   const jimengStrength = normalizeJimengStrength(params.jimengStrength)
 
-  if (modelId === 'gemini-3.1-flash-image-preview') {
+  if (modelId === nanoBanana2ModelId) {
     parts.push(imageSize, aspectRatio)
   } else if (modelId === 'doubao-seedream-5.0-lite') {
     parts.push(seedreamSize, seedreamOutputFormat.toUpperCase())
@@ -535,12 +486,12 @@ function normalizeGptImageQuality(quality: string | undefined) {
   return 'medium'
 }
 
-function normalizeGeminiAspectRatio(aspectRatio: string | undefined) {
+function normalizeNanoBananaAspectRatio(aspectRatio: string | undefined) {
   const allowed = new Set(['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9', '9:21', '1:4', '4:1', '1:8', '8:1'])
   return aspectRatio && allowed.has(aspectRatio) ? aspectRatio : '1:1'
 }
 
-function normalizeGeminiImageSize(imageSize: string | undefined) {
+function normalizeNanoBananaImageSize(imageSize: string | undefined) {
   if (imageSize === '0.5K' || imageSize === '1K' || imageSize === '2K' || imageSize === '4K') return imageSize
   return '1K'
 }
@@ -621,9 +572,14 @@ function mapLegacyGptQuality(resolution: string | undefined) {
   return 'medium'
 }
 
-function mapLegacyGeminiImageSize(resolution: string | undefined) {
+function mapLegacyNanoBananaImageSize(resolution: string | undefined) {
   if (resolution === '0.5K' || resolution === '2K' || resolution === '4K') return resolution
   return '1K'
+}
+
+function normalizeImageModelId(modelId: null | string | undefined) {
+  if (modelId === legacyNanoBananaModelId) return nanoBanana2ModelId
+  return modelId
 }
 
 function clampCount(value: number) {

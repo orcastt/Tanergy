@@ -5,6 +5,7 @@ from fastapi import HTTPException
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.schemas import AssetRecord
 from tangent_api.storage.postgres_connection import connect_to_postgres, should_auto_create_tables
+from tangent_api.storage.asset_store_common import assert_workspace_access, get_accessible_workspace_ids
 
 
 class PostgresAssetMetadataStore:
@@ -70,6 +71,7 @@ class PostgresAssetMetadataStore:
             connection.commit()
 
     def get_record(self, asset_id: str, context: ApiRequestContext) -> AssetRecord:
+        accessible_workspace_ids = get_accessible_workspace_ids(context)
         with connect_to_postgres() as connection:
             with connection.cursor() as cursor:
                 self._ensure_schema(cursor)
@@ -92,15 +94,22 @@ class PostgresAssetMetadataStore:
                         thumbnail_1024_url,
                         created_at
                     FROM tangent_assets
-                    WHERE workspace_id = %s AND id = %s
+                    WHERE id = %s
+                      AND workspace_id = ANY(%s)
+                    ORDER BY
+                        CASE WHEN workspace_id = %s THEN 0 ELSE 1 END,
+                        created_at DESC
+                    LIMIT 1
                     """,
-                    (context.workspace_id, asset_id),
+                    (asset_id, accessible_workspace_ids, context.workspace_id),
                 )
                 row = cursor.fetchone()
 
         if not row:
             raise HTTPException(status_code=404, detail="Asset not found in workspace.")
-        return _asset_record_from_row(row)
+        record = _asset_record_from_row(row)
+        assert_workspace_access(record, context)
+        return record
 
     def _ensure_schema(self, cursor: Any) -> None:
         if not should_auto_create_tables():

@@ -48,7 +48,7 @@ def assert_asset_size(byte_size: int) -> None:
 
 
 async def read_upload_file_with_limit(file: UploadFile, max_bytes: int = MAX_ASSET_BYTES) -> bytes:
-    chunks: list[bytes] = []
+    content = bytearray()
     total = 0
     while True:
         chunk = await file.read(UPLOAD_READ_CHUNK_BYTES)
@@ -57,8 +57,8 @@ async def read_upload_file_with_limit(file: UploadFile, max_bytes: int = MAX_ASS
         total += len(chunk)
         if total > max_bytes:
             raise HTTPException(status_code=400, detail="Image must be 100MB or smaller.")
-        chunks.append(chunk)
-    return b"".join(chunks)
+        content.extend(chunk)
+    return bytes(content)
 
 
 def _estimate_base64_byte_length(value: str) -> int:
@@ -69,8 +69,23 @@ def _estimate_base64_byte_length(value: str) -> int:
 
 
 def assert_workspace_access(record: AssetRecord, context: ApiRequestContext) -> None:
-    if record.workspace_id != context.workspace_id:
+    if not can_access_workspace(record.workspace_id, context):
         raise HTTPException(status_code=404, detail="Asset not found in workspace.")
+
+
+def can_access_workspace(workspace_id: str, context: ApiRequestContext) -> bool:
+    return workspace_id in get_accessible_workspace_ids(context)
+
+
+def get_accessible_workspace_ids(context: ApiRequestContext) -> list[str]:
+    workspace_ids: list[str] = []
+    seen = set()
+    for workspace_id in [context.workspace_id, *(item.workspace_id for item in (context.workspace_memberships or []))]:
+        if not workspace_id or workspace_id in seen:
+            continue
+        seen.add(workspace_id)
+        workspace_ids.append(workspace_id)
+    return workspace_ids
 
 
 def assert_safe_path_segment(value: str) -> None:

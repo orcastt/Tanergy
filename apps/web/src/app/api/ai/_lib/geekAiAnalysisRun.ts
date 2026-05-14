@@ -1,6 +1,7 @@
 import type { ApiRequestContext } from '../../_lib/apiRequestContext'
 import { getAssetStorageAdapter } from '../../assets/_lib/assetStorageAdapter'
 import {
+  assertAiInlineImageTotalByteLength,
   parseAiInlineImageDataUrl,
   readJsonResponseWithLimit,
   toAiInlineImageDataUrl,
@@ -144,11 +145,14 @@ async function resolveInputImages(assetIds: string[], context: ApiRequestContext
     throw new Error(`Image analysis accepts up to ${maxAnalysisReferenceImages} reference images.`)
   }
   const imageUrls: string[] = []
+  let totalInlineBytes = 0
   for (const assetId of uniqueIds) {
     const record = await getAssetStorageAdapter().getRecord(assetId, context)
     const fileUrl = record.thumbnail1024Url ?? record.thumbnail512Url ?? record.originalUrl
     const fileName = getAssetFileName(fileUrl)
     const { file, mime } = await getAssetStorageAdapter().readFile(assetId, fileName, context)
+    totalInlineBytes += file.byteLength
+    assertAiInlineImageTotalByteLength(totalInlineBytes, 'Reference images exceed the total allowed size for image analysis.')
     imageUrls.push(toAiInlineImageDataUrl(mime, file))
   }
   return imageUrls

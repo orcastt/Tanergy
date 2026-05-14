@@ -69,7 +69,7 @@ export async function releaseBoardCollaborationSession(
   boardId: string,
   sessionId: string,
   workspace?: TangentWorkspace,
-  options: { signal?: AbortSignal } = {},
+  options: { keepalive?: boolean; signal?: AbortSignal } = {},
 ) {
   const headers = hasRemotePersistenceApi()
     ? await persistenceAuthHeadersAsync(workspace)
@@ -80,6 +80,7 @@ export async function releaseBoardCollaborationSession(
       : `/api/boards/local-collaboration/sessions/${encodeURIComponent(sessionId)}?boardId=${encodeURIComponent(boardId)}`,
     {
       headers,
+      keepalive: options.keepalive,
       method: 'DELETE',
       signal: options.signal,
     },

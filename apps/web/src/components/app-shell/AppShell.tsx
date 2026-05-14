@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useState, type ReactNode } from 'react'
 import { useAdminAccess } from '@/features/auth/useAdminAccess'
 import { useTangentSession } from '@/features/auth/useTangentSession'
+import { clearSessionScopedClientState } from '@/features/auth/sessionClient'
 
 const topNavItems = [
   { href: '/workspaces', label: 'Boards', match: ['/workspaces', '/boards'] },
@@ -170,7 +171,11 @@ export function AppShell({ children }: AppShellProps) {
               Account
             </Link>
             <SignOutButton redirectUrl="/">
-              <button className="product-sidebar-link is-muted" type="button">
+              <button
+                className="product-sidebar-link is-muted"
+                onClick={() => clearSessionScopedClientState()}
+                type="button"
+              >
                 <span aria-hidden="true">-&gt;</span>
                 Logout
               </button>

@@ -93,7 +93,13 @@ def can_own_board(
     context: ApiRequestContext,
     board_member_role: Optional[str] = None,
 ) -> bool:
-    return resolve_effective_board_permission(record, context, board_member_role) == "owner"
+    if resolve_effective_board_permission(record, context, board_member_role) == "owner":
+        return True
+    return (
+        record.workspace_id == context.workspace_id
+        and context.workspace_kind == "solo_workspace"
+        and context.workspace_role == "owner"
+    )
 
 
 def assert_can_create_board(context: ApiRequestContext) -> None:

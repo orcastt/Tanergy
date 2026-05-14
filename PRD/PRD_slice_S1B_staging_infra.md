@@ -1,7 +1,7 @@
 # PRD Slice S1B: Staging Infrastructure And Online Prep
 
-**Updated**: 2026-05-06
-**Status**: In progress; staging Web/API/Neon/R2 smoke passed, while email/Auth/OAuth and Konva-first redeploy smoke remain.
+**Updated**: 2026-05-14
+**Status**: In progress; staging Web/API/Neon/R2 smoke, the Konva-only redeploy and real Clerk session/admin smoke are back in place, while Google/email flow verification, final signed-in browser acceptance and live AI smoke remain before production can open.
 
 ## User Value
 
@@ -18,7 +18,8 @@ The app becomes testable outside local dev. Real browsers can access staging Web
 - Auth provider staging project configured.
 - Google OAuth enabled for staging login.
 - Production Google OAuth preparation documented before public launch.
-- Konva-first Board route redeployed with tldraw disabled by default.
+- Production deployment docs and API env template prepared before opening the public site.
+- Konva-only Board route redeployed, with legacy Board documents blocked in the active app path.
 
 ## Online Preparation Checklist
 
@@ -48,7 +49,9 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - Postgres migrations run.
 - Asset upload/read works.
 - Board save/load/history works against staging.
+- Existing real Clerk login/logout/session works on staging and admin-backed probes return green.
 - Email OTP can be delivered to a test inbox.
 - Google login succeeds on staging.
 - FastAPI accepts valid provider JWT and rejects invalid/expired JWT.
-- `/boards/[boardId]` opens Konva v2 on staging without the tldraw production license path.
+- `/boards/[boardId]` opens Konva v2 on staging without any legacy paid-canvas runtime path.
+- Production launch has separate database, storage, auth and payment secrets from staging.

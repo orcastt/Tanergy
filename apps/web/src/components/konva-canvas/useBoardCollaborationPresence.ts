@@ -14,6 +14,10 @@ import {
 } from '@/features/collaboration/boardRealtimeTransport'
 import type { LocalBoardAwarenessState } from '@/features/collaboration/localBoardAwareness'
 import {
+  createConnectingBoardRealtimeState,
+  createUnsupportedBoardRealtimeState,
+} from '@/features/collaboration/boardRealtimeState'
+import {
   claimBoardCollaborationSession,
   releaseBoardCollaborationSession,
 } from '@/features/boards/boardCollaborationClient'
@@ -96,9 +100,10 @@ export function useBoardCollaborationPresence({
   const awarenessConnectionRef = useRef<BoardRealtimeAwarenessConnection | null>(null)
   const realtimeAwarenessRef = useRef<Map<string, LocalBoardAwarenessState>>(new Map())
   const debounceTimerRef = useRef<number | null>(null)
-	  const requestIdRef = useRef(0)
-	  const claimControllerRef = useRef<AbortController | null>(null)
-	  const releaseKeyRef = useRef<string | null>(null)
+  const requestIdRef = useRef(0)
+  const claimControllerRef = useRef<AbortController | null>(null)
+  const releaseKeyRef = useRef<string | null>(null)
+  const releasedSessionKeyRef = useRef<string | null>(null)
   const presence = useMemo<BoardCollaborationPresence>(() => ({
     activePageId,
     cursor: latestCursorRef.current,
@@ -125,13 +130,30 @@ export function useBoardCollaborationPresence({
     })
   }, [presence])
 
-	  const syncPresence = useCallback(async (markLoading = false) => {
-	    if (!shouldConnect || !boardId || !workspace) return
-	    const requestId = ++requestIdRef.current
-	    claimControllerRef.current?.abort()
-	    const controller = new AbortController()
-	    claimControllerRef.current = controller
-	    if (markLoading) {
+  const releaseSession = useCallback((
+    nextBoardId: string,
+    nextWorkspace: TangentWorkspace,
+    releaseKey: string,
+    options: { keepalive?: boolean } = {},
+  ) => {
+    const sessionId = currentSessionIdRef.current
+    if (!sessionId) return
+    const releaseSessionKey = `${releaseKey}:${sessionId}`
+    if (releasedSessionKeyRef.current === releaseSessionKey) return
+    releasedSessionKeyRef.current = releaseSessionKey
+    currentSessionIdRef.current = null
+    void releaseBoardCollaborationSession(nextBoardId, sessionId, nextWorkspace, {
+      keepalive: options.keepalive,
+    }).catch(() => {})
+  }, [])
+
+  const syncPresence = useCallback(async (markLoading = false) => {
+    if (!shouldConnect || !boardId || !workspace) return
+    const requestId = ++requestIdRef.current
+    claimControllerRef.current?.abort()
+    const controller = new AbortController()
+    claimControllerRef.current = controller
+    if (markLoading) {
       setState((current) => ({
         ...current,
         error: null,
@@ -139,19 +161,22 @@ export function useBoardCollaborationPresence({
       }))
     }
     try {
-	      const response = await claimBoardCollaborationSession(
-	        boardId,
-	        {
-	          clientInstanceId,
-	          presence: latestPresenceRef.current,
-	          ttlSeconds: 45,
-	        },
-	        workspace,
-	        { signal: controller.signal },
-	      )
-	      if (claimControllerRef.current === controller) claimControllerRef.current = null
-	      if (requestId !== requestIdRef.current) return
+      const response = await claimBoardCollaborationSession(
+        boardId,
+        {
+          clientInstanceId,
+          presence: latestPresenceRef.current,
+          ttlSeconds: 45,
+        },
+        workspace,
+        { signal: controller.signal },
+      )
+      if (claimControllerRef.current === controller) claimControllerRef.current = null
+      if (requestId !== requestIdRef.current) return
       currentSessionIdRef.current = response.selfSession?.id ?? currentSessionIdRef.current
+      if (response.selfSession?.id) {
+        releasedSessionKeyRef.current = null
+      }
       setState((current) => {
         realtimeAwarenessRef.current = createRealtimeAwarenessMap(
           [...realtimeAwarenessRef.current.values()],
@@ -170,10 +195,10 @@ export function useBoardCollaborationPresence({
           status: 'ready',
         }
       })
-	    } catch (error) {
-	      if (claimControllerRef.current === controller) claimControllerRef.current = null
-	      if (controller.signal.aborted) return
-	      if (requestId !== requestIdRef.current) return
+    } catch (error) {
+      if (claimControllerRef.current === controller) claimControllerRef.current = null
+      if (controller.signal.aborted) return
+      if (requestId !== requestIdRef.current) return
       setState((current) => ({
         ...current,
         error: error instanceof Error ? error.message : 'Board presence failed to load.',
@@ -184,6 +209,7 @@ export function useBoardCollaborationPresence({
 
   useEffect(() => {
     if (!shouldConnect || !boardId || !workspace) {
+      releaseKeyRef.current = null
       const transportState = resolveInitialTransportState(false, boardId)
       setState({
         activeSessions: [],
@@ -205,22 +231,28 @@ export function useBoardCollaborationPresence({
     const intervalId = window.setInterval(() => {
       void syncPresence(false)
     }, heartbeatIntervalMs)
-	    return () => {
-	      window.clearInterval(intervalId)
-	      requestIdRef.current += 1
-	      claimControllerRef.current?.abort()
-	      claimControllerRef.current = null
-	      if (debounceTimerRef.current !== null) {
+    const handlePageHide = () => {
+      if (releaseKeyRef.current !== releaseKey) return
+      claimControllerRef.current?.abort()
+      claimControllerRef.current = null
+      releaseSession(boardId, workspace, releaseKey, { keepalive: true })
+    }
+    window.addEventListener('pagehide', handlePageHide)
+    return () => {
+      window.clearInterval(intervalId)
+      window.removeEventListener('pagehide', handlePageHide)
+      requestIdRef.current += 1
+      claimControllerRef.current?.abort()
+      claimControllerRef.current = null
+      if (debounceTimerRef.current !== null) {
         window.clearTimeout(debounceTimerRef.current)
         debounceTimerRef.current = null
       }
-      const sessionId = currentSessionIdRef.current
-      currentSessionIdRef.current = null
-      if (sessionId && releaseKeyRef.current === releaseKey) {
-        void releaseBoardCollaborationSession(boardId, sessionId, workspace).catch(() => {})
+      if (releaseKeyRef.current === releaseKey) {
+        releaseSession(boardId, workspace, releaseKey)
       }
     }
-  }, [boardId, clientInstanceId, shouldConnect, syncPresence, workspace])
+  }, [boardId, clientInstanceId, releaseSession, shouldConnect, syncPresence, workspace])
 
   useEffect(() => {
     if (!shouldConnect || !state.roomKey) {
@@ -440,29 +472,7 @@ function resolveInitialTransportState(
   shouldConnect: boolean,
   boardId?: string,
 ): BoardRealtimeAwarenessState {
-  if (!shouldConnect) {
-    return {
-      error: null,
-      initialSyncComplete: true,
-      lastActivityAt: null,
-      lastSyncedAt: null,
-      status: 'unsupported',
-    }
-  }
-  if (!hasSupportedBoardRealtimeTransport(boardId)) {
-    return {
-      error: null,
-      initialSyncComplete: true,
-      lastActivityAt: null,
-      lastSyncedAt: null,
-      status: 'unsupported',
-    }
-  }
-  return {
-    error: null,
-    initialSyncComplete: false,
-    lastActivityAt: null,
-    lastSyncedAt: null,
-    status: 'connecting',
-  }
+  if (!shouldConnect) return createUnsupportedBoardRealtimeState()
+  if (!hasSupportedBoardRealtimeTransport(boardId)) return createUnsupportedBoardRealtimeState()
+  return createConnectingBoardRealtimeState()
 }

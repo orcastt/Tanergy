@@ -6,8 +6,6 @@ from tangent_api.main import app
 
 
 def test_admin_operator_users_route_returns_inventory_shape(monkeypatch):
-    audit_logs: list[dict[str, object]] = []
-
     monkeypatch.setattr(
         "tangent_api.routers.admin_operator.require_admin_role",
         lambda context, allowed_roles=None: [SimpleNamespace(role="admin")],
@@ -58,10 +56,6 @@ def test_admin_operator_users_route_returns_inventory_shape(monkeypatch):
             320,
         ),
     )
-    monkeypatch.setattr(
-        "tangent_api.routers.admin_operator.write_admin_audit_log",
-        lambda **kwargs: audit_logs.append(kwargs),
-    )
     client = TestClient(app)
 
     response = client.get(
@@ -75,13 +69,9 @@ def test_admin_operator_users_route_returns_inventory_shape(monkeypatch):
     assert payload["totalCount"] == 320
     assert payload["users"][0]["teamPlansActive"][0]["workspaceName"] == "Ada Studio"
     assert payload["users"][0]["personalCredit"]["remainingCredits"] == 560.0
-    assert audit_logs[-1]["action"] == "admin.operator.users.list"
-    assert audit_logs[-1]["metadata"] == {"limit": 50, "offset": 100, "roles": ["admin"], "search": "ada"}
 
 
 def test_admin_operator_user_detail_route_returns_one_bundle(monkeypatch):
-    audit_logs: list[dict[str, object]] = []
-
     monkeypatch.setattr(
         "tangent_api.routers.admin_operator.require_admin_role",
         lambda context, allowed_roles=None: [SimpleNamespace(role="support")],
@@ -162,10 +152,6 @@ def test_admin_operator_user_detail_route_returns_one_bundle(monkeypatch):
             },
         },
     )
-    monkeypatch.setattr(
-        "tangent_api.routers.admin_operator.write_admin_audit_log",
-        lambda **kwargs: audit_logs.append(kwargs),
-    )
     client = TestClient(app)
 
     response = client.get(
@@ -179,8 +165,6 @@ def test_admin_operator_user_detail_route_returns_one_bundle(monkeypatch):
     assert payload["detail"]["user"]["id"] == "user_ada"
     assert payload["detail"]["billingHistory"][0]["teamCreditsDelta"] == 12000.0
     assert payload["detail"]["ownedTeams"][0]["invitations"][0]["email"] == "new.member@example.com"
-    assert audit_logs[-1]["action"] == "admin.operator.user.read"
-    assert audit_logs[-1]["metadata"] == {"roles": ["support"], "userId": "user_ada"}
 
 
 def test_admin_operator_user_status_route_returns_mutation_shape(monkeypatch):
@@ -430,8 +414,6 @@ def test_admin_operator_workspace_member_add_route_returns_mutation_shape(monkey
 
 
 def test_admin_operator_workspace_invitations_list_route_returns_shape(monkeypatch):
-    audit_logs: list[dict[str, object]] = []
-
     monkeypatch.setattr(
         "tangent_api.routers.admin_operator.require_admin_role",
         lambda context, allowed_roles=None: [SimpleNamespace(role="support")],
@@ -454,10 +436,6 @@ def test_admin_operator_workspace_invitations_list_route_returns_shape(monkeypat
                 "workspaceId": workspace_id,
             }
         ],
-    )
-    monkeypatch.setattr(
-        "tangent_api.routers.admin_operator.write_admin_audit_log",
-        lambda **kwargs: audit_logs.append(kwargs),
     )
     client = TestClient(app)
 
@@ -487,7 +465,6 @@ def test_admin_operator_workspace_invitations_list_route_returns_shape(monkeypat
         "ok": True,
         "workspaceId": "workspace_team_1",
     }
-    assert audit_logs[-1]["action"] == "admin.operator.workspace_invitations.list"
 
 
 def test_admin_operator_workspace_invitation_create_route_returns_shape(monkeypatch):

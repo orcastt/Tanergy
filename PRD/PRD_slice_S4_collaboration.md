@@ -1,7 +1,7 @@
 # PRD Slice S4: Collaboration
 
-**Updated**: 2026-05-05
-**Status**: Deferred to P0.5 and frozen for the current P0 alpha stabilization pass.
+**Updated**: 2026-05-14
+**Status**: Deferred to P0.5 and frozen for the current P0 alpha stabilization pass; local/provider-shaped collaboration bridge and reconnect/resync smoke now exist, but production multiplayer is still out of scope.
 
 ## Goal
 
@@ -29,4 +29,4 @@ Keep this slice deferred for the current P0 alpha pass. Collaboration readiness 
 
 ## Readiness Note
 
-S1X keeps Yjs viability open, but production collaboration remains P0.5. The first proof should use Konva v2 `CanvasDocument` plus `pages[]`, store only lightweight shapes/runtime edges/Asset refs in the CRDT, and leave AI runs, credits, Asset writes and permission checks server-authoritative.
+S1X keeps Yjs viability open, but production collaboration remains P0.5. The current bridge already has a provider-shaped websocket room plus reconnect/resync acceptance harness, yet it is still not the final production provider. The first proof should keep using Konva v2 `CanvasDocument` plus `pages[]`, store only lightweight shapes/runtime edges/Asset refs in the CRDT, and leave AI runs, credits, Asset writes and permission checks server-authoritative.

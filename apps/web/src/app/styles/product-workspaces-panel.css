@@ -10,9 +10,9 @@
 
 .board-panel {
   display: grid;
-  width: min(1220px, calc(100vw - 56px));
+  width: min(1280px, calc(100vw - 56px));
   max-height: min(860px, calc(100vh - 28px));
-  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-columns: 300px minmax(0, 1fr);
   overflow: hidden;
   border: 1px solid rgba(148, 163, 184, 0.24);
   border-radius: 24px;
@@ -23,10 +23,10 @@
 .board-panel-sidebar {
   display: grid;
   align-content: start;
-  gap: 18px;
-  padding: 28px 26px;
+  gap: 16px;
+  padding: 28px 24px;
   border-right: 1px solid #edf2f7;
-  background: #fbfcfe;
+  background: #f8fafc;
 }
 
 .board-panel-sidebar h2,
@@ -47,43 +47,33 @@
 .board-panel-section p,
 .board-panel-thumbnail small {
   margin: 0;
-  color: #8aa0bd;
+  color: #718399;
   font-size: 12px;
   font-weight: 400;
   line-height: 1.5;
 }
 
-.board-panel-sidebar dl,
-.board-panel-sidebar div {
-  display: grid;
+.board-panel-summary {
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  margin: 0;
 }
 
-.board-panel-sidebar dl {
-  margin-top: 8px;
-}
-
-.board-panel-sidebar dt,
-.board-panel-sidebar dd {
-  margin: 0;
+.board-panel-summary span {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #425266;
   font-size: 12px;
-}
-
-.board-panel-sidebar dt {
-  color: #8aa0bd;
-  font-weight: 400;
-  text-transform: uppercase;
-}
-
-.board-panel-sidebar dd {
-  color: #172033;
-  overflow-wrap: anywhere;
 }
 
 .board-panel-main {
   display: grid;
-  gap: 18px;
+  gap: 24px;
   align-content: start;
   overflow: auto;
   padding: 28px 32px 32px;
@@ -105,11 +95,11 @@
 
 .board-panel-header > div:first-child {
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
 .board-panel-header h2 {
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 400;
 }
 
@@ -133,19 +123,20 @@
 
 .board-panel-permission-note {
   margin: 0;
-  padding: 12px 14px;
+  padding: 10px 12px;
   border: 1px solid #eadfd0;
-  border-radius: 14px;
+  border-radius: 999px;
   background: #fff8ef;
   color: #7c5a26;
   font-size: 12px;
   font-weight: 400;
+  width: fit-content;
 }
 
 .board-panel-content {
   display: grid;
-  grid-template-columns: minmax(500px, 1fr) minmax(360px, 0.82fr);
-  gap: 32px;
+  grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr);
+  gap: 28px;
   align-items: start;
 }
 
@@ -160,7 +151,7 @@
 .board-panel-section,
 .board-panel-form fieldset {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   margin: 0;
   padding: 0;
   border: 0;

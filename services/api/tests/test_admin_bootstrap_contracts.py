@@ -4,8 +4,6 @@ from tangent_api.main import app
 
 
 def test_admin_page_bootstrap_returns_requested_sections(monkeypatch):
-    audit_logs: list[dict[str, object]] = []
-
     monkeypatch.setattr(
         "tangent_api.routers.admin_bootstrap.load_active_admin_roles",
         lambda user_id: [{"createdAt": "2026-05-09T10:00:00Z", "permissions": {}, "role": "admin"}],
@@ -61,11 +59,6 @@ def test_admin_page_bootstrap_returns_requested_sections(monkeypatch):
             9,
         ),
     )
-    monkeypatch.setattr(
-        "tangent_api.routers.admin_bootstrap.write_admin_audit_log",
-        lambda **kwargs: audit_logs.append(kwargs),
-    )
-
     client = TestClient(app)
     response = client.get(
         "/api/v1/admin/bootstrap?includeSummary=1&includeUsers=1&includeTeams=1&includeGroups=1&limit=100",
@@ -83,12 +76,9 @@ def test_admin_page_bootstrap_returns_requested_sections(monkeypatch):
     assert payload["teams"]["totalCount"] == 9
     assert payload["teams"]["workspaces"][0]["kind"] == "team_workspace"
     assert payload["groups"]["workspaces"][0]["kind"] == "group_workspace"
-    assert audit_logs[-1]["action"] == "admin.bootstrap.read"
 
 
 def test_admin_user_detail_bootstrap_returns_user_and_owned_workspaces(monkeypatch):
-    audit_logs: list[dict[str, object]] = []
-
     monkeypatch.setattr(
         "tangent_api.routers.admin_bootstrap.load_active_admin_roles",
         lambda user_id: [{"createdAt": "2026-05-09T10:00:00Z", "permissions": {}, "role": "support"}],
@@ -131,11 +121,6 @@ def test_admin_user_detail_bootstrap_returns_user_and_owned_workspaces(monkeypat
             4,
         ),
     )
-    monkeypatch.setattr(
-        "tangent_api.routers.admin_bootstrap.write_admin_audit_log",
-        lambda **kwargs: audit_logs.append(kwargs),
-    )
-
     client = TestClient(app)
     response = client.get(
         "/api/v1/admin/bootstrap/users/user_grace?limit=100",
@@ -150,4 +135,3 @@ def test_admin_user_detail_bootstrap_returns_user_and_owned_workspaces(monkeypat
     assert payload["teams"]["totalCount"] == 4
     assert payload["teams"]["workspaces"][0]["ownerId"] == "user_grace"
     assert payload["groups"]["workspaces"][0]["ownerId"] == "user_grace"
-    assert audit_logs[-1]["action"] == "admin.bootstrap.user.read"

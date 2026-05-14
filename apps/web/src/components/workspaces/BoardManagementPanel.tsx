@@ -92,14 +92,17 @@ export function BoardManagementPanel({
         <aside className="board-panel-sidebar">
           <p className="product-kicker">Board management</p>
           <h2>{board.title}</h2>
-          <dl>
+          <div className="board-panel-summary">
+            <span>{workspace?.name ?? board.workspaceId}</span>
+            <span>{getVisibilityLabel(board.visibility ?? 'private')}</span>
+            <span>{board.isPinned ? 'Pinned' : 'Not pinned'}</span>
+            <span>{board.isStarred ? 'Starred' : 'Not starred'}</span>
+          </div>
+          <dl className="board-panel-details">
             <div><dt>Owner</dt><dd>{formatOwner(board.ownerId)}</dd></div>
-            <div><dt>Role</dt><dd>{canManageBoard ? 'Can manage' : 'Can view / edit'}</dd></div>
-            <div><dt>Visibility</dt><dd>{getVisibilityLabel(board.visibility ?? 'private')}</dd></div>
-            <div><dt>Created</dt><dd>{formatDate(board.createdAt ?? board.savedAt)}</dd></div>
-            <div><dt>Last modified</dt><dd>{formatDate(board.savedAt)}</dd></div>
-            <div><dt>Last opened</dt><dd>{board.lastOpenedAt ? formatDate(board.lastOpenedAt) : 'Not opened yet'}</dd></div>
-            <div><dt>Location</dt><dd>{workspace?.name ?? board.workspaceId}</dd></div>
+            <div><dt>Access</dt><dd>{canManageBoard ? 'Can manage' : 'View only'}</dd></div>
+            <div><dt>Updated</dt><dd>{formatDate(board.savedAt)}</dd></div>
+            <div><dt>Opened</dt><dd>{board.lastOpenedAt ? formatDate(board.lastOpenedAt) : 'Not opened yet'}</dd></div>
             <div><dt>Objects</dt><dd>{board.shapeCount} shapes / {board.assetCount} assets</dd></div>
           </dl>
         </aside>
@@ -107,7 +110,8 @@ export function BoardManagementPanel({
         <main className="board-panel-main">
           <header className="board-panel-header">
             <div>
-              <h2>Board Panel</h2>
+              <h2>Board settings</h2>
+              <p>{canManageBoard ? 'Edit metadata, appearance, access and members.' : 'View the board summary and members.'}</p>
             </div>
             <div className="board-panel-top-actions">
               <button className="product-button product-button-primary" disabled={editDisabled} form="board-management-form" type="submit">
@@ -132,9 +136,7 @@ export function BoardManagementPanel({
           </header>
 
           {!canManageBoard ? (
-            <p className="board-panel-permission-note">
-              Only a Board owner or manager can rename the board, invite people, share links or change board metadata.
-            </p>
+            <p className="board-panel-permission-note">Read only.</p>
           ) : null}
 
           <div className="board-panel-content">
@@ -145,25 +147,26 @@ export function BoardManagementPanel({
                 onChange={setThumbnailUrl}
                 thumbnailUrl={thumbnailUrl}
                 title={title}
+                workspace={workspace}
               />
 
               <section className="board-panel-section">
                 <div className="board-panel-section-heading">
                   <div>
-                    <h3>Board profile</h3>
+                    <h3>Profile</h3>
                   </div>
                 </div>
                 <label>
-                  <span>Board name</span>
+                  <span>Name</span>
                   <input disabled={editDisabled} maxLength={80} onChange={(event) => setTitle(event.target.value)} required value={title} />
                 </label>
                 <label>
-                  <span>Description</span>
+                  <span>Note</span>
                   <textarea
                     disabled={editDisabled}
                     maxLength={280}
                     onChange={(event) => setDescription(event.target.value)}
-                    placeholder="Add a short note for this board."
+                    placeholder="Short note"
                     rows={3}
                     value={description}
                   />
@@ -173,7 +176,7 @@ export function BoardManagementPanel({
               <section className="board-panel-section board-panel-customization">
                 <div className="board-panel-section-heading">
                   <div>
-                    <h3>Appearance & access</h3>
+                    <h3>Appearance</h3>
                   </div>
                 </div>
 
@@ -198,7 +201,7 @@ export function BoardManagementPanel({
                 </fieldset>
 
                 <fieldset disabled={editDisabled}>
-                  <legend>Board access</legend>
+                  <legend>Access</legend>
                   <div className="board-panel-access">
                     {(['private', 'workspace', 'public'] satisfies BoardVisibility[]).map((value) => (
                       <button
@@ -218,11 +221,11 @@ export function BoardManagementPanel({
                 <div className="board-panel-toggles">
                   <label>
                     <input checked={isStarred} disabled={editDisabled} onChange={(event) => setIsStarred(event.target.checked)} type="checkbox" />
-                    Star this board
+                    Star
                   </label>
                   <label>
                     <input checked={isPinned} disabled={editDisabled} onChange={(event) => setIsPinned(event.target.checked)} type="checkbox" />
-                    Pin in workspace
+                    Pin
                   </label>
                 </div>
 

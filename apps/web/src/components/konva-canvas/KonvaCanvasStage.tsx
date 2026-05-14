@@ -7,6 +7,7 @@ import { KonvaCanvasShape } from './KonvaCanvasShape'
 import { KonvaEraserTrail } from './KonvaEraserTrail'
 import { KonvaFrameChrome } from './KonvaFrameChrome'
 import { KonvaNodeEdgeLayer } from './KonvaNodeEdgeLayer'
+import { KonvaPendingImagePasteLayer, type KonvaPendingImagePaste } from './KonvaPendingImagePasteLayer'
 import { KonvaSelectionOverlay } from './KonvaSelectionOverlay'
 import { useKonvaCanvasInteractions } from './useKonvaCanvasInteractions'
 import { canKonvaShapeDragWithTool, canKonvaShapeSelectWithTool } from './konvaShapeCapabilities'
@@ -23,6 +24,7 @@ type KonvaCanvasStageProps = {
   height: number
   isSpacePanning: boolean
   nextStyle: CanvasShapeStyle
+  pendingImagePastes?: readonly KonvaPendingImagePaste[]
   cropEditingImageId?: string | null
   editingNodeText?: { fieldName: KonvaNodeTextFieldName; shapeId: string } | null
   editingTextId?: string | null
@@ -217,6 +219,12 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
           />
         </Layer>
       ) : null}
+
+      {props.captureMode || !props.pendingImagePastes || props.pendingImagePastes.length === 0 ? null : (
+        <Layer listening={false} name={konvaCaptureExcludeName}>
+          <KonvaPendingImagePasteLayer items={props.pendingImagePastes} />
+        </Layer>
+      )}
 
       {props.captureMode ? null : (
         <Layer name={konvaCaptureExcludeName}>

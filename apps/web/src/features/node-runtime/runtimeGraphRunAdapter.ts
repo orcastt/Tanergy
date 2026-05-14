@@ -259,7 +259,7 @@ function getEstimatedNodeRunDurationMs(node: CanvasNodeShape) {
   const count = node.props.nodeType === 'image_gen_4' ? 4 : 1
   const modelId = String(data.modelId ?? getDefaultImageModelId())
 
-  if (modelId === 'gemini-3.1-flash-image-preview') {
+  if (modelId === 'nano-banana-2' || modelId === 'gemini-3.1-flash-image-preview') {
     const imageSize = String(data.imageSize ?? '1K')
     const baseMs = imageSize === '0.5K'
       ? 28_000

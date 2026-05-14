@@ -1,7 +1,7 @@
 # Project State Slice S1X: Canvas Engine Migration
 
-**Status**: Konva v2 formal Board route is accepted as the production path for new/saved Boards. Page polish, v1-to-v2 copy tooling, runtimeGraph mock dataflow, public share view and first-pass collaboration are stable: permission-aware presence/read-only wiring, passive remote-save sync, guarded Yjs room/snapshot foundations, richer room-state semantics, visible sync state, deferred remote-apply handling, native page/shapes/edge Yjs storage, first-pass page-level remote merge/apply, provider-ready transport shaping, document/awareness initial-sync gating, occupancy-aware presence, local collaboration undo/redo and a first-pass FastAPI websocket room provider. Export/background polish, real AiRun and production-grade multi-instance provider/awareness remain.
-**Branch**: `feature/s1x-konva-handfeel-spike`
+**Status**: Konva v2 formal Board route is accepted as the production path for active Boards, and the remaining tldraw web runtime/reference code has now been removed from `apps/web`. Page polish, runtimeGraph mock dataflow, public share view and first-pass collaboration are stable: permission-aware presence/read-only wiring, passive remote-save sync, guarded Yjs room/snapshot foundations, richer room-state semantics, visible sync state, deferred remote-apply handling, native page/shapes/edge Yjs storage, first-pass page-level remote merge/apply, provider-ready transport shaping, document/awareness initial-sync gating, occupancy-aware presence, local collaboration undo/redo and a first-pass FastAPI websocket room provider. Export/background polish, real AiRun and production-grade multi-instance provider/awareness remain.
+**Branch**: `feature/s1c-auth-admin-production-boundary`
 **Started**: 2026-05-03
 
 ## Current Alpha Boundary
@@ -10,7 +10,7 @@ This slice is no longer a broad migration exploration. For the current release p
 
 - keep `/boards/[boardId]` reliable
 - keep page/history/share flows reliable
-- keep tldraw as reference-only
+- keep the Konva-only Board runtime reliable after tldraw removal
 
 Yjs collaboration, rendered page-thumbnail assets, page duplicate and broader export polish remain outside the current alpha promise.
 
@@ -26,6 +26,7 @@ Yjs collaboration, rendered page-thumbnail assets, page duplicate and broader ex
 - When an incoming Yjs update is marked as an active-page edit and the local page structure still matches, the Konva runtime now applies only the changed page payload into the resident page list instead of falling back to a full board restore. Full-board restore remains the fallback for structural mismatch or structural page changes.
 - The remote collaboration hot path is now structured-native: incoming Yjs room state hydrates `pages[] + activePageId` directly from the native Yjs-backed board document, tries page-level apply from that data, and only escalates to a full structured page restore when the incremental page reconcile cannot safely apply.
 - The collaboration sync hook now also consumes native Yjs structured records directly on the browser side instead of materializing a full `SerializedKonvaBoardDocument` before restore. Legacy snapshot fallback/materialization is removed from the collaboration path, and the synchronized merge baseline now keeps only structured page data plus signature metadata.
+- Restored Konva board documents now normalize stored asset file URLs through the web proxy path before render, so strict-auth staging can display uploaded, pasted and generated images without relying on direct backend asset image loads.
 - Collaboration publish semantics are now less coarse than the earlier `active-page | full-board` split. Page rename/create/delete/duplicate/reorder/move-selection changes now publish as a structured `page-batch` room update instead of always escalating to `full-board`, and the native Yjs page store only rewrites changed page documents while still syncing page order / page metadata across the board.
 - Within changed pages, native Yjs document writes are now also more granular: active-page and page-batch sync derive changed shape/runtime-edge ids against the last synchronized base page and only rewrite those entity maps plus ordering/deletions, rather than rewriting every shape/runtime-edge record in the page on each collaboration publish.
 - Active-page Yjs publish now also carries a local synchronized baseline into the write path and merges the local `base -> current` same-page delta back onto the current room page state. In practice this means sequential same-page edits to different shapes/edges can now coexist locally more often instead of blindly replacing the whole page payload every publish.
@@ -45,13 +46,16 @@ Yjs collaboration, rendered page-thumbnail assets, page duplicate and broader ex
 - The websocket room now hard-rejects document writes from read-only collaborators on the server path instead of trusting UI state alone. Guest/view-only sessions may still connect for awareness/replay, but `yjs-update` and `sync-state-publish` are denied once the socket is live.
 - Websocket awareness now honors TTL semantics more honestly: expired awareness entries are pruned from the server room before replay/broadcast, and the browser room mirror also runs local expiry cleanup so stale editing/hover/selection occupancy does not linger until a disconnect event.
 - Client-assisted compaction now carries a room-local `documentVersion` guard. The server only accepts `sync-state-publish` compaction snapshots that prove they were built from the current update version, and stale compaction publishes are rejected/re-requested instead of replacing a newer unseen update chain.
+- Stale websocket `sync-state-publish` attempts now get an explicit current `sync-state` resync payload back from the server instead of a silent rejection. This gives reconnecting/outdated tabs a direct resync path before retrying compaction.
 - Accepted websocket `sync-state-publish` compactions now broadcast a `sync-state-accepted` acknowledgement with the new compacted `documentVersion`, so connected tabs can reset their local provider counters instead of continuing from stale pre-compaction versions.
+- The websocket browser room now also keeps a bounded outbound Yjs update queue. Local edits made before initial room sync settles or during a transient socket disconnect are retained instead of dropped, exposed through shared `queued` / `flushing` room-state semantics, and flushed once reconnect + sync settlement completes.
 - The local collaborative undo/redo path now also exposes actual undo/redo availability from the Yjs undo manager, and websocket transport stops retrying non-recoverable 44xx closes so permission/configuration failures surface immediately instead of looping as fake reconnects.
+- 2026-05-13 websocket/provider acceptance harness is now in place: `services/api/scripts/s4_realtime_resync_smoke.py` creates isolated reconnect/stale boards, verifies replay after reconnect, forces compaction, advances state from a second tab and confirms stale `sync-state-publish` gets a resync payload back. It now passes against both a clean `local-dev` websocket room and the current real-DB `8100` chain; the real-DB path is slower during compaction churn, but reconnect/resync semantics themselves are now accepted.
 - True production collaboration transport/provider wiring still remains pending: the websocket room is single-process/in-memory, does not yet persist CRDT updates, does not yet use a dedicated Yjs server/provider stack and is not yet multi-instance deploy safe.
 
 ## Why This Slice Exists
 
-Public staging exposed the tldraw production license requirement. The current tldraw canvas can remain a local/reference implementation, but TANGENT should evaluate a long-term MIT-compatible canvas/collaboration stack before adding more tldraw-only product work.
+This slice began as the exit from the old paid-canvas dependency. That runtime migration is now closed in the active web app: Konva is the only supported Board runtime, legacy v1 Board docs/history are blocked in the active path, and the remaining work is stabilization plus collaboration/provider depth.
 
 Target stack:
 
@@ -62,9 +66,9 @@ y-websocket or Hocuspocus
 FastAPI + Postgres + R2 remains unchanged
 ```
 
-## Current Reference Baseline
+## Historical Baseline
 
-tldraw is now the reference contract for:
+The historical pre-Konva canvas is still useful as a behavior baseline for:
 
 - drawing handfeel
 - pan/zoom behavior
@@ -75,11 +79,11 @@ tldraw is now the reference contract for:
 - captured thumbnails
 - Smart Drawing conversions
 
-Do not delete or broadly rewrite the tldraw implementation until the Konva route passes parity gates.
+Do not let this historical baseline be confused with the active runtime boundary. The active web app is Konva-only.
 
-## Current Dependency Scan
+## Historical Dependency Scan
 
-Direct tldraw surface found in roughly 58 frontend files:
+The migration originally crossed roughly 58 frontend files:
 
 ```text
 33 apps/web/src/components/canvas
@@ -139,12 +143,12 @@ The migration is therefore a renderer engine migration, not a small library swap
 - [~] Add production-quality rectangle/text/image/node-card renderers. First-pass accepted; export/background/performance polish remains.
 - [x] Save/load a renderer-neutral Konva v2 document in the spike route.
 - [ ] Run two-tab Yjs sync with cursor/presence.
-- [x] User handfeel review accepted enough to migrate `/boards/[boardId]` to Konva-first.
+- [x] User handfeel review accepted enough to migrate `/boards/[boardId]` to Konva-only.
 
 ## Current Implementation
 
 ```text
-Routes: /boards/[boardId] formal Konva-first Board route; /spikes/konva-canvas regression surface
+Routes: /boards/[boardId] formal Konva-only Board route; /spikes/konva-canvas regression surface
 Files: apps/web/src/components/konva-canvas/*
 Engine helpers: apps/web/src/features/canvas-engine/*
 ```
@@ -249,9 +253,9 @@ Phase 3.1 object editing foundation started:
 - 2026-05-04 Phase 5A Konva Board persistence first pass is implemented in the spike route: `/spikes/konva-canvas` now mounts `KonvaBoardSaveAudit` in board mode, serializes a v2 `{ renderer: 'konva', version: 2, canvasDocument }` envelope with canvas settings and compact asset refs, saves/loads through the existing Board API, captures board thumbnails through an offscreen Konva stage, and reuses autosave, Cmd/Ctrl+S, Snapshot/History and before-unload guards. Backend/frontend document metrics now count Konva `canvasDocument.shapes`; targeted backend Board persistence tests pass.
 - 2026-05-05 Board History Clean is implemented: shared History panel has a confirmed Clean action, frontend local/remote clients call `DELETE` snapshot endpoints, local Next/FastAPI local/Postgres stores clear all current-workspace snapshots for the board, and snapshot signatures reset so a later autosave is not skipped. Shift proportional resize now uses immediate resize preview and preserves one aspect-ratio scale after resize snapping, so snap should not make width/height appear to update separately.
 - 2026-05-05 Phase 5A Konva v2 schema guard first pass is implemented: frontend and FastAPI Board guards now add `konva-v2-invalid` issues for malformed v2 envelopes, missing camera/metadata arrays, invalid shape ids/types/props, non-image asset refs and runtime edges that point at missing shapes. This guard runs before Board save/snapshot persistence and is covered by backend validation/save tests.
-- 2026-05-05 `/boards/[boardId]` dual-engine first pass is implemented: the formal Board route now preloads an existing Board once, detects saved document engine and mounts either current tldraw v1 or Konva v2. New/missing Boards default to Konva, existing v1 Boards remain on tldraw, and unknown saved documents show an unsupported state instead of opening a blank default engine. Konva formal route reuses Board switcher/rename in the header.
-- 2026-05-05 dual-engine migration hand-test checkpoint: user confirmed old tldraw reference route `/spikes/canvas` still works after the formal Board route migration, so the tldraw fallback/reference path is still reachable while Konva Boards can use the v2 detector.
-- 2026-05-05 tldraw production gate + local cleanup is implemented: local workspace storage was cleaned from 25 old tldraw v1 Board records to 3 Konva v2 Boards (`board-20260504235033`, `konva-spike-local`, `konva_formal_test`), orphan local snapshot dirs were removed, and production defaults now block tldraw route/Board engine usage unless `NEXT_PUBLIC_ENABLE_TLDRAW_REFERENCE=1` is explicitly set.
+- 2026-05-05 historical migration checkpoint: the formal Board route briefly used a document-engine detector while Konva became the new path and old v1 data was being inspected.
+- 2026-05-05 local old-v1 cleanup checkpoint: local workspace storage was cleaned from 25 old tldraw v1 Board records to 3 Konva v2 Boards (`board-20260504235033`, `konva-spike-local`, `konva_formal_test`), and orphan local snapshot dirs were removed.
+- 2026-05-13 Konva-only closeout checkpoint: active web routes no longer expose a tldraw runtime/reference path, board lists filter out legacy v1 docs, and legacy tldraw Board documents/history are blocked from restore in both local and remote storage adapters.
 - 2026-05-05 Board header/save controls polish is implemented: Konva header no longer shows spike/Yjs diagnostic subtitle, formal Board save controls no longer expose manual Load, and Refresh Preview now lives inside the History panel footer beside Refresh/Clean.
 - 2026-05-05 Konva Canvas Settings is restored: the top toolbar has a gear icon that opens the shared Canvas Settings panel. Konva now applies background color/pattern/grid spacing to the stage background, keeps snap settings wired through the existing drag/resize handlers, and uses Zoom Sensitivity for wheel zoom.
 - 2026-05-05 Page/multi-board document contract first pass is implemented: Konva v2 envelopes now include `activePageId` and `pages[]` while keeping `canvasDocument` as the active page mirror for the current single-page runtime. Frontend/FastAPI guards validate page metadata and page-level `CanvasDocument`s, restore picks the active page, and Board metrics count page shapes when `pages[]` exists.
@@ -280,7 +284,7 @@ Current hand-test queue:
 - Select 3 Image Nodes, drag from any selected `image_out` to Image Gen/Image Gen 4 `image_in_1`, and confirm 3 edges appear, image input ports expand, Run resolves 3 image refs, Undo removes the whole batch, and disconnecting one edge updates input counts/mirrors.
 - Recheck 50/100 image pressure at 5/15/25/50/100% zoom on macOS and Windows, including pan/zoom, drawing over images, drag/Alt-drag, resize/rotate, crop, runtime edge drag and node Run. Capture selection / Copy PNG / Export PNG flash is accepted as fixed.
 - Phase 5A hand-test: open `/spikes/konva-canvas`, draw shapes/images/nodes/runtime edges, confirm Save now writes a thumbnail, Load restores document/camera/settings, Cmd/Ctrl+S creates a keyboard save, Snapshot appears in History, Restore replaces the canvas, Clean clears all History entries after confirmation, and autosave/Snapshot can recreate history afterward.
-- Formal Board route hand-test: open a new `/boards/<id>?new=1` Board and confirm Konva opens blank, save/load/history work; reopen that Board without `new=1` and confirm it detects Konva v2; open an existing tldraw v1 Board and confirm it still renders in tldraw/reference mode when enabled instead of being overwritten.
+- Formal Board route hand-test: open a new `/boards/<id>?new=1` Board and confirm Konva opens blank, save/load/history work; reopen that Board without `new=1` and confirm it restores Konva v2 normally; then try a legacy v1 Board document/history record and confirm the guard blocks restore instead of opening a fallback runtime.
 - v1 copy hand-test: from `/workspaces`, use a legacy v1 Board menu `Copy to Konva v2`, confirm it creates and opens a new Konva Board, images/geo/text/notes/arrows appear, runtime edges are retained when both endpoints migrated, and the original v1 Board remains present.
 
 Explicit Phase 3B follow-ups now tracked in the migration plan:

@@ -15,7 +15,19 @@ class FinanceFakeCursor:
         params = params or ()
         self.row = None
         self.rows = []
-        if normalized.startswith("SELECT status, COUNT(*), COALESCE(SUM(amount_cents), 0) FROM tangent_payments"):
+        if normalized.startswith("WITH payment_status AS"):
+            balance = sum(float(row.get("credits_delta", 0)) for row in self.database.credit_ledger)
+            granted = sum(max(float(row.get("credits_delta", 0)), 0) for row in self.database.credit_ledger)
+            spent = sum(max(-float(row.get("credits_delta", 0)), 0) for row in self.database.credit_ledger)
+            self.row = (
+                [list(row) for row in _group_amount_counts(self.database.payments, "status")],
+                [list(row) for row in _group_amount_counts(self.database.payments, "kind")],
+                [list(row) for row in _group_amount_counts(self.database.payments, "provider")],
+                [list(row) for row in _account_counts(self.database.credit_accounts)],
+                [balance, granted, spent],
+                [list(row) for row in _subscription_counts(self.database.subscriptions)],
+            )
+        elif normalized.startswith("SELECT status, COUNT(*), COALESCE(SUM(amount_cents), 0) FROM tangent_payments"):
             self.rows = _group_amount_counts(self.database.payments, "status")
         elif normalized.startswith("SELECT COALESCE(kind, 'unknown'), COUNT(*), COALESCE(SUM(amount_cents), 0) FROM tangent_payments"):
             self.rows = _group_amount_counts(self.database.payments, "kind")

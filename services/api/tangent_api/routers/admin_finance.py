@@ -35,9 +35,8 @@ FINANCE_WRITE_ROLES = {"owner", "admin", "finance"}
 def get_admin_finance_summary(
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminFinanceSummaryResponse:
-    roles = require_admin_role(context, allowed_roles=FINANCE_READ_ROLES)
+    require_admin_role(context, allowed_roles=FINANCE_READ_ROLES)
     summary = load_admin_finance_summary()
-    _write_read_audit(context, "admin.finance.summary.read", roles, {})
     return AdminFinanceSummaryResponse(ok=True, summary=summary)
 
 
@@ -51,7 +50,7 @@ def get_admin_finance_payments(
     workspace_id: Optional[str] = Query(default=None, alias="workspaceId", min_length=1),
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminFinancePaymentsResponse:
-    roles = require_admin_role(context, allowed_roles=FINANCE_READ_ROLES)
+    require_admin_role(context, allowed_roles=FINANCE_READ_ROLES)
     payments = list_admin_finance_payments(
         kind=kind,
         limit=limit,
@@ -60,7 +59,6 @@ def get_admin_finance_payments(
         user_id=user_id,
         workspace_id=workspace_id,
     )
-    _write_read_audit(context, "admin.finance.payments.list", roles, locals())
     return AdminFinancePaymentsResponse(ok=True, payments=payments)
 
 
@@ -73,7 +71,7 @@ def get_admin_finance_wallets(
     status: Optional[str] = Query(default=None, min_length=1),
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminFinanceWalletsResponse:
-    roles = require_admin_role(context, allowed_roles=FINANCE_READ_ROLES)
+    require_admin_role(context, allowed_roles=FINANCE_READ_ROLES)
     wallets = list_admin_finance_wallets(
         account_kind=account_kind,
         limit=limit,
@@ -81,7 +79,6 @@ def get_admin_finance_wallets(
         owner_type=owner_type,
         status=status,
     )
-    _write_read_audit(context, "admin.finance.wallets.list", roles, locals())
     return AdminFinanceWalletsResponse(ok=True, wallets=wallets)
 
 
@@ -94,7 +91,7 @@ def get_admin_finance_credit_ledger(
     workspace_id: Optional[str] = Query(default=None, alias="workspaceId", min_length=1),
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminFinanceLedgerResponse:
-    roles = require_admin_role(context, allowed_roles=FINANCE_READ_ROLES)
+    require_admin_role(context, allowed_roles=FINANCE_READ_ROLES)
     ledger = list_admin_finance_ledger(
         account_id=account_id,
         actor_user_id=actor_user_id,
@@ -102,7 +99,6 @@ def get_admin_finance_credit_ledger(
         reason=reason,
         workspace_id=workspace_id,
     )
-    _write_read_audit(context, "admin.finance.credit_ledger.list", roles, locals())
     return AdminFinanceLedgerResponse(ok=True, ledger=ledger)
 
 
@@ -115,7 +111,7 @@ def get_admin_finance_subscriptions(
     workspace_id: Optional[str] = Query(default=None, alias="workspaceId", min_length=1),
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminFinanceSubscriptionsResponse:
-    roles = require_admin_role(context, allowed_roles=FINANCE_READ_ROLES)
+    require_admin_role(context, allowed_roles=FINANCE_READ_ROLES)
     subscriptions = list_admin_finance_subscriptions(
         limit=limit,
         owner_id=owner_id,
@@ -123,7 +119,6 @@ def get_admin_finance_subscriptions(
         status=status,
         workspace_id=workspace_id,
     )
-    _write_read_audit(context, "admin.finance.subscriptions.list", roles, locals())
     return AdminFinanceSubscriptionsResponse(ok=True, subscriptions=subscriptions)
 
 
@@ -133,9 +128,8 @@ def get_admin_finance_member_usage(
     limit: int = Query(default=50, ge=1, le=200),
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminFinanceMemberUsageResponse:
-    roles = require_admin_role(context, allowed_roles=FINANCE_READ_ROLES)
+    require_admin_role(context, allowed_roles=FINANCE_READ_ROLES)
     member_usage = list_admin_finance_member_usage(workspace_id, limit=limit)
-    _write_read_audit(context, "admin.finance.member_usage.list", roles, {"limit": limit, "workspaceId": workspace_id})
     return AdminFinanceMemberUsageResponse(ok=True, memberUsage=member_usage)
 
 
@@ -143,9 +137,8 @@ def get_admin_finance_member_usage(
 def get_admin_finance_plan_catalog(
     context: ApiRequestContext = Depends(get_request_context),
 ) -> PlanCatalogResponse:
-    roles = require_admin_role(context, allowed_roles=FINANCE_READ_ROLES)
+    require_admin_role(context, allowed_roles=FINANCE_READ_ROLES)
     plans = list_plan_catalog()
-    _write_read_audit(context, "admin.finance.plan_catalog.read", roles, {})
     return PlanCatalogResponse(ok=True, plans=plans)
 
 
@@ -169,22 +162,3 @@ def put_admin_finance_plan_catalog(
         workspace_id=context.workspace_id,
     )
     return PlanCatalogMutationResponse(ok=True, plan=plan)
-
-
-def _write_read_audit(
-    context: ApiRequestContext,
-    action: str,
-    roles: list[object],
-    metadata: dict[str, object],
-) -> None:
-    write_admin_audit_log(
-        action=action,
-        actor_user_id=context.user_id,
-        metadata={**_safe_metadata(metadata), "roles": [getattr(role, "role", "") for role in roles]},
-        workspace_id=context.workspace_id,
-    )
-
-
-def _safe_metadata(metadata: dict[str, object]) -> dict[str, object]:
-    blocked = {"context", "roles", "payments", "wallets", "ledger", "subscriptions", "member_usage", "plans"}
-    return {key: value for key, value in metadata.items() if key not in blocked and value not in (None, "")}

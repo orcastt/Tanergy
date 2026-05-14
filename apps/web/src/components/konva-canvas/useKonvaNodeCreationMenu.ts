@@ -7,8 +7,10 @@ import {
   type CanvasNodeShape,
   type CanvasPoint,
 } from '@/features/canvas-engine'
-import { cancelAiRun } from '@/features/ai/aiClient'
+import { hasRemotePersistenceApi } from '@/features/api/persistenceApi'
+import { cancelAiRun, createAiRun } from '@/features/ai/aiClient'
 import { streamAiChatCompletion } from '@/features/ai/chatClient'
+import { getAiRunTerminalError, waitForAiRunCompletion } from '@/features/ai/aiRunLifecycle'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import { canRunNodeType, getNodeCardFields, getNodeDefinition } from '@/features/node-runtime/registry'
 import {
@@ -26,13 +28,17 @@ import {
   completeKonvaChatRequest,
   failKonvaChatRequest,
   prepareKonvaChatRequest,
+  setKonvaChatAssistantResult,
   setKonvaChatModelId,
+  syncKonvaChatAcceptedRun,
 } from './konvaChatNodeStreaming'
 import {
   appendKonvaPromptOptimizerDelta,
   completeKonvaPromptOptimizerRequest,
   failKonvaPromptOptimizerRequest,
   prepareKonvaPromptOptimizerRequest,
+  setKonvaPromptOptimizerResult,
+  syncKonvaPromptOptimizerAcceptedRun,
 } from './konvaPromptOptimizerStreaming'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
 import { createKonvaNodeCardShape } from './konvaNodeCardFactory'
@@ -132,24 +138,86 @@ export function useKonvaNodeCreationMenu({
       if (node.props.runtimeSummary.status === 'running') {
         activeChatControllersRef.current.get(shapeId)?.abort()
         activeChatControllersRef.current.delete(shapeId)
+        const serverRunId = typeof node.props.runtimeSummary.serverRunId === 'string' && node.props.runtimeSummary.serverRunId.trim()
+          ? node.props.runtimeSummary.serverRunId
+          : null
         const stoppedDocument = stopRuntimeGraphNodeRun(document, shapeId)
         latestDocumentRef.current = stoppedDocument
         onDocumentChange(stoppedDocument)
+        if (serverRunId) {
+          void cancelAiRun(serverRunId, { workspace }).catch(() => {})
+        }
         return
       }
 
       activeChatControllersRef.current.get(shapeId)?.abort()
       const controller = new AbortController()
       activeChatControllersRef.current.set(shapeId, controller)
-      const prepared = prepareKonvaPromptOptimizerRequest(document, shapeId)
+      const prepared = prepareKonvaPromptOptimizerRequest(document, shapeId, boardId)
       latestDocumentRef.current = prepared.document
       onDocumentChange(prepared.document)
-      if (prepared.status !== 'started' || !prepared.request) {
+      if (prepared.status !== 'started') {
         activeChatControllersRef.current.delete(shapeId)
         return
       }
 
-      void streamAiChatCompletion(prepared.request, {
+      if (hasRemotePersistenceApi() && prepared.remoteRequest) {
+        void createAiRun(prepared.remoteRequest, { signal: controller.signal, workspace })
+          .then(async (run) => {
+            if (controller.signal.aborted) {
+              if (run.status === 'queued' || run.status === 'running') {
+                void cancelAiRun(run.runId, { workspace }).catch(() => {})
+              }
+              return
+            }
+            const accepted = syncKonvaPromptOptimizerAcceptedRun(
+              latestDocumentRef.current,
+              shapeId,
+              prepared.runId,
+              run.runId
+            )
+            latestDocumentRef.current = accepted
+            onDocumentChange(accepted)
+
+            const settledRun = await waitForAiRunCompletion(run.runId, {
+              signal: controller.signal,
+              workspace,
+            })
+            if (controller.signal.aborted) return
+            if (settledRun.status !== 'succeeded') {
+              throw getAiRunTerminalError(settledRun)
+            }
+            const withResult = setKonvaPromptOptimizerResult(
+              latestDocumentRef.current,
+              shapeId,
+              prepared.runId,
+              settledRun.textOutput
+            )
+            const next = completeKonvaPromptOptimizerRequest(withResult, shapeId, prepared.runId)
+            latestDocumentRef.current = next
+            onDocumentChange(next)
+          })
+          .catch((error) => {
+            if (controller.signal.aborted) return
+            const message = error instanceof Error ? error.message : 'Prompt optimization failed.'
+            const next = failKonvaPromptOptimizerRequest(latestDocumentRef.current, shapeId, prepared.runId, message)
+            latestDocumentRef.current = next
+            onDocumentChange(next)
+          })
+          .finally(() => {
+            if (activeChatControllersRef.current.get(shapeId) === controller) {
+              activeChatControllersRef.current.delete(shapeId)
+            }
+          })
+        return
+      }
+
+      if (!prepared.localRequest) {
+        activeChatControllersRef.current.delete(shapeId)
+        return
+      }
+
+      void streamAiChatCompletion(prepared.localRequest, {
         onComplete: () => {
           const next = completeKonvaPromptOptimizerRequest(latestDocumentRef.current, shapeId, prepared.runId)
           latestDocumentRef.current = next
@@ -164,6 +232,7 @@ export function useKonvaNodeCreationMenu({
           onDocumentChange(next)
         },
         signal: controller.signal,
+        workspace,
       }).catch((error) => {
         if (controller.signal.aborted) return
         const message = error instanceof Error ? error.message : 'Prompt optimization failed.'
@@ -242,7 +311,7 @@ export function useKonvaNodeCreationMenu({
     const controller = new AbortController()
     activeChatControllersRef.current.set(shapeId, controller)
 
-    const prepared = prepareKonvaChatRequest(snapshot, shapeId, draftOverride)
+    const prepared = prepareKonvaChatRequest(snapshot, shapeId, draftOverride, boardId)
     if (!prepared) {
       activeChatControllersRef.current.delete(shapeId)
       return
@@ -250,7 +319,65 @@ export function useKonvaNodeCreationMenu({
     latestDocumentRef.current = prepared.document
     onDocumentChange(prepared.document)
 
-    void streamAiChatCompletion(prepared.request, {
+    if (hasRemotePersistenceApi() && prepared.remoteRequest) {
+      void createAiRun(prepared.remoteRequest, { signal: controller.signal, workspace })
+        .then(async (run) => {
+          if (controller.signal.aborted) {
+            if (run.status === 'queued' || run.status === 'running') {
+              void cancelAiRun(run.runId, { workspace }).catch(() => {})
+            }
+            return
+          }
+          const accepted = syncKonvaChatAcceptedRun(
+            latestDocumentRef.current,
+            shapeId,
+            prepared.runId,
+            run.runId
+          )
+          latestDocumentRef.current = accepted
+          onDocumentChange(accepted)
+
+          const settledRun = await waitForAiRunCompletion(run.runId, {
+            signal: controller.signal,
+            workspace,
+          })
+          if (controller.signal.aborted) return
+          if (settledRun.status !== 'succeeded') {
+            throw getAiRunTerminalError(settledRun)
+          }
+          const withResult = setKonvaChatAssistantResult(
+            latestDocumentRef.current,
+            shapeId,
+            prepared.runId,
+            prepared.assistantMessageId,
+            settledRun.textOutput
+          )
+          const next = completeKonvaChatRequest(withResult, shapeId, prepared.runId)
+          latestDocumentRef.current = next
+          onDocumentChange(next)
+        })
+        .catch((error) => {
+          if (controller.signal.aborted) return
+          const message = error instanceof Error ? error.message : 'Chat request failed.'
+          const next = failKonvaChatRequest(
+            latestDocumentRef.current,
+            shapeId,
+            prepared.runId,
+            prepared.assistantMessageId,
+            message
+          )
+          latestDocumentRef.current = next
+          onDocumentChange(next)
+        })
+        .finally(() => {
+          if (activeChatControllersRef.current.get(shapeId) === controller) {
+            activeChatControllersRef.current.delete(shapeId)
+          }
+        })
+      return
+    }
+
+    void streamAiChatCompletion(prepared.localRequest, {
       onComplete: () => {
         const next = completeKonvaChatRequest(latestDocumentRef.current, shapeId, prepared.runId)
         latestDocumentRef.current = next
@@ -271,6 +398,7 @@ export function useKonvaNodeCreationMenu({
         onDocumentChange(next)
       },
       signal: controller.signal,
+      workspace,
     }).catch((error) => {
       if (controller.signal.aborted) return
       const message = error instanceof Error ? error.message : 'Chat request failed.'
@@ -287,7 +415,7 @@ export function useKonvaNodeCreationMenu({
         activeChatControllersRef.current.delete(shapeId)
       }
     })
-  }, [history, onDocumentChange])
+  }, [boardId, history, onDocumentChange, workspace])
 
   const setChatModel = useCallback((shapeId: string, modelId: string) => {
     const snapshot = latestDocumentRef.current

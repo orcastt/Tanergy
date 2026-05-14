@@ -13,6 +13,7 @@ def test_admin_finance_routes_surface_reconciliation_records(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgresql://test")
     monkeypatch.setattr("tangent_api.admin_access.connect_to_postgres", fake_db.connect)
     monkeypatch.setattr("tangent_api.admin_finance_reads.connect_to_postgres", finance_db.connect)
+    monkeypatch.setattr("tangent_api.admin_finance_summary_reads.connect_to_postgres", finance_db.connect)
     client = TestClient(app)
     headers = {"x-tangent-user-id": "user_finance", "x-tangent-workspace-id": "workspace_team"}
 
@@ -46,14 +47,6 @@ def test_admin_finance_routes_surface_reconciliation_records(monkeypatch):
     member_usage = client.get("/api/v1/admin/finance/member-usage?workspaceId=workspace_team", headers=headers)
     assert member_usage.status_code == 200
     assert member_usage.json()["memberUsage"][0]["usageCredits"] == 12.5
-    assert [entry["action"] for entry in fake_db.admin_audit_logs[-6:]] == [
-        "admin.finance.summary.read",
-        "admin.finance.payments.list",
-        "admin.finance.wallets.list",
-        "admin.finance.subscriptions.list",
-        "admin.finance.credit_ledger.list",
-        "admin.finance.member_usage.list",
-    ]
 
 
 def test_admin_finance_requires_finance_read_role(monkeypatch):

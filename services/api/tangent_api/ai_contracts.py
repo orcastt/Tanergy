@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 import os
 from datetime import datetime, timezone
 from threading import BoundedSemaphore
@@ -24,13 +25,20 @@ from tangent_api.request_context import ApiRequestContext
 
 RUNS: dict[str, AiRunRecord] = {}
 RUN_REQUESTS: dict[str, AiRunRequest] = {}
-RUN_CONTEXTS: dict[str, ApiRequestContext] = {}
+RUN_CONTEXTS: dict[str, "_RunOwnerContext"] = {}
 RUN_EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="tangent-ai")
 RUN_QUEUE_LIMIT = int(os.getenv("TANGENT_AI_RUN_QUEUE_LIMIT", "64"))
 RUN_QUEUE_SEMAPHORE = BoundedSemaphore(RUN_QUEUE_LIMIT)
 RUN_MEMORY_LIMIT = 500
 RUN_MEMORY_TTL_SECONDS = 6 * 60 * 60
 TERMINAL_RUN_STATUSES = {"canceled", "failed", "succeeded"}
+
+
+@dataclass(frozen=True)
+class _RunOwnerContext:
+    user_id: str
+    workspace_id: str
+    workspace_kind: str
 
 
 def create_mock_run(payload: AiRunRequest, context: ApiRequestContext) -> AiRunRecord:
@@ -77,8 +85,9 @@ def create_mock_run(payload: AiRunRequest, context: ApiRequestContext) -> AiRunR
         workspaceSeatId=charge.workspace_seat_id,
     )
     RUNS[run.run_id] = run
-    RUN_REQUESTS[run.run_id] = payload
-    RUN_CONTEXTS[run.run_id] = context
+    if not _has_run_persistence():
+        RUN_REQUESTS[run.run_id] = _cached_run_request(payload)
+    RUN_CONTEXTS[run.run_id] = _cached_run_owner_context(context)
     _prune_run_memory()
     try:
         persist_ai_run_record(run, payload, context)
@@ -87,6 +96,10 @@ def create_mock_run(payload: AiRunRequest, context: ApiRequestContext) -> AiRunR
         RUN_QUEUE_SEMAPHORE.release()
         raise
     return run
+
+
+def create_ai_run(payload: AiRunRequest, context: ApiRequestContext) -> AiRunRecord:
+    return create_mock_run(payload, context)
 
 
 def get_mock_run(run_id: str, context: ApiRequestContext) -> AiRunRecord:
@@ -98,6 +111,10 @@ def get_mock_run(run_id: str, context: ApiRequestContext) -> AiRunRecord:
     if not run:
         raise HTTPException(status_code=404, detail="AI run not found.")
     return run
+
+
+def get_ai_run(run_id: str, context: ApiRequestContext) -> AiRunRecord:
+    return get_mock_run(run_id, context)
 
 
 def cancel_mock_run(run_id: str, context: ApiRequestContext) -> AiRunRecord:
@@ -120,8 +137,14 @@ def cancel_mock_run(run_id: str, context: ApiRequestContext) -> AiRunRecord:
     if payload is None:
         raise HTTPException(status_code=500, detail="AI run payload is unavailable for cancel persistence.")
     persist_ai_run_record(canceled, payload, run_context)
+    if _has_run_persistence():
+        _forget_run(run_id)
     _prune_run_memory()
     return canceled
+
+
+def cancel_ai_run(run_id: str, context: ApiRequestContext) -> AiRunRecord:
+    return cancel_mock_run(run_id, context)
 
 
 def _should_charge_mock_ai_run() -> bool:
@@ -169,11 +192,17 @@ def _execute_scheduled_run(run_id: str, payload: AiRunRequest, context: ApiReque
             persist_ai_cost_ledger_entries(finalization.run, context, finalization.attempts)
         canceled = load_ai_run_record(run_id)
         if canceled is not None and canceled.status == "canceled":
-            RUNS[run_id] = canceled
+            if _has_run_persistence():
+                _forget_run(run_id)
+            else:
+                RUNS[run_id] = canceled
             _prune_run_memory()
             return
-        RUNS[run_id] = finalization.run
         persist_ai_run_record(finalization.run, payload, context)
+        if _has_run_persistence():
+            _forget_run(run_id)
+        else:
+            RUNS[run_id] = finalization.run
         _prune_run_memory()
     except Exception as exc:
         failed_context = _resolve_run_context(run_id, context)
@@ -195,8 +224,11 @@ def _execute_scheduled_run(run_id: str, payload: AiRunRequest, context: ApiReque
                 "status": "failed",
             }
         )
-        RUNS[run_id] = failed_run
         persist_ai_run_record(failed_run, failed_payload, failed_context)
+        if _has_run_persistence():
+            _forget_run(run_id)
+        else:
+            RUNS[run_id] = failed_run
         _prune_run_memory()
 
 
@@ -213,28 +245,60 @@ def _execution_start_delay_ms() -> int:
 def _resolve_run_context(run_id: str, fallback_context: ApiRequestContext) -> ApiRequestContext:
     remembered = RUN_CONTEXTS.get(run_id)
     if remembered is not None:
-        return remembered
+        return _build_run_context_from_owner(remembered, fallback_context)
     owner_context = load_ai_run_owner_context(run_id)
     if owner_context is None:
         return fallback_context
-    recovered = ApiRequestContext(
+    recovered_owner = _RunOwnerContext(
+        user_id=owner_context["created_by"],
+        workspace_id=owner_context["workspace_id"],
+        workspace_kind=owner_context["workspace_kind"],
+    )
+    RUN_CONTEXTS[run_id] = recovered_owner
+    _prune_run_memory()
+    return _build_run_context_from_owner(recovered_owner, fallback_context)
+
+
+def _build_run_context_from_owner(
+    owner: _RunOwnerContext,
+    fallback_context: ApiRequestContext,
+) -> ApiRequestContext:
+    return ApiRequestContext(
         auth_mode=fallback_context.auth_mode,
         is_dev_fallback=fallback_context.is_dev_fallback,
         user_avatar_initials=fallback_context.user_avatar_initials,
         user_display_name=fallback_context.user_display_name,
         user_email=fallback_context.user_email,
         user_email_verified=fallback_context.user_email_verified,
-        user_id=owner_context["created_by"],
+        user_id=owner.user_id,
         workspace_board_count=fallback_context.workspace_board_count,
-        workspace_id=owner_context["workspace_id"],
-        workspace_kind=owner_context["workspace_kind"],
+        workspace_id=owner.workspace_id,
+        workspace_kind=owner.workspace_kind,
         workspace_name=fallback_context.workspace_name,
         workspace_plan_key=fallback_context.workspace_plan_key,
         workspace_role=fallback_context.workspace_role,
     )
-    RUN_CONTEXTS[run_id] = recovered
-    _prune_run_memory()
-    return recovered
+
+
+def _cached_run_request(payload: AiRunRequest) -> AiRunRequest:
+    return payload.model_copy(
+        update={
+            "prompt": payload.prompt[:240] if payload.prompt else payload.prompt,
+            "system_prompt": None,
+        }
+    )
+
+
+def _cached_run_owner_context(context: ApiRequestContext) -> _RunOwnerContext:
+    return _RunOwnerContext(
+        user_id=context.user_id,
+        workspace_id=context.workspace_id,
+        workspace_kind=context.workspace_kind,
+    )
+
+
+def _has_run_persistence() -> bool:
+    return bool(os.getenv("DATABASE_URL"))
 
 
 def _prune_run_memory() -> None:

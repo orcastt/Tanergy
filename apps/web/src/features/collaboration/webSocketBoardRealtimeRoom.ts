@@ -12,6 +12,7 @@ import { sanitizeBoardCollaborationPresence } from '@/features/boards/boardColla
 import {
   createBoardRealtimeStateMachine,
   createConnectingBoardRealtimeState,
+  type BoardRealtimeOutboundQueueState,
   type BoardRealtimeConnectionState,
 } from './boardRealtimeState'
 
@@ -22,6 +23,8 @@ const maxAwarenessStates = 64
 const maxRealtimeUpdateBytes = 256 * 1024
 const maxRealtimeInboundMessageChars = 12 * 1024 * 1024
 const maxRealtimeSocketBufferedBytes = 1 * 1024 * 1024
+const maxQueuedRealtimeUpdateBytes = 2 * 1024 * 1024
+const maxQueuedRealtimeUpdateCount = 64
 const reconnectBaseDelayMs = 600
 const reconnectMaxDelayMs = 5_000
 
@@ -118,7 +121,10 @@ class SharedRealtimeRoom {
   private disposed = false
   private documentVersion = 0
   private docSubscriptions = new Map<Y.Doc, (update: Uint8Array, origin: unknown) => void>()
+  private initialDocumentSyncComplete = false
   private pendingSeedRequest = false
+  private pendingDocumentUpdateBytes = 0
+  private pendingDocumentUpdates: Uint8Array[] = []
   private localPresence: BoardCollaborationPresence | null = null
   private reconnectAttempt = 0
   private reconnectTimer: number | null = null
@@ -139,17 +145,26 @@ class SharedRealtimeRoom {
     if (this.docSubscriptions.has(ydoc)) return
     const handleUpdate = (update: Uint8Array, origin: unknown) => {
       if (origin === remoteYjsOrigin) return
+      if (!this.canSendDocumentUpdates()) {
+        this.queueDocumentUpdate(update)
+        return
+      }
       const updatePayload = this.createUpdatePayload(update, 'Realtime update')
       if (!updatePayload) return
       const didSend = this.sendMessage({
         type: 'yjs-update',
         update: updatePayload,
       })
-      if (didSend) this.documentVersion += 1
+      if (didSend) {
+        this.documentVersion += 1
+        return
+      }
+      this.queueDocumentUpdate(update)
     }
     this.docSubscriptions.set(ydoc, handleUpdate)
     ydoc.on('update', handleUpdate)
     this.maybeSendFullState(ydoc)
+    this.maybeFlushPendingDocumentUpdates()
   }
 
   detachYdoc(ydoc: Y.Doc) {
@@ -190,6 +205,7 @@ class SharedRealtimeRoom {
     websocketRoomRegistry.delete(registryKey)
     this.awarenessStates.clear()
     this.awarenessListeners.clear()
+    this.clearPendingDocumentUpdates()
     this.localPresence = null
   }
 
@@ -250,6 +266,7 @@ class SharedRealtimeRoom {
       if (this.disposed || this.refCount === 0 || attemptId !== this.socketAttempt) return
       const socket = new WebSocket(socketUrl)
       this.socket = socket
+      this.initialDocumentSyncComplete = false
       socket.addEventListener('open', () => {
         if (this.socket !== socket || this.disposed) return
         this.reconnectAttempt = 0
@@ -282,14 +299,14 @@ class SharedRealtimeRoom {
     }
   }
 
-	  private handleSocketMessage(raw: unknown) {
-	    if (typeof raw !== 'string') return
-	    if (raw.length > maxRealtimeInboundMessageChars) {
-	      this.stateMachine.markError('Realtime websocket message exceeded the client size limit.', { disconnected: true })
-	      this.socket?.close(4000, 'Realtime message too large.')
-	      return
-	    }
-	    let payload: Record<string, unknown>
+  private handleSocketMessage(raw: unknown) {
+    if (typeof raw !== 'string') return
+    if (raw.length > maxRealtimeInboundMessageChars) {
+      this.stateMachine.markError('Realtime websocket message exceeded the client size limit.', { disconnected: true })
+      this.socket?.close(4000, 'Realtime message too large.')
+      return
+    }
+    let payload: Record<string, unknown>
     try {
       payload = JSON.parse(raw) as Record<string, unknown>
     } catch {
@@ -314,8 +331,12 @@ class SharedRealtimeRoom {
         this.pendingSeedRequest = false
       }
       this.compactionRequestPending = requestCompaction
+      this.initialDocumentSyncComplete = true
       for (const ydoc of this.docSubscriptions.keys()) {
-        this.maybeSendFullState(ydoc)
+        const didSendFullState = this.maybeSendFullState(ydoc)
+        if (!didSendFullState) {
+          this.maybeFlushPendingDocumentUpdates()
+        }
         break
       }
       this.stateMachine.markSynced()
@@ -334,14 +355,20 @@ class SharedRealtimeRoom {
       this.documentVersion = resolveDocumentVersion(payload.documentVersion, this.documentVersion, 0)
       this.pendingSeedRequest = false
       this.compactionRequestPending = false
+      this.initialDocumentSyncComplete = true
+      this.maybeFlushPendingDocumentUpdates()
       this.stateMachine.markSynced()
       return
     }
     if (type === 'document-compact-request') {
       this.documentVersion = resolveDocumentVersion(payload.documentVersion, this.documentVersion, this.documentVersion)
       this.compactionRequestPending = true
+      this.initialDocumentSyncComplete = true
       for (const ydoc of this.docSubscriptions.keys()) {
-        this.maybeSendFullState(ydoc)
+        const didSendFullState = this.maybeSendFullState(ydoc)
+        if (!didSendFullState) {
+          this.maybeFlushPendingDocumentUpdates()
+        }
         break
       }
       return
@@ -405,6 +432,7 @@ class SharedRealtimeRoom {
 
   private scheduleReconnect() {
     if (this.refCount === 0 || this.reconnectTimer !== null) return
+    this.initialDocumentSyncComplete = false
     const delay = Math.min(reconnectMaxDelayMs, reconnectBaseDelayMs * (2 ** this.reconnectAttempt))
     this.reconnectAttempt += 1
     this.reconnectTimer = window.setTimeout(() => {
@@ -429,18 +457,20 @@ class SharedRealtimeRoom {
     if (!didSend) return
     this.pendingSeedRequest = false
     this.compactionRequestPending = false
+    this.clearPendingDocumentUpdates()
+    return true
   }
 
-	  private sendMessage(payload: Record<string, unknown>) {
-	    const socket = this.socket
-	    if (!socket || socket.readyState !== WebSocket.OPEN) return false
-	    if (socket.bufferedAmount > maxRealtimeSocketBufferedBytes) {
-	      this.stateMachine.markError('Realtime websocket backpressure exceeded the send limit.', { disconnected: true })
-	      socket.close(4000, 'Realtime backpressure.')
-	      return false
-	    }
-	    try {
-	      socket.send(JSON.stringify(payload))
+  private sendMessage(payload: Record<string, unknown>) {
+    const socket = this.socket
+    if (!socket || socket.readyState !== WebSocket.OPEN) return false
+    if (socket.bufferedAmount > maxRealtimeSocketBufferedBytes) {
+      this.stateMachine.markError('Realtime websocket backpressure exceeded the send limit.', { disconnected: true })
+      socket.close(4000, 'Realtime backpressure.')
+      return false
+    }
+    try {
+      socket.send(JSON.stringify(payload))
       this.stateMachine.markActivity()
       return true
     } catch (error) {
@@ -455,6 +485,86 @@ class SharedRealtimeRoom {
       return null
     }
     return Array.from(update)
+  }
+
+  private canSendDocumentUpdates() {
+    const socket = this.socket
+    return Boolean(socket && socket.readyState === WebSocket.OPEN && this.initialDocumentSyncComplete)
+  }
+
+  private syncPendingDocumentQueueState(state: BoardRealtimeOutboundQueueState = 'queued') {
+    const isIdle = this.pendingDocumentUpdates.length === 0
+    this.stateMachine.markOutboundQueue({
+      bytes: this.pendingDocumentUpdateBytes,
+      count: this.pendingDocumentUpdates.length,
+      state: isIdle ? 'idle' : state,
+    })
+  }
+
+  private clearPendingDocumentUpdates() {
+    this.pendingDocumentUpdates = []
+    this.pendingDocumentUpdateBytes = 0
+    this.syncPendingDocumentQueueState('idle')
+  }
+
+  private queueDocumentUpdate(update: Uint8Array) {
+    if (update.byteLength > maxRealtimeUpdateBytes) {
+      this.stateMachine.markError('Realtime update exceeded the websocket update limit.')
+      return
+    }
+    this.pendingDocumentUpdates.push(update)
+    this.pendingDocumentUpdateBytes += update.byteLength
+    this.compactPendingDocumentUpdates()
+    if (
+      this.pendingDocumentUpdates.length > maxQueuedRealtimeUpdateCount
+      || this.pendingDocumentUpdateBytes > maxQueuedRealtimeUpdateBytes
+    ) {
+      this.compactionRequestPending = true
+      this.compactPendingDocumentUpdates(true)
+    }
+    this.syncPendingDocumentQueueState('queued')
+  }
+
+  private compactPendingDocumentUpdates(force = false) {
+    if (this.pendingDocumentUpdates.length < 2) return
+    const merged = Y.mergeUpdates(this.pendingDocumentUpdates)
+    if (!force && merged.byteLength > maxRealtimeUpdateBytes) return
+    this.pendingDocumentUpdates = [merged]
+    this.pendingDocumentUpdateBytes = merged.byteLength
+  }
+
+  private maybeFlushPendingDocumentUpdates() {
+    if (!this.canSendDocumentUpdates() || this.pendingDocumentUpdates.length === 0) return false
+    const socket = this.socket
+    if (!socket || socket.readyState !== WebSocket.OPEN) return false
+
+    this.compactPendingDocumentUpdates()
+    this.syncPendingDocumentQueueState('flushing')
+    const pending = [...this.pendingDocumentUpdates]
+    let sentCount = 0
+    let sentBytes = 0
+    for (const update of pending) {
+      const updatePayload = this.createUpdatePayload(update, 'Queued realtime update')
+      if (!updatePayload) break
+      const didSend = this.sendMessage({
+        type: 'yjs-update',
+        update: updatePayload,
+      })
+      if (!didSend) break
+      sentCount += 1
+      sentBytes += update.byteLength
+      this.documentVersion += 1
+    }
+
+    if (sentCount === 0) {
+      this.syncPendingDocumentQueueState('queued')
+      return false
+    }
+    this.pendingDocumentUpdates = this.pendingDocumentUpdates.slice(sentCount)
+    this.pendingDocumentUpdateBytes = Math.max(0, this.pendingDocumentUpdateBytes - sentBytes)
+    if (this.pendingDocumentUpdates.length === 0) this.pendingDocumentUpdateBytes = 0
+    this.syncPendingDocumentQueueState(this.pendingDocumentUpdates.length > 0 ? 'queued' : 'idle')
+    return true
   }
 }
 

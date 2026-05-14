@@ -10,7 +10,7 @@ from uuid import uuid4
 from fastapi import HTTPException
 
 from tangent_api.board_asset_references import assert_no_local_foreign_asset_refs
-from tangent_api.board_guard import audit_board_document
+from tangent_api.board_guard import audit_board_document, is_legacy_tldraw_board_document
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.schemas import (
     BoardSnapshotCreateRequest,
@@ -84,6 +84,8 @@ def list_board_snapshots(board_id: str, context: ApiRequestContext) -> list[Boar
             snapshot = BoardSnapshotRecord.model_validate(json.loads(path.read_text(encoding="utf-8")))
         except Exception:
             continue
+        if is_legacy_tldraw_board_document(snapshot.document):
+            continue
         snapshots.append(_summarize_snapshot(snapshot))
     return sorted(snapshots, key=lambda item: item.created_at, reverse=True)
 
@@ -106,6 +108,11 @@ def load_board_snapshot(
     snapshot = BoardSnapshotRecord.model_validate(json.loads(path.read_text(encoding="utf-8")))
     if snapshot.workspace_id != context.workspace_id or snapshot.board_id != safe_board_id:
         raise HTTPException(status_code=404, detail="Board history entry not found in workspace.")
+    if is_legacy_tldraw_board_document(snapshot.document):
+        raise HTTPException(
+            status_code=422,
+            detail="Legacy tldraw board history is no longer restorable in the Konva-only app path.",
+        )
     return snapshot
 
 

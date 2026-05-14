@@ -13,7 +13,7 @@ const gptImage2QualityOptions = [
   { label: 'High', value: 'high' },
 ]
 
-const geminiAspectRatioOptions = [
+const nanoBananaAspectRatioOptions = [
   { label: '1:1', value: '1:1' },
   { label: '2:3', value: '2:3' },
   { label: '3:2', value: '3:2' },
@@ -31,7 +31,7 @@ const geminiAspectRatioOptions = [
   { label: '8:1', value: '8:1' },
 ]
 
-const geminiImageSizeOptions = [
+const nanoBananaImageSizeOptions = [
   { label: '0.5K', value: '0.5K' },
   { label: '1K', value: '1K' },
   { label: '2K', value: '2K' },
@@ -117,10 +117,10 @@ const gptImage2Fields = [
   { label: 'Quality', name: 'quality', options: gptImage2QualityOptions, type: 'select' as const },
 ]
 
-const geminiImageFields = [
+const nanoBananaImageFields = [
   imageModelField,
-  { label: 'Aspect ratio', name: 'aspectRatio', options: geminiAspectRatioOptions, type: 'select' as const },
-  { label: 'Image size', name: 'imageSize', options: geminiImageSizeOptions, type: 'select' as const },
+  { label: 'Aspect ratio', name: 'aspectRatio', options: nanoBananaAspectRatioOptions, type: 'select' as const },
+  { label: 'Image size', name: 'imageSize', options: nanoBananaImageSizeOptions, type: 'select' as const },
 ]
 
 const seedreamImageFields = [
@@ -423,7 +423,7 @@ export function createDefaultRuntimeSummary(type: NodeType): NodeRuntimeSummary 
 
 export function getImageGenerationCardFields(data: JsonObject): NodeCardField[] {
   const normalized = getNormalizedImageGenerationData(data)
-  if (normalized.modelId === 'gemini-3.1-flash-image-preview') return geminiImageFields
+  if (normalized.modelId === 'nano-banana-2') return nanoBananaImageFields
   if (normalized.modelId === 'doubao-seedream-5.0-lite') return seedreamImageFields
   if (normalized.modelId === 'jimeng_t2i_v40') return jimengImageFields
   return gptImage2Fields
@@ -450,9 +450,11 @@ export function getNormalizedAnalysisData(data: JsonObject): JsonObject {
 }
 
 export function getNormalizedImageGenerationData(data: JsonObject): JsonObject {
-  const modelId = typeof data.modelId === 'string' && data.modelId.trim()
-    ? data.modelId
-    : getDefaultImageModelId()
+  const modelId = normalizeImageGenerationModelId(
+    typeof data.modelId === 'string' && data.modelId.trim()
+      ? data.modelId
+      : getDefaultImageModelId()
+  )
   const size = getAllowedFieldValue(
     typeof data.size === 'string' && data.size.trim() ? data.size : mapLegacySize(data),
     gptImage2SizeOptions.map((option) => option.value),
@@ -465,12 +467,12 @@ export function getNormalizedImageGenerationData(data: JsonObject): JsonObject {
   )
   const aspectRatio = getAllowedFieldValue(
     typeof data.aspectRatio === 'string' && data.aspectRatio.trim() && data.aspectRatio !== 'auto' ? data.aspectRatio : '1:1',
-    geminiAspectRatioOptions.map((option) => option.value),
+    nanoBananaAspectRatioOptions.map((option) => option.value),
     '1:1'
   )
   const imageSize = getAllowedFieldValue(
     typeof data.imageSize === 'string' && data.imageSize.trim() ? data.imageSize : mapLegacyImageSize(data),
-    geminiImageSizeOptions.map((option) => option.value),
+    nanoBananaImageSizeOptions.map((option) => option.value),
     '1K'
   )
   const seedreamSize = getAllowedFieldValue(
@@ -505,6 +507,12 @@ export function getNormalizedImageGenerationData(data: JsonObject): JsonObject {
     seedreamSize,
     size,
   }
+}
+
+function normalizeImageGenerationModelId(modelId: string) {
+  if (modelId === 'gemini-3.1-flash-image-preview') return 'nano-banana-2'
+  const allowedModelIds = new Set(getImageModelSelectOptions().map((option) => String(option.value)))
+  return allowedModelIds.has(modelId) ? modelId : getDefaultImageModelId()
 }
 
 export function getResolvedNodePorts(type: NodeType, data: JsonObject): ResolvedNodePort[] {

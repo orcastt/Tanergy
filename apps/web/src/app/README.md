@@ -13,7 +13,7 @@ Current production-facing routes:
 - `/team`: Group/Team workspace structure and Team usage visibility view.
 - `/admin`: server-gated first-pass admin surface.
 
-Development/reference routes:
+Development-only routes:
 
 - `/spikes/konva-canvas`: Konva regression and prototype surface.
 

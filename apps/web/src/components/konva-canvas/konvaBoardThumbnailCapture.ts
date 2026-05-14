@@ -1,11 +1,17 @@
 import type Konva from 'konva'
-import { uploadImageDataUrlAsset } from '@/features/assets/assetUploadClient'
+import { uploadImageBlobAsset } from '@/features/assets/assetUploadClient'
 import type { CanvasDocument } from '@/features/canvas-engine'
+import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import { captureKonvaSelectionPng, getKonvaSelectionExportBounds } from './konvaSelectionExport'
 
 const thumbnailMaxEdge = 1024
 
-export async function captureKonvaBoardThumbnailUrl(stage: Konva.Stage, document: CanvasDocument, boardTitle: string) {
+export async function captureKonvaBoardThumbnailUrl(
+  stage: Konva.Stage,
+  document: CanvasDocument,
+  boardTitle: string,
+  workspace?: TangentWorkspace,
+) {
   const selectedIds = document.shapes.map((shape) => shape.id)
   const bounds = getKonvaSelectionExportBounds(document, selectedIds, 32)
   if (selectedIds.length === 0 || !bounds) return null
@@ -20,14 +26,14 @@ export async function captureKonvaBoardThumbnailUrl(stage: Konva.Stage, document
     selectedIds,
     stage,
   })
-  const asset = await uploadImageDataUrlAsset({
-    dataUrl: capture.dataUrl,
+  const asset = await uploadImageBlobAsset({
+    blob: capture.blob,
     fileName: `${toFileStem(boardTitle)}-konva-thumbnail.png`,
     height: capture.height,
     origin: 'board_thumbnail',
     title: `${boardTitle.trim() || 'Untitled board'} thumbnail`,
     width: capture.width,
-  })
+  }, workspace)
   return asset.thumbnail512Url ?? asset.thumbnail256Url ?? asset.originalUrl
 }
 

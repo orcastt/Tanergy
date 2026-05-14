@@ -8,7 +8,7 @@ import httpx
 from tangent_api.ai_schemas import AiRunRequest
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.storage.asset_store_common import MAX_ASSET_BYTES
-from tangent_api.storage.asset_storage_adapter import get_asset_storage_adapter
+from tangent_api.storage.asset_storage_adapter import AssetStorageAdapter, get_asset_storage_adapter
 
 _RESOLUTION_PIXELS = {
     "0.5k": 512,
@@ -25,12 +25,23 @@ _ASPECT_RATIOS = {
     "9:16": (9, 16),
 }
 MAX_PROVIDER_INPUT_ASSETS = 8
+MAX_PROVIDER_INPUT_TOTAL_BYTES = 48 * 1024 * 1024
 
 
 @dataclass(frozen=True)
 class ProviderInputAsset:
     asset_id: str
     content: bytes
+    file_name: str
+    height: int
+    mime: str
+    title: str
+    width: int
+
+
+@dataclass(frozen=True)
+class ProviderInputAssetRef:
+    asset_id: str
     file_name: str
     height: int
     mime: str
@@ -47,27 +58,57 @@ class ProviderImageOutput:
     width: Optional[int] = None
 
 
-def load_provider_input_assets(payload: AiRunRequest, context: ApiRequestContext) -> list[ProviderInputAsset]:
+def load_provider_input_assets(
+    payload: AiRunRequest,
+    context: ApiRequestContext,
+    *,
+    prefer_preview: bool = False,
+) -> list[ProviderInputAsset]:
     asset_ids = _unique_input_asset_ids(payload.input_asset_ids)
     if len(asset_ids) > MAX_PROVIDER_INPUT_ASSETS:
         raise ValueError("Provider input image count exceeds the limit.")
     storage = get_asset_storage_adapter()
     assets: list[ProviderInputAsset] = []
+    total_input_bytes = 0
     for asset_id in asset_ids:
-        record = storage.get_record(asset_id, context)
-        file_name = original_file_name(record.original_url)
+        asset_ref = load_provider_input_asset_ref(asset_id, context, prefer_preview=prefer_preview, storage=storage)
+        file_name = asset_ref.file_name
+        content = storage.get_file_bytes(asset_id, file_name, context)
+        total_input_bytes += len(content)
+        if total_input_bytes > MAX_PROVIDER_INPUT_TOTAL_BYTES:
+            raise ValueError("Provider input assets exceed the total size limit.")
         assets.append(
             ProviderInputAsset(
                 asset_id=asset_id,
-                content=storage.get_file_bytes(asset_id, file_name, context),
+                content=content,
                 file_name=file_name,
-                height=record.height,
-                mime=record.mime,
-                title=record.title,
-                width=record.width,
+                height=asset_ref.height,
+                mime=asset_ref.mime,
+                title=asset_ref.title,
+                width=asset_ref.width,
             )
         )
     return assets
+
+
+def load_provider_input_asset_ref(
+    asset_id: str,
+    context: ApiRequestContext,
+    *,
+    prefer_preview: bool = False,
+    storage: Optional[AssetStorageAdapter] = None,
+) -> ProviderInputAssetRef:
+    adapter = storage or get_asset_storage_adapter()
+    record = adapter.get_record(asset_id, context)
+    file_url = _resolve_provider_input_file_url(record, prefer_preview=prefer_preview)
+    return ProviderInputAssetRef(
+        asset_id=asset_id,
+        file_name=original_file_name(file_url),
+        height=record.height,
+        mime=record.mime,
+        title=record.title,
+        width=record.width,
+    )
 
 
 def _unique_input_asset_ids(input_asset_ids: list[str]) -> list[str]:
@@ -90,8 +131,8 @@ def persist_provider_output_assets(
 ) -> list[str]:
     if not outputs:
         return []
-    input_assets = load_provider_input_assets(payload, context)
-    default_width, default_height = resolve_requested_dimensions(payload, input_assets[0] if input_assets else None)
+    fallback_asset = _load_first_provider_input_asset_ref(payload, context)
+    default_width, default_height = resolve_requested_dimensions(payload, fallback_asset)
     storage = get_asset_storage_adapter()
     asset_ids: list[str] = []
     for index, output in enumerate(outputs, start=1):
@@ -119,13 +160,15 @@ def download_provider_image(url: str, timeout_seconds: float, headers: Optional[
 
 def resolve_requested_dimensions(
     payload: AiRunRequest,
-    fallback_asset: Optional[ProviderInputAsset] = None,
+    fallback_asset: Optional[object] = None,
 ) -> tuple[int, int]:
     resolution = str(payload.params.get("resolution") or "").strip().lower().replace(".", "_")
     longest_edge = _RESOLUTION_PIXELS.get(resolution, 1024)
     aspect_ratio = str(payload.params.get("aspectRatio") or "1:1").strip()
-    if aspect_ratio == "auto" and fallback_asset is not None and fallback_asset.width > 0 and fallback_asset.height > 0:
-        return fallback_asset.width, fallback_asset.height
+    fallback_width = getattr(fallback_asset, "width", 0)
+    fallback_height = getattr(fallback_asset, "height", 0)
+    if aspect_ratio == "auto" and fallback_width > 0 and fallback_height > 0:
+        return fallback_width, fallback_height
     ratio_width, ratio_height = _ASPECT_RATIOS.get(aspect_ratio, (1, 1))
     if ratio_width >= ratio_height:
         width = longest_edge
@@ -151,6 +194,28 @@ def original_file_name(original_url: str) -> str:
     path = parsed.path or original_url
     name = PurePosixPath(path).name
     return name or "original.png"
+
+
+def _resolve_provider_input_file_url(record: object, *, prefer_preview: bool) -> str:
+    if prefer_preview:
+        for field_name in ("thumbnail1024_url", "thumbnail512_url", "thumbnail256_url"):
+            value = getattr(record, field_name, None)
+            if isinstance(value, str) and value:
+                return value
+    return str(getattr(record, "original_url"))
+
+
+def _load_first_provider_input_asset_ref(
+    payload: AiRunRequest,
+    context: ApiRequestContext,
+) -> Optional[ProviderInputAssetRef]:
+    aspect_ratio = str(payload.params.get("aspectRatio") or "").strip().lower()
+    if aspect_ratio != "auto":
+        return None
+    asset_ids = _unique_input_asset_ids(payload.input_asset_ids)
+    if not asset_ids:
+        return None
+    return load_provider_input_asset_ref(asset_ids[0], context)
 
 
 def build_output_title(prompt: Optional[str], index: int) -> str:

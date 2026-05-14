@@ -3,6 +3,7 @@ from typing import Any, Optional
 from pydantic import Field
 
 from tangent_api.board_metadata import (
+    detect_board_canvas_engine,
     get_board_document_metrics,
     normalize_board_card_color,
     normalize_board_description,
@@ -55,6 +56,7 @@ class BoardSummary(TangentApiModel):
     asset_count: int = Field(default=0, alias="assetCount")
     byte_size: int = Field(alias="byteSize")
     card_color: Optional[str] = Field(default=None, alias="cardColor")
+    canvas_engine: Optional[str] = Field(default=None, alias="canvasEngine")
     created_at: Optional[str] = Field(default=None, alias="createdAt")
     description: Optional[str] = None
     id: str
@@ -346,6 +348,7 @@ def summarize_board_record(record: BoardRecord) -> BoardSummary:
         assetCount=record.asset_count or metrics["asset_count"],
         byteSize=record.byte_size,
         cardColor=normalize_board_card_color(record.card_color),
+        canvasEngine=detect_board_canvas_engine(record.document),
         createdAt=record.created_at or record.saved_at,
         description=normalize_board_description(record.description),
         id=record.id,

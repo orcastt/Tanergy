@@ -28,7 +28,7 @@ def persist_ai_run_record(
                     latency_ms, error_code, error_message, workspace_kind, workspace_seat_id,
                     charged_account_id, charged_scope, entitlement_source, credits_charged,
                     credits_refunded, provider_cost, provider_currency, estimated_credits,
-                    pricing_rule_id, route_id, route_key, selected_tier_key, preflight_status,
+                    pricing_rule_id, route_id, route_key, selected_tier_key, preflight_status, text_output,
                     created_at, updated_at
                 )
                 VALUES (
@@ -37,7 +37,7 @@ def persist_ai_run_record(
                     %s, %s, %s, %s, %s,
                     %s, %s, %s, %s,
                     %s, %s, %s, %s,
-                    %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s, %s,
                     %s, %s
                 )
                 ON CONFLICT (id) DO UPDATE SET
@@ -61,6 +61,7 @@ def persist_ai_run_record(
                     route_key = EXCLUDED.route_key,
                     selected_tier_key = EXCLUDED.selected_tier_key,
                     preflight_status = EXCLUDED.preflight_status,
+                    text_output = EXCLUDED.text_output,
                     updated_at = EXCLUDED.updated_at
                 """,
                 (
@@ -75,7 +76,7 @@ def persist_ai_run_record(
                     run.status,
                     json.dumps(run.input_asset_ids),
                     json.dumps(run.output_asset_ids),
-                    json.dumps(payload.params),
+                    json.dumps(_persisted_params(payload)),
                     _prompt_preview(payload.prompt),
                     run.cost_credits,
                     run.latency_ms,
@@ -96,6 +97,7 @@ def persist_ai_run_record(
                     run.route_key,
                     run.selected_tier_key,
                     run.charge.preflight_status,
+                    run.text_output,
                     created_at,
                     created_at,
                 ),
@@ -179,8 +181,8 @@ def load_ai_run_record(run_id: str) -> Optional[AiRunRecord]:
     if snapshot is None:
         return None
     charge = _build_charge(snapshot)
-    text_output = None
-    if snapshot["run_type"] == "image_analysis" and snapshot["status"] == "succeeded":
+    text_output = snapshot["text_output"]
+    if text_output is None and snapshot["run_type"] == "image_analysis" and snapshot["status"] == "succeeded":
         text_output = _build_mock_analysis_text(snapshot["prompt_preview"], snapshot["input_asset_ids"])
     return AiRunRecord(
         boardId=snapshot["board_id"],
@@ -232,6 +234,7 @@ def load_ai_run_request(run_id: str) -> Optional[AiRunRequest]:
         prompt=snapshot["prompt_preview"],
         runType=str(snapshot["run_type"]),
         selectedModelId=str(snapshot["model_id"]),
+        systemPrompt=_system_prompt_from_params(snapshot["params"]),
     )
 
 
@@ -269,7 +272,7 @@ def load_ai_run_snapshot(run_id: str) -> Optional[dict[str, object]]:
                        workspace_seat_id, entitlement_source, input_asset_ids, latency_ms, model_id,
                        node_id, output_asset_ids, provider, run_type, status, prompt_preview,
                        created_at, pricing_rule_id, route_id, route_key, estimated_credits,
-                       selected_tier_key, preflight_status, params, error_message,
+                       selected_tier_key, preflight_status, params, error_message, text_output,
                        provider_cost, provider_currency
                 FROM tangent_ai_runs
                 WHERE id = %s
@@ -306,8 +309,9 @@ def load_ai_run_snapshot(run_id: str) -> Optional[dict[str, object]]:
         "preflight_status": row[23],
         "params": dict(row[24] or {}),
         "error_message": row[25],
-        "provider_cost": row[26],
-        "provider_currency": row[27],
+        "text_output": row[26],
+        "provider_cost": row[27],
+        "provider_currency": row[28],
     }
 
 
@@ -339,6 +343,20 @@ def _prompt_preview(prompt: Optional[str]) -> Optional[str]:
         return None
     trimmed = prompt.strip()
     return trimmed[:280] if trimmed else None
+
+
+def _persisted_params(payload: AiRunRequest) -> dict[str, object]:
+    params = dict(payload.params)
+    if payload.system_prompt:
+        params.setdefault("systemPrompt", payload.system_prompt)
+    return params
+
+
+def _system_prompt_from_params(params: object) -> Optional[str]:
+    if not isinstance(params, dict):
+        return None
+    value = params.get("systemPrompt")
+    return value if isinstance(value, str) and value.strip() else None
 
 
 def _build_cost_hint(

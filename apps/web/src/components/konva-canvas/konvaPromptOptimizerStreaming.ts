@@ -1,5 +1,5 @@
 import { withCanvasShapes, type CanvasDocument, type CanvasNodeShape } from '@/features/canvas-engine'
-import type { AiChatCompletionRequest } from '@/features/ai/aiTypes'
+import type { AiChatCompletionRequest, AiRunRequest } from '@/features/ai/aiTypes'
 import { getDefaultChatModelId } from '@/features/ai/mockAiContracts'
 import { resolveRuntimeGraphNodeInputs } from '@/features/node-runtime/runtimeGraphResolution'
 
@@ -13,7 +13,8 @@ const promptOptimizerSystemPrompt = [
 
 type PreparedPromptOptimizerRequest = {
   document: CanvasDocument
-  request?: AiChatCompletionRequest
+  localRequest?: AiChatCompletionRequest
+  remoteRequest?: AiRunRequest
   runId: string
   shapeId: string
   status: 'failed' | 'started'
@@ -21,7 +22,8 @@ type PreparedPromptOptimizerRequest = {
 
 export function prepareKonvaPromptOptimizerRequest(
   document: CanvasDocument,
-  shapeId: string
+  shapeId: string,
+  boardId?: string | null,
 ): PreparedPromptOptimizerRequest {
   const node = getPromptOptimizerNode(document, shapeId)
   const runId = createPromptOptimizerRunId()
@@ -40,6 +42,7 @@ export function prepareKonvaPromptOptimizerRequest(
             error: inputResolution.missingReasons[0] ?? 'Missing prompt input.',
             lastRunId: runId,
             resultAssetIds: [],
+            serverRunId: null,
             status: 'failed',
             textOutput: '',
           },
@@ -53,7 +56,7 @@ export function prepareKonvaPromptOptimizerRequest(
 
   const modelId = getDefaultChatModelId()
   const sourcePrompt = inputResolution.textValues.join('\n\n').trim()
-  const request = {
+  const localRequest = {
     messages: [
       { content: promptOptimizerSystemPrompt, role: 'system' },
       {
@@ -64,6 +67,19 @@ export function prepareKonvaPromptOptimizerRequest(
     model: modelId,
     stream: true,
   } satisfies AiChatCompletionRequest
+  const remoteRequest = {
+    boardId: boardId ?? null,
+    inputAssetIds: [],
+    nodeId: node.props.nodeId,
+    nodeType: node.props.nodeType,
+    params: {
+      systemPrompt: promptOptimizerSystemPrompt,
+    },
+    prompt: sourcePrompt,
+    runType: 'text',
+    selectedModelId: modelId,
+    systemPrompt: promptOptimizerSystemPrompt,
+  } satisfies AiRunRequest
 
   return {
     document: updatePromptOptimizerNode(document, shapeId, runId, (shape) => ({
@@ -80,12 +96,14 @@ export function prepareKonvaPromptOptimizerRequest(
           error: null,
           lastRunId: runId,
           resultAssetIds: [],
+          serverRunId: null,
           status: 'running',
           textOutput: '',
         },
       },
     }), false),
-    request,
+    localRequest,
+    remoteRequest,
     runId,
     shapeId,
     status: 'started',
@@ -125,16 +143,62 @@ export function completeKonvaPromptOptimizerRequest(document: CanvasDocument, sh
       ...shape,
       props: {
         ...shape.props,
+        data: {
+          ...shape.props.data,
+          optimizedPrompt: optimizedPrompt.slice(0, 4000),
+        },
         runtimeSummary: {
           ...shape.props.runtimeSummary,
           costHint: 'Prompt optimized.',
           error: null,
+          serverRunId: null,
           status: 'succeeded',
           textOutput: optimizedPrompt.slice(0, 4000),
         },
       },
     }
   })
+}
+
+export function syncKonvaPromptOptimizerAcceptedRun(
+  document: CanvasDocument,
+  shapeId: string,
+  runId: string,
+  serverRunId: string
+) {
+  return updatePromptOptimizerNode(document, shapeId, runId, (shape) => ({
+    ...shape,
+    props: {
+      ...shape.props,
+      runtimeSummary: {
+        ...shape.props.runtimeSummary,
+        serverRunId,
+      },
+    },
+  }))
+}
+
+export function setKonvaPromptOptimizerResult(
+  document: CanvasDocument,
+  shapeId: string,
+  runId: string,
+  textOutput: string | null | undefined
+) {
+  const nextText = (textOutput ?? '').slice(0, 4000)
+  return updatePromptOptimizerNode(document, shapeId, runId, (shape) => ({
+    ...shape,
+    props: {
+      ...shape.props,
+      data: {
+        ...shape.props.data,
+        optimizedPrompt: nextText,
+      },
+      runtimeSummary: {
+        ...shape.props.runtimeSummary,
+        textOutput: nextText,
+      },
+    },
+  }))
 }
 
 export function failKonvaPromptOptimizerRequest(
@@ -151,6 +215,7 @@ export function failKonvaPromptOptimizerRequest(
         ...shape.props.runtimeSummary,
         costHint: 'Prompt optimization failed.',
         error: errorMessage,
+        serverRunId: null,
         status: 'failed',
       },
     },

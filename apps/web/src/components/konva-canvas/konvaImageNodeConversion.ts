@@ -2,10 +2,10 @@ import { withCanvasShapes, type CanvasDocument, type CanvasImageShape, type Canv
 import {
   hasRemotePersistenceApi,
   persistenceApiUrl,
-  persistenceAssetUrl,
   persistenceAuthHeaders,
   persistenceAuthHeadersAsync,
 } from '@/features/api/persistenceApi'
+import { normalizeAssetUrls } from '@/features/assets/assetUploadClient'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import type { TangentAssetRecord, TangentAssetResponse } from '@/features/assets/assetTypes'
 import { createDefaultNodeData, createDefaultRuntimeSummary, getNodeDefinition } from '@/features/node-runtime/registry'
@@ -196,13 +196,7 @@ async function readImageNodeAsset(node: CanvasNodeShape, workspace?: TangentWork
     )
     const payload = await response.json() as TangentAssetResponse
     if (!response.ok || !payload.asset) return null
-    return {
-      ...payload.asset,
-      originalUrl: persistenceAssetUrl(payload.asset.originalUrl) ?? payload.asset.originalUrl,
-      thumbnail1024Url: persistenceAssetUrl(payload.asset.thumbnail1024Url),
-      thumbnail256Url: persistenceAssetUrl(payload.asset.thumbnail256Url),
-      thumbnail512Url: persistenceAssetUrl(payload.asset.thumbnail512Url),
-    }
+    return normalizeAssetUrls(payload.asset)
   } catch {
     return null
   }

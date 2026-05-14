@@ -66,7 +66,7 @@ def build_ai_run_quote(payload: AiRunRequest, context: ApiRequestContext) -> AiR
 
 def resolve_ai_run_quote(payload: AiRunRequest, context: ApiRequestContext) -> AiRunQuoteBundle:
     models, tiers, routes, pricing_rules = _load_control_plane_rows()
-    model_row = _select_model_row(models, payload.selected_model_id)
+    model_row = _select_model_row(models, payload.selected_model_id, payload.run_type)
     tier_row = _select_tier_row(payload, model_row, tiers)
     pricing_row = _select_pricing_row(model_row["model_key"], tier_row, pricing_rules)
     route_row = _select_route_row(model_row["model_key"], routes)
@@ -149,12 +149,23 @@ def _load_control_plane_rows() -> tuple[list[dict[str, Any]], list[dict[str, Any
     return model_rows, tier_rows, route_rows, pricing_rows
 
 
-def _select_model_row(rows: list[dict[str, Any]], model_id: Optional[str]) -> dict[str, Any]:
-    selected = next((row for row in rows if row["model_key"] == model_id and row.get("enabled", True)), None)
-    fallback = next((row for row in rows if row.get("enabled", True) and row.get("is_default")), None)
-    model = selected or fallback or next((row for row in rows if row.get("enabled", True)), None)
+def _select_model_row(rows: list[dict[str, Any]], model_id: Optional[str], run_type: str) -> dict[str, Any]:
+    normalized_model_id = _normalize_selected_model_id(model_id)
+    selected = next(
+        (
+            row
+            for row in rows
+            if row["model_key"] == normalized_model_id
+            and row.get("enabled", True)
+            and _row_supports_run_type(row, run_type)
+        ),
+        None,
+    )
+    supported_rows = [row for row in rows if row.get("enabled", True) and _row_supports_run_type(row, run_type)]
+    fallback = next((row for row in supported_rows if row.get("is_default")), None)
+    model = selected or fallback or next(iter(supported_rows), None)
     if model is None:
-        raise HTTPException(status_code=400, detail="The selected image model is unavailable.")
+        raise HTTPException(status_code=400, detail="The selected AI model is unavailable.")
     return model
 
 
@@ -164,9 +175,14 @@ def _select_tier_row(payload: AiRunRequest, model_row: dict[str, Any], rows: lis
     model_rows = [row for row in rows if row["model_key"] == model_row["model_key"] and row.get("enabled", True)]
     if not model_rows:
         return None
-    requested = str(payload.params.get("resolution") or "").strip().lower()
     for row in model_rows:
+        parameter_key = str(row.get("parameter_key") or "").strip()
+        requested = str(payload.params.get(parameter_key) or "").strip().lower() if parameter_key else ""
         if requested and requested == str(row["public_label"]).strip().lower():
+            return row
+    legacy_requested = str(payload.params.get("resolution") or "").strip().lower()
+    for row in model_rows:
+        if legacy_requested and legacy_requested == str(row["public_label"]).strip().lower():
             return row
     default_key = model_row.get("default_tier_key")
     if default_key:
@@ -203,7 +219,14 @@ def _select_route_row(model_key: str, rows: list[dict[str, Any]]) -> Optional[di
 
 
 def _estimate_credits(payload: AiRunRequest, model_id: str, pricing_row: Optional[dict[str, Any]]) -> float:
-    if payload.run_type == "image_analysis":
+    if payload.run_type in {"image_analysis", "text"}:
+        if pricing_row:
+            unit = float(pricing_row.get("estimated_credits", 1) or 1)
+            minimum = float(pricing_row.get("min_credits", unit) or unit)
+            multiplier = float(pricing_row.get("credit_multiplier", 1) or 1)
+            return max(minimum, unit * multiplier)
+        if payload.run_type == "text":
+            return 1
         return 2 + (0.5 * len(payload.input_asset_ids))
     if pricing_row:
         count = _clamp_count(payload.params.get("count", 1))
@@ -213,7 +236,13 @@ def _estimate_credits(payload: AiRunRequest, model_id: str, pricing_row: Optiona
         if pricing_row.get("billing_unit") == "per_image":
             return max(minimum, unit * count * multiplier)
         return max(minimum, unit * multiplier)
-    return 4 * _clamp_count(payload.params.get("count", 1)) if model_id == "gemini-3.1-flash-image-preview" else 5 * _clamp_count(payload.params.get("count", 1))
+    return 5 * _clamp_count(payload.params.get("count", 1))
+
+
+def _normalize_selected_model_id(model_id: Optional[str]) -> Optional[str]:
+    if model_id == "gemini-3.1-flash-image-preview":
+        return "nano-banana-2"
+    return model_id
 
 
 def _build_quote_preflight(context: ApiRequestContext, required_credits: float) -> dict[str, Any]:
@@ -230,6 +259,17 @@ def _build_quote_preflight(context: ApiRequestContext, required_credits: float) 
         "requiredCredits": required_credits,
         "shortfallCredits": 0.0,
     }
+
+
+def _row_supports_run_type(row: dict[str, Any], run_type: str) -> bool:
+    if run_type == "text":
+        return "text" in list(row.get("capabilities") or [])
+    if run_type == "image_analysis":
+        return "image_analysis" in list(row.get("capabilities") or [])
+    if run_type in {"image_generation", "image_edit"}:
+        capabilities = list(row.get("capabilities") or [])
+        return run_type in capabilities or "image_generation" in capabilities
+    return False
 
 
 def _row_to_model_option(model_row: dict[str, Any], tiers: list[dict[str, Any]], routes: list[dict[str, Any]]) -> AiModelOption:

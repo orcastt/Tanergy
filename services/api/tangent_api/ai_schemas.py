@@ -45,6 +45,7 @@ class AiRunRequest(TangentApiModel):
     prompt: Optional[str] = None
     run_type: str = Field(alias="runType")
     selected_model_id: Optional[str] = Field(default=None, alias="selectedModelId")
+    system_prompt: Optional[str] = Field(default=None, alias="systemPrompt")
 
     @field_validator("input_asset_ids", mode="before")
     @classmethod
@@ -78,6 +79,28 @@ class AiRunRequest(TangentApiModel):
         if len(prompt) > 8000:
             raise ValueError("prompt must be 8000 characters or fewer.")
         return prompt or None
+
+    @field_validator("system_prompt", mode="before")
+    @classmethod
+    def _normalize_system_prompt(cls, value):
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise ValueError("systemPrompt must be a string.")
+        system_prompt = value.strip()
+        if len(system_prompt) > 4000:
+            raise ValueError("systemPrompt must be 4000 characters or fewer.")
+        return system_prompt or None
+
+    @field_validator("run_type", mode="before")
+    @classmethod
+    def _normalize_run_type(cls, value):
+        if not isinstance(value, str):
+            raise ValueError("runType must be a string.")
+        run_type = value.strip()
+        if run_type not in {"image_analysis", "image_edit", "image_generation", "text"}:
+            raise ValueError("runType is unsupported.")
+        return run_type
 
 
 class AiRunRecord(TangentApiModel):

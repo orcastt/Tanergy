@@ -1,18 +1,19 @@
 # PRD Slice S1X: Canvas Engine Migration
 
-**Updated**: 2026-05-06
-**Status**: Konva v2 is the accepted formal Board runtime for new/saved Boards; Page polish, v1 copy tooling, runtimeGraph mock dataflow and public share viewing have first passes. Remaining work is export/background polish, performance regression, real AiRun wiring and Yjs collaboration proof.
-**Product reason**: The current public staging canvas depends on tldraw, which requires a production license. TANGENT needs a long-term canvas path that can support commercial use and collaboration without a paid canvas SDK lock-in.
+**Updated**: 2026-05-14
+**Status**: Konva v2 is the accepted formal Board runtime for new/saved Boards locally and on staging; Page polish, v1 copy tooling, runtimeGraph mock dataflow and public share viewing have first passes. Remaining work is export/background polish, performance regression, real AiRun wiring and Yjs collaboration proof.
+**Product reason**: This slice began as the exit from the old paid-canvas dependency. That runtime migration is now closed in the active web app, and the remaining product work is Konva-only stabilization plus collaboration/provider viability.
 
 ## Product Goal
 
-Replace tldraw as the long-term runtime engine while preserving the current TANGENT canvas experience as the reference.
+Stabilize the Konva-only runtime while preserving the TANGENT canvas experience that users already accepted.
 
 ## P0 Alpha Stabilization Note
 
 This slice is now primarily a stabilization lane, not a feature-expansion lane:
 
-- Konva-first Board runtime is accepted as the production path.
+- Konva-only Board runtime is accepted as the production path.
+- The active staging/public board path must stay Konva-only and must not expose any tldraw license/runtime surface.
 - Page polish, Board history and share viewing are part of the current alpha spine.
 - Yjs collaboration proof, rendered page-thumbnail assets, page duplicate and broader export polish remain deferred.
 
@@ -30,9 +31,9 @@ This is not a visual redesign. Users should still feel they are using the same p
 
 The first accepted prototype must let a user:
 
-1. Open a Board-like canvas. Current route: `/spikes/konva-canvas`.
+1. Open a Board-like canvas. Current route: `/boards/[boardId]`.
 2. Pan and zoom smoothly.
-3. Draw freehand lines that feel close to current tldraw.
+3. Draw freehand lines that feel close to the historical pre-Konva baseline.
 4. Create basic shapes, frame, sticky note, line/arrow, text and use a first-pass eraser.
 5. Add prompt/image/AI node cards.
 6. Connect node ports with typed edges.
@@ -42,7 +43,7 @@ The first accepted prototype must let a user:
 
 Current accepted subset:
 
-- `/spikes/konva-canvas` opens in Select mode.
+- `/boards/[boardId]` opens in Select mode.
 - Drawing tools stay active for continuous drawing until the user switches tool or presses Escape. Draw is the only non-selecting draw-over-object tool. Other non-Select tools can click an existing object to select it for Properties/resize editing without switching the active tool, so clicking blank canvas afterward continues the previous drawing tool.
 - Pan/zoom should stay responsive with the 1k strokes stress button.
 - Properties stays fixed on the left and edits selected-shape or next-shape Stroke, opaque Fill, Width, Dash and Opacity.
@@ -74,8 +75,8 @@ Current accepted subset:
 - Selection conversion/export/image-operation failures should be visible near the action surface; Capture, Copy/Export and Remove BG now show a short inline toolbar error instead of failing silently.
 - Browser-copied remote image URLs should be imported through the server Asset API before placement so canvas capture/export does not depend on browser CORS behavior. Board thumbnails use `origin=board_thumbnail`; user captures and cutouts use separate origins.
 - Frame containment first pass supports dragging children out of frames and intentionally blocks nested frame parenting for now.
-- Phase 5A adds a first-pass Konva persistence contract: Konva documents save as a v2 `{ renderer: 'konva', version: 2, activePageId, pages, canvasDocument }` envelope through the existing Board API, restore the active page's shapes/images/nodes/runtime edges/camera/settings, create board thumbnails from an offscreen Konva capture, and participate in Save now, autosave, Cmd/Ctrl+S, Snapshot/History/Clean and before-unload warning flows. Users can switch pages, create blank pages, double-click rename pages, delete pages, reorder pages and identify pages by lightweight geometry thumbnails from the right-side collapsible Konva Pages drawer. Board History entries show the active Page title rather than repeating the Board title. Right-click Move to page moves the current selection to another page, expands grouped members/frame children as one move scope, preserves runtime edges only when both endpoints move together and drops cross-page edges for now. True rendered page-thumbnail assets, page duplicate, Move selection to new page and page-scoped collaboration remain follow-ups. The Board guard understands the v2 envelope, pages contract and runtime edge refs before persistence. The formal `/boards/[boardId]` route now has a dual-engine first pass for development/migration safety, but production defaults to Konva-only: tldraw v1 documents are blocked unless the explicit reference flag is enabled, unknown saved documents are blocked instead of auto-overwritten, and new Boards default to Konva.
-- Legacy tldraw v1 Boards now have explicit copy tooling rather than implicit conversion: Workspace legacy Board menus and the legacy route state can create a new Konva v2 copy, then open that copy. The original v1 Board remains untouched so migration can be inspected before any cleanup.
+- Phase 5A adds a first-pass Konva persistence contract: Konva documents save as a v2 `{ renderer: 'konva', version: 2, activePageId, pages, canvasDocument }` envelope through the existing Board API, restore the active page's shapes/images/nodes/runtime edges/camera/settings, create board thumbnails from an offscreen Konva capture, and participate in Save now, autosave, Cmd/Ctrl+S, Snapshot/History/Clean and before-unload warning flows. Users can switch pages, create blank pages, double-click rename pages, delete pages, reorder pages and identify pages by lightweight geometry thumbnails from the right-side collapsible Konva Pages drawer. Board History entries show the active Page title rather than repeating the Board title. Right-click Move to page moves the current selection to another page, expands grouped members/frame children as one move scope, preserves runtime edges only when both endpoints move together and drops cross-page edges for now. True rendered page-thumbnail assets, page duplicate, Move selection to new page and page-scoped collaboration remain follow-ups. The Board guard understands the v2 envelope, pages contract and runtime edge refs before persistence. The formal `/boards/[boardId]` route is now Konva-only in the active app: legacy v1 or unknown documents are blocked instead of opening any fallback runtime.
+- Legacy v1 Boards are now historical migration material rather than an in-app runtime mode. The active product requirement is that legacy documents/history are rejected safely while supported Konva Boards continue to load/save normally.
 
 ## Handfeel Acceptance
 
@@ -91,7 +92,7 @@ Drawing must pass:
 - 1,000 strokes remain usable
 - toolbar/properties UI does not flicker during drawing
 
-Target: user accepts the Konva prototype as at least 80% of current tldraw feel before node/runtime migration proceeds.
+Target: user accepts the Konva prototype as at least 80% of the historical pre-Konva feel before node/runtime migration proceeds.
 
 ## Product Non-Goals
 
@@ -138,5 +139,5 @@ If handfeel is rejected:
   evaluate Excalidraw as the fallback MIT whiteboard engine.
 
 If both fail:
-  revisit paid tldraw licensing as a business decision, not a technical default.
+  revisit the whiteboard architecture as a business decision, not by reintroducing a hidden runtime fallback.
 ```

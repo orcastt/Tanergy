@@ -58,8 +58,9 @@ export type AiRunRequest = {
   nodeType?: string
   params?: JsonObject
   prompt?: string
-  runType: 'image_analysis' | 'image_generation'
+  runType: 'image_analysis' | 'image_edit' | 'image_generation' | 'text'
   selectedModelId?: string | null
+  systemPrompt?: string | null
 }
 
 export type AiRunRecord = {

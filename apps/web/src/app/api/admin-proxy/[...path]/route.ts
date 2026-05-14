@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { buildServerClerkApiHeaders } from '@/features/auth/serverClerkAuth'
 
 export const runtime = 'nodejs'
 
@@ -36,7 +37,7 @@ async function proxyAdminRequest(request: NextRequest, context: RouteContext) {
   const targetUrl = `${apiBaseUrl}/api/v1/admin${targetPath}${request.nextUrl.search}`
   const response = await fetch(targetUrl, {
     method: request.method,
-    headers: buildProxyHeaders(request),
+    headers: await buildProxyHeaders(request),
     body: shouldForwardBody(request.method) ? await request.text() : undefined,
     cache: 'no-store',
     redirect: 'manual',
@@ -48,8 +49,8 @@ async function proxyAdminRequest(request: NextRequest, context: RouteContext) {
   })
 }
 
-function buildProxyHeaders(request: NextRequest) {
-  const headers = new Headers()
+async function buildProxyHeaders(request: NextRequest) {
+  const headers = new Headers(await buildServerClerkApiHeaders())
   copyHeader(request, headers, 'authorization')
   copyHeader(request, headers, 'content-type')
   copyHeader(request, headers, 'cookie')

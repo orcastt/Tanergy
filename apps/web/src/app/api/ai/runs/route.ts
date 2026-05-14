@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
-import { createMockAiRun } from '@/features/ai/mockAiContracts'
 import type { AiRunRequest } from '@/features/ai/aiTypes'
 import { createAiChargeSummaryForContext } from '@/features/billing/billingContracts'
+import { assertLocalAiBridgeAvailable } from '@/features/api/runtimeBridgePolicy'
 import { getApiRequestContext } from '../../_lib/apiRequestContext'
 import { readJsonRequestWithLimit, requestBodyErrorStatus } from '../../_lib/requestBodyLimits'
 import { createGeekAiAnalysisRun } from '../_lib/geekAiAnalysisRun'
@@ -14,9 +14,10 @@ const maxAiRunRequestBytes = 64 * 1024
 
 export async function POST(request: Request) {
   try {
-    assertLocalAiRunsAllowed()
+    assertLocalAiBridgeAvailable()
     const context = getApiRequestContext(request)
     const body = await readJsonRequestWithLimit<AiRunRequest>(request, maxAiRunRequestBytes)
+    validateLocalAiRunRequest(body)
     const charge = createAiChargeSummaryForContext({
       userId: context.userId,
       workspaceId: context.workspaceId,
@@ -34,7 +35,10 @@ export async function POST(request: Request) {
             context,
             request: body,
           })
-        : createMockAiRun(body, undefined, charge)
+        : null
+    if (!run) {
+      throw new Error('Local AI run route only supports image generation and image analysis. Use the backend AiRun API for text runs.')
+    }
     putLocalAiRun(run)
     return NextResponse.json({ ok: true, run })
   } catch (error) {
@@ -45,8 +49,23 @@ export async function POST(request: Request) {
   }
 }
 
-function assertLocalAiRunsAllowed() {
-  if (process.env.NODE_ENV === 'production' && process.env.TANGENT_ENABLE_LOCAL_AI_ROUTES !== '1') {
-    throw new Error('Local AI routes are disabled in production. Use the backend AiRun API.')
+function validateLocalAiRunRequest(body: AiRunRequest) {
+  if (body.runType !== 'image_generation' && body.runType !== 'image_analysis') {
+    throw new Error('Local AI run route only supports image generation and image analysis.')
+  }
+  if (Array.isArray(body.inputAssetIds) && body.inputAssetIds.length > 8) {
+    throw new Error('inputAssetIds must contain at most 8 assets.')
+  }
+  if (typeof body.prompt === 'string' && body.prompt.trim().length > 8000) {
+    throw new Error('prompt must be 8000 characters or fewer.')
+  }
+  if (typeof body.systemPrompt === 'string' && body.systemPrompt.trim().length > 4000) {
+    throw new Error('systemPrompt must be 4000 characters or fewer.')
+  }
+  if (body.params) {
+    const encodedParams = JSON.stringify(body.params)
+    if (encodedParams.length > 16 * 1024) {
+      throw new Error('params payload is too large.')
+    }
   }
 }

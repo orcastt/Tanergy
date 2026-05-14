@@ -182,13 +182,22 @@ async function loadBoardAcrossWorkspaces(
     throw new Error('Board load failed.')
   }
 
-  try {
-    return await Promise.any(workspaces.map((workspace) => loadLocalBoardDocument(boardId, workspace)))
-  } catch (error) {
-    if (error instanceof AggregateError) {
-      const failed = error.errors.find((candidate) => candidate instanceof Error)
-      throw failed instanceof Error ? failed : new Error('Board load failed.')
+  let lastError: Error | null = null
+  for (const workspace of workspaces) {
+    try {
+      return await loadLocalBoardDocument(boardId, workspace)
+    } catch (error) {
+      const nextError = error instanceof Error ? error : new Error('Board load failed.')
+      if (!isWorkspaceScopedBoardMiss(nextError)) {
+        throw nextError
+      }
+      lastError = nextError
     }
-    throw error instanceof Error ? error : new Error('Board load failed.')
   }
+  throw lastError ?? new Error('Board load failed.')
+}
+
+function isWorkspaceScopedBoardMiss(error: Error) {
+  const message = error.message.toLowerCase()
+  return message.includes('board not found') || message.includes('not found in workspace')
 }

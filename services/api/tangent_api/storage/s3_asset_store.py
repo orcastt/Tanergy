@@ -3,6 +3,8 @@ from typing import Any, Optional
 from uuid import uuid4
 
 from fastapi import HTTPException, Response, UploadFile
+from fastapi.responses import StreamingResponse
+from starlette.background import BackgroundTask
 
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.schemas import AssetDataUrlRequest, AssetRecord, AssetThumbnailInput
@@ -144,23 +146,24 @@ class S3AssetStore:
         assert_safe_path_segment(file_name)
         record = self.get_asset_record(asset_id, context)
         result = self._get_object(
-            self._asset_key(context.workspace_id, asset_id, file_name),
+            self._asset_key(record.workspace_id, asset_id, file_name),
             "Asset file not found.",
         )
-        content = result["Body"].read()
+        body = result["Body"]
         media_type = result.get("ContentType") or mime_for_file_name(file_name) or record.mime
-        return Response(
-            content=content,
+        return StreamingResponse(
+            self._iter_body_chunks(body),
             headers={"Cache-Control": "private, max-age=3600"},
             media_type=media_type,
+            background=BackgroundTask(body.close),
         )
 
     def get_file_bytes(self, asset_id: str, file_name: str, context: ApiRequestContext) -> bytes:
         assert_safe_path_segment(asset_id)
         assert_safe_path_segment(file_name)
-        self.get_asset_record(asset_id, context)
+        record = self.get_asset_record(asset_id, context)
         return self._get_object_bytes(
-            self._asset_key(context.workspace_id, asset_id, file_name),
+            self._asset_key(record.workspace_id, asset_id, file_name),
             "Asset file not found.",
         )
 
@@ -244,6 +247,16 @@ class S3AssetStore:
 
     def _asset_key(self, workspace_id: str, asset_id: str, file_name: str) -> str:
         return f"workspaces/{workspace_id}/assets/{asset_id}/{file_name}"
+
+    def _iter_body_chunks(self, body: Any, chunk_size: int = 1024 * 1024):
+        if hasattr(body, "iter_chunks"):
+            yield from body.iter_chunks(chunk_size)
+            return
+        while True:
+            chunk = body.read(chunk_size)
+            if not chunk:
+                return
+            yield chunk
 
 
 def create_s3_asset_store() -> S3AssetStore:

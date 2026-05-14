@@ -1,7 +1,7 @@
 # TANGENT Product Requirements Index
 
-**Updated**: 2026-05-10
-**Status**: Canonical product overview and PRD slice index, now aligned with the current parallel P0 alpha workstreams and the S3 commercial pivot: Team plans use isolated Team workspaces with Team wallets, while Group/Collaborate uses personal wallets.
+**Updated**: 2026-05-14
+**Status**: Canonical product overview and PRD slice index, aligned with the current parallel P0 alpha workstreams, the S3 commercial pivot and the latest staging/S2 checkpoint: the Konva-only staging deploy is back online, strict Clerk session/admin smoke is green, and the active image-generation product surface now aligns to four live GeekAI-backed image models while the remaining gate is one live server-backed image smoke before deeper Yjs/provider work.
 
 This folder replaces the former root-level long PRD ledger. The root `PRD.md` is now only a pointer. Product details live in the slice files below.
 
@@ -36,16 +36,16 @@ Everything else should be described as deferred, frozen or internal scaffolding 
 | Slice | File | Owns | Current status |
 | --- | --- | --- | --- |
 | S0 Local Product Shell | `Finished/PRD_slice_S0_local_product_shell.md` | Local user-visible app shell, Workspace, Board canvas, Board History, Canvas Settings, Board Management, Smart Drawing | Finished baseline; regression reference only |
-| S1 Staging/Auth/Board CRUD | `PRD_slice_S1_staging_auth_board.md` | Real staging infra, real Auth, real user/workspace/board ownership, production Board CRUD | Active foundation slice; staging Web/API/Neon/R2 smoke and local member/share/public-share first pass exist; Auth/email/OAuth smoke and permission hardening remain |
+| S1 Staging/Auth/Board CRUD | `PRD_slice_S1_staging_auth_board.md` | Real staging infra, real Auth, real user/workspace/board ownership, production Board CRUD | Active foundation slice; staging Web/API/Neon/R2 plus real Clerk session/admin smoke are green, while Google/email flow verification, final signed-in board acceptance and permission hardening remain |
 | S1A DB Schema | `PRD_slice_S1A_db_schema.md` | Product data model for accounts, workspaces, Boards, History, Assets and future billing/AI/admin joins | S1A core implemented through migration `0006`; current schema head also includes S3 entitlement extension `0007`; staging DB smoke remains part of S1B |
-| S1B Staging Infra | `PRD_slice_S1B_staging_infra.md` | Online staging Web/API, Postgres, R2, DNS and email readiness | In progress; Web/API/Neon/R2 smoke passed, Konva redeploy/Auth/email/OAuth smoke pending |
-| S1C Auth Context | `PRD_slice_S1C_auth_request_context.md` | Registration, login, logout, session and default workspace flow | Clerk frontend/session bridge and FastAPI bearer verification first pass landed; hardening remains |
+| S1B Staging Infra | `PRD_slice_S1B_staging_infra.md` | Online staging Web/API, Postgres, R2, DNS and email readiness | In progress; rebuilt staging Web/API/Neon/R2 and Konva-only redeploy are green, while Google/email and live AI acceptance remain |
+| S1C Auth Context | `PRD_slice_S1C_auth_request_context.md` | Registration, login, logout, session and default workspace flow | Clerk frontend/session bridge, FastAPI bearer verification and real staging session/admin smoke landed; Google/email/logout hardening remains |
 | S1D Board CRUD | `PRD_slice_S1D_auth_board_crud.md` | Auth-backed Board and History user workflows | Stable first-pass CRUD/member/share/public-share checkpoint with owner-only copy/delete, share expiry and known-foreign Asset guard; next tranche is effective permission hardening |
 | S1E Board Packages | `PRD_slice_S1E_board_packages.md` | `.tgy` Tanergy Board Package export/import for reusable Boards with drawings, images, AI nodes and runtime edges | Planned; Board JSON and Asset foundations exist, user-facing package export/import remains |
-| S1X Canvas Engine Migration | `PRD_slice_S1X_canvas_engine_migration.md` | Production license risk, tldraw reference parity, Konva/Yjs handfeel and collaboration viability | Konva v2 formal Board route accepted; Page polish and v1 copy tooling landed; collaboration/Yjs and export polish remain |
-| S2 AI Productization | `PRD_slice_S2_ai_productization.md` | Real AI provider path, Model Registry, AiRun, cost/credit logs, AI Chat planner | Canvas-facing GeekAI fast path now proves chat streaming, prompt optimization, image generation/edit/reference and analysis UX locally; Image Gen / Image Gen 4 model-aware UI includes GPT Image 2, Nano Banana 2, Doubao Seedream and Jimeng-style parameter surfaces; production gate is folding that path into the server AiRun provider-route/billing control plane and smoke-testing one live route |
+| S1X Canvas Engine Migration | `PRD_slice_S1X_canvas_engine_migration.md` | Legacy canvas migration closeout, Konva/Yjs handfeel and collaboration viability | Konva-only formal Board route is accepted locally and on staging, the old tldraw web path is gone from the active product surface, and collaboration/Yjs plus export polish remain |
+| S2 AI Productization | `PRD_slice_S2_ai_productization.md` | Real AI provider path, Model Registry, AiRun, cost/credit logs, AI Chat planner | Canvas-facing GeekAI fast path now proves chat streaming, prompt optimization, image generation/edit/reference and analysis UX locally; backend short-text `AiRun`, durable terminal `text_output` and message-native chat backendization now exist; active image-generation UI is aligned to GPT Image 2, Nano Banana 2, Doubao Seedream 5.0 Lite and Jimeng 4.0, and the production gate is one live server-backed image smoke through the AiRun provider-route/billing control plane |
 | S3 Admin/Billing/Analytics | `PRD_slice_S3_admin_billing_analytics.md` | Admin access, user management, credits, subscriptions, Team wallets, Group/Collaborate personal wallets, workspace dashboards, analytics, moderation | Active pivot: migration `20260508_0012/0013`, payer resolver, settlement contracts, Team checkout/top-up, Collaborate checkout, provider-neutral checkout adapter, signed webhook inbox, Group create, workspace invite contracts, real usage buttons, admin directory APIs, tabbed admin console, active-tab server bootstrap, idle-warmed client tab keepalive, paginated Team/Group dashboards, AI route metrics, table-first AI route management, admin finance reconciliation panels, manual admin operations, operator inventory/detail first pass and disposable Postgres smoke now support Team wallet vs personal Collaborate wallet while Stripe is unavailable; arbitrary workspace invite/add-member, searchable Join Team/Join Group detail modals, inline pending invite rows, local detail patching for invite/member/board actions and board copy/delete actions now exist, while provider-neutral hosted/manual-test staging payment settlement plus invoice/refund depth remain |
-| S4 Collaboration | `PRD_slice_S4_collaboration.md` | Multi-user Board collaboration, presence, roles, conflict boundaries | Deferred to P0.5 |
+| S4 Collaboration | `PRD_slice_S4_collaboration.md` | Multi-user Board collaboration, presence, roles, conflict boundaries | Deferred to P0.5; local/provider-shaped bridge and reconnect-resync harness exist, but production multiplayer remains outside the release promise |
 
 ## Update Rules
 
@@ -59,6 +59,12 @@ Everything else should be described as deferred, frozen or internal scaffolding 
 
 The current product priority is stabilization, not breadth.
 
+Immediate order:
+
+1. Finish the remaining staging signed-in browser, Google/email and live AI smokes.
+2. Fold the refreshed four-model image path fully behind the server-owned AiRun/provider-route boundary.
+3. Continue Yjs/provider deepening only after those server and deployment gates are cleaner and verified.
+
 ## Current Product Readiness Snapshot
 
 These percentages are product-readiness markers, not time estimates:
@@ -66,19 +72,19 @@ These percentages are product-readiness markers, not time estimates:
 ```text
 S1X Canvas/Konva runtime      78%  stable local Board path; export/Yjs/live AiRun polish pending
 S1A Schema/DB foundation      82%  core join points and Team-wallet schema delta exist; staging smoke remains
-S1B Deploy/staging            60%  Web/API/Neon/R2 smoke exists; Auth/email/OAuth pass pending
-S1C Auth/registration         55%  Clerk/FastAPI first pass exists; next gate is real-login admin access, CORS/origin smoke and first-session wallet closure
+S1B Deploy/staging            79%  rebuilt Hetzner API host, public HTTPS API, Neon/R2/board smoke and the Konva-only staging web deploy are green; Google/email and live AI smoke remain
+S1C Auth/registration         72%  Clerk/FastAPI bearer boundary, admin bootstrap and real staging session/admin smoke now exist; Google/email/logout hardening remains
 S1D Board/share/invites       72%  CRUD/share/member first pass, workspace invite backend contracts and Team/Group role UI first pass exist; billing visibility separation pending
 S1E Board packages            05%  `.tgy` package format/requirements documented; export/import UI and asset rehydration pending
-S2 AI runtime/provider routes 56%  GeekAI local UX path exists; server route/billing control-plane and live Team-wallet settlement smoke pending
-S3 Admin/billing/team         93%  admin/billing/team scaffolds, Team-wallet payer + settlement contract tests, Team/Collaborate checkout, provider-neutral checkout adapter, signed payment webhook inbox, Group create, workspace invite/member contracts, real `/usage` checkout buttons, billing return routes, admin directory APIs, tabbed admin console, active-tab server bootstrap, idle-warmed client tab keepalive, paginated Team/Group dashboards, AI route metrics, table-first AI route management, admin finance reconciliation panels, manual admin operations, operator inventory/detail first pass, inline pending invite rows, local detail patching for invite/member/board actions, arbitrary workspace invite/add-member actions, searchable Join Team/Join Group detail modals, board copy/delete actions, disposable Postgres quote/run-settlement smoke and an opt-in local operator demo seed exist; payment/invoice/refund depth pending
-Frontend product UI alignment 63%  major surfaces, table-first AI route management, Team/Group member actions, first-pass Billing actions, tabbed admin console, admin finance panels and operator row-level invite/member/board loops exist; nav, plan labels and cost messaging need alignment
-S4 Collaboration              10%  boundary documented; Yjs/provider proof deferred
+S2 AI runtime/provider routes 68%  GeekAI local UX path exists; backend short-text `AiRun`, durable `text_output`, message-native chat backendization, four-model image refresh and longer image timeout now exist; remaining gate is live image smoke and broader provider coverage
+S3 Admin/billing/team         97%  admin/billing/team scaffolds, Team-wallet payer + settlement contract tests, Team/Collaborate checkout, provider-neutral checkout adapter, signed payment webhook inbox, Group create, workspace invite/member contracts, real `/usage` checkout buttons, billing return routes, admin directory APIs, tabbed admin console, active-tab server bootstrap, idle-warmed client tab keepalive, paginated Team/Group dashboards, AI route metrics, table-first AI route management, admin finance reconciliation panels, manual admin operations, operator inventory/detail read model, inline pending invite rows, local detail patching for invite/member/board actions, arbitrary workspace invite/add-member actions, searchable Join Team/Join Group detail modals, board copy/delete actions, plan-catalog editing, disposable Postgres quote/run-settlement smoke and an opt-in local operator demo seed exist; public staging repair plus payment/invoice/refund depth remain
+Frontend product UI alignment 69%  major surfaces, wide full-browser layout, table-first AI route management, DB-backed Team/Group/Billing reads, Team/Group member actions, first-pass Billing actions, tabbed admin console, admin finance panels and operator row-level invite/member/board loops exist; navigation, plan language, loading states and cost messaging still need alignment
+S4 Collaboration              27%  local Yjs room/document foundation plus reconnect/resync smoke harness exist; provider-grade multiplayer is still deferred from the release promise
 ```
 
 Shipping-now promise:
 
-- Konva-first Board runtime is the production-facing canvas path.
+- Konva-only Board runtime is the production-facing canvas path.
 - Public landing -> Auth -> protected workspace -> Board -> share viewer is the core user journey.
 - Billing, Team, Usage, Admin and AI route controls are first-pass bounded surfaces; the next business-system cut is role policy UI, provider settlement depth and staging smoke.
 - The active release-spine document is `dev-plans/p0-alpha-stabilization-and-acceptance-2026-05-06.md`.
@@ -93,13 +99,12 @@ Deferred or frozen for this pass:
 
 Near-term execution order:
 
-1. Finish the S1C auth/admin production boundary: real Clerk login, real admin access, no spoofable user/workspace headers, production-like CORS/origin behavior and default personal wallet on first session.
+1. Finish staging / real DB / real login smoke, including real admin access and production-like CORS/origin behavior.
 2. Stabilize S1/S1X/S1D on staging/Auth/share/page/permission boundaries.
-3. Add S1E `.tgy` Board Package export/import after the current Board/Asset guard remains stable.
-4. Fold the GeekAI canvas-facing path into the server-side AiRun provider-route/billing control plane.
-5. Rebuild S3 payer semantics around Team wallet, personal Collaborate wallet and auditable usage.
-6. Rebuild the S3 admin operator console around fast User inventory and one-call user detail bundles.
-7. Push collaboration, deep finance, broad provider automation and other frozen areas after the alpha spine is stable.
+3. Rebuild S3 payer semantics around Team wallet, personal Collaborate wallet and auditable usage.
+4. Rebuild the S3 admin operator console around fast User inventory and one-call user detail bundles.
+5. Add S1E `.tgy` Board Package export/import after the current Board/Asset guard remains stable.
+6. Push collaboration, deep finance, broad provider automation and other frozen areas after the alpha spine is stable.
 
 ## Product Stage Roadmap
 
@@ -110,7 +115,7 @@ S0 Local Alpha accepted
   - Canvas Settings and Smart Drawing
 
 S1 Account + Ownership foundation
-  - S1X Konva-first Board runtime replacing tldraw as production path
+  - S1X Konva-only Board runtime established as the production path
   - register/login/logout/session
   - user default workspace
   - server-scoped Board CRUD and History
@@ -142,8 +147,8 @@ S1 deliberately does not finish Admin, credits, subscriptions or collaboration. 
 
 # TANGENT 产品需求索引
 
-**更新日期**：2026-05-09
-**状态**：规范产品总览和 PRD 切片索引，当前已对齐本轮 P0 alpha 的并行工作流，以及 S3 商业口径调整：Team 套餐使用彼此隔离的 Team workspace + Team wallet，Group/Collaborate 使用个人钱包。
+**更新日期**：2026-05-14
+**状态**：规范产品总览和 PRD 切片索引，当前已对齐本轮 P0 alpha 的并行工作流、S3 商业口径调整，以及最新 staging/S2 检查点：Konva-only staging 部署已恢复上线，严格 Clerk session/admin smoke 已转绿，活跃生图产品面已收口到四个真实 GeekAI 图片模型；剩余闸门是一条真实服务端生图 smoke，然后才继续更深的 Yjs/provider 工作。
 
 本文件夹取代原来的根级长 PRD 台账。根目录 `PRD.md` 现在只做指针用途。产品细节位于下面的切片文件中。
 
@@ -178,16 +183,16 @@ P0 不包括生产级协作、桌面应用、完整的 Mixpanel 级分析、完�
 | 切片 | 文件 | 负责内容 | 当前状态 |
 | --- | --- | --- | --- |
 | S0 Local Product Shell | `Finished/PRD_slice_S0_local_product_shell.md` | 本地用户可见 app shell、Workspace、Board canvas、Board History、Canvas Settings、Board Management、Smart Drawing | 已完成 baseline；仅作为 regression reference |
-| S1 Staging/Auth/Board CRUD | `PRD_slice_S1_staging_auth_board.md` | 真实 staging infra、真实 Auth、真实 user/workspace/board ownership、生产 Board CRUD | 活跃基础切片；staging Web/API/Neon/R2 smoke 与本地 member/share/public-share 第一阶段已存在；Auth/email/OAuth smoke 和权限硬化仍待完成 |
+| S1 Staging/Auth/Board CRUD | `PRD_slice_S1_staging_auth_board.md` | 真实 staging infra、真实 Auth、真实 user/workspace/board ownership、生产 Board CRUD | 活跃基础切片；staging Web/API/Neon/R2 与真实 Clerk session/admin smoke 已转绿；Google/email 流程验证、最终 signed-in Board 验收和权限硬化仍待完成 |
 | S1A DB Schema | `PRD_slice_S1A_db_schema.md` | accounts、workspaces、Boards、History、Assets 以及未来 billing/AI/admin join points 的产品数据模型 | S1A core 已通过 migration `0006` 实现；当前 schema head 还包含 S3 entitlement extension `0007`；staging DB smoke 仍归 S1B |
-| S1B Staging Infra | `PRD_slice_S1B_staging_infra.md` | 在线 staging Web/API、Postgres、R2、DNS 和 email readiness | 进行中；Web/API/Neon/R2 smoke 已通过，Konva redeploy/Auth/email/OAuth smoke 待完成 |
-| S1C Auth Context | `PRD_slice_S1C_auth_request_context.md` | Registration、login、logout、session 和 default workspace flow | Clerk frontend/session bridge 与 FastAPI bearer verification 第一阶段已落地；仍需 hardening |
+| S1B Staging Infra | `PRD_slice_S1B_staging_infra.md` | 在线 staging Web/API、Postgres、R2、DNS 和 email readiness | 进行中；重建后的 staging Web/API/Neon/R2 与 Konva-only redeploy 已转绿；Google/email 与 live AI 验收仍待完成 |
+| S1C Auth Context | `PRD_slice_S1C_auth_request_context.md` | Registration、login、logout、session 和 default workspace flow | Clerk frontend/session bridge、FastAPI bearer verification 与真实 staging session/admin smoke 已落地；Google/email/logout hardening 仍待完成 |
 | S1D Board CRUD | `PRD_slice_S1D_auth_board_crud.md` | Auth-backed Board 和 History 用户流程 | CRUD/member/share/public-share 第一阶段稳定，并已带 owner-only copy/delete、share expiry 和 known-foreign Asset guard；下一批是 effective permission hardening |
 | S1E Board Packages | `PRD_slice_S1E_board_packages.md` | `.tgy` Tanergy Board Package 导出 / 导入，用于复用带绘图、图片、AI 节点和 runtime edges 的 Board | 已规划；Board JSON 与 Asset 基础已存在，用户可见 package export/import 仍未实现 |
-| S1X Canvas Engine Migration | `PRD_slice_S1X_canvas_engine_migration.md` | 生产 license 风险、tldraw reference parity、Konva/Yjs 手感和协作可行性 | Konva v2 formal Board route 已接受；Page polish 和 v1 copy tooling 已落地；collaboration/Yjs 和 export polish 仍待完成 |
-| S2 AI Productization | `PRD_slice_S2_ai_productization.md` | 真实 AI provider path、Model Registry、AiRun、cost/credit logs、AI Chat planner | 面向画布的 GeekAI fast path 现在已经在本地证明 chat streaming、prompt optimization、image generation/edit/reference 和 analysis UX；Image Gen / Image Gen 4 的模型感知 UI 已覆盖 GPT Image 2、Nano Banana 2、Doubao Seedream 和 Jimeng 风格参数；生产闸门是把这条路径收口到服务端 AiRun provider-route/billing control plane，并完成一条 live route smoke |
+| S1X Canvas Engine Migration | `PRD_slice_S1X_canvas_engine_migration.md` | 旧画布迁移收口、Konva/Yjs 手感和协作可行性 | Konva-only formal Board route 已在本地和 staging 接受，旧 tldraw Web 路径已退出活跃产品面；collaboration/Yjs 和 export polish 仍待完成 |
+| S2 AI Productization | `PRD_slice_S2_ai_productization.md` | 真实 AI provider path、Model Registry、AiRun、cost/credit logs、AI Chat planner | 面向画布的 GeekAI fast path 现在已经在本地证明 chat streaming、prompt optimization、image generation/edit/reference 和 analysis UX；后端短文本 `AiRun`、durable terminal `text_output` 和 message-native chat backendization 已存在；活跃生图 UI 已对齐 GPT Image 2、Nano Banana 2、Doubao Seedream 5.0 Lite 和 Jimeng 4.0；生产闸门是一条通过 AiRun provider-route/billing control plane 的 live image smoke |
 | S3 Admin/Billing/Analytics | `PRD_slice_S3_admin_billing_analytics.md` | Admin access、user management、credits、subscriptions、Team wallets、Group/Collaborate personal wallets、workspace dashboards、analytics、moderation | 活跃调整：migration `20260508_0012/0013`、payer resolver、settlement contracts、Team/Collaborate checkout、provider-neutral checkout adapter、signed webhook inbox、Group create、workspace invite contracts、real usage buttons、admin directory APIs、tabbed admin console、active-tab server bootstrap、idle-warmed client tab keepalive、分页 Team/Group dashboards、AI route metrics、table-first AI route management、admin finance reconciliation panels、manual admin operations、operator inventory/detail first pass 和 disposable Postgres smoke 已在 Stripe 不可用时支持 Team wallet vs personal Collaborate wallet；任意 workspace 的 invite/add-member、可搜索的 Join Team/Join Group detail modals、inline pending invite rows、invite/member/board action 的本地 detail patching 与 board copy/delete actions 已存在，下一步是 provider-neutral hosted/manual-test staging payment settlement 与 invoice/refund 深度 |
-| S4 Collaboration | `PRD_slice_S4_collaboration.md` | 多用户 Board 协作、presence、roles、conflict boundaries | 推迟到 P0.5 |
+| S4 Collaboration | `PRD_slice_S4_collaboration.md` | 多用户 Board 协作、presence、roles、conflict boundaries | 推迟到 P0.5；本地/provider 形态的 bridge 和 reconnect/resync harness 已存在，但生产多人协作仍不在本轮承诺内 |
 
 ## 更新规则
 
@@ -208,19 +213,19 @@ P0 不包括生产级协作、桌面应用、完整的 Mixpanel 级分析、完�
 ```text
 S1X Canvas/Konva runtime      78%  本地 Board 主路径稳定；export/Yjs/live AiRun polish 待完成
 S1A Schema/DB foundation      82%  core join points 与 Team-wallet schema delta 已存在；staging smoke 仍待完成
-S1B Deploy/staging            60%  Web/API/Neon/R2 smoke 已存在；Auth/email/OAuth 待通过
-S1C Auth/registration         55%  Clerk/FastAPI 第一阶段存在；session hardening 待完成
+S1B Deploy/staging            79%  重建后的 Hetzner API、public HTTPS API、Neon/R2/board smoke 与 Konva-only staging Web 已转绿；Google/email 与 live AI smoke 仍待完成
+S1C Auth/registration         72%  Clerk/FastAPI bearer 边界、admin bootstrap 和真实 staging session/admin smoke 已存在；Google/email/logout hardening 仍待完成
 S1D Board/share/invites       72%  CRUD/share/member 第一阶段、workspace invite backend contracts 和 Team/Group role UI first pass 已存在；billing visibility separation 待完成
 S1E Board packages            05%  `.tgy` package format/requirements 已记录；export/import UI 与 asset rehydration 待完成
-S2 AI runtime/provider routes 56%  GeekAI 本地 UX 路径存在；服务端 route/billing control-plane 和 live Team-wallet settlement smoke 待完成
+S2 AI runtime/provider routes 68%  GeekAI 本地 UX 路径存在；后端短文本 `AiRun`、durable `text_output`、message-native chat backendization、四模型生图刷新和更长生图超时已存在；剩余闸门是 live image smoke 与更广 provider 覆盖
 S3 Admin/billing/team         93%  admin/billing/team 脚手架、Team-wallet payer + settlement 合同测试、Team/Collaborate checkout、provider-neutral checkout adapter、signed payment webhook inbox、Group create、workspace invite/member contracts、real `/usage` checkout buttons、billing return routes、admin directory APIs、tabbed admin console、active-tab server bootstrap、idle-warmed client tab keepalive、分页 Team/Group dashboards、AI route metrics、table-first AI route management、admin finance reconciliation panels、manual admin operations、operator inventory/detail first pass、inline pending invite rows、invite/member/board action 的本地 detail patching、任意 workspace 的 invite/add-member actions、可搜索的 Join Team/Join Group detail modals、board copy/delete actions、disposable Postgres quote/run-settlement smoke，以及本地可选的 operator demo seed 已存在；payment/invoice/refund 深度待完成
 Frontend product UI alignment 63%  主要界面、table-first AI route management、Team/Group member actions、第一阶段 Billing actions、tabbed admin console、admin finance panels，以及 operator 行内 invite/member/board 操作回路已存在；导航、套餐语言和扣费文案需要对齐
-S4 Collaboration              10%  边界已文档化；Yjs/provider proof 后置
+S4 Collaboration              27%  本地 Yjs room/document 基础与 reconnect/resync smoke harness 已存在；provider 级多人协作仍后置
 ```
 
 本轮当前承诺：
 
-- Konva-first Board runtime 是面向生产的主画布路径。
+- Konva-only Board runtime 是面向生产的主画布路径。
 - Public landing -> Auth -> protected workspace -> Board -> share viewer 是核心用户旅程。
 - Billing、Team、Usage、Admin 和 AI route controls 都只是第一阶段有限能力界面；下一步业务系统主线是 Team wallet + personal Collaborate wallet。
 - 当前活跃的发布主线文档是 `dev-plans/p0-alpha-stabilization-and-acceptance-2026-05-06.md`。
@@ -251,7 +256,7 @@ S0 Local Alpha accepted
   - Canvas Settings and Smart Drawing
 
 S1 Account + Ownership foundation
-  - S1X Konva-first Board runtime replacing tldraw as production path
+  - S1X Konva-only Board runtime 已确立为生产路径
   - register/login/logout/session
   - user default workspace
   - server-scoped Board CRUD and History

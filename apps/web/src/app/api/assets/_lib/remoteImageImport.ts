@@ -131,16 +131,20 @@ async function readResponseBytesWithLimit(response: Response, maxBytes: number) 
   const reader = response.body.getReader()
   const chunks: Buffer[] = []
   let totalBytes = 0
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    if (!value) continue
-    totalBytes += value.byteLength
-    if (totalBytes > maxBytes) {
-      await reader.cancel()
-      throw new Error('Image must be 100MB or smaller.')
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      if (!value) continue
+      totalBytes += value.byteLength
+      if (totalBytes > maxBytes) {
+        await reader.cancel().catch(() => {})
+        throw new Error('Image must be 100MB or smaller.')
+      }
+      chunks.push(Buffer.from(value))
     }
-    chunks.push(Buffer.from(value))
+  } finally {
+    reader.releaseLock()
   }
   const buffer = Buffer.concat(chunks, totalBytes)
   return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer

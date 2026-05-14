@@ -1,10 +1,5 @@
-from tangent_api.storage.postgres_schema import has_postgres_column
-
-
 def admin_operator_user_ip_field_sql() -> str:
-    if has_postgres_column("tangent_users", "last_ip_address"):
-        return "last_ip_address"
-    return "NULL::text AS last_ip_address"
+    return "last_ip_address"
 
 
 def admin_operator_subscription_snapshot_sql(source_alias: str) -> str:
@@ -22,6 +17,4 @@ def admin_operator_subscription_snapshot_sql(source_alias: str) -> str:
 
 
 def _optional_subscription_column_sql(source_alias: str, column_name: str, cast_name: str) -> str:
-    if has_postgres_column("tangent_subscriptions", column_name):
-        return f"{source_alias}.{column_name} AS {column_name}"
-    return f"NULL::{cast_name} AS {column_name}"
+    return f"{source_alias}.{column_name} AS {column_name}"

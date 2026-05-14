@@ -2,7 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from tangent_api.admin_access import require_admin_role, write_admin_audit_log
+from tangent_api.admin_access import require_admin_role
 from tangent_api.admin_operator_board_writes import (
     copy_admin_operator_board,
     delete_admin_operator_board as delete_admin_operator_board_write,
@@ -54,9 +54,8 @@ def get_admin_operator_users(
     search: Optional[str] = Query(default=None, min_length=1),
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminOperatorUsersResponse:
-    roles = require_admin_role(context, allowed_roles=OPERATOR_READ_ROLES)
+    require_admin_role(context, allowed_roles=OPERATOR_READ_ROLES)
     users, total_count = list_admin_operator_users(limit=limit, offset=offset, search=search)
-    _audit(context, "admin.operator.users.list", roles, {"limit": limit, "offset": offset, "search": search})
     return AdminOperatorUsersResponse(ok=True, limit=limit, offset=offset, totalCount=total_count, users=users)
 
 
@@ -65,11 +64,10 @@ def get_admin_operator_user_detail_route(
     user_id: str,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminOperatorUserDetailResponse:
-    roles = require_admin_role(context, allowed_roles=OPERATOR_READ_ROLES)
+    require_admin_role(context, allowed_roles=OPERATOR_READ_ROLES)
     detail = get_admin_operator_user_detail(user_id)
     if detail is None:
         raise HTTPException(status_code=404, detail="User not found.")
-    _audit(context, "admin.operator.user.read", roles, {"userId": user_id})
     return AdminOperatorUserDetailResponse(ok=True, detail=detail)
 
 
@@ -188,9 +186,8 @@ def get_admin_operator_workspace_invitations(
     workspace_id: str,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminOperatorWorkspaceInvitationsResponse:
-    roles = require_admin_role(context, allowed_roles=OPERATOR_READ_ROLES)
+    require_admin_role(context, allowed_roles=OPERATOR_READ_ROLES)
     invitations = list_admin_operator_workspace_invitations(workspace_id)
-    _audit(context, "admin.operator.workspace_invitations.list", roles, {"workspaceId": workspace_id})
     return AdminOperatorWorkspaceInvitationsResponse(invitations=invitations, ok=True, workspaceId=workspace_id)
 
 
@@ -258,16 +255,4 @@ def delete_admin_operator_board_route(
         board_id=board_id,
         reason=payload.reason,
         workspace_id=workspace_id,
-    )
-
-
-def _audit(context: ApiRequestContext, action: str, roles: list[object], metadata: dict[str, object]) -> None:
-    write_admin_audit_log(
-        action=action,
-        actor_user_id=context.user_id,
-        metadata={
-            **{key: value for key, value in metadata.items() if value not in (None, "")},
-            "roles": [getattr(role, "role", "") for role in roles],
-        },
-        workspace_id=context.workspace_id,
     )

@@ -149,7 +149,8 @@
   position: absolute;
   right: 0;
   bottom: 46px;
-  z-index: 5;
+  top: auto;
+  z-index: 30;
   display: grid;
   min-width: 228px;
   gap: 2px;
@@ -199,6 +200,11 @@
   opacity: 0.46;
 }
 
+.workspace-board-card.is-list .workspace-board-menu-popover {
+  top: calc(100% + 8px);
+  bottom: auto;
+}
+
 .workspace-board-menu-action[data-tone='danger'] {
   color: var(--color-signature-coral);
 }
@@ -217,5 +223,10 @@
 @media (max-width: 980px) {
   .workspace-board-card.is-list .workspace-board-footer {
     grid-column: 1 / -1;
+  }
+
+  .workspace-board-card.is-list .workspace-board-menu-popover {
+    right: auto;
+    left: 0;
   }
 }

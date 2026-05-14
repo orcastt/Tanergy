@@ -1,20 +1,23 @@
 # Project State Slice S2: AI Runtime
 
-**Updated**: 2026-05-08
-**Status**: Mock runtime/dataflow is usable locally; the canvas also has a GeekAI-backed fast path for chat streaming, prompt optimization, image generation/edit/reference and analysis UX; mock AiRun can optionally exercise credit-ledger usage charging behind `TANGENT_AI_MOCK_LEDGER_CHARGING=1`; migrations `20260506_0008`, `20260506_0009`, `20260506_0010` and `20260506_0011` now add the first DB-backed AI control-plane tables, quote-time persistence facts, provider-currency/runtime-cost normalization fields, version-history storage and attempt-level `api_cost_ledger` settlement fields. Migration `20260508_0012` adds `team_wallet` charge scope, and the first payer resolver cut now charges Team workspaces to Team wallet while Group/Collaborate remains personal-wallet based. Current alpha gate: fold the local GeekAI path into the server provider-route/billing control plane and hand-test one credentialed real provider-backed image path end to end.
+**Updated**: 2026-05-14
+**Status**: Mock runtime/dataflow is usable locally; the canvas also has a GeekAI-backed fast path for chat streaming, prompt optimization, image generation/edit/reference and analysis UX; mock AiRun can optionally exercise credit-ledger usage charging behind `TANGENT_AI_MOCK_LEDGER_CHARGING=1`; migrations `20260506_0008`, `20260506_0009`, `20260506_0010` and `20260506_0011` now add the first DB-backed AI control-plane tables, quote-time persistence facts, provider-currency/runtime-cost normalization fields, version-history storage and attempt-level `api_cost_ledger` settlement fields. Migration `20260508_0012` adds `team_wallet` charge scope, migration `20260513_0019` adds durable terminal `text_output`, migration `20260513_0020` seeds default analysis-capable models/routes/pricing, and migration `20260514_0021` refreshes the active image-generation catalog to GPT Image 2, Nano Banana 2, Doubao Seedream 5.0 Lite and Jimeng 4.0 while removing `gemini-3.1-flash-image-preview` from the active image-generation surface. Current alpha gate: finish the remaining staging/browser acceptance, then hand-test one credentialed real provider-backed image path end to end and widen live-provider capability coverage.
 
 ## Current Alpha Boundary
 
 - release-critical: quote/preflight, payer summary, persisted Team-wallet/personal-wallet resolver, persisted run lifecycle, one real provider-backed image path
 - local product proof: GeekAI-backed chat, prompt optimizer, image gen/edit/reference and analysis flows in the canvas
-- not current-alpha promise: full provider breadth, durable text output, broad refund/reconciliation depth
+- not current-alpha promise: full provider breadth, broad refund/reconciliation depth, or the automatic graph-planning layer on top of message-native chat
 
 ## Current State
 
 - Mock Model Registry exists and is consumed by Image Gen / Image Gen 4 node controls.
 - Canvas-facing AI node UX now has a GeekAI fast path for local product validation: Chat streams text, Prompt Optimizer streams enriched image prompts, Analysis can choose OpenAI-style or Gemini-style visual analysis, and Image Gen / Image Gen 4 can return images into slots and board Assets through the current web app route.
 - 2026-05-13 memory/fallback audit: AI chat streaming now caps buffered SSE text and retained output text; the local chat completions route only inlines JPEG/PNG/WebP images up to 20MB and streams same-origin/local image reads with a byte cap; GeekAI image generation/edit/reference now rejects oversize inline input/output images before base64 expansion/decode; remote image imports stream with byte caps; provider `b64_json` handling estimates size before decode; and AI run text retained in memory is capped before persistence/runtime use.
+- 2026-05-13 AI/upload hardening continuation: `/api/ai/runs` now fails closed for unsupported local text runs instead of silently returning a fabricated run; `/api/assets/upload` uses shared content-length plus streamed file-read limits; chat/image-analysis/image-generation reference images now enforce both per-image and total inline byte budgets before base64 expansion; backend provider input assets also enforce a total-byte ceiling; and remote image import now releases/cancels stream readers cleanly on abort or oversize exit.
+- 2026-05-13 asset memory cleanup continuation: primary board thumbnail, selection-capture, runtime asset migration and mock-generated image paths now upload through multipart file payloads instead of using large `data:` JSON bodies as the main path; `/api/v1/assets/from-data-url` and the local Next `/api/assets/from-data-url` route are now treated as small-fallback-only paths with an 8MB request ceiling, which reduces base64 request amplification on save/capture flows.
 - Image node controls now reflect model-specific parameter surfaces for GPT Image 2, Nano Banana 2, Doubao Seedream and Jimeng-style generation/edit/reference flows. These controls are useful UX proof, but their provider-specific parameter mapping still needs to move behind the server provider adapter/control-plane boundary before production reliance.
+- 2026-05-14 image-model refresh: the active image-generation lane is now limited to `gpt-image-2`, `nano-banana-2`, `doubao-seedream-5.0-lite` and `jimeng_t2i_v40`; `gemini-3.1-flash-image-preview` remains only as a legacy-compat identifier and no longer drives the active image-generation UI. The long-running image timeout boundary is now `240000 ms`.
 - Mock AiRun route exists and returns payer facts: `workspaceKind`, `chargedScope`, `chargedAccountId`, `entitlementSource`, optional `workspaceSeatId` and a user-facing payer label. Team workspace quotes now resolve to `team_wallet`; Group/Collaborate quotes remain `actor_personal`.
 - Mock AiRun can optionally charge the current payer through the internal credit ledger service when `TANGENT_AI_MOCK_LEDGER_CHARGING=1` and `DATABASE_URL` are configured. It rejects insufficient balance with `402` and writes a `usage_charge` entry on success; the default local path remains no-charge.
 - Migration `20260506_0008` now adds `tangent_model_registry`, `tangent_model_parameter_tiers`, `tangent_model_pricing_rules` and the first normalization columns on `tangent_model_provider_routes`, with safe backfill/default seed coverage.
@@ -31,16 +34,22 @@
 - Run finalization/settlement orchestration is now extracted from the route handler layer, and successful runs now persist settled credit amounts plus normalized `provider_cost` / `provider_currency` onto both the final `ai_runs` row and the winning `ai_api_calls` attempt row.
 - Run finalization now also writes attempt-level `api_cost_ledger` rows with explicit settlement kinds such as `usage`, `provider_cost_only` and `attempt_failure`, so finance/admin tooling can explain supplier cost independently from user-credit charging.
 - 2026-05-13 memory/fallback cleanup tightened AI runtime safety: AiRun request schema caps prompt/input assets, provider attempt/run queues are bounded, provider JSON/image responses are byte-capped, chat provider streaming has response byte/time caps, local Next AI routes are production-disabled unless explicitly opted in, model fallback is dev/local only, and production backend stub-provider execution now fails closed unless `TANGENT_AI_ALLOW_STUB_PROVIDER=1`.
+- 2026-05-14 staging/provider policy tightening: backend stub-provider execution now fails closed outside local/dev/test unless explicitly enabled, and non-local runtimes can default to live provider execution when credentials are present so staging does not silently return mock `asset_mock_*` outputs as a false success.
+- 2026-05-13 text AiRun bridge is now formally in place: `AiRunRequest` accepts `runType="text"` plus `systemPrompt`, the control plane now resolves text models/pricing without falling through to image defaults, OpenAI-compatible and Google live adapters can return terminal short text output, and stub execution now mirrors that contract in local/dev.
+- Migration `20260513_0019` now adds `text_output` to `tangent_ai_runs`, persistence now stores/reloads terminal text output, and both the Konva Prompt Optimizer plus the message-native Chat node now use backend `POST /api/v1/ai/runs` + poll/cancel when the browser is pointed at the FastAPI persistence API. Local-only fallback still uses the Next chat route for streaming UX.
+- Migration `20260513_0020` now seeds `gpt-5-mini`, `gpt-4o-mini` and `gemini-2.5-flash` into the backend control plane with default routes/pricing, the quote path now refuses unsupported model/run-type mismatches instead of silently choosing an unrelated model, and the OpenAI-compatible live adapter now accepts `image_analysis` by sending prompt plus inline image refs through the same chat-completions boundary used by short text runs.
 - Konva runtimeGraph mock flow now covers Prompt, Image, Chat, Image Gen and Analysis data passing, export ports and generated Asset refs.
 - Konva runtimeGraph Run/Stop is now wired to the server AiRun lifecycle for the formal Board route: the client creates the run, stores the accepted server run id, polls `GET /api/v1/ai/runs/{runId}` to terminal state, best-effort cancels `POST /api/v1/ai/runs/{runId}/cancel` after user stop, and hydrates returned output Asset records back into generated node outputs when the browser is pointed at the FastAPI backend.
-- AI Chat / Prompt upstream mock dataflow is present in the canvas, and the new Prompt Optimizer node proves the desired streaming text-improvement UX through the local web route. Production text calls still need durable server AiRun output handling.
-- Live adapter coverage is still incomplete: OpenAI-compatible analysis is not wired, provider text outputs are not durably persisted yet, and the new settlement shell still needs broader real-provider coverage plus refund/reconciliation policy depth beyond the first-pass ledger writes.
+- AI Chat upstream mock dataflow is still present in the canvas, but Chat itself now also has a server-native text/message run path with `params.messages` plus optional `inputAssetIds` when the canvas is pointed at FastAPI. The Prompt Optimizer and Chat nodes both keep a local streaming fallback for no-backend/dev sessions.
+- A new `services/api/scripts/s2_live_ai_smoke.py` script now creates one live image run, waits for it to settle, then feeds the returned Asset into one analysis run. This is the first reusable acceptance harness for local real-DB smoke and later staging/provider verification.
+- The local AI/upload cleanup pass is now splitting “useful dev fallback” from “unsafe production fallback”: local chat/provider and asset bridge routes now remain opt-in only when `NEXT_PUBLIC_API_BASE_URL` is unset, while unsupported local run types and oversize upload/reference-image paths now fail closed instead of quietly fabricating results or reading unbounded bodies.
+- Live adapter coverage is still incomplete: richer multimodal chat/message runs are not yet first-class AiRun inputs, and the new settlement shell still needs broader real-provider coverage plus refund/reconciliation policy depth beyond the first-pass ledger writes.
 
 ## Required Next Work
 
-1. Reconcile the current GeekAI local fast path into the server provider-route adapter layer described by `dev-plans/s2-ai-provider-route-billing-control-plane-2026-05-07.md`.
+1. Reconcile the current GeekAI local fast path into the server provider-route adapter layer described by `dev-plans/s2-ai-provider-route-billing-control-plane-2026-05-07.md`, keeping the refreshed GPT Image 2 / Nano Banana 2 / Doubao Seedream / Jimeng lane as the active image-generation surface.
 2. Persist and test Team-wallet settlement through the full live provider path, not only mock entitlement/quote.
-3. Finish provider-capability coverage so live adapters support image generation, image edit/reference, analysis and prompt/text optimization with durable Asset or short text outputs.
+3. Finish provider-capability coverage so live adapters support image generation, image edit/reference, analysis and chat/message-native text runs with durable Asset or short text outputs.
 4. Deepen real-provider settlement policy so success, failure, cancel and refund paths reconcile cleanly across `credit_ledger`, `api_cost_ledger` and provider-returned usage/cost facts.
 5. Preserve provider-response summaries safely for runtime UX without storing long raw payloads.
 6. Hand-test the Konva Run/Stop -> create/poll/cancel path against one credentialed live provider route and tighten user-facing quote/error/cancel messaging.
@@ -57,14 +66,14 @@
 
 # Project State 切片 S2：AI 运行时
 
-**更新日期**：2026-05-08
-**状态**：Mock runtime / dataflow 已经可以在本地使用；画布也已有 GeekAI-backed fast path，用于验证 chat streaming、prompt optimization、image generation/edit/reference 和 analysis UX；Mock AiRun 可以在 `TANGENT_AI_MOCK_LEDGER_CHARGING=1` 后面选择性演练 credit-ledger usage charging；migrations `20260506_0008`、`20260506_0009`、`20260506_0010` 和 `20260506_0011` 现在已经补上第一批 DB-backed AI 控制平面表、quote-time persistence facts、provider-currency / runtime-cost normalization 字段、版本历史存储，以及按尝试分行的 `api_cost_ledger` settlement 字段。当前 alpha 的关键闸门是把本地 GeekAI 路径收口到 server provider-route/billing control plane，同时更新 payer resolution：Team runs 扣 Team wallet，Group/Collaborate runs 扣个人钱包，然后用真实凭据把一条 provider-backed image path 端到端手测通过。
+**更新日期**：2026-05-14
+**状态**：Mock runtime / dataflow 已经可以在本地使用；画布也已有 GeekAI-backed fast path，用于验证 chat streaming、prompt optimization、image generation/edit/reference 和 analysis UX；Mock AiRun 可以在 `TANGENT_AI_MOCK_LEDGER_CHARGING=1` 后面选择性演练 credit-ledger usage charging；migrations `20260506_0008`、`20260506_0009`、`20260506_0010` 和 `20260506_0011` 现在已经补上第一批 DB-backed AI 控制平面表、quote-time persistence facts、provider-currency / runtime-cost normalization 字段、版本历史存储，以及按尝试分行的 `api_cost_ledger` settlement 字段。Migration `20260508_0012` 已把 `team_wallet` 充入 charge scope，Migration `20260513_0019` 已增加 durable terminal `text_output`，Migration `20260513_0020` 已把 analysis-capable 默认 model/route/pricing seed 进后端 control plane，而 `20260514_0021` 又把活跃生图目录刷新成 GPT Image 2、Nano Banana 2、Doubao Seedream 5.0 Lite 和 Jimeng 4.0，并把 `gemini-3.1-flash-image-preview` 从活跃生图面移出。当前 alpha 的关键闸门是先完成剩余 staging/browser 验收，再用真实凭据把一条 provider-backed image path 端到端手测通过，并继续扩大 live-provider coverage。
 
 ## 当前 Alpha 边界
 
 - 发布关键：quote/preflight、payer summary、Team-wallet/personal-wallet resolver、持久化 run lifecycle，以及一条真实的 provider-backed image path
 - 本地产品证明：画布里的 GeekAI-backed chat、prompt optimizer、image gen/edit/reference 和 analysis flows
-- 非当前 alpha 承诺：完整 provider breadth、durable text output 和更广的 refund/reconciliation depth
+- 非当前 alpha 承诺：完整 provider breadth、更广的 refund/reconciliation depth，以及叠加在 message-native chat 之上的自动 graph-planning 层
 
 ## 当前状态
 
@@ -88,17 +97,20 @@
 - Run 最终执行现在也会按尝试写入 `api_cost_ledger`，并带上明确的 settlement kind，例如 `usage`、`provider_cost_only` 和 `attempt_failure`，这样 finance/admin 工具就能把供应商成本与用户积分扣费拆开解释。
 - Konva runtimeGraph mock flow 现在覆盖 Prompt、Image、Chat、Image Gen 和 Analysis 的数据传递、export ports 和 generated Asset refs。
 - 正式 Board 路由上的 Konva runtimeGraph Run/Stop 现在也已经接到服务端 AiRun lifecycle：客户端会 create run、保存接受到的 server run id、轮询 `GET /api/v1/ai/runs/{runId}` 到终态、在用户 stop 后尽力调用 `POST /api/v1/ai/runs/{runId}/cancel`，并在浏览器指向 FastAPI backend 时，把返回的 output Asset records 回填进生成节点的 outputs。
-- AI Chat / Prompt upstream mock dataflow 已经存在于画布中，新的 Prompt Optimizer node 也通过本地 web route 证明了流式 text-improvement UX。生产 text calls 仍需要 durable server AiRun output handling。
-- live adapter 覆盖仍不完整：OpenAI-compatible analysis 还没接，provider text output 还不能稳定持久化，而且新的 settlement shell 还需要在更多真实 provider 上补齐深度，以及把 refund/reconciliation policy 做完整。
+- AI Chat / Prompt upstream mock dataflow 已经存在于画布中；当画布指向 FastAPI persistence API 时，Chat 也已经能以 `params.messages` 加可选 `inputAssetIds` 走同一套 server AiRun lifecycle，而 Prompt Optimizer 继续共享这条 text-run 路径。无后端或纯本地开发时，两者仍保留本地流式 fallback。
+- Migration `20260513_0020` 还顺手补了一层契约收口：当用户选择了不支持当前 `runType` 的模型时，quote 不再静默落到一个不相关模型上；OpenAI-compatible live adapter 现在也接受 `image_analysis`，会把 prompt 加 inline image refs 一起发到 `chat/completions`。
+- `services/api/scripts/s2_live_ai_smoke.py` 现在已经可以把一条 live image run 和一条后续 analysis run 串起来做验收，给本地 real-DB smoke 与后续 staging/provider 验收复用。
+- live adapter 覆盖仍不完整：更丰富的 multimodal chat/message runs 还没成为一等 AiRun 输入，而且新的 settlement shell 还需要在更多真实 provider 上补齐深度，以及把 refund/reconciliation policy 做完整。
 
 ## 下一步必要工作
 
-1. 按 `dev-plans/s2-ai-provider-route-billing-control-plane-2026-05-07.md`，把当前 GeekAI 本地 fast path 收口到服务端 provider-route adapter layer。
-2. 更新 payer resolution：Team workspace runs 扣 Team wallet，Group/Collaborate workspace runs 扣操作者个人钱包。
-3. 把 live adapters 的能力覆盖补齐，让 image generation、image edit/reference、analysis 和 prompt/text optimization 都能输出 durable Asset 或短文本结果。
-4. 围绕真实 provider outcomes，把 success / failure / cancel / refund 路径在 `credit_ledger`、`api_cost_ledger` 和 provider 返回 usage/cost 事实之间做完整对账。
-5. 在不存长原始 payload 的前提下，安全保留 provider-response summaries 以支撑 runtime UX。
-6. 用一条带真实凭据的 live provider route 手测 Konva Run/Stop -> create/poll/cancel 路径，并继续收紧用户可见的 quote / error / cancel 文案。
+1. 先完成 S1B/S1C staging / 真实数据库 / 真实登录 smoke，拿到可信的线上边界。
+2. 按 `dev-plans/s2-ai-provider-route-billing-control-plane-2026-05-07.md`，继续把剩余 GeekAI 本地 fast path 收口到服务端 provider-route adapter layer，并减少生产对 Next 本地 fallback 的依赖。
+3. 保持 Team workspace runs 扣 Team wallet、Group/Collaborate workspace runs 扣操作者个人钱包，并继续补 live smoke。
+4. 把 live adapters 的能力覆盖补齐，让 image generation、image edit/reference、analysis 和 prompt/text optimization 都能输出 durable Asset 或短文本结果。
+5. 围绕真实 provider outcomes，把 success / failure / cancel / refund 路径在 `credit_ledger`、`api_cost_ledger` 和 provider 返回 usage/cost 事实之间做完整对账。
+6. 在不存长原始 payload 的前提下，安全保留 provider-response summaries 以支撑 runtime UX。
+7. 用一条带真实凭据的 live provider route 手测 Konva Run/Stop -> create/poll/cancel 路径，并继续收紧用户可见的 quote / error / cancel 文案。
 
 ## 验证目标
 

@@ -12,6 +12,7 @@ _CLEARED_ENV_KEYS = {
     "DATABASE_URL",
     "TANGENT_DATABASE_CONNECT_TIMEOUT",
     "TANGENT_DATABASE_SLOW_QUERY_MS",
+    "TANGENT_ADMIN_ROLE_CACHE_SECONDS",
     "TANGENT_AI_EXECUTION_START_DELAY_MS",
     "TANGENT_AI_MOCK_LEDGER_CHARGING",
     "TANGENT_AI_PROVIDER_EXECUTION_MODE",
@@ -32,9 +33,13 @@ _CLEARED_ENV_PREFIXES = (
 
 @pytest.fixture(autouse=True)
 def isolate_runtime_env(monkeypatch: pytest.MonkeyPatch):
+    from tangent_api.admin_access import clear_admin_role_cache
+
+    clear_admin_role_cache()
     for key in _CLEARED_ENV_KEYS:
         monkeypatch.delenv(key, raising=False)
     for key in tuple(os.environ):
         if key.startswith(_CLEARED_ENV_PREFIXES):
             monkeypatch.delenv(key, raising=False)
     yield
+    clear_admin_role_cache()

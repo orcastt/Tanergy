@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { isTangentAssetOrigin, type TangentAssetOrigin } from '@/features/assets/assetTypes'
+import { assertLocalAssetBridgeAvailable } from '@/features/api/runtimeBridgePolicy'
 import { getApiRequestContext } from '../../_lib/apiRequestContext'
 import { readJsonRequestWithLimit, requestBodyErrorStatus } from '../../_lib/requestBodyLimits'
 import { getAssetStorageAdapter } from '../_lib/assetStorageAdapter'
@@ -17,6 +18,7 @@ const maxRemoteAssetImportRequestBytes = 16 * 1024
 
 export async function POST(request: Request) {
   try {
+    assertLocalAssetBridgeAvailable()
     const input = await readJsonRequestWithLimit<AssetFromUrlRequest>(request, maxRemoteAssetImportRequestBytes)
     if (!input.url) throw new Error('Missing remote image URL.')
     const remote = await fetchRemoteImageForAsset(input.url)

@@ -7,8 +7,8 @@ import { getKonvaNodePortWorldPoint } from './konvaNodePorts'
 import { getKonvaRuntimeEdgeBounds } from './konvaRuntimeEdgeGeometry'
 
 export type KonvaSelectionPngCapture = {
+  blob: Blob
   bounds: CanvasBounds
-  dataUrl: string
   height: number
   pixelRatio: number
   width: number
@@ -76,19 +76,20 @@ export async function captureKonvaSelectionPng({
   const captureStage = createOffscreenSelectionStage(stage, document, selectedIds)
 
   try {
-    await hydrateOffscreenCaptureImages(captureStage.stage, document, selectedIds)
+    await hydrateOffscreenCaptureImages(captureStage.stage, document, selectedIds, pixelRatio)
     await nextFrame()
-    const dataUrl = captureStage.stage.toDataURL({
+    const blob = await captureStage.stage.toBlob({
       height: rect.height,
       mimeType: 'image/png',
       pixelRatio,
       width: rect.width,
       x: rect.x,
       y: rect.y,
-    })
+    }) as Blob | null
+    if (!blob) throw new Error('Selection capture failed.')
     return {
+      blob,
       bounds,
-      dataUrl,
       height: Math.max(1, Math.round(rect.height * pixelRatio)),
       pixelRatio,
       width: Math.max(1, Math.round(rect.width * pixelRatio)),
@@ -100,11 +101,10 @@ export async function captureKonvaSelectionPng({
   }
 }
 
-export async function copyKonvaPngDataUrlToClipboard(dataUrl: string) {
+export async function copyKonvaPngBlobToClipboard(blob: Blob) {
   if (typeof ClipboardItem === 'undefined' || !navigator.clipboard?.write) {
     throw new Error('PNG clipboard writing is not supported in this browser.')
   }
-  const blob = await dataUrlToBlob(dataUrl)
   await navigator.clipboard.write([
     new ClipboardItem({ [blob.type || 'image/png']: blob }),
   ])
@@ -126,10 +126,10 @@ export async function copyKonvaSvgToClipboard(svg: string) {
   await navigator.clipboard.writeText(svg)
 }
 
-export function downloadKonvaDataUrl(dataUrl: string, fileName: string) {
+function downloadKonvaUrl(url: string, fileName: string) {
   const anchor = document.createElement('a')
   anchor.download = fileName
-  anchor.href = dataUrl
+  anchor.href = url
   anchor.rel = 'noreferrer'
   anchor.click()
 }
@@ -137,7 +137,7 @@ export function downloadKonvaDataUrl(dataUrl: string, fileName: string) {
 export function downloadKonvaBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob)
   try {
-    downloadKonvaDataUrl(url, fileName)
+    downloadKonvaUrl(url, fileName)
   } finally {
     window.setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
@@ -199,11 +199,16 @@ function getSelectedRuntimeEdgeBounds(document: CanvasDocument, selected: Set<st
   })
 }
 
-async function hydrateOffscreenCaptureImages(stage: Konva.Stage, document: CanvasDocument, selectedIds: readonly string[]) {
+async function hydrateOffscreenCaptureImages(
+  stage: Konva.Stage,
+  document: CanvasDocument,
+  selectedIds: readonly string[],
+  pixelRatio: number,
+) {
   const selected = new Set(selectedIds)
   const tasks = document.shapes
     .filter((shape) => selected.has(shape.id))
-    .flatMap((shape) => getOriginalCaptureImageSources(shape).map((src, index) => ({ index, shapeId: shape.id, src })))
+    .flatMap((shape) => getCaptureImageSources(shape, pixelRatio).map((src, index) => ({ index, shapeId: shape.id, src })))
   if (tasks.length === 0) return
   await mapWithConcurrency(tasks, maxConcurrentCaptureImageLoads, async (task) => {
     const group = findShapeNode(stage, task.shapeId)
@@ -216,17 +221,57 @@ async function hydrateOffscreenCaptureImages(stage: Konva.Stage, document: Canva
   stage.batchDraw()
 }
 
-function getOriginalCaptureImageSources(shape: CanvasDocument['shapes'][number]) {
-  if (shape.type === 'image') return [getCanvasImageOriginalSource(shape)].filter(isString)
+function getCaptureImageSources(shape: CanvasDocument['shapes'][number], pixelRatio: number) {
+  const targetEdge = getCaptureTargetEdge(shape, pixelRatio)
+  if (shape.type === 'image') return [getCanvasCaptureSource(shape, targetEdge)].filter(isString)
   if (shape.type !== 'node_card') return []
-  if (shape.props.nodeType === 'image') return [getString(shape.props.data.originalUrl)].filter(isString)
+  if (shape.props.nodeType === 'image') {
+    return [pickCaptureAssetUrl({
+      originalUrl: getString(shape.props.data.originalUrl),
+      thumbnail1024Url: getString(shape.props.data.thumbnail1024Url),
+      thumbnail256Url: getString(shape.props.data.thumbnail256Url),
+      thumbnail512Url: getString(shape.props.data.thumbnail512Url),
+    }, targetEdge)].filter(isString)
+  }
   return getRuntimeGraphGeneratedOutputRefs(shape.props.data)
-    .map((ref) => ref.originalUrl ?? ref.thumbnail1024Url ?? ref.thumbnail512Url ?? ref.thumbnail256Url)
+    .map((ref) => pickCaptureAssetUrl(ref, targetEdge))
     .filter(isString)
 }
 
-function getCanvasImageOriginalSource(shape: CanvasImageShape) {
-  return shape.props.originalUrl ?? shape.props.thumbnail1024Url ?? shape.props.thumbnail512Url ?? shape.props.thumbnail256Url
+function getCanvasCaptureSource(shape: CanvasImageShape, targetEdge: number) {
+  return pickCaptureAssetUrl({
+    originalUrl: shape.props.originalUrl,
+    thumbnail1024Url: shape.props.thumbnail1024Url,
+    thumbnail256Url: shape.props.thumbnail256Url,
+    thumbnail512Url: shape.props.thumbnail512Url,
+  }, targetEdge)
+}
+
+function getCaptureTargetEdge(shape: CanvasDocument['shapes'][number], pixelRatio: number) {
+  if (shape.type === 'node_card' || shape.type === 'image') {
+    return Math.max(1, shape.props.width, shape.props.height) * pixelRatio
+  }
+  return 1024
+}
+
+function pickCaptureAssetUrl(
+  source: {
+    originalUrl?: string
+    thumbnail1024Url?: string
+    thumbnail256Url?: string
+    thumbnail512Url?: string
+  },
+  targetEdge: number,
+) {
+  const requiredEdge = Math.max(1, Math.ceil(targetEdge * 1.2))
+  if (requiredEdge <= 256 && source.thumbnail256Url) return source.thumbnail256Url
+  if (requiredEdge <= 512) {
+    return source.thumbnail512Url ?? source.thumbnail1024Url ?? source.originalUrl ?? source.thumbnail256Url
+  }
+  if (requiredEdge <= 1024) {
+    return source.thumbnail1024Url ?? source.originalUrl ?? source.thumbnail512Url ?? source.thumbnail256Url
+  }
+  return source.originalUrl ?? source.thumbnail1024Url ?? source.thumbnail512Url ?? source.thumbnail256Url
 }
 
 function findShapeNode(stage: Konva.Stage, shapeId: string) {
@@ -273,11 +318,6 @@ function assertSafeCapturePixelCount(width: number, height: number, pixelRatio: 
   if (outputPixels > maxCapturePixels) {
     throw new Error('Selection is too large to export safely. Reduce the selected area and try again.')
   }
-}
-
-async function dataUrlToBlob(dataUrl: string) {
-  const response = await fetch(dataUrl)
-  return response.blob()
 }
 
 function nextFrame() {

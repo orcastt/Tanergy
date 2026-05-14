@@ -1,7 +1,7 @@
 # Project State Slice S1C: Auth And Request Context
 
-**Updated**: 2026-05-10
-**Status**: Clerk frontend routes plus FastAPI bearer verification first pass landed. First production-boundary hardening checkpoint now covers first-session personal wallet creation, strict Clerk authorized-party checks, bearer-mode spoof coverage, an email-capable admin bootstrap script, authenticated session memberships with server-returned workspace plan facts, and durable last-request IP sync into `tangent_users.last_ip_address`. Real deployed admin smoke still remains.
+**Updated**: 2026-05-14
+**Status**: Clerk frontend routes plus FastAPI bearer verification first pass landed. First production-boundary hardening checkpoint now covers first-session personal wallet creation, strict Clerk authorized-party checks, bearer-mode spoof coverage, an email-capable admin bootstrap script, authenticated session memberships with server-returned workspace plan facts, durable last-request IP sync into `tangent_users.last_ip_address`, and real staging session/admin smoke without dev-bypass. The next gate is broader signed-in browser acceptance plus Google/email/logout hardening.
 
 ## Objective
 
@@ -20,7 +20,7 @@ Replace dev headers/mock identity with real server-side sessions and workspace m
 - [ ] Email OTP issue/verify flow.
 - [x] Default workspace creation first pass.
 - [x] Personal wallet creation on first verified local user session.
-- [ ] Real-login admin smoke without local dev-bypass.
+- [x] Real-login admin smoke without local dev-bypass.
 - [x] Admin operator bootstrap/grant path for the actual signed-in local TANGENT user after migrations. Script supports `--user-id` and `--email`.
 - [~] Production-like Web/API origin and CORS contract for Clerk bearer requests. `azp` must now match configured `CLERK_AUTHORIZED_PARTIES` / allowed origins; deployed smoke still pending.
 - [x] Request context middleware.
@@ -29,6 +29,11 @@ Replace dev headers/mock identity with real server-side sessions and workspace m
 - [~] Tests for spoofed workspace/user ids. Required-auth missing-token and bearer-mode spoofed-user-header coverage exists; full workspace membership matrix is still pending.
 - [ ] Tests for invalid, expired and wrong-audience provider JWTs.
 - [ ] Google OAuth staging smoke returns a provider session/JWT and maps to the same local TANGENT user on repeat login.
+
+Current release-order note:
+
+- S1C is the first blocking verification lane together with S1B staging smoke.
+- Public staging auth is now reachable enough for real session/admin smoke, so the immediate next path is broader signed-in board/browser acceptance plus Google/email verification.
 
 ## Clerk-First Implementation Notes
 
@@ -101,7 +106,7 @@ Keep provider secrets server-side only. Google OAuth client secret must not be e
 - [ ] New user registers and lands in `/workspaces`.
 - [ ] New user signs in with Google and lands in `/workspaces`.
 - [ ] Logout revokes session.
-- [ ] Session endpoint returns user and memberships.
+- [x] Session endpoint returns user and memberships.
 - [ ] User cannot access workspace without membership.
 - [ ] Invalid/expired provider JWT returns 401.
 - [ ] Session/workspace selection supports multiple Team memberships without leaking authority across Teams.

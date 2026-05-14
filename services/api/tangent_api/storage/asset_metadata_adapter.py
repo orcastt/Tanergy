@@ -6,7 +6,7 @@ from fastapi import HTTPException
 
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.schemas import AssetRecord
-from tangent_api.storage.asset_store_common import assert_workspace_access
+from tangent_api.storage.asset_store_common import assert_workspace_access, get_accessible_workspace_ids
 from tangent_api.storage.postgres_asset_metadata_store import PostgresAssetMetadataStore
 
 
@@ -34,10 +34,24 @@ class ObjectStorageAssetMetadataAdapter:
         self.object_store.write_asset_metadata(record.id, context, content)
 
     def get_record(self, asset_id: str, context: ApiRequestContext) -> AssetRecord:
-        raw = self.object_store.read_asset_metadata(asset_id, context)
-        record = AssetRecord.model_validate(json.loads(raw.decode("utf-8")))
-        assert_workspace_access(record, context)
-        return record
+        last_not_found: HTTPException | None = None
+        for workspace_id in get_accessible_workspace_ids(context):
+            try:
+                raw = self.object_store.read_asset_metadata(
+                    asset_id,
+                    context.model_copy(update={"workspace_id": workspace_id}),
+                )
+            except HTTPException as exc:
+                if exc.status_code == 404:
+                    last_not_found = exc
+                    continue
+                raise
+            record = AssetRecord.model_validate(json.loads(raw.decode("utf-8")))
+            assert_workspace_access(record, context)
+            return record
+        if last_not_found is not None:
+            raise last_not_found
+        raise HTTPException(status_code=404, detail="Asset not found in workspace.")
 
 
 class PostgresAssetMetadataAdapter:

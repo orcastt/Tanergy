@@ -527,12 +527,14 @@ def test_local_board_realtime_websocket_rejects_stale_compaction_publish(tmp_pat
                 "type": "yjs-update",
                 "update": [99, 100],
             }
-            assert ws_compactor.receive_json() == {
-                "documentVersion": BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD + 1,
-                "requestCompaction": True,
-                "type": "document-compact-request",
-                "updateCount": BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD + 1,
-            }
+            resync_state = ws_compactor.receive_json()
+            assert resync_state["documentVersion"] == BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD + 1
+            assert resync_state["requestCompaction"] is True
+            assert resync_state["seedRoom"] is False
+            assert resync_state["type"] == "sync-state"
+            assert len(resync_state["updates"]) == BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD + 1
+            assert resync_state["updates"][0] == [5, 5, 5]
+            assert resync_state["updates"][-1] == [99, 100]
 
     with client.websocket_connect(_realtime_url("realtime_stale_compaction_board", "tab_verify", room_key)) as websocket:
         sync_state = websocket.receive_json()
@@ -544,6 +546,57 @@ def test_local_board_realtime_websocket_rejects_stale_compaction_publish(tmp_pat
         assert sync_state["updates"][0] == [5, 5, 5]
         assert sync_state["updates"][-1] == [99, 100]
         assert websocket.receive_json() == {"states": [], "type": "awareness-batch"}
+
+
+def test_local_board_realtime_websocket_resyncs_stale_compaction_after_room_already_compacted(tmp_path, monkeypatch):
+    monkeypatch.setenv("TANGENT_BOARD_STORAGE_DIR", str(tmp_path / "boards"))
+    monkeypatch.setenv("TANGENT_BOARD_STORAGE_DRIVER", "local-dev")
+    client = TestClient(app)
+
+    save_response = client.post(
+        "/api/v1/boards",
+        json={
+            "boardId": "realtime_resync_after_compaction_board",
+            "document": {"assets": [], "shapes": [{"id": "shape_resync"}]},
+            "title": "Realtime Resync After Compaction Board",
+        },
+    )
+    assert save_response.status_code == 200
+
+    collaboration_response = client.get("/api/v1/boards/realtime_resync_after_compaction_board/collaboration")
+    assert collaboration_response.status_code == 200
+    room_key = collaboration_response.json()["roomKey"]
+
+    with client.websocket_connect(_realtime_url("realtime_resync_after_compaction_board", "tab_owner", room_key)) as websocket:
+        assert websocket.receive_json() == {
+            "documentVersion": 0,
+            "requestCompaction": False,
+            "seedRoom": True,
+            "type": "sync-state",
+            "updates": [],
+        }
+        assert websocket.receive_json() == {"states": [], "type": "awareness-batch"}
+
+        websocket.send_json({"documentVersion": 0, "type": "sync-state-publish", "update": [7, 7, 7]})
+        assert websocket.receive_json() == {
+            "documentVersion": 1,
+            "requestCompaction": False,
+            "type": "sync-state-accepted",
+            "updateCount": 1,
+        }
+
+        websocket.send_json({
+            "documentVersion": 99,
+            "type": "sync-state-publish",
+            "update": [8, 8, 8, 8],
+        })
+        assert websocket.receive_json() == {
+            "documentVersion": 1,
+            "requestCompaction": False,
+            "seedRoom": False,
+            "type": "sync-state",
+            "updates": [[7, 7, 7]],
+        }
 
 
 def test_board_realtime_room_rejects_update_chain_after_hard_limit():

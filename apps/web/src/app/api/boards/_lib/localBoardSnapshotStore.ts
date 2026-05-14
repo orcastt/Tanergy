@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import type { Dirent } from 'node:fs'
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { auditBoardDocument } from '@/features/boards/boardDocumentGuard'
+import { auditBoardDocument, isLegacyTldrawBoardDocument } from '@/features/boards/boardDocumentGuard'
 import {
   getBoardDocumentMetrics,
   normalizeBoardThumbnailUrl,
@@ -65,6 +65,7 @@ export async function listLocalBoardSnapshots(boardId: string, context: ApiReque
     if (!entry.isFile() || !entry.name.endsWith('.json')) continue
     try {
       const snapshot = await readSnapshot(context.workspaceId, safeBoardId, entry.name.replace(/\.json$/, ''))
+      if (isLegacyTldrawBoardDocument(snapshot.document)) continue
       snapshots.push(summarizeSnapshot(snapshot))
     } catch {
       continue
@@ -80,6 +81,9 @@ export async function loadLocalBoardSnapshot(boardId: string, snapshotId: string
   const snapshot = await readSnapshot(context.workspaceId, safeBoardId, safeSnapshotId)
   if (snapshot.workspaceId !== context.workspaceId || snapshot.boardId !== safeBoardId) {
     throw new Error('Board history entry not found in workspace.')
+  }
+  if (isLegacyTldrawBoardDocument(snapshot.document)) {
+    throw new Error('Legacy tldraw board history is no longer restorable in the Konva-only app path.')
   }
   return snapshot
 }

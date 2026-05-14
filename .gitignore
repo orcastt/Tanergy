@@ -74,3 +74,4 @@ legacy/**/dist/
 legacy/**/build/
 legacy/**/*.tsbuildinfo
 legacy/**/.DS_Store
+.vercel

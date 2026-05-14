@@ -2,7 +2,7 @@
 
 Fresh Web AI Image Canvas implementation starts here.
 
-## Current Spike
+## Current Canvas
 
 Run the app:
 
@@ -13,14 +13,16 @@ npm -C apps/web run dev
 Open:
 
 ```text
-http://localhost:3000/spikes/konva-canvas
+http://localhost:3000/boards/<boardId>
 ```
 
-The active canvas surface is now the Konva runtime: pan/zoom, drawing, shapes,
-sticky notes, frames, image objects, arrows, pages, node cards, share view,
-save/history, and collaboration scaffolding all validate there.
+The active canvas surface is now the Konva runtime on `/boards/[boardId]`:
+pan/zoom, drawing, shapes, sticky notes, frames, image objects, arrows, pages,
+node cards, share view, save/history, and collaboration scaffolding all validate
+there. `/spikes/konva-canvas` remains a dev-only regression harness.
 
-Next gate: Step 1.5 validates complex AI nodes before formal feature work:
+Next gate: keep tightening the production Konva canvas while finishing the
+remaining AI/provider and collaboration hardening:
 
 1. Node Runtime / Node Registry
 2. Image Gen / Image Gen 4 nodes with model params
@@ -34,7 +36,7 @@ Next gate: Step 1.5 validates complex AI nodes before formal feature work:
 P0 scope:
 
 1. Miro-like canvas base
-2. Step 1.5 architecture gate
+2. Konva-only production canvas
 3. Prompt Node
 4. Image Gen Node (1 image)
 5. Image Gen 4 Node (4 images)

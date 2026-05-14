@@ -1,6 +1,6 @@
 'use client'
 
-import { uploadImageDataUrlAsset } from '@/features/assets/assetUploadClient'
+import { uploadImageFileAsset } from '@/features/assets/assetUploadClient'
 import type { TangentAssetRecord } from '@/features/assets/assetTypes'
 import type { JsonObject } from '@/types/nodeRuntime'
 import type { AiRunRecord, AiRunRequest } from '@/features/ai/aiTypes'
@@ -8,8 +8,8 @@ import type { AiRunRecord, AiRunRequest } from '@/features/ai/aiTypes'
 export async function uploadMockGeneratedAssets(run: AiRunRecord, request: AiRunRequest): Promise<TangentAssetRecord[]> {
   const count = Math.max(1, Math.min(4, run.outputAssetIds.length || Number(request.params?.count ?? 1)))
   const size = getMockImageSize(request.params)
-  return Promise.all(Array.from({ length: count }, (_, index) => {
-    const dataUrl = createMockGeneratedImageDataUrl({
+  return Promise.all(Array.from({ length: count }, async (_, index) => {
+    const file = await createMockGeneratedImageFile({
       count,
       height: size.height,
       index,
@@ -18,9 +18,8 @@ export async function uploadMockGeneratedAssets(run: AiRunRecord, request: AiRun
       runId: run.runId,
       width: size.width,
     })
-    return uploadImageDataUrlAsset({
-      dataUrl,
-      fileName: `mock-ai-run-${index + 1}.png`,
+    return uploadImageFileAsset({
+      file,
       height: size.height,
       origin: 'ai_run',
       title: count === 1 ? 'Generated image' : `Generated option ${index + 1}`,
@@ -81,7 +80,7 @@ function parseSizeValue(value: JsonObject[string] | undefined) {
   return { height, width }
 }
 
-function createMockGeneratedImageDataUrl(input: { count: number; height: number; index: number; modelId: string; prompt: string; runId: string; width: number }) {
+async function createMockGeneratedImageFile(input: { count: number; height: number; index: number; modelId: string; prompt: string; runId: string; width: number }) {
   const canvas = globalThis.document.createElement('canvas')
   canvas.width = input.width
   canvas.height = input.height
@@ -108,7 +107,16 @@ function createMockGeneratedImageDataUrl(input: { count: number; height: number;
   context.fillText(input.prompt.slice(0, 72), 36, input.height - 38)
   context.font = '600 16px Inter, system-ui, sans-serif'
   context.fillText(input.modelId, 36, 38)
-  return canvas.toDataURL('image/png')
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((nextBlob) => {
+      if (nextBlob) {
+        resolve(nextBlob)
+        return
+      }
+      reject(new Error('Mock image generator failed to encode image data.'))
+    }, 'image/png')
+  })
+  return new File([blob], `mock-ai-run-${input.index + 1}.png`, { type: 'image/png' })
 }
 
 function hashString(value: string) {

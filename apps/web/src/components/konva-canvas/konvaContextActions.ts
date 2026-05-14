@@ -1,4 +1,5 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
+import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import type { CanvasDocument, CanvasShape } from '@/features/canvas-engine'
 import {
   alignKonvaShapes,
@@ -15,6 +16,7 @@ import {
 import { deleteKonvaShapes, duplicateKonvaShapes, reorderKonvaShapes } from './konvaCanvasStyle'
 import { pasteKonvaClipboard, writeKonvaShapesToSystemClipboard } from './konvaClipboardCommands'
 import type { KonvaContextMenuAction } from './KonvaContextMenu'
+import type { KonvaPendingImagePaste } from './KonvaPendingImagePasteLayer'
 import { groupKonvaShapes, setKonvaShapesLocked, ungroupKonvaShapes } from './konvaGroupCommands'
 import { copyKonvaShapes } from './konvaShapeCommands'
 
@@ -26,12 +28,18 @@ type RunKonvaContextActionOptions = {
   action: KonvaContextMenuAction
   clipboardRef: MutableRefObject<CanvasShape[]>
   document: CanvasDocument
+  getActivePageId?: () => string
   history: KonvaCanvasHistory
+  onImagePasteComplete?: (pendingId: string) => void
+  onImagePasteStateChange?: (state: KonvaPendingImagePaste) => void
+  onPageDocumentChange?: (pageId: string, updater: (document: CanvasDocument) => CanvasDocument) => boolean
+  pageId: string
   pastePoint?: { x: number; y: number }
   selectedIds: string[]
   onClipboardChange: (shapeCount: number) => void
   onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
   onSelectionChange: (shapeIds: string[]) => void
+  workspace?: TangentWorkspace
 }
 
 export async function runKonvaContextAction(options: RunKonvaContextActionOptions) {
@@ -49,14 +57,20 @@ export async function runKonvaContextAction(options: RunKonvaContextActionOption
   }
   if (action === 'paste') {
     await pasteKonvaClipboard({
+      getActivePageId: options.getActivePageId,
       clipboardRef,
       document,
       history,
       onClipboardChange,
       onDocumentChange,
+      onImagePasteComplete: options.onImagePasteComplete,
+      onImagePasteStateChange: options.onImagePasteStateChange,
+      onPageDocumentChange: options.onPageDocumentChange,
       onSelectionChange,
+      pageId: options.pageId,
       point: pastePoint ?? { x: 0, y: 0 },
       selectedIds,
+      workspace: options.workspace,
     })
     return
   }

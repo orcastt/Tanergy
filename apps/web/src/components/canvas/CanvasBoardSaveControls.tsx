@@ -56,14 +56,13 @@ export function BoardModeSaveStatus({
   onHistory,
   onLoad,
   onSave,
-  onSnapshot,
   saveError,
   snapshotMessage,
   status,
 }: BoardModeSaveStatusProps) {
   const boardStatusLabel = getBoardStatusLabel(status, lastAction)
   const boardDetail = saveError ?? snapshotMessage ?? getBoardStatusDetail(status, lastSavedAt, migration, issuePath)
-  const actionLabel = status === 'error' && lastAction === 'load' ? 'Retry load' : 'Save now'
+  const actionLabel = status === 'error' && lastAction === 'load' ? 'Retry' : 'Save'
   const action = status === 'error' && lastAction === 'load' ? onLoad : onSave
 
   return (
@@ -76,9 +75,6 @@ export function BoardModeSaveStatus({
           {actionLabel}
         </button>
       ) : null}
-      <button disabled={!editorAvailable || isRunning} onClick={onSnapshot} type="button">
-        Snapshot
-      </button>
       <button disabled={!editorAvailable || isRunning} onClick={onHistory} type="button">
         History
       </button>

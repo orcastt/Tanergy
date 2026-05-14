@@ -35,9 +35,14 @@ async function readSessionPayload(response: Response): Promise<AuthSessionRespon
 }
 
 export function requestCurrentSessionRefresh() {
+  clearSessionScopedClientState()
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new Event(SESSION_REFRESH_EVENT))
+}
+
+export function clearSessionScopedClientState() {
   if (typeof window === 'undefined') return
   window.localStorage.removeItem('tanergy.session.current')
   clearCachedBillingResources()
   clearCachedBoardResources()
-  window.dispatchEvent(new Event(SESSION_REFRESH_EVENT))
 }

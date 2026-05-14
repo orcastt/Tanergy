@@ -1,9 +1,14 @@
+import json
 import time
 
 from fastapi.testclient import TestClient
 
 from tangent_api.main import app
-from tangent_api import ai_provider_assets
+from tangent_api import ai_contracts, ai_provider_assets
+from tangent_api.ai_provider_assets import ProviderInputAsset
+from tangent_api.ai_provider_openai_compatible import run_openai_compatible_attempt
+from tangent_api.ai_route_catalog import AiProviderRouteCandidate
+from tangent_api.ai_schemas import AiRunChargeSummary, AiRunRecord, AiRunRequest
 from tangent_api.ai_provider_types import AiProviderAttemptResult
 from tangent_api.request_context import ApiRequestContext
 from tests.persistence_fakes import FakePostgresDatabase
@@ -18,10 +23,23 @@ def test_ai_model_registry_contract():
     models = response.json()["models"]
     assert [model["id"] for model in models] == [
         "gpt-image-2",
-        "gemini-3.1-flash-image-preview",
+        "doubao-seedream-5.0-lite",
+        "jimeng_t2i_v40",
+        "nano-banana-2",
     ]
     assert models[0]["isDefault"] is True
-    assert models[0]["parameterSchema"]["resolution"]
+    assert models[0]["parameterSchema"]["size"]
+    assert models[-1]["parameterSchema"]["imageSize"]
+
+    analysis_response = client.get("/api/v1/ai/models?capability=image_analysis")
+
+    assert analysis_response.status_code == 200
+    analysis_models = analysis_response.json()["models"]
+    assert {model["id"] for model in analysis_models} == {
+        "gpt-5-mini",
+        "gpt-4o-mini",
+        "gemini-2.5-flash",
+    }
 
 
 def test_ai_run_mock_contract_round_trip():
@@ -59,6 +77,36 @@ def test_ai_run_mock_contract_round_trip():
     assert len(loaded["outputAssetIds"]) == 4
 
 
+def test_ai_run_mock_analysis_uses_supported_analysis_model():
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/ai/runs",
+        json={
+            "boardId": "board_ai_analysis",
+            "inputAssetIds": ["asset_ref_1"],
+            "nodeId": "node_analysis",
+            "nodeType": "analysis",
+            "prompt": "Describe the lighting and composition.",
+            "runType": "image_analysis",
+            "selectedModelId": "gpt-5-mini",
+        },
+    )
+
+    assert response.status_code == 200
+    run = response.json()["run"]
+    assert run["estimatedCredits"] == 2
+    assert run["modelId"] == "gpt-5-mini"
+    assert run["provider"] == "geekai"
+    assert run["status"] == "queued"
+
+    loaded = _wait_for_run_status(client, run["runId"], {"succeeded"})
+    assert loaded["modelId"] == "gpt-5-mini"
+    assert loaded["outputAssetIds"] == []
+    assert loaded["textOutput"]
+    assert "Mock analysis" in loaded["textOutput"]
+
+
 def test_provider_base64_image_decode_rejects_estimated_oversize_payload(monkeypatch):
     monkeypatch.setattr(ai_provider_assets, "MAX_ASSET_BYTES", 2)
 
@@ -68,6 +116,133 @@ def test_provider_base64_image_decode_rejects_estimated_oversize_payload(monkeyp
         assert "asset size limit" in str(exc)
     else:
         raise AssertionError("Expected oversized provider image output to be rejected.")
+
+
+def test_provider_input_assets_reject_total_oversize_payload(monkeypatch):
+    class FakeStorage:
+        def get_record(self, asset_id, context):
+            return type(
+                "Record",
+                (),
+                {
+                    "height": 1,
+                    "mime": "image/png",
+                    "original_url": f"/assets/{asset_id}/original.png",
+                    "title": asset_id,
+                    "width": 1,
+                },
+            )()
+
+        def get_file_bytes(self, asset_id, file_name, context):
+            _ = (asset_id, file_name, context)
+            return b"abc"
+
+    monkeypatch.setattr(ai_provider_assets, "MAX_PROVIDER_INPUT_TOTAL_BYTES", 4)
+    monkeypatch.setattr("tangent_api.ai_provider_assets.get_asset_storage_adapter", lambda: FakeStorage())
+
+    context = ApiRequestContext(
+        auth_mode="dev-bypass",
+        is_dev_fallback=True,
+        user_avatar_initials="TU",
+        user_display_name="Test User",
+        user_email="test@example.com",
+        user_email_verified=True,
+        user_id="user_test",
+        workspace_board_count=1,
+        workspace_id="workspace_test",
+        workspace_kind="group_workspace",
+        workspace_name="Test Workspace",
+        workspace_role="owner",
+    )
+    payload = AiRunRequest(
+        input_asset_ids=["asset_a", "asset_b"],
+        prompt="Describe the attached images.",
+        run_type="image_analysis",
+        selected_model_id="gpt-5-mini",
+    )
+
+    try:
+        ai_provider_assets.load_provider_input_assets(payload, context)
+    except ValueError as exc:
+        assert "total size limit" in str(exc)
+    else:
+        raise AssertionError("Expected oversized provider input assets to be rejected.")
+
+
+def test_provider_input_assets_can_prefer_preview_bytes(monkeypatch):
+    requested_files = []
+
+    class FakeStorage:
+        def get_record(self, asset_id, context):
+            _ = context
+            return type(
+                "Record",
+                (),
+                {
+                    "height": 640,
+                    "mime": "image/png",
+                    "original_url": f"/assets/{asset_id}/original.png",
+                    "thumbnail1024_url": f"/assets/{asset_id}/thumb-1024.webp",
+                    "thumbnail512_url": f"/assets/{asset_id}/thumb-512.webp",
+                    "thumbnail256_url": None,
+                    "title": asset_id,
+                    "width": 960,
+                },
+            )()
+
+        def get_file_bytes(self, asset_id, file_name, context):
+            _ = (asset_id, context)
+            requested_files.append(file_name)
+            return b"preview"
+
+    monkeypatch.setattr("tangent_api.ai_provider_assets.get_asset_storage_adapter", lambda: FakeStorage())
+
+    context = _make_test_context()
+    payload = AiRunRequest(
+        input_asset_ids=["asset_preview"],
+        prompt="Describe the attached image.",
+        run_type="image_analysis",
+        selected_model_id="gpt-5-mini",
+    )
+
+    assets = ai_provider_assets.load_provider_input_assets(payload, context, prefer_preview=True)
+
+    assert requested_files == ["thumb-1024.webp"]
+    assert assets[0].file_name == "thumb-1024.webp"
+    assert assets[0].content == b"preview"
+
+
+def test_persist_provider_output_assets_skips_input_reload_when_dimensions_do_not_depend_on_input(monkeypatch):
+    class FakeStorage:
+        def get_record(self, asset_id, context):
+            raise AssertionError(f"Unexpected record load for {asset_id}.")
+
+        def get_file_bytes(self, asset_id, file_name, context):
+            raise AssertionError(f"Unexpected byte load for {asset_id}:{file_name}.")
+
+        def create_from_bytes(self, *, content, mime, context, origin, title, width, height):
+            _ = (content, mime, context, origin, title, width, height)
+            return type("Asset", (), {"id": "asset_generated"})()
+
+    monkeypatch.setattr("tangent_api.ai_provider_assets.get_asset_storage_adapter", lambda: FakeStorage())
+
+    context = _make_test_context()
+    payload = AiRunRequest(
+        input_asset_ids=["asset_original"],
+        params={"aspectRatio": "1:1", "resolution": "1K"},
+        prompt="Generate a poster.",
+        run_type="image_generation",
+        selected_model_id="gpt-image-2",
+    )
+
+    asset_ids = ai_provider_assets.persist_provider_output_assets(
+        [ai_provider_assets.ProviderImageOutput(content=b"png", mime="image/png")],
+        context,
+        payload,
+        "openai",
+    )
+
+    assert asset_ids == ["asset_generated"]
 
 
 def test_ai_run_mock_can_settle_against_credit_ledger(monkeypatch):
@@ -127,6 +302,23 @@ def test_ai_run_mock_can_settle_against_credit_ledger(monkeypatch):
     assert fake_db.api_cost_ledger[-1]["credits_charged"] == 10.0
     assert fake_db.api_cost_ledger[-1]["provider"] == "geekai"
     assert fake_db.api_cost_ledger[-1]["provider_currency"] == "USD"
+
+
+def _make_test_context():
+    return ApiRequestContext(
+        auth_mode="dev-bypass",
+        is_dev_fallback=True,
+        user_avatar_initials="TU",
+        user_display_name="Test User",
+        user_email="test@example.com",
+        user_email_verified=True,
+        user_id="user_test",
+        workspace_board_count=1,
+        workspace_id="workspace_test",
+        workspace_kind="group_workspace",
+        workspace_name="Test Workspace",
+        workspace_role="owner",
+    )
 
 
 def test_ai_run_mock_settles_team_workspace_against_team_wallet(monkeypatch):
@@ -362,6 +554,75 @@ def test_ai_run_mock_persists_quote_facts_and_loads_from_database(monkeypatch):
     assert payload["routeId"] == "route_gpt_image_2_primary"
     assert payload["estimatedCredits"] == 9
     assert payload["status"] == "succeeded"
+
+
+def test_ai_run_persisted_terminal_state_clears_in_memory_fallbacks(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.delenv("TANGENT_AI_MOCK_LEDGER_CHARGING", raising=False)
+    monkeypatch.setattr("tangent_api.ai_control_plane.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.ai_run_persistence.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.credit_ledger.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v1/ai/runs",
+        json={
+            "boardId": "board_memory_cleanup",
+            "prompt": "Clear in-memory fallback caches after persistence",
+            "runType": "image_generation",
+            "selectedModelId": "gpt-image-2",
+        },
+    )
+
+    assert created.status_code == 200
+    run_id = created.json()["run"]["runId"]
+    assert run_id not in ai_contracts.RUN_REQUESTS
+    assert run_id in ai_contracts.RUN_CONTEXTS
+
+    settled = _wait_for_run_status(client, run_id, {"succeeded"})
+
+    assert settled["status"] == "succeeded"
+    assert run_id not in ai_contracts.RUNS
+    assert run_id not in ai_contracts.RUN_REQUESTS
+    assert run_id not in ai_contracts.RUN_CONTEXTS
+
+
+def test_ai_text_run_persists_text_output_and_system_prompt(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.delenv("TANGENT_AI_MOCK_LEDGER_CHARGING", raising=False)
+    monkeypatch.setattr("tangent_api.ai_control_plane.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.ai_run_persistence.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.credit_ledger.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/ai/runs",
+        json={
+            "boardId": "board_prompt_optimizer",
+            "nodeId": "node_prompt_optimizer",
+            "nodeType": "prompt_optimizer",
+            "prompt": "A clean ceramic cup poster",
+            "runType": "text",
+            "selectedModelId": "hunyuan-3.0-preview",
+            "systemPrompt": "You are a prompt optimizer for AI image generation.",
+        },
+    )
+
+    assert response.status_code == 200
+    run = response.json()["run"]
+    assert run["estimatedCredits"] == 1
+    assert run["modelId"] == "hunyuan-3.0-preview"
+    assert run["status"] == "queued"
+
+    settled = _wait_for_run_status(client, run["runId"], {"succeeded"})
+    assert settled["runType"] == "text"
+    assert "clean ceramic cup poster" in (settled["textOutput"] or "").lower()
+    assert fake_db.ai_runs[run["runId"]]["params"]["systemPrompt"] == "You are a prompt optimizer for AI image generation."
+    assert fake_db.ai_runs[run["runId"]]["text_output"] == settled["textOutput"]
 
 
 def test_ai_run_mock_can_cancel_while_queued_or_running(monkeypatch):
@@ -1046,12 +1307,178 @@ def test_ai_run_auth_required_mode(monkeypatch):
 
     missing = client.get("/api/v1/ai/models?capability=image_generation")
     assert missing.status_code == 401
-
     explicit = client.get(
         "/api/v1/ai/models?capability=image_generation",
         headers={"Authorization": "Bearer valid-token"},
     )
     assert explicit.status_code == 200
+
+
+def test_openai_compatible_live_attempt_supports_image_analysis(monkeypatch):
+    captured_request: dict[str, object] = {}
+
+    class FakeResponse:
+        def __init__(self, body: dict[str, object]):
+            self._body = body
+            self.content = json.dumps(body).encode("utf-8")
+            self.headers = {"content-length": str(len(self.content))}
+            self.status_code = 200
+            self.text = self.content.decode("utf-8")
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return self._body
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            _ = args
+            _ = kwargs
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            _ = exc_type
+            _ = exc
+            _ = tb
+            return False
+
+        def post(self, path: str, headers: dict[str, str], json: dict[str, object]):
+            captured_request["path"] = path
+            captured_request["headers"] = headers
+            captured_request["json"] = json
+            return FakeResponse(
+                {
+                    "choices": [
+                        {
+                            "message": {
+                                "content": "Detailed analysis result.",
+                            }
+                        }
+                    ],
+                    "usage": {
+                        "cost": 0.01,
+                        "currency": "USD",
+                    },
+                }
+            )
+
+    monkeypatch.setattr("tangent_api.ai_provider_openai_compatible.httpx.Client", FakeClient)
+    monkeypatch.setattr(
+        "tangent_api.ai_provider_openai_compatible.load_provider_input_assets",
+        lambda payload, context, prefer_preview=False: [
+            ProviderInputAsset(
+                asset_id="asset_ref_1",
+                content=b"\x89PNG\r\n\x1a\nmock",
+                file_name="reference.png",
+                height=512,
+                mime="image/png",
+                title="Reference",
+                width=512,
+            )
+        ],
+    )
+
+    route = AiProviderRouteCandidate(
+        health_status="healthy",
+        priority=10,
+        provider_key="geekai",
+        provider_model="gpt-5-mini",
+        retry_policy={"maxAttempts": 2},
+        route_id="route_gpt_5_mini_primary",
+        route_key="geekai-multimodal-primary",
+        timeout_ms=45000,
+        weight=100,
+    )
+    context = ApiRequestContext(
+        auth_mode="dev-bypass",
+        is_dev_fallback=True,
+        user_avatar_initials="TU",
+        user_display_name="Test User",
+        user_email="test@example.com",
+        user_email_verified=True,
+        user_id="user_test",
+        workspace_board_count=1,
+        workspace_id="workspace_test",
+        workspace_kind="group_workspace",
+        workspace_name="Test Workspace",
+        workspace_role="owner",
+    )
+    payload = AiRunRequest(
+        board_id="board_analysis_live",
+        input_asset_ids=["asset_ref_1"],
+        node_id="node_analysis",
+        node_type="analysis",
+        prompt="Describe the attached image.",
+        run_type="image_analysis",
+        selected_model_id="gpt-5-mini",
+    )
+    run = AiRunRecord(
+        board_id="board_analysis_live",
+        charge=AiRunChargeSummary(
+            charged_account_id="credit_user_test",
+            charged_scope="actor_personal",
+            entitlement_source="personal_topup_or_free",
+            payer_label="Charges your credits",
+            plan_key="free_canvas",
+            preflight_status="mock_contract_only",
+            workspace_kind="group_workspace",
+            workspace_seat_id=None,
+        ),
+        charged_account_id="credit_user_test",
+        charged_scope="actor_personal",
+        cost_credits=0,
+        cost_hint="Estimated 2 credits · GPT-5 Mini",
+        created_at="2026-05-13T00:00:00Z",
+        estimated_credits=2,
+        entitlement_source="personal_topup_or_free",
+        error=None,
+        input_asset_ids=["asset_ref_1"],
+        latency_ms=0,
+        model_id="gpt-5-mini",
+        node_id="node_analysis",
+        output_asset_ids=[],
+        pricing_rule_id="price_gpt_5_mini_v1",
+        provider="geekai",
+        provider_cost=None,
+        provider_currency=None,
+        route_id="route_gpt_5_mini_primary",
+        route_key="geekai-multimodal-primary",
+        run_id="run_analysis_live",
+        run_type="image_analysis",
+        selected_tier_key=None,
+        status="running",
+        text_output=None,
+        workspace_kind="group_workspace",
+        workspace_seat_id=None,
+    )
+
+    result = run_openai_compatible_attempt(
+        run,
+        payload,
+        route,
+        context,
+        api_key="test-key",
+        base_url="https://example.test/v1",
+    )
+
+    assert result.status == "succeeded"
+    assert result.text_output == "Detailed analysis result."
+    assert result.provider_cost == 0.01
+    assert result.provider_currency == "USD"
+    assert captured_request["path"] == "/chat/completions"
+    request_json = captured_request["json"]
+    assert isinstance(request_json, dict)
+    messages = request_json["messages"]
+    assert isinstance(messages, list)
+    user_message = messages[-1]
+    assert isinstance(user_message, dict)
+    content = user_message["content"]
+    assert isinstance(content, list)
+    assert content[0]["type"] == "text"
+    assert content[1]["type"] == "image_url"
 
 
 def _wait_for_run_status(client: TestClient, run_id: str, statuses: set[str], timeout_seconds: float = 1.0) -> dict[str, object]:

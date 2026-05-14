@@ -47,12 +47,12 @@ export function shouldWarnBeforeUnload(status: BoardSaveStatus, saving: boolean,
 }
 
 export function getBoardStatusLabel(status: BoardSaveStatus, lastAction: BoardAction | null) {
-  if (status === 'loading') return 'Loading board'
-  if (status === 'dirty') return 'Unsaved changes'
+  if (status === 'loading') return 'Loading'
+  if (status === 'dirty') return 'Unsaved'
   if (status === 'saving') return 'Saving'
   if (status === 'saved') return 'Saved'
   if (status === 'loaded') return lastAction === 'load' ? 'Loaded' : 'Ready'
-  if (status === 'blocked') return 'Save blocked'
+  if (status === 'blocked') return 'Blocked'
   if (status === 'error') return lastAction === 'load' ? 'Load failed' : 'Save failed'
   return 'Ready'
 }
@@ -64,7 +64,7 @@ export function getBoardStatusDetail(
   issuePath?: string
 ) {
   if (status === 'blocked') return issuePath
-  if (lastSavedAt && (status === 'saved' || status === 'loaded')) return `At ${formatTime(lastSavedAt)}`
+  if (lastSavedAt && (status === 'saved' || status === 'loaded')) return formatTime(lastSavedAt)
   if (migration?.migrated) return `${migration.migrated} asset(s) migrated`
   return null
 }

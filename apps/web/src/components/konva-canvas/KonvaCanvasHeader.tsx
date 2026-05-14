@@ -30,17 +30,17 @@ export function KonvaCanvasHeader({
   const extraCount = Math.max(0, sessions.length - 4)
   const visibleSessions = sessions.slice(0, 4)
   const label = collaboration?.status === 'loading' || collaboration?.transportStatus === 'connecting'
-    ? 'Connecting...'
+    ? 'Connecting'
     : collaboration?.transportStatus === 'disconnected'
-    ? 'Presence reconnecting'
+    ? 'Reconnecting'
     : collaboration?.transportStatus === 'error'
-    ? 'Presence error'
+    ? 'Offline'
     : collaboration?.error
-    ? 'Presence unavailable'
+    ? 'Offline'
     : collaboration?.permission === 'view'
       ? 'View only'
       : sessions.length <= 1
-        ? 'Just you'
+        ? 'Solo'
         : `${sessions.length} online`
   const localSyncLabel = getLocalSyncLabel(localSync)
   const localSyncTitle = getLocalSyncTitle(localSync)
@@ -82,18 +82,21 @@ export function KonvaCanvasHeader({
 
 function getLocalSyncLabel(localSync?: KonvaLocalYjsSyncController) {
   if (!localSync || localSync.status === 'disabled') return null
-  if (localSync.status === 'unsupported') return 'Live sync unavailable'
-  if (localSync.status === 'disconnected') return 'Live sync reconnecting'
-  if (localSync.status === 'error') return 'Live sync error'
-  if (localSync.hasPendingRemoteSnapshot) return 'Remote update waiting'
-  if (localSync.status === 'connecting') return 'Live sync...'
-  if (localSync.hasUnsyncedLocalChanges) return 'Syncing changes'
-  return 'Live sync ready'
+  if (localSync.status === 'unsupported') return 'No live sync'
+  if (localSync.status === 'disconnected') return 'Reconnecting'
+  if (localSync.status === 'error') return 'Sync error'
+  if (localSync.status === 'connecting') return 'Syncing'
+  return null
 }
 
 function getLocalSyncTone(localSync?: KonvaLocalYjsSyncController) {
   if (!localSync || localSync.status === 'disabled' || localSync.status === 'connecting') return 'muted'
-  if (localSync.status === 'unsupported' || localSync.status === 'disconnected' || localSync.hasPendingRemoteSnapshot) return 'warning'
+  if (
+    localSync.status === 'unsupported'
+    || localSync.status === 'disconnected'
+    || localSync.hasPendingRemoteSnapshot
+    || localSync.transportState?.outboundQueueState === 'queued'
+  ) return 'warning'
   if (localSync.status === 'error') return 'danger'
   return 'success'
 }
@@ -106,6 +109,9 @@ function getLocalSyncTitle(localSync?: KonvaLocalYjsSyncController) {
   const details = [
     localSync.transportState?.lastActivityAt ? `Last room activity ${formatSyncTime(localSync.transportState.lastActivityAt)}` : null,
     localSync.transportState?.lastSyncedAt ? `Room synced ${formatSyncTime(localSync.transportState.lastSyncedAt)}` : null,
+    localSync.transportState?.outboundQueueCount
+      ? `${localSync.transportState.outboundQueueCount} queued update${localSync.transportState.outboundQueueCount === 1 ? '' : 's'}`
+      : null,
     localSync.lastPublishedAt ? `Last publish ${formatSyncTime(localSync.lastPublishedAt)}` : null,
     localSync.lastRemoteAppliedAt ? `Last remote apply ${formatSyncTime(localSync.lastRemoteAppliedAt)}` : null,
     localSync.canUndo ? 'Collaborative undo ready' : null,

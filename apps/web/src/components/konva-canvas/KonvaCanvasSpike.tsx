@@ -9,6 +9,7 @@ import type { BoardPersistenceRecord, BoardPersistenceSummary } from '@/features
 import { loadLocalBoardDocument } from '@/features/boards/localBoardClient'
 import { defaultCanvasSettings, useCanvasSettingsStore } from '@/features/canvas-settings/canvasSettingsStore'
 import { useResolvedCanvasThemeMode } from '@/features/canvas-settings/canvasTheme'
+import { defaultKonvaBoardPageId } from '@/features/boards/konvaBoardPageContract'
 import {
   restoreKonvaBoardDocument,
   restoreKonvaBoardPages,
@@ -31,6 +32,7 @@ import { isKonvaEditableTextShape, KonvaTextEditor, type KonvaEditableTextShape 
 import { getEditableKonvaNodeTextField, KonvaNodeTextEditor, type KonvaNodeTextFieldName } from './KonvaNodeTextEditor'
 import { KonvaCanvasToolbar } from './KonvaCanvasToolbar'
 import { KonvaNodeCreateMenu } from './KonvaNodeCreateMenu'
+import type { KonvaPendingImagePaste } from './KonvaPendingImagePasteLayer'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
 import { konvaDefaultShapeStyle } from './konvaCanvasStyle'
 import { runKonvaContextAction } from './konvaContextActions'
@@ -92,6 +94,7 @@ export function KonvaCanvasSpike({
     boardTitle,
     initialBoard,
     seedOnMount,
+    workspaceId: initialBoard?.workspaceId ?? workspace?.id,
   }))
   const [camera, setCamera] = useState<CanvasCamera>(document.camera)
   const [activeToolState, setActiveToolState] = useState<KonvaCanvasTool>('select')
@@ -99,6 +102,7 @@ export function KonvaCanvasSpike({
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [isSpacePanning, setIsSpacePanning] = useState(false)
   const [nextStyle, setNextStyle] = useState<CanvasShapeStyle>(konvaDefaultShapeStyle)
+  const [pendingImagePastes, setPendingImagePastes] = useState<KonvaPendingImagePaste[]>([])
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
   const [cropEditingImageId, setCropEditingImageId] = useState<string | null>(null)
@@ -108,6 +112,10 @@ export function KonvaCanvasSpike({
   const [dropHintKind, setDropHintKind] = useState<'image' | 'pdf' | null>(null)
   const [stage, setStage] = useState<Konva.Stage | null>(null)
   const [contextMenu, setContextMenu] = useState<{ worldX: number; worldY: number; x: number; y: number } | null>(null)
+  const [persistedBoardIds, setPersistedBoardIds] = useState<Record<string, true>>(() => (
+    initialBoard ? { [boardId]: true } : {}
+  ))
+  const hasPersistedBoard = Boolean(initialBoard) || Boolean(persistedBoardIds[boardId])
   const themeMode = useResolvedCanvasThemeMode()
   const [, setClipboardShapeCount] = useState(0)
   const clipboardRef = useRef<CanvasShape[]>([])
@@ -119,6 +127,8 @@ export function KonvaCanvasSpike({
   const wasReadOnlyRef = useRef(false)
   const lastPastePointRef = useRef<CanvasPoint | null>(null)
   const restoredInitialBoardId = useRef<string | null>(null)
+  const pendingImagePasteTimeoutsRef = useRef(new Map<string, number>())
+  const activePageIdRef = useRef(defaultKonvaBoardPageId)
   const boardPageHistoryRef = useRef<{
     getPageState?: (document: CanvasDocument) => KonvaCanvasHistoryPageState | null
     restorePageState?: (state: KonvaCanvasHistoryPageState) => void
@@ -175,7 +185,11 @@ export function KonvaCanvasSpike({
     onDocumentChange: setDocument,
     onTransientClear: clearTransientState,
   })
+  useEffect(() => {
+    activePageIdRef.current = boardPages.activePageId
+  }, [boardPages.activePageId])
   const collaborationEnabled = mode === 'board'
+    && hasPersistedBoard
     && Boolean(workspace?.id)
     && (!initialBoard || workspace?.id === initialBoard.workspaceId)
   const collaboration = useBoardCollaborationPresence({
@@ -194,7 +208,7 @@ export function KonvaCanvasSpike({
     board: BoardPersistenceRecord,
     options: { clearTransient?: boolean } = {},
   ) => {
-    const restored = restoreKonvaBoardDocument(board.document)
+    const restored = restoreKonvaBoardDocument(board.document, { workspaceId: board.workspaceId })
     if (options.clearTransient ?? true) clearTransientState()
     history.clear()
     boardPages.restorePages(restored)
@@ -243,6 +257,10 @@ export function KonvaCanvasSpike({
     interactionLockedRef.current = effectiveReadOnly
   }, [effectiveReadOnly])
   useEffect(() => () => {
+    for (const timeoutId of pendingImagePasteTimeoutsRef.current.values()) {
+      window.clearTimeout(timeoutId)
+    }
+    pendingImagePasteTimeoutsRef.current.clear()
     ydoc.destroy()
   }, [ydoc])
   useEffect(() => {
@@ -421,6 +439,33 @@ export function KonvaCanvasSpike({
     history.checkpoint(document)
     boardPages.moveSelectionToPage(targetPageId, selectedIds)
   }, [boardPages, document, history, selectedIds])
+  const clearPendingImagePasteTimeout = useCallback((pendingId: string) => {
+    const timeoutId = pendingImagePasteTimeoutsRef.current.get(pendingId)
+    if (timeoutId === undefined) return
+    window.clearTimeout(timeoutId)
+    pendingImagePasteTimeoutsRef.current.delete(pendingId)
+  }, [])
+  const handlePendingImagePasteStateChange = useCallback((state: KonvaPendingImagePaste) => {
+    clearPendingImagePasteTimeout(state.id)
+    setPendingImagePastes((current) => {
+      const next = current.filter((item) => item.id !== state.id)
+      next.push(state)
+      return next
+    })
+    if (state.status !== 'failed') return
+    const timeoutId = window.setTimeout(() => {
+      pendingImagePasteTimeoutsRef.current.delete(state.id)
+      setPendingImagePastes((current) => current.filter((item) => item.id !== state.id))
+    }, 1800)
+    pendingImagePasteTimeoutsRef.current.set(state.id, timeoutId)
+  }, [clearPendingImagePasteTimeout])
+  const handlePendingImagePasteComplete = useCallback((pendingId: string) => {
+    clearPendingImagePasteTimeout(pendingId)
+    setPendingImagePastes((current) => current.filter((item) => item.id !== pendingId))
+  }, [clearPendingImagePasteTimeout])
+  const visiblePendingImagePastes = useMemo(() => (
+    pendingImagePastes.filter((item) => item.pageId === boardPages.activePageId)
+  ), [boardPages.activePageId, pendingImagePastes])
 
   const editingTextShape = document.shapes.find((shape): shape is KonvaEditableTextShape => shape.id === editingTextId && isKonvaEditableTextShape(shape))
   const editingNodeTextShape = editingNodeText
@@ -433,6 +478,7 @@ export function KonvaCanvasSpike({
     onDocumentChange: setDocument,
     onSelectionChange: handleSelectionChange,
     selectedIds,
+    workspace,
   })
   const handleSelectionExportStageReady = selectionExport.handleStageReady
   const handleStageReady = useCallback((nextStage: Konva.Stage | null) => {
@@ -443,17 +489,22 @@ export function KonvaCanvasSpike({
     clipboardRef,
     document,
     enabled: !effectiveReadOnly,
+    getActivePageId: () => activePageIdRef.current,
     history,
       onClipboardChange: setClipboardShapeCount,
       onRedo: collaborationEnabled ? localYjsSync.redoLocalChange : undefined,
       onDocumentChange: setDocument,
       onEdgeSelectionChange: setSelectedEdgeId,
+      onImagePasteComplete: handlePendingImagePasteComplete,
+      onImagePasteStateChange: handlePendingImagePasteStateChange,
+      onPageDocumentChange: boardPages.updatePageDocument,
       getPastePoint: () => lastPastePointRef.current ?? screenToWorld({ x: size.width / 2, y: size.height / 2 }, camera),
       onPanningChange: setIsSpacePanning,
       onSelectionChange: handleSelectionChange,
       onToolChange: handleToolChange,
       onUndo: collaborationEnabled ? localYjsSync.undoLocalChange : undefined,
       onCopySelectionSvg: () => { void selectionExport.handleCopySelectionSvg() },
+      pageId: boardPages.activePageId,
       selectedEdgeId,
       selectedIds,
       workspace,
@@ -485,12 +536,18 @@ export function KonvaCanvasSpike({
       action,
       clipboardRef,
       document,
+      getActivePageId: () => activePageIdRef.current,
       history,
       onClipboardChange: setClipboardShapeCount,
       onDocumentChange: setDocument,
+      onImagePasteComplete: handlePendingImagePasteComplete,
+      onImagePasteStateChange: handlePendingImagePasteStateChange,
+      onPageDocumentChange: boardPages.updatePageDocument,
       onSelectionChange: handleSelectionChange,
+      pageId: boardPages.activePageId,
       pastePoint,
       selectedIds,
+      workspace,
     })
   }
   return (
@@ -542,7 +599,7 @@ export function KonvaCanvasSpike({
             </div>
           </div>
         )}
-        {effectiveReadOnly ? null : (
+        {effectiveReadOnly || !collaborationEnabled ? null : (
           <KonvaLocalSyncBanner localSync={localYjsSync} />
         )}
         <KonvaCanvasPagesPanel
@@ -579,6 +636,7 @@ export function KonvaCanvasSpike({
             height={size.height}
             isSpacePanning={isSpacePanning}
             nextStyle={nextStyle}
+            pendingImagePastes={visiblePendingImagePastes}
             onCameraCommit={handleCameraCommit}
             onCameraPreview={handleCameraPreview}
             onDocumentChange={setDocument}
@@ -746,10 +804,12 @@ export function KonvaCanvasSpike({
             mode={mode}
             onBoardLoaded={(board) => {
               lastKnownBoardSavedAtRef.current = board.savedAt
+              setPersistedBoardIds((current) => (current[boardId] ? current : { ...current, [boardId]: true }))
               onBoardLoaded?.(board.title)
             }}
             onBoardSaved={(board) => {
               lastKnownBoardSavedAtRef.current = board.savedAt
+              setPersistedBoardIds((current) => (current[boardId] ? current : { ...current, [boardId]: true }))
               onBoardSaved?.(board)
             }}
             onDocumentRestore={(restore) => {
@@ -789,14 +849,18 @@ function createInitialDocument({
   boardTitle,
   initialBoard,
   seedOnMount,
+  workspaceId,
 }: {
   boardTitle: string
   initialBoard: BoardPersistenceRecord | null
   seedOnMount: boolean
+  workspaceId?: string
 }) {
   if (initialBoard) {
     try {
-      return restoreKonvaBoardDocument(initialBoard.document).document
+      return restoreKonvaBoardDocument(initialBoard.document, {
+        workspaceId: initialBoard.workspaceId ?? workspaceId,
+      }).document
     } catch {
       // Fall back to an empty document if the shared payload cannot be restored.
     }

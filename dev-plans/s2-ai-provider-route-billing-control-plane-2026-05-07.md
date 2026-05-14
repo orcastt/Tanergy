@@ -1,6 +1,6 @@
 # S2 AI Provider Route + Billing Control Plane
 
-**Updated**: 2026-05-07
+**Updated**: 2026-05-14
 **Status**: Active tactical plan for moving AI provider calls, route switching, credit charging and admin observability behind one server-owned AiRun control plane.
 
 ## Goal
@@ -67,8 +67,11 @@ Already present in the architecture/state docs and first-pass code:
 Current gap:
 
 - the latest GeekAI canvas-facing Next API path should be treated as a fast local integration path, then folded back into the unified AiRun/provider-route adapter layer before production reliance
+- the active image-generation lane is now explicitly GPT Image 2, Nano Banana 2, Doubao Seedream 5.0 Lite and Jimeng 4.0; migration `20260514_0021_ai_image_model_refresh.py` keeps backend seeds aligned and `gemini-3.1-flash-image-preview` is no longer part of the active image-generation surface
+- long-running image routes now assume a `240000 ms` timeout boundary instead of the shorter local default
+- Prompt Optimizer and the message-native Chat node now share a backend short-text `AiRun` path with durable terminal `text_output` when the canvas is pointed at FastAPI; backend analysis-capable model/route/pricing seed plus one reusable `s2_live_ai_smoke.py` image->analysis acceptance script now also exist; remaining work is credentialed live image/analysis smoke and reducing production dependence on local Next fallbacks
 - provider parameter mapping for models like GPT Image 2, Nano Banana 2, Doubao Seedream and Jimeng needs to live in route/model configuration or provider adapter code, not scattered in node components
-- credit estimation and final settlement need a small end-to-end smoke path with real credentials
+- credit estimation and final settlement still need a clean end-to-end smoke path with real credentials
 
 ## Target Data Facts
 
@@ -178,7 +181,7 @@ Exit criteria:
 Exit criteria:
 
 - A run can select a GeekAI route by model/priority, not by frontend hardcoding.
-- The adapter can support GPT Image 2, Nano Banana 2, Doubao Seedream and Jimeng payload differences.
+- The adapter can support GPT Image 2, Nano Banana 2, Doubao Seedream 5.0 Lite and Jimeng payload differences without leaking provider-specific fields into the node contract.
 
 ### Phase 3: Credit Preflight + Settlement
 
@@ -237,6 +240,7 @@ Minimum manual smoke before calling this cut stable:
    - run with insufficient credits fails before provider execution
 3. GeekAI live image:
    - run one `Image Gen` with a low-cost/default route
+   - use one of `gpt-image-2`, `nano-banana-2`, `doubao-seedream-5.0-lite` or `jimeng_t2i_v40`
    - confirm output persists as an Asset and appears in node preview
 4. Image Gen 4:
    - run one four-output generation

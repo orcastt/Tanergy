@@ -274,6 +274,37 @@ export function useKonvaBoardPages({
     noteCollaborationChange([previousActivePageId, targetPageId])
   }, [getActiveDocument, noteCollaborationChange, onDocumentChange, onTransientClear])
 
+  const updatePageDocument = useCallback((
+    pageId: string,
+    updater: (document: CanvasDocument) => CanvasDocument,
+  ) => {
+    const currentPages = persistActivePage(pagesRef.current, activePageIdRef.current, getActiveDocument())
+    const now = new Date().toISOString()
+    let didUpdate = false
+    const nextPages = currentPages.map((page) => {
+      if (page.id !== pageId) return page
+      didUpdate = true
+      const nextDocument = updater(cloneKonvaPageCanvasDocument(page.canvasDocument))
+      return {
+        ...page,
+        canvasDocument: nextDocument,
+        index: page.index,
+        title: page.title || nextDocument.metadata.name || `Page ${page.index + 1}`,
+        updatedAt: nextDocument.metadata.updatedAt || now,
+      }
+    })
+    if (!didUpdate) return false
+    pagesRef.current = nextPages
+    setPages(nextPages)
+    if (pageId === activePageIdRef.current) {
+      const activePage = nextPages.find((page) => page.id === pageId)
+      if (activePage) onDocumentChange(cloneKonvaPageCanvasDocument(activePage.canvasDocument))
+    }
+    setRevision((value) => value + 1)
+    noteCollaborationChange([pageId])
+    return true
+  }, [getActiveDocument, noteCollaborationChange, onDocumentChange])
+
   const restorePages = useCallback((restore: KonvaBoardRestorePayload, options: RestorePageOptions = {}) => {
     const nextPages = normalizeKonvaBoardPageIndexes(restore.pages)
     const preferredActivePageId = options.preserveActivePage
@@ -411,6 +442,7 @@ export function useKonvaBoardPages({
     restorePages,
     revision,
     selectPage,
+    updatePageDocument,
   }
 }
 

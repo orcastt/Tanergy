@@ -138,6 +138,7 @@ export function WorkspaceBoardItem({
       className={`workspace-board-card ${viewMode === 'list' ? 'is-list' : ''}`}
       data-card-color={getBoardDisplayCardColor(board)}
       data-interactive={isInteractive ? 'true' : 'false'}
+      data-menu-open={isMenuOpen ? 'true' : undefined}
       data-pinned={board.isPinned ? 'true' : undefined}
     >
       <div className="workspace-board-status-badges" aria-label="Board status">

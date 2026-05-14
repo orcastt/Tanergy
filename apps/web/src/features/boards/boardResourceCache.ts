@@ -31,7 +31,7 @@ export function readCachedBoardList(workspaceId?: string) {
     storagePrefix: 'tanergy.board-list.',
     ttlMs: boardListTtlMs,
   })
-  return snapshot.status === 'ready' ? snapshot.data ?? null : null
+  return snapshot.status === 'ready' ? filterSupportedBoardSummaries(snapshot.data ?? []) : null
 }
 
 export function readCachedBoardRecord(boardId: string, workspaceId?: string) {
@@ -46,7 +46,7 @@ export function readCachedBoardRecord(boardId: string, workspaceId?: string) {
 
 export function primeBoardListResource(workspaceId: string | undefined, boards: BoardPersistenceSummary[]) {
   const key = boardListKey(workspaceId)
-  primeClientResource(boardListStore, key, boards.map(sanitizeBoardSummaryForCache), {
+  primeClientResource(boardListStore, key, filterSupportedBoardSummaries(boards).map(sanitizeBoardSummaryForCache), {
     maxEntries: boardListMaxEntries,
     storage: 'session',
     storageKey: boardListStorageKey(key),
@@ -70,7 +70,9 @@ export function loadCachedBoardListResource(
   options: LoadOptions = {},
 ) {
   const key = boardListKey(workspaceId)
-  return loadClientResource(boardListStore, key, async () => (await loader()).map(sanitizeBoardSummaryForCache), {
+  return loadClientResource(boardListStore, key, async () => (
+    filterSupportedBoardSummaries(await loader()).map(sanitizeBoardSummaryForCache)
+  ), {
     force: options.force,
     maxEntries: boardListMaxEntries,
     storage: 'session',
@@ -97,6 +99,10 @@ export function loadCachedBoardRecordResource(
 
 export function upsertBoardSummaryInCaches(board: BoardPersistenceSummary, workspaceId: string | undefined = board.workspaceId) {
   const nextWorkspaceId = workspaceId ?? board.workspaceId
+  if (!isSupportedBoardSummary(board)) {
+    removeBoardFromCaches(board.id, nextWorkspaceId)
+    return
+  }
   const currentList = readCachedBoardList(nextWorkspaceId)
   primeBoardListResource(
     nextWorkspaceId,
@@ -159,6 +165,14 @@ function sanitizeBoardSummaryForCache(board: BoardPersistenceSummary): BoardPers
     ...board,
     thumbnailUrl: normalizeBoardThumbnailUrl(board.thumbnailUrl),
   }
+}
+
+function filterSupportedBoardSummaries(boards: BoardPersistenceSummary[]) {
+  return boards.filter(isSupportedBoardSummary)
+}
+
+function isSupportedBoardSummary(board: BoardPersistenceSummary) {
+  return board.canvasEngine === 'konva'
 }
 
 function boardListKey(workspaceId?: string) {

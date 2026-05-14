@@ -59,6 +59,32 @@ def test_board_copy_and_delete_are_owner_only(monkeypatch):
     assert ("dev-workspace", "owner_only_board") not in fake_db.boards
 
 
+def test_solo_workspace_owner_can_copy_and_delete_stale_owned_board(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
+    store = PostgresBoardStore()
+
+    original_owner = make_context("user_original_owner", role="owner")
+    solo_workspace_owner = make_context("user_workspace_owner", role="owner")
+
+    store.save_board(
+        BoardSaveRequest(
+            boardId="stale_private_board",
+            document={"assets": [], "shapes": [{"id": "shape_1"}]},
+            title="Stale Private Board",
+        ),
+        original_owner,
+    )
+
+    copied = store.copy_board("stale_private_board", solo_workspace_owner)
+    assert copied.id != "stale_private_board"
+    assert copied.title == "Stale Private Board Copy"
+
+    deleted_id = store.delete_board("stale_private_board", solo_workspace_owner)
+    assert deleted_id == "stale_private_board"
+    assert ("dev-workspace", "stale_private_board") not in fake_db.boards
+
+
 def test_expired_share_link_blocks_resolve_and_shared_board_load(monkeypatch):
     fake_db = FakePostgresDatabase()
     monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)

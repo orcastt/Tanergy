@@ -1,3 +1,4 @@
+import base64
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -16,6 +17,7 @@ from tangent_api.ai_route_catalog import AiProviderRouteCandidate
 from tangent_api.request_context import ApiRequestContext
 
 MAX_PROVIDER_JSON_BYTES = 8 * 1024 * 1024
+MAX_TEXT_INPUT_ASSET_BYTES = 20 * 1024 * 1024
 
 
 def run_openai_compatible_attempt(
@@ -29,7 +31,7 @@ def run_openai_compatible_attempt(
 ) -> AiProviderAttemptResult:
     if not api_key or not base_url:
         return _failure(route, "provider_not_configured", "OpenAI-compatible route is missing API credentials.", retryable=True)
-    if payload.run_type not in {"image_generation", "image_edit"}:
+    if payload.run_type not in {"image_analysis", "image_generation", "image_edit", "text"}:
         return _failure(
             route,
             "provider_capability_not_implemented",
@@ -41,7 +43,9 @@ def run_openai_compatible_attempt(
     timeout_seconds = max(1.0, route.timeout_ms / 1000)
     try:
         with httpx.Client(base_url=base_url.rstrip("/"), timeout=timeout_seconds) as client:
-            if payload.run_type == "image_edit" and payload.input_asset_ids:
+            if payload.run_type in {"image_analysis", "text"}:
+                response = _post_text_completion(client, api_key, payload, route, context)
+            elif payload.run_type == "image_edit" and payload.input_asset_ids:
                 response = _post_image_edit(client, api_key, payload, route, context)
             else:
                 response = _post_image_generation(client, api_key, payload, route)
@@ -53,6 +57,34 @@ def run_openai_compatible_attempt(
         return _failure(route, "provider_transport_error", str(exc), retryable=True, started_at=started_at, work_started=False)
     except ValueError as exc:
         return _failure(route, "provider_response_invalid", str(exc), retryable=True, started_at=started_at, work_started=True)
+
+    if payload.run_type in {"image_analysis", "text"}:
+        text_output = _response_text_output(body)
+        if not text_output:
+            return _failure(
+                route,
+                "provider_empty_response",
+                "OpenAI-compatible route returned no text output.",
+                retryable=True,
+                started_at=started_at,
+                work_started=True,
+            )
+        return AiProviderAttemptResult(
+            created_at=_timestamp(),
+            error_code=None,
+            error_message=None,
+            latency_ms=_latency_ms(started_at),
+            output_asset_ids=[],
+            provider=route.provider_key,
+            provider_cost=_response_cost(body),
+            provider_currency=_response_currency(body),
+            retryable=False,
+            route_id=route.route_id,
+            route_key=route.route_key,
+            status="succeeded",
+            text_output=text_output,
+            work_started=True,
+        )
 
     outputs = []
     for item in body.get("data") or []:
@@ -105,6 +137,31 @@ def _post_image_generation(
     }
     return client.post(
         "/images/generations",
+        headers={"Authorization": f"Bearer {api_key}"},
+        json=request_json,
+    )
+
+
+def _post_text_completion(
+    client: httpx.Client,
+    api_key: str,
+    payload: AiRunRequest,
+    route: AiProviderRouteCandidate,
+    context: ApiRequestContext,
+) -> httpx.Response:
+    request_json = {
+        "model": route.provider_model,
+        "messages": _text_messages(payload, context),
+        "stream": False,
+    }
+    max_completion_tokens = _optional_positive_int(payload.params.get("maxCompletionTokens"))
+    if max_completion_tokens is not None:
+        request_json["max_completion_tokens"] = max_completion_tokens
+    temperature = _optional_float(payload.params.get("temperature"))
+    if temperature is not None:
+        request_json["temperature"] = temperature
+    return client.post(
+        "/chat/completions",
         headers={"Authorization": f"Bearer {api_key}"},
         json=request_json,
     )
@@ -211,11 +268,122 @@ def _response_currency(body: dict[str, object]) -> Optional[str]:
     return str(currency) if currency else None
 
 
+def _response_text_output(body: dict[str, object]) -> Optional[str]:
+    choices = body.get("choices")
+    if not isinstance(choices, list):
+        return None
+    for choice in choices:
+        if not isinstance(choice, dict):
+            continue
+        message = choice.get("message")
+        if not isinstance(message, dict):
+            continue
+        content = _content_text(message.get("content"))
+        if content:
+            return content
+    return None
+
+
 def _count(payload: AiRunRequest) -> int:
     try:
         return max(1, min(4, int(payload.params.get("count", 1))))
     except (TypeError, ValueError):
         return 1
+
+
+def _text_messages(payload: AiRunRequest, context: ApiRequestContext) -> list[dict[str, object]]:
+    messages = _normalized_text_messages(payload)
+    if payload.system_prompt and not any(message.get("role") == "system" for message in messages):
+        messages.insert(0, {"role": "system", "content": payload.system_prompt.strip()})
+    if not messages:
+        system_prompt = (payload.system_prompt or "").strip()
+        prompt = (payload.prompt or "Untitled prompt").strip() or "Untitled prompt"
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+    image_parts = _inline_text_input_asset_parts(payload, context)
+    if image_parts:
+        _append_image_parts_to_last_user_message(messages, image_parts)
+    return messages
+
+
+def _normalized_text_messages(payload: AiRunRequest) -> list[dict[str, object]]:
+    raw_messages = payload.params.get("messages")
+    if not isinstance(raw_messages, list):
+        return []
+    normalized: list[dict[str, object]] = []
+    for item in raw_messages[:32]:
+        if not isinstance(item, dict):
+            continue
+        role = item.get("role")
+        if role not in {"assistant", "system", "user"}:
+            continue
+        content = _normalized_message_content(item.get("content"))
+        if content is None:
+            continue
+        normalized.append({"role": role, "content": content})
+    return normalized
+
+
+def _normalized_message_content(content: object) -> Optional[object]:
+    if isinstance(content, str):
+        trimmed = content.strip()
+        return trimmed[:4000] if trimmed else None
+    if not isinstance(content, list):
+        return None
+    text_parts: list[dict[str, str]] = []
+    for item in content[:32]:
+        if not isinstance(item, dict):
+            continue
+        if item.get("type") != "text":
+            continue
+        text = item.get("text")
+        if not isinstance(text, str):
+            continue
+        trimmed = text.strip()
+        if not trimmed:
+            continue
+        text_parts.append({"type": "text", "text": trimmed[:4000]})
+    if not text_parts:
+        return None
+    return text_parts if len(text_parts) > 1 else text_parts[0]["text"]
+
+
+def _inline_text_input_asset_parts(payload: AiRunRequest, context: ApiRequestContext) -> list[dict[str, object]]:
+    if not payload.input_asset_ids:
+        return []
+    total_bytes = 0
+    parts: list[dict[str, object]] = []
+    for asset in load_provider_input_assets(payload, context, prefer_preview=True):
+        total_bytes += len(asset.content)
+        if total_bytes > MAX_TEXT_INPUT_ASSET_BYTES:
+            raise ValueError("Text run input images exceed the provider attachment size limit.")
+        parts.append(
+            {
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:{asset.mime};base64,{base64.b64encode(asset.content).decode('ascii')}",
+                },
+            }
+        )
+    return parts
+
+
+def _append_image_parts_to_last_user_message(messages: list[dict[str, object]], image_parts: list[dict[str, object]]) -> None:
+    for index in range(len(messages) - 1, -1, -1):
+        message = messages[index]
+        if message.get("role") != "user":
+            continue
+        content = message.get("content")
+        if isinstance(content, str):
+            parts: list[dict[str, object]] = [{"type": "text", "text": content}]
+        elif isinstance(content, list):
+            parts = list(content)
+        else:
+            parts = []
+        message["content"] = [*parts, *image_parts]
+        return
+    messages.append({"role": "user", "content": image_parts})
 
 
 def _image_request_fields(payload: AiRunRequest, route: AiProviderRouteCandidate) -> dict[str, str]:
@@ -244,6 +412,36 @@ def _openai_size_for_payload(payload: AiRunRequest) -> str:
     if aspect_ratio == "9:16":
         return "1024x1536"
     return "1024x1024"
+
+
+def _content_text(content: object) -> str:
+    if isinstance(content, str):
+        return content.strip()
+    if not isinstance(content, list):
+        return ""
+    parts: list[str] = []
+    for item in content:
+        if not isinstance(item, dict):
+            continue
+        if item.get("type") == "text" and isinstance(item.get("text"), str):
+            parts.append(item["text"].strip())
+    return "\n".join(part for part in parts if part).strip()
+
+
+def _optional_float(value: object) -> Optional[float]:
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return None
+    return numeric
+
+
+def _optional_positive_int(value: object) -> Optional[int]:
+    try:
+        numeric = int(value)
+    except (TypeError, ValueError):
+        return None
+    return numeric if numeric > 0 else None
 
 
 def _latency_ms(started_at: Optional[datetime]) -> int:

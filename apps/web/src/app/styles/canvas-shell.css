@@ -42,11 +42,6 @@
   opacity: 1;
 }
 
-.canvas-spike-stage .tl-snap-indicator,
-.canvas-spike-stage .tl-snap-point {
-  opacity: 0.2;
-}
-
 .canvas-runtime-diagnostics {
   position: absolute;
   left: 24px;
@@ -139,11 +134,13 @@
   z-index: 35;
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px 8px;
   min-height: 34px;
-  padding: 6px 8px;
+  max-width: min(420px, calc(100% - 48px));
+  padding: 6px 10px;
   border: 1px solid rgba(17, 24, 39, 0.1);
-  border-radius: 8px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.94);
   box-shadow: var(--shadow-ring);
   color: var(--text-secondary);
@@ -181,7 +178,7 @@
 }
 
 .canvas-board-save-status small {
-  max-width: 180px;
+  max-width: 92px;
   overflow: hidden;
   color: var(--text-tertiary);
   font-weight: 700;
@@ -191,9 +188,9 @@
 
 .canvas-board-save-status button {
   height: 26px;
-  padding: 0 8px;
+  padding: 0 9px;
   border: 1px solid rgba(17, 24, 39, 0.14);
-  border-radius: 6px;
+  border-radius: 999px;
   background: white;
   color: var(--text-primary);
   font-weight: 800;

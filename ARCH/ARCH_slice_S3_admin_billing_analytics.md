@@ -1,8 +1,8 @@
 # ARCH Slice S3: Team, Group, Wallets, Billing And Admin
 
-**Updated**: 2026-05-10
+**Updated**: 2026-05-14
 **Mode**: Architecture slice.
-**Status**: Active architecture pivot. Existing admin, ledger, seat, subscription and AiRun facts are reusable, but Team charging must move to a workspace-owned Team wallet.
+**Status**: Active architecture pivot. Existing admin, ledger, seat, subscription and AiRun facts are reusable, but Team charging must move to a workspace-owned Team wallet. Local operator/admin hot paths have now been tightened around dedicated read models and pooled-runtime observability; real staging session/admin smoke is green, while live AI/payment depth and remaining browser verification are the next gates.
 
 ## Scope
 

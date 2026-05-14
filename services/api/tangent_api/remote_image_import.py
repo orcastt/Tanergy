@@ -89,7 +89,7 @@ def _assert_content_length(value: Optional[str]) -> None:
 
 
 def _read_response_with_limit(response: Any) -> bytes:
-    chunks: list[bytes] = []
+    content = bytearray()
     total_bytes = 0
     while True:
         chunk = response.read(REMOTE_IMPORT_CHUNK_BYTES)
@@ -97,8 +97,8 @@ def _read_response_with_limit(response: Any) -> bytes:
             break
         total_bytes += len(chunk)
         assert_asset_size(total_bytes)
-        chunks.append(chunk)
-    return b"".join(chunks)
+        content.extend(chunk)
+    return bytes(content)
 
 
 def _remote_file_name(path: str, mime: str) -> str:

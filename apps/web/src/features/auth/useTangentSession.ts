@@ -1,9 +1,9 @@
 'use client'
 
 import { useAuth } from '@clerk/nextjs'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createLoadingSessionSnapshot, getCurrentSessionSnapshot } from './mockSession'
-import { loadCurrentSession, SESSION_REFRESH_EVENT } from './sessionClient'
+import { clearSessionScopedClientState, loadCurrentSession, SESSION_REFRESH_EVENT } from './sessionClient'
 import type { TangentSession } from './sessionTypes'
 import { loadClientResource, readClientResource } from '@/features/shared/clientResourceCache'
 import { hasRemotePersistenceApi } from '@/features/api/persistenceApi'
@@ -15,6 +15,7 @@ export function useTangentSession() {
   const { getToken, isLoaded, userId } = useAuth()
   const storageKey = 'tanergy.session.current'
   const cacheKey = 'current'
+  const previousUserIdRef = useRef<null | string | undefined>(undefined)
   const snapshot = readClientResource(tangentSessionStore, cacheKey, {
     storage: 'local',
     storageKey,
@@ -39,6 +40,26 @@ export function useTangentSession() {
         : 'loading'
   )
   const [error, setError] = useState<string | null>(resolvedSnapshot.status === 'error' ? (resolvedSnapshot.error ?? 'Session lookup failed.') : null)
+
+  useEffect(() => {
+    if (!isLoaded) return
+    const currentUserId = userId ?? null
+    if (previousUserIdRef.current === undefined) {
+      previousUserIdRef.current = currentUserId
+      return
+    }
+    if (previousUserIdRef.current === currentUserId) return
+    previousUserIdRef.current = currentUserId
+    tangentSessionStore.clear()
+    clearSessionScopedClientState()
+    setError(null)
+    setStatus('loading')
+    setSession(
+      !canUseLocalSessionFallback()
+        ? createLoadingSessionSnapshot()
+        : getCurrentSessionSnapshot()
+    )
+  }, [isLoaded, userId])
 
   useEffect(() => {
     if (!isLoaded) return

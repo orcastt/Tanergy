@@ -68,6 +68,7 @@ def load_workspace_memberships(cursor: Any, user_id: str, active_workspace_id: s
         JOIN tangent_workspaces w ON w.id = wm.workspace_id
         LEFT JOIN tangent_boards b ON b.workspace_id = wm.workspace_id AND b.deleted_at IS NULL
         WHERE wm.user_id = %s
+          AND COALESCE(w.status, 'active') <> 'deleted'
         GROUP BY wm.user_id, wm.workspace_id, w.name, w.kind, wm.role, wm.joined_at
         ORDER BY
             CASE wm.role

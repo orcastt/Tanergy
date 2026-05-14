@@ -8,11 +8,13 @@ import {
   persistenceJsonHeaders,
   persistenceJsonHeadersAsync,
 } from '@/features/api/persistenceApi'
+import { assertAiRuntimeAvailable, canUseLocalAiBridge } from '@/features/api/runtimeBridgePolicy'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import type { AiCapability, AiModelsResponse, AiRunRequest, AiRunResponse } from './aiTypes'
 import { getAiModels } from './mockAiContracts'
 
 export async function loadAiModels(capability: AiCapability = 'image_generation') {
+  assertAiRuntimeAvailable()
   const headers = hasRemotePersistenceApi() ? await persistenceAuthHeadersAsync() : persistenceAuthHeaders()
   const response = await fetch(getAiUrl(`/models?capability=${encodeURIComponent(capability)}`), {
     headers,
@@ -25,6 +27,7 @@ export async function loadAiModels(capability: AiCapability = 'image_generation'
 }
 
 export async function createAiRun(input: AiRunRequest, options?: { signal?: AbortSignal; workspace?: TangentWorkspace }) {
+  assertAiRuntimeAvailable()
   const headers = hasRemotePersistenceApi()
     ? await persistenceJsonHeadersAsync(options?.workspace)
     : persistenceJsonHeaders(options?.workspace)
@@ -42,6 +45,7 @@ export async function createAiRun(input: AiRunRequest, options?: { signal?: Abor
 }
 
 export async function getAiRun(runId: string, options?: { signal?: AbortSignal; workspace?: TangentWorkspace }) {
+  assertAiRuntimeAvailable()
   const headers = hasRemotePersistenceApi()
     ? await persistenceAuthHeadersAsync(options?.workspace)
     : persistenceAuthHeaders(options?.workspace)
@@ -57,6 +61,7 @@ export async function getAiRun(runId: string, options?: { signal?: AbortSignal; 
 }
 
 export async function cancelAiRun(runId: string, options?: { signal?: AbortSignal; workspace?: TangentWorkspace }) {
+  assertAiRuntimeAvailable()
   if (!hasRemotePersistenceApi()) return null
   const headers = await persistenceJsonHeadersAsync(options?.workspace)
   const response = await fetch(getAiUrl(`/runs/${encodeURIComponent(runId)}/cancel`), {
@@ -76,7 +81,7 @@ export function getAiModelFallback(capability: AiCapability = 'image_generation'
 }
 
 export function canUseAiModelFallback() {
-  return process.env.NODE_ENV !== 'production' && !hasRemotePersistenceApi()
+  return canUseLocalAiBridge()
 }
 
 function getAiUrl(path: string) {

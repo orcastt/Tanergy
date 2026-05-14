@@ -1,5 +1,6 @@
 import { getSerializableCanvasSettings, defaultCanvasSettings, useCanvasSettingsStore, type CanvasSettings } from '@/features/canvas-settings/canvasSettingsStore'
 import type { CanvasDocument, CanvasImageShape, CanvasNodeShape } from '@/features/canvas-engine'
+import { persistenceAssetProxyUrl } from '@/features/api/persistenceApi'
 import { getRuntimeGraphGeneratedOutputRefs, getRuntimeGraphImageAssetRef, type RuntimeGraphImageAssetRef } from '@/features/node-runtime/runtimeGraphAssets'
 import { auditBoardDocument, type BoardDocumentGuardResult } from './boardDocumentGuard'
 import {
@@ -64,6 +65,7 @@ export type KonvaBoardPagesRestoreOptions = {
   activePageId?: string
   pages: SerializedKonvaBoardPage[]
   serializedAt?: string
+  workspaceId?: string
 }
 
 export function serializeKonvaBoardDocument(
@@ -107,11 +109,15 @@ export function createGuardedKonvaBoardDocument(
   }
 }
 
-export function restoreKonvaBoardDocument(document: unknown): KonvaBoardRestorePayload {
+export function restoreKonvaBoardDocument(
+  document: unknown,
+  options: { workspaceId?: string } = {},
+): KonvaBoardRestorePayload {
   const hydrated = hydrateKonvaBoardPages(document)
   return restoreKonvaBoardPages({
     activePageId: hydrated.activePageId,
     pages: hydrated.pages,
+    workspaceId: options.workspaceId,
   })
 }
 
@@ -119,11 +125,12 @@ export function restoreKonvaBoardPages(options: KonvaBoardPagesRestoreOptions): 
   if (!Array.isArray(options.pages) || options.pages.length === 0) {
     throw new Error('Konva board pages are not restorable.')
   }
-  const seedDocument = cloneJsonValue(options.pages[0]?.canvasDocument) as CanvasDocument
+  const normalizedPagesInput = normalizePersistedAssetUrls(options.pages, options.workspaceId)
+  const seedDocument = cloneJsonValue(normalizedPagesInput[0]?.canvasDocument) as CanvasDocument
   const pages = normalizeKonvaBoardPages({
     activePageId: options.activePageId,
     canvasDocument: seedDocument,
-    pages: options.pages,
+    pages: normalizedPagesInput,
     serializedAt: options.serializedAt,
   })
   const activePage = pages.find((page) => page.id === (options.activePageId ?? pages[0]?.id)) ?? pages[0]
@@ -246,6 +253,17 @@ function rememberAsset(assets: Map<string, SerializedKonvaBoardAsset>, asset: Se
 
 function cloneJsonValue(value: unknown) {
   return JSON.parse(JSON.stringify(value)) as unknown
+}
+
+function normalizePersistedAssetUrls<T>(value: T, workspaceId?: string): T {
+  if (typeof value === 'string') {
+    return (persistenceAssetProxyUrl(value, workspaceId) ?? value) as T
+  }
+  if (!value || typeof value !== 'object') return value
+  if (Array.isArray(value)) return value.map((item) => normalizePersistedAssetUrls(item, workspaceId)) as T
+  return Object.fromEntries(
+    Object.entries(value).map(([key, item]) => [key, normalizePersistedAssetUrls(item, workspaceId)])
+  ) as T
 }
 
 function pruneUndefined<T extends Record<string, unknown>>(value: T): T {

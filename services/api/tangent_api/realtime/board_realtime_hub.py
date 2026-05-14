@@ -236,6 +236,10 @@ class BoardRealtimeRoom:
         async with self.lock:
             return len(self.connections) == 0
 
+    async def snapshot_document(self) -> list[list[int]]:
+        async with self.lock:
+            return [list(item) for item in self.document_updates]
+
     def _should_request_compaction_locked(self) -> bool:
         return len(self.document_updates) >= BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD
 
@@ -288,17 +292,19 @@ class BoardRealtimeHub:
             raise
         return room, connection_id
 
-    async def disconnect(self, room_key: str, connection_id: str) -> None:
+    async def disconnect(self, room_key: str, connection_id: str) -> bool:
         async with self._lock:
             room = self._rooms.get(room_key)
         if room is None:
-            return
+            return True
         await room.disconnect(connection_id)
         if await room.is_empty():
             async with self._lock:
                 current = self._rooms.get(room_key)
                 if current is room and await current.is_empty():
                     self._rooms.pop(room_key, None)
+            return True
+        return False
 
     async def _get_or_create_room(self, room_key: str) -> BoardRealtimeRoom:
         async with self._lock:

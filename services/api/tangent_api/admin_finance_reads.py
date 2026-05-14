@@ -2,97 +2,20 @@ from typing import Optional
 
 from tangent_api.admin_finance_schemas import (
     AdminFinanceLedgerRecord,
-    AdminFinanceLedgerTotals,
     AdminFinanceMemberUsageRecord,
     AdminFinancePaymentRecord,
     AdminFinanceSubscriptionRecord,
-    AdminFinanceSummaryRecord,
     AdminFinanceWalletRecord,
 )
 from tangent_api.admin_finance_rows import (
-    account_count_from_row,
-    as_float,
-    count_from_row,
     ledger_from_row,
     member_usage_from_row,
     payment_from_row,
-    subscription_count_from_row,
     subscription_from_row,
     wallet_from_row,
 )
+from tangent_api.admin_finance_summary_reads import load_admin_finance_summary
 from tangent_api.storage.postgres_connection import connect_to_postgres, require_database_url
-
-
-def load_admin_finance_summary() -> AdminFinanceSummaryRecord:
-    require_database_url()
-    with connect_to_postgres() as connection:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                """
-                SELECT status, COUNT(*), COALESCE(SUM(amount_cents), 0)
-                FROM tangent_payments
-                GROUP BY status
-                ORDER BY status ASC
-                """
-            )
-            payment_status = cursor.fetchall()
-            cursor.execute(
-                """
-                SELECT COALESCE(kind, 'unknown'), COUNT(*), COALESCE(SUM(amount_cents), 0)
-                FROM tangent_payments
-                GROUP BY COALESCE(kind, 'unknown')
-                ORDER BY COALESCE(kind, 'unknown') ASC
-                """
-            )
-            payment_kind = cursor.fetchall()
-            cursor.execute(
-                """
-                SELECT provider, COUNT(*), COALESCE(SUM(amount_cents), 0)
-                FROM tangent_payments
-                GROUP BY provider
-                ORDER BY provider ASC
-                """
-            )
-            payment_provider = cursor.fetchall()
-            cursor.execute(
-                """
-                SELECT owner_type, COALESCE(account_kind, 'personal_wallet'), status, COUNT(*)
-                FROM tangent_credit_accounts
-                GROUP BY owner_type, COALESCE(account_kind, 'personal_wallet'), status
-                ORDER BY owner_type ASC, COALESCE(account_kind, 'personal_wallet') ASC, status ASC
-                """
-            )
-            account_counts = cursor.fetchall()
-            cursor.execute(
-                """
-                SELECT COALESCE(SUM(credits_delta), 0),
-                       COALESCE(SUM(CASE WHEN credits_delta > 0 THEN credits_delta ELSE 0 END), 0),
-                       COALESCE(SUM(CASE WHEN credits_delta < 0 THEN -credits_delta ELSE 0 END), 0)
-                FROM tangent_credit_ledger
-                """
-            )
-            ledger_totals = cursor.fetchone() or (0, 0, 0)
-            cursor.execute(
-                """
-                SELECT plan_family, status, COUNT(*), COALESCE(SUM(seat_capacity), 0)
-                FROM tangent_subscriptions
-                GROUP BY plan_family, status
-                ORDER BY plan_family ASC, status ASC
-                """
-            )
-            subscription_counts = cursor.fetchall()
-    return AdminFinanceSummaryRecord(
-        accountCounts=[account_count_from_row(row) for row in account_counts],
-        ledgerTotals=AdminFinanceLedgerTotals(
-            balanceCredits=as_float(ledger_totals[0]),
-            grantedCredits=as_float(ledger_totals[1]),
-            spentCredits=as_float(ledger_totals[2]),
-        ),
-        paymentKindCounts=[count_from_row(row) for row in payment_kind],
-        paymentProviderCounts=[count_from_row(row) for row in payment_provider],
-        paymentStatusCounts=[count_from_row(row) for row in payment_status],
-        subscriptionCounts=[subscription_count_from_row(row) for row in subscription_counts],
-    )
 
 
 def list_admin_finance_payments(

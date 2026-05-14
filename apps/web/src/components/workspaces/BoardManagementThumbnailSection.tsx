@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { BoardThumbnail } from '@/components/boards/BoardThumbnail'
-import { readImageFileAsDataUrl, validateImageFile } from '@/features/assets/imageAssetInputs'
-import { uploadImageDataUrlAsset } from '@/features/assets/assetUploadClient'
+import { readImageFileMetadata, validateImageFile } from '@/features/assets/imageAssetInputs'
+import { uploadImageFileAsset } from '@/features/assets/assetUploadClient'
+import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import type { BoardPersistenceSummary } from '@/features/boards/boardTypes'
 
 type BoardManagementThumbnailSectionProps = {
@@ -12,6 +13,7 @@ type BoardManagementThumbnailSectionProps = {
   onChange: (thumbnailUrl: string) => void
   thumbnailUrl: string
   title: string
+  workspace?: TangentWorkspace
 }
 
 export function BoardManagementThumbnailSection({
@@ -20,6 +22,7 @@ export function BoardManagementThumbnailSection({
   onChange,
   thumbnailUrl,
   title,
+  workspace,
 }: BoardManagementThumbnailSectionProps) {
   const [error, setError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
@@ -30,15 +33,14 @@ export function BoardManagementThumbnailSection({
     setUploading(true)
     try {
       validateImageFile(file)
-      const image = await readImageFileAsDataUrl(file)
-      const asset = await uploadImageDataUrlAsset({
-        dataUrl: image.url,
-        fileName: file.name,
+      const image = await readImageFileMetadata(file)
+      const asset = await uploadImageFileAsset({
+        file,
         height: image.height,
         origin: 'upload',
         title: `${title || board.title} thumbnail`,
         width: image.width,
-      })
+      }, workspace)
       onChange(asset.thumbnail512Url ?? asset.thumbnail256Url ?? asset.originalUrl)
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : 'Thumbnail upload failed.')
@@ -51,10 +53,10 @@ export function BoardManagementThumbnailSection({
     <section className="board-panel-section board-panel-thumbnail-section">
       <div className="board-panel-section-heading">
         <div>
-          <h3>Preview image</h3>
+          <h3>Thumbnail</h3>
         </div>
         <button disabled={disabled || !thumbnailUrl} onClick={() => onChange('')} type="button">
-          Remove
+          Clear
         </button>
       </div>
       <div className="board-panel-thumbnail">
@@ -74,7 +76,7 @@ export function BoardManagementThumbnailSection({
             disabled={disabled}
             maxLength={512}
             onChange={(event) => onChange(event.target.value)}
-            placeholder="Optional thumbnail URL"
+            placeholder="Thumbnail URL"
             value={thumbnailUrl}
           />
           {error ? <small className="board-panel-error" role="alert">{error}</small> : null}

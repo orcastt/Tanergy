@@ -4,9 +4,9 @@ import type { JsonObject } from '@/types/nodeRuntime'
 import { getRuntimeGraphImageCrop, type RuntimeGraphImageAssetRef, type RuntimeGraphImageCrop } from '@/features/node-runtime/runtimeGraphAssets'
 
 const loadedNodeImageCache = new Map<string, HTMLImageElement>()
-const maxLoadedNodeImages = 32
-const maxLoadedNodeImagePixels = 48 * 1024 * 1024
-const maxLoadedNodeImagePixelsPerImage = 24 * 1024 * 1024
+const maxLoadedNodeImages = 24
+const maxLoadedNodeImagePixels = 24 * 1024 * 1024
+const maxLoadedNodeImagePixelsPerImage = 12 * 1024 * 1024
 const nodeImageLoadTimeoutMs = 15_000
 
 export function NodeImagePreview({

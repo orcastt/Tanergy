@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from time import sleep
 from typing import Callable, Optional
 
+from tangent_api.ai_provider_geekai import run_geekai_attempt
 from tangent_api.ai_provider_google import run_google_attempt
 from tangent_api.ai_provider_openai_compatible import run_openai_compatible_attempt
 from tangent_api.ai_provider_types import AiProviderAttemptResult
@@ -17,6 +18,7 @@ ProviderAdapter = Callable[
 ]
 
 _DEFAULT_PROVIDER_BASE_URLS = {
+    "geekai": "https://geekai.co/api/v1",
     "google": "https://generativelanguage.googleapis.com/v1beta",
     "openai": "https://api.openai.com/v1",
 }
@@ -44,6 +46,22 @@ def _run_live_openai_compatible(
     context: ApiRequestContext,
 ) -> AiProviderAttemptResult:
     return run_openai_compatible_attempt(
+        run,
+        payload,
+        route,
+        context,
+        api_key=_provider_api_key(route.provider_key),
+        base_url=_provider_base_url(route.provider_key),
+    )
+
+
+def _run_live_geekai(
+    run: AiRunRecord,
+    payload: AiRunRequest,
+    route: AiProviderRouteCandidate,
+    context: ApiRequestContext,
+) -> AiProviderAttemptResult:
+    return run_geekai_attempt(
         run,
         payload,
         route,
@@ -131,6 +149,23 @@ def _run_stub_provider_adapter(
             text_output=_mock_analysis_text(prompt, payload.input_asset_ids),
             work_started=True,
         )
+    if payload.run_type == "text":
+        return AiProviderAttemptResult(
+            created_at=_timestamp(),
+            error_code=None,
+            error_message=None,
+            latency_ms=latency_ms,
+            output_asset_ids=[],
+            provider=route.provider_key,
+            provider_cost=None,
+            provider_currency=None,
+            retryable=False,
+            route_id=route.route_id,
+            route_key=route.route_key,
+            status="succeeded",
+            text_output=_mock_text_output(prompt, str(payload.system_prompt or "")),
+            work_started=True,
+        )
     output_asset_ids = [
         f"asset_mock_{run.run_id}_{index + 1}_{_slugify(prompt)}_refs{len(payload.input_asset_ids)}"
         for index in range(_clamp_count(payload.params.get("count", 1)))
@@ -155,23 +190,38 @@ def _run_stub_provider_adapter(
 
 def _should_use_live_provider(provider_key: str) -> bool:
     normalized_key = provider_key.upper().replace("-", "_")
-    return os.getenv(f"TANGENT_AI_PROVIDER_{normalized_key}_MODE", "").strip().lower() == "live" or os.getenv(
+    provider_mode = os.getenv(f"TANGENT_AI_PROVIDER_{normalized_key}_MODE", "").strip().lower()
+    global_mode = os.getenv(
         "TANGENT_AI_PROVIDER_EXECUTION_MODE",
         "",
-    ).strip().lower() == "live"
+    ).strip().lower()
+    if provider_mode == "stub" or global_mode == "stub":
+        return False
+    if provider_mode == "live" or global_mode == "live":
+        return True
+    if _is_local_or_test_runtime():
+        return False
+    return bool(_provider_api_key(provider_key) and _provider_base_url(provider_key))
 
 
 def _should_allow_stub_provider_adapter() -> bool:
     if os.getenv("TANGENT_AI_ALLOW_STUB_PROVIDER", "").strip() == "1":
         return True
-    return not _is_production_runtime()
+    return _is_local_or_test_runtime()
 
 
-def _is_production_runtime() -> bool:
-    return any(
-        os.getenv(name, "").strip().lower() in {"prod", "production"}
-        for name in ("TANGENT_ENV", "ENVIRONMENT", "APP_ENV", "PYTHON_ENV")
-    )
+def _is_local_or_test_runtime() -> bool:
+    runtime_names = {"TANGENT_ENV", "ENVIRONMENT", "APP_ENV", "PYTHON_ENV"}
+    runtime_values = {
+        os.getenv(name, "").strip().lower()
+        for name in runtime_names
+        if os.getenv(name, "").strip()
+    }
+    if runtime_values.intersection({"prod", "production", "stage", "staging"}):
+        return False
+    if runtime_values.intersection({"dev", "development", "local", "test", "testing"}):
+        return True
+    return not runtime_values
 
 
 def _stub_provider_disabled_result(route: AiProviderRouteCandidate) -> AiProviderAttemptResult:
@@ -253,6 +303,8 @@ def _resolve_route_latency_ms(route: AiProviderRouteCandidate, payload: AiRunReq
     override = _resolve_route_latency_override(route)
     if override is not None:
         return override
+    if payload.run_type == "text":
+        return 220
     if payload.run_type == "image_analysis":
         return 180
     return 450
@@ -292,12 +344,23 @@ def _mock_analysis_text(prompt: str, input_asset_ids: list[str]) -> str:
     return f"Mock analysis: read {len(input_asset_ids)} image(s). Reverse prompt: {prompt}. Source assets: {asset_list}"
 
 
+def _mock_text_output(prompt: str, system_prompt: str) -> str:
+    trimmed_prompt = prompt.strip() or "Untitled prompt"
+    normalized_system_prompt = system_prompt.lower()
+    if "prompt optimizer" in normalized_system_prompt or "image-generation prompt" in normalized_system_prompt:
+        return (
+            f"{trimmed_prompt}. Cinematic composition, realistic materials, precise subject focus, "
+            "layered lighting, rich color contrast, and production-ready visual detail."
+        )
+    return f"Optimized text output: {trimmed_prompt}"
+
+
 def _timestamp() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
 _LIVE_PROVIDER_ADAPTERS: dict[str, ProviderAdapter] = {
-    "geekai": _run_live_openai_compatible,
+    "geekai": _run_live_geekai,
     "google": _run_live_google,
     "openai": _run_live_openai_compatible,
 }

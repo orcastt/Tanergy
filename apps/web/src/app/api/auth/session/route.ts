@@ -45,6 +45,12 @@ async function loadRemoteSession(request: NextRequest) {
   })
 
   const payload = await readJson(response)
+  if (response.ok && isDisallowedRemoteFallbackSession(payload, request)) {
+    return NextResponse.json(
+      { error: 'Remote auth fallback is disabled for this environment.', ok: false },
+      { status: 503 },
+    )
+  }
   if (!response.ok) {
     const error = payload?.error
     return NextResponse.json(
@@ -192,4 +198,14 @@ async function readJson(response: Response): Promise<Record<string, unknown>> {
   } catch {
     return { error: text }
   }
+}
+
+function isDisallowedRemoteFallbackSession(payload: Record<string, unknown>, request: NextRequest) {
+  const session = payload.session
+  if (!session || typeof session !== 'object') return false
+  const isDevFallback = (session as { isDevFallback?: unknown }).isDevFallback === true
+  if (!isDevFallback) return false
+  if (process.env.TANGENT_REQUIRE_WEB_AUTH === '1') return true
+  if (process.env.NODE_ENV === 'production') return true
+  return !['127.0.0.1', 'localhost'].includes(request.nextUrl.hostname)
 }

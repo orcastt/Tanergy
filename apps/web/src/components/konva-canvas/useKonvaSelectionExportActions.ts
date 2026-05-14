@@ -1,14 +1,14 @@
 import type Konva from 'konva'
 import { useCallback, useRef, useState, type Dispatch, type SetStateAction } from 'react'
-import { uploadImageDataUrlAsset } from '@/features/assets/assetUploadClient'
+import { uploadImageBlobAsset } from '@/features/assets/assetUploadClient'
+import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import type { CanvasDocument } from '@/features/canvas-engine'
 import { createKonvaImageNodeFromAssetRecord } from './konvaImageNodeConversion'
 import {
   captureKonvaSelectionPng,
-  copyKonvaPngDataUrlToClipboard,
+  copyKonvaPngBlobToClipboard,
   copyKonvaSvgToClipboard,
   downloadKonvaBlob,
-  downloadKonvaDataUrl,
 } from './konvaSelectionExport'
 import { createKonvaSelectionSvgBlob, exportKonvaSelectionToSvg } from './konvaSelectionSvgExport'
 
@@ -23,6 +23,7 @@ type UseKonvaSelectionExportActionsOptions = {
   onActionError?: (message: string | null) => void
   onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
   onSelectionChange: (shapeIds: string[]) => void
+  workspace?: TangentWorkspace
 }
 
 export function useKonvaSelectionExportActions({
@@ -32,6 +33,7 @@ export function useKonvaSelectionExportActions({
   onDocumentChange,
   onSelectionChange,
   selectedIds,
+  workspace,
 }: UseKonvaSelectionExportActionsOptions) {
   const stageRef = useRef<Konva.Stage | null>(null)
   const [isCapturingSelection, setIsCapturingSelection] = useState(false)
@@ -48,14 +50,14 @@ export function useKonvaSelectionExportActions({
     onActionError?.(null)
     try {
       const capture = await captureSelectionPng()
-      const asset = await uploadImageDataUrlAsset({
-        dataUrl: capture.dataUrl,
+      const asset = await uploadImageBlobAsset({
+        blob: capture.blob,
         fileName: `selection-capture-${Date.now().toString(36)}.png`,
         height: capture.height,
         origin: 'merge_capture',
         title: 'Selection capture',
         width: capture.width,
-      })
+      }, workspace)
       history.checkpoint(document)
       const result = createKonvaImageNodeFromAssetRecord(document, asset, {
         x: capture.bounds.minX,
@@ -68,14 +70,14 @@ export function useKonvaSelectionExportActions({
     } finally {
       setIsCapturingSelection(false)
     }
-  }, [captureSelectionPng, document, history, isCapturingSelection, onActionError, onDocumentChange, onSelectionChange, selectedIds.length])
+  }, [captureSelectionPng, document, history, isCapturingSelection, onActionError, onDocumentChange, onSelectionChange, selectedIds.length, workspace])
 
   const handleCopySelectionPng = useCallback(async () => {
     if (selectedIds.length === 0) return
     onActionError?.(null)
     try {
       const capture = await captureSelectionPng()
-      await copyKonvaPngDataUrlToClipboard(capture.dataUrl)
+      await copyKonvaPngBlobToClipboard(capture.blob)
     } catch (error) {
       reportActionError(error, 'Copy as PNG failed.', onActionError)
     }
@@ -86,7 +88,7 @@ export function useKonvaSelectionExportActions({
     onActionError?.(null)
     try {
       const capture = await captureSelectionPng()
-      downloadKonvaDataUrl(capture.dataUrl, getSelectionExportFileName(document, 'png'))
+      downloadKonvaBlob(capture.blob, getSelectionExportFileName(document, 'png'))
     } catch (error) {
       reportActionError(error, 'Export as PNG failed.', onActionError)
     }

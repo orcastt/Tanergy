@@ -11,13 +11,16 @@ export type BoardCapabilities = {
 
 export function getBoardCapabilities(board: BoardPersistenceSummary, session: TangentSession): BoardCapabilities {
   const isBoardOwner = board.ownerId === session.user.id
-  const workspaceRole = session.workspaces.find((workspace) => workspace.id === board.workspaceId)?.role
-    ?? session.activeWorkspace.role
+  const workspace = session.workspaces.find((item) => item.id === board.workspaceId)
+    ?? (session.activeWorkspace.id === board.workspaceId ? session.activeWorkspace : undefined)
+  const workspaceRole = workspace?.role ?? session.activeWorkspace.role
   const canAdministerWorkspace = ['admin', 'owner'].includes(workspaceRole)
+  const canOwnViaSoloWorkspace = workspace?.kind === 'solo_workspace' && workspace.role === 'owner'
+  const canOwnBoard = isBoardOwner || canOwnViaSoloWorkspace
   const canManageBoard = isBoardOwner || canAdministerWorkspace
   return {
-    canCopyBoard: isBoardOwner,
-    canDeleteBoard: isBoardOwner,
+    canCopyBoard: canOwnBoard,
+    canDeleteBoard: canOwnBoard,
     canManageBoard,
     canShareBoard: canManageBoard,
     isBoardOwner,

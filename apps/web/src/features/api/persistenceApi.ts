@@ -2,11 +2,13 @@
 
 import { getSessionRequestHeaders } from '@/features/auth/mockSession'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
+import { hasConfiguredRemoteApiBaseUrl } from './runtimeBridgePolicy'
 
 const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL ?? '').replace(/\/+$/, '')
+const apiOrigin = getApiOrigin(apiBaseUrl)
 
 export function hasRemotePersistenceApi() {
-  return apiBaseUrl.length > 0
+  return hasConfiguredRemoteApiBaseUrl()
 }
 
 export function persistenceApiUrl(path: string) {
@@ -26,6 +28,21 @@ export function persistenceWebSocketUrl(path: string) {
 export function persistenceAssetUrl(url: string | undefined) {
   if (!url || !apiBaseUrl || !url.startsWith('/api/v1/')) return url
   return `${apiBaseUrl}${url}`
+}
+
+export function persistenceAssetProxyUrl(
+  url: null | string | undefined,
+  workspace?: null | Pick<TangentWorkspace, 'id'> | string,
+) {
+  if (!url) return undefined
+  const workspaceId = resolveWorkspaceId(workspace)
+  if (url.startsWith('/api/assets/')) return appendWorkspaceIdToAssetProxyPath(url, workspaceId)
+  const path = getRemoteAssetPath(url)
+  if (!path?.startsWith('/api/v1/assets/files/')) return url
+  return appendWorkspaceIdToAssetProxyPath(
+    path.replace('/api/v1/assets/files/', '/api/assets/files/'),
+    workspaceId,
+  )
 }
 
 export function persistenceAuthHeaders(workspace?: TangentWorkspace): HeadersInit {
@@ -129,4 +146,45 @@ function getWorkspaceSelectionHeaders(workspace: TangentWorkspace): Record<strin
 
 function sleep(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
+function getApiOrigin(baseUrl: string) {
+  if (!baseUrl) return ''
+  try {
+    return new URL(baseUrl).origin
+  } catch {
+    return ''
+  }
+}
+
+function getRemoteAssetPath(url: string) {
+  if (url.startsWith('/api/v1/')) return url
+  if (!apiOrigin) return null
+  try {
+    const resolved = new URL(url)
+    if (resolved.origin !== apiOrigin) return null
+    return `${resolved.pathname}${resolved.search}`
+  } catch {
+    return null
+  }
+}
+
+function resolveWorkspaceId(workspace?: null | Pick<TangentWorkspace, 'id'> | string) {
+  if (!workspace) return null
+  const candidate = typeof workspace === 'string' ? workspace : workspace.id
+  const trimmed = candidate.trim()
+  return trimmed || null
+}
+
+function appendWorkspaceIdToAssetProxyPath(path: string, workspaceId: null | string) {
+  if (!workspaceId || !path.startsWith('/api/assets/files/')) return path
+  try {
+    const resolved = new URL(path, 'http://tangent.local')
+    if (!resolved.searchParams.get('workspaceId')) {
+      resolved.searchParams.set('workspaceId', workspaceId)
+    }
+    return `${resolved.pathname}${resolved.search}`
+  } catch {
+    return path
+  }
 }

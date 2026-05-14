@@ -5,7 +5,7 @@ import pytest
 from fastapi import HTTPException
 
 from tangent_api.auth_provider import VerifiedAuthIdentity, _validate_registered_claims
-from tangent_api.auth_session_memberships import ResolvedWorkspaceMembership
+from tangent_api.auth_session_memberships import ResolvedWorkspaceMembership, load_workspace_memberships
 from tangent_api.auth_sessions import resolve_local_auth_session
 
 
@@ -56,6 +56,26 @@ def test_existing_session_can_select_requested_member_workspace(monkeypatch):
     assert [workspace.workspace_plan_key for workspace in session.workspaces] == ["team_growth", "free_canvas"]
     assert wallet_calls == [("user", "user_123")]
     assert fake_connection.commits == 1
+
+
+def test_load_workspace_memberships_filters_deleted_workspaces_in_sql():
+    cursor = AuthMembershipQueryCursor([
+        (
+            "workspace_active",
+            "Active Space",
+            "solo_workspace",
+            "free_canvas",
+            "owner",
+            3,
+            "2026-05-14T00:00:00Z",
+        ),
+    ])
+
+    memberships = load_workspace_memberships(cursor, "user_123", "workspace_active")
+
+    assert [workspace.workspace_id for workspace in memberships] == ["workspace_active"]
+    assert cursor.params == ("user_123",)
+    assert "COALESCE(w.status, 'active') <> 'deleted'" in cursor.query
 
 
 def test_existing_session_rejects_non_member_requested_workspace(monkeypatch):
@@ -244,6 +264,20 @@ class AuthSessionFakeCursor:
 
     def execute(self, query, params=None):
         return None
+
+
+class AuthMembershipQueryCursor:
+    def __init__(self, rows):
+        self.params = None
+        self.query = ""
+        self.rows = rows
+
+    def execute(self, query, params=None):
+        self.query = " ".join(query.split())
+        self.params = params
+
+    def fetchall(self):
+        return self.rows
 
 
 class AuthBootstrapFakeConnection:

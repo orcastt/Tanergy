@@ -30,6 +30,15 @@ def audit_board_document(document: Any) -> BoardDocumentGuardResult:
         )
 
     _walk_document(document, [], issues)
+    if is_legacy_tldraw_board_document(document):
+        issues.append(
+            BoardDocumentGuardIssue(
+                blocking=True,
+                code="legacy-tldraw-document",
+                message="Legacy tldraw board documents are no longer supported in the Konva-only app path.",
+                path="document",
+            )
+        )
     issues.extend(audit_konva_board_document_schema(document))
     return BoardDocumentGuardResult(byteSize=byte_size, issues=issues, ok=_is_ok(issues))
 
@@ -47,6 +56,17 @@ def _safe_json(document: Any, issues: list[BoardDocumentGuardIssue]) -> str:
             )
         )
         return ""
+
+
+def is_legacy_tldraw_board_document(document: Any) -> bool:
+    if not isinstance(document, dict):
+        return False
+    return (
+        document.get("version") == 1
+        and isinstance(document.get("shapes"), list)
+        and isinstance(document.get("runtimeEdges"), list)
+        and isinstance(document.get("camera"), dict)
+    )
 
 
 def _walk_document(value: Any, path: list[str], issues: list[BoardDocumentGuardIssue]) -> None:

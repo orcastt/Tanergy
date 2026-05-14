@@ -1,5 +1,5 @@
 import { withCanvasShapes, type CanvasDocument, type CanvasNodeShape } from '@/features/canvas-engine'
-import type { AiChatCompletionRequest, AiChatMessage, AiChatMessageContentPart } from '@/features/ai/aiTypes'
+import type { AiChatCompletionRequest, AiChatMessage, AiChatMessageContentPart, AiRunRequest } from '@/features/ai/aiTypes'
 import { getDefaultChatModelId } from '@/features/ai/mockAiContracts'
 import { resolveRuntimeGraphNodeInputs, type RuntimeGraphImageValue } from '@/features/node-runtime/runtimeGraphResolution'
 import type { JsonObject } from '@/types/nodeRuntime'
@@ -23,7 +23,8 @@ const maxChatMessageTextLength = 1200
 type PreparedKonvaChatRequest = {
   assistantMessageId: string
   document: CanvasDocument
-  request: AiChatCompletionRequest
+  localRequest: AiChatCompletionRequest
+  remoteRequest: AiRunRequest | null
   runId: string
 }
 
@@ -32,7 +33,8 @@ type ChatMessage = ReturnType<typeof getKonvaChatMessages>[number]
 export function prepareKonvaChatRequest(
   document: CanvasDocument,
   shapeId: string,
-  draftOverride?: string
+  draftOverride?: string,
+  boardId?: string | null,
 ): PreparedKonvaChatRequest | null {
   const node = getChatNode(document, shapeId)
   if (!node) return null
@@ -45,17 +47,26 @@ export function prepareKonvaChatRequest(
   const userMessage = createChatMessage('user', userText)
   const assistantMessage = createChatMessage('assistant', '')
   const modelId = getKonvaChatModelId(node.props.data) || getDefaultChatModelId()
-  const request = {
-    messages: createProviderMessages({
-      files: getKonvaChatReferenceFiles(node.props.data),
-      history: getKonvaChatMessages(node.props.data),
-      images: allImages,
-      promptValues: inputResolution.textValues,
-      userText,
-    }),
+  const providerMessages = createProviderMessages({
+    files: getKonvaChatReferenceFiles(node.props.data),
+    history: getKonvaChatMessages(node.props.data),
+    images: allImages,
+    promptValues: inputResolution.textValues,
+    userText,
+  })
+  const localRequest = {
+    messages: providerMessages,
     model: modelId,
     stream: true,
   } satisfies AiChatCompletionRequest
+  const remoteRequest = createRemoteChatRunRequest({
+    boardId: boardId ?? null,
+    images: allImages,
+    messages: providerMessages,
+    modelId,
+    node,
+    userText,
+  })
 
   return {
     assistantMessageId: assistantMessage.id,
@@ -75,6 +86,7 @@ export function prepareKonvaChatRequest(
                 costHint: `Streaming via ${modelId}`,
                 error: null,
                 lastRunId: runId,
+                serverRunId: null,
                 status: 'running',
                 textOutput: '',
               },
@@ -82,7 +94,8 @@ export function prepareKonvaChatRequest(
           }
         : shape
     ))),
-    request,
+    localRequest,
+    remoteRequest,
     runId,
   }
 }
@@ -123,12 +136,59 @@ export function completeKonvaChatRequest(document: CanvasDocument, shapeId: stri
           ...shape.props.runtimeSummary,
           costHint: 'Chat complete.',
           error: null,
+          serverRunId: null,
           status: 'succeeded',
           textOutput: lastAssistant?.text?.slice(0, 4000) ?? '',
         },
       },
     }
   })
+}
+
+export function syncKonvaChatAcceptedRun(
+  document: CanvasDocument,
+  shapeId: string,
+  runId: string,
+  serverRunId: string
+) {
+  return patchKonvaChatRun(document, shapeId, runId, (shape) => ({
+    ...shape,
+    props: {
+      ...shape.props,
+      runtimeSummary: {
+        ...shape.props.runtimeSummary,
+        serverRunId,
+      },
+    },
+  }))
+}
+
+export function setKonvaChatAssistantResult(
+  document: CanvasDocument,
+  shapeId: string,
+  runId: string,
+  messageId: string,
+  textOutput: string | null | undefined
+) {
+  const nextText = (textOutput ?? '').slice(0, 4000)
+  return patchKonvaChatRun(document, shapeId, runId, (shape) => ({
+    ...shape,
+    props: {
+      ...shape.props,
+      data: {
+        ...shape.props.data,
+        chatMessages: getKonvaChatMessages(shape.props.data).map((message) => (
+          message.id === messageId
+            ? { ...message, text: nextText }
+            : message
+        )),
+      },
+      runtimeSummary: {
+        ...shape.props.runtimeSummary,
+        textOutput: nextText,
+      },
+    },
+  }))
 }
 
 export function failKonvaChatRequest(
@@ -154,6 +214,7 @@ export function failKonvaChatRequest(
         ...shape.props.runtimeSummary,
         costHint: 'Chat failed.',
         error: errorMessage,
+        serverRunId: null,
         status: 'failed',
       },
     },
@@ -202,6 +263,60 @@ function createProviderMessages(input: {
       role: 'user',
     },
   ]
+}
+
+function createRemoteChatRunRequest(input: {
+  boardId: string | null
+  images: RuntimeGraphImageValue[]
+  messages: AiChatMessage[]
+  modelId: string
+  node: CanvasNodeShape
+  userText: string
+}) {
+  const inputAssetIds = collectRemoteChatInputAssetIds(input.images)
+  if (inputAssetIds === null) return null
+  return {
+    boardId: input.boardId,
+    inputAssetIds,
+    nodeId: input.node.props.nodeId,
+    nodeType: input.node.props.nodeType,
+    params: {
+      chatMode: 'conversation',
+      messages: stripImagePartsFromMessages(input.messages),
+    },
+    prompt: input.userText,
+    runType: 'text',
+    selectedModelId: input.modelId,
+    systemPrompt: chatSystemPrompt,
+  } satisfies AiRunRequest
+}
+
+function collectRemoteChatInputAssetIds(images: RuntimeGraphImageValue[]) {
+  const assetIds: string[] = []
+  const seen = new Set<string>()
+  for (const image of images) {
+    const assetId = typeof image.assetId === 'string' ? image.assetId.trim() : ''
+    if (!assetId) return null
+    if (seen.has(assetId)) continue
+    seen.add(assetId)
+    assetIds.push(assetId)
+  }
+  return assetIds
+}
+
+function stripImagePartsFromMessages(messages: AiChatMessage[]) {
+  return messages.map((message) => {
+    if (!Array.isArray(message.content)) return message
+    const textParts = message.content.filter(
+      (part): part is Extract<AiChatMessageContentPart, { type: 'text' }> => (
+        part.type === 'text' && typeof part.text === 'string'
+      )
+    )
+    return {
+      ...message,
+      content: textParts.length > 1 ? textParts : textParts[0]?.text ?? '',
+    }
+  })
 }
 
 function patchKonvaChatRun(

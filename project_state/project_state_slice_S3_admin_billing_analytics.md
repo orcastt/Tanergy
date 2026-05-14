@@ -1,9 +1,20 @@
 # Project State Slice S3: Team, Group, Wallets, Billing And Admin
 
-**Updated**: 2026-05-11
-**Status**: Active pivot slice. Admin, ledger, usage, seat, checkout and AI-control-plane scaffolds exist. Phase 1/2/3 development has started: migration `20260508_0012` adds Team/Group wallet schema facts, migration `20260508_0013` widens workspace roles for `admin/editor/viewer`, the first payer resolver cut now makes Team workspaces charge a Team wallet while Group/Collaborate workspaces charge the actor personal wallet, Team purchase can provision a Team workspace and Team wallet, and Collaborate purchase can activate the user's single personal Collaborate subscription.
+**Updated**: 2026-05-14
+**Status**: Active pivot slice. Admin, ledger, usage, seat, checkout and AI-control-plane scaffolds exist. Phase 1/2/3 development has started: migration `20260508_0012` adds Team/Group wallet schema facts, migration `20260508_0013` widens workspace roles for `admin/editor/viewer`, the first payer resolver cut now makes Team workspaces charge a Team wallet while Group/Collaborate workspaces charge the actor personal wallet, Team purchase can provision a Team workspace and Team wallet, and Collaborate purchase can activate the user's single personal Collaborate subscription. The 2026-05-13 checkpoint tightens admin hot reads, pooled Postgres runtime preference and slow-SQL observability, and the 2026-05-14 checkpoint adds green real staging session/admin smoke.
 
 ## Current Truth
+
+2026-05-14 checkpoint notes:
+
+- Real staging Clerk/session smoke is now green for `/api/auth/session`, `/api/admin-proxy/me`, `/api/admin-proxy/operator/users?limit=3`, `/api/admin-proxy/finance/summary` and `/api/admin-proxy/ai/route-metrics?limit=5`.
+- The next S3 gate is no longer basic admin reachability; it is live AI/payment depth, Google/email verification and the remaining signed-in browser acceptance.
+
+2026-05-13 checkpoint notes:
+
+- Admin hot GET paths were reduced toward dedicated read models so `/admin/me`, operator inventory and finance summary do less repeated work on the critical path.
+- Runtime Postgres now prefers `DATABASE_POOL_URL` when present, while slow SQL over the configured threshold is logged without parameters for the coming Neon/staging pass.
+- S3 is locally close to acceptance, but the next real gate is still public staging repair plus real-login admin smoke; local speedups do not count as production verification.
 
 Reusable first-pass work:
 
@@ -66,7 +77,7 @@ Reusable first-pass work:
 - Local admin/payment smoke passed on 2026-05-08: `/admin` loaded the finance panel against a disposable Postgres-backed API and every admin finance read returned 200; manual admin top-up/plan/cancel contracts write payment, subscription, ledger and audit facts; manual-test Team wallet top-up completed into the Team wallet ledger; manual-test Team seat checkout completed and allowed a Team seat assignment; hosted checkout returned a `hosted_redirect` URL and rejected manual completion with the expected webhook-only 409.
 - Manual admin contract checkpoint passed on 2026-05-09: targeted tests cover top-up, credit deduction, plan assignment, subscription cancel, workspace create/delete, required operation reason and admin-role enforcement.
 - Deterministic local acceptance checkpoint passed on 2026-05-11: backend tests now clear repo `.env` runtime overrides through `services/api/tests/conftest.py`, fixing ambient-driver leakage across AI, board and asset contract tests. Full `services/api/tests` is green again locally.
-- Remote staging smoke is still blocked by environment state as of 2026-05-10 22:45 UTC: `https://api-staging.tanergy.cc/health` and `https://api-staging.tanergy.cc/api/v1/admin/me` both timed out against `5.78.122.74`, while `https://staging.tanergy.cc/admin` returned a Vercel `404`. Local remote-smoke tooling now also probes operator users, finance summary and AI route metrics once the staging API host is reachable again.
+- Remote staging smoke is no longer blocked by the earlier host outage: the rebuilt host and refreshed staging web alias now return green for health plus real session/admin probes. The remaining staging gap is broader signed-in browser and live-provider acceptance, not basic admin reachability.
 - Local admin access issue recorded on 2026-05-08: local Web Auth can require Clerk even when the operator is only trying to test admin finance locally. The current local fix is a dev-only `/api/auth/dev-bypass` cookie plus API on `127.0.0.1:8100`, Alembic upgraded to head and `dev-user` granted `admin_roles.owner`. For staging/prod this must be replaced by real Clerk login, matching Web/API origins, migrated DB schema and admin role grant for the actual signed-in user.
 
 ## Product Rule Drift

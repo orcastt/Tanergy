@@ -337,6 +337,30 @@ def test_board_guard_blocks_runtime_urls():
     assert response.json()["audit"]["issues"][0]["code"] == "runtime-url"
 
 
+def test_board_guard_blocks_legacy_tldraw_documents():
+    client = TestClient(app)
+    legacy_document = {
+        "camera": {"x": 0, "y": 0, "zoom": 1},
+        "runtimeEdges": [],
+        "shapes": [{"id": "shape_1", "type": "geo", "x": 0, "y": 0}],
+        "version": 1,
+    }
+
+    validate_response = client.post("/api/v1/boards/validate-document", json={"document": legacy_document})
+
+    assert validate_response.status_code == 422
+    issues = validate_response.json()["audit"]["issues"]
+    assert any(issue["code"] == "legacy-tldraw-document" for issue in issues)
+
+    save_response = client.post(
+        "/api/v1/boards",
+        json={"boardId": "legacy-tldraw-board", "document": legacy_document, "title": "Legacy tldraw"},
+    )
+
+    assert save_response.status_code == 422
+    assert save_response.json()["audit"]["ok"] is False
+
+
 def test_board_metrics_support_konva_v2_document(tmp_path, monkeypatch):
     monkeypatch.setenv("TANGENT_BOARD_STORAGE_DIR", str(tmp_path / "boards"))
     client = TestClient(app)

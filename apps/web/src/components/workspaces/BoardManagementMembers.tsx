@@ -248,7 +248,7 @@ export function BoardManagementMembers({ board, canManageBoard, disabled, worksp
       {canManageBoard ? (
         <form className="board-panel-member-add" onSubmit={inviteByEmail}>
           <label>
-            <span>People lookup</span>
+            <span>Search people</span>
             <input
               autoComplete="off"
               disabled={disabled || isCreating}
@@ -262,7 +262,7 @@ export function BoardManagementMembers({ board, canManageBoard, disabled, worksp
                   setIsSearching(false)
                 }
               }}
-              placeholder="Search name, email, or paste an email to invite"
+              placeholder="Search name or email"
               value={lookupQuery}
             />
           </label>
@@ -290,7 +290,7 @@ export function BoardManagementMembers({ board, canManageBoard, disabled, worksp
             </select>
           </label>
           <button className="product-button product-button-secondary" disabled={disabled || isCreating || !isLikelyEmail(lookupQuery)} type="submit">
-            Invite by email
+            Invite
           </button>
         </form>
       ) : null}
@@ -362,7 +362,13 @@ export function BoardManagementMembers({ board, canManageBoard, disabled, worksp
                 <div className="board-panel-member-actions">
                   {canManageBoard ? (
                     <>
-                      <input disabled={readOnly || memberPending} maxLength={80} onChange={updateDraft(member.userId, 'displayName')} value={draft.displayName} />
+                      <input
+                        disabled={readOnly || memberPending}
+                        maxLength={80}
+                        onChange={updateDraft(member.userId, 'displayName')}
+                        placeholder="Display name"
+                        value={draft.displayName}
+                      />
                       <button disabled={readOnly || memberPending || isOwner || !hasChanges} onClick={() => void saveMember(member)} type="button">
                         Save
                       </button>

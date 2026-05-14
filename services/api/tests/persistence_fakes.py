@@ -239,8 +239,9 @@ class FakePostgresCursor:
                 "route_key": params[29],
                 "selected_tier_key": params[30],
                 "preflight_status": params[31],
-                "created_at": params[32],
-                "updated_at": params[33],
+                "text_output": params[32],
+                "created_at": params[33],
+                "updated_at": params[34],
             }
             self.database.ai_runs[row["id"]] = row
         elif normalized.startswith("INSERT INTO tangent_ai_api_calls"):
@@ -327,6 +328,7 @@ class FakePostgresCursor:
                     row[15],
                     row[16],
                     row[17],
+                    _detect_canvas_engine(row[4]),
                 )
                 for (workspace, _board_id), row in self.database.boards.items()
                 if workspace == workspace_id
@@ -354,7 +356,7 @@ class FakePostgresCursor:
         elif normalized.startswith("SELECT id, workspace_id, owner_id, title, document"):
             self.row = self.database.boards.get((params[0], params[1]))
         elif normalized.startswith(
-            "SELECT id, board_id, charged_account_id, charged_scope, cost_credits, workspace_kind, workspace_seat_id, entitlement_source, input_asset_ids, latency_ms, model_id, node_id, output_asset_ids, provider, run_type, status, prompt_preview, created_at, pricing_rule_id, route_id, route_key, estimated_credits, selected_tier_key, preflight_status, params, error_message, provider_cost, provider_currency FROM tangent_ai_runs"
+            "SELECT id, board_id, charged_account_id, charged_scope, cost_credits, workspace_kind, workspace_seat_id, entitlement_source, input_asset_ids, latency_ms, model_id, node_id, output_asset_ids, provider, run_type, status, prompt_preview, created_at, pricing_rule_id, route_id, route_key, estimated_credits, selected_tier_key, preflight_status, params, error_message, text_output, provider_cost, provider_currency FROM tangent_ai_runs"
         ):
             run = self.database.ai_runs.get(params[0])
             if run:
@@ -385,6 +387,7 @@ class FakePostgresCursor:
                     run.get("preflight_status", "mock_contract_only"),
                     run.get("params", {}),
                     run.get("error_message"),
+                    run.get("text_output"),
                     run.get("provider_cost"),
                     run.get("provider_currency"),
                 )
@@ -1166,6 +1169,15 @@ class FakePostgresCursor:
         elif normalized.startswith("INSERT INTO tangent_assets"):
             key = (params[1], params[0])
             self.database.assets[key] = params
+        elif normalized.startswith("SELECT id, workspace_id, created_by, title, origin, mime, byte_size, width, height, storage, original_url, thumbnail_256_url, thumbnail_512_url, thumbnail_1024_url, created_at FROM tangent_assets WHERE id = %s AND workspace_id = ANY(%s)"):
+            asset_id, workspace_ids, current_workspace_id = params
+            matches = [
+                row for (workspace_id, stored_asset_id), row in self.database.assets.items()
+                if stored_asset_id == asset_id and workspace_id in set(workspace_ids)
+            ]
+            matches.sort(key=lambda row: (0 if row[1] == current_workspace_id else 1, row[14]), reverse=False)
+            if matches:
+                self.row = matches[0]
         elif normalized.startswith("INSERT INTO tangent_credit_accounts"):
             if len(params) == 2:
                 account_id, owner_id = params
@@ -2231,6 +2243,18 @@ def _workspace_role_rank(role):
     if role == "member":
         return 2
     return 3
+
+
+def _detect_canvas_engine(document):
+    if not isinstance(document, dict):
+        return None
+    if document.get("version") != 2:
+        return None
+    if document.get("renderer") != "konva":
+        return None
+    if not isinstance(document.get("canvasDocument"), dict):
+        return None
+    return "konva"
 
 
 def _share_link_is_active(row):

@@ -1,6 +1,6 @@
 # ARCH Slice S2: AI Runtime
 
-**Updated**: 2026-05-08
+**Updated**: 2026-05-14
 **Mode**: Architecture slice.
 
 ## Scope
@@ -84,7 +84,7 @@ model_pricing_rules
 
 Rules:
 
-- The UI may show model choices, parameter tiers and estimated credits, but it must read them from server APIs.
+- The UI may show model choices, parameter tiers and estimated credits, but it must read them from server APIs. When `NEXT_PUBLIC_API_BASE_URL` is configured, the web app must fail closed to backend AI and asset APIs rather than silently falling back to local Next bridges.
 - The UI must not send provider names, route ids, raw provider prices or arbitrary price overrides.
 - A product model like `gpt_image_2` can have multiple provider routes behind it. The user sees the product model; the server chooses the active route.
 - Admins/developer operators can disable a route, change priority/weight, change a provider model mapping and publish a new pricing-rule version without redeploying frontend code.
@@ -155,13 +155,21 @@ enterprise          -> contract-defined workspace pool or personal fallback
 - Mock AiRun now persists a simple lifecycle contract: create queues the run, a background executor moves it through running -> succeeded/failed, GET reads current state without mutating it, and cancel stops queued/running runs.
 - A first-pass provider-route execution shell now exists behind that lifecycle: route candidates are resolved from the control plane, a lightweight provider-adapter registry now owns the per-provider attempt boundary, route retry policy is honored inside the shell, and failover now stops on timeouts or work-started failures to avoid duplicate provider work.
 - The provider-adapter boundary now also has an opt-in live path: OpenAI-compatible routes can execute server-side image generation/edit calls, Google routes can execute `generateContent`-style requests, and successful image outputs are persisted as Assets through the existing storage adapter.
+- Stub-provider execution is now treated as a local/dev/test-only fallback unless explicitly re-enabled. In non-local runtimes such as staging, missing live-provider credentials fail closed instead of returning mock `asset_mock_*` outputs, and present credentials can drive live execution without depending on a separate staging-only mock switch.
 - Mock AiRun can optionally exercise real credit-ledger settlement when `TANGENT_AI_MOCK_LEDGER_CHARGING=1` and `DATABASE_URL` are configured: it estimates mock credits, rejects insufficient balance before success and writes a `usage_charge` ledger entry. That settlement now stays bound to the run's originally resolved charged account rather than the later read request context. The default local path still does not charge credits.
 - Successful run settlement now also persists normalized `provider_cost` / `provider_currency` onto the final `ai_runs` row and the final successful `ai_api_calls` attempt row, and the shell also writes attempt-level `api_cost_ledger` rows so Admin can inspect supplier-cost facts separately from user-credit charging.
+- The text-run path is now shared by both Prompt Optimizer and the message-native Chat node when the canvas is pointed at the FastAPI API: `AiRunRequest` accepts `params.messages`, optional `inputAssetIds` can be inlined server-side for OpenAI-compatible text calls, and terminal short text output is persisted on the run row.
+- Migration `20260514_0021_ai_image_model_refresh.py` now aligns the active image-generation catalog to `gpt-image-2`, `nano-banana-2`, `doubao-seedream-5.0-lite` and `jimeng_t2i_v40`. Legacy `gemini-3.1-flash-image-preview` remains compatibility-only and is no longer part of the active image-generation surface.
+- The current image-generation route defaults also stretch the live-provider timeout boundary to `240000 ms`, which matches the longer-running staged GeekAI image path instead of the shorter local defaults.
 - Image Gen / Image Gen 4 model dropdown reads contract.
 - Konva runtimeGraph mock flow now exercises Prompt/Image/Chat/Image Gen/Analysis data passing, export ports and generated Asset refs without provider raw payloads.
 - The formal Konva Board runtime now consumes the same lifecycle contract: create returns a server run id, the browser polls `GET /api/v1/ai/runs/{runId}` until terminal state, user stop triggers best-effort `POST /api/v1/ai/runs/{runId}/cancel`, and successful remote image runs hydrate persisted Asset records back into generated node outputs instead of fabricating client-only previews.
 - DB-backed control-plane tables, quote-time persistence, persisted mock `ai_runs` rows and attempt-level `ai_api_calls` rows now exist.
-- Remaining gaps are broader live-provider capability coverage and durable real text-output persistence; the execution/settlement shell is now separated enough to plug the rest in without rewriting the route contract.
+- Default backend registry coverage now also includes seeded analysis-capable models/routes/pricing for `gpt-5-mini`, `gpt-4o-mini` and `gemini-2.5-flash`, and unsupported model/run-type combinations now fall back to a supported model or fail instead of silently executing against an unrelated one.
+- OpenAI-compatible live execution now accepts `image_analysis` by sending prompt plus inline image refs through `chat/completions`, so live analysis is no longer Google-only at the adapter boundary.
+- Local Next AI/upload hardening is now more fail-closed and byte-budgeted: `/api/ai/runs` rejects unsupported text/local mock execution instead of silently fabricating a run, upload routes share bounded request/file readers, chat/image-analysis/image-generation reference images now enforce both per-image and total inline byte budgets before base64 expansion, and backend provider input assets now also enforce a total-byte ceiling so multi-image runs do not scale memory linearly without a hard stop.
+- Asset persistence is now moving off `data:` JSON as the primary browser upload contract: board thumbnails, selection captures, runtime asset migration and mock-generated images now prefer multipart file upload, while `/api/v1/assets/from-data-url` remains only as a small fallback path with an 8MB ceiling for explicitly bounded cases that still need client-generated inline thumbnails.
+- Remaining gaps are broader live-provider capability coverage, especially real image and analysis smoke on credentialed environments, plus staging/provider acceptance. Durable terminal short `text_output` persistence now exists, the message-native Chat node is on the same create/poll/cancel boundary, and the execution/settlement shell is separated enough to plug the rest in without rewriting the route contract.
 
 ## Launch-Readiness Sequence
 
@@ -171,7 +179,7 @@ enterprise          -> contract-defined workspace pool or personal fallback
 4. A persisted background executor plus timeout-safe primary->backup route shell now exist; live provider-specific adapters can plug into the same one-run / one-payer / no-double-charge boundary.
 5. Expand capability coverage, provider-cost normalization depth and real post-provider settlement on top of the new per-attempt `ai_api_calls` timeline and extracted finalization boundary.
 6. Upload generated outputs as Assets; return Asset refs and short summaries only.
-7. Hand-test and harden the Konva Run/Stop create/poll/cancel path against one credentialed live provider route.
+7. Hand-test and harden the Konva Run/Stop create/poll/cancel path against one credentialed live provider route from the refreshed GPT Image 2 / Nano Banana 2 / Doubao Seedream / Jimeng lane.
 8. Add provider failure, timeout, rate-limit and cost tests.
 
 ## Do Not Do
@@ -186,7 +194,7 @@ enterprise          -> contract-defined workspace pool or personal fallback
 
 # ARCH 切片 S2：AI 运行时
 
-**更新日期**：2026-05-06
+**更新日期**：2026-05-14
 **模式**：架构切片。
 
 ## 范围
@@ -342,11 +350,15 @@ enterprise          -> contract-defined workspace pool or personal fallback
 - 第一阶段 provider-route 执行壳现在已经接到这条生命周期后面：route candidates 会从 control plane 解析出来，一个轻量 provider-adapter registry 现在已经接管每次 provider 尝试的边界，route retry policy 也已经在执行壳内生效，而且一旦遇到 timeout 或 provider 已开始工作的失败，就会停止 failover，以避免重复 provider work。
 - 当 `TANGENT_AI_MOCK_LEDGER_CHARGING=1` 且 `DATABASE_URL` 已配置时，Mock AiRun 可以选择性演练真实 credit-ledger settlement：它会估算 mock credits，在成功前拒绝余额不足，并写入一条 `usage_charge` ledger entry。现在这段 settlement 还会始终绑定到该 run 最初解析出的 charged account，而不会被后续读取请求上下文偷换。默认本地路径仍然不会扣 credits。
 - 成功 run 的 settlement 现在也会把归一化后的 `provider_cost` / `provider_currency` 写进最终 `ai_runs` 行和成功的 `ai_api_calls` attempt 行，同时还会按尝试写入 `api_cost_ledger`，让 Admin 可以把供应商成本与用户积分扣费拆开看。
+- `AiRunRequest` 现在也承认 `runType="text"` 与 `systemPrompt`；控制平面会按 text capability 选 model/route/pricing，而不会再在缺省路径里跌回 image default。
+- `tangent_ai_runs` 现在持久化 `text_output`，因此短文本结果不再只依赖进程内存或 `image_analysis` 的临时重建逻辑。
+- OpenAI-compatible / GeekAI live adapter 现在可以用非流式 `chat/completions` 返回 terminal `text_output`，并且已经接受 `image_analysis` 这类 prompt + inline image refs 的分析请求；Google `generateContent` 路径也已经接受 text runs；当画布指向 FastAPI persistence API 时，Prompt Optimizer 和 message-native Chat 都会走同一套 create/poll/cancel AiRun lifecycle，而不是只依赖 Next 本地 chat proxy。
+- `20260514_0021_ai_image_model_refresh.py` 现在会把活跃生图目录对齐到 `gpt-image-2`、`nano-banana-2`、`doubao-seedream-5.0-lite` 和 `jimeng_t2i_v40`；`gemini-3.1-flash-image-preview` 只保留兼容用途，不再属于活跃生图面，同时长耗时生图的 live-provider 超时边界已统一到 `240000 ms`。
 - Image Gen / Image Gen 4 的 model dropdown 已读取该合同。
 - Konva runtimeGraph mock 流程现在已经覆盖 Prompt / Image / Chat / Image Gen / Analysis 的数据传递、导出端口，以及生成 Asset refs 的流程，同时不会把 provider 原始载荷写入文档。
 - 正式 Konva Board runtime 现在也已经消费同一套 lifecycle 合同：create 会返回 server run id，浏览器会轮询 `GET /api/v1/ai/runs/{runId}` 到终态，用户 stop 会尽力触发 `POST /api/v1/ai/runs/{runId}/cancel`，而成功的远端 image runs 会把持久化 Asset records 回填到生成节点输出，而不再伪造纯客户端 previews。
 - DB-backed control-plane tables、quote-time persistence、持久化的 mock `ai_runs` rows，以及按尝试分行的 `ai_api_calls` rows 现在都已存在。
-- 真实 provider adapters / calls、generated Asset upload 和更广的 live-provider capability 覆盖仍未完成，但执行 / settlement shell 现在已经分层到足以在不重写 route contract 的前提下接入这些能力。
+- 真实 provider adapters / calls、generated Asset upload 和更广的 live-provider capability 覆盖仍未完成，但执行 / settlement shell 现在已经分层到足以在不重写 route contract 的前提下接入这些能力；当前最大的缺口已经不再是 chat/message-native input contract，而是一条真实 image/analysis live route 的验收与更广的 provider coverage。
 
 ## 上线前顺序
 
