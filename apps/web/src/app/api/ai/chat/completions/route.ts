@@ -38,10 +38,11 @@ export async function POST(request: Request) {
     const apiKey = getGeekAiTextApiKey()
 
     const normalizedMessages = await normalizeMessagesForGeekAi(request, body.messages)
+    const providerMessages = normalizeMessagesForProviderModel(body.model, normalizedMessages)
     const geekAiResponse = await fetch(`${getGeekAiBaseUrl()}/chat/completions`, {
       body: JSON.stringify({
         ...body,
-        messages: normalizedMessages,
+        messages: providerMessages,
         stream: body.stream ?? true,
       }),
       headers: {
@@ -104,6 +105,86 @@ async function normalizeMessagesForGeekAi(request: Request, messages: AiChatMess
     })
   }
   return normalizedMessages
+}
+
+function normalizeMessagesForProviderModel(modelId: string, messages: AiChatMessage[]) {
+  if (!requiresUserAssistantTurns(modelId)) return messages
+  return foldSystemMessagesIntoUserTurns(messages)
+}
+
+function requiresUserAssistantTurns(modelId: string) {
+  return modelId.trim().toLowerCase().startsWith('hunyuan-')
+}
+
+function foldSystemMessagesIntoUserTurns(messages: AiChatMessage[]) {
+  const systemTexts: string[] = []
+  const normalized: AiChatMessage[] = []
+
+  for (const message of messages) {
+    if (message.role === 'system') {
+      const systemText = getMessageTextContent(message.content)
+      if (systemText) systemTexts.push(systemText)
+      continue
+    }
+    const previousMessage = normalized[normalized.length - 1]
+    if (previousMessage?.role === message.role) {
+      normalized[normalized.length - 1] = {
+        ...message,
+        content: mergeMessageContent(previousMessage.content, message.content),
+      }
+      continue
+    }
+    normalized.push(message)
+  }
+
+  const systemPrefix = systemTexts.join('\n\n').trim()
+  if (!systemPrefix) return normalized
+  const firstUserIndex = normalized.findIndex((message) => message.role === 'user')
+  if (firstUserIndex >= 0) {
+    const firstUser = normalized[firstUserIndex]
+    normalized[firstUserIndex] = {
+      ...firstUser,
+      content: prependTextToMessageContent(firstUser.content, `System instruction:\n${systemPrefix}`),
+    }
+    return normalized
+  }
+  return [{ content: `System instruction:\n${systemPrefix}`, role: 'user' }, ...normalized]
+}
+
+function mergeMessageContent(base: AiChatMessage['content'], next: AiChatMessage['content']) {
+  if (typeof base === 'string' && typeof next === 'string') {
+    return [base.trim(), next.trim()].filter(Boolean).join('\n\n')
+  }
+  return [
+    ...asMessageParts(base),
+    ...asMessageParts(next),
+  ]
+}
+
+function prependTextToMessageContent(content: AiChatMessage['content'], text: string): AiChatMessage['content'] {
+  if (typeof content === 'string') {
+    return [text.trim(), content.trim()].filter(Boolean).join('\n\n')
+  }
+  return [{ text, type: 'text' }, ...content]
+}
+
+function getMessageTextContent(content: AiChatMessage['content']) {
+  if (typeof content === 'string') return content.trim()
+  return content
+    .filter((part): part is Extract<AiChatMessageContentPart, { type: 'text' }> => (
+      part.type === 'text' && typeof part.text === 'string'
+    ))
+    .map((part) => part.text.trim())
+    .filter(Boolean)
+    .join('\n')
+    .trim()
+}
+
+function asMessageParts(content: AiChatMessage['content']): AiChatMessageContentPart[] {
+  if (typeof content === 'string') {
+    return content.trim() ? [{ text: content.trim(), type: 'text' }] : []
+  }
+  return content
 }
 
 async function normalizeMessagePart(

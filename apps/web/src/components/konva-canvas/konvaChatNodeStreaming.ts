@@ -29,27 +29,41 @@ type PreparedKonvaChatRequest = {
 }
 
 type ChatMessage = ReturnType<typeof getKonvaChatMessages>[number]
+type PrepareKonvaChatRequestOptions = {
+  regenerateMessageId?: string
+}
 
 export function prepareKonvaChatRequest(
   document: CanvasDocument,
   shapeId: string,
   draftOverride?: string,
   boardId?: string | null,
+  options: PrepareKonvaChatRequestOptions = {},
 ): PreparedKonvaChatRequest | null {
   const node = getChatNode(document, shapeId)
   if (!node) return null
 
   const inputResolution = resolveRuntimeGraphNodeInputs(document, node)
   const allImages = getAllChatImages(node.props.data, inputResolution.imageValues)
-  const draft = (draftOverride ?? getKonvaChatDraft(node.props.data)).trim()
-  const userText = draft || inputResolution.primaryText || 'Continue with the connected context.'
   const runId = createChatRunId()
-  const userMessage = createChatMessage('user', userText)
-  const assistantMessage = createChatMessage('assistant', '')
   const modelId = getKonvaChatModelId(node.props.data) || getDefaultChatModelId()
+  const currentMessages = getKonvaChatMessages(node.props.data)
+  const regeneration = options.regenerateMessageId
+    ? getChatRegenerationTarget(currentMessages, options.regenerateMessageId)
+    : null
+  if (options.regenerateMessageId && !regeneration) return null
+  const draft = (draftOverride ?? getKonvaChatDraft(node.props.data)).trim()
+  const userText = regeneration
+    ? regeneration.userMessage.text
+    : draft || inputResolution.primaryText || 'Continue with the connected context.'
+  const userMessage = regeneration?.userMessage ?? createChatMessage('user', userText)
+  const assistantMessage = regeneration?.assistantMessage ?? createChatMessage('assistant', '')
+  const nextMessages = regeneration
+    ? regeneration.nextMessages
+    : [...currentMessages, userMessage, assistantMessage].slice(-maxChatMessages)
   const providerMessages = createProviderMessages({
     files: getKonvaChatReferenceFiles(node.props.data),
-    history: getKonvaChatMessages(node.props.data),
+    history: regeneration?.history ?? currentMessages,
     images: allImages,
     promptValues: inputResolution.textValues,
     userText,
@@ -75,14 +89,14 @@ export function prepareKonvaChatRequest(
         ? {
             ...shape,
             props: {
-              ...shape.props,
-              data: {
-                ...shape.props.data,
-                chatDraft: '',
-                chatMessages: [...getKonvaChatMessages(shape.props.data), userMessage, assistantMessage].slice(-maxChatMessages),
-              },
-              runtimeSummary: {
-                ...shape.props.runtimeSummary,
+                ...shape.props,
+                data: {
+                  ...shape.props.data,
+                  chatDraft: regeneration ? getKonvaChatDraft(shape.props.data) : '',
+                  chatMessages: nextMessages,
+                },
+                runtimeSummary: {
+                  ...shape.props.runtimeSummary,
                 costHint: `Streaming via ${modelId}`,
                 error: null,
                 lastRunId: runId,
@@ -352,6 +366,21 @@ function getChatNode(document: CanvasDocument, shapeId: string) {
 
 function isChatNodeShape(shape: CanvasDocument['shapes'][number]): shape is CanvasNodeShape {
   return shape.type === 'node_card' && shape.props.nodeType === 'chat'
+}
+
+function getChatRegenerationTarget(messages: ChatMessage[], assistantMessageId: string) {
+  const assistantIndex = messages.findIndex((message) => message.id === assistantMessageId && message.role === 'assistant')
+  if (assistantIndex <= 0) return null
+  const assistantMessage = messages[assistantIndex]
+  const userMessage = messages[assistantIndex - 1]
+  if (!userMessage || userMessage.role !== 'user') return null
+  const history = messages.slice(0, assistantIndex - 1)
+  return {
+    assistantMessage: { ...assistantMessage, text: '' },
+    history,
+    nextMessages: [...history, userMessage, { ...assistantMessage, text: '' }].slice(-maxChatMessages),
+    userMessage,
+  }
 }
 
 function createChatMessage(role: ChatMessage['role'], text: string): ChatMessage {

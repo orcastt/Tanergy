@@ -132,7 +132,7 @@ function getNodeEditorStyle(shape: CanvasNodeShape, fieldName: KonvaNodeTextFiel
 
 export function getKonvaNodeFieldRect(shape: CanvasNodeShape, fieldName: KonvaNodeTextFieldName) {
   if (fieldName === 'analysisPrompt') {
-    return { height: 64, width: shape.props.width - 28, x: 14, y: 58 }
+    return { height: 64, width: shape.props.width - 28, x: 14, y: 116 }
   }
   if (fieldName === 'chatDraft') {
     return { height: 38, width: shape.props.width - 60, x: 30, y: shape.props.height - 86 }

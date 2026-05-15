@@ -42,7 +42,7 @@ type KonvaCanvasStageProps = {
   onImageNodeToCanvas: (shapeId: string) => void
   onNodeImagePreviewOpen: (input: { images: RuntimeGraphImageAssetRef[]; selectedIndex?: number; title: string }) => void
   onNodeChatClean: (shapeId: string) => void
-  onNodeChatExportToggle: (shapeId: string, messageId: string) => void
+  onNodeChatRegenerate: (shapeId: string, messageId: string) => void
   onNodeChatModelChange: (shapeId: string, modelId: string) => void
   onNodeChatSend: (shapeId: string, draftOverride?: string) => void
   onNodeChatUpload: (shapeId: string) => void
@@ -120,7 +120,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
       onImageNodeToCanvas={props.onImageNodeToCanvas}
       onNodeImagePreviewOpen={props.onNodeImagePreviewOpen}
       onNodeChatClean={props.onNodeChatClean}
-      onNodeChatExportToggle={props.onNodeChatExportToggle}
+      onNodeChatRegenerate={props.onNodeChatRegenerate}
       onNodeChatModelChange={props.onNodeChatModelChange}
       onNodeChatSend={props.onNodeChatSend}
       onNodeChatUpload={props.onNodeChatUpload}
@@ -208,7 +208,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
             onImageNodeToCanvas={props.onImageNodeToCanvas}
             onNodeImagePreviewOpen={props.onNodeImagePreviewOpen}
             onNodeChatClean={props.onNodeChatClean}
-            onNodeChatExportToggle={props.onNodeChatExportToggle}
+            onNodeChatRegenerate={props.onNodeChatRegenerate}
             onNodeChatModelChange={props.onNodeChatModelChange}
             onNodeChatSend={props.onNodeChatSend}
             onNodeChatUpload={props.onNodeChatUpload}

@@ -36,8 +36,8 @@ type KonvaNodeCardShapeProps = {
   document: CanvasDocument
   editingFieldName?: KonvaNodeTextFieldName | null
   onChatClean?: (shapeId: string) => void
-  onChatExportToggle?: (shapeId: string, messageId: string) => void
   onChatModelChange?: (shapeId: string, modelId: string) => void
+  onChatRegenerate?: (shapeId: string, messageId: string) => void
   onChatSend?: (shapeId: string, draftOverride?: string) => void
   onChatUpload?: (shapeId: string) => void
   onFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
@@ -52,7 +52,7 @@ type KonvaNodeCardShapeProps = {
   zoom: number
 }
 
-export function KonvaNodeCardShape({ document, editingFieldName = null, onChatClean, onChatExportToggle, onChatModelChange, onChatSend, onChatUpload, onFieldChange, onImageNodeToCanvas, onImagePreviewOpen, onPortPointerDown, onRunToggle, onTextEditStart, opacity, previewMode = false, shape, zoom }: KonvaNodeCardShapeProps) {
+export function KonvaNodeCardShape({ document, editingFieldName = null, onChatClean, onChatModelChange, onChatRegenerate, onChatSend, onChatUpload, onFieldChange, onImageNodeToCanvas, onImagePreviewOpen, onPortPointerDown, onRunToggle, onTextEditStart, opacity, previewMode = false, shape, zoom }: KonvaNodeCardShapeProps) {
   const [hoveredPort, setHoveredPort] = useState<ResolvedNodePort | null>(null)
   const [openFieldName, setOpenFieldName] = useState<string | null>(null)
   const definition = getNodeDefinition(shape.props.nodeType)
@@ -125,8 +125,8 @@ export function KonvaNodeCardShape({ document, editingFieldName = null, onChatCl
             editingFieldName={editingFieldName}
             fields={cardFields}
             normalizedData={normalizedData}
-            onChatExportToggle={onChatExportToggle}
             onChatModelChange={onChatModelChange}
+            onChatRegenerate={onChatRegenerate}
             onChatSend={onChatSend}
             onChatUpload={onChatUpload}
             onFieldChange={onFieldChange}
@@ -332,8 +332,8 @@ function NodeBody({
   editingFieldName,
   fields,
   normalizedData,
-  onChatExportToggle,
   onChatModelChange,
+  onChatRegenerate,
   onChatSend,
   onChatUpload,
   onFieldChange,
@@ -349,8 +349,8 @@ function NodeBody({
   editingFieldName?: KonvaNodeTextFieldName | null
   fields: NodeCardField[]
   normalizedData: CanvasNodeShape['props']['data']
-  onChatExportToggle?: (shapeId: string, messageId: string) => void
   onChatModelChange?: (shapeId: string, modelId: string) => void
+  onChatRegenerate?: (shapeId: string, messageId: string) => void
   onChatSend?: (shapeId: string, draftOverride?: string) => void
   onChatUpload?: (shapeId: string) => void
   onFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
@@ -375,7 +375,7 @@ function NodeBody({
       />
     )
   }
-  if (shape.props.nodeType === 'chat') return <KonvaNodeChatBody document={document} editingFieldName={editingFieldName} onChatExportToggle={onChatExportToggle} onChatModelChange={onChatModelChange} onChatSend={onChatSend} onChatUpload={onChatUpload} onTextEditStart={onTextEditStart} shape={shape} zoom={zoom} />
+  if (shape.props.nodeType === 'chat') return <KonvaNodeChatBody document={document} editingFieldName={editingFieldName} onChatModelChange={onChatModelChange} onChatRegenerate={onChatRegenerate} onChatSend={onChatSend} onChatUpload={onChatUpload} onTextEditStart={onTextEditStart} shape={shape} zoom={zoom} />
   if (shape.props.nodeType === 'image') return <ImageBody accent={accent} onImagePreviewOpen={onImagePreviewOpen} shape={shape} zoom={zoom} />
   if (shape.props.nodeType === 'analysis') {
     return (
@@ -447,9 +447,9 @@ function PromptOptimizerBody({
     : error ?? (inputResolution.canRun ? 'Ready to optimize.' : inputResolution.missingReasons[0] ?? 'Connect a prompt first.'))
   return (
     <>
-      <NodeCardFieldGrid fields={fields} onFieldChange={onFieldChange} openFieldName={openFieldName} setOpenFieldName={setOpenFieldName} shape={displayShape} y={54} />
       <Text fill={palette.softText} fontFamily="Inter, system-ui, sans-serif" fontSize={13} fontStyle="bold" text="Optimized preview" width={shape.props.width - 28} x={14} y={116} />
       <NodeCardTextBox height={shape.props.height - 156} text={previewText} width={shape.props.width - 28} x={14} y={142} />
+      <NodeCardFieldGrid fields={fields} onFieldChange={onFieldChange} openFieldName={openFieldName} setOpenFieldName={setOpenFieldName} shape={displayShape} y={54} />
     </>
   )
 }
@@ -490,9 +490,9 @@ function AnalysisBody({
     : error ?? 'Connect an image first.'
   return (
     <>
-      <NodeCardFieldGrid fields={fields} onFieldChange={onFieldChange} openFieldName={openFieldName} setOpenFieldName={setOpenFieldName} shape={displayShape} y={54} />
       <NodeCardTextBox height={64} onEdit={() => onTextEditStart?.(shape.id, 'analysisPrompt')} text={editing ? '' : getStringValue(displayShape.props.data.analysisPrompt) ?? ''} width={shape.props.width - 28} x={14} y={116} />
       <NodeCardTextBox height={shape.props.height - 208} text={outputText} width={shape.props.width - 28} x={14} y={190} />
+      <NodeCardFieldGrid fields={fields} onFieldChange={onFieldChange} openFieldName={openFieldName} setOpenFieldName={setOpenFieldName} shape={displayShape} y={54} />
     </>
   )
 }

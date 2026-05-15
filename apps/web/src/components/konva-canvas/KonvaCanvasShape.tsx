@@ -33,7 +33,7 @@ type KonvaCanvasShapeProps = {
   onDragEnd: (shapeId: string, x: number, y: number) => void
   onDoubleClick: (shapeId: string) => void
   onNodeChatClean?: (shapeId: string) => void
-  onNodeChatExportToggle?: (shapeId: string, messageId: string) => void
+  onNodeChatRegenerate?: (shapeId: string, messageId: string) => void
   onNodeChatModelChange?: (shapeId: string, modelId: string) => void
   onNodeChatSend?: (shapeId: string, draftOverride?: string) => void
   onNodeChatUpload?: (shapeId: string) => void
@@ -62,7 +62,7 @@ function KonvaCanvasShapeComponent({
   onImageNodeToCanvas,
   onNodeImagePreviewOpen,
   onNodeChatClean,
-  onNodeChatExportToggle,
+  onNodeChatRegenerate,
   onNodeChatModelChange,
   onNodeChatSend,
   onNodeChatUpload,
@@ -80,8 +80,8 @@ function KonvaCanvasShapeComponent({
 }: KonvaCanvasShapeProps) {
   const style = useMemo(() => resolveKonvaShapeStyle(shape.style), [shape.style])
   const renderedShape = useMemo(
-    () => renderShape(document, shape, style, isSelected, zoom, previewMode, hideEditableText, editingNodeTextField, onNodeFieldChange, onImageNodeToCanvas, onNodeImagePreviewOpen, onNodePortPointerDown, onNodeRunToggle, onNodeChatSend, onNodeChatClean, onNodeChatExportToggle, onNodeChatModelChange, onNodeChatUpload, onNodeTextEditStart),
-    [document, editingNodeTextField, hideEditableText, isSelected, onImageNodeToCanvas, onNodeImagePreviewOpen, onNodeChatClean, onNodeChatExportToggle, onNodeChatModelChange, onNodeChatSend, onNodeChatUpload, onNodeFieldChange, onNodePortPointerDown, onNodeRunToggle, onNodeTextEditStart, previewMode, shape, style, zoom]
+    () => renderShape(document, shape, style, isSelected, zoom, previewMode, hideEditableText, editingNodeTextField, onNodeFieldChange, onImageNodeToCanvas, onNodeImagePreviewOpen, onNodePortPointerDown, onNodeRunToggle, onNodeChatSend, onNodeChatClean, onNodeChatRegenerate, onNodeChatModelChange, onNodeChatUpload, onNodeTextEditStart),
+    [document, editingNodeTextField, hideEditableText, isSelected, onImageNodeToCanvas, onNodeImagePreviewOpen, onNodeChatClean, onNodeChatRegenerate, onNodeChatModelChange, onNodeChatSend, onNodeChatUpload, onNodeFieldChange, onNodePortPointerDown, onNodeRunToggle, onNodeTextEditStart, previewMode, shape, style, zoom]
   )
   const canInteract = interactive && !panMode
   const canSelect = canInteract && selectable
@@ -168,7 +168,7 @@ function areShapePropsEqual(previous: KonvaCanvasShapeProps, next: KonvaCanvasSh
   if (previous.toolAllowsDrag !== next.toolAllowsDrag) return false
   if (previous.onDoubleClick !== next.onDoubleClick) return false
   if (previous.onNodeChatClean !== next.onNodeChatClean) return false
-  if (previous.onNodeChatExportToggle !== next.onNodeChatExportToggle) return false
+  if (previous.onNodeChatRegenerate !== next.onNodeChatRegenerate) return false
   if (previous.onNodeChatSend !== next.onNodeChatSend) return false
   if (previous.onNodeChatUpload !== next.onNodeChatUpload) return false
   if (previous.onNodeFieldChange !== next.onNodeFieldChange) return false
@@ -210,7 +210,7 @@ function renderShape(
   onNodeRunToggle?: KonvaCanvasShapeProps['onNodeRunToggle'],
   onNodeChatSend?: KonvaCanvasShapeProps['onNodeChatSend'],
   onNodeChatClean?: KonvaCanvasShapeProps['onNodeChatClean'],
-  onNodeChatExportToggle?: KonvaCanvasShapeProps['onNodeChatExportToggle'],
+  onNodeChatRegenerate?: KonvaCanvasShapeProps['onNodeChatRegenerate'],
   onNodeChatModelChange?: KonvaCanvasShapeProps['onNodeChatModelChange'],
   onNodeChatUpload?: KonvaCanvasShapeProps['onNodeChatUpload'],
   onNodeTextEditStart?: KonvaCanvasShapeProps['onNodeTextEditStart']
@@ -305,7 +305,7 @@ function renderShape(
     return <KonvaImageShape opacity={opacity} previewMode={previewMode} shape={shape} zoom={zoom} />
   }
   if (shape.type === 'node_card') {
-    return <KonvaNodeCardShape document={document} editingFieldName={editingNodeTextField} onChatClean={onNodeChatClean} onChatExportToggle={onNodeChatExportToggle} onChatModelChange={onNodeChatModelChange} onChatSend={onNodeChatSend} onChatUpload={onNodeChatUpload} onFieldChange={onNodeFieldChange} onImageNodeToCanvas={onImageNodeToCanvas} onImagePreviewOpen={onNodeImagePreviewOpen} onPortPointerDown={onNodePortPointerDown} onRunToggle={onNodeRunToggle} onTextEditStart={onNodeTextEditStart} opacity={opacity} previewMode={previewMode} shape={shape} zoom={zoom} />
+    return <KonvaNodeCardShape document={document} editingFieldName={editingNodeTextField} onChatClean={onNodeChatClean} onChatModelChange={onNodeChatModelChange} onChatRegenerate={onNodeChatRegenerate} onChatSend={onNodeChatSend} onChatUpload={onNodeChatUpload} onFieldChange={onNodeFieldChange} onImageNodeToCanvas={onImageNodeToCanvas} onImagePreviewOpen={onNodeImagePreviewOpen} onPortPointerDown={onNodePortPointerDown} onRunToggle={onNodeRunToggle} onTextEditStart={onNodeTextEditStart} opacity={opacity} previewMode={previewMode} shape={shape} zoom={zoom} />
   }
   return null
 }

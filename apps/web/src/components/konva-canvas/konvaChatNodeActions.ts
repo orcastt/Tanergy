@@ -59,26 +59,10 @@ export function sendKonvaChatMessage(document: CanvasDocument, shapeId: string, 
   )))
 }
 
-export function toggleKonvaChatMessageExport(document: CanvasDocument, shapeId: string, messageId: string): CanvasDocument {
-  const node = getChatNode(document, shapeId)
-  if (!node) return document
-  const messages = getChatMessages(node.props.data)
-  if (!messages.some((message) => message.id === messageId && message.role === 'assistant')) return document
-  const exported = getExportedMessageIds(node.props.data)
-  const nextExported = exported.includes(messageId)
-    ? exported.filter((id) => id !== messageId)
-    : [...exported, messageId].slice(0, 8)
-  return reconcileRuntimeGraphDocument(withCanvasShapes(document, document.shapes.map((shape) => (
-    shape.id === shapeId && isChatNodeShape(shape)
-      ? { ...shape, props: { ...shape.props, data: { ...shape.props.data, exportedMessageIds: nextExported } } }
-      : shape
-  ))))
-}
-
 export function clearKonvaChatHistory(document: CanvasDocument, shapeId: string): CanvasDocument {
   const node = getChatNode(document, shapeId)
   if (!node) return document
-  if (getChatMessages(node.props.data).length === 0 && getExportedMessageIds(node.props.data).length === 0) return document
+  if (getChatMessages(node.props.data).length === 0) return document
   return reconcileRuntimeGraphDocument(withCanvasShapes(document, document.shapes.map((shape) => (
     shape.id === shapeId && isChatNodeShape(shape)
       ? {
@@ -88,7 +72,6 @@ export function clearKonvaChatHistory(document: CanvasDocument, shapeId: string)
             data: {
               ...shape.props.data,
               chatMessages: [],
-              exportedMessageIds: [],
             },
             runtimeSummary: {
               ...shape.props.runtimeSummary,
@@ -126,10 +109,6 @@ export function addKonvaChatReferenceFile(document: CanvasDocument, shapeId: str
 
 export function getKonvaChatMessages(data: JsonObject) {
   return getChatMessages(data)
-}
-
-export function getKonvaChatExportedMessageIds(data: JsonObject) {
-  return getExportedMessageIds(data)
 }
 
 export function getKonvaChatReferenceImages(data: JsonObject) {
@@ -196,12 +175,6 @@ function isDeprecatedSeedChatMessage(value: Record<string, unknown>, role: ChatM
     (role === 'user' && value.id === 'seed-user' && value.text === 'Use the connected context and answer clearly.') ||
     (role === 'assistant' && value.id === 'seed-assistant' && value.text === 'AI answer 1. Export this reply when it should become a downstream prompt.')
   )
-}
-
-function getExportedMessageIds(data: JsonObject) {
-  return Array.isArray(data.exportedMessageIds)
-    ? data.exportedMessageIds.filter((value): value is string => typeof value === 'string').slice(0, 8)
-    : []
 }
 
 function getReferenceImages(data: JsonObject): ChatReferenceImage[] {

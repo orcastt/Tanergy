@@ -158,7 +158,7 @@ export function KonvaCanvasSpike({
     onSelectionChange: handleSelectionChange,
     selectedIds,
   })
-  const { cleanChatHistory, closeNodeMenu, createNodeCard, nodeMenu, openNodeMenu, sendChatMessage, setChatModel, setNodeField, setNodeTextField, toggleChatMessageExport, toggleNodeRun } = useKonvaNodeCreationMenu({
+  const { cleanChatHistory, closeNodeMenu, createNodeCard, nodeMenu, openNodeMenu, regenerateChatMessage, sendChatMessage, setChatModel, setNodeField, setNodeTextField, toggleNodeRun } = useKonvaNodeCreationMenu({
     boardId,
     camera,
     document,
@@ -683,7 +683,7 @@ export function KonvaCanvasSpike({
             onImageNodeToCanvas={sendImageNodeToCanvas}
             onNodeImagePreviewOpen={openNodeImageLightbox}
             onNodeChatClean={cleanChatHistory}
-            onNodeChatExportToggle={toggleChatMessageExport}
+            onNodeChatRegenerate={regenerateChatMessage}
             onNodeChatModelChange={setChatModel}
             onNodeChatSend={sendChatMessage}
             onNodeChatUpload={promptImageNodeUpload}

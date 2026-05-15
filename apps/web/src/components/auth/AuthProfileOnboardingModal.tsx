@@ -16,42 +16,22 @@ export function AuthProfileOnboardingModal({ user }: AuthProfileOnboardingModalP
   return (
     <div className="auth-profile-modal-backdrop" role="presentation">
       <section
-        aria-describedby="auth-profile-onboarding-copy"
         aria-labelledby="auth-profile-onboarding-title"
         aria-modal="true"
-        className="auth-profile-modal"
+        className="auth-profile-modal auth-profile-modal-compact"
         role="dialog"
       >
         <div className="auth-profile-modal-copy">
-          <span className="management-badge">Profile setup</span>
-          <h2 id="auth-profile-onboarding-title">Finish your Tanergy profile before you keep going.</h2>
-          <p id="auth-profile-onboarding-copy">
-            Clerk keeps sign-in, password reset, and email verification. Tanergy stores the display
-            name and profile details that appear across boards and workspaces.
-          </p>
+          <h2 id="auth-profile-onboarding-title">Set your display name</h2>
         </div>
-
-        <div className="auth-profile-modal-grid">
-          <AuthProfileForm
-            allowPristineSubmit
-            key={user.displayName}
-            initialDisplayName={user.displayName}
-            onSaved={() => setCompletedOptimistically(true)}
-            submitLabel="Continue to workspace"
-            successMessage="Profile saved. Opening your workspace."
-          />
-
-          <aside className="auth-profile-modal-aside">
-            <div>
-              <span className="management-field-label">Managed by Clerk</span>
-              <p>Authentication, password recovery, email verification, provider identity.</p>
-            </div>
-            <div>
-              <span className="management-field-label">Managed by Tanergy</span>
-              <p>Display name, workspace-facing profile state, future product preferences.</p>
-            </div>
-          </aside>
-        </div>
+        <AuthProfileForm
+          allowPristineSubmit
+          key={user.displayName}
+          initialDisplayName={user.displayName}
+          onSaved={() => setCompletedOptimistically(true)}
+          submitLabel="Continue to workspace"
+          successMessage="Profile saved. Opening your workspace."
+        />
       </section>
     </div>
   )

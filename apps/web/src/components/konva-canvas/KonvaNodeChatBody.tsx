@@ -1,10 +1,10 @@
-import { useMemo, useState, type ComponentProps } from 'react'
-import { Group, Line, Rect, Text } from 'react-konva'
+import { useEffect, useMemo, useRef, useState, type ComponentProps } from 'react'
+import { Group, Line, Path, Rect, Text } from 'react-konva'
 import type { CanvasDocument, CanvasNodeShape } from '@/features/canvas-engine'
 import { getChatModelDisplayName, getChatModelSelectOptions } from '@/features/ai/mockAiContracts'
 import { getCanvasThemePalette, useResolvedCanvasThemeMode } from '@/features/canvas-settings/canvasTheme'
 import { resolveRuntimeGraphNodeInputs, type RuntimeGraphImageValue } from '@/features/node-runtime/runtimeGraphResolution'
-import { getKonvaChatDraft, getKonvaChatExportedMessageIds, getKonvaChatMessages, getKonvaChatModelId, getKonvaChatReferenceFiles, getKonvaChatReferenceImages, konvaChatDraftPlaceholder } from './konvaChatNodeActions'
+import { getKonvaChatDraft, getKonvaChatMessages, getKonvaChatModelId, getKonvaChatReferenceFiles, getKonvaChatReferenceImages, konvaChatDraftPlaceholder } from './konvaChatNodeActions'
 import { stopNodeCardControlEvent } from './KonvaNodeCardParts'
 import { getGeneratedOutputSource, NodeImagePreview } from './KonvaNodeImagePreview'
 import type { KonvaNodeTextFieldName } from './KonvaNodeTextEditor'
@@ -13,22 +13,23 @@ type KonvaNodeChatBodyProps = {
   document: CanvasDocument
   editingFieldName?: KonvaNodeTextFieldName | null
   shape: CanvasNodeShape
-  onChatExportToggle?: (shapeId: string, messageId: string) => void
   onChatModelChange?: (shapeId: string, modelId: string) => void
+  onChatRegenerate?: (shapeId: string, messageId: string) => void
   onChatSend?: (shapeId: string, draftOverride?: string) => void
   onChatUpload?: (shapeId: string) => void
   onTextEditStart?: (shapeId: string, fieldName: KonvaNodeTextFieldName) => void
   zoom: number
 }
 
-export function KonvaNodeChatBody({ document, editingFieldName = null, onChatExportToggle, onChatModelChange, onChatSend, onChatUpload, onTextEditStart, shape, zoom }: KonvaNodeChatBodyProps) {
+export function KonvaNodeChatBody({ document, editingFieldName = null, onChatModelChange, onChatRegenerate, onChatSend, onChatUpload, onTextEditStart, shape, zoom }: KonvaNodeChatBodyProps) {
   const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
   const messages = getKonvaChatMessages(shape.props.data)
-  const exported = new Set(getKonvaChatExportedMessageIds(shape.props.data))
   const references = getKonvaChatReferenceImages(shape.props.data)
   const files = getKonvaChatReferenceFiles(shape.props.data)
   const inputResolution = resolveRuntimeGraphNodeInputs(document, shape)
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
+  const copyResetTimerRef = useRef<number | null>(null)
   const localImageValues = references.map((reference, index): RuntimeGraphImageValue => ({
     assetId: reference.assetId,
     originalUrl: reference.originalUrl,
@@ -61,6 +62,12 @@ export function KonvaNodeChatBody({ document, editingFieldName = null, onChatExp
   const visibleScrollY = Math.min(scrollY, maxScroll)
   const visibleMessages = messageLayouts.items.filter((item) => item.y + item.height >= visibleScrollY - 40 && item.y <= visibleScrollY + bodyHeight + 40)
 
+  useEffect(() => () => {
+    if (copyResetTimerRef.current !== null && typeof window !== 'undefined') {
+      window.clearTimeout(copyResetTimerRef.current)
+    }
+  }, [])
+
   const handleWheel = (event: Parameters<NonNullable<ComponentProps<typeof Group>['onWheel']>>[0]) => {
     if (maxScroll <= 0) return
     event.cancelBubble = true
@@ -69,6 +76,22 @@ export function KonvaNodeChatBody({ document, editingFieldName = null, onChatExp
       messageCount: messages.length,
       value: clamp((current.messageCount === messages.length ? current.value : maxScroll) + event.evt.deltaY, 0, maxScroll),
     }))
+  }
+
+  const handleCopyMessage = (messageId: string, text: string) => {
+    if (!text.trim() || typeof navigator === 'undefined' || !navigator.clipboard?.writeText) return
+    void navigator.clipboard.writeText(text).then(() => {
+      setCopiedMessageId(messageId)
+      if (copyResetTimerRef.current !== null && typeof window !== 'undefined') {
+        window.clearTimeout(copyResetTimerRef.current)
+      }
+      if (typeof window !== 'undefined') {
+        copyResetTimerRef.current = window.setTimeout(() => {
+          setCopiedMessageId((current) => (current === messageId ? null : current))
+          copyResetTimerRef.current = null
+        }, 1400)
+      }
+    }).catch(() => {})
   }
 
   return (
@@ -100,12 +123,25 @@ export function KonvaNodeChatBody({ document, editingFieldName = null, onChatExp
                   y={12}
                 />
                 {isAssistant ? (
-                  <ExportButton
-                    exported={exported.has(message.id)}
-                    onClick={() => onChatExportToggle?.(shape.id, message.id)}
-                    x={width - 68}
-                    y={height - 25}
-                  />
+                  <>
+                    <MessageActionButton
+                      ariaLabel="Copy reply"
+                      onClick={() => handleCopyMessage(message.id, message.text)}
+                      tone={copiedMessageId === message.id ? 'success' : 'default'}
+                      x={10}
+                      y={height - 26}
+                    >
+                      <CopyReplyIcon tone={copiedMessageId === message.id ? 'success' : 'default'} x={4} y={4} />
+                    </MessageActionButton>
+                    <MessageActionButton
+                      ariaLabel="Regenerate reply"
+                      onClick={() => onChatRegenerate?.(shape.id, message.id)}
+                      x={36}
+                      y={height - 26}
+                    >
+                      <RefreshReplyIcon x={4} y={4} />
+                    </MessageActionButton>
+                  </>
                 ) : null}
               </Group>
             )
@@ -492,19 +528,63 @@ function IconButton({ label, onClick, width = 22, x, y }: { label: string; onCli
   )
 }
 
-function ExportButton({ exported, onClick, x, y }: { exported: boolean; onClick: () => void; x: number; y: number }) {
+function MessageActionButton({
+  ariaLabel,
+  children,
+  onClick,
+  tone = 'default',
+  x,
+  y,
+}: {
+  ariaLabel: string
+  children: React.ReactNode
+  onClick?: () => void
+  tone?: 'default' | 'success'
+  x: number
+  y: number
+}) {
+  const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
+  const fill = tone === 'success' ? '#ecfdf5' : palette.secondaryBg
+  const stroke = tone === 'success' ? '#22c55e' : palette.fieldStroke
   return (
     <Group
+      aria-label={ariaLabel}
       onClick={(event) => {
         event.cancelBubble = true
-        onClick()
+        onClick?.()
       }}
       onDblClick={stopNodeCardControlEvent}
       onPointerDown={stopNodeCardControlEvent}
     >
-      <Rect cornerRadius={999} fill={exported ? '#fef2f2' : '#dcfce7'} height={20} stroke={exported ? '#ef4444' : '#22c55e'} strokeWidth={1} width={58} x={x} y={y} />
-      <Text align="center" fill={exported ? '#dc2626' : '#16a34a'} fontFamily="Inter, system-ui, sans-serif" fontSize={10} fontStyle="bold" height={20} text={exported ? 'unexport' : 'export'} verticalAlign="middle" width={58} x={x} y={y} />
+      <Rect cornerRadius={999} fill={fill} height={18} stroke={stroke} strokeWidth={1} width={18} x={x} y={y} />
+      <Group x={x} y={y}>{children}</Group>
     </Group>
+  )
+}
+
+function CopyReplyIcon({ tone = 'default', x, y }: { tone?: 'default' | 'success'; x: number; y: number }) {
+  const stroke = tone === 'success' ? '#16a34a' : '#6b7280'
+  return (
+    <>
+      <Rect cornerRadius={2} fillEnabled={false} height={7} stroke={stroke} strokeWidth={1.2} width={6} x={x + 3.5} y={y + 2} />
+      <Rect cornerRadius={2} fillEnabled={false} height={7} stroke={stroke} strokeWidth={1.2} width={6} x={x + 5.5} y={y + 4} />
+    </>
+  )
+}
+
+function RefreshReplyIcon({ x, y }: { x: number; y: number }) {
+  return (
+    <>
+      <Path
+        data={`M ${x + 10.5} ${y + 3.5} A 4.5 4.5 0 1 0 ${x + 11.8} ${y + 10.6}`}
+        fillEnabled={false}
+        stroke="#6b7280"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.2}
+      />
+      <Line points={[x + 10.4, y + 2.9, x + 13, y + 3, x + 12.8, y + 5.5]} stroke="#6b7280" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.2} />
+    </>
   )
 }
 

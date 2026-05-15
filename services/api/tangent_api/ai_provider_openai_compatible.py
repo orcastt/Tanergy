@@ -151,7 +151,7 @@ def _post_text_completion(
 ) -> httpx.Response:
     request_json = {
         "model": route.provider_model,
-        "messages": _text_messages(payload, context),
+        "messages": _text_messages(payload, context, route),
         "stream": False,
     }
     max_completion_tokens = _optional_positive_int(payload.params.get("maxCompletionTokens"))
@@ -291,19 +291,22 @@ def _count(payload: AiRunRequest) -> int:
         return 1
 
 
-def _text_messages(payload: AiRunRequest, context: ApiRequestContext) -> list[dict[str, object]]:
+def _text_messages(
+    payload: AiRunRequest,
+    context: ApiRequestContext,
+    route: Optional[AiProviderRouteCandidate] = None,
+) -> list[dict[str, object]]:
     messages = _normalized_text_messages(payload)
+    if not messages:
+        prompt = (payload.prompt or "Untitled prompt").strip() or "Untitled prompt"
+        messages.append({"role": "user", "content": prompt})
     if payload.system_prompt and not any(message.get("role") == "system" for message in messages):
         messages.insert(0, {"role": "system", "content": payload.system_prompt.strip()})
-    if not messages:
-        system_prompt = (payload.system_prompt or "").strip()
-        prompt = (payload.prompt or "Untitled prompt").strip() or "Untitled prompt"
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
     image_parts = _inline_text_input_asset_parts(payload, context)
     if image_parts:
         _append_image_parts_to_last_user_message(messages, image_parts)
+    if _requires_user_assistant_turns(route):
+        messages = _fold_system_messages_into_user_turns(messages)
     return messages
 
 
@@ -384,6 +387,74 @@ def _append_image_parts_to_last_user_message(messages: list[dict[str, object]], 
         message["content"] = [*parts, *image_parts]
         return
     messages.append({"role": "user", "content": image_parts})
+
+
+def _requires_user_assistant_turns(route: Optional[AiProviderRouteCandidate]) -> bool:
+    provider_model = str(route.provider_model if route else "").strip().lower()
+    return provider_model.startswith("hunyuan-")
+
+
+def _fold_system_messages_into_user_turns(messages: list[dict[str, object]]) -> list[dict[str, object]]:
+    system_texts: list[str] = []
+    normalized: list[dict[str, object]] = []
+
+    for message in messages:
+        role = str(message.get("role") or "").strip().lower()
+        if role == "system":
+            text = _content_text(message.get("content"))
+            if text:
+                system_texts.append(text)
+            continue
+        if role not in {"assistant", "user"}:
+            continue
+        content = message.get("content")
+        if normalized and normalized[-1].get("role") == role:
+            normalized[-1]["content"] = _merge_message_content(normalized[-1].get("content"), content)
+            continue
+        normalized.append({"role": role, "content": content})
+
+    system_prefix = "\n\n".join(text for text in system_texts if text).strip()
+    if not system_prefix:
+        return normalized
+    for message in normalized:
+        if message.get("role") != "user":
+            continue
+        message["content"] = _prepend_text_to_message_content(message.get("content"), f"System instruction:\n{system_prefix}")
+        return normalized
+    return [{"role": "user", "content": f"System instruction:\n{system_prefix}"}, *normalized]
+
+
+def _merge_message_content(base: object, next_content: object) -> object:
+    base_parts = _as_message_parts(base)
+    next_parts = _as_message_parts(next_content)
+    if not base_parts:
+        return next_parts if len(next_parts) > 1 else next_parts[0]["text"] if next_parts and next_parts[0]["type"] == "text" else next_parts
+    merged_parts = [*base_parts, *next_parts]
+    text_only = all(part.get("type") == "text" for part in merged_parts)
+    if text_only:
+        merged_text = "\n\n".join(part["text"].strip() for part in merged_parts if isinstance(part.get("text"), str) and part["text"].strip()).strip()
+        return merged_text
+    return merged_parts
+
+
+def _prepend_text_to_message_content(content: object, text: str) -> object:
+    prefix = text.strip()
+    if not prefix:
+        return content
+    if isinstance(content, str):
+        merged = "\n\n".join(part for part in [prefix, content.strip()] if part).strip()
+        return merged
+    parts = _as_message_parts(content)
+    return [{"type": "text", "text": prefix}, *parts]
+
+
+def _as_message_parts(content: object) -> list[dict[str, object]]:
+    if isinstance(content, str):
+        trimmed = content.strip()
+        return [{"type": "text", "text": trimmed}] if trimmed else []
+    if not isinstance(content, list):
+        return []
+    return [part for part in content if isinstance(part, dict)]
 
 
 def _image_request_fields(payload: AiRunRequest, route: AiProviderRouteCandidate) -> dict[str, str]:

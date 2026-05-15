@@ -22,7 +22,7 @@ import {
   syncRuntimeGraphAcceptedRun,
 } from '@/features/node-runtime/runtimeGraphRunAdapter'
 import type { NodeType } from '@/types/nodeRuntime'
-import { clearKonvaChatHistory, toggleKonvaChatMessageExport } from './konvaChatNodeActions'
+import { clearKonvaChatHistory } from './konvaChatNodeActions'
 import {
   appendKonvaChatAssistantDelta,
   completeKonvaChatRequest,
@@ -421,6 +421,124 @@ export function useKonvaNodeCreationMenu({
     })
   }, [boardId, history, onDocumentChange, workspace])
 
+  const regenerateChatMessage = useCallback((shapeId: string, messageId: string) => {
+    const snapshot = latestDocumentRef.current
+    const node = snapshot.shapes.find((shape): shape is CanvasNodeShape => shape.id === shapeId && shape.type === 'node_card' && shape.props.nodeType === 'chat')
+    if (!node) return
+    history.checkpoint(snapshot)
+
+    activeChatControllersRef.current.get(shapeId)?.abort()
+    const controller = new AbortController()
+    activeChatControllersRef.current.set(shapeId, controller)
+
+    const prepared = prepareKonvaChatRequest(snapshot, shapeId, undefined, boardId, { regenerateMessageId: messageId })
+    if (!prepared) {
+      activeChatControllersRef.current.delete(shapeId)
+      return
+    }
+    latestDocumentRef.current = prepared.document
+    onDocumentChange(prepared.document)
+
+    if (hasRemotePersistenceApi() && prepared.remoteRequest) {
+      const remoteRequest = prepared.remoteRequest
+      void createAiRun(remoteRequest, { signal: controller.signal, workspace })
+        .then(async (run) => {
+          if (controller.signal.aborted) {
+            if (run.status === 'queued' || run.status === 'running') {
+              void cancelAiRun(run.runId, { workspace }).catch(() => {})
+            }
+            return
+          }
+          const accepted = syncKonvaChatAcceptedRun(
+            latestDocumentRef.current,
+            shapeId,
+            prepared.runId,
+            run.runId
+          )
+          latestDocumentRef.current = accepted
+          onDocumentChange(accepted)
+
+          const settledRun = await waitForAiRunCompletion(run.runId, {
+            signal: controller.signal,
+            timeoutMs: getAiRunCompletionTimeoutMs(remoteRequest.runType),
+            workspace,
+          })
+          if (controller.signal.aborted) return
+          if (settledRun.status !== 'succeeded') {
+            throw getAiRunTerminalError(settledRun)
+          }
+          const withResult = setKonvaChatAssistantResult(
+            latestDocumentRef.current,
+            shapeId,
+            prepared.runId,
+            prepared.assistantMessageId,
+            settledRun.textOutput
+          )
+          const next = completeKonvaChatRequest(withResult, shapeId, prepared.runId)
+          latestDocumentRef.current = next
+          onDocumentChange(next)
+        })
+        .catch((error) => {
+          if (controller.signal.aborted) return
+          const message = error instanceof Error ? error.message : 'Chat request failed.'
+          const next = failKonvaChatRequest(
+            latestDocumentRef.current,
+            shapeId,
+            prepared.runId,
+            prepared.assistantMessageId,
+            message
+          )
+          latestDocumentRef.current = next
+          onDocumentChange(next)
+        })
+        .finally(() => {
+          if (activeChatControllersRef.current.get(shapeId) === controller) {
+            activeChatControllersRef.current.delete(shapeId)
+          }
+        })
+      return
+    }
+
+    void streamAiChatCompletion(prepared.localRequest, {
+      onComplete: () => {
+        const next = completeKonvaChatRequest(latestDocumentRef.current, shapeId, prepared.runId)
+        latestDocumentRef.current = next
+        onDocumentChange(next)
+        if (activeChatControllersRef.current.get(shapeId) === controller) {
+          activeChatControllersRef.current.delete(shapeId)
+        }
+      },
+      onDelta: (delta) => {
+        const next = appendKonvaChatAssistantDelta(
+          latestDocumentRef.current,
+          shapeId,
+          prepared.runId,
+          prepared.assistantMessageId,
+          delta
+        )
+        latestDocumentRef.current = next
+        onDocumentChange(next)
+      },
+      signal: controller.signal,
+      workspace,
+    }).catch((error) => {
+      if (controller.signal.aborted) return
+      const message = error instanceof Error ? error.message : 'Chat request failed.'
+      const next = failKonvaChatRequest(
+        latestDocumentRef.current,
+        shapeId,
+        prepared.runId,
+        prepared.assistantMessageId,
+        message
+      )
+      latestDocumentRef.current = next
+      onDocumentChange(next)
+      if (activeChatControllersRef.current.get(shapeId) === controller) {
+        activeChatControllersRef.current.delete(shapeId)
+      }
+    })
+  }, [boardId, history, onDocumentChange, workspace])
+
   const setChatModel = useCallback((shapeId: string, modelId: string) => {
     const snapshot = latestDocumentRef.current
     const node = snapshot.shapes.find((shape): shape is CanvasNodeShape => shape.id === shapeId && shape.type === 'node_card' && shape.props.nodeType === 'chat')
@@ -428,13 +546,6 @@ export function useKonvaNodeCreationMenu({
     history.checkpoint(snapshot)
     onDocumentChange((current) => setKonvaChatModelId(current, shapeId, modelId))
   }, [history, onDocumentChange])
-
-  const toggleChatMessageExport = useCallback((shapeId: string, messageId: string) => {
-    const node = document.shapes.find((shape): shape is CanvasNodeShape => shape.id === shapeId && shape.type === 'node_card' && shape.props.nodeType === 'chat')
-    if (!node) return
-    history.checkpoint(document)
-    onDocumentChange((current) => toggleKonvaChatMessageExport(current, shapeId, messageId))
-  }, [document, history, onDocumentChange])
 
   const cleanChatHistory = useCallback((shapeId: string) => {
     const node = document.shapes.find((shape): shape is CanvasNodeShape => shape.id === shapeId && shape.type === 'node_card' && shape.props.nodeType === 'chat')
@@ -456,11 +567,11 @@ export function useKonvaNodeCreationMenu({
     createNodeCard,
     nodeMenu,
     openNodeMenu,
+    regenerateChatMessage,
     sendChatMessage,
     setChatModel,
     setNodeField,
     setNodeTextField,
-    toggleChatMessageExport,
     toggleNodeRun,
   }
 }

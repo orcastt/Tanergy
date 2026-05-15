@@ -178,14 +178,13 @@ export const nodeDefinitions: Record<NodeType, NodeDefinition> = {
   },
   chat: {
     accentColor: '#7c3aed',
-    aiDescription: 'Multi-turn AI chat node that can gather prompt/image context and export selected replies as text outputs.',
+    aiDescription: 'Multi-turn AI chat node that can gather prompt and image context inside a node-local conversation.',
     aiName: 'AI Chat',
-    aiUseCases: ['chat with image references', 'merge multiple prompts', 'export selected AI replies downstream'],
+    aiUseCases: ['chat with image references', 'merge multiple prompts', 'iterate on connected canvas context'],
     category: 'text',
     defaultData: {
       chatDraft: '',
       chatMessages: [],
-      exportedMessageIds: [],
       imageInputCount: 1,
       modelId: getDefaultChatModelId(),
       textInputCount: 1,
@@ -194,7 +193,7 @@ export const nodeDefinitions: Record<NodeType, NodeDefinition> = {
     defaultRuntimeCostHint: 'Chat runtime adapter later',
     displayName: 'Chat',
     cardFields: [{ label: 'Message', name: 'chatDraft', type: 'textarea' }],
-    outputSummary: 'Exported chat replies',
+    outputSummary: 'Conversation replies',
     paletteOrder: 15,
     paletteShortLabel: 'Ch',
     ports: [
@@ -552,7 +551,6 @@ export function getResolvedNodePorts(type: NodeType, data: JsonObject): Resolved
     const imageInputDefinition = definition.ports.find((port) => port.id === 'image_in')
     const textInputCount = clampPortCount(Number(data.textInputCount ?? 1), maxChatInputPorts)
     const imageInputCount = clampPortCount(Number(data.imageInputCount ?? 1), maxChatInputPorts)
-    const exportedIds = getExportedChatMessageIds(data)
     return [
       ...(textInputDefinition
         ? Array.from({ length: textInputCount }, (_, index) => ({
@@ -572,13 +570,6 @@ export function getResolvedNodePorts(type: NodeType, data: JsonObject): Resolved
             anchorY: getChatInputAnchorY(index, textInputCount),
           }))
         : []),
-      ...exportedIds.map((id, index) => ({
-        dataType: 'text' as const,
-        direction: 'out' as const,
-        id: `text_out_${id}`,
-        label: `Export ${index + 1}`,
-        anchorY: getDistributedAnchorY(index, exportedIds.length),
-      })),
     ]
   }
 
@@ -667,12 +658,6 @@ function getImageOutputAnchorY(type: NodeType, index: number) {
 
 function getChatInputAnchorY(index: number, textInputCount: number) {
   return Math.min(0.78, 0.24 + (textInputCount + index) * 0.085)
-}
-
-function getExportedChatMessageIds(data: JsonObject) {
-  return Array.isArray(data.exportedMessageIds)
-    ? data.exportedMessageIds.filter((value): value is string => typeof value === 'string').slice(0, 8)
-    : []
 }
 
 function clampPortCount(value: number, max = maxImageInputPorts) {
