@@ -13,6 +13,7 @@ import { getPatternTile } from './konvaPatternUtils'
 import { getArrowHeadPoints, getCloudPath, getFreehandPath } from './konvaPathUtils'
 import { isBoxCanvasShape } from './konvaRotationUtils'
 import { canKonvaShapeFlip, canKonvaShapeRotate } from './konvaShapeCapabilities'
+import { clearKonvaStageCursor, setKonvaStageCursor } from './konvaStageCursor'
 type KonvaCanvasShapeProps = {
   interactive?: boolean
   isSelected: boolean
@@ -94,6 +95,10 @@ function KonvaCanvasShapeComponent({
       key={shape.id}
       listening={interactive}
       name="konva-canvas-shape"
+      onMouseEnter={canSelect ? (event) => {
+        setKonvaStageCursor(event, 'move')
+      } : undefined}
+      onMouseLeave={canSelect ? clearKonvaStageCursor : undefined}
       onClick={selectOnClick ? (event) => {
         if (event.evt.button !== 0) return
         event.cancelBubble = true
@@ -110,6 +115,7 @@ function KonvaCanvasShapeComponent({
       onDragStart={canInteract ? (event) => {
         lockDragSourceRef.current = Boolean(onDragStart(shape.id, { duplicate: event.evt.altKey })?.lockSource)
         lockedDragRef.current = lockDragSourceRef.current ? createLockedDragState(event.target, shape) : null
+        setKonvaStageCursor(event, 'move')
         if (lockDragSourceRef.current) resetDragSource(event.target, transform)
       } : undefined}
       onDragEnd={canInteract ? (event) => {
@@ -117,6 +123,7 @@ function KonvaCanvasShapeComponent({
           ? lockedDragRef.current?.lastPoint ?? getLockedDragPoint(event.target, lockedDragRef.current) ?? getDragPoint(event.target, transform)
           : getDragPoint(event.target, transform)
         onDragEnd(shape.id, point.x, point.y)
+        setKonvaStageCursor(event, 'move')
         if (lockDragSourceRef.current) resetDragSource(event.target, transform)
         lockDragSourceRef.current = false
         lockedDragRef.current = null

@@ -1,7 +1,7 @@
 # Project State Slice S1B: Staging Infrastructure And Online Prep
 
-**Updated**: 2026-05-14
-**Status**: In progress; the rebuilt Hetzner staging API host is back online, public HTTPS API smoke is green again, local-against-real-DB plus public API smoke now pass against Neon + R2, the public Vercel alias now points to a fresh Konva-only web deploy, real Clerk session/admin smoke is green, and a production deploy runbook/env template are now prepared. Remaining gates are Google/email verification, one live provider AI smoke, and full browser acceptance after login.
+**Updated**: 2026-05-15
+**Status**: In progress; the rebuilt Hetzner staging API host is back online, public HTTPS API smoke is green again, local-against-real-DB plus public API smoke now pass against Neon + R2, the public Vercel alias now points to a fresh Konva-only web deploy, Cloudflare-proxied staging Web/API records with Full (strict) TLS are in place, real Clerk session/admin smoke is green, the tracked staging deploy docs are now redacted back to placeholder/checklist form, and a production deploy runbook/env template are prepared. Remaining gates are signed-in board/browser acceptance, Google/email verification and one live provider AI smoke.
 
 ## Objective
 
@@ -42,8 +42,10 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - [x] Asset upload/read through R2.
 - [x] Board save/load/history through staging API.
 - [x] Vercel Web domain opens Workspace/Board routes.
+- [x] Public staging Web/API DNS stays behind Cloudflare proxying with Full (strict) TLS.
 - [x] Konva-only `/boards/[boardId]` route opens new Boards on staging without any legacy canvas dependency.
 - [x] Production-like env blocks legacy v1/unknown Board documents in the active app path.
+- [ ] Signed-in board/browser acceptance covers Board create/open/save/delete plus paste/upload -> reload -> history/thumbnail behavior.
 - [ ] OTP email delivered to test inbox.
 - [ ] Google OAuth login on staging returns provider session/JWT.
 - [ ] FastAPI rejects invalid/expired provider JWT.
@@ -68,12 +70,14 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - Cloudflare DNS now proxies both public staging records, but the source split remains intentional:
   - `staging.tanergy.cc` stays a proxied Vercel CNAME
   - `api-staging.tanergy.cc` stays a proxied Hetzner A record
+- Cloudflare SSL/TLS is now explicitly set to Full (strict) for the staging domains, so browser traffic stays on the proxied Web/API records while origin validation remains enabled.
 - `https://staging.tanergy.cc/boards/[boardId]` now returns `200` in the signed-out Clerk-protected state instead of `500`, and the active deployment no longer exposes the old tldraw license/runtime surface.
 - Real signed-in staging smoke is now green for `/api/auth/session`, `/api/admin-proxy/me`, `/api/admin-proxy/operator/users?limit=3`, `/api/admin-proxy/finance/summary` and `/api/admin-proxy/ai/route-metrics?limit=5`.
-- The newest Konva-only board behavior still needs a broader signed-in browser acceptance pass against the rebuilt API host.
+- The newest Konva-only board behavior still needs a broader signed-in browser acceptance pass against the rebuilt API host, especially around private-board CRUD, paste/upload persistence, reload, history and thumbnails.
 - Runtime Postgres connections now prefer `DATABASE_POOL_URL` when present while keeping Alembic on `DATABASE_URL`; backend cursors log SQL taking longer than `TANGENT_DATABASE_SLOW_QUERY_MS` without logging parameters.
 - Clerk/Google/email runtime secrets have been restored enough for real session/admin smoke; remaining work is final Google/email verification and any last secret cleanup before wider staging use.
-- Cloudflare edge hardening is only partially complete: DNS proxying is on, but SSL mode, WAF managed rules and rate limits still need dashboard setup or a wider-scoped API token.
+- The tracked staging deployment worksheet no longer stores raw live secrets; runtime truth should now be maintained only in Vercel env, the staging server `deploy/staging/api.env`, provider dashboards and private operator storage.
+- Cloudflare edge hardening is now partly in place: proxied DNS, Full (strict) TLS and source-host firewall narrowing are done, while deeper WAF/rate-limit coverage still needs either remaining free-plan room or a paid/security-specific follow-up.
 - `deploy/production/README.md` and `deploy/production/api.env.example` now define the production boundary: separate web/API domains, separate database/storage/auth/payment secrets and a stage-to-prod promotion flow from one reviewed commit.
 - Staging live AI acceptance is now explicitly blocked on a real provider credential such as `GEEKAI_API_KEY`; deployed environments should no longer fake-success through local mock asset ids.
 

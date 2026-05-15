@@ -119,7 +119,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--analysis-prompt", default="Describe the composition, colors, and subject in one concise paragraph.")
     parser.add_argument("--image-resolution", default="0.5K")
     parser.add_argument("--skip-analysis", action="store_true")
-    parser.add_argument("--timeout-seconds", default=120, type=int)
+    parser.add_argument("--timeout-seconds", default=240, type=int)
     return parser.parse_args()
 
 

@@ -1,8 +1,8 @@
 # TANGENT Project State Index
 
-**Updated**: 2026-05-14
+**Updated**: 2026-05-15
 **Branch**: `feature/s1c-auth-admin-production-boundary`
-**Latest local checkpoint**: S1X Konva route stabilization + local collaboration presence/read-only foundation + passive remote-save sync + local Yjs room/snapshot foundation with visible sync state, deferred remote-apply controls, native page/shape/edge Yjs storage, collaboration-origin autosave suppression, structural page-reconcile improvements, server-room-key alignment, provider-ready transport shaping, document/awareness initial-sync gating, bounded websocket queued-update reconnect semantics and local collaborative undo/redo + S1D permission/share hardening + S2/S3 DB-backed AI control-plane scaffolds + first-pass billing/team/usage/admin surfaces + S3 admin-operator acceptance pass + DB-backed workspace/subscription frontend alignment + GeekAI local canvas UX proof + admin hot-path performance cleanup with pooled Postgres runtime preference and slow-SQL observability + backend text `AiRun` support with durable terminal `text_output` persistence, Prompt Optimizer remote create/poll/cancel wiring and message-native chat backendization + rebuilt S1B staging API host recovery with rotated Neon/R2 runtime secrets, hardened SSH, Docker/Caddy restore, wheel-safe API env bootstrap, green local/public API smoke on `api-staging.tanergy.cc`, a root-level Vercel packaging cleanup, restored production `CLERK_SECRET_KEY`, a fresh `staging.tanergy.cc` alias that now serves the Konva-only web deploy without the old tldraw/license failure, real Clerk session/admin smoke on staging, and the 2026-05-14 AI image-model refresh onto GPT Image 2, Nano Banana 2, Doubao Seedream 5.0 Lite and Jimeng 4.0 with a 240s live-image timeout boundary. The active business-system checkpoint is now the S3 Team/Group wallet pivot: Team plans use isolated Team workspaces and Team wallets, while Group/Collaborate uses personal wallets. The execution order is now: finish the remaining signed-in board/browser plus Google/email staging acceptance, then one live provider image smoke, then deeper S2 provider cleanup and S4 Yjs/provider work.
+**Latest local checkpoint**: S1X Konva route stabilization + local collaboration presence/read-only foundation + passive remote-save sync + local Yjs room/snapshot foundation with visible sync state, deferred remote-apply controls, native page/shape/edge Yjs storage, collaboration-origin autosave suppression, structural page-reconcile improvements, server-room-key alignment, provider-ready transport shaping, document/awareness initial-sync gating, bounded websocket queued-update reconnect semantics and local collaborative undo/redo + S1D permission/share hardening + S2/S3 DB-backed AI control-plane scaffolds + first-pass billing/team/usage/admin surfaces + S3 admin-operator acceptance pass + DB-backed workspace/subscription frontend alignment + GeekAI local canvas UX proof + admin hot-path performance cleanup with pooled Postgres runtime preference and slow-SQL observability + backend text `AiRun` support with durable terminal `text_output` persistence, Prompt Optimizer remote create/poll/cancel wiring and message-native chat backendization + rebuilt S1B staging API host recovery with rotated Neon/R2 runtime secrets, hardened SSH, Docker/Caddy restore, wheel-safe API env bootstrap, green local/public API smoke on `api-staging.tanergy.cc`, a root-level Vercel packaging cleanup, restored production `CLERK_SECRET_KEY`, a fresh `staging.tanergy.cc` alias that now serves the Konva-only web deploy without the old tldraw/license failure, real Clerk session/admin smoke on staging, and the 2026-05-14 AI image-model refresh onto GPT Image 2, Nano Banana 2, Doubao Seedream 5.0 Lite and Jimeng 4.0 with a 240s live-image timeout boundary. The active business-system checkpoint is now the S3 Team/Group wallet pivot: Team plans use isolated Team workspaces and Team wallets, while Group/Collaborate uses personal wallets. The current mainline order is now explicit: signed-in board/browser acceptance, Google/email plus CORS/origin acceptance, one real live AI image smoke, then S1D/S3 closeout, and only after that S4 collaboration. Non-urgent follow-on development should be documented first and kept out of this mainline until these gates are complete.
 
 This folder replaces the former root-level long project ledger and short mirror files. The root `project_state.md` is now only a pointer.
 
@@ -62,9 +62,16 @@ S4 Collaboration              27%  local Yjs room/document foundation plus bound
 
 ## Current Execution Order
 
-1. Finish the remaining staging acceptance around signed-in board/browser behavior, Google/email flow verification and live secret cleanup.
-2. Run one real server-backed image smoke through the refreshed four-model S2 lane.
-3. Resume S4 websocket/provider deepening: reconnect/resync validation, CRDT snapshot persistence, multi-user conflict scripts and performance cleanup.
+1. Finish signed-in board/browser acceptance on staging.
+2. Finish Google/email plus CORS/origin acceptance.
+3. Run one real server-backed image smoke through the refreshed four-model S2 lane.
+4. Return to S1D/S3 closeout: permission edges, payer visibility, billing language and staged payment/usage truth.
+5. Resume S4 websocket/provider deepening only after the four gates above are green.
+
+Working rule for this phase:
+
+- non-urgent follow-on development should be written into the relevant docs or tactical plans first
+- do not interrupt the current mainline for backlog nice-to-haves until the ordered gates above are complete
 
 ```text
 Done locally:
@@ -205,7 +212,7 @@ S1C real Auth
 
 Current recommendation: treat S1X as a Konva-only production path, keep historical migration notes only as background context, and use `dev-plans/s1-launch-readiness-and-acceptance-report-2026-05-05.md`, `dev-plans/s2-ai-provider-route-billing-control-plane-2026-05-07.md`, `dev-plans/s3-team-group-wallets-membership-billing-plan-2026-05-08.md` and `dev-plans/s3-admin-operator-console-redesign-2026-05-09.md` as the handoff checklists. S1A is implemented but needs the Team-wallet delta, S1D first-pass share flow is in place, and S3 should not start real provider charging until Team wallet and personal Collaborate wallet payer tests pass.
 
-Next major checkpoint should move from repaired staging infrastructure into the remaining production-facing S1B/S1C/S2 gates: full signed-in board/browser acceptance, Google/email verification, deployment-secret cleanup, the refreshed four-model live image smoke and then the deeper S4 Yjs/provider proof with cleaner server boundaries. Avoid reintroducing legacy canvas compatibility layers or stacking more transitional fallbacks where a bounded rewrite is clearer.
+Next major checkpoint should move from repaired staging infrastructure into the remaining production-facing S1B/S1C/S2 gates in this explicit order: full signed-in board/browser acceptance, Google/email plus CORS/origin verification, the refreshed four-model live image smoke, then S1D/S3 closeout, and only then the deeper S4 Yjs/provider proof with cleaner server boundaries. Avoid reintroducing legacy canvas compatibility layers, and avoid interrupting this order for non-urgent backlog work that can be recorded in docs first.
 
 ## Update Rules
 
@@ -219,7 +226,7 @@ Next major checkpoint should move from repaired staging infrastructure into the 
 
 # TANGENT 项目状态索引
 
-**更新日期**：2026-05-14
+**更新日期**：2026-05-15
 **分支**：`feature/s1c-auth-admin-production-boundary`
 **最新本地检查点**：S1X Konva 路由稳定化 + 本地协同 presence/read-only + 被动远端保存同步 + 本地 Yjs room/snapshot foundation（含结构性 page reconcile、server room key 对齐、本地协同 undo/redo）+ S1D permission/share hardening + S2/S3 DB-backed AI control-plane 脚手架 + 第一阶段 billing/team/usage/admin surfaces + GeekAI 本地画布 UX proof + staging Konva-only 部署恢复 + 真实 Clerk session/admin smoke 转绿 + 2026-05-14 生图模型刷新到 GPT Image 2、Nano Banana 2、Doubao Seedream 5.0 Lite 和 Jimeng 4.0，并把长耗时生图超时边界抬到 240s。当前业务系统检查点是 S3 Team/Group wallet 调整：Team 套餐使用彼此隔离的 Team workspace 和 Team wallet，Group/Collaborate 使用个人钱包。
 
@@ -274,6 +281,19 @@ S3 Admin/billing/team         96%  admin/billing/team 脚手架、Team-wallet pa
 Frontend product UI alignment 63%  主要界面、table-first AI route management、带角色门控的 Team/Group member actions、第一阶段 Billing actions、tabbed admin console、admin finance panels，以及 operator 行内 invite/member/board 操作回路已存在；导航、套餐语言和扣费文案需要对齐
 S4 Collaboration              27%  本地 Yjs room/document 基础与 reconnect/resync smoke harness 已存在；Yjs/provider proof 仍后置
 ```
+
+## 当前主线顺序
+
+1. 先完成 signed-in board/browser staging 验收。
+2. 再完成 Google/email 与 CORS/origin 验收。
+3. 跑通一条刷新后四模型生图线的真实 live image smoke。
+4. 回到 S1D/S3 收口：permission edges、payer visibility、billing language、credits、usage 和 staged payment truth。
+5. 只有在前四步转绿后，才继续 S4 collaboration。
+
+当前工作规则：
+
+- 如果是有价值但不紧急的后续开发，先写进对应 slice / dev-plan 文档
+- 在上述主线完成前，不要让 backlog nice-to-haves 打断当前推进顺序
 
 ```text
 本地已完成：
@@ -402,7 +422,7 @@ S1D Auth-backed Board CRUD
 
 当前建议是：把 S1X 视为 Konva-only 的生产路径，历史迁移说明只保留为背景上下文；除非出现回归，否则把 S1X page polish 视为已接受；并使用 `dev-plans/s1-launch-readiness-and-acceptance-report-2026-05-05.md`、`dev-plans/s2-ai-provider-route-billing-control-plane-2026-05-07.md`、`dev-plans/s3-team-group-wallets-membership-billing-plan-2026-05-08.md` 和 `dev-plans/s3-admin-operator-console-redesign-2026-05-09.md` 作为交接检查清单。S1A 已实现但需要 Team-wallet delta，S1D 第一阶段 share flow 已就绪，S3 在 Team wallet 和 personal Collaborate wallet payer 测试通过前，不应开始真实 provider charging。
 
-下一个主要检查点应当是：在修复好的 staging 上补完 signed-in board/browser、Google/email 和 secret cleanup，再完成刷新后四模型生图线的一条真实 live image smoke，然后才继续更深的 S4 Yjs/provider proof。避免重新引入 legacy canvas compatibility 行为。
+下一个主要检查点应当按这个明确顺序推进：先补完 signed-in board/browser，再完成 Google/email 与 CORS/origin 验收，然后跑一条刷新后四模型生图线的真实 live image smoke，接着回到 S1D/S3 收口，最后才继续更深的 S4 Yjs/provider proof。避免重新引入 legacy canvas compatibility 行为，也不要为了不紧急的 backlog 项目打断这条顺序。
 
 ## 更新规则
 

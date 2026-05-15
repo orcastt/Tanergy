@@ -9,6 +9,7 @@ import type { KonvaRuntimeConnectionPreview, KonvaRuntimeEdge } from './konvaRun
 
 type KonvaNodeEdgeLayerProps = {
   edges: KonvaRuntimeEdge[]
+  interactive?: boolean
   preview?: KonvaRuntimeConnectionPreview | null
   selectedEdgeId?: string | null
   shapes: CanvasNodeShape[]
@@ -27,6 +28,7 @@ type EdgeView = {
 
 export const KonvaNodeEdgeLayer = memo(function KonvaNodeEdgeLayer({
   edges,
+  interactive = true,
   onEdgeDisconnect,
   onEdgeSelect,
   preview,
@@ -44,7 +46,7 @@ export const KonvaNodeEdgeLayer = memo(function KonvaNodeEdgeLayer({
   const previewSnapped = Boolean(preview?.target)
 
   return (
-    <Group>
+    <Group listening={interactive}>
       {edgeViews.map((view) => (
         <Group id={`${konvaRuntimeEdgeNodeIdPrefix}${view.edgeId}`} key={view.edgeId} name={konvaRuntimeEdgeNodeName}>
           <Path
@@ -52,13 +54,13 @@ export const KonvaNodeEdgeLayer = memo(function KonvaNodeEdgeLayer({
             hitStrokeWidth={hitStrokeWidth}
             lineCap="round"
             lineJoin="round"
-            onClick={(event) => {
+            onClick={interactive ? (event) => {
               event.cancelBubble = true
               onEdgeSelect?.(view.edgeId)
-            }}
-            onPointerDown={(event) => {
+            } : undefined}
+            onPointerDown={interactive ? (event) => {
               event.cancelBubble = true
-            }}
+            } : undefined}
             shadowBlur={2 / getSafeZoom(zoom)}
             shadowColor="rgba(15, 23, 42, 0.16)"
             shadowOpacity={0.55}
@@ -83,13 +85,13 @@ export const KonvaNodeEdgeLayer = memo(function KonvaNodeEdgeLayer({
           <Group key={`${view.edgeId}:disconnect`} name={konvaCaptureExcludeName}>
             <Circle
               fill="#111827"
-              onClick={(event) => {
+              onClick={interactive ? (event) => {
                 event.cancelBubble = true
                 onEdgeDisconnect?.(view.edgeId)
-              }}
-              onPointerDown={(event) => {
+              } : undefined}
+              onPointerDown={interactive ? (event) => {
                 event.cancelBubble = true
-              }}
+              } : undefined}
               radius={size / 2}
               x={actionPoint.x}
               y={actionPoint.y}

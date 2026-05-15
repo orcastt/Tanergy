@@ -28,6 +28,24 @@ export type KonvaToolGroup = {
   tools: KonvaCanvasTool[]
 }
 
+const konvaCreateToolSet = new Set<KonvaCanvasTool>([
+  'draw',
+  'rect',
+  'diamond',
+  'ellipse',
+  'triangle',
+  'cloud',
+  'frame',
+  'line',
+  'arrow',
+  'sticky',
+  'text',
+])
+
+export function isKonvaCreateTool(tool: KonvaCanvasTool) {
+  return konvaCreateToolSet.has(tool)
+}
+
 export type KonvaToolSession =
   | {
       origin: CanvasPoint

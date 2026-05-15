@@ -1,11 +1,14 @@
 'use client'
 
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
+import type { AiRunRequest } from './aiTypes'
 import { getAiRun } from './aiClient'
 import type { AiRunRecord, AiRunStatus } from './aiTypes'
 
 const terminalAiRunStatuses = new Set<AiRunStatus>(['canceled', 'failed', 'succeeded'])
 const cancelableAiRunStatuses = new Set<AiRunStatus>(['queued', 'running'])
+const imageAiRunTimeoutMs = 240_000
+const textAiRunTimeoutMs = 120_000
 
 export function isAiRunTerminalStatus(status: AiRunStatus) {
   return terminalAiRunStatuses.has(status)
@@ -40,6 +43,12 @@ export async function waitForAiRunCompletion(
   }
 
   return current
+}
+
+export function getAiRunCompletionTimeoutMs(runType: AiRunRequest['runType']) {
+  return runType === 'image_generation' || runType === 'image_analysis'
+    ? imageAiRunTimeoutMs
+    : textAiRunTimeoutMs
 }
 
 export function getAiRunTerminalError(run: AiRunRecord) {

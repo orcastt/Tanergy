@@ -104,6 +104,7 @@ export function useKonvaLocalYjsSync({
   const lastSynchronizedPagesRef = useRef<SerializedKonvaBoardPage[] | null>(null)
   const pendingRemoteSnapshotRef = useRef<PendingRemoteSnapshotMeta | null>(null)
   const publishTimerRef = useRef<number | null>(null)
+  const publishCurrentSnapshotRef = useRef<((options?: { force?: boolean; mode?: KonvaYjsSnapshotWriteMode }) => void) | null>(null)
   const hasUnsyncedLocalChangesRef = useRef(false)
   const nextChangedPageIdsRef = useRef<string[]>(activePageId ? [activePageId] : [])
   const nextPublishModeRef = useRef<KonvaYjsSnapshotWriteMode>('full-board')
@@ -175,6 +176,18 @@ export function useKonvaLocalYjsSync({
     lastSynchronizedPagesRef.current = record.pages
   }, [])
 
+  const readCurrentDocumentSignature = useCallback(() => {
+    try {
+      const nextResult = createGuardedKonvaBoardDocument(
+        latestDocumentRef.current,
+        latestGetPageEnvelopeRef.current(latestDocumentRef.current),
+      )
+      return nextResult.audit.ok ? getDocumentSignature(nextResult.document) : null
+    } catch {
+      return null
+    }
+  }, [])
+
   const applySnapshotRecord = useCallback((record: KonvaYjsRoomRecord, options: { force?: boolean } = {}) => {
     if (record.actorId === actorIdRef.current) {
       rememberSynchronizedRecord(record)
@@ -191,6 +204,25 @@ export function useKonvaLocalYjsSync({
     if (record.signature === lastSynchronizedSignatureRef.current) {
       rememberSynchronizedRecord(record)
       clearPendingRemoteSnapshot()
+      return
+    }
+    if (record.signature === readCurrentDocumentSignature()) {
+      rememberSynchronizedRecord(record)
+      pendingRemoteSnapshotRef.current = null
+      hasUnsyncedLocalChangesRef.current = false
+      patchSyncState({
+        hasPendingRemoteSnapshot: false,
+        hasUnsyncedLocalChanges: false,
+        lastRemotePublishedAt: record.publishedAt,
+        pendingRemoteActorId: null,
+      })
+      return
+    }
+    if (!options.force && workspace?.kind === 'solo_workspace' && latestCanWriteRef.current && hasUnsyncedLocalChangesRef.current) {
+      publishCurrentSnapshotRef.current?.({
+        force: true,
+        mode: nextPublishModeRef.current,
+      })
       return
     }
     if (!options.force && latestCanWriteRef.current && hasUnsyncedLocalChangesRef.current) {
@@ -228,7 +260,7 @@ export function useKonvaLocalYjsSync({
     } catch {
       clearPendingRemoteSnapshot()
     }
-  }, [cancelScheduledPublish, clearPendingRemoteSnapshot, patchSyncState, rememberSynchronizedRecord])
+  }, [cancelScheduledPublish, clearPendingRemoteSnapshot, patchSyncState, readCurrentDocumentSignature, rememberSynchronizedRecord, workspace?.kind])
 
   const maybeApplyCurrentSnapshot = useCallback(() => {
     const pending = pendingRemoteSnapshotRef.current
@@ -313,6 +345,15 @@ export function useKonvaLocalYjsSync({
     })
     maybeApplyCurrentSnapshot()
   }, [maybeApplyCurrentSnapshot, patchSyncState, rememberSynchronizedRecord, resolvedRoomKey, syncState.lastPublishedAt, syncUndoAvailability, ydoc])
+
+  useEffect(() => {
+    publishCurrentSnapshotRef.current = publishCurrentSnapshot
+    return () => {
+      if (publishCurrentSnapshotRef.current === publishCurrentSnapshot) {
+        publishCurrentSnapshotRef.current = null
+      }
+    }
+  }, [publishCurrentSnapshot])
 
   const applyPendingRemoteSnapshot = useCallback(() => {
     cancelScheduledPublish()

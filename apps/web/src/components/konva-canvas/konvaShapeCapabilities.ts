@@ -20,11 +20,10 @@ export function canKonvaSelectionFlip(shapes: CanvasShape[]) {
 
 export function canKonvaShapeSelectWithTool(shape: CanvasShape, activeTool: KonvaCanvasTool) {
   void shape
-  if (activeTool === 'draw' || activeTool === 'eraser' || activeTool === 'hand') return false
-  return true
+  return activeTool === 'select'
 }
 
 export function canKonvaShapeDragWithTool(shape: CanvasShape, activeTool: KonvaCanvasTool) {
   void shape
-  return activeTool !== 'draw' && activeTool !== 'eraser' && activeTool !== 'hand'
+  return activeTool === 'select'
 }

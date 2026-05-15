@@ -43,7 +43,7 @@ import { useKonvaShapeDragHandlers } from './useKonvaShapeDragHandlers'
 import { useKonvaStageCamera } from './useKonvaStageCamera'
 import { useKonvaTransformStartHandlers } from './useKonvaTransformStartHandlers'
 import { useKonvaWheelHandler } from './useKonvaWheelHandler'
-import type { KonvaToolSession } from './konvaCanvasTypes'
+import { isKonvaCreateTool, type KonvaToolSession } from './konvaCanvasTypes'
 import type { UseKonvaCanvasInteractionsOptions } from './konvaCanvasInteractionTypes'
 export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOptions) {
   const stageRef = useRef<Konva.Stage | null>(null)
@@ -323,12 +323,14 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     }
     const nextDraft = session?.type === 'create' ? finalizeDraft(session.draft) : null
     clearDraft()
+    if (session?.type === 'create' && isKonvaCreateTool(options.activeTool)) options.onToolChange('select')
     if (nextDraft) {
       options.onHistoryCheckpoint(documentRef.current)
       options.onDocumentChange((current) => {
         const nextDocument = appendCanvasShape(current, nextDraft)
         return withCanvasShapes(nextDocument, applyFrameContainment([...nextDocument.shapes], [nextDraft.id]))
       })
+      options.onSelectionChange([nextDraft.id])
     }
   }
   return {

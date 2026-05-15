@@ -81,7 +81,8 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
     stageRef,
   } = useKonvaCanvasInteractions(props)
   const renderCamera = props.camera
-  const shapesAreInteractive = !props.captureMode && props.activeTool !== 'hand' && props.activeTool !== 'eraser'
+  const selectionMode = props.activeTool === 'select'
+  const shapesAreInteractive = !props.captureMode && selectionMode
   const canDragShape = shapesAreInteractive && !props.isSpacePanning
   const sourceShapes = dragPreviewShapes ?? props.document.shapes
   const renderShapes = getVisibleKonvaShapes({
@@ -160,6 +161,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
         <Layer>
           <KonvaNodeEdgeLayer
             edges={props.document.runtimeEdges}
+            interactive={selectionMode}
             onEdgeDisconnect={props.onEdgeDisconnect}
             onEdgeSelect={props.onEdgeSelect}
             preview={runtimeConnectionPreview}
@@ -226,7 +228,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
         </Layer>
       )}
 
-      {props.captureMode ? null : (
+      {props.captureMode || !selectionMode ? null : (
         <Layer name={konvaCaptureExcludeName}>
           <KonvaSelectionOverlay
             cropEditingImageId={props.cropEditingImageId}
@@ -256,7 +258,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
 
 function canInteractWithShape(shape: CanvasShape, activeTool: KonvaCanvasTool, defaultInteractive: boolean) {
   if (!defaultInteractive) return false
-  if (activeTool === 'draw' || activeTool === 'eraser' || activeTool === 'hand') return false
+  if (activeTool !== 'select') return false
   return true
 }
 

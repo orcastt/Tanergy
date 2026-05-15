@@ -33,7 +33,7 @@ import { getEditableKonvaNodeTextField, KonvaNodeTextEditor, type KonvaNodeTextF
 import { KonvaCanvasToolbar } from './KonvaCanvasToolbar'
 import { KonvaNodeCreateMenu } from './KonvaNodeCreateMenu'
 import type { KonvaPendingImagePaste } from './KonvaPendingImagePasteLayer'
-import type { KonvaCanvasTool } from './konvaCanvasTypes'
+import { isKonvaCreateTool, type KonvaCanvasTool } from './konvaCanvasTypes'
 import { konvaDefaultShapeStyle } from './konvaCanvasStyle'
 import { runKonvaContextAction } from './konvaContextActions'
 import { canCropKonvaImageSelection, getCropImageIdForSelection } from './konvaImageCropCommands'
@@ -204,6 +204,7 @@ export function KonvaCanvasSpike({
   const remoteEditingOwners = useMemo(() => createRemoteEditingOwnerMap(collaboration.shapeOccupancy), [collaboration.shapeOccupancy])
   const effectiveReadOnly = readOnly || (collaboration.status === 'ready' && !collaboration.canEdit)
   const activeTool = effectiveReadOnly ? 'hand' : activeToolState
+  const stageToolMode = effectiveReadOnly ? 'view' : isKonvaCreateTool(activeTool) ? 'create' : activeTool
   const restoreBoardRecord = useCallback((
     board: BoardPersistenceRecord,
     options: { clearTransient?: boolean } = {},
@@ -577,6 +578,7 @@ export function KonvaCanvasSpike({
         className="konva-canvas-stage-wrap"
         data-drop-active={dropHintKind ? 'true' : 'false'}
         data-space-panning={isSpacePanning}
+        data-tool-mode={stageToolMode}
         onContextMenu={effectiveReadOnly ? undefined : stageDomEvents.handleContextMenu}
         onDoubleClick={effectiveReadOnly ? undefined : stageDomEvents.handleDoubleClick}
         onDragEnter={effectiveReadOnly ? undefined : stageDomEvents.handleDragEnter}

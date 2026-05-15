@@ -1,7 +1,7 @@
 # PRD Slice S1B: Staging Infrastructure And Online Prep
 
 **Updated**: 2026-05-14
-**Status**: In progress; staging Web/API/Neon/R2 smoke, the Konva-only redeploy and real Clerk session/admin smoke are back in place, while Google/email flow verification, final signed-in browser acceptance and live AI smoke remain before production can open.
+**Status**: In progress; staging Web/API/Neon/R2 smoke, the Konva-only redeploy, Cloudflare-proxied Full (strict) staging domains and real Clerk session/admin smoke are back in place, while signed-in board/browser acceptance, Google/email flow verification and live AI smoke remain before production can open.
 
 ## User Value
 
@@ -14,6 +14,7 @@ The app becomes testable outside local dev. Real browsers can access staging Web
 - Managed Postgres connected through `DATABASE_URL`.
 - Cloudflare R2 bucket connected through S3-compatible config.
 - DNS/TLS configured for Web and API.
+- Staging Web/API public records stay behind Cloudflare proxying with strict origin validation.
 - Email provider domain verified for Auth emails.
 - Auth provider staging project configured.
 - Google OAuth enabled for staging login.
@@ -50,6 +51,7 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - Asset upload/read works.
 - Board save/load/history works against staging.
 - Existing real Clerk login/logout/session works on staging and admin-backed probes return green.
+- Signed-in browser acceptance covers Board create/open/save/delete and paste/upload persistence through reload/history/thumbnail flows.
 - Email OTP can be delivered to a test inbox.
 - Google login succeeds on staging.
 - FastAPI accepts valid provider JWT and rejects invalid/expired JWT.

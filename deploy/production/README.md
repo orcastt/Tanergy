@@ -4,6 +4,13 @@ This folder defines the production deployment boundary before the real public si
 
 Production is not a copy of staging with a new domain. It must run with separate infrastructure, separate secrets and a stricter promotion flow.
 
+## Secret Recording Rule
+
+- Runtime secrets belong in Vercel env, the production API `api.env`, provider dashboards, and private operator storage.
+- Tracked repo docs may record only status, scope, and checklist state.
+- Do not store raw production keys, passwords, bearer tokens, or connection strings in `ARCH/`, `PRD/`, `project_state/`, `dev-plans/`, or tracked deploy markdown files.
+- The current FastAPI bearer verifier uses `CLERK_JWT_ISSUER`, `CLERK_JWKS_URL`, optional `CLERK_JWT_AUDIENCE`, and `CLERK_AUTHORIZED_PARTIES`; it does not currently require `CLERK_SECRET_KEY` for JWT verification.
+
 ## Current Policy
 
 - `staging.tanergy.cc` and `api-staging.tanergy.cc` remain the internal acceptance environment.
@@ -69,7 +76,6 @@ API / server:
 
 - `DATABASE_URL`
 - `DATABASE_POOL_URL`
-- `CLERK_SECRET_KEY`
 - `CLERK_JWT_ISSUER`
 - `CLERK_JWT_AUDIENCE`
 - `CLERK_JWKS_URL`

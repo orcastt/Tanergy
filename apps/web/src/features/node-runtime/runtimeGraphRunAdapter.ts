@@ -3,7 +3,7 @@
 import type { CanvasDocument, CanvasNodeShape } from '@/features/canvas-engine'
 import { withCanvasShapes } from '@/features/canvas-engine'
 import { createAiRun } from '@/features/ai/aiClient'
-import { getAiRunTerminalError, waitForAiRunCompletion } from '@/features/ai/aiRunLifecycle'
+import { getAiRunCompletionTimeoutMs, getAiRunTerminalError, waitForAiRunCompletion } from '@/features/ai/aiRunLifecycle'
 import { getDefaultAnalysisModelId, getDefaultImageModelId } from '@/features/ai/mockAiContracts'
 import type { AiRunRecord, AiRunRequest } from '@/features/ai/aiTypes'
 import { hasRemotePersistenceApi } from '@/features/api/persistenceApi'
@@ -104,7 +104,11 @@ export async function executeRuntimeGraphNodeRun(
     return { generatedAssets, run: createdRun, runInput }
   }
 
-	  const settledRun = await waitForAiRunCompletion(createdRun.runId, { signal: options?.signal, workspace: options?.workspace })
+	  const settledRun = await waitForAiRunCompletion(createdRun.runId, {
+	    signal: options?.signal,
+	    timeoutMs: getAiRunCompletionTimeoutMs(runInput.request.runType),
+	    workspace: options?.workspace,
+	  })
   if (settledRun.status !== 'succeeded') {
     throw getAiRunTerminalError(settledRun)
   }

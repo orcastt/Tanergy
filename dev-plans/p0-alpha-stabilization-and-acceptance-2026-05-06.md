@@ -1,6 +1,6 @@
 # P0 Alpha Stabilization And Acceptance
 
-**Updated**: 2026-05-14
+**Updated**: 2026-05-15
 **Status**: Active stabilization spine for the current release pass.
 **Branch**: `feature/s1c-auth-admin-production-boundary`
 
@@ -194,17 +194,22 @@ Current acceptance split:
 
 ## Remaining Gates Before Calling P0 Alpha Done
 
-1. Finish the remaining staging / real DB / real login browser smoke on the release spine.
-2. Finish permission regression sweep for Board/share/page flows.
-3. Hand-test one real AI provider path through the refreshed four-model image lane.
-4. Keep billing/admin language honest: first-pass visible, not fully commercialized.
+1. Finish signed-in board/browser acceptance on staging.
+2. Finish Google/email plus CORS/origin acceptance.
+3. Hand-test one real AI provider image path through the refreshed four-model image lane.
+4. Return to S1D/S3 closeout: permission edges, payer visibility, billing language, staged payment truth and usage surfaces.
 5. Keep collaboration and other frozen lanes out of the release promise.
+
+Non-urgent follow-on work:
+
+- useful backlog items should be written into the relevant slice / plan docs first, then revisited after the ordered gates above
+- do not let post-alpha collaboration, deep finance or secondary polish interrupt the release spine sequence
 
 ## 中文完整翻译
 
 # P0 Alpha 稳定化与验收
 
-**更新日期**：2026-05-14
+**更新日期**：2026-05-15
 **状态**：当前发布轮次的活跃稳定化主线文档。
 **分支**：`feature/s1c-auth-admin-production-boundary`
 
@@ -341,6 +346,19 @@ Current acceptance split:
 3. 覆盖全部 node types 的广义真实 AI。
 4. 深层 Team governance 或 enterprise administration。
 5. 完整的 asset-library/Collection 产品化。
+
+## 在宣称 P0 Alpha 完成前的剩余主线闸门
+
+1. 先完成 signed-in board/browser staging 验收。
+2. 再完成 Google/email 与 CORS/origin 验收。
+3. 跑通一条刷新后四模型生图线的真实 AI provider image path。
+4. 回到 S1D/S3 收口：permission edges、payer visibility、billing language、staged payment truth 和 usage surfaces。
+5. collaboration 以及其他 frozen lanes 继续保持在主承诺之外。
+
+不紧急的后续开发规则：
+
+- 有价值但不紧急的 backlog 项目，先写进对应 slice / plan 文档
+- 不要让 post-alpha collaboration、deep finance 或 secondary polish 打断这条 release spine 顺序
 
 ## 当前版本的明确验收指南
 

@@ -4,6 +4,29 @@ This folder is the first staging package for Slice E Real Asset Pipeline.
 
 It is for a small private staging environment, not production launch.
 
+## Configuration Boundary
+
+Treat staging configuration as four separate surfaces:
+
+1. Runtime configuration that must be correct for the deployment to work.
+   - Vercel staging env
+   - staging API host `deploy/staging/api.env`
+   - Clerk dashboard origins, redirects and auth toggles
+   - SSH key authorization and source-host firewall rules
+2. Operator records that may describe the setup but must not contain live secrets in tracked docs.
+   - `deploy/staging/deployment-secrets.local.md` is now a redacted worksheet only
+   - real values belong in dashboards, untracked local env files, the server `api.env`, and private operator storage
+3. Status-only product docs.
+   - `ARCH/`, `PRD/`, `project_state/`, and `dev-plans/` may record rotation state and acceptance state
+   - they must not store raw keys, passwords, bearer tokens, or connection strings
+4. Business data.
+   - rotating a key does not usually require changing application data unless the underlying Clerk, Neon, or R2 instance also changed
+
+Important Clerk note:
+
+- The current FastAPI bearer verifier uses `CLERK_JWT_ISSUER`, `CLERK_JWKS_URL`, optional `CLERK_JWT_AUDIENCE`, and `CLERK_AUTHORIZED_PARTIES`.
+- `CLERK_SECRET_KEY` belongs on the web runtime when Next server-side Clerk helpers are used. FastAPI does not currently require it for bearer verification.
+
 ## Target Shape
 
 - Web: Vercel preview, Cloudflare Pages preview, or local `next dev`.
@@ -74,11 +97,19 @@ Edit `deploy/staging/api.env` and fill:
 
 - `DATABASE_URL`
 - `DATABASE_POOL_URL` when your Postgres provider exposes a pooled runtime URL, such as Neon pooling
+- `CLERK_JWT_ISSUER`
+- `CLERK_JWT_AUDIENCE` when configured
+- `CLERK_JWKS_URL`
+- `CLERK_AUTHORIZED_PARTIES`
+- `TANGENT_REQUIRE_API_AUTH=1`
 - `TANGENT_ALLOWED_ORIGINS`
 - `S3_ENDPOINT`
 - `S3_BUCKET`
 - `S3_ACCESS_KEY_ID`
 - `S3_SECRET_ACCESS_KEY`
+- `GEEKAI_API_KEY`
+
+Do not put live secret values into this repo's tracked markdown notes. Keep them in the server `api.env`, Vercel env, Clerk dashboard, or private operator storage.
 
 Start the API:
 
@@ -131,6 +162,12 @@ CLERK_AUTHORIZED_PARTIES=https://staging.example.com
 ```
 
 When `CLERK_AUTHORIZED_PARTIES` or `TANGENT_ALLOWED_ORIGINS` is configured, FastAPI requires the Clerk JWT `azp` authorized party to match one of those origins.
+
+If the Clerk issuer changes rather than only the key material rotating, expect a follow-up pass on:
+
+- real session/admin smoke
+- local identity mapping in `tangent_user_identities`
+- `admin_roles` bootstrap for the signed-in operator
 
 After the real operator signs in once and `/api/v1/auth/session` has created the local TANGENT user, grant admin access with either the local user id or the login email:
 
@@ -257,6 +294,15 @@ Web canvas:
 4. Refresh the page.
 5. Click `Load local`.
 6. Confirm images, shapes, runtime edges and camera restore.
+
+Post-rotation browser checks:
+
+1. Sign in with Google on `https://staging.tanergy.cc`.
+2. Open `/workspaces`.
+3. Open a board, edit it, refresh, and reopen it.
+4. Create and delete a private board.
+5. Paste or upload an image, wait for persistence, then refresh and reopen.
+6. If Neon, Clerk issuer, or R2 bucket changed, rerun the relevant smoke before treating staging as green.
 
 ## Current Gaps
 

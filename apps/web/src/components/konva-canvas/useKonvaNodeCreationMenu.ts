@@ -10,7 +10,7 @@ import {
 import { hasRemotePersistenceApi } from '@/features/api/persistenceApi'
 import { cancelAiRun, createAiRun } from '@/features/ai/aiClient'
 import { streamAiChatCompletion } from '@/features/ai/chatClient'
-import { getAiRunTerminalError, waitForAiRunCompletion } from '@/features/ai/aiRunLifecycle'
+import { getAiRunCompletionTimeoutMs, getAiRunTerminalError, waitForAiRunCompletion } from '@/features/ai/aiRunLifecycle'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import { canRunNodeType, getNodeCardFields, getNodeDefinition } from '@/features/node-runtime/registry'
 import {
@@ -162,7 +162,8 @@ export function useKonvaNodeCreationMenu({
       }
 
       if (hasRemotePersistenceApi() && prepared.remoteRequest) {
-        void createAiRun(prepared.remoteRequest, { signal: controller.signal, workspace })
+        const remoteRequest = prepared.remoteRequest
+        void createAiRun(remoteRequest, { signal: controller.signal, workspace })
           .then(async (run) => {
             if (controller.signal.aborted) {
               if (run.status === 'queued' || run.status === 'running') {
@@ -181,6 +182,7 @@ export function useKonvaNodeCreationMenu({
 
             const settledRun = await waitForAiRunCompletion(run.runId, {
               signal: controller.signal,
+              timeoutMs: getAiRunCompletionTimeoutMs(remoteRequest.runType),
               workspace,
             })
             if (controller.signal.aborted) return
@@ -320,7 +322,8 @@ export function useKonvaNodeCreationMenu({
     onDocumentChange(prepared.document)
 
     if (hasRemotePersistenceApi() && prepared.remoteRequest) {
-      void createAiRun(prepared.remoteRequest, { signal: controller.signal, workspace })
+      const remoteRequest = prepared.remoteRequest
+      void createAiRun(remoteRequest, { signal: controller.signal, workspace })
         .then(async (run) => {
           if (controller.signal.aborted) {
             if (run.status === 'queued' || run.status === 'running') {
@@ -339,6 +342,7 @@ export function useKonvaNodeCreationMenu({
 
           const settledRun = await waitForAiRunCompletion(run.runId, {
             signal: controller.signal,
+            timeoutMs: getAiRunCompletionTimeoutMs(remoteRequest.runType),
             workspace,
           })
           if (controller.signal.aborted) return

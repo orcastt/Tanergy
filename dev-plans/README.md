@@ -1,6 +1,6 @@
 # Dev Plans Index
 
-**Updated**: 2026-05-14
+**Updated**: 2026-05-15
 
 Detailed product, architecture and state truth now lives in:
 
@@ -29,18 +29,19 @@ Detailed product, architecture and state truth now lives in:
 
 1. Stabilize the current P0 alpha spine defined in `p0-alpha-stabilization-and-acceptance-2026-05-06.md`.
 2. Run the staging / real DB / real login smoke first: public host repair if needed, Alembic head, `/health`, `/api/v1/admin/me`, operator users, finance summary, board list/save/load and billing plans. Keep `deploy/production/README.md` as the pre-provision boundary and do not open production before this smoke is green.
-3. Treat the real Clerk session/admin smoke as a green checkpoint, then finish the remaining signed-in board/browser, Google/email and CORS/origin acceptance before relying on staging as the final truth.
-4. Finish the S2 provider-route/billing control-plane cut with one real AiRun/provider image smoke using the refreshed four-model image lane, then keep broader provider coverage moving.
-5. Move S3 through the Team/Group wallet plan before real charging: schema delta, Team workspace wallet, personal Collaborate wallet, invite/member hardening, payer resolver and billing usage.
-6. Keep S1D focused on permission hardening for the current Board/share/page release path.
-7. Add S1E `.tgy` Board Package export/import after Board/Asset guards stay stable.
-8. Resume Yjs/provider deepening only after the release-spine server boundaries above are cleaner and verified.
+3. Treat the real Clerk session/admin smoke as a green checkpoint, then finish the remaining signed-in board/browser acceptance before relying on staging as the final truth. That acceptance pass should explicitly cover private-board CRUD, paste/upload placeholder -> persisted Asset, reload, history and thumbnail behavior.
+4. Finish Google/email and CORS/origin acceptance after the signed-in board pass so the Auth boundary is fully believable outside local fallback assumptions.
+5. Finish the S2 provider-route/billing control-plane cut with one real AiRun/provider image smoke using the refreshed four-model image lane, then keep broader provider coverage moving.
+6. Return to S1D/S3 closeout after the live image smoke: permission hardening, Team/Group payer visibility, billing language, credits, usage and staged payment truth should converge before the next expansion.
+7. Resume Yjs/provider deepening only after the release-spine server boundaries above are cleaner and verified.
+8. Add S1E `.tgy` Board Package export/import after Board/Asset guards stay stable.
 9. Track frontend product UI alignment as a parallel lane: navigation, plan labels, role language, loading states and AI cost messaging must match the narrower P0 alpha promise before launch.
 
 Working rule for the current pass:
 
 - avoid stacking transitional fallbacks or patchy side paths when a bounded rewrite is cleaner
 - keep memory-pressure and slow-path auditing active while touching admin, canvas, AI and persistence code
+- if a follow-on idea is useful but not urgent, record it in the relevant plan/slice first and keep the current mainline sequence intact
 
 ## Archive
 
@@ -58,7 +59,7 @@ Working rule for the current pass:
 
 # Dev Plans 索引
 
-**更新日期**：2026-05-11
+**更新日期**：2026-05-15
 
 详细的产品、架构和状态事实现在位于：
 
@@ -86,13 +87,14 @@ Working rule for the current pass:
 ## 当前战术焦点
 
 1. 以 `p0-alpha-stabilization-and-acceptance-2026-05-06.md` 为准，稳定当前 P0 alpha 主线。
-2. 先把真实 Clerk session/admin smoke 视为已转绿 checkpoint，再完成剩余的 signed-in board/browser、Google/email 和 CORS/origin 验收。
-3. 让 S1D 继续只聚焦在当前 Board/share/page 发布路径的 permission hardening。
-4. 在 Board/Asset guards 稳定后加入 S1E `.tgy` Board Package export/import。
-5. 先完成 S2 provider-route/billing control-plane cut 和一条基于刷新后四模型生图线的真实 AiRun/provider 路径，再扩大 AI 范围。
-6. 让 S3 先按 Team/Group wallet plan 推进：schema delta、Team workspace wallet、个人 Collaborate wallet、invite/member hardening、payer resolver 和 billing usage。
-7. 在把 S3 admin 当作可运营后台之前，先按新的 inventory/detail mock 重做 admin operator console。
-8. 把前端产品 UI 对齐视为并行线路：navigation、套餐标签、角色语言和 AI 扣费文案在上线前必须匹配当前更窄的 P0 alpha 承诺。
+2. 先把 staging / real DB / real login smoke 视为已转绿 checkpoint，再完成剩余的 signed-in board/browser 验收；这一步要明确覆盖 private board CRUD、图片粘贴占位 -> 上传持久化 -> reload、history 和 thumbnail。
+3. 接着完成 Google/email 与 CORS/origin 验收，让 Auth 边界不再依赖本地 fallback 假设。
+4. 再完成 S2 provider-route/billing control-plane cut 和一条基于刷新后四模型生图线的真实 AiRun/provider 路径，然后继续扩大 AI 覆盖。
+5. 然后回到 S1D/S3 收口：permission hardening、Team/Group payer visibility、billing language、credits、usage 和 staged payment truth 需要在继续扩线前对齐。
+6. 在上面的 release-spine 服务端边界更干净、更可信之后，再恢复 Yjs/provider 深化。
+7. 在 Board/Asset guards 稳定后加入 S1E `.tgy` Board Package export/import。
+8. 把前端产品 UI 对齐视为并行线路：navigation、套餐标签、角色语言、loading states 和 AI 扣费文案在上线前必须匹配当前更窄的 P0 alpha 承诺。
+9. 如果是有价值但不紧急的后续开发，先写进对应 plan / slice 文档，不打断当前主线顺序。
 
 ## 归档
 

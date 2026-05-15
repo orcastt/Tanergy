@@ -10,6 +10,7 @@ import { getKonvaOrientedBounds } from './konvaOrientedBounds'
 import { isBoxCanvasShape } from './konvaRotationUtils'
 import { getSelectedShapeBounds } from './konvaSelectionUtils'
 import { canKonvaSelectionRotate, canKonvaShapeRotate } from './konvaShapeCapabilities'
+import { clearKonvaStageCursor, setKonvaStageCursor } from './konvaStageCursor'
 import type { KonvaSnapGuide } from './konvaSnapping'
 
 type KonvaSelectionOverlayProps = {
@@ -300,10 +301,10 @@ function RotateHandle({
     <Group x={x} y={y}>
       <Circle
         fill="rgba(107, 92, 255, 0.001)"
-        onMouseEnter={(event) => setStageCursor(event, 'grab')}
-        onMouseLeave={clearStageCursor}
+        onMouseEnter={(event) => setKonvaStageCursor(event, 'grab')}
+        onMouseLeave={clearKonvaStageCursor}
         onPointerDown={(event) => {
-          setStageCursor(event, 'grabbing')
+          setKonvaStageCursor(event, 'grabbing')
           onRotateStart(event)
         }}
         radius={hitRadius}
@@ -341,8 +342,8 @@ function ResizeHandles({
         <Line
           hitStrokeWidth={edgeHitWidth}
           key={handle as string}
-          onMouseEnter={(event) => setStageCursor(event, getResizeCursor(handle as KonvaResizeHandle))}
-          onMouseLeave={clearStageCursor}
+          onMouseEnter={(event) => setKonvaStageCursor(event, getResizeCursor(handle as KonvaResizeHandle))}
+          onMouseLeave={clearKonvaStageCursor}
           onPointerDown={(event) => onResizeStart(handle as KonvaResizeHandle, event)}
           points={points as number[]}
           stroke="rgba(107, 92, 255, 0.001)"
@@ -358,8 +359,8 @@ function ResizeHandles({
         <Fragment key={handle}>
           <Circle
             fill="rgba(107, 92, 255, 0.001)"
-            onMouseEnter={(event) => setStageCursor(event, getResizeCursor(handle as KonvaResizeHandle))}
-            onMouseLeave={clearStageCursor}
+            onMouseEnter={(event) => setKonvaStageCursor(event, getResizeCursor(handle as KonvaResizeHandle))}
+            onMouseLeave={clearKonvaStageCursor}
             onPointerDown={(event) => onResizeStart(handle as KonvaResizeHandle, event)}
             radius={hitRadius}
             x={x as number}
@@ -385,14 +386,4 @@ function getResizeCursor(handle: KonvaResizeHandle) {
   if (handle === 'e' || handle === 'w') return 'ew-resize'
   if (handle === 'nw' || handle === 'se') return 'nwse-resize'
   return 'nesw-resize'
-}
-
-function setStageCursor(event: KonvaEventObject<Event>, cursor: string) {
-  const container = event.target.getStage()?.container()
-  if (container) container.style.cursor = cursor
-}
-
-function clearStageCursor(event: KonvaEventObject<Event>) {
-  const container = event.target.getStage()?.container()
-  if (container) container.style.cursor = ''
 }

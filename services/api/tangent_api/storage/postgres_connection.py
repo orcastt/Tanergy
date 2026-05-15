@@ -64,7 +64,9 @@ class _PooledPostgresConnection:
                 connection.rollback()
         except Exception:
             self._pool.discard(connection, pooled=pooled)
-            raise
+            if exc_type is None:
+                raise
+            return False
 
         self._pool.release(connection, pooled=pooled)
         return False
@@ -81,27 +83,29 @@ class _ReusablePostgresPool:
         self._total_connections = 0
 
     def acquire(self) -> tuple[Any, bool]:
-        with self._lock:
-            while self._idle:
-                connection = self._idle.pop()
-                if _can_reuse_connection(connection):
+        while True:
+            with self._lock:
+                connection = self._idle.pop() if self._idle else None
+                if connection is None and self._total_connections < self._max_total:
+                    self._total_connections += 1
+                    create_pooled = True
+                else:
+                    create_pooled = False
+
+            if connection is not None:
+                if _can_checkout_connection(connection):
                     return connection, True
                 self._close_tracked_connection(connection)
+                continue
 
-            if self._total_connections < self._max_total:
-                self._total_connections += 1
-                create_pooled = True
-            else:
-                create_pooled = False
+            if create_pooled:
+                try:
+                    return self._create_connection(), True
+                except Exception:
+                    self._decrement_total_connections()
+                    raise
 
-        if create_pooled:
-            try:
-                return self._create_connection(), True
-            except Exception:
-                self._decrement_total_connections()
-                raise
-
-        return self._create_connection(), False
+            return self._create_connection(), False
 
     def release(self, connection: Any, *, pooled: bool) -> None:
         if not pooled:
@@ -170,6 +174,20 @@ def _get_postgres_pool() -> _ReusablePostgresPool:
 
 def _can_reuse_connection(connection: Any) -> bool:
     return not bool(getattr(connection, "broken", False) or getattr(connection, "closed", False))
+
+
+def _can_checkout_connection(connection: Any) -> bool:
+    if not _can_reuse_connection(connection):
+        return False
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        connection.rollback()
+    except Exception:
+        return False
+
+    return _can_reuse_connection(connection)
 
 
 def _close_connection(connection: Any) -> None:

@@ -1,8 +1,8 @@
 # ARCH Slice S1B: Staging Infrastructure And Online Prep
 
-**Updated**: 2026-05-14
+**Updated**: 2026-05-15
 **Mode**: Architecture slice.
-**Status**: In progress; rebuilt staging Web/API/Neon/R2 smoke, the Konva-only redeploy and real Clerk session/admin smoke are green again, production runbook/templates now exist, and the remaining gates are Google/email verification, final signed-in browser acceptance and one live provider path under strict staging auth.
+**Status**: In progress; rebuilt staging Web/API/Neon/R2 smoke, the Konva-only redeploy and real Clerk session/admin smoke are green again, Cloudflare-proxied staging domains now run with Full (strict) TLS, production runbook/templates now exist, and the remaining gates are signed-in board/browser acceptance, Google/email verification and one live provider path under strict staging auth.
 
 ## Goal
 
@@ -64,6 +64,10 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
      - allow 80/443 public
      - block direct Postgres
    - Deploy FastAPI behind Caddy or Nginx with TLS.
+   - Keep source-host ingress narrow after first boot:
+     - `80/tcp` and `443/tcp` public
+     - `22/tcp` limited to the maintainer's current fixed IP where possible
+     - password login disabled after SSH key recovery
 
 4. Managed Postgres
    - Create staging DB.
@@ -158,6 +162,8 @@ Promotion policy:
 - FastAPI `TANGENT_ALLOWED_ORIGINS` allows only the matching Web origin(s) for that environment.
 - Clerk allowed origins and redirect URLs include the exact staging/production Web domains before turning on required Web Auth.
 - Local-only auth helpers such as `/api/auth/dev-bypass` and the `tangent_dev_auth` cookie remain disabled in production and are never used for staging/prod acceptance.
+- Tracked deploy docs stay redacted. The live staging runtime truth now belongs in Vercel env, the staging API host `deploy/staging/api.env`, provider dashboards and private operator storage, while repo docs record only safe facts and checklist state.
+- Public staging DNS remains proxied through Cloudflare, and SSL mode stays Full (strict) instead of Flexible.
 - Public FastAPI `/health` returns 200 over HTTPS.
 - CORS allows only staging Web origin.
 - Vercel route can call FastAPI.
@@ -166,6 +172,7 @@ Promotion policy:
 - Alembic migration succeeds against staging Postgres.
 - Asset upload/read succeeds through R2.
 - Board save/load/history works through staging API.
+- Signed-in browser acceptance covers Board create/open/save/delete, paste/upload placeholder -> persisted Asset, reload, history and thumbnail behavior.
 - Guard rejects `data:` and `blob:` documents.
 - A production runbook and env template exist before public launch.
 - Rollback path is documented.
