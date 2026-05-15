@@ -95,7 +95,7 @@ export function useKonvaNodeCreationMenu({
     const shape = createKonvaNodeCardShape({ position: nodePosition, type })
     history.checkpoint()
     onDocumentChange((current) => withCanvasShapes(current, [...current.shapes, shape]))
-    onSelectionChange([shape.id])
+    onSelectionChange([])
     onEdgeSelectionChange(null)
     onToolChange('select')
     setNodeMenu(null)

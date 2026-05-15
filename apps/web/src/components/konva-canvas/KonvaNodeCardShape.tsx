@@ -25,6 +25,7 @@ import {
 import { KonvaNodeChatBody } from './KonvaNodeChatBody'
 import { getGeneratedOutputSource, getNodeImageCrop, getNodeImageSource, NodeImagePreview } from './KonvaNodeImagePreview'
 import type { KonvaNodeTextFieldName } from './KonvaNodeTextEditor'
+import { getNodeCardImageSlotBounds } from './konvaNodeCardImageLayout'
 
 type KonvaNodeCardShapeProps = {
   document: CanvasDocument
@@ -481,10 +482,21 @@ function GenerationBody({ fields, normalizedData, onFieldChange, openFieldName, 
   const progress = useEstimatedGenerationProgress(shape.props.runtimeSummary)
   const footerReserve = status === 'running' ? 74 : status === 'succeeded' ? 24 : 64
   const slotHeight = Math.max(shape.props.nodeType === 'image_gen_4' ? 104 : 88, shape.props.height - slotY - footerReserve)
+  const outputRefs = getRuntimeGraphGeneratedOutputRefs(shape.props.data)
+  const slotBounds = useMemo(() => (
+    Array.from({ length: imageOutputs }, (_, index) => getNodeCardImageSlotBounds({
+      count: imageOutputs,
+      height: slotHeight,
+      imageRef: outputRefs[index] ?? null,
+      shape,
+      slotIndex: index,
+      y: slotY,
+    }))
+  ), [imageOutputs, outputRefs, shape, slotHeight, slotY])
   return (
     <>
-      <NodeCardImageSlots count={imageOutputs} height={slotHeight} shape={shape} y={slotY} />
-      <GeneratedOutputPreviews count={imageOutputs} height={slotHeight} shape={shape} y={slotY} zoom={zoom} />
+      <NodeCardImageSlots slotBounds={slotBounds} />
+      <GeneratedOutputPreviews refs={outputRefs} slotBounds={slotBounds} zoom={zoom} />
       {status === 'succeeded' ? null : status === 'running' ? (
         <GenerationProgressFooter progress={progress} shape={shape} />
       ) : (
@@ -531,20 +543,19 @@ function PortTooltip({ port, shape }: { port: ResolvedNodePort; shape: CanvasNod
   )
 }
 
-function GeneratedOutputPreviews({ count, height, shape, y, zoom }: { count: number; height: number; shape: CanvasNodeShape; y: number; zoom: number }) {
-  const refs = getRuntimeGraphGeneratedOutputRefs(shape.props.data)
-  const slotWidth = count === 4 ? (shape.props.width - 38) / 2 : shape.props.width - 28
-  const slotHeight = count === 4 ? (height - 8) / 2 : height
+function GeneratedOutputPreviews({
+  refs,
+  slotBounds,
+  zoom,
+}: {
+  refs: ReturnType<typeof getRuntimeGraphGeneratedOutputRefs>
+  slotBounds: ReturnType<typeof getNodeCardImageSlotBounds>[]
+  zoom: number
+}) {
   return (
     <>
-      {Array.from({ length: count }, (_, index) => {
+      {slotBounds.map((bounds, index) => {
         const ref = refs[index]
-        const bounds = {
-          height: slotHeight,
-          width: slotWidth,
-          x: 14 + (index % 2) * (slotWidth + 10),
-          y: y + Math.floor(index / 2) * (slotHeight + 8),
-        }
         return ref ? <NodeImagePreview bounds={bounds} key={index} source={getGeneratedOutputSource(ref, zoom)} /> : null
       })}
     </>

@@ -5,6 +5,7 @@ import type { CanvasNodeShape } from '@/features/canvas-engine'
 import { getCanvasThemePalette, useResolvedCanvasThemeMode } from '@/features/canvas-settings/canvasTheme'
 import { canRunNodeType } from '@/features/node-runtime/registry'
 import type { JsonObject, NodeCardField } from '@/types/nodeRuntime'
+import type { NodeCardImageSlotBounds } from './konvaNodeCardImageLayout'
 
 export function NodeCardStatusBadge({ shape, status, tone }: { shape: CanvasNodeShape; status: string; tone: { fill: string; stroke: string; text: string } }) {
   return (
@@ -156,16 +157,14 @@ export function NodeCardTextBox({
   )
 }
 
-export function NodeCardImageSlots({ count, height, shape, y }: { count: number; height: number; shape: CanvasNodeShape; y: number }) {
+export function NodeCardImageSlots({ slotBounds }: { slotBounds: readonly NodeCardImageSlotBounds[] }) {
   const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
-  const slotWidth = count === 4 ? (shape.props.width - 38) / 2 : shape.props.width - 28
-  const slotHeight = count === 4 ? (height - 8) / 2 : height
   return (
     <>
-      {Array.from({ length: count }, (_, index) => (
+      {slotBounds.map((bounds, index) => (
         <Group key={index}>
-          <Rect cornerRadius={10} fill={palette.imageSlotBg} height={slotHeight} width={slotWidth} x={14 + (index % 2) * (slotWidth + 10)} y={y + Math.floor(index / 2) * (slotHeight + 8)} />
-          <Text align="center" fill={palette.softText} fontFamily="Inter, system-ui, sans-serif" fontSize={12} fontStyle="bold" text={String(index + 1)} width={slotWidth} x={14 + (index % 2) * (slotWidth + 10)} y={y + Math.floor(index / 2) * (slotHeight + 8) + slotHeight / 2 - 6} />
+          <Rect cornerRadius={10} fill={palette.imageSlotBg} height={bounds.height} width={bounds.width} x={bounds.x} y={bounds.y} />
+          <Text align="center" fill={palette.softText} fontFamily="Inter, system-ui, sans-serif" fontSize={12} fontStyle="bold" text={String(index + 1)} width={bounds.width} x={bounds.x} y={bounds.y + bounds.height / 2 - 6} />
         </Group>
       ))}
     </>

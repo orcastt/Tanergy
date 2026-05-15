@@ -211,7 +211,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
         const nextDocument = appendCanvasShape(current, shape)
         return withCanvasShapes(nextDocument, applyFrameContainment([...nextDocument.shapes], [shape.id]))
       })
-      options.onSelectionChange([shape.id])
+      options.onSelectionChange([])
       options.onToolChange('select')
       return
     }
@@ -331,7 +331,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
         const nextDocument = appendCanvasShape(current, nextDraft)
         return withCanvasShapes(nextDocument, applyFrameContainment([...nextDocument.shapes], [nextDraft.id]))
       })
-      options.onSelectionChange(shouldStayInTool ? [] : [nextDraft.id])
+      options.onSelectionChange([])
     }
   }
   return {
