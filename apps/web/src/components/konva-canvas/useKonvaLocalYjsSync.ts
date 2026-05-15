@@ -200,7 +200,6 @@ export function useKonvaLocalYjsSync({
 
   const applySnapshotRecord = useCallback((record: KonvaYjsRoomRecord, options: { force?: boolean } = {}) => {
     const decision = resolveKonvaYjsIncomingRecord({
-      actorId: actorIdRef.current,
       canWrite: latestCanWriteRef.current,
       currentDocumentSignature: readCurrentDocumentSignature(),
       force: options.force,
@@ -209,18 +208,6 @@ export function useKonvaLocalYjsSync({
       record,
       workspaceKind: workspace?.kind,
     })
-    if (decision.kind === 'local-echo') {
-      rememberSynchronizedRecord(record)
-      pendingRemoteSnapshotRef.current = null
-      hasUnsyncedLocalChangesRef.current = false
-      patchSyncState({
-        hasPendingRemoteSnapshot: false,
-        hasUnsyncedLocalChanges: false,
-        lastPublishedAt: record.publishedAt,
-        pendingRemoteActorId: null,
-      })
-      return
-    }
     if (decision.kind === 'duplicate') {
       rememberSynchronizedRecord(record)
       clearPendingRemoteSnapshot()

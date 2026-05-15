@@ -482,6 +482,27 @@ export function KonvaCanvasSpike({
     workspace,
   })
   const handleSelectionExportStageReady = selectionExport.handleStageReady
+  const {
+    canRedo: canCollaborativeRedo,
+    canUndo: canCollaborativeUndo,
+    hasUnsyncedLocalChanges: hasUnsyncedCollaborativeChanges,
+    redoLocalChange,
+    undoLocalChange,
+  } = localYjsSync
+  const handleUndoShortcut = useCallback(() => {
+    if (hasUnsyncedCollaborativeChanges || !canCollaborativeUndo) {
+      history.undo()
+      return
+    }
+    undoLocalChange()
+  }, [canCollaborativeUndo, hasUnsyncedCollaborativeChanges, history, undoLocalChange])
+  const handleRedoShortcut = useCallback(() => {
+    if (hasUnsyncedCollaborativeChanges || !canCollaborativeRedo) {
+      history.redo()
+      return
+    }
+    redoLocalChange()
+  }, [canCollaborativeRedo, hasUnsyncedCollaborativeChanges, history, redoLocalChange])
   const handleStageReady = useCallback((nextStage: Konva.Stage | null) => {
     if (!effectiveReadOnly) handleSelectionExportStageReady(nextStage)
     setStage(nextStage)
@@ -493,7 +514,7 @@ export function KonvaCanvasSpike({
     getActivePageId: () => activePageIdRef.current,
     history,
       onClipboardChange: setClipboardShapeCount,
-      onRedo: collaborationEnabled ? localYjsSync.redoLocalChange : undefined,
+      onRedo: handleRedoShortcut,
       onDocumentChange: setDocument,
       onEdgeSelectionChange: setSelectedEdgeId,
       onImagePasteComplete: handlePendingImagePasteComplete,
@@ -503,7 +524,7 @@ export function KonvaCanvasSpike({
       onPanningChange: setIsSpacePanning,
       onSelectionChange: handleSelectionChange,
       onToolChange: handleToolChange,
-      onUndo: collaborationEnabled ? localYjsSync.undoLocalChange : undefined,
+      onUndo: handleUndoShortcut,
       onCopySelectionSvg: () => { void selectionExport.handleCopySelectionSvg() },
       pageId: boardPages.activePageId,
       selectedEdgeId,

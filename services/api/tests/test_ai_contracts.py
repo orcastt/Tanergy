@@ -294,6 +294,18 @@ def test_resolve_requested_dimensions_uses_image_size_and_ratio_for_nano_banana(
     assert ai_provider_assets.resolve_requested_dimensions(payload) == (288, 512)
 
 
+def test_resolve_requested_dimensions_ignores_unrelated_gpt_size_for_nano_banana():
+    payload = AiRunRequest(
+        input_asset_ids=[],
+        params={"aspectRatio": "3:4", "imageSize": "0.5K", "size": "1024x1024"},
+        prompt="Generate a portrait poster.",
+        run_type="image_generation",
+        selected_model_id="nano-banana-2",
+    )
+
+    assert ai_provider_assets.resolve_requested_dimensions(payload) == (384, 512)
+
+
 def test_ai_run_mock_can_settle_against_credit_ledger(monkeypatch):
     fake_db = FakePostgresDatabase()
     fake_db.credit_ledger = [

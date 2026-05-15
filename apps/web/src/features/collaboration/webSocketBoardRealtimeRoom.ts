@@ -121,6 +121,7 @@ class SharedRealtimeRoom {
   private compactionRequestPending = false
   private disposed = false
   private documentVersion = 0
+  private readonly stateMachine = createBoardRealtimeStateMachine(createConnectingBoardRealtimeState())
   private readonly documentQueue = new RealtimeDocumentUpdateQueue({
     maxQueuedBytes: maxQueuedRealtimeUpdateBytes,
     maxQueuedCount: maxQueuedRealtimeUpdateCount,
@@ -137,7 +138,6 @@ class SharedRealtimeRoom {
   private refCount = 0
   private socket: WebSocket | null = null
   private socketAttempt = 0
-  private readonly stateMachine = createBoardRealtimeStateMachine(createConnectingBoardRealtimeState())
 
   constructor(
     private readonly room: BoardRealtimeRoomDescriptor,

@@ -194,22 +194,36 @@ function createRuntimeGraphAiRunRequest(node: CanvasNodeShape, inputResolution: 
     nodeId: node.props.nodeId,
     nodeType: node.props.nodeType,
     params: isGeneration
-      ? {
-          aspectRatio: String(data.aspectRatio ?? '1:1'),
-          count: node.props.nodeType === 'image_gen_4' ? 4 : 1,
-          imageSize: String(data.imageSize ?? '1K'),
-          jimengSize: String(data.jimengSize ?? '2048x2048'),
-          jimengStrength: String(data.jimengStrength ?? '0.5'),
-          quality: String(data.quality ?? 'medium'),
-          seedreamOutputFormat: String(data.seedreamOutputFormat ?? 'png'),
-          seedreamSize: String(data.seedreamSize ?? '2K'),
-          size: String(data.size ?? '1024x1024'),
-        }
+      ? createImageGenerationParams(data, node.props.nodeType)
       : {},
     prompt: getRunPrompt(data, inputResolution),
     runType: isGeneration ? 'image_generation' : 'image_analysis',
     selectedModelId: String(data.modelId ?? (node.props.nodeType === 'analysis' ? getDefaultAnalysisModelId() : getDefaultImageModelId())),
   }
+}
+
+function createImageGenerationParams(data: ReturnType<typeof getNormalizedImageGenerationData>, nodeType: CanvasNodeShape['props']['nodeType']) {
+  const count = nodeType === 'image_gen_4' ? 4 : 1
+  const modelId = String(data.modelId ?? '')
+  const params: JsonObject = { count }
+  if (modelId === 'nano-banana-2') {
+    params.aspectRatio = String(data.aspectRatio ?? '1:1')
+    params.imageSize = String(data.imageSize ?? '1K')
+    return params
+  }
+  if (modelId === 'doubao-seedream-5.0-lite') {
+    params.seedreamOutputFormat = String(data.seedreamOutputFormat ?? 'png')
+    params.seedreamSize = String(data.seedreamSize ?? '2K')
+    return params
+  }
+  if (modelId === 'jimeng_t2i_v40') {
+    params.jimengSize = String(data.jimengSize ?? '2048x2048')
+    params.jimengStrength = String(data.jimengStrength ?? '0.5')
+    return params
+  }
+  params.quality = String(data.quality ?? 'medium')
+  params.size = String(data.size ?? '1024x1024')
+  return params
 }
 
 function updateRuntimeNodeSummary(

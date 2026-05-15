@@ -6,13 +6,11 @@ export type PendingRemoteSnapshotMeta = Pick<KonvaYjsRoomRecord, 'actorId' | 'pu
 export type KonvaYjsIncomingRecordDecision =
   | { kind: 'already-current' }
   | { kind: 'duplicate' }
-  | { kind: 'local-echo' }
   | { kind: 'queue-pending'; pending: PendingRemoteSnapshotMeta }
   | { kind: 'republish-local' }
   | { kind: 'restore-remote' }
 
 type ResolveKonvaYjsIncomingRecordOptions = {
-  actorId: string
   canWrite: boolean
   currentDocumentSignature: string | null
   force?: boolean
@@ -47,7 +45,6 @@ export function createPendingRemoteSnapshotMeta(record: KonvaYjsRoomRecord): Pen
 }
 
 export function resolveKonvaYjsIncomingRecord({
-  actorId,
   canWrite,
   currentDocumentSignature,
   force = false,
@@ -56,7 +53,6 @@ export function resolveKonvaYjsIncomingRecord({
   record,
   workspaceKind,
 }: ResolveKonvaYjsIncomingRecordOptions): KonvaYjsIncomingRecordDecision {
-  if (record.actorId === actorId) return { kind: 'local-echo' }
   if (record.signature === lastSynchronizedSignature) return { kind: 'duplicate' }
   if (record.signature === currentDocumentSignature) return { kind: 'already-current' }
   if (!force && workspaceKind === 'solo_workspace' && canWrite && hasUnsyncedLocalChanges) {

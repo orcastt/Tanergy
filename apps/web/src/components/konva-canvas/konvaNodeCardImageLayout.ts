@@ -44,12 +44,17 @@ function getGeneratedImageAspectRatio(shape: CanvasNodeShape, imageRef: RuntimeG
   const imageRatio = getImageDimensionsAspectRatio(imageRef?.imageWidth, imageRef?.imageHeight)
   if (imageRatio) return imageRatio
   const normalized = getNormalizedImageGenerationData(shape.props.data)
-  return (
-    parseWidthHeightAspectRatio(normalized.size)
-    ?? parseWidthHeightAspectRatio(normalized.seedreamSize)
-    ?? parseWidthHeightAspectRatio(normalized.jimengSize)
-    ?? parseRatioStringAspectRatio(normalized.aspectRatio)
-  )
+  const modelId = typeof normalized.modelId === 'string' ? normalized.modelId : ''
+  if (modelId === 'nano-banana-2') {
+    return parseRatioStringAspectRatio(normalized.aspectRatio)
+  }
+  if (modelId === 'doubao-seedream-5.0-lite') {
+    return parseWidthHeightAspectRatio(normalized.seedreamSize)
+  }
+  if (modelId === 'jimeng_t2i_v40') {
+    return parseWidthHeightAspectRatio(normalized.jimengSize)
+  }
+  return parseWidthHeightAspectRatio(normalized.size)
 }
 
 function getImageDimensionsAspectRatio(width: unknown, height: unknown) {

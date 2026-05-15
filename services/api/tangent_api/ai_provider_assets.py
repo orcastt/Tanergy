@@ -238,7 +238,7 @@ def _load_first_provider_input_asset_ref(
 
 
 def _resolve_explicit_requested_size(payload: AiRunRequest) -> Optional[tuple[int, int]]:
-    for field_name in ("size", "seedreamSize", "jimengSize"):
+    for field_name in _explicit_size_fields(payload):
         parsed = _parse_dimension_value(str(payload.params.get(field_name) or "").strip())
         if parsed is not None:
             return parsed
@@ -246,12 +246,39 @@ def _resolve_explicit_requested_size(payload: AiRunRequest) -> Optional[tuple[in
 
 
 def _resolve_requested_longest_edge(payload: AiRunRequest) -> int:
-    for field_name in ("imageSize", "seedreamSize", "jimengSize", "size", "resolution"):
+    for field_name in _longest_edge_fields(payload):
         value = str(payload.params.get(field_name) or "").strip().lower().replace(".", "_")
         longest_edge = _RESOLUTION_PIXELS.get(value)
         if longest_edge:
             return longest_edge
     return 1024
+
+
+def _explicit_size_fields(payload: AiRunRequest) -> tuple[str, ...]:
+    model_id = _selected_generation_model_id(payload)
+    if model_id == "nano-banana-2":
+        return ()
+    if model_id == "doubao-seedream-5.0-lite":
+        return ("seedreamSize", "size")
+    if model_id == "jimeng_t2i_v40":
+        return ("jimengSize", "size")
+    return ("size", "seedreamSize", "jimengSize")
+
+
+def _longest_edge_fields(payload: AiRunRequest) -> tuple[str, ...]:
+    model_id = _selected_generation_model_id(payload)
+    if model_id == "nano-banana-2":
+        return ("imageSize", "resolution")
+    if model_id == "doubao-seedream-5.0-lite":
+        return ("seedreamSize", "size", "resolution")
+    if model_id == "jimeng_t2i_v40":
+        return ("jimengSize", "size", "resolution")
+    return ("imageSize", "seedreamSize", "jimengSize", "size", "resolution")
+
+
+def _selected_generation_model_id(payload: AiRunRequest) -> str:
+    model_id = payload.selected_model_id or payload.params.get("modelId") or ""
+    return str(model_id).strip()
 
 
 def _parse_dimension_value(value: str) -> Optional[tuple[int, int]]:
