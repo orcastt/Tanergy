@@ -397,6 +397,9 @@ async def board_realtime_room(websocket: WebSocket, board_id: str) -> None:
             })
     except WebSocketDisconnect:
         pass
+    except RuntimeError as error:
+        if "WebSocket is not connected" not in str(error):
+            raise
     finally:
         snapshot = await room.snapshot_document()
         room_became_empty = await board_realtime_hub.disconnect(room_key, connection_id)

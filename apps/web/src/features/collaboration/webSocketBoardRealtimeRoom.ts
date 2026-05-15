@@ -277,7 +277,7 @@ class SharedRealtimeRoom {
         if (this.socket !== socket) return
         this.socket = null
         if (shouldRetryRealtimeClose(event)) {
-          this.stateMachine.markDisconnected()
+          this.stateMachine.markDisconnected(event.reason || 'Realtime websocket closed.')
           this.scheduleReconnect()
           return
         }
@@ -650,7 +650,6 @@ function resolveDocumentVersion(value: unknown, defaultVersion: number, minimum:
 }
 
 function shouldRetryRealtimeClose(event: CloseEvent) {
-  if (event.code === 1000) return false
   if (event.code >= 4400 && event.code < 4500) return false
   return true
 }
