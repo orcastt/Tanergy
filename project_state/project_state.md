@@ -20,7 +20,7 @@ S2/S3 have now started the first real AI control-plane backend slice too: migrat
 
 In parallel, the canvas now has a fast local GeekAI integration path through the web app for user-flow proof: Chat can stream text, Prompt Optimizer can stream improved image prompts, Analysis can choose OpenAI-style or Gemini-style visual analysis models, and Image Gen / Image Gen 4 can run model-aware image generation/edit/reference flows. This is useful product evidence, but it is not yet the production authority boundary. The 2026-05-13 checkpoint adds backend short-text `AiRun` support with durable terminal `text_output` persistence plus Prompt Optimizer remote create/poll/cancel wiring when the browser is pointed at the FastAPI API, the message-native chat path is now on the same boundary, default analysis-capable model/route/pricing seed now exists in the backend control plane, and `services/api/scripts/s2_live_ai_smoke.py` now provides one reusable image->analysis acceptance harness. The 2026-05-14 checkpoint refreshes the active image-generation lane onto `gpt-image-2`, `nano-banana-2`, `doubao-seedream-5.0-lite` and `jimeng_t2i_v40`, removes `gemini-3.1-flash-image-preview` from the active image-generation surface, raises the long-running image timeout to `240000 ms`, and adds migration `20260514_0021_ai_image_model_refresh.py` so backend seeds stay aligned. The next S2 cut is the remaining live provider image smoke and broader provider coverage documented in `dev-plans/s2-ai-provider-route-billing-control-plane-2026-05-07.md`.
 
-S3 also tightened its local production shape on 2026-05-13: admin hot GET paths were split toward dedicated read models, repeated access work was reduced, runtime Postgres now prefers `DATABASE_POOL_URL` when present, and slow SQL logging now surfaces queries over the configured threshold without leaking parameters. This improves the admin/billing/team lane for the upcoming real-DB staging smoke. Public staging repair has now moved forward again too: the Vercel production alias was republished from a cleaned root package, `CLERK_SECRET_KEY` was restored for the web runtime, `/boards/[boardId]` now returns the expected Clerk-protected `200` instead of a `500`, and real signed-in smoke now returns `200` for `/api/auth/session`, `/api/v1/admin/me`, operator users, finance summary and AI route metrics. Remaining S1B/S1C work is full signed-in browser board acceptance, Google/email flow verification and final deploy-secret cleanup rather than basic auth reachability.
+S3 also tightened its local production shape on 2026-05-13: admin hot GET paths were split toward dedicated read models, repeated access work was reduced, runtime Postgres now prefers `DATABASE_POOL_URL` when present, and slow SQL logging now surfaces queries over the configured threshold without leaking parameters. This improves the admin/billing/team lane for the upcoming real-DB staging smoke. Public staging repair has now moved forward again too: the Vercel production alias was republished from a cleaned root package, `CLERK_SECRET_KEY` was restored for the web runtime, `/boards/[boardId]` now returns the expected Clerk-protected `200` instead of a `500`, and real signed-in smoke now returns `200` for `/api/auth/session`, `/api/v1/admin/me`, operator users, finance summary and AI route metrics. Remaining S1B/S1C work is now the second-round signed-in browser pass, Google/email flow verification and final deploy-secret cleanup rather than basic auth reachability.
 
 The next documented business-system target is now the S3 Team/Group wallet slice: Team purchase creates an isolated Team workspace and Team wallet, while Collaborate remains a personal subscription/wallet for Group collaboration. S1D permission hardening still matters, but the payer contract must now distinguish Team wallet from personal Group/Collaborate wallet.
 
@@ -50,7 +50,7 @@ These percentages are coarse readiness markers, not time estimates:
 ```text
 S1X Canvas/Konva runtime      78%  stable local Board path; export/Yjs/live AiRun polish pending
 S1A Schema/DB foundation      82%  core join points and Team-wallet schema delta exist; staging DB smoke remains
-S1B Deploy/staging            82%  rebuilt Hetzner API host, public HTTPS API, Neon/R2/board smoke, CORS and the Konva-only staging web deploy are green; remaining work is signed-in board/browser acceptance, Google/email flow verification and one live AI smoke
+S1B Deploy/staging            84%  rebuilt Hetzner API host, public HTTPS API, Neon/R2/board smoke, CORS and the Konva-only staging web deploy are green; a first signed-in browser pass is now green, and the remaining work is the second-round reopen/conflict/thumbnail edge cases, Google/email flow verification and one live AI smoke
 S1C Auth/registration         72%  Clerk/FastAPI bearer boundary, admin bootstrap and real staging session/admin smoke now exist; session revocation/logout hardening plus Google/email verification remain
 S1D Board/share/invites       73%  CRUD/share/member first pass, workspace invite backend contracts and role-gated Team/Group UI first pass exist; billing visibility separation pending
 S1E Board packages            05%  `.tgy` package docs exist; export/import UI, asset bundling and asset rehydration pending
@@ -62,7 +62,7 @@ S4 Collaboration              27%  local Yjs room/document foundation plus bound
 
 ## Current Execution Order
 
-1. Finish signed-in board/browser acceptance on staging.
+1. Finish the second-round signed-in board/browser acceptance on staging.
 2. Finish Google/email plus CORS/origin acceptance.
 3. Run one real server-backed image smoke through the refreshed four-model S2 lane.
 4. Return to S1D/S3 closeout: permission edges, payer visibility, billing language and staged payment/usage truth.
@@ -212,7 +212,7 @@ S1C real Auth
 
 Current recommendation: treat S1X as a Konva-only production path, keep historical migration notes only as background context, and use `dev-plans/s1-launch-readiness-and-acceptance-report-2026-05-05.md`, `dev-plans/s2-ai-provider-route-billing-control-plane-2026-05-07.md`, `dev-plans/s3-team-group-wallets-membership-billing-plan-2026-05-08.md` and `dev-plans/s3-admin-operator-console-redesign-2026-05-09.md` as the handoff checklists. S1A is implemented but needs the Team-wallet delta, S1D first-pass share flow is in place, and S3 should not start real provider charging until Team wallet and personal Collaborate wallet payer tests pass.
 
-Next major checkpoint should move from repaired staging infrastructure into the remaining production-facing S1B/S1C/S2 gates in this explicit order: full signed-in board/browser acceptance, Google/email plus CORS/origin verification, the refreshed four-model live image smoke, then S1D/S3 closeout, and only then the deeper S4 Yjs/provider proof with cleaner server boundaries. Avoid reintroducing legacy canvas compatibility layers, and avoid interrupting this order for non-urgent backlog work that can be recorded in docs first.
+Next major checkpoint should move from repaired staging infrastructure into the remaining production-facing S1B/S1C/S2 gates in this explicit order: finish the second-round signed-in board/browser acceptance after the now-green first pass, then Google/email plus CORS/origin verification, then the refreshed four-model live image smoke, then S1D/S3 closeout, and only then the deeper S4 Yjs/provider proof with cleaner server boundaries. Avoid reintroducing legacy canvas compatibility layers, and avoid interrupting this order for non-urgent backlog work that can be recorded in docs first.
 
 ## Update Rules
 
@@ -272,7 +272,7 @@ S2/S3 现在也已经开始了第一条真正的 AI control-plane backend 主线
 ```text
 S1X Canvas/Konva runtime      78%  本地 Board 主路径稳定；export/Yjs/live AiRun polish 待完成
 S1A Schema/DB foundation      82%  core join points 与 Team-wallet schema delta 已存在；staging DB smoke 仍待完成
-S1B Deploy/staging            82%  重建后的 Hetzner API、public HTTPS API、Neon/R2/board smoke、CORS 和 Konva-only staging Web deploy 已转绿；剩余工作是 signed-in board/browser、Google/email 和一条 live AI smoke
+S1B Deploy/staging            84%  重建后的 Hetzner API、public HTTPS API、Neon/R2/board smoke、CORS 和 Konva-only staging Web deploy 已转绿；signed-in browser 首轮已转绿，剩余工作是第二轮 reopen/conflict/thumbnail 边界项、Google/email 和一条 live AI smoke
 S1C Auth/registration         72%  Clerk/FastAPI bearer 边界、admin bootstrap 和真实 staging session/admin smoke 已存在；session revocation/logout hardening 与 Google/email 验证仍待完成
 S1D Board/share/invites       73%  CRUD/share/member 第一阶段、workspace invite backend contracts 和带角色门控的 Team/Group UI first pass 已存在；billing visibility separation 待完成
 S1E Board packages            05%  `.tgy` package docs 已存在；export/import UI、asset bundling 和 asset rehydration 待完成
@@ -284,7 +284,7 @@ S4 Collaboration              27%  本地 Yjs room/document 基础与 reconnect/
 
 ## 当前主线顺序
 
-1. 先完成 signed-in board/browser staging 验收。
+1. 先完成 signed-in board/browser staging 第二轮验收。
 2. 再完成 Google/email 与 CORS/origin 验收。
 3. 跑通一条刷新后四模型生图线的真实 live image smoke。
 4. 回到 S1D/S3 收口：permission edges、payer visibility、billing language、credits、usage 和 staged payment truth。
@@ -422,7 +422,7 @@ S1D Auth-backed Board CRUD
 
 当前建议是：把 S1X 视为 Konva-only 的生产路径，历史迁移说明只保留为背景上下文；除非出现回归，否则把 S1X page polish 视为已接受；并使用 `dev-plans/s1-launch-readiness-and-acceptance-report-2026-05-05.md`、`dev-plans/s2-ai-provider-route-billing-control-plane-2026-05-07.md`、`dev-plans/s3-team-group-wallets-membership-billing-plan-2026-05-08.md` 和 `dev-plans/s3-admin-operator-console-redesign-2026-05-09.md` 作为交接检查清单。S1A 已实现但需要 Team-wallet delta，S1D 第一阶段 share flow 已就绪，S3 在 Team wallet 和 personal Collaborate wallet payer 测试通过前，不应开始真实 provider charging。
 
-下一个主要检查点应当按这个明确顺序推进：先补完 signed-in board/browser，再完成 Google/email 与 CORS/origin 验收，然后跑一条刷新后四模型生图线的真实 live image smoke，接着回到 S1D/S3 收口，最后才继续更深的 S4 Yjs/provider proof。避免重新引入 legacy canvas compatibility 行为，也不要为了不紧急的 backlog 项目打断这条顺序。
+下一个主要检查点应当按这个明确顺序推进：在 signed-in browser 首轮已转绿的基础上，先补完第二轮 board/browser 验收，再完成 Google/email 与 CORS/origin 验收，然后跑一条刷新后四模型生图线的真实 live image smoke，接着回到 S1D/S3 收口，最后才继续更深的 S4 Yjs/provider proof。避免重新引入 legacy canvas compatibility 行为，也不要为了不紧急的 backlog 项目打断这条顺序。
 
 ## 更新规则
 

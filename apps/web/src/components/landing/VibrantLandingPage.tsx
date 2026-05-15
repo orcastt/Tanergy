@@ -31,8 +31,8 @@ export function VibrantLandingPage() {
         }
       },
       {
-        rootMargin: '-12% 0px -10% 0px',
-        threshold: 0.18,
+        rootMargin: '-8% 0px -8% 0px',
+        threshold: 0.12,
       }
     )
 
@@ -171,7 +171,7 @@ export function VibrantLandingPage() {
         <div className="tanergy-vibrant-methodology__inner" data-reveal>
           <span>The Methodology</span>
           <h2>We believe white space is functional. Every pixel must earn its place on the screen.</h2>
-          <a className="tanergy-vibrant-pill tanergy-vibrant-pill--light" href="#access">
+          <a className="tanergy-vibrant-pill tanergy-vibrant-pill--light tanergy-vibrant-pill--round" href="#access">
             Read the Manifesto
           </a>
         </div>
@@ -180,7 +180,7 @@ export function VibrantLandingPage() {
       <section className="tanergy-vibrant-access" id="access">
         <div className="tanergy-vibrant-access__inner" data-reveal>
           <h2>Ready to build?</h2>
-          <p>Join the waitlist for Tangent Pro and experience the ultimate editorial workspace.</p>
+          <p>Join the waitlist for Tanergy Pro and experience the ultimate editorial workspace.</p>
           <form action="/sign-up" className="tanergy-vibrant-access__form">
             <input name="email" placeholder="Email address" type="email" />
             <button className="tanergy-vibrant-pill tanergy-vibrant-pill--accent" type="submit">

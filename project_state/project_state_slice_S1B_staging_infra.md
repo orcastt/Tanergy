@@ -1,7 +1,7 @@
 # Project State Slice S1B: Staging Infrastructure And Online Prep
 
 **Updated**: 2026-05-15
-**Status**: In progress; the rebuilt Hetzner staging API host is back online, public HTTPS API smoke is green again, local-against-real-DB plus public API smoke now pass against Neon + R2, the public Vercel alias now points to a fresh Konva-only web deploy, Cloudflare-proxied staging Web/API records with Full (strict) TLS are in place, real Clerk session/admin smoke is green, the tracked staging deploy docs are now redacted back to placeholder/checklist form, and a production deploy runbook/env template are prepared. Remaining gates are signed-in board/browser acceptance, Google/email verification and one live provider AI smoke.
+**Status**: In progress; the rebuilt Hetzner staging API host is back online, public HTTPS API smoke is green again, local-against-real-DB plus public API smoke now pass against Neon + R2, the public Vercel alias now points to a fresh Konva-only web deploy, Cloudflare-proxied staging Web/API records with Full (strict) TLS are in place, real Clerk session/admin smoke is green, the tracked staging deploy docs are now redacted back to placeholder/checklist form, and a production deploy runbook/env template are prepared. The first signed-in board/browser pass is now green; the remaining gates are the second-round reopen/conflict/thumbnail edge cases, Google/email verification and one live provider AI smoke.
 
 ## Objective
 
@@ -45,7 +45,8 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - [x] Public staging Web/API DNS stays behind Cloudflare proxying with Full (strict) TLS.
 - [x] Konva-only `/boards/[boardId]` route opens new Boards on staging without any legacy canvas dependency.
 - [x] Production-like env blocks legacy v1/unknown Board documents in the active app path.
-- [ ] Signed-in board/browser acceptance covers Board create/open/save/delete plus paste/upload -> reload -> history/thumbnail behavior.
+- [x] First signed-in board/browser pass covers Board create/open/save/delete plus paste/upload -> reload behavior.
+- [ ] Second-round board/browser acceptance still needs explicit reopen/conflict prompt, thumbnail persistence and any remaining private-board edge cases.
 - [ ] OTP email delivered to test inbox.
 - [ ] Google OAuth login on staging returns provider session/JWT.
 - [ ] FastAPI rejects invalid/expired provider JWT.
@@ -73,7 +74,8 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - Cloudflare SSL/TLS is now explicitly set to Full (strict) for the staging domains, so browser traffic stays on the proxied Web/API records while origin validation remains enabled.
 - `https://staging.tanergy.cc/boards/[boardId]` now returns `200` in the signed-out Clerk-protected state instead of `500`, and the active deployment no longer exposes the old tldraw license/runtime surface.
 - Real signed-in staging smoke is now green for `/api/auth/session`, `/api/admin-proxy/me`, `/api/admin-proxy/operator/users?limit=3`, `/api/admin-proxy/finance/summary` and `/api/admin-proxy/ai/route-metrics?limit=5`.
-- The newest Konva-only board behavior still needs a broader signed-in browser acceptance pass against the rebuilt API host, especially around private-board CRUD, paste/upload persistence, reload, history and thumbnails.
+- The first signed-in browser pass is now green on staging for Google login, `/workspaces`, board open, refresh/session persistence, private-board create/delete, paste/upload and reload recovery.
+- The remaining explicit browser edge is the solo-edit reopen conflict chooser (`remote update / use remote / keep mine`) plus thumbnail persistence and any last private-board owner semantics.
 - Runtime Postgres connections now prefer `DATABASE_POOL_URL` when present while keeping Alembic on `DATABASE_URL`; backend cursors log SQL taking longer than `TANGENT_DATABASE_SLOW_QUERY_MS` without logging parameters.
 - Clerk/Google/email runtime secrets have been restored enough for real session/admin smoke; remaining work is final Google/email verification and any last secret cleanup before wider staging use.
 - The tracked staging deployment worksheet no longer stores raw live secrets; runtime truth should now be maintained only in Vercel env, the staging server `deploy/staging/api.env`, provider dashboards and private operator storage.

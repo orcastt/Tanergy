@@ -29,7 +29,7 @@ Detailed product, architecture and state truth now lives in:
 
 1. Stabilize the current P0 alpha spine defined in `p0-alpha-stabilization-and-acceptance-2026-05-06.md`.
 2. Run the staging / real DB / real login smoke first: public host repair if needed, Alembic head, `/health`, `/api/v1/admin/me`, operator users, finance summary, board list/save/load and billing plans. Keep `deploy/production/README.md` as the pre-provision boundary and do not open production before this smoke is green.
-3. Treat the real Clerk session/admin smoke as a green checkpoint, then finish the remaining signed-in board/browser acceptance before relying on staging as the final truth. That acceptance pass should explicitly cover private-board CRUD, paste/upload placeholder -> persisted Asset, reload, history and thumbnail behavior.
+3. Treat the real Clerk session/admin smoke as a green checkpoint, and treat the first signed-in board/browser pass as green too. The remaining staging browser work is now the second-round acceptance: the solo-edit reopen conflict chooser, thumbnail persistence, history behavior and any last private-board owner edge cases before relying on staging as the final truth.
 4. Finish Google/email and CORS/origin acceptance after the signed-in board pass so the Auth boundary is fully believable outside local fallback assumptions.
 5. Finish the S2 provider-route/billing control-plane cut with one real AiRun/provider image smoke using the refreshed four-model image lane, then keep broader provider coverage moving.
 6. Return to S1D/S3 closeout after the live image smoke: permission hardening, Team/Group payer visibility, billing language, credits, usage and staged payment truth should converge before the next expansion.
@@ -87,7 +87,7 @@ Working rule for the current pass:
 ## 当前战术焦点
 
 1. 以 `p0-alpha-stabilization-and-acceptance-2026-05-06.md` 为准，稳定当前 P0 alpha 主线。
-2. 先把 staging / real DB / real login smoke 视为已转绿 checkpoint，再完成剩余的 signed-in board/browser 验收；这一步要明确覆盖 private board CRUD、图片粘贴占位 -> 上传持久化 -> reload、history 和 thumbnail。
+2. 先把 staging / real DB / real login smoke 以及 signed-in browser 首轮验收视为已转绿 checkpoint，再完成剩余的第二轮 board/browser 验收；这一步要明确覆盖 solo 编辑后 reopen 冲突提示、history、thumbnail，以及剩余的 private board owner 边界项。
 3. 接着完成 Google/email 与 CORS/origin 验收，让 Auth 边界不再依赖本地 fallback 假设。
 4. 再完成 S2 provider-route/billing control-plane cut 和一条基于刷新后四模型生图线的真实 AiRun/provider 路径，然后继续扩大 AI 覆盖。
 5. 然后回到 S1D/S3 收口：permission hardening、Team/Group payer visibility、billing language、credits、usage 和 staged payment truth 需要在继续扩线前对齐。
