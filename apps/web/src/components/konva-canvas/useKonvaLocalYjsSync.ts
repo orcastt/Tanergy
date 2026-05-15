@@ -20,12 +20,20 @@ import {
   createUnsupportedBoardRealtimeState,
 } from '@/features/collaboration/boardRealtimeState'
 import {
+  readKonvaYjsRoomRecordSafely,
+} from '@/features/collaboration/konvaYjsRoomRecordHelpers'
+import {
   createKonvaYjsUndoManager,
-  readKonvaYjsRoomRecord,
   type KonvaYjsRoomRecord,
   writeKonvaYjsSnapshot,
   type KonvaYjsSnapshotWriteMode,
 } from '@/features/collaboration/konvaYjsSnapshot'
+import {
+  createPendingRemoteSnapshotMeta,
+  resolveKonvaYjsIncomingRecord,
+  resolveKonvaYjsPublishPlan,
+  type PendingRemoteSnapshotMeta,
+} from './konvaLocalYjsSyncHelpers'
 
 type UseKonvaLocalYjsSyncOptions = {
   activePageId?: string
@@ -56,8 +64,6 @@ export type KonvaLocalYjsRemoteRestorePayload = {
   canvasSettings?: SerializedKonvaBoardDocument['canvasSettings']
   pages: SerializedKonvaBoardPage[]
 }
-
-type PendingRemoteSnapshotMeta = Pick<KonvaYjsRoomRecord, 'actorId' | 'publishedAt' | 'signature'>
 
 export type KonvaLocalYjsSyncController = {
   applyPendingRemoteSnapshot: () => void
@@ -177,11 +183,7 @@ export function useKonvaLocalYjsSync({
   }, [])
 
   const readRoomRecordSafely = useCallback(() => {
-    try {
-      return readKonvaYjsRoomRecord(ydoc)
-    } catch {
-      return null
-    }
+    return readKonvaYjsRoomRecordSafely(ydoc)
   }, [ydoc])
 
   const readCurrentDocumentSignature = useCallback(() => {
@@ -197,7 +199,17 @@ export function useKonvaLocalYjsSync({
   }, [])
 
   const applySnapshotRecord = useCallback((record: KonvaYjsRoomRecord, options: { force?: boolean } = {}) => {
-    if (record.actorId === actorIdRef.current) {
+    const decision = resolveKonvaYjsIncomingRecord({
+      actorId: actorIdRef.current,
+      canWrite: latestCanWriteRef.current,
+      currentDocumentSignature: readCurrentDocumentSignature(),
+      force: options.force,
+      hasUnsyncedLocalChanges: hasUnsyncedLocalChangesRef.current,
+      lastSynchronizedSignature: lastSynchronizedSignatureRef.current,
+      record,
+      workspaceKind: workspace?.kind,
+    })
+    if (decision.kind === 'local-echo') {
       rememberSynchronizedRecord(record)
       pendingRemoteSnapshotRef.current = null
       hasUnsyncedLocalChangesRef.current = false
@@ -209,12 +221,12 @@ export function useKonvaLocalYjsSync({
       })
       return
     }
-    if (record.signature === lastSynchronizedSignatureRef.current) {
+    if (decision.kind === 'duplicate') {
       rememberSynchronizedRecord(record)
       clearPendingRemoteSnapshot()
       return
     }
-    if (record.signature === readCurrentDocumentSignature()) {
+    if (decision.kind === 'already-current') {
       rememberSynchronizedRecord(record)
       pendingRemoteSnapshotRef.current = null
       hasUnsyncedLocalChangesRef.current = false
@@ -226,15 +238,15 @@ export function useKonvaLocalYjsSync({
       })
       return
     }
-    if (!options.force && workspace?.kind === 'solo_workspace' && latestCanWriteRef.current && hasUnsyncedLocalChangesRef.current) {
+    if (decision.kind === 'republish-local') {
       publishCurrentSnapshotRef.current?.({
         force: true,
         mode: nextPublishModeRef.current,
       })
       return
     }
-    if (!options.force && latestCanWriteRef.current && hasUnsyncedLocalChangesRef.current) {
-      pendingRemoteSnapshotRef.current = createPendingRemoteSnapshotMeta(record)
+    if (decision.kind === 'queue-pending') {
+      pendingRemoteSnapshotRef.current = decision.pending
       cancelScheduledPublish()
       patchSyncState({
         hasPendingRemoteSnapshot: true,
@@ -317,8 +329,8 @@ export function useKonvaLocalYjsSync({
     const wasUninitialized = lastSynchronizedPagesRef.current === null
     if (force || signature !== lastSynchronizedSignatureRef.current) {
       const changedPageIds = mode === 'active-page' && latestActivePageIdRef.current
-        ? dedupePageIds([latestActivePageIdRef.current])
-        : dedupePageIds(nextChangedPageIdsRef.current)
+        ? [latestActivePageIdRef.current]
+        : nextChangedPageIdsRef.current
       const synchronizedRecord = writeKonvaYjsSnapshot(ydoc, {
         activePageId: latestActivePageIdRef.current,
         actorId: actorIdRef.current,
@@ -492,19 +504,19 @@ export function useKonvaLocalYjsSync({
 
   useEffect(() => {
     if (!resolvedRoomKey || !latestCanWriteRef.current) return
-    const didSwitchPage = activePageId !== lastObservedActivePageIdRef.current
-    const didRevisionChange = pageRevision !== lastObservedPageRevisionRef.current
-    const nextChangedPageIds = didRevisionChange
-      ? dedupePageIds(pageChangedPageIds)
-      : dedupePageIds(activePageId ? [activePageId] : [])
-    const nextPublishMode: KonvaYjsSnapshotWriteMode = didRevisionChange
-      ? (requiresFullBoardSync ? 'full-board' : 'page-batch')
-      : 'active-page'
+    const publishPlan = resolveKonvaYjsPublishPlan({
+      activePageId,
+      pageChangedPageIds,
+      pageRevision,
+      previousActivePageId: lastObservedActivePageIdRef.current,
+      previousPageRevision: lastObservedPageRevisionRef.current,
+      requiresFullBoardSync,
+    })
     lastObservedActivePageIdRef.current = activePageId
     lastObservedPageRevisionRef.current = pageRevision
-    nextPublishModeRef.current = nextPublishMode
-    nextChangedPageIdsRef.current = nextChangedPageIds
-    if (didSwitchPage && !didRevisionChange) {
+    nextPublishModeRef.current = publishPlan.mode
+    nextChangedPageIdsRef.current = publishPlan.changedPageIds
+    if (publishPlan.didSwitchPage && !publishPlan.didRevisionChange) {
       cancelScheduledPublish()
       return
     }
@@ -519,7 +531,7 @@ export function useKonvaLocalYjsSync({
     patchSyncState({ hasUnsyncedLocalChanges: true })
     publishTimerRef.current = window.setTimeout(() => {
       publishTimerRef.current = null
-      publishCurrentSnapshot({ mode: nextPublishMode })
+      publishCurrentSnapshot({ mode: publishPlan.mode })
     }, publishDebounceMs)
     return () => {
       cancelScheduledPublish()
@@ -555,14 +567,6 @@ function createRemoteRestorePayload(record: KonvaYjsRoomRecord): KonvaLocalYjsRe
     activePageId: record.activePageId,
     canvasSettings: record.canvasSettings,
     pages: record.pages,
-  }
-}
-
-function createPendingRemoteSnapshotMeta(record: KonvaYjsRoomRecord): PendingRemoteSnapshotMeta {
-  return {
-    actorId: record.actorId,
-    publishedAt: record.publishedAt,
-    signature: record.signature,
   }
 }
 
@@ -613,8 +617,4 @@ function resolveTransportState(
   if (!enabled || !roomKey) return null
   if (!hasSupportedBoardRealtimeTransport(boardId)) return createUnsupportedBoardRealtimeState()
   return createConnectingBoardRealtimeState()
-}
-
-function dedupePageIds(pageIds: readonly string[]) {
-  return [...new Set(pageIds.filter((pageId): pageId is string => typeof pageId === 'string' && pageId.length > 0))]
 }

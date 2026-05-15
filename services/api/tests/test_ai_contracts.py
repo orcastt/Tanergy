@@ -245,6 +245,55 @@ def test_persist_provider_output_assets_skips_input_reload_when_dimensions_do_no
     assert asset_ids == ["asset_generated"]
 
 
+def test_persist_provider_output_assets_prefers_detected_output_dimensions(monkeypatch):
+    recorded_dimensions: list[tuple[int, int]] = []
+
+    class FakeStorage:
+        def get_record(self, asset_id, context):
+            raise AssertionError(f"Unexpected record load for {asset_id}.")
+
+        def get_file_bytes(self, asset_id, file_name, context):
+            raise AssertionError(f"Unexpected byte load for {asset_id}:{file_name}.")
+
+        def create_from_bytes(self, *, content, mime, context, origin, title, width, height):
+            _ = (content, mime, context, origin, title)
+            recorded_dimensions.append((width, height))
+            return type("Asset", (), {"id": "asset_generated"})()
+
+    monkeypatch.setattr("tangent_api.ai_provider_assets.get_asset_storage_adapter", lambda: FakeStorage())
+
+    context = _make_test_context()
+    payload = AiRunRequest(
+        input_asset_ids=[],
+        params={"aspectRatio": "1:1", "imageSize": "1K"},
+        prompt="Generate a poster.",
+        run_type="image_generation",
+        selected_model_id="nano-banana-2",
+    )
+
+    asset_ids = ai_provider_assets.persist_provider_output_assets(
+        [ai_provider_assets.ProviderImageOutput(content=_png_with_dimensions(640, 960), mime="image/png")],
+        context,
+        payload,
+        "geekai",
+    )
+
+    assert asset_ids == ["asset_generated"]
+    assert recorded_dimensions == [(640, 960)]
+
+
+def test_resolve_requested_dimensions_uses_image_size_and_ratio_for_nano_banana():
+    payload = AiRunRequest(
+        input_asset_ids=[],
+        params={"aspectRatio": "9:16", "imageSize": "0.5K"},
+        prompt="Generate a poster.",
+        run_type="image_generation",
+        selected_model_id="nano-banana-2",
+    )
+
+    assert ai_provider_assets.resolve_requested_dimensions(payload) == (288, 512)
+
+
 def test_ai_run_mock_can_settle_against_credit_ledger(monkeypatch):
     fake_db = FakePostgresDatabase()
     fake_db.credit_ledger = [
@@ -318,6 +367,17 @@ def _make_test_context():
         workspace_kind="group_workspace",
         workspace_name="Test Workspace",
         workspace_role="owner",
+    )
+
+
+def _png_with_dimensions(width: int, height: int) -> bytes:
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + b"\x00\x00\x00\rIHDR"
+        + width.to_bytes(4, "big")
+        + height.to_bytes(4, "big")
+        + b"\x08\x06\x00\x00\x00"
+        + b"\x00\x00\x00\x00"
     )
 
 

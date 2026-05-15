@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 import httpx
 
 from tangent_api.ai_schemas import AiRunRequest
+from tangent_api.image_dimensions import get_image_dimensions
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.storage.asset_store_common import MAX_ASSET_BYTES
 from tangent_api.storage.asset_storage_adapter import AssetStorageAdapter, get_asset_storage_adapter
@@ -15,14 +16,8 @@ _RESOLUTION_PIXELS = {
     "0_5k": 512,
     "1k": 1024,
     "2k": 2048,
+    "3k": 3072,
     "4k": 4096,
-}
-_ASPECT_RATIOS = {
-    "1:1": (1, 1),
-    "4:3": (4, 3),
-    "16:9": (16, 9),
-    "3:2": (3, 2),
-    "9:16": (9, 16),
 }
 MAX_PROVIDER_INPUT_ASSETS = 8
 MAX_PROVIDER_INPUT_TOTAL_BYTES = 48 * 1024 * 1024
@@ -136,14 +131,15 @@ def persist_provider_output_assets(
     storage = get_asset_storage_adapter()
     asset_ids: list[str] = []
     for index, output in enumerate(outputs, start=1):
+        width, height = resolve_provider_output_dimensions(output, default_width, default_height)
         asset = storage.create_from_bytes(
             content=output.content,
             mime=output.mime,
             context=context,
             origin=f"ai:{provider}",
             title=output.title or build_output_title(payload.prompt, index),
-            width=output.width or default_width,
-            height=output.height or default_height,
+            width=width,
+            height=height,
         )
         asset_ids.append(asset.id)
     return asset_ids
@@ -154,22 +150,31 @@ def download_provider_image(url: str, timeout_seconds: float, headers: Optional[
         with client.stream("GET", url, headers=headers) as response:
             response.raise_for_status()
             content = _read_provider_image_response(response)
-    mime = response.headers.get("content-type", "").split(";")[0].strip() or detect_image_mime(content)
-    return ProviderImageOutput(content=content, mime=mime or "image/png")
+    mime = response.headers.get("content-type", "").split(";")[0].strip() or detect_image_mime(content) or "image/png"
+    width, height = get_image_dimensions(content, mime)
+    return ProviderImageOutput(
+        content=content,
+        height=height or None,
+        mime=mime,
+        width=width or None,
+    )
 
 
 def resolve_requested_dimensions(
     payload: AiRunRequest,
     fallback_asset: Optional[object] = None,
 ) -> tuple[int, int]:
-    resolution = str(payload.params.get("resolution") or "").strip().lower().replace(".", "_")
-    longest_edge = _RESOLUTION_PIXELS.get(resolution, 1024)
+    explicit_size = _resolve_explicit_requested_size(payload)
+    if explicit_size is not None:
+        return explicit_size
+
+    longest_edge = _resolve_requested_longest_edge(payload)
     aspect_ratio = str(payload.params.get("aspectRatio") or "1:1").strip()
     fallback_width = getattr(fallback_asset, "width", 0)
     fallback_height = getattr(fallback_asset, "height", 0)
     if aspect_ratio == "auto" and fallback_width > 0 and fallback_height > 0:
         return fallback_width, fallback_height
-    ratio_width, ratio_height = _ASPECT_RATIOS.get(aspect_ratio, (1, 1))
+    ratio_width, ratio_height = _parse_ratio_value(aspect_ratio) or (1, 1)
     if ratio_width >= ratio_height:
         width = longest_edge
         height = max(1, round(longest_edge * ratio_height / ratio_width))
@@ -187,6 +192,20 @@ def detect_image_mime(content: bytes) -> Optional[str]:
     if content.startswith(b"RIFF") and content[8:12] == b"WEBP":
         return "image/webp"
     return None
+
+
+def resolve_provider_output_dimensions(
+    output: ProviderImageOutput,
+    fallback_width: int,
+    fallback_height: int,
+) -> tuple[int, int]:
+    if (output.width or 0) > 0 and (output.height or 0) > 0:
+        return int(output.width), int(output.height)
+    detected_mime = detect_image_mime(output.content) or output.mime
+    detected_width, detected_height = get_image_dimensions(output.content, detected_mime)
+    if detected_width > 0 and detected_height > 0:
+        return detected_width, detected_height
+    return fallback_width, fallback_height
 
 
 def original_file_name(original_url: str) -> str:
@@ -216,6 +235,51 @@ def _load_first_provider_input_asset_ref(
     if not asset_ids:
         return None
     return load_provider_input_asset_ref(asset_ids[0], context)
+
+
+def _resolve_explicit_requested_size(payload: AiRunRequest) -> Optional[tuple[int, int]]:
+    for field_name in ("size", "seedreamSize", "jimengSize"):
+        parsed = _parse_dimension_value(str(payload.params.get(field_name) or "").strip())
+        if parsed is not None:
+            return parsed
+    return None
+
+
+def _resolve_requested_longest_edge(payload: AiRunRequest) -> int:
+    for field_name in ("imageSize", "seedreamSize", "jimengSize", "size", "resolution"):
+        value = str(payload.params.get(field_name) or "").strip().lower().replace(".", "_")
+        longest_edge = _RESOLUTION_PIXELS.get(value)
+        if longest_edge:
+            return longest_edge
+    return 1024
+
+
+def _parse_dimension_value(value: str) -> Optional[tuple[int, int]]:
+    if "x" not in value:
+        return None
+    left, right = value.lower().split("x", 1)
+    try:
+        width = int(left.strip())
+        height = int(right.strip())
+    except ValueError:
+        return None
+    if width <= 0 or height <= 0:
+        return None
+    return _even(width), _even(height)
+
+
+def _parse_ratio_value(value: str) -> Optional[tuple[int, int]]:
+    if ":" not in value:
+        return None
+    left, right = value.split(":", 1)
+    try:
+        width = float(left.strip())
+        height = float(right.strip())
+    except ValueError:
+        return None
+    if width <= 0 or height <= 0:
+        return None
+    return int(round(width * 1000)), int(round(height * 1000))
 
 
 def build_output_title(prompt: Optional[str], index: int) -> str:

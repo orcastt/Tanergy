@@ -86,6 +86,7 @@ function KonvaCanvasShapeComponent({
   const canDragShape = canInteract && toolAllowsDrag && (directDrag || isDragSelected) && !shape.isLocked
   const selectOnPointerDown = canSelect && (directDrag || (toolAllowsDrag && isDragSelected))
   const selectOnClick = canSelect && !selectOnPointerDown
+  const hoverCursor = shape.type === 'node_card' ? 'default' : 'move'
   const lockDragSourceRef = useRef(false)
   const lockedDragRef = useRef<LockedDragState | null>(null)
   return (
@@ -96,7 +97,7 @@ function KonvaCanvasShapeComponent({
       listening={interactive}
       name="konva-canvas-shape"
       onMouseEnter={canSelect ? (event) => {
-        setKonvaStageCursor(event, 'move')
+        setKonvaStageCursor(event, hoverCursor)
       } : undefined}
       onMouseLeave={canSelect ? clearKonvaStageCursor : undefined}
       onClick={selectOnClick ? (event) => {

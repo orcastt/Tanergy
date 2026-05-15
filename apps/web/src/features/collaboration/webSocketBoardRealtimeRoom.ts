@@ -9,13 +9,13 @@ import {
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import type { BoardCollaborationPresence } from '@/features/boards/boardCollaborationTypes'
 import { sanitizeBoardCollaborationPresence } from '@/features/boards/boardCollaborationPresenceSanitizer'
-import { readKonvaYjsRoomRecord, writeKonvaYjsSnapshot } from './konvaYjsSnapshot'
+import { createCompactKonvaYjsStateUpdate } from './konvaYjsRoomRecordHelpers'
 import {
   createBoardRealtimeStateMachine,
   createConnectingBoardRealtimeState,
-  type BoardRealtimeOutboundQueueState,
   type BoardRealtimeConnectionState,
 } from './boardRealtimeState'
+import { RealtimeDocumentUpdateQueue } from './webSocketBoardRealtimeDocumentQueue'
 
 const websocketRoomRegistry = new Map<string, SharedRealtimeRoom>()
 const remoteYjsOrigin = Symbol('tangent-websocket-yjs-remote')
@@ -121,11 +121,16 @@ class SharedRealtimeRoom {
   private compactionRequestPending = false
   private disposed = false
   private documentVersion = 0
+  private readonly documentQueue = new RealtimeDocumentUpdateQueue({
+    maxQueuedBytes: maxQueuedRealtimeUpdateBytes,
+    maxQueuedCount: maxQueuedRealtimeUpdateCount,
+    maxUpdateBytes: maxRealtimeUpdateBytes,
+  }, (queue) => {
+    this.stateMachine.markOutboundQueue(queue)
+  })
   private docSubscriptions = new Map<Y.Doc, (update: Uint8Array, origin: unknown) => void>()
   private initialDocumentSyncComplete = false
   private pendingSeedRequest = false
-  private pendingDocumentUpdateBytes = 0
-  private pendingDocumentUpdates: Uint8Array[] = []
   private localPresence: BoardCollaborationPresence | null = null
   private reconnectAttempt = 0
   private reconnectTimer: number | null = null
@@ -147,7 +152,7 @@ class SharedRealtimeRoom {
     const handleUpdate = (update: Uint8Array, origin: unknown) => {
       if (origin === remoteYjsOrigin) return
       if (!this.canSendDocumentUpdates()) {
-        this.queueDocumentUpdate(update)
+        this.queueDocumentUpdate(update, ydoc)
         return
       }
       const updatePayload = this.createUpdatePayload(update, 'Realtime update')
@@ -160,12 +165,12 @@ class SharedRealtimeRoom {
         this.documentVersion += 1
         return
       }
-      this.queueDocumentUpdate(update)
+      this.queueDocumentUpdate(update, ydoc)
     }
     this.docSubscriptions.set(ydoc, handleUpdate)
     ydoc.on('update', handleUpdate)
     this.maybeSendFullState(ydoc)
-    this.maybeFlushPendingDocumentUpdates()
+    this.maybeFlushPendingDocumentUpdates(ydoc)
   }
 
   detachYdoc(ydoc: Y.Doc) {
@@ -333,13 +338,7 @@ class SharedRealtimeRoom {
       }
       this.compactionRequestPending = requestCompaction
       this.initialDocumentSyncComplete = true
-      for (const ydoc of this.docSubscriptions.keys()) {
-        const didSendFullState = this.maybeSendFullState(ydoc)
-        if (!didSendFullState) {
-          this.maybeFlushPendingDocumentUpdates()
-        }
-        break
-      }
+      this.syncDocumentTransportAfterRoomEvent()
       this.stateMachine.markSynced()
       return
     }
@@ -357,7 +356,7 @@ class SharedRealtimeRoom {
       this.pendingSeedRequest = false
       this.compactionRequestPending = false
       this.initialDocumentSyncComplete = true
-      this.maybeFlushPendingDocumentUpdates()
+      this.syncDocumentTransportAfterRoomEvent()
       this.stateMachine.markSynced()
       return
     }
@@ -365,13 +364,7 @@ class SharedRealtimeRoom {
       this.documentVersion = resolveDocumentVersion(payload.documentVersion, this.documentVersion, this.documentVersion)
       this.compactionRequestPending = true
       this.initialDocumentSyncComplete = true
-      for (const ydoc of this.docSubscriptions.keys()) {
-        const didSendFullState = this.maybeSendFullState(ydoc)
-        if (!didSendFullState) {
-          this.maybeFlushPendingDocumentUpdates()
-        }
-        break
-      }
+      this.syncDocumentTransportAfterRoomEvent()
       return
     }
     if (type === 'awareness-batch') {
@@ -444,7 +437,7 @@ class SharedRealtimeRoom {
 
   private sendFullState(ydoc: Y.Doc) {
     const update = this.createUpdatePayload(
-      createCompactRealtimeStateUpdate(ydoc) ?? Y.encodeStateAsUpdate(ydoc),
+      createCompactKonvaYjsStateUpdate(ydoc) ?? Y.encodeStateAsUpdate(ydoc),
       'Realtime document state'
     )
     if (!update) return false
@@ -463,6 +456,17 @@ class SharedRealtimeRoom {
     this.compactionRequestPending = false
     this.clearPendingDocumentUpdates()
     return true
+  }
+
+  private syncDocumentTransportAfterRoomEvent() {
+    for (const ydoc of this.docSubscriptions.keys()) {
+      const didSendFullState = this.maybeSendFullState(ydoc)
+      if (!didSendFullState) {
+        this.maybeFlushPendingDocumentUpdates(ydoc)
+      }
+      return
+    }
+    this.maybeFlushPendingDocumentUpdates()
   }
 
   private sendMessage(payload: Record<string, unknown>) {
@@ -496,79 +500,47 @@ class SharedRealtimeRoom {
     return Boolean(socket && socket.readyState === WebSocket.OPEN && this.initialDocumentSyncComplete)
   }
 
-  private syncPendingDocumentQueueState(state: BoardRealtimeOutboundQueueState = 'queued') {
-    const isIdle = this.pendingDocumentUpdates.length === 0
-    this.stateMachine.markOutboundQueue({
-      bytes: this.pendingDocumentUpdateBytes,
-      count: this.pendingDocumentUpdates.length,
-      state: isIdle ? 'idle' : state,
-    })
-  }
-
   private clearPendingDocumentUpdates() {
-    this.pendingDocumentUpdates = []
-    this.pendingDocumentUpdateBytes = 0
-    this.syncPendingDocumentQueueState('idle')
+    this.documentQueue.clear()
   }
 
-  private queueDocumentUpdate(update: Uint8Array) {
-    if (update.byteLength > maxRealtimeUpdateBytes) {
+  private queueDocumentUpdate(update: Uint8Array, ydoc?: Y.Doc) {
+    const result = this.documentQueue.queue(update)
+    if (!result.ok) {
       this.stateMachine.markError('Realtime update exceeded the websocket update limit.')
       return
     }
-    this.pendingDocumentUpdates.push(update)
-    this.pendingDocumentUpdateBytes += update.byteLength
-    this.compactPendingDocumentUpdates()
-    if (
-      this.pendingDocumentUpdates.length > maxQueuedRealtimeUpdateCount
-      || this.pendingDocumentUpdateBytes > maxQueuedRealtimeUpdateBytes
-    ) {
+    if (result.requiresFullState) {
       this.compactionRequestPending = true
-      this.compactPendingDocumentUpdates(true)
+      if (ydoc) {
+        const didSendFullState = this.maybeSendFullState(ydoc)
+        if (!didSendFullState) {
+          this.maybeFlushPendingDocumentUpdates(ydoc)
+        }
+      }
     }
-    this.syncPendingDocumentQueueState('queued')
   }
 
-  private compactPendingDocumentUpdates(force = false) {
-    if (this.pendingDocumentUpdates.length < 2) return
-    const merged = Y.mergeUpdates(this.pendingDocumentUpdates)
-    if (!force && merged.byteLength > maxRealtimeUpdateBytes) return
-    this.pendingDocumentUpdates = [merged]
-    this.pendingDocumentUpdateBytes = merged.byteLength
-  }
-
-  private maybeFlushPendingDocumentUpdates() {
-    if (!this.canSendDocumentUpdates() || this.pendingDocumentUpdates.length === 0) return false
+  private maybeFlushPendingDocumentUpdates(ydoc?: Y.Doc) {
+    if (!this.canSendDocumentUpdates()) return false
+    if (ydoc && this.documentQueue.needsFullState) {
+      const didSendFullState = this.maybeSendFullState(ydoc)
+      if (didSendFullState) return true
+    }
     const socket = this.socket
     if (!socket || socket.readyState !== WebSocket.OPEN) return false
-
-    this.compactPendingDocumentUpdates()
-    this.syncPendingDocumentQueueState('flushing')
-    const pending = [...this.pendingDocumentUpdates]
-    let sentCount = 0
-    let sentBytes = 0
-    for (const update of pending) {
+    return this.documentQueue.flush((update) => {
       const updatePayload = this.createUpdatePayload(update, 'Queued realtime update')
-      if (!updatePayload) break
+      if (!updatePayload) return false
       const didSend = this.sendMessage({
         type: 'yjs-update',
         update: updatePayload,
       })
-      if (!didSend) break
-      sentCount += 1
-      sentBytes += update.byteLength
-      this.documentVersion += 1
-    }
-
-    if (sentCount === 0) {
-      this.syncPendingDocumentQueueState('queued')
-      return false
-    }
-    this.pendingDocumentUpdates = this.pendingDocumentUpdates.slice(sentCount)
-    this.pendingDocumentUpdateBytes = Math.max(0, this.pendingDocumentUpdateBytes - sentBytes)
-    if (this.pendingDocumentUpdates.length === 0) this.pendingDocumentUpdateBytes = 0
-    this.syncPendingDocumentQueueState(this.pendingDocumentUpdates.length > 0 ? 'queued' : 'idle')
-    return true
+      if (didSend) {
+        this.documentVersion += 1
+      }
+      return didSend
+    })
   }
 }
 
@@ -651,22 +623,6 @@ function resolveDocumentVersion(value: unknown, defaultVersion: number, minimum:
     return Math.max(value, minimum)
   }
   return Math.max(defaultVersion, minimum)
-}
-
-function createCompactRealtimeStateUpdate(ydoc: Y.Doc) {
-  try {
-    const record = readKonvaYjsRoomRecord(ydoc)
-    if (!record) return null
-    const compactedDoc = new Y.Doc({ gc: true })
-    try {
-      writeKonvaYjsSnapshot(compactedDoc, record)
-      return Y.encodeStateAsUpdate(compactedDoc)
-    } finally {
-      compactedDoc.destroy()
-    }
-  } catch {
-    return null
-  }
 }
 
 function shouldRetryRealtimeClose(event: CloseEvent) {
