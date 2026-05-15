@@ -68,7 +68,7 @@ export function KonvaCanvasHeader({
             <span
               className={`konva-canvas-presence-avatar${session.isSelf ? ' is-self' : ''}`}
               key={session.id}
-              title={`${session.displayName}${session.isSelf ? ' (You)' : ''}`}
+              title={session.isSelf && session.displayName === 'You' ? 'You' : `${session.displayName}${session.isSelf ? ' (You)' : ''}`}
             >
               {session.avatarInitials}
             </span>

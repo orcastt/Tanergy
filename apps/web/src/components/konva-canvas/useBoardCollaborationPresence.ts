@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { distanceBetweenPoints, type CanvasPoint } from '@/features/canvas-engine'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
+import { getPublicUserInitials, getPublicUserLabel, isInternalUserId } from '@/features/shared/publicUserDisplay'
 import {
   type BoardRealtimeAwarenessConnection,
   type BoardRealtimeAwarenessState,
@@ -178,11 +179,12 @@ export function useBoardCollaborationPresence({
         releasedSessionKeyRef.current = null
       }
       setState((current) => {
+        const publicSessions = sanitizeCollaborationSessions(response.activeSessions)
         realtimeAwarenessRef.current = createRealtimeAwarenessMap(
           [...realtimeAwarenessRef.current.values()],
-          response.activeSessions,
+          publicSessions,
         )
-        const activeSessions = mergeRealtimeAwareness(response.activeSessions, realtimeAwarenessRef.current)
+        const activeSessions = mergeRealtimeAwareness(publicSessions, realtimeAwarenessRef.current)
         return {
           ...current,
           activeSessions,
@@ -475,4 +477,35 @@ function resolveInitialTransportState(
   if (!shouldConnect) return createUnsupportedBoardRealtimeState()
   if (!hasSupportedBoardRealtimeTransport(boardId)) return createUnsupportedBoardRealtimeState()
   return createConnectingBoardRealtimeState()
+}
+
+function sanitizeCollaborationSessions(sessions: BoardCollaborationSessionRecord[]) {
+  return sessions.map((session) => ({
+    ...session,
+    avatarInitials: getPublicUserInitials({
+      displayName: isDerivedFallbackDisplayName(session.displayName, session.userId) ? undefined : session.displayName,
+      fallback: session.isSelf ? 'You' : 'Collaborator',
+      userId: session.userId,
+    }),
+    displayName: getPublicUserLabel({
+      displayName: isDerivedFallbackDisplayName(session.displayName, session.userId) ? undefined : session.displayName,
+      fallback: session.isSelf ? 'You' : 'Collaborator',
+      userId: session.userId,
+    }),
+  }))
+}
+
+function isDerivedFallbackDisplayName(displayName: string, userId: string) {
+  if (!isInternalUserId(userId)) return false
+  return normalizeLabel(displayName) === normalizeLabel(
+    userId
+      .split(/[._-]+/)
+      .filter(Boolean)
+      .map((part) => part[0]?.toUpperCase() + part.slice(1))
+      .join(' '),
+  )
+}
+
+function normalizeLabel(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ')
 }

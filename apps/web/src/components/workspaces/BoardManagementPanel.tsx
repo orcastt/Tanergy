@@ -2,12 +2,14 @@
 
 import { useEffect, useState, type FormEvent } from 'react'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
+import { useTangentSession } from '@/features/auth/useTangentSession'
 import {
   boardCardColorValues,
   type BoardCardColor,
   type BoardPersistenceSummary,
   type BoardVisibility,
 } from '@/features/boards/boardTypes'
+import { getPublicOwnerLabel } from '@/features/shared/publicUserDisplay'
 import { BoardManagementMembers } from './BoardManagementMembers'
 import { BoardManagementThumbnailSection } from './BoardManagementThumbnailSection'
 import { getBoardDisplayCardColor } from './workspaceBoardUtils'
@@ -57,6 +59,7 @@ export function BoardManagementPanel({
   onShare,
   workspace,
 }: BoardManagementPanelProps) {
+  const { session } = useTangentSession()
   const [cardColor, setCardColor] = useState<BoardCardColor>(getBoardDisplayCardColor(board))
   const [description, setDescription] = useState(board.description ?? '')
   const [isPinned, setIsPinned] = useState(Boolean(board.isPinned))
@@ -99,7 +102,7 @@ export function BoardManagementPanel({
             <span>{board.isStarred ? 'Starred' : 'Not starred'}</span>
           </div>
           <dl className="board-panel-details">
-            <div><dt>Owner</dt><dd>{formatOwner(board.ownerId)}</dd></div>
+            <div><dt>Owner</dt><dd>{getPublicOwnerLabel(board.ownerId, session.user.id)}</dd></div>
             <div><dt>Access</dt><dd>{canManageBoard ? 'Can manage' : 'View only'}</dd></div>
             <div><dt>Updated</dt><dd>{formatDate(board.savedAt)}</dd></div>
             <div><dt>Opened</dt><dd>{board.lastOpenedAt ? formatDate(board.lastOpenedAt) : 'Not opened yet'}</dd></div>
@@ -254,10 +257,6 @@ function formatDate(value: string) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date)
-}
-
-function formatOwner(ownerId: string) {
-  return ownerId === 'dev-user' ? 'TANGENT Dev' : ownerId
 }
 
 function getVisibilityLabel(value: BoardVisibility) {

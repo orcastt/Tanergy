@@ -3,12 +3,25 @@
 import Link from 'next/link'
 import { AppShell } from '@/components/app-shell/AppShell'
 import { useTangentSession } from '@/features/auth/useTangentSession'
+import { getPublicUserEmail, getPublicUserInitials, getPublicUserLabel } from '@/features/shared/publicUserDisplay'
 
 export default function AccountPage() {
   const { error, session, status } = useTangentSession()
+  const visibleEmail = getPublicUserEmail(session.user.email)
+  const visibleName = getPublicUserLabel({
+    displayName: session.user.displayName,
+    email: session.user.email,
+    fallback: 'You',
+    userId: session.user.id,
+  })
+  const visibleInitials = getPublicUserInitials({
+    displayName: session.user.displayName,
+    email: session.user.email,
+    fallback: 'You',
+    userId: session.user.id,
+  })
   const profileRows = [
-    { label: 'User ID', value: session.user.id },
-    { label: 'Email', value: session.user.email },
+    { label: 'Email', value: visibleEmail ?? 'Provided by your sign-in provider' },
     { label: 'Auth mode', value: session.authMode === 'dev' ? 'Development fallback' : 'Required session' },
     { label: 'Active workspace', value: session.activeWorkspace.name },
   ]
@@ -29,10 +42,10 @@ export default function AccountPage() {
 
         <section className="management-summary-grid" aria-label="Account summary">
           <article className="management-profile-card">
-            <div className="management-avatar" aria-hidden="true">{session.user.avatarInitials}</div>
+            <div className="management-avatar" aria-hidden="true">{visibleInitials}</div>
             <div>
-              <h2>{session.user.displayName}</h2>
-              <p>{session.user.email}</p>
+              <h2>{visibleName}</h2>
+              <p>{visibleEmail ?? 'Signed in with your connected account'}</p>
             </div>
           </article>
           <article className="management-callout mint">

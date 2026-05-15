@@ -27,6 +27,7 @@
 }
 
 .canvas-board-history footer {
+  align-items: flex-end;
   border-top: 1px solid rgba(17, 24, 39, 0.08);
   border-bottom: 0;
   font-size: 11px;
@@ -35,7 +36,7 @@
 .canvas-board-history__footer-actions {
   display: flex;
   flex: 0 0 auto;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
   gap: 6px;
 }
@@ -49,16 +50,6 @@
 
 .canvas-board-history strong {
   color: var(--text-primary);
-}
-
-.canvas-board-history button {
-  height: 28px;
-  border: 1px solid rgba(17, 24, 39, 0.14);
-  border-radius: 6px;
-  background: white;
-  color: var(--text-primary);
-  font-size: 11px;
-  font-weight: 800;
 }
 
 .canvas-board-history__error {
@@ -78,7 +69,13 @@
 }
 
 .canvas-board-history__filters button {
+  border: 1px solid rgba(17, 24, 39, 0.1);
+  border-radius: 8px;
+  background: #ffffff;
+  cursor: pointer;
   height: 28px;
+  font-size: 11px;
+  font-weight: 700;
   padding: 0 10px;
   border-color: rgba(17, 24, 39, 0.1);
   color: var(--text-tertiary);
@@ -113,6 +110,45 @@
   border: 1px solid rgba(17, 24, 39, 0.08);
   border-radius: 8px;
   background: rgba(248, 250, 252, 0.86);
+}
+
+.canvas-board-history__icon-button {
+  align-items: center;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  justify-content: center;
+  flex: 0 0 auto;
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #111827;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+
+.canvas-board-history__icon-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.canvas-board-history__icon-button:hover:not(:disabled),
+.canvas-board-history__icon-button:focus-visible {
+  border-color: rgba(17, 24, 39, 0.18);
+  background: #f8fafc;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
+  color: #111827;
+  outline: none;
+}
+
+.canvas-board-history__icon-button:disabled {
+  opacity: 0.44;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.canvas-board-history__close {
+  border-radius: 10px;
 }
 
 .canvas-board-history__preview {
@@ -175,4 +211,8 @@
 
 .canvas-board-history__item[data-kind='autosave'] .canvas-board-history__author span {
   background: #cbd5e1;
+}
+
+.canvas-board-history footer > span {
+  line-height: 1.35;
 }

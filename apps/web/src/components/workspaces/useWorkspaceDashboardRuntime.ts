@@ -13,6 +13,11 @@ import type {
 import type { TangentWorkspace, WorkspaceRole } from '@/features/auth/sessionTypes'
 import { listLocalBoardDocuments } from '@/features/boards/localBoardClient'
 import type { BoardPersistenceSummary } from '@/features/boards/boardTypes'
+import {
+  getPublicUserEmail,
+  getPublicUserInitials,
+  getPublicUserLabel,
+} from '@/features/shared/publicUserDisplay'
 import type {
   GroupWorkspaceDashboardRecord,
   TeamWorkspaceDashboardRecord,
@@ -228,10 +233,20 @@ function buildGroupRecord({
 function mapRemoteMembers(dashboard: RemoteWorkspaceDashboardRecord): WorkspaceDashboardMember[] {
   return dashboard.members.map((member) => ({
     boardAssignments: 0,
-    displayName: member.displayName,
-    email: member.email,
+    displayName: getPublicUserLabel({
+      displayName: member.displayName,
+      email: member.email,
+      fallback: 'Member',
+      userId: member.userId,
+    }),
+    email: getPublicUserEmail(member.email),
     id: member.userId,
-    initials: initials(member.displayName || member.email || member.userId),
+    initials: getPublicUserInitials({
+      displayName: member.displayName,
+      email: member.email,
+      fallback: 'Member',
+      userId: member.userId,
+    }),
     role: normalizeRole(member.role),
     usageCredits: member.usageThisCycle ?? undefined,
   }))
@@ -253,10 +268,6 @@ function normalizeWorkspacePlanKey(planKey: string | null | undefined, fallback:
     return planKey
   }
   return fallback
-}
-
-function initials(value: string) {
-  return value.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('') || 'NA'
 }
 
 function firstFailureMessage(result: PromiseRejectedResult | PromiseSettledResult<unknown>) {

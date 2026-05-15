@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { loadWorkspaceDashboard } from '@/features/billing/billingClient'
 import type { PlanKey, WorkspaceKind } from '@/features/billing/billingTypes'
 import { useTangentSession } from '@/features/auth/useTangentSession'
+import { getPublicUserInitials } from '@/features/shared/publicUserDisplay'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import { mapWithConcurrency } from '@/features/shared/asyncConcurrency'
 import { WorkspaceDirectoryView } from './WorkspaceDirectoryView'
@@ -33,6 +34,15 @@ export function WorkspaceDirectoryPage({
 }: WorkspaceDirectoryPageProps) {
   const { error: sessionError, session, status: sessionStatus } = useTangentSession()
   const [enrichedItems, setEnrichedItems] = useState<null | { items: WorkspaceDirectoryItem[]; signature: string }>(null)
+  const currentUserInitials = useMemo(
+    () => getPublicUserInitials({
+      displayName: session.user.displayName,
+      email: session.user.email,
+      fallback: 'You',
+      userId: session.user.id,
+    }),
+    [session.user.displayName, session.user.email, session.user.id],
+  )
   const sessionWorkspaces = useMemo(
     () => sessionStatus === 'ready'
       ? session.workspaces.filter((workspace): workspace is TangentWorkspace & { kind: typeof kind } => workspace.kind === kind)
@@ -40,8 +50,8 @@ export function WorkspaceDirectoryPage({
     [kind, session.workspaces, sessionStatus],
   )
   const baseItems = useMemo(
-    () => sessionWorkspaces.map((workspace) => toDirectoryItem(workspace, session.user.avatarInitials)),
-    [session.user.avatarInitials, sessionWorkspaces],
+    () => sessionWorkspaces.map((workspace) => toDirectoryItem(workspace, currentUserInitials)),
+    [currentUserInitials, sessionWorkspaces],
   )
   const workspaceSignature = useMemo(
     () => sessionWorkspaces.map((workspace) => `${workspace.id}:${workspace.role}:${workspace.planKey ?? ''}:${workspace.boardCount}`).join('|'),
@@ -60,14 +70,19 @@ export function WorkspaceDirectoryPage({
         const payload = await loadWorkspaceDashboard({ workspace })
         const memberInitials = payload.dashboard.members
           .slice(0, 4)
-          .map((member) => initials(member.displayName || member.email || member.userId))
+          .map((member) => getPublicUserInitials({
+            displayName: member.displayName,
+            email: member.email,
+            fallback: 'Member',
+            userId: member.userId,
+          }))
           .filter(Boolean)
-        return toDirectoryItem(workspace, session.user.avatarInitials, {
+        return toDirectoryItem(workspace, currentUserInitials, {
           memberCount: payload.dashboard.memberCount,
           memberInitials,
         })
       } catch {
-        return toDirectoryItem(workspace, session.user.avatarInitials)
+        return toDirectoryItem(workspace, currentUserInitials)
       }
     })
       .then((nextItems) => {
@@ -78,7 +93,7 @@ export function WorkspaceDirectoryPage({
     return () => {
       cancelled = true
     }
-  }, [baseItems.length, session.user.avatarInitials, sessionStatus, sessionWorkspaces, workspaceSignature])
+  }, [baseItems.length, currentUserInitials, sessionStatus, sessionWorkspaces, workspaceSignature])
 
   return (
     <WorkspaceDirectoryView
@@ -121,16 +136,6 @@ function toDirectoryItem(
     planKey: normalizePlanKey(workspace.planKey, workspace.kind),
     relationship,
   }
-}
-
-function initials(value: string) {
-  return value
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('') || 'NA'
 }
 
 function normalizePlanKey(

@@ -22,7 +22,7 @@ export type BoardModeSaveStatusProps = {
   migration: BoardMigrationSummary | null
   onHistory: () => void
   onLoad: () => void
-  onRefreshPreview: () => void
+  onRefreshPreview: () => Promise<void>
   onSave: () => void
   onSnapshot: () => void
   saveError: string | null

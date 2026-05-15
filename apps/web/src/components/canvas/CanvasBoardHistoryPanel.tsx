@@ -3,6 +3,9 @@
 /* eslint-disable @next/next/no-img-element -- History preview URLs can come from local API, FastAPI, or R2. */
 import { useMemo, useState, type SyntheticEvent } from 'react'
 import type { BoardSnapshotSummary } from '@/features/boards/boardTypes'
+import { useTangentSession } from '@/features/auth/useTangentSession'
+import { getPublicUserInitials, getPublicUserLabel } from '@/features/shared/publicUserDisplay'
+import { CanvasLineIcon, type CanvasLineIconName } from './CanvasLineIcon'
 
 type CanvasBoardHistoryPanelProps = {
   activePageId?: string
@@ -12,7 +15,6 @@ type CanvasBoardHistoryPanelProps = {
   onClear: () => void
   onClose: () => void
   onRefresh: () => void
-  onRefreshPreview: () => void
   onRestore: (snapshotId: string) => void
   snapshots: BoardSnapshotSummary[]
 }
@@ -25,10 +27,10 @@ export function CanvasBoardHistoryPanel({
   onClear,
   onClose,
   onRefresh,
-  onRefreshPreview,
   onRestore,
   snapshots,
 }: CanvasBoardHistoryPanelProps) {
+  const { session } = useTangentSession()
   const [scope, setScope] = useState<'all' | 'current'>('current')
   const [filter, setFilter] = useState<'all' | 'autosave' | 'user'>('all')
   const visibleSnapshots = useMemo(() => snapshots.filter((snapshot) => {
@@ -44,7 +46,13 @@ export function CanvasBoardHistoryPanel({
           <strong>Board history</strong>
           <span>{visibleSnapshots.length} of {snapshots.length} entr{snapshots.length === 1 ? 'y' : 'ies'}</span>
         </div>
-        <button aria-label="Close board history" onClick={onClose} type="button">Close</button>
+        <IconActionButton
+          ariaLabel="Close board history"
+          className="canvas-board-history__close"
+          icon="close"
+          onClick={onClose}
+          tooltip="Close"
+        />
       </header>
       <div className="canvas-board-history__filters" aria-label="History filters">
         {(['current', 'all'] as const).map((value) => (
@@ -84,38 +92,43 @@ export function CanvasBoardHistoryPanel({
               <span>{formatDate(snapshot.createdAt)} · {formatReason(snapshot.reason)}</span>
               <small>{snapshot.shapeCount} shapes / {snapshot.assetCount} assets · {formatBytes(snapshot.byteSize)}</small>
               <span className="canvas-board-history__author">
-                <span>{getInitials(snapshot.createdBy)}</span>
-                Saved by {formatUser(snapshot.createdBy)}
+                <span>{resolveSnapshotAuthorInitials(snapshot.createdBy, session.user.id, session.user.displayName, session.user.email)}</span>
+                Saved by {resolveSnapshotAuthor(snapshot.createdBy, session.user.id, session.user.displayName, session.user.email)}
               </span>
             </div>
-            <button
+            <IconActionButton
+              ariaLabel={`Restore ${snapshot.title}`}
               disabled={isRunning}
+              icon="restore"
               onClick={() => {
                 if (window.confirm('Restore this history entry? Current unsaved canvas changes will be replaced.')) {
                   onRestore(snapshot.id)
                 }
               }}
-              type="button"
-            >
-              Restore
-            </button>
+              tooltip="Restore"
+            />
           </article>
         ))}
       </div>
       <footer>
         <span>Free retention target: latest 100 autosaves + 100 user saves per board.</span>
         <div className="canvas-board-history__footer-actions">
-          <button disabled={isRunning} onClick={onRefresh} type="button">Refresh</button>
-          <button disabled={isRunning} onClick={onRefreshPreview} type="button">Refresh preview</button>
-          <button
+          <IconActionButton
+            ariaLabel="Refresh board history"
+            disabled={isRunning}
+            icon="refresh"
+            onClick={onRefresh}
+            tooltip="Refresh"
+          />
+          <IconActionButton
+            ariaLabel="Clean board history"
             disabled={isRunning || snapshots.length === 0}
+            icon="trash"
             onClick={() => {
               if (window.confirm('Clear all board history for this board? This cannot be undone.')) onClear()
             }}
-            type="button"
-          >
-            Clean
-          </button>
+            tooltip="Clean"
+          />
         </div>
       </footer>
     </aside>
@@ -167,13 +180,8 @@ function getFilterLabel(value: 'all' | 'autosave' | 'user') {
   return 'All'
 }
 
-function formatUser(value: string) {
-  return value === 'dev-user' ? 'Dev User' : value
-}
-
 function getInitials(value: string) {
-  const label = formatUser(value)
-  return label.split(/[\s._-]+/).map((part) => part[0]?.toUpperCase()).filter(Boolean).slice(0, 2).join('') || 'U'
+  return value.split(/[\s._-]+/).map((part) => part[0]?.toUpperCase()).filter(Boolean).slice(0, 2).join('') || 'U'
 }
 
 function normalizeTitle(value: string | null | undefined) {
@@ -185,4 +193,67 @@ function formatBytes(value: number) {
   if (value < 1024) return `${value} B`
   if (value < 1024 * 1024) return `${Math.round(value / 1024)} KB`
   return `${(value / 1024 / 1024).toFixed(1)} MB`
+}
+
+function resolveSnapshotAuthor(
+  createdBy: string,
+  currentUserId: string,
+  currentUserDisplayName: string,
+  currentUserEmail: string,
+) {
+  if (createdBy === currentUserId) {
+    return getPublicUserLabel({
+      displayName: currentUserDisplayName,
+      email: currentUserEmail,
+      fallback: 'You',
+      userId: currentUserId,
+    })
+  }
+  return getPublicUserLabel({ fallback: 'Board member', userId: createdBy })
+}
+
+function resolveSnapshotAuthorInitials(
+  createdBy: string,
+  currentUserId: string,
+  currentUserDisplayName: string,
+  currentUserEmail: string,
+) {
+  if (createdBy === currentUserId) {
+    return getPublicUserInitials({
+      displayName: currentUserDisplayName,
+      email: currentUserEmail,
+      fallback: 'You',
+      userId: currentUserId,
+    })
+  }
+  return getPublicUserInitials({ fallback: 'Board member', userId: createdBy })
+}
+
+function IconActionButton({
+  ariaLabel,
+  className,
+  disabled = false,
+  icon,
+  onClick,
+  tooltip,
+}: {
+  ariaLabel: string
+  className?: string
+  disabled?: boolean
+  icon: CanvasLineIconName
+  onClick: () => void
+  tooltip: string
+}) {
+  return (
+    <button
+      aria-label={ariaLabel}
+      className={`canvas-board-history__icon-button${className ? ` ${className}` : ''}`}
+      data-tooltip={tooltip}
+      disabled={disabled}
+      onClick={onClick}
+      type="button"
+    >
+      <CanvasLineIcon name={icon} />
+    </button>
+  )
 }

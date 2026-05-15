@@ -2,10 +2,10 @@
 
 import type { FormEvent } from 'react'
 import type { TangentSession, TangentWorkspace } from '@/features/auth/sessionTypes'
+import { getPublicUserInitials, getPublicUserLabel } from '@/features/shared/publicUserDisplay'
 import { WorkspaceBoardItem, type WorkspaceBoardViewMode } from './WorkspaceBoardItem'
 import type { BoardPersistenceSummary } from '@/features/boards/boardTypes'
 import { getBoardCapabilities } from './boardCapabilities'
-import { getInitials } from './boardMemberUtils'
 
 export type WorkspaceBoardDisplayItem = BoardPersistenceSummary & {
   isSynthetic?: boolean
@@ -146,15 +146,30 @@ export function buildBoardCollaborators(
   workspace: TangentWorkspace,
   session: TangentSession
 ) {
-  const ownerInitials = getInitials(board.ownerId || 'Owner') || 'OW'
-  const workspaceInitials = getInitials(workspace.name || workspace.kind) || 'WS'
-  const currentUserInitials = session.user.avatarInitials || getInitials(session.user.displayName || session.user.id) || 'YU'
+  const selfLabel = getPublicUserLabel({
+    displayName: session.user.displayName,
+    email: session.user.email,
+    fallback: 'You',
+    userId: session.user.id,
+  })
+  const ownerInitials = getPublicUserInitials({ fallback: 'Owner', userId: board.ownerId }) || 'OW'
+  const workspaceInitials = getPublicUserInitials({ fallback: workspace.name || workspace.kind }) || 'WS'
+  const currentUserInitials = getPublicUserInitials({
+    displayName: session.user.displayName,
+    email: session.user.email,
+    fallback: 'You',
+    userId: session.user.id,
+  }) || 'YU'
   const ownerId = board.ownerId?.trim()
 
   return dedupeCollaborators([
-    { id: `self-${session.user.id}`, initials: currentUserInitials, label: `${session.user.displayName} (You)` },
+    {
+      id: `self-${session.user.id}`,
+      initials: currentUserInitials,
+      label: selfLabel === 'You' ? 'You' : `${selfLabel} (You)`,
+    },
     ownerId && ownerId !== session.user.id
-      ? { id: `owner-${board.id}-${ownerId}`, initials: ownerInitials, label: `Owner ${ownerId}` }
+      ? { id: `owner-${board.id}-${ownerId}`, initials: ownerInitials, label: 'Owner' }
       : null,
     { id: `workspace-${workspace.id}`, initials: workspaceInitials, label: workspace.name },
   ])

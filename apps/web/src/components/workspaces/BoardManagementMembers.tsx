@@ -19,10 +19,14 @@ import {
   updateLocalBoardMember,
 } from '@/features/boards/localBoardClient'
 import {
+  getPublicUserInitials,
+  getPublicUserLabel,
+  getPublicUserSecondaryLabel,
+} from '@/features/shared/publicUserDisplay'
+import {
   buildDraftMap,
   formatJoinedAt,
   formatWorkspaceRole,
-  getInitials,
   getRoleLabel,
   isLikelyEmail,
   sortMembers,
@@ -301,23 +305,13 @@ export function BoardManagementMembers({ board, canManageBoard, disabled, worksp
       {canManageBoard && !isLoading && lookupQuery.trim() ? (
         <div className="board-panel-members" role="list" aria-label="Workspace people">
           {lookupCandidates.map((candidate) => (
-            <div className="board-panel-member" key={candidate.userId} role="listitem">
-              <span className="board-panel-avatar">{getInitials(candidate.displayName || candidate.email)}</span>
-              <div className="board-panel-member-meta">
-                <strong>{candidate.displayName || candidate.email}</strong>
-                <span>{candidate.email}</span>
-              </div>
-              <small>{formatWorkspaceRole(candidate.workspaceRole)}</small>
-              <div className="board-panel-member-actions">
-                {candidate.alreadyMember ? (
-                  <small>{candidate.boardRole ? getRoleLabel(candidate.boardRole) : 'Already added'}</small>
-                ) : (
-                  <button disabled={readOnly || pendingUserId === candidate.userId} onClick={() => void addCandidate(candidate)} type="button">
-                    Add
-                  </button>
-                )}
-              </div>
-            </div>
+            <CandidateRow
+              candidate={candidate}
+              key={candidate.userId}
+              pendingUserId={pendingUserId}
+              readOnly={readOnly}
+              onAdd={addCandidate}
+            />
           ))}
           {!lookupCandidates.length ? (
             <p className="board-panel-member-status">
@@ -334,14 +328,32 @@ export function BoardManagementMembers({ board, canManageBoard, disabled, worksp
             const memberPending = pendingUserId === member.userId
             const isOwner = member.userId === board.ownerId
             const hasChanges = draft.displayName.trim() !== (member.displayName ?? '') || draft.role !== member.role
+            const memberLabel = getPublicUserLabel({
+              displayName: member.displayName,
+              email: member.email,
+              fallback: member.userId === session.user.id ? 'You' : isOwner ? 'Owner' : 'Member',
+              userId: member.userId,
+            })
+            const memberSecondary = getPublicUserSecondaryLabel({
+              displayName: member.displayName,
+              email: member.email,
+              userId: member.userId,
+            })
 
             return (
               <div className="board-panel-member" key={member.userId} role="row">
-                <span className="board-panel-avatar">{getInitials(member.displayName || member.userId)}</span>
+                <span className="board-panel-avatar">
+                  {getPublicUserInitials({
+                    displayName: member.displayName,
+                    email: member.email,
+                    fallback: member.userId === session.user.id ? 'You' : isOwner ? 'Owner' : 'Member',
+                    userId: member.userId,
+                  })}
+                </span>
                 <div className="board-panel-member-meta">
-                  <strong>{member.displayName || member.userId}</strong>
+                  <strong>{memberLabel}</strong>
                   <span>
-                    {member.email || member.userId}
+                    {memberSecondary ?? (isOwner ? 'Workspace owner' : 'Board member')}
                     {member.userId === session.user.id ? ' | You' : ''}
                   </span>
                 </div>
@@ -389,5 +401,56 @@ export function BoardManagementMembers({ board, canManageBoard, disabled, worksp
       {!isLoading && !members.length ? <p className="board-panel-member-status">No board members yet.</p> : null}
       {canManageBoard && isBusy ? <p className="board-panel-member-status">Saving member changes...</p> : null}
     </section>
+  )
+}
+
+function CandidateRow({
+  candidate,
+  pendingUserId,
+  readOnly,
+  onAdd,
+}: {
+  candidate: BoardMemberCandidateRecord
+  pendingUserId: string | null
+  readOnly: boolean
+  onAdd: (candidate: BoardMemberCandidateRecord) => Promise<void>
+}) {
+  const candidateLabel = getPublicUserLabel({
+    displayName: candidate.displayName,
+    email: candidate.email,
+    fallback: 'Member',
+    userId: candidate.userId,
+  })
+  const candidateSecondary = getPublicUserSecondaryLabel({
+    displayName: candidate.displayName,
+    email: candidate.email,
+    userId: candidate.userId,
+  })
+
+  return (
+    <div className="board-panel-member" role="listitem">
+      <span className="board-panel-avatar">
+        {getPublicUserInitials({
+          displayName: candidate.displayName,
+          email: candidate.email,
+          fallback: 'Member',
+          userId: candidate.userId,
+        })}
+      </span>
+      <div className="board-panel-member-meta">
+        <strong>{candidateLabel}</strong>
+        <span>{candidateSecondary ?? formatWorkspaceRole(candidate.workspaceRole)}</span>
+      </div>
+      <small>{formatWorkspaceRole(candidate.workspaceRole)}</small>
+      <div className="board-panel-member-actions">
+        {candidate.alreadyMember ? (
+          <small>{candidate.boardRole ? getRoleLabel(candidate.boardRole) : 'Already added'}</small>
+        ) : (
+          <button disabled={readOnly || pendingUserId === candidate.userId} onClick={() => void onAdd(candidate)} type="button">
+            Add
+          </button>
+        )}
+      </div>
+    </div>
   )
 }

@@ -352,7 +352,7 @@ export const KonvaBoardSaveAudit = forwardRef<KonvaBoardSaveAuditHandle, KonvaBo
         migration={null}
         onHistory={snapshots.openHistory}
         onLoad={() => void loadLocal()}
-        onRefreshPreview={() => void saveLocal('manual_save', { refreshThumbnail: true })}
+        onRefreshPreview={() => saveLocal('manual_save', { refreshThumbnail: true })}
         onSave={() => void saveLocal('manual_save')}
         onSnapshot={() => void snapshots.saveSnapshot('manual')}
         saveError={saveError ?? snapshots.snapshotError}

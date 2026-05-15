@@ -7,6 +7,7 @@ export type CanvasLineIconName =
   | 'align-top'
   | 'arrow'
   | 'capture'
+  | 'close'
   | 'cloud'
   | 'diamond'
   | 'draw'
@@ -16,10 +17,13 @@ export type CanvasLineIconName =
   | 'image-node'
   | 'insert'
   | 'line'
+  | 'refresh'
   | 'rectangle'
+  | 'restore'
   | 'select'
   | 'settings'
   | 'text'
+  | 'trash'
   | 'triangle'
 
 export function CanvasLineIcon({ name }: { name: CanvasLineIconName }) {
@@ -66,6 +70,12 @@ function renderIcon(name: CanvasLineIconName) {
       return <><rect height="12" rx="1.6" width="14" x="4.5" y="5" /><path d="m7.5 14 3.1-3.2 2.3 2.4 1.4-1.5 2.2 2.3M8 19h9.5a2 2 0 0 0 2-2V8" /></>
     case 'capture':
       return <><path d="M6.5 8.2h2.1l1.1-1.7h4.6l1.1 1.7h2.1a2 2 0 0 1 2 2v6.1a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2v-6.1a2 2 0 0 1 2-2z" /><circle cx="12" cy="13.2" r="3" /></>
+    case 'close':
+      return <><path d="M7 7 17 17" /><path d="M17 7 7 17" /></>
+    case 'refresh':
+      return <><path d="M19 6.5v4.2h-4.2" /><path d="M5 17.5v-4.2h4.2" /><path d="M18 10.2a6.5 6.5 0 0 0-10.9-2.6L5.7 9" /><path d="M6 13.8a6.5 6.5 0 0 0 10.9 2.6l1.4-1.4" /></>
+    case 'restore':
+      return <><path d="M8 7H5v3" /><path d="M5.4 9.6A7 7 0 1 1 10 18.7" /><path d="M12 9v4l2.8 1.6" /></>
     case 'align-left':
       return <><path d="M5 5v14M9 7h9M9 12h6M9 17h10" /></>
     case 'align-center-x':
@@ -78,5 +88,7 @@ function renderIcon(name: CanvasLineIconName) {
       return <><path d="M5 12h14M7 7v10M12 9v6M17 6v12" /></>
     case 'align-bottom':
       return <><path d="M5 19h14M7 6v9M12 9v6M17 5v10" /></>
+    case 'trash':
+      return <><path d="M4.8 7.2h14.4" /><path d="M9.5 4.8h5" /><path d="m8 7.2.7 11a1.4 1.4 0 0 0 1.4 1.3h3.8a1.4 1.4 0 0 0 1.4-1.3l.7-11" /><path d="M10 10.2v5.6M14 10.2v5.6" /></>
   }
 }

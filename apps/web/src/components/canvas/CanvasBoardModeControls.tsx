@@ -22,6 +22,14 @@ type CanvasBoardModeControlsProps = BoardModeSaveStatusProps & {
 }
 
 export function CanvasBoardModeControls({ activePageId, activePageTitle, snapshots, ...statusProps }: CanvasBoardModeControlsProps) {
+  const refreshHistory = async () => {
+    try {
+      await statusProps.onRefreshPreview()
+    } finally {
+      await snapshots.refreshSnapshots().catch(() => {})
+    }
+  }
+
   return (
     <>
       <BoardModeSaveStatus {...statusProps} />
@@ -33,8 +41,7 @@ export function CanvasBoardModeControls({ activePageId, activePageTitle, snapsho
           isRunning={snapshots.isSnapshotRunning}
           onClose={snapshots.closeHistory}
           onClear={() => void snapshots.clearHistory()}
-          onRefresh={() => void snapshots.refreshSnapshots()}
-          onRefreshPreview={statusProps.onRefreshPreview}
+          onRefresh={() => void refreshHistory()}
           onRestore={(snapshotId) => void snapshots.restoreSnapshot(snapshotId)}
           snapshots={snapshots.snapshots}
         />

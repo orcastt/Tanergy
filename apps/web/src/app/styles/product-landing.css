@@ -129,9 +129,17 @@
   color: #ffffff;
 }
 
+.tanergy-vibrant-landing a.tanergy-vibrant-pill--dark {
+  color: #ffffff;
+}
+
 .tanergy-vibrant-pill--light {
   border-color: #dde0e4;
   background: #ffffff;
+  color: #171c25;
+}
+
+.tanergy-vibrant-landing a.tanergy-vibrant-pill--light {
   color: #171c25;
 }
 
