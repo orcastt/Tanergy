@@ -298,7 +298,15 @@ def _settle_image_task(
     deadline = monotonic() + timeout_seconds
     while monotonic() < deadline:
         sleep(IMAGE_POLL_INTERVAL_SECONDS)
-        next_payload = _get_json(client, f"/images/{quote(task_id.strip(), safe='')}", api_key)
+        next_payload = None
+        for _ in range(3):
+            try:
+                next_payload = _get_json(client, f"/images/{quote(task_id.strip(), safe='')}", api_key)
+                break
+            except httpx.HTTPError:
+                sleep(0.6)
+        if next_payload is None:
+            continue
         next_status = str(next_payload.get("task_status") or "").strip().lower()
         if next_status == "succeed":
             return next_payload

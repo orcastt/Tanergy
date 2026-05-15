@@ -163,6 +163,78 @@ def test_run_geekai_attempt_polls_gpt_image_tasks(monkeypatch):
     assert calls[2] == ("GET", "/images/task_live_1", None)
 
 
+def test_run_geekai_attempt_retries_transient_poll_disconnect(monkeypatch):
+    calls: list[tuple[str, str]] = []
+    poll_count = {"value": 0}
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            _ = args
+            _ = kwargs
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            _ = exc_type
+            _ = exc
+            _ = tb
+            return False
+
+        def post(self, path: str, headers: dict[str, str], json: dict[str, object]):
+            _ = headers
+            _ = json
+            calls.append(("POST", path))
+            return httpx.Response(
+                200,
+                json={"task_id": "task_live_retry", "task_status": "pending"},
+                request=httpx.Request("POST", f"https://example.test{path}"),
+            )
+
+        def get(self, path: str, headers: dict[str, str]):
+            _ = headers
+            calls.append(("GET", path))
+            poll_count["value"] += 1
+            if poll_count["value"] == 1:
+                raise httpx.RemoteProtocolError("Server disconnected without sending a response.")
+            return httpx.Response(
+                200,
+                json={"task_status": "succeed", "data": [{"url": "https://cdn.example.test/out.png"}]},
+                request=httpx.Request("GET", f"https://example.test{path}"),
+            )
+
+    monkeypatch.setattr("tangent_api.ai_provider_geekai.httpx.Client", FakeClient)
+    monkeypatch.setattr("tangent_api.ai_provider_geekai.sleep", lambda _seconds: None)
+    monkeypatch.setattr(
+        "tangent_api.ai_provider_geekai.download_provider_image",
+        lambda url, timeout_seconds, headers=None: ProviderImageOutput(content=b"\x89PNG\r\n\x1a\nout", mime="image/png"),
+    )
+    monkeypatch.setattr(
+        "tangent_api.ai_provider_geekai.persist_provider_output_assets",
+        lambda outputs, context, payload, provider: ["asset_retry_1"],
+    )
+
+    result = run_geekai_attempt(
+        _run_record(model_id="gpt-image-2"),
+        _request(
+            model_id="gpt-image-2",
+            params={"count": 1, "quality": "medium", "size": "1024x1024"},
+        ),
+        _route(provider_model="gpt-image-2"),
+        _context(),
+        api_key="test-key",
+        base_url="https://example.test/v1",
+    )
+
+    assert result.status == "succeeded"
+    assert result.output_asset_ids == ["asset_retry_1"]
+    assert calls == [
+        ("POST", "/images/generations"),
+        ("GET", "/images/task_live_retry"),
+        ("GET", "/images/task_live_retry"),
+    ]
+
+
 def test_run_geekai_attempt_groups_seedream_outputs(monkeypatch):
     captured_request: dict[str, object] = {}
 

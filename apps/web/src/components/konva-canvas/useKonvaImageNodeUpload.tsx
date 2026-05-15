@@ -31,7 +31,7 @@ export function useKonvaImageNodeUpload({
 
   const uploadImageNodeFile = useCallback(async (shapeId: string, file: File) => {
     const target = getImageNode(document, shapeId)
-    if (!target) return
+    if (!target || isImageNodeLockedToUpstream(target)) return
     const imageShape = await createKonvaImageShapeFromFile(file, {
       x: target.x + target.props.width / 2,
       y: target.y + target.props.height / 2,
@@ -80,15 +80,20 @@ export function useKonvaImageNodeUpload({
   }, [document, history, onDocumentChange, onSelectionChange, workspace])
 
   const promptImageNodeUpload = useCallback((shapeId: string) => {
+    if (!canReplaceImageNode(document, shapeId)) return
     uploadTargetRef.current = shapeId
     fileInputRef.current?.click()
-  }, [])
+  }, [document])
 
   const uploadDropFileAtPoint = useCallback((file: File, point: CanvasPoint, fallbackCenterPoint: CanvasPoint = point) => {
     const target = getNodeFileDropTarget(document, point)
     if (target) {
-      if (target.props.nodeType === 'chat') void uploadChatNodeFile(target.id, file)
-      else if (file.type.startsWith('image/')) void uploadImageNodeFile(target.id, file)
+      if (target.props.nodeType === 'chat') {
+        void uploadChatNodeFile(target.id, file)
+        return
+      }
+      if (isImageNodeLockedToUpstream(target)) return
+      if (file.type.startsWith('image/')) void uploadImageNodeFile(target.id, file)
       return
     }
     if (!file.type.startsWith('image/')) return
@@ -106,8 +111,12 @@ export function useKonvaImageNodeUpload({
         uploadTargetRef.current = null
         if (file && target) {
           const node = getUploadNode(document, target)
-          if (node?.props.nodeType === 'chat') void uploadChatNodeFile(target, file)
-          else if (file.type.startsWith('image/')) void uploadImageNodeFile(target, file)
+          if (node?.props.nodeType === 'chat') {
+            void uploadChatNodeFile(target, file)
+            return
+          }
+          if (node?.props.nodeType === 'image' && isImageNodeLockedToUpstream(node)) return
+          if (file.type.startsWith('image/')) void uploadImageNodeFile(target, file)
         }
       }}
       ref={fileInputRef}
@@ -116,6 +125,11 @@ export function useKonvaImageNodeUpload({
   )
 
   return { fileInput, promptImageNodeUpload, uploadDropFileAtPoint }
+}
+
+export function canReplaceImageNode(document: CanvasDocument, shapeId: string) {
+  const node = getImageNode(document, shapeId)
+  return Boolean(node && !isImageNodeLockedToUpstream(node))
 }
 
 function createImageNodeData(image: {
@@ -153,6 +167,10 @@ function getChatNode(document: CanvasDocument, shapeId: string): CanvasNodeShape
   return document.shapes.find((shape): shape is CanvasNodeShape => (
     shape.id === shapeId && shape.type === 'node_card' && shape.props.nodeType === 'chat'
   )) ?? null
+}
+
+function isImageNodeLockedToUpstream(shape: CanvasNodeShape) {
+  return typeof shape.props.data.inputSourceEdgeId === 'string' && shape.props.data.inputSourceEdgeId.length > 0
 }
 
 function getUploadNode(document: CanvasDocument, shapeId: string): CanvasNodeShape | null {

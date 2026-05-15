@@ -48,7 +48,7 @@ import { useKonvaCanvasMetrics } from './useKonvaCanvasMetrics'
 import { useKonvaCanvasShortcuts } from './useKonvaCanvasShortcuts'
 import { useKonvaImageOpsActions } from './useKonvaImageOpsActions'
 import { useKonvaImageNodeActions } from './useKonvaImageNodeActions'
-import { useKonvaImageNodeUpload } from './useKonvaImageNodeUpload'
+import { canReplaceImageNode, useKonvaImageNodeUpload } from './useKonvaImageNodeUpload'
 import { useKonvaNodeCreationMenu } from './useKonvaNodeCreationMenu'
 import { useKonvaSelectionExportActions } from './useKonvaSelectionExportActions'
 import { useKonvaStageDomEvents } from './useKonvaStageDomEvents'
@@ -705,6 +705,7 @@ export function KonvaCanvasSpike({
               }
               const shape = document.shapes.find((item) => item.id === shapeId)
               if (shape?.type === 'node_card' && shape.props.nodeType === 'image') {
+                if (!canReplaceImageNode(document, shapeId)) return
                 promptImageNodeUpload(shapeId)
                 return
               }

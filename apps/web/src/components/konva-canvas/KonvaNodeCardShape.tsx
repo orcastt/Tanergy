@@ -481,7 +481,9 @@ function GenerationBody({ fields, normalizedData, onFieldChange, openFieldName, 
   const error = getStringValue(shape.props.runtimeSummary.error)
   const progress = useEstimatedGenerationProgress(shape.props.runtimeSummary)
   const footerReserve = status === 'running' ? 74 : status === 'succeeded' ? 24 : 64
-  const slotHeight = Math.max(shape.props.nodeType === 'image_gen_4' ? 104 : 88, shape.props.height - slotY - footerReserve)
+  const warningFooter = status === 'succeeded' && error ? 48 : 0
+  const resolvedFooterReserve = footerReserve + warningFooter
+  const slotHeight = Math.max(shape.props.nodeType === 'image_gen_4' ? 104 : 88, shape.props.height - slotY - resolvedFooterReserve)
   const outputRefs = getRuntimeGraphGeneratedOutputRefs(shape.props.data)
   const slotBounds = useMemo(() => (
     Array.from({ length: imageOutputs }, (_, index) => getNodeCardImageSlotBounds({
@@ -497,7 +499,12 @@ function GenerationBody({ fields, normalizedData, onFieldChange, openFieldName, 
     <>
       <NodeCardImageSlots slotBounds={slotBounds} />
       <GeneratedOutputPreviews refs={outputRefs} slotBounds={slotBounds} zoom={zoom} />
-      {status === 'succeeded' ? null : status === 'running' ? (
+      {status === 'succeeded' ? error ? (
+        <>
+          <Rect cornerRadius={8} fill="#fffbeb" height={28} width={shape.props.width - 28} x={14} y={shape.props.height - 44} />
+          <Text fill="#b45309" fontFamily="Inter, system-ui, sans-serif" fontSize={12} fontStyle="bold" text={error} width={shape.props.width - 52} x={26} y={shape.props.height - 36} />
+        </>
+      ) : null : status === 'running' ? (
         <GenerationProgressFooter progress={progress} shape={shape} />
       ) : (
         <>
@@ -515,6 +522,7 @@ function ImageBody({ accent, shape, zoom }: { accent: string; shape: CanvasNodeS
   const bounds = { height: shape.props.height - 88, width: shape.props.width - 28, x: 14, y: 54 }
   const imageCrop = getNodeImageCrop(shape.props.data)
   const imageSource = getNodeImageSource(shape.props.data, zoom)
+  const canUpload = !hasUpstreamImageInput(shape)
   return (
     <>
       <Rect cornerRadius={12} fill={palette.imageEmptyBg} height={bounds.height} width={bounds.width} x={bounds.x} y={bounds.y} />
@@ -522,11 +530,17 @@ function ImageBody({ accent, shape, zoom }: { accent: string; shape: CanvasNodeS
       {imageSource ? null : (
         <>
           <Text align="center" fill="#ffffff" fontFamily="Inter, system-ui, sans-serif" fontSize={12} fontStyle="bold" text="Image" width={70} x={shape.props.width / 2 - 35} y={bounds.y + bounds.height / 2 - 8} />
-          <Text fill={accent} fontFamily="Inter, system-ui, sans-serif" fontSize={11} fontStyle="bold" text="Double-click / Drop" width={shape.props.width - 28} x={14} y={shape.props.height - 26} />
+          {canUpload ? (
+            <Text fill={accent} fontFamily="Inter, system-ui, sans-serif" fontSize={11} fontStyle="bold" text="Double-click / Drop" width={shape.props.width - 28} x={14} y={shape.props.height - 26} />
+          ) : null}
         </>
       )}
     </>
   )
+}
+
+function hasUpstreamImageInput(shape: CanvasNodeShape) {
+  return typeof shape.props.data.inputSourceEdgeId === 'string' && shape.props.data.inputSourceEdgeId.length > 0
 }
 
 function PortTooltip({ port, shape }: { port: ResolvedNodePort; shape: CanvasNodeShape }) {

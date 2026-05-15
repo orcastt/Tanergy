@@ -153,9 +153,10 @@ export function completeRuntimeGraphNodeRun(document: CanvasDocument, completion
     title: asset.title,
   }))
   const resultAssetIds = generatedOutputs.map((asset) => String(asset.assetId ?? '')).filter(Boolean)
+  const warning = getGeneratedImageAspectWarning(completion.runInput.request, completion.generatedAssets)
   return reconcileRuntimeGraphDocument(updateRuntimeNodeSummary(document, node.id, {
     costHint: completion.run.costHint,
-    error: null,
+    error: warning,
     lastRunId: completion.run.runId,
     modelId: completion.run.modelId,
     progressEstimatedMs: null,
@@ -318,4 +319,33 @@ function getEstimatedNodeRunDurationMs(node: CanvasNodeShape) {
       : 58_000
   const sizeMultiplier = size === '1024x1024' ? 1 : 1.15
   return Math.round(baseMs * sizeMultiplier * (1 + (count - 1) * 0.55))
+}
+
+function getGeneratedImageAspectWarning(request: AiRunRequest | null | undefined, generatedAssets: TangentAssetRecord[]) {
+  if (!request) return null
+  if (String(request.selectedModelId ?? '') !== 'nano-banana-2') return null
+  const requestedAspectRatio = parseAspectRatio(String(request.params?.aspectRatio ?? ''))
+  if (!requestedAspectRatio) return null
+  const mismatched = generatedAssets.find((asset) => {
+    const actualAspectRatio = getAspectRatio(asset.width, asset.height)
+    if (!actualAspectRatio) return false
+    const normalizedDelta = Math.abs(actualAspectRatio - requestedAspectRatio) / requestedAspectRatio
+    return normalizedDelta > 0.12
+  })
+  if (!mismatched) return null
+  return `Returned image aspect differs from requested ${String(request.params?.aspectRatio ?? 'ratio')}.`
+}
+
+function parseAspectRatio(value: string) {
+  const match = /^(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$/.exec(value.trim())
+  if (!match) return null
+  const width = Number(match[1])
+  const height = Number(match[2])
+  return getAspectRatio(width, height)
+}
+
+function getAspectRatio(width: number | null | undefined, height: number | null | undefined) {
+  if (typeof width !== 'number' || typeof height !== 'number') return null
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null
+  return width / height
 }

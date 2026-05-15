@@ -76,6 +76,12 @@ export function syncPlainObject(
   value: Record<string, unknown>,
   preserveKeys: ReadonlySet<string> = new Set(),
 ) {
+  if (target.doc === null) {
+    for (const [key, nextValue] of Object.entries(value)) {
+      syncPlainField(target, key, nextValue)
+    }
+    return
+  }
   const nextKeys = new Set([...preserveKeys, ...Object.keys(value)])
   for (const key of Array.from(target.keys())) {
     if (!nextKeys.has(key)) target.delete(key)
@@ -96,6 +102,14 @@ export function pruneUndefined<T extends Record<string, unknown>>(value: T): T {
 export function syncPlainField(target: Y.Map<unknown>, key: string, value: unknown) {
   if (value === undefined) {
     if (target.has(key)) target.delete(key)
+    return
+  }
+  if (target.doc === null) {
+    if (Array.isArray(value) || isPlainObject(value)) {
+      target.set(key, createYValue(value))
+      return
+    }
+    setPrimitive(target, key, value)
     return
   }
   if (Array.isArray(value)) {
@@ -121,7 +135,10 @@ function createYValue(value: unknown): unknown {
   }
   if (isPlainObject(value)) {
     const next = new Y.Map()
-    syncPlainObject(next, value)
+    for (const [key, nextValue] of Object.entries(value)) {
+      if (nextValue === undefined) continue
+      next.set(key, createYValue(nextValue))
+    }
     return next
   }
   return value
