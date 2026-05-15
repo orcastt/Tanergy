@@ -15,6 +15,119 @@
 - 真实 Clerk session/admin smoke 已转绿；剩余 staging 闸门是 signed-in board/browser、Google/email 和一条 live AI smoke。
 - `deploy/production/README.md` 与 `deploy/production/api.env.example` 已建立 production 边界，但 production 仍保持关闭，直到 staging 验收完整转绿。
 
+## 2026-05-15 实操捷径
+
+为了避免每次重新找链路，当前 staging 的真实推送方式固定如下：
+
+### 1. Vercel Web
+
+- 项目名：`tanergy-staging`
+- 本地已经通过 `.vercel/project.json` 绑定
+- Vercel 的 `rootDirectory` 是 `apps/web`
+- 外部域名：`https://staging.tanergy.cc`
+
+当你只改了前端、workspace、landing page、客户端交互或文档时，直接在仓库根目录执行：
+
+```bash
+git push origin <branch>
+npx --yes vercel deploy --prod --yes
+```
+
+说明：
+
+- 不需要 `cd apps/web`
+- 也不要从 `deploy/` 子目录发 Vercel
+- 如果本机没有全局安装 Vercel CLI，就用 `npx --yes vercel ...`
+- deploy 成功后，`staging.tanergy.cc` 会重新 alias 到新的 Vercel 版本
+
+### 2. Hetzner API 服务器
+
+- 主机：`5.78.122.74`
+- 域名：`https://api-staging.tanergy.cc`
+- 维护方式：SSH 到服务器，用 Docker Compose 重建 API
+
+当你改了 FastAPI、board persistence、auth verification、AI runtime、image-ops、或者 API env 时：
+
+```bash
+ssh deploy@5.78.122.74
+cd ~/TanvasAgent
+git pull
+docker compose -f deploy/staging/docker-compose.api.yml build
+docker compose -f deploy/staging/docker-compose.api.yml run --rm api alembic upgrade head
+docker compose -f deploy/staging/docker-compose.api.yml up -d
+docker compose -f deploy/staging/docker-compose.api.yml ps
+curl http://127.0.0.1:8000/health
+curl -sS https://api-staging.tanergy.cc/health
+```
+
+规则：
+
+- 只有前端改动时，不要动 Hetzner API 机
+- migration 变了，就要跑 Alembic
+- 只有 API 改动时，不一定需要重新发 Vercel
+
+### 3. Clerk
+
+Clerk 不是单独“部署”的服务器，它是：
+
+- Dashboard 配置面
+- Web env 同步面
+- API bearer verification 同步面
+
+当前要记住的是：
+
+- Web 侧看 Vercel env：`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`、`CLERK_SECRET_KEY`
+- API 侧看 Hetzner `api.env`：`CLERK_JWT_ISSUER`、`CLERK_JWKS_URL`、可选 audience、`CLERK_AUTHORIZED_PARTIES`
+
+改完 Clerk 后，不是去“部署 Clerk”，而是：
+
+1. 核对 Vercel env
+2. 核对 API env
+3. 重跑 remote auth smoke
+
+```bash
+S1C_SMOKE_BASE_URL=https://api-staging.tanergy.cc \
+S1C_SMOKE_ORIGIN=https://staging.tanergy.cc \
+S1C_SMOKE_BEARER_TOKEN=<real-clerk-token> \
+python3 services/api/scripts/s1c_remote_admin_smoke.py
+```
+
+### 4. Neon 数据库
+
+Neon 也不是单独“部署应用”，而是：
+
+- 运行时连接串来源
+- migration 的目标数据库
+
+当前规则：
+
+- `DATABASE_POOL_URL` 给 API runtime
+- `DATABASE_URL` 给 Alembic / admin / direct tasks
+
+如果只是 Neon 密码或连接串轮换：
+
+1. 更新 Hetzner API 的 env
+2. 更新私有运维记录
+3. 重启 / 重发 API container
+4. 跑 smoke
+
+如果是 schema 变更，再补：
+
+```bash
+docker compose -f deploy/staging/docker-compose.api.yml run --rm api alembic upgrade head
+```
+
+### 5. 一眼判断该推哪里
+
+```text
+只改前端/页面/UI          -> 推 Vercel
+改 FastAPI / API env       -> 推 Hetzner API
+改 Clerk Dashboard         -> 同步 env + 重跑 auth smoke
+改 Neon 凭据              -> 改 API env + 重发 API
+改 R2 凭据                -> 改 API env + 重发 API
+只改文档                  -> 通常不用推运行时
+```
+
 ## 先说结论
 
 Gemini 给的方向总体合适：域名先接 Cloudflare，前端用 Vercel，后端用 Hetzner VPS，数据库用 Neon，图片用 Cloudflare R2，登录用 Clerk + Google OAuth。这个组合对 P0 很现实，成本低，资料多，后续也能扩展。

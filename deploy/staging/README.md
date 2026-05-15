@@ -35,6 +35,145 @@ Important Clerk note:
 - Object storage: Cloudflare R2 or another S3-compatible bucket.
 - DNS / TLS: Cloudflare + a reverse proxy on the VPS.
 
+## Current Deployment Map
+
+As of 2026-05-15, the staging chain is intentionally split:
+
+- Web deploy: Vercel project `tanergy-staging`
+  - local link already exists in `.vercel/project.json`
+  - Vercel `rootDirectory` is `apps/web`
+  - public staging alias is `https://staging.tanergy.cc`
+- API deploy: Hetzner host `5.78.122.74`
+  - public API domain is `https://api-staging.tanergy.cc`
+  - source host is maintained over SSH and runs Docker Compose
+- Auth: Clerk dashboard
+  - web runtime uses Clerk publishable/server keys
+  - FastAPI bearer verification uses `CLERK_JWT_ISSUER`, `CLERK_JWKS_URL`, optional audience and `CLERK_AUTHORIZED_PARTIES`
+  - Clerk changes are dashboard/env sync work, not a standalone server deploy
+- Database: Neon Postgres
+  - API runtime should prefer `DATABASE_POOL_URL`
+  - Alembic and admin tasks should keep using direct `DATABASE_URL`
+  - Neon itself is not "deployed"; schema changes are applied from the API host with Alembic
+- Object storage: Cloudflare R2
+  - runtime keys live in API env
+  - bucket/domain changes are env and dashboard work, not web-only deploy work
+
+## Operator Shortcut
+
+Use this section when you already know the infrastructure exists and only need to ship the next change.
+
+### 1. Web-only changes
+
+Examples:
+
+- workspace UI
+- board/browser UX
+- landing page
+- client-side auth wiring
+- docs only
+
+From the repo root:
+
+```bash
+git push origin <branch>
+npx --yes vercel deploy --prod --yes
+```
+
+Notes:
+
+- Run this from the repo root, not from `deploy/`.
+- The linked Vercel project already points at `apps/web`, so you do not need to `cd apps/web`.
+- If the Vercel CLI is not installed globally, `npx --yes vercel ...` is the expected path.
+- A successful production deploy should re-alias `https://staging.tanergy.cc`.
+
+### 2. API / backend changes
+
+Examples:
+
+- FastAPI routes
+- auth verification
+- board persistence
+- AI runtime
+- image-ops
+- env changes that affect the API container
+
+SSH to the Hetzner source host and redeploy there:
+
+```bash
+ssh deploy@5.78.122.74
+cd ~/TanvasAgent
+git pull
+docker compose -f deploy/staging/docker-compose.api.yml build
+docker compose -f deploy/staging/docker-compose.api.yml run --rm api alembic upgrade head
+docker compose -f deploy/staging/docker-compose.api.yml up -d
+docker compose -f deploy/staging/docker-compose.api.yml ps
+curl http://127.0.0.1:8000/health
+curl -sS https://api-staging.tanergy.cc/health
+```
+
+Rules:
+
+- Run Alembic whenever migrations changed.
+- If only the frontend changed, do not touch the Hetzner API host.
+- If only the API changed, Vercel does not need a fresh deploy unless the web build also changed.
+
+### 3. Clerk changes
+
+Examples:
+
+- allowed origins
+- redirect URLs
+- Google toggle
+- email auth toggle
+- publishable/secret key rotation
+
+Clerk is a dashboard + env sync surface, not a code deploy target by itself.
+
+After Clerk changes:
+
+1. Verify Vercel env still has the correct Clerk web keys.
+2. Verify API env still has the correct issuer/JWKS/authorized-party values.
+3. Re-run the remote auth/admin smoke:
+
+```bash
+S1C_SMOKE_BASE_URL=https://api-staging.tanergy.cc \
+S1C_SMOKE_ORIGIN=https://staging.tanergy.cc \
+S1C_SMOKE_BEARER_TOKEN=<real-clerk-token> \
+python3 services/api/scripts/s1c_remote_admin_smoke.py
+```
+
+### 4. Neon changes
+
+Examples:
+
+- password rotation
+- pooled/direct URL rotation
+- branching / new DB
+- migrations
+
+Neon changes are applied by updating env and, when schema changed, re-running Alembic from the API host.
+
+Rules:
+
+- `DATABASE_POOL_URL` is for API runtime traffic.
+- `DATABASE_URL` remains the direct admin/migration URL.
+- Rotating a Neon password usually means:
+  1. update the API host env
+  2. update private operator records
+  3. restart/redeploy the API container
+  4. run smoke checks
+
+### 5. Fast decision table
+
+```text
+Only web files changed?        -> Vercel deploy only
+API code or API env changed?   -> Hetzner redeploy (+ Alembic if needed)
+Clerk dashboard changed?       -> sync env + rerun auth smoke
+Neon credentials changed?      -> update API env + redeploy API
+R2 credentials changed?        -> update API env + redeploy API
+Docs only?                     -> no runtime deploy required unless you want a matching web release
+```
+
 ## Source Firewall First
 
 Do not rely on Cloudflare to protect SSH.
