@@ -36,6 +36,7 @@ def test_ai_model_registry_contract():
     assert analysis_response.status_code == 200
     analysis_models = analysis_response.json()["models"]
     assert {model["id"] for model in analysis_models} == {
+        "gpt-5.5",
         "gpt-5-mini",
         "gpt-4o-mini",
         "gemini-2.5-flash",

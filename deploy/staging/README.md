@@ -246,7 +246,13 @@ Edit `deploy/staging/api.env` and fill:
 - `S3_BUCKET`
 - `S3_ACCESS_KEY_ID`
 - `S3_SECRET_ACCESS_KEY`
-- `GEEKAI_API_KEY`
+- `GEEKAI_API_KEY` for the balanced image channel used by `gpt-image-2`, `jimeng_t2i_v40`, and `doubao-seedream-5.0-lite`
+- `GEEKAI_NANO_BANANA_API_KEY` for the dedicated Nano Banana 2 official channel when you want separate billing or routing
+- `GEEKAI_NANO_BANANA_BASE_URL` when that Nano Banana channel uses a different base URL
+- `GEEKAI_TEXT_API_KEY` for the active GeekAI text channel used by `analysis`, `chat`, and `prompt optimizer`
+- `GEEKAI_TEXT_BASE_URL` as the optional base URL for that text channel
+- `GEEKAI_VIDEO_API_KEY` as a reserved placeholder for a future GeekAI video channel split
+- `GEEKAI_VIDEO_BASE_URL` as the optional base URL for that future video split
 
 Do not put live secret values into this repo's tracked markdown notes. Keep them in the server `api.env`, Vercel env, Clerk dashboard, or private operator storage.
 

@@ -51,7 +51,7 @@ These percentages are coarse readiness markers, not time estimates:
 S1X Canvas/Konva runtime      78%  stable local Board path; export/Yjs/live AiRun polish pending
 S1A Schema/DB foundation      82%  core join points and Team-wallet schema delta exist; staging DB smoke remains
 S1B Deploy/staging            84%  rebuilt Hetzner API host, public HTTPS API, Neon/R2/board smoke, CORS and the Konva-only staging web deploy are green; a first signed-in browser pass is now green, and the remaining work is the second-round reopen/conflict/thumbnail edge cases, Google/email flow verification and one live AI smoke
-S1C Auth/registration         72%  Clerk/FastAPI bearer boundary, admin bootstrap and real staging session/admin smoke now exist; session revocation/logout hardening plus Google/email verification remain
+S1C Auth/registration         78%  Clerk/FastAPI bearer boundary, admin bootstrap, real staging session/admin smoke, Tanergy profile onboarding/editing and a visible Clerk-backed forgot-password flow now exist; session revocation/logout hardening plus Google/email verification remain
 S1D Board/share/invites       73%  CRUD/share/member first pass, workspace invite backend contracts and role-gated Team/Group UI first pass exist; billing visibility separation pending
 S1E Board packages            05%  `.tgy` package docs exist; export/import UI, asset bundling and asset rehydration pending
 S2 AI runtime/provider routes 68%  GeekAI local UX path exists; backend short-text `AiRun`, durable `text_output`, message-native chat backendization, four-model image refresh and longer live-image timeout now exist; live image smoke and broader provider coverage remain
@@ -151,7 +151,7 @@ Not production-complete:
 | S1 Staging/Auth/Board | `project_state_slice_S1_staging_auth_board.md` | Active umbrella slice; detailed truth now lives in S1A/S1B/S1C/S1D/S1X |
 | S1A DB Schema | `project_state_slice_S1A_db_schema.md` | S1A core implemented through `0006`; current migration head also includes S3 `0007` |
 | S1B Staging Infra | `project_state_slice_S1B_staging_infra.md` | In progress; rebuilt public API host plus Neon/R2/board smoke passed, with auth/email/web acceptance still pending |
-| S1C Auth Context | `project_state_slice_S1C_auth_request_context.md` | In progress; real provider-backed auth still pending end-to-end rollout |
+| S1C Auth Context | `project_state_slice_S1C_auth_request_context.md` | Active checkpoint; provider-backed auth, Tanergy profile ownership and Clerk recovery flow are in place, while logout/session hardening and broader verification remain |
 | S1D Board CRUD | `project_state_slice_S1D_auth_board_crud.md` | Stable first-pass CRUD/member/share/public-share-open checkpoint with owner-only copy/delete, share expiry and known-foreign Asset guard |
 | S1E Board Packages | `project_state_slice_S1E_board_packages.md` | Planned; `.tgy` package decision and docs exist, implementation not started |
 | S1X Canvas Engine Migration | `project_state_slice_S1X_canvas_engine_migration.md` | Konva Board route accepted; Page polish and v1 copy tooling landed; local presence/read-only, passive remote-save sync and a local Yjs room/snapshot foundation with visible sync/conflict controls, native page/shape/edge Yjs storage, structural page reconcile, server-room-key alignment, provider-ready transport shaping, document/awareness initial-sync gating and local collaborative undo/redo are wired; provider/awareness remains pending |
@@ -273,7 +273,7 @@ S2/S3 现在也已经开始了第一条真正的 AI control-plane backend 主线
 S1X Canvas/Konva runtime      78%  本地 Board 主路径稳定；export/Yjs/live AiRun polish 待完成
 S1A Schema/DB foundation      82%  core join points 与 Team-wallet schema delta 已存在；staging DB smoke 仍待完成
 S1B Deploy/staging            84%  重建后的 Hetzner API、public HTTPS API、Neon/R2/board smoke、CORS 和 Konva-only staging Web deploy 已转绿；signed-in browser 首轮已转绿，剩余工作是第二轮 reopen/conflict/thumbnail 边界项、Google/email 和一条 live AI smoke
-S1C Auth/registration         72%  Clerk/FastAPI bearer 边界、admin bootstrap 和真实 staging session/admin smoke 已存在；session revocation/logout hardening 与 Google/email 验证仍待完成
+S1C Auth/registration         78%  Clerk/FastAPI bearer 边界、admin bootstrap、真实 staging session/admin smoke、Tanergy profile onboarding/editing 以及可见的 Clerk forgot-password 流程已存在；session revocation/logout hardening 与 Google/email 验证仍待完成
 S1D Board/share/invites       73%  CRUD/share/member 第一阶段、workspace invite backend contracts 和带角色门控的 Team/Group UI first pass 已存在；billing visibility separation 待完成
 S1E Board packages            05%  `.tgy` package docs 已存在；export/import UI、asset bundling 和 asset rehydration 待完成
 S2 AI runtime/provider routes 68%  GeekAI 本地 UX 路径存在；后端短文本 `AiRun`、durable `text_output`、message-native chat backendization、四模型生图刷新和更长生图超时已存在；剩余闸门是 live image smoke 与更广 provider 覆盖
@@ -362,7 +362,7 @@ S4 Collaboration              27%  本地 Yjs room/document 基础与 reconnect/
 | S1 Staging/Auth/Board | `project_state_slice_S1_staging_auth_board.md` | 活跃 umbrella；详细事实现在位于 S1A/S1B/S1C/S1D/S1X |
 | S1A DB Schema | `project_state_slice_S1A_db_schema.md` | S1A core 已通过 `0006` 实现；当前 migration head 还包含 S3 `0007` |
 | S1B Staging Infra | `project_state_slice_S1B_staging_infra.md` | 进行中；FastAPI / Neon / R2 smoke 已通过 |
-| S1C Auth Context | `project_state_slice_S1C_auth_request_context.md` | 进行中；真实 provider-backed auth 还未端到端上线 |
+| S1C Auth Context | `project_state_slice_S1C_auth_request_context.md` | 活跃检查点；provider-backed auth、Tanergy profile ownership 与 Clerk recovery flow 已到位，但 logout/session hardening 与更广验证仍待完成 |
 | S1D Board CRUD | `project_state_slice_S1D_auth_board_crud.md` | 第一阶段 CRUD/member/share/public-share-open 检查点稳定，并已带 owner-only copy/delete、share expiry 和 known-foreign Asset guard |
 | S1E Board Packages | `project_state_slice_S1E_board_packages.md` | 已规划；`.tgy` package 决策和文档已存在，implementation 还未开始 |
 | S1X Canvas Engine Migration | `project_state_slice_S1X_canvas_engine_migration.md` | Konva Board 路由已接受；Page polish 和 v1 copy tooling 已落地；本地 presence/read-only、被动远端保存同步、本地 Yjs room/snapshot foundation、同步/冲突可见控制、native page/shape/edge Yjs 存储、结构性 page reconcile、server room key 对齐与本地协同 undo/redo 已接通；协同/画布 memory audit 已补 bounded cache/history/update-chain、presence sanitize 和 image-cache 规则；provider/awareness 仍待完成 |

@@ -1,7 +1,7 @@
 # Project State Slice S1C: Auth And Request Context
 
 **Updated**: 2026-05-15
-**Status**: Clerk frontend routes plus FastAPI bearer verification first pass landed. First production-boundary hardening checkpoint now covers first-session personal wallet creation, strict Clerk authorized-party checks, bearer-mode spoof coverage, an email-capable admin bootstrap script, authenticated session memberships with server-returned workspace plan facts, durable last-request IP sync into `tangent_users.last_ip_address`, and real staging session/admin smoke without dev-bypass. The next gate is the ordered second-round signed-in browser pass, then Google/email/logout hardening, with email currently scoped to one truthful staging smoke rather than a new native Tanergy-owned auth system.
+**Status**: Clerk frontend routes plus FastAPI bearer verification first pass landed. The current checkpoint also includes Tanergy-owned profile completion and editing: first real sign-in now gates on a profile modal, `/account` persists editable display name plus gender into the local DB, `/forgot-password` exposes a real Clerk recovery flow, and session payloads now return `profileCompleted` / `gender` so the frontend can stay honest about which layer owns what. The next gate is still the ordered second-round signed-in browser pass, then Google/email/logout hardening, with email currently scoped to one truthful staging smoke rather than a new native Tanergy-owned auth system.
 
 ## Objective
 
@@ -20,6 +20,9 @@ Replace dev headers/mock identity with real server-side sessions and workspace m
 - [~] Email OTP issue/verify flow. Current release gate is one truthful staging email delivery/redirect smoke through the chosen provider path; native Tanergy-owned OTP endpoints remain later work.
 - [x] Default workspace creation first pass.
 - [x] Personal wallet creation on first verified local user session.
+- [x] Tanergy-owned profile fields on `tangent_users` with editable Account UI.
+- [x] First-session profile completion gate driven by the server session contract.
+- [x] Visible Clerk-backed forgot-password flow.
 - [x] Real-login admin smoke without local dev-bypass.
 - [x] Admin operator bootstrap/grant path for the actual signed-in local TANGENT user after migrations. Script supports `--user-id` and `--email`.
 - [~] Production-like Web/API origin and CORS contract for Clerk bearer requests. `azp` must now match configured `CLERK_AUTHORIZED_PARTIES` / allowed origins; deployed smoke still pending.
@@ -53,10 +56,13 @@ Current frontend first pass:
 /                  -> Tanergy homepage
 /sign-in           -> Clerk SignIn, Google-ready
 /sign-up           -> Clerk SignUp, Google-ready
+/forgot-password   -> Clerk-backed custom password recovery flow
 /login             -> /sign-in compatibility redirect
 /signup,/register  -> /sign-up compatibility redirects
+/account           -> Tanergy-owned profile editor for display name/gender
 /workspaces        -> protected by Clerk when TANGENT_REQUIRE_WEB_AUTH=1
 /api/auth/session  -> returns Clerk-backed Tanergy session shape when signed in
+/api/auth/profile  -> persists Tanergy-owned profile fields through the Next proxy
 shared remote clients -> attach Clerk JWT to /api/v1/auth, /boards, /assets, /image-ops and /ai
 ```
 
@@ -77,6 +83,7 @@ services/api/tangent_api/auth_provider.py
 services/api/tangent_api/auth_sessions.py
   map Clerk subject -> tangent_user_identities
   upsert/load tangent_users
+  preserve Tanergy-edited local display name after profile completion
   ensure default workspace + owner membership
   should also ensure personal_wallet for S3 Collaborate/personal top-ups
   fall back to deterministic ephemeral ids only when DATABASE_URL is absent
@@ -84,6 +91,7 @@ services/api/tangent_api/auth_sessions.py
 request_context.py
   no longer accepts user/workspace headers as authority in required-auth mode
   resolves local user + workspace membership after token verification
+  now returns `user_gender` and `user_profile_completed` with the authenticated request context
   forwards request IP from `x-forwarded-for` / `x-real-ip` / client host into auth session sync
   still preserves dev fallback when API auth is not required
 ```

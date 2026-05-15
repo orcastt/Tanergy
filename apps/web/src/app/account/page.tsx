@@ -2,6 +2,11 @@
 
 import Link from 'next/link'
 import { AppShell } from '@/components/app-shell/AppShell'
+import { AuthEmailVerificationPanel } from '@/components/auth/AuthEmailVerificationPanel'
+import { AuthPasswordChangeForm } from '@/components/auth/AuthPasswordChangeForm'
+import { AuthProfileForm } from '@/components/auth/AuthProfileForm'
+import { AuthSignInMethodsPanel } from '@/components/auth/AuthSignInMethodsPanel'
+import { formatAuthProfileGender } from '@/features/auth/authProfileOptions'
 import { useTangentSession } from '@/features/auth/useTangentSession'
 import { getPublicUserEmail, getPublicUserInitials, getPublicUserLabel } from '@/features/shared/publicUserDisplay'
 
@@ -21,6 +26,8 @@ export default function AccountPage() {
     userId: session.user.id,
   })
   const profileRows = [
+    { label: 'Display name', value: session.user.displayName },
+    { label: 'Gender', value: formatAuthProfileGender(session.user.gender) },
     { label: 'Email', value: visibleEmail ?? 'Provided by your sign-in provider' },
     { label: 'Auth mode', value: session.authMode === 'dev' ? 'Development fallback' : 'Required session' },
     { label: 'Active workspace', value: session.activeWorkspace.name },
@@ -31,10 +38,10 @@ export default function AccountPage() {
       <div className="product-page management-page">
         <section className="product-page-header">
           <p className="product-kicker">Account</p>
-          <h1 className="product-page-title">Personal profile and session boundary.</h1>
+          <h1 className="product-page-title">Profile, security, and the line between Tanergy and Clerk.</h1>
           <p className="product-section-copy">
-            This page now reads the live web session contract, so profile, workspace, and auth mode
-            stay aligned with the backend instead of falling back to mock account data.
+            Email identity, verification and password recovery stay in Clerk. Tanergy stores the
+            profile fields that appear inside boards, workspaces and future product features.
           </p>
           {status === 'loading' ? <p className="workspace-detail-status">Loading live account session…</p> : null}
           {status === 'error' ? <p className="workspace-detail-status">{error ?? 'Session lookup failed.'}</p> : null}
@@ -48,20 +55,34 @@ export default function AccountPage() {
               <p>{visibleEmail ?? 'Signed in with your connected account'}</p>
             </div>
           </article>
-          <article className="management-callout mint">
-            <h2>Email status</h2>
-            <p>{session.user.emailVerified ? 'Verified' : 'Waiting for real email provider setup.'}</p>
-            <Link className="product-text-link" href="/verify-email">Preview verification</Link>
-          </article>
+          <AuthEmailVerificationPanel />
           <article className="management-callout cream">
-            <h2>Workspace ownership</h2>
-            <p>{session.activeWorkspace.role} of {session.activeWorkspace.name}</p>
+            <h2>Profile status</h2>
+            <p>{session.user.profileCompleted ? 'Profile completed and editable here.' : 'Onboarding still needs a saved profile.'}</p>
             <Link className="product-text-link" href="/workspaces">Open workspace</Link>
           </article>
         </section>
 
         <section className="management-section-grid" aria-label="Account management">
           <article className="management-panel management-panel-wide">
+            <div className="management-panel-heading">
+              <div>
+                <h2>Profile settings</h2>
+                <p className="management-panel-copy">
+                  This is the Tanergy-owned layer. Updating it changes the name and profile state
+                  the product uses across workspaces, board history and future billing surfaces.
+                </p>
+              </div>
+            </div>
+            <AuthProfileForm
+              key={`${session.user.displayName}:${session.user.gender ?? ''}`}
+              initialDisplayName={session.user.displayName}
+              initialGender={session.user.gender}
+              submitLabel="Save profile changes"
+            />
+          </article>
+
+          <article className="management-panel">
             <h2>Profile snapshot</h2>
             <dl className="management-definition-list">
               {profileRows.map((row) => (
@@ -74,22 +95,44 @@ export default function AccountPage() {
           </article>
 
           <article className="management-panel">
-            <h2>Session guard</h2>
+            <h2>Security and recovery</h2>
             <p>
-              Local development uses explicit request-context headers. Production must replace
-              this with a server-issued session or JWT before public users arrive.
+              Passwords, password reset, email verification and social sign-in stay with Clerk. Tanergy
+              reads the verified identity and keeps product profile fields in our own database.
             </p>
-            <div className="management-badge-row">
-              <span>Dev fallback</span>
-              <span>Protected route shape</span>
+            <div className="management-stack">
+              <AuthPasswordChangeForm />
             </div>
+            <p className="management-inline-note">
+              Social-first Google or Microsoft accounts may not expose a password yet. In that case,
+              password change is unavailable until a local email/password credential exists in Clerk.
+            </p>
+            <p className="management-inline-note">
+              Use <Link className="product-text-link" href="/forgot-password">Forgot password</Link> only when you are signed out and need email recovery.
+            </p>
+          </article>
+
+          <AuthSignInMethodsPanel />
+
+          <article className="management-panel">
+            <h2>Ownership boundary</h2>
+            <dl className="management-definition-list">
+              <div>
+                <dt>Clerk owns</dt>
+                <dd>Authentication, email verification, password reset, provider subject identity.</dd>
+              </div>
+              <div>
+                <dt>Tanergy owns</dt>
+                <dd>Display name, gender, onboarding completion state, workspace-facing profile data.</dd>
+              </div>
+            </dl>
           </article>
 
           <article className="management-panel is-warning">
             <h2>Danger zone</h2>
             <p>
-              Account deletion and data export are real backend workflows. They stay disabled
-              until user records, workspace ownership and object cleanup are connected.
+              Account deletion and data export are still separate backend workflows. They stay disabled
+              until workspace ownership transfer and object cleanup are wired.
             </p>
             <button className="product-button product-button-secondary" disabled type="button">
               Delete account unavailable

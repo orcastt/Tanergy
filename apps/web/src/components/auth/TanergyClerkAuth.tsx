@@ -36,8 +36,8 @@ export function TanergyClerkAuth({ mode }: TanergyClerkAuthProps) {
   const AuthComponent = isSignUp ? SignUp : SignIn
   const title = isSignUp ? 'Create your Tanergy account.' : 'Welcome back to Tanergy.'
   const copy = isSignUp
-    ? 'Register with email, Google or GitHub, then enter your workspace.'
-    : 'Log in with email, Google or GitHub to continue.'
+    ? 'Register with email, Google or Microsoft, then enter your workspace.'
+    : 'Log in with email, Google or Microsoft to continue.'
   const showDevBypass = process.env.NODE_ENV !== 'production'
     && process.env.NEXT_PUBLIC_TANGENT_ENABLE_DEV_AUTH_BYPASS === '1'
 
@@ -106,6 +106,13 @@ export function TanergyClerkAuth({ mode }: TanergyClerkAuthProps) {
             signUpUrl="/sign-up"
           />
         </ClerkLoaded>
+        {isSignUp ? null : (
+          <div className="tanergy-auth-support-row">
+            <Link className="tanergy-auth-support-link" href="/forgot-password">
+              Forgot password?
+            </Link>
+          </div>
+        )}
         {showDevBypass ? (
           <div className="tanergy-dev-auth">
             <button

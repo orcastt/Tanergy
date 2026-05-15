@@ -17,6 +17,7 @@ def test_auth_session_dev_fallback(monkeypatch):
     assert session["authMode"] == "dev"
     assert session["isDevFallback"] is True
     assert session["user"]["id"] == "dev-user"
+    assert session["user"]["profileCompleted"] is True
     assert session["activeWorkspace"]["id"] == "dev-workspace"
 
 
@@ -107,7 +108,9 @@ def test_auth_required_mode_accepts_verified_bearer(monkeypatch):
             user_display_name="Clerk User",
             user_email="user@example.com",
             user_email_verified=True,
+            user_gender="non_binary",
             user_id="user_clerk_123",
+            user_profile_completed=False,
             workspace_board_count=4,
             workspace_id="workspace_clerk_123",
             workspace_name="Tanergy Workspace",
@@ -156,6 +159,8 @@ def test_auth_required_mode_accepts_verified_bearer(monkeypatch):
     assert session["user"]["id"] == "user_clerk_123"
     assert session["user"]["displayName"] == "Clerk User"
     assert session["user"]["email"] == "user@example.com"
+    assert session["user"]["gender"] == "non_binary"
+    assert session["user"]["profileCompleted"] is False
     assert session["activeWorkspace"]["id"] == "workspace_clerk_123"
     assert session["activeWorkspace"]["boardCount"] == 4
     assert session["activeWorkspace"]["planKey"] == "team_growth"
@@ -170,3 +175,71 @@ def test_auth_malformed_bearer_header_returns_401(monkeypatch):
     response = client.get("/api/v1/auth/session", headers={"Authorization": "Token nope"})
 
     assert response.status_code == 401
+
+
+def test_auth_profile_patch_requires_authenticated_session(monkeypatch):
+    monkeypatch.delenv("TANGENT_REQUIRE_API_AUTH", raising=False)
+    client = TestClient(app)
+
+    response = client.patch("/api/v1/auth/profile", json={"displayName": "New Name"})
+
+    assert response.status_code == 401
+
+
+def test_auth_profile_patch_updates_local_profile(monkeypatch):
+    monkeypatch.setenv("TANGENT_REQUIRE_API_AUTH", "1")
+
+    async def fake_resolve_authenticated_request_context(
+        token: str,
+        requested_workspace_id: Optional[str] = None,
+        request_ip: Optional[str] = None,
+    ) -> ApiRequestContext:
+        assert token == "valid-token"
+        return ApiRequestContext(
+            auth_mode="required",
+            is_dev_fallback=False,
+            user_avatar_initials="CU",
+            user_display_name="Clerk User",
+            user_email="user@example.com",
+            user_email_verified=True,
+            user_gender="female",
+            user_id="user_clerk_123",
+            user_profile_completed=False,
+            workspace_board_count=4,
+            workspace_id="workspace_clerk_123",
+            workspace_name="Tanergy Workspace",
+            workspace_plan_key="team_growth",
+            workspace_memberships=[],
+            workspace_role="owner",
+        )
+
+    monkeypatch.setattr(
+        "tangent_api.request_context.resolve_authenticated_request_context",
+        fake_resolve_authenticated_request_context,
+    )
+    monkeypatch.setattr(
+        "tangent_api.routers.auth.update_auth_profile",
+        lambda user_id, display_name, gender: type("Profile", (), {
+            "avatar_initials": "NN",
+            "display_name": display_name,
+            "email": "user@example.com",
+            "email_verified": True,
+            "gender": gender,
+            "profile_completed": True,
+            "user_id": user_id,
+        })(),
+    )
+    client = TestClient(app)
+
+    response = client.patch(
+        "/api/v1/auth/profile",
+        headers={"Authorization": "Bearer valid-token"},
+        json={"displayName": "New Name", "gender": "female"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["ok"] is True
+    assert payload["user"]["displayName"] == "New Name"
+    assert payload["user"]["gender"] == "female"
+    assert payload["user"]["profileCompleted"] is True

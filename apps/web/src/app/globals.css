@@ -48,6 +48,7 @@
 @import './styles/ai-card.css';
 @import './styles/node-card-base.css';
 @import './styles/node-card-content.css';
+@import './styles/node-image-lightbox.css';
 @import './styles/node-edge-overlay.css';
 @import './styles/merge-capture.css';
 @import './styles/responsive.css';

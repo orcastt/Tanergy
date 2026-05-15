@@ -61,6 +61,9 @@ export async function readFileArrayBufferWithLimit(
 
 export function requestBodyErrorStatus(error: unknown, fallback = 400) {
   if (error instanceof LocalRuntimeBridgeDisabledError) return error.status
+  if (typeof error === 'object' && error && 'status' in error && typeof error.status === 'number') {
+    return error.status
+  }
   return error instanceof RequestBodyTooLargeError ? error.status : fallback
 }
 

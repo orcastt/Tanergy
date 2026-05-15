@@ -30,7 +30,7 @@ def execute_ai_provider_attempt(
     route: AiProviderRouteCandidate,
     context: ApiRequestContext,
 ) -> AiProviderAttemptResult:
-    if _should_use_live_provider(route.provider_key):
+    if _should_use_live_provider(route.provider_key, route.provider_model, payload.run_type):
         adapter = _LIVE_PROVIDER_ADAPTERS.get(route.provider_key)
         if adapter is not None:
             return adapter(run, payload, route, context)
@@ -50,8 +50,8 @@ def _run_live_openai_compatible(
         payload,
         route,
         context,
-        api_key=_provider_api_key(route.provider_key),
-        base_url=_provider_base_url(route.provider_key),
+        api_key=_provider_api_key(route.provider_key, route.provider_model, payload.run_type),
+        base_url=_provider_base_url(route.provider_key, route.provider_model, payload.run_type),
     )
 
 
@@ -66,8 +66,8 @@ def _run_live_geekai(
         payload,
         route,
         context,
-        api_key=_provider_api_key(route.provider_key),
-        base_url=_provider_base_url(route.provider_key),
+        api_key=_provider_api_key(route.provider_key, route.provider_model, payload.run_type),
+        base_url=_provider_base_url(route.provider_key, route.provider_model, payload.run_type),
     )
 
 
@@ -82,8 +82,8 @@ def _run_live_google(
         payload,
         route,
         context,
-        api_key=_provider_api_key(route.provider_key),
-        base_url=_provider_base_url(route.provider_key),
+        api_key=_provider_api_key(route.provider_key, route.provider_model, payload.run_type),
+        base_url=_provider_base_url(route.provider_key, route.provider_model, payload.run_type),
     )
 
 
@@ -188,7 +188,7 @@ def _run_stub_provider_adapter(
     )
 
 
-def _should_use_live_provider(provider_key: str) -> bool:
+def _should_use_live_provider(provider_key: str, provider_model: Optional[str] = None, run_type: Optional[str] = None) -> bool:
     normalized_key = provider_key.upper().replace("-", "_")
     provider_mode = os.getenv(f"TANGENT_AI_PROVIDER_{normalized_key}_MODE", "").strip().lower()
     global_mode = os.getenv(
@@ -201,7 +201,7 @@ def _should_use_live_provider(provider_key: str) -> bool:
         return True
     if _is_local_or_test_runtime():
         return False
-    return bool(_provider_api_key(provider_key) and _provider_base_url(provider_key))
+    return bool(_provider_api_key(provider_key, provider_model, run_type) and _provider_base_url(provider_key, provider_model, run_type))
 
 
 def _should_allow_stub_provider_adapter() -> bool:
@@ -243,7 +243,13 @@ def _stub_provider_disabled_result(route: AiProviderRouteCandidate) -> AiProvide
     )
 
 
-def _provider_api_key(provider_key: str) -> Optional[str]:
+def _provider_api_key(provider_key: str, provider_model: Optional[str] = None, run_type: Optional[str] = None) -> Optional[str]:
+    model_override = _provider_model_api_key_override(provider_key, provider_model)
+    if model_override:
+        return model_override
+    run_type_override = _provider_run_type_api_key_override(provider_key, run_type)
+    if run_type_override:
+        return run_type_override
     normalized_key = provider_key.upper().replace("-", "_")
     return (
         os.getenv(f"TANGENT_AI_PROVIDER_{normalized_key}_API_KEY")
@@ -252,13 +258,59 @@ def _provider_api_key(provider_key: str) -> Optional[str]:
     )
 
 
-def _provider_base_url(provider_key: str) -> Optional[str]:
+def _provider_base_url(provider_key: str, provider_model: Optional[str] = None, run_type: Optional[str] = None) -> Optional[str]:
+    model_override = _provider_model_base_url_override(provider_key, provider_model)
+    if model_override:
+        return model_override
+    run_type_override = _provider_run_type_base_url_override(provider_key, run_type)
+    if run_type_override:
+        return run_type_override
     normalized_key = provider_key.upper().replace("-", "_")
     return (
         os.getenv(f"TANGENT_AI_PROVIDER_{normalized_key}_BASE_URL")
         or os.getenv(_legacy_provider_base_url_env(provider_key))
         or _DEFAULT_PROVIDER_BASE_URLS.get(provider_key)
     )
+
+
+def _provider_model_api_key_override(provider_key: str, provider_model: Optional[str]) -> Optional[str]:
+    normalized_model = str(provider_model or "").strip().lower()
+    if provider_key == "geekai" and normalized_model == "nano-banana-2":
+        return (
+            os.getenv("TANGENT_AI_PROVIDER_GEEKAI_NANO_BANANA_API_KEY")
+            or os.getenv("GEEKAI_NANO_BANANA_API_KEY")
+        )
+    return None
+
+
+def _provider_model_base_url_override(provider_key: str, provider_model: Optional[str]) -> Optional[str]:
+    normalized_model = str(provider_model or "").strip().lower()
+    if provider_key == "geekai" and normalized_model == "nano-banana-2":
+        return (
+            os.getenv("TANGENT_AI_PROVIDER_GEEKAI_NANO_BANANA_BASE_URL")
+            or os.getenv("GEEKAI_NANO_BANANA_BASE_URL")
+        )
+    return None
+
+
+def _provider_run_type_api_key_override(provider_key: str, run_type: Optional[str]) -> Optional[str]:
+    normalized_run_type = str(run_type or "").strip().lower()
+    if provider_key == "geekai" and normalized_run_type in {"image_analysis", "text"}:
+        return (
+            os.getenv("TANGENT_AI_PROVIDER_GEEKAI_TEXT_API_KEY")
+            or os.getenv("GEEKAI_TEXT_API_KEY")
+        )
+    return None
+
+
+def _provider_run_type_base_url_override(provider_key: str, run_type: Optional[str]) -> Optional[str]:
+    normalized_run_type = str(run_type or "").strip().lower()
+    if provider_key == "geekai" and normalized_run_type in {"image_analysis", "text"}:
+        return (
+            os.getenv("TANGENT_AI_PROVIDER_GEEKAI_TEXT_BASE_URL")
+            or os.getenv("GEEKAI_TEXT_BASE_URL")
+        )
+    return None
 
 
 def _legacy_provider_api_key_env(provider_key: str) -> str:

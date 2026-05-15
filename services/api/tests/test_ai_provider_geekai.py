@@ -86,6 +86,74 @@ def test_run_geekai_attempt_routes_nano_banana_through_images_edits(monkeypatch)
     assert request_json["image"] == f"data:image/png;base64,{expected_base64}"
 
 
+def test_run_geekai_attempt_routes_image_analysis_through_responses(monkeypatch):
+    captured_request: dict[str, object] = {}
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            _ = args
+            _ = kwargs
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            _ = exc_type
+            _ = exc
+            _ = tb
+            return False
+
+        def post(self, path: str, headers: dict[str, str], json: dict[str, object]):
+            captured_request["path"] = path
+            captured_request["headers"] = headers
+            captured_request["json"] = json
+            return httpx.Response(
+                200,
+                json={"output_text": "Reverse prompt result."},
+                request=httpx.Request("POST", f"https://example.test{path}"),
+            )
+
+    monkeypatch.setattr("tangent_api.ai_provider_geekai.httpx.Client", FakeClient)
+    monkeypatch.setattr(
+        "tangent_api.ai_provider_geekai.load_provider_input_assets",
+        lambda payload, context, prefer_preview=False: [
+            ProviderInputAsset(
+                asset_id="asset_ref_1",
+                content=b"\x89PNG\r\n\x1a\nmock",
+                file_name="reference.png",
+                height=512,
+                mime="image/png",
+                title="Reference",
+                width=512,
+            )
+        ],
+    )
+
+    result = run_geekai_attempt(
+        _run_record(model_id="gpt-5.5", run_type="image_analysis", route_id="route_gpt_5_5_primary"),
+        _request(
+            model_id="gpt-5.5",
+            node_type="analysis",
+            run_type="image_analysis",
+            input_asset_ids=["asset_ref_1"],
+            params={},
+        ),
+        _route(provider_model="gpt-5.5", route_id="route_gpt_5_5_primary"),
+        _context(),
+        api_key="test-key",
+        base_url="https://example.test/v1",
+    )
+
+    assert result.status == "succeeded"
+    assert result.text_output == "Reverse prompt result."
+    assert captured_request["path"] == "/responses"
+    request_json = captured_request["json"]
+    assert isinstance(request_json, dict)
+    assert request_json["model"] == "gpt-5.5"
+    assert request_json["input"][0]["content"][0]["type"] == "input_text"
+    assert request_json["input"][0]["content"][1]["type"] == "input_image"
+
+
 def test_run_geekai_attempt_polls_gpt_image_tasks(monkeypatch):
     calls: list[tuple[str, str, dict[str, object] | None]] = []
     poll_count = {"value": 0}
@@ -378,14 +446,14 @@ def test_run_geekai_attempt_routes_jimeng_with_strength(monkeypatch):
     assert "image" in request_json
 
 
-def _route(provider_model: str) -> AiProviderRouteCandidate:
+def _route(provider_model: str, route_id: Optional[str] = None) -> AiProviderRouteCandidate:
     return AiProviderRouteCandidate(
         health_status="healthy",
         priority=10,
         provider_key="geekai",
         provider_model=provider_model,
         retry_policy={"maxAttempts": 2},
-        route_id=f"route_{provider_model.replace('.', '_')}",
+        route_id=route_id or f"route_{provider_model.replace('.', '_')}",
         route_key="geekai-primary",
         timeout_ms=60_000,
         weight=100,
@@ -397,21 +465,23 @@ def _request(
     model_id: str,
     params: dict[str, object],
     input_asset_ids: Optional[list[str]] = None,
+    node_type: str = "image_gen",
+    run_type: str = "image_generation",
 ) -> AiRunRequest:
     return AiRunRequest(
         boardId=None,
         inputAssetIds=input_asset_ids or [],
         nodeId=None,
-        nodeType="image_gen",
+        nodeType=node_type,
         params=params,
         prompt="Sunset forest",
-        runType="image_generation",
+        runType=run_type,
         selectedModelId=model_id,
         systemPrompt=None,
     )
 
 
-def _run_record(*, model_id: str) -> AiRunRecord:
+def _run_record(*, model_id: str, route_id: str = "route_test", run_type: str = "image_generation") -> AiRunRecord:
     charge = AiRunChargeSummary(
         chargedAccountId="account_test",
         chargedScope="personal",
@@ -442,10 +512,10 @@ def _run_record(*, model_id: str) -> AiRunRecord:
         provider="geekai",
         providerCost=None,
         providerCurrency=None,
-        routeId="route_test",
+        routeId=route_id,
         routeKey="geekai-primary",
         runId="run_test",
-        runType="image_generation",
+        runType=run_type,
         selectedTierKey="1k",
         status="queued",
         textOutput=None,

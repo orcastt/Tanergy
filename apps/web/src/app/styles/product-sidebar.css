@@ -26,11 +26,16 @@
 }
 
 .product-sidebar-avatar {
+  display: inline-grid;
   width: 42px;
   height: 42px;
   flex: 0 0 auto;
+  place-items: center;
   border-radius: 13px;
   background: linear-gradient(135deg, #c4eebd 0%, #f5e9d4 100%);
+  color: var(--color-ink);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .product-sidebar-workspace-copy {

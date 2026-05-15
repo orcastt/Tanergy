@@ -1,5 +1,6 @@
 import type { JsonObject, NodeCardField, NodeCategory, NodeDefinition, NodePortDirection, NodeRuntimeSummary, NodeType, ResolvedNodePort } from '@/types/nodeRuntime'
-import { getAnalysisModelSelectOptions, getDefaultAnalysisModelId, getDefaultChatModelId, getDefaultImageModelId, getImageModelSelectOptions } from '@/features/ai/mockAiContracts'
+import { defaultAnalysisPrompt } from '@/features/ai/aiNodePrompts'
+import { getAnalysisModelSelectOptions, getChatModelSelectOptions, getDefaultAnalysisModelId, getDefaultChatModelId, getDefaultImageModelId, getImageModelSelectOptions } from '@/features/ai/mockAiContracts'
 
 const gptImage2SizeOptions = [
   { label: '1024 x 1024', value: '1024x1024' },
@@ -94,7 +95,6 @@ const jimengStrengthOptions = [
   { label: '0.9', value: '0.9' },
 ]
 
-export const defaultAnalysisPrompt = 'Analyze this image in detail. Describe the scene, subjects, materials, lighting, composition, and notable visual traits. Then write one clean image prompt.'
 const legacyAnalysisPrompt = '分析这张图片内容，尽可能描述场景中的物体和特征，并输出一段提示词。'
 
 const imageModelField = {
@@ -108,6 +108,13 @@ const analysisModelField = {
   label: 'Model',
   name: 'modelId',
   options: getAnalysisModelSelectOptions(),
+  type: 'select' as const,
+}
+
+const chatModelField = {
+  label: 'Model',
+  name: 'modelId',
+  options: getChatModelSelectOptions(),
   type: 'select' as const,
 }
 
@@ -325,11 +332,12 @@ export const nodeDefinitions: Record<NodeType, NodeDefinition> = {
     category: 'text',
     defaultData: {
       optimizedPrompt: '',
+      modelId: getDefaultChatModelId(),
     },
     defaultCardSize: { height: 320, width: 420 },
     defaultRuntimeCostHint: 'Chat streaming optimizer',
     displayName: 'Prompt Optimizer',
-    cardFields: [],
+    cardFields: [chatModelField],
     outputSummary: 'Optimized image prompt',
     paletteOrder: 12,
     paletteShortLabel: 'Opt',
@@ -354,6 +362,9 @@ export function getNodeCardFields(type: NodeType, data: JsonObject): NodeCardFie
   if (type === 'analysis') {
     return getAnalysisCardFields()
   }
+  if (type === 'prompt_optimizer') {
+    return getPromptOptimizerCardFields()
+  }
   return nodeDefinitions[type].cardFields
 }
 
@@ -363,6 +374,9 @@ export function getNormalizedNodeData(type: NodeType, data: JsonObject): JsonObj
   }
   if (type === 'analysis') {
     return getNormalizedAnalysisData(data)
+  }
+  if (type === 'prompt_optimizer') {
+    return getNormalizedPromptOptimizerData(data)
   }
   return data
 }
@@ -433,6 +447,10 @@ export function getAnalysisCardFields(): NodeCardField[] {
   return [analysisModelField]
 }
 
+export function getPromptOptimizerCardFields(): NodeCardField[] {
+  return [chatModelField]
+}
+
 export function getNormalizedAnalysisData(data: JsonObject): JsonObject {
   const modelId = getAllowedFieldValue(
     typeof data.modelId === 'string' && data.modelId.trim() ? data.modelId : getDefaultAnalysisModelId(),
@@ -445,6 +463,18 @@ export function getNormalizedAnalysisData(data: JsonObject): JsonObject {
   return {
     ...data,
     analysisPrompt,
+    modelId,
+  }
+}
+
+export function getNormalizedPromptOptimizerData(data: JsonObject): JsonObject {
+  const modelId = getAllowedFieldValue(
+    typeof data.modelId === 'string' && data.modelId.trim() ? data.modelId : getDefaultChatModelId(),
+    getChatModelSelectOptions().map((option) => String(option.value)),
+    getDefaultChatModelId()
+  )
+  return {
+    ...data,
     modelId,
   }
 }

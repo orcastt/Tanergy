@@ -1,15 +1,8 @@
 import { withCanvasShapes, type CanvasDocument, type CanvasNodeShape } from '@/features/canvas-engine'
 import type { AiChatCompletionRequest, AiRunRequest } from '@/features/ai/aiTypes'
-import { getDefaultChatModelId } from '@/features/ai/mockAiContracts'
+import { createPromptOptimizerUserPrompt, promptOptimizerSystemPrompt } from '@/features/ai/aiNodePrompts'
+import { getChatModelSelectOptions, getDefaultChatModelId } from '@/features/ai/mockAiContracts'
 import { resolveRuntimeGraphNodeInputs } from '@/features/node-runtime/runtimeGraphResolution'
-
-const promptOptimizerSystemPrompt = [
-  'You are a prompt optimizer for AI image generation.',
-  'Rewrite the user prompt into one polished English image-generation prompt.',
-  'Preserve the original intent while adding concrete visual details about subject, setting, composition, materials, lighting, color, mood, and style.',
-  'Do not add explanations, markdown, quotes, headings, multiple options, or negative prompts.',
-  'Return only the optimized prompt in 80 to 140 words.',
-].join(' ')
 
 type PreparedPromptOptimizerRequest = {
   document: CanvasDocument
@@ -54,16 +47,17 @@ export function prepareKonvaPromptOptimizerRequest(
     }
   }
 
-  const modelId = getDefaultChatModelId()
+  const modelId = getPromptOptimizerModelId(node)
   const sourcePrompt = inputResolution.textValues.join('\n\n').trim()
   const localRequest = {
     messages: [
       { content: promptOptimizerSystemPrompt, role: 'system' },
       {
-        content: `Optimize and enrich this image-generation prompt:\n\n${sourcePrompt}`,
+        content: createPromptOptimizerUserPrompt(sourcePrompt),
         role: 'user',
       },
     ],
+    max_completion_tokens: 600,
     model: modelId,
     stream: true,
   } satisfies AiChatCompletionRequest
@@ -73,6 +67,7 @@ export function prepareKonvaPromptOptimizerRequest(
     nodeId: node.props.nodeId,
     nodeType: node.props.nodeType,
     params: {
+      maxCompletionTokens: 600,
       systemPrompt: promptOptimizerSystemPrompt,
     },
     prompt: sourcePrompt,
@@ -253,4 +248,14 @@ function getString(value: unknown) {
 function createPromptOptimizerRunId() {
   if (typeof globalThis.crypto?.randomUUID === 'function') return `prompt_optimizer_run_${globalThis.crypto.randomUUID()}`
   return `prompt_optimizer_run_${Date.now()}_${Math.random().toString(36).slice(2)}`
+}
+
+function getPromptOptimizerModelId(node: CanvasNodeShape) {
+  const allowed = new Set(
+    getChatModelSelectOptions()
+      .filter((option) => !option.disabled)
+      .map((option) => String(option.value))
+  )
+  const value = typeof node.props.data.modelId === 'string' ? node.props.data.modelId.trim() : ''
+  return allowed.has(value) ? value : getDefaultChatModelId()
 }

@@ -4,9 +4,11 @@ import Link from 'next/link'
 import { SignOutButton, UserButton } from '@clerk/nextjs'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState, type ReactNode } from 'react'
+import { AuthProfileOnboardingModal } from '@/components/auth/AuthProfileOnboardingModal'
 import { useAdminAccess } from '@/features/auth/useAdminAccess'
 import { useTangentSession } from '@/features/auth/useTangentSession'
 import { clearSessionScopedClientState } from '@/features/auth/sessionClient'
+import { getPublicUserInitials, getPublicUserLabel } from '@/features/shared/publicUserDisplay'
 
 const topNavItems = [
   { href: '/workspaces', label: 'Boards', match: ['/workspaces', '/boards'] },
@@ -46,6 +48,22 @@ export function AppShell({ children }: AppShellProps) {
   const workspaceName = sessionStatus === 'ready' ? session.activeWorkspace.name : 'Loading workspace'
   const workspaceKindLabel = sessionStatus === 'ready' ? formatWorkspaceKindLabel(session.activeWorkspace.kind) : 'Syncing account'
   const userInitials = sessionStatus === 'ready' ? session.user.avatarInitials : '...'
+  const userLabel = sessionStatus === 'ready'
+    ? getPublicUserLabel({
+      displayName: session.user.displayName,
+      email: session.user.email,
+      fallback: 'Your account',
+      userId: session.user.id,
+    })
+    : 'Loading account'
+  const workspaceOwnerInitials = sessionStatus === 'ready'
+    ? getPublicUserInitials({
+      displayName: session.user.displayName,
+      email: session.user.email,
+      fallback: 'Your account',
+      userId: session.user.id,
+    })
+    : '...'
 
   const createBoard = () => {
     setIsMenuOpen(false)
@@ -134,9 +152,9 @@ export function AppShell({ children }: AppShellProps) {
       <div className="product-app-frame">
         <aside className="product-sidebar" aria-label="Product navigation">
           <section className="product-sidebar-workspace">
-            <div className="product-sidebar-avatar" aria-hidden="true" />
+            <div className="product-sidebar-avatar" aria-hidden="true">{workspaceOwnerInitials}</div>
             <div className="product-sidebar-workspace-copy">
-              <strong>TANGENT</strong>
+              <strong>{userLabel}</strong>
               <span>{workspaceName}</span>
               <small>{workspaceKindLabel}</small>
             </div>
@@ -191,6 +209,9 @@ export function AppShell({ children }: AppShellProps) {
           {children}
         </main>
       </div>
+      {sessionStatus === 'ready' && session.authMode === 'required' ? (
+        <AuthProfileOnboardingModal user={session.user} />
+      ) : null}
     </div>
   )
 }

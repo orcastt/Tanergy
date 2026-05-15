@@ -58,6 +58,41 @@ def test_existing_session_can_select_requested_member_workspace(monkeypatch):
     assert fake_connection.commits == 1
 
 
+def test_existing_session_preserves_completed_profile_display_name(monkeypatch):
+    fake_connection = AuthSessionFakeConnection()
+    monkeypatch.setattr("tangent_api.auth_sessions.require_database_url", lambda: None)
+    monkeypatch.setattr("tangent_api.auth_sessions.connect_to_postgres", lambda: fake_connection)
+    monkeypatch.setattr(
+        "tangent_api.auth_sessions._load_auth_session_row",
+        lambda cursor, identity, requested_workspace_id: (
+            "user_123",
+            "user@example.com",
+            "Saved Profile",
+            "SP",
+            True,
+            "workspace_team",
+            "Team Space",
+            "team_workspace",
+            "admin",
+            "active",
+            "female",
+            "2026-05-15T00:00:00Z",
+        ),
+    )
+    monkeypatch.setattr(
+        "tangent_api.auth_sessions.load_workspace_memberships",
+        lambda cursor, user_id, active_workspace_id: [
+            ResolvedWorkspaceMembership(7, "workspace_team", "team_workspace", "Team Space", "team_growth", "admin"),
+        ],
+    )
+
+    session = resolve_local_auth_session(_identity(display_name="Clerk New Name"))
+
+    assert session.display_name == "Saved Profile"
+    assert session.gender == "female"
+    assert session.profile_completed is True
+
+
 def test_load_workspace_memberships_filters_deleted_workspaces_in_sql():
     cursor = AuthMembershipQueryCursor([
         (
@@ -265,6 +300,9 @@ class AuthSessionFakeCursor:
     def execute(self, query, params=None):
         return None
 
+    def fetchone(self):
+        return None
+
 
 class AuthMembershipQueryCursor:
     def __init__(self, rows):
@@ -439,10 +477,10 @@ class AuthBootstrapFakeDatabase:
         return AuthBootstrapFakeConnection(self)
 
 
-def _identity() -> VerifiedAuthIdentity:
+def _identity(display_name: str = "Clerk User") -> VerifiedAuthIdentity:
     return VerifiedAuthIdentity(
         avatar_url=None,
-        display_name="Clerk User",
+        display_name=display_name,
         email="user@example.com",
         email_verified=True,
         provider="clerk",

@@ -1,5 +1,6 @@
 import type { ApiRequestContext } from '../../_lib/apiRequestContext'
 import { getAssetStorageAdapter } from '../../assets/_lib/assetStorageAdapter'
+import { getGeekAiTextApiKey, getGeekAiTextBaseUrl } from './geekAiTextConfig'
 import {
   assertAiInlineImageTotalByteLength,
   parseAiInlineImageDataUrl,
@@ -10,7 +11,6 @@ import { getAiModelDefinition } from '@/features/ai/mockAiContracts'
 import type { AiRunRecord, AiRunRequest } from '@/features/ai/aiTypes'
 import type { AiRunChargeSummary } from '@/features/billing/billingTypes'
 
-const defaultGeekAiBaseUrl = 'https://geekai.co/api/v1'
 const maxAnalysisTextOutputChars = 12000
 const maxAnalysisReferenceImages = 8
 
@@ -187,7 +187,7 @@ async function postGeekAiJson<T extends { error?: { message?: string } | null; m
   const response = await fetch(`${getGeekAiBaseUrl()}${path}`, {
     body: JSON.stringify(body),
     headers: {
-      Authorization: `Bearer ${getGeekAiApiKey()}`,
+      Authorization: `Bearer ${getGeekAiTextApiKey()}`,
       'Content-Type': 'application/json',
     },
     method: 'POST',
@@ -211,12 +211,6 @@ function createRunId() {
   return `run_local_${Date.now()}_${Math.random().toString(36).slice(2)}`
 }
 
-function getGeekAiApiKey() {
-  const value = process.env.GEEKAI_API_KEY?.trim()
-  if (!value) throw new Error('Missing GEEKAI_API_KEY.')
-  return value
-}
-
 function getGeekAiBaseUrl() {
-  return (process.env.GEEKAI_BASE_URL ?? defaultGeekAiBaseUrl).replace(/\/+$/, '')
+  return getGeekAiTextBaseUrl()
 }

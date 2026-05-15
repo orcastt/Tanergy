@@ -21,6 +21,7 @@ from tangent_api.request_context import ApiRequestContext
 
 MAX_PROVIDER_JSON_BYTES = 8 * 1024 * 1024
 MAX_IMAGE_INPUTS = 8
+MAX_TEXT_INPUT_ASSET_BYTES = 20 * 1024 * 1024
 LEGACY_NANO_BANANA_MODEL_ID = "gemini-3.1-flash-image-preview"
 NANO_BANANA_2_MODEL_ID = "nano-banana-2"
 IMAGE_POLL_INTERVAL_SECONDS = 1.4
@@ -37,21 +38,27 @@ def run_geekai_attempt(
 ) -> AiProviderAttemptResult:
     if not api_key or not base_url:
         return _failure(route, "provider_not_configured", "GeekAI route is missing API credentials.", retryable=False)
-    if payload.run_type in {"text", "image_analysis"}:
+    if payload.run_type == "text":
+        return run_openai_compatible_attempt(run, payload, route, context, api_key=api_key, base_url=base_url)
+    if payload.run_type == "image_analysis" and str(route.provider_model or "").strip() == "gemini-2.5-flash":
         return run_openai_compatible_attempt(run, payload, route, context, api_key=api_key, base_url=base_url)
     if payload.run_type not in {"image_generation", "image_edit"}:
-        return _failure(
-            route,
-            "provider_capability_not_implemented",
-            f"Live provider execution is not implemented for {payload.run_type} on {route.provider_key}.",
-            retryable=False,
-        )
+        if payload.run_type != "image_analysis":
+            return _failure(
+                route,
+                "provider_capability_not_implemented",
+                f"Live provider execution is not implemented for {payload.run_type} on {route.provider_key}.",
+                retryable=False,
+            )
 
     started_at = datetime.now(timezone.utc)
     timeout_seconds = max(1.0, route.timeout_ms / 1000)
     try:
         with httpx.Client(base_url=base_url.rstrip("/"), timeout=timeout_seconds) as client:
-            outputs = _run_image_generation(client, api_key, payload, route, context, timeout_seconds)
+            if payload.run_type == "image_analysis":
+                text_output = _run_image_analysis(client, api_key, payload, route, context)
+            else:
+                outputs = _run_image_generation(client, api_key, payload, route, context, timeout_seconds)
     except httpx.HTTPStatusError as exc:
         return _http_failure(route, exc, started_at)
     except httpx.HTTPError as exc:
@@ -70,6 +77,33 @@ def run_geekai_attempt(
             str(exc),
             retryable=False,
             started_at=started_at,
+            work_started=True,
+        )
+
+    if payload.run_type == "image_analysis":
+        if not text_output:
+            return _failure(
+                route,
+                "provider_empty_response",
+                "GeekAI route returned no analysis text.",
+                retryable=False,
+                started_at=started_at,
+                work_started=True,
+            )
+        return AiProviderAttemptResult(
+            created_at=_timestamp(),
+            error_code=None,
+            error_message=None,
+            latency_ms=_latency_ms(started_at),
+            output_asset_ids=[],
+            provider=route.provider_key,
+            provider_cost=None,
+            provider_currency=None,
+            retryable=False,
+            route_id=route.route_id,
+            route_key=route.route_key,
+            status="succeeded",
+            text_output=text_output,
             work_started=True,
         )
 
@@ -100,6 +134,45 @@ def run_geekai_attempt(
         text_output=None,
         work_started=True,
     )
+
+
+def _run_image_analysis(
+    client: httpx.Client,
+    api_key: str,
+    payload: AiRunRequest,
+    route: AiProviderRouteCandidate,
+    context: ApiRequestContext,
+) -> str:
+    provider_model = str(route.provider_model or payload.selected_model_id or "gpt-5.5").strip() or "gpt-5.5"
+    image_parts = _response_image_parts(payload, context)
+    if not image_parts:
+        raise ValueError("Image analysis requires at least one image input.")
+    payload_body = _post_json(
+        client,
+        "/responses",
+        api_key,
+        {
+            "input": [
+                {
+                    "content": [
+                        {"text": _prompt_for_payload(payload), "type": "input_text"},
+                        *image_parts,
+                    ],
+                    "role": "user",
+                    "type": "message",
+                },
+            ],
+            "max_output_tokens": 1200,
+            "model": provider_model,
+            "stream": False,
+            "text": {
+                "format": {
+                    "type": "text",
+                },
+            },
+        },
+    )
+    return _extract_response_text(payload_body).strip()
 
 
 def _run_image_generation(
@@ -373,6 +446,44 @@ def _load_input_images(payload: AiRunRequest, context: ApiRequestContext, *, pre
     return images
 
 
+def _response_image_parts(payload: AiRunRequest, context: ApiRequestContext) -> list[dict[str, str]]:
+    parts: list[dict[str, str]] = []
+    total_bytes = 0
+    for asset in load_provider_input_assets(payload, context, prefer_preview=True):
+        total_bytes += len(asset.content)
+        if total_bytes > MAX_TEXT_INPUT_ASSET_BYTES:
+            raise ValueError("Image analysis reference images exceed the total allowed size.")
+        parts.append(
+            {
+                "image_url": f"data:{asset.mime};base64,{base64.b64encode(asset.content).decode('ascii')}",
+                "type": "input_image",
+            }
+        )
+    return parts
+
+
+def _extract_response_text(payload: dict[str, object]) -> str:
+    output_text = payload.get("output_text")
+    if isinstance(output_text, str) and output_text.strip():
+        return output_text
+    parts: list[str] = []
+    for item in payload.get("output") or []:
+        if not isinstance(item, dict) or item.get("type") != "message":
+            continue
+        content = item.get("content")
+        if not isinstance(content, list):
+            continue
+        for content_item in content:
+            if not isinstance(content_item, dict):
+                continue
+            if content_item.get("type") != "output_text":
+                continue
+            text = content_item.get("text")
+            if isinstance(text, str) and text.strip():
+                parts.append(text.strip())
+    return "\n".join(parts).strip()
+
+
 def _unique_asset_ids(asset_ids: list[str]) -> list[str]:
     unique_ids: list[str] = []
     seen: set[str] = set()
@@ -521,6 +632,29 @@ def _provider_message(payload: dict[str, object], fallback: str) -> str:
     if isinstance(message, str) and message.strip():
         return message.strip()
     return fallback
+
+
+def _provider_cost(payload: Optional[dict[str, object]]) -> Optional[float]:
+    if not isinstance(payload, dict):
+        return None
+    usage = payload.get("usage")
+    if not isinstance(usage, dict):
+        return None
+    cost = usage.get("cost") or usage.get("total_cost")
+    try:
+        return float(cost)
+    except (TypeError, ValueError):
+        return None
+
+
+def _provider_currency(payload: Optional[dict[str, object]]) -> Optional[str]:
+    if not isinstance(payload, dict):
+        return None
+    usage = payload.get("usage")
+    if not isinstance(usage, dict):
+        return None
+    currency = usage.get("currency")
+    return str(currency) if currency else None
 
 
 def _http_failure(route: AiProviderRouteCandidate, exc: httpx.HTTPStatusError, started_at: datetime) -> AiProviderAttemptResult:

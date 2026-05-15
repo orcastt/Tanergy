@@ -1,8 +1,8 @@
 # ARCH Slice S1C: Auth And Request Context
 
-**Updated**: 2026-05-10
+**Updated**: 2026-05-15
 **Mode**: Architecture slice.
-**Status**: Clerk frontend/session bridge plus FastAPI bearer verification first pass are in place. First auth/admin production-boundary checkpoint now covers default personal-wallet creation, strict Clerk authorized-party checks, bearer-mode spoof coverage and email-capable admin bootstrap; real deployed admin smoke remains.
+**Status**: Clerk frontend/session bridge plus FastAPI bearer verification first pass are in place. The local Tanergy profile layer now sits on top of Clerk identity with a post-signup onboarding modal, editable `/account` profile form and visible Clerk-backed forgot-password route; logout/session revocation hardening still remains.
 
 ## Goal
 
@@ -65,6 +65,7 @@ POST /api/v1/auth/login/request-code
 POST /api/v1/auth/login/verify-code
 POST /api/v1/auth/logout
 GET  /api/v1/auth/session
+PATCH /api/v1/auth/profile
 POST /api/v1/auth/session/refresh
 GET  /api/v1/auth/oauth/:provider/start
 GET  /api/v1/auth/oauth/:provider/callback
@@ -90,6 +91,8 @@ Current implementation note:
 - `tangent_oauth_accounts` remains available for future direct Google/GitHub/Apple linking or provider portability work.
 - If `DATABASE_URL` is absent in local development, FastAPI can still derive deterministic ephemeral ids so auth-required smoke tests do not depend on Postgres bootstrapping.
 - Real authenticated session refresh now also persists the latest request IP into `tangent_users.last_ip_address` when Postgres is configured, so later admin/operator views can show last access facts without trusting frontend headers.
+- Real authenticated session refresh now preserves a Tanergy-edited local display name once `tangent_users.profile_completed_at` is set, instead of re-overwriting it from Clerk claims on every login.
+- Tanergy-owned profile data currently lives directly on `tangent_users` via `display_name`, `gender` and `profile_completed_at`; no separate profile table exists yet.
 
 ## Security Rules
 
@@ -113,7 +116,7 @@ Request
   -> verify session
   -> load user
   -> resolve active workspace membership
-  -> attach ApiRequestContext(user_id, workspace_id, role, auth_source)
+  -> attach ApiRequestContext(user_id, workspace_id, role, auth_source, user_gender, user_profile_completed)
 ```
 
 Frontend-provided workspace ids are allowed as a selection hint only. The server must reject the request if the session user is not a member of that workspace.
@@ -161,12 +164,21 @@ Current first-pass web routes:
 /                  public Tanergy homepage
 /sign-in           Clerk SignIn
 /sign-up           Clerk SignUp
+/forgot-password   Clerk-backed custom recovery flow
 /login             compatibility redirect to /sign-in
 /signup,/register  compatibility redirects to /sign-up
+/account           Tanergy-owned profile editor for display name/gender
 /workspaces        protected by Clerk proxy when TANGENT_REQUIRE_WEB_AUTH=1
 /api/auth/session  Clerk-backed Tanergy session bridge, dev fallback only when auth is not required
+/api/auth/profile  Clerk-authenticated proxy to FastAPI profile writes
 remote Board/Asset/AI/Image-Op clients  attach Clerk JWT in browser fetches
 ```
+
+Profile ownership split:
+
+- Clerk owns authentication, password reset, email verification and provider subject identity.
+- Tanergy owns editable profile fields that need to appear in boards, workspaces, billing surfaces and future product preferences.
+- The post-signup onboarding gate is enforced in the frontend using the server-returned `profileCompleted` session field, but persistence stays server-side through `/api/v1/auth/profile`.
 
 Local development exception:
 

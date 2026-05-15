@@ -1,7 +1,7 @@
 # PRD Slice S1C: Auth And Request Context
 
-**Updated**: 2026-05-08
-**Status**: Clerk frontend/session bridge plus FastAPI bearer verification first pass landed; hardening remains.
+**Updated**: 2026-05-15
+**Status**: Clerk frontend/session bridge, FastAPI bearer verification, Tanergy-owned profile onboarding/editing and a visible Clerk-backed forgot-password flow are landed; logout/session hardening remains.
 
 ## User Value
 
@@ -16,6 +16,9 @@ Users can create accounts, log in, log out and return to their own workspace. Ac
 - Default workspace creation.
 - Personal wallet creation on first verified local user session.
 - Session endpoint for current user and memberships.
+- Tanergy-owned profile completion after first real sign-in.
+- Editable display name and gender on the Account surface.
+- Visible forgot-password entry that runs Clerk recovery instead of a mock redirect.
 - Active workspace selection for users who own or join multiple Teams/Groups.
 - Rate limiting and safe auth errors.
 
@@ -23,10 +26,13 @@ Users can create accounts, log in, log out and return to their own workspace. Ac
 
 - Public landing, Clerk `/sign-in` and `/sign-up` routes exist.
 - Compatibility login/signup/register routes redirect to the Clerk routes.
+- `/forgot-password` now exposes a real Clerk-backed recovery flow instead of bouncing back to `/sign-in`.
 - Frontend remote clients can attach the Clerk JWT to Board, Asset, Image Op and AI API calls.
 - FastAPI can verify provider-issued bearer tokens and map Clerk subjects to local `tangent_users` / `tangent_user_identities`.
 - A default workspace is ensured on first verified session.
 - A personal wallet should be ensured on first verified session so Collaborate and personal top-ups have a payer account.
+- First verified session now stays blocked behind a profile-completion modal until Tanergy has saved the local display name/profile fields.
+- `/account` now edits Tanergy-owned profile fields while making clear that password/email verification still belong to Clerk.
 - Required-auth mode no longer trusts `x-tangent-user-id` or `x-tangent-workspace-id` as authority.
 
 Remaining hardening:
@@ -88,6 +94,9 @@ active session -> revoked -> clear cookie -> login screen
 - New user can register and land in `/workspaces`.
 - New user can use Google login and land in `/workspaces`.
 - Existing user can log in and see the same workspace.
+- First real sign-in prompts for Tanergy profile completion before normal workspace use.
+- Signed-in user can edit display name and gender later from `/account`.
+- Sign-in surface exposes a visible forgot-password path and Clerk completes the reset flow.
 - Logout prevents further API access.
 - User cannot spoof another workspace through request headers.
 - Auth errors do not reveal sensitive account state.

@@ -1,6 +1,6 @@
 # TANGENT Architecture Index
 
-**Updated**: 2026-05-14
+**Updated**: 2026-05-15
 **Status**: Canonical architecture overview and slice index, aligned with the current parallel P0 alpha workstreams, the S3 Team-wallet pivot and the latest staging/S2 checkpoint: the rebuilt Konva-only staging deploy plus real Clerk session/admin smoke are green, backend `AiRun` now supports short text runs with durable `text_output`, and the active image-generation lane has been refreshed onto four live GeekAI-backed models with the next gate being one live staged image smoke before deeper provider work.
 
 This file replaces the former duplicated `ARCH/00-current-map.md` plus the long root `ARCH.md`. The root `ARCH.md` is now only a pointer.
@@ -83,7 +83,7 @@ Frontend UI alignment runs across all lanes and should follow, not invent, serve
 | S1 Persistence/Auth/Deploy | `ARCH_slice_S1_persistence_auth_deploy.md` | FastAPI, Postgres, R2/S3, migrations, Auth, real Board CRUD, deployment | Active umbrella; keep detailed truth in S1A/S1B/S1C/S1D/S1X |
 | S1A DB Schema | `ARCH_slice_S1A_db_schema.md` | Formal schema, Alembic migrations, constraints, indexes, future-compatible join points | S1A core implemented through `0006`; current head also includes S3 entitlement extension `0007` |
 | S1B Staging Infra | `ARCH_slice_S1B_staging_infra.md` | Vercel, FastAPI host, Postgres, R2, domain, email provider, staging smoke | Web/API/Neon/R2, Konva-only redeploy and real session/admin smoke passed; Google/email/live-AI smoke pending |
-| S1C Auth Context | `ARCH_slice_S1C_auth_request_context.md` | Registration, login, sessions, request context, workspace membership authority | Clerk/FastAPI bearer first pass landed; hardening remains |
+| S1C Auth Context | `ARCH_slice_S1C_auth_request_context.md` | Registration, login, sessions, request context, workspace membership authority | Clerk/FastAPI bearer first pass plus Tanergy-owned profile/onboarding boundary landed; logout/session hardening remains |
 | S1D Board CRUD | `ARCH_slice_S1D_auth_board_crud.md` | Permission-checked Board list/load/save/history/member/share APIs | Stable first-pass CRUD/member/share/public-share-open checkpoint with owner-only copy/delete, share expiry and known-foreign Asset guard |
 | S1E Board Packages | `ARCH_slice_S1E_board_packages.md` | `.tgy` package format, export/import flow, asset rewrite and package safety boundary | Planned; uses Konva Board serializer, Board guard and Asset APIs as foundations |
 | S1X Canvas Engine Migration | `ARCH_slice_S1X_canvas_engine_migration.md` | Legacy canvas migration closeout, Konva/Yjs replacement path | Konva-only formal Board route accepted; Page polish and legacy-doc safety landed; collaboration still pending |

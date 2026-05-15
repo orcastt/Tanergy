@@ -29,6 +29,7 @@ import { KonvaCanvasProperties } from './KonvaCanvasProperties'
 import { KonvaCanvasStage } from './KonvaCanvasStage'
 import { KonvaCanvasViewerStage } from './KonvaCanvasViewerStage'
 import { isKonvaEditableTextShape, KonvaTextEditor, type KonvaEditableTextShape } from './KonvaTextEditor'
+import { KonvaNodeImageLightbox, type KonvaNodeImageLightboxState } from './KonvaNodeImageLightbox'
 import { getEditableKonvaNodeTextField, KonvaNodeTextEditor, type KonvaNodeTextFieldName } from './KonvaNodeTextEditor'
 import { KonvaCanvasToolbar } from './KonvaCanvasToolbar'
 import { KonvaNodeCreateMenu } from './KonvaNodeCreateMenu'
@@ -108,6 +109,7 @@ export function KonvaCanvasSpike({
   const [cropEditingImageId, setCropEditingImageId] = useState<string | null>(null)
   const [editingTextId, setEditingTextId] = useState<string | null>(null)
   const [editingNodeText, setEditingNodeText] = useState<{ fieldName: KonvaNodeTextFieldName; shapeId: string } | null>(null)
+  const [nodeImageLightbox, setNodeImageLightbox] = useState<KonvaNodeImageLightboxState | null>(null)
   const [selectionActionError, setSelectionActionError] = useState<string | null>(null)
   const [dropHintKind, setDropHintKind] = useState<'image' | 'pdf' | null>(null)
   const [stage, setStage] = useState<Konva.Stage | null>(null)
@@ -175,6 +177,7 @@ export function KonvaCanvasSpike({
     setCropEditingImageId(null)
     setEditingTextId(null)
     setEditingNodeText(null)
+    setNodeImageLightbox(null)
     setContextMenu(null)
     closeNodeMenu()
   }, [closeNodeMenu, handleSelectionChange])
@@ -365,6 +368,9 @@ export function KonvaCanvasSpike({
     onUploadDropFileAtPoint: uploadDropFileAtPoint,
     selectedIds,
   })
+  const openNodeImageLightbox = useCallback((state: KonvaNodeImageLightboxState) => {
+    setNodeImageLightbox(state)
+  }, [])
 
   const pointCount = useMemo(() => (
     document.shapes.reduce((total, shape) => total + (shape.type === 'stroke' ? shape.props.points.length : 0), 0)
@@ -675,6 +681,7 @@ export function KonvaCanvasSpike({
             }}
             onHistoryCheckpoint={history.checkpoint}
             onImageNodeToCanvas={sendImageNodeToCanvas}
+            onNodeImagePreviewOpen={openNodeImageLightbox}
             onNodeChatClean={cleanChatHistory}
             onNodeChatExportToggle={toggleChatMessageExport}
             onNodeChatModelChange={setChatModel}
@@ -733,6 +740,13 @@ export function KonvaCanvasSpike({
           stageHeight={size.height}
           stageWidth={size.width}
         />
+        {nodeImageLightbox ? (
+          <KonvaNodeImageLightbox
+            key={`${nodeImageLightbox.title}:${nodeImageLightbox.images[0]?.assetId ?? 'image'}:${nodeImageLightbox.images.length}`}
+            onClose={() => setNodeImageLightbox(null)}
+            state={nodeImageLightbox}
+          />
+        ) : null}
         {!effectiveReadOnly && nodeMenu ? (
           <KonvaNodeCreateMenu
             onCreateNode={(type) => createNodeCard(type, nodeMenu.world)}

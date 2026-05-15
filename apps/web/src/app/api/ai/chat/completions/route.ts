@@ -3,6 +3,7 @@ import type { AiChatCompletionRequest, AiChatMessage, AiChatMessageContentPart }
 import { assertLocalAiBridgeAvailable } from '@/features/api/runtimeBridgePolicy'
 import { getApiRequestContext } from '../../../_lib/apiRequestContext'
 import { readJsonRequestWithLimit, requestBodyErrorStatus } from '../../../_lib/requestBodyLimits'
+import { getGeekAiTextApiKey, getGeekAiTextBaseUrl } from '../../_lib/geekAiTextConfig'
 import {
   assertAiInlineImageByteLength,
   assertAiInlineImageTotalByteLength,
@@ -16,7 +17,6 @@ import {
 
 export const runtime = 'nodejs'
 
-const defaultGeekAiBaseUrl = 'https://geekai.co/api/v1'
 const maxChatMessages = 32
 const maxChatContentParts = 64
 const maxChatImageParts = 8
@@ -35,10 +35,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing chat messages.' }, { status: 400 })
     }
 
-    const apiKey = process.env.GEEKAI_API_KEY?.trim()
-    if (!apiKey) {
-      return NextResponse.json({ error: 'Missing GEEKAI_API_KEY.' }, { status: 503 })
-    }
+    const apiKey = getGeekAiTextApiKey()
 
     const normalizedMessages = await normalizeMessagesForGeekAi(request, body.messages)
     const geekAiResponse = await fetch(`${getGeekAiBaseUrl()}/chat/completions`, {
@@ -182,7 +179,7 @@ async function getGeekAiError(response: Response) {
 }
 
 function getGeekAiBaseUrl() {
-  return (process.env.GEEKAI_BASE_URL ?? defaultGeekAiBaseUrl).replace(/\/+$/, '')
+  return getGeekAiTextBaseUrl()
 }
 
 function createCappedProviderStream(source: ReadableStream<Uint8Array>) {

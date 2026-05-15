@@ -2,7 +2,9 @@ import type { PlanKey, WorkspaceKind } from '@/features/billing/billingTypes'
 
 export type ApiRequestContext = {
   isDevFallback: boolean
+  userGender?: null | string
   userId: string
+  userProfileCompleted: boolean
   workspaceId: string
   workspaceKind: WorkspaceKind
   workspacePlanKey?: PlanKey
@@ -24,7 +26,9 @@ export function getApiRequestContext(request: Request): ApiRequestContext {
   const workspaceKind = normalizeWorkspaceKind(explicitWorkspaceKind ?? process.env.TANGENT_DEV_WORKSPACE_KIND ?? 'solo_workspace')
   return {
     isDevFallback: !hasExplicitContext,
+    userGender: null,
     userId: normalizeContextId(explicitUserId ?? process.env.TANGENT_DEV_USER_ID ?? 'dev-user', 'user id'),
+    userProfileCompleted: true,
     workspaceId: normalizeContextId(
       explicitWorkspaceId ?? process.env.TANGENT_DEV_WORKSPACE_ID ?? 'dev-workspace',
       'workspace id'

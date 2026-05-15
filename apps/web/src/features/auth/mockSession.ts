@@ -5,7 +5,9 @@ export const mockUser: TangentUser = {
   displayName: 'Dev User',
   email: 'dev@tangent.local',
   emailVerified: false,
+  gender: null,
   avatarInitials: 'DU',
+  profileCompleted: true,
 }
 
 export const mockWorkspaces: TangentWorkspace[] = [
@@ -81,7 +83,9 @@ export function createLoadingSessionSnapshot(): TangentSession {
       displayName: 'Loading',
       email: '',
       emailVerified: false,
+      gender: null,
       id: 'loading-user',
+      profileCompleted: true,
     },
     workspaces: [],
   }

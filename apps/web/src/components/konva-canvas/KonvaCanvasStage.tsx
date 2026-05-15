@@ -15,6 +15,7 @@ import { konvaCaptureExcludeName } from './konvaSelectionExport'
 import { getVisibleKonvaShapes } from './konvaViewportCulling'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
 import type { KonvaNodeTextFieldName } from './KonvaNodeTextEditor'
+import type { RuntimeGraphImageAssetRef } from '@/features/node-runtime/runtimeGraphAssets'
 
 type KonvaCanvasStageProps = {
   activeTool: KonvaCanvasTool
@@ -39,6 +40,7 @@ type KonvaCanvasStageProps = {
   onEdgeSelect: (edgeId: string | null) => void
   onHistoryCheckpoint: (document: CanvasDocument) => void
   onImageNodeToCanvas: (shapeId: string) => void
+  onNodeImagePreviewOpen: (input: { images: RuntimeGraphImageAssetRef[]; selectedIndex?: number; title: string }) => void
   onNodeChatClean: (shapeId: string) => void
   onNodeChatExportToggle: (shapeId: string, messageId: string) => void
   onNodeChatModelChange: (shapeId: string, modelId: string) => void
@@ -116,6 +118,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
       onDragStart={handleShapeDragStart}
       onDoubleClick={props.onTextEditStart}
       onImageNodeToCanvas={props.onImageNodeToCanvas}
+      onNodeImagePreviewOpen={props.onNodeImagePreviewOpen}
       onNodeChatClean={props.onNodeChatClean}
       onNodeChatExportToggle={props.onNodeChatExportToggle}
       onNodeChatModelChange={props.onNodeChatModelChange}
@@ -203,6 +206,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
             onDragStart={handleShapeDragStart}
             onDoubleClick={props.onTextEditStart}
             onImageNodeToCanvas={props.onImageNodeToCanvas}
+            onNodeImagePreviewOpen={props.onNodeImagePreviewOpen}
             onNodeChatClean={props.onNodeChatClean}
             onNodeChatExportToggle={props.onNodeChatExportToggle}
             onNodeChatModelChange={props.onNodeChatModelChange}

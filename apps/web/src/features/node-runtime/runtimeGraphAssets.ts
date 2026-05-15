@@ -19,6 +19,8 @@ export type RuntimeGraphImageCrop = {
   y: number
 }
 
+export type RuntimeGraphGeneratedOutputHistory = RuntimeGraphImageAssetRef[][]
+
 export function getRuntimeGraphImageNodePayload(data: JsonObject): JsonObject | null {
   const ref = getRuntimeGraphImageAssetRef(data)
   return ref ? runtimeGraphImageRefToPayload(ref) : null
@@ -35,6 +37,19 @@ export function getRuntimeGraphGeneratedOutputRefs(data: JsonObject): RuntimeGra
   return Array.isArray(data.generatedOutputs)
     ? data.generatedOutputs.map((value) => asRuntimeGraphImageAssetRef(value)).filter((value): value is RuntimeGraphImageAssetRef => Boolean(value))
     : []
+}
+
+export function getRuntimeGraphGeneratedOutputHistory(data: JsonObject): RuntimeGraphGeneratedOutputHistory {
+  if (!Array.isArray(data.generatedOutputHistory)) return []
+  return data.generatedOutputHistory.map((slot) => (
+    Array.isArray(slot)
+      ? slot.map((value) => asRuntimeGraphImageAssetRef(value)).filter((value): value is RuntimeGraphImageAssetRef => Boolean(value))
+      : []
+  ))
+}
+
+export function getRuntimeGraphGeneratedOutputHistorySlot(data: JsonObject, slotIndex: number): RuntimeGraphImageAssetRef[] {
+  return getRuntimeGraphGeneratedOutputHistory(data)[slotIndex] ?? []
 }
 
 export function getRuntimeGraphImageAssetRef(value: unknown): RuntimeGraphImageAssetRef | null {
@@ -69,6 +84,10 @@ export function runtimeGraphImageRefToPayload(ref: RuntimeGraphImageAssetRef): J
     thumbnail512Url: ref.thumbnail512Url,
     title: ref.title,
   })
+}
+
+export function runtimeGraphGeneratedOutputHistoryToPayload(history: RuntimeGraphGeneratedOutputHistory) {
+  return history.map((slot) => slot.map((ref) => runtimeGraphImageRefToPayload(ref)))
 }
 
 export function getRuntimeGraphImageCrop(value: unknown): RuntimeGraphImageCrop | undefined {

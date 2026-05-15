@@ -10,12 +10,18 @@ import { hasRemotePersistenceApi } from '@/features/api/persistenceApi'
 import { loadAssetRecords } from '@/features/assets/assetClient'
 import type { TangentAssetRecord } from '@/features/assets/assetTypes'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
-import type { JsonObject, NodeType } from '@/types/nodeRuntime'
+import type { JsonObject, JsonValue, NodeType } from '@/types/nodeRuntime'
 import { canRunNodeType, getNormalizedAnalysisData, getNormalizedImageGenerationData } from './registry'
 import { reconcileRuntimeGraphDocument } from './runtimeGraph'
 import { uploadMockGeneratedAssets } from './runtimeGraphMockAssets'
 import { resolveRuntimeGraphNodeInputs, type RuntimeGraphInputResolution } from './runtimeGraphResolution'
-import { runtimeGraphImageRefToPayload } from './runtimeGraphAssets'
+import {
+  getRuntimeGraphGeneratedOutputHistory,
+  runtimeGraphGeneratedOutputHistoryToPayload,
+  runtimeGraphImageRefToPayload,
+  type RuntimeGraphGeneratedOutputHistory,
+  type RuntimeGraphImageAssetRef,
+} from './runtimeGraphAssets'
 
 export type RuntimeGraphNodeRunStart = {
   clientRunId: string
@@ -30,6 +36,8 @@ export type RuntimeGraphNodeRunCompletion = {
   run: AiRunRecord
   runInput: RuntimeGraphNodeRunStart
 }
+
+const maxGeneratedOutputHistoryItems = 12
 
 export function startRuntimeGraphNodeRun(document: CanvasDocument, shapeId: string, boardId?: string | null): RuntimeGraphNodeRunStart {
   const node = getNodeShape(document, shapeId)
@@ -142,7 +150,7 @@ export function completeRuntimeGraphNodeRun(document: CanvasDocument, completion
   const node = getNodeShape(document, completion.runInput.shapeId)
   if (!node || node.props.runtimeSummary.lastRunId !== completion.runInput.clientRunId || node.props.runtimeSummary.status !== 'running') return document
 
-  const generatedOutputs = completion.generatedAssets.map((asset) => runtimeGraphImageRefToPayload({
+  const generatedRefs = completion.generatedAssets.map((asset) => ({
     assetId: asset.id,
     imageHeight: asset.height,
     imageWidth: asset.width,
@@ -152,7 +160,9 @@ export function completeRuntimeGraphNodeRun(document: CanvasDocument, completion
     thumbnail512Url: asset.thumbnail512Url,
     title: asset.title,
   }))
-  const resultAssetIds = generatedOutputs.map((asset) => String(asset.assetId ?? '')).filter(Boolean)
+  const generatedOutputs = generatedRefs.map((asset) => runtimeGraphImageRefToPayload(asset))
+  const generatedOutputHistory = mergeGeneratedOutputHistory(node, generatedRefs)
+  const resultAssetIds = generatedRefs.map((asset) => String(asset.assetId ?? '')).filter(Boolean)
   const warning = getGeneratedImageAspectWarning(completion.runInput.request, completion.generatedAssets)
   return reconcileRuntimeGraphDocument(updateRuntimeNodeSummary(document, node.id, {
     costHint: completion.run.costHint,
@@ -165,7 +175,9 @@ export function completeRuntimeGraphNodeRun(document: CanvasDocument, completion
     serverRunId: null,
     status: 'succeeded',
     textOutput: completion.run.textOutput?.slice(0, 4000) ?? '',
-  }, false, generatedOutputs))
+  }, false, generatedOutputs, {
+    generatedOutputHistory: runtimeGraphGeneratedOutputHistoryToPayload(generatedOutputHistory) as unknown as JsonValue,
+  }))
 }
 
 export function failRuntimeGraphNodeRun(document: CanvasDocument, runInput: RuntimeGraphNodeRunStart, error: unknown): CanvasDocument {
@@ -232,7 +244,8 @@ function updateRuntimeNodeSummary(
   shapeId: string,
   summaryPatch: JsonObject,
   clearGeneratedOutputs = false,
-  generatedOutputs?: JsonObject[]
+  generatedOutputs?: JsonObject[],
+  dataPatch?: JsonObject
 ) {
   return withCanvasShapes(document, document.shapes.map((shape) => {
     if (shape.id !== shapeId || shape.type !== 'node_card') return shape
@@ -240,6 +253,7 @@ function updateRuntimeNodeSummary(
       ...shape.props.data,
       ...(clearGeneratedOutputs ? { generatedOutputs: [] } : null),
       ...(generatedOutputs ? { generatedOutputs } : null),
+      ...(dataPatch ?? null),
     }
     return {
       ...shape,
@@ -261,6 +275,20 @@ function getRunPrompt(data: JsonObject, inputResolution: RuntimeGraphInputResolu
 
 function shouldClearGeneratedOutputs(nodeType: NodeType) {
   return nodeType === 'image_gen' || nodeType === 'image_gen_4'
+}
+
+function mergeGeneratedOutputHistory(node: CanvasNodeShape, generatedRefs: RuntimeGraphImageAssetRef[]): RuntimeGraphGeneratedOutputHistory {
+  const slotCount = node.props.nodeType === 'image_gen_4' ? 4 : 1
+  const previous = getRuntimeGraphGeneratedOutputHistory(node.props.data)
+  return Array.from({ length: slotCount }, (_, slotIndex) => {
+    const previousSlot = previous[slotIndex] ?? []
+    const nextRef = generatedRefs[slotIndex] ?? null
+    if (!nextRef) return previousSlot.slice(0, maxGeneratedOutputHistoryItems)
+    return [
+      nextRef,
+      ...previousSlot.filter((item) => item.assetId !== nextRef.assetId),
+    ].slice(0, maxGeneratedOutputHistoryItems)
+  })
 }
 
 function getNodeShape(document: CanvasDocument, shapeId: string): CanvasNodeShape | null {

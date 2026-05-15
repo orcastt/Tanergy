@@ -92,7 +92,9 @@ function createSessionFromContext(context: ApiRequestContext): TangentSession {
     isDevFallback: context.isDevFallback,
     user: {
       ...mockSession.user,
+      gender: context.userGender,
       id: context.userId,
+      profileCompleted: context.userProfileCompleted,
     },
     workspaces,
   }
@@ -119,7 +121,9 @@ function createSessionFromClerk(userId: string, claims: Record<string, unknown> 
       displayName,
       email,
       emailVerified: isClerkEmailVerified(claims),
+      gender: null,
       id: userId,
+      profileCompleted: true,
     },
     workspaces,
   }

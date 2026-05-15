@@ -5,7 +5,7 @@ const settings = [
   {
     title: 'Canvas defaults',
     status: 'Local browser',
-    copy: 'Grid, snap and zoom preferences remain client-side settings until the user profile store exists.',
+    copy: 'Grid, snap and zoom preferences remain client-side settings until they move into the product-owned profile layer.',
     rows: ['Grid and snap controls stay inside the canvas settings panel.', 'Board autosave keeps its 1200ms debounce and save indicator.'],
   },
   {
@@ -13,6 +13,12 @@ const settings = [
     status: 'FastAPI-ready',
     copy: 'Boards and assets use the local Next bridge unless the public API base URL points to FastAPI.',
     rows: ['Board documents are guarded before save.', 'Images must resolve through Asset records, not data URLs.'],
+  },
+  {
+    title: 'Account boundary',
+    status: 'Split ownership',
+    copy: 'Password and verification stay in Clerk. Display name, gender and onboarding state live in Tanergy.',
+    rows: ['Use Account to edit the Tanergy profile fields.', 'Use Forgot password on sign-in for recovery.'],
   },
   {
     title: 'AI model availability',
@@ -72,6 +78,10 @@ export default function SettingsPage() {
                 <dt>Next real setup</dt>
                 <dd>Staging API, managed Postgres, R2 bucket, sender domain and AI provider key.</dd>
               </div>
+              <div>
+                <dt>Profile ownership</dt>
+                <dd>Clerk owns identity and password flows. Tanergy owns editable profile fields and workspace-facing user metadata.</dd>
+              </div>
             </dl>
           </article>
         </section>
@@ -85,6 +95,7 @@ export default function SettingsPage() {
             </p>
           </div>
           <div className="management-actions">
+            <Link className="product-button product-button-secondary" href="/account">Account</Link>
             <Link className="product-button product-button-secondary" href="/team">Team</Link>
             <Link className="product-button product-button-secondary" href="/billing">Subscription</Link>
           </div>

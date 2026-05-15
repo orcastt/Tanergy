@@ -12,7 +12,12 @@ import {
   getResolvedNodePorts,
 } from '@/features/node-runtime/registry'
 import { resolveRuntimeGraphNodeInputs } from '@/features/node-runtime/runtimeGraphResolution'
-import { getRuntimeGraphGeneratedOutputRefs } from '@/features/node-runtime/runtimeGraphAssets'
+import {
+  getRuntimeGraphGeneratedOutputHistorySlot,
+  getRuntimeGraphGeneratedOutputRefs,
+  getRuntimeGraphImageAssetRef,
+  type RuntimeGraphImageAssetRef,
+} from '@/features/node-runtime/runtimeGraphAssets'
 import {
   canRunNode,
   NodeCardFieldGrid,
@@ -37,6 +42,7 @@ type KonvaNodeCardShapeProps = {
   onChatUpload?: (shapeId: string) => void
   onFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
   onImageNodeToCanvas?: (shapeId: string) => void
+  onImagePreviewOpen?: (input: { images: RuntimeGraphImageAssetRef[]; selectedIndex?: number; title: string }) => void
   onPortPointerDown?: (shapeId: string, portId: string, event: KonvaEventObject<PointerEvent>) => void
   onRunToggle?: (shapeId: string) => void
   onTextEditStart?: (shapeId: string, fieldName: KonvaNodeTextFieldName) => void
@@ -46,7 +52,7 @@ type KonvaNodeCardShapeProps = {
   zoom: number
 }
 
-export function KonvaNodeCardShape({ document, editingFieldName = null, onChatClean, onChatExportToggle, onChatModelChange, onChatSend, onChatUpload, onFieldChange, onImageNodeToCanvas, onPortPointerDown, onRunToggle, onTextEditStart, opacity, previewMode = false, shape, zoom }: KonvaNodeCardShapeProps) {
+export function KonvaNodeCardShape({ document, editingFieldName = null, onChatClean, onChatExportToggle, onChatModelChange, onChatSend, onChatUpload, onFieldChange, onImageNodeToCanvas, onImagePreviewOpen, onPortPointerDown, onRunToggle, onTextEditStart, opacity, previewMode = false, shape, zoom }: KonvaNodeCardShapeProps) {
   const [hoveredPort, setHoveredPort] = useState<ResolvedNodePort | null>(null)
   const [openFieldName, setOpenFieldName] = useState<string | null>(null)
   const definition = getNodeDefinition(shape.props.nodeType)
@@ -124,6 +130,7 @@ export function KonvaNodeCardShape({ document, editingFieldName = null, onChatCl
             onChatSend={onChatSend}
             onChatUpload={onChatUpload}
             onFieldChange={onFieldChange}
+            onImagePreviewOpen={onImagePreviewOpen}
             onTextEditStart={onTextEditStart}
             openFieldName={openFieldName}
             setOpenFieldName={setOpenFieldName}
@@ -330,6 +337,7 @@ function NodeBody({
   onChatSend,
   onChatUpload,
   onFieldChange,
+  onImagePreviewOpen,
   onTextEditStart,
   openFieldName,
   setOpenFieldName,
@@ -346,6 +354,7 @@ function NodeBody({
   onChatSend?: (shapeId: string, draftOverride?: string) => void
   onChatUpload?: (shapeId: string) => void
   onFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
+  onImagePreviewOpen?: (input: { images: RuntimeGraphImageAssetRef[]; selectedIndex?: number; title: string }) => void
   onTextEditStart?: (shapeId: string, fieldName: KonvaNodeTextFieldName) => void
   openFieldName: string | null
   setOpenFieldName: (fieldName: string | null) => void
@@ -353,9 +362,21 @@ function NodeBody({
   zoom: number
 }) {
   if (shape.props.nodeType === 'prompt') return <PromptBody document={document} editing={editingFieldName === 'prompt'} onTextEditStart={onTextEditStart} shape={shape} />
-  if (shape.props.nodeType === 'prompt_optimizer') return <PromptOptimizerBody document={document} shape={shape} />
+  if (shape.props.nodeType === 'prompt_optimizer') {
+    return (
+      <PromptOptimizerBody
+        document={document}
+        fields={fields}
+        normalizedData={normalizedData}
+        onFieldChange={onFieldChange}
+        openFieldName={openFieldName}
+        setOpenFieldName={setOpenFieldName}
+        shape={shape}
+      />
+    )
+  }
   if (shape.props.nodeType === 'chat') return <KonvaNodeChatBody document={document} editingFieldName={editingFieldName} onChatExportToggle={onChatExportToggle} onChatModelChange={onChatModelChange} onChatSend={onChatSend} onChatUpload={onChatUpload} onTextEditStart={onTextEditStart} shape={shape} zoom={zoom} />
-  if (shape.props.nodeType === 'image') return <ImageBody accent={accent} shape={shape} zoom={zoom} />
+  if (shape.props.nodeType === 'image') return <ImageBody accent={accent} onImagePreviewOpen={onImagePreviewOpen} shape={shape} zoom={zoom} />
   if (shape.props.nodeType === 'analysis') {
     return (
       <AnalysisBody
@@ -370,7 +391,7 @@ function NodeBody({
       />
     )
   }
-  return <GenerationBody fields={fields} normalizedData={normalizedData} onFieldChange={onFieldChange} openFieldName={openFieldName} setOpenFieldName={setOpenFieldName} shape={shape} zoom={zoom} />
+  return <GenerationBody fields={fields} normalizedData={normalizedData} onFieldChange={onFieldChange} onImagePreviewOpen={onImagePreviewOpen} openFieldName={openFieldName} setOpenFieldName={setOpenFieldName} shape={shape} zoom={zoom} />
 }
 
 function PromptBody({
@@ -392,12 +413,31 @@ function PromptBody({
 
 function PromptOptimizerBody({
   document,
+  fields,
+  normalizedData,
+  onFieldChange,
+  openFieldName,
+  setOpenFieldName,
   shape,
 }: {
   document: CanvasDocument
+  fields: NodeCardField[]
+  normalizedData: CanvasNodeShape['props']['data']
+  onFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
+  openFieldName: string | null
+  setOpenFieldName: (fieldName: string | null) => void
   shape: CanvasNodeShape
 }) {
   const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
+  const displayShape = shape.props.data === normalizedData
+    ? shape
+    : {
+        ...shape,
+        props: {
+          ...shape.props,
+          data: normalizedData,
+        },
+      }
   const inputResolution = useMemo(() => resolveRuntimeGraphNodeInputs(document, shape), [document, shape])
   const status = getStringValue(shape.props.runtimeSummary.status) || 'idle'
   const error = getStringValue(shape.props.runtimeSummary.error)
@@ -407,8 +447,9 @@ function PromptOptimizerBody({
     : error ?? (inputResolution.canRun ? 'Ready to optimize.' : inputResolution.missingReasons[0] ?? 'Connect a prompt first.'))
   return (
     <>
-      <Text fill={palette.softText} fontFamily="Inter, system-ui, sans-serif" fontSize={13} fontStyle="bold" text="Optimized preview" width={shape.props.width - 28} x={14} y={58} />
-      <NodeCardTextBox height={shape.props.height - 98} text={previewText} width={shape.props.width - 28} x={14} y={84} />
+      <NodeCardFieldGrid fields={fields} onFieldChange={onFieldChange} openFieldName={openFieldName} setOpenFieldName={setOpenFieldName} shape={displayShape} y={54} />
+      <Text fill={palette.softText} fontFamily="Inter, system-ui, sans-serif" fontSize={13} fontStyle="bold" text="Optimized preview" width={shape.props.width - 28} x={14} y={116} />
+      <NodeCardTextBox height={shape.props.height - 156} text={previewText} width={shape.props.width - 28} x={14} y={142} />
     </>
   )
 }
@@ -456,10 +497,11 @@ function AnalysisBody({
   )
 }
 
-function GenerationBody({ fields, normalizedData, onFieldChange, openFieldName, setOpenFieldName, shape, zoom }: {
+function GenerationBody({ fields, normalizedData, onFieldChange, onImagePreviewOpen, openFieldName, setOpenFieldName, shape, zoom }: {
   fields: NodeCardField[]
   normalizedData: CanvasNodeShape['props']['data']
   onFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
+  onImagePreviewOpen?: (input: { images: RuntimeGraphImageAssetRef[]; selectedIndex?: number; title: string }) => void
   openFieldName: string | null
   setOpenFieldName: (fieldName: string | null) => void
   shape: CanvasNodeShape
@@ -498,7 +540,7 @@ function GenerationBody({ fields, normalizedData, onFieldChange, openFieldName, 
   return (
     <>
       <NodeCardImageSlots slotBounds={slotBounds} />
-      <GeneratedOutputPreviews refs={outputRefs} slotBounds={slotBounds} zoom={zoom} />
+      <GeneratedOutputPreviews onImagePreviewOpen={onImagePreviewOpen} refs={outputRefs} shape={shape} slotBounds={slotBounds} zoom={zoom} />
       {status === 'succeeded' ? error ? (
         <>
           <Rect cornerRadius={8} fill="#fffbeb" height={28} width={shape.props.width - 28} x={14} y={shape.props.height - 44} />
@@ -517,16 +559,22 @@ function GenerationBody({ fields, normalizedData, onFieldChange, openFieldName, 
   )
 }
 
-function ImageBody({ accent, shape, zoom }: { accent: string; shape: CanvasNodeShape; zoom: number }) {
+function ImageBody({ accent, onImagePreviewOpen, shape, zoom }: { accent: string; onImagePreviewOpen?: (input: { images: RuntimeGraphImageAssetRef[]; selectedIndex?: number; title: string }) => void; shape: CanvasNodeShape; zoom: number }) {
   const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
   const bounds = { height: shape.props.height - 88, width: shape.props.width - 28, x: 14, y: 54 }
   const imageCrop = getNodeImageCrop(shape.props.data)
   const imageSource = getNodeImageSource(shape.props.data, zoom)
+  const imageRef = getRuntimeGraphImageAssetRef(shape.props.data)
   const canUpload = !hasUpstreamImageInput(shape)
   return (
     <>
       <Rect cornerRadius={12} fill={palette.imageEmptyBg} height={bounds.height} width={bounds.width} x={bounds.x} y={bounds.y} />
-      <NodeImagePreview bounds={bounds} crop={imageCrop} source={imageSource} />
+      <NodeImagePreview
+        bounds={bounds}
+        crop={imageCrop}
+        onDoubleClick={imageRef ? () => onImagePreviewOpen?.({ images: [imageRef], title: getStringValue(shape.props.data.title) || 'Image' }) : undefined}
+        source={imageSource}
+      />
       {imageSource ? null : (
         <>
           <Text align="center" fill="#ffffff" fontFamily="Inter, system-ui, sans-serif" fontSize={12} fontStyle="bold" text="Image" width={70} x={shape.props.width / 2 - 35} y={bounds.y + bounds.height / 2 - 8} />
@@ -558,11 +606,15 @@ function PortTooltip({ port, shape }: { port: ResolvedNodePort; shape: CanvasNod
 }
 
 function GeneratedOutputPreviews({
+  onImagePreviewOpen,
   refs,
+  shape,
   slotBounds,
   zoom,
 }: {
+  onImagePreviewOpen?: (input: { images: RuntimeGraphImageAssetRef[]; selectedIndex?: number; title: string }) => void
   refs: ReturnType<typeof getRuntimeGraphGeneratedOutputRefs>
+  shape: CanvasNodeShape
   slotBounds: ReturnType<typeof getNodeCardImageSlotBounds>[]
   zoom: number
 }) {
@@ -570,7 +622,18 @@ function GeneratedOutputPreviews({
     <>
       {slotBounds.map((bounds, index) => {
         const ref = refs[index]
-        return ref ? <NodeImagePreview bounds={bounds} key={index} source={getGeneratedOutputSource(ref, zoom)} /> : null
+        return ref ? (
+          <NodeImagePreview
+            bounds={bounds}
+            key={index}
+            onDoubleClick={() => {
+              const history = getRuntimeGraphGeneratedOutputHistorySlot(shape.props.data, index)
+              const images = history.length > 0 ? history : [ref]
+              onImagePreviewOpen?.({ images, selectedIndex: 0, title: `Output ${index + 1}` })
+            }}
+            source={getGeneratedOutputSource(ref, zoom)}
+          />
+        ) : null
       })}
     </>
   )

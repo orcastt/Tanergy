@@ -59,6 +59,8 @@ def _build_ephemeral_session(identity: VerifiedAuthIdentity) -> ResolvedAuthSess
         workspace_role="owner",
         board_count=0,
         workspaces=[default_workspace_membership(f"workspace_{suffix}", "Tanergy Workspace")],
+        gender=None,
+        profile_completed=True,
     )
 def _load_or_create_postgres_session(
     identity: VerifiedAuthIdentity,
@@ -73,6 +75,13 @@ def _load_or_create_postgres_session(
             if row:
                 require_active_auth_user_status(row[9] if len(row) > 9 else "active")
                 session = row_to_auth_session(row)
+                resolved_display_name = (
+                    session.display_name
+                    if session.profile_completed
+                    else (identity.display_name or session.display_name)
+                )
+                resolved_email = identity.email or session.email
+                resolved_avatar_initials = get_auth_session_initials(resolved_display_name, resolved_email)
                 cursor.execute(
                     f"""
                     UPDATE tangent_users
@@ -87,9 +96,9 @@ def _load_or_create_postgres_session(
                     WHERE id = %s
                     """,
                     tuple([
-                        identity.email or session.email,
-                        identity.display_name or session.display_name,
-                        get_auth_session_initials(identity.display_name or session.display_name, identity.email or session.email),
+                        resolved_email,
+                        resolved_display_name,
+                        resolved_avatar_initials,
                         identity.email_verified,
                         *([normalized_request_ip] if auth_user_last_ip_enabled() else []),
                         session.user_id,
@@ -125,15 +134,17 @@ def _load_or_create_postgres_session(
                         user_id=session.user_id,
                         workspace_id=active_workspace.workspace_id,
                         workspace_kind=active_workspace.workspace_kind,
-                        display_name=identity.display_name or session.display_name,
-                        email=identity.email or session.email,
+                        display_name=resolved_display_name,
+                        email=resolved_email,
                         email_verified=identity.email_verified,
-                        avatar_initials=get_auth_session_initials(identity.display_name or session.display_name, identity.email or session.email),
+                        avatar_initials=resolved_avatar_initials,
                         workspace_name=active_workspace.workspace_name,
                         workspace_plan_key=active_workspace.workspace_plan_key,
                         workspace_role=active_workspace.workspace_role,
                         board_count=active_workspace.board_count,
                         workspaces=memberships,
+                        gender=session.gender,
+                        profile_completed=session.profile_completed,
                     )
 
                 return _create_default_workspace(
@@ -221,7 +232,9 @@ def _load_auth_session_row(
             w.name,
             COALESCE(w.kind, 'solo_workspace'),
             wm.role,
-            COALESCE(u.status, 'active')
+            COALESCE(u.status, 'active'),
+            u.gender,
+            u.profile_completed_at
         FROM tangent_user_identities ui
         JOIN tangent_users u ON u.id = ui.user_id
         LEFT JOIN tangent_workspace_members wm ON wm.user_id = u.id
@@ -294,6 +307,8 @@ def _create_default_workspace(
         workspace_role="owner",
         board_count=0,
         workspaces=[default_workspace],
+        gender=None,
+        profile_completed=False,
     )
 
 

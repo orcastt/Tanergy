@@ -7,10 +7,21 @@ import type { AiCapability, AiModelOption, AiRunRecord, AiRunRequest } from './a
 export const mockAiModels: AiModelOption[] = [
   {
     capabilities: ['text'],
-    costHint: 'Fast streaming chat for node conversations.',
+    costHint: 'Free-tier friendly streaming chat for node conversations and prompt optimization.',
     displayName: 'Hunyuan 3.0 Preview',
     estimatedLatency: '1-4s',
     id: 'hunyuan-3.0-preview',
+    isDefault: false,
+    isEnabled: true,
+    parameterSchema: {},
+    provider: 'geekai',
+  },
+  {
+    capabilities: ['text', 'image_analysis'],
+    costHint: 'Higher-quality multimodal reasoning for chat and image reverse prompting.',
+    displayName: 'GPT-5.5',
+    estimatedLatency: '2-8s',
+    id: 'gpt-5.5',
     isDefault: false,
     isEnabled: true,
     parameterSchema: {},
@@ -126,7 +137,8 @@ export function getDefaultChatModelId() {
 }
 
 export function getDefaultAnalysisModelId() {
-  return getAiModels('image_analysis').find((model) => model.id === 'gpt-5-mini' && model.isEnabled)?.id
+  return getAiModels('image_analysis').find((model) => model.id === 'gpt-5.5' && model.isEnabled)?.id
+    ?? getAiModels('image_analysis').find((model) => model.id === 'gpt-5-mini' && model.isEnabled)?.id
     ?? getAiModels('image_analysis').find((model) => model.isEnabled)?.id
     ?? mockAiModels[0].id
 }

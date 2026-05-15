@@ -1,6 +1,6 @@
 # TANGENT Product Requirements Index
 
-**Updated**: 2026-05-14
+**Updated**: 2026-05-15
 **Status**: Canonical product overview and PRD slice index, aligned with the current parallel P0 alpha workstreams, the S3 commercial pivot and the latest staging/S2 checkpoint: the Konva-only staging deploy is back online, strict Clerk session/admin smoke is green, and the active image-generation product surface now aligns to four live GeekAI-backed image models while the remaining gate is one live server-backed image smoke before deeper Yjs/provider work.
 
 This folder replaces the former root-level long PRD ledger. The root `PRD.md` is now only a pointer. Product details live in the slice files below.
@@ -39,7 +39,7 @@ Everything else should be described as deferred, frozen or internal scaffolding 
 | S1 Staging/Auth/Board CRUD | `PRD_slice_S1_staging_auth_board.md` | Real staging infra, real Auth, real user/workspace/board ownership, production Board CRUD | Active foundation slice; staging Web/API/Neon/R2 plus real Clerk session/admin smoke are green, while Google/email flow verification, final signed-in board acceptance and permission hardening remain |
 | S1A DB Schema | `PRD_slice_S1A_db_schema.md` | Product data model for accounts, workspaces, Boards, History, Assets and future billing/AI/admin joins | S1A core implemented through migration `0006`; current schema head also includes S3 entitlement extension `0007`; staging DB smoke remains part of S1B |
 | S1B Staging Infra | `PRD_slice_S1B_staging_infra.md` | Online staging Web/API, Postgres, R2, DNS and email readiness | In progress; rebuilt staging Web/API/Neon/R2 and Konva-only redeploy are green, while Google/email and live AI acceptance remain |
-| S1C Auth Context | `PRD_slice_S1C_auth_request_context.md` | Registration, login, logout, session and default workspace flow | Clerk frontend/session bridge, FastAPI bearer verification and real staging session/admin smoke landed; Google/email/logout hardening remains |
+| S1C Auth Context | `PRD_slice_S1C_auth_request_context.md` | Registration, login, logout, session and default workspace flow | Clerk frontend/session bridge, FastAPI bearer verification, Tanergy profile onboarding/editing and Clerk-backed forgot-password flow landed; Google/email/logout hardening remains |
 | S1D Board CRUD | `PRD_slice_S1D_auth_board_crud.md` | Auth-backed Board and History user workflows | Stable first-pass CRUD/member/share/public-share checkpoint with owner-only copy/delete, share expiry and known-foreign Asset guard; next tranche is effective permission hardening |
 | S1E Board Packages | `PRD_slice_S1E_board_packages.md` | `.tgy` Tanergy Board Package export/import for reusable Boards with drawings, images, AI nodes and runtime edges | Planned; Board JSON and Asset foundations exist, user-facing package export/import remains |
 | S1X Canvas Engine Migration | `PRD_slice_S1X_canvas_engine_migration.md` | Legacy canvas migration closeout, Konva/Yjs handfeel and collaboration viability | Konva-only formal Board route is accepted locally and on staging, the old tldraw web path is gone from the active product surface, and collaboration/Yjs plus export polish remain |

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Image as KonvaImage } from 'react-konva'
+import { Group, Image as KonvaImage, Rect } from 'react-konva'
 import type { JsonObject } from '@/types/nodeRuntime'
 import { getRuntimeGraphImageCrop, type RuntimeGraphImageAssetRef, type RuntimeGraphImageCrop } from '@/features/node-runtime/runtimeGraphAssets'
 
@@ -12,16 +12,35 @@ const nodeImageLoadTimeoutMs = 15_000
 export function NodeImagePreview({
   bounds,
   crop,
+  onDoubleClick,
   source,
 }: {
   bounds: { height: number; width: number; x: number; y: number }
   crop?: RuntimeGraphImageCrop
+  onDoubleClick?: () => void
   source: string | null
 }) {
   const image = useLoadedNodeImage(source)
   const cropRect = useMemo(() => image ? getImageCropRect(image, crop) : undefined, [crop, image])
   const fit = useMemo(() => image ? getContainRect(image, bounds, cropRect) : null, [bounds, cropRect, image])
-  return fit && image ? <KonvaImage crop={cropRect} image={image} {...fit} /> : null
+  return fit && image ? (
+    <Group>
+      <KonvaImage crop={cropRect} image={image} {...fit} />
+      {onDoubleClick ? (
+        <Rect
+          fill="rgba(255,255,255,0.001)"
+          height={fit.height}
+          onDblClick={(event) => {
+            event.cancelBubble = true
+            onDoubleClick()
+          }}
+          width={fit.width}
+          x={fit.x}
+          y={fit.y}
+        />
+      ) : null}
+    </Group>
+  ) : null
 }
 
 export function getNodeImageSource(data: JsonObject, zoom: number) {
