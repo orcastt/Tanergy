@@ -92,7 +92,7 @@ Current implementation note:
 - If `DATABASE_URL` is absent in local development, FastAPI can still derive deterministic ephemeral ids so auth-required smoke tests do not depend on Postgres bootstrapping.
 - Real authenticated session refresh now also persists the latest request IP into `tangent_users.last_ip_address` when Postgres is configured, so later admin/operator views can show last access facts without trusting frontend headers.
 - Real authenticated session refresh now preserves a Tanergy-edited local display name once `tangent_users.profile_completed_at` is set, instead of re-overwriting it from Clerk claims on every login.
-- Tanergy-owned profile data currently lives directly on `tangent_users` via `display_name`, `gender` and `profile_completed_at`; no separate profile table exists yet.
+- Tanergy-owned profile data currently lives directly on `tangent_users` via `display_name` and `profile_completed_at`; the older `gender` column is now dormant and no longer collected in product flows.
 
 ## Security Rules
 
@@ -116,7 +116,7 @@ Request
   -> verify session
   -> load user
   -> resolve active workspace membership
-  -> attach ApiRequestContext(user_id, workspace_id, role, auth_source, user_gender, user_profile_completed)
+  -> attach ApiRequestContext(user_id, workspace_id, role, auth_source, user_profile_completed)
 ```
 
 Frontend-provided workspace ids are allowed as a selection hint only. The server must reject the request if the session user is not a member of that workspace.
@@ -167,7 +167,7 @@ Current first-pass web routes:
 /forgot-password   Clerk-backed custom recovery flow
 /login             compatibility redirect to /sign-in
 /signup,/register  compatibility redirects to /sign-up
-/account           Tanergy-owned profile editor for display name/gender
+/account           Tanergy-owned profile editor for display name
 /workspaces        protected by Clerk proxy when TANGENT_REQUIRE_WEB_AUTH=1
 /api/auth/session  Clerk-backed Tanergy session bridge, dev fallback only when auth is not required
 /api/auth/profile  Clerk-authenticated proxy to FastAPI profile writes

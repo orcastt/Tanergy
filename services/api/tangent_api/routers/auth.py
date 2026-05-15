@@ -46,7 +46,6 @@ def get_session(
             displayName=context.user_display_name,
             email=context.user_email,
             emailVerified=context.user_email_verified,
-            gender=context.user_gender,
             id=context.user_id,
             profileCompleted=context.user_profile_completed,
         ),
@@ -65,7 +64,6 @@ def patch_profile(
     profile = update_auth_profile(
         context.user_id,
         input_data.display_name,
-        input_data.gender,
     )
     return AuthProfileUpdateResponse(
         ok=True,
@@ -74,7 +72,6 @@ def patch_profile(
             displayName=profile.display_name,
             email=profile.email,
             emailVerified=profile.email_verified,
-            gender=profile.gender,
             id=profile.user_id,
             profileCompleted=profile.profile_completed,
         ),

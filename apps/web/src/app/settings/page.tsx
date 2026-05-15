@@ -17,7 +17,7 @@ const settings = [
   {
     title: 'Account boundary',
     status: 'Split ownership',
-    copy: 'Password and verification stay in Clerk. Display name, gender and onboarding state live in Tanergy.',
+    copy: 'Password and verification stay in Clerk. Display name and onboarding state live in Tanergy.',
     rows: ['Use Account to edit the Tanergy profile fields.', 'Use Forgot password on sign-in for recovery.'],
   },
   {

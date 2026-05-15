@@ -108,7 +108,6 @@ def test_auth_required_mode_accepts_verified_bearer(monkeypatch):
             user_display_name="Clerk User",
             user_email="user@example.com",
             user_email_verified=True,
-            user_gender="non_binary",
             user_id="user_clerk_123",
             user_profile_completed=False,
             workspace_board_count=4,
@@ -159,7 +158,6 @@ def test_auth_required_mode_accepts_verified_bearer(monkeypatch):
     assert session["user"]["id"] == "user_clerk_123"
     assert session["user"]["displayName"] == "Clerk User"
     assert session["user"]["email"] == "user@example.com"
-    assert session["user"]["gender"] == "non_binary"
     assert session["user"]["profileCompleted"] is False
     assert session["activeWorkspace"]["id"] == "workspace_clerk_123"
     assert session["activeWorkspace"]["boardCount"] == 4
@@ -202,7 +200,6 @@ def test_auth_profile_patch_updates_local_profile(monkeypatch):
             user_display_name="Clerk User",
             user_email="user@example.com",
             user_email_verified=True,
-            user_gender="female",
             user_id="user_clerk_123",
             user_profile_completed=False,
             workspace_board_count=4,
@@ -219,12 +216,11 @@ def test_auth_profile_patch_updates_local_profile(monkeypatch):
     )
     monkeypatch.setattr(
         "tangent_api.routers.auth.update_auth_profile",
-        lambda user_id, display_name, gender: type("Profile", (), {
+        lambda user_id, display_name: type("Profile", (), {
             "avatar_initials": "NN",
             "display_name": display_name,
             "email": "user@example.com",
             "email_verified": True,
-            "gender": gender,
             "profile_completed": True,
             "user_id": user_id,
         })(),
@@ -234,12 +230,11 @@ def test_auth_profile_patch_updates_local_profile(monkeypatch):
     response = client.patch(
         "/api/v1/auth/profile",
         headers={"Authorization": "Bearer valid-token"},
-        json={"displayName": "New Name", "gender": "female"},
+        json={"displayName": "New Name"},
     )
 
     assert response.status_code == 200
     payload = response.json()
     assert payload["ok"] is True
     assert payload["user"]["displayName"] == "New Name"
-    assert payload["user"]["gender"] == "female"
     assert payload["user"]["profileCompleted"] is True

@@ -59,7 +59,6 @@ def _build_ephemeral_session(identity: VerifiedAuthIdentity) -> ResolvedAuthSess
         workspace_role="owner",
         board_count=0,
         workspaces=[default_workspace_membership(f"workspace_{suffix}", "Tanergy Workspace")],
-        gender=None,
         profile_completed=True,
     )
 def _load_or_create_postgres_session(
@@ -143,7 +142,6 @@ def _load_or_create_postgres_session(
                         workspace_role=active_workspace.workspace_role,
                         board_count=active_workspace.board_count,
                         workspaces=memberships,
-                        gender=session.gender,
                         profile_completed=session.profile_completed,
                     )
 
@@ -233,7 +231,6 @@ def _load_auth_session_row(
             COALESCE(w.kind, 'solo_workspace'),
             wm.role,
             COALESCE(u.status, 'active'),
-            u.gender,
             u.profile_completed_at
         FROM tangent_user_identities ui
         JOIN tangent_users u ON u.id = ui.user_id
@@ -307,7 +304,6 @@ def _create_default_workspace(
         workspace_role="owner",
         board_count=0,
         workspaces=[default_workspace],
-        gender=None,
         profile_completed=False,
     )
 

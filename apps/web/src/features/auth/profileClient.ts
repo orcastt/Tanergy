@@ -2,7 +2,6 @@ import type { TangentUser } from './sessionTypes'
 
 type UpdateCurrentAuthProfileInput = {
   displayName: string
-  gender?: null | string
 }
 
 type AuthProfileUpdateResponse = {

@@ -2,7 +2,6 @@
 
 import { useMemo, useState, type FormEvent } from 'react'
 import { hasRemotePersistenceApi } from '@/features/api/persistenceApi'
-import { authProfileGenderOptions } from '@/features/auth/authProfileOptions'
 import { updateCurrentAuthProfile } from '@/features/auth/profileClient'
 import { requestCurrentSessionRefresh } from '@/features/auth/sessionClient'
 import type { TangentUser } from '@/features/auth/sessionTypes'
@@ -10,7 +9,6 @@ import type { TangentUser } from '@/features/auth/sessionTypes'
 type AuthProfileFormProps = {
   allowPristineSubmit?: boolean
   initialDisplayName: string
-  initialGender?: null | string
   onSaved?: (user: TangentUser) => void
   submitLabel?: string
   successMessage?: string
@@ -19,21 +17,19 @@ type AuthProfileFormProps = {
 export function AuthProfileForm({
   allowPristineSubmit = false,
   initialDisplayName,
-  initialGender,
   onSaved,
   submitLabel = 'Save profile',
   successMessage = 'Profile saved.',
 }: AuthProfileFormProps) {
   const [displayName, setDisplayName] = useState(initialDisplayName)
-  const [gender, setGender] = useState(initialGender ?? '')
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const canPersistProfile = hasRemotePersistenceApi()
 
   const isDirty = useMemo(() => {
-    return displayName.trim() !== initialDisplayName.trim() || gender !== (initialGender ?? '')
-  }, [displayName, gender, initialDisplayName, initialGender])
+    return displayName.trim() !== initialDisplayName.trim()
+  }, [displayName, initialDisplayName])
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -52,10 +48,8 @@ export function AuthProfileForm({
     try {
       const user = await updateCurrentAuthProfile({
         displayName: nextDisplayName,
-        gender: gender || null,
       })
       setDisplayName(user.displayName)
-      setGender(user.gender ?? '')
       setMessage(successMessage)
       requestCurrentSessionRefresh()
       onSaved?.(user)
@@ -79,21 +73,6 @@ export function AuthProfileForm({
           type="text"
           value={displayName}
         />
-      </label>
-
-      <label className="auth-profile-field">
-        <span className="management-field-label">Gender</span>
-        <select
-          onChange={(event) => setGender(event.target.value)}
-          style={fieldControlStyle}
-          value={gender}
-        >
-          {authProfileGenderOptions.map((option) => (
-            <option key={option.value || 'unset'} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
       </label>
 
       {!canPersistProfile ? (

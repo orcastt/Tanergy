@@ -7,7 +7,6 @@ export type TangentUser = {
   displayName: string
   email: string
   emailVerified: boolean
-  gender?: null | string
   id: string
   profileCompleted: boolean
 }

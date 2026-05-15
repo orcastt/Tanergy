@@ -28,7 +28,6 @@ class ApiRequestContext(BaseModel):
     user_display_name: str
     user_email: str
     user_email_verified: bool
-    user_gender: Optional[str] = None
     user_id: str
     user_profile_completed: bool = True
     workspace_board_count: int
@@ -86,7 +85,6 @@ async def get_request_context(
         user_display_name="Dev User",
         user_email="dev@tangent.local",
         user_email_verified=False,
-        user_gender=None,
         user_id=_normalize_context_id(
             x_tangent_user_id or os.getenv("TANGENT_DEV_USER_ID") or "dev-user",
             "user id",
@@ -176,7 +174,6 @@ async def get_websocket_context(websocket: WebSocket) -> ApiRequestContext:
         user_display_name="Dev User",
         user_email="dev@tangent.local",
         user_email_verified=False,
-        user_gender=None,
         user_id=_normalize_context_id(
             websocket.query_params.get("userId") or os.getenv("TANGENT_DEV_USER_ID") or "dev-user",
             "user id",
@@ -219,7 +216,6 @@ async def resolve_authenticated_request_context(
         user_display_name=session.display_name,
         user_email=session.email,
         user_email_verified=session.email_verified,
-        user_gender=session.gender,
         user_id=_normalize_context_id(session.user_id, "user id"),
         user_profile_completed=session.profile_completed,
         workspace_board_count=session.board_count,

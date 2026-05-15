@@ -1,7 +1,7 @@
 # Project State Slice S1C: Auth And Request Context
 
 **Updated**: 2026-05-15
-**Status**: Clerk frontend routes plus FastAPI bearer verification first pass landed. The current checkpoint also includes Tanergy-owned profile completion and editing: first real sign-in now gates on a profile modal, `/account` persists editable display name plus gender into the local DB, `/forgot-password` exposes a real Clerk recovery flow, and session payloads now return `profileCompleted` / `gender` so the frontend can stay honest about which layer owns what. The next gate is still the ordered second-round signed-in browser pass, then Google/email/logout hardening, with email currently scoped to one truthful staging smoke rather than a new native Tanergy-owned auth system.
+**Status**: Clerk frontend routes plus FastAPI bearer verification first pass landed. The current checkpoint also includes Tanergy-owned profile completion and editing: first real sign-in now gates on a profile modal, `/account` persists editable display name, `/forgot-password` exposes a real Clerk recovery flow, and session payloads now return `profileCompleted` so the frontend can stay honest about which layer owns what. The next gate is still the ordered second-round signed-in browser pass, then Google/email/logout hardening, with email currently scoped to one truthful staging smoke rather than a new native Tanergy-owned auth system.
 
 ## Objective
 
@@ -59,7 +59,7 @@ Current frontend first pass:
 /forgot-password   -> Clerk-backed custom password recovery flow
 /login             -> /sign-in compatibility redirect
 /signup,/register  -> /sign-up compatibility redirects
-/account           -> Tanergy-owned profile editor for display name/gender
+/account           -> Tanergy-owned profile editor for display name
 /workspaces        -> protected by Clerk when TANGENT_REQUIRE_WEB_AUTH=1
 /api/auth/session  -> returns Clerk-backed Tanergy session shape when signed in
 /api/auth/profile  -> persists Tanergy-owned profile fields through the Next proxy
@@ -91,7 +91,7 @@ services/api/tangent_api/auth_sessions.py
 request_context.py
   no longer accepts user/workspace headers as authority in required-auth mode
   resolves local user + workspace membership after token verification
-  now returns `user_gender` and `user_profile_completed` with the authenticated request context
+  now returns `user_profile_completed` with the authenticated request context
   forwards request IP from `x-forwarded-for` / `x-real-ip` / client host into auth session sync
   still preserves dev fallback when API auth is not required
 ```

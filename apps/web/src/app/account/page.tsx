@@ -6,7 +6,6 @@ import { AuthEmailVerificationPanel } from '@/components/auth/AuthEmailVerificat
 import { AuthPasswordChangeForm } from '@/components/auth/AuthPasswordChangeForm'
 import { AuthProfileForm } from '@/components/auth/AuthProfileForm'
 import { AuthSignInMethodsPanel } from '@/components/auth/AuthSignInMethodsPanel'
-import { formatAuthProfileGender } from '@/features/auth/authProfileOptions'
 import { useTangentSession } from '@/features/auth/useTangentSession'
 import { getPublicUserEmail, getPublicUserInitials, getPublicUserLabel } from '@/features/shared/publicUserDisplay'
 
@@ -27,7 +26,6 @@ export default function AccountPage() {
   })
   const profileRows = [
     { label: 'Display name', value: session.user.displayName },
-    { label: 'Gender', value: formatAuthProfileGender(session.user.gender) },
     { label: 'Email', value: visibleEmail ?? 'Provided by your sign-in provider' },
     { label: 'Auth mode', value: session.authMode === 'dev' ? 'Development fallback' : 'Required session' },
     { label: 'Active workspace', value: session.activeWorkspace.name },
@@ -75,9 +73,8 @@ export default function AccountPage() {
               </div>
             </div>
             <AuthProfileForm
-              key={`${session.user.displayName}:${session.user.gender ?? ''}`}
+              key={session.user.displayName}
               initialDisplayName={session.user.displayName}
-              initialGender={session.user.gender}
               submitLabel="Save profile changes"
             />
           </article>
@@ -123,7 +120,7 @@ export default function AccountPage() {
               </div>
               <div>
                 <dt>Tanergy owns</dt>
-                <dd>Display name, gender, onboarding completion state, workspace-facing profile data.</dd>
+                <dd>Display name, onboarding completion state, workspace-facing profile data.</dd>
               </div>
             </dl>
           </article>

@@ -10,7 +10,6 @@ class AuthUser(TangentApiModel):
     display_name: str = Field(alias="displayName")
     email: str
     email_verified: bool = Field(alias="emailVerified")
-    gender: Optional[str] = None
     id: str
     profile_completed: bool = Field(default=True, alias="profileCompleted")
 
@@ -40,7 +39,6 @@ class AuthSessionResponse(TangentApiModel):
 
 class AuthProfileUpdateRequest(TangentApiModel):
     display_name: str = Field(alias="displayName", min_length=1, max_length=80)
-    gender: Optional[str] = None
 
 
 class AuthProfileUpdateResponse(TangentApiModel):

@@ -5,7 +5,7 @@ import { AuthProfileForm } from './AuthProfileForm'
 import type { TangentUser } from '@/features/auth/sessionTypes'
 
 type AuthProfileOnboardingModalProps = {
-  user: Pick<TangentUser, 'displayName' | 'gender' | 'profileCompleted'>
+  user: Pick<TangentUser, 'displayName' | 'profileCompleted'>
 }
 
 export function AuthProfileOnboardingModal({ user }: AuthProfileOnboardingModalProps) {
@@ -34,9 +34,8 @@ export function AuthProfileOnboardingModal({ user }: AuthProfileOnboardingModalP
         <div className="auth-profile-modal-grid">
           <AuthProfileForm
             allowPristineSubmit
-            key={`${user.displayName}:${user.gender ?? ''}`}
+            key={user.displayName}
             initialDisplayName={user.displayName}
-            initialGender={user.gender}
             onSaved={() => setCompletedOptimistically(true)}
             submitLabel="Continue to workspace"
             successMessage="Profile saved. Opening your workspace."
@@ -49,7 +48,7 @@ export function AuthProfileOnboardingModal({ user }: AuthProfileOnboardingModalP
             </div>
             <div>
               <span className="management-field-label">Managed by Tanergy</span>
-              <p>Display name, gender, workspace-facing profile state, future product preferences.</p>
+              <p>Display name, workspace-facing profile state, future product preferences.</p>
             </div>
           </aside>
         </div>

@@ -75,7 +75,6 @@ def test_existing_session_preserves_completed_profile_display_name(monkeypatch):
             "team_workspace",
             "admin",
             "active",
-            "female",
             "2026-05-15T00:00:00Z",
         ),
     )
@@ -89,7 +88,6 @@ def test_existing_session_preserves_completed_profile_display_name(monkeypatch):
     session = resolve_local_auth_session(_identity(display_name="Clerk New Name"))
 
     assert session.display_name == "Saved Profile"
-    assert session.gender == "female"
     assert session.profile_completed is True
 
 

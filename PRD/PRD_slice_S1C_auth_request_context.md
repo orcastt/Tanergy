@@ -17,7 +17,7 @@ Users can create accounts, log in, log out and return to their own workspace. Ac
 - Personal wallet creation on first verified local user session.
 - Session endpoint for current user and memberships.
 - Tanergy-owned profile completion after first real sign-in.
-- Editable display name and gender on the Account surface.
+- Editable display name on the Account surface.
 - Visible forgot-password entry that runs Clerk recovery instead of a mock redirect.
 - Active workspace selection for users who own or join multiple Teams/Groups.
 - Rate limiting and safe auth errors.
@@ -95,7 +95,7 @@ active session -> revoked -> clear cookie -> login screen
 - New user can use Google login and land in `/workspaces`.
 - Existing user can log in and see the same workspace.
 - First real sign-in prompts for Tanergy profile completion before normal workspace use.
-- Signed-in user can edit display name and gender later from `/account`.
+- Signed-in user can edit display name later from `/account`.
 - Sign-in surface exposes a visible forgot-password path and Clerk completes the reset flow.
 - Logout prevents further API access.
 - User cannot spoof another workspace through request headers.

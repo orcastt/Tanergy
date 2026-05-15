@@ -18,14 +18,12 @@ class ResolvedAuthSession:
     workspace_role: str
     board_count: int
     workspaces: list[ResolvedWorkspaceMembership]
-    gender: Optional[str] = None
     profile_completed: bool = False
 
 
 def row_to_auth_session(row: Any) -> ResolvedAuthSession:
     user_id, email, display_name, avatar_initials, email_verified, workspace_id, workspace_name, workspace_kind, workspace_role = row[:9]
-    gender = row[10] if len(row) > 10 else None
-    profile_completed = bool(row[11]) if len(row) > 11 else False
+    profile_completed = bool(row[10]) if len(row) > 10 else False
     return ResolvedAuthSession(
         user_id=user_id,
         workspace_id=workspace_id or "",
@@ -39,6 +37,5 @@ def row_to_auth_session(row: Any) -> ResolvedAuthSession:
         workspace_role=workspace_role or "owner",
         board_count=0,
         workspaces=[],
-        gender=gender,
         profile_completed=profile_completed,
     )
