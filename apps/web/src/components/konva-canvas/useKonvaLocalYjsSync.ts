@@ -176,6 +176,14 @@ export function useKonvaLocalYjsSync({
     lastSynchronizedPagesRef.current = record.pages
   }, [])
 
+  const readRoomRecordSafely = useCallback(() => {
+    try {
+      return readKonvaYjsRoomRecord(ydoc)
+    } catch {
+      return null
+    }
+  }, [ydoc])
+
   const readCurrentDocumentSignature = useCallback(() => {
     try {
       const nextResult = createGuardedKonvaBoardDocument(
@@ -264,7 +272,7 @@ export function useKonvaLocalYjsSync({
 
   const maybeApplyCurrentSnapshot = useCallback(() => {
     const pending = pendingRemoteSnapshotRef.current
-    const current = readKonvaYjsRoomRecord(ydoc)
+    const current = readRoomRecordSafely()
     if (pending && current?.signature === pending.signature) {
       applySnapshotRecord(current)
       return
@@ -272,7 +280,7 @@ export function useKonvaLocalYjsSync({
     pendingRemoteSnapshotRef.current = null
     if (!current) return
     applySnapshotRecord(current)
-  }, [applySnapshotRecord, ydoc])
+  }, [applySnapshotRecord, readRoomRecordSafely])
 
   const publishCurrentSnapshot = useCallback((options: { force?: boolean; mode?: KonvaYjsSnapshotWriteMode } = {}) => {
     const force = options.force ?? false
@@ -360,7 +368,7 @@ export function useKonvaLocalYjsSync({
     hasUnsyncedLocalChangesRef.current = false
     patchSyncState({ hasUnsyncedLocalChanges: false })
     const pending = pendingRemoteSnapshotRef.current
-    const current = readKonvaYjsRoomRecord(ydoc)
+    const current = readRoomRecordSafely()
     if (!current) {
       clearPendingRemoteSnapshot()
       return
@@ -369,7 +377,7 @@ export function useKonvaLocalYjsSync({
       pendingRemoteSnapshotRef.current = createPendingRemoteSnapshotMeta(current)
     }
     applySnapshotRecord(current, { force: true })
-  }, [applySnapshotRecord, cancelScheduledPublish, clearPendingRemoteSnapshot, patchSyncState, ydoc])
+  }, [applySnapshotRecord, cancelScheduledPublish, clearPendingRemoteSnapshot, patchSyncState, readRoomRecordSafely])
 
   const publishLocalSnapshot = useCallback(() => {
     cancelScheduledPublish()
@@ -441,16 +449,20 @@ export function useKonvaLocalYjsSync({
     initialSyncSettledRef.current = false
     updateRealtimeStatus(connection.getState())
     const root = ydoc.getMap('konva-board')
-    const handleSnapshotChange = () => {
-      const current = readKonvaYjsRoomRecord(ydoc)
+    const applyCurrentSnapshotFromYdoc = (transactionOrigin?: unknown) => {
+      if (transactionOrigin === localOriginRef.current) return
+      const current = readRoomRecordSafely()
       if (!current) return
       applySnapshotRecord(current)
+    }
+    const handleSnapshotChange = (_events: Y.YEvent<Y.AbstractType<unknown>>[], transaction: Y.Transaction) => {
+      applyCurrentSnapshotFromYdoc(transaction.origin)
     }
     root.observeDeep(handleSnapshotChange)
     const settleInitialRoomState = () => {
       if (initialSyncSettledRef.current) return
       initialSyncSettledRef.current = true
-      const current = readKonvaYjsRoomRecord(ydoc)
+      const current = readRoomRecordSafely()
       if (current) {
         applySnapshotRecord(current)
         return
@@ -468,7 +480,7 @@ export function useKonvaLocalYjsSync({
         settleInitialRoomState()
       }
     })
-    handleSnapshotChange()
+    applyCurrentSnapshotFromYdoc()
     return () => {
       unsubscribeConnection()
       root.unobserveDeep(handleSnapshotChange)
@@ -476,7 +488,7 @@ export function useKonvaLocalYjsSync({
       if (realtimeConnectionRef.current === connection) realtimeConnectionRef.current = null
       connection.disconnect()
     }
-  }, [applySnapshotRecord, boardId, cancelScheduledPublish, publishCurrentSnapshot, resolvedRoomKey, syncUndoAvailability, updateRealtimeStatus, workspace, ydoc])
+  }, [applySnapshotRecord, boardId, cancelScheduledPublish, publishCurrentSnapshot, readRoomRecordSafely, resolvedRoomKey, syncUndoAvailability, updateRealtimeStatus, workspace, ydoc])
 
   useEffect(() => {
     if (!resolvedRoomKey || !latestCanWriteRef.current) return

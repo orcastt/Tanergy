@@ -279,12 +279,17 @@ function readEntityStore<T>(
   orderValue: unknown,
   reader: (entityMap: Y.Map<unknown>) => null | T,
 ) {
-  if (!(storeValue instanceof Y.Map) || !(orderValue instanceof Y.Array)) return []
+  if (
+    !(storeValue instanceof Y.Map)
+    || !(orderValue instanceof Y.Array)
+    || storeValue.doc === null
+    || orderValue.doc === null
+  ) return []
   const entities: T[] = []
   for (const entityId of orderValue.toArray()) {
     if (typeof entityId !== 'string') continue
     const entityValue = storeValue.get(entityId)
-    if (!(entityValue instanceof Y.Map)) continue
+    if (!(entityValue instanceof Y.Map) || entityValue.doc === null) continue
     const entity = reader(entityValue)
     if (entity) entities.push(entity)
   }

@@ -17,16 +17,18 @@ export function ensureMap(target: Y.Map<unknown>, key: string) {
 }
 
 export function readIdArray(value: unknown, defaultIds: string[]) {
-  if (!(value instanceof Y.Array)) return [...defaultIds]
+  if (!(value instanceof Y.Array) || !isAttachedYType(value)) return [...defaultIds]
   const ids = value.toArray().filter((entry): entry is string => typeof entry === 'string')
   return ids.length > 0 ? ids : [...defaultIds]
 }
 
 export function readPlainValue(value: unknown): unknown {
   if (value instanceof Y.Map) {
+    if (!isAttachedYType(value)) return {}
     return Object.fromEntries(Array.from(value.entries()).map(([key, entry]) => [key, readPlainValue(entry)]))
   }
   if (value instanceof Y.Array) {
+    if (!isAttachedYType(value)) return []
     return value.toArray().map((entry) => readPlainValue(entry))
   }
   return value
@@ -127,4 +129,8 @@ function createYValue(value: unknown): unknown {
 
 function isSamePlainValue(left: unknown, right: unknown) {
   return JSON.stringify(left) === JSON.stringify(right)
+}
+
+function isAttachedYType(value: Y.Array<unknown> | Y.Map<unknown>) {
+  return value.doc !== null
 }

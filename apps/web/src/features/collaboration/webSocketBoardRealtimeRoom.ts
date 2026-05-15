@@ -9,6 +9,7 @@ import {
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import type { BoardCollaborationPresence } from '@/features/boards/boardCollaborationTypes'
 import { sanitizeBoardCollaborationPresence } from '@/features/boards/boardCollaborationPresenceSanitizer'
+import { readKonvaYjsRoomRecord, writeKonvaYjsSnapshot } from './konvaYjsSnapshot'
 import {
   createBoardRealtimeStateMachine,
   createConnectingBoardRealtimeState,
@@ -442,7 +443,10 @@ class SharedRealtimeRoom {
   }
 
   private sendFullState(ydoc: Y.Doc) {
-    const update = this.createUpdatePayload(Y.encodeStateAsUpdate(ydoc), 'Realtime document state')
+    const update = this.createUpdatePayload(
+      createCompactRealtimeStateUpdate(ydoc) ?? Y.encodeStateAsUpdate(ydoc),
+      'Realtime document state'
+    )
     if (!update) return false
     return this.sendMessage({
       documentVersion: this.documentVersion,
@@ -647,6 +651,22 @@ function resolveDocumentVersion(value: unknown, defaultVersion: number, minimum:
     return Math.max(value, minimum)
   }
   return Math.max(defaultVersion, minimum)
+}
+
+function createCompactRealtimeStateUpdate(ydoc: Y.Doc) {
+  try {
+    const record = readKonvaYjsRoomRecord(ydoc)
+    if (!record) return null
+    const compactedDoc = new Y.Doc({ gc: true })
+    try {
+      writeKonvaYjsSnapshot(compactedDoc, record)
+      return Y.encodeStateAsUpdate(compactedDoc)
+    } finally {
+      compactedDoc.destroy()
+    }
+  } catch {
+    return null
+  }
 }
 
 function shouldRetryRealtimeClose(event: CloseEvent) {
