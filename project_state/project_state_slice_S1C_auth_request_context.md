@@ -1,7 +1,7 @@
 # Project State Slice S1C: Auth And Request Context
 
-**Updated**: 2026-05-14
-**Status**: Clerk frontend routes plus FastAPI bearer verification first pass landed. First production-boundary hardening checkpoint now covers first-session personal wallet creation, strict Clerk authorized-party checks, bearer-mode spoof coverage, an email-capable admin bootstrap script, authenticated session memberships with server-returned workspace plan facts, durable last-request IP sync into `tangent_users.last_ip_address`, and real staging session/admin smoke without dev-bypass. The next gate is broader signed-in browser acceptance plus Google/email/logout hardening.
+**Updated**: 2026-05-15
+**Status**: Clerk frontend routes plus FastAPI bearer verification first pass landed. First production-boundary hardening checkpoint now covers first-session personal wallet creation, strict Clerk authorized-party checks, bearer-mode spoof coverage, an email-capable admin bootstrap script, authenticated session memberships with server-returned workspace plan facts, durable last-request IP sync into `tangent_users.last_ip_address`, and real staging session/admin smoke without dev-bypass. The next gate is the ordered second-round signed-in browser pass, then Google/email/logout hardening, with email currently scoped to one truthful staging smoke rather than a new native Tanergy-owned auth system.
 
 ## Objective
 
@@ -17,7 +17,7 @@ Replace dev headers/mock identity with real server-side sessions and workspace m
 - [x] Add FastAPI JWT verification dependency for provider-issued tokens.
 - [~] Map provider subject ids to local `tangent_users` and `tangent_user_identities`. `tangent_oauth_accounts` is still reserved for future direct provider-account linking flows. Latest authenticated session refresh now also updates `last_ip_address`.
 - [ ] Session token hashing and revocation.
-- [ ] Email OTP issue/verify flow.
+- [~] Email OTP issue/verify flow. Current release gate is one truthful staging email delivery/redirect smoke through the chosen provider path; native Tanergy-owned OTP endpoints remain later work.
 - [x] Default workspace creation first pass.
 - [x] Personal wallet creation on first verified local user session.
 - [x] Real-login admin smoke without local dev-bypass.
@@ -29,11 +29,12 @@ Replace dev headers/mock identity with real server-side sessions and workspace m
 - [~] Tests for spoofed workspace/user ids. Required-auth missing-token and bearer-mode spoofed-user-header coverage exists; full workspace membership matrix is still pending.
 - [ ] Tests for invalid, expired and wrong-audience provider JWTs.
 - [ ] Google OAuth staging smoke returns a provider session/JWT and maps to the same local TANGENT user on repeat login.
+- [ ] Email-based staging auth smoke reaches a test inbox, returns to `/workspaces`, and maps to the expected local TANGENT user/session.
 
 Current release-order note:
 
 - S1C is the first blocking verification lane together with S1B staging smoke.
-- Public staging auth is now reachable enough for real session/admin smoke, so the immediate next path is broader signed-in board/browser acceptance plus Google/email verification.
+- Public staging auth is now reachable enough for real session/admin smoke, so the immediate next path is the ordered second-round signed-in board/browser acceptance, then Google/email verification, then invalid-token/origin confirmation.
 
 ## Clerk-First Implementation Notes
 
@@ -105,6 +106,7 @@ Keep provider secrets server-side only. Google OAuth client secret must not be e
 
 - [ ] New user registers and lands in `/workspaces`.
 - [ ] New user signs in with Google and lands in `/workspaces`.
+- [ ] Email-based staging auth flow lands in `/workspaces` and preserves the expected local user mapping.
 - [ ] Logout revokes session.
 - [x] Session endpoint returns user and memberships.
 - [ ] User cannot access workspace without membership.

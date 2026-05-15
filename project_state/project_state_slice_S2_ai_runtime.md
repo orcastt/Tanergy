@@ -13,6 +13,7 @@
 
 - Mock Model Registry exists and is consumed by Image Gen / Image Gen 4 node controls.
 - Canvas-facing AI node UX now has a GeekAI fast path for local product validation: Chat streams text, Prompt Optimizer streams enriched image prompts, Analysis can choose OpenAI-style or Gemini-style visual analysis, and Image Gen / Image Gen 4 can return images into slots and board Assets through the current web app route.
+- Canvas image operations still need truthful closeout: `Remove BG` currently has a visible frontend entry point, but the end-to-end backend/API/staging path is not yet part of the accepted live product boundary for this pass. `Object Cutout` remains an explicit future operation after that.
 - 2026-05-13 memory/fallback audit: AI chat streaming now caps buffered SSE text and retained output text; the local chat completions route only inlines JPEG/PNG/WebP images up to 20MB and streams same-origin/local image reads with a byte cap; GeekAI image generation/edit/reference now rejects oversize inline input/output images before base64 expansion/decode; remote image imports stream with byte caps; provider `b64_json` handling estimates size before decode; and AI run text retained in memory is capped before persistence/runtime use.
 - 2026-05-13 AI/upload hardening continuation: `/api/ai/runs` now fails closed for unsupported local text runs instead of silently returning a fabricated run; `/api/assets/upload` uses shared content-length plus streamed file-read limits; chat/image-analysis/image-generation reference images now enforce both per-image and total inline byte budgets before base64 expansion; backend provider input assets also enforce a total-byte ceiling; and remote image import now releases/cancels stream readers cleanly on abort or oversize exit.
 - 2026-05-13 asset memory cleanup continuation: primary board thumbnail, selection-capture, runtime asset migration and mock-generated image paths now upload through multipart file payloads instead of using large `data:` JSON bodies as the main path; `/api/v1/assets/from-data-url` and the local Next `/api/assets/from-data-url` route are now treated as small-fallback-only paths with an 8MB request ceiling, which reduces base64 request amplification on save/capture flows.
@@ -52,7 +53,8 @@
 3. Finish provider-capability coverage so live adapters support image generation, image edit/reference, analysis and chat/message-native text runs with durable Asset or short text outputs.
 4. Deepen real-provider settlement policy so success, failure, cancel and refund paths reconcile cleanly across `credit_ledger`, `api_cost_ledger` and provider-returned usage/cost facts.
 5. Preserve provider-response summaries safely for runtime UX without storing long raw payloads.
-6. Hand-test the Konva Run/Stop -> create/poll/cancel path against one credentialed live provider route and tighten user-facing quote/error/cancel messaging.
+6. Reconnect and validate image operations as truthful server-owned features, starting with `Remove BG` end to end: auth, request contract, source-asset read, processed-asset write, user-visible error state and staging acceptance.
+7. Hand-test the Konva Run/Stop -> create/poll/cancel path against one credentialed live provider route and tighten user-facing quote/error/cancel messaging.
 
 ## Validation Target
 

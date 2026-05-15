@@ -322,6 +322,66 @@
   text-align: center;
 }
 
+.workspace-limit-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 72;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(17, 24, 39, 0.28);
+  backdrop-filter: blur(10px);
+}
+
+.workspace-limit-dialog {
+  display: grid;
+  gap: 22px;
+  width: min(460px, calc(100vw - 32px));
+  padding: 28px;
+  border: 1px solid rgba(24, 29, 38, 0.08);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 28px 60px rgba(24, 29, 38, 0.16);
+}
+
+.workspace-limit-dialog-copy {
+  display: grid;
+  gap: 10px;
+}
+
+.workspace-limit-dialog-eyebrow,
+.workspace-limit-dialog-copy small {
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.workspace-limit-dialog-eyebrow {
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.workspace-limit-dialog-copy h2 {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 30px;
+  font-weight: 400;
+  line-height: 1.04;
+}
+
+.workspace-limit-dialog-copy p {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.workspace-limit-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
 .workspace-empty-hero {
   display: grid;
   gap: 14px;
@@ -473,5 +533,21 @@
   .workspace-page .workspace-new-card,
   .workspace-page .workspace-board-card {
     min-height: 0;
+  }
+
+  .workspace-limit-dialog {
+    padding: 22px;
+  }
+
+  .workspace-limit-dialog-copy h2 {
+    font-size: 24px;
+  }
+
+  .workspace-limit-dialog-actions {
+    flex-direction: column-reverse;
+  }
+
+  .workspace-limit-dialog-actions .product-button {
+    width: 100%;
   }
 }

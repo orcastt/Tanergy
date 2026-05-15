@@ -16,6 +16,7 @@ This slice is intentionally narrower in the current pass:
 - The active image-generation product surface is currently GPT Image 2, Nano Banana 2, Doubao Seedream 5.0 Lite and Jimeng 4.0. `gemini-3.1-flash-image-preview` is no longer part of the active image-generation surface.
 - Long-running image generation may take up to 240 seconds before the runtime declares timeout.
 - Broader provider coverage across every node type remains deferred until the first live server AiRun path is stable.
+- `Remove BG` and later image-operation utilities are not part of the current accepted live path until the server-owned backend/API flow is reconnected and verified.
 - AI Chat automatic graph planning and broad refund/reconciliation depth are not current-alpha promises.
 
 ## Product Requirements
@@ -26,6 +27,7 @@ This slice is intentionally narrower in the current pass:
 | Image Gen | Prompt Node -> Image Gen creates one image Asset. | Local GeekAI fast path plus refreshed four-model UI exist; production gate is server AiRun route/settlement path |
 | Image Gen 4 | Prompt Node -> Image Gen 4 creates four candidate image Assets. | Local repeated-call UX plus refreshed four-model UI exist; production gate is server AiRun output-slot settlement |
 | Image edit/reference | Image Node + Prompt Node -> Image Gen creates edited/fused image Asset. | Local GeekAI image/reference path exists across GPT Image 2, Nano Banana 2, Doubao Seedream and Jimeng-style controls; production gate is server Asset refs and provider adapter mapping |
+| Image operations | Selected image can trigger product-owned image utilities such as `Remove BG`, with the result persisted as a new Asset rather than a temporary browser-only bitmap. | Current truth: the `Remove BG` surface exists in the frontend, but end-to-end backend/API/staging acceptance is still pending; `Object Cutout` remains planned only |
 | Analysis | Image Node + Prompt Node -> Analysis creates text/prompt output. | Local model-select analysis path exists; backend `AiRun` route integration, durable terminal `text_output`, default analysis-capable model seed and reusable live smoke harness now exist; remaining gate is credentialed provider smoke plus broader coverage |
 | Chat | Chat Node turns message history plus optional image refs into a short assistant answer. | Local streaming UX exists; backend create/poll/cancel plus durable terminal `text_output` now exist when the canvas is pointed at FastAPI, while local fallback remains for dev |
 | Prompt Optimizer | Prompt Optimizer Node turns rough image prompts into richer generation prompts through a text model. | Local streaming UX exists; backend create/poll/cancel path now exists when the canvas is pointed at the FastAPI API, while local streaming fallback remains for dev |

@@ -12,7 +12,7 @@ type WorkspaceBoardPanelHostProps = {
   isPending: boolean
   onBoardUpdated: (board: BoardPersistenceSummary) => void
   onClose: () => void
-  onCopy: (board: BoardPersistenceSummary) => void
+  onCopy: (board: BoardPersistenceSummary, workspace?: TangentWorkspace) => void
   onDelete: (board: BoardPersistenceSummary) => void
   onOpen: (boardId: string) => void
   onShare: (board: BoardPersistenceSummary) => void
@@ -81,7 +81,7 @@ export function WorkspaceBoardPanelHost({
       key={board.id}
       workspace={workspace}
       onClose={onClose}
-      onCopy={() => onCopy(board)}
+      onCopy={() => onCopy(board, workspace)}
       onDelete={() => onDelete(board)}
       onOpen={() => onOpen(board.id)}
       onSave={(input) => void saveMetadata(input)}

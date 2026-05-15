@@ -70,6 +70,49 @@ git diff --check
    reconnect/resync, provider bridge, conflict semantics, pressure smoke
 ```
 
+## 当前验收 Checklist
+
+### 1. signed-in board/browser 第二轮
+
+最新手测状态：
+
+- `solo reopen / history / thumbnail` 这几个第二轮边角目前都没有问题。
+- 当前还剩下的明确 browser UX 问题，是 `Manage board -> Copy board` 在 Free 限额下仍要统一成页面居中的 limit modal。
+
+- [ ] 用无痕窗口打开 `https://staging.tanergy.cc`。
+- [ ] 只用 Google 登录，确认落到 `/workspaces`。
+- [ ] 打开一个已有 private Board，随手改一点内容，返回 `/workspaces`，再重新打开同一个 Board。
+- [ ] 观察 solo reopen 时是否还会出现 `remote update / use remote / keep mine`；如果仍然在单人编辑流里出现，记为阻塞问题。
+- [ ] 打开 Board History，执行一次 refresh 或生成一次新保存记录，刷新页面后再次打开，确认最新保存记录仍在。
+- [ ] 确认 History 预览和 workspace / gallery 缩略图在保存、刷新、重开后都保持真实。
+- [ ] 在 Free plan 受限 workspace 里测试 `New board` 和 `Copy board`，确认套餐限制提示走页面居中的 modal，而不是页面顶部报错。
+- [ ] 确认 private Board 的 owner 仍然可以 delete / copy；不该有权限的用户仍然被拦住。
+- [ ] 粘贴或上传一张图片，等待占位态和上传完成，然后刷新并重开 Board，确认图片仍然存在。
+
+### 2. Google / email / CORS / origin
+
+- [x] 退出登录，再用同一个 Google 账号重新登录，确认仍然映射到同一个本地 TANGENT user 与 workspace membership。
+- [ ] 跑一遍 email 登录或验证流程，确认邮件实际送达测试邮箱。当前仍待 Clerk email auth 启用。
+- [ ] 完成 email link / code 后回到 staging，并成功落到 `/workspaces`。
+- [ ] 完成 email 流程后再请求 `/api/auth/session`，确认 session shape 仍然正常。
+- [ ] 用无效、过期或 origin 不匹配的 token 打一次 FastAPI，确认返回 `401`。
+- [ ] 最后再核对一次 `NEXT_PUBLIC_API_BASE_URL`、FastAPI `TANGENT_ALLOWED_ORIGINS`、Clerk allowed origins 和 `CLERK_AUTHORIZED_PARTIES` 是否完全一致。
+
+### 3. 一条真实 AI image live smoke
+
+- [ ] 从 `gpt-image-2`、`nano-banana-2`、`doubao-seedream-5.0-lite`、`jimeng_t2i_v40` 中任选一个当前活跃模型。
+- [ ] 在 staging 里跑通一条真实 `Prompt -> Image Gen -> Image`。
+- [ ] 确认 quote / preflight、provider 执行、final status 和 Asset 持久化都成功。
+- [ ] 刷新或重开 Board，确认结果来自已保存的 Asset refs，而不是临时本地状态。
+- [ ] 如果 provider 失败，确认前端看到的是可理解错误，后端留下的是 failed run，而不是假成功。
+
+### 4. 回到 S1D / S3 收口
+
+- [ ] 重新核对 Free / Private / Team / Group 的限制、权限和可见性文案。
+- [ ] 重新核对 `/billing`、`/usage`、`/team` 的 payer / usage / mock payment 语言是否一致。
+- [ ] 把影响收费或权限判断的 Board edge cases 再跑一遍：copy、delete、invite/member visibility、owner-only actions。
+- [ ] 保持 payment 文案诚实；在真实 webhook / settlement 没接好前，不要把它写成正式自动扣费。
+
 ## 上线优化 Backlog
 
 | 线路 | 现在可以开始 | 必须等待 | 验收标准 |
@@ -82,6 +125,20 @@ git diff --check
 | S2 AI calls | Provider adapter interface、AiRun schema mapping、mock-to-real test plan | Server-side API keys 和 Auth/cost limits | 前端永远拿不到 key；输出是 Asset；Board 只存 refs/summaries |
 | S3 Admin | Admin role/audit contract、只读 summary/users 首轮资源、`/admin` gating | 真实 Auth 和 admin_roles seed | 没有 server-side admin role 不能访问 `/admin`；已有角色时只看到首轮只读能力 |
 | S4 Collaboration | Yjs document mapping proof plan、presence shape、no-binary CRDT rules | Auth、Board members、Asset 和 AiRun authority | 两个用户能编辑测试 Board，CRDT 不存图片二进制/provider payload |
+
+## 后续开发记录
+
+这些工作现在先记入文档，不打断上面的验收顺序：
+
+- Free / Private / Team / Group 的 entitlement matrix 收口，包括 create/copy/delete/member visibility/invite 的统一规则。
+- Free 用户当前仍可创建 Team；这属于后续 entitlement / billing / payment 规则收口，不作为当前 board/browser 基础功能的阻塞项。
+- Team wallet 与 personal Collaborate wallet 的前端语言、扣费归属和升级路径统一。
+- Payment system 正式化：hosted checkout、webhook、invoice、refund、renewal 与对账深度。
+- Admin/operator 深化：用户状态、订阅冻结/恢复、财务调账、套餐切换与审计流统一。
+- Board/browser 继续 polish：thumbnail 真实渲染、history 视觉统一、conflict chooser 文案和时机、workspace plan-limit 提示一致性，尤其是 `Manage board -> Copy board` 也要走页面居中的 limit modal。
+- Image operations 继续补完：`Remove BG` 当前只有前端入口/UI 价值，真实后端/API/staging 接线和验收仍待完成；`Object Cutout` 继续保持后续规划项。
+- AI 路线在第一条 live smoke 通过后，再扩更广的 provider/model coverage 与后台 route health 视图。
+- Collaboration 保持在最后：只有当前面的 Auth、Board、Asset、AiRun 边界稳定后，才继续 provider-grade realtime。
 
 ## Page Polish 手测清单
 

@@ -2,7 +2,6 @@
 
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { loadBillingPlans } from '@/features/billing/billingClient'
 import { requestCurrentSessionRefresh } from '@/features/auth/sessionClient'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import { useTangentSession } from '@/features/auth/useTangentSession'
@@ -21,16 +20,21 @@ import { mapSettledWithConcurrency } from '@/features/shared/asyncConcurrency'
 import { getBoardCapabilities } from './boardCapabilities'
 import { getShareUrl } from './boardMemberUtils'
 import { WorkspaceBoardHeader } from './WorkspaceBoardHeader'
+import { WorkspaceBoardLimitDialog } from './WorkspaceBoardLimitDialog'
 import { WorkspaceBoardPanelHost } from './WorkspaceBoardPanelHost'
 import { WorkspaceBoardSection } from './WorkspaceBoardSection'
 import { WorkspaceLoadingState } from './WorkspaceBoardStates'
 import type { WorkspaceBoardViewMode } from './WorkspaceBoardItem'
 import { WorkspaceBoardToolbar, type WorkspaceBoardSortMode } from './WorkspaceBoardToolbar'
 import {
+  describeWorkspaceBoardLimitError,
+  resolveWorkspaceBoardLimitDialog,
+  type WorkspaceBoardLimitDialogState,
+} from './workspaceBoardPlanLimits'
+import {
   createBoardId,
   filterAndSortBoards,
 } from './workspaceBoardUtils'
-import { formatWorkspacePlanName } from '@/features/workspaces/workspacePresentation'
 
 type ViewMode = WorkspaceBoardViewMode
 type SortMode = WorkspaceBoardSortMode
@@ -47,6 +51,7 @@ export function WorkspaceBoardGallery() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [loadedWorkspaceIdsBySignature, setLoadedWorkspaceIdsBySignature] = useState<Record<string, string[]>>({})
   const [notice, setNotice] = useState<string | null>(null)
+  const [limitDialog, setLimitDialog] = useState<WorkspaceBoardLimitDialogState | null>(null)
   const [panelBoardId, setPanelBoardId] = useState<string | null>(null)
   const [pendingBoardId, setPendingBoardId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -168,12 +173,24 @@ export function WorkspaceBoardGallery() {
     return board ? getWorkspaceForBoard(board) : null
   }, [boards, getWorkspaceForBoard])
 
+  const openBoardLimitDialog = useCallback(async (
+    workspace: TangentWorkspace,
+    action: 'copy' | 'create',
+    fallbackMessage?: string,
+  ) => {
+    const nextDialog = await resolveWorkspaceBoardLimitDialog(workspace, boards, loadedWorkspaceIdSet, action)
+      ?? (fallbackMessage ? describeWorkspaceBoardLimitError(workspace, fallbackMessage, action) : null)
+    if (!nextDialog) return false
+    setError(null)
+    setLimitDialog(nextDialog)
+    return true
+  }, [boards, loadedWorkspaceIdSet])
+
   const createBoard = async (workspace?: TangentWorkspace) => {
     const targetWorkspace = workspace ?? session.activeWorkspace
     if (targetWorkspace) {
-      const boardLimitError = await resolveBoardCreateLimitError(targetWorkspace, boards, loadedWorkspaceIdSet)
-      if (boardLimitError) {
-        setError(boardLimitError)
+      const reachedLimit = await openBoardLimitDialog(targetWorkspace, 'create')
+      if (reachedLimit) {
         return
       }
     }
@@ -248,21 +265,40 @@ export function WorkspaceBoardGallery() {
     }
   }
 
-  const copyBoard = async (board: BoardPersistenceSummary) => {
+  const copyBoard = async (
+    board: BoardPersistenceSummary,
+    options: {
+      source?: 'panel' | 'section'
+      workspace?: TangentWorkspace | null
+    } = {},
+  ) => {
     if (!getCapabilities(board).canCopyBoard) {
       setError('Only the board owner can copy this board.')
+      return
+    }
+    const workspace = options.workspace ?? getWorkspaceForBoard(board)
+    const closePanelIfNeeded = () => {
+      if (options.source === 'panel') setPanelBoardId(null)
+    }
+    if (workspace && await openBoardLimitDialog(workspace, 'copy')) {
+      closePanelIfNeeded()
       return
     }
     setPendingBoardId(board.id)
     setError(null)
     try {
-      const response = await copyLocalBoardDocument(board.id, getWorkspaceForBoard(board) ?? undefined)
+      const response = await copyLocalBoardDocument(board.id, workspace ?? undefined)
       if (!response.board) throw new Error('Board copy failed.')
       setBoards((current) => [response.board!, ...current])
       requestCurrentSessionRefresh()
       setNotice(`Copied "${board.title}".`)
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : 'Board copy failed.')
+      const message = nextError instanceof Error ? nextError.message : 'Board copy failed.'
+      if (workspace && await openBoardLimitDialog(workspace, 'copy', message)) {
+        closePanelIfNeeded()
+        return
+      }
+      setError(message)
     } finally {
       setPendingBoardId(null)
     }
@@ -341,6 +377,16 @@ export function WorkspaceBoardGallery() {
       {error ? <div className="workspace-error" role="alert">{error}</div> : null}
       {notice ? <div className="workspace-toast" role="status">{notice}</div> : null}
       {isRefreshing && boards.length > 0 ? <div className="workspace-empty-inline" role="status">Refreshing boards…</div> : null}
+      {limitDialog ? (
+        <WorkspaceBoardLimitDialog
+          notice={limitDialog}
+          onClose={() => setLimitDialog(null)}
+          onOpenBilling={() => {
+            setLimitDialog(null)
+            router.push('/billing')
+          }}
+        />
+      ) : null}
 
       {sessionStatus === 'error' ? (
         <div className="workspace-error" role="alert">{sessionError ?? 'Workspace session failed to load.'}</div>
@@ -395,7 +441,7 @@ export function WorkspaceBoardGallery() {
         isPending={panelBoard ? pendingBoardId === panelBoard.id : false}
         onBoardUpdated={(board) => setBoards((current) => current.map((item) => item.id === board.id ? board : item))}
         onClose={() => setPanelBoardId(null)}
-        onCopy={(board) => void copyBoard(board)}
+        onCopy={(board, workspace) => void copyBoard(board, { source: 'panel', workspace })}
         onDelete={(board) => void deleteBoard(board)}
         onOpen={openBoard}
         onShare={(board) => void shareBoard(board)}
@@ -408,40 +454,8 @@ export function WorkspaceBoardGallery() {
   )
 }
 
-async function resolveBoardCreateLimitError(
-  workspace: TangentWorkspace,
-  boards: BoardPersistenceSummary[],
-  loadedWorkspaceIds: ReadonlySet<string>,
-) {
-  if (!workspace.planKey) return null
-  try {
-    const response = await loadBillingPlans()
-    const plan = response.plans.find((item) => item.planKey === workspace.planKey)
-    const boardLimit = plan?.boardLimit
-    const boardCount = resolveWorkspaceBoardCount(workspace, boards, loadedWorkspaceIds)
-    if (typeof boardLimit !== 'number' || boardCount < boardLimit) return null
-    const planName = plan?.name?.trim() || formatWorkspacePlanName(workspace.planKey)
-    return `${planName} allows up to ${boardLimit} ${boardLimit === 1 ? 'board' : 'boards'}.`
-  } catch {
-    return null
-  }
-}
-
 function collectCachedBoards(workspaces: TangentWorkspace[]) {
   return workspaces.flatMap((workspace) => readCachedBoardList(workspace.id) ?? [])
-}
-
-function resolveWorkspaceBoardCount(
-  workspace: TangentWorkspace,
-  boards: BoardPersistenceSummary[],
-  loadedWorkspaceIds: ReadonlySet<string>,
-) {
-  const cachedBoardCount = readCachedBoardList(workspace.id)?.length ?? 0
-  const liveBoardCount = boards.filter((board) => board.workspaceId === workspace.id).length
-  if (loadedWorkspaceIds.has(workspace.id)) {
-    return Math.max(cachedBoardCount, liveBoardCount)
-  }
-  return Math.max(workspace.boardCount, cachedBoardCount, liveBoardCount)
 }
 
 function mergeWorkspaceBoardResults(

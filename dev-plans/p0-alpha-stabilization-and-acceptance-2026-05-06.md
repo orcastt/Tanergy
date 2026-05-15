@@ -200,10 +200,60 @@ Current acceptance split:
 4. Return to S1D/S3 closeout: permission edges, payer visibility, billing language, staged payment truth and usage surfaces.
 5. Keep collaboration and other frozen lanes out of the release promise.
 
+## Ordered Acceptance Checklist
+
+### 1. Signed-in board/browser second round
+
+- [ ] Open staging in an incognito window and sign in with Google.
+- [ ] Land on `/workspaces` without falling back to any dev-bypass path.
+- [ ] Open an existing private Board, make a small edit, return to `/workspaces`, then reopen the same Board.
+- [ ] Confirm the solo reopen flow does not surface a false `remote update / use remote / keep mine` chooser; if it still appears, record it as a blocking Board/browser bug.
+- [ ] Create or refresh Board History, reopen the History panel and confirm the latest save row and preview remain visible after reload.
+- [ ] Confirm thumbnail persistence is truthful after save, refresh and reopen.
+- [ ] Confirm Free-plan Board limit actions such as create/copy use the centered plan-limit dialog rather than a top-page error.
+- [ ] Confirm private Board owner actions still work, especially delete/copy, while unauthorized actions remain blocked.
+- [ ] Paste or upload an image, wait for the placeholder/upload state to finish, then refresh and reopen to confirm persistence.
+
+### 2. Google/email plus CORS/origin
+
+- [ ] Sign out, then sign back in with the same Google account and confirm the same local TANGENT user/workspace memberships are reused.
+- [ ] Run one email-based staging auth flow and confirm the message reaches the test inbox.
+- [ ] Complete the email link/code flow and confirm it returns to staging and lands in `/workspaces`.
+- [ ] Confirm `/api/auth/session` still returns the expected signed-in session shape after the email flow.
+- [ ] Confirm FastAPI rejects an invalid, expired or wrong-origin token with `401`.
+- [ ] Reconfirm `NEXT_PUBLIC_API_BASE_URL`, API CORS, Clerk allowed origins and Clerk authorized parties all match the exact staging domains.
+
+### 3. One real AI provider image smoke
+
+- [ ] Pick one active image model from `gpt-image-2`, `nano-banana-2`, `doubao-seedream-5.0-lite` or `jimeng_t2i_v40`.
+- [ ] Run one real staged `Prompt -> Image Gen -> Image` flow through the server-owned AiRun path.
+- [ ] Confirm quote/preflight, provider execution, final status and Asset creation all complete on staging.
+- [ ] Refresh or reopen the Board and confirm the generated result reloads from persisted Asset refs instead of temporary local state.
+- [ ] Confirm failed-provider behavior stays user-readable and writes a durable failed run state rather than silently succeeding.
+
+### 4. Return to S1D/S3 closeout
+
+- [ ] Recheck Free/Private/Team/Group visibility and entitlement language against the current product rules.
+- [ ] Recheck payer visibility and usage wording on `/billing`, `/usage` and `/team`.
+- [ ] Recheck Board permission edge cases that affect paid limits or owner-only actions.
+- [ ] Keep payment language honest as mocked/manual until real provider-backed settlement is ready.
+
 Non-urgent follow-on work:
 
 - useful backlog items should be written into the relevant slice / plan docs first, then revisited after the ordered gates above
 - do not let post-alpha collaboration, deep finance or secondary polish interrupt the release spine sequence
+
+## Follow-On Development After Current Gates
+
+These items are intentionally documented now, but should wait until the ordered acceptance checklist above is green:
+
+- Free/Private/Team/Group entitlement hardening across create/copy/delete/invite/member visibility.
+- Team wallet vs personal Collaborate wallet product language and UI consistency.
+- Payment-system completion: hosted checkout truth, webhook settlement, invoice/refund depth and production billing automation.
+- Admin/operator refinement for user status, subscription actions, finance reconciliation and plan-change observability.
+- Board/browser polish that is useful but not release-blocking: thumbnail quality, history presentation, conflict messaging, plan-limit UX and workspace empty/loading states.
+- Broader AI provider coverage and deeper model-route operations after the first live staged image smoke is stable.
+- S4 collaboration/provider work only after Auth, Board, Asset and AiRun authority boundaries are stable.
 
 ## 中文完整翻译
 

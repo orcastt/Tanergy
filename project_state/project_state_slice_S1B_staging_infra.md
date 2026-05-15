@@ -46,9 +46,9 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - [x] Konva-only `/boards/[boardId]` route opens new Boards on staging without any legacy canvas dependency.
 - [x] Production-like env blocks legacy v1/unknown Board documents in the active app path.
 - [x] First signed-in board/browser pass covers Board create/open/save/delete plus paste/upload -> reload behavior.
-- [ ] Second-round board/browser acceptance still needs explicit reopen/conflict prompt, thumbnail persistence and any remaining private-board edge cases.
-- [ ] OTP email delivered to test inbox.
-- [ ] Google OAuth login on staging returns provider session/JWT.
+- [ ] Second-round board/browser acceptance now looks green on solo reopen, History persistence, thumbnail persistence and current private-board owner flows; the remaining explicit browser issue is the `Manage board -> Copy board` Free-plan limit modal path.
+- [ ] Email-based staging auth smoke delivers to a test inbox, returns to `/workspaces`, and preserves the expected session shape. This is still pending because Clerk email auth is not yet enabled for the current lane.
+- [x] Google OAuth login on staging returns provider session/JWT.
 - [ ] FastAPI rejects invalid/expired provider JWT.
 
 ## Current Staging Result
@@ -75,9 +75,10 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - `https://staging.tanergy.cc/boards/[boardId]` now returns `200` in the signed-out Clerk-protected state instead of `500`, and the active deployment no longer exposes the old tldraw license/runtime surface.
 - Real signed-in staging smoke is now green for `/api/auth/session`, `/api/admin-proxy/me`, `/api/admin-proxy/operator/users?limit=3`, `/api/admin-proxy/finance/summary` and `/api/admin-proxy/ai/route-metrics?limit=5`.
 - The first signed-in browser pass is now green on staging for Google login, `/workspaces`, board open, refresh/session persistence, private-board create/delete, paste/upload and reload recovery.
-- The remaining explicit browser edge is the solo-edit reopen conflict chooser (`remote update / use remote / keep mine`) plus thumbnail persistence and any last private-board owner semantics.
+- The second-round signed-in browser pass is now mostly green too: solo reopen is acceptable, History persistence is acceptable, thumbnail persistence is acceptable, private-board owner delete/copy is acceptable, and Google re-login is acceptable.
+- The remaining explicit browser edge is now the `Manage board -> Copy board` Free-plan limit modal path.
 - Runtime Postgres connections now prefer `DATABASE_POOL_URL` when present while keeping Alembic on `DATABASE_URL`; backend cursors log SQL taking longer than `TANGENT_DATABASE_SLOW_QUERY_MS` without logging parameters.
-- Clerk/Google/email runtime secrets have been restored enough for real session/admin smoke; remaining work is final Google/email verification and any last secret cleanup before wider staging use.
+- Clerk/Google/email runtime secrets have been restored enough for real session/admin smoke; Google is now manually green, while remaining work is one email-based staging auth smoke through Clerk once that method is enabled, plus any last secret cleanup before wider staging use.
 - The tracked staging deployment worksheet no longer stores raw live secrets; runtime truth should now be maintained only in Vercel env, the staging server `deploy/staging/api.env`, provider dashboards and private operator storage.
 - Cloudflare edge hardening is now partly in place: proxied DNS, Full (strict) TLS and source-host firewall narrowing are done, while deeper WAF/rate-limit coverage still needs either remaining free-plan room or a paid/security-specific follow-up.
 - `deploy/production/README.md` and `deploy/production/api.env.example` now define the production boundary: separate web/API domains, separate database/storage/auth/payment secrets and a stage-to-prod promotion flow from one reviewed commit.

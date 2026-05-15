@@ -446,6 +446,11 @@ Konva Phase 4 current boundary:
 
 Image operations are server-side first. The browser sends an existing image asset reference plus operation parameters; FastAPI reads the source asset through the Asset storage adapter, runs the algorithm, uploads the transparent PNG result to R2/local storage and returns a new asset reference. Canvas creates a new image shape near the source image. Board documents must never store raw image bytes, masks, `data:`, `blob:` or Base64 payloads.
 
+Current truthful release note:
+
+- `Remove BG` is exposed in the frontend selection UI, but the end-to-end backend/API/staging flow still needs to be reconnected and re-accepted before it is treated as a live supported feature in this pass.
+- `Object Cutout` remains planned only.
+
 Planned algorithms:
 
 - `rembg`: one-click background removal. Current upstream repo is MIT-licensed; implemented as optional `services/api[image-ops]` dependency for `Remove BG`.
