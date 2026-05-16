@@ -1,6 +1,6 @@
 # Dev Plans Index
 
-**Updated**: 2026-05-15
+**Updated**: 2026-05-16
 
 Detailed product, architecture and state truth now lives in:
 
@@ -20,6 +20,7 @@ Detailed product, architecture and state truth now lives in:
 | `s2-ai-provider-route-billing-control-plane-2026-05-07.md` | Active S2 tactical plan | Moves provider route switching, credit charging, provider-cost settlement and admin observability behind one server-owned AiRun control plane. |
 | `s3-admin-operator-console-redesign-2026-05-09.md` | Active S3 tactical plan | Rebuilds the admin developer console around a fast user inventory, one-call user detail bundle, Team/Group plan tabs, modal operations and missing admin write/read contracts. |
 | `s3-team-group-wallets-membership-billing-plan-2026-05-08.md` | Active S3 tactical plan | Supersedes the old Team actor-personal charging strategy with Team wallet, personal Collaborate wallet, invites, seats, membership, billing usage and payer-resolver phases. |
+| `s4-collaboration-invite-presence-plan-2026-05-16.md` | Planned S4 tactical plan | Reuses the existing invite/member/role contracts to sequence invite-link acceptance, live cursors/presence, sensitive-edit occupancy and optimistic sync. |
 | `s1b-staging-deployment-runbook-2026-05-02.md` | Active S1B runbook | Chinese beginner guide for domain, DNS, Vercel, Hetzner, Neon, R2, Clerk, Google OAuth and email setup. |
 | `s1x-canvas-engine-migration-reference-2026-05-03.md` | Active S1X migration reference | Historical migration baseline plus current Konva-only route/public share/admin-adjacent checkpoints; remaining work is runtime, export, performance and collaboration polish. |
 | `s1-launch-readiness-and-acceptance-report-2026-05-05.md` | Active handoff report | Unified S1X/S1B/S1C/S1D/S2/S3/S4 launch-readiness order and acceptance checklist, now including public share, owner-only copy/delete, known-foreign Asset guard and admin bootstrap first pass. |

@@ -1,7 +1,7 @@
 # ARCH Slice S4: Collaboration
 
-**Updated**: 2026-05-14
-**Status**: Deferred to P0.5 and frozen for the current P0 alpha stabilization pass; local/provider-shaped bridge and reconnect/resync smoke now exist, but production multiplayer is still out of scope.
+**Updated**: 2026-05-16
+**Status**: Planned next slice after the current S1/S2/S3 acceptance gates. Production multiplayer remains outside the current release promise, but the reusable invite/role contracts and the first implementation order are now explicitly documented.
 
 ## Scope
 
@@ -9,10 +9,16 @@ Realtime multi-user Board editing after S1/S2 boundaries are stable.
 
 ## Stabilization Rule
 
-Keep this slice fully deferred during the current P0 alpha stabilization pass. Readiness notes are allowed; release-scope implementation is not.
+Keep this slice outside the current release promise until the signed-in browser, Google/email and live AI gates are closed. Readiness notes, schema alignment and a bounded implementation plan are allowed because collaboration reuses S1D/S3 member-role and invite contracts.
 
 ## Current Readiness Notes
 
+- Existing reusable member/invite contracts already exist in the product path:
+  - workspace invite roles: `admin/editor/viewer`
+  - workspace invite managers: `owner/admin`
+  - stored active workspace roles currently accept `owner/admin/editor/viewer/member/guest`
+  - stored board-member roles currently accept `owner/admin/editor/viewer/temporary_viewer`
+- The next collaboration implementation should reuse those contracts instead of inventing a second invite or role table. Product-facing language should standardize on `owner/admin/editor/viewer`, while `member/guest` stay compatibility-only until a later cleanup migration removes them.
 - Collaboration transport is now two-tier. The board-realtime hooks prefer a FastAPI websocket room when a remote persistence API plus `boardId` are available, and otherwise fall back to the existing board-scoped `BroadcastChannel` rooms for local/dev use.
 - Both the document and awareness transport adapters share the same room-state shape: `connecting | synced | disconnected | error | unsupported`, plus `initialSyncComplete`, `lastActivityAt`, `lastSyncedAt` and surfaced error text.
 - The current websocket room is intentionally minimal and provider-shaped rather than full Yjs-server-native. It gates access through existing board collaboration permissions, persists a board-scoped Yjs update chain in local-dev/Postgres realtime storage, replays that chain to newcomers as `sync-state`, uses an explicit `seedRoom` handshake so clients seed only genuinely empty rooms, requests a client `sync-state-publish` compaction when the incremental chain grows past a threshold, acknowledges accepted full-state publishes back to connected clients as `sync-state-accepted`, and fans out awareness `batch/state/remove` events.
@@ -54,10 +60,36 @@ Local UI only
 - AI Run and credit state are not decided by clients.
 - Board History remains guarded and restorable.
 - Collaboration waits until real Auth, Board members and storage boundaries exist.
+- Invite lifecycle, workspace membership and board permission continue to be resolved by the server; Yjs awareness cannot mint access by itself.
+- Occupancy should be awareness-driven first. Do not introduce a heavy persistent lock table for ordinary drawing/move/selection operations.
+- The phrase "one user is doing this item, others cannot do it" should apply to focused text-like and node-parameter edit modes, not to all canvas movement. Ordinary shape moves and free drawing should stay optimistic and mergeable.
 
 ## First Proof Sequence
 
-1. Map Konva v2 `CanvasDocument` + `pages[]` into a Yjs document without binary payloads.
-2. Add awareness for cursor, selection, active page and current tool.
-3. Enforce editor/viewer writes through server-authoritative membership before production use.
-4. Keep Board snapshots as guarded server documents, not raw CRDT dumps.
+1. Reuse the existing Team/Group invite-link and workspace-member contracts so collaboration starts from real membership, not anonymous room presence.
+2. Map Konva v2 `CanvasDocument` + `pages[]` into a Yjs document without binary payloads.
+3. Add awareness for cursor, selection, active page, current tool and focused editing ids.
+4. Enforce editor/viewer writes through server-authoritative membership before production use.
+5. Add occupancy for sensitive text/node-param edit modes; second entrants should be blocked or downgraded to view while the first editor is active.
+6. Keep Board snapshots as guarded server documents, not raw CRDT dumps.
+
+## Canonical Permission Matrix
+
+Workspace roles:
+
+```text
+owner  -> billing, seats, invites, member-role changes, workspace delete, full board access
+admin  -> invites, member-role changes except owner transfer, normal board management, no ownership transfer
+editor -> board edit/run access, no workspace member management
+viewer -> read-only workspace/board access
+```
+
+Board roles:
+
+```text
+owner             -> copy/delete plus all board actions
+admin             -> invite/share/rename/member management, no forced owner-only copy/delete
+editor            -> read/write board content
+viewer            -> read-only board access
+temporary_viewer  -> public/share-link style read-only access
+```

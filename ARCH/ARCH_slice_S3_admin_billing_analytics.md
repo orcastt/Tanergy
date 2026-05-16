@@ -74,6 +74,7 @@ Implemented first pass:
 - `/admin/users/[userId]` Team Plan and Group Plan tabs now consume those plan-operation contracts directly for renew/upgrade/delete/freeze/unfreeze instead of routing owned-plan actions through the older set-plan plus generic subscription-write split.
 - Native operator writes now cover user block/unblock/delete, subscription freeze/unfreeze and joined Team/Group member role/remove actions so those actions do not have to flow through the manual-finance bridge.
 - User delete is no longer just a status flip: operator delete now runs the shared hard-delete path, removes local user-owned solo data, preserves shared Board content by reassigning authored Board/Asset/Snapshot/AiRun rows to the workspace owner, deletes direct log rows, and blocks deletion when the target still owns a non-solo Team/Group workspace or is the last active admin owner.
+- The current hard-delete guard is intentionally conservative but not yet complete for paid collaboration cleanup. The next cut should keep the same hard-delete service and add structured blockers for joined paid Team/Group memberships, active Team seat assignments, active owned subscriptions and still-pending owned invite state before self-delete can proceed.
 - Operator-owned Team and Group rows now render as dense inventory tables: Team rows expose Team wallet, seats, members, boards and Team plan actions in one pass, while owned Team/Group member rows can now open native role-change or remove-member modals inline from the table itself.
 - Owned Team/Group rows now also expose native operator `Invite` and `Add member` actions against arbitrary workspaces, and board rows can now trigger audited admin `Copy` and `Delete` writes instead of stopping at read-only labels.
 - Joined Team and Joined Group now also expose native operator `Join Team` / `Join Group` entry points. The modal uses `/api/v1/admin/directory/workspaces?kind=...&search=...` for server-side workspace lookup, then executes the existing `POST /api/v1/admin/operator/workspaces/{workspace_id}/members` contract with the target user.
@@ -139,6 +140,43 @@ Performance and UI contract:
 - Frontend tables render real read-model arrays directly. They should not compose inventory rows by fetching every Team, Group, wallet, ledger or member record separately.
 - Empty states can be terse table rows only. Do not add explanatory helper copy under tabs, panels or cards.
 - Actions open centered modals with reason fields. First-pass modals reuse the manual finance bridge for credit/plan/workspace writes, while native operator writes now cover user status/delete, subscription freeze/unfreeze and joined Team/Group member role/remove operations.
+
+## Account Deletion Boundary
+
+Current hard-delete behavior is live for both `/account` self-delete and admin delete, but the paid-workspace boundary needs one more hardening pass before it is considered complete.
+
+Current blockers:
+
+- still owns a non-solo Team/Group workspace
+- is the last active admin owner
+
+Next blocker set to add before collaboration/billing scale-up:
+
+- joined paid Team/Group membership still active
+- active Team seat assignment still attached
+- owned active Team or Collaborate subscription still present
+- pending workspace invitations still owned by the deleting actor when that invite state would become orphaned
+
+Target response shape for self-delete blockers:
+
+```text
+DELETE /api/v1/auth/account
+  -> 409 account_delete_blocked
+       blockers[]
+         owned_team_workspace
+         owned_group_workspace
+         joined_team_workspace
+         joined_group_workspace
+         active_team_seat
+         active_subscription
+         orphaned_invites
+```
+
+Rule:
+
+- free/solo-only users may self-delete immediately
+- paid/team/group-attached users must first transfer, leave, cancel or clear the blocking records
+- admin delete should reuse the same blocker model unless a later explicit transfer workflow is introduced
 
 Operator detail bundle shape:
 
