@@ -280,6 +280,7 @@ export type AdminOperatorUserMutationResource = {
   ok: boolean
   status: string
   userId: string
+  warning?: null | string
 }
 
 export type AdminOperatorSubscriptionMutationResource = {

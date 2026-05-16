@@ -1,7 +1,7 @@
 # PRD Slice S1C: Auth And Request Context
 
-**Updated**: 2026-05-15
-**Status**: Clerk frontend/session bridge, FastAPI bearer verification, Tanergy-owned profile onboarding/editing and a visible Clerk-backed forgot-password flow are landed; logout/session hardening remains.
+**Updated**: 2026-05-16
+**Status**: Clerk frontend/session bridge, FastAPI bearer verification, Tanergy-owned profile onboarding/editing, visible Clerk-backed forgot-password flow and a real `/account` delete path for personal accounts are landed; logout/session hardening remains.
 
 ## User Value
 
@@ -18,6 +18,7 @@ Users can create accounts, log in, log out and return to their own workspace. Ac
 - Session endpoint for current user and memberships.
 - Tanergy-owned profile completion after first real sign-in.
 - Editable display name on the Account surface.
+- Self-service account deletion from the Account surface when the user does not still own a Team or Group workspace.
 - Visible forgot-password entry that runs Clerk recovery instead of a mock redirect.
 - Active workspace selection for users who own or join multiple Teams/Groups.
 - Rate limiting and safe auth errors.
@@ -32,7 +33,7 @@ Users can create accounts, log in, log out and return to their own workspace. Ac
 - A default workspace is ensured on first verified session.
 - A personal wallet should be ensured on first verified session so Collaborate and personal top-ups have a payer account.
 - First verified session now stays blocked behind a profile-completion modal until Tanergy has saved the local display name/profile fields.
-- `/account` now edits Tanergy-owned profile fields while making clear that password/email verification still belong to Clerk.
+- `/account` now edits Tanergy-owned profile fields, exposes a real delete-account flow for personal accounts, and makes clear that password/email verification still belong to Clerk.
 - Required-auth mode no longer trusts `x-tangent-user-id` or `x-tangent-workspace-id` as authority.
 
 Remaining hardening:
@@ -96,6 +97,7 @@ active session -> revoked -> clear cookie -> login screen
 - Existing user can log in and see the same workspace.
 - First real sign-in prompts for Tanergy profile completion before normal workspace use.
 - Signed-in user can edit display name later from `/account`.
+- Signed-in user can delete their own account from `/account` when they no longer own a Team or Group workspace; the delete flow removes Tanergy-owned personal data and the linked Clerk identity.
 - Sign-in surface exposes a visible forgot-password path and Clerk completes the reset flow.
 - Logout prevents further API access.
 - User cannot spoof another workspace through request headers.

@@ -123,8 +123,8 @@ def test_execute_ai_provider_attempt_uses_text_credentials_for_text_runs(monkeyp
             provider_cost=None,
             provider_currency=None,
             retryable=False,
-            route_id="route_hunyuan_text_primary",
-            route_key="geekai-text-primary",
+            route_id="route_gpt_5_5_primary",
+            route_key="geekai-gpt55-primary",
             status="succeeded",
             text_output="ok",
             work_started=True,
@@ -133,9 +133,9 @@ def test_execute_ai_provider_attempt_uses_text_credentials_for_text_runs(monkeyp
     monkeypatch.setattr("tangent_api.ai_provider_adapters.run_geekai_attempt", fake_live_attempt)
 
     result = execute_ai_provider_attempt(
-        _run_record(model_id="hunyuan-3.0-preview", route_id="route_hunyuan_text_primary", run_type="text"),
-        _request(model_id="hunyuan-3.0-preview", node_type="chat", run_type="text"),
-        _route(provider_model="hunyuan-3.0-preview", route_id="route_hunyuan_text_primary"),
+        _run_record(model_id="gpt-5.5", route_id="route_gpt_5_5_primary", run_type="text"),
+        _request(model_id="gpt-5.5", node_type="chat", run_type="text"),
+        _route(provider_model="gpt-5.5", route_id="route_gpt_5_5_primary"),
         _context(),
     )
 

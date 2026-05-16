@@ -52,6 +52,26 @@ export function getRuntimeGraphGeneratedOutputHistorySlot(data: JsonObject, slot
   return getRuntimeGraphGeneratedOutputHistory(data)[slotIndex] ?? []
 }
 
+export function getRuntimeGraphGeneratedOutputBatches(data: JsonObject, slotCount?: number): RuntimeGraphImageAssetRef[][] {
+  const currentRefs = getRuntimeGraphGeneratedOutputRefs(data)
+  const historySlots = getRuntimeGraphGeneratedOutputHistory(data)
+  const resolvedSlotCount = Math.max(slotCount ?? 0, currentRefs.length, historySlots.length)
+  if (resolvedSlotCount <= 0) return []
+
+  const maxDepth = Array.from({ length: resolvedSlotCount }, (_, index) => (
+    Math.max(historySlots[index]?.length ?? 0, index < currentRefs.length ? 1 : 0)
+  )).reduce((max, value) => Math.max(max, value), 0)
+
+  return Array.from({ length: maxDepth }, (_, depth) => {
+    const batch = Array.from({ length: resolvedSlotCount }, (_, slotIndex) => {
+      const historyRef = historySlots[slotIndex]?.[depth] ?? null
+      if (historyRef) return historyRef
+      return depth === 0 ? currentRefs[slotIndex] ?? null : null
+    }).filter((value): value is RuntimeGraphImageAssetRef => Boolean(value))
+    return batch
+  }).filter((batch) => batch.length > 0)
+}
+
 export function getRuntimeGraphImageAssetRef(value: unknown): RuntimeGraphImageAssetRef | null {
   const data = asJsonObject(value)
   if (!data) return null

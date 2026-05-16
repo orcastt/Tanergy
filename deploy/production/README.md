@@ -9,7 +9,7 @@ Production is not a copy of staging with a new domain. It must run with separate
 - Runtime secrets belong in Vercel env, the production API `api.env`, provider dashboards, and private operator storage.
 - Tracked repo docs may record only status, scope, and checklist state.
 - Do not store raw production keys, passwords, bearer tokens, or connection strings in `ARCH/`, `PRD/`, `project_state/`, `dev-plans/`, or tracked deploy markdown files.
-- The current FastAPI bearer verifier uses `CLERK_JWT_ISSUER`, `CLERK_JWKS_URL`, optional `CLERK_JWT_AUDIENCE`, and `CLERK_AUTHORIZED_PARTIES`; it does not currently require `CLERK_SECRET_KEY` for JWT verification.
+- The current FastAPI bearer verifier uses `CLERK_JWT_ISSUER`, `CLERK_JWKS_URL`, optional `CLERK_JWT_AUDIENCE`, and `CLERK_AUTHORIZED_PARTIES`; it does not require `CLERK_SECRET_KEY` for JWT verification itself, but the API runtime now does need `CLERK_SECRET_KEY` for self-service account deletion and admin hard-delete flows.
 
 ## Current Policy
 

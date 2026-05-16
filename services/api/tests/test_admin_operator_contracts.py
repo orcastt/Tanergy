@@ -180,6 +180,7 @@ def test_admin_operator_user_status_route_returns_mutation_shape(monkeypatch):
             "ok": True,
             "status": "suspended",
             "userId": kwargs["user_id"],
+            "warning": None,
         },
     )
     client = TestClient(app)
@@ -198,6 +199,7 @@ def test_admin_operator_user_status_route_returns_mutation_shape(monkeypatch):
         "ok": True,
         "status": "suspended",
         "userId": "user_ada",
+        "warning": None,
     }
 
 
@@ -207,13 +209,14 @@ def test_admin_operator_user_delete_route_returns_mutation_shape(monkeypatch):
         lambda context, allowed_roles=None: [SimpleNamespace(role="admin")],
     )
     monkeypatch.setattr(
-        "tangent_api.routers.admin_operator.soft_delete_admin_operator_user",
+        "tangent_api.routers.admin_operator.hard_delete_admin_operator_user",
         lambda **kwargs: {
             "auditId": "admin_audit_delete",
             "message": "User deleted.",
             "ok": True,
             "status": "deleted",
             "userId": kwargs["user_id"],
+            "warning": None,
         },
     )
     client = TestClient(app)
@@ -232,6 +235,7 @@ def test_admin_operator_user_delete_route_returns_mutation_shape(monkeypatch):
         "ok": True,
         "status": "deleted",
         "userId": "user_ada",
+        "warning": None,
     }
 
 

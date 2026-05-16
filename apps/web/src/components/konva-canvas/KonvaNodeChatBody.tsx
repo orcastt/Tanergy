@@ -45,7 +45,7 @@ export function KonvaNodeChatBody({ document, editingFieldName = null, onChatMod
   const modelOptions = getChatModelSelectOptions()
   const modelLabel = getShortModelLabel(getChatModelDisplayName(modelId))
   const bodyTop = 82
-  const inputBoxHeight = 78
+  const inputBoxHeight = 96
   const inputBottom = 16
   const inputY = shape.props.height - inputBoxHeight - inputBottom
   const contextStripHeight = connectedPromptCount > 0 || connectedImageCount > 0 || files.length > 0 ? 58 : 0
@@ -106,7 +106,7 @@ export function KonvaNodeChatBody({ document, editingFieldName = null, onChatMod
                   cornerRadius={10}
                   fill={isAssistant ? palette.fieldBg : palette.secondaryBg}
                   height={height}
-                  stroke={isAssistant ? palette.fieldStroke : '#8b5cf6'}
+                  stroke={palette.fieldStroke}
                   strokeWidth={1}
                   width={width}
                 />
@@ -127,7 +127,6 @@ export function KonvaNodeChatBody({ document, editingFieldName = null, onChatMod
                     <MessageActionButton
                       ariaLabel="Copy reply"
                       onClick={() => handleCopyMessage(message.id, message.text)}
-                      tone={copiedMessageId === message.id ? 'success' : 'default'}
                       x={10}
                       y={height - 26}
                     >
@@ -434,8 +433,16 @@ function ChatInputBox({
 }) {
   const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
   const buttonWidth = 58
-  const modelButtonWidth = 88
+  const modelButtonWidth = 96
   const toolbarY = y + height - 31
+  const textViewport = {
+    height: Math.max(0, height - 46),
+    width: Math.max(0, width - 20),
+    x: x + 10,
+    y: y + 10,
+  }
+  const displayText = draft || konvaChatDraftPlaceholder
+  const textColor = draft ? palette.fieldText : palette.softText
   return (
     <Group
       onClick={(event) => {
@@ -444,19 +451,31 @@ function ChatInputBox({
       }}
       onPointerDown={stopNodeCardControlEvent}
     >
-      <Rect cornerRadius={10} fill={palette.secondaryBg} height={height} stroke="#8b5cf6" strokeWidth={1.2} width={width} x={x} y={y} />
+      <Rect cornerRadius={10} fill={palette.fieldBg} height={height} stroke={palette.fieldStroke} strokeWidth={1} width={width} x={x} y={y} />
       {editing ? null : (
-        <Text align="left" ellipsis fill="#8b5cf6" fontFamily="Inter, system-ui, sans-serif" fontSize={12} height={34} text={draft || konvaChatDraftPlaceholder} verticalAlign="middle" width={width - 30} wrap="none" x={x + 16} y={y + 9} />
+        <Group clipHeight={textViewport.height} clipWidth={textViewport.width} clipX={textViewport.x} clipY={textViewport.y}>
+          <Text
+            fill={textColor}
+            fontFamily="Inter, system-ui, sans-serif"
+            fontSize={13}
+            height={Math.max(18, textViewport.height)}
+            lineHeight={1.35}
+            text={displayText}
+            width={textViewport.width}
+            wrap="char"
+            x={textViewport.x}
+            y={textViewport.y}
+          />
+        </Group>
       )}
       <IconButton label="+" onClick={onUpload} x={x + 12} y={toolbarY} />
-      <IconButton label="image" onClick={onUpload} width={50} x={x + 40} y={toolbarY} />
-      <IconButton label={modelLabel} onClick={onModelToggle} width={modelButtonWidth} x={x + 96} y={toolbarY} />
+      <IconButton label={modelLabel} onClick={onModelToggle} width={modelButtonWidth} x={x + 40} y={toolbarY} />
       {modelMenuOpen ? (
         <ChatModelMenu
           onSelect={onModelSelect}
           options={modelOptions}
           width={modelButtonWidth + 28}
-          x={x + 96}
+          x={x + 40}
           y={toolbarY - 10 - (modelOptions.length * 30 + 8)}
         />
       ) : null}
@@ -532,20 +551,15 @@ function MessageActionButton({
   ariaLabel,
   children,
   onClick,
-  tone = 'default',
   x,
   y,
 }: {
   ariaLabel: string
   children: React.ReactNode
   onClick?: () => void
-  tone?: 'default' | 'success'
   x: number
   y: number
 }) {
-  const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
-  const fill = tone === 'success' ? '#ecfdf5' : palette.secondaryBg
-  const stroke = tone === 'success' ? '#22c55e' : palette.fieldStroke
   return (
     <Group
       aria-label={ariaLabel}
@@ -556,18 +570,18 @@ function MessageActionButton({
       onDblClick={stopNodeCardControlEvent}
       onPointerDown={stopNodeCardControlEvent}
     >
-      <Rect cornerRadius={999} fill={fill} height={18} stroke={stroke} strokeWidth={1} width={18} x={x} y={y} />
+      <Rect fill="rgba(0,0,0,0.001)" height={18} width={18} x={x} y={y} />
       <Group x={x} y={y}>{children}</Group>
     </Group>
   )
 }
 
 function CopyReplyIcon({ tone = 'default', x, y }: { tone?: 'default' | 'success'; x: number; y: number }) {
-  const stroke = tone === 'success' ? '#16a34a' : '#6b7280'
+  const stroke = tone === 'success' ? '#16a34a' : '#64748b'
   return (
     <>
-      <Rect cornerRadius={2} fillEnabled={false} height={7} stroke={stroke} strokeWidth={1.2} width={6} x={x + 3.5} y={y + 2} />
-      <Rect cornerRadius={2} fillEnabled={false} height={7} stroke={stroke} strokeWidth={1.2} width={6} x={x + 5.5} y={y + 4} />
+      <Rect cornerRadius={1.8} fillEnabled={false} height={7.2} stroke={stroke} strokeLinejoin="round" strokeWidth={1.35} width={6.2} x={x + 3.2} y={y + 3} />
+      <Rect cornerRadius={1.8} fillEnabled={false} height={7.2} stroke={stroke} strokeLinejoin="round" strokeWidth={1.35} width={6.2} x={x + 6} y={y + 5.2} />
     </>
   )
 }
@@ -576,14 +590,21 @@ function RefreshReplyIcon({ x, y }: { x: number; y: number }) {
   return (
     <>
       <Path
-        data={`M ${x + 10.5} ${y + 3.5} A 4.5 4.5 0 1 0 ${x + 11.8} ${y + 10.6}`}
+        data={`M ${x + 12.8} ${y + 4.8} A 5 5 0 1 0 ${x + 13.2} ${y + 10.1}`}
         fillEnabled={false}
-        stroke="#6b7280"
+        stroke="#64748b"
         strokeLinecap="round"
         strokeLinejoin="round"
-        strokeWidth={1.2}
+        strokeWidth={1.35}
       />
-      <Line points={[x + 10.4, y + 2.9, x + 13, y + 3, x + 12.8, y + 5.5]} stroke="#6b7280" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.2} />
+      <Path
+        data={`M ${x + 10.9} ${y + 2.9} L ${x + 13.4} ${y + 3.1} L ${x + 12.1} ${y + 5.4}`}
+        fillEnabled={false}
+        stroke="#64748b"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.35}
+      />
     </>
   )
 }

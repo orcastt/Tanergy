@@ -1,8 +1,8 @@
 # ARCH Slice S1C: Auth And Request Context
 
-**Updated**: 2026-05-15
+**Updated**: 2026-05-16
 **Mode**: Architecture slice.
-**Status**: Clerk frontend/session bridge plus FastAPI bearer verification first pass are in place. The local Tanergy profile layer now sits on top of Clerk identity with a post-signup onboarding modal, editable `/account` profile form and visible Clerk-backed forgot-password route; logout/session revocation hardening still remains.
+**Status**: Clerk frontend/session bridge plus FastAPI bearer verification first pass are in place. The local Tanergy profile layer now sits on top of Clerk identity with a post-signup onboarding modal, editable `/account` profile form, visible Clerk-backed forgot-password route and a shared hard-delete service for self-delete plus admin delete; logout/session revocation hardening still remains.
 
 ## Goal
 
@@ -66,6 +66,7 @@ POST /api/v1/auth/login/verify-code
 POST /api/v1/auth/logout
 GET  /api/v1/auth/session
 PATCH /api/v1/auth/profile
+DELETE /api/v1/auth/account
 POST /api/v1/auth/session/refresh
 GET  /api/v1/auth/oauth/:provider/start
 GET  /api/v1/auth/oauth/:provider/callback
@@ -93,6 +94,7 @@ Current implementation note:
 - Real authenticated session refresh now also persists the latest request IP into `tangent_users.last_ip_address` when Postgres is configured, so later admin/operator views can show last access facts without trusting frontend headers.
 - Real authenticated session refresh now preserves a Tanergy-edited local display name once `tangent_users.profile_completed_at` is set, instead of re-overwriting it from Clerk claims on every login.
 - Tanergy-owned profile data currently lives directly on `tangent_users` via `display_name` and `profile_completed_at`; the older `gender` column is now dormant and no longer collected in product flows.
+- `DELETE /api/v1/auth/account` now runs a shared account-deletion service: owned solo workspaces are deleted, shared-workspace authored Boards/Assets/Snapshots/AiRuns are reassigned to the workspace owner, log-style rows are removed, and deletion is blocked if the user still owns any non-solo Team/Group workspace or is the last active admin owner.
 
 ## Security Rules
 
@@ -171,6 +173,7 @@ Current first-pass web routes:
 /workspaces        protected by Clerk proxy when TANGENT_REQUIRE_WEB_AUTH=1
 /api/auth/session  Clerk-backed Tanergy session bridge, dev fallback only when auth is not required
 /api/auth/profile  Clerk-authenticated proxy to FastAPI profile writes
+/api/auth/account  Clerk-authenticated proxy to FastAPI account deletion
 remote Board/Asset/AI/Image-Op clients  attach Clerk JWT in browser fetches
 ```
 
@@ -179,6 +182,7 @@ Profile ownership split:
 - Clerk owns authentication, password reset, email verification and provider subject identity.
 - Tanergy owns editable profile fields that need to appear in boards, workspaces, billing surfaces and future product preferences.
 - The post-signup onboarding gate is enforced in the frontend using the server-returned `profileCompleted` session field, but persistence stays server-side through `/api/v1/auth/profile`.
+- Account deletion crosses both layers: Tanergy deletes local user/workspace data, while Clerk deletes the external auth user by `provider_subject`. This path now requires `CLERK_SECRET_KEY` on the API runtime even though JWT verification still uses issuer/JWKS/audience.
 
 Local development exception:
 
@@ -206,6 +210,12 @@ CLERK_JWT_AUDIENCE
 CLERK_AUTHORIZED_PARTIES
 ```
 
+FastAPI now also needs:
+
+```text
+CLERK_SECRET_KEY
+```
+
 Do not put `CLERK_SECRET_KEY` or Google client secrets in public frontend variables.
 
 ## Acceptance
@@ -214,6 +224,7 @@ Do not put `CLERK_SECRET_KEY` or Google client secrets in public frontend variab
 - New user can sign up/login with Google OAuth.
 - New user receives a default workspace and owner membership.
 - New user receives a personal wallet for Solo/Collaborate billing.
+- Signed-in user can delete their own account when they no longer own a Team or Group workspace.
 - Logout revokes the active session.
 - Session endpoint returns user plus workspace memberships.
 - User cannot spoof `user_id` or `workspace_id` through headers.

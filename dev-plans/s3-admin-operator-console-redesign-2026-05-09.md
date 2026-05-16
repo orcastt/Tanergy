@@ -219,7 +219,7 @@ Rules:
 
 - Block maps to `tangent_users.status = 'suspended'`.
 - Unblock maps to `active`.
-- Delete is soft-delete: `status = 'deleted'`, revoke sessions, preserve audit/ledger.
+- Delete is hard-delete with guardrails: remove local user/solo-workspace data, preserve shared Board content by reassignment, delete the linked Clerk user, and block the action if the target still owns Team/Group workspaces or is the last active admin owner.
 - Freeze maps to subscription pause and makes entitlement/preflight treat it as not active.
 - Unfreeze restores active/trialing state and can extend the period by paused duration in a later proration pass.
 - Leave member uses workspace membership rules and must not let the owner leave through the wrong path.
@@ -343,5 +343,5 @@ Local checkpoint on 2026-05-11:
 
 - Whether user IP should mean last login IP, registration IP or both.
 - Whether freeze should extend `current_period_end` automatically on unfreeze in P0, or just pause entitlement until manually adjusted.
-- Whether account delete should revoke all workspace ownership immediately or leave owned workspaces suspended for support review.
+- Whether a later enterprise/compliance mode should allow support-led ownership transfer before hard-delete instead of the current Team/Group ownership block.
 - Whether Group create limit counts deleted Groups or only active Groups.

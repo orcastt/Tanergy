@@ -42,6 +42,13 @@ def test_ai_model_registry_contract():
         "gemini-2.5-flash",
     }
 
+    text_response = client.get("/api/v1/ai/models?capability=text")
+
+    assert text_response.status_code == 200
+    text_models = text_response.json()["models"]
+    assert [model["id"] for model in text_models] == ["gpt-5.5", "gpt-5-mini"]
+    assert text_models[0]["isDefault"] is True
+
 
 def test_ai_run_mock_contract_round_trip():
     client = TestClient(app)
@@ -680,15 +687,15 @@ def test_ai_text_run_persists_text_output_and_system_prompt(monkeypatch):
             "nodeType": "prompt_optimizer",
             "prompt": "A clean ceramic cup poster",
             "runType": "text",
-            "selectedModelId": "hunyuan-3.0-preview",
+            "selectedModelId": "gpt-5.5",
             "systemPrompt": "You are a prompt optimizer for AI image generation.",
         },
     )
 
     assert response.status_code == 200
     run = response.json()["run"]
-    assert run["estimatedCredits"] == 1
-    assert run["modelId"] == "hunyuan-3.0-preview"
+    assert run["estimatedCredits"] == 4
+    assert run["modelId"] == "gpt-5.5"
     assert run["status"] == "queued"
 
     settled = _wait_for_run_status(client, run["runId"], {"succeeded"})

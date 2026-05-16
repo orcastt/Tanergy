@@ -53,6 +53,7 @@ def test_alembic_revision_chain_is_linear():
         load_migration("20260514_0021_ai_image_model_refresh.py"),
         load_migration("20260515_0022_auth_user_profile_fields.py"),
         load_migration("20260515_0023_ai_gpt55_text_analysis_seed.py"),
+        load_migration("20260516_0024_remove_hunyuan_text_model.py"),
     ]
 
     for previous, current in zip(migrations, migrations[1:]):
@@ -80,6 +81,7 @@ def test_s1a_migrations_keep_required_schema_contracts():
     image_model_refresh = load_migration("20260514_0021_ai_image_model_refresh.py")
     auth_user_profile_fields = load_migration("20260515_0022_auth_user_profile_fields.py")
     gpt_55_seed = load_migration("20260515_0023_ai_gpt55_text_analysis_seed.py")
+    remove_hunyuan_text_model = load_migration("20260516_0024_remove_hunyuan_text_model.py")
     core_sql = "\n".join(core.UPGRADE)
     future_sql = "\n".join(future.UPGRADE)
     hardening_sql = "\n".join(hardening.UPGRADE)
@@ -100,6 +102,7 @@ def test_s1a_migrations_keep_required_schema_contracts():
     image_model_refresh_sql = "\n".join(image_model_refresh.UPGRADE)
     auth_user_profile_fields_sql = "\n".join(auth_user_profile_fields.UPGRADE)
     gpt_55_seed_sql = "\n".join(gpt_55_seed.UPGRADE)
+    remove_hunyuan_text_model_sql = "\n".join(remove_hunyuan_text_model.UPGRADE)
 
     for table_name in [
         "tangent_workspace_members",
@@ -274,6 +277,13 @@ def test_s1a_migrations_keep_required_schema_contracts():
         "default_pricing_rule_id = 'price_gpt_5_5_v1'",
     ]:
         assert contract in gpt_55_seed_sql
+
+    for contract in [
+        "DELETE FROM tangent_model_provider_routes WHERE id = 'route_hunyuan_text_primary'",
+        "DELETE FROM tangent_model_pricing_rules WHERE id = 'price_hunyuan_text_v1'",
+        "DELETE FROM tangent_model_registry WHERE model_key = 'hunyuan-3.0-preview'",
+    ]:
+        assert contract in remove_hunyuan_text_model_sql
 
 
 def test_text_route_seed_uses_driver_sql_for_json_literals(monkeypatch):

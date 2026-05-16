@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { AppShell } from '@/components/app-shell/AppShell'
+import { AuthAccountDeletionPanel } from '@/components/auth/AuthAccountDeletionPanel'
 import { AuthEmailVerificationPanel } from '@/components/auth/AuthEmailVerificationPanel'
 import { AuthPasswordChangeForm } from '@/components/auth/AuthPasswordChangeForm'
 import { AuthProfileForm } from '@/components/auth/AuthProfileForm'
@@ -128,12 +129,10 @@ export default function AccountPage() {
           <article className="management-panel is-warning">
             <h2>Danger zone</h2>
             <p>
-              Account deletion and data export are still separate backend workflows. They stay disabled
-              until workspace ownership transfer and object cleanup are wired.
+              Account deletion is now live for personal accounts. If this user still owns a Team or Group
+              workspace, transfer or remove that workspace first and then try again.
             </p>
-            <button className="product-button product-button-secondary" disabled type="button">
-              Delete account unavailable
-            </button>
+            <AuthAccountDeletionPanel />
           </article>
         </section>
       </div>

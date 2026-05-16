@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from tangent_api.schema_base import TangentApiModel
 
@@ -45,3 +45,23 @@ class AuthProfileUpdateResponse(TangentApiModel):
     error: Optional[str] = None
     ok: bool
     user: Optional[AuthUser] = None
+
+
+class AuthAccountDeleteRequest(TangentApiModel):
+    confirmation: str = Field(min_length=1)
+    reason: Optional[str] = Field(default=None, max_length=200)
+
+    @field_validator("confirmation")
+    @classmethod
+    def validate_confirmation(cls, value: str) -> str:
+        normalized = value.strip().upper()
+        if normalized != "DELETE":
+            raise ValueError("Type DELETE to confirm account deletion.")
+        return normalized
+
+
+class AuthAccountDeleteResponse(TangentApiModel):
+    error: Optional[str] = None
+    message: str
+    ok: bool
+    warning: Optional[str] = None

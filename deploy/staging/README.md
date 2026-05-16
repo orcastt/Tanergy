@@ -25,7 +25,8 @@ Treat staging configuration as four separate surfaces:
 Important Clerk note:
 
 - The current FastAPI bearer verifier uses `CLERK_JWT_ISSUER`, `CLERK_JWKS_URL`, optional `CLERK_JWT_AUDIENCE`, and `CLERK_AUTHORIZED_PARTIES`.
-- `CLERK_SECRET_KEY` belongs on the web runtime when Next server-side Clerk helpers are used. FastAPI does not currently require it for bearer verification.
+- `CLERK_SECRET_KEY` belongs on the web runtime when Next server-side Clerk helpers are used.
+- FastAPI still does not require `CLERK_SECRET_KEY` for bearer verification, but it now does require it for self-service account deletion and admin hard-delete because those flows call Clerk's server-side user deletion API.
 
 ## Target Shape
 

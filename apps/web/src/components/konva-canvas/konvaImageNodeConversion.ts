@@ -9,7 +9,7 @@ import { normalizeAssetUrls } from '@/features/assets/assetUploadClient'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import type { TangentAssetRecord, TangentAssetResponse } from '@/features/assets/assetTypes'
 import { createDefaultNodeData, createDefaultRuntimeSummary, getNodeDefinition } from '@/features/node-runtime/registry'
-import { getRuntimeGraphImageCrop } from '@/features/node-runtime/runtimeGraphAssets'
+import { getRuntimeGraphImageCrop, type RuntimeGraphImageAssetRef } from '@/features/node-runtime/runtimeGraphAssets'
 import type { JsonObject } from '@/types/nodeRuntime'
 
 const imageNodeWidth = 420
@@ -67,6 +67,21 @@ export async function createKonvaCanvasImageFromImageNode(
   if (!image) return null
   return {
     document: withCanvasShapes(document, [...document.shapes, image]),
+    selectedIds: [image.id],
+  }
+}
+
+export function createKonvaCanvasImageFromAssetRef(
+  document: CanvasDocument,
+  assetRef: RuntimeGraphImageAssetRef,
+  point: CanvasPoint,
+  options: { sourceNodeId?: string; title?: string } = {}
+) {
+  const image = createImageShapeFromAssetRef(assetRef, point, options)
+  if (!image) return null
+  return {
+    document: withCanvasShapes(document, [...document.shapes, image]),
+    image,
     selectedIds: [image.id],
   }
 }
@@ -180,6 +195,37 @@ function createImageShapeFromNode(node: CanvasNodeShape, asset: TangentAssetReco
     type: 'image',
     x: node.x + node.props.width + nodeGap,
     y: node.y,
+  }
+}
+
+function createImageShapeFromAssetRef(
+  assetRef: RuntimeGraphImageAssetRef,
+  point: CanvasPoint,
+  options: { sourceNodeId?: string; title?: string }
+): CanvasImageShape | null {
+  const assetId = getStringValue(assetRef.assetId)
+  if (!assetId) return null
+  const size = fitCanvasImageSize(
+    getNumberValue(assetRef.imageWidth) ?? 1024,
+    getNumberValue(assetRef.imageHeight) ?? 1024
+  )
+  return {
+    id: createKonvaNodeId('image'),
+    props: pruneUndefined({
+      assetId,
+      crop: assetRef.crop,
+      height: size.height,
+      originalUrl: assetRef.originalUrl,
+      sourceNodeId: options.sourceNodeId,
+      thumbnail1024Url: assetRef.thumbnail1024Url,
+      thumbnail256Url: assetRef.thumbnail256Url,
+      thumbnail512Url: assetRef.thumbnail512Url,
+      title: options.title ?? assetRef.title,
+      width: size.width,
+    }) as CanvasImageShape['props'],
+    type: 'image',
+    x: point.x,
+    y: point.y,
   }
 }
 

@@ -1,6 +1,6 @@
 # ARCH Slice S3: Team, Group, Wallets, Billing And Admin
 
-**Updated**: 2026-05-14
+**Updated**: 2026-05-16
 **Mode**: Architecture slice.
 **Status**: Active architecture pivot. Existing admin, ledger, seat, subscription and AiRun facts are reusable, but Team charging must move to a workspace-owned Team wallet. Local operator/admin hot paths have now been tightened around dedicated read models and pooled-runtime observability; real staging session/admin smoke is green, while live AI/payment depth and remaining browser verification are the next gates.
 
@@ -73,6 +73,7 @@ Implemented first pass:
 - `POST /api/v1/admin/finance/manual/group-plan-operation` and `POST /api/v1/admin/finance/manual/team-plan-operation` now provide the mock-aligned modal contract for `assign`, `renew`, `upgrade`, `delete`, `freeze` and `unfreeze`, returning `action`, `effectiveAt`, `periodStart`, `periodEnd`, `planKey`, `previousPlanKey`, `seatCapacity`, `subscriptionStatus` and `grantedCredits`.
 - `/admin/users/[userId]` Team Plan and Group Plan tabs now consume those plan-operation contracts directly for renew/upgrade/delete/freeze/unfreeze instead of routing owned-plan actions through the older set-plan plus generic subscription-write split.
 - Native operator writes now cover user block/unblock/delete, subscription freeze/unfreeze and joined Team/Group member role/remove actions so those actions do not have to flow through the manual-finance bridge.
+- User delete is no longer just a status flip: operator delete now runs the shared hard-delete path, removes local user-owned solo data, preserves shared Board content by reassigning authored Board/Asset/Snapshot/AiRun rows to the workspace owner, deletes direct log rows, and blocks deletion when the target still owns a non-solo Team/Group workspace or is the last active admin owner.
 - Operator-owned Team and Group rows now render as dense inventory tables: Team rows expose Team wallet, seats, members, boards and Team plan actions in one pass, while owned Team/Group member rows can now open native role-change or remove-member modals inline from the table itself.
 - Owned Team/Group rows now also expose native operator `Invite` and `Add member` actions against arbitrary workspaces, and board rows can now trigger audited admin `Copy` and `Delete` writes instead of stopping at read-only labels.
 - Joined Team and Joined Group now also expose native operator `Join Team` / `Join Group` entry points. The modal uses `/api/v1/admin/directory/workspaces?kind=...&search=...` for server-side workspace lookup, then executes the existing `POST /api/v1/admin/operator/workspaces/{workspace_id}/members` contract with the target user.

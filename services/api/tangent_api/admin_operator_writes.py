@@ -5,6 +5,7 @@ from fastapi import HTTPException
 from tangent_api.admin_access import _count_active_admin_roles, _insert_admin_audit_log, load_active_admin_roles
 from tangent_api.admin_operator_schemas import AdminOperatorUserMutationResponse
 from tangent_api.storage.postgres_connection import connect_to_postgres, require_database_url
+from tangent_api.user_account_deletion import delete_user_account
 
 
 def set_admin_operator_user_status(
@@ -53,47 +54,29 @@ def set_admin_operator_user_status(
     )
 
 
-def soft_delete_admin_operator_user(
+def hard_delete_admin_operator_user(
     *,
     actor_user_id: str,
     reason: str,
     user_id: str,
     workspace_id: Optional[str] = None,
 ) -> AdminOperatorUserMutationResponse:
-    require_database_url()
     normalized_reason = _normalize_reason(reason)
-
-    with connect_to_postgres() as connection:
-        with connection.cursor() as cursor:
-            current_status = _load_user_status(cursor, user_id, include_deleted=True)
-            if current_status == "deleted":
-                raise HTTPException(status_code=400, detail="User is already deleted.")
-            _guard_last_active_owner(user_id, "deleted")
-            cursor.execute(
-                """
-                UPDATE tangent_users
-                SET status = 'deleted',
-                    updated_at = NOW()
-                WHERE id = %s
-                """,
-                (user_id,),
-            )
-            audit_id = _insert_admin_audit_log(
-                cursor,
-                action="admin.operator.user.delete",
-                actor_user_id=actor_user_id,
-                metadata={"reason": normalized_reason, "status": "deleted"},
-                target_user_id=user_id,
-                workspace_id=workspace_id,
-            )
-        connection.commit()
-
+    result = delete_user_account(
+        actor_user_id=actor_user_id,
+        audit_action="admin.operator.user.delete",
+        audit_metadata={"status": "deleted"},
+        reason=normalized_reason,
+        target_user_id=user_id,
+        workspace_id=workspace_id,
+    )
     return AdminOperatorUserMutationResponse(
-        auditId=audit_id,
-        message="User deleted.",
+        auditId=result.audit_id,
+        message=result.message,
         ok=True,
         status="deleted",
         userId=user_id,
+        warning=result.warning,
     )
 
 

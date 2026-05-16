@@ -1,7 +1,7 @@
 # Project State Slice S3: Team, Group, Wallets, Billing And Admin
 
-**Updated**: 2026-05-14
-**Status**: Active pivot slice. Admin, ledger, usage, seat, checkout and AI-control-plane scaffolds exist. Phase 1/2/3 development has started: migration `20260508_0012` adds Team/Group wallet schema facts, migration `20260508_0013` widens workspace roles for `admin/editor/viewer`, the first payer resolver cut now makes Team workspaces charge a Team wallet while Group/Collaborate workspaces charge the actor personal wallet, Team purchase can provision a Team workspace and Team wallet, and Collaborate purchase can activate the user's single personal Collaborate subscription. The 2026-05-13 checkpoint tightens admin hot reads, pooled Postgres runtime preference and slow-SQL observability, and the 2026-05-14 checkpoint adds green real staging session/admin smoke.
+**Updated**: 2026-05-16
+**Status**: Active pivot slice. Admin, ledger, usage, seat, checkout and AI-control-plane scaffolds exist. Phase 1/2/3 development has started: migration `20260508_0012` adds Team/Group wallet schema facts, migration `20260508_0013` widens workspace roles for `admin/editor/viewer`, the first payer resolver cut now makes Team workspaces charge a Team wallet while Group/Collaborate workspaces charge the actor personal wallet, Team purchase can provision a Team workspace and Team wallet, and Collaborate purchase can activate the user's single personal Collaborate subscription. The 2026-05-13 checkpoint tightens admin hot reads, pooled Postgres runtime preference and slow-SQL observability, the 2026-05-14 checkpoint adds green real staging session/admin smoke, and the 2026-05-16 checkpoint upgrades account deletion from soft-delete to a shared hard-delete path for user self-delete and admin delete.
 
 ## Current Truth
 
@@ -9,6 +9,12 @@
 
 - Real staging Clerk/session smoke is now green for `/api/auth/session`, `/api/admin-proxy/me`, `/api/admin-proxy/operator/users?limit=3`, `/api/admin-proxy/finance/summary` and `/api/admin-proxy/ai/route-metrics?limit=5`.
 - The next S3 gate is no longer basic admin reachability; it is live AI/payment depth, Google/email verification and the remaining signed-in browser acceptance.
+
+2026-05-16 checkpoint notes:
+
+- Admin operator delete and `/api/v1/auth/account` now share the same local hard-delete service instead of only flipping `tangent_users.status`.
+- The delete flow now removes local personal data, deletes owned solo-workspace data, preserves shared Board content by reassigning authored Board/Asset/Snapshot/AiRun rows to the workspace owner, and blocks deletion when the target still owns a non-solo Team/Group workspace or is the last active admin owner.
+- Clerk account cleanup is now part of the deletion path, so API runtime `CLERK_SECRET_KEY` is now required for this flow even though JWT verification itself still uses issuer/JWKS/audience settings.
 
 2026-05-13 checkpoint notes:
 

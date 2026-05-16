@@ -135,7 +135,7 @@ export function getKonvaNodeFieldRect(shape: CanvasNodeShape, fieldName: KonvaNo
     return { height: 64, width: shape.props.width - 28, x: 14, y: 116 }
   }
   if (fieldName === 'chatDraft') {
-    return { height: 38, width: shape.props.width - 60, x: 30, y: shape.props.height - 86 }
+    return { height: 50, width: shape.props.width - 48, x: 24, y: shape.props.height - 102 }
   }
   return { height: shape.props.height - 78, width: shape.props.width - 28, x: 14, y: 54 }
 }

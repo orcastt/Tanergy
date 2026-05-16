@@ -381,14 +381,6 @@ export function KonvaCanvasSpike({
   }, [document.shapes, selectedIds])
   const canLockSelection = selectedShapes.some((shape) => !shape.isLocked)
   const canUnlockSelection = selectedShapes.some((shape) => shape.isLocked)
-  const { canConvertImageToNode, convertImageToNode, sendImageNodeToCanvas } = useKonvaImageNodeActions({
-    document,
-    history,
-    onDocumentChange: setDocument,
-    onSelectionChange: handleSelectionChange,
-    selectedIds,
-    workspace,
-  })
   const imageOps = useKonvaImageOpsActions({
     document,
     history,
@@ -473,6 +465,17 @@ export function KonvaCanvasSpike({
   const visiblePendingImagePastes = useMemo(() => (
     pendingImagePastes.filter((item) => item.pageId === boardPages.activePageId)
   ), [boardPages.activePageId, pendingImagePastes])
+  const { canConvertImageToNode, convertImageToNode, sendGeneratedOutputToCanvas, sendImageNodeToCanvas } = useKonvaImageNodeActions({
+    activePageId: boardPages.activePageId,
+    document,
+    history,
+    onDocumentChange: setDocument,
+    onPendingImagePasteComplete: handlePendingImagePasteComplete,
+    onPendingImagePasteStateChange: handlePendingImagePasteStateChange,
+    onSelectionChange: handleSelectionChange,
+    selectedIds,
+    workspace,
+  })
 
   const editingTextShape = document.shapes.find((shape): shape is KonvaEditableTextShape => shape.id === editingTextId && isKonvaEditableTextShape(shape))
   const editingNodeTextShape = editingNodeText
@@ -679,6 +682,7 @@ export function KonvaCanvasSpike({
               setSelectedEdgeId(edgeId)
               handleSelectionChange([])
             }}
+            onGeneratedImageToCanvas={sendGeneratedOutputToCanvas}
             onHistoryCheckpoint={history.checkpoint}
             onImageNodeToCanvas={sendImageNodeToCanvas}
             onNodeImagePreviewOpen={openNodeImageLightbox}
@@ -742,7 +746,7 @@ export function KonvaCanvasSpike({
         />
         {nodeImageLightbox ? (
           <KonvaNodeImageLightbox
-            key={`${nodeImageLightbox.title}:${nodeImageLightbox.images[0]?.assetId ?? 'image'}:${nodeImageLightbox.images.length}`}
+            key={`${nodeImageLightbox.title}:${nodeImageLightbox.batches[0]?.[0]?.assetId ?? 'image'}:${nodeImageLightbox.batches.length}`}
             onClose={() => setNodeImageLightbox(null)}
             state={nodeImageLightbox}
           />

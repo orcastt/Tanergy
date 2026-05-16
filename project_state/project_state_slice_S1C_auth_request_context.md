@@ -1,7 +1,7 @@
 # Project State Slice S1C: Auth And Request Context
 
-**Updated**: 2026-05-15
-**Status**: Clerk frontend routes plus FastAPI bearer verification first pass landed. The current checkpoint also includes Tanergy-owned profile completion and editing: first real sign-in now gates on a profile modal, `/account` persists editable display name, `/forgot-password` exposes a real Clerk recovery flow, and session payloads now return `profileCompleted` so the frontend can stay honest about which layer owns what. The next gate is still the ordered second-round signed-in browser pass, then Google/email/logout hardening, with email currently scoped to one truthful staging smoke rather than a new native Tanergy-owned auth system.
+**Updated**: 2026-05-16
+**Status**: Clerk frontend routes plus FastAPI bearer verification first pass landed. The current checkpoint also includes Tanergy-owned profile completion and editing: first real sign-in now gates on a profile modal, `/account` persists editable display name, `/forgot-password` exposes a real Clerk recovery flow, session payloads now return `profileCompleted`, and local auth/admin contracts now include a real account-deletion service for self-delete plus admin delete. The next gate is still the ordered second-round signed-in browser pass, then Google/email/logout hardening, with email currently scoped to one truthful staging smoke rather than a new native Tanergy-owned auth system.
 
 ## Objective
 
@@ -23,6 +23,7 @@ Replace dev headers/mock identity with real server-side sessions and workspace m
 - [x] Tanergy-owned profile fields on `tangent_users` with editable Account UI.
 - [x] First-session profile completion gate driven by the server session contract.
 - [x] Visible Clerk-backed forgot-password flow.
+- [~] Real account deletion path. `/api/v1/auth/account` and admin operator delete now use the shared hard-delete service locally, but real staging smoke is still pending.
 - [x] Real-login admin smoke without local dev-bypass.
 - [x] Admin operator bootstrap/grant path for the actual signed-in local TANGENT user after migrations. Script supports `--user-id` and `--email`.
 - [~] Production-like Web/API origin and CORS contract for Clerk bearer requests. `azp` must now match configured `CLERK_AUTHORIZED_PARTIES` / allowed origins; deployed smoke still pending.
@@ -63,6 +64,7 @@ Current frontend first pass:
 /workspaces        -> protected by Clerk when TANGENT_REQUIRE_WEB_AUTH=1
 /api/auth/session  -> returns Clerk-backed Tanergy session shape when signed in
 /api/auth/profile  -> persists Tanergy-owned profile fields through the Next proxy
+/api/auth/account  -> deletes the Tanergy account plus linked Clerk user after DELETE confirmation
 shared remote clients -> attach Clerk JWT to /api/v1/auth, /boards, /assets, /image-ops and /ai
 ```
 
@@ -87,6 +89,14 @@ services/api/tangent_api/auth_sessions.py
   ensure default workspace + owner membership
   should also ensure personal_wallet for S3 Collaborate/personal top-ups
   fall back to deterministic ephemeral ids only when DATABASE_URL is absent
+
+services/api/tangent_api/user_account_deletion.py
+  shared hard-delete flow for self-delete and admin delete
+  deletes owned solo-workspace data
+  reassigns shared-workspace authored Boards/Assets/Snapshots/AiRuns to workspace owner
+  deletes log-style rows tied directly to the user
+  blocks delete when the user still owns Team/Group workspaces or is the last active admin owner
+  calls Clerk delete through server-side `CLERK_SECRET_KEY`
 
 request_context.py
   no longer accepts user/workspace headers as authority in required-auth mode
@@ -117,6 +127,7 @@ Keep provider secrets server-side only. Google OAuth client secret must not be e
 - [ ] Email-based staging auth flow lands in `/workspaces` and preserves the expected local user mapping.
 - [ ] Logout revokes session.
 - [x] Session endpoint returns user and memberships.
+- [~] Signed-in user can delete their own account when no owned Team/Group workspace remains. Local contracts and UI are in place; staging smoke still pending.
 - [ ] User cannot access workspace without membership.
 - [ ] Invalid/expired provider JWT returns 401.
 - [ ] Session/workspace selection supports multiple Team memberships without leaking authority across Teams.

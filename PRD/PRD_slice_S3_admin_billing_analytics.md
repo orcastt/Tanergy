@@ -1,6 +1,6 @@
 # PRD Slice S3: Team, Group, Wallets, Billing And Admin
 
-**Updated**: 2026-05-14
+**Updated**: 2026-05-16
 **Mode**: Product slice.
 **Status**: Active commercial-architecture slice. Existing admin, ledger, seat and AI-control-plane scaffolds remain useful, but the Team charging rule has pivoted from member-personal credits to a Team wallet. Real staging session/admin smoke is now green; the next release-facing gates are live AI/payment depth, Google/email verification and broader browser acceptance.
 
@@ -94,7 +94,7 @@ Required rework:
 - The User inventory is the primary developer-admin surface: one row per user with email, IP/registration facts, active and expired Team plans, Team credit bars, active and expired Collaborate/Group plans, personal credit, lifetime spent credits, block state and detail action.
 - The User detail surface has five local tabs after one bundle load: Billing, Team Plan, Joined Team, Group Plan and Joined Group. Tab switching must not perform a new access check or refetch.
 - Pending Team/Group invites should appear inline in the same detail rows as members, and invite/member/board row actions should reflect immediately from the returned mutation payload whenever a full detail refetch is not needed.
-- Billing actions are modal-driven and reason-required: block/unblock, soft-delete account, top up, deduct, assign/change plan, freeze/unfreeze or delete plan/workspace.
+- Billing actions are modal-driven and reason-required: block/unblock, hard-delete account with ownership safety guards, top up, deduct, assign/change plan, freeze/unfreeze or delete plan/workspace.
 - Team rows expose plan period, workspace name, Team wallet bar, members, boards, seats, freeze/unfreeze, top-up, deduct, buy seats and delete. Team Start/Growth seat caps remain 15 per Team workspace until the catalog changes.
 - Group/Collaborate rows enforce one active Collaborate plan per user, Collaborate Start up to 10 Groups, Collaborate Plus up to 20 Groups, and max 15 members per Group. Group admin manages structure only; billing remains personal to the actor.
 

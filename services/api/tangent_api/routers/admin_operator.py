@@ -38,7 +38,7 @@ from tangent_api.admin_operator_workspace_invites import (
     list_admin_operator_workspace_invitations,
     revoke_admin_operator_workspace_invitation,
 )
-from tangent_api.admin_operator_writes import soft_delete_admin_operator_user, set_admin_operator_user_status
+from tangent_api.admin_operator_writes import hard_delete_admin_operator_user, set_admin_operator_user_status
 from tangent_api.request_context import ApiRequestContext, get_request_context
 
 router = APIRouter(prefix="/api/v1/admin/operator", tags=["admin"])
@@ -94,7 +94,7 @@ def post_admin_operator_user_delete(
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminOperatorUserMutationResponse:
     require_admin_role(context, allowed_roles=OPERATOR_WRITE_ROLES)
-    return soft_delete_admin_operator_user(
+    return hard_delete_admin_operator_user(
         actor_user_id=context.user_id,
         reason=payload.reason,
         user_id=user_id,

@@ -37,8 +37,6 @@ export type RuntimeGraphNodeRunCompletion = {
   runInput: RuntimeGraphNodeRunStart
 }
 
-const maxGeneratedOutputHistoryItems = 12
-
 export function startRuntimeGraphNodeRun(document: CanvasDocument, shapeId: string, boardId?: string | null): RuntimeGraphNodeRunStart {
   const node = getNodeShape(document, shapeId)
   if (!node || !canRunNodeType(node.props.nodeType)) {
@@ -283,11 +281,11 @@ function mergeGeneratedOutputHistory(node: CanvasNodeShape, generatedRefs: Runti
   return Array.from({ length: slotCount }, (_, slotIndex) => {
     const previousSlot = previous[slotIndex] ?? []
     const nextRef = generatedRefs[slotIndex] ?? null
-    if (!nextRef) return previousSlot.slice(0, maxGeneratedOutputHistoryItems)
+    if (!nextRef) return previousSlot
     return [
       nextRef,
       ...previousSlot.filter((item) => item.assetId !== nextRef.assetId),
-    ].slice(0, maxGeneratedOutputHistoryItems)
+    ]
   })
 }
 

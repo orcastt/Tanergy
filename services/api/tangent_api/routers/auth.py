@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from tangent_api.auth_profile_store import update_auth_profile
 from tangent_api.auth_schemas import (
+    AuthAccountDeleteRequest,
+    AuthAccountDeleteResponse,
     AuthProfileUpdateRequest,
     AuthProfileUpdateResponse,
     AuthSession,
@@ -10,6 +12,7 @@ from tangent_api.auth_schemas import (
     AuthWorkspace,
 )
 from tangent_api.request_context import ApiRequestContext, get_request_context
+from tangent_api.user_account_deletion import delete_user_account
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -75,4 +78,27 @@ def patch_profile(
             id=profile.user_id,
             profileCompleted=profile.profile_completed,
         ),
+    )
+
+
+@router.delete("/account", response_model=AuthAccountDeleteResponse)
+def delete_account(
+    input_data: AuthAccountDeleteRequest,
+    context: ApiRequestContext = Depends(get_request_context),
+) -> AuthAccountDeleteResponse:
+    if context.auth_mode != "required" or context.is_dev_fallback:
+        raise HTTPException(status_code=401, detail="Account deletion requires an authenticated session.")
+
+    result = delete_user_account(
+        actor_user_id=context.user_id,
+        audit_action="auth.account.delete",
+        audit_metadata={"mode": "self"},
+        reason=input_data.reason or "Self-service account deletion",
+        target_user_id=context.user_id,
+        workspace_id=context.workspace_id,
+    )
+    return AuthAccountDeleteResponse(
+        ok=True,
+        message=result.message,
+        warning=result.warning,
     )

@@ -1,18 +1,5 @@
 DEFAULT_MODEL_ROWS = [
     {
-        "capabilities": ["text"],
-        "capability": "text",
-        "cost_hint": "Free-tier friendly streaming chat for node conversations and prompt optimization.",
-        "default_tier_key": None,
-        "display_name": "Hunyuan 3.0 Preview",
-        "enabled": True,
-        "estimated_latency": "1-4s",
-        "is_default": False,
-        "model_key": "hunyuan-3.0-preview",
-        "parameter_schema": {},
-        "provider_key": "geekai",
-    },
-    {
         "capabilities": ["text", "image_analysis"],
         "capability": "text",
         "cost_hint": "Higher-quality multimodal reasoning for chat and image reverse prompting.",
@@ -20,7 +7,7 @@ DEFAULT_MODEL_ROWS = [
         "display_name": "GPT-5.5",
         "enabled": True,
         "estimated_latency": "2-8s",
-        "is_default": False,
+        "is_default": True,
         "model_key": "gpt-5.5",
         "parameter_schema": {},
         "provider_key": "geekai",
@@ -129,7 +116,6 @@ DEFAULT_TIER_ROWS = [
 ]
 
 DEFAULT_ROUTE_ROWS = [
-    {"created_at": "2026-05-06T00:00:00Z", "enabled": True, "health_status": "healthy", "id": "route_hunyuan_text_primary", "model_key": "hunyuan-3.0-preview", "priority": 10, "provider_key": "geekai", "provider_model": "hunyuan-3.0-preview", "retry_policy": {"maxAttempts": 2}, "route_key": "geekai-text-primary", "timeout_ms": 45000, "updated_at": "2026-05-06T00:00:00Z", "weight": 100},
     {"created_at": "2026-05-15T00:00:00Z", "enabled": True, "health_status": "healthy", "id": "route_gpt_5_5_primary", "model_key": "gpt-5.5", "priority": 10, "provider_key": "geekai", "provider_model": "gpt-5.5", "retry_policy": {"maxAttempts": 2}, "route_key": "geekai-gpt55-primary", "timeout_ms": 60000, "updated_at": "2026-05-15T00:00:00Z", "weight": 100},
     {"created_at": "2026-05-13T00:00:00Z", "enabled": True, "health_status": "healthy", "id": "route_gpt_5_mini_primary", "model_key": "gpt-5-mini", "priority": 10, "provider_key": "geekai", "provider_model": "gpt-5-mini", "retry_policy": {"maxAttempts": 2}, "route_key": "geekai-multimodal-primary", "timeout_ms": 45000, "updated_at": "2026-05-13T00:00:00Z", "weight": 100},
     {"created_at": "2026-05-13T00:00:00Z", "enabled": True, "health_status": "healthy", "id": "route_gpt_4o_mini_primary", "model_key": "gpt-4o-mini", "priority": 10, "provider_key": "geekai", "provider_model": "gpt-4o-mini", "retry_policy": {"maxAttempts": 2}, "route_key": "geekai-vision-fast", "timeout_ms": 45000, "updated_at": "2026-05-13T00:00:00Z", "weight": 100},
@@ -141,7 +127,6 @@ DEFAULT_ROUTE_ROWS = [
 ]
 
 DEFAULT_PRICING_ROWS = [
-    {"billing_unit": "per_run", "created_at": "2026-05-06T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-06T00:00:00Z", "effective_to": None, "estimated_credits": 1.0, "id": "price_hunyuan_text_v1", "min_credits": 1.0, "model_key": "hunyuan-3.0-preview", "provider_cost_formula": {"amount": 0.002, "currency": "USD", "type": "per_run"}, "status": "active", "tier_key": None, "updated_at": "2026-05-06T00:00:00Z"},
     {"billing_unit": "per_run", "created_at": "2026-05-15T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-15T00:00:00Z", "effective_to": None, "estimated_credits": 4.0, "id": "price_gpt_5_5_v1", "min_credits": 4.0, "model_key": "gpt-5.5", "provider_cost_formula": {"amount": 0.02, "currency": "USD", "type": "per_run"}, "status": "active", "tier_key": None, "updated_at": "2026-05-15T00:00:00Z"},
     {"billing_unit": "per_run", "created_at": "2026-05-13T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-13T00:00:00Z", "effective_to": None, "estimated_credits": 2.0, "id": "price_gpt_5_mini_v1", "min_credits": 2.0, "model_key": "gpt-5-mini", "provider_cost_formula": {"amount": 0.01, "currency": "USD", "type": "per_run"}, "status": "active", "tier_key": None, "updated_at": "2026-05-13T00:00:00Z"},
     {"billing_unit": "per_run", "created_at": "2026-05-13T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-13T00:00:00Z", "effective_to": None, "estimated_credits": 1.5, "id": "price_gpt_4o_mini_v1", "min_credits": 1.5, "model_key": "gpt-4o-mini", "provider_cost_formula": {"amount": 0.008, "currency": "USD", "type": "per_run"}, "status": "active", "tier_key": None, "updated_at": "2026-05-13T00:00:00Z"},

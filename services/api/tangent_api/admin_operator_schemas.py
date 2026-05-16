@@ -151,6 +151,7 @@ class AdminOperatorUserMutationResponse(TangentApiModel):
     ok: bool
     status: str
     user_id: str = Field(alias="userId")
+    warning: Optional[str] = None
 
 
 class AdminOperatorSubscriptionMutationResponse(TangentApiModel):

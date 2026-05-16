@@ -101,6 +101,7 @@ export type CanvasImageShape = CanvasShapeBase<'image', CanvasSize & {
   }
   mime?: string
   originalUrl?: string
+  sourceNodeId?: string
   thumbnail1024Url?: string
   thumbnail256Url?: string
   thumbnail512Url?: string

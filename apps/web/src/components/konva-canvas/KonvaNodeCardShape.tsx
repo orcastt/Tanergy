@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Circle, Group, Rect, Text } from 'react-konva'
+import { Circle, Group, Line, Rect, Text } from 'react-konva'
 import type { KonvaEventObject } from 'konva/lib/Node'
 import type { CanvasDocument, CanvasNodeShape } from '@/features/canvas-engine'
 import { getCanvasThemePalette, useResolvedCanvasThemeMode, type ResolvedCanvasTheme } from '@/features/canvas-settings/canvasTheme'
@@ -13,7 +13,7 @@ import {
 } from '@/features/node-runtime/registry'
 import { resolveRuntimeGraphNodeInputs } from '@/features/node-runtime/runtimeGraphResolution'
 import {
-  getRuntimeGraphGeneratedOutputHistorySlot,
+  getRuntimeGraphGeneratedOutputBatches,
   getRuntimeGraphGeneratedOutputRefs,
   getRuntimeGraphImageAssetRef,
   type RuntimeGraphImageAssetRef,
@@ -41,8 +41,9 @@ type KonvaNodeCardShapeProps = {
   onChatSend?: (shapeId: string, draftOverride?: string) => void
   onChatUpload?: (shapeId: string) => void
   onFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
+  onGeneratedImageToCanvas?: (input: { ref: RuntimeGraphImageAssetRef; shapeId: string }) => void
   onImageNodeToCanvas?: (shapeId: string) => void
-  onImagePreviewOpen?: (input: { images: RuntimeGraphImageAssetRef[]; selectedIndex?: number; title: string }) => void
+  onImagePreviewOpen?: (input: { batches: RuntimeGraphImageAssetRef[][]; selectedBatchIndex?: number; selectedIndex?: number; title: string }) => void
   onPortPointerDown?: (shapeId: string, portId: string, event: KonvaEventObject<PointerEvent>) => void
   onRunToggle?: (shapeId: string) => void
   onTextEditStart?: (shapeId: string, fieldName: KonvaNodeTextFieldName) => void
@@ -52,7 +53,7 @@ type KonvaNodeCardShapeProps = {
   zoom: number
 }
 
-export function KonvaNodeCardShape({ document, editingFieldName = null, onChatClean, onChatModelChange, onChatRegenerate, onChatSend, onChatUpload, onFieldChange, onImageNodeToCanvas, onImagePreviewOpen, onPortPointerDown, onRunToggle, onTextEditStart, opacity, previewMode = false, shape, zoom }: KonvaNodeCardShapeProps) {
+export function KonvaNodeCardShape({ document, editingFieldName = null, onChatClean, onChatModelChange, onChatRegenerate, onChatSend, onChatUpload, onFieldChange, onGeneratedImageToCanvas, onImageNodeToCanvas, onImagePreviewOpen, onPortPointerDown, onRunToggle, onTextEditStart, opacity, previewMode = false, shape, zoom }: KonvaNodeCardShapeProps) {
   const [hoveredPort, setHoveredPort] = useState<ResolvedNodePort | null>(null)
   const [openFieldName, setOpenFieldName] = useState<string | null>(null)
   const definition = getNodeDefinition(shape.props.nodeType)
@@ -130,6 +131,7 @@ export function KonvaNodeCardShape({ document, editingFieldName = null, onChatCl
             onChatSend={onChatSend}
             onChatUpload={onChatUpload}
             onFieldChange={onFieldChange}
+            onGeneratedImageToCanvas={onGeneratedImageToCanvas}
             onImagePreviewOpen={onImagePreviewOpen}
             onTextEditStart={onTextEditStart}
             openFieldName={openFieldName}
@@ -337,6 +339,7 @@ function NodeBody({
   onChatSend,
   onChatUpload,
   onFieldChange,
+  onGeneratedImageToCanvas,
   onImagePreviewOpen,
   onTextEditStart,
   openFieldName,
@@ -354,7 +357,8 @@ function NodeBody({
   onChatSend?: (shapeId: string, draftOverride?: string) => void
   onChatUpload?: (shapeId: string) => void
   onFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
-  onImagePreviewOpen?: (input: { images: RuntimeGraphImageAssetRef[]; selectedIndex?: number; title: string }) => void
+  onGeneratedImageToCanvas?: (input: { ref: RuntimeGraphImageAssetRef; shapeId: string }) => void
+  onImagePreviewOpen?: (input: { batches: RuntimeGraphImageAssetRef[][]; selectedBatchIndex?: number; selectedIndex?: number; title: string }) => void
   onTextEditStart?: (shapeId: string, fieldName: KonvaNodeTextFieldName) => void
   openFieldName: string | null
   setOpenFieldName: (fieldName: string | null) => void
@@ -391,7 +395,7 @@ function NodeBody({
       />
     )
   }
-  return <GenerationBody fields={fields} normalizedData={normalizedData} onFieldChange={onFieldChange} onImagePreviewOpen={onImagePreviewOpen} openFieldName={openFieldName} setOpenFieldName={setOpenFieldName} shape={shape} zoom={zoom} />
+  return <GenerationBody fields={fields} normalizedData={normalizedData} onFieldChange={onFieldChange} onGeneratedImageToCanvas={onGeneratedImageToCanvas} onImagePreviewOpen={onImagePreviewOpen} openFieldName={openFieldName} setOpenFieldName={setOpenFieldName} shape={shape} zoom={zoom} />
 }
 
 function PromptBody({
@@ -497,11 +501,12 @@ function AnalysisBody({
   )
 }
 
-function GenerationBody({ fields, normalizedData, onFieldChange, onImagePreviewOpen, openFieldName, setOpenFieldName, shape, zoom }: {
+function GenerationBody({ fields, normalizedData, onFieldChange, onGeneratedImageToCanvas, onImagePreviewOpen, openFieldName, setOpenFieldName, shape, zoom }: {
   fields: NodeCardField[]
   normalizedData: CanvasNodeShape['props']['data']
   onFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
-  onImagePreviewOpen?: (input: { images: RuntimeGraphImageAssetRef[]; selectedIndex?: number; title: string }) => void
+  onGeneratedImageToCanvas?: (input: { ref: RuntimeGraphImageAssetRef; shapeId: string }) => void
+  onImagePreviewOpen?: (input: { batches: RuntimeGraphImageAssetRef[][]; selectedBatchIndex?: number; selectedIndex?: number; title: string }) => void
   openFieldName: string | null
   setOpenFieldName: (fieldName: string | null) => void
   shape: CanvasNodeShape
@@ -540,7 +545,7 @@ function GenerationBody({ fields, normalizedData, onFieldChange, onImagePreviewO
   return (
     <>
       <NodeCardImageSlots slotBounds={slotBounds} />
-      <GeneratedOutputPreviews onImagePreviewOpen={onImagePreviewOpen} refs={outputRefs} shape={shape} slotBounds={slotBounds} zoom={zoom} />
+      <GeneratedOutputPreviews onGeneratedImageToCanvas={onGeneratedImageToCanvas} onImagePreviewOpen={onImagePreviewOpen} refs={outputRefs} shape={shape} slotBounds={slotBounds} zoom={zoom} />
       {status === 'succeeded' ? error ? (
         <>
           <Rect cornerRadius={8} fill="#fffbeb" height={28} width={shape.props.width - 28} x={14} y={shape.props.height - 44} />
@@ -559,7 +564,7 @@ function GenerationBody({ fields, normalizedData, onFieldChange, onImagePreviewO
   )
 }
 
-function ImageBody({ accent, onImagePreviewOpen, shape, zoom }: { accent: string; onImagePreviewOpen?: (input: { images: RuntimeGraphImageAssetRef[]; selectedIndex?: number; title: string }) => void; shape: CanvasNodeShape; zoom: number }) {
+function ImageBody({ accent, onImagePreviewOpen, shape, zoom }: { accent: string; onImagePreviewOpen?: (input: { batches: RuntimeGraphImageAssetRef[][]; selectedBatchIndex?: number; selectedIndex?: number; title: string }) => void; shape: CanvasNodeShape; zoom: number }) {
   const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
   const bounds = { height: shape.props.height - 88, width: shape.props.width - 28, x: 14, y: 54 }
   const imageCrop = getNodeImageCrop(shape.props.data)
@@ -572,7 +577,7 @@ function ImageBody({ accent, onImagePreviewOpen, shape, zoom }: { accent: string
       <NodeImagePreview
         bounds={bounds}
         crop={imageCrop}
-        onDoubleClick={imageRef ? () => onImagePreviewOpen?.({ images: [imageRef], title: getStringValue(shape.props.data.title) || 'Image' }) : undefined}
+        onDoubleClick={imageRef ? () => onImagePreviewOpen?.({ batches: [[imageRef]], selectedBatchIndex: 0, selectedIndex: 0, title: getStringValue(shape.props.data.title) || 'Image' }) : undefined}
         source={imageSource}
       />
       {imageSource ? null : (
@@ -606,33 +611,100 @@ function PortTooltip({ port, shape }: { port: ResolvedNodePort; shape: CanvasNod
 }
 
 function GeneratedOutputPreviews({
+  onGeneratedImageToCanvas,
   onImagePreviewOpen,
   refs,
   shape,
   slotBounds,
   zoom,
 }: {
-  onImagePreviewOpen?: (input: { images: RuntimeGraphImageAssetRef[]; selectedIndex?: number; title: string }) => void
+  onGeneratedImageToCanvas?: (input: { ref: RuntimeGraphImageAssetRef; shapeId: string }) => void
+  onImagePreviewOpen?: (input: { batches: RuntimeGraphImageAssetRef[][]; selectedBatchIndex?: number; selectedIndex?: number; title: string }) => void
   refs: ReturnType<typeof getRuntimeGraphGeneratedOutputRefs>
   shape: CanvasNodeShape
   slotBounds: ReturnType<typeof getNodeCardImageSlotBounds>[]
   zoom: number
 }) {
+  const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+  const slotCount = shape.props.nodeType === 'image_gen_4' ? 4 : 1
+  const batches = getRuntimeGraphGeneratedOutputBatches(shape.props.data, slotCount)
+  const openPreview = (ref: RuntimeGraphImageAssetRef, index: number) => {
+    const currentBatch = batches[0] ?? [ref]
+    const selectedIndex = Math.max(0, currentBatch.findIndex((item) => item.assetId === ref.assetId))
+    onImagePreviewOpen?.({
+      batches: batches.length > 0 ? batches : [currentBatch],
+      selectedBatchIndex: 0,
+      selectedIndex,
+      title: shape.props.nodeType === 'image_gen_4' ? 'Generated outputs' : `Output ${index + 1}`,
+    })
+  }
   return (
     <>
       {slotBounds.map((bounds, index) => {
         const ref = refs[index]
+        const showCanvasButton = hoveredIndex === index && Boolean(onGeneratedImageToCanvas)
         return ref ? (
-          <NodeImagePreview
-            bounds={bounds}
+          <Group
             key={index}
-            onDoubleClick={() => {
-              const history = getRuntimeGraphGeneratedOutputHistorySlot(shape.props.data, index)
-              const images = history.length > 0 ? history : [ref]
-              onImagePreviewOpen?.({ images, selectedIndex: 0, title: `Output ${index + 1}` })
+            onDblClick={(event) => {
+              event.cancelBubble = true
+              openPreview(ref, index)
             }}
-            source={getGeneratedOutputSource(ref, zoom)}
-          />
+            onMouseEnter={() => setHoveredIndex(index)}
+            onMouseLeave={() => setHoveredIndex((current) => (current === index ? null : current))}
+          >
+            <NodeImagePreview
+              bounds={bounds}
+              source={getGeneratedOutputSource(ref, zoom)}
+            />
+            <Rect
+              fill="rgba(255,255,255,0.001)"
+              height={bounds.height}
+              width={bounds.width}
+              x={bounds.x}
+              y={bounds.y}
+            />
+            {showCanvasButton ? (
+              <Group
+                onClick={(event) => {
+                  event.cancelBubble = true
+                  onGeneratedImageToCanvas?.({ ref, shapeId: shape.id })
+                }}
+                onDblClick={stopNodeCardControlEvent}
+                onPointerDown={stopNodeCardControlEvent}
+              >
+                <Rect
+                  cornerRadius={8}
+                  fill={palette.actionBg}
+                  height={24}
+                  opacity={0.96}
+                  shadowBlur={8}
+                  shadowColor="rgba(15, 23, 42, 0.16)"
+                  stroke="rgba(255,255,255,0.72)"
+                  strokeWidth={0.75}
+                  width={24}
+                  x={bounds.x + bounds.width - 32}
+                  y={bounds.y + 8}
+                />
+                <Line
+                  lineCap="round"
+                  lineJoin="round"
+                  points={[
+                    bounds.x + bounds.width - 24, bounds.y + 24,
+                    bounds.x + bounds.width - 16, bounds.y + 16,
+                    bounds.x + bounds.width - 16, bounds.y + 20,
+                    bounds.x + bounds.width - 12, bounds.y + 20,
+                    bounds.x + bounds.width - 12, bounds.y + 12,
+                    bounds.x + bounds.width - 20, bounds.y + 12,
+                    bounds.x + bounds.width - 20, bounds.y + 16,
+                  ]}
+                  stroke={palette.actionText}
+                  strokeWidth={1.7}
+                />
+              </Group>
+            ) : null}
+          </Group>
         ) : null
       })}
     </>

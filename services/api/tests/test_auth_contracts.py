@@ -238,3 +238,76 @@ def test_auth_profile_patch_updates_local_profile(monkeypatch):
     assert payload["ok"] is True
     assert payload["user"]["displayName"] == "New Name"
     assert payload["user"]["profileCompleted"] is True
+
+
+def test_auth_account_delete_requires_authenticated_session(monkeypatch):
+    monkeypatch.delenv("TANGENT_REQUIRE_API_AUTH", raising=False)
+    client = TestClient(app)
+
+    response = client.request(
+        "DELETE",
+        "/api/v1/auth/account",
+        json={"confirmation": "DELETE", "reason": "self delete"},
+    )
+
+    assert response.status_code == 401
+
+
+def test_auth_account_delete_deletes_authenticated_account(monkeypatch):
+    monkeypatch.setenv("TANGENT_REQUIRE_API_AUTH", "1")
+
+    async def fake_resolve_authenticated_request_context(
+        token: str,
+        requested_workspace_id: Optional[str] = None,
+        request_ip: Optional[str] = None,
+    ) -> ApiRequestContext:
+        assert token == "valid-token"
+        return ApiRequestContext(
+            auth_mode="required",
+            is_dev_fallback=False,
+            user_avatar_initials="CU",
+            user_display_name="Clerk User",
+            user_email="user@example.com",
+            user_email_verified=True,
+            user_id="user_clerk_123",
+            user_profile_completed=True,
+            workspace_board_count=2,
+            workspace_id="workspace_clerk_123",
+            workspace_name="Tanergy Workspace",
+            workspace_plan_key="free_canvas",
+            workspace_memberships=[],
+            workspace_role="owner",
+        )
+
+    monkeypatch.setattr(
+        "tangent_api.request_context.resolve_authenticated_request_context",
+        fake_resolve_authenticated_request_context,
+    )
+    delete_calls: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        "tangent_api.routers.auth.delete_user_account",
+        lambda **kwargs: delete_calls.append(kwargs) or type(
+            "DeleteResult",
+            (),
+            {"message": "User deleted.", "warning": None},
+        )(),
+    )
+    client = TestClient(app)
+
+    response = client.request(
+        "DELETE",
+        "/api/v1/auth/account",
+        headers={"Authorization": "Bearer valid-token"},
+        json={"confirmation": "DELETE", "reason": "self delete"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"error": None, "message": "User deleted.", "ok": True, "warning": None}
+    assert delete_calls == [{
+        "actor_user_id": "user_clerk_123",
+        "audit_action": "auth.account.delete",
+        "audit_metadata": {"mode": "self"},
+        "reason": "self delete",
+        "target_user_id": "user_clerk_123",
+        "workspace_id": "workspace_clerk_123",
+    }]

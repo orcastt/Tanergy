@@ -38,9 +38,10 @@ type KonvaCanvasStageProps = {
   onDocumentPreview: Dispatch<SetStateAction<CanvasDocument>>
   onEdgeDisconnect: (edgeId: string) => void
   onEdgeSelect: (edgeId: string | null) => void
+  onGeneratedImageToCanvas: (input: { ref: RuntimeGraphImageAssetRef; shapeId: string }) => void
   onHistoryCheckpoint: (document: CanvasDocument) => void
   onImageNodeToCanvas: (shapeId: string) => void
-  onNodeImagePreviewOpen: (input: { images: RuntimeGraphImageAssetRef[]; selectedIndex?: number; title: string }) => void
+  onNodeImagePreviewOpen: (input: { batches: RuntimeGraphImageAssetRef[][]; selectedBatchIndex?: number; selectedIndex?: number; title: string }) => void
   onNodeChatClean: (shapeId: string) => void
   onNodeChatRegenerate: (shapeId: string, messageId: string) => void
   onNodeChatModelChange: (shapeId: string, modelId: string) => void
@@ -117,6 +118,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
       onDragEnd={handleShapeDragEnd}
       onDragStart={handleShapeDragStart}
       onDoubleClick={props.onTextEditStart}
+      onGeneratedImageToCanvas={props.onGeneratedImageToCanvas}
       onImageNodeToCanvas={props.onImageNodeToCanvas}
       onNodeImagePreviewOpen={props.onNodeImagePreviewOpen}
       onNodeChatClean={props.onNodeChatClean}
@@ -205,6 +207,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
             onDragEnd={handleShapeDragEnd}
             onDragStart={handleShapeDragStart}
             onDoubleClick={props.onTextEditStart}
+            onGeneratedImageToCanvas={props.onGeneratedImageToCanvas}
             onImageNodeToCanvas={props.onImageNodeToCanvas}
             onNodeImagePreviewOpen={props.onNodeImagePreviewOpen}
             onNodeChatClean={props.onNodeChatClean}
