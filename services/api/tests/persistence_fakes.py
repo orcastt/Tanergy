@@ -733,19 +733,46 @@ class FakePostgresCursor:
                     row[17],
                 )
         elif normalized.startswith("DELETE FROM tangent_boards"):
-            self.database.boards.pop((params[0], params[1]), None)
-            self.database.board_members = {
-                key: row for key, row in self.database.board_members.items()
-                if key[0] != params[0] or key[1] != params[1]
-            }
-            self.database.board_collaboration_sessions = [
-                row for row in self.database.board_collaboration_sessions
-                if row["workspace_id"] != params[0] or row["board_id"] != params[1]
-            ]
-            self.database.board_share_links = [
-                row for row in self.database.board_share_links
-                if row["workspace_id"] != params[0] or row["board_id"] != params[1]
-            ]
+            if len(params) == 1:
+                workspace_id = params[0]
+                self.database.boards = {
+                    key: row for key, row in self.database.boards.items()
+                    if key[0] != workspace_id
+                }
+                self.database.board_members = {
+                    key: row for key, row in self.database.board_members.items()
+                    if key[0] != workspace_id
+                }
+                self.database.board_collaboration_sessions = [
+                    row for row in self.database.board_collaboration_sessions
+                    if row["workspace_id"] != workspace_id
+                ]
+                self.database.board_realtime_documents = [
+                    row for row in self.database.board_realtime_documents
+                    if row["workspace_id"] != workspace_id
+                ]
+                self.database.board_share_links = [
+                    row for row in self.database.board_share_links
+                    if row["workspace_id"] != workspace_id
+                ]
+            else:
+                self.database.boards.pop((params[0], params[1]), None)
+                self.database.board_members = {
+                    key: row for key, row in self.database.board_members.items()
+                    if key[0] != params[0] or key[1] != params[1]
+                }
+                self.database.board_collaboration_sessions = [
+                    row for row in self.database.board_collaboration_sessions
+                    if row["workspace_id"] != params[0] or row["board_id"] != params[1]
+                ]
+                self.database.board_realtime_documents = [
+                    row for row in self.database.board_realtime_documents
+                    if row["workspace_id"] != params[0] or row["board_id"] != params[1]
+                ]
+                self.database.board_share_links = [
+                    row for row in self.database.board_share_links
+                    if row["workspace_id"] != params[0] or row["board_id"] != params[1]
+                ]
         elif normalized.startswith("INSERT INTO tangent_board_snapshots"):
             key = (params[1], params[2], params[0])
             self.database.snapshots[key] = params
@@ -1016,7 +1043,14 @@ class FakePostgresCursor:
             if workspace_member:
                 workspace_member["role"] = role
         elif normalized.startswith("DELETE FROM tangent_board_members"):
-            self.database.board_members.pop((params[0], params[1], params[2]), None)
+            if len(params) == 1:
+                workspace_id = params[0]
+                self.database.board_members = {
+                    key: row for key, row in self.database.board_members.items()
+                    if key[0] != workspace_id
+                }
+            else:
+                self.database.board_members.pop((params[0], params[1], params[2]), None)
         elif normalized.startswith("INSERT INTO tangent_board_share_links"):
             self.database.board_share_links.append(
                 {
@@ -1152,20 +1186,27 @@ class FakePostgresCursor:
             }
             self.rowcount = before - len(self.database.snapshots)
         elif normalized.startswith("DELETE FROM tangent_board_snapshots"):
-            workspace_id, board_id = params[0], params[1]
-            limit = params[4] if len(params) > 4 else 10
-            rows = [
-                row for key, row in self.database.snapshots.items()
-                if key[0] == workspace_id and key[1] == board_id
-            ]
-            buckets = {
-                "autosave": [row for row in rows if row[11] in {"autosave", "auto_interval"}],
-                "user": [row for row in rows if row[11] not in {"autosave", "auto_interval"}],
-            }
-            for bucket_rows in buckets.values():
-                bucket_rows.sort(key=lambda row: row[14], reverse=True)
-                for row in bucket_rows[limit:]:
-                    self.database.snapshots.pop((row[1], row[2], row[0]), None)
+            if len(params) == 1:
+                workspace_id = params[0]
+                self.database.snapshots = {
+                    key: row for key, row in self.database.snapshots.items()
+                    if key[0] != workspace_id
+                }
+            else:
+                workspace_id, board_id = params[0], params[1]
+                limit = params[4] if len(params) > 4 else 10
+                rows = [
+                    row for key, row in self.database.snapshots.items()
+                    if key[0] == workspace_id and key[1] == board_id
+                ]
+                buckets = {
+                    "autosave": [row for row in rows if row[11] in {"autosave", "auto_interval"}],
+                    "user": [row for row in rows if row[11] not in {"autosave", "auto_interval"}],
+                }
+                for bucket_rows in buckets.values():
+                    bucket_rows.sort(key=lambda row: row[14], reverse=True)
+                    for row in bucket_rows[limit:]:
+                        self.database.snapshots.pop((row[1], row[2], row[0]), None)
         elif normalized.startswith("INSERT INTO tangent_assets"):
             key = (params[1], params[0])
             self.database.assets[key] = params
@@ -1332,6 +1373,16 @@ class FakePostgresCursor:
             member = _find_workspace_member(self.database, workspace_id, user_id)
             if member:
                 self.row = (member.get("role"),)
+        elif normalized.startswith("SELECT kind, owner_id, name, status FROM tangent_workspaces"):
+            workspace_id = params[0]
+            workspace = next((row for row in self.database.workspaces if row["id"] == workspace_id), None)
+            if workspace:
+                self.row = (
+                    workspace.get("kind"),
+                    workspace.get("owner_id"),
+                    workspace.get("name"),
+                    workspace.get("status", "active"),
+                )
         elif normalized.startswith("INSERT INTO tangent_workspace_seat_assignments"):
             if len(params) == 6:
                 seat_id, workspace_id, user_id, plan_key, included_credits, assigned_by = params
@@ -1382,25 +1433,48 @@ class FakePostgresCursor:
                 if should_return:
                     self.row = _seat_assignment_tuple(next_row)
         elif normalized.startswith("UPDATE tangent_workspace_seat_assignments SET status = 'revoked'"):
-            workspace_id, user_id = params[0], params[1]
+            workspace_id = params[0]
+            user_id = params[1] if len(params) > 1 else None
             excluded_plan_key = params[2] if len(params) > 2 else None
             for row in self.database.workspace_seat_assignments:
                 if (
                     row["workspace_id"] == workspace_id
-                    and row["user_id"] == user_id
+                    and (user_id is None or row["user_id"] == user_id)
                     and row.get("status") != "revoked"
                     and (excluded_plan_key is None or row["plan_key"] != excluded_plan_key)
                 ):
                     row["status"] = "revoked"
                     self.rowcount += 1
         elif normalized.startswith("DELETE FROM tangent_workspace_members"):
-            workspace_id, user_id = params
+            workspace_id = params[0]
+            user_id = params[1] if len(params) > 1 else None
             before = len(self.database.workspace_members)
             self.database.workspace_members = [
                 row for row in self.database.workspace_members
-                if row["workspace_id"] != workspace_id or row["user_id"] != user_id
+                if row["workspace_id"] != workspace_id or (user_id is not None and row["user_id"] != user_id)
             ]
             self.rowcount = before - len(self.database.workspace_members)
+        elif normalized.startswith("DELETE FROM tangent_workspace_invitations WHERE workspace_id = %s"):
+            workspace_id = params[0]
+            before = len(self.database.workspace_invitations)
+            self.database.workspace_invitations = [
+                row for row in self.database.workspace_invitations
+                if row["workspace_id"] != workspace_id
+            ]
+            self.rowcount = before - len(self.database.workspace_invitations)
+        elif normalized.startswith("UPDATE tangent_workspaces SET owner_id = %s, billing_owner_user_id = %s"):
+            owner_id, billing_owner_user_id, workspace_id = params
+            workspace = next((row for row in self.database.workspaces if row["id"] == workspace_id), None)
+            if workspace:
+                workspace["owner_id"] = owner_id
+                workspace["billing_owner_user_id"] = billing_owner_user_id
+                self.rowcount = 1
+        elif normalized.startswith("UPDATE tangent_workspaces SET name = %s"):
+            name, workspace_id = params
+            workspace = next((row for row in self.database.workspaces if row["id"] == workspace_id), None)
+            if workspace:
+                workspace["name"] = name
+                self.rowcount = 1
         elif normalized.startswith("SELECT COUNT(*) FROM tangent_workspaces WHERE owner_id = %s"):
             owner_id = params[0]
             self.row = (
@@ -1428,6 +1502,22 @@ class FakePostgresCursor:
                     )
                 ),
             )
+        elif normalized.startswith("SELECT COUNT(*) FROM tangent_workspace_invitations WHERE workspace_id = %s"):
+            workspace_id = params[0]
+            self.row = (
+                sum(1 for row in self.database.workspace_invitations if row["workspace_id"] == workspace_id),
+            )
+        elif normalized.startswith("SELECT COUNT(*) FROM tangent_boards WHERE workspace_id = %s"):
+            workspace_id = params[0]
+            self.row = (
+                sum(1 for (entry_workspace_id, _board_id) in self.database.boards if entry_workspace_id == workspace_id),
+            )
+        elif normalized.startswith("DELETE FROM tangent_board_share_links WHERE workspace_id = %s"):
+            workspace_id = params[0]
+            self.database.board_share_links = [
+                row for row in self.database.board_share_links
+                if row["workspace_id"] != workspace_id
+            ]
         elif normalized.startswith("UPDATE tangent_board_collaboration_sessions SET disconnected_at = %s WHERE workspace_id = %s AND board_id = %s AND disconnected_at IS NULL AND expires_at <= %s"):
             disconnected_at, workspace_id, board_id, expires_at = params
             for row in self.database.board_collaboration_sessions:
@@ -1518,12 +1608,22 @@ class FakePostgresCursor:
             row = next((row for row in self.database.workspaces if row["id"] == workspace_id), None)
             if row:
                 self.row = (row.get("kind", "solo_workspace"),)
+        elif normalized.startswith("SELECT kind, owner_id, billing_owner_user_id, status FROM tangent_workspaces"):
+            workspace_id = params[0]
+            row = next((row for row in self.database.workspaces if row["id"] == workspace_id), None)
+            if row:
+                self.row = (
+                    row.get("kind", "solo_workspace"),
+                    row.get("owner_id"),
+                    row.get("billing_owner_user_id"),
+                    row.get("status", "active"),
+                )
         elif normalized.startswith("SELECT kind, owner_id, status FROM tangent_workspaces"):
             workspace_id = params[0]
             row = next((row for row in self.database.workspaces if row["id"] == workspace_id), None)
             if row:
                 self.row = (row.get("kind", "solo_workspace"), row.get("owner_id"), row.get("status", "active"))
-        elif normalized.startswith("SELECT plan_key, seat_capacity FROM tangent_subscriptions"):
+        elif normalized.startswith("SELECT plan_key, seat_capacity") and "FROM tangent_subscriptions" in normalized:
             workspace_id = params[0]
             matches = [
                 row for row in self.database.subscriptions
@@ -1537,7 +1637,11 @@ class FakePostgresCursor:
             matches.sort(key=lambda row: row.get("updated_at", ""), reverse=True)
             if matches:
                 row = matches[0]
-                self.row = (row.get("plan_key"), row.get("seat_capacity", 0))
+                current_period_end = row.get("current_period_end")
+                if normalized.startswith("SELECT plan_key, seat_capacity, current_period_end"):
+                    self.row = (row.get("plan_key"), row.get("seat_capacity", 0), current_period_end)
+                else:
+                    self.row = (row.get("plan_key"), row.get("seat_capacity", 0))
         elif normalized.startswith("SELECT seat_capacity FROM tangent_subscriptions"):
             workspace_id = params[0]
             matches = [
@@ -1552,7 +1656,7 @@ class FakePostgresCursor:
             matches.sort(key=lambda row: row.get("updated_at", ""), reverse=True)
             if matches:
                 self.row = (matches[0].get("seat_capacity", 0),)
-        elif normalized.startswith("SELECT ca.id, s.plan_key FROM tangent_credit_accounts ca JOIN tangent_subscriptions s"):
+        elif normalized.startswith("SELECT ca.id, s.plan_key") and "FROM tangent_credit_accounts ca JOIN tangent_subscriptions s" in normalized:
             owner_type, owner_id = params
             accounts = [
                 row for row in self.database.credit_accounts
@@ -1569,7 +1673,11 @@ class FakePostgresCursor:
             ]
             if matches:
                 matches.sort(key=lambda row: row.get("updated_at", ""), reverse=True)
-                self.row = (matches[0]["account_id"], matches[0]["plan_key"])
+                current_period_end = matches[0].get("current_period_end")
+                if normalized.startswith("SELECT ca.id, s.plan_key, s.current_period_end"):
+                    self.row = (matches[0]["account_id"], matches[0]["plan_key"], current_period_end)
+                else:
+                    self.row = (matches[0]["account_id"], matches[0]["plan_key"])
         elif normalized.startswith("SELECT id, workspace_id, email, role, invited_by, accepted_by, expires_at, accepted_at, revoked_at, created_at, token_hash, target_user_id, metadata FROM tangent_workspace_invitations WHERE token_hash = %s"):
             token_hash = params[0]
             row = next(

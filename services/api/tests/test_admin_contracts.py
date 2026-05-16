@@ -422,7 +422,7 @@ def test_admin_ai_routes_return_filtered_resources_and_write_audit_logs(monkeypa
             "estimated_latency": "5-12s",
             "enabled": True,
             "is_default": True,
-            "provider_key": "geekai",
+            "provider_key": "jiekou",
             "default_tier_key": "1k",
             "default_pricing_rule_id": "price_gpt_image_2_1k_v1",
             "created_at": "2026-05-06T00:00:00Z",
@@ -449,7 +449,7 @@ def test_admin_ai_routes_return_filtered_resources_and_write_audit_logs(monkeypa
         {
             "id": "route_gpt_primary",
             "model_key": "gpt-image-2",
-            "provider_key": "geekai",
+            "provider_key": "jiekou",
             "provider_model": "gpt-image-2",
             "route_key": "primary",
             "priority": 10,
@@ -718,7 +718,7 @@ def test_admin_ai_route_metrics_report_direct_fallback_and_terminal_health(monke
             "estimated_latency": "5-12s",
             "enabled": True,
             "is_default": True,
-            "provider_key": "geekai",
+            "provider_key": "jiekou",
             "default_tier_key": "1k",
             "default_pricing_rule_id": "price_gpt_image_2_1k_v1",
             "created_at": "2026-05-06T00:00:00Z",
@@ -734,7 +734,7 @@ def test_admin_ai_route_metrics_report_direct_fallback_and_terminal_health(monke
             "node_id": None,
             "run_type": "image_generation",
             "model_id": "gpt-image-2",
-            "provider": "geekai",
+            "provider": "jiekou",
             "status": "succeeded",
             "input_asset_ids": [],
             "output_asset_ids": ["asset_direct"],
@@ -806,7 +806,7 @@ def test_admin_ai_route_metrics_report_direct_fallback_and_terminal_health(monke
             "node_id": None,
             "run_type": "image_generation",
             "model_id": "gpt-image-2",
-            "provider": "geekai",
+            "provider": "jiekou",
             "status": "failed",
             "input_asset_ids": [],
             "output_asset_ids": [],
@@ -844,7 +844,7 @@ def test_admin_ai_route_metrics_report_direct_fallback_and_terminal_health(monke
             "board_id": "board_runtime",
             "node_id": None,
             "model_id": "gpt-image-2",
-            "provider": "geekai",
+            "provider": "jiekou",
             "route_key": "primary",
             "route_id": "route_primary",
             "pricing_rule_id": "price_gpt_image_2_1k_v1",
@@ -865,7 +865,7 @@ def test_admin_ai_route_metrics_report_direct_fallback_and_terminal_health(monke
             "board_id": "board_runtime",
             "node_id": None,
             "model_id": "gpt-image-2",
-            "provider": "geekai",
+            "provider": "jiekou",
             "route_key": "primary",
             "route_id": "route_primary",
             "pricing_rule_id": "price_gpt_image_2_1k_v1",
@@ -907,7 +907,7 @@ def test_admin_ai_route_metrics_report_direct_fallback_and_terminal_health(monke
             "board_id": "board_runtime",
             "node_id": None,
             "model_id": "gpt-image-2",
-            "provider": "geekai",
+            "provider": "jiekou",
             "route_key": "primary",
             "route_id": "route_primary",
             "pricing_rule_id": "price_gpt_image_2_1k_v1",
@@ -997,7 +997,7 @@ def test_admin_ai_control_plane_patch_routes_persist_updates_and_audit(monkeypat
             "estimated_latency": "5-12s",
             "enabled": True,
             "is_default": True,
-            "provider_key": "geekai",
+            "provider_key": "jiekou",
             "default_tier_key": "1k",
             "default_pricing_rule_id": "price_gpt_image_2_1k_v1",
             "created_at": "2026-05-06T00:00:00Z",
@@ -1008,7 +1008,7 @@ def test_admin_ai_control_plane_patch_routes_persist_updates_and_audit(monkeypat
         {
             "id": "route_gpt_primary",
             "model_key": "gpt-image-2",
-            "provider_key": "geekai",
+            "provider_key": "jiekou",
             "provider_model": "gpt-image-2",
             "route_key": "primary",
             "priority": 10,
@@ -1097,6 +1097,51 @@ def test_admin_ai_control_plane_patch_routes_persist_updates_and_audit(monkeypat
     ]
 
 
+def test_admin_ai_provider_route_update_rejects_non_jiekou_provider(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.admin_roles = [
+        {
+            "user_id": "user_admin",
+            "role": "admin",
+            "permissions": {"ai": True},
+            "note": "active",
+            "granted_by": "user_owner",
+            "created_at": "2026-05-05T00:00:00Z",
+            "revoked_at": None,
+        }
+    ]
+    fake_db.model_provider_routes = [
+        {
+            "id": "route_gpt_primary",
+            "model_key": "gpt-image-2",
+            "provider_key": "jiekou",
+            "provider_model": "gpt-image-2",
+            "route_key": "jiekou-gpt-image-2-primary",
+            "priority": 10,
+            "weight": 100,
+            "health_status": "healthy",
+            "timeout_ms": 60000,
+            "retry_policy": {"maxAttempts": 1},
+            "enabled": True,
+            "created_at": "2026-05-06T00:00:00Z",
+            "updated_at": "2026-05-06T00:00:00Z",
+        }
+    ]
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setattr("tangent_api.admin_access.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.admin_ai_control_plane.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    route_response = client.patch(
+        "/api/v1/admin/ai/provider-routes/route_gpt_primary",
+        headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
+        json={"providerKey": "legacy-provider"},
+    )
+
+    assert route_response.status_code == 400
+    assert route_response.json()["detail"] == "Provider key is not enabled for this deployment."
+
+
 def test_admin_ai_publish_list_and_rollback_versions(monkeypatch):
     fake_db = FakePostgresDatabase()
     fake_db.admin_roles = [
@@ -1121,7 +1166,7 @@ def test_admin_ai_publish_list_and_rollback_versions(monkeypatch):
             "estimated_latency": "5-12s",
             "enabled": True,
             "is_default": True,
-            "provider_key": "geekai",
+            "provider_key": "jiekou",
             "default_tier_key": "1k",
             "default_pricing_rule_id": "price_gpt_image_2_1k_v1",
             "created_at": "2026-05-06T00:00:00Z",
@@ -1278,7 +1323,7 @@ def test_admin_ai_api_calls_route_surfaces_failover_attempt_history(monkeypatch)
             "estimated_latency": "5-12s",
             "enabled": True,
             "is_default": True,
-            "provider_key": "geekai",
+            "provider_key": "jiekou",
             "default_tier_key": "1k",
             "default_pricing_rule_id": "price_gpt_image_2_1k_v1",
             "created_at": "2026-05-06T00:00:00Z",
@@ -1289,9 +1334,9 @@ def test_admin_ai_api_calls_route_surfaces_failover_attempt_history(monkeypatch)
         {
             "id": "route_gpt_image_2_primary",
             "model_key": "gpt-image-2",
-            "provider_key": "geekai",
+            "provider_key": "jiekou",
             "provider_model": "gpt-image-2",
-            "route_key": "geekai-primary",
+            "route_key": "jiekou-primary",
             "priority": 10,
             "weight": 100,
             "health_status": "healthy",

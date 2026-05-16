@@ -240,8 +240,6 @@ def _estimate_credits(payload: AiRunRequest, model_id: str, pricing_row: Optiona
 
 
 def _normalize_selected_model_id(model_id: Optional[str]) -> Optional[str]:
-    if model_id == "gemini-3.1-flash-image-preview":
-        return "nano-banana-2"
     return model_id
 
 

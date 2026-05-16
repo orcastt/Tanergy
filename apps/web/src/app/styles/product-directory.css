@@ -13,7 +13,9 @@
 .workspace-directory-header-actions,
 .workspace-directory-card-top,
 .workspace-directory-card-footer,
-.workspace-directory-members {
+.workspace-directory-members,
+.workspace-directory-card-usage-head,
+.workspace-directory-summary-meta {
   display: flex;
   align-items: center;
 }
@@ -58,6 +60,76 @@
 .workspace-directory-stack {
   display: grid;
   gap: 52px;
+}
+
+.workspace-directory-summary-card {
+  display: grid;
+  gap: 18px;
+  max-width: 520px;
+  padding: 28px;
+  border: 1px solid rgba(24, 29, 38, 0.08);
+  border-radius: 16px;
+  background: #fff2d6;
+  box-shadow: 0 16px 34px rgba(24, 29, 38, 0.04);
+}
+
+.workspace-directory-summary-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.workspace-directory-summary-label {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.workspace-directory-summary-copy h2,
+.workspace-directory-summary-credits strong {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 34px;
+  font-weight: 400;
+  line-height: 1.08;
+}
+
+.workspace-directory-summary-copy p,
+.workspace-directory-summary-credits span,
+.workspace-directory-summary-meta {
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.workspace-directory-summary-credits {
+  display: grid;
+  gap: 4px;
+}
+
+.workspace-directory-summary-progress,
+.workspace-directory-card-progress {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(24, 29, 38, 0.1);
+}
+
+.workspace-directory-summary-progress span,
+.workspace-directory-card-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #181d26;
+}
+
+.workspace-directory-summary-meta,
+.workspace-directory-card-usage-head {
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .workspace-directory-section {
@@ -191,6 +263,26 @@
   line-height: 1.5;
 }
 
+.workspace-directory-card-usage {
+  display: grid;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.workspace-directory-card-usage-head span,
+.workspace-directory-card-usage-meta {
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.workspace-directory-card-usage-head strong {
+  color: var(--color-ink);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
 .workspace-directory-card-footer {
   justify-content: space-between;
   min-width: 0;
@@ -287,6 +379,10 @@
 
   .workspace-directory-grid {
     grid-template-columns: 1fr;
+  }
+
+  .workspace-directory-summary-card {
+    max-width: none;
   }
 
   .workspace-directory-card-top {

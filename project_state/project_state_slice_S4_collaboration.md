@@ -24,6 +24,10 @@
 - Remote transform hints are now live too: move, resize and rotate publish lightweight awareness preview bounds, so collaborators can see when a selected set is actively being manipulated instead of only seeing the final selection result.
 - Remote cursor rendering now applies a lightweight display-side interpolation, so collaborator cursor motion feels less jittery without increasing awareness payload frequency.
 - Edge/port collaboration cues are now live in the same presence channel: local edge selection publishes `selectedEdgeId`, node-port drag publishes a lightweight `connectionPreview`, and remote sessions render those cues as colored connection highlights/previews on the canvas without mutating board document state.
+- The collaboration client surface has been cut into smaller pieces again: session/presence merge helpers now live in `boardCollaborationPresenceState.ts`, realtime awareness connection/publish lifecycle now lives in `useBoardRealtimeAwareness.ts`, and `useBoardCollaborationPresence.ts` is now focused on local optimistic presence state plus server session claim/release.
+- 2026-05-16 follow-up cleanup: claim/release/session heartbeat/debounced sync now live in `useBoardCollaborationSessionSync.ts`, which brings `useBoardCollaborationPresence.ts` down again. The next optional split, if we keep tightening it, is to peel local optimistic patch/apply helpers out of the remaining presence hook body.
+- Workspace invite history in the dashboard is now grouped into explicit `pending / accepted / revoked` states instead of a single undifferentiated history list.
+- Team workspace ownership transfer now has a first safe product/backend path for existing members. Group workspace owner transfer is still intentionally blocked until billing ownership rules are designed.
 - Current account-deletion hard-delete is live, but paid Team/Group membership cleanup still needs another blocker pass before collaboration scale-up.
 - `services/api/scripts/s4_workspace_invite_smoke.py` now covers the API-level Team/Group invite acceptance matrix: owner creates board, owner creates board-target invite, invitee accepts, invitee reopens the same board collaboration route inside the invited workspace.
 
@@ -40,9 +44,10 @@
 
 1. Execute the new Team/Group dual-user smoke against real signed-in accounts, not only local/header-mode automation.
 2. Keep expanding live collaborator presence validation from cursor/name/color into active page, tool and invite-entry reopening flows.
-3. Broaden optimistic merge rules only where page-scoped metadata can prove they are safe; keep same-page and full-board conflicts conservative.
-4. Add explicit two-user occupancy acceptance around focused text/node-parameter editing.
-5. After that, move from presence-first collaboration into the next Yjs/editor slice: shared selection semantics, stronger remote intent cues and multi-user object conflict policy.
+3. Validate the current page-scoped Yjs claim with real two-user same-board multi-page smoke before widening the marketing language around collaboration scope.
+4. Broaden optimistic merge rules only where page-scoped metadata can prove they are safe; keep same-page and full-board conflicts conservative.
+5. Add explicit two-user occupancy acceptance around focused text/node-parameter editing, then refine cursor easing/lerp behavior from "less jittery" toward a more Miro-like soft stop.
+6. After that, move from presence-first collaboration into the next Yjs/editor slice: shared selection semantics, stronger remote intent cues and multi-user object conflict policy.
 
 ## Do Not Drift
 

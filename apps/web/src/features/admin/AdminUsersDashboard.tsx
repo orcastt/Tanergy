@@ -255,7 +255,7 @@ export function AdminUsersDashboard({ enabled, seedResource }: { enabled: boolea
             </colgroup>
             <thead>
               <tr>
-                <th>User ID</th>
+                <th>User</th>
                 <th>Email</th>
                 <th>IP</th>
                 <th>Register date</th>

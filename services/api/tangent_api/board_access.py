@@ -2,6 +2,7 @@ from typing import Literal, Optional
 
 from fastapi import HTTPException
 
+from tangent_api.board_metadata import normalize_board_visibility
 from tangent_api.plan_catalog import board_limit_for_plan, page_limit_for_plan
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.schemas import BoardRecord
@@ -21,6 +22,7 @@ BOARD_PERMISSION_ORDER = {
     "manage": 3,
     "owner": 4,
 }
+SHAREABLE_BOARD_WORKSPACE_KINDS = {"group_workspace", "team_workspace"}
 BoardPermission = Literal["none", "view", "edit", "manage", "owner"]
 
 
@@ -41,6 +43,7 @@ def resolve_effective_board_permission(
         return "none"
 
     normalized_member_role = board_member_role.strip().lower() if isinstance(board_member_role, str) else None
+    raw_workspace_role = str(context.workspace_role or "").strip().lower()
     if record.owner_id == context.user_id or normalized_member_role == "owner":
         return "owner"
     if normalized_member_role in MANAGE_BOARD_MEMBER_ROLES:
@@ -55,8 +58,8 @@ def resolve_effective_board_permission(
         return "manage"
     if workspace_role_can_write(normalized_workspace_role):
         return "edit"
-    if normalized_workspace_role == "viewer" and record.visibility in {"workspace", "public"}:
-        return "view"
+    if normalized_workspace_role == "viewer":
+        return "view" if raw_workspace_role == "viewer" else "none"
     return "none"
 
 
@@ -144,6 +147,28 @@ def assert_can_manage_board(
 ) -> None:
     if not can_manage_board(record, context, board_member_role):
         raise HTTPException(status_code=403, detail="Workspace role cannot manage this board.")
+
+
+def workspace_kind_allows_board_sharing(workspace_kind: Optional[str]) -> bool:
+    return str(workspace_kind or "").strip().lower() in SHAREABLE_BOARD_WORKSPACE_KINDS
+def assert_workspace_allows_board_visibility(workspace_kind: Optional[str], visibility: Optional[str]) -> None:
+    normalized_visibility = normalize_board_visibility(visibility)
+    if normalized_visibility == "private":
+        return
+    if workspace_kind_allows_board_sharing(workspace_kind):
+        return
+    raise HTTPException(
+        status_code=403,
+        detail="Solo workspace boards must stay private. Move the board into a Team or Group workspace to share it.",
+    )
+
+
+def assert_board_allows_share_links(record: BoardRecord, workspace_kind: Optional[str]) -> None:
+    if not workspace_kind_allows_board_sharing(workspace_kind):
+        raise HTTPException(
+            status_code=403,
+            detail="Board share links are only available in Team or Group workspaces.",
+        )
 
 
 def assert_can_own_board(

@@ -22,9 +22,8 @@ Detailed product, architecture and state truth now lives in:
 | `s3-team-group-wallets-membership-billing-plan-2026-05-08.md` | Active S3 tactical plan | Supersedes the old Team actor-personal charging strategy with Team wallet, personal Collaborate wallet, invites, seats, membership, billing usage and payer-resolver phases. |
 | `s4-collaboration-invite-presence-plan-2026-05-16.md` | Planned S4 tactical plan | Reuses the existing invite/member/role contracts to sequence invite-link acceptance, live cursors/presence, sensitive-edit occupancy and optimistic sync. |
 | `s1b-staging-deployment-runbook-2026-05-02.md` | Active S1B runbook | Chinese beginner guide for domain, DNS, Vercel, Hetzner, Neon, R2, Clerk, Google OAuth and email setup. |
-| `s1x-canvas-engine-migration-reference-2026-05-03.md` | Active S1X migration reference | Historical migration baseline plus current Konva-only route/public share/admin-adjacent checkpoints; remaining work is runtime, export, performance and collaboration polish. |
-| `s1-launch-readiness-and-acceptance-report-2026-05-05.md` | Active handoff report | Unified S1X/S1B/S1C/S1D/S2/S3/S4 launch-readiness order and acceptance checklist, now including public share, owner-only copy/delete, known-foreign Asset guard and admin bootstrap first pass. |
-| `s3-billing-team-entitlements-strategy-2026-05-06.md` | Superseded strategy reference | Keep for market benchmarks and historical reasoning only; Team wallet rules now live in the 2026-05-08 S3 plan. |
+| `s1x-canvas-engine-migration-reference-2026-05-03.md` | Reference S1X migration note | Historical migration baseline plus Konva-only route/public share/admin-adjacent checkpoints; keep as background context, not the main execution spine. |
+| `s1-launch-readiness-and-acceptance-report-2026-05-05.md` | Reference handoff report | Unified S1X/S1B/S1C/S1D/S2/S3/S4 launch-readiness order and acceptance checklist; keep as a review document while the active shipping spine stays in `p0-alpha-stabilization-and-acceptance-2026-05-06.md`. |
 
 ## Current Tactical Focus
 
@@ -48,7 +47,7 @@ Working rule for the current pass:
 
 `Archive/` contains completed or superseded historical plans and handoffs. Do not use archive files as active truth.
 
-`Archive/overseas-cost-growth-forecast.md` remains useful as old market/cost research, and `s3-billing-team-entitlements-strategy-2026-05-06.md` remains only a superseded benchmark reference. The active commercial implementation strategy is `s3-team-group-wallets-membership-billing-plan-2026-05-08.md`.
+`Archive/overseas-cost-growth-forecast.md` remains useful as old market/cost research, and `Archive/s3-billing-team-entitlements-strategy-2026-05-06.md` remains only a superseded benchmark reference. The active commercial implementation strategy is `s3-team-group-wallets-membership-billing-plan-2026-05-08.md`.
 
 ## Update Rules
 
@@ -81,9 +80,8 @@ Working rule for the current pass:
 | `s3-admin-operator-console-redesign-2026-05-09.md` | 活跃 S3 tactical plan | 围绕快速 User inventory、一次性 user detail bundle、Team/Group plan tabs、弹窗操作，以及缺失的 admin read/write contracts，重做 developer admin console。 |
 | `s3-team-group-wallets-membership-billing-plan-2026-05-08.md` | 活跃 S3 tactical plan | 用 Team wallet、个人 Collaborate wallet、invites、seats、membership、billing usage 和 payer-resolver 阶段，取代旧的 Team actor-personal 扣费策略。 |
 | `s1b-staging-deployment-runbook-2026-05-02.md` | 活跃 S1B runbook | 面向新手的中文指南，覆盖 domain、DNS、Vercel、Hetzner、Neon、R2、Clerk、Google OAuth 和 email setup。 |
-| `s1x-canvas-engine-migration-reference-2026-05-03.md` | 活跃 S1X migration reference | 历史迁移基线 + 当前 Konva-only route / public share / admin-adjacent checkpoints；剩余工作是 runtime、export、performance 和 collaboration polish。 |
-| `s1-launch-readiness-and-acceptance-report-2026-05-05.md` | 活跃 handoff report | 统一的 S1X/S1B/S1C/S1D/S2/S3/S4 launch-readiness 顺序和 acceptance checklist，现在包含 public share、owner-only copy/delete、known-foreign Asset guard 和 admin bootstrap first pass。 |
-| `s3-billing-team-entitlements-strategy-2026-05-06.md` | 已被取代的策略参考 | 只保留作为市场基准和历史推理；Team wallet 规则以 2026-05-08 S3 plan 为准。 |
+| `s1x-canvas-engine-migration-reference-2026-05-03.md` | 参考型 S1X migration note | 历史迁移基线 + Konva-only route / public share / admin-adjacent checkpoints；保留作背景上下文，不再作为主执行脊柱。 |
+| `s1-launch-readiness-and-acceptance-report-2026-05-05.md` | 参考型 handoff report | 统一的 S1X/S1B/S1C/S1D/S2/S3/S4 launch-readiness 顺序和 acceptance checklist；保留作复盘/验收参考，当前 shipping spine 以 `p0-alpha-stabilization-and-acceptance-2026-05-06.md` 为准。 |
 
 ## 当前战术焦点
 
@@ -101,7 +99,7 @@ Working rule for the current pass:
 
 `Archive/` 包含已完成或已被取代的历史计划和 handoffs。不要把 archive 文件当作活跃事实来源。
 
-`Archive/overseas-cost-growth-forecast.md` 仍可作为旧市场 / 成本研究参考，`s3-billing-team-entitlements-strategy-2026-05-06.md` 只保留为已被取代的基准参考。当前活跃商业实现策略是 `s3-team-group-wallets-membership-billing-plan-2026-05-08.md`。
+`Archive/overseas-cost-growth-forecast.md` 仍可作为旧市场 / 成本研究参考，`Archive/s3-billing-team-entitlements-strategy-2026-05-06.md` 只保留为已被取代的基准参考。当前活跃商业实现策略是 `s3-team-group-wallets-membership-billing-plan-2026-05-08.md`。
 
 ## 更新规则
 

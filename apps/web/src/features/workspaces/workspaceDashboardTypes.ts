@@ -1,12 +1,8 @@
-import type { BoardCardColor } from '@/features/boards/boardTypes'
+import type { BoardPersistenceSummary } from '@/features/boards/boardTypes'
 import type { PlanKey } from '@/features/billing/billingTypes'
 import type { WorkspaceMembershipRole } from './workspacePresentation'
 
-export type WorkspaceDashboardBoard = {
-  cardColor: BoardCardColor
-  id: string
-  title: string
-}
+export type WorkspaceDashboardBoard = BoardPersistenceSummary
 
 export type WorkspaceDashboardMember = {
   boardAssignments: number
@@ -20,6 +16,7 @@ export type WorkspaceDashboardMember = {
 
 export type TeamWorkspaceDashboardRecord = {
   boards: WorkspaceDashboardBoard[]
+  currentPeriodEnd?: null | string
   id: string
   inviteCode: string
   memberUsageLimit: number
@@ -32,14 +29,9 @@ export type TeamWorkspaceDashboardRecord = {
   totalCreditsRemaining: number
 }
 
-export type WorkspaceDashboardAction = {
-  href: string
-  label: string
-}
-
 export type GroupWorkspaceDashboardRecord = {
-  actions: WorkspaceDashboardAction[]
   boards: WorkspaceDashboardBoard[]
+  currentPeriodEnd?: null | string
   totalCredits: number
   totalCreditsRemaining: number
   id: string

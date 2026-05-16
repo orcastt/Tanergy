@@ -1,11 +1,9 @@
 import os
 import re
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from time import sleep
 from typing import Callable, Optional
 
-from tangent_api.ai_provider_geekai import run_geekai_attempt
 from tangent_api.ai_provider_google import run_google_attempt
 from tangent_api.ai_provider_jiekou import run_jiekou_attempt
 from tangent_api.ai_provider_openai_compatible import run_openai_compatible_attempt
@@ -20,32 +18,9 @@ ProviderAdapter = Callable[
 ]
 
 _DEFAULT_PROVIDER_BASE_URLS = {
-    "geekai": "https://geekai.co/api/v1",
     "google": "https://generativelanguage.googleapis.com/v1beta",
     "openai": "https://api.openai.com/v1",
 }
-
-
-@dataclass(frozen=True)
-class _ProviderEnvOverride:
-    env_prefix: str
-    provider_key: str
-    provider_models: tuple[str, ...] = ()
-    run_types: tuple[str, ...] = ()
-
-
-_PROVIDER_ENV_OVERRIDES = (
-    _ProviderEnvOverride(
-        env_prefix="GEEKAI_NANO_BANANA",
-        provider_key="geekai",
-        provider_models=("nano-banana-2",),
-    ),
-    _ProviderEnvOverride(
-        env_prefix="GEEKAI_TEXT",
-        provider_key="geekai",
-        run_types=("image_analysis", "text"),
-    ),
-)
 
 
 def execute_ai_provider_attempt(
@@ -70,22 +45,6 @@ def _run_live_openai_compatible(
     context: ApiRequestContext,
 ) -> AiProviderAttemptResult:
     return run_openai_compatible_attempt(
-        run,
-        payload,
-        route,
-        context,
-        api_key=_provider_api_key(route.provider_key, route.provider_model, payload.run_type),
-        base_url=_provider_base_url(route.provider_key, route.provider_model, payload.run_type),
-    )
-
-
-def _run_live_geekai(
-    run: AiRunRecord,
-    payload: AiRunRequest,
-    route: AiProviderRouteCandidate,
-    context: ApiRequestContext,
-) -> AiProviderAttemptResult:
-    return run_geekai_attempt(
         run,
         payload,
         route,
@@ -293,9 +252,6 @@ def _stub_provider_disabled_result(route: AiProviderRouteCandidate) -> AiProvide
 
 
 def _provider_api_key(provider_key: str, provider_model: Optional[str] = None, run_type: Optional[str] = None) -> Optional[str]:
-    override = _provider_override_value("API_KEY", provider_key, provider_model, run_type)
-    if override:
-        return override
     scope_override = _provider_scope_value("API_KEY", provider_key, run_type)
     if scope_override:
         return scope_override
@@ -310,9 +266,6 @@ def _provider_api_key(provider_key: str, provider_model: Optional[str] = None, r
 
 
 def _provider_base_url(provider_key: str, provider_model: Optional[str] = None, run_type: Optional[str] = None) -> Optional[str]:
-    override = _provider_override_value("BASE_URL", provider_key, provider_model, run_type)
-    if override:
-        return override
     scope_override = _provider_scope_value("BASE_URL", provider_key, run_type)
     if scope_override:
         return scope_override
@@ -322,29 +275,6 @@ def _provider_base_url(provider_key: str, provider_model: Optional[str] = None, 
         or os.getenv(_legacy_provider_base_url_env(provider_key))
         or _default_provider_base_url(provider_key, run_type)
     )
-
-
-def _provider_override_value(
-    value_suffix: str,
-    provider_key: str,
-    provider_model: Optional[str],
-    run_type: Optional[str],
-) -> Optional[str]:
-    normalized_run_type = str(run_type or "").strip().lower()
-    normalized_model = str(provider_model or "").strip().lower()
-    normalized_provider = provider_key.strip().lower()
-    for override in _PROVIDER_ENV_OVERRIDES:
-        if override.provider_key != normalized_provider:
-            continue
-        if override.provider_models and normalized_model not in override.provider_models:
-            continue
-        if override.run_types and normalized_run_type not in override.run_types:
-            continue
-        return (
-            os.getenv(f"TANGENT_AI_PROVIDER_{override.env_prefix}_{value_suffix}")
-            or os.getenv(f"{override.env_prefix}_{value_suffix}")
-        )
-    return None
 
 
 def _provider_scope_value(value_suffix: str, provider_key: str, run_type: Optional[str]) -> Optional[str]:
@@ -389,8 +319,6 @@ def _legacy_provider_api_key_env(provider_key: str) -> str:
         return "JIEKOU_API_KEY"
     if provider_key == "openai":
         return "OPENAI_API_KEY"
-    if provider_key == "geekai":
-        return "GEEKAI_API_KEY"
     return f"{provider_key.upper()}_API_KEY"
 
 
@@ -401,8 +329,6 @@ def _legacy_provider_base_url_env(provider_key: str) -> str:
         return "GOOGLE_BASE_URL"
     if provider_key == "jiekou":
         return "JIEKOU_BASE_URL"
-    if provider_key == "geekai":
-        return "GEEKAI_BASE_URL"
     return f"{provider_key.upper()}_BASE_URL"
 
 
@@ -494,7 +420,6 @@ def _timestamp() -> str:
 
 
 _LIVE_PROVIDER_ADAPTERS: dict[str, ProviderAdapter] = {
-    "geekai": _run_live_geekai,
     "google": _run_live_google,
     "jiekou": _run_live_jiekou,
     "openai": _run_live_openai_compatible,

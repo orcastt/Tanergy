@@ -22,11 +22,13 @@ export function AdminOperatorUserInventoryRow({
   const detailHref = `/admin/users/${encodeURIComponent(user.id)}`
   const teamPlanRows = summarizeWorkspacePlanRows(user.teamPlansActive, user.teamPlansExpired, 3)
   const groupPlanRows = summarizeUserPlanRows(user.groupPlansActive, user.groupPlansExpired, 2)
+  const userLabel = user.displayName.trim() || user.email || user.id
 
   return (
     <tr>
       <td className="admin-users-cell-id">
-        <strong title={user.id}>{truncateMiddle(user.id, 16, 8)}</strong>
+        <strong title={userLabel}>{userLabel}</strong>
+        <small title={user.id}>{truncateMiddle(user.id, 16, 8)}</small>
       </td>
       <td className="admin-users-cell-email">
         <strong title={user.email}>{user.email}</strong>

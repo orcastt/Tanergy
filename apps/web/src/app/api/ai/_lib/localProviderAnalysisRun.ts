@@ -1,6 +1,11 @@
 import type { ApiRequestContext } from '../../_lib/apiRequestContext'
 import { getAssetStorageAdapter } from '../../assets/_lib/assetStorageAdapter'
-import { getProviderApiKey, getProviderBaseUrl } from './providerApiConfig'
+import {
+  getProviderApiKey,
+  getProviderBaseUrl,
+  getProviderDisplayLabel,
+  getProviderTextApiMode,
+} from './providerApiConfig'
 import {
   assertAiInlineImageTotalByteLength,
   parseAiInlineImageDataUrl,
@@ -14,7 +19,7 @@ import type { AiRunChargeSummary } from '@/features/billing/billingTypes'
 const maxAnalysisTextOutputChars = 12000
 const maxAnalysisReferenceImages = 8
 
-type GeekAiResponsesResponse = {
+type ProviderResponsesResponse = {
   error?: {
     message?: string
   } | null
@@ -29,12 +34,12 @@ type GeekAiResponsesResponse = {
   output_text?: string | null
 }
 
-type GeekAiChatMessageContent = string | Array<{ text?: string; type?: string }>
+type ProviderChatMessageContent = string | Array<{ text?: string; type?: string }>
 
-type GeekAiChatCompletionResponse = {
+type ProviderChatCompletionResponse = {
   choices?: Array<{
     message?: {
-      content?: GeekAiChatMessageContent
+      content?: ProviderChatMessageContent
     }
   }>
   error?: {
@@ -49,7 +54,7 @@ type ProviderTextClientConfig = {
   provider: string
 }
 
-export async function createGeekAiAnalysisRun(input: {
+export async function createLocalProviderAnalysisRun(input: {
   context: ApiRequestContext
   charge: AiRunChargeSummary
   request: AiRunRequest
@@ -62,15 +67,17 @@ export async function createGeekAiAnalysisRun(input: {
   if (!model.capabilities.includes('image_analysis')) {
     throw new Error('The selected model does not support image analysis.')
   }
-  const clientConfig = getTextClientConfig(model.provider, model.id)
+  const clientConfig = getTextClientConfig(model.provider)
   const referenceImages = await resolveInputImages(input.request.inputAssetIds ?? [], input.context)
   if (referenceImages.length === 0) throw new Error('Missing analysis image input.')
 
-  const textOutput = limitAnalysisTextOutput(model.provider === 'jiekou'
-    ? await runOpenAiCompatibleAnalysis({ clientConfig, imageUrls: referenceImages, modelId: model.id, prompt })
-    : model.id === 'gemini-2.5-flash'
-      ? await runChatCompletionsAnalysis({ clientConfig, imageUrls: referenceImages, modelId: model.id, prompt })
-      : await runResponsesAnalysis({ clientConfig, imageUrls: referenceImages, modelId: model.id, prompt }))
+  const textOutput = limitAnalysisTextOutput(await runAnalysisForProvider({
+    clientConfig,
+    imageUrls: referenceImages,
+    modelId: model.id,
+    prompt,
+    provider: model.provider,
+  }))
   if (!textOutput) throw new Error('Provider did not return any analysis text.')
 
   return {
@@ -98,8 +105,25 @@ export async function createGeekAiAnalysisRun(input: {
   } satisfies AiRunRecord
 }
 
+export const createProviderAnalysisRun = createLocalProviderAnalysisRun
+
+async function runAnalysisForProvider(input: { clientConfig: ProviderTextClientConfig; imageUrls: string[]; modelId: string; prompt: string; provider: string }) {
+  const providerMode = getAnalysisProviderMode(input.provider)
+  if (providerMode === 'openai_compatible') {
+    return runOpenAiCompatibleAnalysis(input)
+  }
+  if (providerMode === 'chat_completions') {
+    return runChatCompletionsAnalysis(input)
+  }
+  return runResponsesAnalysis(input)
+}
+
+function getAnalysisProviderMode(provider: string) {
+  return getProviderTextApiMode(provider)
+}
+
 async function runResponsesAnalysis(input: { clientConfig: ProviderTextClientConfig; imageUrls: string[]; modelId: string; prompt: string }) {
-  const payload = await postProviderJson<GeekAiResponsesResponse>('/responses', {
+  const payload = await postProviderJson<ProviderResponsesResponse>('/responses', {
     input: [
       {
         content: [
@@ -126,7 +150,7 @@ async function runResponsesAnalysis(input: { clientConfig: ProviderTextClientCon
 }
 
 async function runChatCompletionsAnalysis(input: { clientConfig: ProviderTextClientConfig; imageUrls: string[]; modelId: string; prompt: string }) {
-  const payload = await postProviderJson<GeekAiChatCompletionResponse>('/chat/completions', {
+  const payload = await postProviderJson<ProviderChatCompletionResponse>('/chat/completions', {
     max_completion_tokens: 1200,
     messages: [
       {
@@ -149,7 +173,7 @@ async function runChatCompletionsAnalysis(input: { clientConfig: ProviderTextCli
 }
 
 async function runOpenAiCompatibleAnalysis(input: { clientConfig: ProviderTextClientConfig; imageUrls: string[]; modelId: string; prompt: string }) {
-  const payload = await postProviderJson<GeekAiChatCompletionResponse>('/chat/completions', {
+  const payload = await postProviderJson<ProviderChatCompletionResponse>('/chat/completions', {
     max_completion_tokens: 1200,
     messages: [
       {
@@ -190,7 +214,7 @@ async function resolveInputImages(assetIds: string[], context: ApiRequestContext
   return imageUrls
 }
 
-function extractResponseText(payload: GeekAiResponsesResponse) {
+function extractResponseText(payload: ProviderResponsesResponse) {
   if (typeof payload.output_text === 'string' && payload.output_text.trim()) return payload.output_text
   return (payload.output ?? [])
     .flatMap((item) => item.type === 'message' && Array.isArray(item.content) ? item.content : [])
@@ -198,7 +222,7 @@ function extractResponseText(payload: GeekAiResponsesResponse) {
     .join('\n')
 }
 
-function extractChatCompletionText(payload: GeekAiChatCompletionResponse) {
+function extractChatCompletionText(payload: ProviderChatCompletionResponse) {
   const content = payload.choices?.[0]?.message?.content
   if (typeof content === 'string') return content
   if (Array.isArray(content)) {
@@ -243,14 +267,14 @@ function createRunId() {
   return `run_local_${Date.now()}_${Math.random().toString(36).slice(2)}`
 }
 
-function getTextClientConfig(provider: string, modelId: string): ProviderTextClientConfig {
+function getTextClientConfig(provider: string): ProviderTextClientConfig {
   return {
-    apiKey: getProviderApiKey(provider, 'text', modelId),
-    baseUrl: getProviderBaseUrl(provider, 'text', modelId),
+    apiKey: getProviderApiKey(provider, 'text'),
+    baseUrl: getProviderBaseUrl(provider, 'text'),
     provider,
   }
 }
 
 function providerLabel(provider: string) {
-  return provider.trim().toLowerCase() === 'jiekou' ? 'Jiekou AI' : 'GeekAI'
+  return getProviderDisplayLabel(provider)
 }

@@ -1,3 +1,4 @@
+import os
 from typing import Optional
 
 from fastapi import HTTPException
@@ -16,6 +17,7 @@ ALLOWED_CAPABILITIES = {"image_generation", "image_edit", "image_analysis", "ima
 ALLOWED_HEALTH_STATUSES = {"healthy", "unknown", "degraded", "failed", "disabled"}
 ALLOWED_PRICING_STATUSES = {"active", "draft", "retired"}
 ALLOWED_BILLING_UNITS = {"per_image", "per_run", "per_output_token", "per_input_token", "blended"}
+DEFAULT_ALLOWED_PROVIDER_KEYS = {"jiekou"}
 
 
 def list_admin_ai_models(
@@ -138,7 +140,7 @@ def update_admin_ai_model(model_key: str, input_data: AdminAiModelUpdateRequest)
         params.append(bool(input_data.is_default))
     if "provider_key" in fields:
         updates.append("provider_key = %s")
-        params.append(_optional_trimmed(input_data.provider_key))
+        params.append(_normalize_optional_provider_key(input_data.provider_key))
     if "default_tier_key" in fields:
         updates.append("default_tier_key = %s")
         params.append(_optional_trimmed(input_data.default_tier_key))
@@ -191,7 +193,7 @@ def update_admin_ai_provider_route(route_id: str, input_data: AdminAiProviderRou
         params.append(_required_trimmed(input_data.model_key, "Route model key is required."))
     if "provider_key" in fields:
         updates.append("provider_key = %s")
-        params.append(_required_trimmed(input_data.provider_key, "Route provider key is required."))
+        params.append(_normalize_required_provider_key(input_data.provider_key, "Route provider key is required."))
     if "provider_model" in fields:
         updates.append("provider_model = %s")
         params.append(_required_trimmed(input_data.provider_model, "Route provider model is required."))
@@ -392,6 +394,18 @@ def _normalize_capability_list(values: Optional[list[str]]) -> list[str]:
     return normalized
 
 
+def _normalize_optional_provider_key(value: Optional[str]) -> Optional[str]:
+    normalized = _optional_trimmed(value)
+    if normalized is None:
+        return None
+    return _normalize_choice(normalized, _allowed_provider_keys(), "Provider key is not enabled for this deployment.")
+
+
+def _normalize_required_provider_key(value: Optional[str], error_detail: str) -> str:
+    normalized = _required_trimmed(value, error_detail)
+    return _normalize_choice(normalized, _allowed_provider_keys(), "Provider key is not enabled for this deployment.")
+
+
 def _optional_trimmed(value: Optional[str]) -> Optional[str]:
     if value is None:
         return None
@@ -404,3 +418,12 @@ def _required_trimmed(value: Optional[str], error_detail: str) -> str:
     if not normalized:
         raise HTTPException(status_code=400, detail=error_detail)
     return normalized
+
+
+def _allowed_provider_keys() -> set[str]:
+    configured = {
+        value.strip()
+        for value in os.getenv("TANGENT_AI_ALLOWED_PROVIDER_KEYS", "").split(",")
+        if value.strip()
+    }
+    return configured or DEFAULT_ALLOWED_PROVIDER_KEYS

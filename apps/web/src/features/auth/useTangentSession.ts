@@ -3,7 +3,13 @@
 import { useAuth } from '@clerk/nextjs'
 import { useEffect, useRef, useState } from 'react'
 import { createLoadingSessionSnapshot, getCurrentSessionSnapshot } from './mockSession'
-import { clearSessionScopedClientState, loadCurrentSession, SESSION_REFRESH_EVENT } from './sessionClient'
+import {
+  clearPendingSessionRefreshMarker,
+  clearSessionScopedClientState,
+  loadCurrentSession,
+  readPendingSessionRefreshMarker,
+  SESSION_REFRESH_EVENT,
+} from './sessionClient'
 import type { TangentSession } from './sessionTypes'
 import { loadClientResource, readClientResource } from '@/features/shared/clientResourceCache'
 import { hasRemotePersistenceApi } from '@/features/api/persistenceApi'
@@ -21,8 +27,11 @@ export function useTangentSession() {
     storageKey,
     ttlMs: 300_000,
   })
+  const hasPendingRefresh = Boolean(readPendingSessionRefreshMarker())
   const shouldIgnoreDevFallbackSnapshot = !canUseLocalSessionFallback() && snapshot.data?.isDevFallback === true
-  const resolvedSnapshot = shouldIgnoreDevFallbackSnapshot
+  const resolvedSnapshot = hasPendingRefresh
+    ? { status: 'empty' as const }
+    : shouldIgnoreDevFallbackSnapshot
     ? { status: 'empty' as const }
     : userId && snapshot.data?.user.id && snapshot.data.user.id !== userId
     ? { status: 'empty' as const }
@@ -64,21 +73,27 @@ export function useTangentSession() {
   useEffect(() => {
     if (!isLoaded) return
     let isCancelled = false
-    const hydrateSession = (force = false) => loadClientResource(
-      tangentSessionStore,
-      cacheKey,
-      () => loadCurrentSession({ getAuthToken: getToken }),
-      {
-        canReuse: (data) => (
-          (!hasRemotePersistenceApi() || data.isDevFallback !== true)
-          && (!userId || data.user.id === userId)
-        ),
-        force,
-        storage: 'local',
-        storageKey,
-        ttlMs: 300_000,
-      },
-    )
+    const hydrateSession = (force = false) => {
+      const refreshMarker = readPendingSessionRefreshMarker()
+      return loadClientResource(
+        tangentSessionStore,
+        cacheKey,
+        () => loadCurrentSession({ getAuthToken: getToken }),
+        {
+          canReuse: (data) => (
+            (!hasRemotePersistenceApi() || data.isDevFallback !== true)
+            && (!userId || data.user.id === userId)
+          ),
+          force: force || Boolean(refreshMarker),
+          storage: 'local',
+          storageKey,
+          ttlMs: 300_000,
+        },
+      ).then((nextSession) => {
+        if (refreshMarker) clearPendingSessionRefreshMarker()
+        return nextSession
+      })
+    }
 
     hydrateSession()
       .then((nextSession) => {

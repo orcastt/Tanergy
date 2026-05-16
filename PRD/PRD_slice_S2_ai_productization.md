@@ -1,6 +1,6 @@
 # PRD Slice S2: AI Productization
 
-**Updated**: 2026-05-14
+**Updated**: 2026-05-16
 **Mode**: Product slice.
 
 ## Goal
@@ -12,7 +12,7 @@ Turn the mock Model Registry and AiRun contracts into a real server-side AI exec
 This slice is intentionally narrower in the current pass:
 
 - P0 alpha requires one real server-backed AI image path with quote/preflight, payer transparency, Asset result persistence and settlement.
-- The canvas now has a useful GeekAI-backed local fast path for image, analysis, chat and prompt optimization UX, but production acceptance still requires that path to run through server-side AiRun/provider-route/billing contracts.
+- The canvas now has a useful Jiekou-first local fast path for image, analysis, chat and prompt optimization UX, but production acceptance still requires that path to run through server-side AiRun/provider-route/billing contracts.
 - The active image-generation product surface is currently GPT Image 2, Nano Banana 2, Doubao Seedream 5.0 Lite and Jimeng 4.0. `gemini-3.1-flash-image-preview` is no longer part of the active image-generation surface.
 - Long-running image generation may take up to 240 seconds before the runtime declares timeout.
 - Broader provider coverage across every node type remains deferred until the first live server AiRun path is stable.
@@ -24,9 +24,9 @@ This slice is intentionally narrower in the current pass:
 | Area | Requirement | Status |
 | --- | --- | --- |
 | Model Registry | The UI reads available image/text models and capabilities from the server. | Mock/local catalog plus DB-backed control-plane scaffold exist; production route source still needs reconciliation |
-| Image Gen | Prompt Node -> Image Gen creates one image Asset. | Local GeekAI fast path plus refreshed four-model UI exist; production gate is server AiRun route/settlement path |
+| Image Gen | Prompt Node -> Image Gen creates one image Asset. | Local Jiekou-first fast path plus refreshed four-model UI exist; production gate is server AiRun route/settlement path |
 | Image Gen 4 | Prompt Node -> Image Gen 4 creates four candidate image Assets. | Local repeated-call UX plus refreshed four-model UI exist; production gate is server AiRun output-slot settlement |
-| Image edit/reference | Image Node + Prompt Node -> Image Gen creates edited/fused image Asset. | Local GeekAI image/reference path exists across GPT Image 2, Nano Banana 2, Doubao Seedream and Jimeng-style controls; production gate is server Asset refs and provider adapter mapping |
+| Image edit/reference | Image Node + Prompt Node -> Image Gen creates edited/fused image Asset. | Local Jiekou-first image/reference path exists across GPT Image 2, Nano Banana 2, Doubao Seedream and Seedream-style controls; production gate is server Asset refs and provider adapter mapping |
 | Image operations | Selected image can trigger product-owned image utilities such as `Remove BG`, with the result persisted as a new Asset rather than a temporary browser-only bitmap. | Current truth: the `Remove BG` surface exists in the frontend, but end-to-end backend/API/staging acceptance is still pending; `Object Cutout` remains planned only |
 | Analysis | Image Node + Prompt Node -> Analysis creates text/prompt output. | Local model-select analysis path exists; backend `AiRun` route integration, durable terminal `text_output`, default analysis-capable model seed and reusable live smoke harness now exist; remaining gate is credentialed provider smoke plus broader coverage |
 | Chat | Chat Node turns message history plus optional image refs into a short assistant answer. | Local streaming UX exists; backend create/poll/cancel plus durable terminal `text_output` now exist when the canvas is pointed at FastAPI, while local fallback remains for dev |
@@ -38,7 +38,7 @@ This slice is intentionally narrower in the current pass:
 | Provider routing | One product model can have multiple provider routes, and developer/admin operators can enable, disable, reorder or fail over those routes without frontend deploys. | Planned |
 | AI Chat planner | Chat can propose a legal graph spec; user confirms before applying/running. | Deferred |
 
-Current canvas readiness note: Konva node UI and runtimeGraph dataflow are strong enough for product validation. The latest local path uses GeekAI for chat streaming, prompt optimization, image generation/edit/reference and image analysis; model-aware image controls cover GPT Image 2 size/quality, Nano Banana 2 aspect/size, Doubao Seedream size/output/search-style parameters and Jimeng size/strength-style parameters. The 2026-05-14 refresh also aligns backend seeds through migration `20260514_0021_ai_image_model_refresh.py`, removes `gemini-3.1-flash-image-preview` from the active image-generation surface and standardizes a 240000 ms live-image timeout. This is a product proof, not the final production boundary. Production provider calls still need to be folded into the server AiRun/provider-route control plane so Auth, rate limits, credit preflight, provider-cost facts, Asset upload and admin observability stay server-owned.
+Current canvas readiness note: Konva node UI and runtimeGraph dataflow are strong enough for product validation. The latest local path is Jiekou-first for chat streaming, prompt optimization, image generation/edit/reference and image analysis; model-aware image controls cover GPT Image 2 size/quality, Nano Banana 2 aspect/size and Doubao Seedream size/output parameters. The 2026-05-16 control-plane checkpoint also means product docs should treat Jiekou as the current active deployment route, not as the long-term product contract. The long-term contract is still provider-neutral: product models stay stable while routes, provider keys, base URLs and pricing remain server-owned. This is a product proof, not the final production boundary. Production provider calls still need to be folded into the server AiRun/provider-route control plane so Auth, rate limits, credit preflight, provider-cost facts, Asset upload and admin observability stay server-owned.
 
 ## Model Pricing Product Rules
 
@@ -47,6 +47,7 @@ Current canvas readiness note: Konva node UI and runtimeGraph dataflow are stron
 - The Run UI should show an estimated credit cost before execution. The final charged/refunded credits may differ when a provider returns actual usage facts.
 - If a provider route is unhealthy, the server may retry another route, but the user must still see one AiRun and one final credit settlement.
 - Developer/admin operators need a backend UI to adjust model availability, tier prices, provider route priority, provider-specific parameter mapping and credit multipliers as market prices change.
+- The admin route/model UI must not hard-code a single provider brand. Current deployment may be Jiekou-only, but provider keys, models and route labels should remain route/config facts instead of product copy.
 - All pricing changes must be versioned and audited. Old AiRuns keep their historical pricing version; new AiRuns use the newly published version.
 
 ## Acceptance

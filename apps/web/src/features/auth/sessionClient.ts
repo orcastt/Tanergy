@@ -10,6 +10,7 @@ type LoadCurrentSessionOptions = {
 }
 
 export const SESSION_REFRESH_EVENT = 'tanergy:session-refresh'
+export const SESSION_REFRESH_MARKER_KEY = 'tanergy.session.refresh'
 
 export async function loadCurrentSession(options: LoadCurrentSessionOptions = {}) {
   const token = await options.getAuthToken?.()
@@ -37,12 +38,25 @@ async function readSessionPayload(response: Response): Promise<AuthSessionRespon
 export function requestCurrentSessionRefresh() {
   clearSessionScopedClientState()
   if (typeof window === 'undefined') return
+  window.localStorage.setItem(SESSION_REFRESH_MARKER_KEY, String(Date.now()))
   window.dispatchEvent(new Event(SESSION_REFRESH_EVENT))
 }
 
 export function clearSessionScopedClientState() {
   if (typeof window === 'undefined') return
   window.localStorage.removeItem('tanergy.session.current')
+  window.localStorage.removeItem(SESSION_REFRESH_MARKER_KEY)
   clearCachedBillingResources()
   clearCachedBoardResources()
+}
+
+export function readPendingSessionRefreshMarker() {
+  if (typeof window === 'undefined') return null
+  const value = window.localStorage.getItem(SESSION_REFRESH_MARKER_KEY)
+  return value?.trim() ? value : null
+}
+
+export function clearPendingSessionRefreshMarker() {
+  if (typeof window === 'undefined') return
+  window.localStorage.removeItem(SESSION_REFRESH_MARKER_KEY)
 }

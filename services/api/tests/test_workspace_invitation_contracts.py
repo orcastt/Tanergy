@@ -66,6 +66,26 @@ def test_workspace_invite_create_and_accept_adds_member(monkeypatch):
     assert fake_db.workspace_invitations[0]["accepted_by"] == "user_new_editor"
 
 
+def test_solo_workspace_cannot_create_workspace_invites(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v1/workspaces/current/invitations",
+        headers={
+            "x-tangent-user-id": "user_personal_owner",
+            "x-tangent-workspace-id": "workspace_personal",
+            "x-tangent-workspace-kind": "solo_workspace",
+        },
+        json={"role": "viewer"},
+    )
+
+    assert created.status_code == 403
+    assert created.json()["detail"] == "Workspace invitations are unavailable for this workspace."
+
+
 def test_workspace_invite_revoke_blocks_accept(monkeypatch):
     fake_db = FakePostgresDatabase()
     monkeypatch.setenv("DATABASE_URL", "postgresql://test")

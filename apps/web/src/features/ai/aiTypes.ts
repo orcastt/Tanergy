@@ -34,6 +34,7 @@ export type AiChatCompletionRequest = {
 export type AiModelOption = {
   capabilities: AiCapability[]
   costHint: string
+  defaultTierKey?: null | string
   displayName: string
   estimatedLatency: string
   id: string
@@ -41,6 +42,11 @@ export type AiModelOption = {
   isEnabled: boolean
   parameterSchema: JsonObject
   provider: string
+  tierOptions?: Array<{
+    key: string
+    label: string
+    parameterKey: string
+  }>
 }
 
 export type AiModelsResponse = {

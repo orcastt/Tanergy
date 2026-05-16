@@ -19,6 +19,7 @@ type WorkspaceBoardItemProps = {
   canCopyBoard: boolean
   canDeleteBoard: boolean
   canManageBoard: boolean
+  canShareBoard: boolean
   collaborators: WorkspaceBoardCollaborator[]
   editingTitle: string
   isEditing: boolean
@@ -27,8 +28,6 @@ type WorkspaceBoardItemProps = {
   onCancelRename: () => void
   onCopy: () => void
   onDelete: () => void
-  onMakePrivate: () => void
-  onMakePublic: () => void
   onOpen: () => void
   onOpenPanel: () => void
   onRename: () => void
@@ -36,7 +35,6 @@ type WorkspaceBoardItemProps = {
   onSubmitRename: (event: FormEvent<HTMLFormElement>) => void
   onTitleChange: (title: string) => void
   onTogglePin: () => void
-  onToggleStar: () => void
   viewMode: WorkspaceBoardViewMode
   workspace?: TangentWorkspace
 }
@@ -46,6 +44,7 @@ export function WorkspaceBoardItem({
   canCopyBoard,
   canDeleteBoard,
   canManageBoard,
+  canShareBoard,
   collaborators,
   editingTitle,
   isEditing,
@@ -54,8 +53,6 @@ export function WorkspaceBoardItem({
   onCancelRename,
   onCopy,
   onDelete,
-  onMakePrivate,
-  onMakePublic,
   onOpen,
   onOpenPanel,
   onRename,
@@ -63,7 +60,6 @@ export function WorkspaceBoardItem({
   onSubmitRename,
   onTitleChange,
   onTogglePin,
-  onToggleStar,
   viewMode,
   workspace,
 }: WorkspaceBoardItemProps) {
@@ -143,14 +139,6 @@ export function WorkspaceBoardItem({
     >
       <div className="workspace-board-status-badges" aria-label="Board status">
         {board.isPinned ? <span className="workspace-board-pin-icon" aria-label="Pinned" title="Pinned" /> : null}
-        <span
-          className="workspace-board-visibility-icon"
-          data-visibility={board.visibility === 'public' ? 'public' : 'private'}
-          aria-label={board.visibility === 'public' ? 'Public board' : 'Private board'}
-          title={board.visibility === 'public' ? 'Public' : 'Private'}
-        >
-          {board.visibility === 'public' ? <PublicBoardIcon /> : <PrivateBoardIcon />}
-        </span>
       </div>
       <button className="workspace-board-open" disabled={!isInteractive} onClick={onOpen} type="button">
         <BoardThumbnail board={board} />
@@ -215,21 +203,13 @@ export function WorkspaceBoardItem({
             </button>
             {isMenuOpen ? (
               <div className="workspace-board-menu-popover">
-                <WorkspaceBoardMenuAction disabled={isPending || !canManageBoard} icon="share" onClick={() => runMenuAction(onShare)}>Share link</WorkspaceBoardMenuAction>
+                <WorkspaceBoardMenuAction disabled={isPending || !canShareBoard} icon="share" onClick={() => runMenuAction(onShare)}>Share link</WorkspaceBoardMenuAction>
                 <WorkspaceBoardMenuAction disabled={isPending} icon="external" onClick={() => runMenuAction(openInNewTab)}>Open in new tab</WorkspaceBoardMenuAction>
-                <WorkspaceBoardMenuAction disabled={isPending} icon="star" onClick={() => runMenuAction(onToggleStar)}>
-                  {board.isStarred ? 'Unstar board' : 'Star this board'}
-                </WorkspaceBoardMenuAction>
                 <WorkspaceBoardMenuAction disabled={isPending} icon="pin" onClick={() => runMenuAction(onTogglePin)}>
                   {board.isPinned ? 'Unpin board' : 'Pin board'}
                 </WorkspaceBoardMenuAction>
                 <WorkspaceBoardMenuAction disabled={isPending || !canManageBoard} icon="rename" onClick={() => runMenuAction(onRename)}>Rename</WorkspaceBoardMenuAction>
                 <WorkspaceBoardMenuAction disabled={isPending || !canCopyBoard} icon="copy" onClick={() => runMenuAction(onCopy)}>Copy board</WorkspaceBoardMenuAction>
-                {board.visibility === 'public' ? (
-                  <WorkspaceBoardMenuAction disabled={isPending || !canManageBoard} icon="private" onClick={() => runMenuAction(onMakePrivate)}>Make board private</WorkspaceBoardMenuAction>
-                ) : (
-                  <WorkspaceBoardMenuAction disabled={isPending || !canManageBoard} icon="public" onClick={() => runMenuAction(onMakePublic)}>Make board public</WorkspaceBoardMenuAction>
-                )}
                 <WorkspaceBoardMenuAction disabled={isPending || !canDeleteBoard} icon="delete" onClick={() => runMenuAction(onDelete)} tone="danger">Delete</WorkspaceBoardMenuAction>
               </div>
             ) : null}
@@ -237,26 +217,6 @@ export function WorkspaceBoardItem({
         </div>
       </div>
     </article>
-  )
-}
-
-function PrivateBoardIcon() {
-  return (
-    <svg aria-hidden viewBox="0 0 20 20">
-      <circle cx="10" cy="7.1" r="2.35" />
-      <path d="M5.9 15.1c.7-2.45 2.1-3.65 4.1-3.65s3.4 1.2 4.1 3.65" />
-    </svg>
-  )
-}
-
-function PublicBoardIcon() {
-  return (
-    <svg aria-hidden viewBox="0 0 20 20">
-      <circle cx="7.8" cy="7.4" r="2.05" />
-      <path d="M4.1 15.15c.62-2.25 1.86-3.35 3.7-3.35 1.82 0 3.08 1.1 3.7 3.35" />
-      <circle cx="13.2" cy="7.9" r="1.75" />
-      <path d="M11.9 12.15c1.92.18 3.12 1.18 3.62 3" />
-    </svg>
   )
 }
 

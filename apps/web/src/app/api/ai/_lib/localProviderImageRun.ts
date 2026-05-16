@@ -10,19 +10,23 @@ import {
   readJsonResponseWithLimit,
   toAiInlineImageDataUrl,
 } from './aiInlineImageGuards'
-import { getProviderApiKey, getProviderBaseUrl } from './providerApiConfig'
+import {
+  getProviderApiKey,
+  getProviderBaseUrl,
+  getProviderDisplayLabel,
+} from './providerApiConfig'
+import { normalizeImageGenerationModelId } from '@/features/ai/aiImageModelCatalog'
 import { getAiModelDefinition, asAiRunParams } from '@/features/ai/mockAiContracts'
 import type { AiRunRecord, AiRunRequest } from '@/features/ai/aiTypes'
 import type { AiRunChargeSummary } from '@/features/billing/billingTypes'
 
 const defaultGeneratedMime = 'image/png'
 const maxImageReferenceInputs = 8
-const legacyNanoBananaModelId = 'gemini-3.1-flash-image-preview'
-const nanoBanana2ModelId = 'nano-banana-2'
 const pollIntervalMs = 1400
 const pollTimeoutMs = 240000
+const nanoBanana2ModelId = 'nano-banana-2'
 
-type GeekAiImageResponse = {
+type ProviderImageResponse = {
   choices?: never
   created?: number
   data?: Array<{
@@ -49,13 +53,90 @@ type GeekAiImageResponse = {
   task_status?: 'failed' | 'pending' | 'running' | 'succeed'
 }
 
-type GeekAiClientConfig = {
+type ProviderClientConfig = {
   apiKey: string
   baseUrl: string
   provider: string
 }
 
-export async function createGeekAiImageRun(input: {
+type ImageModelFamily = 'doubao-seedream-5.0-lite' | 'gpt-image-2' | 'nano-banana-2'
+
+type ImageModelRunInput = {
+  count: number
+  gptQuality: string
+  gptSize: string
+  inputImages: string[]
+  modelId: string
+  provider: string
+  nanoBananaAspectRatio: string
+  nanoBananaImageSize: string
+  prompt: string
+  seedreamOutputFormat: string
+  seedreamSize: string
+}
+
+type ImageModelExecutorInput = ImageModelRunInput & {
+  clientConfig: ProviderClientConfig
+}
+
+type ImageModelExecutor = (input: ImageModelExecutorInput) => Promise<string[]>
+
+const defaultImageModelExecutors: Record<ImageModelFamily, ImageModelExecutor> = {
+  'doubao-seedream-5.0-lite': (input) => runDoubaoSeedreamLite({
+    clientConfig: input.clientConfig,
+    count: input.count,
+    inputImages: input.inputImages,
+    outputFormat: input.seedreamOutputFormat,
+    prompt: input.prompt,
+    size: input.seedreamSize,
+  }),
+  'gpt-image-2': (input) => runGptImage2({
+    clientConfig: input.clientConfig,
+    count: input.count,
+    inputImages: input.inputImages,
+    prompt: input.prompt,
+    quality: input.gptQuality,
+    size: input.gptSize,
+  }),
+  'nano-banana-2': (input) => runNanoBanana2({
+    aspectRatio: input.nanoBananaAspectRatio,
+    clientConfig: input.clientConfig,
+    count: input.count,
+    imageSize: input.nanoBananaImageSize,
+    inputImages: input.inputImages,
+    prompt: input.prompt,
+  }),
+}
+
+const providerImageModelExecutors: Partial<Record<string, Partial<Record<ImageModelFamily, ImageModelExecutor>>>> = {
+  jiekou: {
+    'doubao-seedream-5.0-lite': (input) => runJiekouSeedreamLite({
+      clientConfig: input.clientConfig,
+      count: input.count,
+      inputImages: input.inputImages,
+      prompt: input.prompt,
+      size: input.seedreamSize,
+    }),
+    'gpt-image-2': (input) => runJiekouGptImage2({
+      clientConfig: input.clientConfig,
+      count: input.count,
+      inputImages: input.inputImages,
+      prompt: input.prompt,
+      quality: input.gptQuality,
+      size: input.gptSize,
+    }),
+    'nano-banana-2': (input) => runJiekouNanoBanana2({
+      aspectRatio: input.nanoBananaAspectRatio,
+      clientConfig: input.clientConfig,
+      count: input.count,
+      imageSize: input.nanoBananaImageSize,
+      inputImages: input.inputImages,
+      prompt: input.prompt,
+    }),
+  },
+}
+
+export async function createLocalProviderImageRun(input: {
   context: ApiRequestContext
   charge: AiRunChargeSummary
   request: AiRunRequest
@@ -64,7 +145,7 @@ export async function createGeekAiImageRun(input: {
   const prompt = input.request.prompt?.trim()
   if (!prompt) throw new Error('Missing image prompt.')
 
-  const model = getAiModelDefinition(normalizeImageModelId(input.request.selectedModelId))
+  const model = getAiModelDefinition(normalizeImageGenerationModelId(input.request.selectedModelId))
   const count = clampCount(Number(asAiRunParams(input.request.params).count ?? 1))
   const params = asAiRunParams(input.request.params)
   const gptSize = normalizeGptImageSize(getString(params.size) ?? mapLegacyGptSize(getString(params.aspectRatio)))
@@ -73,8 +154,6 @@ export async function createGeekAiImageRun(input: {
   const nanoBananaImageSize = normalizeNanoBananaImageSize(getString(params.imageSize) ?? mapLegacyNanoBananaImageSize(getString(params.resolution)))
   const seedreamSize = normalizeSeedreamSize(getString(params.seedreamSize) ?? getString(params.size))
   const seedreamOutputFormat = normalizeSeedreamOutputFormat(getString(params.seedreamOutputFormat))
-  const jimengSize = normalizeJimengSize(getString(params.jimengSize) ?? getString(params.size))
-  const jimengStrength = normalizeJimengStrength(params.jimengStrength)
   const referenceImages = await resolveInputImages(input.request.inputAssetIds ?? [], input.context)
 
   const generatedSources = (await runSelectedImageModel({
@@ -82,8 +161,6 @@ export async function createGeekAiImageRun(input: {
     gptQuality,
     gptSize,
     inputImages: referenceImages,
-    jimengSize,
-    jimengStrength,
     modelId: model.id,
     provider: model.provider,
     nanoBananaAspectRatio,
@@ -126,94 +203,25 @@ export async function createGeekAiImageRun(input: {
   } satisfies AiRunRecord
 }
 
-async function runSelectedImageModel(input: {
-  count: number
-  gptQuality: string
-  gptSize: string
-  inputImages: string[]
-  jimengSize: string
-  jimengStrength: string
-  modelId: string
-  provider: string
-  nanoBananaAspectRatio: string
-  nanoBananaImageSize: string
-  prompt: string
-  seedreamOutputFormat: string
-  seedreamSize: string
-}) {
-  const clientConfig = getGeekAiClientConfig(input.provider, input.modelId)
-  if (clientConfig.provider === 'jiekou') {
-    if (input.modelId === nanoBanana2ModelId) {
-      return runJiekouNanoBanana2({
-        aspectRatio: input.nanoBananaAspectRatio,
-        clientConfig,
-        count: input.count,
-        imageSize: input.nanoBananaImageSize,
-        inputImages: input.inputImages,
-        prompt: input.prompt,
-      })
-    }
-    if (input.modelId === 'doubao-seedream-5.0-lite') {
-      return runJiekouSeedreamLite({
-        clientConfig,
-        count: input.count,
-        inputImages: input.inputImages,
-        prompt: input.prompt,
-        size: input.seedreamSize,
-      })
-    }
-    return runJiekouGptImage2({
-      clientConfig,
-      count: input.count,
-      inputImages: input.inputImages,
-      prompt: input.prompt,
-      quality: input.gptQuality,
-      size: input.gptSize,
-    })
+export const createProviderImageRun = createLocalProviderImageRun
+
+async function runSelectedImageModel(input: ImageModelRunInput) {
+  const clientConfig = getProviderClientConfig(input.provider)
+  const family = getImageModelFamily(input.modelId)
+  const providerExecutors = providerImageModelExecutors[clientConfig.provider] ?? {}
+  const executor = providerExecutors[family] ?? defaultImageModelExecutors[family]
+  if (!executor) {
+    throw new Error(`Unsupported local image model: ${input.modelId}`)
   }
-  if (input.modelId === nanoBanana2ModelId) {
-    return runNanoBanana2({
-      aspectRatio: input.nanoBananaAspectRatio,
-      clientConfig,
-      count: input.count,
-      imageSize: input.nanoBananaImageSize,
-      inputImages: input.inputImages,
-      prompt: input.prompt,
-    })
-  }
-  if (input.modelId === 'doubao-seedream-5.0-lite') {
-    return runDoubaoSeedreamLite({
-      clientConfig,
-      count: input.count,
-      inputImages: input.inputImages,
-      outputFormat: input.seedreamOutputFormat,
-      prompt: input.prompt,
-      size: input.seedreamSize,
-    })
-  }
-  if (input.modelId === 'jimeng_t2i_v40') {
-    return runJimengImage40({
-      clientConfig,
-      count: input.count,
-      inputImages: input.inputImages,
-      prompt: input.prompt,
-      size: input.jimengSize,
-      strength: input.jimengStrength,
-    })
-  }
-  return runGptImage2({
+  return executor({
+    ...input,
     clientConfig,
-    count: input.count,
-    inputImages: input.inputImages,
-    prompt: input.prompt,
-    quality: input.gptQuality,
-    size: input.gptSize,
   })
 }
 
 async function runNanoBanana2(input: {
   aspectRatio: string
-  clientConfig: GeekAiClientConfig
+  clientConfig: ProviderClientConfig
   count: number
   imageSize: string
   inputImages: string[]
@@ -233,7 +241,7 @@ async function runNanoBanana2(input: {
       outputs.push(...await runSingleImageGeneration(sharedBody, input.clientConfig))
       continue
     }
-    const payload = await postGeekAiJson<GeekAiImageResponse>('/images/edits', {
+    const payload = await postProviderJson<ProviderImageResponse>('/images/edits', {
       ...sharedBody,
       image: input.inputImages.length === 1 ? input.inputImages[0] : input.inputImages,
     }, input.clientConfig)
@@ -244,7 +252,7 @@ async function runNanoBanana2(input: {
 
 async function runJiekouNanoBanana2(input: {
   aspectRatio: string
-  clientConfig: GeekAiClientConfig
+  clientConfig: ProviderClientConfig
   count: number
   imageSize: string
   inputImages: string[]
@@ -259,7 +267,7 @@ async function runJiekouNanoBanana2(input: {
   const endpoint = input.inputImages.length > 0 ? 'nano-banana-2-i2i' : 'nano-banana-2-t2i'
   const outputs: string[] = []
   for (let index = 0; index < input.count; index += 1) {
-    const payload = await postGeekAiJson<GeekAiImageResponse>(buildJiekouImagePath(endpoint), {
+    const payload = await postProviderJson<ProviderImageResponse>(buildJiekouImagePath(endpoint), {
       ...sharedBody,
       ...(input.inputImages.length > 0 ? { image: input.inputImages.length === 1 ? input.inputImages[0] : input.inputImages } : {}),
     }, input.clientConfig)
@@ -269,7 +277,7 @@ async function runJiekouNanoBanana2(input: {
 }
 
 async function runGptImage2(input: {
-  clientConfig: GeekAiClientConfig
+  clientConfig: ProviderClientConfig
   count: number
   inputImages: string[]
   prompt: string
@@ -296,7 +304,7 @@ async function runGptImage2(input: {
 }
 
 async function runJiekouGptImage2(input: {
-  clientConfig: GeekAiClientConfig
+  clientConfig: ProviderClientConfig
   count: number
   inputImages: string[]
   prompt: string
@@ -317,20 +325,20 @@ async function runJiekouGptImage2(input: {
 
   const outputs: string[] = []
   for (let index = 0; index < input.count; index += 1) {
-    const payload = await postGeekAiJson<GeekAiImageResponse>(buildJiekouImagePath(endpoint), sharedBody, input.clientConfig)
+    const payload = await postProviderJson<ProviderImageResponse>(buildJiekouImagePath(endpoint), sharedBody, input.clientConfig)
     outputs.push(...extractImageSources(payload))
   }
   return outputs
 }
 
-async function runSingleGptImage2(sharedBody: Record<string, unknown>, inputImages: string[], clientConfig: GeekAiClientConfig) {
+async function runSingleGptImage2(sharedBody: Record<string, unknown>, inputImages: string[], clientConfig: ProviderClientConfig) {
   if (inputImages.length === 0) {
-    const payload = await postGeekAiJson<GeekAiImageResponse>('/images/generations', sharedBody, clientConfig)
+    const payload = await postProviderJson<ProviderImageResponse>('/images/generations', sharedBody, clientConfig)
     return extractImageSources(await settleImageTask(payload, clientConfig))
   }
 
   if (inputImages.length === 1) {
-    const payload = await postGeekAiJson<GeekAiImageResponse>('/images/edits', {
+    const payload = await postProviderJson<ProviderImageResponse>('/images/edits', {
       ...sharedBody,
       image: inputImages[0],
     }, clientConfig)
@@ -338,13 +346,13 @@ async function runSingleGptImage2(sharedBody: Record<string, unknown>, inputImag
   }
 
   try {
-    const payload = await postGeekAiJson<GeekAiImageResponse>('/images/generations', {
+    const payload = await postProviderJson<ProviderImageResponse>('/images/generations', {
       ...sharedBody,
       image: inputImages,
     }, clientConfig)
     return extractImageSources(await settleImageTask(payload, clientConfig))
   } catch {
-    const payload = await postGeekAiJson<GeekAiImageResponse>('/images/generations', {
+    const payload = await postProviderJson<ProviderImageResponse>('/images/generations', {
       ...sharedBody,
       images: inputImages,
     } as Record<string, unknown>, clientConfig)
@@ -353,7 +361,7 @@ async function runSingleGptImage2(sharedBody: Record<string, unknown>, inputImag
 }
 
 async function runDoubaoSeedreamLite(input: {
-  clientConfig: GeekAiClientConfig
+  clientConfig: ProviderClientConfig
   count: number
   inputImages: string[]
   outputFormat: string
@@ -392,7 +400,7 @@ async function runDoubaoSeedreamLite(input: {
 }
 
 async function runJiekouSeedreamLite(input: {
-  clientConfig: GeekAiClientConfig
+  clientConfig: ProviderClientConfig
   count: number
   inputImages: string[]
   prompt: string
@@ -409,10 +417,10 @@ async function runJiekouSeedreamLite(input: {
     ...(input.inputImages.length > 0 ? { image: input.inputImages } : {}),
   }
   if (input.count <= 1) {
-    const payload = await postGeekAiJson<GeekAiImageResponse>(buildJiekouImagePath('seedream-5.0-lite'), sharedBody, input.clientConfig)
+    const payload = await postProviderJson<ProviderImageResponse>(buildJiekouImagePath('seedream-5.0-lite'), sharedBody, input.clientConfig)
     return extractImageSources(payload)
   }
-  const payload = await postGeekAiJson<GeekAiImageResponse>(buildJiekouImagePath('seedream-5.0-lite'), {
+  const payload = await postProviderJson<ProviderImageResponse>(buildJiekouImagePath('seedream-5.0-lite'), {
     ...sharedBody,
     sequential_image_generation: 'auto',
     sequential_image_generation_options: {
@@ -427,26 +435,7 @@ async function runJiekouSeedreamLite(input: {
   ].slice(0, input.count)
 }
 
-async function runJimengImage40(input: {
-  clientConfig: GeekAiClientConfig
-  count: number
-  inputImages: string[]
-  prompt: string
-  size: string
-  strength: string
-}) {
-  const sharedBody = {
-    model: 'jimeng_t2i_v40',
-    prompt: input.prompt,
-    retries: 0,
-    size: input.size,
-    ...(input.inputImages.length > 0 ? { strength: Number(input.strength) } : {}),
-    ...createImageReferenceBody(input.inputImages),
-  }
-  return runRepeatedImageGenerations(sharedBody, input.count, input.clientConfig)
-}
-
-async function runRepeatedImageGenerations(sharedBody: Record<string, unknown>, count: number, clientConfig: GeekAiClientConfig) {
+async function runRepeatedImageGenerations(sharedBody: Record<string, unknown>, count: number, clientConfig: ProviderClientConfig) {
   const outputs: string[] = []
   for (let index = 0; index < count; index += 1) {
     outputs.push(...await runSingleImageGeneration(sharedBody, clientConfig))
@@ -458,18 +447,18 @@ async function runRepeatedJiekouImageGenerations(
   endpoint: string,
   sharedBody: Record<string, unknown>,
   count: number,
-  clientConfig: GeekAiClientConfig,
+  clientConfig: ProviderClientConfig,
 ) {
   const outputs: string[] = []
   for (let index = 0; index < count; index += 1) {
-    const payload = await postGeekAiJson<GeekAiImageResponse>(buildJiekouImagePath(endpoint), sharedBody, clientConfig)
+    const payload = await postProviderJson<ProviderImageResponse>(buildJiekouImagePath(endpoint), sharedBody, clientConfig)
     outputs.push(...extractImageSources(payload))
   }
   return outputs
 }
 
-async function runSingleImageGeneration(body: Record<string, unknown>, clientConfig: GeekAiClientConfig) {
-  const payload = await postGeekAiJson<GeekAiImageResponse>('/images/generations', body, clientConfig)
+async function runSingleImageGeneration(body: Record<string, unknown>, clientConfig: ProviderClientConfig) {
+  const payload = await postProviderJson<ProviderImageResponse>('/images/generations', body, clientConfig)
   return extractImageSources(await settleImageTask(payload, clientConfig))
 }
 
@@ -534,27 +523,27 @@ async function resolveInputImages(
   return imageUrls
 }
 
-async function settleImageTask(payload: GeekAiImageResponse, clientConfig: GeekAiClientConfig) {
+async function settleImageTask(payload: ProviderImageResponse, clientConfig: ProviderClientConfig) {
   if (payload.task_status === 'succeed') return payload
   if (payload.task_status === 'failed') {
-    throw new Error(payload.error?.message ?? payload.message ?? 'GeekAI image generation failed.')
+    throw new Error(payload.error?.message ?? payload.message ?? 'Image generation failed.')
   }
   if (!payload.task_id) return payload
 
   const startedAt = Date.now()
   while (Date.now() - startedAt < pollTimeoutMs) {
     await wait(pollIntervalMs)
-    const next = await getGeekAiJson<GeekAiImageResponse>(`/images/${encodeURIComponent(payload.task_id)}`, clientConfig)
+    const next = await getProviderJson<ProviderImageResponse>(`/images/${encodeURIComponent(payload.task_id)}`, clientConfig)
     if (next.task_status === 'succeed') return next
     if (next.task_status === 'failed') {
-      throw new Error(next.error?.message ?? next.message ?? 'GeekAI image generation failed.')
+      throw new Error(next.error?.message ?? next.message ?? 'Image generation failed.')
     }
   }
 
-  throw new Error('GeekAI image generation timed out.')
+  throw new Error('Image generation timed out.')
 }
 
-function extractImageSources(payload: GeekAiImageResponse) {
+function extractImageSources(payload: ProviderImageResponse) {
   const items = payload.images ?? payload.data ?? []
   return items.flatMap((item) => {
     if (typeof item === 'string' && item.trim()) {
@@ -573,7 +562,7 @@ function extractImageSources(payload: GeekAiImageResponse) {
   })
 }
 
-async function postGeekAiJson<T extends { error?: { message?: string }; message?: string }>(path: string, body: Record<string, unknown>, clientConfig: GeekAiClientConfig) {
+async function postProviderJson<T extends { error?: { message?: string }; message?: string }>(path: string, body: Record<string, unknown>, clientConfig: ProviderClientConfig) {
   const response = await fetch(`${clientConfig.baseUrl}${path}`, {
     body: JSON.stringify(body),
     headers: {
@@ -584,12 +573,12 @@ async function postGeekAiJson<T extends { error?: { message?: string }; message?
   })
   const payload = await readJsonResponseWithLimit<T>(response)
   if (!response.ok) {
-    throw new Error(payload.error?.message ?? payload.message ?? 'GeekAI request failed.')
+    throw new Error(payload.error?.message ?? payload.message ?? 'AI provider request failed.')
   }
   return payload
 }
 
-async function getGeekAiJson<T extends { error?: { message?: string }; message?: string }>(path: string, clientConfig: GeekAiClientConfig) {
+async function getProviderJson<T extends { error?: { message?: string }; message?: string }>(path: string, clientConfig: ProviderClientConfig) {
   const response = await fetch(`${clientConfig.baseUrl}${path}`, {
     headers: {
       Authorization: `Bearer ${clientConfig.apiKey}`,
@@ -597,7 +586,7 @@ async function getGeekAiJson<T extends { error?: { message?: string }; message?:
   })
   const payload = await readJsonResponseWithLimit<T>(response)
   if (!response.ok) {
-    throw new Error(payload.error?.message ?? payload.message ?? 'GeekAI request failed.')
+    throw new Error(payload.error?.message ?? payload.message ?? 'AI provider request failed.')
   }
   return payload
 }
@@ -617,20 +606,17 @@ function createGeneratedAssetTitle(prompt: string, index: number) {
 
 function createCostHint(provider: string, modelId: string, modelLabel: string, params: Record<string, unknown>) {
   const parts = [modelLabel]
+  const family = getImageModelFamily(modelId)
   const size = normalizeGptImageSize(getString(params.size) ?? mapLegacyGptSize(getString(params.aspectRatio)))
   const quality = normalizeGptImageQuality(getString(params.quality) ?? mapLegacyGptQuality(getString(params.resolution)))
   const aspectRatio = normalizeNanoBananaAspectRatio(getString(params.aspectRatio))
   const imageSize = normalizeNanoBananaImageSize(getString(params.imageSize) ?? mapLegacyNanoBananaImageSize(getString(params.resolution)))
   const seedreamSize = normalizeSeedreamSize(getString(params.seedreamSize) ?? getString(params.size))
-  const jimengSize = normalizeJimengSize(getString(params.jimengSize) ?? getString(params.size))
-  const jimengStrength = normalizeJimengStrength(params.jimengStrength)
 
-  if (modelId === nanoBanana2ModelId) {
+  if (family === 'nano-banana-2') {
     parts.push(imageSize, aspectRatio)
-  } else if (modelId === 'doubao-seedream-5.0-lite') {
+  } else if (family === 'doubao-seedream-5.0-lite') {
     parts.push(seedreamSize)
-  } else if (modelId === 'jimeng_t2i_v40') {
-    parts.push(jimengSize, `strength ${jimengStrength}`)
   } else {
     parts.push(size, quality)
   }
@@ -722,40 +708,12 @@ function normalizeSeedreamOutputFormat(outputFormat: string | undefined) {
   return 'png'
 }
 
-function normalizeJimengSize(size: string | undefined) {
-  const allowed = new Set([
-    '1024x1024',
-    '2048x2048',
-    '2304x1728',
-    '2560x1440',
-    '2496x1664',
-    '3024x1296',
-    '4096x4096',
-    '4694x3520',
-    '4992x3328',
-    '5404x3040',
-    '6198x2656',
-  ])
-  return size && allowed.has(size) ? size : '2048x2048'
-}
-
-function normalizeJimengStrength(value: unknown) {
-  const strength = typeof value === 'number'
-    ? value
-    : typeof value === 'string'
-      ? Number(value)
-      : 0.5
-  if (!Number.isFinite(strength)) return '0.5'
-  return String(Math.max(0, Math.min(1, strength)))
-}
-
 function mapLegacyGptSize(aspectRatio: string | undefined) {
   if (aspectRatio === '4:3' || aspectRatio === '16:9' || aspectRatio === '3:2') return '1536x1024'
   return '1024x1024'
 }
 
 function mapLegacyGptQuality(resolution: string | undefined) {
-  if (resolution === '0.5K') return 'low'
   if (resolution === '2K' || resolution === '4K') return 'high'
   return 'medium'
 }
@@ -765,9 +723,11 @@ function mapLegacyNanoBananaImageSize(resolution: string | undefined) {
   return '1K'
 }
 
-function normalizeImageModelId(modelId: null | string | undefined) {
-  if (modelId === legacyNanoBananaModelId) return nanoBanana2ModelId
-  return modelId
+function getImageModelFamily(modelId: string): ImageModelFamily {
+  const normalized = normalizeImageGenerationModelId(modelId)
+  if (normalized === 'nano-banana-2') return 'nano-banana-2'
+  if (normalized === 'doubao-seedream-5.0-lite') return 'doubao-seedream-5.0-lite'
+  return 'gpt-image-2'
 }
 
 function clampCount(value: number) {
@@ -780,10 +740,10 @@ function createRunId() {
   return `run_local_${Date.now()}_${Math.random().toString(36).slice(2)}`
 }
 
-function getGeekAiClientConfig(provider: string, modelId: string): GeekAiClientConfig {
+function getProviderClientConfig(provider: string): ProviderClientConfig {
   return {
-    apiKey: getProviderApiKey(provider, 'image', modelId),
-    baseUrl: getProviderBaseUrl(provider, 'image', modelId),
+    apiKey: getProviderApiKey(provider, 'image'),
+    baseUrl: getProviderBaseUrl(provider, 'image'),
     provider,
   }
 }
@@ -812,7 +772,7 @@ function toJiekouNanoBananaQuality(imageSize: string) {
 }
 
 function providerLabel(provider: string) {
-  return provider.trim().toLowerCase() === 'jiekou' ? 'Jiekou AI' : 'GeekAI'
+  return getProviderDisplayLabel(provider)
 }
 
 function getString(value: unknown) {

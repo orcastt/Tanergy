@@ -89,7 +89,8 @@ def test_expired_share_link_blocks_resolve_and_shared_board_load(monkeypatch):
     fake_db = FakePostgresDatabase()
     monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
     store = PostgresBoardStore()
-    owner = make_context("user_owner", role="owner")
+    fake_db.workspaces = [{"id": "workspace_shared", "kind": "group_workspace"}]
+    owner = make_context("user_owner", role="owner", workspace_id="workspace_shared", workspace_kind="group_workspace")
 
     store.save_board(
         BoardSaveRequest(
@@ -97,6 +98,18 @@ def test_expired_share_link_blocks_resolve_and_shared_board_load(monkeypatch):
             document={"assets": [], "shapes": [{"id": "shape_1"}]},
             title="Expiring Share Board",
         ),
+        owner,
+    )
+    store.update_board_metadata(
+        "expiring_share_board",
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        "workspace",
+        None,
         owner,
     )
     expired_share = store.ensure_share_link("expiring_share_board", "viewer", owner, "2999-01-01T00:00:00Z")
@@ -116,6 +129,76 @@ def test_expired_share_link_blocks_resolve_and_shared_board_load(monkeypatch):
     assert len(fake_db.board_share_links) == 2
     assert store.resolve_share_link(active_share.share_id).board_id == "expiring_share_board"
     assert store.load_shared_board(active_share.share_id).id == "expiring_share_board"
+
+
+def test_solo_boards_stay_unshareable_but_group_boards_can_share(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.workspaces = [
+        {"id": "workspace_solo", "kind": "solo_workspace"},
+        {"id": "workspace_group", "kind": "group_workspace"},
+    ]
+    monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
+    store = PostgresBoardStore()
+
+    solo_owner = make_context("user_solo", role="owner", workspace_id="workspace_solo", workspace_kind="solo_workspace")
+    group_owner = make_context("user_group", role="owner", workspace_id="workspace_group", workspace_kind="group_workspace")
+
+    store.save_board(
+        BoardSaveRequest(
+            boardId="solo_private_board",
+            document={"assets": [], "shapes": [{"id": "shape_1"}]},
+            title="Solo Private Board",
+        ),
+        solo_owner,
+    )
+    store.save_board(
+        BoardSaveRequest(
+            boardId="group_private_board",
+            document={"assets": [], "shapes": [{"id": "shape_2"}]},
+            title="Group Private Board",
+        ),
+        group_owner,
+    )
+
+    with pytest.raises(HTTPException) as solo_share_error:
+        store.ensure_share_link("solo_private_board", "viewer", solo_owner)
+    assert solo_share_error.value.status_code == 403
+
+    share_link = store.ensure_share_link("group_private_board", "viewer", group_owner)
+    assert share_link.share_id
+    assert share_link.workspace_id == "workspace_group"
+
+
+def test_solo_workspace_board_cannot_become_public(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.workspaces = [{"id": "workspace_solo", "kind": "solo_workspace"}]
+    monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
+    store = PostgresBoardStore()
+    solo_owner = make_context("user_solo", role="owner", workspace_id="workspace_solo", workspace_kind="solo_workspace")
+
+    store.save_board(
+        BoardSaveRequest(
+            boardId="solo_visibility_board",
+            document={"assets": [], "shapes": [{"id": "shape_1"}]},
+            title="Solo Visibility Board",
+        ),
+        solo_owner,
+    )
+
+    with pytest.raises(HTTPException) as public_error:
+        store.update_board_metadata(
+            "solo_visibility_board",
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            "public",
+            None,
+            solo_owner,
+        )
+    assert public_error.value.status_code == 403
 
 
 def test_effective_permission_resolver_allows_editor_snapshots_but_not_manage(monkeypatch):
@@ -254,7 +337,12 @@ def test_snapshot_create_rejects_known_foreign_asset_refs(monkeypatch):
     assert "another workspace" in str(snapshot_error.value.detail)
 
 
-def make_context(user_id: str, role: str = "owner", workspace_id: str = "dev-workspace") -> ApiRequestContext:
+def make_context(
+    user_id: str,
+    role: str = "owner",
+    workspace_id: str = "dev-workspace",
+    workspace_kind: str = "solo_workspace",
+) -> ApiRequestContext:
     return ApiRequestContext(
         auth_mode="required",
         is_dev_fallback=False,
@@ -265,6 +353,7 @@ def make_context(user_id: str, role: str = "owner", workspace_id: str = "dev-wor
         user_id=user_id,
         workspace_board_count=0,
         workspace_id=workspace_id,
+        workspace_kind=workspace_kind,
         workspace_name="Dev Workspace",
         workspace_role=role,
     )

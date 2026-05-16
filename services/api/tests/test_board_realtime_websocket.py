@@ -190,14 +190,22 @@ def test_board_realtime_websocket_requires_room_key(tmp_path, monkeypatch):
 
 def test_board_realtime_websocket_respects_board_visibility(monkeypatch):
     fake_db = FakePostgresDatabase()
+    fake_db.workspaces = [{"id": "workspace_group", "kind": "group_workspace"}]
     monkeypatch.setenv("TANGENT_BOARD_STORAGE_DRIVER", "postgres")
     monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
     monkeypatch.setattr("tangent_api.storage.postgres_board_collaboration_store.connect_to_postgres", fake_db.connect)
     monkeypatch.setattr("tangent_api.storage.postgres_board_realtime_store.connect_to_postgres", fake_db.connect)
     client = TestClient(app)
+    group_headers = {
+        "x-tangent-user-id": "dev-user",
+        "x-tangent-workspace-id": "workspace_group",
+        "x-tangent-workspace-kind": "group_workspace",
+        "x-tangent-workspace-name": "Group workspace",
+    }
 
     save_response = client.post(
         "/api/v1/boards",
+        headers=group_headers,
         json={
             "boardId": "realtime_visibility_board",
             "document": {"assets": [], "shapes": [{"id": "shape_owner"}]},
@@ -211,8 +219,11 @@ def test_board_realtime_websocket_respects_board_visibility(monkeypatch):
             _realtime_url(
                 "realtime_visibility_board",
                 "tab_guest_private",
-                "board:dev-workspace:realtime_visibility_board",
+                "board:workspace_group:realtime_visibility_board",
                 user_id="user_guest",
+                workspace_id="workspace_group",
+                workspace_kind="group_workspace",
+                workspace_name="Group workspace",
                 workspace_role="guest",
             )
         ):
@@ -222,39 +233,47 @@ def test_board_realtime_websocket_respects_board_visibility(monkeypatch):
 
     visibility_response = client.patch(
         "/api/v1/boards/realtime_visibility_board",
+        headers=group_headers,
         json={"visibility": "workspace"},
     )
     assert visibility_response.status_code == 200
 
-    with client.websocket_connect(
-        _realtime_url(
-            "realtime_visibility_board",
-            "tab_guest_workspace",
-            "board:dev-workspace:realtime_visibility_board",
-            user_id="user_guest",
-            workspace_role="guest",
-        )
-    ) as websocket:
-        assert websocket.receive_json() == {
-            "documentVersion": 0,
-            "requestCompaction": False,
-            "seedRoom": True,
-            "type": "sync-state",
-            "updates": [],
-        }
-        assert websocket.receive_json()["type"] == "awareness-batch"
+    with pytest.raises(WebSocketDisconnect) as second_excinfo:
+        with client.websocket_connect(
+            _realtime_url(
+                "realtime_visibility_board",
+                "tab_guest_workspace",
+                "board:workspace_group:realtime_visibility_board",
+                user_id="user_guest",
+                workspace_id="workspace_group",
+                workspace_kind="group_workspace",
+                workspace_name="Group workspace",
+                workspace_role="guest",
+            )
+        ):
+            pass
+
+    assert second_excinfo.value.code == 4403
 
 
 def test_postgres_board_realtime_websocket_persists_document_state(monkeypatch):
     fake_db = FakePostgresDatabase()
+    fake_db.workspaces = [{"id": "workspace_group", "kind": "group_workspace"}]
     monkeypatch.setenv("TANGENT_BOARD_STORAGE_DRIVER", "postgres")
     monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
     monkeypatch.setattr("tangent_api.storage.postgres_board_collaboration_store.connect_to_postgres", fake_db.connect)
     monkeypatch.setattr("tangent_api.storage.postgres_board_realtime_store.connect_to_postgres", fake_db.connect)
     client = TestClient(app)
+    group_headers = {
+        "x-tangent-user-id": "dev-user",
+        "x-tangent-workspace-id": "workspace_group",
+        "x-tangent-workspace-kind": "group_workspace",
+        "x-tangent-workspace-name": "Group workspace",
+    }
 
     save_response = client.post(
         "/api/v1/boards",
+        headers=group_headers,
         json={
             "boardId": "realtime_postgres_board",
             "document": {"assets": [], "shapes": [{"id": "shape_pg"}]},
@@ -265,12 +284,28 @@ def test_postgres_board_realtime_websocket_persists_document_state(monkeypatch):
 
     visibility_response = client.patch(
         "/api/v1/boards/realtime_postgres_board",
+        headers=group_headers,
         json={"visibility": "workspace"},
     )
     assert visibility_response.status_code == 200
+    viewer_response = client.post(
+        "/api/v1/boards/realtime_postgres_board/members",
+        headers=group_headers,
+        json={"userId": "user_guest", "role": "viewer", "displayName": "Guest Viewer"},
+    )
+    assert viewer_response.status_code == 200
 
-    room_key = "board:dev-workspace:realtime_postgres_board"
-    with client.websocket_connect(_realtime_url("realtime_postgres_board", "tab_owner_pg", room_key)) as websocket:
+    room_key = "board:workspace_group:realtime_postgres_board"
+    with client.websocket_connect(
+        _realtime_url(
+            "realtime_postgres_board",
+            "tab_owner_pg",
+            room_key,
+            workspace_id="workspace_group",
+            workspace_kind="group_workspace",
+            workspace_name="Group workspace",
+        )
+    ) as websocket:
         assert websocket.receive_json() == {
             "documentVersion": 0,
             "requestCompaction": False,
@@ -294,6 +329,9 @@ def test_postgres_board_realtime_websocket_persists_document_state(monkeypatch):
             "tab_guest_pg",
             room_key,
             user_id="user_guest",
+            workspace_id="workspace_group",
+            workspace_kind="group_workspace",
+            workspace_name="Group workspace",
             workspace_role="guest",
         )
     ) as websocket:
@@ -378,14 +416,22 @@ def test_local_board_realtime_websocket_requests_compaction_and_replaces_chain(t
 
 def test_board_realtime_websocket_blocks_guest_document_writes(monkeypatch):
     fake_db = FakePostgresDatabase()
+    fake_db.workspaces = [{"id": "workspace_group", "kind": "group_workspace"}]
     monkeypatch.setenv("TANGENT_BOARD_STORAGE_DRIVER", "postgres")
     monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
     monkeypatch.setattr("tangent_api.storage.postgres_board_collaboration_store.connect_to_postgres", fake_db.connect)
     monkeypatch.setattr("tangent_api.storage.postgres_board_realtime_store.connect_to_postgres", fake_db.connect)
     client = TestClient(app)
+    group_headers = {
+        "x-tangent-user-id": "dev-user",
+        "x-tangent-workspace-id": "workspace_group",
+        "x-tangent-workspace-kind": "group_workspace",
+        "x-tangent-workspace-name": "Group workspace",
+    }
 
     save_response = client.post(
         "/api/v1/boards",
+        headers=group_headers,
         json={
             "boardId": "realtime_guest_block_board",
             "document": {"assets": [], "shapes": [{"id": "shape_owner"}]},
@@ -396,17 +442,27 @@ def test_board_realtime_websocket_blocks_guest_document_writes(monkeypatch):
 
     visibility_response = client.patch(
         "/api/v1/boards/realtime_guest_block_board",
+        headers=group_headers,
         json={"visibility": "workspace"},
     )
     assert visibility_response.status_code == 200
+    viewer_response = client.post(
+        "/api/v1/boards/realtime_guest_block_board/members",
+        headers=group_headers,
+        json={"userId": "user_guest", "role": "viewer", "displayName": "Guest Viewer"},
+    )
+    assert viewer_response.status_code == 200
 
-    room_key = "board:dev-workspace:realtime_guest_block_board"
+    room_key = "board:workspace_group:realtime_guest_block_board"
     with client.websocket_connect(
         _realtime_url(
             "realtime_guest_block_board",
             "tab_guest_block",
             room_key,
             user_id="user_guest",
+            workspace_id="workspace_group",
+            workspace_kind="group_workspace",
+            workspace_name="Group workspace",
             workspace_role="guest",
         )
     ) as websocket:
@@ -423,7 +479,16 @@ def test_board_realtime_websocket_blocks_guest_document_writes(monkeypatch):
             websocket.receive_json()
         assert excinfo.value.code == 4403
 
-    with client.websocket_connect(_realtime_url("realtime_guest_block_board", "tab_owner_verify", room_key)) as websocket:
+    with client.websocket_connect(
+        _realtime_url(
+            "realtime_guest_block_board",
+            "tab_owner_verify",
+            room_key,
+            workspace_id="workspace_group",
+            workspace_kind="group_workspace",
+            workspace_name="Group workspace",
+        )
+    ) as websocket:
         assert websocket.receive_json() == {
             "documentVersion": 0,
             "requestCompaction": False,

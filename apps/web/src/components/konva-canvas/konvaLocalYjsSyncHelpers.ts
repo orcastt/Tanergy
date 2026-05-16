@@ -111,6 +111,8 @@ export function resolveKonvaYjsPublishPlan({
 }: ResolveKonvaYjsPublishPlanOptions): KonvaYjsPublishPlan {
   const didSwitchPage = activePageId !== previousActivePageId
   const didRevisionChange = pageRevision !== previousPageRevision
+  // Page switches without content edits only publish the active page pointer.
+  // Real document edits stay page-scoped until a caller explicitly requests a full-board sync.
   return {
     changedPageIds: didRevisionChange
       ? dedupeKonvaPageIds(pageChangedPageIds)

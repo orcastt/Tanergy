@@ -10,6 +10,7 @@ export type WorkspaceRelationship = 'created' | 'joined'
 
 export type WorkspaceDirectoryItem = {
   boardCount: number
+  currentPeriodEnd?: null | string
   href?: null | string
   id: string
   kind: Extract<WorkspaceKind, 'group_workspace' | 'team_workspace'>
@@ -18,7 +19,10 @@ export type WorkspaceDirectoryItem = {
   membershipRole: WorkspaceMembershipRole
   name: string
   planKey: PlanKey
+  remainingCredits?: number
   relationship: WorkspaceRelationship
+  totalCredits?: number
+  usedThisCycle?: number
 }
 
 export function formatWorkspaceMembershipRole(value: WorkspaceMembershipRole) {

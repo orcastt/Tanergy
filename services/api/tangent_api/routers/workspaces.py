@@ -8,7 +8,12 @@ from tangent_api.workspace_invitations import (
     revoke_workspace_invitation,
 )
 from tangent_api.workspace_lifecycle import create_group_workspace
+from tangent_api.workspace_management import (
+    delete_current_workspace,
+    rename_current_workspace,
+)
 from tangent_api.workspace_members import remove_workspace_member
+from tangent_api.workspace_owner_transfer import transfer_workspace_owner
 from tangent_api.workspace_entitlements import (
     build_workspace_dashboard_response,
     build_workspace_entitlement_response,
@@ -16,6 +21,8 @@ from tangent_api.workspace_entitlements import (
 )
 from tangent_api.workspace_schemas import (
     WorkspaceDashboardResponse,
+    WorkspaceDeleteRequest,
+    WorkspaceDeleteResponse,
     WorkspaceCreateResponse,
     WorkspaceEntitlementResponse,
     WorkspaceGroupCreateRequest,
@@ -26,9 +33,13 @@ from tangent_api.workspace_schemas import (
     WorkspaceInvitationsResponse,
     WorkspaceMemberResponse,
     WorkspaceMemberRoleUpdateRequest,
+    WorkspaceOwnerTransferRequest,
+    WorkspaceOwnerTransferResponse,
     WorkspaceSeatAssignmentResponse,
     WorkspaceSeatAssignmentUpsertRequest,
     WorkspaceSeatAssignmentsResponse,
+    WorkspaceUpdateRequest,
+    WorkspaceUpdateResponse,
 )
 from tangent_api.workspace_seats import (
     list_workspace_seat_assignments,
@@ -59,6 +70,22 @@ def post_group_workspace(
     context: ApiRequestContext = Depends(get_request_context),
 ) -> WorkspaceCreateResponse:
     return WorkspaceCreateResponse(workspace=create_group_workspace(input_data.name, context), ok=True)
+
+
+@router.patch("/current", response_model=WorkspaceUpdateResponse)
+def patch_current_workspace(
+    input_data: WorkspaceUpdateRequest,
+    context: ApiRequestContext = Depends(get_request_context),
+) -> WorkspaceUpdateResponse:
+    return WorkspaceUpdateResponse(workspace=rename_current_workspace(input_data.name, context), ok=True)
+
+
+@router.delete("/current", response_model=WorkspaceDeleteResponse)
+def delete_current_workspace_route(
+    input_data: WorkspaceDeleteRequest,
+    context: ApiRequestContext = Depends(get_request_context),
+) -> WorkspaceDeleteResponse:
+    return WorkspaceDeleteResponse(result=delete_current_workspace(input_data.confirmation, context), ok=True)
 
 
 @router.get("/current/invitations", response_model=WorkspaceInvitationsResponse)
@@ -140,3 +167,14 @@ def delete_current_workspace_member(
     context: ApiRequestContext = Depends(get_request_context),
 ) -> dict[str, object]:
     return {"ok": True, "userId": remove_workspace_member(user_id, context)}
+
+
+@router.post("/current/owner/transfer", response_model=WorkspaceOwnerTransferResponse)
+def post_current_workspace_owner_transfer(
+    input_data: WorkspaceOwnerTransferRequest,
+    context: ApiRequestContext = Depends(get_request_context),
+) -> WorkspaceOwnerTransferResponse:
+    return WorkspaceOwnerTransferResponse(
+        result=transfer_workspace_owner(input_data.user_id, context),
+        ok=True,
+    )

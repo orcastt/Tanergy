@@ -21,6 +21,7 @@ import type { ApiRequestContext } from '../../_lib/apiRequestContext'
 const storageRoot = process.env.TANGENT_BOARD_STORAGE_DIR ?? path.join(process.cwd(), '.tangent-boards')
 const boardsRoot = path.join(storageRoot, 'boards')
 const workspacesRoot = path.join(storageRoot, 'workspaces')
+const shareableWorkspaceKinds = new Set(['group_workspace', 'team_workspace'])
 
 export async function listLocalBoardMembers(boardId: string, context: ApiRequestContext) {
   const board = await readRequiredBoardRecord(boardId, context)
@@ -133,6 +134,7 @@ export async function ensureLocalBoardShareLink(
   expiresAt?: string | null,
 ) {
   const board = await readRequiredBoardRecord(boardId, context)
+  assertBoardCanCreateShareLink(board, context)
   const links = await readShareLinks(board.id)
   const normalizedExpiresAt = normalizeShareExpiresAt(expiresAt)
   const existing = links.find((link) => isShareLinkActive(link))
@@ -256,6 +258,12 @@ async function readMemberRecords(board: BoardPersistenceRecord) {
 function withOwnerMember(members: BoardMemberRecord[], ownerMember: BoardMemberRecord) {
   const filtered = members.filter((member) => member.userId !== ownerMember.userId)
   return [ownerMember, ...filtered]
+}
+
+function assertBoardCanCreateShareLink(board: BoardPersistenceRecord, context: ApiRequestContext) {
+  if (!shareableWorkspaceKinds.has(context.workspaceKind)) {
+    throw new Error('Board share links are only available in Team or Group workspaces.')
+  }
 }
 
 function normalizeMemberRecord(member: Partial<BoardMemberRecord>): BoardMemberRecord | null {

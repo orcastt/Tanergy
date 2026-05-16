@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Circle, Group, Line, Rect, Text } from 'react-konva'
+import { Circle, Group, Line, Path, Rect, Text } from 'react-konva'
 import type { KonvaEventObject } from 'konva/lib/Node'
 import type { CanvasDocument, CanvasNodeShape } from '@/features/canvas-engine'
 import { getCanvasThemePalette, useResolvedCanvasThemeMode, type ResolvedCanvasTheme } from '@/features/canvas-settings/canvasTheme'
@@ -27,6 +27,7 @@ import {
   NodeCardTextBox,
   stopNodeCardControlEvent,
 } from './KonvaNodeCardParts'
+import { KonvaInlineTooltip } from './KonvaInlineTooltip'
 import { KonvaNodeChatBody } from './KonvaNodeChatBody'
 import { getGeneratedOutputSource, getNodeImageCrop, getNodeImageSource, NodeImagePreview } from './KonvaNodeImagePreview'
 import type { KonvaNodeTextFieldName } from './KonvaNodeTextEditor'
@@ -192,22 +193,46 @@ export function KonvaNodeCardShape({ document, editingFieldName = null, onChatCl
 
 function ChatCleanButton({ onChatClean, shape }: { onChatClean?: (shapeId: string) => void; shape: CanvasNodeShape }) {
   const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
-  const width = 66
+  const [isHovered, setIsHovered] = useState(false)
+  const width = 30
   const x = shape.props.width - width - 14
   const hasHistory = Array.isArray(shape.props.data.chatMessages) && shape.props.data.chatMessages.length > 0
   return (
-    <Group
-      onClick={(event) => {
-        event.cancelBubble = true
-        if (hasHistory) onChatClean?.(shape.id)
-      }}
-      onDblClick={stopNodeCardControlEvent}
-      onPointerDown={stopNodeCardControlEvent}
-      opacity={hasHistory ? 1 : 0.42}
-    >
-      <Rect cornerRadius={8} fill={palette.fieldBg} height={24} stroke={palette.fieldStroke} strokeWidth={1} width={width} x={x} y={12} />
-      <Text align="center" fill={palette.mutedText} fontFamily="Inter, system-ui, sans-serif" fontSize={11} fontStyle="bold" height={24} text="Clean" verticalAlign="middle" width={width} x={x} y={12} />
-    </Group>
+    <>
+      <Group
+        onClick={(event) => {
+          event.cancelBubble = true
+          if (hasHistory) onChatClean?.(shape.id)
+        }}
+        onDblClick={stopNodeCardControlEvent}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        onPointerDown={stopNodeCardControlEvent}
+        opacity={hasHistory ? 1 : 0.42}
+      >
+        <Rect cornerRadius={8} fill={palette.fieldBg} height={24} stroke={palette.fieldStroke} strokeWidth={1} width={width} x={x} y={12} />
+        <BroomIcon stroke={palette.mutedText} x={x + 8} y={18} />
+      </Group>
+      {isHovered ? <KonvaInlineTooltip anchorX={x + width / 2} anchorY={12} label="Clean history" /> : null}
+    </>
+  )
+}
+
+function BroomIcon({ stroke, x, y }: { stroke: string; x: number; y: number }) {
+  return (
+    <>
+      <Line points={[x + 1, y + 11, x + 8.2, y + 3.8]} stroke={stroke} strokeLinecap="round" strokeWidth={1.45} />
+      <Path
+        data={`M ${x + 6.8} ${y + 2.9} L ${x + 10.8} ${y + 6.9} L ${x + 8.8} ${y + 8.9} L ${x + 4.8} ${y + 4.9} Z`}
+        fillEnabled={false}
+        stroke={stroke}
+        strokeLinejoin="round"
+        strokeWidth={1.2}
+      />
+      <Line points={[x + 11.1, y + 7.1, x + 14.1, y + 10.1]} stroke={stroke} strokeLinecap="round" strokeWidth={1.2} />
+      <Line points={[x + 9.3, y + 8.9, x + 12.3, y + 11.9]} stroke={stroke} strokeLinecap="round" strokeWidth={1.2} />
+      <Line points={[x + 7.5, y + 10.7, x + 10.5, y + 13.7]} stroke={stroke} strokeLinecap="round" strokeWidth={1.2} />
+    </>
   )
 }
 

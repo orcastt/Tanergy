@@ -101,9 +101,8 @@ export function useWorkspaceDashboardRuntime(kind: WorkspaceDashboardKind, works
 
   const resolvedBoards = useMemo(
     () => remoteBoardsLoaded ? remoteBoards.map((board) => ({
+      ...board,
       cardColor: board.cardColor ?? 'soft',
-      id: board.id,
-      title: board.title,
     })) : null,
     [remoteBoards, remoteBoardsLoaded],
   )
@@ -180,6 +179,7 @@ function buildTeamRecord({
 
   return {
     boards,
+    currentPeriodEnd: billing?.currentPeriodEnd,
     id: workspace.id,
     inviteCode: `${workspace.id}-invite`,
     memberUsageLimit: Math.max(
@@ -214,13 +214,8 @@ function buildGroupRecord({
   const remainingCredits = billing ? billing.credits.includedRemaining + billing.credits.topUpBalance : totalCredits
 
   return {
-    actions: [
-      { href: '/usage?scope=group', label: 'Open usage' },
-      { href: '/billing', label: 'Subscription' },
-      { href: '/group', label: 'All groups' },
-      { href: '/workspaces', label: 'Boards' },
-    ],
     boards,
+    currentPeriodEnd: billing?.currentPeriodEnd,
     id: workspace.id,
     members,
     name: workspace.name,

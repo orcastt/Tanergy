@@ -25,8 +25,6 @@ type WorkspaceBoardSectionProps = {
   onCopy: (board: WorkspaceBoardDisplayItem) => void
   onCreate: () => void
   onDelete: (board: WorkspaceBoardDisplayItem) => void
-  onMakePrivate: (board: WorkspaceBoardDisplayItem) => void
-  onMakePublic: (board: WorkspaceBoardDisplayItem) => void
   onOpen: (boardId: string) => void
   onOpenPanel: (boardId: string) => void
   onRename: (board: WorkspaceBoardDisplayItem) => void
@@ -34,7 +32,6 @@ type WorkspaceBoardSectionProps = {
   onSubmitRename: (event: FormEvent<HTMLFormElement>, boardId: string) => void
   onTitleChange: (title: string) => void
   onTogglePin: (board: WorkspaceBoardDisplayItem) => void
-  onToggleStar: (board: WorkspaceBoardDisplayItem) => void
 }
 
 export function WorkspaceBoardSection({
@@ -51,8 +48,6 @@ export function WorkspaceBoardSection({
   onCopy,
   onCreate,
   onDelete,
-  onMakePrivate,
-  onMakePublic,
   onOpen,
   onOpenPanel,
   onRename,
@@ -60,7 +55,6 @@ export function WorkspaceBoardSection({
   onSubmitRename,
   onTitleChange,
   onTogglePin,
-  onToggleStar,
 }: WorkspaceBoardSectionProps) {
   const sectionClasses = viewMode === 'gallery' ? 'workspace-board-grid' : 'workspace-board-list'
 
@@ -111,6 +105,7 @@ export function WorkspaceBoardSection({
                 canCopyBoard={capabilities.canCopyBoard}
                 canDeleteBoard={capabilities.canDeleteBoard}
                 canManageBoard={capabilities.canManageBoard}
+                canShareBoard={capabilities.canShareBoard}
                 collaborators={collaborators}
                 editingTitle={editingTitle}
                 isEditing={editingBoardId === board.id}
@@ -120,8 +115,6 @@ export function WorkspaceBoardSection({
                 onCancelRename={onCancelRename}
                 onCopy={() => onCopy(board)}
                 onDelete={() => onDelete(board)}
-                onMakePrivate={() => onMakePrivate(board)}
-                onMakePublic={() => onMakePublic(board)}
                 onOpen={() => onOpen(board.id)}
                 onOpenPanel={() => onOpenPanel(board.id)}
                 onRename={() => onRename(board)}
@@ -129,7 +122,6 @@ export function WorkspaceBoardSection({
                 onSubmitRename={(event) => onSubmitRename(event, board.id)}
                 onTitleChange={onTitleChange}
                 onTogglePin={() => onTogglePin(board)}
-                onToggleStar={() => onToggleStar(board)}
                 viewMode={viewMode}
                 workspace={workspace}
               />

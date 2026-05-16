@@ -68,6 +68,7 @@ export type AiRunChargeSummary = {
 export type BillingMeResponse = {
   chargeScope: ChargeScope
   credits: PersonalCreditSummary
+  currentPeriodEnd?: null | string
   error?: string
   ok: boolean
   payerLabel: string
@@ -131,6 +132,16 @@ export type WorkspaceMemberRoleUpdateInput = {
   role: string
 }
 
+export type WorkspaceOwnerTransferInput = {
+  userId: string
+}
+
+export type WorkspaceOwnerTransferResult = {
+  member: WorkspaceDashboardMember
+  previousOwnerUserId: string
+  workspace: BillingWorkspaceSummary
+}
+
 export type WorkspaceCreateInput = {
   name: string
 }
@@ -139,6 +150,33 @@ export type WorkspaceCreateResponse = {
   error?: string
   ok: boolean
   workspace: BillingWorkspaceSummary
+}
+
+export type WorkspaceUpdateInput = {
+  name: string
+}
+
+export type WorkspaceUpdateResponse = {
+  error?: string
+  ok: boolean
+  workspace: BillingWorkspaceSummary
+}
+
+export type WorkspaceDeleteInput = {
+  confirmation: string
+}
+
+export type WorkspaceDeleteResult = {
+  boardsRemoved: number
+  invitesRevoked: number
+  membersRemoved: number
+  workspace: BillingWorkspaceSummary
+}
+
+export type WorkspaceDeleteResponse = {
+  error?: string
+  ok: boolean
+  result: WorkspaceDeleteResult
 }
 
 export type WorkspaceInvitationRecord = {
@@ -198,6 +236,12 @@ export type WorkspaceInvitationsResponse = {
   error?: string
   invitations: WorkspaceInvitationRecord[]
   ok: boolean
+}
+
+export type WorkspaceOwnerTransferResponse = {
+  error?: string
+  ok: boolean
+  result: WorkspaceOwnerTransferResult
 }
 
 export type CreditLedgerEntryRecord = {

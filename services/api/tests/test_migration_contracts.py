@@ -56,6 +56,8 @@ def test_alembic_revision_chain_is_linear():
         load_migration("20260516_0024_remove_hunyuan_text_model.py"),
         load_migration("20260516_0025_jiekou_image_provider_routes.py"),
         load_migration("20260516_0026_jiekou_text_multimodal_models.py"),
+        load_migration("20260516_0027_jiekou_only_ai_provider.py"),
+        load_migration("20260516_0028_gpt_image_2_4k_tier.py"),
     ]
 
     for previous, current in zip(migrations, migrations[1:]):
@@ -86,6 +88,8 @@ def test_s1a_migrations_keep_required_schema_contracts():
     remove_hunyuan_text_model = load_migration("20260516_0024_remove_hunyuan_text_model.py")
     jiekou_image_routes = load_migration("20260516_0025_jiekou_image_provider_routes.py")
     jiekou_text_models = load_migration("20260516_0026_jiekou_text_multimodal_models.py")
+    jiekou_only_provider = load_migration("20260516_0027_jiekou_only_ai_provider.py")
+    gpt_image_2_4k_tier = load_migration("20260516_0028_gpt_image_2_4k_tier.py")
     core_sql = "\n".join(core.UPGRADE)
     future_sql = "\n".join(future.UPGRADE)
     hardening_sql = "\n".join(hardening.UPGRADE)
@@ -109,6 +113,8 @@ def test_s1a_migrations_keep_required_schema_contracts():
     remove_hunyuan_text_model_sql = "\n".join(remove_hunyuan_text_model.UPGRADE)
     jiekou_image_routes_sql = "\n".join(jiekou_image_routes.UPGRADE)
     jiekou_text_models_sql = "\n".join(jiekou_text_models.UPGRADE)
+    jiekou_only_provider_sql = "\n".join(jiekou_only_provider.UPGRADE)
+    gpt_image_2_4k_tier_sql = "\n".join(gpt_image_2_4k_tier.UPGRADE)
 
     for table_name in [
         "tangent_workspace_members",
@@ -313,6 +319,28 @@ def test_s1a_migrations_keep_required_schema_contracts():
         "price_qwen_2_5_vl_72b_v1",
     ]:
         assert contract in jiekou_text_models_sql
+
+    for contract in [
+        "route_gpt_5_5_primary",
+        "route_gpt_5_mini_primary",
+        "route_gpt_4o_mini_primary",
+        "route_gemini_2_5_flash_primary",
+        "route_gpt_image_2_geekai_fallback",
+        "route_nano_banana_2_geekai_fallback",
+        "route_doubao_seedream_5_0_lite_geekai_fallback",
+        "route_jimeng_t2i_v40_primary",
+        "DELETE FROM tangent_model_registry WHERE model_key = 'gpt-5.5'",
+        "DELETE FROM tangent_model_registry WHERE model_key = 'jimeng_t2i_v40'",
+    ]:
+        assert contract in jiekou_only_provider_sql
+
+    for contract in [
+        '"resolution":["1K","2K","4K"]',
+        "tier_gpt_image_2_4k",
+        '"resolution":"4K"',
+        "price_gpt_image_2_4k_v1",
+    ]:
+        assert contract in gpt_image_2_4k_tier_sql
 
 
 def test_text_route_seed_uses_driver_sql_for_json_literals(monkeypatch):

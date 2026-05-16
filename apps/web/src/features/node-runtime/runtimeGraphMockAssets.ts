@@ -54,7 +54,6 @@ function getMockImageSize(params: JsonObject | undefined) {
 
 function getMockLongSide(params: JsonObject | undefined) {
   const imageSize = typeof params?.imageSize === 'string' ? params.imageSize : undefined
-  if (imageSize === '0.5K') return 256
   if (imageSize === '2K') return 512
   if (imageSize === '4K') return 640
 
@@ -63,7 +62,6 @@ function getMockLongSide(params: JsonObject | undefined) {
   if (quality === 'high') return 512
 
   const legacyResolution = typeof params?.resolution === 'string' ? params.resolution : undefined
-  if (legacyResolution === '0.5K') return 256
   if (legacyResolution === '2K') return 512
   if (legacyResolution === '4K') return 640
 

@@ -3,8 +3,10 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import type { WorkspaceKind } from '@/features/billing/billingTypes'
+import { formatCredits } from '@/features/billing/billingPresentation'
 import { WorkspaceDirectoryActions } from './WorkspaceDirectoryActions'
 import {
+  formatWorkspacePlanName,
   formatWorkspaceMembershipRole,
   type WorkspaceDirectoryItem,
 } from '@/features/workspaces/workspacePresentation'
@@ -15,6 +17,16 @@ type WorkspaceDirectoryViewProps = {
   createLabel: string
   emptyCreatedLabel: string
   emptyJoinedLabel: string
+  featuredSummary?: null | {
+    currentPeriodEnd?: null | string
+    label: string
+    meta: string
+    planLabel: string
+    remainingCredits: number
+    title: string
+    totalCredits: number
+    usedThisCycle: number
+  }
   isLoading?: boolean
   joinLabel: string
   kind: Extract<WorkspaceKind, 'group_workspace' | 'team_workspace'>
@@ -27,6 +39,7 @@ export function WorkspaceDirectoryView({
   createLabel,
   emptyCreatedLabel,
   emptyJoinedLabel,
+  featuredSummary = null,
   isLoading = false,
   joinLabel,
   kind,
@@ -87,6 +100,7 @@ export function WorkspaceDirectoryView({
       </section>
 
       <div className="workspace-directory-stack">
+        {featuredSummary ? <FeaturedSummaryCard summary={featuredSummary} /> : null}
         <DirectorySection
           emptyLabel={emptyCreatedLabel}
           isLoading={isLoading}
@@ -182,6 +196,20 @@ function DirectoryCard({
           <span>{formatBoardCount(item.boardCount)}</span>
           <span>{formatMemberCount(item.memberCount)}</span>
         </div>
+        {item.remainingCredits !== undefined && item.totalCredits !== undefined ? (
+          <div className="workspace-directory-card-usage">
+            <div className="workspace-directory-card-usage-head">
+              <span>{formatWorkspacePlanName(item.planKey)}</span>
+              <strong>{formatCredits(item.remainingCredits)} / {formatCredits(item.totalCredits)}</strong>
+            </div>
+            <div className="workspace-directory-card-progress" aria-hidden="true">
+              <span style={{ width: `${percent(item.remainingCredits, item.totalCredits)}%` }} />
+            </div>
+            <div className="workspace-directory-card-usage-meta">
+              <span>{formatUsageWindow(item.usedThisCycle, item.currentPeriodEnd)}</span>
+            </div>
+          </div>
+        ) : null}
       </div>
       <div className="workspace-directory-card-footer">
         <div className="workspace-directory-members" aria-label="Members preview">
@@ -208,6 +236,33 @@ function DirectoryCard({
   )
 }
 
+function FeaturedSummaryCard({
+  summary,
+}: {
+  summary: NonNullable<WorkspaceDirectoryViewProps['featuredSummary']>
+}) {
+  return (
+    <section className="workspace-directory-summary-card">
+      <div className="workspace-directory-summary-copy">
+        <span className="workspace-directory-summary-label">{summary.label}</span>
+        <h2>{summary.title}</h2>
+        <p>{summary.planLabel}</p>
+      </div>
+      <div className="workspace-directory-summary-credits">
+        <strong>{formatCredits(summary.remainingCredits)}</strong>
+        <span>{formatCredits(summary.totalCredits)} total</span>
+      </div>
+      <div className="workspace-directory-summary-progress" aria-hidden="true">
+        <span style={{ width: `${percent(summary.remainingCredits, summary.totalCredits)}%` }} />
+      </div>
+      <div className="workspace-directory-summary-meta">
+        <span>{summary.meta}</span>
+        <span>{formatUsageWindow(summary.usedThisCycle, summary.currentPeriodEnd)}</span>
+      </div>
+    </section>
+  )
+}
+
 function getWorkspaceInitials(value: string) {
   const parts = value.trim().split(/\s+/).filter(Boolean)
   if (parts.length === 0) return 'TW'
@@ -220,6 +275,19 @@ function formatBoardCount(value: number) {
 
 function formatMemberCount(value: number) {
   return value === 1 ? '1 member' : `${value} members`
+}
+
+function formatUsageWindow(usedThisCycle?: number, currentPeriodEnd?: null | string) {
+  const usage = usedThisCycle && usedThisCycle > 0 ? `${formatCredits(usedThisCycle)} used` : 'Fresh cycle'
+  if (!currentPeriodEnd) return usage
+  const date = new Date(currentPeriodEnd)
+  if (Number.isNaN(date.getTime())) return usage
+  return `${usage} · valid until ${new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date)}`
+}
+
+function percent(value: number, total: number) {
+  if (!Number.isFinite(total) || total <= 0) return 0
+  return Math.max(0, Math.min(100, Math.round((value / total) * 100)))
 }
 
 function mergeWorkspaceItems(

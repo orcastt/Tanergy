@@ -43,10 +43,8 @@ export function WorkspaceBoardPanelHost({
     cardColor: BoardPersistenceSummary['cardColor']
     description: string
     isPinned: boolean
-    isStarred: boolean
     thumbnailUrl: string
     title: string
-    visibility: BoardPersistenceSummary['visibility']
   }) => {
     setPendingBoardId(board.id)
     setError(null)
@@ -56,10 +54,8 @@ export function WorkspaceBoardPanelHost({
         cardColor: input.cardColor,
         description: input.description,
         isPinned: input.isPinned,
-        isStarred: input.isStarred,
         thumbnailUrl: input.thumbnailUrl,
         title: input.title,
-        visibility: input.visibility,
       }, workspace)
       if (!response.board) throw new Error('Board update failed.')
       onBoardUpdated(response.board)

@@ -184,7 +184,7 @@ export function AdminOperatorActionModal({
 
           {action.type === 'workspace-invite-create' ? (
             <>
-              <TextInput label="Invite email" onChange={setInviteEmail} placeholder="name@example.com" value={inviteEmail} />
+              <TextInput label="Restrict email (optional)" onChange={setInviteEmail} placeholder="name@example.com" value={inviteEmail} />
               <TextInput label="Target user ID" onChange={setTargetUserId} placeholder="user_xxx" value={targetUserId} />
               <StrictSelect label="Role" onChange={(value) => setRole(toMemberRole(value))} options={memberRoles} value={role} />
               <NumberInput label="Expires days" min="1" onChange={setExpiresInDays} value={expiresInDays} />

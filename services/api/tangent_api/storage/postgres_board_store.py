@@ -8,13 +8,16 @@ from fastapi import HTTPException
 
 from tangent_api.board_access import (
     assert_board_page_limit,
+    assert_board_allows_share_links,
     assert_can_create_board,
     assert_can_manage_board,
     assert_can_own_board,
     assert_can_read_board,
+    assert_workspace_allows_board_visibility,
     assert_can_write_board,
     can_read_board,
     can_read_workspace,
+    workspace_kind_allows_board_sharing,
 )
 from tangent_api.board_asset_references import assert_no_postgres_foreign_asset_refs
 from tangent_api.board_guard import audit_board_document
@@ -256,7 +259,10 @@ class PostgresBoardStore:
         next_is_starred = bool(is_starred) if is_starred is not None else record.is_starred
         next_is_pinned = bool(is_pinned) if is_pinned is not None else record.is_pinned
         next_visibility = normalize_board_visibility(visibility) if visibility is not None else record.visibility
+        assert_workspace_allows_board_visibility(context.workspace_kind, next_visibility)
         next_share_id = normalize_board_share_id(share_id) if share_id is not None else record.share_id
+        if not workspace_kind_allows_board_sharing(context.workspace_kind):
+            next_share_id = None
         with connect_to_postgres() as connection:
             with connection.cursor() as cursor:
                 ensure_board_schema(cursor)
@@ -542,6 +548,7 @@ class PostgresBoardStore:
         expires_at: Optional[str] = None,
     ) -> BoardShareLinkRecord:
         record = self._load_board_without_touch(board_id, context, required_access="manage")
+        assert_board_allows_share_links(record, context.workspace_kind)
         normalized_access_role = _normalize_board_share_access_role(access_role)
         normalized_expires_at = _normalize_share_expires_at(expires_at)
         with connect_to_postgres() as connection:
@@ -643,6 +650,8 @@ class PostgresBoardStore:
 
     def resolve_share_link(self, share_id: str) -> BoardShareLinkResolveRecord:
         normalized_share_id = _require_share_id(share_id)
+        record = self._load_shared_board_without_touch(normalized_share_id)
+        self._assert_shared_board_is_shareable(record)
         with connect_to_postgres() as connection:
             with connection.cursor() as cursor:
                 ensure_board_schema(cursor)
@@ -672,6 +681,8 @@ class PostgresBoardStore:
 
     def load_shared_board(self, share_id: str) -> BoardRecord:
         normalized_share_id = _require_share_id(share_id)
+        record = self._load_shared_board_without_touch(normalized_share_id)
+        self._assert_shared_board_is_shareable(record)
         with connect_to_postgres() as connection:
             with connection.cursor() as cursor:
                 ensure_board_schema(cursor)
@@ -692,7 +703,6 @@ class PostgresBoardStore:
         if not row:
             raise HTTPException(status_code=404, detail="Board share link not found.")
 
-        record = board_record_from_row(row)
         opened_at = datetime.now(timezone.utc).isoformat()
         with connect_to_postgres() as connection:
             with connection.cursor() as cursor:
@@ -703,11 +713,11 @@ class PostgresBoardStore:
                     SET last_opened_at = %s
                     WHERE workspace_id = %s AND id = %s
                     """,
-                    (opened_at, record.workspace_id, record.id),
+                    (opened_at, row[1], row[2]),
                 )
             connection.commit()
 
-        return record.model_copy(update={"last_opened_at": opened_at})
+        return board_record_from_row(row).model_copy(update={"last_opened_at": opened_at})
 
     def _load_board_without_touch(
         self,
@@ -751,8 +761,45 @@ class PostgresBoardStore:
             if exc.status_code == 404:
                 return None
             raise
-        except Exception:
-            return None
+
+    def _load_shared_board_without_touch(self, share_id: str) -> BoardRecord:
+        with connect_to_postgres() as connection:
+            with connection.cursor() as cursor:
+                ensure_board_schema(cursor)
+                cursor.execute(
+                    f"""
+                    SELECT {BOARD_SELECT_COLUMNS}
+                    FROM tangent_board_share_links sl
+                    JOIN tangent_boards b
+                      ON b.workspace_id = sl.workspace_id AND b.id = sl.board_id
+                    WHERE sl.share_id = %s AND sl.revoked_at IS NULL
+                      AND (sl.expires_at IS NULL OR sl.expires_at > NOW())
+                    ORDER BY sl.created_at DESC
+                    LIMIT 1
+                    """,
+                    (share_id,),
+                )
+                row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Board share link not found.")
+        return board_record_from_row(row)
+
+    def _assert_shared_board_is_shareable(self, record: BoardRecord) -> None:
+        with connect_to_postgres() as connection:
+            with connection.cursor() as cursor:
+                ensure_board_schema(cursor)
+                cursor.execute(
+                    """
+                    SELECT COALESCE(kind, 'solo_workspace')
+                    FROM tangent_workspaces
+                    WHERE id = %s
+                    """,
+                    (record.workspace_id,),
+                )
+                row = cursor.fetchone()
+        workspace_kind = str(row[0] or "solo_workspace") if row else "solo_workspace"
+        if not workspace_kind_allows_board_sharing(workspace_kind):
+            raise HTTPException(status_code=404, detail="Board share link not found.")
 
     def _load_board_member_role(self, board_id: str, context: ApiRequestContext) -> Optional[str]:
         with connect_to_postgres() as connection:

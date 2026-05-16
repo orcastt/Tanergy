@@ -21,6 +21,7 @@ export type CommercePlanMap = Partial<Record<PlanKey, PlanCatalogRecord>>
 export type CommerceTeamCard = {
   boardCount: number
   canManageBilling: boolean
+  currentPeriodEnd?: null | string
   id: string
   memberCount: number
   membershipRole: ReturnType<typeof normalizeWorkspaceMembershipRole>
@@ -37,6 +38,7 @@ export type CommerceTeamCard = {
 }
 
 export type CommerceGroupSummary = {
+  currentPeriodEnd?: null | string
   groupLimit: number
   groupsCreated: number
   joinedGroups: number
@@ -148,6 +150,7 @@ async function loadGroupSummary(
     joinedGroups: joinedGroups.length,
     name: personalWorkspace.kind === 'solo_workspace' ? 'Personal collaboration' : personalWorkspace.name,
     planKey,
+    currentPeriodEnd: billing.currentPeriodEnd,
     remainingCredits: billing.credits.includedRemaining + billing.credits.topUpBalance,
     topUpBalance: billing.credits.topUpBalance,
     totalCredits,
@@ -170,6 +173,7 @@ async function loadTeamCards(
     return {
       boardCount: dashboard.dashboard.boardCount,
       canManageBilling: relationship === 'created' && (workspace.role === 'owner' || workspace.role === 'admin'),
+      currentPeriodEnd: billing.currentPeriodEnd,
       id: workspace.id,
       memberCount: dashboard.dashboard.memberCount,
       membershipRole: normalizeWorkspaceMembershipRole(workspace.role),

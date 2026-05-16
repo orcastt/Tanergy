@@ -14,6 +14,7 @@ export function getBoardCapabilities(board: BoardPersistenceSummary, session: Ta
   const workspace = session.workspaces.find((item) => item.id === board.workspaceId)
     ?? (session.activeWorkspace.id === board.workspaceId ? session.activeWorkspace : undefined)
   const workspaceRole = workspace?.role ?? session.activeWorkspace.role
+  const workspaceKind = workspace?.kind ?? session.activeWorkspace.kind
   const canAdministerWorkspace = ['admin', 'owner'].includes(workspaceRole)
   const canOwnViaSoloWorkspace = workspace?.kind === 'solo_workspace' && workspace.role === 'owner'
   const canOwnBoard = isBoardOwner || canOwnViaSoloWorkspace
@@ -22,7 +23,7 @@ export function getBoardCapabilities(board: BoardPersistenceSummary, session: Ta
     canCopyBoard: canOwnBoard,
     canDeleteBoard: canOwnBoard,
     canManageBoard,
-    canShareBoard: canManageBoard,
+    canShareBoard: canManageBoard && ['group_workspace', 'team_workspace'].includes(workspaceKind),
     isBoardOwner,
   }
 }

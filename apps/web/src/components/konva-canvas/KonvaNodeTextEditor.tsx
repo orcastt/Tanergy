@@ -78,7 +78,9 @@ export function KonvaNodeTextEditor({ camera, fieldName, onCancel, onCommit, onS
       />
       {fieldName === 'chatDraft' && onSubmit ? (
         <button
+          aria-label="Send message"
           className="konva-canvas-chat-send-overlay"
+          data-tooltip="Send message"
           onClick={(event) => {
             event.stopPropagation()
             submit()
@@ -90,7 +92,9 @@ export function KonvaNodeTextEditor({ camera, fieldName, onCancel, onCommit, onS
           style={getChatSendButtonStyle(shape, camera)}
           type="button"
         >
-          send
+          <svg aria-hidden fill="none" height="14" viewBox="0 0 16 16" width="14">
+            <path d="M2.2 7.4L13.8 2.6 9.9 13.4 7.9 9.2 2.2 7.4Z" fill="currentColor" stroke="currentColor" strokeLinejoin="round" strokeWidth="0.9" />
+          </svg>
         </button>
       ) : null}
     </>
@@ -142,19 +146,22 @@ export function getKonvaNodeFieldRect(shape: CanvasNodeShape, fieldName: KonvaNo
 
 function getChatSendButtonStyle(shape: CanvasNodeShape, camera: CanvasCamera): CSSProperties {
   const zoom = camera.zoom
-  const width = 58
+  const width = 30
   const height = 22
   return {
+    alignItems: 'center',
     background: '#dcfce7',
     border: `${1 * zoom}px solid #22c55e`,
     borderRadius: `${999 * zoom}px`,
     boxSizing: 'border-box',
     color: '#16a34a',
     cursor: 'pointer',
+    display: 'inline-flex',
     fontFamily: 'Inter, system-ui, sans-serif',
     fontSize: `${10 * zoom}px`,
     fontWeight: 700,
     height: `${height * zoom}px`,
+    justifyContent: 'center',
     left: `${(shape.x + shape.props.width - width - 26) * zoom + camera.x}px`,
     lineHeight: `${20 * zoom}px`,
     padding: 0,

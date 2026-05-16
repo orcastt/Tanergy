@@ -22,7 +22,7 @@ from tangent_api.workspace_invitations import (
 )
 from tangent_api.workspace_schemas import WorkspaceInvitationRecord
 
-MANAGEABLE_INVITE_WORKSPACE_KINDS = {"group_workspace", "team_workspace", "enterprise_workspace"}
+MANAGEABLE_INVITE_WORKSPACE_KINDS = {"group_workspace", "team_workspace"}
 
 
 def list_admin_operator_workspace_invitations(workspace_id: str) -> list[WorkspaceInvitationRecord]:

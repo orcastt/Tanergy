@@ -469,8 +469,6 @@ def _image_request_fields(payload: AiRunRequest, route: AiProviderRouteCandidate
 
 def _openai_quality_for_payload(payload: AiRunRequest) -> str:
     resolution = str(payload.params.get("resolution") or "").strip().lower()
-    if resolution in {"0.5k", "0_5k"}:
-        return "low"
     if resolution in {"2k", "4k"}:
         return "high"
     return "medium"

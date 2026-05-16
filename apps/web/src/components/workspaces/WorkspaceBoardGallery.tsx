@@ -328,7 +328,7 @@ export function WorkspaceBoardGallery() {
 
   const shareBoard = async (board: BoardPersistenceSummary) => {
     if (!getCapabilities(board).canShareBoard) {
-      setError('Only a Board owner or manager can share this board.')
+      setError('Board share links are only available in Team or Group workspaces.')
       return
     }
     try {
@@ -341,24 +341,6 @@ export function WorkspaceBoardGallery() {
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : 'Share link is ready, but the browser blocked clipboard access.')
     }
-  }
-
-  const makeBoardPrivate = (board: BoardPersistenceSummary) => {
-    if (!getCapabilities(board).canManageBoard) {
-      setError('Only a Board owner or manager can change this board visibility.')
-      return
-    }
-    if (!window.confirm('Are you sure to make this board private? Only you will be able to use it until team permissions are enabled.')) return
-    void updateBoardMetadata({ boardId: board.id, visibility: 'private' })
-  }
-
-  const makeBoardPublic = (board: BoardPersistenceSummary) => {
-    if (!getCapabilities(board).canManageBoard) {
-      setError('Only a Board owner or manager can change this board visibility.')
-      return
-    }
-    if (!window.confirm('Are you sure to make this board public? Team members will be able to access it once real permissions are enabled.')) return
-    void updateBoardMetadata({ boardId: board.id, visibility: 'public' })
   }
 
   return (
@@ -413,8 +395,6 @@ export function WorkspaceBoardGallery() {
                     onCopy={(board) => void copyBoard(board)}
                     onCreate={() => void createBoard(workspace)}
                     onDelete={(board) => void deleteBoard(board)}
-                    onMakePrivate={makeBoardPrivate}
-                    onMakePublic={makeBoardPublic}
                     onOpen={openBoard}
                     onOpenPanel={setPanelBoardId}
                     onRename={startRename}
@@ -422,7 +402,6 @@ export function WorkspaceBoardGallery() {
                     onSubmitRename={(event, boardId) => void renameBoard(event, boardId)}
                     onTitleChange={setEditingTitle}
                     onTogglePin={(board) => void updateBoardMetadata({ boardId: board.id, isPinned: !board.isPinned })}
-                    onToggleStar={(board) => void updateBoardMetadata({ boardId: board.id, isStarred: !board.isStarred })}
                     pendingBoardId={pendingBoardId}
                     session={session}
                     showNewBoardTile={!searchQuery.trim()}

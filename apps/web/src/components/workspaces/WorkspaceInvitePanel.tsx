@@ -1,69 +1,91 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   createWorkspaceInvitation,
-  listWorkspaceInvitations,
   revokeWorkspaceInvitation,
 } from '@/features/billing/billingClient'
-import type { WorkspaceInvitationRecord } from '@/features/billing/billingTypes'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import type { WorkspaceDashboardBoard } from '@/features/workspaces/workspaceDashboardTypes'
+import type { WorkspaceDashboardMember } from '@/features/workspaces/workspaceDashboardTypes'
 import { buildWorkspaceInvitationLink } from '@/features/workspaces/workspaceInvitationLinks'
+import {
+  emptyInviteLabel,
+  formatInviteRole,
+  formatInviteViewLabel,
+  InviteHistoryRow,
+  type InviteView,
+} from './workspaceInviteHistory'
+import { useWorkspaceInvitations } from './useWorkspaceInvitations'
 
 type WorkspaceInvitePanelProps = {
   boards?: WorkspaceDashboardBoard[]
+  members?: WorkspaceDashboardMember[]
+  onWorkspaceRefresh?: () => void
   seatLabel?: string
   workspace: TangentWorkspace
 }
 
 type InviteRole = 'admin' | 'editor' | 'viewer'
+const inviteViews: InviteView[] = ['pending', 'accepted', 'revoked']
 const managerRoles = new Set(['owner', 'admin'])
 
-export function WorkspaceInvitePanel({ boards = [], seatLabel, workspace }: WorkspaceInvitePanelProps) {
+export function WorkspaceInvitePanel({
+  boards = [],
+  members = [],
+  onWorkspaceRefresh,
+  seatLabel,
+  workspace,
+}: WorkspaceInvitePanelProps) {
   const [email, setEmail] = useState('')
   const [inviteLink, setInviteLink] = useState('')
-  const [invitations, setInvitations] = useState<WorkspaceInvitationRecord[]>([])
   const [role, setRole] = useState<InviteRole>('editor')
   const [targetBoardId, setTargetBoardId] = useState('')
   const [status, setStatus] = useState<null | string>(null)
   const [isPending, setIsPending] = useState(false)
 
-  const activeInvites = useMemo(
-    () => invitations.filter((invite) => !invite.acceptedAt && !invite.revokedAt),
-    [invitations],
-  )
   const canManageInvites = managerRoles.has(workspace.role)
-  const inviteRoles = workspace.role === 'owner' ? ['admin', 'editor', 'viewer'] as InviteRole[] : ['editor', 'viewer'] as InviteRole[]
+  const inviteRoles = workspace.role === 'owner'
+    ? ['admin', 'editor', 'viewer'] as InviteRole[]
+    : ['editor', 'viewer'] as InviteRole[]
   const inviteBoards = useMemo(
     () => [...boards].sort((left, right) => left.title.localeCompare(right.title)),
     [boards],
+  )
+  const memberNamesById = useMemo(
+    () => new Map(members.map((member) => [member.id, member.displayName?.trim() || member.email || member.id])),
+    [members],
   )
   const selectedBoard = useMemo(
     () => inviteBoards.find((board) => board.id === targetBoardId) ?? null,
     [inviteBoards, targetBoardId],
   )
-
-  useEffect(() => {
-    let isMounted = true
-    listWorkspaceInvitations({ workspace })
-      .then((response) => {
-        if (isMounted) setInvitations(response.invitations)
-      })
-      .catch(() => {
-        if (isMounted) setInvitations([])
-      })
-    return () => {
-      isMounted = false
-    }
-  }, [workspace])
+  const {
+    collapseInviteView,
+    currentInvites,
+    hasExpandableView,
+    hiddenInviteCount,
+    inviteGroups,
+    inviteLoadError,
+    inviteView,
+    isExpanded,
+    isLoadingInvitations,
+    isRefreshingInvitations,
+    prependInvitation,
+    refreshInvitations,
+    replaceInvitation,
+    setInviteView,
+    toggleExpandedView,
+    totalInviteCount,
+    visibleInvites,
+  } = useWorkspaceInvitations({ workspace })
 
   return (
     <section className="workspace-detail-panel workspace-detail-side-panel">
       <div className="workspace-detail-panel-head">
         <div>
           <h2>Invite</h2>
-          <small>{canManageInvites ? 'Create role-scoped invite links.' : 'Only owners and admins can invite.'}</small>
+          <small>{canManageInvites ? 'Create invite links. Optional email only restricts who can accept.' : 'Only owners and admins can invite.'}</small>
         </div>
       </div>
       {seatLabel ? (
@@ -73,9 +95,9 @@ export function WorkspaceInvitePanel({ boards = [], seatLabel, workspace }: Work
         </div>
       ) : null}
       <label className="workspace-detail-field">
-        <span>Invite link</span>
+        <span>Restrict to email</span>
         <div className="workspace-detail-field-row">
-          <input onChange={(event) => setEmail(event.target.value)} placeholder="Optional email" value={email} />
+          <input onChange={(event) => setEmail(event.target.value)} placeholder="Optional: name@example.com" value={email} />
           <button className="workspace-detail-danger-button" disabled={isPending || !canManageInvites} onClick={createInvite} type="button">
             Invite
           </button>
@@ -90,11 +112,7 @@ export function WorkspaceInvitePanel({ boards = [], seatLabel, workspace }: Work
       {inviteBoards.length ? (
         <label className="workspace-detail-field">
           <span>Open after join</span>
-          <select
-            disabled={!canManageInvites}
-            onChange={(event) => setTargetBoardId(event.target.value)}
-            value={targetBoardId}
-          >
+          <select disabled={!canManageInvites} onChange={(event) => setTargetBoardId(event.target.value)} value={targetBoardId}>
             <option value="">Workspace home</option>
             {inviteBoards.map((board) => (
               <option key={board.id} value={board.id}>
@@ -116,16 +134,62 @@ export function WorkspaceInvitePanel({ boards = [], seatLabel, workspace }: Work
         </label>
       ) : null}
       {status ? <small className="workspace-detail-status" role="status">{status}</small> : null}
-      {activeInvites.length ? (
-        <div className="workspace-detail-invite-list">
-          {activeInvites.slice(0, 4).map((invite) => (
-            <div className="workspace-detail-summary-row" key={invite.id}>
-              <span>{invite.email ?? invite.role}</span>
-              <button className="workspace-detail-muted-button" disabled={!canManageInvites} onClick={() => revokeInvite(invite.id)} type="button">Revoke</button>
-            </div>
-          ))}
+
+      <div className="workspace-invite-history-head">
+        <strong>Invite history</strong>
+        <div className="workspace-invite-history-actions">
+          <span>{totalInviteCount} total</span>
+          <button className="workspace-detail-muted-button" disabled={isRefreshingInvitations} onClick={refreshWorkspaceActivity} type="button">
+            {isRefreshingInvitations ? 'Refreshing...' : 'Refresh'}
+          </button>
         </div>
-      ) : null}
+      </div>
+      <div className="workspace-view-toggle workspace-invite-toggle" aria-label="Invite status filter">
+        {inviteViews.map((view) => (
+          <button
+            className={inviteView === view ? 'is-active' : ''}
+            key={view}
+            onClick={() => setInviteView(view)}
+            type="button"
+          >
+            {formatInviteViewLabel(view)} {inviteGroups[view].length}
+          </button>
+        ))}
+      </div>
+
+      {isLoadingInvitations ? (
+        <div className="workspace-detail-status">Loading invite history...</div>
+      ) : inviteLoadError ? (
+        <div className="workspace-detail-status">{inviteLoadError}</div>
+      ) : currentInvites.length === 0 ? (
+        <div className="workspace-invite-empty">{emptyInviteLabel(inviteView)}</div>
+      ) : (
+        <>
+          <div className="workspace-detail-invite-list">
+            {visibleInvites.map((invite) => (
+              <InviteHistoryRow
+                canManageInvites={canManageInvites}
+                invite={invite}
+                key={invite.id}
+                memberNamesById={memberNamesById}
+                onRevoke={revokeInvite}
+              />
+            ))}
+          </div>
+          {hasExpandableView ? (
+            <button
+              className="workspace-detail-muted-button workspace-invite-more-button"
+              onClick={() => toggleExpandedView(inviteView)}
+              type="button"
+            >
+              {isExpanded ? 'Show less' : `Show all ${currentInvites.length}`}
+            </button>
+          ) : null}
+          {!isExpanded && hiddenInviteCount > 0 ? (
+            <small className="workspace-detail-status">{hiddenInviteCount} more in this state.</small>
+          ) : null}
+        </>
+      )}
     </section>
   )
 
@@ -151,9 +215,11 @@ export function WorkspaceInvitePanel({ boards = [], seatLabel, workspace }: Work
         workspaceName: workspace.name,
       })
       setInviteLink(nextLink)
-      setInvitations((current) => [response.result.invitation, ...current])
+      setInviteView('pending')
+      collapseInviteView('pending')
+      prependInvitation(response.result.invitation)
       const copied = await writeInviteLink(nextLink)
-      setStatus(copied ? 'Invite link copied.' : 'Invite created.')
+      setStatus(copied ? 'Invite link copied. Share it manually.' : 'Invite ready. Copy and share it.')
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Invite failed.')
     } finally {
@@ -166,9 +232,9 @@ export function WorkspaceInvitePanel({ boards = [], seatLabel, workspace }: Work
     setStatus(null)
     try {
       const response = await revokeWorkspaceInvitation(invitationId, { workspace })
-      setInvitations((current) => current.map((invite) => (
-        invite.id === response.invitation.id ? response.invitation : invite
-      )))
+      setInviteView('revoked')
+      collapseInviteView('revoked')
+      replaceInvitation(response.invitation)
       setStatus('Invite revoked.')
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Revoke failed.')
@@ -178,14 +244,19 @@ export function WorkspaceInvitePanel({ boards = [], seatLabel, workspace }: Work
   async function copyInviteLink() {
     if (!inviteLink) return
     const copied = await writeInviteLink(inviteLink)
-    setStatus(copied ? 'Invite link copied.' : 'Copy failed.')
+    setStatus(copied ? 'Invite link copied. Share it manually.' : 'Copy failed.')
   }
-}
 
-function formatInviteRole(role: InviteRole) {
-  if (role === 'admin') return 'Admin'
-  if (role === 'editor') return 'Editor'
-  return 'Viewer'
+  async function refreshWorkspaceActivity() {
+    setStatus(null)
+    onWorkspaceRefresh?.()
+    try {
+      await refreshInvitations()
+      setStatus('Invite history refreshed.')
+    } catch {
+      setStatus('Invite history is unavailable right now.')
+    }
+  }
 }
 
 async function writeInviteLink(value: string) {

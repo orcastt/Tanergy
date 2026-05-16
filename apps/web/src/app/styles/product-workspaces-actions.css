@@ -9,8 +9,7 @@
   pointer-events: none;
 }
 
-.workspace-board-pin-icon,
-.workspace-board-visibility-icon {
+.workspace-board-pin-icon {
   position: relative;
   display: grid;
   width: 24px;
@@ -39,27 +38,6 @@
   background: #d92d20;
   content: '';
   transform: translateY(3px) rotate(45deg);
-}
-
-.workspace-board-visibility-icon svg {
-  width: 15px;
-  height: 15px;
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.55px;
-  vector-effect: non-scaling-stroke;
-}
-
-.workspace-board-visibility-icon[data-visibility='private'] {
-  background: rgba(248, 250, 252, 0.96);
-  color: #59677a;
-}
-
-.workspace-board-visibility-icon[data-visibility='public'] {
-  background: rgba(239, 246, 255, 0.96);
-  color: #2563eb;
 }
 
 .workspace-board-footer {

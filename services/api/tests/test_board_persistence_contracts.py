@@ -13,9 +13,15 @@ from tests.persistence_fakes import FakePostgresDatabase
 def test_board_local_dev_contract(tmp_path, monkeypatch):
     monkeypatch.setenv("TANGENT_BOARD_STORAGE_DIR", str(tmp_path / "boards"))
     client = TestClient(app)
+    group_headers = {
+        "x-tangent-user-id": "dev-user",
+        "x-tangent-workspace-id": "workspace_group",
+        "x-tangent-workspace-kind": "group_workspace",
+    }
 
     save_response = client.post(
         "/api/v1/boards",
+        headers=group_headers,
         json={
             "boardId": "api-smoke-board",
             "document": {"assets": [{"id": "asset_1"}], "shapes": [{"id": "shape_1"}, {"id": "shape_2"}]},
@@ -33,19 +39,19 @@ def test_board_local_dev_contract(tmp_path, monkeypatch):
     assert saved["shapeCount"] == 2
     assert saved["thumbnailUrl"] is None
     assert saved["visibility"] == "private"
-    assert saved["workspaceId"] == "dev-workspace"
+    assert saved["workspaceId"] == "workspace_group"
     assert "document" not in saved
 
-    load_response = client.get("/api/v1/boards/api-smoke-board")
+    load_response = client.get("/api/v1/boards/api-smoke-board", headers=group_headers)
     assert load_response.status_code == 200
     loaded = load_response.json()["board"]
     assert loaded["assetCount"] == 1
     assert loaded["document"] == {"assets": [{"id": "asset_1"}], "shapes": [{"id": "shape_1"}, {"id": "shape_2"}]}
     assert loaded["lastOpenedAt"] is not None
     assert loaded["shapeCount"] == 2
-    assert loaded["workspaceId"] == "dev-workspace"
+    assert loaded["workspaceId"] == "workspace_group"
 
-    list_response = client.get("/api/v1/boards")
+    list_response = client.get("/api/v1/boards", headers=group_headers)
     assert list_response.status_code == 200
     listed = list_response.json()["boards"]
     assert [board["id"] for board in listed] == ["api-smoke-board"]
@@ -57,6 +63,7 @@ def test_board_local_dev_contract(tmp_path, monkeypatch):
 
     snapshot_response = client.post(
         "/api/v1/boards/api-smoke-board/snapshots",
+        headers=group_headers,
         json={
             "document": {"assets": [{"id": "asset_1"}], "shapes": [{"id": "shape_1"}]},
             "reason": "manual_save",
@@ -72,11 +79,11 @@ def test_board_local_dev_contract(tmp_path, monkeypatch):
     assert snapshot["thumbnailUrl"] == "https://example.com/history-thumb.webp"
     assert "document" not in snapshot
 
-    snapshot_list = client.get("/api/v1/boards/api-smoke-board/snapshots")
+    snapshot_list = client.get("/api/v1/boards/api-smoke-board/snapshots", headers=group_headers)
     assert snapshot_list.status_code == 200
     assert [item["id"] for item in snapshot_list.json()["snapshots"]] == [snapshot["id"]]
 
-    snapshot_load = client.get(f"/api/v1/boards/api-smoke-board/snapshots/{snapshot['id']}")
+    snapshot_load = client.get(f"/api/v1/boards/api-smoke-board/snapshots/{snapshot['id']}", headers=group_headers)
     assert snapshot_load.status_code == 200
     assert snapshot_load.json()["snapshot"]["document"] == {"assets": [{"id": "asset_1"}], "shapes": [{"id": "shape_1"}]}
     assert snapshot_load.json()["snapshot"]["thumbnailUrl"] == "https://example.com/history-thumb.webp"
@@ -85,24 +92,25 @@ def test_board_local_dev_contract(tmp_path, monkeypatch):
     for index in range(2):
         response = client.post(
             "/api/v1/boards/api-smoke-board/snapshots",
+            headers=group_headers,
             json={"document": {"assets": [], "shapes": [{"id": f"shape_{index}"}]}, "reason": "autosave"},
         )
         assert response.status_code == 200
-    snapshot_list = client.get("/api/v1/boards/api-smoke-board/snapshots")
+    snapshot_list = client.get("/api/v1/boards/api-smoke-board/snapshots", headers=group_headers)
     assert snapshot_list.status_code == 200
     snapshots = snapshot_list.json()["snapshots"]
     assert len(snapshots) == 3
     assert [item["reason"] for item in snapshots].count("autosave") == 2
     assert [item["reason"] for item in snapshots].count("manual_save") == 1
 
-    clear_snapshots = client.delete("/api/v1/boards/api-smoke-board/snapshots")
+    clear_snapshots = client.delete("/api/v1/boards/api-smoke-board/snapshots", headers=group_headers)
     assert clear_snapshots.status_code == 200
     assert clear_snapshots.json()["deletedCount"] == 3
-    snapshot_list = client.get("/api/v1/boards/api-smoke-board/snapshots")
+    snapshot_list = client.get("/api/v1/boards/api-smoke-board/snapshots", headers=group_headers)
     assert snapshot_list.status_code == 200
     assert snapshot_list.json()["snapshots"] == []
 
-    rename_response = client.patch("/api/v1/boards/api-smoke-board", json={"title": "Renamed Board"})
+    rename_response = client.patch("/api/v1/boards/api-smoke-board", headers=group_headers, json={"title": "Renamed Board"})
     assert rename_response.status_code == 200
     renamed = rename_response.json()["board"]
     assert renamed["title"] == "Renamed Board"
@@ -110,6 +118,7 @@ def test_board_local_dev_contract(tmp_path, monkeypatch):
 
     metadata_response = client.patch(
         "/api/v1/boards/api-smoke-board",
+        headers=group_headers,
         json={
             "cardColor": "mint",
             "description": "  Campaign concepts  ",
@@ -131,7 +140,7 @@ def test_board_local_dev_contract(tmp_path, monkeypatch):
     assert metadata["title"] == "Renamed Board"
     assert metadata["visibility"] == "public"
 
-    empty_rename = client.patch("/api/v1/boards/api-smoke-board", json={"title": " "})
+    empty_rename = client.patch("/api/v1/boards/api-smoke-board", headers=group_headers, json={"title": " "})
     assert empty_rename.status_code == 400
 
     blocked = client.get(
@@ -153,10 +162,10 @@ def test_board_local_dev_contract(tmp_path, monkeypatch):
     assert blocked_snapshots.status_code == 200
     assert blocked_snapshots.json()["snapshots"] == []
 
-    delete_response = client.delete("/api/v1/boards/api-smoke-board")
+    delete_response = client.delete("/api/v1/boards/api-smoke-board", headers=group_headers)
     assert delete_response.status_code == 200
     assert delete_response.json()["boardId"] == "api-smoke-board"
-    assert client.get("/api/v1/boards/api-smoke-board").status_code == 404
+    assert client.get("/api/v1/boards/api-smoke-board", headers=group_headers).status_code == 404
 
 
 def test_board_postgres_contract(monkeypatch):
@@ -171,9 +180,15 @@ def test_board_postgres_contract(monkeypatch):
         fake_db.connect,
     )
     client = TestClient(app)
+    group_headers = {
+        "x-tangent-user-id": "dev-user",
+        "x-tangent-workspace-id": "workspace_group",
+        "x-tangent-workspace-kind": "group_workspace",
+    }
 
     save_response = client.post(
         "/api/v1/boards",
+        headers=group_headers,
         json={
             "boardId": "api-postgres-board",
             "document": {"assets": [{"id": "asset_1"}, {"id": "asset_2"}], "shapes": [{"id": "shape_1"}]},
@@ -191,11 +206,11 @@ def test_board_postgres_contract(monkeypatch):
     assert saved["shapeCount"] == 1
     assert saved["thumbnailUrl"] is None
     assert saved["visibility"] == "private"
-    assert saved["workspaceId"] == "dev-workspace"
+    assert saved["workspaceId"] == "workspace_group"
     assert "document" not in saved
-    assert ("dev-workspace", "api-postgres-board") in fake_db.boards
+    assert ("workspace_group", "api-postgres-board") in fake_db.boards
 
-    load_response = client.get("/api/v1/boards/api-postgres-board")
+    load_response = client.get("/api/v1/boards/api-postgres-board", headers=group_headers)
     assert load_response.status_code == 200
     loaded = load_response.json()["board"]
     assert loaded["assetCount"] == 2
@@ -204,7 +219,7 @@ def test_board_postgres_contract(monkeypatch):
     assert loaded["shapeCount"] == 1
     assert loaded["title"] == "Postgres Board"
 
-    list_response = client.get("/api/v1/boards")
+    list_response = client.get("/api/v1/boards", headers=group_headers)
     assert list_response.status_code == 200
     listed = list_response.json()["boards"]
     assert [board["id"] for board in listed] == ["api-postgres-board"]
@@ -216,6 +231,7 @@ def test_board_postgres_contract(monkeypatch):
 
     snapshot_response = client.post(
         "/api/v1/boards/api-postgres-board/snapshots",
+        headers=group_headers,
         json={
             "document": {"assets": [{"id": "asset_1"}], "shapes": [{"id": "shape_1"}]},
             "reason": "keyboard",
@@ -227,13 +243,13 @@ def test_board_postgres_contract(monkeypatch):
     snapshot = snapshot_response.json()["snapshot"]
     assert snapshot["reason"] == "keyboard"
     assert snapshot["thumbnailUrl"] == "https://example.com/keyboard-history.webp"
-    assert ("dev-workspace", "api-postgres-board", snapshot["id"]) in fake_db.snapshots
+    assert ("workspace_group", "api-postgres-board", snapshot["id"]) in fake_db.snapshots
 
-    snapshot_list = client.get("/api/v1/boards/api-postgres-board/snapshots")
+    snapshot_list = client.get("/api/v1/boards/api-postgres-board/snapshots", headers=group_headers)
     assert snapshot_list.status_code == 200
     assert [item["id"] for item in snapshot_list.json()["snapshots"]] == [snapshot["id"]]
 
-    snapshot_load = client.get(f"/api/v1/boards/api-postgres-board/snapshots/{snapshot['id']}")
+    snapshot_load = client.get(f"/api/v1/boards/api-postgres-board/snapshots/{snapshot['id']}", headers=group_headers)
     assert snapshot_load.status_code == 200
     assert snapshot_load.json()["snapshot"]["document"] == {"assets": [{"id": "asset_1"}], "shapes": [{"id": "shape_1"}]}
     assert snapshot_load.json()["snapshot"]["thumbnailUrl"] == "https://example.com/keyboard-history.webp"
@@ -242,31 +258,33 @@ def test_board_postgres_contract(monkeypatch):
     for index in range(2):
         response = client.post(
             "/api/v1/boards/api-postgres-board/snapshots",
+            headers=group_headers,
             json={"document": {"assets": [], "shapes": [{"id": f"shape_{index}"}]}, "reason": "autosave"},
         )
         assert response.status_code == 200
-    snapshot_list = client.get("/api/v1/boards/api-postgres-board/snapshots")
+    snapshot_list = client.get("/api/v1/boards/api-postgres-board/snapshots", headers=group_headers)
     assert snapshot_list.status_code == 200
     snapshots = snapshot_list.json()["snapshots"]
     assert len(snapshots) == 3
     assert [item["reason"] for item in snapshots].count("autosave") == 2
     assert [item["reason"] for item in snapshots].count("keyboard") == 1
 
-    clear_snapshots = client.delete("/api/v1/boards/api-postgres-board/snapshots")
+    clear_snapshots = client.delete("/api/v1/boards/api-postgres-board/snapshots", headers=group_headers)
     assert clear_snapshots.status_code == 200
     assert clear_snapshots.json()["deletedCount"] == 3
     assert fake_db.snapshots == {}
-    snapshot_list = client.get("/api/v1/boards/api-postgres-board/snapshots")
+    snapshot_list = client.get("/api/v1/boards/api-postgres-board/snapshots", headers=group_headers)
     assert snapshot_list.status_code == 200
     assert snapshot_list.json()["snapshots"] == []
 
-    rename_response = client.patch("/api/v1/boards/api-postgres-board", json={"title": "Renamed Postgres"})
+    rename_response = client.patch("/api/v1/boards/api-postgres-board", headers=group_headers, json={"title": "Renamed Postgres"})
     assert rename_response.status_code == 200
     assert rename_response.json()["board"]["title"] == "Renamed Postgres"
-    assert fake_db.boards[("dev-workspace", "api-postgres-board")][3] == "Renamed Postgres"
+    assert fake_db.boards[("workspace_group", "api-postgres-board")][3] == "Renamed Postgres"
 
     metadata_response = client.patch(
         "/api/v1/boards/api-postgres-board",
+        headers=group_headers,
         json={
             "cardColor": "peach",
             "description": "Launch wall",
@@ -287,10 +305,10 @@ def test_board_postgres_contract(monkeypatch):
     assert metadata["thumbnailUrl"] == "https://example.com/pg-thumb.webp"
     assert metadata["title"] == "Renamed Postgres"
     assert metadata["visibility"] == "workspace"
-    assert fake_db.boards[("dev-workspace", "api-postgres-board")][8] == "Launch wall"
-    assert fake_db.boards[("dev-workspace", "api-postgres-board")][9] == "peach"
-    assert fake_db.boards[("dev-workspace", "api-postgres-board")][14] is True
-    assert fake_db.boards[("dev-workspace", "api-postgres-board")][15] is True
+    assert fake_db.boards[("workspace_group", "api-postgres-board")][8] == "Launch wall"
+    assert fake_db.boards[("workspace_group", "api-postgres-board")][9] == "peach"
+    assert fake_db.boards[("workspace_group", "api-postgres-board")][14] is True
+    assert fake_db.boards[("workspace_group", "api-postgres-board")][15] is True
 
     blocked = client.get(
         "/api/v1/boards/api-postgres-board",
@@ -305,10 +323,10 @@ def test_board_postgres_contract(monkeypatch):
     assert blocked_list.status_code == 200
     assert blocked_list.json()["boards"] == []
 
-    delete_response = client.delete("/api/v1/boards/api-postgres-board")
+    delete_response = client.delete("/api/v1/boards/api-postgres-board", headers=group_headers)
     assert delete_response.status_code == 200
     assert delete_response.json()["boardId"] == "api-postgres-board"
-    assert ("dev-workspace", "api-postgres-board") not in fake_db.boards
+    assert ("workspace_group", "api-postgres-board") not in fake_db.boards
 
 
 def test_board_postgres_requires_database_url(monkeypatch):
@@ -569,11 +587,12 @@ def test_postgres_board_owner_is_preserved_on_collaborator_save(monkeypatch):
 
 def test_postgres_board_guest_permissions_first_pass(monkeypatch):
     fake_db = FakePostgresDatabase()
+    fake_db.workspaces = [{"id": "workspace_group", "kind": "group_workspace"}]
     monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
     store = PostgresBoardStore()
 
-    owner = make_context("user_owner", role="owner")
-    guest = make_context("user_guest", role="guest")
+    owner = make_context("user_owner", role="owner", workspace_id="workspace_group", workspace_kind="group_workspace")
+    guest = make_context("user_guest", role="guest", workspace_id="workspace_group", workspace_kind="group_workspace")
 
     store.save_board(
         BoardSaveRequest(
@@ -598,8 +617,7 @@ def test_postgres_board_guest_permissions_first_pass(monkeypatch):
     assert store.list_boards(guest) == []
 
     store.update_board_metadata("private_board", None, None, None, None, None, None, "public", None, owner)
-    public_boards = store.list_boards(guest)
-    assert [board.id for board in public_boards] == ["private_board"]
+    assert store.list_boards(guest) == []
 
     with pytest.raises(HTTPException) as save_error:
         store.save_board(
@@ -614,7 +632,7 @@ def test_postgres_board_guest_permissions_first_pass(monkeypatch):
 
     with pytest.raises(HTTPException) as manage_error:
         store.delete_board("private_board", guest)
-    assert manage_error.value.status_code == 403
+    assert manage_error.value.status_code == 404
 
 
 def test_postgres_board_member_roles_enable_guest_access_first_pass(monkeypatch):
@@ -676,13 +694,14 @@ def test_postgres_board_member_roles_enable_guest_access_first_pass(monkeypatch)
 
 def test_postgres_snapshots_require_board_write_or_manage_access(monkeypatch):
     fake_db = FakePostgresDatabase()
+    fake_db.workspaces = [{"id": "workspace_group", "kind": "group_workspace"}]
     monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
     monkeypatch.setattr("tangent_api.storage.postgres_board_snapshot_store.connect_to_postgres", fake_db.connect)
     snapshot_store = PostgresBoardSnapshotStore()
     board_store = PostgresBoardStore()
 
-    owner = make_context("user_owner", role="owner")
-    guest = make_context("user_guest", role="guest")
+    owner = make_context("user_owner", role="owner", workspace_id="workspace_group", workspace_kind="group_workspace")
+    guest = make_context("user_guest", role="guest", workspace_id="workspace_group", workspace_kind="group_workspace")
 
     board_store.save_board(
         BoardSaveRequest(
@@ -717,14 +736,19 @@ def test_postgres_snapshots_require_board_write_or_manage_access(monkeypatch):
         )
     assert guest_create_error.value.status_code == 403
 
-    assert len(snapshot_store.list_snapshots("snapshot_board", guest)) == 1
+    assert snapshot_store.list_snapshots("snapshot_board", guest) == []
 
     with pytest.raises(HTTPException) as guest_clear_error:
         snapshot_store.clear_snapshots("snapshot_board", guest)
     assert guest_clear_error.value.status_code == 403
 
 
-def make_context(user_id: str, role: str = "owner", workspace_id: str = "dev-workspace") -> ApiRequestContext:
+def make_context(
+    user_id: str,
+    role: str = "owner",
+    workspace_id: str = "dev-workspace",
+    workspace_kind: str = "solo_workspace",
+) -> ApiRequestContext:
     return ApiRequestContext(
         auth_mode="required",
         is_dev_fallback=False,
@@ -735,6 +759,7 @@ def make_context(user_id: str, role: str = "owner", workspace_id: str = "dev-wor
         user_id=user_id,
         workspace_board_count=0,
         workspace_id=workspace_id,
+        workspace_kind=workspace_kind,
         workspace_name="Dev Workspace",
         workspace_role=role,
     )
@@ -845,6 +870,7 @@ def test_board_members_scaffold_contract(monkeypatch):
 
 def test_board_member_candidates_invite_and_share_link_contract(monkeypatch):
     fake_db = FakePostgresDatabase()
+    fake_db.workspaces = [{"id": "workspace_group", "kind": "group_workspace"}]
     fake_db.users = [
         {
             "id": "dev-user",
@@ -875,22 +901,34 @@ def test_board_member_candidates_invite_and_share_link_contract(monkeypatch):
         },
     ]
     fake_db.workspace_members = [
-        {"workspace_id": "dev-workspace", "user_id": "dev-user", "role": "owner", "display_name": "Dev User"},
-        {"workspace_id": "dev-workspace", "user_id": "user_alice", "role": "member", "display_name": "Alice Artist"},
-        {"workspace_id": "dev-workspace", "user_id": "user_bob", "role": "guest", "display_name": "Bob Builder"},
+        {"workspace_id": "workspace_group", "user_id": "dev-user", "role": "owner", "display_name": "Dev User"},
+        {"workspace_id": "workspace_group", "user_id": "user_alice", "role": "member", "display_name": "Alice Artist"},
+        {"workspace_id": "workspace_group", "user_id": "user_bob", "role": "guest", "display_name": "Bob Builder"},
     ]
     monkeypatch.setenv("TANGENT_BOARD_STORAGE_DRIVER", "postgres")
     monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
     monkeypatch.setattr("tangent_api.storage.postgres_board_snapshot_store.connect_to_postgres", fake_db.connect)
     client = TestClient(app)
+    headers = {
+        "x-tangent-user-id": "dev-user",
+        "x-tangent-workspace-id": "workspace_group",
+        "x-tangent-workspace-kind": "group_workspace",
+    }
 
     saved = client.post(
         "/api/v1/boards",
+        headers=headers,
         json={"boardId": "share_board", "document": {"assets": [], "shapes": [{"id": "shape_1"}]}, "title": "Share Board"},
     )
     assert saved.status_code == 200
+    visibility = client.patch(
+        "/api/v1/boards/share_board",
+        headers=headers,
+        json={"visibility": "workspace"},
+    )
+    assert visibility.status_code == 200
 
-    candidates = client.get("/api/v1/boards/share_board/member-candidates?query=ali")
+    candidates = client.get("/api/v1/boards/share_board/member-candidates?query=ali", headers=headers)
     assert candidates.status_code == 200
     assert candidates.json()["candidates"] == [
         {
@@ -905,6 +943,7 @@ def test_board_member_candidates_invite_and_share_link_contract(monkeypatch):
 
     invited = client.post(
         "/api/v1/boards/share_board/members/invite-by-email",
+        headers=headers,
         json={"email": "alice@example.com", "role": "viewer", "displayName": "Alice Artist"},
     )
     assert invited.status_code == 200
@@ -918,18 +957,19 @@ def test_board_member_candidates_invite_and_share_link_contract(monkeypatch):
         "workspaceRole": "member",
     }
 
-    members = client.get("/api/v1/boards/share_board/members")
+    members = client.get("/api/v1/boards/share_board/members", headers=headers)
     assert members.status_code == 200
     assert [member["userId"] for member in members.json()["members"]] == ["dev-user", "user_alice"]
 
     share = client.post(
         "/api/v1/boards/share_board/share-link",
+        headers=headers,
         json={"accessRole": "viewer", "expiresAt": "2999-01-01T00:00:00Z"},
     )
     assert share.status_code == 200
     share_link = share.json()["shareLink"]
     assert share_link["boardId"] == "share_board"
-    assert share_link["workspaceId"] == "dev-workspace"
+    assert share_link["workspaceId"] == "workspace_group"
     assert share_link["accessRole"] == "viewer"
     assert share_link["expiresAt"] == "2999-01-01T00:00:00+00:00"
     assert share_link["shareId"] is not None
@@ -941,7 +981,7 @@ def test_board_member_candidates_invite_and_share_link_contract(monkeypatch):
         "boardId": "share_board",
         "boardTitle": "Share Board",
         "shareId": share_link["shareId"],
-        "workspaceId": "dev-workspace",
+        "workspaceId": "workspace_group",
     }
 
     shared_board = client.get(f"/api/v1/boards/share-links/{share_link['shareId']}/board")
@@ -950,7 +990,7 @@ def test_board_member_candidates_invite_and_share_link_contract(monkeypatch):
     assert shared_board.json()["board"]["title"] == "Share Board"
     assert shared_board.json()["board"]["document"] == {"assets": [], "shapes": [{"id": "shape_1"}]}
 
-    revoked = client.delete(f"/api/v1/boards/share_board/share-link/{share_link['shareId']}")
+    revoked = client.delete(f"/api/v1/boards/share_board/share-link/{share_link['shareId']}", headers=headers)
     assert revoked.status_code == 200
     assert revoked.json()["shareId"] == share_link["shareId"]
 

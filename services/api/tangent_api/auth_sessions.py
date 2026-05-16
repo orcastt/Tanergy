@@ -237,6 +237,7 @@ def _load_auth_session_row(
         LEFT JOIN tangent_workspace_members wm ON wm.user_id = u.id
         LEFT JOIN tangent_workspaces w ON w.id = wm.workspace_id
         WHERE ui.provider = %s AND ui.provider_subject = %s
+          AND COALESCE(w.status, 'active') <> 'deleted'
           {workspace_filter}
         ORDER BY
             CASE wm.role

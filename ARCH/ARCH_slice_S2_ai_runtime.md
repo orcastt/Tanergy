@@ -1,6 +1,6 @@
 # ARCH Slice S2: AI Runtime
 
-**Updated**: 2026-05-14
+**Updated**: 2026-05-16
 **Mode**: Architecture slice.
 
 ## Scope
@@ -86,6 +86,7 @@ Rules:
 
 - The UI may show model choices, parameter tiers and estimated credits, but it must read them from server APIs. When `NEXT_PUBLIC_API_BASE_URL` is configured, the web app must fail closed to backend AI and asset APIs rather than silently falling back to local Next bridges.
 - The UI must not send provider names, route ids, raw provider prices or arbitrary price overrides.
+- The active deployment may temporarily allow only one provider key, but the control plane and admin surface must still treat provider keys as configuration data rather than as product-level hard-coded branches.
 - A product model like `gpt_image_2` can have multiple provider routes behind it. The user sees the product model; the server chooses the active route.
 - Admins/developer operators can disable a route, change priority/weight, change a provider model mapping and publish a new pricing-rule version without redeploying frontend code.
 - Pricing rules must be versioned. An AiRun stores the exact `pricing_rule_id`, `route_id`, estimated credits, charged credits, refunded credits, provider cost and provider currency used at run time.
@@ -160,7 +161,8 @@ enterprise          -> contract-defined workspace pool or personal fallback
 - Successful run settlement now also persists normalized `provider_cost` / `provider_currency` onto the final `ai_runs` row and the final successful `ai_api_calls` attempt row, and the shell also writes attempt-level `api_cost_ledger` rows so Admin can inspect supplier-cost facts separately from user-credit charging.
 - The text-run path is now shared by both Prompt Optimizer and the message-native Chat node when the canvas is pointed at the FastAPI API: `AiRunRequest` accepts `params.messages`, optional `inputAssetIds` can be inlined server-side for OpenAI-compatible text calls, and terminal short text output is persisted on the run row.
 - Migration `20260514_0021_ai_image_model_refresh.py` now aligns the active image-generation catalog to `gpt-image-2`, `nano-banana-2`, `doubao-seedream-5.0-lite` and `jimeng_t2i_v40`. Legacy `gemini-3.1-flash-image-preview` remains compatibility-only and is no longer part of the active image-generation surface.
-- The current image-generation route defaults also stretch the live-provider timeout boundary to `240000 ms`, which matches the longer-running staged GeekAI image path instead of the shorter local defaults.
+- The current image-generation route defaults also stretch the live-provider timeout boundary to `240000 ms`, which matches the longer-running staged Jiekou image path instead of the shorter local defaults.
+- The local Next bridge now reads shared frontend AI model/image metadata modules rather than duplicating aspect-ratio, tier and provider-compatibility facts across node-registry/runtime codepaths. Deprecated local Hunyuan message-shaping is removed from chat completions, and dead bridge-only text config stubs are no longer part of the active runtime surface.
 - Image Gen / Image Gen 4 model dropdown reads contract.
 - Konva runtimeGraph mock flow now exercises Prompt/Image/Chat/Image Gen/Analysis data passing, export ports and generated Asset refs without provider raw payloads.
 - The formal Konva Board runtime now consumes the same lifecycle contract: create returns a server run id, the browser polls `GET /api/v1/ai/runs/{runId}` until terminal state, user stop triggers best-effort `POST /api/v1/ai/runs/{runId}/cancel`, and successful remote image runs hydrate persisted Asset records back into generated node outputs instead of fabricating client-only previews.
@@ -169,7 +171,7 @@ enterprise          -> contract-defined workspace pool or personal fallback
 - OpenAI-compatible live execution now accepts `image_analysis` by sending prompt plus inline image refs through `chat/completions`, so live analysis is no longer Google-only at the adapter boundary.
 - Local Next AI/upload hardening is now more fail-closed and byte-budgeted: `/api/ai/runs` rejects unsupported text/local mock execution instead of silently fabricating a run, upload routes share bounded request/file readers, chat/image-analysis/image-generation reference images now enforce both per-image and total inline byte budgets before base64 expansion, and backend provider input assets now also enforce a total-byte ceiling so multi-image runs do not scale memory linearly without a hard stop.
 - Asset persistence is now moving off `data:` JSON as the primary browser upload contract: board thumbnails, selection captures, runtime asset migration and mock-generated images now prefer multipart file upload, while `/api/v1/assets/from-data-url` remains only as a small fallback path with an 8MB ceiling for explicitly bounded cases that still need client-generated inline thumbnails.
-- Remaining gaps are broader live-provider capability coverage, especially real image and analysis smoke on credentialed environments, plus staging/provider acceptance. Durable terminal short `text_output` persistence now exists, the message-native Chat node is on the same create/poll/cancel boundary, and the execution/settlement shell is separated enough to plug the rest in without rewriting the route contract.
+- Remaining gaps are broader live-provider capability coverage, especially real image and analysis smoke on credentialed environments, plus staging/provider acceptance. Durable terminal short `text_output` persistence now exists, the message-native Chat node is on the same create/poll/cancel boundary, and the execution/settlement shell is separated enough to plug the rest in without rewriting the route contract. The largest decoupling gap is now the parallel Next local AI bridge, which still carries provider-specific payload shaping and should keep collapsing toward thin dev-only wrappers around the same server control-plane semantics.
 
 ## Launch-Readiness Sequence
 

@@ -11,13 +11,16 @@ from fastapi import HTTPException
 
 from tangent_api.board_access import (
     assert_board_page_limit,
+    assert_board_allows_share_links,
     assert_can_create_board,
     assert_can_manage_board,
     assert_can_own_board,
     assert_can_read_board,
+    assert_workspace_allows_board_visibility,
     assert_can_write_board,
     can_read_board,
     can_read_workspace,
+    workspace_kind_allows_board_sharing,
 )
 from tangent_api.board_asset_references import assert_no_local_foreign_asset_refs
 from tangent_api.board_guard import audit_board_document
@@ -195,9 +198,14 @@ def update_board_metadata(
     if is_pinned is not None:
         update_data["is_pinned"] = bool(is_pinned)
     if visibility is not None:
-        update_data["visibility"] = normalize_board_visibility(visibility)
+        next_visibility = normalize_board_visibility(visibility)
+        assert_workspace_allows_board_visibility(context.workspace_kind, next_visibility)
+        update_data["visibility"] = next_visibility
     if share_id is not None:
         update_data["share_id"] = normalize_board_share_id(share_id)
+    next_visibility = str(update_data.get("visibility", record.visibility))
+    if not workspace_kind_allows_board_sharing(context.workspace_kind):
+        update_data["share_id"] = None
 
     updated = record.model_copy(update=update_data)
     _write_board_record(updated)
@@ -395,6 +403,7 @@ def ensure_board_share_link(
     expires_at: Optional[str] = None,
 ) -> BoardShareLinkRecord:
     record = _load_board_without_touch(board_id, context, required_access="manage")
+    assert_board_allows_share_links(record, context.workspace_kind)
     normalized_access_role = _normalize_board_share_access_role(access_role)
     normalized_expires_at = _normalize_share_expires_at(expires_at)
     share_links = _read_share_links(record.id)

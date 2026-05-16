@@ -1,7 +1,7 @@
 # S4 Collaboration Invite/Presence Plan
 
 **Created**: 2026-05-16
-**Status**: In progress. Invite -> board entry is now wired in product UI; real signed-in two-user smoke remains the next acceptance pass.
+**Status**: In progress. Invite -> board entry is now wired in product UI, invite history now has explicit `pending / accepted / revoked` states, Team owner transfer has a first safe product/backend cut, and real signed-in two-user smoke remains the next acceptance pass.
 **Owner slice**: S4, with S1D/S3 dependencies.
 
 ## Goal
@@ -47,6 +47,7 @@ Exit criteria:
 - Make invite accept land the user in the correct workspace and board shell
 - Expose revoke/copy/open actions from the workspace/member surfaces
 - Keep invite-manager authority at workspace `owner/admin`
+- Keep paid-workspace governance believable: Team ownership transfer must exist before paid self-exit feels complete; Group owner transfer remains blocked until billing ownership rules are explicit
 - Current implementation note:
   - invite links may now carry optional `boardId` / `boardTitle`
   - accept may land directly on `/boards/[boardId]?workspace=...`
@@ -57,6 +58,7 @@ Exit criteria:
 
 - An invited user can accept a Team/Group invite and reopen the same workspace through real membership
 - Workspace role is visible and consistent after acceptance
+- Invite history states are visible and distinguishable as `pending / accepted / revoked`
 
 ## Phase 2: Live Presence
 
@@ -72,6 +74,7 @@ Exit criteria:
 Exit criteria:
 
 - Two signed-in users can open the same Board and see each other's cursor/name/page presence
+- The current page-scoped collaboration claim has been exercised on a real multi-page Board, not only local smoke
 
 ## Phase 3: Sensitive-Edit Occupancy
 

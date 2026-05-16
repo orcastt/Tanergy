@@ -1,16 +1,16 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { formatCredits } from '@/features/billing/billingPresentation'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
+import { useTangentSession } from '@/features/auth/useTangentSession'
 import { WorkspaceInvitePanel } from './WorkspaceInvitePanel'
 import { WorkspaceMembersPanel } from './WorkspaceMembersPanel'
+import { WorkspaceDashboardBoardsPanel } from './WorkspaceDashboardBoardsPanel'
+import { WorkspaceSettingsPanel } from './WorkspaceSettingsPanel'
 import {
   type GroupWorkspaceDashboardRecord,
-  type WorkspaceDashboardAction,
-  type WorkspaceDashboardBoard,
   type TeamWorkspaceDashboardRecord,
 } from '@/features/workspaces/workspaceDashboardTypes'
 import { formatWorkspacePlanName } from '@/features/workspaces/workspacePresentation'
@@ -25,6 +25,7 @@ type BoardViewMode = 'gallery' | 'list'
 
 export function WorkspaceDashboardView({ kind, workspaceId }: WorkspaceDashboardViewProps) {
   const [viewMode, setViewMode] = useState<BoardViewMode>('gallery')
+  const { session } = useTangentSession()
   const { error, groupRecord, reload, status, teamRecord, workspace } = useWorkspaceDashboardRuntime(kind, workspaceId)
   const record = kind === 'team' ? teamRecord : groupRecord
 
@@ -60,6 +61,8 @@ export function WorkspaceDashboardView({ kind, workspaceId }: WorkspaceDashboard
 
       {kind === 'team' && teamRecord ? (
         <TeamDashboardLayout
+          boardSignature={recordBoardSignature(teamRecord.boards)}
+          session={session}
           record={teamRecord}
           onMembersChanged={reload}
           workspace={workspace}
@@ -69,6 +72,8 @@ export function WorkspaceDashboardView({ kind, workspaceId }: WorkspaceDashboard
       ) : null}
       {kind === 'group' && groupRecord ? (
         <GroupDashboardLayout
+          boardSignature={recordBoardSignature(groupRecord.boards)}
+          session={session}
           record={groupRecord}
           onMembersChanged={reload}
           workspace={workspace}
@@ -81,15 +86,19 @@ export function WorkspaceDashboardView({ kind, workspaceId }: WorkspaceDashboard
 }
 
 function TeamDashboardLayout({
+  boardSignature,
   onViewModeChange,
   onMembersChanged,
   record,
+  session,
   workspace,
   viewMode,
 }: {
+  boardSignature: string
   onMembersChanged: () => void
   onViewModeChange: (mode: BoardViewMode) => void
   record: TeamWorkspaceDashboardRecord
+  session: ReturnType<typeof useTangentSession>['session']
   workspace: TangentWorkspace
   viewMode: BoardViewMode
 }) {
@@ -98,51 +107,93 @@ function TeamDashboardLayout({
   return (
     <div className="workspace-detail-stack">
       <section className="workspace-detail-grid workspace-detail-grid-top">
-        <DashboardBoardPanel boards={record.boards} kind="team" onViewModeChange={onViewModeChange} viewMode={viewMode} workspaceId={workspace.id} />
-        <section className="workspace-detail-panel workspace-detail-side-panel">
-          <div className="workspace-detail-panel-head"><h2>Usage</h2></div>
-          <div className="workspace-detail-dark-card">
-            <div className="workspace-detail-dark-row">
-              <strong>{formatCredits(record.totalCreditsRemaining)}</strong>
-              <Link className="workspace-detail-danger-button" href={`/usage?scope=teams&workspace=${encodeURIComponent(record.id)}`}>
-                Top Up
-              </Link>
+        <div>
+          <div className="workspace-detail-panel-head workspace-detail-board-panel-head">
+            <div>
+              <h2>Boards</h2>
+              <small>{record.boards.length} synced boards.</small>
             </div>
-            <small>{formatCredits(record.totalCredits)} credits</small>
-            <div className="workspace-detail-progress"><span style={{ width: `${creditPercent}%` }} /></div>
+            <div className="workspace-view-toggle" aria-label="Board view mode">
+              <button className={viewMode === 'gallery' ? 'is-active' : ''} onClick={() => onViewModeChange('gallery')} type="button">Gallery</button>
+              <button className={viewMode === 'list' ? 'is-active' : ''} onClick={() => onViewModeChange('list')} type="button">List</button>
+            </div>
           </div>
-          <div className="workspace-detail-usage-list">
-            {record.members.map((member) => (
-              <div className="workspace-detail-usage-row" key={member.id}>
-                <span className="workspace-detail-avatar">{member.initials}</span>
-                <div className="workspace-detail-progress is-light">
-                  <span style={{ width: `${Math.min(100, Math.round(((member.usageCredits ?? 0) / record.memberUsageLimit) * 100))}%` }} />
-                </div>
+          <WorkspaceDashboardBoardsPanel
+            key={`${workspace.id}:${boardSignature}:${viewMode}`}
+            boards={record.boards}
+            onWorkspaceRefresh={onMembersChanged}
+            session={session}
+            viewMode={viewMode}
+            workspace={workspace}
+          />
+        </div>
+        <div className="workspace-detail-side-stack">
+          <section className="workspace-detail-panel workspace-detail-side-panel">
+            <div className="workspace-detail-panel-head"><h2>Usage</h2></div>
+            <div className="workspace-detail-dark-card">
+              <div className="workspace-detail-dark-row">
+                <strong>{formatCredits(record.totalCreditsRemaining)}</strong>
+                <Link className="workspace-detail-danger-button" href={`/usage?scope=teams&workspace=${encodeURIComponent(record.id)}`}>
+                  Top Up
+                </Link>
               </div>
-            ))}
-          </div>
-          <small className="workspace-detail-status">{record.members.length} members synced from the live workspace contract.</small>
-        </section>
+              <small>{formatCredits(record.totalCredits)} credits</small>
+              <div className="workspace-detail-progress"><span style={{ width: `${creditPercent}%` }} /></div>
+            </div>
+            <div className="workspace-detail-summary-list">
+              <div className="workspace-detail-summary-row">
+                <span>Plan</span>
+                <strong>{formatWorkspacePlanName(record.planKey)}</strong>
+              </div>
+              <div className="workspace-detail-summary-row">
+                <span>Valid until</span>
+                <strong>{formatPeriodEnd(record.currentPeriodEnd)}</strong>
+              </div>
+            </div>
+            <div className="workspace-detail-usage-list">
+              {record.members.map((member) => (
+                <div className="workspace-detail-usage-row" key={member.id}>
+                  <span className="workspace-detail-avatar">{member.initials}</span>
+                  <div className="workspace-detail-progress is-light">
+                    <span style={{ width: `${Math.min(100, Math.round(((member.usageCredits ?? 0) / record.memberUsageLimit) * 100))}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <small className="workspace-detail-status">Team credits stay on the subscribed plan even if you clear this workspace.</small>
+          </section>
+          <WorkspaceSettingsPanel key={`${workspace.id}:${record.name}`} kind="team" onWorkspaceRefresh={onMembersChanged} planKey={record.planKey} workspace={workspace} />
+        </div>
       </section>
 
       <section className="workspace-detail-grid workspace-detail-grid-bottom">
         <WorkspaceMembersPanel members={record.members} onMembersChanged={onMembersChanged} workspace={workspace} />
-        <WorkspaceInvitePanel boards={record.boards} seatLabel={`${record.seatsUsed}/${record.seatLimit}`} workspace={workspace} />
+        <WorkspaceInvitePanel
+          boards={record.boards}
+          members={record.members}
+          onWorkspaceRefresh={onMembersChanged}
+          seatLabel={`${record.seatsUsed}/${record.seatLimit}`}
+          workspace={workspace}
+        />
       </section>
     </div>
   )
 }
 
 function GroupDashboardLayout({
+  boardSignature,
   onViewModeChange,
   onMembersChanged,
   record,
+  session,
   workspace,
   viewMode,
 }: {
+  boardSignature: string
   onMembersChanged: () => void
   onViewModeChange: (mode: BoardViewMode) => void
   record: GroupWorkspaceDashboardRecord
+  session: ReturnType<typeof useTangentSession>['session']
   workspace: TangentWorkspace
   viewMode: BoardViewMode
 }) {
@@ -151,36 +202,67 @@ function GroupDashboardLayout({
   return (
     <div className="workspace-detail-stack">
       <section className="workspace-detail-grid workspace-detail-grid-top">
-        <DashboardBoardPanel boards={record.boards} kind="group" onViewModeChange={onViewModeChange} viewMode={viewMode} workspaceId={workspace.id} />
-        <section className="workspace-detail-panel workspace-detail-side-panel">
-          <div className="workspace-detail-panel-head"><h2>Subscription</h2></div>
-          <div className="workspace-detail-dark-card">
-            <div className="workspace-detail-dark-row">
-              <strong>{formatCredits(record.totalCreditsRemaining)}</strong>
-              <Link className="workspace-detail-danger-button" href="/usage?scope=group">
-                Top Up
-              </Link>
+        <div>
+          <div className="workspace-detail-panel-head workspace-detail-board-panel-head">
+            <div>
+              <h2>Boards</h2>
+              <small>{record.boards.length} synced boards.</small>
             </div>
-            <small>{formatCredits(record.totalCredits)} credits</small>
-            <div className="workspace-detail-progress"><span style={{ width: `${creditPercent}%` }} /></div>
-          </div>
-          <div className="workspace-detail-summary-list">
-            <div className="workspace-detail-summary-row">
-              <span>Plan</span>
-              <strong>{formatWorkspacePlanName(record.planKey)}</strong>
-            </div>
-            <div className="workspace-detail-summary-row">
-              <span>Boards</span>
-              <strong>{record.boards.length}</strong>
+            <div className="workspace-view-toggle" aria-label="Board view mode">
+              <button className={viewMode === 'gallery' ? 'is-active' : ''} onClick={() => onViewModeChange('gallery')} type="button">Gallery</button>
+              <button className={viewMode === 'list' ? 'is-active' : ''} onClick={() => onViewModeChange('list')} type="button">List</button>
             </div>
           </div>
-        </section>
+          <WorkspaceDashboardBoardsPanel
+            key={`${workspace.id}:${boardSignature}:${viewMode}`}
+            boards={record.boards}
+            onWorkspaceRefresh={onMembersChanged}
+            session={session}
+            viewMode={viewMode}
+            workspace={workspace}
+          />
+        </div>
+        <div className="workspace-detail-side-stack">
+          <section className="workspace-detail-panel workspace-detail-side-panel">
+            <div className="workspace-detail-panel-head"><h2>Plan & usage</h2></div>
+            <div className="workspace-detail-dark-card">
+              <div className="workspace-detail-dark-row">
+                <strong>{formatCredits(record.totalCreditsRemaining)}</strong>
+                <Link className="workspace-detail-danger-button" href="/usage?scope=group">
+                  Top Up
+                </Link>
+              </div>
+              <small>{formatCredits(record.totalCredits)} credits</small>
+              <div className="workspace-detail-progress"><span style={{ width: `${creditPercent}%` }} /></div>
+            </div>
+            <div className="workspace-detail-summary-list">
+              <div className="workspace-detail-summary-row">
+                <span>Valid until</span>
+                <strong>{formatPeriodEnd(record.currentPeriodEnd)}</strong>
+              </div>
+              <div className="workspace-detail-summary-row">
+                <span>Plan</span>
+                <strong>{formatWorkspacePlanName(record.planKey)}</strong>
+              </div>
+              <div className="workspace-detail-summary-row">
+                <span>Boards</span>
+                <strong>{record.boards.length}</strong>
+              </div>
+            </div>
+            <small className="workspace-detail-status">Your Group uses the owner subscription. Credits stay on that plan if the Group is removed.</small>
+          </section>
+          <WorkspaceSettingsPanel key={`${workspace.id}:${record.name}`} kind="group" onWorkspaceRefresh={onMembersChanged} planKey={record.planKey} workspace={workspace} />
+        </div>
       </section>
 
       <section className="workspace-detail-grid workspace-detail-grid-bottom">
         <WorkspaceMembersPanel members={record.members} onMembersChanged={onMembersChanged} workspace={workspace} />
-        <WorkspaceInvitePanel boards={record.boards} workspace={workspace} />
-        <DashboardActionsPanel actions={record.actions} />
+        <WorkspaceInvitePanel
+          boards={record.boards}
+          members={record.members}
+          onWorkspaceRefresh={onMembersChanged}
+          workspace={workspace}
+        />
       </section>
     </div>
   )
@@ -191,73 +273,13 @@ function getCreditPercent(remaining: number, total: number) {
   return Math.min(100, Math.round((remaining / total) * 100))
 }
 
-function DashboardActionsPanel({
-  actions,
-}: {
-  actions: WorkspaceDashboardAction[]
-}) {
-  return (
-    <section className="workspace-detail-panel workspace-detail-side-panel">
-      <div className="workspace-detail-panel-head"><h2>Actions</h2></div>
-      <div className="workspace-detail-action-list">
-        {actions.map((action) => (
-          <Link className="workspace-detail-action-link" href={action.href} key={action.label}>
-            {action.label}
-          </Link>
-        ))}
-      </div>
-    </section>
-  )
+function recordBoardSignature(boards: TeamWorkspaceDashboardRecord['boards'] | GroupWorkspaceDashboardRecord['boards']) {
+  return boards.map((board) => `${board.id}:${board.savedAt}:${board.thumbnailUrl ?? ''}:${board.visibility ?? 'private'}`).join('|')
 }
 
-function DashboardBoardPanel({
-  boards,
-  kind,
-  onViewModeChange,
-  viewMode,
-  workspaceId,
-}: {
-  boards: WorkspaceDashboardBoard[]
-  kind: 'group' | 'team'
-  onViewModeChange: (mode: BoardViewMode) => void
-  viewMode: BoardViewMode
-  workspaceId: string
-}) {
-  const router = useRouter()
-  return (
-    <section className="workspace-detail-panel workspace-detail-board-panel">
-      <div className="workspace-detail-panel-head">
-        <h2>Boards</h2>
-        <div className="workspace-view-toggle" aria-label="Board view mode">
-          <button className={viewMode === 'gallery' ? 'is-active' : ''} onClick={() => onViewModeChange('gallery')} type="button">Gallery</button>
-          <button className={viewMode === 'list' ? 'is-active' : ''} onClick={() => onViewModeChange('list')} type="button">List</button>
-        </div>
-      </div>
-      <div className={viewMode === 'gallery'
-        ? `workspace-detail-board-grid${kind === 'group' ? ' is-group' : ''}`
-        : 'workspace-detail-board-list'}
-      >
-        {boards.length === 0 ? (
-          <div className="workspace-detail-status">No boards in this workspace yet.</div>
-        ) : boards.slice(0, kind === 'group' ? 12 : 9).map((board) => (
-          <button
-            className={`workspace-detail-board-card ${viewMode === 'list' ? 'is-list' : ''}`}
-            data-card-color={board.cardColor}
-            key={board.id}
-            onClick={() => router.push(buildWorkspaceBoardHref(board.id, workspaceId))}
-            type="button"
-          >
-            <span className="workspace-detail-board-thumb" aria-hidden="true" />
-            <strong>{board.title}</strong>
-          </button>
-        ))}
-      </div>
-      {boards.length ? <small className="workspace-detail-status">{boards.length} boards synced.</small> : null}
-    </section>
-  )
-}
-
-function buildWorkspaceBoardHref(boardId: string, workspaceId: string) {
-  const query = new URLSearchParams({ workspace: workspaceId })
-  return `/boards/${encodeURIComponent(boardId)}?${query.toString()}`
+function formatPeriodEnd(value?: null | string) {
+  if (!value) return 'No expiry'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date)
 }

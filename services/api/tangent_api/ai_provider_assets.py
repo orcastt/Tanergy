@@ -12,8 +12,6 @@ from tangent_api.storage.asset_store_common import MAX_ASSET_BYTES
 from tangent_api.storage.asset_storage_adapter import AssetStorageAdapter, get_asset_storage_adapter
 
 _RESOLUTION_PIXELS = {
-    "0.5k": 512,
-    "0_5k": 512,
     "1k": 1024,
     "2k": 2048,
     "3k": 3072,
@@ -260,9 +258,7 @@ def _explicit_size_fields(payload: AiRunRequest) -> tuple[str, ...]:
         return ()
     if model_id == "doubao-seedream-5.0-lite":
         return ("seedreamSize", "size")
-    if model_id == "jimeng_t2i_v40":
-        return ("jimengSize", "size")
-    return ("size", "seedreamSize", "jimengSize")
+    return ("size", "seedreamSize")
 
 
 def _longest_edge_fields(payload: AiRunRequest) -> tuple[str, ...]:
@@ -271,9 +267,7 @@ def _longest_edge_fields(payload: AiRunRequest) -> tuple[str, ...]:
         return ("imageSize", "resolution")
     if model_id == "doubao-seedream-5.0-lite":
         return ("seedreamSize", "size", "resolution")
-    if model_id == "jimeng_t2i_v40":
-        return ("jimengSize", "size", "resolution")
-    return ("imageSize", "seedreamSize", "jimengSize", "size", "resolution")
+    return ("imageSize", "seedreamSize", "size", "resolution")
 
 
 def _selected_generation_model_id(payload: AiRunRequest) -> str:

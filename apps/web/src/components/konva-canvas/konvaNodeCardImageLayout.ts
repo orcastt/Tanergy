@@ -1,5 +1,5 @@
 import type { CanvasNodeShape } from '@/features/canvas-engine'
-import { getNormalizedImageGenerationData } from '@/features/node-runtime/registry'
+import { getImageGenerationPreviewAspectRatio } from '@/features/ai/aiImageModelCatalog'
 import type { RuntimeGraphImageAssetRef } from '@/features/node-runtime/runtimeGraphAssets'
 
 export type NodeCardImageSlotBounds = {
@@ -43,42 +43,13 @@ function getNodeCardImageSlotContainer(input: {
 function getGeneratedImageAspectRatio(shape: CanvasNodeShape, imageRef: RuntimeGraphImageAssetRef | null) {
   const imageRatio = getImageDimensionsAspectRatio(imageRef?.imageWidth, imageRef?.imageHeight)
   if (imageRatio) return imageRatio
-  const normalized = getNormalizedImageGenerationData(shape.props.data)
-  const modelId = typeof normalized.modelId === 'string' ? normalized.modelId : ''
-  if (modelId === 'nano-banana-2') {
-    return parseRatioStringAspectRatio(normalized.aspectRatio)
-  }
-  if (modelId === 'doubao-seedream-5.0-lite') {
-    return parseWidthHeightAspectRatio(normalized.seedreamSize)
-  }
-  if (modelId === 'jimeng_t2i_v40') {
-    return parseWidthHeightAspectRatio(normalized.jimengSize)
-  }
-  return parseWidthHeightAspectRatio(normalized.size)
+  return getImageGenerationPreviewAspectRatio(shape.props.data)
 }
 
 function getImageDimensionsAspectRatio(width: unknown, height: unknown) {
   if (typeof width !== 'number' || typeof height !== 'number') return null
   if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null
   return width / height
-}
-
-function parseWidthHeightAspectRatio(value: unknown) {
-  if (typeof value !== 'string') return null
-  const match = /^(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)$/.exec(value.trim())
-  if (!match) return null
-  const width = Number(match[1])
-  const height = Number(match[2])
-  return getImageDimensionsAspectRatio(width, height)
-}
-
-function parseRatioStringAspectRatio(value: unknown) {
-  if (typeof value !== 'string') return null
-  const match = /^(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$/.exec(value.trim())
-  if (!match) return null
-  const width = Number(match[1])
-  const height = Number(match[2])
-  return getImageDimensionsAspectRatio(width, height)
 }
 
 function fitAspectRatioInside(bounds: NodeCardImageSlotBounds, aspectRatio: number): NodeCardImageSlotBounds {

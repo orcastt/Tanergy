@@ -7,7 +7,6 @@ import {
   boardCardColorValues,
   type BoardCardColor,
   type BoardPersistenceSummary,
-  type BoardVisibility,
 } from '@/features/boards/boardTypes'
 import { getPublicOwnerLabel } from '@/features/shared/publicUserDisplay'
 import { BoardManagementMembers } from './BoardManagementMembers'
@@ -28,10 +27,8 @@ type BoardManagementPanelProps = {
     cardColor: BoardCardColor
     description: string
     isPinned: boolean
-    isStarred: boolean
     thumbnailUrl: string
     title: string
-    visibility: BoardVisibility
   }) => void
   onShare: () => void
   workspace?: TangentWorkspace
@@ -44,6 +41,7 @@ const colorLabels: Record<BoardCardColor, string> = {
   soft: 'Soft',
   yellow: 'Yellow',
 }
+const sharedWorkspaceKinds = new Set(['group_workspace', 'team_workspace'])
 
 export function BoardManagementPanel({
   board,
@@ -63,11 +61,10 @@ export function BoardManagementPanel({
   const [cardColor, setCardColor] = useState<BoardCardColor>(getBoardDisplayCardColor(board))
   const [description, setDescription] = useState(board.description ?? '')
   const [isPinned, setIsPinned] = useState(Boolean(board.isPinned))
-  const [isStarred, setIsStarred] = useState(Boolean(board.isStarred))
   const [thumbnailUrl, setThumbnailUrl] = useState(board.thumbnailUrl ?? '')
   const [title, setTitle] = useState(board.title)
-  const [visibility, setVisibility] = useState<BoardVisibility>(board.visibility ?? 'private')
   const editDisabled = !canManageBoard || isPending
+  const canShareBoard = canManageBoard && Boolean(workspace && sharedWorkspaceKinds.has(workspace.kind))
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -80,7 +77,7 @@ export function BoardManagementPanel({
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (editDisabled) return
-    onSave({ cardColor, description, isPinned, isStarred, thumbnailUrl, title, visibility })
+    onSave({ cardColor, description, isPinned, thumbnailUrl, title })
   }
 
   return (
@@ -97,13 +94,11 @@ export function BoardManagementPanel({
           <h2>{board.title}</h2>
           <div className="board-panel-summary">
             <span>{workspace?.name ?? board.workspaceId}</span>
-            <span>{getVisibilityLabel(board.visibility ?? 'private')}</span>
             <span>{board.isPinned ? 'Pinned' : 'Not pinned'}</span>
-            <span>{board.isStarred ? 'Starred' : 'Not starred'}</span>
           </div>
           <dl className="board-panel-details">
             <div><dt>Owner</dt><dd>{getPublicOwnerLabel(board.ownerId, session.user.id)}</dd></div>
-            <div><dt>Access</dt><dd>{canManageBoard ? 'Can manage' : 'View only'}</dd></div>
+            <div><dt>Access</dt><dd>{getBoardAccessLabel(workspace, canManageBoard)}</dd></div>
             <div><dt>Updated</dt><dd>{formatDate(board.savedAt)}</dd></div>
             <div><dt>Opened</dt><dd>{board.lastOpenedAt ? formatDate(board.lastOpenedAt) : 'Not opened yet'}</dd></div>
             <div><dt>Objects</dt><dd>{board.shapeCount} shapes / {board.assetCount} assets</dd></div>
@@ -114,13 +109,13 @@ export function BoardManagementPanel({
           <header className="board-panel-header">
             <div>
               <h2>Board settings</h2>
-              <p>{canManageBoard ? 'Edit metadata, appearance, access and members.' : 'View the board summary and members.'}</p>
+              <p>{canManageBoard ? 'Edit metadata, appearance and members.' : 'View the board summary and members.'}</p>
             </div>
             <div className="board-panel-top-actions">
               <button className="product-button product-button-primary" disabled={editDisabled} form="board-management-form" type="submit">
                 Save
               </button>
-              <button className="product-button product-button-secondary" disabled={isPending || !canManageBoard} onClick={onShare} type="button">
+              <button className="product-button product-button-secondary" disabled={isPending || !canShareBoard} onClick={onShare} type="button">
                 Copy link
               </button>
               <button
@@ -203,29 +198,7 @@ export function BoardManagementPanel({
                   </div>
                 </fieldset>
 
-                <fieldset disabled={editDisabled}>
-                  <legend>Access</legend>
-                  <div className="board-panel-access">
-                    {(['private', 'workspace', 'public'] satisfies BoardVisibility[]).map((value) => (
-                      <button
-                        aria-pressed={visibility === value}
-                        className={visibility === value ? 'is-active' : undefined}
-                        disabled={editDisabled}
-                        key={value}
-                        onClick={() => setVisibility(value)}
-                        type="button"
-                      >
-                        {getVisibilityLabel(value)}
-                      </button>
-                    ))}
-                  </div>
-                </fieldset>
-
                 <div className="board-panel-toggles">
-                  <label>
-                    <input checked={isStarred} disabled={editDisabled} onChange={(event) => setIsStarred(event.target.checked)} type="checkbox" />
-                    Star
-                  </label>
                   <label>
                     <input checked={isPinned} disabled={editDisabled} onChange={(event) => setIsPinned(event.target.checked)} type="checkbox" />
                     Pin
@@ -259,8 +232,8 @@ function formatDate(value: string) {
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date)
 }
 
-function getVisibilityLabel(value: BoardVisibility) {
-  if (value === 'public') return 'Public'
-  if (value === 'workspace') return 'Workspace'
-  return 'Private'
+function getBoardAccessLabel(workspace: BoardManagementPanelProps['workspace'], canManageBoard: boolean) {
+  if (!workspace) return canManageBoard ? 'Can manage' : 'View only'
+  const scope = workspace.kind === 'team_workspace' ? 'Team' : workspace.kind === 'group_workspace' ? 'Group' : 'Personal'
+  return canManageBoard ? `Inherits ${scope} permissions` : `${scope} member access`
 }

@@ -23,14 +23,20 @@ import type {
   WorkspaceCreateInput,
   WorkspaceCreateResponse,
   WorkspaceDashboardResponse,
+  WorkspaceDeleteInput,
+  WorkspaceDeleteResponse,
   WorkspaceInvitationAcceptResponse,
   WorkspaceInvitationCreateInput,
   WorkspaceInvitationCreateResponse,
   WorkspaceInvitationResponse,
   WorkspaceInvitationsResponse,
   WorkspaceMemberRoleUpdateInput,
+  WorkspaceOwnerTransferInput,
+  WorkspaceOwnerTransferResponse,
   WorkspaceSeatAssignmentsResponse,
   WorkspaceSeatUpsertInput,
+  WorkspaceUpdateInput,
+  WorkspaceUpdateResponse,
 } from './billingTypes'
 import { clearCachedBillingResources, loadCachedBillingResource } from './billingResourceCache'
 
@@ -120,6 +126,19 @@ export async function removeWorkspaceMember(userId: string, options: BillingClie
   clearWorkspaceBillingCaches(options.workspace)
 }
 
+export async function transferWorkspaceOwner(
+  input: WorkspaceOwnerTransferInput,
+  options: BillingClientOptions = {},
+): Promise<WorkspaceOwnerTransferResponse['result']> {
+  if (!hasRemotePersistenceApi()) throw new Error('Workspace owner transfer requires the remote workspace API.')
+  const payload = await loadJson<WorkspaceOwnerTransferResponse>('/api/v1/workspaces/current/owner/transfer', {
+    body: JSON.stringify(input),
+    method: 'POST',
+  }, options)
+  clearWorkspaceBillingCaches(options.workspace)
+  return payload.result
+}
+
 export async function createGroupWorkspace(input: WorkspaceCreateInput): Promise<WorkspaceCreateResponse> {
   if (!hasRemotePersistenceApi()) throw new Error('Group creation requires the remote workspace API.')
   const payload = await loadJson<WorkspaceCreateResponse>('/api/v1/workspaces/groups', {
@@ -128,6 +147,32 @@ export async function createGroupWorkspace(input: WorkspaceCreateInput): Promise
   })
   clearCachedBillingResources()
   return payload
+}
+
+export async function updateCurrentWorkspace(
+  input: WorkspaceUpdateInput,
+  options: BillingClientOptions = {},
+): Promise<WorkspaceUpdateResponse['workspace']> {
+  if (!hasRemotePersistenceApi()) throw new Error('Workspace settings require the remote workspace API.')
+  const payload = await loadJson<WorkspaceUpdateResponse>('/api/v1/workspaces/current', {
+    body: JSON.stringify(input),
+    method: 'PATCH',
+  }, options)
+  clearWorkspaceBillingCaches(options.workspace)
+  return payload.workspace
+}
+
+export async function deleteCurrentWorkspace(
+  input: WorkspaceDeleteInput,
+  options: BillingClientOptions = {},
+): Promise<WorkspaceDeleteResponse['result']> {
+  if (!hasRemotePersistenceApi()) throw new Error('Workspace deletion requires the remote workspace API.')
+  const payload = await loadJson<WorkspaceDeleteResponse>('/api/v1/workspaces/current', {
+    body: JSON.stringify(input),
+    method: 'DELETE',
+  }, options)
+  clearWorkspaceBillingCaches(options.workspace)
+  return payload.result
 }
 
 export async function listWorkspaceInvitations(options: BillingClientOptions = {}): Promise<WorkspaceInvitationsResponse> {
@@ -278,8 +323,8 @@ async function loadJson<T>(
       ...(init.headers ?? {}),
     },
   })
-  const payload = await response.json() as T & { error?: string }
-  if (!response.ok) throw new Error(payload.error || 'Billing resource lookup failed.')
+  const payload = await response.json() as T & { detail?: string; error?: string }
+  if (!response.ok) throw new Error(payload.error || payload.detail || 'Billing resource lookup failed.')
   return payload
 }
 

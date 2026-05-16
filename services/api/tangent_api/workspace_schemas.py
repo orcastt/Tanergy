@@ -32,6 +32,7 @@ class BillingWorkspaceSummary(TangentApiModel):
 class BillingMeResponse(TangentApiModel):
     charge_scope: str = Field(alias="chargeScope")
     credits: PersonalCreditSummary
+    current_period_end: Optional[str] = Field(default=None, alias="currentPeriodEnd")
     error: Optional[str] = None
     ok: bool
     payer_label: str = Field(alias="payerLabel")
@@ -115,6 +116,22 @@ class WorkspaceMemberResponse(TangentApiModel):
     ok: bool
 
 
+class WorkspaceOwnerTransferRequest(TangentApiModel):
+    user_id: str = Field(alias="userId")
+
+
+class WorkspaceOwnerTransferRecord(TangentApiModel):
+    member: WorkspaceDashboardMember
+    previous_owner_user_id: str = Field(alias="previousOwnerUserId")
+    workspace: BillingWorkspaceSummary
+
+
+class WorkspaceOwnerTransferResponse(TangentApiModel):
+    error: Optional[str] = None
+    ok: bool
+    result: WorkspaceOwnerTransferRecord
+
+
 class WorkspaceGroupCreateRequest(TangentApiModel):
     name: str
 
@@ -123,6 +140,33 @@ class WorkspaceCreateResponse(TangentApiModel):
     error: Optional[str] = None
     ok: bool
     workspace: BillingWorkspaceSummary
+
+
+class WorkspaceUpdateRequest(TangentApiModel):
+    name: str
+
+
+class WorkspaceUpdateResponse(TangentApiModel):
+    error: Optional[str] = None
+    ok: bool
+    workspace: BillingWorkspaceSummary
+
+
+class WorkspaceDeleteRequest(TangentApiModel):
+    confirmation: str
+
+
+class WorkspaceDeleteRecord(TangentApiModel):
+    boards_removed: int = Field(alias="boardsRemoved")
+    invites_revoked: int = Field(alias="invitesRevoked")
+    members_removed: int = Field(alias="membersRemoved")
+    workspace: BillingWorkspaceSummary
+
+
+class WorkspaceDeleteResponse(TangentApiModel):
+    error: Optional[str] = None
+    ok: bool
+    result: WorkspaceDeleteRecord
 
 
 class WorkspaceInvitationRecord(TangentApiModel):

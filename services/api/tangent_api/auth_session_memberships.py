@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, Optional
 
-from tangent_api.workspace_roles import normalize_workspace_role
+from tangent_api.workspace_roles import preserve_workspace_role
 
 
 @dataclass(frozen=True)
@@ -93,7 +93,7 @@ def load_workspace_memberships(cursor: Any, user_id: str, active_workspace_id: s
             workspace_kind=str(row[2] or "solo_workspace"),
             workspace_name=str(row[1] or "Tanergy Workspace"),
             workspace_plan_key=str(row[3]) if row[3] else None,
-            workspace_role=normalize_workspace_role(str(row[4] or "owner")),
+            workspace_role=preserve_workspace_role(str(row[4] or "owner")),
         )
         for row in cursor.fetchall()
     ]

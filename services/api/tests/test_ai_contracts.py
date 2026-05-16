@@ -24,11 +24,11 @@ def test_ai_model_registry_contract():
     assert [model["id"] for model in models] == [
         "gpt-image-2",
         "doubao-seedream-5.0-lite",
-        "jimeng_t2i_v40",
         "nano-banana-2",
     ]
     assert models[0]["isDefault"] is True
-    assert models[0]["parameterSchema"]["size"]
+    assert models[0]["parameterSchema"]["aspectRatio"]
+    assert models[0]["parameterSchema"]["resolution"]
     assert models[-1]["parameterSchema"]["imageSize"]
 
     analysis_response = client.get("/api/v1/ai/models?capability=image_analysis")
@@ -37,10 +37,6 @@ def test_ai_model_registry_contract():
     analysis_models = analysis_response.json()["models"]
     assert {model["id"] for model in analysis_models} == {
         "deepseek/deepseek-ocr-2",
-        "gpt-5.5",
-        "gpt-5-mini",
-        "gpt-4o-mini",
-        "gemini-2.5-flash",
         "qwen/qwen2.5-vl-72b-instruct",
     }
 
@@ -51,8 +47,6 @@ def test_ai_model_registry_contract():
     assert [model["id"] for model in text_models] == [
         "deepseek/deepseek-ocr-2",
         "deepseek/deepseek-v3.1",
-        "gpt-5-mini",
-        "gpt-5.5",
         "qwen/qwen2.5-vl-72b-instruct",
     ]
     assert text_models[0]["isDefault"] is True
@@ -68,7 +62,7 @@ def test_ai_run_mock_contract_round_trip():
             "inputAssetIds": ["asset_ref_1"],
             "nodeId": "node_image_gen",
             "nodeType": "image_gen_4",
-            "params": {"count": 4, "resolution": "0.5K"},
+            "params": {"count": 4, "resolution": "1K"},
             "prompt": "A clean ceramic cup poster",
             "runType": "image_generation",
             "selectedModelId": "gpt-image-2",
@@ -81,7 +75,7 @@ def test_ai_run_mock_contract_round_trip():
     assert run["charge"]["chargedScope"] == "actor_personal"
     assert run["charge"]["payerLabel"] == "Charges your credits"
     assert run["costCredits"] == 0
-    assert run["estimatedCredits"] == 12
+    assert run["estimatedCredits"] == 20
     assert run["entitlementSource"] == "personal_topup_or_free"
     assert run["modelId"] == "gpt-image-2"
     assert run["outputAssetIds"] == []
@@ -105,19 +99,19 @@ def test_ai_run_mock_analysis_uses_supported_analysis_model():
             "nodeType": "analysis",
             "prompt": "Describe the lighting and composition.",
             "runType": "image_analysis",
-            "selectedModelId": "gpt-5-mini",
+            "selectedModelId": "deepseek/deepseek-ocr-2",
         },
     )
 
     assert response.status_code == 200
     run = response.json()["run"]
-    assert run["estimatedCredits"] == 2
-    assert run["modelId"] == "gpt-5-mini"
-    assert run["provider"] == "geekai"
+    assert run["estimatedCredits"] == 1
+    assert run["modelId"] == "deepseek/deepseek-ocr-2"
+    assert run["provider"] == "jiekou"
     assert run["status"] == "queued"
 
     loaded = _wait_for_run_status(client, run["runId"], {"succeeded"})
-    assert loaded["modelId"] == "gpt-5-mini"
+    assert loaded["modelId"] == "deepseek/deepseek-ocr-2"
     assert loaded["outputAssetIds"] == []
     assert loaded["textOutput"]
     assert "Mock analysis" in loaded["textOutput"]
@@ -174,7 +168,7 @@ def test_provider_input_assets_reject_total_oversize_payload(monkeypatch):
         input_asset_ids=["asset_a", "asset_b"],
         prompt="Describe the attached images.",
         run_type="image_analysis",
-        selected_model_id="gpt-5-mini",
+        selected_model_id="deepseek/deepseek-ocr-2",
     )
 
     try:
@@ -218,7 +212,7 @@ def test_provider_input_assets_can_prefer_preview_bytes(monkeypatch):
         input_asset_ids=["asset_preview"],
         prompt="Describe the attached image.",
         run_type="image_analysis",
-        selected_model_id="gpt-5-mini",
+        selected_model_id="deepseek/deepseek-ocr-2",
     )
 
     assets = ai_provider_assets.load_provider_input_assets(payload, context, prefer_preview=True)
@@ -291,7 +285,7 @@ def test_persist_provider_output_assets_prefers_detected_output_dimensions(monke
         [ai_provider_assets.ProviderImageOutput(content=_png_with_dimensions(640, 960), mime="image/png")],
         context,
         payload,
-        "geekai",
+        "jiekou",
     )
 
     assert asset_ids == ["asset_generated"]
@@ -301,25 +295,25 @@ def test_persist_provider_output_assets_prefers_detected_output_dimensions(monke
 def test_resolve_requested_dimensions_uses_image_size_and_ratio_for_nano_banana():
     payload = AiRunRequest(
         input_asset_ids=[],
-        params={"aspectRatio": "9:16", "imageSize": "0.5K"},
+        params={"aspectRatio": "9:16", "imageSize": "1K"},
         prompt="Generate a poster.",
         run_type="image_generation",
         selected_model_id="nano-banana-2",
     )
 
-    assert ai_provider_assets.resolve_requested_dimensions(payload) == (288, 512)
+    assert ai_provider_assets.resolve_requested_dimensions(payload) == (576, 1024)
 
 
 def test_resolve_requested_dimensions_ignores_unrelated_gpt_size_for_nano_banana():
     payload = AiRunRequest(
         input_asset_ids=[],
-        params={"aspectRatio": "3:4", "imageSize": "0.5K", "size": "1024x1024"},
+        params={"aspectRatio": "3:4", "imageSize": "1K", "size": "1024x1024"},
         prompt="Generate a portrait poster.",
         run_type="image_generation",
         selected_model_id="nano-banana-2",
     )
 
-    assert ai_provider_assets.resolve_requested_dimensions(payload) == (384, 512)
+    assert ai_provider_assets.resolve_requested_dimensions(payload) == (768, 1024)
 
 
 def test_ai_run_mock_can_settle_against_credit_ledger(monkeypatch):
@@ -695,15 +689,15 @@ def test_ai_text_run_persists_text_output_and_system_prompt(monkeypatch):
             "nodeType": "prompt_optimizer",
             "prompt": "A clean ceramic cup poster",
             "runType": "text",
-            "selectedModelId": "gpt-5.5",
+            "selectedModelId": "deepseek/deepseek-v3.1",
             "systemPrompt": "You are a prompt optimizer for AI image generation.",
         },
     )
 
     assert response.status_code == 200
     run = response.json()["run"]
-    assert run["estimatedCredits"] == 4
-    assert run["modelId"] == "gpt-5.5"
+    assert run["estimatedCredits"] == 1.5
+    assert run["modelId"] == "deepseek/deepseek-v3.1"
     assert run["status"] == "queued"
 
     settled = _wait_for_run_status(client, run["runId"], {"succeeded"})
@@ -762,7 +756,7 @@ def test_ai_run_uses_backup_route_when_primary_route_fails(monkeypatch):
             "estimated_latency": "5-12s",
             "enabled": True,
             "is_default": True,
-            "provider_key": "geekai",
+            "provider_key": "jiekou",
             "default_tier_key": "1k",
             "default_pricing_rule_id": "price_gpt_image_2_1k_v1",
             "created_at": "2026-05-06T00:00:00Z",
@@ -773,9 +767,9 @@ def test_ai_run_uses_backup_route_when_primary_route_fails(monkeypatch):
         {
             "id": "route_gpt_image_2_primary",
             "model_key": "gpt-image-2",
-            "provider_key": "geekai",
+            "provider_key": "jiekou",
             "provider_model": "gpt-image-2",
-            "route_key": "geekai-primary",
+            "route_key": "jiekou-primary",
             "priority": 10,
             "weight": 100,
             "health_status": "healthy",
@@ -872,7 +866,7 @@ def test_ai_run_fails_when_all_provider_routes_fail(monkeypatch):
             "estimated_latency": "5-12s",
             "enabled": True,
             "is_default": True,
-            "provider_key": "geekai",
+            "provider_key": "jiekou",
             "default_tier_key": "1k",
             "default_pricing_rule_id": "price_gpt_image_2_1k_v1",
             "created_at": "2026-05-06T00:00:00Z",
@@ -883,9 +877,9 @@ def test_ai_run_fails_when_all_provider_routes_fail(monkeypatch):
         {
             "id": "route_gpt_image_2_primary",
             "model_key": "gpt-image-2",
-            "provider_key": "geekai",
+            "provider_key": "jiekou",
             "provider_model": "gpt-image-2",
-            "route_key": "geekai-primary",
+            "route_key": "jiekou-primary",
             "priority": 10,
             "weight": 100,
             "health_status": "healthy",
@@ -957,7 +951,7 @@ def test_ai_run_retries_same_route_before_failing_over(monkeypatch):
             "estimated_latency": "5-12s",
             "enabled": True,
             "is_default": True,
-            "provider_key": "geekai",
+            "provider_key": "jiekou",
             "default_tier_key": "1k",
             "default_pricing_rule_id": "price_gpt_image_2_1k_v1",
             "created_at": "2026-05-06T00:00:00Z",
@@ -968,9 +962,9 @@ def test_ai_run_retries_same_route_before_failing_over(monkeypatch):
         {
             "id": "route_gpt_image_2_primary",
             "model_key": "gpt-image-2",
-            "provider_key": "geekai",
+            "provider_key": "jiekou",
             "provider_model": "gpt-image-2",
-            "route_key": "geekai-primary",
+            "route_key": "jiekou-primary",
             "priority": 10,
             "weight": 100,
             "health_status": "healthy",
@@ -1065,7 +1059,7 @@ def test_ai_run_timeout_stops_failover_to_avoid_duplicate_provider_work(monkeypa
             "estimated_latency": "5-12s",
             "enabled": True,
             "is_default": True,
-            "provider_key": "geekai",
+            "provider_key": "jiekou",
             "default_tier_key": "1k",
             "default_pricing_rule_id": "price_gpt_image_2_1k_v1",
             "created_at": "2026-05-06T00:00:00Z",
@@ -1076,9 +1070,9 @@ def test_ai_run_timeout_stops_failover_to_avoid_duplicate_provider_work(monkeypa
         {
             "id": "route_gpt_image_2_primary",
             "model_key": "gpt-image-2",
-            "provider_key": "geekai",
+            "provider_key": "jiekou",
             "provider_model": "gpt-image-2",
-            "route_key": "geekai-primary",
+            "route_key": "jiekou-primary",
             "priority": 10,
             "weight": 100,
             "health_status": "healthy",
@@ -1158,12 +1152,12 @@ def test_ai_run_quote_returns_tier_based_estimate_and_preflight(monkeypatch):
             "display_name": "GPT Image 2",
             "capability": "image_generation",
             "capabilities": ["image_generation", "image_edit"],
-            "parameter_schema": {"resolution": ["0.5K", "1K", "2K"]},
-            "cost_hint": "Use low quality for early tests.",
+            "parameter_schema": {"resolution": ["1K", "2K", "4K"]},
+            "cost_hint": "Aspect ratio UI maps to the supported Jiekou GPT Image 2 render tiers.",
             "estimated_latency": "5-12s",
             "enabled": True,
             "is_default": True,
-            "provider_key": "geekai",
+            "provider_key": "jiekou",
             "default_tier_key": "1k",
             "default_pricing_rule_id": "price_gpt_image_2_1k_v1",
             "created_at": "2026-05-06T00:00:00Z",
@@ -1186,9 +1180,9 @@ def test_ai_run_quote_returns_tier_based_estimate_and_preflight(monkeypatch):
         {
             "id": "route_gpt_image_2_primary",
             "model_key": "gpt-image-2",
-            "provider_key": "geekai",
+            "provider_key": "jiekou",
             "provider_model": "gpt-image-2",
-            "route_key": "geekai-primary",
+            "route_key": "jiekou-primary",
             "priority": 10,
             "weight": 100,
             "health_status": "healthy",
@@ -1251,6 +1245,111 @@ def test_ai_run_quote_returns_tier_based_estimate_and_preflight(monkeypatch):
     assert quote["modelId"] == "gpt-image-2"
     assert quote["selectedTierKey"] == "2k"
     assert quote["estimatedCredits"] == 18
+    assert quote["canRun"] is True
+    assert quote["preflightStatus"] == "ok"
+
+
+def test_ai_run_quote_supports_gpt_image_2_4k_tier(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.model_registry = [
+        {
+            "model_key": "gpt-image-2",
+            "display_name": "GPT Image 2",
+            "capability": "image_generation",
+            "capabilities": ["image_generation", "image_edit"],
+            "parameter_schema": {"aspectRatio": ["1:1", "16:9"], "resolution": ["1K", "2K", "4K"]},
+            "cost_hint": "Aspect ratio UI maps to the supported Jiekou GPT Image 2 render tiers.",
+            "estimated_latency": "5-12s",
+            "enabled": True,
+            "is_default": True,
+            "provider_key": "jiekou",
+            "default_tier_key": "1k",
+            "default_pricing_rule_id": "price_gpt_image_2_1k_v1",
+            "created_at": "2026-05-16T00:00:00Z",
+            "updated_at": "2026-05-16T00:00:00Z",
+        }
+    ]
+    fake_db.model_parameter_tiers = [
+        {
+            "id": "tier_gpt_image_2_4k",
+            "model_key": "gpt-image-2",
+            "tier_key": "4k",
+            "public_label": "4K",
+            "parameter_key": "resolution",
+            "provider_params": {"resolution": "4K"},
+            "sort_order": 40,
+            "enabled": True,
+        }
+    ]
+    fake_db.model_provider_routes = [
+        {
+            "id": "route_gpt_image_2_primary",
+            "model_key": "gpt-image-2",
+            "provider_key": "jiekou",
+            "provider_model": "gpt-image-2",
+            "route_key": "jiekou-gpt-image-2-primary",
+            "priority": 10,
+            "weight": 100,
+            "health_status": "healthy",
+            "timeout_ms": 240000,
+            "retry_policy": {"maxAttempts": 2},
+            "enabled": True,
+            "created_at": "2026-05-16T00:00:00Z",
+            "updated_at": "2026-05-16T00:00:00Z",
+        }
+    ]
+    fake_db.model_pricing_rules = [
+        {
+            "id": "price_gpt_image_2_4k_v1",
+            "model_key": "gpt-image-2",
+            "tier_key": "4k",
+            "billing_unit": "per_image",
+            "estimated_credits": 16,
+            "min_credits": 16,
+            "credit_multiplier": 1,
+            "provider_cost_formula": {"unit": "image"},
+            "status": "active",
+            "effective_from": "2026-05-16T00:00:00Z",
+            "effective_to": None,
+            "created_at": "2026-05-16T00:00:00Z",
+            "updated_at": "2026-05-16T00:00:00Z",
+        }
+    ]
+    fake_db.credit_ledger = [
+        {
+            "account_id": "credit_user_user_quote_4k",
+            "credits_delta": 40,
+            "id": "ledger_quote_seed_4k",
+            "reason": "topup_purchase",
+            "source_type": "payment",
+        }
+    ]
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setattr("tangent_api.ai_control_plane.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.credit_ledger.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/ai/runs/quote",
+        headers={
+            "x-tangent-user-id": "user_quote_4k",
+            "x-tangent-workspace-id": "workspace_group",
+            "x-tangent-workspace-kind": "group_workspace",
+        },
+        json={
+            "params": {"count": 2, "resolution": "4K"},
+            "prompt": "Two large images",
+            "runType": "image_generation",
+            "selectedModelId": "gpt-image-2",
+        },
+    )
+
+    assert response.status_code == 200
+    quote = response.json()["quote"]
+    assert quote["modelId"] == "gpt-image-2"
+    assert quote["selectedTierKey"] == "4k"
+    assert quote["estimatedCredits"] == 32
     assert quote["canRun"] is True
     assert quote["preflightStatus"] == "ok"
 
@@ -1472,11 +1571,11 @@ def test_openai_compatible_live_attempt_supports_image_analysis(monkeypatch):
     route = AiProviderRouteCandidate(
         health_status="healthy",
         priority=10,
-        provider_key="geekai",
-        provider_model="gpt-5-mini",
+        provider_key="jiekou",
+        provider_model="deepseek/deepseek-ocr-2",
         retry_policy={"maxAttempts": 2},
-        route_id="route_gpt_5_mini_primary",
-        route_key="geekai-multimodal-primary",
+        route_id="route_deepseek_ocr_2_primary",
+        route_key="jiekou-deepseek-ocr-2-primary",
         timeout_ms=45000,
         weight=100,
     )
@@ -1501,7 +1600,7 @@ def test_openai_compatible_live_attempt_supports_image_analysis(monkeypatch):
         node_type="analysis",
         prompt="Describe the attached image.",
         run_type="image_analysis",
-        selected_model_id="gpt-5-mini",
+        selected_model_id="deepseek/deepseek-ocr-2",
     )
     run = AiRunRecord(
         board_id="board_analysis_live",
@@ -1518,22 +1617,22 @@ def test_openai_compatible_live_attempt_supports_image_analysis(monkeypatch):
         charged_account_id="credit_user_test",
         charged_scope="actor_personal",
         cost_credits=0,
-        cost_hint="Estimated 2 credits · GPT-5 Mini",
+        cost_hint="Estimated 1 credits · DeepSeek OCR 2",
         created_at="2026-05-13T00:00:00Z",
-        estimated_credits=2,
+        estimated_credits=1,
         entitlement_source="personal_topup_or_free",
         error=None,
         input_asset_ids=["asset_ref_1"],
         latency_ms=0,
-        model_id="gpt-5-mini",
+        model_id="deepseek/deepseek-ocr-2",
         node_id="node_analysis",
         output_asset_ids=[],
-        pricing_rule_id="price_gpt_5_mini_v1",
-        provider="geekai",
+        pricing_rule_id="price_deepseek_ocr_2_v1",
+        provider="jiekou",
         provider_cost=None,
         provider_currency=None,
-        route_id="route_gpt_5_mini_primary",
-        route_key="geekai-multimodal-primary",
+        route_id="route_deepseek_ocr_2_primary",
+        route_key="jiekou-deepseek-ocr-2-primary",
         run_id="run_analysis_live",
         run_type="image_analysis",
         selected_tier_key=None,

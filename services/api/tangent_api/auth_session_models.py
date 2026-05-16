@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Any, Optional
 
 from tangent_api.auth_session_memberships import ResolvedWorkspaceMembership
-from tangent_api.workspace_roles import normalize_workspace_role
+from tangent_api.workspace_roles import preserve_workspace_role
 
 
 @dataclass(frozen=True)
@@ -35,7 +35,7 @@ def row_to_auth_session(row: Any) -> ResolvedAuthSession:
         avatar_initials=avatar_initials,
         workspace_name=workspace_name or "Tanergy Workspace",
         workspace_plan_key=None,
-        workspace_role=normalize_workspace_role(str(workspace_role or "owner")),
+        workspace_role=preserve_workspace_role(str(workspace_role or "owner")),
         board_count=0,
         workspaces=[],
         profile_completed=profile_completed,

@@ -30,6 +30,7 @@ WORKSPACE_DASHBOARD_MEMBER_LIMIT = 200
 @dataclass(frozen=True)
 class EntitlementResolution:
     charged_account_id: Optional[str]
+    current_period_end: Optional[str]
     included_credits_override: Optional[int]
     plan_key: str
     workspace_seat_id: Optional[str] = None
@@ -61,6 +62,7 @@ def build_billing_me_response(context: ApiRequestContext) -> BillingMeResponse:
             topUpBalance=top_up_balance,
             usedThisCycle=usage,
         ),
+        currentPeriodEnd=entitlement.current_period_end,
         ok=True,
         payerLabel=charge.payer_label,
         plan=plan,
@@ -181,6 +183,7 @@ def resolve_entitlement(context: ApiRequestContext) -> EntitlementResolution:
         return database_resolution
     return EntitlementResolution(
         charged_account_id=None,
+        current_period_end=None,
         included_credits_override=None,
         plan_key=resolve_plan_key(context.workspace_kind, context.workspace_plan_key),
         workspace_seat_id=None,
@@ -292,7 +295,7 @@ def _resolve_database_entitlement(context: ApiRequestContext) -> Optional[Entitl
             if context.workspace_kind == "team_workspace":
                 cursor.execute(
                     """
-                    SELECT plan_key, seat_capacity
+                    SELECT plan_key, seat_capacity, current_period_end
                     FROM tangent_subscriptions
                     WHERE owner_type = 'workspace'
                       AND owner_id = %s
@@ -330,6 +333,7 @@ def _resolve_database_entitlement(context: ApiRequestContext) -> Optional[Entitl
                     )
                     return EntitlementResolution(
                         charged_account_id=charged_account_id,
+                        current_period_end=_optional_iso(subscription_row[2]),
                         included_credits_override=int(seat_row[2] or 0),
                         plan_key=str(seat_row[1]),
                         workspace_seat_id=str(seat_row[0]),
@@ -339,7 +343,7 @@ def _resolve_database_entitlement(context: ApiRequestContext) -> Optional[Entitl
             owner_id = context.workspace_id if owner_type == "workspace" else context.user_id
             cursor.execute(
                 """
-                SELECT ca.id, s.plan_key
+                SELECT ca.id, s.plan_key, s.current_period_end
                 FROM tangent_credit_accounts ca
                 JOIN tangent_subscriptions s ON s.account_id = ca.id
                 WHERE ca.owner_type = %s
@@ -356,6 +360,7 @@ def _resolve_database_entitlement(context: ApiRequestContext) -> Optional[Entitl
     if subscription_row and _is_plan_key_allowed_for_workspace_kind(str(subscription_row[1]), context.workspace_kind):
         return EntitlementResolution(
             charged_account_id=str(subscription_row[0]),
+            current_period_end=_optional_iso(subscription_row[2]),
             included_credits_override=None,
             plan_key=str(subscription_row[1]),
             workspace_seat_id=None,

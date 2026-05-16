@@ -1,7 +1,7 @@
 # TANGENT Architecture Index
 
 **Updated**: 2026-05-16
-**Status**: Canonical architecture overview and slice index, aligned with the current parallel P0 alpha workstreams, the S3 Team-wallet pivot and the latest staging/S2 checkpoint: the rebuilt Konva-only staging deploy plus real Clerk session/admin smoke are green, self-delete and admin delete now share a real hard-delete service with Team/Group ownership guards, backend `AiRun` supports short text runs with durable `text_output`, and the active image-generation lane is refreshed onto four live GeekAI-backed models with the next gate being one live staged image smoke before deeper provider work.
+**Status**: Canonical architecture overview and slice index, aligned with the current parallel P0 alpha workstreams, the S3 Team-wallet pivot and the latest staging/S2 checkpoint: the rebuilt Konva-only staging deploy plus real Clerk session/admin smoke are green, self-delete and admin delete now share a real hard-delete service with Team/Group ownership guards, backend `AiRun` supports short text runs with durable `text_output`, and the active image-generation lane is refreshed onto Jiekou-first live models with the next gate being one live staged image smoke before deeper provider work.
 
 This file replaces the former duplicated `ARCH/00-current-map.md` plus the long root `ARCH.md`. The root `ARCH.md` is now only a pointer.
 
@@ -87,7 +87,7 @@ Frontend UI alignment runs across all lanes and should follow, not invent, serve
 | S1D Board CRUD | `ARCH_slice_S1D_auth_board_crud.md` | Permission-checked Board list/load/save/history/member/share APIs | Stable first-pass CRUD/member/share/public-share-open checkpoint with owner-only copy/delete, share expiry and known-foreign Asset guard |
 | S1E Board Packages | `ARCH_slice_S1E_board_packages.md` | `.tgy` package format, export/import flow, asset rewrite and package safety boundary | Planned; uses Konva Board serializer, Board guard and Asset APIs as foundations |
 | S1X Canvas Engine Migration | `ARCH_slice_S1X_canvas_engine_migration.md` | Legacy canvas migration closeout, Konva/Yjs replacement path | Konva-only formal Board route accepted; Page polish and legacy-doc safety landed; collaboration still pending |
-| S2 AI Runtime | `ARCH_slice_S2_ai_runtime.md` | Node Registry, Model Registry, AiRun, provider routing, AI Chat planner | Mock/runtime dataflow and the local GeekAI canvas path now prove the user-facing image/analysis/chat flow; DB-backed model tiers/pricing/routes, quote/preflight, persisted lifecycle, attempt-level `ai_api_calls`, timeout-safe failover, extracted settlement orchestration, durable short `text_output`, four-model image refresh and message-native chat backendization now exist; production gate is staging live image smoke plus broader live-provider coverage |
+| S2 AI Runtime | `ARCH_slice_S2_ai_runtime.md` | Node Registry, Model Registry, AiRun, provider routing, AI Chat planner | Mock/runtime dataflow and the local Jiekou-first canvas path now prove the user-facing image/analysis/chat flow; DB-backed model tiers/pricing/routes, quote/preflight, persisted lifecycle, attempt-level `ai_api_calls`, timeout-safe failover, extracted settlement orchestration, durable short `text_output`, current image-model refresh and message-native chat backendization now exist; production gate is staging live image smoke plus broader live-provider coverage |
 | S3 Admin/Billing/Analytics | `ARCH_slice_S3_admin_billing_analytics.md` | Admin roles, audit, Team wallets, personal Collaborate wallets, credits, subscriptions, workspace dashboards, AI charge facts, analytics, moderation facts | Active pivot: migration `20260508_0012/0013`, payer resolver, settlement contracts, Team/Collaborate checkout, provider-neutral checkout adapter, signed webhook inbox, workspace invite/member contracts, usage checkout buttons, admin directory APIs, tabbed admin console, active-tab server bootstrap, idle-warmed client tab keepalive, paginated Team/Group dashboards, AI route metrics, table-first AI route management, admin finance reconciliation panels, manual admin operations, operator inventory/detail read model, native user status/delete, native subscription freeze/unfreeze, arbitrary Team/Group invite-add-member writes, inline pending invite rows, local detail patching for invite/member/board mutations, board copy/delete writes, admin hot-path performance cleanup and local disposable-Postgres admin/payment smoke now support Team wallet vs personal Collaborate wallet while Stripe is unavailable; user delete is now a real hard-delete path and the next hardening cut is a structured blocker model for joined paid memberships/subscriptions beyond ownership-only guards |
 | S4 Collaboration | `ARCH_slice_S4_collaboration.md` | Multiplayer, presence, CRDT boundaries, roles | Planned next slice after the current acceptance spine; local Yjs room/document foundations plus reusable invite/member contracts exist, while providerization and production-hardening still wait on Auth, Board, Asset and AiRun authority |
 
@@ -186,10 +186,10 @@ Current active tactical references:
 | --- | --- |
 | `dev-plans/p0-alpha-stabilization-and-acceptance-2026-05-06.md` | Current P0 alpha shipping spine and acceptance gates |
 | `dev-plans/s1e-tgy-board-package-export-import-2026-05-08.md` | `.tgy` Tanergy Board Package export/import tactical plan |
-| `dev-plans/s2-ai-provider-route-billing-control-plane-2026-05-07.md` | Fold GeekAI and future providers into server-owned AiRun route switching, credit settlement and admin observability |
+| `dev-plans/s2-ai-provider-route-billing-control-plane-2026-05-07.md` | Keep the current Jiekou-first deployment and future providers behind the same server-owned AiRun route switching, credit settlement and admin observability |
 | `dev-plans/s3-admin-operator-console-redesign-2026-05-09.md` | Rebuild `/admin` around fast user inventory, one-call user detail bundles, modal operations and role-aware Team/Group management |
 | `dev-plans/s3-team-group-wallets-membership-billing-plan-2026-05-08.md` | Team wallet, personal Collaborate wallet, invites, seats, membership, billing usage and payer resolver |
-| `dev-plans/s3-billing-team-entitlements-strategy-2026-05-06.md` | Superseded market benchmark and historical pricing reference |
+| `dev-plans/Archive/s3-billing-team-entitlements-strategy-2026-05-06.md` | Superseded market benchmark and historical pricing reference |
 
 Completed/reference content that still appears in this architecture file:
 
@@ -662,7 +662,7 @@ dev-plans                 Active implementation plans and historical archive
 | `dev-plans/s2-ai-provider-route-billing-control-plane-2026-05-07.md` | 把 GeekAI 和未来 providers 收口到服务端 AiRun route switching、credit settlement 和 admin observability |
 | `dev-plans/s3-admin-operator-console-redesign-2026-05-09.md` | 围绕快速 User inventory、one-call user detail bundle、modal operations 和 role-aware Team/Group management 重做 `/admin` |
 | `dev-plans/s3-team-group-wallets-membership-billing-plan-2026-05-08.md` | Team wallet、personal Collaborate wallet、invites、seats、membership、billing usage 和 payer resolver |
-| `dev-plans/s3-billing-team-entitlements-strategy-2026-05-06.md` | 已被取代的市场基准和历史定价参考 |
+| `dev-plans/Archive/s3-billing-team-entitlements-strategy-2026-05-06.md` | 已被取代的市场基准和历史定价参考 |
 
 本架构文件中仍出现的已完成/参考内容：
 

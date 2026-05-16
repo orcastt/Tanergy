@@ -1,7 +1,7 @@
 # S2 AI Provider Route + Billing Control Plane
 
-**Updated**: 2026-05-14
-**Status**: Active tactical plan for moving AI provider calls, route switching, credit charging and admin observability behind one server-owned AiRun control plane.
+**Updated**: 2026-05-16
+**Status**: Active tactical plan for keeping AI provider calls, route switching, credit charging and admin observability behind one server-owned AiRun control plane while the current deployment is Jiekou-first and the architecture remains provider-neutral.
 
 ## Goal
 
@@ -23,7 +23,7 @@ This lets the product add or switch providers later without changing node behavi
 
 ## Why Now
 
-Recent local canvas work proves the desired user-facing flow with GeekAI image, analysis and chat paths. That is good for product speed, but the production spine must not remain provider-hardcoded in frontend-facing code.
+Recent local canvas work proves the desired user-facing flow with Jiekou-first image, analysis and chat paths. That is good for product speed, but the production spine must not remain provider-hardcoded in frontend-facing code.
 
 The next backend cut should reconcile that fast path with the existing DB-backed S2/S3 control-plane scaffold:
 
@@ -66,7 +66,7 @@ Already present in the architecture/state docs and first-pass code:
 
 Current gap:
 
-- the latest GeekAI canvas-facing Next API path should be treated as a fast local integration path, then folded back into the unified AiRun/provider-route adapter layer before production reliance
+- the latest local canvas-facing Next API path should be treated as a fast local integration path, then folded back into the unified AiRun/provider-route adapter layer before production reliance
 - the active image-generation lane is now explicitly GPT Image 2, Nano Banana 2, Doubao Seedream 5.0 Lite and Jimeng 4.0; migration `20260514_0021_ai_image_model_refresh.py` keeps backend seeds aligned and `gemini-3.1-flash-image-preview` is no longer part of the active image-generation surface
 - long-running image routes now assume a `240000 ms` timeout boundary instead of the shorter local default
 - Prompt Optimizer and the message-native Chat node now share a backend short-text `AiRun` path with durable terminal `text_output` when the canvas is pointed at FastAPI; backend analysis-capable model/route/pricing seed plus one reusable `s2_live_ai_smoke.py` image->analysis acceptance script now also exist; remaining work is credentialed live image/analysis smoke and reducing production dependence on local Next fallbacks
@@ -167,21 +167,22 @@ Exit criteria:
 - Image Gen / Image Gen 4 requests can be represented without provider-specific fields leaking into the node contract.
 - Analysis and text runs can share the same lifecycle shape even when provider execution differs.
 
-### Phase 2: GeekAI As A Provider Route
+### Phase 2: Active Provider Route Cleanup
 
-- Add or confirm `geekai` as a provider route adapter in the server control plane.
-- Move GeekAI-specific endpoint decisions into the adapter:
+- Keep Jiekou as the active deployed provider route while retaining provider-neutral control-plane tables, adapters and admin/runtime facts.
+- Move remaining local-bridge provider decisions into adapter-owned mapping functions:
   - `/images/generations`
   - `/images/edits`
   - `/chat/completions`
   - `/responses` if needed
 - Preserve model-specific payload rules inside adapter-owned mapping functions.
-- Use `GEEKAI_API_KEY` and optional `GEEKAI_BASE_URL` from server env only.
+- Use provider/scope-specific env keys from server env only.
 
 Exit criteria:
 
-- A run can select a GeekAI route by model/priority, not by frontend hardcoding.
-- The adapter can support GPT Image 2, Nano Banana 2, Doubao Seedream 5.0 Lite and Jimeng payload differences without leaking provider-specific fields into the node contract.
+- A run can select a Jiekou route by model/priority, not by frontend hardcoding.
+- The adapter can support GPT Image 2, Nano Banana 2 and Doubao Seedream payload differences without leaking provider-specific fields into the node contract.
+- Admin/provider editor surfaces do not hard-code a single provider brand even if the current deployment keeps one-provider policy enabled.
 
 ### Phase 3: Credit Preflight + Settlement
 
@@ -238,7 +239,7 @@ Minimum manual smoke before calling this cut stable:
 2. Credit preflight:
    - run with enough credits succeeds
    - run with insufficient credits fails before provider execution
-3. GeekAI live image:
+3. Jiekou live image:
    - run one `Image Gen` with a low-cost/default route
    - use one of `gpt-image-2`, `nano-banana-2`, `doubao-seedream-5.0-lite` or `jimeng_t2i_v40`
    - confirm output persists as an Asset and appears in node preview

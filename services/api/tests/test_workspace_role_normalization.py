@@ -52,4 +52,4 @@ def test_board_access_preserves_legacy_member_and_guest_permissions():
     assert can_create_board(_make_context("member")) is True
     assert can_create_board(_make_context("guest")) is False
     assert resolve_effective_board_permission(private_board, _make_context("guest")) == "none"
-    assert resolve_effective_board_permission(workspace_board, _make_context("guest")) == "view"
+    assert resolve_effective_board_permission(workspace_board, _make_context("guest")) == "none"

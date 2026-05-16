@@ -229,7 +229,7 @@ def normalize_workspace_role(role: str) -> str:
 
 
 def _assert_can_manage_workspace_invites(context: ApiRequestContext) -> None:
-    if context.workspace_kind not in {"group_workspace", "team_workspace", "enterprise_workspace"}:
+    if context.workspace_kind not in {"group_workspace", "team_workspace"}:
         raise HTTPException(status_code=403, detail="Workspace invitations are unavailable for this workspace.")
     if context.workspace_role not in MANAGER_ROLES:
         raise HTTPException(status_code=403, detail="Workspace role cannot manage workspace invitations.")

@@ -3,10 +3,12 @@
 import { useState } from 'react'
 import {
   removeWorkspaceMember,
+  transferWorkspaceOwner,
   updateWorkspaceMemberRole,
   upsertWorkspaceSeat,
 } from '@/features/billing/billingClient'
 import { planCatalog } from '@/features/billing/billingContracts'
+import { requestCurrentSessionRefresh } from '@/features/auth/sessionClient'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import { getPublicUserLabel } from '@/features/shared/publicUserDisplay'
 import { formatWorkspaceMembershipRole, type WorkspaceMembershipRole } from '@/features/workspaces/workspacePresentation'
@@ -78,6 +80,9 @@ export function WorkspaceMembersPanel({ members, onMembersChanged, workspace }: 
                 {workspace.kind === 'team_workspace' && member.role !== 'owner' && canManageMembers ? (
                   <button className="workspace-detail-muted-button" disabled={pendingMemberId === member.id} onClick={() => assignSeat(member.id)} type="button">Assign seat</button>
                 ) : null}
+                {canTransferOwnership(member.role) ? (
+                  <button className="workspace-detail-muted-button" disabled={pendingMemberId === member.id} onClick={() => transferOwnership(member.id)} type="button">Transfer owner</button>
+                ) : null}
                 {member.role === 'owner' || !canRemoveMember(member.role) ? null : (
                   <button className="workspace-detail-danger-button" disabled={pendingMemberId === member.id || !canManageMembers} onClick={() => removeMember(member.id)} type="button">Remove</button>
                 )}
@@ -142,6 +147,23 @@ export function WorkspaceMembersPanel({ members, onMembersChanged, workspace }: 
     }
   }
 
+  async function transferOwnership(userId: string) {
+    if (!canManageAdmins) return setStatus('Only owners can transfer workspace ownership.')
+    if (workspace.kind !== 'team_workspace') return setStatus('Owner transfer is available for Team workspaces only right now.')
+    setPendingMemberId(userId)
+    setStatus(null)
+    try {
+      await transferWorkspaceOwner({ userId }, { workspace })
+      requestCurrentSessionRefresh()
+      setStatus('Workspace ownership transferred. Refreshing workspace session...')
+      onMembersChanged?.()
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Owner transfer failed.')
+    } finally {
+      setPendingMemberId(null)
+    }
+  }
+
   function canEditMember(role: WorkspaceMembershipRole) {
     if (!canManageMembers) return false
     if (role === 'admin') return canManageAdmins
@@ -151,6 +173,12 @@ export function WorkspaceMembersPanel({ members, onMembersChanged, workspace }: 
   function canRemoveMember(role: WorkspaceMembershipRole) {
     if (!canManageMembers) return false
     if (role === 'admin') return canManageAdmins
+    return role !== 'owner'
+  }
+
+  function canTransferOwnership(role: WorkspaceMembershipRole) {
+    if (!canManageAdmins) return false
+    if (workspace.kind !== 'team_workspace') return false
     return role !== 'owner'
   }
 }

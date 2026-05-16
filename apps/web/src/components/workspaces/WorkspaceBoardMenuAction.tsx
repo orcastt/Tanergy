@@ -7,11 +7,8 @@ type BoardMenuIconName =
   | 'manage'
   | 'migrate'
   | 'pin'
-  | 'private'
-  | 'public'
   | 'rename'
   | 'share'
-  | 'star'
 
 type WorkspaceBoardMenuActionProps = {
   children: string
@@ -53,7 +50,6 @@ function BoardMenuIcon({ name }: { name: BoardMenuIconName }) {
           <path d="M9.2 10.8l7.2-7.2" />
         </>
       ) : null}
-      {name === 'star' ? <path d="M10 2.9l2.1 4.4 4.8.7-3.5 3.4.8 4.8-4.2-2.3-4.2 2.3.8-4.8L3.1 8l4.8-.7L10 2.9z" /> : null}
       {name === 'pin' ? (
         <>
           <path d="M7.7 3.4h4.6" />
@@ -89,20 +85,6 @@ function BoardMenuIcon({ name }: { name: BoardMenuIconName }) {
           <path d="M11.3 11.4l-2.6 2.4 2.6 2.4" />
           <rect x="3.4" y="3.4" width="4.5" height="4.5" rx="1" />
           <rect x="12.1" y="12.1" width="4.5" height="4.5" rx="1" />
-        </>
-      ) : null}
-      {name === 'private' ? (
-        <>
-          <path d="M6 8V6.5a4 4 0 018 0V8" />
-          <rect x="4.5" y="8" width="11" height="8.5" rx="1.8" />
-        </>
-      ) : null}
-      {name === 'public' ? (
-        <>
-          <circle cx="10" cy="10" r="7" />
-          <path d="M3.6 10h12.8" />
-          <path d="M10 3.2c2 2 2 11.6 0 13.6" />
-          <path d="M10 3.2c-2 2-2 11.6 0 13.6" />
         </>
       ) : null}
       {name === 'delete' ? (

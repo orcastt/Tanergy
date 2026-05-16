@@ -256,13 +256,21 @@ def test_local_board_collaboration_store_reuses_session_for_repeated_heartbeat(t
 
 def test_postgres_board_collaboration_route_respects_visibility_and_presence(monkeypatch):
     fake_db = FakePostgresDatabase()
+    fake_db.workspaces = [{"id": "workspace_group", "kind": "group_workspace"}]
     monkeypatch.setenv("TANGENT_BOARD_STORAGE_DRIVER", "postgres")
     monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
     monkeypatch.setattr("tangent_api.storage.postgres_board_collaboration_store.connect_to_postgres", fake_db.connect)
     client = TestClient(app)
+    owner_headers = {
+        "x-tangent-user-id": "dev-user",
+        "x-tangent-workspace-id": "workspace_group",
+        "x-tangent-workspace-kind": "group_workspace",
+        "x-tangent-workspace-name": "Group workspace",
+    }
 
     save_response = client.post(
         "/api/v1/boards",
+        headers=owner_headers,
         json={
             "boardId": "postgres_collab_board",
             "document": {"assets": [], "shapes": [{"id": "shape_owner"}]},
@@ -273,9 +281,9 @@ def test_postgres_board_collaboration_route_respects_visibility_and_presence(mon
 
     guest_headers = {
         "x-tangent-user-id": "user_guest",
-        "x-tangent-workspace-id": "dev-workspace",
-        "x-tangent-workspace-kind": "solo_workspace",
-        "x-tangent-workspace-name": "Personal workspace",
+        "x-tangent-workspace-id": "workspace_group",
+        "x-tangent-workspace-kind": "group_workspace",
+        "x-tangent-workspace-name": "Group workspace",
         "x-tangent-workspace-role": "guest",
     }
 
@@ -284,6 +292,7 @@ def test_postgres_board_collaboration_route_respects_visibility_and_presence(mon
 
     visibility_response = client.patch(
         "/api/v1/boards/postgres_collab_board",
+        headers=owner_headers,
         json={"visibility": "workspace"},
     )
     assert visibility_response.status_code == 200
@@ -302,16 +311,11 @@ def test_postgres_board_collaboration_route_respects_visibility_and_presence(mon
             },
         },
     )
-    assert guest_claim.status_code == 200
-    guest_body = guest_claim.json()
-    assert guest_body["permission"] == "view"
-    assert guest_body["canEdit"] is False
-    assert guest_body["boardSavedAt"] == expected_saved_at
-    assert guest_body["activeSessions"][0]["isSelf"] is True
-    assert guest_body["activeSessions"][0]["presence"]["tool"] == "hand"
+    assert guest_claim.status_code == 404
 
     owner_claim = client.post(
         "/api/v1/boards/postgres_collab_board/collaboration/sessions",
+        headers=owner_headers,
         json={
             "clientInstanceId": "tab_owner_1",
             "presence": {
@@ -327,18 +331,19 @@ def test_postgres_board_collaboration_route_respects_visibility_and_presence(mon
     assert owner_body["permission"] == "owner"
     assert owner_body["canEdit"] is True
     assert owner_body["boardSavedAt"] == expected_saved_at
-    assert len(owner_body["activeSessions"]) == 2
-    assert {item["userId"] for item in owner_body["activeSessions"]} == {"dev-user", "user_guest"}
+    assert len(owner_body["activeSessions"]) == 1
+    assert {item["userId"] for item in owner_body["activeSessions"]} == {"dev-user"}
 
-    owner_list = client.get("/api/v1/boards/postgres_collab_board/collaboration")
+    owner_list = client.get("/api/v1/boards/postgres_collab_board/collaboration", headers=owner_headers)
     assert owner_list.status_code == 200
     assert owner_list.json()["boardSavedAt"] == expected_saved_at
 
     owner_release = client.delete(
-        f"/api/v1/boards/postgres_collab_board/collaboration/sessions/{owner_body['selfSession']['id']}"
+        f"/api/v1/boards/postgres_collab_board/collaboration/sessions/{owner_body['selfSession']['id']}",
+        headers=owner_headers,
     )
     assert owner_release.status_code == 200
     released = owner_release.json()
     assert released["boardSavedAt"] == expected_saved_at
-    assert {item["userId"] for item in released["activeSessions"]} == {"user_guest"}
-    assert len(fake_db.board_collaboration_sessions) == 2
+    assert released["activeSessions"] == []
+    assert len(fake_db.board_collaboration_sessions) == 1

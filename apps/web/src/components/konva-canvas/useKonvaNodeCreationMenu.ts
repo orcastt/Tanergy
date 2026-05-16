@@ -12,7 +12,7 @@ import { cancelAiRun, createAiRun } from '@/features/ai/aiClient'
 import { streamAiChatCompletion } from '@/features/ai/chatClient'
 import { getAiRunCompletionTimeoutMs, getAiRunTerminalError, waitForAiRunCompletion } from '@/features/ai/aiRunLifecycle'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
-import { canRunNodeType, getNodeCardFields, getNodeDefinition } from '@/features/node-runtime/registry'
+import { canRunNodeType, getNodeCardFields, getNodeDefinition, getNormalizedImageGenerationData } from '@/features/node-runtime/registry'
 import {
   completeRuntimeGraphNodeRun,
   executeRuntimeGraphNodeRun,
@@ -106,10 +106,13 @@ export function useKonvaNodeCreationMenu({
     if (!node) return
     const field = getNodeCardFields(node.props.nodeType, node.props.data).find((item) => item.name === fieldName)
     if (!field?.options?.some((option) => option.value === value)) return
+    const nextNodeData = node.props.nodeType === 'image_gen' || node.props.nodeType === 'image_gen_4'
+      ? getNormalizedImageGenerationData({ ...node.props.data, [fieldName]: value })
+      : { ...node.props.data, [fieldName]: value }
     history.checkpoint(document)
     onDocumentChange((current) => withCanvasShapes(current, current.shapes.map((shape) => (
       shape.id === shapeId && shape.type === 'node_card'
-        ? { ...shape, props: { ...shape.props, data: { ...shape.props.data, [fieldName]: value } } }
+        ? { ...shape, props: { ...shape.props, data: nextNodeData } }
         : shape
     ))))
   }, [document, history, onDocumentChange])

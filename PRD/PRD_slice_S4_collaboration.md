@@ -17,6 +17,7 @@ Keep this slice outside the current release promise until the signed-in browser,
 | --- | --- |
 | Invite lifecycle | Team and Group invite links are the first entry point into collaboration. A collaborator should be able to open a real invite page, continue through sign-in/sign-up if needed, and join through that link before live cursor work is considered complete. |
 | Workspace roles | `owner/admin/editor/viewer` are the canonical collaboration roles shown in product UI. Legacy `member/guest` may remain as compatibility values internally, but new UX should not introduce them as primary labels. |
+| Workspace ownership | Paid Team governance needs a user-visible ownership-transfer path before self-delete or paid-membership exit feels complete. The first safe product cut is Team-only owner transfer to an existing member; Group transfer remains explicitly blocked until billing ownership rules are defined. |
 | Board roles | Board roles support `owner/admin/editor/viewer/temporary_viewer`; board ownership and board delete/copy stay stricter than workspace membership. |
 | Presence | Users can see collaborators, names, cursors, active page and lightweight activity. Presence colors should distinguish different live sessions, not just different user ids, so the same user on two tabs/devices is still readable. Current-tool, page context and lightweight node-connection intent should be visible in the board shell/canvas rather than hidden only in hover affordances. The board header should also expose a compact live roster so active collaborators, roles and current activity can be inspected without hunting across the canvas. |
 | Realtime edit | Shape movement, drawing and lightweight Board document updates sync in real time. |
@@ -43,3 +44,4 @@ S1X keeps Yjs viability open, but production collaboration remains P0.5. The cur
 5. Let invited users open the same workspace/Board through real membership and permission checks.
 6. Add sensitive-edit occupancy for text-like and node-parameter editing, so a second user cannot enter the same focused edit mode at the same time. The current first pass now includes text edit, crop, node parameter dropdowns and chat model selection.
 7. Keep free drawing, shape move and page edits optimistic/mergeable instead of globally locking the whole Board.
+8. Validate the page-scoped collaboration claim with real two-user Board smoke before broadening the product promise beyond this first slice.

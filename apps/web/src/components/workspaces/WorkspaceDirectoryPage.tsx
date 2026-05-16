@@ -3,12 +3,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { loadWorkspaceDashboard } from '@/features/billing/billingClient'
 import type { PlanKey, WorkspaceKind } from '@/features/billing/billingTypes'
+import { useWorkspaceCommerceOverview } from '@/features/billing/useWorkspaceCommerceOverview'
 import { useTangentSession } from '@/features/auth/useTangentSession'
 import { getPublicUserInitials } from '@/features/shared/publicUserDisplay'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import { mapWithConcurrency } from '@/features/shared/asyncConcurrency'
 import { WorkspaceDirectoryView } from './WorkspaceDirectoryView'
 import {
+  formatWorkspacePlanName,
   normalizeWorkspaceMembershipRole,
   workspaceRelationshipFromRole,
   type WorkspaceDirectoryItem,
@@ -33,6 +35,7 @@ export function WorkspaceDirectoryPage({
   title,
 }: WorkspaceDirectoryPageProps) {
   const { error: sessionError, session, status: sessionStatus } = useTangentSession()
+  const { overview } = useWorkspaceCommerceOverview()
   const [enrichedItems, setEnrichedItems] = useState<null | { items: WorkspaceDirectoryItem[]; signature: string }>(null)
   const currentUserInitials = useMemo(
     () => getPublicUserInitials({
@@ -57,7 +60,36 @@ export function WorkspaceDirectoryPage({
     () => sessionWorkspaces.map((workspace) => `${workspace.id}:${workspace.role}:${workspace.planKey ?? ''}:${workspace.boardCount}`).join('|'),
     [sessionWorkspaces],
   )
-  const items = enrichedItems?.signature === workspaceSignature ? enrichedItems.items : baseItems
+  const items = useMemo(() => {
+    const sourceItems = enrichedItems?.signature === workspaceSignature ? enrichedItems.items : baseItems
+    if (!overview || kind !== 'team_workspace') return sourceItems
+    const commerceById = new Map(overview.teamCards.map((card) => [card.id, card]))
+    return sourceItems.map((item) => {
+      const commerce = commerceById.get(item.id)
+      if (!commerce) return item
+      return {
+        ...item,
+        currentPeriodEnd: commerce.currentPeriodEnd,
+        remainingCredits: commerce.remainingCredits,
+        totalCredits: commerce.totalCredits,
+        usedThisCycle: commerce.usedThisCycle,
+      }
+    })
+  }, [baseItems, enrichedItems, kind, overview, workspaceSignature])
+
+  const featuredSummary = useMemo(() => {
+    if (kind !== 'group_workspace' || !overview) return null
+    return {
+      currentPeriodEnd: overview.groupSummary.currentPeriodEnd,
+      label: 'Personal credits',
+      meta: formatGroupSummaryMeta(overview.groupSummary.groupsCreated, overview.groupSummary.groupLimit),
+      planLabel: formatWorkspacePlanName(overview.groupSummary.planKey),
+      remainingCredits: overview.groupSummary.remainingCredits,
+      title: 'Group subscription',
+      totalCredits: overview.groupSummary.totalCredits,
+      usedThisCycle: overview.groupSummary.usedThisCycle,
+    }
+  }, [kind, overview])
 
   useEffect(() => {
     if (sessionStatus !== 'ready') return
@@ -104,6 +136,7 @@ export function WorkspaceDirectoryPage({
       joinLabel={joinLabel}
       kind={kind}
       items={items}
+      featuredSummary={featuredSummary}
       statusMessage={sessionStatus === 'error' ? sessionError : null}
       title={title}
     />
@@ -144,4 +177,9 @@ function normalizePlanKey(
 ): PlanKey {
   if (planKey) return planKey
   return kind === 'team_workspace' ? 'team_start' : 'collaborate_start'
+}
+
+function formatGroupSummaryMeta(groupsCreated: number, groupLimit: number) {
+  if (!Number.isFinite(groupLimit) || groupLimit <= 0) return `${groupsCreated} groups`
+  return `${groupsCreated} / ${groupLimit} groups`
 }

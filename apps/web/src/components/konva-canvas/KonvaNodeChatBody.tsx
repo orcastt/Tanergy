@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type ComponentProps } from 'react'
+import { useEffect, useMemo, useState, type ComponentProps, type Dispatch, type ReactNode, type SetStateAction } from 'react'
 import { Group, Line, Path, Rect, Text } from 'react-konva'
 import type { CanvasDocument, CanvasNodeShape } from '@/features/canvas-engine'
 import { getChatModelDisplayName, getChatModelSelectOptions } from '@/features/ai/mockAiContracts'
 import { getCanvasThemePalette, useResolvedCanvasThemeMode } from '@/features/canvas-settings/canvasTheme'
 import { resolveRuntimeGraphNodeInputs, type RuntimeGraphImageValue } from '@/features/node-runtime/runtimeGraphResolution'
 import { getKonvaChatDraft, getKonvaChatMessages, getKonvaChatModelId, getKonvaChatReferenceFiles, getKonvaChatReferenceImages, konvaChatDraftPlaceholder } from './konvaChatNodeActions'
+import { KonvaInlineTooltip } from './KonvaInlineTooltip'
 import { stopNodeCardControlEvent } from './KonvaNodeCardParts'
 import { getGeneratedOutputSource, NodeImagePreview } from './KonvaNodeImagePreview'
 import type { KonvaNodeTextFieldName } from './KonvaNodeTextEditor'
@@ -27,6 +28,15 @@ type KonvaNodeChatBodyProps = {
   zoom: number
 }
 
+type ChatTooltipState = null | {
+  anchorX: number
+  anchorY: number
+  id: string
+  label: string
+}
+
+type KonvaGroupWheelEvent = Parameters<NonNullable<ComponentProps<typeof Group>['onWheel']>>[0]
+
 export function KonvaNodeChatBody({ document, editingFieldName = null, onChatModelChange, onChatRegenerate, onChatSend, onChatUpload, onFocusedEditRequest, onFocusedEditStateChange, onTextEditStart, shape, zoom }: KonvaNodeChatBodyProps) {
   const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
   const messages = getKonvaChatMessages(shape.props.data)
@@ -34,8 +44,7 @@ export function KonvaNodeChatBody({ document, editingFieldName = null, onChatMod
   const files = getKonvaChatReferenceFiles(shape.props.data)
   const inputResolution = resolveRuntimeGraphNodeInputs(document, shape)
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
-  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
-  const copyResetTimerRef = useRef<number | null>(null)
+  const [tooltip, setTooltip] = useState<ChatTooltipState>(null)
   const localImageValues = references.map((reference, index): RuntimeGraphImageValue => ({
     assetId: reference.assetId,
     originalUrl: reference.originalUrl,
@@ -64,15 +73,11 @@ export function KonvaNodeChatBody({ document, editingFieldName = null, onChatMod
   const messageLayouts = useMemo(() => getChatMessageLayouts(messages, contentWidth, messageGap), [contentWidth, messageGap, messages])
   const maxScroll = Math.max(0, messageLayouts.totalHeight - bodyHeight)
   const [scrollState, setScrollState] = useState(() => ({ messageCount: messages.length, value: maxScroll }))
+  const [messageTextScrolls, setMessageTextScrolls] = useState<Record<string, number>>({})
   const scrollY = scrollState.messageCount === messages.length ? scrollState.value : maxScroll
   const visibleScrollY = Math.min(scrollY, maxScroll)
   const visibleMessages = messageLayouts.items.filter((item) => item.y + item.height >= visibleScrollY - 40 && item.y <= visibleScrollY + bodyHeight + 40)
 
-  useEffect(() => () => {
-    if (copyResetTimerRef.current !== null && typeof window !== 'undefined') {
-      window.clearTimeout(copyResetTimerRef.current)
-    }
-  }, [])
   useEffect(() => {
     onFocusedEditStateChange?.(shape.id, 'chat-model-menu', modelMenuOpen)
   }, [modelMenuOpen, onFocusedEditStateChange, shape.id])
@@ -80,30 +85,20 @@ export function KonvaNodeChatBody({ document, editingFieldName = null, onChatMod
     onFocusedEditStateChange?.(shape.id, 'chat-model-menu', false)
   }, [onFocusedEditStateChange, shape.id])
 
-  const handleWheel = (event: Parameters<NonNullable<ComponentProps<typeof Group>['onWheel']>>[0]) => {
+  const handleWheel = (event: KonvaGroupWheelEvent) => {
     if (maxScroll <= 0) return
     event.cancelBubble = true
     event.evt.preventDefault()
+    setTooltip(null)
     setScrollState((current) => ({
       messageCount: messages.length,
       value: clamp((current.messageCount === messages.length ? current.value : maxScroll) + event.evt.deltaY, 0, maxScroll),
     }))
   }
 
-  const handleCopyMessage = (messageId: string, text: string) => {
+  const handleCopyMessage = (text: string) => {
     if (!text.trim() || typeof navigator === 'undefined' || !navigator.clipboard?.writeText) return
-    void navigator.clipboard.writeText(text).then(() => {
-      setCopiedMessageId(messageId)
-      if (copyResetTimerRef.current !== null && typeof window !== 'undefined') {
-        window.clearTimeout(copyResetTimerRef.current)
-      }
-      if (typeof window !== 'undefined') {
-        copyResetTimerRef.current = window.setTimeout(() => {
-          setCopiedMessageId((current) => (current === messageId ? null : current))
-          copyResetTimerRef.current = null
-        }, 1400)
-      }
-    }).catch(() => {})
+    void navigator.clipboard.writeText(text).catch(() => {})
   }
 
   return (
@@ -111,50 +106,35 @@ export function KonvaNodeChatBody({ document, editingFieldName = null, onChatMod
       <ReferenceStrip fileCount={files.length} imageCount={connectedImageCount} promptCount={connectedPromptCount} width={viewportWidth} x={14} y={50} />
       <Group clipHeight={bodyHeight} clipWidth={viewportWidth} onWheel={handleWheel} x={14} y={bodyTop}>
         <Group y={-visibleScrollY}>
-          {visibleMessages.map(({ height, isAssistant, message, width, x, y }) => {
+          {visibleMessages.map((layout) => {
+            const messageTextScroll = clamp(messageTextScrolls[layout.message.id] ?? 0, 0, layout.textMaxScroll)
             return (
-              <Group key={message.id} x={x} y={y}>
-                <Rect
-                  cornerRadius={10}
-                  fill={isAssistant ? palette.fieldBg : palette.secondaryBg}
-                  height={height}
-                  stroke={palette.fieldStroke}
-                  strokeWidth={1}
-                  width={width}
-                />
-                <Text
-                  fill={palette.fieldText}
-                  fontFamily="Inter, system-ui, sans-serif"
-                  fontSize={12}
-                  height={height - (isAssistant ? 42 : 24)}
-                  lineHeight={1.28}
-                  text={message.text || (isAssistant ? 'Thinking...' : '')}
-                  width={width - 20}
-                  wrap="char"
-                  x={10}
-                  y={12}
-                />
-                {isAssistant ? (
-                  <>
-                    <MessageActionButton
-                      ariaLabel="Copy reply"
-                      onClick={() => handleCopyMessage(message.id, message.text)}
-                      x={10}
-                      y={height - 26}
-                    >
-                      <CopyReplyIcon tone={copiedMessageId === message.id ? 'success' : 'default'} x={4} y={4} />
-                    </MessageActionButton>
-                    <MessageActionButton
-                      ariaLabel="Regenerate reply"
-                      onClick={() => onChatRegenerate?.(shape.id, message.id)}
-                      x={36}
-                      y={height - 26}
-                    >
-                      <RefreshReplyIcon x={4} y={4} />
-                    </MessageActionButton>
-                  </>
-                ) : null}
-              </Group>
+              <ChatMessageBubble
+                key={layout.message.id}
+                bodyTop={bodyTop}
+                layout={layout}
+                onCopyMessage={handleCopyMessage}
+                onRegenerate={onChatRegenerate}
+                onTextScroll={(value) => {
+                  setMessageTextScrolls((current) => {
+                    const nextValue = clamp(value, 0, layout.textMaxScroll)
+                    const previousValue = current[layout.message.id] ?? 0
+                    if (previousValue === nextValue) return current
+                    if (nextValue <= 0) {
+                      if (!Object.prototype.hasOwnProperty.call(current, layout.message.id)) return current
+                      const next = { ...current }
+                      delete next[layout.message.id]
+                      return next
+                    }
+                    return { ...current, [layout.message.id]: nextValue }
+                  })
+                }}
+                onTooltipChange={setTooltip}
+                palette={palette}
+                scrollY={messageTextScroll}
+                shapeId={shape.id}
+                visibleScrollY={visibleScrollY}
+              />
             )
           })}
         </Group>
@@ -201,10 +181,12 @@ export function KonvaNodeChatBody({ document, editingFieldName = null, onChatMod
         modelLabel={modelLabel}
         modelMenuOpen={modelMenuOpen}
         modelOptions={modelOptions}
+        onTooltipChange={setTooltip}
         width={viewportWidth}
         x={14}
         y={inputY}
       />
+      {tooltip ? <KonvaInlineTooltip anchorX={tooltip.anchorX} anchorY={tooltip.anchorY} label={tooltip.label} /> : null}
     </>
   )
 }
@@ -213,9 +195,14 @@ type ChatMessage = ReturnType<typeof getKonvaChatMessages>[number]
 type ChatReferenceFile = ReturnType<typeof getKonvaChatReferenceFiles>[number]
 
 type ChatMessageLayout = {
+  displayText: string
   height: number
   isAssistant: boolean
   message: ChatMessage
+  textContentHeight: number
+  textMaxScroll: number
+  textViewportHeight: number
+  textViewportWidth: number
   width: number
   x: number
   y: number
@@ -226,26 +213,45 @@ function getChatMessageLayouts(messages: ChatMessage[], contentWidth: number, ga
   const items: ChatMessageLayout[] = messages.map((message) => {
     const isAssistant = message.role === 'assistant'
     const width = isAssistant ? contentWidth : Math.max(128, contentWidth - 92)
-    const height = estimateMessageHeight(message.text, width, isAssistant)
+    const displayText = message.text || (isAssistant ? 'Thinking...' : '')
+    const textMetrics = getMessageTextMetrics(displayText, width, isAssistant)
     const layout = {
-      height,
+      displayText,
+      height: textMetrics.height,
       isAssistant,
       message,
+      textContentHeight: textMetrics.contentHeight,
+      textMaxScroll: textMetrics.maxScroll,
+      textViewportHeight: textMetrics.viewportHeight,
+      textViewportWidth: textMetrics.viewportWidth,
       width,
       x: isAssistant ? 0 : contentWidth - width,
       y,
     }
-    y += height + gap
+    y += textMetrics.height + gap
     return layout
   })
   return { items, totalHeight: Math.max(0, y - gap) }
 }
 
-function estimateMessageHeight(text: string, width: number, isAssistant: boolean) {
-  const textWidth = Math.max(80, width - 20)
-  const lines = text.split('\n').reduce((total, line) => total + Math.max(1, Math.ceil(getVisualTextUnits(line) / Math.max(1, textWidth / 12))), 0)
-  const textHeight = lines * 15.5
-  return clamp((isAssistant ? 42 : 24) + textHeight, 54, isAssistant ? 172 : 148)
+function getMessageTextMetrics(text: string, width: number, isAssistant: boolean) {
+  const footerHeight = isAssistant ? 42 : 24
+  const viewportWidth = Math.max(80, width - 30)
+  const contentHeight = estimateWrappedTextHeight(text, viewportWidth)
+  const height = clamp(footerHeight + 12 + contentHeight, 54, isAssistant ? 172 : 148)
+  const viewportHeight = Math.max(18, height - footerHeight - 12)
+  return {
+    contentHeight,
+    height,
+    maxScroll: Math.max(0, contentHeight - viewportHeight),
+    viewportHeight,
+    viewportWidth,
+  }
+}
+
+function estimateWrappedTextHeight(text: string, width: number) {
+  const lines = text.split('\n').reduce((total, line) => total + Math.max(1, Math.ceil(getVisualTextUnits(line) / Math.max(1, width / 12))), 0)
+  return lines * 15.5
 }
 
 function getVisualTextUnits(text: string) {
@@ -261,10 +267,111 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
 }
 
+function ChatMessageBubble({
+  bodyTop,
+  layout,
+  onCopyMessage,
+  onRegenerate,
+  onTextScroll,
+  onTooltipChange,
+  palette,
+  scrollY,
+  shapeId,
+  visibleScrollY,
+}: {
+  bodyTop: number
+  layout: ChatMessageLayout
+  onCopyMessage: (text: string) => void
+  onRegenerate?: (shapeId: string, messageId: string) => void
+  onTextScroll: (scrollY: number) => void
+  onTooltipChange: Dispatch<SetStateAction<ChatTooltipState>>
+  palette: ReturnType<typeof getCanvasThemePalette>
+  scrollY: number
+  shapeId: string
+  visibleScrollY: number
+}) {
+  const hasOverflow = layout.textMaxScroll > 0
+  const textClipWidth = hasOverflow ? layout.textViewportWidth - 6 : layout.textViewportWidth
+  const handleTextWheel = (event: KonvaGroupWheelEvent) => {
+    if (!hasOverflow) return
+    event.cancelBubble = true
+    event.evt.preventDefault()
+    onTooltipChange(null)
+    onTextScroll(clamp(scrollY + event.evt.deltaY, 0, layout.textMaxScroll))
+  }
+
+  return (
+    <Group x={layout.x} y={layout.y}>
+      <Rect
+        cornerRadius={10}
+        fill={layout.isAssistant ? palette.fieldBg : palette.secondaryBg}
+        height={layout.height}
+        stroke={palette.fieldStroke}
+        strokeWidth={1}
+        width={layout.width}
+      />
+      <Group clipHeight={layout.textViewportHeight} clipWidth={textClipWidth} clipX={10} clipY={12} onWheel={handleTextWheel}>
+        <Text
+          fill={palette.fieldText}
+          fontFamily="Inter, system-ui, sans-serif"
+          fontSize={12}
+          height={layout.textContentHeight}
+          lineHeight={1.28}
+          text={layout.displayText}
+          width={layout.textViewportWidth}
+          wrap="char"
+          x={10}
+          y={12 - scrollY}
+        />
+      </Group>
+      {hasOverflow ? (
+        <ChatScrollbar
+          maxScroll={layout.textMaxScroll}
+          onScroll={onTextScroll}
+          scrollY={scrollY}
+          trackHeight={Math.max(18, layout.textViewportHeight - 4)}
+          width={3}
+          x={layout.width - 8}
+          y={14}
+        />
+      ) : null}
+      {layout.isAssistant ? (
+        <>
+          <MessageActionButton
+            actionId={`copy-${layout.message.id}`}
+            ariaLabel="Copy reply"
+            onClick={() => onCopyMessage(layout.message.text)}
+            onTooltipChange={onTooltipChange}
+            tooltipAnchor={{ x: 14 + layout.x + 18, y: bodyTop + layout.y - visibleScrollY + layout.height - 30 }}
+            tooltipLabel="Copy reply"
+            x={10}
+            y={layout.height - 26}
+          >
+            {(tone) => <CopyReplyIcon tone={tone} x={4} y={4} />}
+          </MessageActionButton>
+          <MessageActionButton
+            actionId={`redo-${layout.message.id}`}
+            ariaLabel="Regenerate reply"
+            onClick={() => onRegenerate?.(shapeId, layout.message.id)}
+            onTooltipChange={onTooltipChange}
+            tooltipAnchor={{ x: 14 + layout.x + 44, y: bodyTop + layout.y - visibleScrollY + layout.height - 30 }}
+            tooltipLabel="Regenerate reply"
+            x={36}
+            y={layout.height - 26}
+          >
+            {(tone) => <RefreshReplyIcon tone={tone} x={4} y={4} />}
+          </MessageActionButton>
+        </>
+      ) : null}
+    </Group>
+  )
+}
+
 function ChatScrollbar({
   maxScroll,
   onScroll,
   scrollY,
+  width = 4,
   trackHeight,
   x,
   y,
@@ -272,6 +379,7 @@ function ChatScrollbar({
   maxScroll: number
   onScroll: (scrollY: number) => void
   scrollY: number
+  width?: number
   trackHeight: number
   x: number
   y: number
@@ -295,7 +403,7 @@ function ChatScrollbar({
           onScroll(clamp(((local.y - thumbHeight / 2) / travel) * maxScroll, 0, maxScroll))
         }}
         onPointerDown={stopNodeCardControlEvent}
-        width={4}
+        width={width}
         x={x}
         y={y}
       />
@@ -312,7 +420,7 @@ function ChatScrollbar({
           onScroll(clamp(((nextY - y) / travel) * maxScroll, 0, maxScroll))
         }}
         onPointerDown={stopNodeCardControlEvent}
-        width={4}
+        width={width}
         x={x}
         y={thumbY}
       />
@@ -427,6 +535,7 @@ function ChatInputBox({
   onModelToggle,
   onSend,
   onUpload,
+  onTooltipChange,
   modelLabel,
   modelMenuOpen,
   modelOptions,
@@ -442,6 +551,7 @@ function ChatInputBox({
   onModelToggle: () => void
   onSend: () => void
   onUpload: () => void
+  onTooltipChange: Dispatch<SetStateAction<ChatTooltipState>>
   modelLabel: string
   modelMenuOpen: boolean
   modelOptions: Array<{ disabled?: boolean; label: string; value: string | number }>
@@ -450,7 +560,7 @@ function ChatInputBox({
   y: number
 }) {
   const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
-  const buttonWidth = 58
+  const buttonWidth = 30
   const modelButtonWidth = 96
   const toolbarY = y + height - 31
   const textViewport = {
@@ -502,11 +612,13 @@ function ChatInputBox({
           event.cancelBubble = true
           onSend()
         }}
+        onMouseEnter={() => onTooltipChange({ anchorX: x + width - buttonWidth / 2 - 12, anchorY: toolbarY, id: 'chat-send', label: 'Send message' })}
+        onMouseLeave={() => onTooltipChange((current) => (current && current.id === 'chat-send' ? null : current))}
         onDblClick={stopNodeCardControlEvent}
         onPointerDown={stopNodeCardControlEvent}
       >
         <Rect cornerRadius={999} fill="#dcfce7" height={22} stroke="#22c55e" strokeWidth={1} width={buttonWidth} x={x + width - buttonWidth - 12} y={toolbarY} />
-        <Text align="center" fill="#16a34a" fontFamily="Inter, system-ui, sans-serif" fontSize={10} fontStyle="bold" height={22} text="send" verticalAlign="middle" width={buttonWidth} x={x + width - buttonWidth - 12} y={toolbarY} />
+        <SendMessageIcon x={x + width - buttonWidth - 12 + 8} y={toolbarY + 4} />
       </Group>
     </Group>
   )
@@ -566,18 +678,27 @@ function IconButton({ label, onClick, width = 22, x, y }: { label: string; onCli
 }
 
 function MessageActionButton({
+  actionId,
   ariaLabel,
   children,
   onClick,
+  onTooltipChange,
+  tooltipAnchor,
+  tooltipLabel,
   x,
   y,
 }: {
+  actionId: string
   ariaLabel: string
-  children: React.ReactNode
+  children: (tone: 'active' | 'default') => ReactNode
   onClick?: () => void
+  onTooltipChange: Dispatch<SetStateAction<ChatTooltipState>>
+  tooltipAnchor: { x: number; y: number }
+  tooltipLabel: string
   x: number
   y: number
 }) {
+  const [isPressed, setIsPressed] = useState(false)
   return (
     <Group
       aria-label={ariaLabel}
@@ -585,17 +706,26 @@ function MessageActionButton({
         event.cancelBubble = true
         onClick?.()
       }}
+      onMouseEnter={() => onTooltipChange({ anchorX: tooltipAnchor.x, anchorY: tooltipAnchor.y, id: actionId, label: tooltipLabel })}
+      onMouseLeave={() => {
+        setIsPressed(false)
+        onTooltipChange((current) => (current && current.id === actionId ? null : current))
+      }}
+      onPointerDown={(event) => {
+        event.cancelBubble = true
+        setIsPressed(true)
+      }}
+      onPointerUp={() => setIsPressed(false)}
       onDblClick={stopNodeCardControlEvent}
-      onPointerDown={stopNodeCardControlEvent}
     >
       <Rect fill="rgba(0,0,0,0.001)" height={18} width={18} x={x} y={y} />
-      <Group x={x} y={y}>{children}</Group>
+      <Group x={x} y={y}>{children(isPressed ? 'active' : 'default')}</Group>
     </Group>
   )
 }
 
-function CopyReplyIcon({ tone = 'default', x, y }: { tone?: 'default' | 'success'; x: number; y: number }) {
-  const stroke = tone === 'success' ? '#16a34a' : '#64748b'
+function CopyReplyIcon({ tone = 'default', x, y }: { tone?: 'default' | 'active'; x: number; y: number }) {
+  const stroke = tone === 'active' ? '#16a34a' : '#64748b'
   return (
     <>
       <Rect cornerRadius={1.8} fillEnabled={false} height={7.2} stroke={stroke} strokeLinejoin="round" strokeWidth={1.35} width={6.2} x={x + 3.2} y={y + 3} />
@@ -604,13 +734,14 @@ function CopyReplyIcon({ tone = 'default', x, y }: { tone?: 'default' | 'success
   )
 }
 
-function RefreshReplyIcon({ x, y }: { x: number; y: number }) {
+function RefreshReplyIcon({ tone = 'default', x, y }: { tone?: 'default' | 'active'; x: number; y: number }) {
+  const stroke = tone === 'active' ? '#16a34a' : '#64748b'
   return (
     <>
       <Path
         data={`M ${x + 12.8} ${y + 4.8} A 5 5 0 1 0 ${x + 13.2} ${y + 10.1}`}
         fillEnabled={false}
-        stroke="#64748b"
+        stroke={stroke}
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth={1.35}
@@ -618,12 +749,24 @@ function RefreshReplyIcon({ x, y }: { x: number; y: number }) {
       <Path
         data={`M ${x + 10.9} ${y + 2.9} L ${x + 13.4} ${y + 3.1} L ${x + 12.1} ${y + 5.4}`}
         fillEnabled={false}
-        stroke="#64748b"
+        stroke={stroke}
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth={1.35}
       />
     </>
+  )
+}
+
+function SendMessageIcon({ x, y }: { x: number; y: number }) {
+  return (
+    <Path
+      data={`M ${x} ${y + 3.8} L ${x + 12.6} ${y} L ${x + 8.4} ${y + 11.3} L ${x + 6.2} ${y + 6.8} L ${x} ${y + 3.8} Z`}
+      fill="#16a34a"
+      stroke="#16a34a"
+      strokeLinejoin="round"
+      strokeWidth={0.8}
+    />
   )
 }
 

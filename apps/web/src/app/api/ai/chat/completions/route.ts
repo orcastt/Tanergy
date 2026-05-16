@@ -37,11 +37,10 @@ export async function POST(request: Request) {
     }
 
     const model = getAiModelDefinition(body.model)
-    const apiKey = getProviderApiKey(model.provider, 'text', model.id)
-    const baseUrl = getProviderBaseUrl(model.provider, 'text', model.id)
+    const apiKey = getProviderApiKey(model.provider, 'text')
+    const baseUrl = getProviderBaseUrl(model.provider, 'text')
 
-    const normalizedMessages = await normalizeMessagesForGeekAi(request, body.messages)
-    const providerMessages = normalizeMessagesForProviderModel(body.model, normalizedMessages)
+    const providerMessages = await normalizeMessagesForProvider(request, body.messages)
     const providerResponse = await fetch(`${baseUrl}/chat/completions`, {
       body: JSON.stringify({
         ...body,
@@ -83,7 +82,7 @@ export async function POST(request: Request) {
   }
 }
 
-async function normalizeMessagesForGeekAi(request: Request, messages: AiChatMessage[]) {
+async function normalizeMessagesForProvider(request: Request, messages: AiChatMessage[]) {
   if (messages.length > maxChatMessages) throw new Error('Chat request includes too many messages.')
   let imagePartCount = 0
   const usage = { totalInlineBytes: 0 }
@@ -110,86 +109,6 @@ async function normalizeMessagesForGeekAi(request: Request, messages: AiChatMess
   return normalizedMessages
 }
 
-function normalizeMessagesForProviderModel(modelId: string, messages: AiChatMessage[]) {
-  if (!requiresUserAssistantTurns(modelId)) return messages
-  return foldSystemMessagesIntoUserTurns(messages)
-}
-
-function requiresUserAssistantTurns(modelId: string) {
-  return modelId.trim().toLowerCase().startsWith('hunyuan-')
-}
-
-function foldSystemMessagesIntoUserTurns(messages: AiChatMessage[]) {
-  const systemTexts: string[] = []
-  const normalized: AiChatMessage[] = []
-
-  for (const message of messages) {
-    if (message.role === 'system') {
-      const systemText = getMessageTextContent(message.content)
-      if (systemText) systemTexts.push(systemText)
-      continue
-    }
-    const previousMessage = normalized[normalized.length - 1]
-    if (previousMessage?.role === message.role) {
-      normalized[normalized.length - 1] = {
-        ...message,
-        content: mergeMessageContent(previousMessage.content, message.content),
-      }
-      continue
-    }
-    normalized.push(message)
-  }
-
-  const systemPrefix = systemTexts.join('\n\n').trim()
-  if (!systemPrefix) return normalized
-  const firstUserIndex = normalized.findIndex((message) => message.role === 'user')
-  if (firstUserIndex >= 0) {
-    const firstUser = normalized[firstUserIndex]
-    normalized[firstUserIndex] = {
-      ...firstUser,
-      content: prependTextToMessageContent(firstUser.content, `System instruction:\n${systemPrefix}`),
-    }
-    return normalized
-  }
-  return [{ content: `System instruction:\n${systemPrefix}`, role: 'user' }, ...normalized]
-}
-
-function mergeMessageContent(base: AiChatMessage['content'], next: AiChatMessage['content']) {
-  if (typeof base === 'string' && typeof next === 'string') {
-    return [base.trim(), next.trim()].filter(Boolean).join('\n\n')
-  }
-  return [
-    ...asMessageParts(base),
-    ...asMessageParts(next),
-  ]
-}
-
-function prependTextToMessageContent(content: AiChatMessage['content'], text: string): AiChatMessage['content'] {
-  if (typeof content === 'string') {
-    return [text.trim(), content.trim()].filter(Boolean).join('\n\n')
-  }
-  return [{ text, type: 'text' }, ...content]
-}
-
-function getMessageTextContent(content: AiChatMessage['content']) {
-  if (typeof content === 'string') return content.trim()
-  return content
-    .filter((part): part is Extract<AiChatMessageContentPart, { type: 'text' }> => (
-      part.type === 'text' && typeof part.text === 'string'
-    ))
-    .map((part) => part.text.trim())
-    .filter(Boolean)
-    .join('\n')
-    .trim()
-}
-
-function asMessageParts(content: AiChatMessage['content']): AiChatMessageContentPart[] {
-  if (typeof content === 'string') {
-    return content.trim() ? [{ text: content.trim(), type: 'text' }] : []
-  }
-  return content
-}
-
 async function normalizeMessagePart(
   request: Request,
   part: AiChatMessageContentPart,
@@ -200,14 +119,14 @@ async function normalizeMessagePart(
   if (!rawUrl) return part
   return {
     ...part,
-    image_url: {
-      ...part.image_url,
-      url: await resolveGeekAiImageUrl(request, rawUrl, usage),
-    },
+      image_url: {
+        ...part.image_url,
+        url: await resolveProviderImageUrl(request, rawUrl, usage),
+      },
   }
 }
 
-async function resolveGeekAiImageUrl(request: Request, rawUrl: string, usage: { totalInlineBytes: number }) {
+async function resolveProviderImageUrl(request: Request, rawUrl: string, usage: { totalInlineBytes: number }) {
   if (rawUrl.startsWith('data:')) {
     const parsed = parseAiInlineImageDataUrl(rawUrl)
     usage.totalInlineBytes += parsed.buffer.byteLength

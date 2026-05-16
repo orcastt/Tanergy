@@ -19,6 +19,7 @@ import type { ApiRequestContext } from '../../_lib/apiRequestContext'
 
 const storageRoot = process.env.TANGENT_BOARD_STORAGE_DIR ?? path.join(process.cwd(), '.tangent-boards')
 const boardsRoot = path.join(storageRoot, 'boards')
+const shareableWorkspaceKinds = new Set(['group_workspace', 'team_workspace'])
 
 export async function saveLocalBoard(input: BoardSaveInput, context: ApiRequestContext) {
   const audit = auditBoardDocument(input.document)
@@ -113,6 +114,9 @@ export async function updateLocalBoardMetadata(input: BoardMetadataUpdateInput, 
   if (!nextTitle) throw new Error('Board title is required.')
   if (nextTitle.length > 80) throw new Error('Board title must be 80 characters or fewer.')
 
+  const nextVisibility = Object.prototype.hasOwnProperty.call(input, 'visibility')
+    ? normalizeBoardVisibility(input.visibility)
+    : normalizeBoardVisibility(board.visibility)
   const updated: BoardPersistenceRecord = {
     ...board,
     cardColor: Object.prototype.hasOwnProperty.call(input, 'cardColor')
@@ -135,9 +139,11 @@ export async function updateLocalBoardMetadata(input: BoardMetadataUpdateInput, 
       ? normalizeBoardThumbnailUrl(input.thumbnailUrl)
       : normalizeBoardThumbnailUrl(board.thumbnailUrl),
     title: nextTitle,
-    visibility: Object.prototype.hasOwnProperty.call(input, 'visibility')
-      ? normalizeBoardVisibility(input.visibility)
-      : normalizeBoardVisibility(board.visibility),
+    visibility: nextVisibility,
+  }
+  assertWorkspaceAllowsBoardVisibility(context.workspaceKind, nextVisibility ?? 'private')
+  if (!shareableWorkspaceKinds.has(context.workspaceKind)) {
+    updated.shareId = null
   }
   await writeBoardRecord(updated)
   return summarizeBoardRecord(updated)
@@ -246,4 +252,10 @@ async function writeBoardRecord(record: BoardPersistenceRecord) {
 
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && 'code' in error
+}
+
+function assertWorkspaceAllowsBoardVisibility(workspaceKind: ApiRequestContext['workspaceKind'], visibility: NonNullable<BoardPersistenceRecord['visibility']>) {
+  if (visibility === 'private') return
+  if (shareableWorkspaceKinds.has(workspaceKind)) return
+  throw new Error('Solo workspace boards must stay private. Move the board into a Team or Group workspace to share it.')
 }

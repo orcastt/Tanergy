@@ -4,8 +4,8 @@ import { createAiChargeSummaryForContext } from '@/features/billing/billingContr
 import { assertLocalAiBridgeAvailable } from '@/features/api/runtimeBridgePolicy'
 import { getApiRequestContext } from '../../_lib/apiRequestContext'
 import { readJsonRequestWithLimit, requestBodyErrorStatus } from '../../_lib/requestBodyLimits'
-import { createGeekAiAnalysisRun } from '../_lib/geekAiAnalysisRun'
-import { createGeekAiImageRun } from '../_lib/geekAiImageRun'
+import { createLocalProviderAnalysisRun } from '../_lib/localProviderAnalysisRun'
+import { createLocalProviderImageRun } from '../_lib/localProviderImageRun'
 import { putLocalAiRun } from '../_lib/localAiRunStore'
 
 export const runtime = 'nodejs'
@@ -24,13 +24,13 @@ export async function POST(request: Request) {
       workspaceKind: context.workspaceKind,
     })
     const run = body.runType === 'image_generation'
-      ? await createGeekAiImageRun({
+      ? await createLocalProviderImageRun({
           charge,
           context,
           request: body,
         })
       : body.runType === 'image_analysis'
-        ? await createGeekAiAnalysisRun({
+        ? await createLocalProviderAnalysisRun({
             charge,
             context,
             request: body,

@@ -41,6 +41,12 @@
   gap: 32px;
 }
 
+.workspace-commerce-section-shell,
+.workspace-commerce-subsection {
+  display: grid;
+  gap: 20px;
+}
+
 .workspace-commerce-action-stack {
   display: grid;
   gap: 8px;
@@ -121,6 +127,10 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.workspace-commerce-summary-grid-compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .workspace-commerce-active-grid {
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
 }
@@ -159,6 +169,7 @@
 .workspace-commerce-active-card,
 .workspace-commerce-usage-card,
 .workspace-commerce-rail-card,
+.workspace-commerce-empty-card,
 .workspace-commerce-ledger-table,
 .workspace-commerce-compare-table {
   border: 1px solid rgba(24, 29, 38, 0.08);
@@ -167,13 +178,20 @@
 }
 
 .workspace-commerce-summary-card,
-.workspace-commerce-rail-card {
+.workspace-commerce-rail-card,
+.workspace-commerce-empty-card {
   gap: 10px;
   padding: 22px;
 }
 
 .workspace-commerce-summary-card {
   min-height: 148px;
+}
+
+.workspace-commerce-empty-card {
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .workspace-commerce-summary-label,
@@ -362,6 +380,10 @@
 .workspace-commerce-card-actions {
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.workspace-commerce-section-head.is-subsection {
+  padding-top: 4px;
 }
 
 .workspace-commerce-usage-layout {
