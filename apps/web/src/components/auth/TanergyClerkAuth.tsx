@@ -1,8 +1,10 @@
 'use client'
 
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { ClerkFailed, ClerkLoaded, ClerkLoading, SignIn, SignUp } from '@clerk/nextjs'
+import { resolveAuthRedirectPath } from '@/features/auth/authRedirect'
 
 type TanergyClerkAuthProps = {
   mode: 'sign-in' | 'sign-up'
@@ -31,9 +33,11 @@ const clerkAppearance = {
 
 export function TanergyClerkAuth({ mode }: TanergyClerkAuthProps) {
   const isSignUp = mode === 'sign-up'
+  const searchParams = useSearchParams()
   const [devBypassError, setDevBypassError] = useState<string | null>(null)
   const [devBypassBusy, setDevBypassBusy] = useState(false)
   const AuthComponent = isSignUp ? SignUp : SignIn
+  const redirectPath = resolveAuthRedirectPath(searchParams)
   const title = isSignUp ? 'Create your Tanergy account.' : 'Welcome back to Tanergy.'
   const copy = isSignUp
     ? 'Register with email, Google or Microsoft, then enter your workspace.'
@@ -99,7 +103,7 @@ export function TanergyClerkAuth({ mode }: TanergyClerkAuthProps) {
         <ClerkLoaded>
           <AuthComponent
             appearance={clerkAppearance}
-            fallbackRedirectUrl="/workspaces"
+            fallbackRedirectUrl={redirectPath}
             path={`/${mode}`}
             routing="path"
             signInUrl="/sign-in"

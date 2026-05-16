@@ -2,8 +2,12 @@ import Link from 'next/link'
 import { CanvasBoardSwitcher } from '@/components/canvas/CanvasBoardSwitcher'
 import { CanvasBoardTitle } from '@/components/canvas/CanvasBoardTitle'
 import type { BoardCollaborationSessionRecord } from '@/features/boards/boardCollaborationTypes'
+import {
+  type KonvaPresencePageSummary,
+} from './konvaCollaborationPresencePresentation'
 import type { BoardRealtimeAwarenessStatus } from '@/features/collaboration/boardRealtimeTransport'
 import type { KonvaLocalYjsSyncController } from './useKonvaLocalYjsSync'
+import { KonvaCanvasPresence } from './KonvaCanvasPresence'
 
 type KonvaCanvasHeaderProps = {
   boardId?: string
@@ -15,33 +19,21 @@ type KonvaCanvasHeaderProps = {
     status: 'error' | 'idle' | 'loading' | 'ready'
     transportStatus: BoardRealtimeAwarenessStatus
   }
+  currentPageId?: string | null
   localSync?: KonvaLocalYjsSyncController
   onBoardTitleRename?: (title: string) => Promise<string | void> | string | void
+  pageSummaries?: KonvaPresencePageSummary[]
 }
 
 export function KonvaCanvasHeader({
   boardId,
   boardTitle = 'S1X Konva handfeel spike',
   collaboration,
+  currentPageId = null,
   localSync,
   onBoardTitleRename,
+  pageSummaries = [],
 }: KonvaCanvasHeaderProps) {
-  const sessions = collaboration?.activeSessions ?? []
-  const extraCount = Math.max(0, sessions.length - 4)
-  const visibleSessions = sessions.slice(0, 4)
-  const label = collaboration?.status === 'loading' || collaboration?.transportStatus === 'connecting'
-    ? 'Connecting'
-    : collaboration?.transportStatus === 'disconnected'
-    ? 'Reconnecting'
-    : collaboration?.transportStatus === 'error'
-    ? 'Offline'
-    : collaboration?.error
-    ? 'Offline'
-    : collaboration?.permission === 'view'
-      ? 'View only'
-      : sessions.length <= 1
-        ? 'Solo'
-        : `${sessions.length} online`
   const localSyncLabel = getLocalSyncLabel(localSync)
   const localSyncTitle = getLocalSyncTitle(localSync)
   const localSyncTone = getLocalSyncTone(localSync)
@@ -61,21 +53,11 @@ export function KonvaCanvasHeader({
           {localSyncLabel}
         </span>
       ) : null}
-      <div className="konva-canvas-presence" role="status">
-        <span className={`konva-canvas-presence-label${collaboration?.status === 'loading' ? ' is-loading' : ''}`}>{label}</span>
-        <div className="konva-canvas-presence-list" aria-label="Board presence">
-          {visibleSessions.map((session) => (
-            <span
-              className={`konva-canvas-presence-avatar${session.isSelf ? ' is-self' : ''}`}
-              key={session.id}
-              title={session.isSelf && session.displayName === 'You' ? 'You' : `${session.displayName}${session.isSelf ? ' (You)' : ''}`}
-            >
-              {session.avatarInitials}
-            </span>
-          ))}
-          {extraCount > 0 ? <span className="konva-canvas-presence-avatar is-overflow">+{extraCount}</span> : null}
-        </div>
-      </div>
+      <KonvaCanvasPresence
+        collaboration={collaboration}
+        currentPageId={currentPageId}
+        pageSummaries={pageSummaries}
+      />
     </header>
   )
 }

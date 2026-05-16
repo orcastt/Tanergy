@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { buildWorkspaceInvitationLink } from '@/features/workspaces/workspaceInvitationLinks'
 import { selectStyle } from './adminAiShared'
 import { AdminOperatorWorkspacePicker } from './AdminOperatorWorkspacePicker'
 import {
@@ -101,8 +102,12 @@ export function AdminOperatorActionModal({
         workspaceId,
         workspaceName,
       })
-      if ('acceptPath' in result && typeof window !== 'undefined') {
-        const inviteUrl = `${window.location.origin}${result.acceptPath}`
+      if ('token' in result && typeof window !== 'undefined') {
+        const inviteUrl = buildWorkspaceInvitationLink(result.token, {
+          role: result.invitation.role,
+          workspaceKind: readMetadataText(result.invitation.metadata, 'workspaceKind') ?? undefined,
+          workspaceName: readMetadataText(result.invitation.metadata, 'workspaceName') ?? undefined,
+        })
         void navigator.clipboard?.writeText(inviteUrl).catch(() => undefined)
       }
       setStatus(result.message || 'saved')
@@ -255,6 +260,11 @@ export function AdminOperatorActionModal({
       </section>
     </div>
   )
+}
+
+function readMetadataText(metadata: Record<string, unknown>, key: string) {
+  const value = metadata[key]
+  return typeof value === 'string' && value.trim() ? value : null
 }
 
 function CreditTargetSelect({

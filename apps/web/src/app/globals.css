@@ -20,6 +20,7 @@
 @import './styles/product-auth-dev.css';
 @import './styles/product-auth-form.css';
 @import './styles/product-workspaces.css';
+@import './styles/product-workspace-invite.css';
 @import './styles/product-workspaces-board.css';
 @import './styles/product-workspaces-board-badges.css';
 @import './styles/product-workspaces-actions.css';
@@ -43,6 +44,7 @@
 @import './styles/canvas-action-icons.css';
 @import './styles/canvas-image-lod.css';
 @import './styles/konva-canvas.css';
+@import './styles/konva-collaboration-presence.css';
 @import './styles/konva-canvas-context-menu.css';
 @import './styles/konva-canvas-properties.css';
 @import './styles/ai-card.css';

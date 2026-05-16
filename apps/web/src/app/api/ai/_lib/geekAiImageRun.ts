@@ -10,11 +10,11 @@ import {
   readJsonResponseWithLimit,
   toAiInlineImageDataUrl,
 } from './aiInlineImageGuards'
+import { getProviderApiKey, getProviderBaseUrl } from './providerApiConfig'
 import { getAiModelDefinition, asAiRunParams } from '@/features/ai/mockAiContracts'
 import type { AiRunRecord, AiRunRequest } from '@/features/ai/aiTypes'
 import type { AiRunChargeSummary } from '@/features/billing/billingTypes'
 
-const defaultGeekAiBaseUrl = 'https://geekai.co/api/v1'
 const defaultGeneratedMime = 'image/png'
 const maxImageReferenceInputs = 8
 const legacyNanoBananaModelId = 'gemini-3.1-flash-image-preview'
@@ -27,12 +27,22 @@ type GeekAiImageResponse = {
   created?: number
   data?: Array<{
     b64_json?: string
+    image_base64?: string
+    image_url?: string
+    base64?: string
     revised_prompt?: string
     url?: string
   }>
   error?: {
     message?: string
   }
+  images?: Array<string | {
+    b64_json?: string
+    image_base64?: string
+    image_url?: string
+    base64?: string
+    url?: string
+  }>
   message?: string
   model?: string
   task_id?: string
@@ -42,6 +52,7 @@ type GeekAiImageResponse = {
 type GeekAiClientConfig = {
   apiKey: string
   baseUrl: string
+  provider: string
 }
 
 export async function createGeekAiImageRun(input: {
@@ -74,6 +85,7 @@ export async function createGeekAiImageRun(input: {
     jimengSize,
     jimengStrength,
     modelId: model.id,
+    provider: model.provider,
     nanoBananaAspectRatio,
     nanoBananaImageSize,
     prompt,
@@ -81,7 +93,7 @@ export async function createGeekAiImageRun(input: {
     seedreamSize,
   })).slice(0, count)
 
-  if (generatedSources.length === 0) throw new Error('GeekAI did not return any generated images.')
+  if (generatedSources.length === 0) throw new Error('Image provider did not return any generated images.')
 
   const assets = await Promise.all(generatedSources.map((source, index) => persistGeneratedImage({
     context: input.context,
@@ -96,7 +108,7 @@ export async function createGeekAiImageRun(input: {
     chargedAccountId: input.charge.chargedAccountId,
     chargedScope: input.charge.chargedScope,
     costCredits: 0,
-    costHint: createCostHint(model.id, model.displayName, params),
+    costHint: createCostHint(model.provider, model.id, model.displayName, params),
     createdAt: new Date().toISOString(),
     entitlementSource: input.charge.entitlementSource,
     error: null,
@@ -122,14 +134,44 @@ async function runSelectedImageModel(input: {
   jimengSize: string
   jimengStrength: string
   modelId: string
+  provider: string
   nanoBananaAspectRatio: string
   nanoBananaImageSize: string
   prompt: string
   seedreamOutputFormat: string
   seedreamSize: string
 }) {
+  const clientConfig = getGeekAiClientConfig(input.provider, input.modelId)
+  if (clientConfig.provider === 'jiekou') {
+    if (input.modelId === nanoBanana2ModelId) {
+      return runJiekouNanoBanana2({
+        aspectRatio: input.nanoBananaAspectRatio,
+        clientConfig,
+        count: input.count,
+        imageSize: input.nanoBananaImageSize,
+        inputImages: input.inputImages,
+        prompt: input.prompt,
+      })
+    }
+    if (input.modelId === 'doubao-seedream-5.0-lite') {
+      return runJiekouSeedreamLite({
+        clientConfig,
+        count: input.count,
+        inputImages: input.inputImages,
+        prompt: input.prompt,
+        size: input.seedreamSize,
+      })
+    }
+    return runJiekouGptImage2({
+      clientConfig,
+      count: input.count,
+      inputImages: input.inputImages,
+      prompt: input.prompt,
+      quality: input.gptQuality,
+      size: input.gptSize,
+    })
+  }
   if (input.modelId === nanoBanana2ModelId) {
-    const clientConfig = getGeekAiClientConfig(input.modelId)
     return runNanoBanana2({
       aspectRatio: input.nanoBananaAspectRatio,
       clientConfig,
@@ -140,7 +182,6 @@ async function runSelectedImageModel(input: {
     })
   }
   if (input.modelId === 'doubao-seedream-5.0-lite') {
-    const clientConfig = getGeekAiClientConfig(input.modelId)
     return runDoubaoSeedreamLite({
       clientConfig,
       count: input.count,
@@ -151,7 +192,6 @@ async function runSelectedImageModel(input: {
     })
   }
   if (input.modelId === 'jimeng_t2i_v40') {
-    const clientConfig = getGeekAiClientConfig(input.modelId)
     return runJimengImage40({
       clientConfig,
       count: input.count,
@@ -161,7 +201,6 @@ async function runSelectedImageModel(input: {
       strength: input.jimengStrength,
     })
   }
-  const clientConfig = getGeekAiClientConfig(input.modelId)
   return runGptImage2({
     clientConfig,
     count: input.count,
@@ -203,6 +242,32 @@ async function runNanoBanana2(input: {
   return outputs
 }
 
+async function runJiekouNanoBanana2(input: {
+  aspectRatio: string
+  clientConfig: GeekAiClientConfig
+  count: number
+  imageSize: string
+  inputImages: string[]
+  prompt: string
+}) {
+  const sharedBody = {
+    prompt: input.prompt,
+    quality: toJiekouNanoBananaQuality(input.imageSize),
+    response_format: 'url',
+    size: toJiekouNanoBananaSize(input.aspectRatio),
+  }
+  const endpoint = input.inputImages.length > 0 ? 'nano-banana-2-i2i' : 'nano-banana-2-t2i'
+  const outputs: string[] = []
+  for (let index = 0; index < input.count; index += 1) {
+    const payload = await postGeekAiJson<GeekAiImageResponse>(buildJiekouImagePath(endpoint), {
+      ...sharedBody,
+      ...(input.inputImages.length > 0 ? { image: input.inputImages.length === 1 ? input.inputImages[0] : input.inputImages } : {}),
+    }, input.clientConfig)
+    outputs.push(...extractImageSources(payload))
+  }
+  return outputs
+}
+
 async function runGptImage2(input: {
   clientConfig: GeekAiClientConfig
   count: number
@@ -226,6 +291,34 @@ async function runGptImage2(input: {
   const outputs: string[] = []
   for (let index = 0; index < input.count; index += 1) {
     outputs.push(...await runSingleGptImage2(sharedBody, input.inputImages, input.clientConfig))
+  }
+  return outputs
+}
+
+async function runJiekouGptImage2(input: {
+  clientConfig: GeekAiClientConfig
+  count: number
+  inputImages: string[]
+  prompt: string
+  quality: string
+  size: string
+}) {
+  const endpoint = input.inputImages.length > 0 ? 'gpt-image-2-edit' : 'gpt-image-2-text-to-image'
+  const sharedBody = {
+    background: 'auto',
+    n: 1,
+    output_format: 'png',
+    prompt: input.prompt,
+    quality: input.quality,
+    size: input.size,
+    ...(input.inputImages.length === 0 ? { moderation: 'auto' } : {}),
+    ...(input.inputImages.length > 0 ? { image: input.inputImages.length === 1 ? input.inputImages[0] : input.inputImages } : {}),
+  }
+
+  const outputs: string[] = []
+  for (let index = 0; index < input.count; index += 1) {
+    const payload = await postGeekAiJson<GeekAiImageResponse>(buildJiekouImagePath(endpoint), sharedBody, input.clientConfig)
+    outputs.push(...extractImageSources(payload))
   }
   return outputs
 }
@@ -298,6 +391,42 @@ async function runDoubaoSeedreamLite(input: {
   }
 }
 
+async function runJiekouSeedreamLite(input: {
+  clientConfig: GeekAiClientConfig
+  count: number
+  inputImages: string[]
+  prompt: string
+  size: string
+}) {
+  const sharedBody = {
+    optimize_prompt_options: {
+      mode: 'standard',
+    },
+    prompt: input.prompt,
+    sequential_image_generation: 'disabled',
+    size: input.size,
+    watermark: false,
+    ...(input.inputImages.length > 0 ? { image: input.inputImages } : {}),
+  }
+  if (input.count <= 1) {
+    const payload = await postGeekAiJson<GeekAiImageResponse>(buildJiekouImagePath('seedream-5.0-lite'), sharedBody, input.clientConfig)
+    return extractImageSources(payload)
+  }
+  const payload = await postGeekAiJson<GeekAiImageResponse>(buildJiekouImagePath('seedream-5.0-lite'), {
+    ...sharedBody,
+    sequential_image_generation: 'auto',
+    sequential_image_generation_options: {
+      max_images: input.count,
+    },
+  }, input.clientConfig)
+  const outputs = extractImageSources(payload)
+  if (outputs.length >= input.count) return outputs.slice(0, input.count)
+  return [
+    ...outputs,
+    ...await runRepeatedJiekouImageGenerations('seedream-5.0-lite', sharedBody, input.count - outputs.length, input.clientConfig),
+  ].slice(0, input.count)
+}
+
 async function runJimengImage40(input: {
   clientConfig: GeekAiClientConfig
   count: number
@@ -321,6 +450,20 @@ async function runRepeatedImageGenerations(sharedBody: Record<string, unknown>, 
   const outputs: string[] = []
   for (let index = 0; index < count; index += 1) {
     outputs.push(...await runSingleImageGeneration(sharedBody, clientConfig))
+  }
+  return outputs
+}
+
+async function runRepeatedJiekouImageGenerations(
+  endpoint: string,
+  sharedBody: Record<string, unknown>,
+  count: number,
+  clientConfig: GeekAiClientConfig,
+) {
+  const outputs: string[] = []
+  for (let index = 0; index < count; index += 1) {
+    const payload = await postGeekAiJson<GeekAiImageResponse>(buildJiekouImagePath(endpoint), sharedBody, clientConfig)
+    outputs.push(...extractImageSources(payload))
   }
   return outputs
 }
@@ -412,10 +555,19 @@ async function settleImageTask(payload: GeekAiImageResponse, clientConfig: GeekA
 }
 
 function extractImageSources(payload: GeekAiImageResponse) {
-  return (payload.data ?? []).flatMap((item) => {
+  const items = payload.images ?? payload.data ?? []
+  return items.flatMap((item) => {
+    if (typeof item === 'string' && item.trim()) {
+      if (item.startsWith('data:')) return [item.trim()]
+      if (item.startsWith('http://') || item.startsWith('https://')) return [item.trim()]
+      return [normalizeAiInlineBase64DataUrl(item.trim(), defaultGeneratedMime)]
+    }
+    if (!item || typeof item !== 'object') return []
     if (typeof item.url === 'string' && item.url.trim()) return [item.url.trim()]
-    if (typeof item.b64_json === 'string' && item.b64_json.trim()) {
-      return [normalizeAiInlineBase64DataUrl(item.b64_json, defaultGeneratedMime)]
+    if (typeof item.image_url === 'string' && item.image_url.trim()) return [item.image_url.trim()]
+    const b64Image = item.b64_json ?? item.base64 ?? item.image_base64
+    if (typeof b64Image === 'string' && b64Image.trim()) {
+      return [normalizeAiInlineBase64DataUrl(b64Image, defaultGeneratedMime)]
     }
     return []
   })
@@ -463,27 +615,26 @@ function createGeneratedAssetTitle(prompt: string, index: number) {
   return index === 0 ? cleanPrompt : `${cleanPrompt} ${index + 1}`
 }
 
-function createCostHint(modelId: string, modelLabel: string, params: Record<string, unknown>) {
+function createCostHint(provider: string, modelId: string, modelLabel: string, params: Record<string, unknown>) {
   const parts = [modelLabel]
   const size = normalizeGptImageSize(getString(params.size) ?? mapLegacyGptSize(getString(params.aspectRatio)))
   const quality = normalizeGptImageQuality(getString(params.quality) ?? mapLegacyGptQuality(getString(params.resolution)))
   const aspectRatio = normalizeNanoBananaAspectRatio(getString(params.aspectRatio))
   const imageSize = normalizeNanoBananaImageSize(getString(params.imageSize) ?? mapLegacyNanoBananaImageSize(getString(params.resolution)))
   const seedreamSize = normalizeSeedreamSize(getString(params.seedreamSize) ?? getString(params.size))
-  const seedreamOutputFormat = normalizeSeedreamOutputFormat(getString(params.seedreamOutputFormat))
   const jimengSize = normalizeJimengSize(getString(params.jimengSize) ?? getString(params.size))
   const jimengStrength = normalizeJimengStrength(params.jimengStrength)
 
   if (modelId === nanoBanana2ModelId) {
     parts.push(imageSize, aspectRatio)
   } else if (modelId === 'doubao-seedream-5.0-lite') {
-    parts.push(seedreamSize, seedreamOutputFormat.toUpperCase())
+    parts.push(seedreamSize)
   } else if (modelId === 'jimeng_t2i_v40') {
     parts.push(jimengSize, `strength ${jimengStrength}`)
   } else {
     parts.push(size, quality)
   }
-  return `GeekAI · ${parts.join(' · ')}`
+  return `${providerLabel(provider)} · ${parts.join(' · ')}`
 }
 
 function getAssetFileName(url: string) {
@@ -494,7 +645,27 @@ function getAssetFileName(url: string) {
 }
 
 function normalizeGptImageSize(size: string | undefined) {
-  if (size === '1024x1024' || size === '1024x1536' || size === '1536x1024') return size
+  const allowed = new Set([
+    '1024x1024',
+    '1024x1536',
+    '1536x1024',
+    '2048x2048',
+    '2048x1152',
+    '3840x2160',
+    '2160x3840',
+    '2048x1360',
+    '1360x2048',
+    '1152x2048',
+    '2048x1536',
+    '1536x2048',
+    '2048x880',
+    '880x2048',
+    '688x2048',
+    '2048x688',
+    '2048x1024',
+    '1024x2048',
+  ])
+  if (size && allowed.has(size)) return size
   return '1024x1024'
 }
 
@@ -504,12 +675,12 @@ function normalizeGptImageQuality(quality: string | undefined) {
 }
 
 function normalizeNanoBananaAspectRatio(aspectRatio: string | undefined) {
-  const allowed = new Set(['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9', '9:21', '1:4', '4:1', '1:8', '8:1'])
+  const allowed = new Set(['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9'])
   return aspectRatio && allowed.has(aspectRatio) ? aspectRatio : '1:1'
 }
 
 function normalizeNanoBananaImageSize(imageSize: string | undefined) {
-  if (imageSize === '0.5K' || imageSize === '1K' || imageSize === '2K' || imageSize === '4K') return imageSize
+  if (imageSize === '1K' || imageSize === '2K' || imageSize === '4K') return imageSize
   return '1K'
 }
 
@@ -590,7 +761,7 @@ function mapLegacyGptQuality(resolution: string | undefined) {
 }
 
 function mapLegacyNanoBananaImageSize(resolution: string | undefined) {
-  if (resolution === '0.5K' || resolution === '2K' || resolution === '4K') return resolution
+  if (resolution === '2K' || resolution === '4K') return resolution
   return '1K'
 }
 
@@ -609,24 +780,39 @@ function createRunId() {
   return `run_local_${Date.now()}_${Math.random().toString(36).slice(2)}`
 }
 
-function getGeekAiClientConfig(modelId: string): GeekAiClientConfig {
+function getGeekAiClientConfig(provider: string, modelId: string): GeekAiClientConfig {
   return {
-    apiKey: getGeekAiApiKey(modelId),
-    baseUrl: getGeekAiBaseUrl(modelId),
+    apiKey: getProviderApiKey(provider, 'image', modelId),
+    baseUrl: getProviderBaseUrl(provider, 'image', modelId),
+    provider,
   }
 }
 
-function getGeekAiApiKey(modelId: string) {
-  const nanoBananaValue = modelId === nanoBanana2ModelId ? process.env.GEEKAI_NANO_BANANA_API_KEY?.trim() : ''
-  if (nanoBananaValue) return nanoBananaValue
-  const value = process.env.GEEKAI_API_KEY?.trim()
-  if (!value) throw new Error(modelId === nanoBanana2ModelId ? 'Missing GEEKAI_NANO_BANANA_API_KEY or GEEKAI_API_KEY.' : 'Missing GEEKAI_API_KEY.')
-  return value
+function buildJiekouImagePath(endpoint: string) {
+  return `/${endpoint.replace(/^\/+/, '')}`
 }
 
-function getGeekAiBaseUrl(modelId: string) {
-  const nanoBananaValue = modelId === nanoBanana2ModelId ? process.env.GEEKAI_NANO_BANANA_BASE_URL?.trim() : ''
-  return (nanoBananaValue || process.env.GEEKAI_BASE_URL || defaultGeekAiBaseUrl).replace(/\/+$/, '')
+function toJiekouNanoBananaSize(aspectRatio: string) {
+  return {
+    '1:1': '1x1',
+    '2:3': '2x3',
+    '3:2': '3x2',
+    '3:4': '3x4',
+    '4:3': '4x3',
+    '4:5': '4x5',
+    '5:4': '5x4',
+    '9:16': '9x16',
+    '16:9': '16x9',
+    '21:9': '21x9',
+  }[aspectRatio] ?? '1x1'
+}
+
+function toJiekouNanoBananaQuality(imageSize: string) {
+  return imageSize === '4K' ? '4k' : imageSize === '2K' ? '2k' : '1k'
+}
+
+function providerLabel(provider: string) {
+  return provider.trim().toLowerCase() === 'jiekou' ? 'Jiekou AI' : 'GeekAI'
 }
 
 function getString(value: unknown) {

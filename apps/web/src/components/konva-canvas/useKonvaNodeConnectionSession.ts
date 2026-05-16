@@ -8,6 +8,7 @@ import {
   type CanvasNodeShape,
   type CanvasPoint,
 } from '@/features/canvas-engine'
+import type { BoardCollaborationConnectionPreview } from '@/features/boards/boardCollaborationTypes'
 import { maxChatInputPorts, maxImageInputPorts, maxTextInputPorts } from '@/features/node-runtime/registry'
 import type { NodePortDataType } from '@/types/nodeRuntime'
 import { getKonvaNodePort, hitTestKonvaNodePort } from './konvaNodePorts'
@@ -20,6 +21,7 @@ type UseKonvaNodeConnectionSessionOptions = {
   documentRef: { current: CanvasDocument }
   stageRef: RefObject<Konva.Stage | null>
   onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
+  onConnectionPreviewChange?: (preview: BoardCollaborationConnectionPreview | null) => void
   onHistoryCheckpoint: (document: CanvasDocument) => void
   onSelectionChange: (shapeIds: string[]) => void
   selectedIds: string[]
@@ -29,12 +31,18 @@ export function useKonvaNodeConnectionSession({
   cameraRef,
   documentRef,
   onDocumentChange,
+  onConnectionPreviewChange,
   onHistoryCheckpoint,
   onSelectionChange,
   selectedIds,
   stageRef,
 }: UseKonvaNodeConnectionSessionOptions) {
   const [runtimeConnectionPreview, setRuntimeConnectionPreview] = useState<KonvaRuntimeConnectionPreview | null>(null)
+
+  const publishPreview = useCallback((preview: KonvaRuntimeConnectionPreview | null) => {
+    setRuntimeConnectionPreview(preview)
+    onConnectionPreviewChange?.(toCollaborationConnectionPreview(preview))
+  }, [onConnectionPreviewChange])
 
   const handleNodePortPointerDown = useCallback((shapeId: string, portId: string, event: KonvaEventObject<PointerEvent>) => {
     event.cancelBubble = true
@@ -48,7 +56,7 @@ export function useKonvaNodeConnectionSession({
     if (!screenPoint) return null
     const worldPoint = pointerToWorld({ ...screenPoint, pressure: event.evt.pressure }, cameraRef.current)
     const sourceEndpoints = getBatchSourceEndpoints(documentRef.current.shapes, selectedIds, nodeShape, port.id)
-    setRuntimeConnectionPreview({
+    publishPreview({
       dataType: port.dataType,
       pointer: worldPoint,
       source: { portId: port.id, shapeId },
@@ -62,11 +70,11 @@ export function useKonvaNodeConnectionSession({
       sourceShapeId: shapeId,
       type: 'node-connection' as const,
     }
-  }, [cameraRef, documentRef, selectedIds, stageRef])
+  }, [cameraRef, documentRef, publishPreview, selectedIds, stageRef])
 
   const updateNodeConnectionPreview = useCallback((session: NodeConnectionSession, worldPoint: CanvasPoint) => {
     const target = getCompatibleTarget(documentRef.current.shapes, session, worldPoint, cameraRef.current.zoom)
-    setRuntimeConnectionPreview({
+    publishPreview({
       dataType: session.dataType,
       pointer: target?.world ?? worldPoint,
       source: { portId: session.sourcePortId, shapeId: session.sourceShapeId },
@@ -77,10 +85,10 @@ export function useKonvaNodeConnectionSession({
         shapeId: target.shapeId,
       } : undefined,
     })
-  }, [cameraRef, documentRef])
+  }, [cameraRef, documentRef, publishPreview])
 
   const finishNodeConnection = useCallback((session: NodeConnectionSession, worldPoint: CanvasPoint | null) => {
-    setRuntimeConnectionPreview(null)
+    publishPreview(null)
     if (!worldPoint) return
     const target = getCompatibleTarget(documentRef.current.shapes, session, worldPoint, cameraRef.current.zoom)
     if (!target) return
@@ -98,10 +106,10 @@ export function useKonvaNodeConnectionSession({
     documentRef.current = nextDocument
     onDocumentChange(nextDocument)
     onSelectionChange([target.shapeId])
-  }, [cameraRef, documentRef, onDocumentChange, onHistoryCheckpoint, onSelectionChange])
+  }, [cameraRef, documentRef, onDocumentChange, onHistoryCheckpoint, onSelectionChange, publishPreview])
 
   return {
-    clearNodeConnectionPreview: () => setRuntimeConnectionPreview(null),
+    clearNodeConnectionPreview: () => publishPreview(null),
     finishNodeConnection,
     handleNodePortPointerDown,
     runtimeConnectionPreview,
@@ -209,4 +217,22 @@ function getDynamicTargetPortId(
 ) {
   if (index === 1 && allocation.firstPortId) return allocation.firstPortId
   return `${allocation.prefix}_${index}`
+}
+
+function toCollaborationConnectionPreview(
+  preview: KonvaRuntimeConnectionPreview | null
+): BoardCollaborationConnectionPreview | null {
+  if (!preview) return null
+  return {
+    dataType: preview.dataType,
+    pointer: preview.pointer,
+    source: preview.source,
+    sources: preview.sources,
+    target: preview.target
+      ? {
+          portId: preview.target.portId,
+          shapeId: preview.target.shapeId,
+        }
+      : null,
+  }
 }

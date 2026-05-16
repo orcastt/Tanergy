@@ -11,6 +11,11 @@ import {
   type BoardShareLinkRecord,
   type BoardShareLinkResolveRecord,
 } from '@/features/boards/boardTypes'
+import {
+  type CanonicalWorkspaceRole,
+  normalizeCanonicalWorkspaceRole,
+  type WorkspaceRole,
+} from '@/features/auth/sessionTypes'
 import type { ApiRequestContext } from '../../_lib/apiRequestContext'
 
 const storageRoot = process.env.TANGENT_BOARD_STORAGE_DIR ?? path.join(process.cwd(), '.tangent-boards')
@@ -108,7 +113,7 @@ export async function inviteLocalBoardMemberByEmail(
     displayName: normalizeDisplayName(displayName) ?? normalizedEmail.split('@')[0],
     email: normalizedEmail,
     userId: createLocalPersonId(normalizedEmail),
-    workspaceRole: 'member' as const,
+    workspaceRole: 'viewer' as const,
   }
   if (!existing) {
     await writeWorkspacePeople(board.workspaceId, [...people, candidate])
@@ -263,9 +268,7 @@ function normalizeMemberRecord(member: Partial<BoardMemberRecord>): BoardMemberR
     joinedAt: typeof member.joinedAt === 'string' && member.joinedAt.trim() ? member.joinedAt : new Date(0).toISOString(),
     role: normalizeBoardMemberRole(member.role),
     userId,
-    workspaceRole: member.workspaceRole === 'owner' || member.workspaceRole === 'admin' || member.workspaceRole === 'member' || member.workspaceRole === 'guest'
-      ? member.workspaceRole
-      : null,
+    workspaceRole: normalizeStoredWorkspaceRole(member.workspaceRole),
   } satisfies BoardMemberRecord
 }
 
@@ -313,7 +316,7 @@ async function readWorkspacePeople(board: BoardPersistenceRecord, context?: ApiR
 
 async function writeWorkspacePeople(
   workspaceId: string,
-  people: Array<{ displayName: string; email: string; userId: string; workspaceRole: 'owner' | 'admin' | 'member' | 'guest' }>,
+  people: Array<{ displayName: string; email: string; userId: string; workspaceRole: CanonicalWorkspaceRole }>,
 ) {
   await mkdir(workspacesRoot, { recursive: true })
   const deduped = [...new Map(people.map((person) => [person.userId, person])).values()]
@@ -385,7 +388,7 @@ function normalizeDisplayName(value: string | null | undefined) {
 
 function hydrateMember(
   member: BoardMemberRecord,
-  person?: { displayName: string; email: string; userId: string; workspaceRole: 'owner' | 'admin' | 'member' | 'guest' },
+  person?: { displayName: string; email: string; userId: string; workspaceRole: CanonicalWorkspaceRole },
 ) {
   return {
     ...member,
@@ -399,15 +402,18 @@ function normalizeWorkspacePerson(person: Partial<{ displayName: string; email: 
   const userId = typeof person.userId === 'string' ? normalizeUserId(person.userId) : null
   if (!userId || typeof person.email !== 'string') return null
   const email = requireEmail(person.email)
-  const workspaceRole = person.workspaceRole === 'owner' || person.workspaceRole === 'admin' || person.workspaceRole === 'member' || person.workspaceRole === 'guest'
-    ? person.workspaceRole
-    : 'member'
+  const workspaceRole = normalizeCanonicalWorkspaceRole(person.workspaceRole)
   return {
     displayName: normalizeDisplayName(person.displayName) ?? email.split('@')[0],
     email,
     userId,
     workspaceRole,
   } as const
+}
+
+function normalizeStoredWorkspaceRole(value: unknown): WorkspaceRole | null {
+  if (typeof value !== 'string' || !value.trim()) return null
+  return normalizeCanonicalWorkspaceRole(value)
 }
 
 function normalizeShareLinkRecord(link: Partial<BoardShareLinkRecord>): BoardShareLinkRecord | null {

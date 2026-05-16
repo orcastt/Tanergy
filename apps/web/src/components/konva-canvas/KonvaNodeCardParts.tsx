@@ -37,9 +37,10 @@ export function NodeCardRunButton({ onRunToggle, shape, status }: { onRunToggle?
   )
 }
 
-export function NodeCardFieldGrid({ fields, onFieldChange, openFieldName, setOpenFieldName, shape, y }: {
+export function NodeCardFieldGrid({ fields, onFieldChange, onFieldOpenRequest, openFieldName, setOpenFieldName, shape, y }: {
   fields: NodeCardField[]
   onFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
+  onFieldOpenRequest?: () => boolean
   openFieldName: string | null
   setOpenFieldName: (fieldName: string | null) => void
   shape: CanvasNodeShape
@@ -64,6 +65,7 @@ export function NodeCardFieldGrid({ fields, onFieldChange, openFieldName, setOpe
             <Group
               onClick={field.options ? (event) => {
                 event.cancelBubble = true
+                if (!open && onFieldOpenRequest && !onFieldOpenRequest()) return
                 setOpenFieldName(open ? null : field.name)
               } : undefined}
               onDblClick={stopNodeCardControlEvent}

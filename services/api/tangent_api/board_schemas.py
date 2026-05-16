@@ -286,14 +286,39 @@ class BoardCollaborationPresenceCursor(TangentApiModel):
     y: float
 
 
+class BoardCollaborationPresenceBox(TangentApiModel):
+    max_x: float = Field(alias="maxX")
+    max_y: float = Field(alias="maxY")
+    min_x: float = Field(alias="minX")
+    min_y: float = Field(alias="minY")
+
+
+class BoardCollaborationPortEndpoint(TangentApiModel):
+    port_id: str = Field(alias="portId")
+    shape_id: str = Field(alias="shapeId")
+
+
+class BoardCollaborationConnectionPreview(TangentApiModel):
+    data_type: str = Field(alias="dataType")
+    pointer: BoardCollaborationPresenceCursor
+    source: BoardCollaborationPortEndpoint
+    sources: list[BoardCollaborationPortEndpoint] = Field(default_factory=list)
+    target: Optional[BoardCollaborationPortEndpoint] = None
+
+
 class BoardCollaborationPresence(TangentApiModel):
     active_page_id: Optional[str] = Field(default=None, alias="activePageId")
+    connection_preview: Optional[BoardCollaborationConnectionPreview] = Field(default=None, alias="connectionPreview")
     cursor: Optional[BoardCollaborationPresenceCursor] = None
     editing_shape_ids: list[str] = Field(default_factory=list, alias="editingShapeIds")
     hovered_shape_id: Optional[str] = Field(default=None, alias="hoveredShapeId")
+    selected_edge_id: Optional[str] = Field(default=None, alias="selectedEdgeId")
+    selection_box: Optional[BoardCollaborationPresenceBox] = Field(default=None, alias="selectionBox")
     selection_ids: list[str] = Field(default_factory=list, alias="selectionIds")
     state: Optional[str] = None
     tool: Optional[str] = None
+    transform_box: Optional[BoardCollaborationPresenceBox] = Field(default=None, alias="transformBox")
+    transform_kind: Optional[str] = Field(default=None, alias="transformKind")
 
 
 class BoardCollaborationSessionUpsertRequest(TangentApiModel):

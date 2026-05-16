@@ -1,7 +1,7 @@
 # ARCH Slice S4: Collaboration
 
 **Updated**: 2026-05-16
-**Status**: Planned next slice after the current S1/S2/S3 acceptance gates. Production multiplayer remains outside the current release promise, but the reusable invite/role contracts and the first implementation order are now explicitly documented.
+**Status**: In progress first slice after the current S1/S2/S3 acceptance gates. Production multiplayer remains outside the current release promise, but the reusable invite/role contracts are now being wired into the real product path.
 
 ## Scope
 
@@ -18,13 +18,26 @@ Keep this slice outside the current release promise until the signed-in browser,
   - workspace invite managers: `owner/admin`
   - stored active workspace roles currently accept `owner/admin/editor/viewer/member/guest`
   - stored board-member roles currently accept `owner/admin/editor/viewer/temporary_viewer`
+- Frontend invite generation now needs to point at a product route, not the raw API `POST /accept` endpoint. The active product path is `/invite/[token]`, and the token parser must accept both that route and the legacy API accept URL so old copied links still work.
+- Clerk sign-in/sign-up continuation for invites is now a frontend boundary too: `redirect_url`/`redirectUrl`/`next` must be sanitized to same-app relative paths before being passed into the auth components.
 - The next collaboration implementation should reuse those contracts instead of inventing a second invite or role table. Product-facing language should standardize on `owner/admin/editor/viewer`, while `member/guest` stay compatibility-only until a later cleanup migration removes them.
+- Canonical role normalization is now applied at the session/invite/local-collaboration boundary: authenticated sessions, workspace invites and local-dev board presence/member metadata should surface `owner/admin/editor/viewer`, while legacy `member/guest` are accepted only as compatibility aliases that map to `editor/viewer`.
 - Collaboration transport is now two-tier. The board-realtime hooks prefer a FastAPI websocket room when a remote persistence API plus `boardId` are available, and otherwise fall back to the existing board-scoped `BroadcastChannel` rooms for local/dev use.
 - Both the document and awareness transport adapters share the same room-state shape: `connecting | synced | disconnected | error | unsupported`, plus `initialSyncComplete`, `lastActivityAt`, `lastSyncedAt` and surfaced error text.
 - The current websocket room is intentionally minimal and provider-shaped rather than full Yjs-server-native. It gates access through existing board collaboration permissions, persists a board-scoped Yjs update chain in local-dev/Postgres realtime storage, replays that chain to newcomers as `sync-state`, uses an explicit `seedRoom` handshake so clients seed only genuinely empty rooms, requests a client `sync-state-publish` compaction when the incremental chain grows past a threshold, acknowledges accepted full-state publishes back to connected clients as `sync-state-accepted`, and fans out awareness `batch/state/remove` events.
 - The browser collaboration hook now uses the native structured Yjs board record (`pages[]`, `activePageId`, shared canvas settings, changed-page metadata) as its runtime apply contract. Legacy full-document snapshot fallback/materialization is removed from this path, and the synchronization baseline now keeps only structured page data plus signature metadata instead of a duplicated serialized board envelope.
-- Presence currently includes cursor, active page, selected ids, hovered shape id, editing shape ids, tool and derived viewing state. Temporary occupancy/soft-lock UI is derived from awareness owner identity plus awareness TTL expiry rather than a persisted server lock table.
+- The local Yjs incoming-record gate is now page-aware instead of globally conservative. When both sides have structured `changedPageIds`, the browser may immediately restore a remote update while unsynced local edits still exist if the two change sets are page-disjoint and neither side is publishing a `full-board` snapshot. Same-page overlap and full-board snapshots still queue pending remote state until the local publish settles.
+- Presence currently includes cursor, active page, selected ids, hovered shape id, editing shape ids, tool and derived viewing state. The first visible frontend pass now surfaces that data through cursor labels, compact board-header activity chips, and a header roster popover that lists active collaborators with session-aware color identity plus role/activity metadata. Temporary occupancy/soft-lock UI is derived from awareness owner identity plus awareness TTL expiry rather than a persisted server lock table.
+- Presence now also carries an optional lightweight `selectionBox` world-bounds payload for active drag-select gestures. This is awareness-only geometry, not document state, and is sanitized/rounded on both frontend and backend before transport or persistence.
+- Presence also carries optional `transformKind` + `transformBox` metadata for in-progress move/resize/rotate gestures. This remains awareness-only preview geometry, so remote transform hints can be rendered without storing transient manipulation state in the board document.
+- Presence now also carries optional `selectedEdgeId` and `connectionPreview` metadata for node-edge collaboration. `connectionPreview` contains only data type, source/source-batch endpoints, pointer and optional snapped target endpoint; it never stores resolved port geometry in persisted collaboration state.
+- First-pass visual presence identity should derive accent color from `clientInstanceId`, not only `userId`, so two concurrent sessions from the same user stay visually distinguishable in cursors, occupancy outlines and presence pills.
 - Current soft-lock behavior is advisory: the canvas renders remote selected/editing/hovered bounds and blocks local text/crop entry when another active session is already editing the same shape, but there is no hard distributed lease/claim service yet.
+- Focused-edit occupancy is now shape-scoped and awareness-driven across: plain text edit, node text edit, image crop, node parameter dropdowns and the chat model menu. The same `editingShapeIds` presence channel is reused for these focused controls rather than introducing a separate persistent lock table.
+- Occupancy denial feedback for focused controls now renders inside the canvas shell as a lightweight toast, so second entrants still get visible feedback even when the selection toolbar is hidden.
+- The canvas overlay now renders three distinct remote collaboration layers from awareness: selection-box marquee while another user is drag-selecting, per-object tint for remote selection/edit occupancy, and aggregate occupancy bounds with labels. This keeps the rendering work local to the overlay instead of patching each shape type with remote-collaboration state.
+- Remote transform hints now reuse that same overlay layer: when another user is moving/resizing/rotating a selected set, the overlay renders a transform-specific bounds treatment and suppresses the redundant plain selection box for that same session.
+- Remote node-edge intent now renders in the Konva edge layer instead of the DOM overlay: remote selected edges get an accent highlight, and remote port-drag sessions render an accent connection preview plus snapped target cue when applicable. This keeps edge geometry in the same canvas render pass as local runtime edges.
 - The websocket room is still a readiness bridge, not the final production provider: while its update chain is now backend-persistent and can be collapsed back to a fresh full-state snapshot through client-assisted compaction, it is still single-process in fan-out behavior, not yet merging updates server-side, and not yet multi-instance safe.
 - Realtime document writes must be enforced server-side, not inferred from frontend mode. The websocket route now allows read-only collaborators to join for replay/presence but rejects `yjs-update` and `sync-state-publish` once board edit access is absent.
 - Client-assisted compaction is guarded by a room-local `documentVersion` handshake. A full-state compaction publish is only accepted when it matches the room's current version, which prevents a stale compactor from overwriting newer unseen incremental updates.
@@ -67,11 +80,12 @@ Local UI only
 ## First Proof Sequence
 
 1. Reuse the existing Team/Group invite-link and workspace-member contracts so collaboration starts from real membership, not anonymous room presence.
-2. Map Konva v2 `CanvasDocument` + `pages[]` into a Yjs document without binary payloads.
-3. Add awareness for cursor, selection, active page, current tool and focused editing ids.
-4. Enforce editor/viewer writes through server-authoritative membership before production use.
-5. Add occupancy for sensitive text/node-param edit modes; second entrants should be blocked or downgraded to view while the first editor is active.
-6. Keep Board snapshots as guarded server documents, not raw CRDT dumps.
+2. Expose a real `/invite/[token]` landing page that signs the user in/up and then accepts into the correct Team/Group workspace shell.
+3. Map Konva v2 `CanvasDocument` + `pages[]` into a Yjs document without binary payloads.
+4. Add awareness for cursor, selection, active page, current tool and focused editing ids.
+5. Enforce editor/viewer writes through server-authoritative membership before production use.
+6. Add occupancy for sensitive text/node-param edit modes; second entrants should be blocked or downgraded to view while the first editor is active. This first pass now covers text edit, crop, node dropdowns and chat model selection through shared awareness.
+7. Keep Board snapshots as guarded server documents, not raw CRDT dumps.
 
 ## Canonical Permission Matrix
 

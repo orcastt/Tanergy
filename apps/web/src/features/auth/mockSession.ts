@@ -47,7 +47,7 @@ export const mockWorkspaces: TangentWorkspace[] = [
     kind: 'group_workspace',
     name: 'Studio Group',
     planKey: 'collaborate_start',
-    role: 'member',
+    role: 'editor',
     boardCount: 2,
   },
 ]

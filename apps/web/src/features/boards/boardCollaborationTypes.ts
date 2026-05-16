@@ -1,3 +1,6 @@
+import type { NodePortDataType } from '@/types/nodeRuntime'
+import type { WorkspaceRole } from '@/features/auth/sessionTypes'
+
 export const boardCollaborationPermissionValues = ['view', 'edit', 'manage', 'owner'] as const
 
 export type BoardCollaborationPermission = typeof boardCollaborationPermissionValues[number]
@@ -5,6 +8,28 @@ export type BoardCollaborationPermission = typeof boardCollaborationPermissionVa
 export type BoardCollaborationPresenceCursor = {
   x: number
   y: number
+}
+
+export type BoardCollaborationPresenceBox = {
+  maxX: number
+  maxY: number
+  minX: number
+  minY: number
+}
+
+export type BoardCollaborationTransformKind = 'move' | 'resize' | 'rotate'
+
+export type BoardCollaborationPortEndpoint = {
+  portId: string
+  shapeId: string
+}
+
+export type BoardCollaborationConnectionPreview = {
+  dataType: NodePortDataType
+  pointer: BoardCollaborationPresenceCursor
+  source: BoardCollaborationPortEndpoint
+  sources?: BoardCollaborationPortEndpoint[]
+  target?: BoardCollaborationPortEndpoint | null
 }
 
 export type BoardCollaborationPresenceState =
@@ -21,9 +46,14 @@ export type BoardCollaborationPresence = {
   cursor?: BoardCollaborationPresenceCursor | null
   editingShapeIds?: string[]
   hoveredShapeId?: string | null
+  connectionPreview?: BoardCollaborationConnectionPreview | null
+  selectedEdgeId?: string | null
+  selectionBox?: BoardCollaborationPresenceBox | null
   selectionIds?: string[]
   state?: BoardCollaborationPresenceState | null
   tool?: string | null
+  transformBox?: BoardCollaborationPresenceBox | null
+  transformKind?: BoardCollaborationTransformKind | null
 }
 
 export type BoardCollaborationShapeOccupancyKind = 'editing' | 'hover' | 'selection'
@@ -61,7 +91,7 @@ export type BoardCollaborationSessionRecord = {
   presence: BoardCollaborationPresence
   userId: string
   workspaceId: string
-  workspaceRole: string
+  workspaceRole: WorkspaceRole
 }
 
 export type BoardCollaborationSessionsResponse = {

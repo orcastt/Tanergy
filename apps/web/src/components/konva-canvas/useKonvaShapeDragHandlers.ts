@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
+import type { BoardCollaborationTransformKind } from '@/features/boards/boardCollaborationTypes'
 import {
   withCanvasShapes,
   type CanvasBounds,
@@ -18,6 +19,7 @@ type UseKonvaShapeDragHandlersOptions = {
   activeTool: KonvaCanvasTool
   camera: CanvasCamera
   documentRef: { current: CanvasDocument }
+  onTransformPreviewChange?: (preview: { bounds: CanvasBounds; kind: BoardCollaborationTransformKind } | null) => void
   selectedIds: string[]
   onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
   onHistoryCheckpoint: (document: CanvasDocument) => void
@@ -25,7 +27,7 @@ type UseKonvaShapeDragHandlersOptions = {
 }
 
 export function useKonvaShapeDragHandlers(options: UseKonvaShapeDragHandlersOptions) {
-  const { camera, documentRef, onDocumentChange, onHistoryCheckpoint, onSelectionChange, selectedIds } = options
+  const { camera, documentRef, onDocumentChange, onHistoryCheckpoint, onSelectionChange, onTransformPreviewChange, selectedIds } = options
   const snapAlignment = useCanvasSettingsStore((state) => state.settings.snapAlignment)
   const snapDistance = useCanvasSettingsStore((state) => state.settings.snapDistance)
   const dragRef = useRef<KonvaShapeDragSession | null>(null)
@@ -100,8 +102,12 @@ export function useKonvaShapeDragHandlers(options: UseKonvaShapeDragHandlersOpti
     dragRef.current = session
     setDraggingShapeIds(session.movingShapeIds)
     setDragPreviewShapes(getShapeDragSessionShapes(session, session.anchorShape.x, session.anchorShape.y))
+    onTransformPreviewChange?.({
+      bounds: getShapeDragSessionBounds(session, session.anchorShape.x, session.anchorShape.y),
+      kind: 'move',
+    })
     return { lockSource: true }
-  }, [documentRef, onHistoryCheckpoint, onSelectionChange, selectedIds])
+  }, [documentRef, onHistoryCheckpoint, onSelectionChange, onTransformPreviewChange, selectedIds])
 
   const handleShapeDragMove = useCallback((shapeId: string, x: number, y: number) => {
     const drag = dragRef.current
@@ -112,8 +118,12 @@ export function useKonvaShapeDragHandlers(options: UseKonvaShapeDragHandlersOpti
       guides,
       shapes: getShapeDragSessionShapes(drag, point.x, point.y),
     })
+    onTransformPreviewChange?.({
+      bounds: getShapeDragSessionBounds(drag, point.x, point.y),
+      kind: 'move',
+    })
     dragRef.current = { ...drag, lastPoint: point }
-  }, [getSnappedDragPoint, publishDragPreview])
+  }, [getSnappedDragPoint, onTransformPreviewChange, publishDragPreview])
 
   const handleShapeDragEnd = useCallback((shapeId: string, x: number, y: number) => {
     const drag = dragRef.current
@@ -123,6 +133,7 @@ export function useKonvaShapeDragHandlers(options: UseKonvaShapeDragHandlersOpti
     setDragPreviewShapes(null)
     setDraggingShapeIds([])
     setSnapGuides([])
+    onTransformPreviewChange?.(null)
     if (!drag || (drag.shapeId !== shapeId && !drag.movingShapeIds.includes(shapeId))) return
     const finalPoint = drag.lastPoint ?? getSnappedDragPoint(drag, x, y).point
     const previewShapes = getShapeDragSessionShapes(drag, finalPoint.x, finalPoint.y)
@@ -131,7 +142,7 @@ export function useKonvaShapeDragHandlers(options: UseKonvaShapeDragHandlersOpti
     documentRef.current = finalDocument
     onDocumentChange(finalDocument)
     if (drag.selectOnEndIds) onSelectionChange(drag.selectOnEndIds)
-  }, [clearPendingDragPreview, documentRef, getSnappedDragPoint, onDocumentChange, onSelectionChange])
+  }, [clearPendingDragPreview, documentRef, getSnappedDragPoint, onDocumentChange, onSelectionChange, onTransformPreviewChange])
 
   return {
     handleShapeDragEnd,

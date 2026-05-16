@@ -16,6 +16,7 @@ import type {
   WorkspaceMembershipRole,
 } from '@/features/workspaces/workspacePresentation'
 import { normalizeWorkspaceMembershipRole } from '@/features/workspaces/workspacePresentation'
+import { parseWorkspaceInvitationToken } from '@/features/workspaces/workspaceInvitationLinks'
 
 type WorkspaceDirectoryActionsProps = {
   createLabel: string
@@ -167,7 +168,5 @@ function normalizeTeamPlan(value: string): Extract<PlanKey, 'team_growth' | 'tea
 }
 
 function parseInviteToken(value: string) {
-  const trimmed = value.trim()
-  if (!trimmed) return ''
-  return trimmed.split('/').filter(Boolean).at(-1) ?? trimmed
+  return parseWorkspaceInvitationToken(value)
 }

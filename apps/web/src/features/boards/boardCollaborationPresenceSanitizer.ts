@@ -1,6 +1,9 @@
 import type {
+  BoardCollaborationConnectionPreview,
   BoardCollaborationPresence,
   BoardCollaborationPresenceState,
+  BoardCollaborationPortEndpoint,
+  BoardCollaborationTransformKind,
 } from './boardCollaborationTypes'
 
 const activePresenceStates = new Set<BoardCollaborationPresenceState>([
@@ -15,6 +18,11 @@ const activePresenceStates = new Set<BoardCollaborationPresenceState>([
 const maxPresenceIds = 50
 const maxPresenceIdLength = 120
 const maxToolLength = 40
+const activeTransformKinds = new Set<BoardCollaborationTransformKind>([
+  'move',
+  'resize',
+  'rotate',
+])
 
 export function sanitizeBoardCollaborationPresence(
   presence: BoardCollaborationPresence | null | undefined,
@@ -22,12 +30,17 @@ export function sanitizeBoardCollaborationPresence(
   if (!presence) return null
   return {
     activePageId: normalizeId(presence.activePageId),
+    connectionPreview: normalizeConnectionPreview(presence.connectionPreview),
     cursor: normalizeCursor(presence.cursor),
     editingShapeIds: normalizeIds(presence.editingShapeIds),
     hoveredShapeId: normalizeId(presence.hoveredShapeId),
+    selectedEdgeId: normalizeId(presence.selectedEdgeId),
+    selectionBox: normalizeSelectionBox(presence.selectionBox),
     selectionIds: normalizeIds(presence.selectionIds),
     state: normalizeState(presence.state),
     tool: normalizeTool(presence.tool),
+    transformBox: normalizeSelectionBox(presence.transformBox),
+    transformKind: normalizeTransformKind(presence.transformKind),
   }
 }
 
@@ -37,6 +50,50 @@ function normalizeCursor(value: BoardCollaborationPresence['cursor']) {
     x: Math.round(value.x * 1000) / 1000,
     y: Math.round(value.y * 1000) / 1000,
   }
+}
+
+function normalizeSelectionBox(value: BoardCollaborationPresence['selectionBox']) {
+  if (
+    !value
+    || !Number.isFinite(value.minX)
+    || !Number.isFinite(value.minY)
+    || !Number.isFinite(value.maxX)
+    || !Number.isFinite(value.maxY)
+  ) {
+    return null
+  }
+  const minX = Math.round(Math.min(value.minX, value.maxX) * 1000) / 1000
+  const maxX = Math.round(Math.max(value.minX, value.maxX) * 1000) / 1000
+  const minY = Math.round(Math.min(value.minY, value.maxY) * 1000) / 1000
+  const maxY = Math.round(Math.max(value.minY, value.maxY) * 1000) / 1000
+  if (maxX <= minX || maxY <= minY) return null
+  return {
+    maxX,
+    maxY,
+    minX,
+    minY,
+  }
+}
+
+function normalizeConnectionPreview(value: BoardCollaborationPresence['connectionPreview']) {
+  if (!value) return null
+  const source = normalizePortEndpoint(value.source)
+  const pointer = normalizeCursor(value.pointer)
+  const dataType = normalizeConnectionDataType(value.dataType)
+  if (!source || !pointer || !dataType) return null
+  const sources = Array.isArray(value.sources)
+    ? value.sources
+        .map(normalizePortEndpoint)
+        .filter((item): item is BoardCollaborationPortEndpoint => Boolean(item))
+        .slice(0, maxPresenceIds)
+    : []
+  return {
+    dataType,
+    pointer,
+    source,
+    sources: sources.length > 0 ? sources : [source],
+    target: normalizePortEndpoint(value.target ?? null),
+  } satisfies BoardCollaborationConnectionPreview
 }
 
 function normalizeIds(values: unknown) {
@@ -66,5 +123,25 @@ function normalizeState(value: unknown) {
 function normalizeTool(value: unknown) {
   return typeof value === 'string' && value.trim()
     ? value.trim().slice(0, maxToolLength)
+    : null
+}
+
+function normalizeTransformKind(value: unknown) {
+  return typeof value === 'string' && activeTransformKinds.has(value as BoardCollaborationTransformKind)
+    ? value as BoardCollaborationTransformKind
+    : null
+}
+
+function normalizePortEndpoint(value: unknown) {
+  if (!value || typeof value !== 'object') return null
+  const shapeId = normalizeId((value as { shapeId?: unknown }).shapeId)
+  const portId = normalizeId((value as { portId?: unknown }).portId)
+  if (!shapeId || !portId) return null
+  return { portId, shapeId }
+}
+
+function normalizeConnectionDataType(value: unknown) {
+  return value === 'image' || value === 'text'
+    ? value
     : null
 }

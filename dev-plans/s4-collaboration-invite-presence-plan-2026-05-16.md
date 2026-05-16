@@ -1,7 +1,7 @@
 # S4 Collaboration Invite/Presence Plan
 
 **Created**: 2026-05-16
-**Status**: Planned next tactical cut.
+**Status**: In progress. Invite -> board entry is now wired in product UI; real signed-in two-user smoke remains the next acceptance pass.
 **Owner slice**: S4, with S1D/S3 dependencies.
 
 ## Goal
@@ -47,6 +47,11 @@ Exit criteria:
 - Make invite accept land the user in the correct workspace and board shell
 - Expose revoke/copy/open actions from the workspace/member surfaces
 - Keep invite-manager authority at workspace `owner/admin`
+- Current implementation note:
+  - invite links may now carry optional `boardId` / `boardTitle`
+  - accept may land directly on `/boards/[boardId]?workspace=...`
+  - Team/Group dashboard board cards now open the real board route
+  - `services/api/scripts/s4_workspace_invite_smoke.py` now covers the owner-create -> invite -> accept -> reopen-board API path
 
 Exit criteria:
 

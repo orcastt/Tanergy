@@ -1,7 +1,7 @@
 import { withCanvasShapes, type CanvasDocument, type CanvasNodeShape } from '@/features/canvas-engine'
 import type { AiChatCompletionRequest, AiRunRequest } from '@/features/ai/aiTypes'
 import { createPromptOptimizerUserPrompt, promptOptimizerSystemPrompt } from '@/features/ai/aiNodePrompts'
-import { getChatModelSelectOptions, getDefaultChatModelId } from '@/features/ai/mockAiContracts'
+import { getDefaultPromptOptimizerModelId, getPromptOptimizerModelSelectOptions } from '@/features/ai/mockAiContracts'
 import { resolveRuntimeGraphNodeInputs } from '@/features/node-runtime/runtimeGraphResolution'
 
 type PreparedPromptOptimizerRequest = {
@@ -252,10 +252,10 @@ function createPromptOptimizerRunId() {
 
 function getPromptOptimizerModelId(node: CanvasNodeShape) {
   const allowed = new Set(
-    getChatModelSelectOptions()
+    getPromptOptimizerModelSelectOptions()
       .filter((option) => !option.disabled)
       .map((option) => String(option.value))
   )
   const value = typeof node.props.data.modelId === 'string' ? node.props.data.modelId.trim() : ''
-  return allowed.has(value) ? value : getDefaultChatModelId()
+  return allowed.has(value) ? value : getDefaultPromptOptimizerModelId()
 }

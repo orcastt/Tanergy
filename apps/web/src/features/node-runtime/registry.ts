@@ -1,11 +1,26 @@
 import type { JsonObject, NodeCardField, NodeCategory, NodeDefinition, NodePortDirection, NodeRuntimeSummary, NodeType, ResolvedNodePort } from '@/types/nodeRuntime'
 import { defaultAnalysisPrompt } from '@/features/ai/aiNodePrompts'
-import { getAnalysisModelSelectOptions, getChatModelSelectOptions, getDefaultAnalysisModelId, getDefaultChatModelId, getDefaultImageModelId, getImageModelSelectOptions } from '@/features/ai/mockAiContracts'
+import { getAnalysisModelSelectOptions, getDefaultAnalysisModelId, getDefaultChatModelId, getDefaultImageModelId, getDefaultPromptOptimizerModelId, getImageModelSelectOptions, getPromptOptimizerModelSelectOptions } from '@/features/ai/mockAiContracts'
 
 const gptImage2SizeOptions = [
   { label: '1024 x 1024', value: '1024x1024' },
   { label: '1024 x 1536', value: '1024x1536' },
   { label: '1536 x 1024', value: '1536x1024' },
+  { label: '2048 x 2048', value: '2048x2048' },
+  { label: '2048 x 1152', value: '2048x1152' },
+  { label: '3840 x 2160', value: '3840x2160' },
+  { label: '2160 x 3840', value: '2160x3840' },
+  { label: '2048 x 1360', value: '2048x1360' },
+  { label: '1360 x 2048', value: '1360x2048' },
+  { label: '1152 x 2048', value: '1152x2048' },
+  { label: '2048 x 1536', value: '2048x1536' },
+  { label: '1536 x 2048', value: '1536x2048' },
+  { label: '2048 x 880', value: '2048x880' },
+  { label: '880 x 2048', value: '880x2048' },
+  { label: '688 x 2048', value: '688x2048' },
+  { label: '2048 x 688', value: '2048x688' },
+  { label: '2048 x 1024', value: '2048x1024' },
+  { label: '1024 x 2048', value: '1024x2048' },
 ]
 
 const gptImage2QualityOptions = [
@@ -25,15 +40,9 @@ const nanoBananaAspectRatioOptions = [
   { label: '9:16', value: '9:16' },
   { label: '16:9', value: '16:9' },
   { label: '21:9', value: '21:9' },
-  { label: '9:21', value: '9:21' },
-  { label: '1:4', value: '1:4' },
-  { label: '4:1', value: '4:1' },
-  { label: '1:8', value: '1:8' },
-  { label: '8:1', value: '8:1' },
 ]
 
 const nanoBananaImageSizeOptions = [
-  { label: '0.5K', value: '0.5K' },
   { label: '1K', value: '1K' },
   { label: '2K', value: '2K' },
   { label: '4K', value: '4K' },
@@ -67,11 +76,6 @@ const seedreamSizeOptions = [
   { label: '4K 3:2 · 3328 x 4992', value: '3328x4992' },
   { label: '4K 2:3 · 4992 x 3328', value: '4992x3328' },
   { label: '4K 21:9 · 6240 x 2656', value: '6240x2656' },
-]
-
-const seedreamOutputFormatOptions = [
-  { label: 'PNG', value: 'png' },
-  { label: 'JPEG', value: 'jpeg' },
 ]
 
 const jimengSizeOptions = [
@@ -111,10 +115,10 @@ const analysisModelField = {
   type: 'select' as const,
 }
 
-const chatModelField = {
+const promptOptimizerModelField = {
   label: 'Model',
   name: 'modelId',
-  options: getChatModelSelectOptions(),
+  options: getPromptOptimizerModelSelectOptions(),
   type: 'select' as const,
 }
 
@@ -133,7 +137,6 @@ const nanoBananaImageFields = [
 const seedreamImageFields = [
   imageModelField,
   { label: 'Size', name: 'seedreamSize', options: seedreamSizeOptions, type: 'select' as const },
-  { label: 'Format', name: 'seedreamOutputFormat', options: seedreamOutputFormatOptions, type: 'select' as const },
 ]
 
 const jimengImageFields = [
@@ -242,7 +245,6 @@ export const nodeDefinitions: Record<NodeType, NodeDefinition> = {
       jimengStrength: '0.5',
       modelId: getDefaultImageModelId(),
       quality: 'medium',
-      seedreamOutputFormat: 'png',
       seedreamSize: '2K',
       size: '1024x1024',
       textInputCount: 1,
@@ -277,7 +279,6 @@ export const nodeDefinitions: Record<NodeType, NodeDefinition> = {
       jimengStrength: '0.5',
       modelId: getDefaultImageModelId(),
       quality: 'medium',
-      seedreamOutputFormat: 'png',
       seedreamSize: '2K',
       size: '1024x1024',
       textInputCount: 1,
@@ -331,12 +332,12 @@ export const nodeDefinitions: Record<NodeType, NodeDefinition> = {
     category: 'text',
     defaultData: {
       optimizedPrompt: '',
-      modelId: getDefaultChatModelId(),
+      modelId: getDefaultPromptOptimizerModelId(),
     },
     defaultCardSize: { height: 320, width: 420 },
     defaultRuntimeCostHint: 'Chat streaming optimizer',
     displayName: 'Prompt Optimizer',
-    cardFields: [chatModelField],
+    cardFields: [promptOptimizerModelField],
     outputSummary: 'Optimized image prompt',
     paletteOrder: 12,
     paletteShortLabel: 'Opt',
@@ -447,7 +448,7 @@ export function getAnalysisCardFields(): NodeCardField[] {
 }
 
 export function getPromptOptimizerCardFields(): NodeCardField[] {
-  return [chatModelField]
+  return [promptOptimizerModelField]
 }
 
 export function getNormalizedAnalysisData(data: JsonObject): JsonObject {
@@ -468,9 +469,9 @@ export function getNormalizedAnalysisData(data: JsonObject): JsonObject {
 
 export function getNormalizedPromptOptimizerData(data: JsonObject): JsonObject {
   const modelId = getAllowedFieldValue(
-    typeof data.modelId === 'string' && data.modelId.trim() ? data.modelId : getDefaultChatModelId(),
-    getChatModelSelectOptions().map((option) => String(option.value)),
-    getDefaultChatModelId()
+    typeof data.modelId === 'string' && data.modelId.trim() ? data.modelId : getDefaultPromptOptimizerModelId(),
+    getPromptOptimizerModelSelectOptions().map((option) => String(option.value)),
+    getDefaultPromptOptimizerModelId()
   )
   return {
     ...data,
@@ -509,11 +510,6 @@ export function getNormalizedImageGenerationData(data: JsonObject): JsonObject {
     seedreamSizeOptions.map((option) => option.value),
     '2K'
   )
-  const seedreamOutputFormat = getAllowedFieldValue(
-    typeof data.seedreamOutputFormat === 'string' && data.seedreamOutputFormat.trim() ? data.seedreamOutputFormat : 'png',
-    seedreamOutputFormatOptions.map((option) => option.value),
-    'png'
-  )
   const jimengSize = getAllowedFieldValue(
     typeof data.jimengSize === 'string' && data.jimengSize.trim() ? data.jimengSize : '2048x2048',
     jimengSizeOptions.map((option) => option.value),
@@ -532,7 +528,6 @@ export function getNormalizedImageGenerationData(data: JsonObject): JsonObject {
     jimengStrength,
     modelId,
     quality,
-    seedreamOutputFormat,
     seedreamSize,
     size,
   }

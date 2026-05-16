@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { formatCredits } from '@/features/billing/billingPresentation'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
@@ -97,7 +98,7 @@ function TeamDashboardLayout({
   return (
     <div className="workspace-detail-stack">
       <section className="workspace-detail-grid workspace-detail-grid-top">
-        <DashboardBoardPanel boards={record.boards} kind="team" onViewModeChange={onViewModeChange} viewMode={viewMode} />
+        <DashboardBoardPanel boards={record.boards} kind="team" onViewModeChange={onViewModeChange} viewMode={viewMode} workspaceId={workspace.id} />
         <section className="workspace-detail-panel workspace-detail-side-panel">
           <div className="workspace-detail-panel-head"><h2>Usage</h2></div>
           <div className="workspace-detail-dark-card">
@@ -126,7 +127,7 @@ function TeamDashboardLayout({
 
       <section className="workspace-detail-grid workspace-detail-grid-bottom">
         <WorkspaceMembersPanel members={record.members} onMembersChanged={onMembersChanged} workspace={workspace} />
-        <WorkspaceInvitePanel seatLabel={`${record.seatsUsed}/${record.seatLimit}`} workspace={workspace} />
+        <WorkspaceInvitePanel boards={record.boards} seatLabel={`${record.seatsUsed}/${record.seatLimit}`} workspace={workspace} />
       </section>
     </div>
   )
@@ -150,7 +151,7 @@ function GroupDashboardLayout({
   return (
     <div className="workspace-detail-stack">
       <section className="workspace-detail-grid workspace-detail-grid-top">
-        <DashboardBoardPanel boards={record.boards} kind="group" onViewModeChange={onViewModeChange} viewMode={viewMode} />
+        <DashboardBoardPanel boards={record.boards} kind="group" onViewModeChange={onViewModeChange} viewMode={viewMode} workspaceId={workspace.id} />
         <section className="workspace-detail-panel workspace-detail-side-panel">
           <div className="workspace-detail-panel-head"><h2>Subscription</h2></div>
           <div className="workspace-detail-dark-card">
@@ -178,7 +179,7 @@ function GroupDashboardLayout({
 
       <section className="workspace-detail-grid workspace-detail-grid-bottom">
         <WorkspaceMembersPanel members={record.members} onMembersChanged={onMembersChanged} workspace={workspace} />
-        <WorkspaceInvitePanel workspace={workspace} />
+        <WorkspaceInvitePanel boards={record.boards} workspace={workspace} />
         <DashboardActionsPanel actions={record.actions} />
       </section>
     </div>
@@ -214,12 +215,15 @@ function DashboardBoardPanel({
   kind,
   onViewModeChange,
   viewMode,
+  workspaceId,
 }: {
   boards: WorkspaceDashboardBoard[]
   kind: 'group' | 'team'
   onViewModeChange: (mode: BoardViewMode) => void
   viewMode: BoardViewMode
+  workspaceId: string
 }) {
+  const router = useRouter()
   return (
     <section className="workspace-detail-panel workspace-detail-board-panel">
       <div className="workspace-detail-panel-head">
@@ -236,7 +240,13 @@ function DashboardBoardPanel({
         {boards.length === 0 ? (
           <div className="workspace-detail-status">No boards in this workspace yet.</div>
         ) : boards.slice(0, kind === 'group' ? 12 : 9).map((board) => (
-          <button className={`workspace-detail-board-card ${viewMode === 'list' ? 'is-list' : ''}`} data-card-color={board.cardColor} key={board.id} type="button">
+          <button
+            className={`workspace-detail-board-card ${viewMode === 'list' ? 'is-list' : ''}`}
+            data-card-color={board.cardColor}
+            key={board.id}
+            onClick={() => router.push(buildWorkspaceBoardHref(board.id, workspaceId))}
+            type="button"
+          >
             <span className="workspace-detail-board-thumb" aria-hidden="true" />
             <strong>{board.title}</strong>
           </button>
@@ -245,4 +255,9 @@ function DashboardBoardPanel({
       {boards.length ? <small className="workspace-detail-status">{boards.length} boards synced.</small> : null}
     </section>
   )
+}
+
+function buildWorkspaceBoardHref(boardId: string, workspaceId: string) {
+  const query = new URLSearchParams({ workspace: workspaceId })
+  return `/boards/${encodeURIComponent(boardId)}?${query.toString()}`
 }

@@ -254,3 +254,43 @@ def test_group_workspace_invite_accept_enforces_member_cap(monkeypatch):
     assert accepted.status_code == 400
     assert accepted.json()["detail"] == "Group member cap is 15."
     assert len(fake_db.workspace_members) == 15
+
+
+def test_workspace_invite_accept_preserves_board_target_metadata(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v1/workspaces/current/invitations",
+        headers={
+            "x-tangent-user-id": "user_group_owner",
+            "x-tangent-workspace-id": "workspace_group",
+            "x-tangent-workspace-kind": "group_workspace",
+        },
+        json={
+            "metadata": {"boardId": "board_launch", "boardTitle": "Launch Board"},
+            "role": "editor",
+        },
+    )
+
+    assert created.status_code == 200
+    token = created.json()["result"]["token"]
+    assert created.json()["result"]["invitation"]["metadata"]["boardId"] == "board_launch"
+    assert created.json()["result"]["invitation"]["metadata"]["boardTitle"] == "Launch Board"
+
+    accepted = client.post(
+        f"/api/v1/workspaces/invitations/{token}/accept",
+        headers={
+            "x-tangent-user-id": "user_group_editor",
+            "x-tangent-workspace-id": "workspace_personal",
+            "x-tangent-workspace-kind": "solo_workspace",
+        },
+    )
+
+    assert accepted.status_code == 200
+    accepted_metadata = accepted.json()["result"]["invitation"]["metadata"]
+    assert accepted_metadata["boardId"] == "board_launch"
+    assert accepted_metadata["boardTitle"] == "Launch Board"
+    assert accepted_metadata["workspaceKind"] == "group_workspace"

@@ -41,6 +41,12 @@ type KonvaNodeCardShapeProps = {
   onChatSend?: (shapeId: string, draftOverride?: string) => void
   onChatUpload?: (shapeId: string) => void
   onFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
+  onFocusedEditRequest?: (shapeId: string, source: 'chat-model-menu' | 'field-dropdown') => boolean
+  onFocusedEditStateChange?: (
+    shapeId: string,
+    source: 'chat-model-menu' | 'field-dropdown',
+    active: boolean,
+  ) => void
   onGeneratedImageToCanvas?: (input: { ref: RuntimeGraphImageAssetRef; shapeId: string }) => void
   onImageNodeToCanvas?: (shapeId: string) => void
   onImagePreviewOpen?: (input: { batches: RuntimeGraphImageAssetRef[][]; selectedBatchIndex?: number; selectedIndex?: number; title: string }) => void
@@ -53,7 +59,7 @@ type KonvaNodeCardShapeProps = {
   zoom: number
 }
 
-export function KonvaNodeCardShape({ document, editingFieldName = null, onChatClean, onChatModelChange, onChatRegenerate, onChatSend, onChatUpload, onFieldChange, onGeneratedImageToCanvas, onImageNodeToCanvas, onImagePreviewOpen, onPortPointerDown, onRunToggle, onTextEditStart, opacity, previewMode = false, shape, zoom }: KonvaNodeCardShapeProps) {
+export function KonvaNodeCardShape({ document, editingFieldName = null, onChatClean, onChatModelChange, onChatRegenerate, onChatSend, onChatUpload, onFieldChange, onFocusedEditRequest, onFocusedEditStateChange, onGeneratedImageToCanvas, onImageNodeToCanvas, onImagePreviewOpen, onPortPointerDown, onRunToggle, onTextEditStart, opacity, previewMode = false, shape, zoom }: KonvaNodeCardShapeProps) {
   const [hoveredPort, setHoveredPort] = useState<ResolvedNodePort | null>(null)
   const [openFieldName, setOpenFieldName] = useState<string | null>(null)
   const definition = getNodeDefinition(shape.props.nodeType)
@@ -66,6 +72,14 @@ export function KonvaNodeCardShape({ document, editingFieldName = null, onChatCl
   const title = shape.props.nodeType === 'image' ? 'Image' : getStringValue(shape.props.data.title) || definition.displayName
   const status = getStringValue(shape.props.runtimeSummary.status) || 'idle'
   const ports = getResolvedNodePorts(shape.props.nodeType, shape.props.data)
+
+  useEffect(() => {
+    onFocusedEditStateChange?.(shape.id, 'field-dropdown', openFieldName !== null)
+  }, [onFocusedEditStateChange, openFieldName, shape.id])
+  useEffect(() => () => {
+    onFocusedEditStateChange?.(shape.id, 'field-dropdown', false)
+  }, [onFocusedEditStateChange, shape.id])
+
   if (previewMode || zoom <= 0.25) {
     return (
       <CompactNodeCard
@@ -131,6 +145,8 @@ export function KonvaNodeCardShape({ document, editingFieldName = null, onChatCl
             onChatSend={onChatSend}
             onChatUpload={onChatUpload}
             onFieldChange={onFieldChange}
+            onFocusedEditRequest={onFocusedEditRequest}
+            onFocusedEditStateChange={onFocusedEditStateChange}
             onGeneratedImageToCanvas={onGeneratedImageToCanvas}
             onImagePreviewOpen={onImagePreviewOpen}
             onTextEditStart={onTextEditStart}
@@ -339,6 +355,8 @@ function NodeBody({
   onChatSend,
   onChatUpload,
   onFieldChange,
+  onFocusedEditRequest,
+  onFocusedEditStateChange,
   onGeneratedImageToCanvas,
   onImagePreviewOpen,
   onTextEditStart,
@@ -357,6 +375,12 @@ function NodeBody({
   onChatSend?: (shapeId: string, draftOverride?: string) => void
   onChatUpload?: (shapeId: string) => void
   onFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
+  onFocusedEditRequest?: (shapeId: string, source: 'chat-model-menu' | 'field-dropdown') => boolean
+  onFocusedEditStateChange?: (
+    shapeId: string,
+    source: 'chat-model-menu' | 'field-dropdown',
+    active: boolean,
+  ) => void
   onGeneratedImageToCanvas?: (input: { ref: RuntimeGraphImageAssetRef; shapeId: string }) => void
   onImagePreviewOpen?: (input: { batches: RuntimeGraphImageAssetRef[][]; selectedBatchIndex?: number; selectedIndex?: number; title: string }) => void
   onTextEditStart?: (shapeId: string, fieldName: KonvaNodeTextFieldName) => void
@@ -373,13 +397,14 @@ function NodeBody({
         fields={fields}
         normalizedData={normalizedData}
         onFieldChange={onFieldChange}
+        onFieldOpenRequest={onFocusedEditRequest ? () => onFocusedEditRequest(shape.id, 'field-dropdown') : undefined}
         openFieldName={openFieldName}
         setOpenFieldName={setOpenFieldName}
         shape={shape}
       />
     )
   }
-  if (shape.props.nodeType === 'chat') return <KonvaNodeChatBody document={document} editingFieldName={editingFieldName} onChatModelChange={onChatModelChange} onChatRegenerate={onChatRegenerate} onChatSend={onChatSend} onChatUpload={onChatUpload} onTextEditStart={onTextEditStart} shape={shape} zoom={zoom} />
+  if (shape.props.nodeType === 'chat') return <KonvaNodeChatBody document={document} editingFieldName={editingFieldName} onChatModelChange={onChatModelChange} onChatRegenerate={onChatRegenerate} onChatSend={onChatSend} onChatUpload={onChatUpload} onFocusedEditRequest={onFocusedEditRequest} onFocusedEditStateChange={onFocusedEditStateChange} onTextEditStart={onTextEditStart} shape={shape} zoom={zoom} />
   if (shape.props.nodeType === 'image') return <ImageBody accent={accent} onImagePreviewOpen={onImagePreviewOpen} shape={shape} zoom={zoom} />
   if (shape.props.nodeType === 'analysis') {
     return (
@@ -388,6 +413,7 @@ function NodeBody({
         fields={fields}
         normalizedData={normalizedData}
         onFieldChange={onFieldChange}
+        onFieldOpenRequest={onFocusedEditRequest ? () => onFocusedEditRequest(shape.id, 'field-dropdown') : undefined}
         onTextEditStart={onTextEditStart}
         openFieldName={openFieldName}
         setOpenFieldName={setOpenFieldName}
@@ -395,7 +421,7 @@ function NodeBody({
       />
     )
   }
-  return <GenerationBody fields={fields} normalizedData={normalizedData} onFieldChange={onFieldChange} onGeneratedImageToCanvas={onGeneratedImageToCanvas} onImagePreviewOpen={onImagePreviewOpen} openFieldName={openFieldName} setOpenFieldName={setOpenFieldName} shape={shape} zoom={zoom} />
+  return <GenerationBody fields={fields} normalizedData={normalizedData} onFieldChange={onFieldChange} onFieldOpenRequest={onFocusedEditRequest ? () => onFocusedEditRequest(shape.id, 'field-dropdown') : undefined} onGeneratedImageToCanvas={onGeneratedImageToCanvas} onImagePreviewOpen={onImagePreviewOpen} openFieldName={openFieldName} setOpenFieldName={setOpenFieldName} shape={shape} zoom={zoom} />
 }
 
 function PromptBody({
@@ -420,6 +446,7 @@ function PromptOptimizerBody({
   fields,
   normalizedData,
   onFieldChange,
+  onFieldOpenRequest,
   openFieldName,
   setOpenFieldName,
   shape,
@@ -428,6 +455,7 @@ function PromptOptimizerBody({
   fields: NodeCardField[]
   normalizedData: CanvasNodeShape['props']['data']
   onFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
+  onFieldOpenRequest?: () => boolean
   openFieldName: string | null
   setOpenFieldName: (fieldName: string | null) => void
   shape: CanvasNodeShape
@@ -453,7 +481,7 @@ function PromptOptimizerBody({
     <>
       <Text fill={palette.softText} fontFamily="Inter, system-ui, sans-serif" fontSize={13} fontStyle="bold" text="Optimized preview" width={shape.props.width - 28} x={14} y={116} />
       <NodeCardTextBox height={shape.props.height - 156} text={previewText} width={shape.props.width - 28} x={14} y={142} />
-      <NodeCardFieldGrid fields={fields} onFieldChange={onFieldChange} openFieldName={openFieldName} setOpenFieldName={setOpenFieldName} shape={displayShape} y={54} />
+      <NodeCardFieldGrid fields={fields} onFieldChange={onFieldChange} onFieldOpenRequest={onFieldOpenRequest} openFieldName={openFieldName} setOpenFieldName={setOpenFieldName} shape={displayShape} y={54} />
     </>
   )
 }
@@ -463,6 +491,7 @@ function AnalysisBody({
   fields,
   normalizedData,
   onFieldChange,
+  onFieldOpenRequest,
   onTextEditStart,
   openFieldName,
   setOpenFieldName,
@@ -472,6 +501,7 @@ function AnalysisBody({
   fields: NodeCardField[]
   normalizedData: CanvasNodeShape['props']['data']
   onFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
+  onFieldOpenRequest?: () => boolean
   onTextEditStart?: (shapeId: string, fieldName: KonvaNodeTextFieldName) => void
   openFieldName: string | null
   setOpenFieldName: (fieldName: string | null) => void
@@ -496,15 +526,16 @@ function AnalysisBody({
     <>
       <NodeCardTextBox height={64} onEdit={() => onTextEditStart?.(shape.id, 'analysisPrompt')} text={editing ? '' : getStringValue(displayShape.props.data.analysisPrompt) ?? ''} width={shape.props.width - 28} x={14} y={116} />
       <NodeCardTextBox height={shape.props.height - 208} text={outputText} width={shape.props.width - 28} x={14} y={190} />
-      <NodeCardFieldGrid fields={fields} onFieldChange={onFieldChange} openFieldName={openFieldName} setOpenFieldName={setOpenFieldName} shape={displayShape} y={54} />
+      <NodeCardFieldGrid fields={fields} onFieldChange={onFieldChange} onFieldOpenRequest={onFieldOpenRequest} openFieldName={openFieldName} setOpenFieldName={setOpenFieldName} shape={displayShape} y={54} />
     </>
   )
 }
 
-function GenerationBody({ fields, normalizedData, onFieldChange, onGeneratedImageToCanvas, onImagePreviewOpen, openFieldName, setOpenFieldName, shape, zoom }: {
+function GenerationBody({ fields, normalizedData, onFieldChange, onFieldOpenRequest, onGeneratedImageToCanvas, onImagePreviewOpen, openFieldName, setOpenFieldName, shape, zoom }: {
   fields: NodeCardField[]
   normalizedData: CanvasNodeShape['props']['data']
   onFieldChange?: (shapeId: string, fieldName: string, value: string | number) => void
+  onFieldOpenRequest?: () => boolean
   onGeneratedImageToCanvas?: (input: { ref: RuntimeGraphImageAssetRef; shapeId: string }) => void
   onImagePreviewOpen?: (input: { batches: RuntimeGraphImageAssetRef[][]; selectedBatchIndex?: number; selectedIndex?: number; title: string }) => void
   openFieldName: string | null
@@ -559,7 +590,7 @@ function GenerationBody({ fields, normalizedData, onFieldChange, onGeneratedImag
           <Text fill={status === 'failed' ? '#a11222' : palette.softText} fontFamily="Inter, system-ui, sans-serif" fontSize={12} fontStyle="bold" text={error ?? 'Ready when prompt is connected.'} width={shape.props.width - 52} x={26} y={shape.props.height - 36} />
         </>
       )}
-      <NodeCardFieldGrid fields={fields} onFieldChange={onFieldChange} openFieldName={openFieldName} setOpenFieldName={setOpenFieldName} shape={displayShape} y={54} />
+      <NodeCardFieldGrid fields={fields} onFieldChange={onFieldChange} onFieldOpenRequest={onFieldOpenRequest} openFieldName={openFieldName} setOpenFieldName={setOpenFieldName} shape={displayShape} y={54} />
     </>
   )
 }

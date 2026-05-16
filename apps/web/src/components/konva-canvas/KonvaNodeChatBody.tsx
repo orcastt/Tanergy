@@ -17,11 +17,17 @@ type KonvaNodeChatBodyProps = {
   onChatRegenerate?: (shapeId: string, messageId: string) => void
   onChatSend?: (shapeId: string, draftOverride?: string) => void
   onChatUpload?: (shapeId: string) => void
+  onFocusedEditRequest?: (shapeId: string, source: 'chat-model-menu' | 'field-dropdown') => boolean
+  onFocusedEditStateChange?: (
+    shapeId: string,
+    source: 'chat-model-menu' | 'field-dropdown',
+    active: boolean,
+  ) => void
   onTextEditStart?: (shapeId: string, fieldName: KonvaNodeTextFieldName) => void
   zoom: number
 }
 
-export function KonvaNodeChatBody({ document, editingFieldName = null, onChatModelChange, onChatRegenerate, onChatSend, onChatUpload, onTextEditStart, shape, zoom }: KonvaNodeChatBodyProps) {
+export function KonvaNodeChatBody({ document, editingFieldName = null, onChatModelChange, onChatRegenerate, onChatSend, onChatUpload, onFocusedEditRequest, onFocusedEditStateChange, onTextEditStart, shape, zoom }: KonvaNodeChatBodyProps) {
   const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
   const messages = getKonvaChatMessages(shape.props.data)
   const references = getKonvaChatReferenceImages(shape.props.data)
@@ -67,6 +73,12 @@ export function KonvaNodeChatBody({ document, editingFieldName = null, onChatMod
       window.clearTimeout(copyResetTimerRef.current)
     }
   }, [])
+  useEffect(() => {
+    onFocusedEditStateChange?.(shape.id, 'chat-model-menu', modelMenuOpen)
+  }, [modelMenuOpen, onFocusedEditStateChange, shape.id])
+  useEffect(() => () => {
+    onFocusedEditStateChange?.(shape.id, 'chat-model-menu', false)
+  }, [onFocusedEditStateChange, shape.id])
 
   const handleWheel = (event: Parameters<NonNullable<ComponentProps<typeof Group>['onWheel']>>[0]) => {
     if (maxScroll <= 0) return
@@ -176,7 +188,13 @@ export function KonvaNodeChatBody({ document, editingFieldName = null, onChatMod
           onChatModelChange?.(shape.id, nextModelId)
           setModelMenuOpen(false)
         }}
-        onModelToggle={() => setModelMenuOpen((current) => !current)}
+        onModelToggle={() => {
+          setModelMenuOpen((current) => {
+            if (current) return false
+            if (onFocusedEditRequest && !onFocusedEditRequest(shape.id, 'chat-model-menu')) return current
+            return true
+          })
+        }}
         onSend={() => onChatSend?.(shape.id)}
         onUpload={() => onChatUpload?.(shape.id)}
         height={inputBoxHeight}

@@ -7,11 +7,44 @@ import type { AiCapability, AiModelOption, AiRunRecord, AiRunRequest } from './a
 export const mockAiModels: AiModelOption[] = [
   {
     capabilities: ['text', 'image_analysis'],
+    costHint: 'Low-cost multimodal OCR and document understanding for chat and visual analysis.',
+    displayName: 'DeepSeek OCR 2',
+    estimatedLatency: '1-4s',
+    id: 'deepseek/deepseek-ocr-2',
+    isDefault: true,
+    isEnabled: true,
+    parameterSchema: {},
+    provider: 'jiekou',
+  },
+  {
+    capabilities: ['text'],
+    costHint: 'Fast text reasoning for prompt optimization and general chat.',
+    displayName: 'DeepSeek V3.1',
+    estimatedLatency: '1-4s',
+    id: 'deepseek/deepseek-v3.1',
+    isDefault: false,
+    isEnabled: true,
+    parameterSchema: {},
+    provider: 'jiekou',
+  },
+  {
+    capabilities: ['text', 'image_analysis'],
+    costHint: 'Higher-context multimodal fallback for harder visual reasoning.',
+    displayName: 'Qwen 2.5 VL 72B',
+    estimatedLatency: '2-8s',
+    id: 'qwen/qwen2.5-vl-72b-instruct',
+    isDefault: false,
+    isEnabled: true,
+    parameterSchema: {},
+    provider: 'jiekou',
+  },
+  {
+    capabilities: ['text', 'image_analysis'],
     costHint: 'Higher-quality multimodal reasoning for chat and image reverse prompting.',
     displayName: 'GPT-5.5',
     estimatedLatency: '2-8s',
     id: 'gpt-5.5',
-    isDefault: true,
+    isDefault: false,
     isEnabled: true,
     parameterSchema: {},
     provider: 'geekai',
@@ -59,9 +92,9 @@ export const mockAiModels: AiModelOption[] = [
     isEnabled: true,
     parameterSchema: {
       quality: ['low', 'medium', 'high'],
-      size: ['1024x1024', '1024x1536', '1536x1024'],
+      size: ['1024x1024', '1024x1536', '1536x1024', '2048x2048', '2048x1152', '3840x2160', '2160x3840', '2048x1360', '1360x2048', '1152x2048', '2048x1536', '1536x2048', '2048x880', '880x2048', '688x2048', '2048x688', '2048x1024', '1024x2048'],
     },
-    provider: 'geekai',
+    provider: 'jiekou',
   },
   {
     capabilities: ['image_generation', 'image_edit', 'image_reference'],
@@ -72,10 +105,10 @@ export const mockAiModels: AiModelOption[] = [
     isDefault: false,
     isEnabled: true,
     parameterSchema: {
-      aspectRatio: ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9', '9:21', '1:4', '4:1', '1:8', '8:1'],
-      imageSize: ['0.5K', '1K', '2K', '4K'],
+      aspectRatio: ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9'],
+      imageSize: ['1K', '2K', '4K'],
     },
-    provider: 'geekai',
+    provider: 'jiekou',
   },
   {
     capabilities: ['image_generation', 'image_edit', 'image_reference'],
@@ -86,10 +119,9 @@ export const mockAiModels: AiModelOption[] = [
     isDefault: false,
     isEnabled: true,
     parameterSchema: {
-      outputFormat: ['png', 'jpeg'],
       size: ['2K', '3K', '4K', '2048x2048', '2304x1728', '1728x2304', '2848x1600', '1600x2848', '2496x1664', '1664x2496', '3136x1344', '3072x3072', '3456x2592', '2592x3456', '4096x2304', '2304x4096', '3744x2496', '2496x3744', '4704x2016', '4096x4096', '3520x4704', '4704x3520', '5504x3040', '3040x5504', '3328x4992', '4992x3328', '6240x2656'],
     },
-    provider: 'geekai',
+    provider: 'jiekou',
   },
   {
     capabilities: ['image_generation', 'image_edit', 'image_reference'],
@@ -120,16 +152,23 @@ export function getDefaultImageModelId() {
 }
 
 export function getDefaultChatModelId() {
-  return getAiModels('text').find((model) => model.id === 'gpt-5.5' && model.isEnabled)?.id
-    ?? getAiModels('text').find((model) => model.id === 'gpt-5-mini' && model.isEnabled)?.id
-    ?? getAiModels('text').find((model) => model.isEnabled)?.id
+  return getChatCapableModels().find((model) => model.id === 'deepseek/deepseek-ocr-2' && model.isEnabled)?.id
+    ?? getChatCapableModels().find((model) => model.isDefault && model.isEnabled)?.id
+    ?? getChatCapableModels().find((model) => model.isEnabled)?.id
     ?? mockAiModels[0].id
 }
 
 export function getDefaultAnalysisModelId() {
-  return getAiModels('image_analysis').find((model) => model.id === 'gpt-5.5' && model.isEnabled)?.id
-    ?? getAiModels('image_analysis').find((model) => model.id === 'gpt-5-mini' && model.isEnabled)?.id
+  return getAiModels('image_analysis').find((model) => model.id === 'deepseek/deepseek-ocr-2' && model.isEnabled)?.id
+    ?? getAiModels('image_analysis').find((model) => model.isDefault && model.isEnabled)?.id
     ?? getAiModels('image_analysis').find((model) => model.isEnabled)?.id
+    ?? mockAiModels[0].id
+}
+
+export function getDefaultPromptOptimizerModelId() {
+  return getPromptOptimizerModels().find((model) => model.id === 'deepseek/deepseek-v3.1' && model.isEnabled)?.id
+    ?? getPromptOptimizerModels().find((model) => model.id === 'gpt-5.5' && model.isEnabled)?.id
+    ?? getPromptOptimizerModels().find((model) => model.isEnabled)?.id
     ?? mockAiModels[0].id
 }
 
@@ -142,7 +181,15 @@ export function getImageModelSelectOptions() {
 }
 
 export function getChatModelSelectOptions() {
-  return getAiModels('text').map((model) => ({
+  return getChatCapableModels().map((model) => ({
+    disabled: !model.isEnabled,
+    label: model.displayName,
+    value: model.id,
+  }))
+}
+
+export function getPromptOptimizerModelSelectOptions() {
+  return getPromptOptimizerModels().map((model) => ({
     disabled: !model.isEnabled,
     label: model.displayName,
     value: model.id,
@@ -167,6 +214,14 @@ export function getAnalysisModelDisplayName(modelId: null | string | undefined) 
 
 export function getAiModelDefinition(modelId: null | string | undefined) {
   return findModel(modelId)
+}
+
+function getChatCapableModels() {
+  return getAiModels('text').filter((model) => model.capabilities.includes('image_analysis'))
+}
+
+function getPromptOptimizerModels() {
+  return getAiModels('text')
 }
 
 export function createMockAiRun(

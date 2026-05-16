@@ -20,6 +20,7 @@ import {
 import {
   boundsFromPoints,
   getBoxSelectedIds,
+  getSelectedShapeBounds,
   preserveAspectResizeBoundsFromSnappedBounds,
   resizeBoundsFromHandle,
   resizeShapesFromBounds,
@@ -87,6 +88,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     cameraRef,
     documentRef,
     onDocumentChange: options.onDocumentChange,
+    onConnectionPreviewChange: options.onConnectionPreviewChange,
     onHistoryCheckpoint: options.onHistoryCheckpoint,
     onSelectionChange: options.onSelectionChange,
     selectedIds: options.selectedIds,
@@ -122,6 +124,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     activeTool: options.activeTool,
     camera: options.camera,
     documentRef,
+    onTransformPreviewChange: options.onTransformPreviewChange,
     onDocumentChange: options.onDocumentChange,
     onHistoryCheckpoint: options.onHistoryCheckpoint,
     onSelectionChange: options.onSelectionChange,
@@ -169,6 +172,8 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       clearNodeConnectionPreview()
       setResizeSnapGuides([])
       setSelectionBox(null)
+      options.onSelectionBoxChange?.(null)
+      options.onTransformPreviewChange?.(null)
       return
     }
     if (options.isSpacePanning || event.evt.button === 1 || options.activeTool === 'hand') {
@@ -184,6 +189,8 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     if (options.activeTool === 'select') {
       if (startedOnStage) event.evt.preventDefault()
       setSelectionBox(null)
+      options.onSelectionBoxChange?.(null)
+      options.onTransformPreviewChange?.(null)
       sessionRef.current = {
         additive: event.evt.shiftKey,
         current: worldPoint,
@@ -257,7 +264,9 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     if (session.type === 'select-box') {
       session.current = worldPoint
       const bounds = boundsFromPoints(session.origin, worldPoint)
-      setSelectionBox(isTinyScreenBounds(bounds, cameraRef.current.zoom) ? null : bounds)
+      const nextSelectionBox = isTinyScreenBounds(bounds, cameraRef.current.zoom) ? null : bounds
+      setSelectionBox(nextSelectionBox)
+      options.onSelectionBoxChange?.(nextSelectionBox)
       return
     }
     if (session.type === 'resize') {
@@ -265,7 +274,10 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       const scaleText = !isEdgeResizeHandle(session.handle)
       if (session.rotatedBox) {
         setResizeSnapGuides([])
-        previewDocumentNow(withCanvasShapes(documentRef.current, resizeShapesFromRotatedBox(documentRef.current.shapes, session.originShapes, session.rotatedBox, session.handle, worldPoint, { preserveAspect, scaleText })))
+        const nextShapes = resizeShapesFromRotatedBox(documentRef.current.shapes, session.originShapes, session.rotatedBox, session.handle, worldPoint, { preserveAspect, scaleText })
+        previewDocumentNow(withCanvasShapes(documentRef.current, nextShapes))
+        const nextBounds = getSelectedShapeBounds(nextShapes, session.shapeIds)
+        options.onTransformPreviewChange?.(nextBounds ? { bounds: nextBounds, kind: 'resize' } : null)
         return
       }
       let bounds = resizeBoundsFromHandle(session.originBounds, session.handle, worldPoint, { preserveAspect })
@@ -276,14 +288,20 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
           : snapped.bounds
         setResizeSnapGuides(snapped.guides)
       }
-      previewDocumentNow(withCanvasShapes(documentRef.current, resizeShapesFromBounds(documentRef.current.shapes, session.originShapes, session.originBounds, bounds, { scaleText })))
+      const nextShapes = resizeShapesFromBounds(documentRef.current.shapes, session.originShapes, session.originBounds, bounds, { scaleText })
+      previewDocumentNow(withCanvasShapes(documentRef.current, nextShapes))
+      const nextBounds = getSelectedShapeBounds(nextShapes, session.shapeIds)
+      options.onTransformPreviewChange?.(nextBounds ? { bounds: nextBounds, kind: 'resize' } : null)
       return
     }
     if (session.type === 'rotate') {
       const rawRotation = session.originRotation + getPointAngle(session.center, worldPoint) - session.startAngle
       const rotation = snapAlignment ? snapRotationAngle(rawRotation, Math.min(7.5, Math.max(2, snapDistance / 2))) : rawRotation
       setResizeSnapGuides(getRotationSnapGuides(rawRotation, rotation, session.center, session.guideRadius))
-      previewDocument(withCanvasShapes(documentRef.current, rotateShapesAroundCenter(documentRef.current.shapes, session.originShapes, session.center, rotation - session.originRotation)))
+      const nextShapes = rotateShapesAroundCenter(documentRef.current.shapes, session.originShapes, session.center, rotation - session.originRotation)
+      previewDocument(withCanvasShapes(documentRef.current, nextShapes))
+      const nextBounds = getSelectedShapeBounds(nextShapes, session.shapeIds)
+      options.onTransformPreviewChange?.(nextBounds ? { bounds: nextBounds, kind: 'rotate' } : null)
       return
     }
     if (session.type === 'line-endpoint') {
@@ -315,8 +333,8 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     if (session?.type === 'pan') scheduleCameraCommit(0)
     if (session?.type === 'erase') clearEraserTrail(120)
     if (session?.type === 'select-box') finishBoxSelection(session)
-    if (session?.type === 'resize') { flushPreviewDocument(); setResizeSnapGuides([]); setSelectedBoundsOverride(null) }
-    if (session?.type === 'rotate') { flushPreviewDocument(); setResizeSnapGuides([]) }
+    if (session?.type === 'resize') { flushPreviewDocument(); setResizeSnapGuides([]); setSelectedBoundsOverride(null); options.onTransformPreviewChange?.(null) }
+    if (session?.type === 'rotate') { flushPreviewDocument(); setResizeSnapGuides([]); options.onTransformPreviewChange?.(null) }
     if (session?.type === 'line-endpoint' || session?.type === 'line-route-handle' || session?.type === 'image-crop') flushPreviewDocument()
     if (session?.type === 'node-connection') {
       finishNodeConnection(session, screenPoint ? pointerToWorld({ ...screenPoint, pressure: event.evt.pressure }, cameraRef.current) : null)
@@ -359,6 +377,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
   function finishBoxSelection(session: Extract<KonvaToolSession, { type: 'select-box' }>) {
     const bounds = boundsFromPoints(session.origin, session.current)
     setSelectionBox(null)
+    options.onSelectionBoxChange?.(null)
     if (isTinyScreenBounds(bounds, cameraRef.current.zoom)) {
       if (session.targetShapeId) {
         handleShapeSelect(session.targetShapeId, { additive: session.additive })

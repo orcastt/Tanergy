@@ -1,12 +1,16 @@
 import type Konva from 'konva'
 import { useCallback, type Dispatch, type SetStateAction } from 'react'
 import { Group, Layer, Stage } from 'react-konva'
-import type { CanvasCamera, CanvasDocument, CanvasNodeShape, CanvasShape, CanvasShapeStyle } from '@/features/canvas-engine'
+import type { CanvasBounds, CanvasCamera, CanvasDocument, CanvasNodeShape, CanvasShape, CanvasShapeStyle } from '@/features/canvas-engine'
+import type {
+  BoardCollaborationConnectionPreview,
+  BoardCollaborationTransformKind,
+} from '@/features/boards/boardCollaborationTypes'
 import { KonvaCanvasBackground } from './KonvaCanvasBackground'
 import { KonvaCanvasShape } from './KonvaCanvasShape'
 import { KonvaEraserTrail } from './KonvaEraserTrail'
 import { KonvaFrameChrome } from './KonvaFrameChrome'
-import { KonvaNodeEdgeLayer } from './KonvaNodeEdgeLayer'
+import { KonvaNodeEdgeLayer, type KonvaCollaborationEdgeSession } from './KonvaNodeEdgeLayer'
 import { KonvaPendingImagePasteLayer, type KonvaPendingImagePaste } from './KonvaPendingImagePasteLayer'
 import { KonvaSelectionOverlay } from './KonvaSelectionOverlay'
 import { useKonvaCanvasInteractions } from './useKonvaCanvasInteractions'
@@ -21,6 +25,7 @@ type KonvaCanvasStageProps = {
   activeTool: KonvaCanvasTool
   camera: CanvasCamera
   captureMode?: boolean
+  collaborationSessions?: readonly KonvaCollaborationEdgeSession[]
   document: CanvasDocument
   height: number
   isSpacePanning: boolean
@@ -36,6 +41,7 @@ type KonvaCanvasStageProps = {
   onCameraPreview: (camera: CanvasCamera) => void
   onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
   onDocumentPreview: Dispatch<SetStateAction<CanvasDocument>>
+  onConnectionPreviewChange?: (preview: BoardCollaborationConnectionPreview | null) => void
   onEdgeDisconnect: (edgeId: string) => void
   onEdgeSelect: (edgeId: string | null) => void
   onGeneratedImageToCanvas: (input: { ref: RuntimeGraphImageAssetRef; shapeId: string }) => void
@@ -48,8 +54,16 @@ type KonvaCanvasStageProps = {
   onNodeChatSend: (shapeId: string, draftOverride?: string) => void
   onNodeChatUpload: (shapeId: string) => void
   onNodeFieldChange: (shapeId: string, fieldName: string, value: string | number) => void
+  onNodeFocusedEditRequest?: (shapeId: string, source: 'chat-model-menu' | 'field-dropdown') => boolean
+  onNodeFocusedEditStateChange?: (
+    shapeId: string,
+    source: 'chat-model-menu' | 'field-dropdown',
+    active: boolean,
+  ) => void
   onNodeRunToggle: (shapeId: string) => void
   onNodeTextEditStart: (shapeId: string, fieldName: KonvaNodeTextFieldName) => void
+  onSelectionBoxChange?: (bounds: CanvasBounds | null) => void
+  onTransformPreviewChange?: (preview: { bounds: CanvasBounds; kind: BoardCollaborationTransformKind } | null) => void
   onSelectionChange: (shapeIds: string[]) => void
   onStageReady?: (stage: Konva.Stage | null) => void
   onTextEditStart: (shapeId: string) => void
@@ -127,6 +141,8 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
       onNodeChatSend={props.onNodeChatSend}
       onNodeChatUpload={props.onNodeChatUpload}
       onNodeFieldChange={props.onNodeFieldChange}
+      onNodeFocusedEditRequest={props.onNodeFocusedEditRequest}
+      onNodeFocusedEditStateChange={props.onNodeFocusedEditStateChange}
       onNodePortPointerDown={handleNodePortPointerDown}
       onNodeRunToggle={props.onNodeRunToggle}
       onNodeTextEditStart={props.onNodeTextEditStart}
@@ -165,6 +181,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
       {props.captureMode ? null : (
         <Layer>
           <KonvaNodeEdgeLayer
+            collaborationSessions={props.collaborationSessions}
             edges={props.document.runtimeEdges}
             interactive={selectionMode}
             onEdgeDisconnect={props.onEdgeDisconnect}
@@ -216,6 +233,8 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
             onNodeChatSend={props.onNodeChatSend}
             onNodeChatUpload={props.onNodeChatUpload}
             onNodeFieldChange={props.onNodeFieldChange}
+            onNodeFocusedEditRequest={props.onNodeFocusedEditRequest}
+            onNodeFocusedEditStateChange={props.onNodeFocusedEditStateChange}
             onSelect={handleShapeSelect}
             onNodeRunToggle={props.onNodeRunToggle}
             onNodeTextEditStart={props.onNodeTextEditStart}

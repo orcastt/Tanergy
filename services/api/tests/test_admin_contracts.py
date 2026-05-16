@@ -614,17 +614,17 @@ def test_admin_ai_runtime_routes_return_persisted_runs_and_api_calls(monkeypatch
     assert run_record["modelId"] == "gpt-image-2"
     assert run_record["outputAssetIds"] == [f"asset_mock_{run_id}_1_admin-runtime-readback_refs0"]
     assert run_record["preflightStatus"] == "settled"
-    assert run_record["provider"] == "geekai"
+    assert run_record["provider"] == "jiekou"
     assert run_record["providerCost"] == 0.04
     assert run_record["providerCurrency"] == "USD"
-    assert run_record["routeKey"] == "geekai-primary"
+    assert run_record["routeKey"] == "jiekou-gpt-image-2-primary"
     assert run_record["runType"] == "image_generation"
     assert run_record["selectedTierKey"] == "1k"
     assert run_record["status"] == "succeeded"
     assert run_record["workspaceId"] == "workspace_group"
 
     api_calls = client.get(
-        "/api/v1/admin/ai/api-calls?status=succeeded&provider=geekai",
+        "/api/v1/admin/ai/api-calls?status=succeeded&provider=jiekou",
         headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
     )
     assert api_calls.status_code == 200
@@ -640,11 +640,11 @@ def test_admin_ai_runtime_routes_return_persisted_runs_and_api_calls(monkeypatch
             "modelId": "gpt-image-2",
             "nodeId": None,
             "pricingRuleId": "price_gpt_image_2_1k_v1",
-            "provider": "geekai",
+            "provider": "jiekou",
             "providerCost": 0.04,
             "providerCurrency": "USD",
             "routeId": "route_gpt_image_2_primary",
-            "routeKey": "geekai-primary",
+            "routeKey": "jiekou-gpt-image-2-primary",
             "runId": run_id,
             "status": "succeeded",
             "userId": "user_runtime",
@@ -652,14 +652,14 @@ def test_admin_ai_runtime_routes_return_persisted_runs_and_api_calls(monkeypatch
         }
     ]
     filtered_runs = client.get(
-        f"/api/v1/admin/ai/runs?runId={run_id}&routeId=route_gpt_image_2_primary&routeKey=geekai-primary&provider=geekai&pricingRuleId=price_gpt_image_2_1k_v1&preflightStatus=settled&workspaceId=workspace_group&boardId=board_runtime",
+        f"/api/v1/admin/ai/runs?runId={run_id}&routeId=route_gpt_image_2_primary&routeKey=jiekou-gpt-image-2-primary&provider=jiekou&pricingRuleId=price_gpt_image_2_1k_v1&preflightStatus=settled&workspaceId=workspace_group&boardId=board_runtime",
         headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
     )
     assert filtered_runs.status_code == 200
     assert [item["id"] for item in filtered_runs.json()["runs"]] == [run_id]
 
     filtered_api_calls = client.get(
-        f"/api/v1/admin/ai/api-calls?runId={run_id}&routeId=route_gpt_image_2_primary&routeKey=geekai-primary&pricingRuleId=price_gpt_image_2_1k_v1&workspaceId=workspace_group&boardId=board_runtime",
+        f"/api/v1/admin/ai/api-calls?runId={run_id}&routeId=route_gpt_image_2_primary&routeKey=jiekou-gpt-image-2-primary&pricingRuleId=price_gpt_image_2_1k_v1&workspaceId=workspace_group&boardId=board_runtime",
         headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
     )
     assert filtered_api_calls.status_code == 200
@@ -668,7 +668,7 @@ def test_admin_ai_runtime_routes_return_persisted_runs_and_api_calls(monkeypatch
 
     fake_db.ai_runs[run_id]["route_id"] = None
     legacy_filtered_runs = client.get(
-        "/api/v1/admin/ai/runs?routeId=route_gpt_image_2_primary&routeKey=geekai-primary&provider=geekai",
+        "/api/v1/admin/ai/runs?routeId=route_gpt_image_2_primary&routeKey=jiekou-gpt-image-2-primary&provider=jiekou",
         headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
     )
     assert legacy_filtered_runs.status_code == 200

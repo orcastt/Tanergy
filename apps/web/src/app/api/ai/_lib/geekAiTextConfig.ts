@@ -1,6 +1,6 @@
-const defaultGeekAiBaseUrl = 'https://geekai.co/api/v1'
+import { ProviderCredentialMissingError, getProviderApiKey, getProviderBaseUrl } from './providerApiConfig'
 
-export class GeekAiCredentialMissingError extends Error {
+export class GeekAiCredentialMissingError extends ProviderCredentialMissingError {
   readonly status = 503
 
   constructor(message: string) {
@@ -10,11 +10,9 @@ export class GeekAiCredentialMissingError extends Error {
 }
 
 export function getGeekAiTextApiKey() {
-  const value = process.env.GEEKAI_TEXT_API_KEY?.trim() || process.env.GEEKAI_API_KEY?.trim()
-  if (!value) throw new GeekAiCredentialMissingError('Missing GEEKAI_TEXT_API_KEY or GEEKAI_API_KEY.')
-  return value
+  return getProviderApiKey('geekai', 'text')
 }
 
 export function getGeekAiTextBaseUrl() {
-  return (process.env.GEEKAI_TEXT_BASE_URL || process.env.GEEKAI_BASE_URL || defaultGeekAiBaseUrl).replace(/\/+$/, '')
+  return getProviderBaseUrl('geekai', 'text')
 }

@@ -7,6 +7,13 @@ import {
 } from './adminAiClient'
 import { formatCompactDateTime, selectStyle } from './adminAiShared'
 
+const providerKeyOptions = [
+  { label: 'GeekAI', value: 'geekai' },
+  { label: 'Jiekou AI', value: 'jiekou' },
+  { label: 'Google', value: 'google' },
+  { label: 'OpenAI', value: 'openai' },
+]
+
 export function AdminApiRouteEditorForm({
   onSaved,
   route,
@@ -48,7 +55,7 @@ export function AdminApiRouteEditorForm({
       <div className="management-field-grid two">
         <EditorInput label="Route key" onChange={(value) => setDraft({ ...draft, routeKey: value })} value={draft.routeKey} />
         <EditorInput label="Model key" onChange={(value) => setDraft({ ...draft, modelKey: value })} value={draft.modelKey} />
-        <EditorInput label="Provider key" onChange={(value) => setDraft({ ...draft, providerKey: value })} value={draft.providerKey} />
+        <EditorSelectInput label="Provider key" onChange={(value) => setDraft({ ...draft, providerKey: value })} options={getProviderKeyOptions(draft.providerKey)} value={draft.providerKey} />
         <EditorInput label="Provider model" onChange={(value) => setDraft({ ...draft, providerModel: value })} value={draft.providerModel} />
         <EditorInput label="Priority" onChange={(value) => setDraft({ ...draft, priority: value })} value={draft.priority} />
         <EditorInput label="Weight" onChange={(value) => setDraft({ ...draft, weight: value })} value={draft.weight} />
@@ -88,6 +95,27 @@ function EditorInput({
   )
 }
 
+function EditorSelectInput({
+  label,
+  onChange,
+  options,
+  value,
+}: {
+  label: string
+  onChange: (value: string) => void
+  options: Array<{ label: string; value: string }>
+  value: string
+}) {
+  return (
+    <label style={{ display: 'grid', gap: 6 }}>
+      <span className="management-field-label">{label}</span>
+      <select onChange={(event) => onChange(event.target.value)} style={selectStyle} value={value}>
+        {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+      </select>
+    </label>
+  )
+}
+
 function parseJson(value: string, fallback: Record<string, unknown>) {
   try {
     return JSON.parse(value) as Record<string, unknown>
@@ -114,4 +142,9 @@ function toRouteDraft(route: AdminAiProviderRouteRecord) {
     timeoutMs: String(route.timeoutMs),
     weight: String(route.weight),
   }
+}
+
+function getProviderKeyOptions(currentValue: string) {
+  if (providerKeyOptions.some((option) => option.value === currentValue)) return providerKeyOptions
+  return [...providerKeyOptions, { label: currentValue, value: currentValue }]
 }

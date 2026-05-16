@@ -10,6 +10,7 @@ from fastapi import HTTPException
 from tangent_api.plan_catalog import group_member_limit_for_plan, included_credits_for_plan
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.storage.postgres_connection import require_database_url
+from tangent_api.workspace_roles import normalize_workspace_role as normalize_product_workspace_role
 from tangent_api.workspace_schemas import (
     WorkspaceInvitationAcceptRecord,
     WorkspaceInvitationCreateRecord,
@@ -218,8 +219,11 @@ def revoke_workspace_invitation(invitation_id: str, context: ApiRequestContext) 
 
 
 def normalize_workspace_role(role: str) -> str:
-    normalized = role.strip()
-    if normalized not in PRODUCT_INVITE_ROLES and normalized not in LEGACY_INVITE_ROLES:
+    try:
+        normalized = normalize_product_workspace_role(role)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail="Invalid workspace role.")
+    if normalized not in PRODUCT_INVITE_ROLES:
         raise HTTPException(status_code=400, detail="Invalid workspace role.")
     return normalized
 
@@ -386,7 +390,7 @@ def _invitation_from_row(row: tuple[object, ...]) -> WorkspaceInvitationRecord:
         invitedBy=str(row[4]) if row[4] else None,
         metadata=dict(row[12] or {}),
         revokedAt=_optional_iso(row[8]),
-        role=str(row[3]),
+        role=normalize_workspace_role(str(row[3] or "viewer")),
         targetUserId=str(row[11]) if row[11] else None,
         workspaceId=str(row[1]),
     )

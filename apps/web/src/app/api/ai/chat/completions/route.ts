@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
 import type { AiChatCompletionRequest, AiChatMessage, AiChatMessageContentPart } from '@/features/ai/aiTypes'
+import { getAiModelDefinition } from '@/features/ai/mockAiContracts'
 import { assertLocalAiBridgeAvailable } from '@/features/api/runtimeBridgePolicy'
 import { getApiRequestContext } from '../../../_lib/apiRequestContext'
 import { readJsonRequestWithLimit, requestBodyErrorStatus } from '../../../_lib/requestBodyLimits'
-import { getGeekAiTextApiKey, getGeekAiTextBaseUrl } from '../../_lib/geekAiTextConfig'
+import { getProviderApiKey, getProviderBaseUrl } from '../../_lib/providerApiConfig'
 import {
   assertAiInlineImageByteLength,
   assertAiInlineImageTotalByteLength,
@@ -35,11 +36,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing chat messages.' }, { status: 400 })
     }
 
-    const apiKey = getGeekAiTextApiKey()
+    const model = getAiModelDefinition(body.model)
+    const apiKey = getProviderApiKey(model.provider, 'text', model.id)
+    const baseUrl = getProviderBaseUrl(model.provider, 'text', model.id)
 
     const normalizedMessages = await normalizeMessagesForGeekAi(request, body.messages)
     const providerMessages = normalizeMessagesForProviderModel(body.model, normalizedMessages)
-    const geekAiResponse = await fetch(`${getGeekAiBaseUrl()}/chat/completions`, {
+    const providerResponse = await fetch(`${baseUrl}/chat/completions`, {
       body: JSON.stringify({
         ...body,
         messages: providerMessages,
@@ -53,24 +56,24 @@ export async function POST(request: Request) {
       method: 'POST',
     })
 
-    if (!geekAiResponse.ok) {
+    if (!providerResponse.ok) {
       return NextResponse.json(
-        { error: await getGeekAiError(geekAiResponse) },
-        { status: geekAiResponse.status }
+        { error: await getProviderError(providerResponse) },
+        { status: providerResponse.status }
       )
     }
 
-    if (!body.stream || !geekAiResponse.body) {
-      const payload = await readJsonResponseWithLimit(geekAiResponse)
-      return NextResponse.json(payload, { status: geekAiResponse.status })
+    if (!body.stream || !providerResponse.body) {
+      const payload = await readJsonResponseWithLimit(providerResponse)
+      return NextResponse.json(payload, { status: providerResponse.status })
     }
 
-    return new Response(createCappedProviderStream(geekAiResponse.body), {
+    return new Response(createCappedProviderStream(providerResponse.body), {
       headers: {
         'Cache-Control': 'no-cache, no-transform',
-        'Content-Type': geekAiResponse.headers.get('content-type') ?? 'text/event-stream; charset=utf-8',
+        'Content-Type': providerResponse.headers.get('content-type') ?? 'text/event-stream; charset=utf-8',
       },
-      status: geekAiResponse.status,
+      status: providerResponse.status,
     })
   } catch (error) {
     return NextResponse.json(
@@ -250,17 +253,13 @@ function getForwardHeaders(request: Request) {
   return headers
 }
 
-async function getGeekAiError(response: Response) {
+async function getProviderError(response: Response) {
   const contentType = response.headers.get('content-type') ?? ''
   if (contentType.includes('application/json')) {
     const payload = await readJsonResponseWithLimit<{ error?: { message?: string }; message?: string }>(response)
-    return payload.error?.message ?? payload.message ?? 'GeekAI request failed.'
+    return payload.error?.message ?? payload.message ?? 'Provider request failed.'
   }
-  return (await readTextResponseWithLimit(response)) || 'GeekAI request failed.'
-}
-
-function getGeekAiBaseUrl() {
-  return getGeekAiTextBaseUrl()
+  return (await readTextResponseWithLimit(response)) || 'Provider request failed.'
 }
 
 function createCappedProviderStream(source: ReadableStream<Uint8Array>) {

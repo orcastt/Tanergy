@@ -1,7 +1,11 @@
 import type { PlanKey, WorkspaceKind } from '@/features/billing/billingTypes'
-import type { WorkspaceRole } from '@/features/auth/sessionTypes'
+import {
+  type CanonicalWorkspaceRole,
+  normalizeCanonicalWorkspaceRole,
+  type WorkspaceRole,
+} from '@/features/auth/sessionTypes'
 
-export type WorkspaceMembershipRole = 'admin' | 'editor' | 'owner' | 'viewer'
+export type WorkspaceMembershipRole = CanonicalWorkspaceRole
 export type WorkspaceRelationship = 'created' | 'joined'
 
 export type WorkspaceDirectoryItem = {
@@ -28,8 +32,7 @@ export function formatWorkspacePlanName(planKey: PlanKey) {
 }
 
 export function normalizeWorkspaceMembershipRole(role: WorkspaceRole | string): WorkspaceMembershipRole {
-  if (role === 'owner' || role === 'admin' || role === 'editor' || role === 'viewer') return role
-  return 'viewer'
+  return normalizeCanonicalWorkspaceRole(role)
 }
 
 export function workspaceRelationshipFromRole(role: WorkspaceRole | string): WorkspaceRelationship {

@@ -44,9 +44,10 @@ class _RunOwnerContext:
 def create_mock_run(payload: AiRunRequest, context: ApiRequestContext) -> AiRunRecord:
     quote_bundle = resolve_ai_run_quote(payload, context)
     charge = quote_bundle.quote.charge
+    has_persistence = _has_run_persistence()
     run_id = f"run_mock_{uuid4()}"
     cost_credits = quote_bundle.quote.estimated_credits
-    if _should_charge_mock_ai_run() and not os.getenv("DATABASE_URL"):
+    if _should_charge_mock_ai_run() and not has_persistence:
         raise HTTPException(status_code=501, detail="AI credit ledger charging requires DATABASE_URL.")
     if _should_charge_mock_ai_run():
         preflight = build_credit_preflight_response(context, cost_credits)
@@ -84,8 +85,8 @@ def create_mock_run(payload: AiRunRequest, context: ApiRequestContext) -> AiRunR
         workspaceKind=charge.workspace_kind,
         workspaceSeatId=charge.workspace_seat_id,
     )
-    RUNS[run.run_id] = run
-    if not _has_run_persistence():
+    if not has_persistence:
+        RUNS[run.run_id] = run
         RUN_REQUESTS[run.run_id] = _cached_run_request(payload)
     RUN_CONTEXTS[run.run_id] = _cached_run_owner_context(context)
     _prune_run_memory()

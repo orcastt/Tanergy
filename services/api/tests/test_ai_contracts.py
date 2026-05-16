@@ -36,17 +36,25 @@ def test_ai_model_registry_contract():
     assert analysis_response.status_code == 200
     analysis_models = analysis_response.json()["models"]
     assert {model["id"] for model in analysis_models} == {
+        "deepseek/deepseek-ocr-2",
         "gpt-5.5",
         "gpt-5-mini",
         "gpt-4o-mini",
         "gemini-2.5-flash",
+        "qwen/qwen2.5-vl-72b-instruct",
     }
 
     text_response = client.get("/api/v1/ai/models?capability=text")
 
     assert text_response.status_code == 200
     text_models = text_response.json()["models"]
-    assert [model["id"] for model in text_models] == ["gpt-5.5", "gpt-5-mini"]
+    assert [model["id"] for model in text_models] == [
+        "deepseek/deepseek-ocr-2",
+        "deepseek/deepseek-v3.1",
+        "gpt-5-mini",
+        "gpt-5.5",
+        "qwen/qwen2.5-vl-72b-instruct",
+    ]
     assert text_models[0]["isDefault"] is True
 
 
@@ -369,7 +377,7 @@ def test_ai_run_mock_can_settle_against_credit_ledger(monkeypatch):
     assert fake_db.api_cost_ledger[-1]["id"] == f"api_cost_{settled_run['runId']}_a1"
     assert fake_db.api_cost_ledger[-1]["settlement_kind"] == "usage"
     assert fake_db.api_cost_ledger[-1]["credits_charged"] == 10.0
-    assert fake_db.api_cost_ledger[-1]["provider"] == "geekai"
+    assert fake_db.api_cost_ledger[-1]["provider"] == "jiekou"
     assert fake_db.api_cost_ledger[-1]["provider_currency"] == "USD"
 
 

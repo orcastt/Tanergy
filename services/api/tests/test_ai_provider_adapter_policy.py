@@ -143,15 +143,99 @@ def test_execute_ai_provider_attempt_uses_text_credentials_for_text_runs(monkeyp
     assert result.text_output == "ok"
 
 
-def _route(provider_model="gpt-image-2", route_id="route_gpt_image_2_primary"):
+def test_execute_ai_provider_attempt_uses_jiekou_image_key_alias(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "staging")
+    monkeypatch.delenv("JIEKOU_API_KEY", raising=False)
+    monkeypatch.delenv("JIEKOU_BASE_URL", raising=False)
+    monkeypatch.setenv("JIEKOU_IMAGE_KEY", "jiekou-image-key")
+
+    def fake_live_attempt(*_args, **_kwargs):
+        return AiProviderAttemptResult(
+            created_at="2026-05-16T00:00:00Z",
+            error_code=None,
+            error_message=None,
+            latency_ms=95,
+            output_asset_ids=["asset_jiekou_1"],
+            provider="jiekou",
+            provider_cost=None,
+            provider_currency=None,
+            retryable=False,
+            route_id="route_nano_banana_2_primary",
+            route_key="jiekou-nano-banana-2-primary",
+            status="succeeded",
+            text_output=None,
+            work_started=True,
+        )
+
+    monkeypatch.setattr("tangent_api.ai_provider_adapters.run_jiekou_attempt", fake_live_attempt)
+
+    result = execute_ai_provider_attempt(
+        _run_record(model_id="nano-banana-2", route_id="route_nano_banana_2_primary"),
+        _request(model_id="nano-banana-2"),
+        _route(
+            provider_key="jiekou",
+            provider_model="nano-banana-2",
+            route_id="route_nano_banana_2_primary",
+            route_key="jiekou-nano-banana-2-primary",
+        ),
+        _context(),
+    )
+
+    assert result.status == "succeeded"
+    assert result.output_asset_ids == ["asset_jiekou_1"]
+
+
+def test_execute_ai_provider_attempt_uses_jiekou_text_key_alias(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "staging")
+    monkeypatch.delenv("JIEKOU_API_KEY", raising=False)
+    monkeypatch.delenv("JIEKOU_BASE_URL", raising=False)
+    monkeypatch.setenv("JIEKOU_TEXT_KEY", "jiekou-text-key")
+
+    def fake_live_attempt(*_args, **_kwargs):
+        return AiProviderAttemptResult(
+            created_at="2026-05-16T00:00:00Z",
+            error_code=None,
+            error_message=None,
+            latency_ms=85,
+            output_asset_ids=[],
+            provider="jiekou",
+            provider_cost=None,
+            provider_currency=None,
+            retryable=False,
+            route_id="route_deepseek_ocr_2_primary",
+            route_key="jiekou-deepseek-ocr-2-primary",
+            status="succeeded",
+            text_output="ok",
+            work_started=True,
+        )
+
+    monkeypatch.setattr("tangent_api.ai_provider_adapters.run_openai_compatible_attempt", fake_live_attempt)
+
+    result = execute_ai_provider_attempt(
+        _run_record(model_id="deepseek/deepseek-ocr-2", route_id="route_deepseek_ocr_2_primary", run_type="text"),
+        _request(model_id="deepseek/deepseek-ocr-2", node_type="chat", run_type="text"),
+        _route(
+            provider_key="jiekou",
+            provider_model="deepseek/deepseek-ocr-2",
+            route_id="route_deepseek_ocr_2_primary",
+            route_key="jiekou-deepseek-ocr-2-primary",
+        ),
+        _context(),
+    )
+
+    assert result.status == "succeeded"
+    assert result.text_output == "ok"
+
+
+def _route(provider_key="geekai", provider_model="gpt-image-2", route_id="route_gpt_image_2_primary", route_key="geekai-primary"):
     return AiProviderRouteCandidate(
         health_status="healthy",
         priority=10,
-        provider_key="geekai",
+        provider_key=provider_key,
         provider_model=provider_model,
         retry_policy={"maxAttempts": 1},
         route_id=route_id,
-        route_key="geekai-primary",
+        route_key=route_key,
         timeout_ms=60_000,
         weight=100,
     )

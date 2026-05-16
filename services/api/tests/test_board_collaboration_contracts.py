@@ -78,12 +78,23 @@ def test_local_board_collaboration_session_contract(tmp_path, monkeypatch):
             "clientInstanceId": "tab_local_1",
             "presence": {
                 "activePageId": "page_1",
+                "connectionPreview": {
+                    "dataType": "image",
+                    "pointer": {"x": 42.1111, "y": 84.2222},
+                    "source": {"portId": "image_out", "shapeId": "shape_1"},
+                    "sources": [{"portId": "image_out", "shapeId": "shape_1"}],
+                    "target": {"portId": "image_in", "shapeId": "shape_2"},
+                },
                 "cursor": {"x": 12.3456, "y": 78.9},
                 "editingShapeIds": ["shape_1"],
                 "hoveredShapeId": "shape_1",
+                "selectedEdgeId": "edge_1",
+                "selectionBox": {"minX": 10.1234, "minY": 20, "maxX": 42.9876, "maxY": 68},
                 "selectionIds": ["shape_1"],
                 "state": "selecting",
                 "tool": "select",
+                "transformBox": {"minX": 12, "minY": 24, "maxX": 40, "maxY": 72},
+                "transformKind": "move",
             },
             "ttlSeconds": 60,
         },
@@ -97,9 +108,30 @@ def test_local_board_collaboration_session_contract(tmp_path, monkeypatch):
     assert len(claimed["activeSessions"]) == 1
     assert claimed["selfSession"]["id"] == claimed["activeSessions"][0]["id"]
     assert claimed["activeSessions"][0]["presence"]["activePageId"] == "page_1"
+    assert claimed["activeSessions"][0]["presence"]["connectionPreview"] == {
+        "dataType": "image",
+        "pointer": {"x": 42.111, "y": 84.222},
+        "source": {"portId": "image_out", "shapeId": "shape_1"},
+        "sources": [{"portId": "image_out", "shapeId": "shape_1"}],
+        "target": {"portId": "image_in", "shapeId": "shape_2"},
+    }
     assert claimed["activeSessions"][0]["presence"]["cursor"] == {"x": 12.346, "y": 78.9}
     assert claimed["activeSessions"][0]["presence"]["editingShapeIds"] == ["shape_1"]
     assert claimed["activeSessions"][0]["presence"]["hoveredShapeId"] == "shape_1"
+    assert claimed["activeSessions"][0]["presence"]["selectedEdgeId"] == "edge_1"
+    assert claimed["activeSessions"][0]["presence"]["selectionBox"] == {
+        "minX": 10.123,
+        "minY": 20.0,
+        "maxX": 42.988,
+        "maxY": 68.0,
+    }
+    assert claimed["activeSessions"][0]["presence"]["transformBox"] == {
+        "minX": 12.0,
+        "minY": 24.0,
+        "maxX": 40.0,
+        "maxY": 72.0,
+    }
+    assert claimed["activeSessions"][0]["presence"]["transformKind"] == "move"
 
     list_response = client.get("/api/v1/boards/local_collab_board/collaboration")
     assert list_response.status_code == 200
@@ -144,11 +176,21 @@ def test_local_board_collaboration_store_reuses_session_for_repeated_heartbeat(t
         BoardCollaborationSessionUpsertRequest(
             clientInstanceId="tab_1",
             presence={
+                "connectionPreview": {
+                    "dataType": "text",
+                    "pointer": {"x": 12, "y": 24},
+                    "source": {"portId": "text_out", "shapeId": "shape_1"},
+                    "target": {"portId": "text_in", "shapeId": "shape_2"},
+                },
                 "editingShapeIds": ["shape_1"],
                 "hoveredShapeId": "shape_1",
+                "selectedEdgeId": "edge_1",
+                "selectionBox": {"minX": 1, "minY": 2, "maxX": 3, "maxY": 4},
                 "selectionIds": ["shape_1"],
                 "state": "viewing",
                 "tool": "hand",
+                "transformBox": {"minX": 2, "minY": 3, "maxX": 4, "maxY": 5},
+                "transformKind": "resize",
             },
             ttlSeconds=15,
         ),
@@ -159,11 +201,22 @@ def test_local_board_collaboration_store_reuses_session_for_repeated_heartbeat(t
         BoardCollaborationSessionUpsertRequest(
             clientInstanceId="tab_1",
             presence={
+                "connectionPreview": {
+                    "dataType": "image",
+                    "pointer": {"x": 96, "y": 128},
+                    "source": {"portId": "image_out", "shapeId": "shape_2"},
+                    "sources": [{"portId": "image_out", "shapeId": "shape_2"}],
+                    "target": {"portId": "image_in", "shapeId": "shape_3"},
+                },
                 "editingShapeIds": ["shape_2"],
                 "hoveredShapeId": "shape_2",
+                "selectedEdgeId": "edge_2",
+                "selectionBox": {"minX": 4, "minY": 3, "maxX": 9, "maxY": 8},
                 "selectionIds": ["shape_2"],
                 "state": "drawing",
                 "tool": "draw",
+                "transformBox": {"minX": 5, "minY": 4, "maxX": 10, "maxY": 11},
+                "transformKind": "rotate",
             },
             ttlSeconds=300,
         ),
@@ -177,6 +230,25 @@ def test_local_board_collaboration_store_reuses_session_for_repeated_heartbeat(t
     assert second_claim.self_session.created_at == first_claim.self_session.created_at
     assert second_claim.self_session.presence.editing_shape_ids == ["shape_2"]
     assert second_claim.self_session.presence.hovered_shape_id == "shape_2"
+    assert second_claim.self_session.presence.selected_edge_id == "edge_2"
+    assert second_claim.self_session.presence.connection_preview is not None
+    assert second_claim.self_session.presence.connection_preview.data_type == "image"
+    assert second_claim.self_session.presence.connection_preview.pointer.x == 96
+    assert second_claim.self_session.presence.connection_preview.pointer.y == 128
+    assert second_claim.self_session.presence.connection_preview.target is not None
+    assert second_claim.self_session.presence.connection_preview.target.port_id == "image_in"
+    assert second_claim.self_session.presence.connection_preview.target.shape_id == "shape_3"
+    assert second_claim.self_session.presence.selection_box is not None
+    assert second_claim.self_session.presence.selection_box.min_x == 4
+    assert second_claim.self_session.presence.selection_box.min_y == 3
+    assert second_claim.self_session.presence.selection_box.max_x == 9
+    assert second_claim.self_session.presence.selection_box.max_y == 8
+    assert second_claim.self_session.presence.transform_box is not None
+    assert second_claim.self_session.presence.transform_box.min_x == 5
+    assert second_claim.self_session.presence.transform_box.min_y == 4
+    assert second_claim.self_session.presence.transform_box.max_x == 10
+    assert second_claim.self_session.presence.transform_box.max_y == 11
+    assert second_claim.self_session.presence.transform_kind == "rotate"
     assert second_claim.self_session.presence.selection_ids == ["shape_2"]
     assert second_claim.self_session.presence.state == "drawing"
     assert second_claim.self_session.presence.tool == "draw"

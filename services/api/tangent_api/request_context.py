@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from tangent_api.auth_provider import verify_bearer_token
 from tangent_api.auth_request_metadata import extract_request_ip, normalize_last_ip_address
 from tangent_api.auth_sessions import resolve_local_auth_session
+from tangent_api.workspace_roles import normalize_workspace_role as normalize_product_workspace_role
 
 ID_PATTERN = re.compile(r"^[a-zA-Z0-9._-]+$")
 
@@ -312,11 +313,11 @@ def _normalize_workspace_kind(value: str) -> str:
 
 
 def _normalize_workspace_role(value: str) -> str:
-    normalized = value.strip()
-    allowed = {"owner", "admin", "editor", "viewer", "member", "guest"}
-    if normalized not in allowed:
+    try:
+        return normalize_product_workspace_role(value)
+    except ValueError:
         raise HTTPException(status_code=400, detail="Invalid workspace role.")
-    return normalized
+
 
 
 def _normalize_workspace_name(value: str) -> str:

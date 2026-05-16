@@ -5,10 +5,12 @@ from fastapi import HTTPException
 from tangent_api.plan_catalog import board_limit_for_plan, page_limit_for_plan
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.schemas import BoardRecord
-
-READ_ROLES = {"owner", "admin", "member", "guest"}
-WRITE_ROLES = {"owner", "admin", "member"}
-MANAGE_ROLES = {"owner", "admin"}
+from tangent_api.workspace_roles import (
+    workspace_role_can_manage,
+    workspace_role_can_read,
+    workspace_role_can_write,
+    normalize_workspace_role,
+)
 READ_BOARD_MEMBER_ROLES = {"owner", "admin", "editor", "viewer", "temporary_viewer"}
 WRITE_BOARD_MEMBER_ROLES = {"owner", "admin", "editor"}
 MANAGE_BOARD_MEMBER_ROLES = {"owner", "admin"}
@@ -23,11 +25,11 @@ BoardPermission = Literal["none", "view", "edit", "manage", "owner"]
 
 
 def can_read_workspace(context: ApiRequestContext) -> bool:
-    return context.workspace_role in READ_ROLES
+    return workspace_role_can_read(context.workspace_role)
 
 
 def can_create_board(context: ApiRequestContext) -> bool:
-    return context.workspace_role in WRITE_ROLES
+    return workspace_role_can_write(context.workspace_role)
 
 
 def resolve_effective_board_permission(
@@ -48,11 +50,12 @@ def resolve_effective_board_permission(
     if normalized_member_role in READ_BOARD_MEMBER_ROLES:
         return "view"
 
-    if context.workspace_role in MANAGE_ROLES:
+    normalized_workspace_role = _normalize_workspace_role(context.workspace_role)
+    if workspace_role_can_manage(normalized_workspace_role):
         return "manage"
-    if context.workspace_role in WRITE_ROLES:
+    if workspace_role_can_write(normalized_workspace_role):
         return "edit"
-    if context.workspace_role == "guest" and record.visibility in {"workspace", "public"}:
+    if normalized_workspace_role == "viewer" and record.visibility in {"workspace", "public"}:
         return "view"
     return "none"
 
@@ -150,3 +153,10 @@ def assert_can_own_board(
 ) -> None:
     if not can_own_board(record, context, board_member_role):
         raise HTTPException(status_code=403, detail="Only the Board owner can copy or delete this board.")
+
+
+def _normalize_workspace_role(value: str) -> str:
+    try:
+        return normalize_workspace_role(value)
+    except ValueError:
+        return "viewer"

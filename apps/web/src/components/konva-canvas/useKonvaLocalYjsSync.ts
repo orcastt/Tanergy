@@ -204,7 +204,10 @@ export function useKonvaLocalYjsSync({
       currentDocumentSignature: readCurrentDocumentSignature(),
       force: options.force,
       hasUnsyncedLocalChanges: hasUnsyncedLocalChangesRef.current,
+      hasSynchronizedPages: lastSynchronizedPagesRef.current !== null,
       lastSynchronizedSignature: lastSynchronizedSignatureRef.current,
+      localChangedPageIds: nextChangedPageIdsRef.current,
+      localPublishMode: nextPublishModeRef.current,
       record,
       workspaceKind: workspace?.kind,
     })

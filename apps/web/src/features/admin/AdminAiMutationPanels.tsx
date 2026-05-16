@@ -29,6 +29,14 @@ const textAreaStyle = {
   padding: '12px',
 }
 
+const knownProviderKeyOptions = [
+  { label: 'Unset', value: '' },
+  { label: 'GeekAI', value: 'geekai' },
+  { label: 'Jiekou AI', value: 'jiekou' },
+  { label: 'Google', value: 'google' },
+  { label: 'OpenAI', value: 'openai' },
+]
+
 export function AdminAiMutationPanels({
   models,
   pricingRules,
@@ -120,7 +128,7 @@ function ModelEditorForm({ model, onSaved }: { model: AdminAiModelRecord; onSave
   return (
     <EditorFormShell message={message}>
       <EditorInput label="Display name" onChange={(value) => setDraft({ ...draft, displayName: value })} value={draft.displayName} />
-      <EditorInput label="Provider key" onChange={(value) => setDraft({ ...draft, providerKey: value })} value={draft.providerKey} />
+      <EditorSelect label="Provider key" onChange={(value) => setDraft({ ...draft, providerKey: value })} options={getProviderKeyOptions(draft.providerKey)} value={draft.providerKey} />
       <EditorInput label="Capability" onChange={(value) => setDraft({ ...draft, capability: value })} value={draft.capability} />
       <EditorInput label="Default tier" onChange={(value) => setDraft({ ...draft, defaultTierKey: value })} value={draft.defaultTierKey} />
       <EditorInput label="Default pricing rule" onChange={(value) => setDraft({ ...draft, defaultPricingRuleId: value })} value={draft.defaultPricingRuleId} />
@@ -172,7 +180,7 @@ function RouteEditorForm({ onSaved, route }: { onSaved: (message: string) => voi
   return (
     <EditorFormShell message={message}>
       <EditorInput label="Model key" onChange={(value) => setDraft({ ...draft, modelKey: value })} value={draft.modelKey} />
-      <EditorInput label="Provider key" onChange={(value) => setDraft({ ...draft, providerKey: value })} value={draft.providerKey} />
+      <EditorSelect label="Provider key" onChange={(value) => setDraft({ ...draft, providerKey: value })} options={getProviderKeyOptions(draft.providerKey)} value={draft.providerKey} />
       <EditorInput label="Provider model" onChange={(value) => setDraft({ ...draft, providerModel: value })} value={draft.providerModel} />
       <EditorInput label="Route key" onChange={(value) => setDraft({ ...draft, routeKey: value })} value={draft.routeKey} />
       <EditorInput label="Priority" onChange={(value) => setDraft({ ...draft, priority: value })} value={draft.priority} />
@@ -303,6 +311,13 @@ function EditorSelect({
 
 function EditorCheckbox({ checked, label, onChange }: { checked: boolean; label: string; onChange: (checked: boolean) => void }) {
   return <label style={{ display: 'flex', gap: 10, alignItems: 'center' }}><input checked={checked} onChange={(event) => onChange(event.target.checked)} type="checkbox" />{label}</label>
+}
+
+function getProviderKeyOptions(currentValue: string) {
+  if (!currentValue || knownProviderKeyOptions.some((option) => option.value === currentValue)) {
+    return knownProviderKeyOptions
+  }
+  return [...knownProviderKeyOptions, { label: currentValue, value: currentValue }]
 }
 
 function VersionActions({

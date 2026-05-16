@@ -1,5 +1,6 @@
 import type { BoardDocumentGuardResult } from './boardDocumentGuard'
 import { detectBoardCanvasEngine, type BoardCanvasEngine } from './boardCanvasEngine'
+import type { WorkspaceRole } from '@/features/auth/sessionTypes'
 
 export type BoardPersistenceRecord = {
   assetCount: number
@@ -70,7 +71,7 @@ export type BoardMemberRecord = {
   joinedAt: string
   role: BoardMemberRole
   userId: string
-  workspaceRole?: 'owner' | 'admin' | 'member' | 'guest' | null
+  workspaceRole?: WorkspaceRole | null
 }
 
 export type BoardMemberCreateInput = {
@@ -93,7 +94,7 @@ export type BoardMemberCandidateRecord = {
   displayName?: string | null
   email: string
   userId: string
-  workspaceRole: 'owner' | 'admin' | 'member' | 'guest'
+  workspaceRole: WorkspaceRole
 }
 
 export type BoardMemberInviteByEmailInput = {

@@ -1,6 +1,7 @@
 import type { PlanKey, WorkspaceKind } from '@/features/billing/billingTypes'
 
 export type WorkspaceRole = 'admin' | 'editor' | 'guest' | 'member' | 'owner' | 'viewer'
+export type CanonicalWorkspaceRole = 'admin' | 'editor' | 'owner' | 'viewer'
 
 export type TangentUser = {
   avatarInitials: string
@@ -32,4 +33,11 @@ export type AuthSessionResponse = {
   error?: string
   ok: boolean
   session?: TangentSession
+}
+
+export function normalizeCanonicalWorkspaceRole(role: WorkspaceRole | null | string | undefined): CanonicalWorkspaceRole {
+  if (role === 'owner' || role === 'admin' || role === 'editor' || role === 'viewer') return role
+  if (role === 'member') return 'editor'
+  if (role === 'guest') return 'viewer'
+  return 'viewer'
 }

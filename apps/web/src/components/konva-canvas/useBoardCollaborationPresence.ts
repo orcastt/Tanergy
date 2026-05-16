@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { distanceBetweenPoints, type CanvasPoint } from '@/features/canvas-engine'
+import { distanceBetweenPoints, type CanvasBounds, type CanvasPoint } from '@/features/canvas-engine'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import { getPublicUserInitials, getPublicUserLabel, isInternalUserId } from '@/features/shared/publicUserDisplay'
 import {
@@ -23,10 +23,12 @@ import {
   releaseBoardCollaborationSession,
 } from '@/features/boards/boardCollaborationClient'
 import type {
+  BoardCollaborationConnectionPreview,
   BoardCollaborationPresence,
   BoardCollaborationSessionRecord,
   BoardCollaborationSessionsResponse,
   BoardCollaborationShapeOccupancy,
+  BoardCollaborationTransformKind,
 } from '@/features/boards/boardCollaborationTypes'
 import {
   deriveBoardShapeOccupancy,
@@ -37,9 +39,14 @@ import {
 type UseBoardCollaborationPresenceOptions = {
   activePageId?: string | null
   boardId?: string
+  connectionPreview?: BoardCollaborationConnectionPreview | null
   enabled?: boolean
+  selectedEdgeId?: string | null
+  selectionBox?: CanvasBounds | null
   selectedIds?: string[]
   tool?: string | null
+  transformBox?: CanvasBounds | null
+  transformKind?: BoardCollaborationTransformKind | null
   workspace?: TangentWorkspace
 }
 
@@ -60,15 +67,21 @@ type CollaborationState = {
 
 const heartbeatIntervalMs = 20_000
 const presenceDebounceMs = 600
+const awarenessPublishIntervalMs = 80
 const cursorSyncDistance = 10
 const maxRealtimeAwarenessStates = 64
 
 export function useBoardCollaborationPresence({
   activePageId = null,
   boardId,
+  connectionPreview = null,
   enabled = true,
+  selectedEdgeId = null,
+  selectionBox = null,
   selectedIds = [],
   tool = null,
+  transformBox = null,
+  transformKind = null,
   workspace,
 }: UseBoardCollaborationPresenceOptions) {
   const [clientInstanceId] = useState(createBoardRealtimeClientInstanceId)
@@ -91,15 +104,23 @@ export function useBoardCollaborationPresence({
   const latestHoveredShapeIdRef = useRef<string | null>(null)
   const latestPresenceRef = useRef<BoardCollaborationPresence>({
     activePageId: null,
+    connectionPreview: null,
     cursor: null,
     editingShapeIds: [],
     hoveredShapeId: null,
+    selectedEdgeId: null,
+    selectionBox: null,
     selectionIds: [],
     state: 'idle',
     tool: null,
+    transformBox: null,
+    transformKind: null,
   })
   const awarenessConnectionRef = useRef<BoardRealtimeAwarenessConnection | null>(null)
   const realtimeAwarenessRef = useRef<Map<string, LocalBoardAwarenessState>>(new Map())
+  const awarenessPublishTimerRef = useRef<number | null>(null)
+  const pendingAwarenessPresenceRef = useRef<BoardCollaborationPresence | null>(null)
+  const lastAwarenessPublishAtRef = useRef(0)
   const debounceTimerRef = useRef<number | null>(null)
   const requestIdRef = useRef(0)
   const claimControllerRef = useRef<AbortController | null>(null)
@@ -107,17 +128,64 @@ export function useBoardCollaborationPresence({
   const releasedSessionKeyRef = useRef<string | null>(null)
   const presence = useMemo<BoardCollaborationPresence>(() => ({
     activePageId,
+    connectionPreview,
     cursor: latestCursorRef.current,
     editingShapeIds: latestEditingShapeIdsRef.current,
     hoveredShapeId: latestHoveredShapeIdRef.current,
+    selectedEdgeId,
+    selectionBox,
     selectionIds: selectedIds.slice(0, 12),
-    state: derivePresenceState(tool, selectedIds, latestEditingShapeIdsRef.current),
+    state: derivePresenceState(
+      tool,
+      selectedIds,
+      latestEditingShapeIdsRef.current,
+      selectionBox,
+      selectedEdgeId,
+      connectionPreview,
+    ),
     tool: tool?.trim() ? tool.trim() : null,
-  }), [activePageId, selectedIds, tool])
+    transformBox,
+    transformKind,
+  }), [activePageId, connectionPreview, selectedEdgeId, selectedIds, selectionBox, tool, transformBox, transformKind])
+
+  const clearAwarenessPublishTimer = useCallback(() => {
+    if (awarenessPublishTimerRef.current === null) return
+    window.clearTimeout(awarenessPublishTimerRef.current)
+    awarenessPublishTimerRef.current = null
+  }, [])
+
+  const flushAwarenessPresence = useCallback(() => {
+    clearAwarenessPublishTimer()
+    if (!awarenessConnectionRef.current) return
+    lastAwarenessPublishAtRef.current = Date.now()
+    awarenessConnectionRef.current.setLocalState(pendingAwarenessPresenceRef.current)
+    pendingAwarenessPresenceRef.current = null
+  }, [clearAwarenessPublishTimer])
+
+  const scheduleAwarenessPresencePublish = useCallback((
+    nextPresence: BoardCollaborationPresence | null,
+    options: { immediate?: boolean } = {},
+  ) => {
+    pendingAwarenessPresenceRef.current = nextPresence
+    if (options.immediate) {
+      flushAwarenessPresence()
+      return
+    }
+    const elapsedMs = Date.now() - lastAwarenessPublishAtRef.current
+    const waitMs = Math.max(0, awarenessPublishIntervalMs - elapsedMs)
+    if (waitMs === 0) {
+      flushAwarenessPresence()
+      return
+    }
+    if (awarenessPublishTimerRef.current !== null) return
+    awarenessPublishTimerRef.current = window.setTimeout(() => {
+      flushAwarenessPresence()
+    }, waitMs)
+  }, [flushAwarenessPresence])
 
   useEffect(() => {
     latestPresenceRef.current = presence
-    awarenessConnectionRef.current?.setLocalState(presence)
+    scheduleAwarenessPresencePublish(presence)
     setState((current) => {
       const activeSessions = mergeRealtimeAwareness(
         patchOptimisticSelfSession(current.activeSessions, currentSessionIdRef.current, presence),
@@ -129,7 +197,7 @@ export function useBoardCollaborationPresence({
         shapeOccupancy: deriveBoardShapeOccupancy(activeSessions, realtimeAwarenessRef.current),
       }
     })
-  }, [presence])
+  }, [presence, scheduleAwarenessPresencePublish])
 
   const releaseSession = useCallback((
     nextBoardId: string,
@@ -250,11 +318,13 @@ export function useBoardCollaborationPresence({
         window.clearTimeout(debounceTimerRef.current)
         debounceTimerRef.current = null
       }
+      clearAwarenessPublishTimer()
+      pendingAwarenessPresenceRef.current = null
       if (releaseKeyRef.current === releaseKey) {
         releaseSession(boardId, workspace, releaseKey)
       }
     }
-  }, [boardId, clientInstanceId, releaseSession, shouldConnect, syncPresence, workspace])
+  }, [boardId, clearAwarenessPublishTimer, clientInstanceId, releaseSession, shouldConnect, syncPresence, workspace])
 
   useEffect(() => {
     if (!shouldConnect || !state.roomKey) {
@@ -283,7 +353,7 @@ export function useBoardCollaborationPresence({
       transportState: connection.getState(),
       transportStatus: connection.getState().status,
     }))
-    connection.setLocalState(latestPresenceRef.current)
+    scheduleAwarenessPresencePublish(latestPresenceRef.current, { immediate: true })
     const unsubscribe = connection.subscribe((states) => {
       setState((current) => {
         realtimeAwarenessRef.current = createRealtimeAwarenessMap(states, current.activeSessions)
@@ -306,10 +376,12 @@ export function useBoardCollaborationPresence({
       unsubscribe()
       unsubscribeState()
       if (awarenessConnectionRef.current === connection) awarenessConnectionRef.current = null
+      clearAwarenessPublishTimer()
+      pendingAwarenessPresenceRef.current = null
       connection.disconnect()
       realtimeAwarenessRef.current.clear()
     }
-  }, [boardId, clientInstanceId, shouldConnect, state.roomKey, workspace])
+  }, [boardId, clearAwarenessPublishTimer, clientInstanceId, scheduleAwarenessPresencePublish, shouldConnect, state.roomKey, workspace])
 
   useEffect(() => {
     if (!shouldConnect) return
@@ -348,8 +420,8 @@ export function useBoardCollaborationPresence({
         shapeOccupancy: deriveBoardShapeOccupancy(activeSessions, realtimeAwarenessRef.current),
       }
     })
-    awarenessConnectionRef.current?.setLocalState(latestPresenceRef.current)
-  }, [])
+    scheduleAwarenessPresencePublish(latestPresenceRef.current)
+  }, [scheduleAwarenessPresencePublish])
 
   const setCursor = useCallback((point: CanvasPoint | null) => {
     if (!shouldConnect) return
@@ -399,10 +471,20 @@ export function useBoardCollaborationPresence({
   }
 }
 
-function derivePresenceState(tool: string | null, selectedIds: string[], editingShapeIds: string[]) {
+function derivePresenceState(
+  tool: string | null,
+  selectedIds: string[],
+  editingShapeIds: string[],
+  selectionBox: CanvasBounds | null,
+  selectedEdgeId: string | null,
+  connectionPreview: BoardCollaborationConnectionPreview | null,
+) {
   if (editingShapeIds.length > 0) return 'typing' as const
+  if (connectionPreview) return 'selecting' as const
+  if (selectionBox) return 'selecting' as const
   if (tool === 'draw') return 'drawing' as const
   if (tool === 'hand') return 'panning' as const
+  if (selectedEdgeId) return 'selecting' as const
   if (selectedIds.length > 0) return 'selecting' as const
   return 'viewing' as const
 }
