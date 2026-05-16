@@ -73,21 +73,16 @@ def delete_user_account(
             _delete_user_owned_resources(cursor, target_user_id, owned_solo_workspace_ids)
             _delete_user_credit_accounts(cursor, target_user_id, owned_solo_workspace_ids)
             cursor.execute("DELETE FROM tangent_users WHERE id = %s", (target_user_id,))
-        connection.commit()
 
-    warning = None
-    if deletion_context.clerk_user_id:
-        try:
+        if deletion_context.clerk_user_id:
             delete_clerk_user(deletion_context.clerk_user_id)
-        except HTTPException as exc:
-            warning = str(exc.detail or "Clerk account deletion failed.")
 
     return UserAccountDeletionResult(
         audit_id=audit_id,
         deleted_solo_workspace_ids=tuple(owned_solo_workspace_ids),
         message="User deleted.",
         user_id=target_user_id,
-        warning=warning,
+        warning=None,
     )
 
 
