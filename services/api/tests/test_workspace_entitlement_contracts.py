@@ -291,6 +291,40 @@ def test_workspace_dashboard_exposes_team_usage_to_owner():
     assert dashboard["totalUsageThisCycle"] == dashboard["members"][0]["usageThisCycle"]
 
 
+def test_workspace_dashboard_exposes_active_team_seat_capacity(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.subscriptions = [
+        {
+            "account_id": "credit_workspace_workspace_team",
+            "id": "subscription_team_growth",
+            "owner_id": "workspace_team",
+            "owner_type": "workspace",
+            "plan_family": "team",
+            "plan_key": "team_growth",
+            "seat_capacity": 5,
+            "status": "active",
+            "updated_at": "2026-05-06T00:00:00Z",
+        }
+    ]
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.workspace_dashboard_seats.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    response = client.get(
+        "/api/v1/workspaces/current/dashboard",
+        headers={
+            "x-tangent-user-id": "user_team_owner",
+            "x-tangent-workspace-id": "workspace_team",
+            "x-tangent-workspace-kind": "team_workspace",
+        },
+    )
+
+    assert response.status_code == 200
+    dashboard = response.json()["dashboard"]
+    assert dashboard["seatCapacity"] == 5
+
+
 def test_workspace_entitlement_returns_ai_charge_summary():
     client = TestClient(app)
 

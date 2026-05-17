@@ -88,8 +88,8 @@ function getPresenceActivityLabel(
   if (state === 'panning') return 'Panning'
   if (state === 'drawing') return 'Drawing'
   if (state === 'selecting') return 'Selecting'
-  if (state === 'viewing') return 'Browsing'
-  if (state === 'idle') return 'Browsing'
+  if (state === 'viewing') return null
+  if (state === 'idle') return null
   return null
 }
 

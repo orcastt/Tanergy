@@ -52,11 +52,17 @@ async def _verify_clerk_session_token(token: str) -> VerifiedAuthIdentity:
     if not isinstance(subject, str) or not subject.strip():
         raise HTTPException(status_code=401, detail="Missing token subject.")
 
+    email, email_verified = _resolve_clerk_email(claims)
+    if not email:
+        fallback_email, fallback_verified = await _load_clerk_user_email(subject)
+        email = fallback_email
+        email_verified = email_verified or fallback_verified
+
     return VerifiedAuthIdentity(
         provider="clerk",
         provider_subject=subject,
-        email=_optional_str(claims.get("email")),
-        email_verified=_coerce_bool(claims.get("email_verified")),
+        email=email,
+        email_verified=email_verified,
         display_name=_get_display_name(claims),
         avatar_url=_optional_str(claims.get("image_url")),
         session_id=_optional_str(claims.get("sid")),
@@ -172,6 +178,59 @@ def _get_authorized_parties() -> list[str]:
     return [item.strip() for item in raw_value.split(",") if item.strip()]
 
 
+def _resolve_clerk_email(claims: dict[str, Any]) -> tuple[Optional[str], bool]:
+    direct_email = _extract_clerk_email_from_value(claims.get("email"))
+    if direct_email:
+        return direct_email, _coerce_bool(claims.get("email_verified"))
+
+    for key in ("email_address", "primary_email_address"):
+        direct_email = _extract_clerk_email_from_value(claims.get(key))
+        if direct_email:
+            return direct_email, _coerce_bool(claims.get("email_verified"))
+
+    primary_email_address_id = _optional_str(claims.get("primary_email_address_id"))
+    email_addresses = claims.get("email_addresses")
+    if not isinstance(email_addresses, list):
+        return None, _coerce_bool(claims.get("email_verified"))
+
+    fallback_email: Optional[str] = None
+    fallback_verified = False
+    for item in email_addresses:
+        if not isinstance(item, dict):
+            continue
+        email = _extract_clerk_email_from_value(item)
+        if not email:
+            continue
+        verified = _is_clerk_email_item_verified(item)
+        if primary_email_address_id and _optional_str(item.get("id")) == primary_email_address_id:
+            return email, verified or _coerce_bool(claims.get("email_verified"))
+        if fallback_email is None:
+            fallback_email = email
+            fallback_verified = verified
+    return fallback_email, fallback_verified or _coerce_bool(claims.get("email_verified"))
+
+
+async def _load_clerk_user_email(subject: str) -> tuple[Optional[str], bool]:
+    clerk_secret_key = (os.getenv("CLERK_SECRET_KEY") or "").strip()
+    if not clerk_secret_key:
+        return None, False
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(
+                f"https://api.clerk.com/v1/users/{subject}",
+                headers={"Authorization": f"Bearer {clerk_secret_key}"},
+            )
+            response.raise_for_status()
+            payload = response.json()
+    except (httpx.HTTPError, ValueError):
+        return None, False
+
+    if not isinstance(payload, dict):
+        return None, False
+    return _resolve_clerk_email(payload)
+
+
 def _decode_base64url(value: str) -> bytes:
     return base64.urlsafe_b64decode(_pad_base64(value))
 
@@ -182,6 +241,21 @@ def _pad_base64(value: str) -> str:
 
 def _optional_str(value: Any) -> Optional[str]:
     return value if isinstance(value, str) and value.strip() else None
+
+
+def _extract_clerk_email_from_value(value: Any) -> Optional[str]:
+    if isinstance(value, dict):
+        return _optional_str(value.get("email_address")) or _optional_str(value.get("email"))
+    return _optional_str(value)
+
+
+def _is_clerk_email_item_verified(value: dict[str, Any]) -> bool:
+    verification = value.get("verification")
+    if isinstance(verification, dict):
+        status = _optional_str(verification.get("status"))
+        if status:
+            return status.lower() == "verified"
+    return _coerce_bool(value.get("verified"))
 
 
 def _coerce_bool(value: Any) -> bool:
@@ -197,7 +271,7 @@ def _get_display_name(claims: dict[str, Any]) -> str:
         value = _optional_str(claims.get(key))
         if value:
             return value
-    email = _optional_str(claims.get("email"))
+    email, _ = _resolve_clerk_email(claims)
     if email:
         return email.split("@")[0]
     return "Tanergy user"

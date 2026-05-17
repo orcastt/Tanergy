@@ -10,7 +10,6 @@ import { acceptWorkspaceInvitation } from '@/features/billing/billingClient'
 import type { WorkspaceKind } from '@/features/billing/billingTypes'
 import {
   parseWorkspaceInvitationToken,
-  resolveWorkspaceInvitationBoardTarget,
 } from '@/features/workspaces/workspaceInvitationLinks'
 
 export default function WorkspaceInvitePage() {
@@ -25,10 +24,6 @@ export default function WorkspaceInvitePage() {
   const workspaceKind = normalizeWorkspaceKind(searchParams.get('workspaceKind'))
   const workspaceName = normalizeDisplayValue(searchParams.get('workspaceName'))
   const role = normalizeRole(searchParams.get('role'))
-  const inviteBoardTarget = resolveWorkspaceInvitationBoardTarget({
-    boardId: searchParams.get('boardId'),
-    boardTitle: searchParams.get('boardTitle'),
-  })
   const invitePath = useMemo(() => {
     if (!token) return '/workspaces'
     const query = searchParams.toString()
@@ -70,12 +65,6 @@ export default function WorkspaceInvitePage() {
           <div className="workspace-invite-meta-row">
             <dt>Name</dt>
             <dd>{workspaceName}</dd>
-          </div>
-        ) : null}
-        {inviteBoardTarget ? (
-          <div className="workspace-invite-meta-row">
-            <dt>Board</dt>
-            <dd>{inviteBoardTarget.boardTitle ?? inviteBoardTarget.boardId}</dd>
           </div>
         ) : null}
       </dl>
@@ -135,13 +124,7 @@ export default function WorkspaceInvitePage() {
       const acceptedKind = normalizeWorkspaceKind(
         readMetadataValue(response.result.invitation.metadata, 'workspaceKind') ?? workspaceKind,
       )
-      const acceptedBoardTarget = resolveWorkspaceInvitationBoardTarget({
-        boardId: readMetadataValue(response.result.invitation.metadata, 'boardId') ?? inviteBoardTarget?.boardId,
-        boardTitle: readMetadataValue(response.result.invitation.metadata, 'boardTitle') ?? inviteBoardTarget?.boardTitle,
-      })
-      const destination = acceptedBoardTarget
-        ? `/boards/${encodeURIComponent(acceptedBoardTarget.boardId)}?workspace=${encodeURIComponent(response.result.workspaceId)}`
-        : acceptedKind === 'team_workspace'
+      const destination = acceptedKind === 'team_workspace'
         ? `/team/${encodeURIComponent(response.result.workspaceId)}`
         : `/group/${encodeURIComponent(response.result.workspaceId)}`
       setStatus({ message: 'Invite accepted. Opening workspace...', tone: 'info' })

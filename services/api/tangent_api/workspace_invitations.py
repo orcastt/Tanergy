@@ -12,6 +12,7 @@ from tangent_api.workspace_invitation_support import (
     assert_can_manage_workspace_invites,
     assert_group_member_capacity,
     assert_invitation_target,
+    assert_team_invite_workspace_ready,
     hash_token,
     invitation_from_row as _invitation_from_row,
     load_active_invitation_by_token_hash,
@@ -20,6 +21,7 @@ from tangent_api.workspace_invitation_support import (
     normalize_optional_email,
     normalize_optional_id,
     normalize_workspace_role,
+    resolve_invitation_target_user_id,
     resolve_team_invite_seat_policy,
     upsert_team_invite_seat_assignment,
 )
@@ -32,12 +34,14 @@ from tangent_api.workspace_schemas import (
 _assert_can_manage_workspace_invites = assert_can_manage_workspace_invites
 _assert_group_member_capacity = assert_group_member_capacity
 _assert_invitation_target = assert_invitation_target
+_assert_team_invite_workspace_ready = assert_team_invite_workspace_ready
 _hash_token = hash_token
 _load_active_invitation_by_token_hash = load_active_invitation_by_token_hash
 _load_workspace_kind = load_workspace_kind
 _normalize_id = normalize_id
 _normalize_optional_email = normalize_optional_email
 _normalize_optional_id = normalize_optional_id
+_resolve_invitation_target_user_id = resolve_invitation_target_user_id
 _resolve_team_invite_seat_policy = resolve_team_invite_seat_policy
 _upsert_team_invite_seat_assignment = upsert_team_invite_seat_assignment
 
@@ -69,6 +73,10 @@ def create_workspace_invitation(
         with connection.cursor() as cursor:
             if context.workspace_kind == "group_workspace":
                 assert_group_member_capacity(cursor, context.workspace_id, None)
+            elif context.workspace_kind == "team_workspace":
+                assert_team_invite_workspace_ready(cursor, context.workspace_id)
+            if normalized_target_user_id is None:
+                normalized_target_user_id = resolve_invitation_target_user_id(cursor, normalized_email)
             cursor.execute(
                 """
                 INSERT INTO tangent_workspace_invitations (

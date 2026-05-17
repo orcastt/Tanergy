@@ -17,6 +17,7 @@ import type { KonvaNodeTextFieldName } from './KonvaNodeTextEditor'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
 import { useKonvaBoardPages } from './useKonvaBoardPages'
 import { useKonvaCanvasBoardCollaborationBridge } from './useKonvaCanvasBoardCollaborationBridge'
+import { useKonvaCanvasDocumentChangeBridge } from './useKonvaCanvasDocumentChangeBridge'
 import { useKonvaCanvasCommandActions } from './useKonvaCanvasCommandActions'
 import { useKonvaCanvasControls } from './useKonvaCanvasControls'
 import { useKonvaCanvasHistory, type KonvaCanvasHistoryPageState } from './useKonvaCanvasHistory'
@@ -66,6 +67,7 @@ type CanvasSetters = {
   setContextMenu: Dispatch<SetStateAction<CanvasState['contextMenu']>>
   setCropEditingImageId: Dispatch<SetStateAction<string | null>>
   setDocument: Dispatch<SetStateAction<CanvasDocument>>
+  setDocumentState: Dispatch<SetStateAction<CanvasDocument>>
   setDropHintKind: Dispatch<SetStateAction<'image' | 'pdf' | null>>
   setEditingNodeText: Dispatch<SetStateAction<CanvasState['editingNodeText']>>
   setEditingTextId: Dispatch<SetStateAction<string | null>>
@@ -93,6 +95,7 @@ type UseKonvaCanvasSpikeRuntimeOptions = {
   canvasState: CanvasState
   clipboardRef: MutableRefObject<CanvasShape[]>
   clearTransientState: () => void
+  documentChangeBridgeRef: MutableRefObject<Dispatch<SetStateAction<CanvasDocument>> | null>
   handleSelectionChange: (shapeIds: string[]) => void
   handleToolChange: (tool: KonvaCanvasTool) => void
   hasPersistedBoard: boolean
@@ -124,6 +127,7 @@ export function useKonvaCanvasSpikeRuntime({
   canvasState,
   clipboardRef,
   clearTransientState,
+  documentChangeBridgeRef,
   handleSelectionChange,
   handleToolChange,
   hasPersistedBoard,
@@ -149,9 +153,14 @@ export function useKonvaCanvasSpikeRuntime({
   const { cleanChatHistory, closeNodeMenu, createNodeCard, nodeMenu, openNodeMenu, regenerateChatMessage, sendChatMessage, setChatModel, setNodeField, setNodeTextField, toggleNodeRun } = nodeMenuApi
   const { fileInput, promptImageNodeUpload, uploadDropFileAtPoint } = imageUploadApi
   const { activeToolPreference, camera, connectionPreviewPresence, contextMenu, cropEditingImageId, document, dropHintKind, editingNodeText, editingTextId, nextStyle, nodeImageLightbox, selectedEdgeId, selectedIds, selectionActionError, selectionMarqueeBounds, settingsOpen, stage, transformPreview } = canvasState
-  const { setCamera, setClipboardShapeCount, setConnectionPreviewPresence, setContextMenu, setCropEditingImageId, setDocument, setDropHintKind, setEditingNodeText, setEditingTextId, setIsSpacePanning, setNextStyle, setNodeImageLightbox, setPersistedBoardIds, setSelectedEdgeId, setSelectionActionError, setSelectionMarqueeBounds, setSettingsOpen, setStage, setTransformPreview } = canvasSetters
+  const { setCamera, setClipboardShapeCount, setConnectionPreviewPresence, setContextMenu, setCropEditingImageId, setDocument, setDocumentState, setDropHintKind, setEditingNodeText, setEditingTextId, setIsSpacePanning, setNextStyle, setNodeImageLightbox, setPersistedBoardIds, setSelectedEdgeId, setSelectionActionError, setSelectionMarqueeBounds, setSettingsOpen, setStage, setTransformPreview } = canvasSetters
 
-  const boardPages = useKonvaBoardPages({ activeDocument: document, camera, onCameraChange: setCamera, onDocumentChange: setDocument, onTransientClear: clearTransientState })
+  const boardPages = useKonvaBoardPages({ activeDocument: document, camera, onCameraChange: setCamera, onDocumentChange: setDocumentState, onTransientClear: clearTransientState })
+  useKonvaCanvasDocumentChangeBridge({
+    activePageId: boardPages.activePageId,
+    bridgeRef: documentChangeBridgeRef,
+    updatePageDocument: boardPages.updatePageDocument,
+  })
   const collaboration = useKonvaCanvasBoardCollaborationBridge({
     activeToolPreference, boardId, boardPageHistoryRef, boardPages, clearTransientState, connectionPreviewPresence, cropEditingImageId,
     document, editingNodeText, editingTextId, handleSelectionChange, hasPersistedBoard, history, initialBoard, interactionLockedRef,
@@ -175,7 +184,16 @@ export function useKonvaCanvasSpikeRuntime({
     requestFocusedEditShape: collaboration.requestFocusedEditShape, selectedIds, setCropEditingImageId, setPersistedBoardIds,
   })
   const imageOps = useKonvaImageOpsActions({ document, history, onActionError: setSelectionActionError, onDocumentChange: setDocument, onSelectionChange: handleSelectionChange, selectedIds, workspace })
-  const controls = useKonvaCanvasControls({ camera, history, onCameraChange: setCamera, onDocumentChange: setDocument, onEdgeSelectionChange: setSelectedEdgeId, onSelectionChange: handleSelectionChange, size })
+  const controls = useKonvaCanvasControls({
+    camera,
+    history,
+    onCameraChange: setCamera,
+    onCameraDocumentChange: setDocumentState,
+    onContentDocumentChange: setDocument,
+    onEdgeSelectionChange: setSelectedEdgeId,
+    onSelectionChange: handleSelectionChange,
+    size,
+  })
   const pageActions = useKonvaCanvasPageActions({ boardPages, document, history, selectedIds })
   const imageNodeActions = useKonvaImageNodeActions({
     activePageId: boardPages.activePageId, document, history, onDocumentChange: setDocument, onPendingImagePasteComplete: collaboration.handlePendingImagePasteComplete,

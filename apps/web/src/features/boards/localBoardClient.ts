@@ -34,7 +34,6 @@ export {
 export {
   createLocalBoardMember,
   deleteLocalBoardMember,
-  inviteLocalBoardMemberByEmail,
   listLocalBoardMembers,
   searchLocalBoardMemberCandidates,
   updateLocalBoardMember,

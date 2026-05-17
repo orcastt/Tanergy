@@ -41,14 +41,19 @@ def test_board_copy_and_delete_are_owner_only(monkeypatch):
         board_admin,
     )
 
+    expected_status_by_user = {
+        workspace_admin.user_id: 403,
+        workspace_member.user_id: 404,
+        board_admin.user_id: 403,
+    }
     for context in [workspace_admin, workspace_member, board_admin]:
         with pytest.raises(HTTPException) as copy_error:
             store.copy_board("owner_only_board", context)
-        assert copy_error.value.status_code == 403
+        assert copy_error.value.status_code == expected_status_by_user[context.user_id]
 
         with pytest.raises(HTTPException) as delete_error:
             store.delete_board("owner_only_board", context)
-        assert delete_error.value.status_code == 403
+        assert delete_error.value.status_code == expected_status_by_user[context.user_id]
 
     copied = store.copy_board("owner_only_board", owner)
     assert copied.id != "owner_only_board"

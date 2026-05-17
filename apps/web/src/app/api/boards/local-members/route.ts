@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import type {
   BoardMemberCreateInput,
-  BoardMemberInviteByEmailInput,
   BoardMemberUpdateInput,
 } from '@/features/boards/boardTypes'
 import { getApiRequestContext } from '../../_lib/apiRequestContext'
@@ -38,23 +37,15 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body = await readJsonRequestWithLimit<Partial<BoardMemberCreateInput & BoardMemberInviteByEmailInput>>(request, maxBoardMemberRequestBytes)
-    if (!body.boardId || !body.role) throw new Error('Missing board member fields.')
-    const member = 'email' in body && typeof body.email === 'string'
-      ? await getBoardStorageAdapter().inviteLocalBoardMemberByEmail(
-          body.boardId,
-          body.email,
-          body.role,
-          body.displayName,
-          getApiRequestContext(request)
-        )
-      : await getBoardStorageAdapter().upsertLocalBoardMember(
-          body.boardId,
-          body.userId ?? '',
-          body.role,
-          body.displayName,
-          getApiRequestContext(request)
-        )
+    const body = await readJsonRequestWithLimit<Partial<BoardMemberCreateInput>>(request, maxBoardMemberRequestBytes)
+    if (!body.boardId || !body.userId || !body.role) throw new Error('Missing board member fields.')
+    const member = await getBoardStorageAdapter().upsertLocalBoardMember(
+      body.boardId,
+      body.userId,
+      body.role,
+      body.displayName,
+      getApiRequestContext(request),
+    )
     return NextResponse.json({ member, ok: true })
   } catch (error) {
     return NextResponse.json(

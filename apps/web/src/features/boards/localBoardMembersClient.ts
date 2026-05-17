@@ -2,7 +2,6 @@
 
 import type {
   BoardMemberCreateInput,
-  BoardMemberInviteByEmailInput,
   BoardMemberUpdateInput,
 } from './boardTypes'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
@@ -61,25 +60,6 @@ export async function searchLocalBoardMemberCandidates(boardId: string, query: s
   const payload = await readBoardApiPayload<LocalBoardMemberCandidatesResponse>(response) as LocalBoardMemberCandidatesResponse
   if (!response.ok || !payload.ok) {
     throw new Error(resolveBoardClientError(payload, 'Board member lookup failed.'))
-  }
-  return payload
-}
-
-export async function inviteLocalBoardMemberByEmail(input: BoardMemberInviteByEmailInput, workspace?: TangentWorkspace) {
-  const response = await fetch(
-    getBoardApiUrl(
-      `/api/v1/boards/${encodeURIComponent(input.boardId)}/members/invite-by-email`,
-      '/api/boards/local-members',
-    ),
-    {
-      body: JSON.stringify(input),
-      headers: await getBoardJsonHeaders(workspace),
-      method: 'POST',
-    },
-  )
-  const payload = await readBoardApiPayload<LocalBoardMemberResponse>(response) as LocalBoardMemberResponse
-  if (!response.ok || !payload.ok || !payload.member) {
-    throw new Error(resolveBoardClientError(payload, 'Board email invite failed.'))
   }
   return payload
 }

@@ -25,7 +25,7 @@ import type {
 } from '@/features/workspaces/workspaceDashboardTypes'
 import { normalizeGroupPersonalPlanKey } from '@/features/workspaces/groupPersonalPlanSupport'
 import type { WorkspaceMembershipRole } from '@/features/workspaces/workspacePresentation'
-
+import { useWorkspaceBoardAssignmentCounts } from './useWorkspaceBoardAssignmentCounts'
 type WorkspaceDashboardKind = 'group' | 'team'
 type RuntimeStatus = 'error' | 'loading' | 'ready'
 
@@ -39,11 +39,9 @@ export function useWorkspaceDashboardRuntime(kind: WorkspaceDashboardKind, works
   const [status, setStatus] = useState<RuntimeStatus>(remoteApiAvailable ? 'loading' : 'error')
   const [error, setError] = useState<string | null>(remoteApiAvailable ? null : 'Persistence API is unavailable.')
   const [reloadToken, setReloadToken] = useState(0)
-
   useEffect(() => {
     if (!remoteApiAvailable) return
     let cancelled = false
-
     Promise.allSettled([
       loadWorkspaceDashboard({ force: reloadToken > 0, workspace: defaultWorkspace }),
       loadBillingMe({ force: reloadToken > 0, workspace: defaultWorkspace }),
@@ -58,14 +56,12 @@ export function useWorkspaceDashboardRuntime(kind: WorkspaceDashboardKind, works
         setRemoteBilling(nextBilling)
         setRemoteBoards(nextBoards)
         setRemoteBoardsLoaded(boardsResult.status === 'fulfilled')
-
         const failures = [dashboardResult, billingResult, boardsResult].filter((result) => result.status === 'rejected')
         if (failures.length === 3) {
           setError(firstFailureMessage(failures[0]))
           setStatus('error')
           return
         }
-
         setError(failures.length ? firstFailureMessage(failures[0]) : null)
         setStatus('ready')
       })
@@ -78,12 +74,10 @@ export function useWorkspaceDashboardRuntime(kind: WorkspaceDashboardKind, works
         setError(nextError instanceof Error ? nextError.message : 'Workspace dashboard failed to load.')
         setStatus('error')
       })
-
     return () => {
       cancelled = true
     }
   }, [defaultWorkspace, reloadToken, remoteApiAvailable])
-
   const workspace = useMemo<TangentWorkspace>(() => {
     const remoteWorkspace = remoteBilling?.workspace ?? remoteDashboard?.workspace
     if (!remoteWorkspace) return defaultWorkspace
@@ -99,7 +93,6 @@ export function useWorkspaceDashboardRuntime(kind: WorkspaceDashboardKind, works
       role: normalizeWorkspaceRole(remoteWorkspace.role),
     }
   }, [defaultWorkspace, remoteBilling, remoteBoards.length, remoteBoardsLoaded, remoteDashboard])
-
   const resolvedBoards = useMemo(
     () => remoteBoardsLoaded ? remoteBoards.map((board) => ({
       ...board,
@@ -107,29 +100,34 @@ export function useWorkspaceDashboardRuntime(kind: WorkspaceDashboardKind, works
     })) : null,
     [remoteBoards, remoteBoardsLoaded],
   )
-
+  const boardAssignmentCounts = useWorkspaceBoardAssignmentCounts({
+    boards: resolvedBoards ?? [],
+    enabled: remoteBoardsLoaded,
+    reloadToken,
+    workspace,
+  })
   const teamRecord = useMemo(() => {
     if (kind !== 'team') return null
     if (!remoteBilling && !remoteDashboard) return null
     return buildTeamRecord({
+      boardAssignmentCounts,
       billing: remoteBilling,
       boards: resolvedBoards ?? [],
       dashboard: remoteDashboard,
       workspace,
     })
-  }, [kind, remoteBilling, remoteDashboard, resolvedBoards, workspace])
-
+  }, [boardAssignmentCounts, kind, remoteBilling, remoteDashboard, resolvedBoards, workspace])
   const groupRecord = useMemo(() => {
     if (kind !== 'group') return null
     if (!remoteBilling && !remoteDashboard) return null
     return buildGroupRecord({
+      boardAssignmentCounts,
       billing: remoteBilling,
       boards: resolvedBoards ?? [],
       dashboard: remoteDashboard,
       workspace,
     })
-  }, [kind, remoteBilling, remoteDashboard, resolvedBoards, workspace])
-
+  }, [boardAssignmentCounts, kind, remoteBilling, remoteDashboard, resolvedBoards, workspace])
   return {
     error,
     groupRecord,
@@ -147,7 +145,6 @@ export function useWorkspaceDashboardRuntime(kind: WorkspaceDashboardKind, works
     workspace,
   }
 }
-
 function buildDefaultWorkspace(
   kind: WorkspaceDashboardKind,
   workspaceId: string,
@@ -161,20 +158,21 @@ function buildDefaultWorkspace(
     role: 'owner',
   }
 }
-
 function buildTeamRecord({
+  boardAssignmentCounts,
   billing,
   boards,
   dashboard,
   workspace,
 }: {
+  boardAssignmentCounts: Record<string, number>
   billing: BillingMeResponse | null
   boards: TeamWorkspaceDashboardRecord['boards']
   dashboard: RemoteWorkspaceDashboardRecord | null
   workspace: TangentWorkspace
 }): TeamWorkspaceDashboardRecord | null {
   if (!billing && !dashboard) return null
-  const members = dashboard ? mapRemoteMembers(dashboard) : []
+  const members = dashboard ? mapRemoteMembers(dashboard, boardAssignmentCounts) : []
   const totalCredits = billing ? billing.credits.includedTotal + billing.credits.topUpBalance : 0
   const remainingCredits = billing ? billing.credits.includedRemaining + billing.credits.topUpBalance : totalCredits
 
@@ -196,7 +194,7 @@ function buildTeamRecord({
     nextRefreshAt: billing?.nextRefreshAt,
     planKey: workspace.planKey === 'team_growth' ? 'team_growth' : 'team_start',
     planName: resolvePlanName(billing?.plan.name, workspace.planKey),
-    seatLimit: billing?.plan.seatMax ?? Math.max(dashboard?.memberCount ?? 1, 1),
+    seatLimit: dashboard?.seatCapacity ?? billing?.plan.seatMax ?? Math.max(dashboard?.memberCount ?? 1, 1),
     seatMax: billing?.plan.seatMax ?? null,
     seatMin: billing?.plan.seatMin ?? null,
     seatsUsed: dashboard?.memberCount ?? members.length,
@@ -205,20 +203,21 @@ function buildTeamRecord({
     totalCreditsRemaining: remainingCredits,
   }
 }
-
 function buildGroupRecord({
+  boardAssignmentCounts,
   billing,
   boards,
   dashboard,
   workspace,
 }: {
+  boardAssignmentCounts: Record<string, number>
   billing: BillingMeResponse | null
   boards: GroupWorkspaceDashboardRecord['boards']
   dashboard: RemoteWorkspaceDashboardRecord | null
   workspace: TangentWorkspace
 }): GroupWorkspaceDashboardRecord | null {
   if (!billing && !dashboard) return null
-  const members = dashboard ? mapRemoteMembers(dashboard) : []
+  const members = dashboard ? mapRemoteMembers(dashboard, boardAssignmentCounts) : []
   const totalCredits = billing ? billing.credits.includedTotal + billing.credits.topUpBalance : 0
   const remainingCredits = billing ? billing.credits.includedRemaining + billing.credits.topUpBalance : totalCredits
 
@@ -241,10 +240,12 @@ function buildGroupRecord({
     totalCreditsRemaining: remainingCredits,
   }
 }
-
-function mapRemoteMembers(dashboard: RemoteWorkspaceDashboardRecord): WorkspaceDashboardMember[] {
+function mapRemoteMembers(
+  dashboard: RemoteWorkspaceDashboardRecord,
+  boardAssignmentCounts: Record<string, number>,
+): WorkspaceDashboardMember[] {
   return dashboard.members.map((member) => ({
-    boardAssignments: 0,
+    boardAssignments: boardAssignmentCounts[member.userId] ?? 0,
     displayName: getPublicUserLabel({
       displayName: member.displayName,
       email: member.email,
@@ -263,32 +264,27 @@ function mapRemoteMembers(dashboard: RemoteWorkspaceDashboardRecord): WorkspaceD
     usageCredits: member.usageThisCycle ?? undefined,
   }))
 }
-
 function normalizeRole(role: string): WorkspaceMembershipRole {
   if (role === 'owner' || role === 'admin' || role === 'editor' || role === 'viewer') return role
   if (role === 'member') return 'editor'
   return 'viewer'
 }
-
 function normalizeWorkspaceRole(role: string): WorkspaceRole {
   if (role === 'owner' || role === 'admin' || role === 'editor' || role === 'viewer' || role === 'member' || role === 'guest') return role
   return 'viewer'
 }
-
 function normalizeWorkspacePlanKey(planKey: string | null | undefined, fallback: TangentWorkspace['planKey']) {
   if (planKey === 'team_growth' || planKey === 'team_start' || planKey === 'collaborate_plus' || planKey === 'collaborate_start' || planKey === 'free_canvas' || planKey === 'enterprise') {
     return planKey
   }
   return fallback
 }
-
 function resolvePlanName(name: string | null | undefined, fallback: TangentWorkspace['planKey'] | undefined) {
   if (typeof name === 'string' && name.trim()) return name.trim()
   return (fallback ?? 'free_canvas')
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (char) => char.toUpperCase())
 }
-
 function firstFailureMessage(result: PromiseRejectedResult | PromiseSettledResult<unknown>) {
   if (result.status !== 'rejected') return null
   return result.reason instanceof Error ? result.reason.message : 'Workspace dashboard failed to load.'

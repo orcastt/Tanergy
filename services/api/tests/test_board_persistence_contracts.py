@@ -573,6 +573,7 @@ def test_postgres_board_owner_is_preserved_on_collaborator_save(monkeypatch):
         ),
         owner,
     )
+    store.upsert_member("shared_board", "user_editor", "editor", "Editor", owner)
     store.save_board(
         BoardSaveRequest(
             boardId="shared_board",
@@ -942,9 +943,9 @@ def test_board_member_candidates_invite_and_share_link_contract(monkeypatch):
     ]
 
     invited = client.post(
-        "/api/v1/boards/share_board/members/invite-by-email",
+        "/api/v1/boards/share_board/members",
         headers=headers,
-        json={"email": "alice@example.com", "role": "viewer", "displayName": "Alice Artist"},
+        json={"userId": "user_alice", "role": "viewer", "displayName": "Alice Artist"},
     )
     assert invited.status_code == 200
     assert invited.json()["member"] == {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import {
   boardMemberRoleValues,
@@ -12,14 +12,12 @@ import {
 import {
   createLocalBoardMember,
   deleteLocalBoardMember,
-  inviteLocalBoardMemberByEmail,
   listLocalBoardMembers,
   searchLocalBoardMemberCandidates,
   updateLocalBoardMember,
 } from '@/features/boards/localBoardClient'
 import {
   buildDraftMap,
-  isLikelyEmail,
   sortMembers,
   upsertMember,
 } from './boardMemberUtils'
@@ -45,12 +43,10 @@ export function useBoardManagementMembers({
   workspace,
 }: UseBoardManagementMembersArgs) {
   const [createRole, setCreateRole] = useState<BoardMemberRole>('viewer')
-  const [inviteDisplayName, setInviteDisplayName] = useState('')
   const [lookupCandidates, setLookupCandidates] = useState<BoardMemberCandidateRecord[]>([])
   const [lookupQuery, setLookupQuery] = useState('')
   const [drafts, setDrafts] = useState<Record<string, MemberDraft>>({})
   const [error, setError] = useState<string | null>(null)
-  const [isCreating, setIsCreating] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSearching, setIsSearching] = useState(false)
   const [members, setMembers] = useState<BoardMemberRecord[]>([])
@@ -114,44 +110,11 @@ export function useBoardManagementMembers({
   }, [board.id, canManageBoard, lookupQuery, workspace])
 
   const readOnly = disabled || !canManageBoard
-  const isBusy = isLoading || isCreating || pendingUserId !== null
+  const isBusy = isLoading || pendingUserId !== null
   const memberCountLabel = useMemo(
     () => `${members.length} ${members.length === 1 ? 'member' : 'members'}`,
     [members.length],
   )
-
-  const inviteByEmail = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    if (readOnly) return
-    const normalizedEmail = lookupQuery.trim()
-    if (!isLikelyEmail(normalizedEmail)) {
-      setError('Enter a valid email to invite.')
-      return
-    }
-
-    setIsCreating(true)
-    setError(null)
-    try {
-      const response = await inviteLocalBoardMemberByEmail({
-        boardId: board.id,
-        displayName: inviteDisplayName.trim() || undefined,
-        email: normalizedEmail,
-        role: createRole,
-      }, workspace)
-      if (!response.member) throw new Error('Board member create failed.')
-      const nextMembers = upsertMember(members, response.member, board.ownerId)
-      setMembers(nextMembers)
-      setDrafts(buildDraftMap(nextMembers))
-      setCreateRole('viewer')
-      setInviteDisplayName('')
-      setLookupQuery('')
-      setLookupCandidates([])
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : 'Board member create failed.')
-    } finally {
-      setIsCreating(false)
-    }
-  }
 
   const addCandidate = async (candidate: BoardMemberCandidateRecord) => {
     if (readOnly || candidate.alreadyMember) return
@@ -239,10 +202,7 @@ export function useBoardManagementMembers({
     createRole,
     editableRoleValues,
     error,
-    inviteByEmail,
-    inviteDisplayName,
     isBusy,
-    isCreating,
     isLoading,
     isSearching,
     lookupCandidates,
@@ -254,7 +214,6 @@ export function useBoardManagementMembers({
     removeMember,
     saveMember,
     setCreateRole,
-    setInviteDisplayName,
     setLookupCandidates,
     setLookupQuery,
     updateDraft,

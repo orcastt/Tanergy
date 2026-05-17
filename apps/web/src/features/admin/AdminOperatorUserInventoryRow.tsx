@@ -1,5 +1,6 @@
 'use client'
 
+import { resolveCreditUsageMetrics } from '@/features/billing/billingCreditUsage'
 import Link from 'next/link'
 import { buildStableListKey, formatCompactDate, formatNumber, truncateMiddle } from './adminAiShared'
 import type { AdminOperatorAction } from './adminOperatorActions'
@@ -139,13 +140,13 @@ function CreditBar({
   tone?: 'active' | 'muted'
 }) {
   const total = Math.max(credit.totalCredits, credit.remainingCredits, credit.spentCredits, 1)
-  const remainingPercent = Math.min(100, Math.max(0, (credit.remainingCredits / total) * 100))
+  const usage = resolveCreditUsageMetrics(credit.remainingCredits, total)
 
   return (
     <div className={`admin-credit-bar-shell ${tone === 'muted' ? 'is-muted' : ''}`}>
-      <span>{formatNumber(credit.remainingCredits)}/{formatNumber(total)}</span>
+      <span>{formatNumber(usage.used)}/{formatNumber(usage.total)}</span>
       <div className={`admin-credit-bar ${tone === 'muted' ? 'is-muted' : ''}`} aria-hidden="true">
-        <i style={{ width: `${remainingPercent}%` }} />
+        <i style={{ width: `${usage.percent}%` }} />
       </div>
     </div>
   )

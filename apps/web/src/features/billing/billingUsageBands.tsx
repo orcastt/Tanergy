@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { resolveCreditUsageMetrics } from './billingCreditUsage'
 import {
   formatBillingIntervalLabel,
   formatCredits,
@@ -52,6 +53,7 @@ export function PersonalUsageBand({
   onAddGroup: () => void
   onTopUp: () => void
 }) {
+  const usage = resolveCreditUsageMetrics(groupSummary.remainingCredits, groupSummary.totalCredits)
   return (
     <BillingBand
       actions={(
@@ -67,7 +69,7 @@ export function PersonalUsageBand({
       tone="group"
     >
       <BillingFactGrid columns={4}>
-        <BillingFact label="Remaining credits" value={`${formatCredits(groupSummary.remainingCredits)} / ${formatCredits(groupSummary.totalCredits)}`} hint={`${formatCredits(groupSummary.topUpBalance)} top-up balance`} />
+        <BillingFact label="Used credits" value={`${formatCredits(usage.used)} / ${formatCredits(usage.total)}`} hint={`${formatCredits(groupSummary.topUpBalance)} top-up balance`} />
         <BillingFact label="Included credits" value={formatCredits(groupSummary.includedCredits)} hint="Refresh every 30 days" />
         <BillingFact label="Group capacity" value={`${groupSummary.groupsCreated} / ${groupSummary.groupLimit}`} hint={`${formatFact(groupSummary.groupMemberLimit)} members per Group`} />
         <BillingFact label="Billing mode" value={formatBillingIntervalLabel(groupSummary.billingInterval)} hint="Group AI charges your own personal credits" />
@@ -77,7 +79,7 @@ export function PersonalUsageBand({
         currentPeriodStart={groupSummary.currentPeriodStart}
         nextRefreshAt={groupSummary.nextRefreshAt}
       />
-      <BillingProgress remaining={groupSummary.remainingCredits} total={groupSummary.totalCredits} />
+      <BillingProgress total={usage.total} used={usage.used} />
       <BillingInlineList
         items={[
           `${groupSummary.joinedGroups} joined Groups`,
@@ -101,6 +103,7 @@ export function TeamUsageBand({
   team: CommerceTeamCard
 }) {
   const canManage = team.canManageBilling && onTopUp && onBuySeat
+  const usage = resolveCreditUsageMetrics(team.remainingCredits, team.totalCredits)
   return (
     <BillingBand
       actions={(
@@ -117,7 +120,7 @@ export function TeamUsageBand({
     >
       <BillingFactGrid columns={4}>
         <BillingFact label="Plan" value={team.planName} hint={formatBillingIntervalLabel(team.billingInterval)} />
-        <BillingFact label="Team credits" value={`${formatCredits(team.remainingCredits)} / ${formatCredits(team.totalCredits)}`} hint={`${formatCredits(team.topUpBalance)} top-up balance`} />
+        <BillingFact label="Team credits used" value={`${formatCredits(usage.used)} / ${formatCredits(usage.total)}`} hint={`${formatCredits(team.topUpBalance)} top-up balance`} />
         <BillingFact label="Seats" value={`${team.seatsUsed} / ${team.seatLimit}`} hint={`${team.memberCount} members · ${team.boardCount} boards`} />
         <BillingFact label="Billing mode" value="Team wallet" hint="AI never charges each member personally here" />
       </BillingFactGrid>
@@ -126,12 +129,12 @@ export function TeamUsageBand({
         currentPeriodStart={team.currentPeriodStart}
         nextRefreshAt={team.nextRefreshAt}
       />
-      <BillingProgress remaining={team.remainingCredits} total={team.totalCredits} />
+      <BillingProgress total={usage.total} used={usage.used} />
       <BillingInlineList
         items={[
           `${formatCredits(team.includedCredits)} included credits on current pack`,
           `${formatFact(team.seatMin)}-${formatFact(team.seatMax)} seat range`,
-          canManage ? 'Owner/admin can invite, remove, and assign seats' : 'Read-only billing view for joined Team',
+          canManage ? 'Owner/admin can invite members, remove them, and buy more seats' : 'Read-only billing view for joined Team',
         ]}
       />
     </BillingBand>

@@ -97,13 +97,6 @@ export type BoardMemberCandidateRecord = {
   workspaceRole: WorkspaceRole
 }
 
-export type BoardMemberInviteByEmailInput = {
-  boardId: string
-  displayName?: string | null
-  email: string
-  role: BoardMemberRole
-}
-
 export type BoardShareAccessRole = 'viewer' | 'editor'
 
 export type BoardShareLinkRecord = {

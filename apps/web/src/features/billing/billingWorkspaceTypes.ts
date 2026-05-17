@@ -48,6 +48,7 @@ export type WorkspaceDashboardRecord = {
   dashboardKind: 'group_structure' | 'team_usage'
   memberCount: number
   members: WorkspaceDashboardMember[]
+  seatCapacity?: null | number
   totalUsageThisCycle?: null | number
   workspace: BillingWorkspaceSummary
 }

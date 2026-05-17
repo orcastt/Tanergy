@@ -141,8 +141,6 @@ export function useKonvaLocalYjsSnapshotController({
       hasSynchronizedPages: lastSynchronizedPagesRef.current !== null,
       hasUnsyncedLocalChanges: hasUnsyncedLocalChangesRef.current,
       lastSynchronizedSignature: lastSynchronizedSignatureRef.current,
-      localChangedPageIds: nextChangedPageIdsRef.current,
-      localPublishMode: nextPublishModeRef.current,
       markSkipNextPublish,
       onRemoteRestore: latestRemoteRestoreRef.current,
       onRepublishLocal: () => publishCurrentSnapshotRef.current?.({

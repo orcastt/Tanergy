@@ -8,7 +8,6 @@ import {
 } from '@/features/boards/boardTypes'
 import {
   getRoleLabel,
-  isLikelyEmail,
 } from './boardMemberUtils'
 import { BoardManagementCandidateRow, BoardManagementMemberRow } from './boardManagementMemberRows'
 import { useBoardManagementMembers } from './useBoardManagementMembers'
@@ -34,12 +33,12 @@ export function BoardManagementMembers({ board, canManageBoard, disabled, worksp
       </div>
 
       {canManageBoard ? (
-        <form className="board-panel-member-add" onSubmit={membersState.inviteByEmail}>
+        <div className="board-panel-member-add">
           <label>
-            <span>Search people</span>
+            <span>Search workspace members</span>
             <input
               autoComplete="off"
-              disabled={disabled || membersState.isCreating}
+              disabled={disabled || membersState.isBusy}
               id="board-members-lookup"
               maxLength={120}
               onChange={(event) => {
@@ -54,20 +53,10 @@ export function BoardManagementMembers({ board, canManageBoard, disabled, worksp
             />
           </label>
           <label>
-            <span>Display name</span>
-            <input
-              disabled={disabled || membersState.isCreating}
-              maxLength={80}
-              onChange={(event) => membersState.setInviteDisplayName(event.target.value)}
-              placeholder="Optional"
-              value={membersState.inviteDisplayName}
-            />
-          </label>
-          <label>
             <span>Role</span>
             <select
               className="board-panel-member-role"
-              disabled={disabled || membersState.isCreating}
+              disabled={disabled || membersState.isBusy}
               onChange={(event) => membersState.setCreateRole(event.target.value as BoardMemberRole)}
               value={membersState.createRole}
             >
@@ -76,14 +65,7 @@ export function BoardManagementMembers({ board, canManageBoard, disabled, worksp
               ))}
             </select>
           </label>
-          <button
-            className="product-button product-button-secondary"
-            disabled={disabled || membersState.isCreating || !isLikelyEmail(membersState.lookupQuery)}
-            type="submit"
-          >
-            Invite
-          </button>
-        </form>
+        </div>
       ) : null}
 
       {membersState.error ? <p className="board-panel-error board-panel-member-status">{membersState.error}</p> : null}
@@ -104,9 +86,7 @@ export function BoardManagementMembers({ board, canManageBoard, disabled, worksp
             <p className="board-panel-member-status">
               {membersState.isSearching
                 ? 'Searching people...'
-                : isLikelyEmail(membersState.lookupQuery)
-                  ? 'No workspace match found. You can still invite this email.'
-                  : 'No people found.'}
+                : 'No workspace member found. Invite them into the workspace first.'}
             </p>
           ) : null}
         </div>

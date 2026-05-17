@@ -67,6 +67,7 @@ class WorkspaceDashboardRecord(TangentApiModel):
     dashboard_kind: str = Field(alias="dashboardKind")
     member_count: int = Field(alias="memberCount")
     members: list[WorkspaceDashboardMember]
+    seat_capacity: Optional[int] = Field(default=None, alias="seatCapacity")
     total_usage_this_cycle: Optional[int] = Field(default=None, alias="totalUsageThisCycle")
     workspace: BillingWorkspaceSummary
 

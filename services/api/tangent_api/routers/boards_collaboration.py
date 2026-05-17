@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from tangent_api.board_guard import audit_board_document
 from tangent_api.request_context import ApiRequestContext, get_request_context
@@ -80,14 +80,11 @@ def invite_board_member_by_email(
     payload: BoardMemberInviteByEmailRequest,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> BoardMemberResponse:
-    member = get_board_storage_adapter().invite_member_by_email(
-        board_id,
-        payload.email,
-        payload.role,
-        payload.display_name,
-        context,
+    _ = (board_id, payload, context)
+    raise HTTPException(
+        status_code=409,
+        detail="Board invites now require an existing workspace member. Invite them to the workspace first, then assign boards.",
     )
-    return BoardMemberResponse(member=member, ok=True)
 
 
 @router.patch("/{board_id}/members/{user_id}", response_model=BoardMemberResponse)

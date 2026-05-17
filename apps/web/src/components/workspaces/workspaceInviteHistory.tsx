@@ -17,7 +17,6 @@ export function InviteHistoryRow({
 }) {
   const inviteView = resolveInviteView(invite)
   const isExpired = inviteView === 'pending' && isInvitationExpired(invite)
-  const boardLabel = resolveInvitationBoardLabel(invite)
   const acceptedByLabel = invite.acceptedBy
     ? memberNamesById?.get(invite.acceptedBy) ?? invite.acceptedBy
     : null
@@ -27,7 +26,7 @@ export function InviteHistoryRow({
     inviteView === 'accepted' && acceptedByLabel ? `Accepted by ${acceptedByLabel}` : null,
     inviteView === 'revoked' && invite.revokedAt ? `Revoked ${formatInviteDate(invite.revokedAt)}` : null,
     inviteView === 'pending' ? `${isExpired ? 'Expired' : 'Expires'} ${formatInviteDate(invite.expiresAt)}` : null,
-    boardLabel ? `Opens ${boardLabel}` : 'Workspace home',
+    'Workspace join',
     invite.targetUserId ? `User ${invite.targetUserId}` : null,
   ].filter(Boolean)
 
@@ -87,17 +86,6 @@ export function emptyInviteLabel(view: InviteView) {
   if (view === 'accepted') return 'No accepted invites yet.'
   if (view === 'revoked') return 'No revoked invites yet.'
   return 'No pending invites.'
-}
-
-function resolveInvitationBoardLabel(invite: WorkspaceInvitationRecord) {
-  const boardTitle = readInvitationMetadataText(invite, 'boardTitle')
-  const boardId = readInvitationMetadataText(invite, 'boardId')
-  return boardTitle ?? boardId
-}
-
-function readInvitationMetadataText(invite: WorkspaceInvitationRecord, key: string) {
-  const value = invite.metadata[key]
-  return typeof value === 'string' && value.trim() ? value.trim() : null
 }
 
 function parseInviteTimestamp(value: string) {

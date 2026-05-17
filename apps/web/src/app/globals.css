@@ -15,6 +15,7 @@
 @import './styles/product-team-dashboard.css';
 @import './styles/product-team-member-actions.css';
 @import './styles/product-commerce.css';
+@import './styles/product-commerce-pricing.css';
 @import './styles/product-commerce-actions.css';
 @import './styles/product-auth.css';
 @import './styles/product-auth-dev.css';
@@ -45,6 +46,8 @@
 @import './styles/canvas-image-lod.css';
 @import './styles/konva-canvas.css';
 @import './styles/konva-collaboration-presence.css';
+@import './styles/konva-collaboration-overlay.css';
+@import './styles/konva-local-sync-banner.css';
 @import './styles/konva-canvas-context-menu.css';
 @import './styles/konva-canvas-properties.css';
 @import './styles/ai-card.css';

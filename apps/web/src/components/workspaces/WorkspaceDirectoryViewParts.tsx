@@ -1,5 +1,6 @@
 'use client'
 
+import { resolveCreditUsageMetrics } from '@/features/billing/billingCreditUsage'
 import Link from 'next/link'
 import { formatCredits } from '@/features/billing/billingPresentation'
 import {
@@ -72,6 +73,9 @@ function DirectoryCard({
   viewMode: DirectoryViewMode
 }) {
   const className = `workspace-directory-card ${viewMode === 'list' ? 'is-list' : ''}${href ? ' is-link' : ''}`
+  const usage = item.remainingCredits !== undefined && item.totalCredits !== undefined
+    ? resolveCreditUsageMetrics(item.remainingCredits, item.totalCredits)
+    : null
   const content = (
     <>
       <div className="workspace-directory-card-preview" data-kind={item.kind}>
@@ -88,14 +92,14 @@ function DirectoryCard({
           <span>{formatBoardCount(item.boardCount)}</span>
           <span>{formatMemberCount(item.memberCount)}</span>
         </div>
-        {item.remainingCredits !== undefined && item.totalCredits !== undefined ? (
+        {usage ? (
           <div className="workspace-directory-card-usage">
             <div className="workspace-directory-card-usage-head">
               <span>{formatWorkspacePlanName(item.planKey)}</span>
-              <strong>{formatCredits(item.remainingCredits)} / {formatCredits(item.totalCredits)}</strong>
+              <strong>{formatCredits(usage.used)} / {formatCredits(usage.total)}</strong>
             </div>
             <div className="workspace-directory-card-progress" aria-hidden="true">
-              <span style={{ width: `${percent(item.remainingCredits, item.totalCredits)}%` }} />
+              <span style={{ width: `${usage.percent}%` }} />
             </div>
             <div className="workspace-directory-card-usage-meta">
               <span>{formatUsageWindow(item.usedThisCycle, item.currentPeriodEnd)}</span>
@@ -133,6 +137,7 @@ export function FeaturedSummaryCard({
 }: {
   summary: FeaturedSummary
 }) {
+  const usage = resolveCreditUsageMetrics(summary.remainingCredits, summary.totalCredits)
   return (
     <section className="workspace-directory-summary-card">
       <div className="workspace-directory-summary-copy">
@@ -141,11 +146,11 @@ export function FeaturedSummaryCard({
         <p>{summary.planLabel}</p>
       </div>
       <div className="workspace-directory-summary-credits">
-        <strong>{formatCredits(summary.remainingCredits)}</strong>
-        <span>{formatCredits(summary.totalCredits)} total</span>
+        <strong>{formatCredits(usage.used)} / {formatCredits(usage.total)}</strong>
+        <span>credits used</span>
       </div>
       <div className="workspace-directory-summary-progress" aria-hidden="true">
-        <span style={{ width: `${percent(summary.remainingCredits, summary.totalCredits)}%` }} />
+        <span style={{ width: `${usage.percent}%` }} />
       </div>
       <div className="workspace-directory-summary-meta">
         <span>{summary.meta}</span>
@@ -175,9 +180,4 @@ function formatUsageWindow(usedThisCycle?: number, currentPeriodEnd?: null | str
   const date = new Date(currentPeriodEnd)
   if (Number.isNaN(date.getTime())) return usage
   return `${usage} · valid until ${new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date)}`
-}
-
-function percent(value: number, total: number) {
-  if (!Number.isFinite(total) || total <= 0) return 0
-  return Math.max(0, Math.min(100, Math.round((value / total) * 100)))
 }

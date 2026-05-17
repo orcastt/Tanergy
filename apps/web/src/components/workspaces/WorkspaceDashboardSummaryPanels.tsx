@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { resolveCreditUsageMetrics } from '@/features/billing/billingCreditUsage'
 import { formatCredits, formatDateOnly } from '@/features/billing/billingPresentation'
 import type {
   GroupWorkspaceDashboardRecord,
@@ -8,25 +9,28 @@ import type {
 } from '@/features/workspaces/workspaceDashboardTypes'
 
 export function TeamDashboardSummaryPanel({ record }: { record: TeamWorkspaceDashboardRecord }) {
-  const creditPercent = getCreditPercent(record.totalCreditsRemaining, record.totalCredits)
+  const usage = resolveCreditUsageMetrics(record.totalCreditsRemaining, record.totalCredits)
 
   return (
     <section className="workspace-detail-panel workspace-detail-side-panel">
       <div className="workspace-detail-panel-head"><h2>Usage</h2></div>
       <div className="workspace-detail-dark-card">
         <div className="workspace-detail-dark-row">
-          <strong>{formatCredits(record.totalCreditsRemaining)}</strong>
+          <strong>{formatCredits(usage.used)} / {formatCredits(usage.total)}</strong>
           <Link className="workspace-detail-danger-button" href={`/usage?scope=teams&workspace=${encodeURIComponent(record.id)}`}>
             Top Up
           </Link>
         </div>
         <small>{formatCredits(record.includedCredits)} included + {formatCredits(record.topUpBalance)} top-up</small>
-        <div className="workspace-detail-progress"><span style={{ width: `${creditPercent}%` }} /></div>
+        <div className="workspace-detail-progress"><span style={{ width: `${usage.percent}%` }} /></div>
       </div>
       <div className="workspace-detail-summary-list">
         <SummaryRow label="Plan" value={record.planName} />
         <SummaryRow label="Billing" value="Team wallet" />
         <SummaryRow label="Seats" value={`${record.seatsUsed} / ${record.seatLimit}`} />
+        {record.seatMax && record.seatMax > record.seatLimit ? (
+          <SummaryRow label="Expandable to" value={`${record.seatMax} seats`} />
+        ) : null}
         <SummaryRow label="Members" value={String(record.memberCount)} />
         <SummaryRow label="Next refresh" value={formatPeriodFact(record.nextRefreshAt, 'Rolling 30d')} />
         <SummaryRow label="Valid until" value={formatPeriodFact(record.currentPeriodEnd, 'No expiry')} />
@@ -47,20 +51,20 @@ export function TeamDashboardSummaryPanel({ record }: { record: TeamWorkspaceDas
 }
 
 export function GroupDashboardSummaryPanel({ record }: { record: GroupWorkspaceDashboardRecord }) {
-  const creditPercent = getCreditPercent(record.totalCreditsRemaining, record.totalCredits)
+  const usage = resolveCreditUsageMetrics(record.totalCreditsRemaining, record.totalCredits)
 
   return (
     <section className="workspace-detail-panel workspace-detail-side-panel">
       <div className="workspace-detail-panel-head"><h2>My credits</h2></div>
       <div className="workspace-detail-dark-card">
         <div className="workspace-detail-dark-row">
-          <strong>{formatCredits(record.totalCreditsRemaining)}</strong>
+          <strong>{formatCredits(usage.used)} / {formatCredits(usage.total)}</strong>
           <Link className="workspace-detail-danger-button" href="/usage?scope=group">
             Top Up
           </Link>
         </div>
         <small>{formatCredits(record.includedCredits)} included + {formatCredits(record.topUpBalance)} top-up</small>
-        <div className="workspace-detail-progress"><span style={{ width: `${creditPercent}%` }} /></div>
+        <div className="workspace-detail-progress"><span style={{ width: `${usage.percent}%` }} /></div>
       </div>
       <div className="workspace-detail-summary-list">
         <SummaryRow label="My personal plan" value={record.planName} />
@@ -82,11 +86,6 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
       <strong>{value}</strong>
     </div>
   )
-}
-
-function getCreditPercent(remaining: number, total: number) {
-  if (!Number.isFinite(total) || total <= 0) return 0
-  return Math.min(100, Math.round((remaining / total) * 100))
 }
 
 function formatEnvelope(boardLimit?: null | number, pageLimit?: null | number) {

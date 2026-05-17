@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import type Konva from 'konva'
 import * as Y from 'yjs'
 import { type CanvasBounds, type CanvasCamera, type CanvasDocument, type CanvasPoint, type CanvasShape, type CanvasShapeStyle } from '@/features/canvas-engine'
@@ -59,12 +59,21 @@ export function KonvaCanvasSpike({
   const ydoc = useMemo(() => new Y.Doc({
     guid: `konva:${workspace?.id ?? 'local'}:${boardId}`,
   }), [boardId, workspace?.id])
-  const [document, setDocument] = useState<CanvasDocument>(() => createInitialKonvaSpikeDocument({
+  const [document, setDocumentState] = useState<CanvasDocument>(() => createInitialKonvaSpikeDocument({
     boardTitle,
     initialBoard,
     seedOnMount,
     workspaceId: initialBoard?.workspaceId ?? workspace?.id,
   }))
+  const documentChangeBridgeRef = useRef<Dispatch<SetStateAction<CanvasDocument>> | null>(null)
+  const setDocument = useCallback<Dispatch<SetStateAction<CanvasDocument>>>((update) => {
+    const bridge = documentChangeBridgeRef.current
+    if (bridge) {
+      bridge(update)
+      return
+    }
+    setDocumentState(update)
+  }, [])
   const [camera, setCamera] = useState<CanvasCamera>(document.camera)
   const [activeToolState, setActiveToolState] = useState<KonvaCanvasTool>('select')
   const activeToolPreference = readOnly ? 'hand' : activeToolState
@@ -166,6 +175,7 @@ export function KonvaCanvasSpike({
       setContextMenu,
       setCropEditingImageId,
       setDocument,
+      setDocumentState,
       setDropHintKind,
       setEditingNodeText,
       setEditingTextId,
@@ -202,6 +212,7 @@ export function KonvaCanvasSpike({
     },
     clipboardRef,
     clearTransientState,
+    documentChangeBridgeRef,
     handleSelectionChange,
     handleToolChange,
     hasPersistedBoard,

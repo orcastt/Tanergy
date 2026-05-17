@@ -28,6 +28,10 @@
   grid-template-columns: minmax(0, 1.58fr) minmax(320px, 0.78fr);
 }
 
+.workspace-detail-grid-bottom.is-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .workspace-detail-grid-group {
   grid-template-columns: minmax(0, 1fr) 168px;
   align-items: start;
@@ -455,6 +459,51 @@ section.workspace-detail-side-panel:has(.workspace-detail-field) .workspace-deta
   color: var(--color-muted);
   font-size: 13px;
   line-height: 1.45;
+}
+
+.workspace-board-assignment-dialog {
+  gap: 20px;
+}
+
+.workspace-board-assignment-list {
+  display: grid;
+  gap: 10px;
+}
+
+.workspace-board-assignment-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid rgba(24, 29, 38, 0.08);
+  border-radius: 14px;
+  background: #fbfbfc;
+}
+
+.workspace-board-assignment-row input {
+  margin-top: 2px;
+}
+
+.workspace-board-assignment-row strong,
+.workspace-board-assignment-row small {
+  display: block;
+}
+
+.workspace-board-assignment-row strong {
+  color: var(--color-ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.workspace-board-assignment-row small {
+  margin-top: 4px;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.workspace-board-assignment-save {
+  min-width: 132px;
 }
 
 .workspace-detail-settings-form {

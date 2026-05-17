@@ -5,7 +5,7 @@ import type { KonvaYjsSnapshotWriteMode } from '@/features/collaboration/konvaYj
 import { resolveKonvaYjsPublishPlan } from './konvaLocalYjsSyncHelpers'
 import type { KonvaLocalYjsSyncController } from './konvaLocalYjsSyncContract'
 
-const publishDebounceMs = 220
+const publishDebounceMs = 110
 
 type UseKonvaLocalYjsPublishSchedulerOptions = {
   activePageId?: string

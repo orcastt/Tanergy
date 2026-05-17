@@ -1,5 +1,6 @@
 'use client'
 
+import { resolveCreditUsageMetrics } from '@/features/billing/billingCreditUsage'
 import { formatPlanKey, periodText } from './AdminOperatorDetailTables'
 import { ActionStack, BoardStack, MemberStack } from './AdminOperatorWorkspaceCellStacks'
 import { MetaLine, formatNumber } from './adminAiShared'
@@ -112,14 +113,13 @@ function TeamCreditCell({ workspace }: { workspace: AdminOperatorWorkspacePlan }
 
 function StackedTeamCreditBar({ workspace }: { workspace: AdminOperatorWorkspacePlan }) {
   const total = Math.max(workspace.credit.totalCredits, workspace.credit.remainingCredits, workspace.credit.spentCredits, workspace.usageByUser, 1)
+  const usage = resolveCreditUsageMetrics(workspace.credit.remainingCredits, total)
   const personalPercent = Math.min(100, Math.max(0, (workspace.usageByUser / total) * 100))
-  const usedPercent = Math.min(100, Math.max(personalPercent, (workspace.credit.spentCredits / total) * 100))
-  const remainingPercent = Math.min(100, Math.max(0, (workspace.credit.remainingCredits / total) * 100))
+  const usedPercent = Math.min(100, Math.max(personalPercent, usage.percent))
   return (
     <div className={`admin-stacked-credit ${isCurrentPlan(workspace.planStatus) ? '' : 'is-muted'}`}>
-      <span>{formatNumber(workspace.credit.remainingCredits)}/{formatNumber(total)}</span>
+      <span>{formatNumber(usage.used)}/{formatNumber(usage.total)}</span>
       <div className="admin-stacked-credit-track" aria-hidden="true">
-        <i className="admin-stacked-credit-remaining" style={{ width: `${remainingPercent}%` }} />
         <i className="admin-stacked-credit-used" style={{ width: `${usedPercent}%` }} />
         <i className="admin-stacked-credit-personal" style={{ width: `${personalPercent}%` }} />
       </div>

@@ -9,9 +9,7 @@ import {
 import type { ApiRequestContext } from '../../_lib/apiRequestContext'
 import { readRequiredLocalBoardRecord } from './localBoardRecordAccess'
 import {
-  buildInvitedLocalWorkspacePerson,
   readLocalBoardWorkspacePeople,
-  writeLocalBoardWorkspacePeople,
 } from './localBoardWorkspacePeopleStore'
 import {
   getLocalBoardMemberPath,
@@ -104,29 +102,6 @@ export async function searchLocalBoardMemberCandidates(boardId: string, query: s
     } satisfies BoardMemberCandidateRecord))
     .sort((left, right) => Number(left.alreadyMember) - Number(right.alreadyMember) || left.email.localeCompare(right.email))
     .slice(0, 12)
-}
-
-export async function inviteLocalBoardMemberByEmail(
-  boardId: string,
-  email: string,
-  role: BoardMemberRole,
-  displayName: string | null | undefined,
-  context: ApiRequestContext,
-) {
-  const board = await readRequiredLocalBoardRecord(boardId, context)
-  const normalizedEmail = requireLocalBoardEmail(email)
-  const people = await readLocalBoardWorkspacePeople(board, context)
-  const existing = people.find((person) => person.email.toLowerCase() === normalizedEmail)
-  const candidate = existing ?? buildInvitedLocalWorkspacePerson(normalizedEmail, displayName)
-  if (!existing) {
-    await writeLocalBoardWorkspacePeople(board.workspaceId, [...people, candidate])
-  }
-  const member = await upsertLocalBoardMember(boardId, candidate.userId, role, displayName ?? candidate.displayName, context)
-  return {
-    ...member,
-    email: candidate.email,
-    workspaceRole: candidate.workspaceRole,
-  } satisfies BoardMemberRecord
 }
 
 async function readMemberRecords(board: BoardPersistenceRecord) {

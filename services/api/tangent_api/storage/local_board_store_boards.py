@@ -146,7 +146,7 @@ def list_boards_paginated(
             record = BoardRecord.model_validate(json.loads(path.read_text(encoding="utf-8")))
         except Exception:
             continue
-        member_role = _get_board_member_role(record.id, record, context) if context.workspace_role == "guest" else None
+        member_role = _get_board_member_role(record.id, record, context)
         if not can_read_board(record, context, member_role):
             continue
         summaries.append(summarize_board_record(record))

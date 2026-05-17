@@ -44,22 +44,21 @@ def resolve_effective_board_permission(
 
     normalized_member_role = board_member_role.strip().lower() if isinstance(board_member_role, str) else None
     raw_workspace_role = str(context.workspace_role or "").strip().lower()
+    normalized_workspace_role = _normalize_workspace_role(context.workspace_role)
     if record.owner_id == context.user_id or normalized_member_role == "owner":
         return "owner"
+    if workspace_role_can_manage(normalized_workspace_role):
+        return "manage"
     if normalized_member_role in MANAGE_BOARD_MEMBER_ROLES:
         return "manage"
     if normalized_member_role in WRITE_BOARD_MEMBER_ROLES:
         return "edit"
     if normalized_member_role in READ_BOARD_MEMBER_ROLES:
         return "view"
-
-    normalized_workspace_role = _normalize_workspace_role(context.workspace_role)
-    if workspace_role_can_manage(normalized_workspace_role):
-        return "manage"
-    if workspace_role_can_write(normalized_workspace_role):
-        return "edit"
-    if normalized_workspace_role == "viewer":
-        return "view" if raw_workspace_role == "viewer" else "none"
+    if normalized_workspace_role in {"editor", "viewer"}:
+        return "none"
+    if raw_workspace_role in {"member", "guest"}:
+        return "none"
     return "none"
 
 

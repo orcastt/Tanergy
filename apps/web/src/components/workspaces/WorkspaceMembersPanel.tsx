@@ -3,27 +3,27 @@
 import { useState } from 'react'
 import {
   removeWorkspaceMember,
-  transferWorkspaceOwner,
   updateWorkspaceMemberRole,
-  upsertWorkspaceSeat,
 } from '@/features/billing/billingClient'
-import { requestCurrentSessionRefresh } from '@/features/auth/sessionClient'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import { getPublicUserLabel } from '@/features/shared/publicUserDisplay'
+import type { WorkspaceDashboardBoard } from '@/features/workspaces/workspaceDashboardTypes'
 import { formatWorkspaceMembershipRole, type WorkspaceMembershipRole } from '@/features/workspaces/workspacePresentation'
 import type { WorkspaceDashboardMember } from '@/features/workspaces/workspaceDashboardTypes'
+import { WorkspaceMemberBoardAssignmentsDialog } from './WorkspaceMemberBoardAssignmentsDialog'
 
 type WorkspaceMembersPanelProps = {
+  boards: WorkspaceDashboardBoard[]
   members: WorkspaceDashboardMember[]
   onMembersChanged?: () => void
-  seatIncludedCredits?: number | null
   workspace: TangentWorkspace
 }
 
 const editableRoles: WorkspaceMembershipRole[] = ['admin', 'editor', 'viewer']
 const managerRoles = new Set(['owner', 'admin'])
 
-export function WorkspaceMembersPanel({ members, onMembersChanged, seatIncludedCredits = null, workspace }: WorkspaceMembersPanelProps) {
+export function WorkspaceMembersPanel({ boards, members, onMembersChanged, workspace }: WorkspaceMembersPanelProps) {
+  const [assignmentMember, setAssignmentMember] = useState<WorkspaceDashboardMember | null>(null)
   const [hiddenMemberIds, setHiddenMemberIds] = useState<Set<string>>(() => new Set())
   const [pendingMemberId, setPendingMemberId] = useState<null | string>(null)
   const [roleDrafts, setRoleDrafts] = useState<Record<string, WorkspaceMembershipRole>>({})
@@ -56,7 +56,10 @@ export function WorkspaceMembersPanel({ members, onMembersChanged, seatIncludedC
                 <span className="workspace-detail-avatar large">{member.initials}</span>
                 <div>
                   <strong>{memberLabel}</strong>
-                  <small>{member.email ?? `${formatWorkspaceMembershipRole(member.role)} · ${member.boardAssignments} boards`}</small>
+                  <small>
+                    {member.email ? `${member.email} · ` : ''}
+                    {formatWorkspaceMembershipRole(member.role)} · {member.boardAssignments} boards
+                  </small>
                 </div>
               </div>
               <div className="workspace-detail-member-actions">
@@ -77,18 +80,15 @@ export function WorkspaceMembersPanel({ members, onMembersChanged, seatIncludedC
                 {member.role === 'owner' || !canEditMember(member.role) ? null : (
                   <button className="workspace-detail-muted-button" disabled={pendingMemberId === member.id || !canManageMembers} onClick={() => saveRole(member)} type="button">Save role</button>
                 )}
-                {workspace.kind === 'team_workspace' && member.role !== 'owner' && canManageMembers ? (
+                {canAssignBoards(member.role) ? (
                   <button
                     className="workspace-detail-muted-button"
-                    disabled={pendingMemberId === member.id || !Number.isFinite(seatIncludedCredits ?? Number.NaN)}
-                    onClick={() => assignSeat(member.id)}
+                    disabled={pendingMemberId === member.id || !canManageMembers}
+                    onClick={() => setAssignmentMember(member)}
                     type="button"
                   >
-                    Assign seat
+                    Assign boards
                   </button>
-                ) : null}
-                {canTransferOwnership(member.role) ? (
-                  <button className="workspace-detail-muted-button" disabled={pendingMemberId === member.id} onClick={() => transferOwnership(member.id)} type="button">Transfer owner</button>
                 ) : null}
                 {member.role === 'owner' || !canRemoveMember(member.role) ? null : (
                   <button className="workspace-detail-danger-button" disabled={pendingMemberId === member.id || !canManageMembers} onClick={() => removeMember(member.id)} type="button">Remove</button>
@@ -98,6 +98,16 @@ export function WorkspaceMembersPanel({ members, onMembersChanged, seatIncludedC
           )
         })}
       </div>
+      {assignmentMember ? (
+        <WorkspaceMemberBoardAssignmentsDialog
+          boards={boards}
+          key={`${assignmentMember.id}:${boards.map((board) => board.id).join('|')}`}
+          member={assignmentMember}
+          onClose={() => setAssignmentMember(null)}
+          onSaved={onMembersChanged ?? (() => undefined)}
+          workspace={workspace}
+        />
+      ) : null}
     </section>
   )
 
@@ -113,29 +123,6 @@ export function WorkspaceMembersPanel({ members, onMembersChanged, seatIncludedC
       onMembersChanged?.()
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Role update failed.')
-    } finally {
-      setPendingMemberId(null)
-    }
-  }
-
-  async function assignSeat(userId: string) {
-    if (!canManageMembers) return setStatus('Your workspace role cannot manage seats.')
-    const planKey = workspace.planKey === 'team_growth' ? 'team_growth' : 'team_start'
-    if (!Number.isFinite(seatIncludedCredits ?? Number.NaN)) {
-      return setStatus('Live seat credit pack is still loading. Try again in a moment.')
-    }
-    setPendingMemberId(userId)
-    setStatus(null)
-    try {
-      await upsertWorkspaceSeat({
-        includedCredits: Math.max(0, Math.trunc(seatIncludedCredits ?? 0)),
-        planKey,
-        userId,
-      }, { workspace })
-      setStatus('Seat assigned.')
-      onMembersChanged?.()
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : 'Seat assignment failed.')
     } finally {
       setPendingMemberId(null)
     }
@@ -157,23 +144,6 @@ export function WorkspaceMembersPanel({ members, onMembersChanged, seatIncludedC
     }
   }
 
-  async function transferOwnership(userId: string) {
-    if (!canManageAdmins) return setStatus('Only owners can transfer workspace ownership.')
-    if (workspace.kind !== 'team_workspace') return setStatus('Owner transfer is available for Team workspaces only right now.')
-    setPendingMemberId(userId)
-    setStatus(null)
-    try {
-      await transferWorkspaceOwner({ userId }, { workspace })
-      requestCurrentSessionRefresh()
-      setStatus('Workspace ownership transferred. Refreshing workspace session...')
-      onMembersChanged?.()
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : 'Owner transfer failed.')
-    } finally {
-      setPendingMemberId(null)
-    }
-  }
-
   function canEditMember(role: WorkspaceMembershipRole) {
     if (!canManageMembers) return false
     if (role === 'admin') return canManageAdmins
@@ -186,9 +156,8 @@ export function WorkspaceMembersPanel({ members, onMembersChanged, seatIncludedC
     return role !== 'owner'
   }
 
-  function canTransferOwnership(role: WorkspaceMembershipRole) {
-    if (!canManageAdmins) return false
-    if (workspace.kind !== 'team_workspace') return false
-    return role !== 'owner'
+  function canAssignBoards(role: WorkspaceMembershipRole) {
+    if (!canManageMembers) return false
+    return role === 'editor' || role === 'viewer'
   }
 }

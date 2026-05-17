@@ -41,6 +41,8 @@ export function AppShell({ children }: AppShellProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const canAccessAdmin = adminStatus === 'ready' && adminAccess.canAccessAdmin
   const hideCreateBoardAction = isActivePath(pathname, '/workspaces')
+    || isActivePath(pathname, '/team')
+    || isActivePath(pathname, '/group')
   const topItems = canAccessAdmin ? [...topNavItems, { href: '/admin', label: 'Admin' }] : topNavItems
   const sideItems = canAccessAdmin
     ? [...sideNavItems, { href: '/admin', icon: 'A', label: 'Admin', type: 'link' as const }]

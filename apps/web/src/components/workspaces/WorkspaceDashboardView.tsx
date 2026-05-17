@@ -24,6 +24,7 @@ type WorkspaceDashboardViewProps = {
 }
 
 type BoardViewMode = 'gallery' | 'list'
+const inviteManagerRoles = new Set(['owner', 'admin'])
 
 export function WorkspaceDashboardView({ kind, workspaceId }: WorkspaceDashboardViewProps) {
   const [viewMode, setViewMode] = useState<BoardViewMode>('gallery')
@@ -104,6 +105,7 @@ function TeamDashboardLayout({
   workspace: TangentWorkspace
   viewMode: BoardViewMode
 }) {
+  const canManageInvites = inviteManagerRoles.has(workspace.role)
   return (
     <div className="workspace-detail-stack">
       <section className="workspace-detail-grid workspace-detail-grid-top">
@@ -133,15 +135,17 @@ function TeamDashboardLayout({
         </div>
       </section>
 
-      <section className="workspace-detail-grid workspace-detail-grid-bottom">
-        <WorkspaceMembersPanel members={record.members} onMembersChanged={onMembersChanged} seatIncludedCredits={record.includedCredits} workspace={workspace} />
-        <WorkspaceInvitePanel
-          boards={record.boards}
-          members={record.members}
-          onWorkspaceRefresh={onMembersChanged}
-          seatLabel={`${record.seatsUsed}/${record.seatLimit}`}
-          workspace={workspace}
-        />
+      <section className={`workspace-detail-grid workspace-detail-grid-bottom${canManageInvites ? '' : ' is-single'}`}>
+        <WorkspaceMembersPanel boards={record.boards} members={record.members} onMembersChanged={onMembersChanged} workspace={workspace} />
+        {canManageInvites ? (
+          <WorkspaceInvitePanel
+            members={record.members}
+            onWorkspaceRefresh={onMembersChanged}
+            seatLabel={`${record.seatsUsed}/${record.seatLimit}`}
+            seatPlanMax={record.seatMax}
+            workspace={workspace}
+          />
+        ) : null}
       </section>
     </div>
   )
@@ -164,6 +168,7 @@ function GroupDashboardLayout({
   workspace: TangentWorkspace
   viewMode: BoardViewMode
 }) {
+  const canManageInvites = inviteManagerRoles.has(workspace.role)
   return (
     <div className="workspace-detail-stack">
       <section className="workspace-detail-grid workspace-detail-grid-top">
@@ -193,14 +198,15 @@ function GroupDashboardLayout({
         </div>
       </section>
 
-      <section className="workspace-detail-grid workspace-detail-grid-bottom">
-        <WorkspaceMembersPanel members={record.members} onMembersChanged={onMembersChanged} workspace={workspace} />
-        <WorkspaceInvitePanel
-          boards={record.boards}
-          members={record.members}
-          onWorkspaceRefresh={onMembersChanged}
-          workspace={workspace}
-        />
+      <section className={`workspace-detail-grid workspace-detail-grid-bottom${canManageInvites ? '' : ' is-single'}`}>
+        <WorkspaceMembersPanel boards={record.boards} members={record.members} onMembersChanged={onMembersChanged} workspace={workspace} />
+        {canManageInvites ? (
+          <WorkspaceInvitePanel
+            members={record.members}
+            onWorkspaceRefresh={onMembersChanged}
+            workspace={workspace}
+          />
+        ) : null}
       </section>
     </div>
   )

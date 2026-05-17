@@ -27,6 +27,7 @@ from tangent_api.workspace_entitlement_policy import (
     resolve_plan_key,
     usage_from_reason_totals,
 )
+from tangent_api.workspace_dashboard_seats import load_workspace_dashboard_seat_capacity
 from tangent_api.workspace_schemas import (
     BillingMeResponse,
     PersonalCreditSummary,
@@ -34,7 +35,6 @@ from tangent_api.workspace_schemas import (
     WorkspaceDashboardRecord,
     WorkspaceEntitlementResponse,
 )
-
 @dataclass(frozen=True)
 class EntitlementResolution:
     charged_account_id: Optional[str]
@@ -101,6 +101,7 @@ def build_workspace_dashboard_response(context: ApiRequestContext) -> WorkspaceD
         dashboardKind="team_usage" if can_see_member_usage else "group_structure",
         memberCount=len(members),
         members=members,
+        seatCapacity=load_workspace_dashboard_seat_capacity(context),
         totalUsageThisCycle=total_usage,
         workspace=build_workspace_summary(context),
     )

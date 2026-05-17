@@ -79,19 +79,6 @@ export function WorkspaceBoardSection({
           ) : null}
         </header>
       )}
-      {hideHeader && showNewBoardTile ? (
-        <div className="boards-collection-create-row">
-          <button
-            className="product-button product-button-secondary boards-collection-create-button"
-            onClick={onCreate}
-            type="button"
-          >
-            <span aria-hidden="true">+</span>
-            <span>New board</span>
-          </button>
-        </div>
-      ) : null}
-
       {boards.length === 0 && !showNewBoardTile ? (
         <div className="boards-collection-empty">No boards</div>
       ) : (
@@ -129,6 +116,18 @@ export function WorkspaceBoardSection({
           })}
         </div>
       )}
+      {hideHeader && showNewBoardTile ? (
+        <div className="boards-collection-create-row">
+          <button
+            className="product-button product-button-secondary boards-collection-create-button"
+            onClick={onCreate}
+            type="button"
+          >
+            <span aria-hidden="true">+</span>
+            <span>New board</span>
+          </button>
+        </div>
+      ) : null}
     </section>
   )
 }

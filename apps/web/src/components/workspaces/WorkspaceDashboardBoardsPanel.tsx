@@ -16,6 +16,7 @@ import { WorkspaceBoardPanelHost } from './WorkspaceBoardPanelHost'
 import { WorkspaceBoardSection } from './WorkspaceBoardSection'
 import type { WorkspaceBoardViewMode } from './WorkspaceBoardItem'
 import { getBoardCapabilities } from './boardCapabilities'
+import { createBoardId } from './workspaceBoardUtils'
 
 type WorkspaceDashboardBoardsPanelProps = {
   boards: BoardPersistenceSummary[]
@@ -40,6 +41,7 @@ export function WorkspaceDashboardBoardsPanel({
   const [notice, setNotice] = useState<string | null>(null)
   const [panelBoardId, setPanelBoardId] = useState<string | null>(null)
   const [pendingBoardId, setPendingBoardId] = useState<string | null>(null)
+  const canCreateBoards = workspace.role !== 'viewer' && workspace.role !== 'guest'
 
   const panelBoard = useMemo(
     () => displayBoards.find((board) => board.id === panelBoardId) ?? null,
@@ -58,12 +60,12 @@ export function WorkspaceDashboardBoardsPanel({
         hideHeader
         pendingBoardId={pendingBoardId}
         session={session}
-        showNewBoardTile={false}
+        showNewBoardTile={canCreateBoards}
         viewMode={viewMode}
         workspace={workspace}
         onCancelRename={cancelRename}
         onCopy={(board) => void copyBoard(board)}
-        onCreate={() => undefined}
+        onCreate={createBoard}
         onDelete={(board) => void deleteBoard(board)}
         onOpen={openBoard}
         onOpenPanel={setPanelBoardId}
@@ -110,6 +112,11 @@ export function WorkspaceDashboardBoardsPanel({
   function openBoard(boardId: string) {
     const query = new URLSearchParams({ workspace: workspace.id })
     router.push(`/boards/${encodeURIComponent(boardId)}?${query.toString()}`)
+  }
+
+  function createBoard() {
+    const query = new URLSearchParams({ new: '1', workspace: workspace.id })
+    router.push(`/boards/${encodeURIComponent(createBoardId())}?${query.toString()}`)
   }
 
   async function renameBoard(event: FormEvent<HTMLFormElement>, boardId: string) {

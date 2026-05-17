@@ -51,7 +51,7 @@ class PostgresBoardStoreBoardsMixin:
     ) -> tuple[list[BoardSummary], Optional[str]]:
         if not can_read_workspace(context):
             return [], None
-        member_roles = self._load_workspace_board_member_roles(context) if context.workspace_role == "guest" else {}
+        member_roles = self._load_workspace_board_member_roles(context)
         with connect_to_postgres() as connection:
             with connection.cursor() as db_cursor:
                 ensure_board_schema(db_cursor)

@@ -16,7 +16,6 @@ import {
 } from './localBoardStore'
 import {
   ensureLocalBoardShareLink,
-  inviteLocalBoardMemberByEmail,
   loadLocalSharedBoard,
   listLocalBoardMembers,
   resolveLocalBoardShareLink,
@@ -37,13 +36,6 @@ export type BoardStorageAdapter = {
     context: ApiRequestContext,
     expiresAt?: string | null,
   ) => ReturnType<typeof ensureLocalBoardShareLink>
-  inviteLocalBoardMemberByEmail: (
-    boardId: string,
-    email: string,
-    role: Parameters<typeof inviteLocalBoardMemberByEmail>[2],
-    displayName: string | null | undefined,
-    context: ApiRequestContext,
-  ) => ReturnType<typeof inviteLocalBoardMemberByEmail>
   listLocalBoardMembers: (boardId: string, context: ApiRequestContext) => ReturnType<typeof listLocalBoardMembers>
   listLocalBoardSnapshots: (boardId: string, context: ApiRequestContext) => ReturnType<typeof listLocalBoardSnapshots>
   listLocalBoards: (context: ApiRequestContext) => ReturnType<typeof listLocalBoards>
@@ -80,7 +72,6 @@ const localBoardAdapter: BoardStorageAdapter = {
   createLocalBoardSnapshot,
   deleteLocalBoard,
   ensureLocalBoardShareLink,
-  inviteLocalBoardMemberByEmail,
   listLocalBoardMembers,
   listLocalBoardSnapshots,
   listLocalBoards,

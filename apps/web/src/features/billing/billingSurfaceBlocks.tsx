@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import { resolveCreditUsageMetrics } from './billingCreditUsage'
 import { formatDateOnly, formatPeriodRange } from './billingPresentation'
 
 export function BillingSectionHeader({
@@ -104,13 +105,13 @@ export function BillingPeriodFacts({
 }
 
 export function BillingProgress({
-  remaining,
+  used,
   total,
 }: {
-  remaining: number
+  used: number
   total: number
 }) {
-  const width = total > 0 ? Math.max(0, Math.min(100, Math.round((remaining / total) * 100))) : 0
+  const width = resolveCreditUsageMetrics(total - used, total).percent
   return (
     <div className="workspace-commerce-progress" aria-hidden="true">
       <span style={{ width: `${width}%` }} />

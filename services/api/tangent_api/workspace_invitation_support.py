@@ -12,6 +12,7 @@ from tangent_api.workspace_schemas import WorkspaceInvitationRecord
 MANAGER_ROLES = {"owner", "admin"}
 PRODUCT_INVITE_ROLES = {"admin", "editor", "viewer"}
 GROUP_MEMBER_MAX = 15
+TEAM_INVITE_PLAN_KEYS = {"team_start", "team_growth"}
 
 
 def normalize_workspace_role(role: str) -> str:
@@ -64,14 +65,7 @@ def load_workspace_kind(cursor: object, workspace_id: str, metadata: dict[str, o
     return str(metadata.get("workspaceKind") or "solo_workspace")
 
 
-def resolve_team_invite_seat_policy(
-    cursor: object,
-    workspace_id: str,
-    user_id: str,
-    workspace_kind: str,
-) -> Optional[dict[str, object]]:
-    if workspace_kind != "team_workspace":
-        return None
+def load_active_team_subscription(cursor: object, workspace_id: str) -> Optional[tuple[str, int]]:
     cursor.execute(
         """
         SELECT plan_key, seat_capacity
@@ -88,11 +82,32 @@ def resolve_team_invite_seat_policy(
     )
     row = cursor.fetchone()
     if row is None:
-        raise HTTPException(status_code=402, detail="Active Team subscription is required to accept this invite.")
-    plan_key = str(row[0])
-    seat_capacity = int(row[1] or 0)
-    if plan_key not in {"team_start", "team_growth"} or seat_capacity < 1:
-        raise HTTPException(status_code=402, detail="No Team seats are available for this invite.")
+        return None
+    return str(row[0]), int(row[1] or 0)
+
+
+def assert_team_invite_workspace_ready(cursor: object, workspace_id: str) -> tuple[str, int]:
+    subscription = load_active_team_subscription(cursor, workspace_id)
+    if subscription is None:
+        raise HTTPException(
+            status_code=402,
+            detail="This Team workspace needs an active Team subscription before invite links can be used.",
+        )
+    plan_key, seat_capacity = subscription
+    if plan_key not in TEAM_INVITE_PLAN_KEYS or seat_capacity < 1:
+        raise HTTPException(status_code=402, detail="This Team workspace has no active seats for invites.")
+    return plan_key, seat_capacity
+
+
+def resolve_team_invite_seat_policy(
+    cursor: object,
+    workspace_id: str,
+    user_id: str,
+    workspace_kind: str,
+) -> Optional[dict[str, object]]:
+    if workspace_kind != "team_workspace":
+        return None
+    plan_key, seat_capacity = assert_team_invite_workspace_ready(cursor, workspace_id)
     cursor.execute(
         """
         SELECT COUNT(*)
@@ -171,8 +186,30 @@ def assert_invitation_target(row: tuple[object, ...], context: ApiRequestContext
     target_user_id = str(row[11]) if row[11] else None
     if target_user_id and target_user_id != context.user_id:
         raise HTTPException(status_code=403, detail="Workspace invitation is for another user.")
+    if target_user_id:
+        return
     if email and email != context.user_email.lower():
-        raise HTTPException(status_code=403, detail="Workspace invitation is for another email.")
+        raise HTTPException(status_code=403, detail="Workspace invitation is for another sign-in email.")
+
+
+def resolve_invitation_target_user_id(cursor: object, email: Optional[str]) -> Optional[str]:
+    if email is None:
+        return None
+    cursor.execute(
+        """
+        SELECT id
+        FROM tangent_users
+        WHERE LOWER(email) = %s
+          AND COALESCE(status, 'active') <> 'deleted'
+        ORDER BY last_login_at DESC NULLS LAST, created_at DESC
+        LIMIT 1
+        """,
+        (email.lower(),),
+    )
+    row = cursor.fetchone()
+    if row is None:
+        return None
+    return str(row[0])
 
 
 def invitation_from_row(row: tuple[object, ...]) -> WorkspaceInvitationRecord:

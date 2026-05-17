@@ -235,7 +235,7 @@ async function loadTeamCards(
         remainingCredits: billing.credits.includedRemaining + billing.credits.topUpBalance,
         seatMax: billing.plan.seatMax ?? null,
         seatMin: billing.plan.seatMin ?? null,
-        seatLimit: billing.plan.seatMax ?? Math.max(dashboard.dashboard.memberCount, 1),
+        seatLimit: dashboard.dashboard.seatCapacity ?? billing.plan.seatMax ?? Math.max(dashboard.dashboard.memberCount, 1),
         seatsUsed: dashboard.dashboard.memberCount,
         topUpBalance: billing.credits.topUpBalance,
         totalCredits: billing.credits.includedTotal + billing.credits.topUpBalance,

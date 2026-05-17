@@ -17,7 +17,8 @@ type UseKonvaCanvasControlsOptions = {
   history: KonvaCanvasHistory
   size: { height: number; width: number }
   onCameraChange: Dispatch<SetStateAction<CanvasCamera>>
-  onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
+  onCameraDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
+  onContentDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
   onEdgeSelectionChange: (edgeId: string | null) => void
   onSelectionChange: (shapeIds: string[]) => void
 }
@@ -26,7 +27,8 @@ export function useKonvaCanvasControls({
   camera,
   history,
   onCameraChange,
-  onDocumentChange,
+  onCameraDocumentChange,
+  onContentDocumentChange,
   onEdgeSelectionChange,
   onSelectionChange,
   size,
@@ -37,8 +39,8 @@ export function useKonvaCanvasControls({
 
   const handleCameraCommit = useCallback((nextCamera: CanvasCamera) => {
     onCameraChange(nextCamera)
-    onDocumentChange((current) => ({ ...current, camera: nextCamera }))
-  }, [onCameraChange, onDocumentChange])
+    onCameraDocumentChange((current) => ({ ...current, camera: nextCamera }))
+  }, [onCameraChange, onCameraDocumentChange])
 
   const zoomAtCenter = useCallback((factor: number) => {
     handleCameraCommit(zoomCameraAtScreenPoint(camera, { x: size.width / 2, y: size.height / 2 }, camera.zoom * factor, konvaMinZoom, konvaMaxZoom))
@@ -50,15 +52,15 @@ export function useKonvaCanvasControls({
 
   const addStressStrokes = useCallback(() => {
     history.checkpoint()
-    onDocumentChange((current) => withCanvasShapes(current, [...current.shapes, ...createStressStrokes(current.shapes.length)]))
-  }, [history, onDocumentChange])
+    onContentDocumentChange((current) => withCanvasShapes(current, [...current.shapes, ...createStressStrokes(current.shapes.length)]))
+  }, [history, onContentDocumentChange])
 
   const clearCanvas = useCallback(() => {
     history.checkpoint()
-    onDocumentChange((current) => withCanvasShapes(current, []))
+    onContentDocumentChange((current) => withCanvasShapes(current, []))
     onSelectionChange([])
     onEdgeSelectionChange(null)
-  }, [history, onDocumentChange, onEdgeSelectionChange, onSelectionChange])
+  }, [history, onContentDocumentChange, onEdgeSelectionChange, onSelectionChange])
 
   return {
     addStressStrokes,

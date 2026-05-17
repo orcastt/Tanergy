@@ -37,8 +37,6 @@ type ApplyIncomingKonvaYjsSnapshotOptions = {
   hasSynchronizedPages: boolean
   hasUnsyncedLocalChanges: boolean
   lastSynchronizedSignature: string | null
-  localChangedPageIds: readonly string[]
-  localPublishMode: KonvaYjsSnapshotWriteMode
   markSkipNextPublish: () => void
   onRemoteRestore: (document: KonvaLocalYjsRemoteRestorePayload, meta: KonvaLocalYjsRemoteRestoreMeta) => void
   onRepublishLocal: () => void
@@ -60,8 +58,6 @@ export function applyIncomingKonvaYjsSnapshot({
   hasSynchronizedPages,
   hasUnsyncedLocalChanges,
   lastSynchronizedSignature,
-  localChangedPageIds,
-  localPublishMode,
   markSkipNextPublish,
   onRemoteRestore,
   onRepublishLocal,
@@ -80,8 +76,6 @@ export function applyIncomingKonvaYjsSnapshot({
     hasUnsyncedLocalChanges,
     hasSynchronizedPages,
     lastSynchronizedSignature,
-    localChangedPageIds,
-    localPublishMode,
     record,
     workspaceKind,
   })

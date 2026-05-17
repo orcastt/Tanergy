@@ -73,7 +73,7 @@ export function WorkspaceBoardGallery() {
                     onTogglePin={(board) => void gallery.updateBoard({ boardId: board.id, isPinned: !board.isPinned })}
                     pendingBoardId={gallery.pendingBoardId}
                     session={gallery.session}
-                    showNewBoardTile={!gallery.searchQuery.trim()}
+                    showNewBoardTile={!gallery.searchQuery.trim() && workspace.role !== 'viewer' && workspace.role !== 'guest'}
                     viewMode={gallery.viewMode}
                     workspace={workspace}
                   />

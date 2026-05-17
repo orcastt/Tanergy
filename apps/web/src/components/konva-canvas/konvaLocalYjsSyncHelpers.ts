@@ -17,8 +17,6 @@ type ResolveKonvaYjsIncomingRecordOptions = {
   hasUnsyncedLocalChanges: boolean
   hasSynchronizedPages: boolean
   lastSynchronizedSignature: string | null
-  localChangedPageIds?: readonly string[]
-  localPublishMode?: KonvaYjsSnapshotWriteMode
   record: KonvaYjsRoomRecord
   workspaceKind?: string
 }
@@ -54,8 +52,6 @@ export function resolveKonvaYjsIncomingRecord({
   hasUnsyncedLocalChanges,
   hasSynchronizedPages,
   lastSynchronizedSignature,
-  localChangedPageIds = [],
-  localPublishMode = 'full-board',
   record,
   workspaceKind,
 }: ResolveKonvaYjsIncomingRecordOptions): KonvaYjsIncomingRecordDecision {
@@ -64,41 +60,14 @@ export function resolveKonvaYjsIncomingRecord({
   if (!force && workspaceKind === 'solo_workspace' && canWrite && hasUnsyncedLocalChanges) {
     return { kind: 'republish-local' }
   }
-  if (
-    !force
-    && canWrite
-    && hasUnsyncedLocalChanges
-    && canOptimisticallyRestoreIncomingRecord({
-      hasSynchronizedPages,
-      localChangedPageIds,
-      localPublishMode,
-      record,
-    })
-  ) {
-    return { kind: 'restore-remote' }
-  }
   if (!force && canWrite && hasUnsyncedLocalChanges) {
+    if (hasSynchronizedPages) return { kind: 'restore-remote' }
     return {
       kind: 'queue-pending',
       pending: createPendingRemoteSnapshotMeta(record),
     }
   }
   return { kind: 'restore-remote' }
-}
-
-function canOptimisticallyRestoreIncomingRecord(options: {
-  hasSynchronizedPages: boolean
-  localChangedPageIds: readonly string[]
-  localPublishMode: KonvaYjsSnapshotWriteMode
-  record: KonvaYjsRoomRecord
-}) {
-  if (!options.hasSynchronizedPages) return false
-  const localChangedPageIds = dedupeKonvaPageIds(options.localChangedPageIds)
-  const incomingChangedPageIds = dedupeKonvaPageIds(options.record.changedPageIds)
-  if (localChangedPageIds.length === 0 || incomingChangedPageIds.length === 0) return false
-  if (options.localPublishMode === 'full-board' || options.record.mode === 'full-board') return false
-  const localChangedPageIdSet = new Set(localChangedPageIds)
-  return !incomingChangedPageIds.some((pageId) => localChangedPageIdSet.has(pageId))
 }
 
 export function resolveKonvaYjsPublishPlan({

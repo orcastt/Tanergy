@@ -186,7 +186,10 @@ export function KonvaCollaborationOverlay({
           >
             <span className="konva-collaboration-cursor__pointer" />
             <span className="konva-collaboration-cursor__label">
-              <strong>{session.displayName}</strong>
+              <span className="konva-collaboration-cursor__identity">
+                <span className="konva-collaboration-cursor__avatar">{session.displayName.slice(0, 1).toUpperCase()}</span>
+                <strong>{session.displayName}</strong>
+              </span>
               {activity ? <small>{activity}</small> : null}
             </span>
           </div>

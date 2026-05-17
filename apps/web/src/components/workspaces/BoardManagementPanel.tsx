@@ -124,7 +124,7 @@ export function BoardManagementPanel({
                 onClick={() => document.getElementById('board-members-lookup')?.focus()}
                 type="button"
               >
-                Invite
+                Add member
               </button>
               <button className="product-button product-button-secondary" onClick={onOpen} type="button">
                 Open
@@ -235,5 +235,5 @@ function formatDate(value: string) {
 function getBoardAccessLabel(workspace: BoardManagementPanelProps['workspace'], canManageBoard: boolean) {
   if (!workspace) return canManageBoard ? 'Can manage' : 'View only'
   const scope = workspace.kind === 'team_workspace' ? 'Team' : workspace.kind === 'group_workspace' ? 'Group' : 'Personal'
-  return canManageBoard ? `Inherits ${scope} permissions` : `${scope} member access`
+  return canManageBoard ? `${scope} manager or assigned board access` : 'Assigned board access'
 }

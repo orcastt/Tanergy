@@ -6,7 +6,6 @@ import {
   revokeWorkspaceInvitation,
 } from '@/features/billing/billingClient'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
-import type { WorkspaceDashboardBoard } from '@/features/workspaces/workspaceDashboardTypes'
 import type { WorkspaceDashboardMember } from '@/features/workspaces/workspaceDashboardTypes'
 import { buildWorkspaceInvitationLink } from '@/features/workspaces/workspaceInvitationLinks'
 import {
@@ -19,10 +18,10 @@ import {
 import { useWorkspaceInvitations } from './useWorkspaceInvitations'
 
 type WorkspaceInvitePanelProps = {
-  boards?: WorkspaceDashboardBoard[]
   members?: WorkspaceDashboardMember[]
   onWorkspaceRefresh?: () => void
   seatLabel?: string
+  seatPlanMax?: null | number
   workspace: TangentWorkspace
 }
 
@@ -31,16 +30,15 @@ const inviteViews: InviteView[] = ['pending', 'accepted', 'revoked']
 const managerRoles = new Set(['owner', 'admin'])
 
 export function WorkspaceInvitePanel({
-  boards = [],
   members = [],
   onWorkspaceRefresh,
   seatLabel,
+  seatPlanMax = null,
   workspace,
 }: WorkspaceInvitePanelProps) {
   const [email, setEmail] = useState('')
   const [inviteLink, setInviteLink] = useState('')
   const [role, setRole] = useState<InviteRole>('editor')
-  const [targetBoardId, setTargetBoardId] = useState('')
   const [status, setStatus] = useState<null | string>(null)
   const [isPending, setIsPending] = useState(false)
 
@@ -48,17 +46,9 @@ export function WorkspaceInvitePanel({
   const inviteRoles = workspace.role === 'owner'
     ? ['admin', 'editor', 'viewer'] as InviteRole[]
     : ['editor', 'viewer'] as InviteRole[]
-  const inviteBoards = useMemo(
-    () => [...boards].sort((left, right) => left.title.localeCompare(right.title)),
-    [boards],
-  )
   const memberNamesById = useMemo(
     () => new Map(members.map((member) => [member.id, member.displayName?.trim() || member.email || member.id])),
     [members],
-  )
-  const selectedBoard = useMemo(
-    () => inviteBoards.find((board) => board.id === targetBoardId) ?? null,
-    [inviteBoards, targetBoardId],
   )
   const {
     collapseInviteView,
@@ -86,7 +76,7 @@ export function WorkspaceInvitePanel({
     seatLabel ? { label: 'Seats', value: seatLabel } : null,
   ].filter(Boolean) as Array<{ label: string; value: string }>
   const inviteRule = workspace.kind === 'team_workspace'
-    ? 'Accepted Team invites join the same Team wallet workspace. A seat is consumed only after acceptance.'
+    ? `Accepted Team invites join the same Team wallet workspace. A seat is consumed only after acceptance.${seatPlanMax ? ` Current purchased seats are shown above; the plan can expand to ${seatPlanMax}.` : ''}`
     : 'Accepted Group invites join the same Group structure, but AI still charges each member’s own personal credits.'
 
   return (
@@ -94,7 +84,7 @@ export function WorkspaceInvitePanel({
       <div className="workspace-detail-panel-head">
         <div>
           <h2>Invite</h2>
-          <small>{canManageInvites ? 'Create manual invite links. Optional email only restricts who can accept; nothing is emailed automatically yet.' : 'Only owners and admins can invite.'}</small>
+          <small>Create manual invite links. Optional email only restricts who can accept; nothing is emailed automatically yet.</small>
         </div>
       </div>
       <div className="workspace-invite-stats">
@@ -124,19 +114,6 @@ export function WorkspaceInvitePanel({
           {inviteRoles.map((inviteRole) => <option key={inviteRole} value={inviteRole}>{formatInviteRole(inviteRole)}</option>)}
         </select>
       </label>
-      {inviteBoards.length ? (
-        <label className="workspace-detail-field">
-          <span>Open after join</span>
-          <select disabled={!canManageInvites} onChange={(event) => setTargetBoardId(event.target.value)} value={targetBoardId}>
-            <option value="">Workspace home</option>
-            {inviteBoards.map((board) => (
-              <option key={board.id} value={board.id}>
-                {board.title}
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : null}
       {inviteLink ? (
         <label className="workspace-detail-field">
           <span>Latest link</span>
@@ -146,9 +123,7 @@ export function WorkspaceInvitePanel({
               Copy
             </button>
           </div>
-          <small className="workspace-detail-status">
-            {selectedBoard ? `Join opens ${selectedBoard.title}.` : 'Join opens workspace home.'}
-          </small>
+          <small className="workspace-detail-status">This link adds the person into the workspace. Board access is assigned separately inside member management.</small>
         </label>
       ) : null}
       {status ? <small className="workspace-detail-status" role="status">{status}</small> : null}
@@ -216,18 +191,12 @@ export function WorkspaceInvitePanel({
     setIsPending(true)
     setStatus(null)
     try {
-      const metadata = selectedBoard
-        ? { boardId: selectedBoard.id, boardTitle: selectedBoard.title }
-        : undefined
       const response = await createWorkspaceInvitation({
         email: email.trim() || null,
         expiresInDays: 7,
-        metadata,
         role: inviteRoles.includes(role) ? role : 'editor',
       }, { workspace })
       const nextLink = buildWorkspaceInvitationLink(response.result.token, {
-        boardId: selectedBoard?.id,
-        boardTitle: selectedBoard?.title,
         role: response.result.invitation.role,
         workspaceKind: workspace.kind,
         workspaceName: workspace.name,
