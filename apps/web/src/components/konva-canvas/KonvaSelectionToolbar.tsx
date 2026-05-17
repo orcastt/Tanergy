@@ -13,8 +13,12 @@ type KonvaSelectionToolbarProps = {
   canCaptureSelection: boolean
   canConvertImageToNode: boolean
   canCropImage: boolean
+  canGroupSelection: boolean
+  canLockSelection: boolean
   canRemoveBackground: boolean
   canStartObjectCutout: boolean
+  canUngroupSelection: boolean
+  canUnlockSelection: boolean
   actionError?: string | null
   isCapturingSelection?: boolean
   isRemovingBackground?: boolean
@@ -23,7 +27,11 @@ type KonvaSelectionToolbarProps = {
   onCaptureSelection: () => void
   onConvertImageToNode: () => void
   onCropImage: () => void
+  onGroupSelection: () => void
+  onLockSelection: () => void
   onRemoveBackground: () => void
+  onUngroupSelection: () => void
+  onUnlockSelection: () => void
 }
 
 export function KonvaSelectionToolbar({
@@ -32,21 +40,37 @@ export function KonvaSelectionToolbar({
   canCaptureSelection,
   canConvertImageToNode,
   canCropImage,
+  canGroupSelection,
+  canLockSelection,
   canRemoveBackground,
   canStartObjectCutout,
+  canUngroupSelection,
+  canUnlockSelection,
   document,
   isCapturingSelection,
   isRemovingBackground,
   onCaptureSelection,
   onConvertImageToNode,
   onCropImage,
+  onGroupSelection,
+  onLockSelection,
   onRemoveBackground,
+  onUngroupSelection,
+  onUnlockSelection,
   selectedIds,
   shellRect,
 }: KonvaSelectionToolbarProps) {
   if (isSingleNodeSelection(document.shapes, selectedIds)) return null
   const point = getSelectionToolbarPoint(document.shapes, selectedIds, camera, shellRect)
   if (!point) return null
+  const showGroupToggle = canGroupSelection || canUngroupSelection
+  const showLockToggle = canLockSelection || canUnlockSelection
+  const groupAction = canUngroupSelection
+    ? { icon: 'style-action-icon style-action-icon--ungroup', label: 'Ungroup', onClick: onUngroupSelection }
+    : { icon: 'style-action-icon style-action-icon--group', label: 'Group', onClick: onGroupSelection }
+  const lockAction = canUnlockSelection && !canLockSelection
+    ? { icon: 'style-action-icon style-action-icon--unlock', label: 'Unlock', onClick: onUnlockSelection }
+    : { icon: 'style-action-icon style-action-icon--lock', label: 'Lock', onClick: onLockSelection }
   return (
     <div
       aria-label="Selection actions"
@@ -113,6 +137,28 @@ export function KonvaSelectionToolbar({
       >
         <span aria-hidden className="style-action-icon style-action-icon--capture" />
       </button>
+      {showGroupToggle ? (
+        <button
+          aria-label={groupAction.label}
+          className="selection-toolbar__btn"
+          data-tooltip={groupAction.label}
+          onClick={groupAction.onClick}
+          type="button"
+        >
+          <span aria-hidden className={groupAction.icon} />
+        </button>
+      ) : null}
+      {showLockToggle ? (
+        <button
+          aria-label={lockAction.label}
+          className="selection-toolbar__btn"
+          data-tooltip={lockAction.label}
+          onClick={lockAction.onClick}
+          type="button"
+        >
+          <span aria-hidden className={lockAction.icon} />
+        </button>
+      ) : null}
       {actionError ? (
         <span className="selection-toolbar__error" role="status">
           {actionError}

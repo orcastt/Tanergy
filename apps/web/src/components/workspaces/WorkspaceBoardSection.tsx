@@ -57,6 +57,16 @@ export function WorkspaceBoardSection({
   onTogglePin,
 }: WorkspaceBoardSectionProps) {
   const sectionClasses = viewMode === 'gallery' ? 'workspace-board-grid' : 'workspace-board-list'
+  const createButton = showNewBoardTile ? (
+    <button
+      className="product-button product-button-secondary boards-collection-create-button"
+      onClick={onCreate}
+      type="button"
+    >
+      <span aria-hidden="true">+</span>
+      <span>New board</span>
+    </button>
+  ) : null
 
   return (
     <section className="boards-collection-section">
@@ -64,21 +74,15 @@ export function WorkspaceBoardSection({
         <header className="boards-collection-header">
           <div className="boards-collection-copy">
             <h2>{workspace.name}</h2>
+            {createButton ? <div className="boards-collection-create-row">{createButton}</div> : null}
           </div>
-          {showNewBoardTile ? (
-            <div className="boards-collection-actions">
-              <button
-                className="product-button product-button-secondary boards-collection-create-button"
-                onClick={onCreate}
-                type="button"
-              >
-                <span aria-hidden="true">+</span>
-                <span>New board</span>
-              </button>
-            </div>
-          ) : null}
         </header>
       )}
+      {hideHeader && createButton ? (
+        <div className="boards-collection-create-row boards-collection-create-row--top">
+          {createButton}
+        </div>
+      ) : null}
       {boards.length === 0 && !showNewBoardTile ? (
         <div className="boards-collection-empty">No boards</div>
       ) : (
@@ -116,18 +120,6 @@ export function WorkspaceBoardSection({
           })}
         </div>
       )}
-      {hideHeader && showNewBoardTile ? (
-        <div className="boards-collection-create-row">
-          <button
-            className="product-button product-button-secondary boards-collection-create-button"
-            onClick={onCreate}
-            type="button"
-          >
-            <span aria-hidden="true">+</span>
-            <span>New board</span>
-          </button>
-        </div>
-      ) : null}
     </section>
   )
 }

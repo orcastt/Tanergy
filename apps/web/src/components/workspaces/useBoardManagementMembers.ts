@@ -131,9 +131,8 @@ export function useBoardManagementMembers({
       const nextMembers = upsertMember(members, response.member, board.ownerId)
       setMembers(nextMembers)
       setDrafts(buildDraftMap(nextMembers))
-      setLookupCandidates((current) => current.map((item) => item.userId === candidate.userId
-        ? { ...item, alreadyMember: true, boardRole: response.member!.role }
-        : item))
+      setLookupCandidates([])
+      setLookupQuery('')
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : 'Board member create failed.')
     } finally {

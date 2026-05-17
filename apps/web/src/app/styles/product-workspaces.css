@@ -170,13 +170,13 @@
 }
 
 .boards-collection-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
+  display: grid;
+  gap: 14px;
 }
 
 .boards-collection-copy {
+  display: grid;
+  gap: 12px;
   min-width: 0;
 }
 
@@ -192,6 +192,10 @@
 
 .boards-collection-create-row {
   width: 100%;
+}
+
+.boards-collection-create-row--top {
+  margin-top: -2px;
 }
 
 .boards-collection-create-button {

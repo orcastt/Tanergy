@@ -4,6 +4,7 @@ import { useCallback, useMemo, type Dispatch, type SetStateAction } from 'react'
 import type { CanvasDocument } from '@/features/canvas-engine'
 import type { BoardPersistenceSummary } from '@/features/boards/boardTypes'
 import { canCropKonvaImageSelection, getCropImageIdForSelection } from './konvaImageCropCommands'
+import { hasKonvaGroupedSelection } from './konvaGroupCommands'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
 
 type UseKonvaCanvasSelectionSaveStateOptions = {
@@ -41,6 +42,8 @@ export function useKonvaCanvasSelectionSaveState({
   }, [document.shapes, selectedIds])
 
   const canLockSelection = selectedShapes.some((shape) => !shape.isLocked)
+  const canGroupSelection = selectedIds.length > 1
+  const canUngroupSelection = hasKonvaGroupedSelection(document.shapes, selectedIds)
   const canUnlockSelection = selectedShapes.some((shape) => shape.isLocked)
   const canCropImage = canCropKonvaImageSelection(document, selectedIds)
 
@@ -70,7 +73,9 @@ export function useKonvaCanvasSelectionSaveState({
 
   return {
     canCropImage,
+    canGroupSelection,
     canLockSelection,
+    canUngroupSelection,
     canUnlockSelection,
     cropImage,
     handleSaveAuditBoardLoaded,

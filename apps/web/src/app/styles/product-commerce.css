@@ -367,7 +367,9 @@
 
 .workspace-commerce-band-stack {
   display: grid;
-  gap: 18px;
+  gap: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 340px));
+  justify-content: flex-start;
 }
 
 .workspace-commerce-band {

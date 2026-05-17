@@ -9,12 +9,15 @@
 }
 
 .workspace-pricing-band {
-  gap: 22px;
-  width: 100%;
-  padding: 28px;
+  gap: 18px;
+  width: min(100%, 340px);
+  min-height: 100%;
+  padding: 0 0 22px;
   border: 1px solid rgba(24, 29, 38, 0.08);
-  border-radius: 12px;
+  border-radius: 18px;
   background: #ffffff;
+  overflow: hidden;
+  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.06);
 }
 
 .workspace-pricing-band.is-group {
@@ -30,13 +33,14 @@
 }
 
 .workspace-pricing-band__hero {
-  gap: 18px;
+  gap: 16px;
+  padding: 22px 22px 0;
   align-items: start;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .workspace-pricing-band__copy {
-  gap: 10px;
+  gap: 8px;
 }
 
 .workspace-pricing-band__title-row {
@@ -49,7 +53,7 @@
 .workspace-pricing-band__title-row h3 {
   margin: 0;
   color: var(--color-ink);
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 400;
   line-height: 1.14;
 }
@@ -65,9 +69,9 @@
 
 .workspace-pricing-band__price strong {
   color: var(--color-ink);
-  font-size: 40px;
+  font-size: 44px;
   font-weight: 500;
-  line-height: 0.98;
+  line-height: 1;
 }
 
 .workspace-pricing-band__price small,
@@ -78,21 +82,26 @@
 }
 
 .workspace-pricing-band__actions {
-  display: flex;
-  justify-content: flex-end;
-  align-items: start;
+  display: grid;
+  width: 100%;
+}
+
+.workspace-pricing-band__actions > * {
+  width: 100%;
 }
 
 .workspace-pricing-band__body {
   gap: 14px;
+  padding: 0 22px;
+  align-content: start;
 }
 
 .workspace-pricing-metric-list {
   gap: 10px;
-  padding: 16px 18px;
+  padding: 16px;
   border: 1px solid rgba(24, 29, 38, 0.08);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.66);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.74);
 }
 
 .workspace-pricing-metric-list__title {
@@ -109,7 +118,7 @@
 .workspace-pricing-metric {
   display: grid;
   gap: 4px 14px;
-  grid-template-columns: minmax(160px, 0.72fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   padding-top: 12px;
   border-top: 1px solid rgba(24, 29, 38, 0.08);
@@ -130,46 +139,45 @@
 
 .workspace-pricing-metric strong {
   color: var(--color-ink);
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 500;
-  line-height: 1.35;
+  line-height: 1.28;
 }
 
 .workspace-pricing-metric small {
-  grid-column: 2;
+  grid-column: auto;
 }
 
 .workspace-pricing-tag-list {
-  gap: 10px;
+  gap: 8px;
 }
 
 .workspace-pricing-tag-list span {
-  display: inline-flex;
-  align-items: center;
-  min-height: 40px;
-  padding: 0 12px;
-  border: 1px solid rgba(24, 29, 38, 0.08);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.62);
+  position: relative;
+  display: block;
+  min-height: 0;
+  padding: 0 0 0 18px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--color-ink);
   font-size: 13px;
-  line-height: 1.45;
+  line-height: 1.5;
+}
+
+.workspace-pricing-tag-list span::before {
+  position: absolute;
+  top: 8px;
+  left: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(24, 29, 38, 0.7);
+  content: '';
 }
 
 @media (max-width: 900px) {
-  .workspace-pricing-band__hero {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .workspace-pricing-band__actions {
-    justify-content: flex-start;
-  }
-
-  .workspace-pricing-metric {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .workspace-pricing-metric small {
-    grid-column: auto;
+  .workspace-pricing-band {
+    width: 100%;
   }
 }

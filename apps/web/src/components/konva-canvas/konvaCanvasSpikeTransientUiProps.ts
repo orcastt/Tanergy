@@ -26,9 +26,11 @@ export type CreateSpikeTransientUiPropsOptions = {
   canCaptureSelection: boolean
   canConvertImageToNode: boolean
   canCropImage: boolean
+  canGroupSelection: boolean
   canLockSelection: boolean
   canRemoveBackground: boolean
   canStartObjectCutout: boolean
+  canUngroupSelection: boolean
   canUnlockSelection: boolean
   contextMenu: { worldX: number; worldY: number; x: number; y: number } | null
   convertImageToNode: () => void
@@ -67,10 +69,14 @@ export type CreateSpikeTransientUiPropsOptions = {
   onContextAction: (action: KonvaContextMenuAction) => void
   onDocumentChange: (updater: SetStateAction<CanvasDocument>) => void
   onDocumentRestore: (restore: Parameters<NonNullable<TransientUiProps['saveAuditProps']>['onDocumentRestore']>[0]) => void
+  onGroupSelection: () => void
   onHistoryCheckpoint: () => void
+  onLockSelection: () => void
   onNextStyleChange: Dispatch<SetStateAction<CanvasShapeStyle>>
   onRemoveBackground: () => void
   onSelectionChange: (shapeIds: string[]) => void
+  onUngroupSelection: () => void
+  onUnlockSelection: () => void
   onZoomIn: () => void
   onZoomOut: () => void
   onZoomReset: () => void
@@ -98,9 +104,11 @@ export function createKonvaCanvasSpikeTransientUiProps({
   canCaptureSelection,
   canConvertImageToNode,
   canCropImage,
+  canGroupSelection,
   canLockSelection,
   canRemoveBackground,
   canStartObjectCutout,
+  canUngroupSelection,
   canUnlockSelection,
   contextMenu,
   convertImageToNode,
@@ -139,10 +147,14 @@ export function createKonvaCanvasSpikeTransientUiProps({
   onContextAction,
   onDocumentChange,
   onDocumentRestore,
+  onGroupSelection,
   onHistoryCheckpoint,
+  onLockSelection,
   onNextStyleChange,
   onRemoveBackground,
   onSelectionChange,
+  onUngroupSelection,
+  onUnlockSelection,
   onZoomIn,
   onZoomOut,
   onZoomReset,
@@ -245,15 +257,23 @@ export function createKonvaCanvasSpikeTransientUiProps({
       canCaptureSelection,
       canConvertImageToNode,
       canCropImage,
+      canGroupSelection,
+      canLockSelection,
       canRemoveBackground,
       canStartObjectCutout,
+      canUngroupSelection,
+      canUnlockSelection,
       document,
       isCapturingSelection,
       isRemovingBackground,
       onCaptureSelection: () => { void handleCaptureSelectionToImageNode() },
       onConvertImageToNode: convertImageToNode,
       onCropImage: cropImage,
+      onGroupSelection,
+      onLockSelection,
       onRemoveBackground,
+      onUngroupSelection,
+      onUnlockSelection,
       selectedIds,
       shellRect,
     },

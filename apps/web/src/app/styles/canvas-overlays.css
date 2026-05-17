@@ -229,6 +229,11 @@
   background: #f1f5f9;
 }
 
+.selection-toolbar__btn:active {
+  background: linear-gradient(180deg, #e7ecf5 0%, #f8fafc 100%);
+  transform: translateY(1px);
+}
+
 .selection-toolbar__btn:disabled {
   cursor: not-allowed;
   opacity: 0.42;

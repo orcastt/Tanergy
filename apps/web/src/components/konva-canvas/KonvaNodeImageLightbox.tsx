@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { RuntimeGraphImageAssetRef } from '@/features/node-runtime/runtimeGraphAssets'
 import { copyKonvaPngBlobToClipboard, downloadKonvaBlob } from './konvaSelectionExport'
 
@@ -70,34 +70,34 @@ export function KonvaNodeImageLightbox({ onClose, state }: KonvaNodeImageLightbo
             <span>{getBatchLabel(selectedBatchIndex)} · {selectedIndex + 1} / {selectedBatch.length}</span>
           </div>
           <div className="node-image-lightbox__actions">
-            <button
-              aria-label="Copy image"
+            <LightboxActionButton
+              icon={<LightboxCopyIcon />}
+              label="Copy image"
               onClick={() => {
                 void loadLightboxImageBlob(selectedSrc)
                   .then(copyKonvaPngBlobToClipboard)
                   .catch(() => {})
               }}
-              type="button"
-            >
-              Copy
-            </button>
-            <button
-              aria-label="Download image"
+            />
+            <LightboxActionButton
+              icon={<LightboxDownloadIcon />}
+              label="Download image"
               onClick={() => {
                 void loadLightboxImageBlob(selectedSrc)
                   .then((blob) => downloadKonvaBlob(blob, getLightboxFileName(state.title, selectedImage)))
                   .catch(() => openLightboxImage(selectedSrc))
               }}
-              type="button"
-            >
-              Download
-            </button>
-            <button aria-label="Open image in new tab" onClick={() => openLightboxImage(selectedSrc)} type="button">
-              Open
-            </button>
-            <button aria-label="Close image lightbox" onClick={onClose} type="button">
-              Close
-            </button>
+            />
+            <LightboxActionButton
+              icon={<LightboxOpenIcon />}
+              label="Open image in new tab"
+              onClick={() => openLightboxImage(selectedSrc)}
+            />
+            <LightboxActionButton
+              icon={<LightboxCloseIcon />}
+              label="Close image lightbox"
+              onClick={onClose}
+            />
           </div>
         </header>
         {canNavigateBatch ? (
@@ -225,4 +225,65 @@ function getLightboxFileName(title: string, image: RuntimeGraphImageAssetRef) {
     .replace(/^-+|-+$/g, '')
     .slice(0, 48) || 'image'
   return `${base}.png`
+}
+
+function LightboxActionButton({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: ReactNode
+  label: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      aria-label={label}
+      className="node-image-lightbox__action-button"
+      data-tooltip={label}
+      onClick={onClick}
+      title={label}
+      type="button"
+    >
+      {icon}
+    </button>
+  )
+}
+
+function LightboxCopyIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" viewBox="0 0 20 20">
+      <rect height="9" rx="2" stroke="currentColor" strokeWidth="1.6" width="9" x="7" y="7" />
+      <path d="M5.5 13H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v.5" stroke="currentColor" strokeLinecap="round" strokeWidth="1.6" />
+    </svg>
+  )
+}
+
+function LightboxDownloadIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" viewBox="0 0 20 20">
+      <path d="M10 3.5v8" stroke="currentColor" strokeLinecap="round" strokeWidth="1.6" />
+      <path d="M6.8 8.7 10 11.9l3.2-3.2" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.6" />
+      <path d="M4 14.5h12" stroke="currentColor" strokeLinecap="round" strokeWidth="1.6" />
+    </svg>
+  )
+}
+
+function LightboxOpenIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" viewBox="0 0 20 20">
+      <path d="M11.5 4H16v4.5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.6" />
+      <path d="M9 11 16 4" stroke="currentColor" strokeLinecap="round" strokeWidth="1.6" />
+      <rect height="9" rx="2" stroke="currentColor" strokeWidth="1.6" width="9" x="4" y="7" />
+    </svg>
+  )
+}
+
+function LightboxCloseIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" viewBox="0 0 20 20">
+      <path d="M5.5 5.5 14.5 14.5" stroke="currentColor" strokeLinecap="round" strokeWidth="1.7" />
+      <path d="M14.5 5.5 5.5 14.5" stroke="currentColor" strokeLinecap="round" strokeWidth="1.7" />
+    </svg>
+  )
 }

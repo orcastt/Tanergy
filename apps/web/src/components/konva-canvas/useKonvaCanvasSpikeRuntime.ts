@@ -237,8 +237,9 @@ export function useKonvaCanvasSpikeRuntime({
 
   const transientUiProps = createKonvaCanvasSpikeTransientUiProps({
     activePageId: boardPages.activePageId, activeTool: collaboration.activeTool, autoLoadBoard, boardId, boardTitle, camera, canCaptureSelection: selectionExport.canCaptureSelection,
-    canConvertImageToNode: imageNodeActions.canConvertImageToNode, canCropImage: selectionSaveState.canCropImage, canLockSelection: selectionSaveState.canLockSelection,
-    canRemoveBackground: imageOps.canRemoveBackground, canStartObjectCutout: imageOps.canStartObjectCutout, canUnlockSelection: selectionSaveState.canUnlockSelection,
+    canConvertImageToNode: imageNodeActions.canConvertImageToNode, canCropImage: selectionSaveState.canCropImage, canGroupSelection: selectionSaveState.canGroupSelection,
+    canLockSelection: selectionSaveState.canLockSelection, canRemoveBackground: imageOps.canRemoveBackground, canStartObjectCutout: imageOps.canStartObjectCutout,
+    canUngroupSelection: selectionSaveState.canUngroupSelection, canUnlockSelection: selectionSaveState.canUnlockSelection,
     contextMenu, convertImageToNode: imageNodeActions.convertImageToNode, createNodeCard, cropImage: selectionSaveState.cropImage, diagnostics, document, editingNodeText,
     editingNodeTextShape: textEditing.editingNodeTextShape, editingTextShape: textEditing.editingTextShape, effectiveReadOnly: collaboration.effectiveReadOnly,
     fileInput, focusedEditNotice: collaboration.focusedEditNotice, getPageEnvelope: boardPages.getPageEnvelope, handleCaptureSelectionToImageNode: selectionExport.handleCaptureSelectionToImageNode,
@@ -247,9 +248,11 @@ export function useKonvaCanvasSpikeRuntime({
     lightboxState: nodeImageLightbox, mode, navigatorStageHeight: size.height, navigatorStageWidth: size.width, nextStyle, nodeMenu, onBoardLoaded: selectionSaveState.handleSaveAuditBoardLoaded,
     onBoardSaved: selectionSaveState.handleSaveAuditBoardSaved, onCloseContextMenu: () => setContextMenu(null), onCloseLightbox: () => setNodeImageLightbox(null),
     onCloseNodeTextEditor: () => setEditingNodeText(null), onCloseSettings: () => setSettingsOpen(false), onCloseTextEditor: () => setEditingTextId(null),
-    onContextAction: commandActions.runContextAction, onDocumentChange: setDocument, onDocumentRestore: boardPages.restorePages, onHistoryCheckpoint: history.checkpoint,
-    onNextStyleChange: setNextStyle, onRemoveBackground: imageOps.removeBackground, onSelectionChange: handleSelectionChange, onZoomIn: () => controls.zoomAtCenter(1.12),
-    onZoomOut: () => controls.zoomAtCenter(0.88), onZoomReset: controls.resetZoom, pageRevision: boardPages.revision, pages: boardPages.pages, pointCount: selectionSaveState.pointCount,
+    onContextAction: commandActions.runContextAction, onDocumentChange: setDocument, onDocumentRestore: boardPages.restorePages, onGroupSelection: () => commandActions.runContextAction('group'),
+    onHistoryCheckpoint: history.checkpoint, onLockSelection: () => commandActions.runContextAction('lock'), onNextStyleChange: setNextStyle,
+    onRemoveBackground: imageOps.removeBackground, onSelectionChange: handleSelectionChange, onUngroupSelection: () => commandActions.runContextAction('ungroup'),
+    onUnlockSelection: () => commandActions.runContextAction('unlock'), onZoomIn: () => controls.zoomAtCenter(1.12), onZoomOut: () => controls.zoomAtCenter(0.88),
+    onZoomReset: controls.resetZoom, pageRevision: boardPages.revision, pages: boardPages.pages, pointCount: selectionSaveState.pointCount,
     saveAuditRef, selectedIds, selectionActionError, settingsOpen, shellRect, size, stage, workspace, zoom: camera.zoom,
   })
 

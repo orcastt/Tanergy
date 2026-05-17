@@ -45,7 +45,7 @@ export function SubscriptionPlansView() {
           <div className="workspace-commerce-header-copy">
             <h1 className="product-page-title">Subscription</h1>
             <p className="product-hero-copy">
-              Personal plans control your credits and Group capacity. Team plans control seats, Team wallet credits, and workspace billing.
+              Choose between personal collaboration plans and Team workspace plans. Personal plans power your own credits. Team plans add seats and shared Team-wallet billing.
             </p>
             {error ? <p className="workspace-commerce-status" role="status">{error}</p> : null}
           </div>
@@ -59,7 +59,7 @@ export function SubscriptionPlansView() {
       <section className="workspace-commerce-section-shell">
         <BillingSectionHeader
           action={<Link className="workspace-commerce-tertiary-link" href="/usage">Open Usage</Link>}
-          description="One active personal plan. Group collaboration stays personal-wallet based, never Group-wallet based."
+          description="Personal plans stay tied to your own credits. Group collaboration never becomes a shared Group wallet."
           title="Personal Plans"
         />
         <div className="workspace-commerce-band-stack">

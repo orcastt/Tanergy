@@ -30,6 +30,7 @@ export type KonvaCanvasStyleSnapshot = {
 
 export const konvaStrokeColors: Array<{ label: string; value: string; swatch: string }> = [
   { label: 'Black', swatch: '#1f1f1f', value: '#1f1f1f' },
+  { label: 'White', swatch: '#ffffff', value: '#ffffff' },
   { label: 'Red', swatch: '#ef4444', value: '#ef4444' },
   { label: 'Green', swatch: '#22c55e', value: '#22c55e' },
   { label: 'Blue', swatch: '#2563eb', value: '#2563eb' },
@@ -115,11 +116,20 @@ export function getWidthStyleToken(width: number | undefined): KonvaCanvasWidthS
 
 export function getFillColor(stroke: string, fillStyle: KonvaCanvasFillStyle): string {
   if (fillStyle === 'none' || fillStyle === 'pattern') return 'transparent'
-  return mixColorWithWhite(stroke, fillStyle === 'solid' ? 0.72 : 0.88)
+  if (fillStyle === 'solid') return stroke
+  return mixColorWithWhite(stroke, 0.82)
 }
 
 export function getStickyFillColor(stroke: string): string {
   return mixColorWithWhite(stroke, 0.35)
+}
+
+export function getKonvaShapeLabelColor(stroke: string, fillStyle: KonvaCanvasFillStyle) {
+  if (fillStyle !== 'solid') return stroke
+  const rgb = parseHexColor(stroke)
+  if (!rgb) return '#ffffff'
+  const contrast = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000
+  return contrast >= 160 ? '#111827' : '#ffffff'
 }
 
 export function getStrokeDash(style: KonvaCanvasDashStyle, strokeWidth: number): number[] | undefined {
@@ -266,4 +276,18 @@ function swapShapes(shapes: CanvasShape[], a: number, b: number) {
 
 function isKonvaTextContainerShape(shape: CanvasShape) {
   return shape.type === 'rect' || shape.type === 'diamond' || shape.type === 'ellipse' || shape.type === 'triangle' || shape.type === 'cloud'
+}
+
+function parseHexColor(color: string) {
+  const normalized = color.trim().toLowerCase()
+  const expanded = /^#([a-f\d]{3})$/i.test(normalized)
+    ? `#${normalized[1]}${normalized[1]}${normalized[2]}${normalized[2]}${normalized[3]}${normalized[3]}`
+    : normalized
+  const match = /^#([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(expanded)
+  if (!match) return null
+  return {
+    b: Number.parseInt(match[3], 16),
+    g: Number.parseInt(match[2], 16),
+    r: Number.parseInt(match[1], 16),
+  }
 }

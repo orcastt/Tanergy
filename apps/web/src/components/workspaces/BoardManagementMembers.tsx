@@ -22,6 +22,8 @@ type BoardManagementMembersProps = {
 export function BoardManagementMembers({ board, canManageBoard, disabled, workspace }: BoardManagementMembersProps) {
   const { session } = useTangentSession()
   const membersState = useBoardManagementMembers({ board, canManageBoard, disabled, workspace })
+  const showLookupSuggestions = canManageBoard && !membersState.isLoading && Boolean(membersState.lookupQuery.trim())
+  const visibleLookupCandidates = membersState.lookupCandidates.slice(0, 6)
 
   return (
     <section className="board-panel-section">
@@ -34,24 +36,50 @@ export function BoardManagementMembers({ board, canManageBoard, disabled, worksp
 
       {canManageBoard ? (
         <div className="board-panel-member-add">
-          <label>
-            <span>Search workspace members</span>
-            <input
-              autoComplete="off"
-              disabled={disabled || membersState.isBusy}
-              id="board-members-lookup"
-              maxLength={120}
-              onChange={(event) => {
-                const nextValue = event.target.value
-                membersState.setLookupQuery(nextValue)
-                if (!nextValue.trim()) {
-                  membersState.setLookupCandidates([])
-                }
-              }}
-              placeholder="Search name or email"
-              value={membersState.lookupQuery}
-            />
-          </label>
+          <div className="board-panel-member-lookup-shell">
+            <label>
+              <span>Search workspace members</span>
+              <input
+                autoComplete="off"
+                disabled={disabled || membersState.isBusy}
+                id="board-members-lookup"
+                maxLength={120}
+                onChange={(event) => {
+                  const nextValue = event.target.value
+                  membersState.setLookupQuery(nextValue)
+                  if (!nextValue.trim()) {
+                    membersState.setLookupCandidates([])
+                  }
+                }}
+                placeholder="Search name or email"
+                value={membersState.lookupQuery}
+              />
+            </label>
+            {showLookupSuggestions ? (
+              <div
+                aria-label="Workspace member suggestions"
+                className="board-panel-member-suggestions"
+                role="list"
+              >
+                {visibleLookupCandidates.map((candidate) => (
+                  <BoardManagementCandidateRow
+                    candidate={candidate}
+                    key={candidate.userId}
+                    pendingUserId={membersState.pendingUserId}
+                    readOnly={membersState.readOnly}
+                    onAdd={membersState.addCandidate}
+                  />
+                ))}
+                {!visibleLookupCandidates.length ? (
+                  <p className="board-panel-member-status">
+                    {membersState.isSearching
+                      ? 'Searching people...'
+                      : 'No workspace member found. Invite them into the workspace first.'}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
           <label>
             <span>Role</span>
             <select
@@ -70,27 +98,6 @@ export function BoardManagementMembers({ board, canManageBoard, disabled, worksp
 
       {membersState.error ? <p className="board-panel-error board-panel-member-status">{membersState.error}</p> : null}
       {membersState.isLoading ? <p className="board-panel-member-status">Loading members...</p> : null}
-
-      {canManageBoard && !membersState.isLoading && membersState.lookupQuery.trim() ? (
-        <div aria-label="Workspace people" className="board-panel-members" role="list">
-          {membersState.lookupCandidates.map((candidate) => (
-            <BoardManagementCandidateRow
-              candidate={candidate}
-              key={candidate.userId}
-              pendingUserId={membersState.pendingUserId}
-              readOnly={membersState.readOnly}
-              onAdd={membersState.addCandidate}
-            />
-          ))}
-          {!membersState.lookupCandidates.length ? (
-            <p className="board-panel-member-status">
-              {membersState.isSearching
-                ? 'Searching people...'
-                : 'No workspace member found. Invite them into the workspace first.'}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
 
       {!membersState.isLoading ? (
         <div aria-label="Board members" className="board-panel-members" role="table">

@@ -3,7 +3,7 @@ import type Konva from 'konva'
 import type { KonvaEventObject } from 'konva/lib/Node'
 import { Circle, Ellipse, Group, Line, Path, Rect, Text } from 'react-konva'
 import type { CanvasDocument, CanvasShape } from '@/features/canvas-engine'
-import { getKonvaShapeFontSize, getKonvaShapeTextAlign, getStickyFillColor, getStrokeDash, resolveKonvaShapeStyle } from './konvaCanvasStyle'
+import { getKonvaShapeFontSize, getKonvaShapeLabelColor, getKonvaShapeTextAlign, getStickyFillColor, getStrokeDash, resolveKonvaShapeStyle } from './konvaCanvasStyle'
 import { getKonvaShapeCornerRadius } from './konvaCanvasShapeProps'
 import { getLineArrowHeadAnchor, getLineHead, getLinePathData, getLineStartHeadAnchor, type KonvaLineShape } from './konvaLineRouteUtils'
 import { KonvaImageShape } from './KonvaImageShape'
@@ -263,6 +263,7 @@ function renderShape(
   const strokeDash = getStrokeDash(dash, strokeWidth)
   const highlightWidth = Math.max(strokeWidth + 4 / zoom, strokeWidth * 2.4)
   const closedFillProps = getClosedFillProps(fill, fillStyle, stroke)
+  const labelFill = getKonvaShapeLabelColor(stroke, fillStyle)
   const strokeLineCap = dash === 'dotted' ? 'round' : 'butt'
   const fontSize = getKonvaShapeFontSize(shape)
   const textAlign = getKonvaShapeTextAlign(shape)
@@ -271,7 +272,7 @@ function renderShape(
     return (
       <>
         <Rect {...closedFillProps} cornerRadius={cornerRadius} dash={strokeDash} height={shape.props.height} opacity={opacity} stroke={stroke} strokeWidth={strokeWidth} width={shape.props.width} />
-        {hideEditableText ? null : <KonvaShapeLabel fill={stroke} fontSize={fontSize} height={shape.props.height} opacity={opacity} text={shape.props.text} textAlign={textAlign} width={shape.props.width} />}
+        {hideEditableText ? null : <KonvaShapeLabel fill={labelFill} fontSize={fontSize} height={shape.props.height} opacity={opacity} text={shape.props.text} textAlign={textAlign} width={shape.props.width} />}
       </>
     )
   }
@@ -279,7 +280,7 @@ function renderShape(
     return (
       <>
         <Ellipse {...closedFillProps} dash={strokeDash} opacity={opacity} radiusX={shape.props.width / 2} radiusY={shape.props.height / 2} stroke={stroke} strokeWidth={strokeWidth} x={shape.props.width / 2} y={shape.props.height / 2} />
-        {hideEditableText ? null : <KonvaShapeLabel fill={stroke} fontSize={fontSize} height={shape.props.height} opacity={opacity} text={shape.props.text} textAlign={textAlign} width={shape.props.width} />}
+        {hideEditableText ? null : <KonvaShapeLabel fill={labelFill} fontSize={fontSize} height={shape.props.height} opacity={opacity} text={shape.props.text} textAlign={textAlign} width={shape.props.width} />}
       </>
     )
   }
@@ -294,7 +295,7 @@ function renderShape(
     return (
       <>
         <Path {...closedFillProps} dash={strokeDash} data={data} opacity={opacity} stroke={stroke} strokeLinecap={strokeLineCap} strokeLinejoin="round" strokeWidth={strokeWidth} />
-        {hideEditableText ? null : <KonvaShapeLabel fill={stroke} fontSize={fontSize} height={height} opacity={opacity} text={shape.props.text} textAlign={textAlign} width={width} />}
+        {hideEditableText ? null : <KonvaShapeLabel fill={labelFill} fontSize={fontSize} height={height} opacity={opacity} text={shape.props.text} textAlign={textAlign} width={width} />}
       </>
     )
   }
@@ -308,7 +309,7 @@ function renderShape(
     return (
       <>
         <Path {...closedFillProps} dash={strokeDash} data={data} opacity={opacity} stroke={stroke} strokeLinecap={strokeLineCap} strokeLinejoin="round" strokeWidth={strokeWidth} />
-        {hideEditableText ? null : <KonvaShapeLabel fill={stroke} fontSize={fontSize} height={height} opacity={opacity} text={shape.props.text} textAlign={textAlign} width={width} />}
+        {hideEditableText ? null : <KonvaShapeLabel fill={labelFill} fontSize={fontSize} height={height} opacity={opacity} text={shape.props.text} textAlign={textAlign} width={width} />}
       </>
     )
   }
@@ -316,7 +317,7 @@ function renderShape(
     return (
       <>
         <Path {...closedFillProps} dash={strokeDash} data={getCloudPath(shape.props.width, shape.props.height)} opacity={opacity} stroke={stroke} strokeWidth={strokeWidth} />
-        {hideEditableText ? null : <KonvaShapeLabel fill={stroke} fontSize={fontSize} height={shape.props.height} opacity={opacity} text={shape.props.text} textAlign={textAlign} width={shape.props.width} />}
+        {hideEditableText ? null : <KonvaShapeLabel fill={labelFill} fontSize={fontSize} height={shape.props.height} opacity={opacity} text={shape.props.text} textAlign={textAlign} width={shape.props.width} />}
       </>
     )
   }

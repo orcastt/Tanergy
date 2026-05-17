@@ -2,7 +2,7 @@ import type { CanvasBounds, CanvasDocument, CanvasPoint, CanvasShape } from '@/f
 import { boundsToRect, expandBounds, getShapeBounds } from '@/features/canvas-engine'
 import { getArrowHeadPoints, getCloudPath, getFreehandPath } from './konvaPathUtils'
 import { getLineArrowHeadAnchor, getLineHead, getLinePathData, getLineStartHeadAnchor, type KonvaLineShape } from './konvaLineRouteUtils'
-import { getKonvaShapeFontSize, getKonvaShapeTextAlign, getStickyFillColor, getStrokeDash, resolveKonvaShapeStyle } from './konvaCanvasStyle'
+import { getKonvaShapeFontSize, getKonvaShapeLabelColor, getKonvaShapeTextAlign, getStickyFillColor, getStrokeDash, resolveKonvaShapeStyle } from './konvaCanvasStyle'
 import { renderSvgImageShape, renderSvgNodeCardShape } from './konvaSelectionSvgImages'
 
 export type KonvaSelectionSvgExportDiagnosticCode =
@@ -101,8 +101,9 @@ function renderTextContainerShape(
   const { fill, opacity, stroke, strokeWidth } = resolveKonvaShapeStyle(shape.style)
   const dash = renderDash(shape, diagnostics)
   const style = resolveKonvaShapeStyle(shape.style)
+  const labelFill = getKonvaShapeLabelColor(style.stroke, style.fillStyle)
   const label = shape.props.text
-    ? renderText(shape.props.text, 0, shape.props.height / 2, shape.props.width, getKonvaShapeFontSize(shape), style.stroke, getKonvaShapeTextAlign(shape), style.opacity, 'middle')
+    ? renderText(shape.props.text, 0, shape.props.height / 2, shape.props.width, getKonvaShapeFontSize(shape), labelFill, getKonvaShapeTextAlign(shape), style.opacity, 'middle')
     : ''
   const attrs = `fill="${escapeAttribute(fill)}" stroke="${escapeAttribute(stroke)}" stroke-width="${format(strokeWidth)}"${dash} opacity="${format(opacity)}"`
   let body: string
