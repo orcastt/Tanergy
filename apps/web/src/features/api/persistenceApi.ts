@@ -75,11 +75,16 @@ export async function persistenceJsonHeadersAsync(
 }
 
 export async function getPersistenceAuthToken(options: PersistenceAuthOptions = {}) {
-  return options.getAuthToken?.() ?? getBrowserClerkToken()
+  try {
+    return options.getAuthToken?.() ?? await getBrowserClerkToken()
+  } catch (error) {
+    if (shouldUseLocalDevHeaders()) return null
+    throw error
+  }
 }
 
 async function withClerkAuthorization(headers: HeadersInit, options: PersistenceAuthOptions = {}): Promise<HeadersInit> {
-  const token = await options.getAuthToken?.() ?? await getBrowserClerkToken()
+  const token = await getPersistenceAuthToken(options)
   if (token) return { ...headers, Authorization: `Bearer ${token}` }
   if (shouldUseLocalDevHeaders()) return headers
   return headers

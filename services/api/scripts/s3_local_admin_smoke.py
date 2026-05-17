@@ -74,7 +74,7 @@ def request_json(opener: Any, method: str, url: str) -> dict[str, Any]:
     request = Request(url, method=method)
     request.add_header("Accept", "application/json")
     try:
-        with opener.open(request, timeout=10) as response:
+        with opener.open(request, timeout=20) as response:
             return build_result(response.status, response.read().decode("utf-8"), response.headers)
     except HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")

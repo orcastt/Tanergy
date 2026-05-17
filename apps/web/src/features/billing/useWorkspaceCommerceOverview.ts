@@ -77,6 +77,16 @@ export type WorkspaceCommerceOverview = {
   totalSeatsUsed: number
 }
 
+type WorkspaceCommerceOverviewLoadResult = {
+  overview: WorkspaceCommerceOverview
+  warning: string | null
+}
+
+type TeamCardsLoadResult = {
+  cards: CommerceTeamCard[]
+  warning: string | null
+}
+
 type Status = 'loading' | 'ready' | 'error'
 const maxConcurrentCommerceWorkspaceLoads = 4
 
@@ -97,10 +107,10 @@ export function useWorkspaceCommerceOverview() {
     let cancelled = false
 
     loadWorkspaceCommerceOverview(session.workspaces, reloadToken > 0)
-      .then((nextOverview) => {
+      .then(({ overview: nextOverview, warning }) => {
         if (cancelled) return
         setOverview(nextOverview)
-        setError(null)
+        setError(warning)
         setStatus('ready')
       })
       .catch((nextError: unknown) => {
@@ -126,24 +136,31 @@ export function useWorkspaceCommerceOverview() {
   }
 }
 
-async function loadWorkspaceCommerceOverview(workspaces: TangentWorkspace[], force = false): Promise<WorkspaceCommerceOverview> {
+async function loadWorkspaceCommerceOverview(
+  workspaces: TangentWorkspace[],
+  force = false,
+): Promise<WorkspaceCommerceOverviewLoadResult> {
   const planResponse = await loadBillingPlans({ force })
   const planMap = Object.fromEntries(planResponse.plans.map((plan) => [plan.planKey, plan])) as CommercePlanMap
   const personalWorkspace = selectPersonalWorkspace(workspaces)
-  const [groupSummary, teamCards] = await Promise.all([
+  const [groupSummary, teamCardResult] = await Promise.all([
     loadGroupSummary(personalWorkspace, workspaces, planMap, force),
     loadTeamCards(workspaces.filter((workspace) => workspace.kind === 'team_workspace'), force),
   ])
+  const teamCards = teamCardResult.cards
   const ownedTeams = teamCards.filter((card) => card.relationship === 'created')
 
   return {
-    groupSummary,
-    planMap,
-    plans: planResponse.plans,
-    teamCards,
-    totalIncludedCredits: groupSummary.totalCredits + ownedTeams.reduce((total, card) => total + card.totalCredits, 0),
-    totalSeatLimit: ownedTeams.reduce((total, card) => total + card.seatLimit, 0),
-    totalSeatsUsed: ownedTeams.reduce((total, card) => total + card.seatsUsed, 0),
+    overview: {
+      groupSummary,
+      planMap,
+      plans: planResponse.plans,
+      teamCards,
+      totalIncludedCredits: groupSummary.totalCredits + ownedTeams.reduce((total, card) => total + card.totalCredits, 0),
+      totalSeatLimit: ownedTeams.reduce((total, card) => total + card.seatLimit, 0),
+      totalSeatsUsed: ownedTeams.reduce((total, card) => total + card.seatsUsed, 0),
+    },
+    warning: teamCardResult.warning,
   }
 }
 
@@ -186,45 +203,61 @@ async function loadGroupSummary(
 async function loadTeamCards(
   teamWorkspaces: TangentWorkspace[],
   force = false,
-): Promise<CommerceTeamCard[]> {
-  return mapWithConcurrency(teamWorkspaces, maxConcurrentCommerceWorkspaceLoads, async (workspace) => {
-    const relationship = workspaceRelationshipFromRole(workspace.role)
-    const [billing, dashboard] = await Promise.all([
-      loadBillingMe({ force, workspace }),
-      loadWorkspaceDashboard({ force, workspace }),
-    ])
-    const planKey = normalizeTeamPlanKey(billing.plan.planKey)
-    return {
-      billingInterval: normalizeBillingInterval(billing.billingInterval, billing.plan.billingPeriod),
-      boardCount: dashboard.dashboard.boardCount,
-      canManageBilling: relationship === 'created' && (workspace.role === 'owner' || workspace.role === 'admin'),
-      currentPeriodStart: billing.currentPeriodStart,
-      currentPeriodEnd: billing.currentPeriodEnd,
-      id: workspace.id,
-      includedCredits: billing.credits.includedTotal,
-      memberCount: dashboard.dashboard.memberCount,
-      membershipRole: normalizeWorkspaceMembershipRole(workspace.role),
-      name: workspace.name,
-      nextRefreshAt: billing.nextRefreshAt,
-      pageLimit: billing.plan.pageLimit ?? null,
-      planKey,
-      planName: billing.plan.name || workspace.name,
-      relationship,
-      remainingCredits: billing.credits.includedRemaining + billing.credits.topUpBalance,
-      seatMax: billing.plan.seatMax ?? null,
-      seatMin: billing.plan.seatMin ?? null,
-      seatLimit: billing.plan.seatMax ?? Math.max(dashboard.dashboard.memberCount, 1),
-      seatsUsed: dashboard.dashboard.memberCount,
-      topUpBalance: billing.credits.topUpBalance,
-      totalCredits: billing.credits.includedTotal + billing.credits.topUpBalance,
-      usedThisCycle: billing.credits.usedThisCycle,
-      workspace: {
-        ...workspace,
+): Promise<TeamCardsLoadResult> {
+  const warnings: string[] = []
+  const cards = (await mapWithConcurrency<TangentWorkspace, CommerceTeamCard | null>(
+    teamWorkspaces,
+    maxConcurrentCommerceWorkspaceLoads,
+    async (workspace) => {
+    try {
+      const relationship = workspaceRelationshipFromRole(workspace.role)
+      const [billing, dashboard] = await Promise.all([
+        loadBillingMe({ force, workspace }),
+        loadWorkspaceDashboard({ force, workspace }),
+      ])
+      const planKey = normalizeTeamPlanKey(billing.plan.planKey)
+      const card: CommerceTeamCard = {
+        billingInterval: normalizeBillingInterval(billing.billingInterval, billing.plan.billingPeriod),
         boardCount: dashboard.dashboard.boardCount,
+        canManageBilling: relationship === 'created' && (workspace.role === 'owner' || workspace.role === 'admin'),
+        currentPeriodStart: billing.currentPeriodStart,
+        currentPeriodEnd: billing.currentPeriodEnd,
+        id: workspace.id,
+        includedCredits: billing.credits.includedTotal,
+        memberCount: dashboard.dashboard.memberCount,
+        membershipRole: normalizeWorkspaceMembershipRole(workspace.role),
+        name: workspace.name,
+        nextRefreshAt: billing.nextRefreshAt,
+        pageLimit: billing.plan.pageLimit ?? null,
         planKey,
-      },
+        planName: billing.plan.name || workspace.name,
+        relationship,
+        remainingCredits: billing.credits.includedRemaining + billing.credits.topUpBalance,
+        seatMax: billing.plan.seatMax ?? null,
+        seatMin: billing.plan.seatMin ?? null,
+        seatLimit: billing.plan.seatMax ?? Math.max(dashboard.dashboard.memberCount, 1),
+        seatsUsed: dashboard.dashboard.memberCount,
+        topUpBalance: billing.credits.topUpBalance,
+        totalCredits: billing.credits.includedTotal + billing.credits.topUpBalance,
+        usedThisCycle: billing.credits.usedThisCycle,
+        workspace: {
+          ...workspace,
+          boardCount: dashboard.dashboard.boardCount,
+          planKey,
+        },
+      }
+      return card
+    } catch (error) {
+      warnings.push(formatTeamCardLoadWarning(workspace.name, error))
+      return null
     }
-  })
+  },
+  )).filter((card): card is CommerceTeamCard => card !== null)
+
+  return {
+    cards,
+    warning: warnings.length ? warnings.join(' ') : null,
+  }
 }
 
 function selectPersonalWorkspace(workspaces: TangentWorkspace[]) {
@@ -251,4 +284,9 @@ function normalizeBillingInterval(
   if (billingPeriod === 'contract') return 'contract'
   if (billingPeriod === 'none') return 'none'
   return 'monthly'
+}
+
+function formatTeamCardLoadWarning(workspaceName: string, error: unknown) {
+  const detail = error instanceof Error ? error.message : 'Team billing failed to load.'
+  return `${workspaceName}: ${detail}`
 }

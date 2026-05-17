@@ -9,17 +9,17 @@ export const runtime = 'nodejs'
 
 export async function GET(request: NextRequest) {
   try {
+    if (isLocalDevAuthBypass(request)) {
+      const context = getApiRequestContext(request)
+      return NextResponse.json({ ok: true, session: createSessionFromContext(context) })
+    }
+
     const remoteResponse = await loadRemoteSession(request)
     if (remoteResponse) return remoteResponse
 
     const clerkAuth = getOptionalClerkAuth(request)
     if (clerkAuth.userId) {
       return NextResponse.json({ ok: true, session: createSessionFromClerk(clerkAuth.userId, clerkAuth.sessionClaims) })
-    }
-
-    if (isLocalDevAuthBypass(request)) {
-      const context = getApiRequestContext(request)
-      return NextResponse.json({ ok: true, session: createSessionFromContext(context) })
     }
 
     if (process.env.NODE_ENV === 'production' || process.env.TANGENT_REQUIRE_WEB_AUTH === '1') {
