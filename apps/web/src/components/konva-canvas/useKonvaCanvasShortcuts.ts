@@ -8,10 +8,11 @@ import {
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import type { KonvaPendingImagePaste } from './KonvaPendingImagePasteLayer'
 import { deleteKonvaShapes, duplicateKonvaShapes, reorderKonvaShapes } from './konvaCanvasStyle'
-import { pasteKonvaClipboardData, writeKonvaShapesToSystemClipboard } from './konvaClipboardCommands'
+import { pasteKonvaClipboardData } from './konvaClipboardCommands'
 import { konvaToolShortcuts, type KonvaCanvasTool } from './konvaCanvasTypes'
 import { applyFrameContainment } from './konvaFrameContainment'
-import { expandKonvaGroupedShapeIds, groupKonvaShapes, setKonvaShapesLocked, ungroupKonvaShapes } from './konvaGroupCommands'
+import { hasRemoteShapeLock } from './konvaCollaborationLocks'
+import { expandKonvaGroupedShapeIds, groupKonvaShapes, lockKonvaShapes, ungroupKonvaShapes, unlockKonvaShapes } from './konvaGroupCommands'
 import { removeKonvaRuntimeEdge } from './konvaRuntimeEdges'
 import { getShapesByIds, moveShapesFromOrigins } from './konvaSelectionUtils'
 import { copyKonvaShapes } from './konvaShapeCommands'
@@ -41,6 +42,7 @@ type UseKonvaCanvasShortcutsOptions = {
   onEdgeSelectionChange?: (edgeId: string | null) => void
   onPanningChange: (isPanning: boolean) => void
   onRedo?: () => void
+  remoteLockedShapeOwnerById?: ReadonlyMap<string, string>
   onSelectionChange: (shapeIds: string[]) => void
   onToolChange: (tool: KonvaCanvasTool) => void
   onUndo?: () => void
@@ -80,7 +82,6 @@ export function useKonvaCanvasShortcuts(options: UseKonvaCanvasShortcutsOptions)
         }
         options.clipboardRef.current = copyKonvaShapes(options.document, options.selectedIds)
         options.onClipboardChange?.(options.clipboardRef.current.length)
-        void writeKonvaShapesToSystemClipboard(options.clipboardRef.current)
         return
       }
       if (command && key === 'x') {
@@ -100,7 +101,9 @@ export function useKonvaCanvasShortcuts(options: UseKonvaCanvasShortcutsOptions)
       }
       if (command && key === 'a') {
         event.preventDefault()
-        options.onSelectionChange(options.document.shapes.map((shape) => shape.id))
+        options.onSelectionChange(options.document.shapes
+          .filter((shape) => !options.remoteLockedShapeOwnerById?.has(shape.id))
+          .map((shape) => shape.id))
         return
       }
       if (!command && event.shiftKey && key === 'l') {
@@ -164,6 +167,7 @@ function runDelete(options: UseKonvaCanvasShortcutsOptions) {
     return
   }
   if (options.selectedIds.length === 0) return
+  if (hasRemoteShapeLock(options.selectedIds, options.remoteLockedShapeOwnerById)) return
   options.history.checkpoint(options.document)
   const result = deleteKonvaShapes(options.document, options.selectedIds)
   options.onDocumentChange(result.document)
@@ -179,14 +183,15 @@ function runCut(options: UseKonvaCanvasShortcutsOptions) {
     return
   }
   if (options.selectedIds.length === 0) return
+  if (hasRemoteShapeLock(options.selectedIds, options.remoteLockedShapeOwnerById)) return
   options.clipboardRef.current = copyKonvaShapes(options.document, options.selectedIds)
   options.onClipboardChange?.(options.clipboardRef.current.length)
-  void writeKonvaShapesToSystemClipboard(options.clipboardRef.current)
   runDelete(options)
 }
 
 function runDuplicate(options: UseKonvaCanvasShortcutsOptions) {
   if (options.selectedIds.length === 0) return
+  if (hasRemoteShapeLock(options.selectedIds, options.remoteLockedShapeOwnerById)) return
   options.history.checkpoint(options.document)
   const result = duplicateKonvaShapes(options.document, options.selectedIds)
   options.onDocumentChange(result.document)
@@ -195,6 +200,7 @@ function runDuplicate(options: UseKonvaCanvasShortcutsOptions) {
 
 function runGroupAction(options: UseKonvaCanvasShortcutsOptions, action: 'group' | 'ungroup') {
   if (options.selectedIds.length === 0) return
+  if (hasRemoteShapeLock(options.selectedIds, options.remoteLockedShapeOwnerById)) return
   options.history.checkpoint(options.document)
   const result = action === 'group'
     ? groupKonvaShapes(options.document, options.selectedIds)
@@ -205,17 +211,21 @@ function runGroupAction(options: UseKonvaCanvasShortcutsOptions, action: 'group'
 
 function runLockToggle(options: UseKonvaCanvasShortcutsOptions) {
   if (options.selectedIds.length === 0) return
+  if (hasRemoteShapeLock(options.selectedIds, options.remoteLockedShapeOwnerById)) return
   const selected = new Set(options.selectedIds)
   const selectedShapes = options.document.shapes.filter((shape) => selected.has(shape.id))
   const shouldLock = selectedShapes.some((shape) => !shape.isLocked)
   options.history.checkpoint(options.document)
-  const result = setKonvaShapesLocked(options.document, options.selectedIds, shouldLock)
+  const result = shouldLock
+    ? lockKonvaShapes(options.document, options.selectedIds)
+    : unlockKonvaShapes(options.document, options.selectedIds)
   options.onDocumentChange(result.document)
   options.onSelectionChange(result.selectedIds)
 }
 
 function runLayerAction(options: UseKonvaCanvasShortcutsOptions, action: Parameters<typeof reorderKonvaShapes>[2]) {
   if (options.selectedIds.length === 0) return
+  if (hasRemoteShapeLock(options.selectedIds, options.remoteLockedShapeOwnerById)) return
   options.history.checkpoint(options.document)
   options.onDocumentChange(reorderKonvaShapes(options.document, options.selectedIds, action))
 }
@@ -225,6 +235,7 @@ function runNudge(options: UseKonvaCanvasShortcutsOptions, delta: CanvasPoint) {
   const shapeIds = expandKonvaGroupedShapeIds(options.document.shapes, expandFrameChildren(options.document.shapes, options.selectedIds))
   const originShapes = getShapesByIds(options.document.shapes, shapeIds)
   if (originShapes.length === 0 || originShapes.some((shape) => shape.isLocked)) return
+  if (hasRemoteShapeLock(shapeIds, options.remoteLockedShapeOwnerById)) return
   options.history.checkpoint(options.document)
   const movedShapes = moveShapesFromOrigins(options.document.shapes, originShapes, delta)
   options.onDocumentChange(withCanvasShapes(options.document, applyFrameContainment(movedShapes, shapeIds)))

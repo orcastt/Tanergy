@@ -13,7 +13,7 @@
   display: grid;
   width: min(1600px, calc(100vw - 48px));
   height: min(920px, calc(100vh - 48px));
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto auto 1fr;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 18px;
   background: #0b0b0d;
@@ -30,9 +30,16 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.node-image-lightbox__header div {
+.node-image-lightbox__title {
   display: grid;
   gap: 4px;
+}
+
+.node-image-lightbox__actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .node-image-lightbox__header strong,
@@ -49,10 +56,10 @@
 
 .node-image-lightbox__header button {
   display: inline-flex;
-  width: 36px;
-  height: 36px;
+  height: 34px;
   align-items: center;
   justify-content: center;
+  padding: 0 12px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 999px;
   background: #ffffff;
@@ -62,10 +69,46 @@
   font-weight: 700;
 }
 
+.node-image-lightbox__batch-strip {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  gap: 10px;
+  padding: 14px 20px 0;
+  overflow-x: auto;
+}
+
+.node-image-lightbox__batch-strip button {
+  display: grid;
+  gap: 3px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  background: #0f1014;
+  color: #ffffff;
+  cursor: pointer;
+  text-align: left;
+}
+
+.node-image-lightbox__batch-strip button.is-selected {
+  border-color: rgba(255, 255, 255, 0.78);
+}
+
+.node-image-lightbox__batch-strip button strong {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.node-image-lightbox__batch-strip button span {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 11px;
+}
+
 .node-image-lightbox__body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 260px;
+  min-width: 0;
   min-height: 0;
+  grid-template-rows: minmax(0, 1fr) auto;
 }
 
 .node-image-lightbox__viewer-stack {
@@ -80,7 +123,7 @@
   min-width: 0;
   min-height: 0;
   place-items: center;
-  padding: 20px;
+  padding: 20px 20px 12px;
 }
 
 .node-image-lightbox__viewer img {
@@ -124,6 +167,7 @@
   padding: 0 20px 20px;
   overflow-x: auto;
   overflow-y: hidden;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .node-image-lightbox__filmstrip button {
@@ -146,73 +190,6 @@
   object-fit: cover;
 }
 
-.node-image-lightbox__history {
-  display: grid;
-  grid-template-rows: auto 1fr;
-  gap: 12px;
-  min-height: 0;
-  padding: 20px 16px;
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.node-image-lightbox__history-list {
-  display: grid;
-  gap: 10px;
-  min-height: 0;
-  overflow: auto;
-}
-
-.node-image-lightbox__history-list button {
-  position: relative;
-  display: grid;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
-  background: #0f1014;
-  cursor: pointer;
-  overflow: hidden;
-}
-
-.node-image-lightbox__history-list button.is-selected {
-  border-color: rgba(255, 255, 255, 0.72);
-}
-
-.node-image-lightbox__history-list button span {
-  display: inline-flex;
-  min-width: 22px;
-  height: 22px;
-  align-items: center;
-  justify-content: center;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: #2563eb;
-  color: #ffffff;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.node-image-lightbox__history-list button small {
-  color: rgba(255, 255, 255, 0.68);
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.node-image-lightbox__history-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-}
-
-.node-image-lightbox__history-grid img {
-  display: block;
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
-  border-radius: 8px;
-}
-
 @media (max-width: 980px) {
   .node-image-lightbox {
     padding: 12px;
@@ -223,21 +200,8 @@
     height: min(100vh - 24px, 920px);
   }
 
-  .node-image-lightbox__body {
-    grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 1fr) 220px;
-  }
-
-  .node-image-lightbox__history {
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-    border-left: 0;
-  }
-
-  .node-image-lightbox__history-list {
-    grid-auto-flow: column;
-    grid-auto-columns: 168px;
-    overflow-x: auto;
-    overflow-y: hidden;
+  .node-image-lightbox__actions {
+    justify-content: flex-start;
   }
 
   .node-image-lightbox__nav--prev {

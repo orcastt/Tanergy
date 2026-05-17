@@ -12,6 +12,8 @@ export type UseKonvaCanvasInteractionsOptions = {
   document: CanvasDocument
   isSpacePanning: boolean
   nextStyle: CanvasShapeStyle
+  onInteractionShapeIdsChange?: (shapeIds: string[]) => void
+  remoteLockedShapeOwnerById?: ReadonlyMap<string, string>
   selectedIds: string[]
   onCameraCommit: (camera: CanvasCamera) => void
   onCameraPreview: (camera: CanvasCamera) => void

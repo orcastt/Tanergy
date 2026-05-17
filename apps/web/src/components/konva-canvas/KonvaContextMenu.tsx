@@ -147,7 +147,7 @@ export function KonvaContextMenu({
 
         <MenuSubmenu disabled={!hasSelection} label="Copy as">
           <MenuButton label="SVG" shortcut={`⇧${shortcutMod}C`} onClick={() => onAction('copy-as-svg')} />
-          <MenuButton label="PNG" onClick={() => onAction('copy-as-png')} />
+          <MenuButton label="Image" onClick={() => onAction('copy-as-png')} />
           <MenuButton disabled label="Transparent background" />
         </MenuSubmenu>
         <MenuSubmenu label="Export as">

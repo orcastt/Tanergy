@@ -3,6 +3,12 @@ import type { CanvasDocument, CanvasShapeStyle } from '@/features/canvas-engine'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
 import { konvaToolLabels } from './konvaCanvasTypes'
 import {
+  applyKonvaShapePropPatch,
+  getKonvaSelectionCornerRadiusLimit,
+  getKonvaSelectionCornerRadiusSnapshot,
+  isKonvaCornerRadiusShape,
+} from './konvaCanvasShapeProps'
+import {
   applyKonvaStylePatch,
   getKonvaSelectionStyleSnapshot,
   getWidthStyleToken,
@@ -57,11 +63,15 @@ export function KonvaCanvasProperties({
   const showFill = hasSelection ? selectedShapes.some(isKonvaFillShape) : toolUsesFill(activeTool)
   const showDash = hasSelection ? selectedShapes.some(isKonvaDashShape) : toolUsesDash(activeTool)
   const showWidth = hasSelection ? selectedShapes.some(isKonvaWidthShape) : toolUsesWidth(activeTool)
+  const showCornerRadius = selectedShapes.some(isKonvaCornerRadiusShape)
   const headerNote = hasSelection ? `Selected · ${selectedShapes.length}` : `${konvaToolLabels[activeTool]} styles`
   const fillToken = styleSnapshot.fillStyle === 'mixed' ? null : styleSnapshot.fillStyle
   const dashToken = styleSnapshot.dash === 'mixed' ? null : styleSnapshot.dash
   const widthToken = styleSnapshot.strokeWidth === 'mixed' ? null : getWidthStyleToken(styleSnapshot.strokeWidth)
   const opacity = styleSnapshot.opacity === 'mixed' ? 100 : Math.round((styleSnapshot.opacity ?? 1) * 100)
+  const cornerRadiusSnapshot = showCornerRadius ? getKonvaSelectionCornerRadiusSnapshot(selectedShapes) : null
+  const cornerRadiusLimit = showCornerRadius ? Math.max(4, Math.round(getKonvaSelectionCornerRadiusLimit(selectedShapes))) : 0
+  const cornerRadiusValue = typeof cornerRadiusSnapshot === 'number' ? cornerRadiusSnapshot : 0
   const strokeLabel = hasSelection && selectedShapes.every((shape) => shape.type === 'text')
     ? 'Text Color'
     : hasSelection && selectedShapes.every((shape) => shape.type === 'sticky')
@@ -74,6 +84,12 @@ export function KonvaCanvasProperties({
       onHistoryCheckpoint(document)
       onDocumentChange((current) => applyKonvaStylePatch(current, selectedIds, patch))
     }
+  }
+
+  const applyShapeProps = (patch: { cornerRadius?: number }) => {
+    if (selectedIds.length === 0) return
+    onHistoryCheckpoint(document)
+    onDocumentChange((current) => applyKonvaShapePropPatch(current, selectedIds, patch))
   }
 
   return (
@@ -167,6 +183,22 @@ export function KonvaCanvasProperties({
                   />
                 ))}
               </SegmentedButtons>
+            </PropertyBlock>
+          ) : null}
+
+          {showCornerRadius ? (
+            <PropertyBlock label="Corners">
+              <div className="konva-canvas-properties__range-row">
+                <input
+                  aria-label="Corner radius"
+                  max={cornerRadiusLimit}
+                  min={0}
+                  onChange={(event) => applyShapeProps({ cornerRadius: Number(event.currentTarget.value) })}
+                  type="range"
+                  value={cornerRadiusValue}
+                />
+                <span>{cornerRadiusSnapshot === 'mixed' ? 'Mixed' : cornerRadiusValue}</span>
+              </div>
             </PropertyBlock>
           ) : null}
 

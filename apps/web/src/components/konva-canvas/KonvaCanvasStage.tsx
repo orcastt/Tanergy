@@ -34,6 +34,7 @@ type KonvaCanvasStageProps = {
   cropEditingImageId?: string | null
   editingNodeText?: { fieldName: KonvaNodeTextFieldName; shapeId: string } | null
   editingTextId?: string | null
+  remoteLockedShapeOwnerById?: ReadonlyMap<string, string>
   selectedEdgeId: string | null
   selectedIds: string[]
   width: number
@@ -62,6 +63,7 @@ type KonvaCanvasStageProps = {
   ) => void
   onNodeRunToggle: (shapeId: string) => void
   onNodeTextEditStart: (shapeId: string, fieldName: KonvaNodeTextFieldName) => void
+  onInteractionShapeIdsChange?: (shapeIds: string[]) => void
   onSelectionBoxChange?: (bounds: CanvasBounds | null) => void
   onTransformPreviewChange?: (preview: { bounds: CanvasBounds; kind: BoardCollaborationTransformKind } | null) => void
   onSelectionChange: (shapeIds: string[]) => void
@@ -116,10 +118,11 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
   const frameChildren = getFrameChildren(renderShapes, frameIds)
   const draggingIds = new Set(draggingShapeIds)
   const nodeShapes = renderShapes.filter((shape): shape is CanvasNodeShape => shape.type === 'node_card')
-  const lightweightPreviewMode = renderCamera.zoom <= 0.25
 
-  const renderShapeNode = (shape: CanvasShape) => (
-    <KonvaCanvasShape
+  const renderShapeNode = (shape: CanvasShape) => {
+    const remotelyLocked = Boolean(props.remoteLockedShapeOwnerById?.has(shape.id))
+    return (
+      <KonvaCanvasShape
       document={props.document}
       editingNodeTextField={props.editingNodeText?.shapeId === shape.id ? props.editingNodeText.fieldName : null}
       hideEditableText={props.editingTextId === shape.id}
@@ -148,13 +151,15 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
       onNodeTextEditStart={props.onNodeTextEditStart}
       onSelect={handleShapeSelect}
       panMode={props.isSpacePanning}
-      previewMode={lightweightPreviewMode}
+      previewMode={false}
+      remotelyLocked={remotelyLocked}
       selectable={canSelectShapeWithTool(shape, props.activeTool)}
       shape={shape}
-      toolAllowsDrag={canDragShape && canDragShapeWithTool(shape, props.activeTool)}
+      toolAllowsDrag={canDragShape && canDragShapeWithTool(shape, props.activeTool) && !remotelyLocked}
       zoom={renderCamera.zoom}
-    />
-  )
+      />
+    )
+  }
   const onStageReady = props.onStageReady
   const setStageRef = useCallback((stage: Konva.Stage | null) => {
     stageRef.current = stage
@@ -239,7 +244,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
             onNodeRunToggle={props.onNodeRunToggle}
             onNodeTextEditStart={props.onNodeTextEditStart}
             panMode={props.isSpacePanning}
-            previewMode={lightweightPreviewMode}
+            previewMode={false}
             selectable={false}
             shape={draft}
             toolAllowsDrag={false}

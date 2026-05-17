@@ -90,6 +90,13 @@ export function useKonvaNodeCreationMenu({
 	    activeRunControllersRef.current.clear()
 	  }, [])
 
+  const getUnlockedNode = useCallback((shapeId: string) => {
+    const node = latestDocumentRef.current.shapes.find((shape): shape is CanvasNodeShape => (
+      shape.id === shapeId && shape.type === 'node_card'
+    )) ?? null
+    return node && !node.isLocked ? node : null
+  }, [])
+
   const createNodeCard = useCallback((type: NodeType, position?: CanvasPoint) => {
     const nodePosition = position ?? lastPastePointRef.current ?? screenToWorld({ x: size.width / 2, y: size.height / 2 }, camera)
     const shape = createKonvaNodeCardShape({ position: nodePosition, type })
@@ -102,7 +109,7 @@ export function useKonvaNodeCreationMenu({
   }, [camera, history, lastPastePointRef, onDocumentChange, onEdgeSelectionChange, onSelectionChange, onToolChange, size.height, size.width])
 
   const setNodeField = useCallback((shapeId: string, fieldName: string, value: string | number) => {
-    const node = document.shapes.find((shape): shape is CanvasNodeShape => shape.id === shapeId && shape.type === 'node_card')
+    const node = getUnlockedNode(shapeId)
     if (!node) return
     const field = getNodeCardFields(node.props.nodeType, node.props.data).find((item) => item.name === fieldName)
     if (!field?.options?.some((option) => option.value === value)) return
@@ -115,10 +122,10 @@ export function useKonvaNodeCreationMenu({
         ? { ...shape, props: { ...shape.props, data: nextNodeData } }
         : shape
     ))))
-  }, [document, history, onDocumentChange])
+  }, [document, getUnlockedNode, history, onDocumentChange])
 
   const setNodeTextField = useCallback((shapeId: string, fieldName: string, value: string) => {
-    const node = document.shapes.find((shape): shape is CanvasNodeShape => shape.id === shapeId && shape.type === 'node_card')
+    const node = getUnlockedNode(shapeId)
     if (!node) return
     const field = getNodeDefinition(node.props.nodeType).cardFields.find((item) => item.name === fieldName)
     if (field?.type !== 'text' && field?.type !== 'textarea') return
@@ -130,10 +137,10 @@ export function useKonvaNodeCreationMenu({
         ? { ...shape, props: { ...shape.props, data: { ...shape.props.data, [fieldName]: nextValue } } }
         : shape
     ))))
-  }, [document, history, onDocumentChange])
+  }, [document, getUnlockedNode, history, onDocumentChange])
 
   const toggleNodeRun = useCallback((shapeId: string) => {
-    const node = document.shapes.find((shape): shape is CanvasNodeShape => shape.id === shapeId && shape.type === 'node_card')
+    const node = getUnlockedNode(shapeId)
     if (!node || !canRunNode(node)) return
     history.checkpoint(document)
 
@@ -304,12 +311,12 @@ export function useKonvaNodeCreationMenu({
 	          activeRunControllersRef.current.delete(shapeId)
 	        }
 	      })
-  }, [boardId, document, history, onDocumentChange, workspace])
+  }, [boardId, document, getUnlockedNode, history, onDocumentChange, workspace])
 
   const sendChatMessage = useCallback((shapeId: string, draftOverride?: string) => {
     const snapshot = latestDocumentRef.current
-    const node = snapshot.shapes.find((shape): shape is CanvasNodeShape => shape.id === shapeId && shape.type === 'node_card' && shape.props.nodeType === 'chat')
-    if (!node) return
+    const node = getUnlockedNode(shapeId)
+    if (!node || node.props.nodeType !== 'chat') return
     history.checkpoint(snapshot)
 
     activeChatControllersRef.current.get(shapeId)?.abort()
@@ -422,12 +429,12 @@ export function useKonvaNodeCreationMenu({
         activeChatControllersRef.current.delete(shapeId)
       }
     })
-  }, [boardId, history, onDocumentChange, workspace])
+  }, [boardId, getUnlockedNode, history, onDocumentChange, workspace])
 
   const regenerateChatMessage = useCallback((shapeId: string, messageId: string) => {
     const snapshot = latestDocumentRef.current
-    const node = snapshot.shapes.find((shape): shape is CanvasNodeShape => shape.id === shapeId && shape.type === 'node_card' && shape.props.nodeType === 'chat')
-    if (!node) return
+    const node = getUnlockedNode(shapeId)
+    if (!node || node.props.nodeType !== 'chat') return
     history.checkpoint(snapshot)
 
     activeChatControllersRef.current.get(shapeId)?.abort()
@@ -540,24 +547,24 @@ export function useKonvaNodeCreationMenu({
         activeChatControllersRef.current.delete(shapeId)
       }
     })
-  }, [boardId, history, onDocumentChange, workspace])
+  }, [boardId, getUnlockedNode, history, onDocumentChange, workspace])
 
   const setChatModel = useCallback((shapeId: string, modelId: string) => {
     const snapshot = latestDocumentRef.current
-    const node = snapshot.shapes.find((shape): shape is CanvasNodeShape => shape.id === shapeId && shape.type === 'node_card' && shape.props.nodeType === 'chat')
-    if (!node || node.props.data.modelId === modelId) return
+    const node = getUnlockedNode(shapeId)
+    if (!node || node.props.nodeType !== 'chat' || node.props.data.modelId === modelId) return
     history.checkpoint(snapshot)
     onDocumentChange((current) => setKonvaChatModelId(current, shapeId, modelId))
-  }, [history, onDocumentChange])
+  }, [getUnlockedNode, history, onDocumentChange])
 
   const cleanChatHistory = useCallback((shapeId: string) => {
-    const node = document.shapes.find((shape): shape is CanvasNodeShape => shape.id === shapeId && shape.type === 'node_card' && shape.props.nodeType === 'chat')
-    if (!node) return
+    const node = getUnlockedNode(shapeId)
+    if (!node || node.props.nodeType !== 'chat') return
     activeChatControllersRef.current.get(shapeId)?.abort()
     activeChatControllersRef.current.delete(shapeId)
     history.checkpoint(document)
     onDocumentChange((current) => clearKonvaChatHistory(current, shapeId))
-  }, [document, history, onDocumentChange])
+  }, [document, getUnlockedNode, history, onDocumentChange])
 
   const openNodeMenu = useCallback((screenPoint: CanvasPoint, worldPoint: CanvasPoint) => {
     onToolChange('select')

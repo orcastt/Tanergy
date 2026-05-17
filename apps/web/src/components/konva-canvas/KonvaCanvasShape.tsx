@@ -4,6 +4,7 @@ import type { KonvaEventObject } from 'konva/lib/Node'
 import { Circle, Ellipse, Group, Line, Path, Rect, Text } from 'react-konva'
 import type { CanvasDocument, CanvasShape } from '@/features/canvas-engine'
 import { getKonvaShapeFontSize, getKonvaShapeTextAlign, getStickyFillColor, getStrokeDash, resolveKonvaShapeStyle } from './konvaCanvasStyle'
+import { getKonvaShapeCornerRadius } from './konvaCanvasShapeProps'
 import { getLineArrowHeadAnchor, getLineHead, getLinePathData, getLineStartHeadAnchor, type KonvaLineShape } from './konvaLineRouteUtils'
 import { KonvaImageShape } from './KonvaImageShape'
 import { KonvaNodeCardShape } from './KonvaNodeCardShape'
@@ -12,6 +13,7 @@ import type { KonvaNodeTextFieldName } from './KonvaNodeTextEditor'
 import { KonvaShapeLabel } from './KonvaShapeLabel'
 import { getPatternTile } from './konvaPatternUtils'
 import { getArrowHeadPoints, getCloudPath, getFreehandPath } from './konvaPathUtils'
+import { getRoundedPolygonPath } from './konvaRoundedPolygonPath'
 import { isBoxCanvasShape } from './konvaRotationUtils'
 import { canKonvaShapeFlip, canKonvaShapeRotate } from './konvaShapeCapabilities'
 import { clearKonvaStageCursor, setKonvaStageCursor } from './konvaStageCursor'
@@ -52,6 +54,7 @@ type KonvaCanvasShapeProps = {
   onNodeTextEditStart?: (shapeId: string, fieldName: KonvaNodeTextFieldName) => void
   onSelect: (shapeId: string, options?: { additive?: boolean }) => void
   previewMode?: boolean
+  remotelyLocked?: boolean
 }
 
 function KonvaCanvasShapeComponent({
@@ -83,6 +86,7 @@ function KonvaCanvasShapeComponent({
   onSelect,
   panMode,
   previewMode = false,
+  remotelyLocked = false,
   selectable = true,
   shape,
   toolAllowsDrag,
@@ -93,8 +97,9 @@ function KonvaCanvasShapeComponent({
     () => renderShape(document, shape, style, isSelected, zoom, previewMode, hideEditableText, editingNodeTextField, onNodeFieldChange, onNodeFocusedEditRequest, onNodeFocusedEditStateChange, onGeneratedImageToCanvas, onImageNodeToCanvas, onNodeImagePreviewOpen, onNodePortPointerDown, onNodeRunToggle, onNodeChatSend, onNodeChatClean, onNodeChatRegenerate, onNodeChatModelChange, onNodeChatUpload, onNodeTextEditStart),
     [document, editingNodeTextField, hideEditableText, isSelected, onGeneratedImageToCanvas, onImageNodeToCanvas, onNodeImagePreviewOpen, onNodeChatClean, onNodeChatRegenerate, onNodeChatModelChange, onNodeChatSend, onNodeChatUpload, onNodeFieldChange, onNodeFocusedEditRequest, onNodeFocusedEditStateChange, onNodePortPointerDown, onNodeRunToggle, onNodeTextEditStart, previewMode, shape, style, zoom]
   )
-  const canInteract = interactive && !panMode
+  const canInteract = interactive && !panMode && !remotelyLocked
   const canSelect = canInteract && selectable
+  const canEditShape = canSelect && !shape.isLocked
   const transform = getGroupTransform(shape)
   const canDragShape = canInteract && toolAllowsDrag && (directDrag || isDragSelected) && !shape.isLocked
   const selectOnPointerDown = canSelect && (directDrag || (toolAllowsDrag && isDragSelected))
@@ -102,12 +107,13 @@ function KonvaCanvasShapeComponent({
   const hoverCursor = shape.type === 'node_card' ? 'default' : 'move'
   const lockDragSourceRef = useRef(false)
   const lockedDragRef = useRef<LockedDragState | null>(null)
+  const showLockedNodeOverlay = shape.type === 'node_card' && shape.isLocked && canSelect
   return (
     <Group
       draggable={canDragShape}
       id={`shape:${shape.id}`}
       key={shape.id}
-      listening={interactive}
+      listening={interactive && !remotelyLocked}
       name="konva-canvas-shape"
       onMouseEnter={canSelect ? (event) => {
         setKonvaStageCursor(event, hoverCursor)
@@ -142,7 +148,7 @@ function KonvaCanvasShapeComponent({
         lockDragSourceRef.current = false
         lockedDragRef.current = null
       } : undefined}
-      onDblClick={canSelect ? (event) => {
+      onDblClick={canEditShape ? (event) => {
         event.cancelBubble = true
         onDoubleClick(shape.id)
       } : undefined}
@@ -160,6 +166,26 @@ function KonvaCanvasShapeComponent({
       y={transform.y}
     >
       {renderedShape}
+      {showLockedNodeOverlay ? (
+        <Rect
+          fill="rgba(255,255,255,0.001)"
+          height={shape.props.height}
+          onClick={selectOnClick ? (event) => {
+            if (event.evt.button !== 0) return
+            event.cancelBubble = true
+            onSelect(shape.id, { additive: event.evt.shiftKey })
+          } : undefined}
+          onDblClick={(event) => {
+            event.cancelBubble = true
+          }}
+          onPointerDown={selectOnPointerDown ? (event) => {
+            if (event.evt.button !== 0) return
+            event.cancelBubble = true
+            onSelect(shape.id, { additive: event.evt.shiftKey })
+          } : undefined}
+          width={shape.props.width}
+        />
+      ) : null}
     </Group>
   )
 }
@@ -191,6 +217,7 @@ function areShapePropsEqual(previous: KonvaCanvasShapeProps, next: KonvaCanvasSh
   if (previous.onNodeRunToggle !== next.onNodeRunToggle) return false
   if (previous.onNodeTextEditStart !== next.onNodeTextEditStart) return false
   if (previous.previewMode !== next.previewMode) return false
+  if (previous.remotelyLocked !== next.remotelyLocked) return false
   if (usesZoomPreviewTier(next.shape) && getZoomPreviewTier(previous.zoom) !== getZoomPreviewTier(next.zoom)) return false
   if (next.isSelected && previous.zoom !== next.zoom) return false
   return true
@@ -240,9 +267,10 @@ function renderShape(
   const fontSize = getKonvaShapeFontSize(shape)
   const textAlign = getKonvaShapeTextAlign(shape)
   if (shape.type === 'rect') {
+    const cornerRadius = getKonvaShapeCornerRadius(shape)
     return (
       <>
-        <Rect {...closedFillProps} cornerRadius={10} dash={strokeDash} height={shape.props.height} opacity={opacity} stroke={stroke} strokeWidth={strokeWidth} width={shape.props.width} />
+        <Rect {...closedFillProps} cornerRadius={cornerRadius} dash={strokeDash} height={shape.props.height} opacity={opacity} stroke={stroke} strokeWidth={strokeWidth} width={shape.props.width} />
         {hideEditableText ? null : <KonvaShapeLabel fill={stroke} fontSize={fontSize} height={shape.props.height} opacity={opacity} text={shape.props.text} textAlign={textAlign} width={shape.props.width} />}
       </>
     )
@@ -257,18 +285,29 @@ function renderShape(
   }
   if (shape.type === 'diamond') {
     const { height, width } = shape.props
+    const data = getRoundedPolygonPath([
+      { x: width / 2, y: 0 },
+      { x: width, y: height / 2 },
+      { x: width / 2, y: height },
+      { x: 0, y: height / 2 },
+    ], getKonvaShapeCornerRadius(shape))
     return (
       <>
-        <Line {...closedFillProps} closed dash={strokeDash} lineCap={strokeLineCap} opacity={opacity} points={[width / 2, 0, width, height / 2, width / 2, height, 0, height / 2]} stroke={stroke} strokeWidth={strokeWidth} />
+        <Path {...closedFillProps} dash={strokeDash} data={data} opacity={opacity} stroke={stroke} strokeLinecap={strokeLineCap} strokeLinejoin="round" strokeWidth={strokeWidth} />
         {hideEditableText ? null : <KonvaShapeLabel fill={stroke} fontSize={fontSize} height={height} opacity={opacity} text={shape.props.text} textAlign={textAlign} width={width} />}
       </>
     )
   }
   if (shape.type === 'triangle') {
     const { height, width } = shape.props
+    const data = getRoundedPolygonPath([
+      { x: width / 2, y: 0 },
+      { x: width, y: height },
+      { x: 0, y: height },
+    ], getKonvaShapeCornerRadius(shape))
     return (
       <>
-        <Line {...closedFillProps} closed dash={strokeDash} lineCap={strokeLineCap} opacity={opacity} points={[width / 2, 0, width, height, 0, height]} stroke={stroke} strokeWidth={strokeWidth} />
+        <Path {...closedFillProps} dash={strokeDash} data={data} opacity={opacity} stroke={stroke} strokeLinecap={strokeLineCap} strokeLinejoin="round" strokeWidth={strokeWidth} />
         {hideEditableText ? null : <KonvaShapeLabel fill={stroke} fontSize={fontSize} height={height} opacity={opacity} text={shape.props.text} textAlign={textAlign} width={width} />}
       </>
     )

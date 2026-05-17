@@ -56,3 +56,24 @@ export function setKonvaShapesLocked(document: CanvasDocument, shapeIds: string[
     selectedIds,
   }
 }
+
+export function lockKonvaShapes(document: CanvasDocument, shapeIds: string[]) {
+  const expandedIds = expandKonvaGroupedShapeIds(document.shapes, shapeIds)
+  if (expandedIds.length === 0) return { document, selectedIds: shapeIds }
+  const grouped = shouldCreateLockedGroup(document.shapes, expandedIds)
+    ? groupKonvaShapes(document, expandedIds)
+    : { document, selectedIds: expandedIds }
+  return setKonvaShapesLocked(grouped.document, grouped.selectedIds, true)
+}
+
+export function unlockKonvaShapes(document: CanvasDocument, shapeIds: string[]) {
+  return setKonvaShapesLocked(document, shapeIds, false)
+}
+
+function shouldCreateLockedGroup(shapes: CanvasShape[], shapeIds: string[]) {
+  if (shapeIds.length < 2) return false
+  const selected = shapes.filter((shape) => shapeIds.includes(shape.id))
+  if (selected.length < 2) return false
+  const groupIds = new Set(selected.map((shape) => shape.groupId ?? shape.id))
+  return groupIds.size > 1
+}

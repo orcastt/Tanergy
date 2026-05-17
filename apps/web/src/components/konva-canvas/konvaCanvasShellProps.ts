@@ -54,6 +54,7 @@ type CreateKonvaCanvasShellPropsOptions = {
   overlayOccupancy: OverlayProps['occupancy']
   overlaySessions: OverlayProps['sessions']
   remoteEdgeSessions: KonvaCollaborationEdgeSession[]
+  remoteLockedShapeOwnerById?: WritableStageProps['remoteLockedShapeOwnerById']
   requestFocusedEdit: (shapeId: string, targetLabel: string) => boolean
   selectionExportCaptureMode: WritableStageProps['captureMode']
   sendGeneratedOutputToCanvas: WritableStageProps['onGeneratedImageToCanvas']
@@ -61,6 +62,7 @@ type CreateKonvaCanvasShellPropsOptions = {
   setConnectionPreviewPresence: WritableStageProps['onConnectionPreviewChange']
   setDocument: WritableStageProps['onDocumentChange']
   setFocusedControlShapeState: WritableStageProps['onNodeFocusedEditStateChange']
+  setInteractionShapeIds: WritableStageProps['onInteractionShapeIdsChange']
   setNodeField: WritableStageProps['onNodeFieldChange']
   setSelectionMarqueeBounds: WritableStageProps['onSelectionBoxChange']
   setTransformPreview: WritableStageProps['onTransformPreviewChange']
@@ -188,6 +190,7 @@ export function createKonvaCanvasShellProps(options: CreateKonvaCanvasShellProps
       onGeneratedImageToCanvas: options.sendGeneratedOutputToCanvas,
       onHistoryCheckpoint: options.writableStagePropsExtras.onHistoryCheckpoint,
       onImageNodeToCanvas: options.sendImageNodeToCanvas,
+      onInteractionShapeIdsChange: options.setInteractionShapeIds,
       onNodeChatClean: options.writableStagePropsExtras.onNodeChatClean,
       onNodeChatModelChange: options.writableStagePropsExtras.onNodeChatModelChange,
       onNodeChatRegenerate: options.writableStagePropsExtras.onNodeChatRegenerate,
@@ -206,6 +209,7 @@ export function createKonvaCanvasShellProps(options: CreateKonvaCanvasShellProps
       onToolChange: options.handleToolChange,
       onTransformPreviewChange: options.setTransformPreview,
       pendingImagePastes: options.writableStagePropsExtras.pendingImagePastes,
+      remoteLockedShapeOwnerById: options.remoteLockedShapeOwnerById,
       selectedEdgeId: options.writableStagePropsExtras.selectedEdgeId,
       selectedIds: options.writableStagePropsExtras.selectedIds,
       width: options.size.width,

@@ -55,7 +55,6 @@ export function KonvaCanvasViewerStage({
   const frameIds = new Set(renderShapes.filter((shape) => shape.type === 'frame').map((shape) => shape.id))
   const frameChildren = getFrameChildren(renderShapes, frameIds)
   const nodeShapes = renderShapes.filter((shape): shape is CanvasNodeShape => shape.type === 'node_card')
-  const lightweightPreviewMode = camera.zoom <= 0.35 || renderShapes.length > 90
 
   const handlePointerDown = useCallback((event: Konva.KonvaEventObject<PointerEvent>) => {
     if (event.evt.button !== 0 && event.evt.button !== 1) return
@@ -117,14 +116,14 @@ export function KonvaCanvasViewerStage({
       <Layer listening={false}>
         {renderShapes.map((shape) => {
           if (shape.parentId && frameIds.has(shape.parentId)) return null
-          if (shape.type !== 'frame') return renderShapeNode(shape, document, camera.zoom, lightweightPreviewMode)
+          if (shape.type !== 'frame') return renderShapeNode(shape, document, camera.zoom, false)
           return (
             <Group key={shape.id}>
-              {renderShapeNode(shape, document, camera.zoom, lightweightPreviewMode)}
+              {renderShapeNode(shape, document, camera.zoom, false)}
               <Group clipFunc={(context) => {
                 context.rect(shape.x, shape.y, shape.props.width, shape.props.height)
               }}>
-                {(frameChildren.get(shape.id) ?? []).map((child) => renderShapeNode(child, document, camera.zoom, lightweightPreviewMode))}
+                {(frameChildren.get(shape.id) ?? []).map((child) => renderShapeNode(child, document, camera.zoom, false))}
               </Group>
               <KonvaFrameChrome frame={shape} />
             </Group>

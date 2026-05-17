@@ -55,6 +55,7 @@ export type CanvasShapeBase<Type extends string, Props extends object = object> 
 }
 
 export type CanvasTextContainerProps = CanvasSize & {
+  cornerRadius?: number
   text?: string
 }
 

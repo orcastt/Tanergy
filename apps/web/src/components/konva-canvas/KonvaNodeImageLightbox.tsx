@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import type { RuntimeGraphImageAssetRef } from '@/features/node-runtime/runtimeGraphAssets'
+import { copyKonvaPngBlobToClipboard, downloadKonvaBlob } from './konvaSelectionExport'
 
 export type KonvaNodeImageLightboxState = {
   batches: RuntimeGraphImageAssetRef[][]
@@ -25,6 +26,7 @@ export function KonvaNodeImageLightbox({ onClose, state }: KonvaNodeImageLightbo
   const selectedBatch = state.batches[selectedBatchIndex] ?? state.batches[0] ?? []
   const selectedImage = selectedBatch[selectedIndex] ?? selectedBatch[0] ?? null
   const selectedSrc = useMemo(() => getLightboxImageUrl(selectedImage), [selectedImage])
+  const canNavigateBatch = state.batches.length > 1
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -63,14 +65,59 @@ export function KonvaNodeImageLightbox({ onClose, state }: KonvaNodeImageLightbo
         role="dialog"
       >
         <header className="node-image-lightbox__header">
-          <div>
+          <div className="node-image-lightbox__title">
             <strong>{state.title}</strong>
             <span>{getBatchLabel(selectedBatchIndex)} · {selectedIndex + 1} / {selectedBatch.length}</span>
           </div>
-          <button aria-label="Close image history" onClick={onClose} type="button">
-            X
-          </button>
+          <div className="node-image-lightbox__actions">
+            <button
+              aria-label="Copy image"
+              onClick={() => {
+                void loadLightboxImageBlob(selectedSrc)
+                  .then(copyKonvaPngBlobToClipboard)
+                  .catch(() => {})
+              }}
+              type="button"
+            >
+              Copy
+            </button>
+            <button
+              aria-label="Download image"
+              onClick={() => {
+                void loadLightboxImageBlob(selectedSrc)
+                  .then((blob) => downloadKonvaBlob(blob, getLightboxFileName(state.title, selectedImage)))
+                  .catch(() => openLightboxImage(selectedSrc))
+              }}
+              type="button"
+            >
+              Download
+            </button>
+            <button aria-label="Open image in new tab" onClick={() => openLightboxImage(selectedSrc)} type="button">
+              Open
+            </button>
+            <button aria-label="Close image lightbox" onClick={onClose} type="button">
+              Close
+            </button>
+          </div>
         </header>
+        {canNavigateBatch ? (
+          <div className="node-image-lightbox__batch-strip" aria-label="Image batches">
+            {state.batches.map((batch, batchIndex) => (
+              <button
+                className={batchIndex === selectedBatchIndex ? 'is-selected' : undefined}
+                key={`batch-${batchIndex}-${batch[0]?.assetId ?? batchIndex}`}
+                onClick={() => {
+                  setSelectedBatchIndex(batchIndex)
+                  setSelectedIndex(0)
+                }}
+                type="button"
+              >
+                <strong>{getBatchBadgeLabel(batchIndex)}</strong>
+                <span>{getBatchLabel(batchIndex)}</span>
+              </button>
+            ))}
+          </div>
+        ) : null}
         <div className="node-image-lightbox__body">
           <div className="node-image-lightbox__viewer-stack">
             <div className="node-image-lightbox__viewer">
@@ -132,39 +179,6 @@ export function KonvaNodeImageLightbox({ onClose, state }: KonvaNodeImageLightbo
               })}
             </div>
           </div>
-          <aside className="node-image-lightbox__history" aria-label="Image history">
-            <strong>History</strong>
-            <div className="node-image-lightbox__history-list">
-              {state.batches.map((batch, batchIndex) => {
-                const previewImages = batch.slice(0, 4)
-                if (previewImages.length === 0) return null
-                return (
-                  <button
-                    className={batchIndex === selectedBatchIndex ? 'is-selected' : undefined}
-                    key={`batch-${batchIndex}-${previewImages.map((image) => image.assetId).join('-')}`}
-                    onClick={() => {
-                      setSelectedBatchIndex(batchIndex)
-                      setSelectedIndex((current) => clampIndex(current, batch.length))
-                    }}
-                    type="button"
-                  >
-                    <span>{getBatchBadgeLabel(batchIndex)}</span>
-                    <small>{batchIndex === 0 ? 'Current batch' : `History ${batchIndex}`}</small>
-                    <div className="node-image-lightbox__history-grid">
-                      {previewImages.map((image, imageIndex) => {
-                        const thumbSrc = getLightboxThumbUrl(image)
-                        if (!thumbSrc) return null
-                        return (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img alt={image.title ?? `${state.title} ${imageIndex + 1}`} key={`${image.assetId || 'history'}-${imageIndex}`} src={thumbSrc} />
-                        )
-                      })}
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          </aside>
         </div>
       </section>
     </div>
@@ -192,4 +206,23 @@ function getBatchLabel(batchIndex: number) {
 
 function getBatchBadgeLabel(batchIndex: number) {
   return batchIndex === 0 ? 'Now' : String(batchIndex)
+}
+
+async function loadLightboxImageBlob(src: string) {
+  const response = await fetch(src)
+  if (!response.ok) throw new Error('Lightbox image download failed.')
+  return response.blob()
+}
+
+function openLightboxImage(src: string) {
+  window.open(src, '_blank', 'noopener,noreferrer')
+}
+
+function getLightboxFileName(title: string, image: RuntimeGraphImageAssetRef) {
+  const base = (image.title ?? title ?? 'image')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48) || 'image'
+  return `${base}.png`
 }

@@ -81,7 +81,7 @@ export function KonvaNodeCardShape({ document, editingFieldName = null, onChatCl
     onFocusedEditStateChange?.(shape.id, 'field-dropdown', false)
   }, [onFocusedEditStateChange, shape.id])
 
-  if (previewMode || zoom <= 0.25) {
+  if (previewMode) {
     return (
       <CompactNodeCard
         accent={accent}

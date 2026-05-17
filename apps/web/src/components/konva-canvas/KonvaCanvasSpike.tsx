@@ -81,6 +81,7 @@ export function KonvaCanvasSpike({
   const [isSpacePanning, setIsSpacePanning] = useState(false)
   const [nextStyle, setNextStyle] = useState<CanvasShapeStyle>(konvaDefaultShapeStyle)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [interactionShapeIds, setInteractionShapeIds] = useState<string[]>([])
   const [selectionMarqueeBounds, setSelectionMarqueeBounds] = useState<CanvasBounds | null>(null)
   const [transformPreview, setTransformPreview] = useState<{ bounds: CanvasBounds; kind: BoardCollaborationTransformKind } | null>(null)
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
@@ -152,6 +153,7 @@ export function KonvaCanvasSpike({
   })
   const clearTransientState = useCallback(() => {
     handleSelectionChange([])
+    setInteractionShapeIds([])
     setConnectionPreviewPresence(null)
     setSelectionMarqueeBounds(null)
     setTransformPreview(null)
@@ -179,6 +181,7 @@ export function KonvaCanvasSpike({
       setDropHintKind,
       setEditingNodeText,
       setEditingTextId,
+      setInteractionShapeIds,
       setIsSpacePanning,
       setNextStyle,
       setNodeImageLightbox,
@@ -200,6 +203,7 @@ export function KonvaCanvasSpike({
       dropHintKind,
       editingNodeText,
       editingTextId,
+      interactionShapeIds,
       nextStyle,
       nodeImageLightbox,
       selectedEdgeId,

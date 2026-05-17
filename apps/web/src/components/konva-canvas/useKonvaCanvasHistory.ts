@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, type Dispatch, type SetStateAction } from 'react'
 import { withCanvasRuntimeEdges, withCanvasShapes, type CanvasDocument, type CanvasRuntimeEdge, type CanvasShape } from '@/features/canvas-engine'
 import type { SerializedKonvaBoardPage } from '@/features/boards/konvaBoardPageContract'
+import { hasRunningKonvaNodes, sanitizeKonvaHistoryDocument } from './konvaCanvasRunningNodes'
 
 export type KonvaCanvasHistoryPageState = {
   activePageId: string
@@ -56,11 +57,13 @@ export function useKonvaCanvasHistory({
   }, [document, getPageState, onPageStateRestore, selectedIds])
 
   const checkpoint = useCallback((snapshotDocument: CanvasDocument = documentRef.current) => {
-    const pageState = getPageStateRef.current?.(snapshotDocument) ?? null
-    const identity = createSnapshotIdentity(snapshotDocument.shapes, snapshotDocument.runtimeEdges, selectedIdsRef.current, pageState)
+    const sanitizedDocument = sanitizeKonvaHistoryDocument(snapshotDocument)
+    const rawPageState = getPageStateRef.current?.(sanitizedDocument) ?? null
+    const pageState = rawPageState ? clonePageState(rawPageState) : null
+    const identity = createSnapshotIdentity(sanitizedDocument.shapes, sanitizedDocument.runtimeEdges, selectedIdsRef.current, pageState)
     const previous = undoStackRef.current.at(-1)
     if (previous?.signature === identity.signature) return
-    const snapshot = createSnapshot(snapshotDocument, selectedIdsRef.current, identity, pageState)
+    const snapshot = createSnapshot(sanitizedDocument, selectedIdsRef.current, identity, pageState)
     undoStackRef.current = trimHistoryStack([...undoStackRef.current, snapshot])
     redoStackRef.current = []
   }, [])
@@ -71,18 +74,24 @@ export function useKonvaCanvasHistory({
   }, [])
 
   const undo = useCallback(() => {
+    if (hasRunningKonvaNodes(documentRef.current)) return
     const snapshot = undoStackRef.current.at(-1)
     if (!snapshot) return
     undoStackRef.current = undoStackRef.current.slice(0, -1)
-    redoStackRef.current = trimHistoryStack([...redoStackRef.current, createSnapshot(documentRef.current, selectedIdsRef.current, undefined, getPageStateRef.current?.(documentRef.current) ?? null)])
+    const sanitizedCurrent = sanitizeKonvaHistoryDocument(documentRef.current)
+    const rawPageState = getPageStateRef.current?.(sanitizedCurrent) ?? null
+    redoStackRef.current = trimHistoryStack([...redoStackRef.current, createSnapshot(sanitizedCurrent, selectedIdsRef.current, undefined, rawPageState ? clonePageState(rawPageState) : null)])
     restoreSnapshot(snapshot, onDocumentChange, onSelectionChange, onPageStateRestoreRef.current)
   }, [onDocumentChange, onSelectionChange])
 
   const redo = useCallback(() => {
+    if (hasRunningKonvaNodes(documentRef.current)) return
     const snapshot = redoStackRef.current.at(-1)
     if (!snapshot) return
     redoStackRef.current = redoStackRef.current.slice(0, -1)
-    undoStackRef.current = trimHistoryStack([...undoStackRef.current, createSnapshot(documentRef.current, selectedIdsRef.current, undefined, getPageStateRef.current?.(documentRef.current) ?? null)])
+    const sanitizedCurrent = sanitizeKonvaHistoryDocument(documentRef.current)
+    const rawPageState = getPageStateRef.current?.(sanitizedCurrent) ?? null
+    undoStackRef.current = trimHistoryStack([...undoStackRef.current, createSnapshot(sanitizedCurrent, selectedIdsRef.current, undefined, rawPageState ? clonePageState(rawPageState) : null)])
     restoreSnapshot(snapshot, onDocumentChange, onSelectionChange, onPageStateRestoreRef.current)
   }, [onDocumentChange, onSelectionChange])
 
@@ -136,9 +145,16 @@ function cloneRuntimeEdges(edges: CanvasRuntimeEdge[]) {
 }
 
 function clonePageState(state: KonvaCanvasHistoryPageState) {
-  return typeof structuredClone === 'function'
+  const cloned = typeof structuredClone === 'function'
     ? structuredClone(state) as KonvaCanvasHistoryPageState
     : JSON.parse(JSON.stringify(state)) as KonvaCanvasHistoryPageState
+  return {
+    ...cloned,
+    pages: cloned.pages.map((page): SerializedKonvaBoardPage => ({
+      ...page,
+      canvasDocument: sanitizeKonvaHistoryDocument(page.canvasDocument),
+    })),
+  }
 }
 
 function createSnapshotIdentity(shapes: CanvasShape[], runtimeEdges: CanvasRuntimeEdge[], selectedIds: string[], pageState: KonvaCanvasHistoryPageState | null): CanvasHistoryIdentity {

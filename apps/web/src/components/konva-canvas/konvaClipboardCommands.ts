@@ -46,7 +46,7 @@ export async function pasteKonvaClipboard(options: PasteKonvaClipboardOptions) {
   const systemShapes = await readKonvaShapesFromSystemClipboard()
   const shapes = systemShapes && systemShapes.length > 0
     ? systemShapes
-    : systemShapes === null
+    : systemShapes === null || systemShapes.length === 0
       ? options.clipboardRef.current
       : []
   if (shapes.length === 0) return false
@@ -72,19 +72,11 @@ export async function pasteKonvaClipboardData(options: PasteKonvaClipboardOption
   if (imageResult.kind === 'error') return true
 
   const shapes = readKonvaShapesFromClipboardText(data.getData('text/plain'))
-  if (shapes.length === 0) return false
-  options.clipboardRef.current = shapes
-  options.onClipboardChange?.(shapes.length)
-  return pasteShapeCopies(options, shapes)
-}
-
-export async function writeKonvaShapesToSystemClipboard(shapes: CanvasShape[]) {
-  if (shapes.length === 0 || !navigator.clipboard?.writeText) return
-  try {
-    await navigator.clipboard.writeText(JSON.stringify({ shapes, type: 'tangent/konva-shapes' }))
-  } catch {
-    // Internal clipboardRef still supports same-session paste when browser clipboard write is blocked.
-  }
+  const clipboardShapes = shapes.length > 0 ? shapes : options.clipboardRef.current
+  if (clipboardShapes.length === 0) return false
+  options.clipboardRef.current = clipboardShapes
+  options.onClipboardChange?.(clipboardShapes.length)
+  return pasteShapeCopies(options, clipboardShapes)
 }
 
 async function readKonvaShapesFromSystemClipboard(): Promise<CanvasShape[] | null> {

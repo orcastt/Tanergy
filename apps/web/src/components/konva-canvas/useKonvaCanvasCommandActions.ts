@@ -6,6 +6,7 @@ import { screenToWorld, type CanvasCamera, type CanvasDocument, type CanvasPoint
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import type { KonvaContextMenuAction } from './KonvaContextMenu'
 import type { KonvaPendingImagePaste } from './KonvaPendingImagePasteLayer'
+import { hasRunningKonvaNodes } from './konvaCanvasRunningNodes'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
 import { runKonvaContextAction } from './konvaContextActions'
 import { removeKonvaRuntimeEdge } from './konvaRuntimeEdges'
@@ -39,6 +40,7 @@ type UseKonvaCanvasCommandActionsOptions = {
   onImagePasteStateChange: (state: KonvaPendingImagePaste) => void
   onSelectionChange: (shapeIds: string[]) => void
   onToolChange: (tool: KonvaCanvasTool) => void
+  remoteLockedShapeOwnerById?: ReadonlyMap<string, string>
   selectedEdgeId: string | null
   selectedIds: string[]
   selectionExport: {
@@ -75,6 +77,7 @@ export function useKonvaCanvasCommandActions({
   onImagePasteStateChange,
   onSelectionChange,
   onToolChange,
+  remoteLockedShapeOwnerById,
   selectedEdgeId,
   selectedIds,
   selectionExport,
@@ -88,20 +91,22 @@ export function useKonvaCanvasCommandActions({
   workspace,
 }: UseKonvaCanvasCommandActionsOptions) {
   const handleUndoShortcut = useCallback(() => {
+    if (hasRunningKonvaNodes(document)) return
     if (localYjsSync.hasUnsyncedLocalChanges || !localYjsSync.canUndo) {
       history.undo()
       return
     }
     localYjsSync.undoLocalChange()
-  }, [history, localYjsSync])
+  }, [document, history, localYjsSync])
 
   const handleRedoShortcut = useCallback(() => {
+    if (hasRunningKonvaNodes(document)) return
     if (localYjsSync.hasUnsyncedLocalChanges || !localYjsSync.canRedo) {
       history.redo()
       return
     }
     localYjsSync.redoLocalChange()
-  }, [history, localYjsSync])
+  }, [document, history, localYjsSync])
 
   const handleStageReady = useCallback((nextStage: Konva.Stage | null) => {
     if (!effectiveReadOnly) selectionExport.handleStageReady(nextStage)
@@ -124,6 +129,7 @@ export function useKonvaCanvasCommandActions({
     onPageDocumentChange: boardPages.updatePageDocument,
     onPanningChange: setIsSpacePanning,
     onRedo: handleRedoShortcut,
+    remoteLockedShapeOwnerById,
     onSelectionChange,
     onToolChange,
     onUndo: handleUndoShortcut,
@@ -170,6 +176,7 @@ export function useKonvaCanvasCommandActions({
       onSelectionChange,
       pageId: boardPages.activePageId,
       pastePoint,
+      remoteLockedShapeOwnerById,
       selectedIds,
       workspace,
     })
@@ -184,6 +191,7 @@ export function useKonvaCanvasCommandActions({
     onImagePasteComplete,
     onImagePasteStateChange,
     onSelectionChange,
+    remoteLockedShapeOwnerById,
     selectedIds,
     selectionExport,
     setClipboardShapeCount,

@@ -12,7 +12,7 @@ import type {
 } from '@/features/boards/boardCollaborationTypes'
 
 const heartbeatIntervalMs = 20_000
-const presenceDebounceMs = 600
+const presenceDebounceMs = 900
 
 type UseBoardCollaborationSessionSyncOptions = {
   boardId?: string

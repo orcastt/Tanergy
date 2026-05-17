@@ -518,47 +518,6 @@
   z-index: 14;
 }
 
-.konva-collaboration-marquee {
-  position: absolute;
-}
-
-.konva-collaboration-marquee__outline {
-  position: absolute;
-  inset: 0;
-  border: 1.5px dashed color-mix(in srgb, var(--collab-accent, #2563eb), white 24%);
-  border-radius: 12px;
-  background:
-    linear-gradient(0deg, color-mix(in srgb, var(--collab-accent, #2563eb), transparent 96%), color-mix(in srgb, var(--collab-accent, #2563eb), transparent 96%)),
-    repeating-linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--collab-accent, #2563eb), transparent 80%) 0 8px,
-      transparent 8px 16px
-    );
-  background-size: auto, 24px 24px;
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--collab-accent, #2563eb), transparent 78%),
-    0 12px 28px color-mix(in srgb, var(--collab-accent, #2563eb), transparent 90%);
-  animation: konva-collaboration-marquee 1.35s linear infinite;
-}
-
-.konva-collaboration-marquee__label {
-  position: absolute;
-  top: -28px;
-  left: 0;
-  display: inline-flex;
-  align-items: center;
-  max-width: min(220px, 100%);
-  padding: 6px 9px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--collab-accent, #2563eb), white 12%);
-  color: #ffffff;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1;
-  white-space: nowrap;
-}
-
 .konva-collaboration-transform {
   position: absolute;
 }
@@ -566,16 +525,14 @@
 .konva-collaboration-transform__outline {
   position: absolute;
   inset: 0;
-  border: 2px solid color-mix(in srgb, var(--collab-accent, #2563eb), white 18%);
+  border: 2px solid rgba(31, 41, 55, 0.58);
   border-radius: 12px;
-  background: color-mix(in srgb, var(--collab-accent, #2563eb), transparent 93%);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--collab-accent, #2563eb), transparent 78%),
-    0 16px 32px color-mix(in srgb, var(--collab-accent, #2563eb), transparent 88%);
+  background: rgba(255, 255, 255, 0.02);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
 }
 
 .konva-collaboration-transform.is-move .konva-collaboration-transform__outline {
-  animation: konva-collaboration-pulse 1.15s ease-in-out infinite;
+  animation: konva-collaboration-pulse 1.5s ease-in-out infinite;
 }
 
 .konva-collaboration-transform.is-resize .konva-collaboration-transform__outline {
@@ -584,10 +541,7 @@
 
 .konva-collaboration-transform.is-rotate .konva-collaboration-transform__outline {
   border-style: solid;
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--collab-accent, #2563eb), transparent 74%),
-    0 0 0 1px color-mix(in srgb, var(--collab-accent, #2563eb), transparent 74%),
-    0 16px 32px color-mix(in srgb, var(--collab-accent, #2563eb), transparent 88%);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14);
 }
 
 .konva-collaboration-transform__label {
@@ -599,33 +553,13 @@
   max-width: min(220px, 100%);
   padding: 6px 9px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--collab-accent, #2563eb), white 12%);
+  background: rgba(17, 24, 39, 0.92);
   color: #ffffff;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
   font-size: 11px;
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
-}
-
-.konva-collaboration-shape-tint {
-  position: absolute;
-  border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--collab-accent, #2563eb), white 36%);
-  background: color-mix(in srgb, var(--collab-accent, #2563eb), transparent 93%);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--collab-accent, #2563eb), transparent 78%),
-    0 0 0 0.5px color-mix(in srgb, var(--collab-accent, #2563eb), transparent 70%);
-}
-
-.konva-collaboration-shape-tint.is-editing {
-  background: color-mix(in srgb, var(--collab-accent, #2563eb), transparent 88%);
-  border-color: color-mix(in srgb, var(--collab-accent, #2563eb), white 18%);
-}
-
-.konva-collaboration-shape-tint.is-hover {
-  border-style: dotted;
-  background: color-mix(in srgb, var(--collab-accent, #2563eb), transparent 96%);
 }
 
 .konva-collaboration-occupancy {
@@ -635,32 +569,10 @@
 .konva-collaboration-occupancy__outline {
   position: absolute;
   inset: 0;
-  border: 2px solid color-mix(in srgb, var(--collab-accent, #2563eb), white 18%);
+  border: 2px solid rgba(31, 41, 55, 0.48);
   border-radius: 12px;
-  background: color-mix(in srgb, var(--collab-accent, #2563eb), transparent 90%);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--collab-accent, #2563eb), transparent 78%),
-    0 18px 32px color-mix(in srgb, var(--collab-accent, #2563eb), transparent 86%);
-}
-
-.konva-collaboration-occupancy.is-selection .konva-collaboration-occupancy__outline {
-  border-style: dashed;
-  background:
-    linear-gradient(0deg, color-mix(in srgb, var(--collab-accent, #2563eb), transparent 95%), color-mix(in srgb, var(--collab-accent, #2563eb), transparent 95%)),
-    repeating-linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--collab-accent, #2563eb), transparent 78%) 0 8px,
-      transparent 8px 16px
-    );
-  background-size: auto, 24px 24px;
-  animation: konva-collaboration-marquee 1.35s linear infinite;
-}
-
-.konva-collaboration-occupancy.is-hover .konva-collaboration-occupancy__outline {
-  border-width: 1px;
-  border-style: dotted;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--collab-accent, #2563eb), transparent 96%);
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.1);
 }
 
 .konva-collaboration-occupancy__label {
@@ -672,22 +584,13 @@
   max-width: min(220px, 100%);
   padding: 6px 9px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--collab-accent, #2563eb), white 12%);
+  background: rgba(17, 24, 39, 0.92);
   color: #ffffff;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
   font-size: 11px;
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
-}
-
-@keyframes konva-collaboration-marquee {
-  from {
-    background-position: 0 0, 0 0;
-  }
-  to {
-    background-position: 0 0, 24px 0;
-  }
 }
 
 @keyframes konva-collaboration-pulse {

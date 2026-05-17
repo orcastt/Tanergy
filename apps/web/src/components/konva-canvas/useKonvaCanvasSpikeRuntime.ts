@@ -51,6 +51,7 @@ type CanvasState = {
   editingTextId: string | null
   nextStyle: CanvasShapeStyle
   nodeImageLightbox: KonvaNodeImageLightboxState | null
+  interactionShapeIds: string[]
   selectedEdgeId: string | null
   selectedIds: string[]
   selectionActionError: string | null
@@ -71,6 +72,7 @@ type CanvasSetters = {
   setDropHintKind: Dispatch<SetStateAction<'image' | 'pdf' | null>>
   setEditingNodeText: Dispatch<SetStateAction<CanvasState['editingNodeText']>>
   setEditingTextId: Dispatch<SetStateAction<string | null>>
+  setInteractionShapeIds: Dispatch<SetStateAction<string[]>>
   setIsSpacePanning: Dispatch<SetStateAction<boolean>>
   setNextStyle: Dispatch<SetStateAction<CanvasShapeStyle>>
   setNodeImageLightbox: Dispatch<SetStateAction<KonvaNodeImageLightboxState | null>>
@@ -152,8 +154,8 @@ export function useKonvaCanvasSpikeRuntime({
   const { diagnostics, setShellRect, shellRect, size } = metrics
   const { cleanChatHistory, closeNodeMenu, createNodeCard, nodeMenu, openNodeMenu, regenerateChatMessage, sendChatMessage, setChatModel, setNodeField, setNodeTextField, toggleNodeRun } = nodeMenuApi
   const { fileInput, promptImageNodeUpload, uploadDropFileAtPoint } = imageUploadApi
-  const { activeToolPreference, camera, connectionPreviewPresence, contextMenu, cropEditingImageId, document, dropHintKind, editingNodeText, editingTextId, nextStyle, nodeImageLightbox, selectedEdgeId, selectedIds, selectionActionError, selectionMarqueeBounds, settingsOpen, stage, transformPreview } = canvasState
-  const { setCamera, setClipboardShapeCount, setConnectionPreviewPresence, setContextMenu, setCropEditingImageId, setDocument, setDocumentState, setDropHintKind, setEditingNodeText, setEditingTextId, setIsSpacePanning, setNextStyle, setNodeImageLightbox, setPersistedBoardIds, setSelectedEdgeId, setSelectionActionError, setSelectionMarqueeBounds, setSettingsOpen, setStage, setTransformPreview } = canvasSetters
+  const { activeToolPreference, camera, connectionPreviewPresence, contextMenu, cropEditingImageId, document, dropHintKind, editingNodeText, editingTextId, interactionShapeIds, nextStyle, nodeImageLightbox, selectedEdgeId, selectedIds, selectionActionError, selectionMarqueeBounds, settingsOpen, stage, transformPreview } = canvasState
+  const { setCamera, setClipboardShapeCount, setConnectionPreviewPresence, setContextMenu, setCropEditingImageId, setDocument, setDocumentState, setDropHintKind, setEditingNodeText, setEditingTextId, setInteractionShapeIds, setIsSpacePanning, setNextStyle, setNodeImageLightbox, setPersistedBoardIds, setSelectedEdgeId, setSelectionActionError, setSelectionMarqueeBounds, setSettingsOpen, setStage, setTransformPreview } = canvasSetters
 
   const boardPages = useKonvaBoardPages({ activeDocument: document, camera, onCameraChange: setCamera, onDocumentChange: setDocumentState, onTransientClear: clearTransientState })
   useKonvaCanvasDocumentChangeBridge({
@@ -163,8 +165,8 @@ export function useKonvaCanvasSpikeRuntime({
   })
   const collaboration = useKonvaCanvasBoardCollaborationBridge({
     activeToolPreference, boardId, boardPageHistoryRef, boardPages, clearTransientState, connectionPreviewPresence, cropEditingImageId,
-    document, editingNodeText, editingTextId, handleSelectionChange, hasPersistedBoard, history, initialBoard, interactionLockedRef,
-    mode, onBoardLoaded, readOnly, saveAuditRef, selectedEdgeId, selectedIds, selectionMarqueeBounds, setCropEditingImageId,
+    document, editingNodeText, editingTextId, handleSelectionChange, hasPersistedBoard, history, initialBoard, interactionShapeIds, interactionLockedRef,
+    mode, onBoardLoaded, readOnly, saveAuditRef, selectedEdgeId, selectionMarqueeBounds, setCropEditingImageId,
     setSelectedEdgeId, setSettingsOpen, transformPreview, workspace, ydoc,
   })
   const textEditing = useKonvaCanvasTextEditing({
@@ -204,7 +206,7 @@ export function useKonvaCanvasSpikeRuntime({
     boardPages, camera, clipboardRef, closeNodeMenu, contextMenu, document, effectiveReadOnly: collaboration.effectiveReadOnly,
     handleMoveSelectionToPage: pageActions.handleMoveSelectionToPage, history, lastPastePointRef, localYjsSync: collaboration.localYjsSync, onDocumentChange: setDocument,
     onImagePasteComplete: collaboration.handlePendingImagePasteComplete, onImagePasteStateChange: collaboration.handlePendingImagePasteStateChange,
-    onSelectionChange: handleSelectionChange, onToolChange: handleToolChange, selectedEdgeId, selectedIds, selectionExport, setClipboardShapeCount,
+    onSelectionChange: handleSelectionChange, onToolChange: handleToolChange, remoteLockedShapeOwnerById: collaboration.remoteShapeLockOwners, selectedEdgeId, selectedIds, selectionExport, setClipboardShapeCount,
     setContextMenu, setIsSpacePanning, setSelectedEdgeId, setSettingsOpen, setStage, size, workspace,
   })
 
@@ -219,9 +221,9 @@ export function useKonvaCanvasSpikeRuntime({
       handleStageTextEditStart: textEditing.handleStageTextEditStart, handleToolbarOpenSettings: commandActions.handleToolbarOpenSettings, handleToolChange,
       headerLocalSync: collaboration.collaborationEnabled ? collaboration.localYjsSync : undefined, isSpacePanning, localSyncBannerProps: collaboration.collaborationEnabled ? { localSync: collaboration.localYjsSync } : undefined,
       mode, nextStyle, onBoardTitleRename, overlayOccupancy: collaboration.collaboration.shapeOccupancy, overlaySessions: collaboration.collaboration.activeSessions,
-      remoteEdgeSessions: collaboration.remoteEdgeSessions, requestFocusedEdit: collaboration.requestFocusedEditShape, selectionExportCaptureMode: selectionExport.captureMode,
+      remoteEdgeSessions: collaboration.remoteEdgeSessions, remoteLockedShapeOwnerById: collaboration.remoteShapeLockOwners, requestFocusedEdit: collaboration.requestFocusedEditShape, selectionExportCaptureMode: selectionExport.captureMode,
       sendGeneratedOutputToCanvas: imageNodeActions.sendGeneratedOutputToCanvas, sendImageNodeToCanvas: imageNodeActions.sendImageNodeToCanvas,
-      setConnectionPreviewPresence, setDocument, setFocusedControlShapeState: collaboration.setFocusedControlShapeState, setNodeField, setSelectionMarqueeBounds,
+      setConnectionPreviewPresence, setDocument, setFocusedControlShapeState: collaboration.setFocusedControlShapeState, setInteractionShapeIds, setNodeField, setSelectionMarqueeBounds,
       setTransformPreview, settingsOpen, size, stageDomEvents, stageToolMode: collaboration.stageToolMode, themeMode, toggleNodeRun,
       boardPages: { activePageId: boardPages.activePageId, pages: boardPages.pages, selectPage: boardPages.selectPage },
       writableStagePropsExtras: {

@@ -61,40 +61,22 @@ export function KonvaCollaborationOverlay({
       return { rect, session, transformKind }
     })
     .filter((item): item is { rect: ScreenRect; session: BoardCollaborationSessionRecord; transformKind: NonNullable<BoardCollaborationSessionRecord['presence']['transformKind']> } => Boolean(item))
-  const transformingSessionIds = new Set(visibleTransformHints.map((item) => item.session.id))
-  const visibleSelectionMarquees = sessions
-    .filter((session) => !session.isSelf)
-    .filter((session) => isSessionVisibleOnPage(activePageId, session.presence.activePageId ?? null))
-    .map((session) => {
-      const selectionBox = session.presence.selectionBox
-      if (!selectionBox) return null
-      const rect = projectBounds(selectionBox, camera)
-      if (rect.width <= 0 || rect.height <= 0) return null
-      if (rect.x > stageWidth + 160 || rect.y > stageHeight + 120) return null
-      if (rect.x + rect.width < -160 || rect.y + rect.height < -120) return null
-      return { rect, session }
-    })
-    .filter((item): item is { rect: ScreenRect; session: BoardCollaborationSessionRecord } => Boolean(item))
   const occupancyRects = occupancy
     .filter((entry) => !entry.isSelf)
+    .filter((entry) => entry.kind === 'editing')
     .filter((entry) => isSessionVisibleOnPage(activePageId, entry.activePageId))
-    .filter((entry) => !(entry.kind === 'selection' && transformingSessionIds.has(entry.sessionId)))
     .map((entry) => {
-      const shapeRects = getOccupancyShapeRects(shapeById, entry.shapeIds, camera, {
-        stageHeight,
-        stageWidth,
-      })
       const bounds = getOccupancyBounds(shapeById, entry.shapeIds)
       if (!bounds) return null
       const rect = projectBounds(bounds, camera)
       if (rect.width <= 0 || rect.height <= 0) return null
       if (rect.x > stageWidth + 160 || rect.y > stageHeight + 120) return null
       if (rect.x + rect.width < -160 || rect.y + rect.height < -120) return null
-      return { entry, rect, shapeRects }
+      return { entry, rect }
     })
-    .filter((item): item is { entry: BoardCollaborationShapeOccupancy; rect: ScreenRect; shapeRects: OccupancyShapeRect[] } => Boolean(item))
+    .filter((item): item is { entry: BoardCollaborationShapeOccupancy; rect: ScreenRect } => Boolean(item))
 
-  if (visibleSessions.length === 0 && occupancyRects.length === 0) return null
+  if (visibleSessions.length === 0 && visibleTransformHints.length === 0 && occupancyRects.length === 0) return null
 
   return (
     <div className="konva-collaboration-overlay" aria-hidden="true">
@@ -107,7 +89,6 @@ export function KonvaCollaborationOverlay({
             top: `${rect.y}px`,
             width: `${rect.width}px`,
             height: `${rect.height}px`,
-            ['--collab-accent' as string]: getCollaborationAccent(session.clientInstanceId),
           }}
         >
           <span className="konva-collaboration-transform__outline" />
@@ -115,39 +96,6 @@ export function KonvaCollaborationOverlay({
             {session.displayName} {getTransformLabel(transformKind)}
           </span>
         </div>
-      ))}
-      {visibleSelectionMarquees.map(({ rect, session }) => (
-        <div
-          className="konva-collaboration-marquee"
-          key={`${session.id}:marquee`}
-          style={{
-            left: `${rect.x}px`,
-            top: `${rect.y}px`,
-            width: `${rect.width}px`,
-            height: `${rect.height}px`,
-            ['--collab-accent' as string]: getCollaborationAccent(session.clientInstanceId),
-          }}
-        >
-          <span className="konva-collaboration-marquee__outline" />
-          <span className="konva-collaboration-marquee__label">
-            {session.displayName} selecting
-          </span>
-        </div>
-      ))}
-      {occupancyRects.flatMap(({ entry, shapeRects }) => (
-        shapeRects.map(({ id, rect }) => (
-          <span
-            className={`konva-collaboration-shape-tint is-${entry.kind}`}
-            key={`${entry.sessionId}:${entry.kind}:shape:${id}`}
-            style={{
-              left: `${rect.x}px`,
-              top: `${rect.y}px`,
-              width: `${rect.width}px`,
-              height: `${rect.height}px`,
-              ['--collab-accent' as string]: getCollaborationAccent(entry.clientInstanceId),
-            }}
-          />
-        ))
       ))}
       {occupancyRects.map(({ entry, rect }) => (
         <div
@@ -158,7 +106,6 @@ export function KonvaCollaborationOverlay({
             top: `${rect.y}px`,
             width: `${rect.width}px`,
             height: `${rect.height}px`,
-            ['--collab-accent' as string]: getCollaborationAccent(entry.clientInstanceId),
           }}
         >
           <span className="konva-collaboration-occupancy__outline" />
@@ -206,11 +153,6 @@ type ScreenRect = {
   y: number
 }
 
-type OccupancyShapeRect = {
-  id: string
-  rect: ScreenRect
-}
-
 function isSessionVisibleOnPage(activePageId: string | null, sessionPageId: string | null) {
   if (!activePageId || !sessionPageId) return true
   return sessionPageId === activePageId
@@ -223,30 +165,6 @@ function getOccupancyBounds(shapeById: Map<string, CanvasShape>, shapeIds: strin
     .map(getShapeBounds)
   if (bounds.length === 0) return null
   return mergeBounds(bounds)
-}
-
-function getOccupancyShapeRects(
-  shapeById: Map<string, CanvasShape>,
-  shapeIds: string[],
-  camera: CanvasCamera,
-  viewport: { stageHeight: number; stageWidth: number },
-) {
-  return shapeIds
-    .map((shapeId) => {
-      const shape = shapeById.get(shapeId)
-      if (!shape) return null
-      return {
-        id: shapeId,
-        rect: projectBounds(getShapeBounds(shape), camera),
-      }
-    })
-    .filter((item): item is OccupancyShapeRect => Boolean(item))
-    .filter(({ rect }) => {
-      if (rect.width <= 0 || rect.height <= 0) return false
-      if (rect.x > viewport.stageWidth + 120 || rect.y > viewport.stageHeight + 120) return false
-      if (rect.x + rect.width < -120 || rect.y + rect.height < -120) return false
-      return true
-    })
 }
 
 function mergeBounds(bounds: CanvasBounds[]) {

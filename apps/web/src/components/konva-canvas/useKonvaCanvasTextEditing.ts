@@ -47,12 +47,13 @@ export function useKonvaCanvasTextEditing({
   const handleStageNodeTextEditStart = useCallback((shapeId: string, fieldName: KonvaNodeTextFieldName) => {
     if (!requestFocusedEditShape(shapeId, 'card')) return
     const shape = document.shapes.find((item) => item.id === shapeId)
-    if (!shape || shape.type !== 'node_card') return
+    if (!shape || shape.type !== 'node_card' || shape.isLocked) return
     setEditingNodeText({ fieldName, shapeId })
   }, [document.shapes, requestFocusedEditShape, setEditingNodeText])
 
   const handleStageTextEditStart = useCallback((shapeId: string) => {
     const shape = document.shapes.find((item) => item.id === shapeId)
+    if (shape?.isLocked) return
     if (shape?.type === 'node_card' && shape.props.nodeType === 'image') {
       if (!requestFocusedEditShape(shapeId, 'image node')) return
       if (!canReplaceImageNode(document, shapeId)) return

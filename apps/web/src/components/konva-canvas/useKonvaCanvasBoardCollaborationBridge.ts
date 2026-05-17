@@ -10,6 +10,7 @@ import type {
 } from '@/features/boards/boardCollaborationTypes'
 import type { BoardPersistenceRecord } from '@/features/boards/boardTypes'
 import { createRemoteEditingOwnerMap } from './konvaCanvasSpikeHelpers'
+import { createRemoteShapeLockOwnerMap } from './konvaCollaborationLocks'
 import {
   createCollaborationPageSummaries,
   createRemoteEdgeSessions,
@@ -43,13 +44,13 @@ type UseKonvaCanvasBoardCollaborationBridgeOptions = {
   hasPersistedBoard: boolean
   history: ReturnType<typeof useKonvaCanvasHistory>
   initialBoard: BoardPersistenceRecord | null
+  interactionShapeIds: string[]
   interactionLockedRef: MutableRefObject<boolean>
   mode: 'board' | 'dev'
   onBoardLoaded?: (title: string) => void
   readOnly: boolean
   saveAuditRef: RefObject<KonvaBoardSaveAuditHandle | null>
   selectedEdgeId: string | null
-  selectedIds: string[]
   selectionMarqueeBounds: CanvasBounds | null
   setCropEditingImageId: Dispatch<SetStateAction<string | null>>
   setSelectedEdgeId: Dispatch<SetStateAction<string | null>>
@@ -74,13 +75,13 @@ export function useKonvaCanvasBoardCollaborationBridge({
   hasPersistedBoard,
   history,
   initialBoard,
+  interactionShapeIds,
   interactionLockedRef,
   mode,
   onBoardLoaded,
   readOnly,
   saveAuditRef,
   selectedEdgeId,
-  selectedIds,
   selectionMarqueeBounds,
   setCropEditingImageId,
   setSelectedEdgeId,
@@ -106,7 +107,7 @@ export function useKonvaCanvasBoardCollaborationBridge({
     enabled: collaborationEnabled,
     selectedEdgeId: readOnly ? null : selectedEdgeId,
     selectionBox: readOnly ? null : selectionMarqueeBounds,
-    selectedIds,
+    selectedIds: readOnly ? [] : interactionShapeIds,
     tool: activeToolPreference,
     transformBox: readOnly ? null : transformPreview?.bounds ?? null,
     transformKind: readOnly ? null : transformPreview?.kind ?? null,
@@ -121,6 +122,10 @@ export function useKonvaCanvasBoardCollaborationBridge({
   const remoteEditingOwners = useMemo(
     () => createRemoteEditingOwnerMap(collaboration.shapeOccupancy),
     [collaboration.shapeOccupancy],
+  )
+  const remoteShapeLockOwners = useMemo(
+    () => createRemoteShapeLockOwnerMap(collaboration.shapeOccupancy, boardPages.activePageId),
+    [boardPages.activePageId, collaboration.shapeOccupancy],
   )
   const { activeTool, effectiveReadOnly, stageToolMode } = resolveKonvaCollaborationMode({
     activeToolPreference,
@@ -189,6 +194,7 @@ export function useKonvaCanvasBoardCollaborationBridge({
     localYjsSync,
     markBoardSavedAt,
     remoteEdgeSessions,
+    remoteShapeLockOwners,
     requestFocusedEditShape,
     setFocusedControlShapeState,
     stageToolMode,

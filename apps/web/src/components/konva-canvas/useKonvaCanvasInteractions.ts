@@ -6,6 +6,7 @@ import {
   pointerToWorld,
   withCanvasShapes,
   type CanvasBounds,
+  type CanvasDocument,
   type CanvasPoint,
 } from '@/features/canvas-engine'
 import { useCanvasSettingsStore } from '@/features/canvas-settings/canvasSettingsStore'
@@ -33,6 +34,7 @@ import { getPointAngle, rotateShapesAroundCenter } from './konvaRotationUtils'
 import { resizeShapesFromRotatedBox } from './konvaRotatedResize'
 import { getResizeSnapSourceKeys, getRotationSnapGuides, snapResizeBoundsToShapes, snapRotationAngle, type KonvaSnapGuide } from './konvaSnapping'
 import { getKonvaGroupMemberIds } from './konvaGroupCommands'
+import { hasRemoteShapeLock } from './konvaCollaborationLocks'
 import { applyFrameContainment } from './konvaFrameContainment'
 import { useKonvaDraftPreview } from './useKonvaDraftPreview'
 import { useKonvaDocumentPreviewScheduler } from './useKonvaDocumentPreviewScheduler'
@@ -50,6 +52,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
   const stageRef = useRef<Konva.Stage | null>(null)
   const sessionRef = useRef<KonvaToolSession | null>(null)
   const documentRef = useRef(options.document)
+  const onInteractionShapeIdsChange = options.onInteractionShapeIdsChange
   const snapAlignment = useCanvasSettingsStore((state) => state.settings.snapAlignment)
   const snapDistance = useCanvasSettingsStore((state) => state.settings.snapDistance)
   const { applyCamera, cameraRef, scheduleCameraCommit } = useKonvaStageCamera({
@@ -117,6 +120,8 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     cameraRef,
     documentRef,
     onHistoryCheckpoint: options.onHistoryCheckpoint,
+    onInteractionShapeIdsChange: options.onInteractionShapeIdsChange,
+    remoteLockedShapeOwnerById: options.remoteLockedShapeOwnerById,
     sessionRef,
     stageRef,
   })
@@ -124,10 +129,12 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     activeTool: options.activeTool,
     camera: options.camera,
     documentRef,
+    onInteractionShapeIdsChange: options.onInteractionShapeIdsChange,
     onTransformPreviewChange: options.onTransformPreviewChange,
     onDocumentChange: options.onDocumentChange,
     onHistoryCheckpoint: options.onHistoryCheckpoint,
     onSelectionChange: options.onSelectionChange,
+    remoteLockedShapeOwnerById: options.remoteLockedShapeOwnerById,
     selectedIds: options.selectedIds,
   })
   useEffect(() => {
@@ -148,9 +155,14 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
   const handleRotateStart = useCallback((shapeIds: string[], event: KonvaEventObject<PointerEvent>) => {
     startRotate(shapeIds, event)
   }, [startRotate])
+  const publishInteractionShapeIds = useCallback((shapeIds: string[]) => {
+    onInteractionShapeIdsChange?.(shapeIds)
+  }, [onInteractionShapeIdsChange])
   const handleShapeSelect = useCallback((shapeId: string, config: { additive?: boolean } = {}) => {
     const scopeIds = getKonvaGroupMemberIds(documentRef.current.shapes, shapeId)
+    const interactionScopeIds = expandInteractionShapeIds(documentRef.current.shapes, scopeIds)
     const additive = options.activeTool === 'select' && config.additive
+    if (hasRemoteShapeLock(interactionScopeIds, options.remoteLockedShapeOwnerById)) return
     if (!additive && options.activeTool === 'select' && options.selectedIds.length > 1 && scopeIds.some((id) => options.selectedIds.includes(id))) return
     if (!additive) {
       options.onSelectionChange(scopeIds)
@@ -174,10 +186,12 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       setSelectionBox(null)
       options.onSelectionBoxChange?.(null)
       options.onTransformPreviewChange?.(null)
+      publishInteractionShapeIds([])
       return
     }
     if (options.isSpacePanning || event.evt.button === 1 || options.activeTool === 'hand') {
       event.evt.preventDefault()
+      publishInteractionShapeIds([])
       sessionRef.current = { origin: screenPoint, pointerId: event.evt.pointerId, type: 'pan' }
       return
     }
@@ -191,6 +205,19 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       setSelectionBox(null)
       options.onSelectionBoxChange?.(null)
       options.onTransformPreviewChange?.(null)
+      if (targetShapeId) {
+        const targetInteractionShapeIds = expandInteractionShapeIds(
+          documentRef.current.shapes,
+          getKonvaGroupMemberIds(documentRef.current.shapes, targetShapeId),
+        )
+        publishInteractionShapeIds(
+          hasRemoteShapeLock(targetInteractionShapeIds, options.remoteLockedShapeOwnerById)
+            ? []
+            : targetInteractionShapeIds,
+        )
+      } else {
+        publishInteractionShapeIds([])
+      }
       sessionRef.current = {
         additive: event.evt.shiftKey,
         current: worldPoint,
@@ -203,6 +230,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     }
     if (options.activeTool === 'eraser') {
       event.evt.preventDefault()
+      publishInteractionShapeIds([])
       options.onHistoryCheckpoint(documentRef.current)
       sessionRef.current = { pointerId: event.evt.pointerId, type: 'erase' }
       updateEraserTrail(worldPoint)
@@ -212,6 +240,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     if (options.activeTool === 'text') {
       if (!startedOnStage && !canCreateInsideFrame) return
       event.evt.preventDefault()
+      publishInteractionShapeIds([])
       options.onHistoryCheckpoint(documentRef.current)
       const shape = createTextShape(worldPoint, options.nextStyle)
       options.onDocumentChange((current) => {
@@ -226,6 +255,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     if (!draftShape) return
     if (!startedOnStage && options.activeTool !== 'draw' && !canCreateInsideFrame) return
     if (startedOnStage || options.activeTool === 'draw' || canCreateInsideFrame) event.evt.preventDefault()
+    publishInteractionShapeIds([])
     if (options.selectedIds.length > 0) options.onSelectionChange([])
     sessionRef.current = {
       draft: draftShape,
@@ -267,6 +297,32 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       const nextSelectionBox = isTinyScreenBounds(bounds, cameraRef.current.zoom) ? null : bounds
       setSelectionBox(nextSelectionBox)
       options.onSelectionBoxChange?.(nextSelectionBox)
+      if (!nextSelectionBox) {
+        if (session.targetShapeId) {
+          const targetInteractionShapeIds = expandInteractionShapeIds(
+            documentRef.current.shapes,
+            getKonvaGroupMemberIds(documentRef.current.shapes, session.targetShapeId),
+          )
+          publishInteractionShapeIds(
+            hasRemoteShapeLock(targetInteractionShapeIds, options.remoteLockedShapeOwnerById)
+              ? []
+              : targetInteractionShapeIds,
+          )
+        } else {
+          publishInteractionShapeIds([])
+        }
+        return
+      }
+      publishInteractionShapeIds(expandInteractionShapeIds(
+        documentRef.current.shapes,
+        getBoxSelectedIds(documentRef.current.shapes, bounds)
+          .filter((shapeId) => (
+            !hasRemoteShapeLock(
+              expandInteractionShapeIds(documentRef.current.shapes, [shapeId]),
+              options.remoteLockedShapeOwnerById,
+            )
+          )),
+      ))
       return
     }
     if (session.type === 'resize') {
@@ -351,6 +407,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       })
       options.onSelectionChange([])
     }
+    publishInteractionShapeIds([])
   }
   return {
     draft, dragPreviewShapes, draggingShapeIds, eraserTrail, handleLineEndpointStart, handleLineRouteHandleStart, handleNodePortPointerDown, handlePointerDown,
@@ -386,7 +443,12 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       if (!session.additive) options.onSelectionChange([])
       return
     }
-    const selected = getBoxSelectedIds(documentRef.current.shapes, bounds)
+    const selected = getBoxSelectedIds(documentRef.current.shapes, bounds).filter((shapeId) => (
+      !hasRemoteShapeLock(
+        expandInteractionShapeIds(documentRef.current.shapes, [shapeId]),
+        options.remoteLockedShapeOwnerById,
+      )
+    ))
     options.onSelectionChange(session.additive ? mergeSelectedIds(options.selectedIds, selected) : selected)
   }
 }
@@ -407,4 +469,29 @@ function getTargetShapeId(event: KonvaEventObject<PointerEvent>) {
     node = node.getParent()
   }
   return undefined
+}
+
+function expandInteractionShapeIds(shapes: CanvasDocument['shapes'], shapeIds: string[]) {
+  const expanded = new Set<string>()
+  for (const shapeId of shapeIds) {
+    for (const memberId of getKonvaGroupMemberIds(shapes, shapeId)) {
+      expanded.add(memberId)
+    }
+  }
+  return expandFrameChildren(shapes, [...expanded])
+}
+
+function expandFrameChildren(shapes: CanvasDocument['shapes'], shapeIds: string[]) {
+  const expanded = new Set(shapeIds)
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const shape of shapes) {
+      if (shape.parentId && expanded.has(shape.parentId) && !expanded.has(shape.id)) {
+        expanded.add(shape.id)
+        changed = true
+      }
+    }
+  }
+  return [...expanded]
 }

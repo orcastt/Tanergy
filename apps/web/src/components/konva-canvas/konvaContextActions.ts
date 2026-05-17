@@ -14,10 +14,11 @@ import {
   type KonvaTidyAction,
 } from './konvaArrangeCommands'
 import { deleteKonvaShapes, duplicateKonvaShapes, reorderKonvaShapes } from './konvaCanvasStyle'
-import { pasteKonvaClipboard, writeKonvaShapesToSystemClipboard } from './konvaClipboardCommands'
+import { pasteKonvaClipboard } from './konvaClipboardCommands'
+import { hasRemoteShapeLock } from './konvaCollaborationLocks'
 import type { KonvaContextMenuAction } from './KonvaContextMenu'
 import type { KonvaPendingImagePaste } from './KonvaPendingImagePasteLayer'
-import { groupKonvaShapes, setKonvaShapesLocked, ungroupKonvaShapes } from './konvaGroupCommands'
+import { groupKonvaShapes, lockKonvaShapes, ungroupKonvaShapes, unlockKonvaShapes } from './konvaGroupCommands'
 import { copyKonvaShapes } from './konvaShapeCommands'
 
 type KonvaCanvasHistory = {
@@ -35,6 +36,7 @@ type RunKonvaContextActionOptions = {
   onPageDocumentChange?: (pageId: string, updater: (document: CanvasDocument) => CanvasDocument) => boolean
   pageId: string
   pastePoint?: { x: number; y: number }
+  remoteLockedShapeOwnerById?: ReadonlyMap<string, string>
   selectedIds: string[]
   onClipboardChange: (shapeCount: number) => void
   onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
@@ -46,13 +48,14 @@ export async function runKonvaContextAction(options: RunKonvaContextActionOption
   const { action, clipboardRef, document, history, onClipboardChange, onDocumentChange, onSelectionChange, pastePoint, selectedIds } = options
 
   if (action === 'select-all') {
-    onSelectionChange(document.shapes.map((shape) => shape.id))
+    onSelectionChange(document.shapes
+      .filter((shape) => !options.remoteLockedShapeOwnerById?.has(shape.id))
+      .map((shape) => shape.id))
     return
   }
   if (action === 'copy') {
     clipboardRef.current = copyKonvaShapes(document, selectedIds)
     onClipboardChange(clipboardRef.current.length)
-    void writeKonvaShapesToSystemClipboard(clipboardRef.current)
     return
   }
   if (action === 'paste') {
@@ -75,12 +78,12 @@ export async function runKonvaContextAction(options: RunKonvaContextActionOption
     return
   }
   if (selectedIds.length === 0) return
+  if (hasRemoteShapeLock(selectedIds, options.remoteLockedShapeOwnerById)) return
 
   history.checkpoint(document)
   if (action === 'cut') {
     clipboardRef.current = copyKonvaShapes(document, selectedIds)
     onClipboardChange(clipboardRef.current.length)
-    void writeKonvaShapesToSystemClipboard(clipboardRef.current)
     const result = deleteKonvaShapes(document, selectedIds)
     onDocumentChange(result.document)
     onSelectionChange(result.selectedIds)
@@ -111,7 +114,9 @@ export async function runKonvaContextAction(options: RunKonvaContextActionOption
     return
   }
   if (action === 'lock' || action === 'unlock') {
-    const result = setKonvaShapesLocked(document, selectedIds, action === 'lock')
+    const result = action === 'lock'
+      ? lockKonvaShapes(document, selectedIds)
+      : unlockKonvaShapes(document, selectedIds)
     onDocumentChange(result.document)
     onSelectionChange(result.selectedIds)
     return
