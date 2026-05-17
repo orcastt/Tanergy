@@ -2,6 +2,7 @@
 
 import type { AdminOperatorAction, AdminOperatorPlanOperationMode } from './adminOperatorActions'
 import { planCatalog } from '@/features/billing/billingContracts'
+import { readAdminPlanCatalogResource } from './adminPlanCatalogCache'
 
 export function resolveInitialPlanKey(action: AdminOperatorAction | null) {
   if (action?.type === 'group-plan') {
@@ -153,11 +154,12 @@ export function calculatePlanPreview(
   durationCount: number,
 ) {
   const termMonths = Math.max(1, durationCount || 1)
-  const included = planCatalog[planKey as keyof typeof planCatalog]?.includedCredits ?? 0
+  const catalog = getPlanCatalogLookup()
+  const included = catalog[planKey]?.includedCredits ?? 0
   if (action.type === 'create-team') return included * Math.max(1, seatCapacity) * termMonths
   if (action.type === 'group-plan') {
     if (planOperation === 'upgrade') {
-      const currentIncluded = planCatalog[(action.currentPlanKey || 'collaborate_start') as keyof typeof planCatalog]?.includedCredits ?? 0
+      const currentIncluded = catalog[action.currentPlanKey || 'collaborate_start']?.includedCredits ?? 0
       return Math.max(0, included - currentIncluded) * termMonths
     }
     if (planOperation === 'assign' || planOperation === 'renew') return included * termMonths
@@ -165,7 +167,7 @@ export function calculatePlanPreview(
   }
   if (action.type === 'team-plan') {
     if (planOperation === 'upgrade') {
-      const currentIncluded = planCatalog[(action.workspace.planKey || 'team_start') as keyof typeof planCatalog]?.includedCredits ?? 0
+      const currentIncluded = catalog[action.workspace.planKey || 'team_start']?.includedCredits ?? 0
       const currentSeats = Math.max(1, action.workspace.seatCapacity || 1)
       return Math.max(0, included * Math.max(1, seatCapacity) - currentIncluded * currentSeats) * termMonths
     }
@@ -180,4 +182,12 @@ export function isCurrentPlanStatus(status?: null | string) {
 
 function humanizePlanOperation(planOperation: AdminOperatorPlanOperationMode) {
   return planOperation.charAt(0).toUpperCase() + planOperation.slice(1)
+}
+
+function getPlanCatalogLookup() {
+  const livePlans = readAdminPlanCatalogResource().data?.plans ?? []
+  return livePlans.reduce<Record<string, { includedCredits: number }>>((lookup, plan) => {
+    lookup[plan.planKey] = { includedCredits: plan.includedCredits }
+    return lookup
+  }, { ...planCatalog })
 }

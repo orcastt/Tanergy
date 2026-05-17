@@ -29,7 +29,6 @@ import {
   AdminPlanCatalogHighlights,
   AdminPlanCatalogRule,
   AdminPlanCatalogSection,
-  formatAnnualUpfrontUsd,
 } from './adminPlanCatalogPresentation'
 
 export function AdminFinanceDashboard({
@@ -112,7 +111,7 @@ export function AdminFinanceDashboard({
       setPlans(nextPlans)
       setDrafts(createDraftMap(nextPlans))
       primeAdminPlanCatalogResource({ ok: true, plans: nextPlans })
-      clearCachedBillingResources('plans')
+      clearCachedBillingResources()
       setMessage(`${result.plan.name} saved.`)
       setError(null)
       setStatus('ready')
@@ -211,7 +210,7 @@ export function AdminFinanceDashboard({
           <SelectField label="Billing period" onChange={(value) => updateDraft(setDrafts, plan.planKey, 'billingPeriod', value)} options={billingPeriodOptions} value={draft.billingPeriod} />
           <NumberField label="Monthly price USD" onChange={(value) => updateDraft(setDrafts, plan.planKey, 'monthlyPriceUsd', value)} value={draft.monthlyPriceUsd} />
           <NumberField label="Annual rate / month USD" onChange={(value) => updateDraft(setDrafts, plan.planKey, 'annualPriceUsd', value)} value={draft.annualPriceUsd} />
-          <ReadOnlyField label="Annual upfront total" value={formatAnnualUpfrontUsd(plan)} />
+          <ReadOnlyField label="Annual upfront total" value={formatDraftAnnualUpfront(draft.annualPriceUsd)} />
           <NumberField label="Included credits / 30d" onChange={(value) => updateDraft(setDrafts, plan.planKey, 'includedCredits', value)} value={draft.includedCredits} />
           <NumberField label="Board limit" onChange={(value) => updateDraft(setDrafts, plan.planKey, 'boardLimit', value)} placeholder="blank = unlimited" value={draft.boardLimit} />
           <NumberField label="Page limit" onChange={(value) => updateDraft(setDrafts, plan.planKey, 'pageLimit', value)} placeholder="blank = unlimited" value={draft.pageLimit} />
@@ -233,4 +232,9 @@ export function AdminFinanceDashboard({
       </article>
     )
   }
+}
+
+function formatDraftAnnualUpfront(value: string) {
+  const normalized = Math.max(0, Math.trunc(Number.parseFloat(value) || 0))
+  return `$${normalized * 12}`
 }

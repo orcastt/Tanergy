@@ -46,7 +46,7 @@ export function formatSessionPresenceActivity(
   const selectionCount = presence.selectionIds?.length ?? 0
 
   if (pageLabel && presence.activePageId && presence.activePageId !== options.currentPageId) {
-    parts.push(pageLabel)
+    parts.push(`On ${pageLabel}`)
   }
   if (activityLabel) {
     parts.push(activityLabel)
@@ -85,11 +85,11 @@ function getPresenceActivityLabel(
   if (transformKind === 'rotate') return 'Rotating'
   if (selectedEdgeId) return 'Inspecting edge'
   if (tool && toolLabels[tool]) return toolLabels[tool]
-  if (state === 'panning') return 'Hand'
+  if (state === 'panning') return 'Panning'
   if (state === 'drawing') return 'Drawing'
   if (state === 'selecting') return 'Selecting'
-  if (state === 'viewing') return 'Viewing'
-  if (state === 'idle') return 'Idle'
+  if (state === 'viewing') return 'Browsing'
+  if (state === 'idle') return 'Browsing'
   return null
 }
 
@@ -99,5 +99,5 @@ function getPresencePageLabel(
 ) {
   if (!pageId) return null
   const page = pageSummaries?.find((entry) => entry.id === pageId)
-  return page?.title?.trim() || 'Another page'
+  return page?.title?.trim() || 'another page'
 }

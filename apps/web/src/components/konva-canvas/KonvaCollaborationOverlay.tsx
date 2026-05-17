@@ -7,7 +7,10 @@ import type {
   BoardCollaborationShapeOccupancy,
 } from '@/features/boards/boardCollaborationTypes'
 import { getCollaborationAccent } from '@/features/collaboration/collaborationAccent'
-import { formatSessionPresenceActivity } from './konvaCollaborationPresencePresentation'
+import {
+  formatSessionPresenceActivity,
+  type KonvaPresencePageSummary,
+} from './konvaCollaborationPresencePresentation'
 import { useSmoothedCollaborationCursors } from './useSmoothedCollaborationCursors'
 
 type KonvaCollaborationOverlayProps = {
@@ -15,6 +18,7 @@ type KonvaCollaborationOverlayProps = {
   camera: CanvasCamera
   document: CanvasDocument
   occupancy: BoardCollaborationShapeOccupancy[]
+  pageSummaries?: KonvaPresencePageSummary[]
   sessions: BoardCollaborationSessionRecord[]
   stageHeight: number
   stageWidth: number
@@ -25,6 +29,7 @@ export function KonvaCollaborationOverlay({
   camera,
   document,
   occupancy,
+  pageSummaries = [],
   sessions,
   stageHeight,
   stageWidth,
@@ -164,6 +169,7 @@ export function KonvaCollaborationOverlay({
       ))}
       {visibleSessions.map((session) => {
         const cursor = animatedCursorPositions.get(session.id) ?? session.presence.cursor
+        const activity = formatSessionPresenceActivity(session, { currentPageId: activePageId, pageSummaries })
         if (!cursor) return null
         const point = worldToScreen(cursor, camera)
         if (point.x < -120 || point.y < -80 || point.x > stageWidth + 120 || point.y > stageHeight + 80) {
@@ -181,9 +187,7 @@ export function KonvaCollaborationOverlay({
             <span className="konva-collaboration-cursor__pointer" />
             <span className="konva-collaboration-cursor__label">
               <strong>{session.displayName}</strong>
-              {formatSessionPresenceActivity(session, { currentPageId: activePageId }) ? (
-                <small>{formatSessionPresenceActivity(session, { currentPageId: activePageId })}</small>
-              ) : null}
+              {activity ? <small>{activity}</small> : null}
             </span>
           </div>
         )
@@ -263,13 +267,13 @@ function projectBounds(bounds: CanvasBounds, camera: CanvasCamera): ScreenRect {
 }
 
 function getOccupancyLabel(entry: BoardCollaborationShapeOccupancy) {
-  if (entry.kind === 'editing') return `${entry.displayName} editing`
+  if (entry.kind === 'editing') return `${entry.displayName} editing here`
   if (entry.kind === 'selection') {
     return entry.shapeIds.length > 1
-      ? `${entry.displayName} selected ${entry.shapeIds.length}`
-      : `${entry.displayName} selected`
+      ? `${entry.displayName} selected ${entry.shapeIds.length} objects`
+      : `${entry.displayName} selected this object`
   }
-  return `${entry.displayName} hovering`
+  return `${entry.displayName} hovering here`
 }
 
 function getTransformLabel(kind: NonNullable<BoardCollaborationSessionRecord['presence']['transformKind']>) {

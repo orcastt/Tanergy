@@ -20,9 +20,10 @@ export function AdminWorkspaceDetailPanel({
   onMutated: () => void
   workspace: AdminDirectoryWorkspacesResource['workspaces'][number]
 }) {
+  const ownerLabel = workspace.ownerDisplayName?.trim() || workspace.ownerEmail || workspace.ownerId || 'Unknown owner'
   const summaryItems = kind === 'team'
     ? [
-        { label: 'Plan', value: workspace.planKey ?? 'free' },
+        { label: 'Plan', value: workspace.planKey ? formatPlanKey(workspace.planKey) : 'Unassigned' },
         { label: 'Members', value: formatNumber(workspace.memberCount) },
         { label: 'Boards', value: formatNumber(workspace.boardCount) },
         { label: 'Team wallet', value: formatNumber(workspace.walletCredits) },
@@ -38,7 +39,7 @@ export function AdminWorkspaceDetailPanel({
           value: workspace.subscriptionPeriodEnd ? formatDate(workspace.subscriptionPeriodEnd) : 'Open ended',
         },
         { label: 'Personal usage in this Group', value: formatNumber(workspace.usageCredits) },
-        { label: 'Owner', value: workspace.ownerEmail || workspace.ownerId || 'Unknown owner' },
+        { label: 'Owner', value: ownerLabel },
       ]
 
   return (
@@ -46,7 +47,7 @@ export function AdminWorkspaceDetailPanel({
       <div className="management-panel-heading">
         <div>
           <h2>{workspace.name}</h2>
-          <p>{workspace.ownerEmail || workspace.ownerId || 'Unknown owner'}</p>
+          <p>{ownerLabel}</p>
         </div>
         <span className={`management-status ${detailStatus === 'ready' ? 'is-success' : ''}`}>{detailStatus}</span>
       </div>

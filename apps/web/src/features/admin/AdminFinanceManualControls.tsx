@@ -2,12 +2,12 @@
 
 import { useState } from 'react'
 import {
-  collaboratePlans,
+  getCollaboratePlanOptions,
+  getTeamPlanOptions,
   NumberInput,
   PlanScheduleFields,
   StrictSelect,
   TeamMonthlyScheduleFields,
-  teamPlans,
   Toggle,
   toFloat,
   toInt,
@@ -97,7 +97,7 @@ export function AdminFinanceManualControls({
         <div className="manual-finance-block">
           <h3>Group plan</h3>
           <FilterTextInput label="User" leadingIcon="search" onChange={setPlanUserId} placeholder="user_id" value={planUserId} />
-          <StrictSelect label="Plan" onChange={setSelectedCollaboratePlan} options={collaboratePlans} value={selectedCollaboratePlan} />
+          <StrictSelect label="Plan" onChange={setSelectedCollaboratePlan} options={getCollaboratePlanOptions()} value={selectedCollaboratePlan} />
           <PlanScheduleFields
             durationCount={groupDurationCount}
             effectMode={groupEffectMode}
@@ -110,7 +110,7 @@ export function AdminFinanceManualControls({
         <div className="manual-finance-block">
           <h3>Team plan</h3>
           <FilterSelect label="Workspace" onChange={setWorkspaceId} options={workspaces} value={resolvedWorkspaceId} />
-          <StrictSelect label="Plan" onChange={setSelectedTeamPlan} options={teamPlans} value={selectedTeamPlan} />
+          <StrictSelect label="Plan" onChange={setSelectedTeamPlan} options={getTeamPlanOptions()} value={selectedTeamPlan} />
           <NumberInput label="Seats" onChange={setTeamSeats} value={teamSeats} />
           <TeamMonthlyScheduleFields
             durationCount={teamDurationCount}

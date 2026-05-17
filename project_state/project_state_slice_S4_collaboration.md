@@ -19,6 +19,7 @@
 - That canonical role language is now enforced at key boundaries too: auth session memberships, workspace invite reads/writes, local board-member metadata and local collaboration presence all normalize legacy `member/guest` into `editor/viewer` before surfacing to product UI.
 - Remote cursor/occupancy/header presence colors now derive from `clientInstanceId`, so separate live sessions from the same user are visually distinct.
 - Presence UI now also surfaces current tool and cross-page context: cursor labels show current activity, and the board header shows compact collaborator chips for current page / current tool state.
+- 2026-05-17 presence wording follow-up: cross-page collaborator labels now read as `On <page>`, idle/viewing state is normalized to `Browsing`, and occupancy labels now use clearer `editing here / selected N objects / hovering here` wording so presence reads less like debug state and more like product UI.
 - The board header presence shell now includes a compact collaborator roster popover, so active users, session-scoped colors, roles and current activity can be inspected from the top bar without relying only on cursor labels.
 - Focused-edit occupancy now covers text edit, node text edit, image crop, node parameter dropdowns and the chat model menu. The browser reuses shared awareness `editingShapeIds` for these states instead of introducing a second lock service.
 - When a second user tries to enter one of those focused modes, the board now shows an in-canvas denial toast so the feedback is visible even when the selection toolbar is not on screen.
@@ -40,6 +41,8 @@
 - Team workspace ownership transfer now has a first safe product/backend path for existing members. Group workspace owner transfer is still intentionally blocked until billing ownership rules are designed.
 - Current account-deletion hard-delete is live, but paid Team/Group membership cleanup still needs another blocker pass before collaboration scale-up.
 - `services/api/scripts/s4_workspace_invite_smoke.py` now covers the API-level Team/Group invite acceptance matrix: owner creates board, owner creates board-target invite, invitee accepts, invitee reopens the same board collaboration route inside the invited workspace.
+- `services/api/scripts/s4_collaboration_presence_smoke.py` now covers the next API-level collaboration hop too: after invite acceptance, owner and invitee both claim collaboration sessions, the board echoes page-scoped presence back to both sides, and both sessions release cleanly again.
+- `services/api/scripts/s4_collaboration_readiness.py` now chains invite, presence and realtime smoke into one readiness preflight so the browser test phase has a single commandable entrypoint.
 - 2026-05-16 regression reset: collaboration/realtime tests now explicitly lock the current rule that a `guest` does not gain board or websocket access merely from `visibility=workspace`; readable guest access still requires explicit board membership such as `viewer`.
 
 ## Reuse First

@@ -6,22 +6,20 @@ import {
   deleteCurrentWorkspace,
   updateCurrentWorkspace,
 } from '@/features/billing/billingClient'
-import type { PlanKey } from '@/features/billing/billingTypes'
 import { requestCurrentSessionRefresh } from '@/features/auth/sessionClient'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
-import { formatWorkspacePlanName } from '@/features/workspaces/workspacePresentation'
 
 type WorkspaceSettingsPanelProps = {
   kind: 'group' | 'team'
   onWorkspaceRefresh?: () => void
-  planKey: Extract<PlanKey, 'collaborate_plus' | 'collaborate_start' | 'free_canvas' | 'team_growth' | 'team_start'>
+  planLabel: string
   workspace: TangentWorkspace
 }
 
 export function WorkspaceSettingsPanel({
   kind,
   onWorkspaceRefresh,
-  planKey,
+  planLabel,
   workspace,
 }: WorkspaceSettingsPanelProps) {
   const router = useRouter()
@@ -35,7 +33,6 @@ export function WorkspaceSettingsPanel({
 
   const canManageSettings = workspace.role === 'owner'
   const kindLabel = kind === 'team' ? 'Team' : 'Group'
-  const planLabel = formatWorkspacePlanName(planKey)
   const settingsFacts = [
     { label: 'Plan', value: planLabel },
     { label: 'AI billing', value: kind === 'team' ? 'Team wallet' : 'Personal credits' },

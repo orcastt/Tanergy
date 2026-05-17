@@ -1,7 +1,7 @@
 # S4 Collaboration Invite/Presence Plan
 
 **Created**: 2026-05-16
-**Status**: In progress. Invite -> board entry is now wired in product UI, invite history now has explicit `pending / accepted / revoked` states, Team owner transfer has a first safe product/backend cut, the board route now requests session context for the target workspace instead of relying on stale active-session selection, and real signed-in two-user smoke remains the next acceptance pass.
+**Status**: In progress. Invite -> board entry is now wired in product UI, invite history now has explicit `pending / accepted / revoked` states, Team owner transfer has a first safe product/backend cut, the board route now requests session context for the target workspace instead of relying on stale active-session selection, presence wording now reads in more product-facing page/activity language, and local S4 contract/smoke coverage now spans invite accept, collaboration session claim/list/release and websocket reconnect/resync. Real signed-in two-user browser smoke remains the next acceptance pass.
 **Owner slice**: S4, with S1D/S3 dependencies.
 
 ## Goal
@@ -53,7 +53,9 @@ Exit criteria:
   - accept may land directly on `/boards/[boardId]?workspace=...`
   - the board route now rehydrates session access against that `workspace` query target before loading the board, so accept-to-board does not depend on the previous active workspace cache winning the race
   - Team/Group dashboard board cards now open the real board route
-  - `services/api/scripts/s4_workspace_invite_smoke.py` now covers the owner-create -> invite -> accept -> reopen-board API path
+- `services/api/scripts/s4_workspace_invite_smoke.py` now covers the owner-create -> invite -> accept -> reopen-board API path
+- `services/api/scripts/s4_collaboration_presence_smoke.py` now extends that path into owner/invitee collaboration session claim/list/release presence roundtrips for both Team and Group workspaces
+- `services/api/scripts/s4_collaboration_readiness.py` now chains invite, presence and realtime smoke into one preflight entrypoint for the test phase
 
 Exit criteria:
 
@@ -161,6 +163,8 @@ Exit criteria:
 ## Validation
 
 - Invite accept/revoke/open smoke with two real signed-in users
+- API-level Team/Group collaboration session smoke via `services/api/scripts/s4_collaboration_presence_smoke.py`
+- One-command readiness preflight via `services/api/scripts/s4_collaboration_readiness.py`
 - Two-user cursor visibility smoke
 - Two-user sensitive-edit occupancy smoke
 - Two-user optimistic draw/move smoke

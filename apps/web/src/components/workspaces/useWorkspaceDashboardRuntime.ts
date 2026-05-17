@@ -180,19 +180,27 @@ function buildTeamRecord({
 
   return {
     boards,
+    currentPeriodStart: billing?.currentPeriodStart,
     currentPeriodEnd: billing?.currentPeriodEnd,
     id: workspace.id,
+    includedCredits: billing?.credits.includedTotal ?? 0,
     inviteCode: `${workspace.id}-invite`,
     memberUsageLimit: Math.max(
       ...members.map((member) => member.usageCredits ?? 0),
       billing?.credits.usedThisCycle ?? 0,
       100,
     ),
+    memberCount: dashboard?.memberCount ?? members.length,
     members,
     name: workspace.name,
+    nextRefreshAt: billing?.nextRefreshAt,
     planKey: workspace.planKey === 'team_growth' ? 'team_growth' : 'team_start',
+    planName: resolvePlanName(billing?.plan.name, workspace.planKey),
     seatLimit: billing?.plan.seatMax ?? Math.max(dashboard?.memberCount ?? 1, 1),
+    seatMax: billing?.plan.seatMax ?? null,
+    seatMin: billing?.plan.seatMin ?? null,
     seatsUsed: dashboard?.memberCount ?? members.length,
+    topUpBalance: billing?.credits.topUpBalance ?? 0,
     totalCredits,
     totalCreditsRemaining: remainingCredits,
   }
@@ -216,11 +224,19 @@ function buildGroupRecord({
 
   return {
     boards,
+    boardLimit: billing?.plan.boardLimit ?? null,
+    currentPeriodStart: billing?.currentPeriodStart,
     currentPeriodEnd: billing?.currentPeriodEnd,
     id: workspace.id,
+    includedCredits: billing?.credits.includedTotal ?? 0,
+    memberCount: dashboard?.memberCount ?? members.length,
     members,
     name: workspace.name,
+    nextRefreshAt: billing?.nextRefreshAt,
+    pageLimit: billing?.plan.pageLimit ?? null,
     planKey: normalizeGroupPersonalPlanKey(workspace.planKey),
+    planName: resolvePlanName(billing?.plan.name, workspace.planKey),
+    topUpBalance: billing?.credits.topUpBalance ?? 0,
     totalCredits,
     totalCreditsRemaining: remainingCredits,
   }
@@ -264,6 +280,13 @@ function normalizeWorkspacePlanKey(planKey: string | null | undefined, fallback:
     return planKey
   }
   return fallback
+}
+
+function resolvePlanName(name: string | null | undefined, fallback: TangentWorkspace['planKey'] | undefined) {
+  if (typeof name === 'string' && name.trim()) return name.trim()
+  return (fallback ?? 'free_canvas')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
 function firstFailureMessage(result: PromiseRejectedResult | PromiseSettledResult<unknown>) {

@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { EmptyRow, FilterTextInput, MetaLine, limitOptions } from './adminAiShared'
+import { FilterTextInput, limitOptions } from './adminAiShared'
 import { AdminWorkspaceDetailPanel } from './AdminWorkspaceDetailPanel'
+import { AdminWorkspaceDirectoryTable } from './AdminWorkspaceDirectoryTable'
 import {
   groupWorkspaceDirectoryKind,
   loadAdminWorkspaceDirectoryResource,
@@ -230,47 +231,18 @@ export function AdminWorkspacesDashboard({
             </button>
           </div>
         </div>
-        <div className="management-table-wrap">
-          <table className="management-table admin-workspaces-table">
-            <thead><tr><th>Name</th><th>Owner</th><th>Members</th><th>Boards</th><th>Plan</th><th>Status</th><th>Action</th></tr></thead>
-            <tbody>
-              {directoryStatus === 'loading' ? <EmptyRow colSpan={7} message={`Loading ${label.toLowerCase()}...`} /> : null}
-              {directoryStatus !== 'loading' && workspaces.length ? workspaces.map((workspace) => (
-                <tr
-                  key={workspace.id}
-                  className={workspace.id === selectedWorkspace?.id ? 'is-selected' : undefined}
-                  onClick={() => {
-                    if (workspace.id === selectedWorkspace?.id) return
-                    setSelectedWorkspaceId(workspace.id)
-                    setDetailStatus('loading')
-                  }}
-                >
-                  <td><strong>{workspace.name}</strong><MetaLine>{workspace.id}</MetaLine></td>
-                  <td>{workspace.ownerEmail || workspace.ownerId || 'Unknown'}</td>
-                  <td>{workspace.memberCount}</td>
-                  <td>{workspace.boardCount}</td>
-                  <td>{workspace.planKey ?? workspace.ownerCollaboratePlanKey ?? 'free'}</td>
-                  <td><span className={`management-status ${workspace.status === 'active' ? 'is-success' : ''}`}>{workspace.status}</span></td>
-                  <td>
-                    <button
-                      className="product-button product-button-secondary admin-table-button"
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        if (workspace.id === selectedWorkspace?.id) return
-                        setSelectedWorkspaceId(workspace.id)
-                        setDetailStatus('loading')
-                      }}
-                      type="button"
-                    >
-                      Manage
-                    </button>
-                  </td>
-                </tr>
-              )) : null}
-              {directoryStatus !== 'loading' && !workspaces.length ? <EmptyRow colSpan={7} message={`No ${label.toLowerCase()} found.`} /> : null}
-            </tbody>
-          </table>
-        </div>
+        <AdminWorkspaceDirectoryTable
+          directoryStatus={directoryStatus}
+          kind={kind}
+          label={label}
+          onSelectWorkspace={(workspaceId) => {
+            if (workspaceId === selectedWorkspace?.id) return
+            setSelectedWorkspaceId(workspaceId)
+            setDetailStatus('loading')
+          }}
+          selectedWorkspaceId={selectedWorkspace?.id ?? ''}
+          workspaces={workspaces}
+        />
       </article>
 
       <article className="management-panel management-panel-wide">

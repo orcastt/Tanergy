@@ -22,7 +22,7 @@ import {
   shouldShowSeatCapacityField,
   toMemberRole,
 } from './adminOperatorActionMutations'
-import { collaboratePlans, NumberInput, PlanScheduleFields, StrictSelect, TeamMonthlyScheduleFields, teamPlans, TextInput, Toggle, toFloat, toInt } from './AdminFinanceFields'
+import { getCollaboratePlanOptions, getTeamPlanOptions, NumberInput, PlanScheduleFields, StrictSelect, TeamMonthlyScheduleFields, TextInput, Toggle, toFloat, toInt } from './AdminFinanceFields'
 import type { AdminOperatorAction, AdminOperatorCreditTarget } from './adminOperatorActions'
 import { GroupPlanActionMatrix, PlanActionChoices, PlanModalSummary, PlanPreviewPill } from './adminOperatorPlanModalSections'
 import type { AdminOperatorMutationResult } from './adminOperatorActionMutations'
@@ -72,8 +72,12 @@ export function AdminOperatorActionModal({
   const showGrantToggle = shouldShowGrantToggle(currentAction, planOperation)
   const planPreview = calculatePlanPreview(currentAction, planOperation, planKey, toInt(seatCapacity), toInt(durationCount))
   const planOptions = currentAction.type === 'group-plan'
-    ? (planOperation === 'upgrade' ? ['collaborate_plus'] : collaboratePlans)
-    : (currentAction.type === 'team-plan' && currentAction.targetPlanKey ? [currentAction.targetPlanKey] : teamPlans)
+    ? (planOperation === 'upgrade'
+      ? getCollaboratePlanOptions().filter((option) => option.value === 'collaborate_plus')
+      : getCollaboratePlanOptions())
+    : (currentAction.type === 'team-plan' && currentAction.targetPlanKey
+      ? getTeamPlanOptions().filter((option) => option.value === currentAction.targetPlanKey)
+      : getTeamPlanOptions())
   const saveLabel = resolveSubmitLabel(currentAction, planOperation)
   const invalidSeatCapacity = showSeatCapacity && (toInt(seatCapacity) <= 0 || toInt(seatCapacity) > TEAM_SEAT_MAX)
   const isBillingCreditAction = action.type === 'billing-topup' || action.type === 'billing-deduct'

@@ -32,6 +32,7 @@ export type CommerceTeamCard = {
   nextRefreshAt?: null | string
   pageLimit?: null | number
   planKey: Extract<PlanKey, 'team_growth' | 'team_start'>
+  planName: string
   seatMax?: null | number
   seatMin?: null | number
   relationship: WorkspaceRelationship
@@ -58,6 +59,7 @@ export type CommerceGroupSummary = {
   nextRefreshAt?: null | string
   pageLimit?: null | number
   planKey: Extract<PlanKey, 'collaborate_plus' | 'collaborate_start' | 'free_canvas'>
+  planName: string
   remainingCredits: number
   topUpBalance: number
   totalCredits: number
@@ -171,6 +173,7 @@ async function loadGroupSummary(
     nextRefreshAt: billing.nextRefreshAt,
     pageLimit: plan?.pageLimit ?? null,
     planKey,
+    planName: billing.plan.name || plan?.name || 'Personal plan',
     currentPeriodEnd: billing.currentPeriodEnd,
     remainingCredits: billing.credits.includedRemaining + billing.credits.topUpBalance,
     topUpBalance: billing.credits.topUpBalance,
@@ -205,6 +208,7 @@ async function loadTeamCards(
       nextRefreshAt: billing.nextRefreshAt,
       pageLimit: billing.plan.pageLimit ?? null,
       planKey,
+      planName: billing.plan.name || workspace.name,
       relationship,
       remainingCredits: billing.credits.includedRemaining + billing.credits.topUpBalance,
       seatMax: billing.plan.seatMax ?? null,

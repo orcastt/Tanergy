@@ -17,26 +17,42 @@ export type WorkspaceDashboardMember = {
 
 export type TeamWorkspaceDashboardRecord = {
   boards: WorkspaceDashboardBoard[]
+  currentPeriodStart?: null | string
   currentPeriodEnd?: null | string
   id: string
+  includedCredits: number
   inviteCode: string
   memberUsageLimit: number
+  memberCount: number
   members: WorkspaceDashboardMember[]
   name: string
+  nextRefreshAt?: null | string
   planKey: Extract<PlanKey, 'team_growth' | 'team_start'>
+  planName: string
   seatLimit: number
+  seatMax?: null | number
+  seatMin?: null | number
   seatsUsed: number
+  topUpBalance: number
   totalCredits: number
   totalCreditsRemaining: number
 }
 
 export type GroupWorkspaceDashboardRecord = {
   boards: WorkspaceDashboardBoard[]
+  boardLimit?: null | number
+  currentPeriodStart?: null | string
   currentPeriodEnd?: null | string
-  totalCredits: number
-  totalCreditsRemaining: number
   id: string
+  includedCredits: number
+  memberCount: number
   members: WorkspaceDashboardMember[]
   name: string
+  nextRefreshAt?: null | string
+  pageLimit?: null | number
   planKey: GroupPersonalPlanKey
+  planName: string
+  topUpBalance: number
+  totalCredits: number
+  totalCreditsRemaining: number
 }

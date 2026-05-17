@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { formatCredits } from '@/features/billing/billingPresentation'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import { useTangentSession } from '@/features/auth/useTangentSession'
 import { WorkspaceInvitePanel } from './WorkspaceInvitePanel'
@@ -10,10 +9,13 @@ import { WorkspaceMembersPanel } from './WorkspaceMembersPanel'
 import { WorkspaceDashboardBoardsPanel } from './WorkspaceDashboardBoardsPanel'
 import { WorkspaceSettingsPanel } from './WorkspaceSettingsPanel'
 import {
+  GroupDashboardSummaryPanel,
+  TeamDashboardSummaryPanel,
+} from './WorkspaceDashboardSummaryPanels'
+import {
   type GroupWorkspaceDashboardRecord,
   type TeamWorkspaceDashboardRecord,
 } from '@/features/workspaces/workspaceDashboardTypes'
-import { formatWorkspacePlanName } from '@/features/workspaces/workspacePresentation'
 import { useWorkspaceDashboardRuntime } from './useWorkspaceDashboardRuntime'
 
 type WorkspaceDashboardViewProps = {
@@ -102,8 +104,6 @@ function TeamDashboardLayout({
   workspace: TangentWorkspace
   viewMode: BoardViewMode
 }) {
-  const creditPercent = getCreditPercent(record.totalCreditsRemaining, record.totalCredits)
-
   return (
     <div className="workspace-detail-stack">
       <section className="workspace-detail-grid workspace-detail-grid-top">
@@ -128,46 +128,13 @@ function TeamDashboardLayout({
           />
         </div>
         <div className="workspace-detail-side-stack">
-          <section className="workspace-detail-panel workspace-detail-side-panel">
-            <div className="workspace-detail-panel-head"><h2>Usage</h2></div>
-            <div className="workspace-detail-dark-card">
-              <div className="workspace-detail-dark-row">
-                <strong>{formatCredits(record.totalCreditsRemaining)}</strong>
-                <Link className="workspace-detail-danger-button" href={`/usage?scope=teams&workspace=${encodeURIComponent(record.id)}`}>
-                  Top Up
-                </Link>
-              </div>
-              <small>{formatCredits(record.totalCredits)} credits</small>
-              <div className="workspace-detail-progress"><span style={{ width: `${creditPercent}%` }} /></div>
-            </div>
-            <div className="workspace-detail-summary-list">
-              <div className="workspace-detail-summary-row">
-                <span>Plan</span>
-                <strong>{formatWorkspacePlanName(record.planKey)}</strong>
-              </div>
-              <div className="workspace-detail-summary-row">
-                <span>Valid until</span>
-                <strong>{formatPeriodEnd(record.currentPeriodEnd)}</strong>
-              </div>
-            </div>
-            <div className="workspace-detail-usage-list">
-              {record.members.map((member) => (
-                <div className="workspace-detail-usage-row" key={member.id}>
-                  <span className="workspace-detail-avatar">{member.initials}</span>
-                  <div className="workspace-detail-progress is-light">
-                    <span style={{ width: `${Math.min(100, Math.round(((member.usageCredits ?? 0) / record.memberUsageLimit) * 100))}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-            <small className="workspace-detail-status">Team credits stay on the subscribed plan even if you clear this workspace.</small>
-          </section>
-          <WorkspaceSettingsPanel key={`${workspace.id}:${record.name}`} kind="team" onWorkspaceRefresh={onMembersChanged} planKey={record.planKey} workspace={workspace} />
+          <TeamDashboardSummaryPanel record={record} />
+          <WorkspaceSettingsPanel key={`${workspace.id}:${record.name}`} kind="team" onWorkspaceRefresh={onMembersChanged} planLabel={record.planName} workspace={workspace} />
         </div>
       </section>
 
       <section className="workspace-detail-grid workspace-detail-grid-bottom">
-        <WorkspaceMembersPanel members={record.members} onMembersChanged={onMembersChanged} workspace={workspace} />
+        <WorkspaceMembersPanel members={record.members} onMembersChanged={onMembersChanged} seatIncludedCredits={record.includedCredits} workspace={workspace} />
         <WorkspaceInvitePanel
           boards={record.boards}
           members={record.members}
@@ -197,8 +164,6 @@ function GroupDashboardLayout({
   workspace: TangentWorkspace
   viewMode: BoardViewMode
 }) {
-  const creditPercent = getCreditPercent(record.totalCreditsRemaining, record.totalCredits)
-
   return (
     <div className="workspace-detail-stack">
       <section className="workspace-detail-grid workspace-detail-grid-top">
@@ -223,35 +188,8 @@ function GroupDashboardLayout({
           />
         </div>
         <div className="workspace-detail-side-stack">
-          <section className="workspace-detail-panel workspace-detail-side-panel">
-            <div className="workspace-detail-panel-head"><h2>My credits</h2></div>
-            <div className="workspace-detail-dark-card">
-              <div className="workspace-detail-dark-row">
-                <strong>{formatCredits(record.totalCreditsRemaining)}</strong>
-                <Link className="workspace-detail-danger-button" href="/usage?scope=group">
-                  Top Up
-                </Link>
-              </div>
-              <small>{formatCredits(record.totalCredits)} credits</small>
-              <div className="workspace-detail-progress"><span style={{ width: `${creditPercent}%` }} /></div>
-            </div>
-            <div className="workspace-detail-summary-list">
-              <div className="workspace-detail-summary-row">
-                <span>My personal plan</span>
-                <strong>{formatWorkspacePlanName(record.planKey)}</strong>
-              </div>
-              <div className="workspace-detail-summary-row">
-                <span>Valid until</span>
-                <strong>{formatPeriodEnd(record.currentPeriodEnd)}</strong>
-              </div>
-              <div className="workspace-detail-summary-row">
-                <span>Boards</span>
-                <strong>{record.boards.length}</strong>
-              </div>
-            </div>
-            <small className="workspace-detail-status">AI runs in this Group always charge your own personal credits. Removing the Group does not move or merge credits.</small>
-          </section>
-          <WorkspaceSettingsPanel key={`${workspace.id}:${record.name}`} kind="group" onWorkspaceRefresh={onMembersChanged} planKey={record.planKey} workspace={workspace} />
+          <GroupDashboardSummaryPanel record={record} />
+          <WorkspaceSettingsPanel key={`${workspace.id}:${record.name}`} kind="group" onWorkspaceRefresh={onMembersChanged} planLabel={record.planName} workspace={workspace} />
         </div>
       </section>
 
@@ -268,18 +206,6 @@ function GroupDashboardLayout({
   )
 }
 
-function getCreditPercent(remaining: number, total: number) {
-  if (!Number.isFinite(total) || total <= 0) return 0
-  return Math.min(100, Math.round((remaining / total) * 100))
-}
-
 function recordBoardSignature(boards: TeamWorkspaceDashboardRecord['boards'] | GroupWorkspaceDashboardRecord['boards']) {
   return boards.map((board) => `${board.id}:${board.savedAt}:${board.thumbnailUrl ?? ''}:${board.visibility ?? 'private'}`).join('|')
-}
-
-function formatPeriodEnd(value?: null | string) {
-  if (!value) return 'No expiry'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date)
 }

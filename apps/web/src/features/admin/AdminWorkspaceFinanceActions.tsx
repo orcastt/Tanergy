@@ -2,11 +2,11 @@
 
 import { useState } from 'react'
 import {
+  getTeamPlanOptions,
   NumberInput,
   StrictSelect,
   TeamMonthlyScheduleFields,
   Toggle,
-  teamPlans,
   TextInput,
   toFloat,
   toInt,
@@ -101,7 +101,7 @@ export function AdminWorkspaceFinanceActions({
             </button>
           </div>
           <div className="management-field-grid two">
-            <StrictSelect label="Plan" onChange={setPlanKey} options={teamPlans} value={planKey} />
+            <StrictSelect label="Plan" onChange={setPlanKey} options={getTeamPlanOptions()} value={planKey} />
             <NumberInput label="Seats" onChange={setSeatCapacity} value={seatCapacity} />
             <TeamMonthlyScheduleFields
               durationCount={durationCount}

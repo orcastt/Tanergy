@@ -61,7 +61,7 @@ export function PersonalUsageBand({
           <button className="workspace-commerce-primary-button" disabled={isPending} onClick={onTopUp} type="button">Top up</button>
         </>
       )}
-      badge={<BillingStatusPill>{groupSummary.planKey.replace(/_/g, ' ')}</BillingStatusPill>}
+      badge={<BillingStatusPill>{groupSummary.planName}</BillingStatusPill>}
       eyebrow="Personal usage"
       title="My personal plan"
       tone="group"
@@ -116,7 +116,7 @@ export function TeamUsageBand({
       tone="team"
     >
       <BillingFactGrid columns={4}>
-        <BillingFact label="Plan" value={team.planKey.replace(/_/g, ' ')} hint={formatBillingIntervalLabel(team.billingInterval)} />
+        <BillingFact label="Plan" value={team.planName} hint={formatBillingIntervalLabel(team.billingInterval)} />
         <BillingFact label="Team credits" value={`${formatCredits(team.remainingCredits)} / ${formatCredits(team.totalCredits)}`} hint={`${formatCredits(team.topUpBalance)} top-up balance`} />
         <BillingFact label="Seats" value={`${team.seatsUsed} / ${team.seatLimit}`} hint={`${team.memberCount} members · ${team.boardCount} boards`} />
         <BillingFact label="Billing mode" value="Team wallet" hint="AI never charges each member personally here" />

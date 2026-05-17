@@ -7,7 +7,6 @@ import {
   updateWorkspaceMemberRole,
   upsertWorkspaceSeat,
 } from '@/features/billing/billingClient'
-import { planCatalog } from '@/features/billing/billingContracts'
 import { requestCurrentSessionRefresh } from '@/features/auth/sessionClient'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import { getPublicUserLabel } from '@/features/shared/publicUserDisplay'
@@ -17,13 +16,14 @@ import type { WorkspaceDashboardMember } from '@/features/workspaces/workspaceDa
 type WorkspaceMembersPanelProps = {
   members: WorkspaceDashboardMember[]
   onMembersChanged?: () => void
+  seatIncludedCredits?: number | null
   workspace: TangentWorkspace
 }
 
 const editableRoles: WorkspaceMembershipRole[] = ['admin', 'editor', 'viewer']
 const managerRoles = new Set(['owner', 'admin'])
 
-export function WorkspaceMembersPanel({ members, onMembersChanged, workspace }: WorkspaceMembersPanelProps) {
+export function WorkspaceMembersPanel({ members, onMembersChanged, seatIncludedCredits = null, workspace }: WorkspaceMembersPanelProps) {
   const [hiddenMemberIds, setHiddenMemberIds] = useState<Set<string>>(() => new Set())
   const [pendingMemberId, setPendingMemberId] = useState<null | string>(null)
   const [roleDrafts, setRoleDrafts] = useState<Record<string, WorkspaceMembershipRole>>({})
@@ -78,7 +78,14 @@ export function WorkspaceMembersPanel({ members, onMembersChanged, workspace }: 
                   <button className="workspace-detail-muted-button" disabled={pendingMemberId === member.id || !canManageMembers} onClick={() => saveRole(member)} type="button">Save role</button>
                 )}
                 {workspace.kind === 'team_workspace' && member.role !== 'owner' && canManageMembers ? (
-                  <button className="workspace-detail-muted-button" disabled={pendingMemberId === member.id} onClick={() => assignSeat(member.id)} type="button">Assign seat</button>
+                  <button
+                    className="workspace-detail-muted-button"
+                    disabled={pendingMemberId === member.id || !Number.isFinite(seatIncludedCredits ?? Number.NaN)}
+                    onClick={() => assignSeat(member.id)}
+                    type="button"
+                  >
+                    Assign seat
+                  </button>
                 ) : null}
                 {canTransferOwnership(member.role) ? (
                   <button className="workspace-detail-muted-button" disabled={pendingMemberId === member.id} onClick={() => transferOwnership(member.id)} type="button">Transfer owner</button>
@@ -114,11 +121,14 @@ export function WorkspaceMembersPanel({ members, onMembersChanged, workspace }: 
   async function assignSeat(userId: string) {
     if (!canManageMembers) return setStatus('Your workspace role cannot manage seats.')
     const planKey = workspace.planKey === 'team_growth' ? 'team_growth' : 'team_start'
+    if (!Number.isFinite(seatIncludedCredits ?? Number.NaN)) {
+      return setStatus('Live seat credit pack is still loading. Try again in a moment.')
+    }
     setPendingMemberId(userId)
     setStatus(null)
     try {
       await upsertWorkspaceSeat({
-        includedCredits: planCatalog[planKey].includedCredits,
+        includedCredits: Math.max(0, Math.trunc(seatIncludedCredits ?? 0)),
         planKey,
         userId,
       }, { workspace })

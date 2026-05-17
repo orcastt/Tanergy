@@ -1,7 +1,7 @@
 # S3/S4 Team / Group / Free / Invite / Billing / Collaboration 统一基线
 
 **创建日期**: 2026-05-16  
-**状态**: Confirmed baseline，已于 2026-05-16 完成产品口径确认；截至 2026-05-17，`Subscription / Usage` 第一轮重构、admin plan catalog 控制面整理、Team / Group settings/invite 规则说明、`free_canvas -> Group` 前端/admin 运行态对齐、AI/control-plane 薄化和部分协同桥接拆分已开始落地，当前仍待真实 staging/browser/live-provider 验收
+**状态**: Confirmed baseline，已于 2026-05-16 完成产品口径确认；截至 2026-05-17，`Subscription / Usage` 第一轮重构、admin plan catalog 控制面整理、Team / Group settings/invite 规则说明、`free_canvas -> Group` 前端/admin 运行态对齐、admin workspace plan 展示口径收平、live plan name / credits / limits 运行态回流、Team seat live credit-pack 对齐、AI/control-plane 薄化和部分协同桥接拆分已开始落地，当前仍待真实 staging/browser/live-provider 验收
 **适用切片**: S3 Admin/Billing/Analytics, S4 Collaboration  
 **目的**: 在继续协同测试、Yjs 深化和 Team/Group 运营功能之前，把 `免费用户 / Team / Group / Invite / Subscription / Credit / Presence` 的口径彻底统一，避免前后端、文案、权限和扣费规则继续漂移。
 

@@ -118,6 +118,7 @@ export function createKonvaCanvasShellProps(options: CreateKonvaCanvasShellProps
       camera: options.camera,
       document: options.document,
       occupancy: options.overlayOccupancy,
+      pageSummaries: options.collaborationPageSummaries,
       sessions: options.overlaySessions,
       stageHeight: options.size.height,
       stageWidth: options.size.width,

@@ -1,6 +1,7 @@
 'use client'
 
 import { selectStyle } from './adminAiShared'
+import { readAdminPlanCatalogResource } from './adminPlanCatalogCache'
 
 export const collaboratePlans = ['collaborate_start', 'collaborate_plus']
 export const effectModes = ['immediate', 'next_week'] as const
@@ -61,6 +62,14 @@ export function StrictSelect({ label, onChange, options, value }: { label: strin
   )
 }
 
+export function getCollaboratePlanOptions() {
+  return buildPlanOptions(collaboratePlans)
+}
+
+export function getTeamPlanOptions() {
+  return buildPlanOptions(teamPlans)
+}
+
 export function PlanScheduleFields({
   durationCount,
   effectMode,
@@ -109,4 +118,20 @@ export function toFloat(value: string) {
 
 export function toInt(value: string) {
   return Math.max(0, Math.trunc(Number.parseFloat(value) || 0))
+}
+
+function buildPlanOptions(planKeys: readonly string[]) {
+  const catalog = readAdminPlanCatalogResource().data?.plans ?? []
+  const names = new Map(catalog.map((plan) => [plan.planKey, plan.name] as const))
+  return planKeys.map((planKey) => ({
+    label: names.get(planKey) || humanizePlanKey(planKey),
+    value: planKey,
+  }))
+}
+
+function humanizePlanKey(value: string) {
+  return value
+    .split('_')
+    .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
+    .join(' ')
 }

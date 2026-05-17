@@ -2,12 +2,12 @@
 
 import { useState } from 'react'
 import {
-  collaboratePlans,
+  getCollaboratePlanOptions,
+  getTeamPlanOptions,
   NumberInput,
   PlanScheduleFields,
   StrictSelect,
   TeamMonthlyScheduleFields,
-  teamPlans,
   TextInput,
   Toggle,
   toFloat,
@@ -119,7 +119,7 @@ export function AdminUserFinanceActions({
 
         <section className="manual-finance-block">
           <h3>Group plan</h3>
-          <StrictSelect label="Plan" onChange={setCollaboratePlanKey} options={collaboratePlans} value={collaboratePlanKey} />
+          <StrictSelect label="Plan" onChange={setCollaboratePlanKey} options={getCollaboratePlanOptions()} value={collaboratePlanKey} />
           <div className="management-field-grid two">
             <PlanScheduleFields
               durationCount={collaborateDurationCount}
@@ -177,7 +177,7 @@ export function AdminUserFinanceActions({
         <section className="manual-finance-block">
           <h3>Create Team</h3>
           <TextInput label="Workspace name" onChange={setTeamWorkspaceName} placeholder="New team workspace" value={teamWorkspaceName} />
-          <StrictSelect label="Plan" onChange={setTeamPlanKey} options={teamPlans} value={teamPlanKey} />
+          <StrictSelect label="Plan" onChange={setTeamPlanKey} options={getTeamPlanOptions()} value={teamPlanKey} />
           <NumberInput label="Seats" onChange={setTeamSeats} value={teamSeats} />
           <NumberInput label="Extra credits" onChange={setTeamExtraCredits} value={teamExtraCredits} />
           <div className="management-field-grid two">
