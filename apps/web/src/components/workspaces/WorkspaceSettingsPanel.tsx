@@ -14,7 +14,7 @@ import { formatWorkspacePlanName } from '@/features/workspaces/workspacePresenta
 type WorkspaceSettingsPanelProps = {
   kind: 'group' | 'team'
   onWorkspaceRefresh?: () => void
-  planKey: Extract<PlanKey, 'collaborate_plus' | 'collaborate_start' | 'team_growth' | 'team_start'>
+  planKey: Extract<PlanKey, 'collaborate_plus' | 'collaborate_start' | 'free_canvas' | 'team_growth' | 'team_start'>
   workspace: TangentWorkspace
 }
 

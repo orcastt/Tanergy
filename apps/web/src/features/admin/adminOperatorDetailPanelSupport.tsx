@@ -31,11 +31,13 @@ export function WorkspaceCreditStack({ rows }: { rows: AdminOperatorWorkspacePla
 }
 
 export function UserPlanStack({
+  fallbackPlanKey,
   rows,
 }: {
+  fallbackPlanKey?: string
   rows: Array<{ periodEnd?: null | string; periodStart?: null | string; planKey: string; status: string; subscriptionId: string }>
 }) {
-  if (!rows.length) return <span>-</span>
+  if (!rows.length) return fallbackPlanKey ? <strong>{formatPlanKey(fallbackPlanKey)}</strong> : <span>-</span>
   return (
     <div className="admin-plan-stack">
       {rows.map((row, index) => (

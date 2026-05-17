@@ -75,11 +75,13 @@ export function OwnedGroupsTable({
   groupLimit = 10,
   onAction,
   plan = null,
+  planKeyFallback = 'free_canvas',
   rows,
 }: {
   groupLimit?: number
   onAction: (action: AdminOperatorAction) => void
   plan?: AdminOperatorUserPlan | null
+  planKeyFallback?: string
   rows: AdminOperatorWorkspacePlan[]
 }) {
   return (
@@ -104,7 +106,7 @@ export function OwnedGroupsTable({
         <tbody>
           {rows.length ? rows.map((workspace, index) => (
             <tr key={workspace.id}>
-              {index === 0 ? <td rowSpan={rows.length}><GroupPlanCell plan={plan} /></td> : null}
+              {index === 0 ? <td rowSpan={rows.length}><GroupPlanCell plan={plan} planKeyFallback={planKeyFallback} /></td> : null}
               <td><WorkspaceCell workspace={workspace} /></td>
               <td>
                 <MemberStack
@@ -126,12 +128,12 @@ export function OwnedGroupsTable({
                 <ActionStack actions={buildOwnedWorkspaceActions(workspace, onAction, false)} />
               </td>
             </tr>
-          )) : plan ? (
+          )) : (
             <tr>
-              <td><GroupPlanCell plan={plan} /></td>
+              <td><GroupPlanCell plan={plan} planKeyFallback={planKeyFallback} /></td>
               <td colSpan={4}>No created Groups.</td>
             </tr>
-          ) : <tr><td colSpan={5}>No Group plan.</td></tr>}
+          )}
         </tbody>
       </table>
     </div>
@@ -194,8 +196,14 @@ function workspaceMemberActions(
   ]
 }
 
-function GroupPlanCell({ plan }: { plan?: AdminOperatorUserPlan | null }) {
-  if (!plan) return <span>-</span>
+function GroupPlanCell({
+  plan,
+  planKeyFallback,
+}: {
+  plan?: AdminOperatorUserPlan | null
+  planKeyFallback?: string
+}) {
+  if (!plan) return <strong>{formatPlanKey(planKeyFallback)}</strong>
   return (
     <div className="admin-plan-heading">
       <strong>{formatPlanKey(plan.planKey)}</strong>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
+import { formatPlanKey } from './AdminOperatorDetailTables'
 import { AdminWorkspaceFinanceActions } from './AdminWorkspaceFinanceActions'
 import { EmptyRow, MetaLine, formatDate, formatNumber } from './adminAiShared'
 import type { AdminDirectoryWorkspaceRecord } from './adminTypes'
@@ -50,7 +51,7 @@ export function AdminUserOwnedWorkspacesPanel({
                     <MetaLine>{workspace.id}</MetaLine>
                   </td>
                   <td>
-                    <strong>{workspace.planKey ?? workspace.ownerCollaboratePlanKey ?? 'free'}</strong>
+                    <strong>{formatPlanKey(workspace.planKey ?? workspace.ownerCollaboratePlanKey ?? 'free_canvas')}</strong>
                     <MetaLine>{workspace.planStatus ?? workspace.status}</MetaLine>
                   </td>
                   <td>
@@ -82,7 +83,7 @@ export function AdminUserOwnedWorkspacesPanel({
               <div><dt>Boards</dt><dd>{selectedWorkspace.boardCount}</dd></div>
               <div><dt>Wallet credits</dt><dd>{formatNumber(selectedWorkspace.walletCredits)}</dd></div>
               <div><dt>Usage credits</dt><dd>{formatNumber(selectedWorkspace.usageCredits)}</dd></div>
-              <div><dt>Plan</dt><dd>{selectedWorkspace.planKey ?? selectedWorkspace.ownerCollaboratePlanKey ?? 'free'}</dd></div>
+              <div><dt>Plan</dt><dd>{formatPlanKey(selectedWorkspace.planKey ?? selectedWorkspace.ownerCollaboratePlanKey ?? 'free_canvas')}</dd></div>
               <div><dt>Seats</dt><dd>{selectedWorkspace.seatCapacity || 'Not assigned'}</dd></div>
               <div><dt>Expires</dt><dd>{selectedWorkspace.subscriptionPeriodEnd ? formatDate(selectedWorkspace.subscriptionPeriodEnd) : 'Open ended'}</dd></div>
             </dl>

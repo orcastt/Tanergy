@@ -1,5 +1,6 @@
 import type { BoardPersistenceSummary } from '@/features/boards/boardTypes'
 import type { PlanKey } from '@/features/billing/billingTypes'
+import type { GroupPersonalPlanKey } from './groupPersonalPlanSupport'
 import type { WorkspaceMembershipRole } from './workspacePresentation'
 
 export type WorkspaceDashboardBoard = BoardPersistenceSummary
@@ -37,5 +38,5 @@ export type GroupWorkspaceDashboardRecord = {
   id: string
   members: WorkspaceDashboardMember[]
   name: string
-  planKey: Extract<PlanKey, 'collaborate_plus' | 'collaborate_start'>
+  planKey: GroupPersonalPlanKey
 }

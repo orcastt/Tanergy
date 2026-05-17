@@ -23,6 +23,7 @@ import type {
   TeamWorkspaceDashboardRecord,
   WorkspaceDashboardMember,
 } from '@/features/workspaces/workspaceDashboardTypes'
+import { normalizeGroupPersonalPlanKey } from '@/features/workspaces/groupPersonalPlanSupport'
 import type { WorkspaceMembershipRole } from '@/features/workspaces/workspacePresentation'
 
 type WorkspaceDashboardKind = 'group' | 'team'
@@ -156,7 +157,7 @@ function buildDefaultWorkspace(
     id: workspaceId,
     kind: kind === 'team' ? 'team_workspace' : 'group_workspace',
     name: kind === 'team' ? 'Team workspace' : 'Group workspace',
-    planKey: kind === 'team' ? 'team_start' : 'collaborate_start',
+    planKey: kind === 'team' ? 'team_start' : 'free_canvas',
     role: 'owner',
   }
 }
@@ -219,7 +220,7 @@ function buildGroupRecord({
     id: workspace.id,
     members,
     name: workspace.name,
-    planKey: workspace.planKey === 'collaborate_plus' ? 'collaborate_plus' : 'collaborate_start',
+    planKey: normalizeGroupPersonalPlanKey(workspace.planKey),
     totalCredits,
     totalCreditsRemaining: remainingCredits,
   }

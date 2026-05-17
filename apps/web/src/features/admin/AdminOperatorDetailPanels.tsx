@@ -1,12 +1,12 @@
 'use client'
 
+import { resolveGroupWorkspaceLimit } from '@/features/workspaces/groupPersonalPlanSupport'
 import { EmptyRow, buildStableListKey, formatCompactDate, formatNumber, truncateMiddle } from './adminAiShared'
 import { BillingHistoryTable, CreditBar } from './AdminOperatorDetailTables'
 import { GroupPlanRow } from './adminOperatorDetailActionBuilders'
 import {
   buildBillingCreditTargets,
   formatRegistrationState,
-  isActivePlan,
   StatusText,
   UserPlanStack,
   WorkspaceCreditStack,
@@ -88,7 +88,7 @@ export function AdminOperatorBillingPanel({
                   </td>
                   <td><WorkspacePlanStack rows={teamPlans} /></td>
                   <td><WorkspaceCreditStack rows={teamPlans} /></td>
-                  <td><UserPlanStack rows={groupPlans} /></td>
+                  <td><UserPlanStack fallbackPlanKey="free_canvas" rows={groupPlans} /></td>
                   <td><CreditBar credit={user.personalCredit} /></td>
                   <td className="admin-users-cell-spent">
                     <strong>{formatNumber(user.totalCreditsSpent)}</strong>
@@ -192,10 +192,10 @@ export function AdminOperatorGroupPlanPanel({
   userId: string
 }) {
   const primaryPlan = detail?.groupPlansActive[0] ?? detail?.groupPlansExpired[0] ?? null
+  const primaryPlanKey = primaryPlan?.planKey ?? 'free_canvas'
   const historyPlans = [...(detail?.groupPlansActive ?? []).slice(1), ...(detail?.groupPlansExpired ?? [])]
   const createdGroups = detail?.ownedGroups ?? []
-  const groupLimit = primaryPlan?.planKey === 'collaborate_plus' ? 20 : 10
-  const activePlan = primaryPlan && isActivePlan(primaryPlan.status) ? primaryPlan : null
+  const groupLimit = resolveGroupWorkspaceLimit(primaryPlanKey)
   const groupLimitReached = createdGroups.length >= groupLimit
   const canFreezePlan = primaryPlan?.status === 'active' || primaryPlan?.status === 'trialing' || primaryPlan?.status === 'paused'
   const freezeActionMode = primaryPlan?.status === 'paused' ? 'unfreeze' : 'freeze'
@@ -207,7 +207,7 @@ export function AdminOperatorGroupPlanPanel({
         <div className="management-actions">
           <button
             className="product-button product-button-secondary"
-            disabled={!activePlan || groupLimitReached}
+            disabled={groupLimitReached}
             onClick={() => onAction({ type: 'create-group', userId })}
             type="button"
           >
@@ -216,7 +216,7 @@ export function AdminOperatorGroupPlanPanel({
           <button
             className="product-button product-button-secondary"
             onClick={() => onAction({
-              currentPlanKey: primaryPlan?.planKey,
+              currentPlanKey: primaryPlanKey,
               currentStatus: primaryPlan?.status,
               periodEnd: primaryPlan?.periodEnd,
               periodStart: primaryPlan?.periodStart,
@@ -251,7 +251,7 @@ export function AdminOperatorGroupPlanPanel({
         </div>
       </div>
       <div className="admin-group-plan-section">
-        <OwnedGroupsTable groupLimit={groupLimit} onAction={onAction} plan={primaryPlan} rows={createdGroups} />
+        <OwnedGroupsTable groupLimit={groupLimit} onAction={onAction} plan={primaryPlan} planKeyFallback={primaryPlanKey} rows={createdGroups} />
         {historyPlans.length ? (
           <div className="management-table-wrap admin-group-plan-history">
             <table className="management-table compact admin-group-plan-history-table">

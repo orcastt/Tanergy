@@ -1,5 +1,6 @@
 'use client'
 
+import { formatPlanKey } from './AdminOperatorDetailTables'
 import { AdminWorkspaceFinanceActions } from './AdminWorkspaceFinanceActions'
 import { EmptyRow, MetaLine, formatDate, formatNumber } from './adminAiShared'
 import type { AdminDirectoryWorkspaceDetailResource, AdminDirectoryWorkspacesResource } from './adminTypes'
@@ -29,14 +30,14 @@ export function AdminWorkspaceDetailPanel({
         { label: 'Seat capacity', value: workspace.seatCapacity || 'Not assigned' },
       ]
     : [
-        { label: 'Collaborate plan', value: workspace.ownerCollaboratePlanKey ?? 'free' },
+        { label: 'Owner personal plan', value: formatPlanKey(workspace.ownerCollaboratePlanKey ?? 'free_canvas') },
         { label: 'Members', value: formatNumber(workspace.memberCount) },
         { label: 'Boards', value: formatNumber(workspace.boardCount) },
         {
-          label: 'Subscription ends',
+          label: 'Personal plan period',
           value: workspace.subscriptionPeriodEnd ? formatDate(workspace.subscriptionPeriodEnd) : 'Open ended',
         },
-        { label: 'Group usage', value: formatNumber(workspace.usageCredits) },
+        { label: 'Personal usage in this Group', value: formatNumber(workspace.usageCredits) },
         { label: 'Owner', value: workspace.ownerEmail || workspace.ownerId || 'Unknown owner' },
       ]
 
