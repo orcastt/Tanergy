@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import { getShapeBounds, worldToScreen, type CanvasBounds, type CanvasCamera, type CanvasDocument, type CanvasShape } from '@/features/canvas-engine'
 import type {
   BoardCollaborationSessionRecord,
@@ -7,6 +8,7 @@ import type {
 } from '@/features/boards/boardCollaborationTypes'
 import { getCollaborationAccent } from '@/features/collaboration/collaborationAccent'
 import { formatSessionPresenceActivity } from './konvaCollaborationPresencePresentation'
+import { useSmoothedCollaborationCursors } from './useSmoothedCollaborationCursors'
 
 type KonvaCollaborationOverlayProps = {
   activePageId?: string | null
@@ -32,6 +34,14 @@ export function KonvaCollaborationOverlay({
     .filter((session) => !session.isSelf)
     .filter((session) => isSessionVisibleOnPage(activePageId, session.presence.activePageId ?? null))
     .filter((session) => Boolean(session.presence.cursor))
+  const animatedCursorPositions = useSmoothedCollaborationCursors(useMemo(
+    () => visibleSessions.flatMap((session) => {
+      const point = session.presence.cursor
+      if (!point) return []
+      return [{ id: session.id, point }] as const
+    }),
+    [visibleSessions],
+  ))
   const visibleTransformHints = sessions
     .filter((session) => !session.isSelf)
     .filter((session) => isSessionVisibleOnPage(activePageId, session.presence.activePageId ?? null))
@@ -153,7 +163,7 @@ export function KonvaCollaborationOverlay({
         </div>
       ))}
       {visibleSessions.map((session) => {
-        const cursor = session.presence.cursor
+        const cursor = animatedCursorPositions.get(session.id) ?? session.presence.cursor
         if (!cursor) return null
         const point = worldToScreen(cursor, camera)
         if (point.x < -120 || point.y < -80 || point.x > stageWidth + 120 || point.y > stageHeight + 80) {

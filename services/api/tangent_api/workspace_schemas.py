@@ -7,11 +7,19 @@ from tangent_api.schema_base import TangentApiModel
 
 
 class WorkspacePlanSummary(TangentApiModel):
+    annual_price_usd: Optional[int] = Field(default=None, alias="annualPriceUsd")
     billing_period: str = Field(alias="billingPeriod")
+    board_limit: Optional[int] = Field(default=None, alias="boardLimit")
+    group_member_limit: Optional[int] = Field(default=None, alias="groupMemberLimit")
+    group_workspace_limit: Optional[int] = Field(default=None, alias="groupWorkspaceLimit")
     included_credits: int = Field(alias="includedCredits")
     monthly_price_usd: Optional[int] = Field(default=None, alias="monthlyPriceUsd")
     name: str
+    page_limit: Optional[int] = Field(default=None, alias="pageLimit")
     plan_key: str = Field(alias="planKey")
+    registration_credits: int = Field(default=0, alias="registrationCredits")
+    seat_max: Optional[int] = Field(default=None, alias="seatMax")
+    seat_min: Optional[int] = Field(default=None, alias="seatMin")
     seat_range: Optional[str] = Field(default=None, alias="seatRange")
 
 
@@ -30,10 +38,13 @@ class BillingWorkspaceSummary(TangentApiModel):
 
 
 class BillingMeResponse(TangentApiModel):
+    billing_interval: Optional[str] = Field(default=None, alias="billingInterval")
     charge_scope: str = Field(alias="chargeScope")
     credits: PersonalCreditSummary
+    current_period_start: Optional[str] = Field(default=None, alias="currentPeriodStart")
     current_period_end: Optional[str] = Field(default=None, alias="currentPeriodEnd")
     error: Optional[str] = None
+    next_refresh_at: Optional[str] = Field(default=None, alias="nextRefreshAt")
     ok: bool
     payer_label: str = Field(alias="payerLabel")
     plan: WorkspacePlanSummary

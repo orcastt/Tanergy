@@ -276,6 +276,82 @@ def test_group_workspace_invite_accept_enforces_member_cap(monkeypatch):
     assert len(fake_db.workspace_members) == 15
 
 
+def test_group_workspace_invite_accept_does_not_count_owned_groups_against_join(monkeypatch):
+    token = "group-join-ok-token"
+    fake_db = FakePostgresDatabase()
+    fake_db.workspaces = [
+        {
+            "id": "workspace_group_owned",
+            "kind": "group_workspace",
+            "name": "Owned Group",
+            "owner_id": "user_group_owner",
+            "status": "active",
+        },
+        {
+            "id": "workspace_group_invited",
+            "kind": "group_workspace",
+            "name": "Invited Group",
+            "owner_id": "user_other_owner",
+            "status": "active",
+        },
+    ]
+    fake_db.workspace_members = [
+        {
+            "display_name": "Owner",
+            "role": "owner",
+            "user_id": "user_group_owner",
+            "workspace_id": "workspace_group_owned",
+        },
+        {
+            "display_name": "Other Owner",
+            "role": "owner",
+            "user_id": "user_other_owner",
+            "workspace_id": "workspace_group_invited",
+        },
+    ]
+    fake_db.workspace_invitations = [
+        {
+            "accepted_at": None,
+            "accepted_by": None,
+            "created_at": "2026-05-08T00:00:00Z",
+            "email": None,
+            "expires_at": "2999-01-01T00:00:00Z",
+            "id": "invite_group_join",
+            "invited_by": "user_other_owner",
+            "metadata": {"workspaceKind": "group_workspace"},
+            "revoked_at": None,
+            "role": "editor",
+            "target_user_id": None,
+            "token_hash": hashlib.sha256(token.encode("utf-8")).hexdigest(),
+            "workspace_id": "workspace_group_invited",
+        }
+    ]
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    accepted = client.post(
+        f"/api/v1/workspaces/invitations/{token}/accept",
+        headers={
+            "x-tangent-user-id": "user_group_owner",
+            "x-tangent-workspace-id": "workspace_personal",
+            "x-tangent-workspace-kind": "solo_workspace",
+        },
+    )
+
+    assert accepted.status_code == 200
+    accepted_result = accepted.json()["result"]
+    assert accepted_result["workspaceId"] == "workspace_group_invited"
+    assert accepted_result["role"] == "editor"
+    assert any(
+        row["workspace_id"] == "workspace_group_invited"
+        and row["user_id"] == "user_group_owner"
+        and row["role"] == "editor"
+        for row in fake_db.workspace_members
+    )
+    assert fake_db.workspace_invitations[0]["accepted_by"] == "user_group_owner"
+
+
 def test_workspace_invite_accept_preserves_board_target_metadata(monkeypatch):
     fake_db = FakePostgresDatabase()
     monkeypatch.setenv("DATABASE_URL", "postgresql://test")

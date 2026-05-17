@@ -50,18 +50,22 @@ npx --yes vercel deploy --prod --yes
 
 ```bash
 ssh deploy@5.78.122.74
-cd ~/TanvasAgent
-git pull
-docker compose -f deploy/staging/docker-compose.api.yml build
-docker compose -f deploy/staging/docker-compose.api.yml run --rm api alembic upgrade head
-docker compose -f deploy/staging/docker-compose.api.yml up -d
-docker compose -f deploy/staging/docker-compose.api.yml ps
+release_dir="$HOME/apps/Tangent_release_<commit-sha>"
+git clone --depth 1 --branch <branch> <repo-url> "$release_dir"
+cp "$HOME/apps/shared/staging/api.env" "$release_dir/deploy/staging/api.env"
+cd "$release_dir"
+docker compose -p staging -f deploy/staging/docker-compose.api.yml build api
+docker compose -p staging -f deploy/staging/docker-compose.api.yml run --rm api alembic upgrade head
+docker compose -p staging -f deploy/staging/docker-compose.api.yml up -d api
+docker compose -p staging -f deploy/staging/docker-compose.api.yml ps
 curl http://127.0.0.1:8000/health
 curl -sS https://api-staging.tanergy.cc/health
 ```
 
 规则：
 
+- 不要长期在一棵脏工作树里 `git pull`。staging 现在应该用干净的 `Tangent_release_<sha>` 目录滚动部署。
+- staging API env 的权威副本应放在服务器本地私有位置，例如 `~/apps/shared/staging/api.env`，再复制或软链进当前 release。
 - 只有前端改动时，不要动 Hetzner API 机
 - migration 变了，就要跑 Alembic
 - 只有 API 改动时，不一定需要重新发 Vercel
@@ -1059,8 +1063,9 @@ curl -fsSL https://get.docker.com | sh
 ### 15. 克隆代码
 
 ```bash
-git clone <your-private-github-repo-url> TanvasAgent
-cd TanvasAgent
+release_dir="$HOME/apps/Tangent_release_<commit-sha>"
+git clone <your-private-github-repo-url> "$release_dir"
+cd "$release_dir"
 ```
 
 如果是私有仓库，需要配置 GitHub deploy key 或用 GitHub CLI/token。
@@ -1068,8 +1073,9 @@ cd TanvasAgent
 ### 16. 创建 FastAPI env 文件
 
 ```bash
-cp deploy/staging/api.env.example deploy/staging/api.env
-nano deploy/staging/api.env
+mkdir -p ~/apps/shared/staging
+cp deploy/staging/api.env.example ~/apps/shared/staging/api.env
+nano ~/apps/shared/staging/api.env
 ```
 
 填写这些：

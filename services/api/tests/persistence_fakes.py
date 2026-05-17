@@ -1637,8 +1637,11 @@ class FakePostgresCursor:
             matches.sort(key=lambda row: row.get("updated_at", ""), reverse=True)
             if matches:
                 row = matches[0]
+                current_period_start = row.get("current_period_start")
                 current_period_end = row.get("current_period_end")
-                if normalized.startswith("SELECT plan_key, seat_capacity, current_period_end"):
+                if normalized.startswith("SELECT plan_key, seat_capacity, current_period_start, current_period_end"):
+                    self.row = (row.get("plan_key"), row.get("seat_capacity", 0), current_period_start, current_period_end)
+                elif normalized.startswith("SELECT plan_key, seat_capacity, current_period_end"):
                     self.row = (row.get("plan_key"), row.get("seat_capacity", 0), current_period_end)
                 else:
                     self.row = (row.get("plan_key"), row.get("seat_capacity", 0))
@@ -1673,8 +1676,11 @@ class FakePostgresCursor:
             ]
             if matches:
                 matches.sort(key=lambda row: row.get("updated_at", ""), reverse=True)
+                current_period_start = matches[0].get("current_period_start")
                 current_period_end = matches[0].get("current_period_end")
-                if normalized.startswith("SELECT ca.id, s.plan_key, s.current_period_end"):
+                if normalized.startswith("SELECT ca.id, s.plan_key, s.current_period_start, s.current_period_end"):
+                    self.row = (matches[0]["account_id"], matches[0]["plan_key"], current_period_start, current_period_end)
+                elif normalized.startswith("SELECT ca.id, s.plan_key, s.current_period_end"):
                     self.row = (matches[0]["account_id"], matches[0]["plan_key"], current_period_end)
                 else:
                     self.row = (matches[0]["account_id"], matches[0]["plan_key"])
@@ -1707,7 +1713,7 @@ class FakePostgresCursor:
             row = next((row for row in self.database.subscriptions if row["id"] == params[0]), None)
             if row:
                 self.row = (row["id"], row.get("account_id"), row.get("owner_type"), row.get("owner_id"), row.get("workspace_id"))
-        elif normalized.startswith("SELECT id, seat_capacity, plan_key FROM tangent_subscriptions"):
+        elif normalized.startswith("SELECT id, seat_capacity, plan_key") and "FROM tangent_subscriptions" in normalized:
             account_id = params[0]
             matches = [
                 row for row in self.database.subscriptions
@@ -1715,7 +1721,17 @@ class FakePostgresCursor:
             ]
             matches.sort(key=lambda row: row.get("updated_at", ""), reverse=True)
             if matches:
-                self.row = (matches[0]["id"], matches[0].get("seat_capacity", 0), matches[0].get("plan_key"))
+                row = matches[0]
+                if normalized.startswith("SELECT id, seat_capacity, plan_key, current_period_start, current_period_end"):
+                    self.row = (
+                        row["id"],
+                        row.get("seat_capacity", 0),
+                        row.get("plan_key"),
+                        row.get("current_period_start"),
+                        row.get("current_period_end"),
+                    )
+                else:
+                    self.row = (row["id"], row.get("seat_capacity", 0), row.get("plan_key"))
         elif normalized.startswith("SELECT id FROM tangent_subscriptions"):
             account_id = params[0]
             matches = [
@@ -1854,6 +1870,23 @@ class FakePostgresCursor:
                     "updated_at": "2026-05-06T00:50:00Z",
                     "workspace_id": params[4],
                 }
+            elif len(params) == 10:
+                row = {
+                    "account_id": params[1],
+                    "current_period_end": params[9],
+                    "current_period_start": params[8],
+                    "id": params[0],
+                    "owner_id": params[2],
+                    "owner_type": "workspace",
+                    "plan_family": "team",
+                    "plan_key": params[6],
+                    "provider": params[4],
+                    "provider_subscription_id": params[5],
+                    "seat_capacity": params[7],
+                    "status": "active",
+                    "updated_at": "2026-05-06T00:50:00Z",
+                    "workspace_id": params[3],
+                }
             elif len(params) == 9:
                 row = {
                     "account_id": params[1],
@@ -1870,6 +1903,23 @@ class FakePostgresCursor:
                     "status": "active",
                     "updated_at": "2026-05-06T00:50:00Z",
                     "workspace_id": params[3],
+                }
+            elif len(params) == 8:
+                row = {
+                    "account_id": params[1],
+                    "current_period_end": params[7],
+                    "current_period_start": params[6],
+                    "id": params[0],
+                    "owner_id": params[2],
+                    "owner_type": "user",
+                    "plan_family": "collaborate",
+                    "plan_key": params[5],
+                    "provider": params[3],
+                    "provider_subscription_id": params[4],
+                    "seat_capacity": 1,
+                    "status": "active",
+                    "updated_at": "2026-05-06T00:50:00Z",
+                    "workspace_id": None,
                 }
             elif len(params) == 7:
                 row = {
@@ -1908,12 +1958,24 @@ class FakePostgresCursor:
                 plan_key, plan_family, owner_type, owner_id, workspace_id, provider_subscription_id, status, seat_capacity, current_period_end, subscription_id = params
                 provider = "admin_manual"
                 current_period_start = "2026-05-06T00:50:00Z"
+            elif len(params) == 9:
+                plan_key, owner_id, workspace_id, provider, provider_subscription_id, seat_capacity, current_period_start, current_period_end, subscription_id = params
+                owner_type = "workspace" if workspace_id is not None else "user"
+                plan_family = "team" if workspace_id is not None else "collaborate"
+                status = "active"
             elif len(params) == 8:
                 plan_key, owner_id, workspace_id, provider, provider_subscription_id, seat_capacity, current_period_end, subscription_id = params
                 owner_type = "workspace" if workspace_id is not None else "user"
                 plan_family = "team" if workspace_id is not None else "collaborate"
                 status = "active"
                 current_period_start = "2026-05-06T00:50:00Z"
+            elif len(params) == 7:
+                plan_key, owner_id, provider, provider_subscription_id, current_period_start, current_period_end, subscription_id = params
+                workspace_id = None
+                seat_capacity = 1
+                owner_type = "user"
+                plan_family = "collaborate"
+                status = "active"
             elif len(params) == 6:
                 plan_key, owner_id, provider, provider_subscription_id, current_period_end, subscription_id = params
                 workspace_id = None

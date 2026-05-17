@@ -13,60 +13,52 @@ import {
   loadBillingPayments,
   loadCreditLedger,
 } from './billingClient'
-import { formatCredits, formatDate } from './billingPresentation'
-import { useWorkspaceCommerceOverview, type CommerceGroupSummary, type CommerceTeamCard } from './useWorkspaceCommerceOverview'
-
-type UsageEntry = {
-  actionLabel: string
-  amountLabel: string
-  happenedAt: string
-  id: string
-  scopeLabel: string
-}
+import {
+  formatCredits,
+} from './billingPresentation'
+import {
+  BillingEmptyState,
+  BillingSectionHeader,
+} from './billingSurfaceBlocks'
+import {
+  type ActivityRow,
+  formatLedgerAction,
+  formatPaymentAmount,
+  PersonalUsageBand,
+  TeamUsageBand,
+  UsageActivityTable,
+  UsageShell,
+} from './billingUsageBands'
+import {
+  useWorkspaceCommerceOverview,
+  type CommerceTeamCard,
+} from './useWorkspaceCommerceOverview'
 
 export function BillingWorkspaceUsageView() {
   const searchParams = useSearchParams()
-  const requestedWorkspaceId = searchParams.get('workspace')
-  return (
-    <BillingWorkspaceUsageScreen
-      key={requestedWorkspaceId ?? 'all'}
-      requestedWorkspaceId={requestedWorkspaceId}
-    />
-  )
+  return <UsageScreen requestedWorkspaceId={searchParams.get('workspace')} />
 }
 
-function BillingWorkspaceUsageScreen({
-  requestedWorkspaceId,
-}: {
-  requestedWorkspaceId: null | string
-}) {
-  const [entries, setEntries] = useState<UsageEntry[]>([])
+function UsageScreen({ requestedWorkspaceId }: { requestedWorkspaceId: null | string }) {
+  const [activityRows, setActivityRows] = useState<ActivityRow[]>([])
   const [isActionPending, setIsActionPending] = useState<null | string>(null)
-  const [isLedgerLoading, setIsLedgerLoading] = useState(false)
+  const [isActivityLoading, setIsActivityLoading] = useState(false)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const { error, overview, reload, status } = useWorkspaceCommerceOverview()
-  const ownedTeams = useMemo(
-    () => overview?.teamCards.filter((card) => card.relationship === 'created') ?? [],
-    [overview],
-  )
-  const joinedTeams = useMemo(
-    () => overview?.teamCards.filter((card) => card.relationship === 'joined') ?? [],
-    [overview],
-  )
+
+  const ownedTeams = useMemo(() => overview?.teamCards.filter((card) => card.relationship === 'created') ?? [], [overview])
+  const joinedTeams = useMemo(() => overview?.teamCards.filter((card) => card.relationship === 'joined') ?? [], [overview])
   const selectedTeam = useMemo(
-    () => overview?.teamCards.find((card) => card.id === requestedWorkspaceId) ?? ownedTeams[0] ?? joinedTeams[0] ?? null,
-    [joinedTeams, overview, ownedTeams, requestedWorkspaceId],
+    () => overview?.teamCards.find((card) => card.id === requestedWorkspaceId) ?? null,
+    [overview, requestedWorkspaceId],
   )
-  const ledgerTargets = useMemo(
+  const activityScopes = useMemo(
     () => {
       if (!overview) return []
-      const targets = [
-        overview.groupSummary.workspace,
-        ...(requestedWorkspaceId && selectedTeam ? [selectedTeam.workspace] : ownedTeams.slice(0, 12).map((card) => card.workspace)),
-      ]
+      const teamScopes = requestedWorkspaceId && selectedTeam ? [selectedTeam] : ownedTeams.slice(0, 8)
       const seen = new Set<string>()
-      return targets.filter((workspace) => {
-        if (!workspace?.id || seen.has(workspace.id)) return false
+      return [overview.groupSummary.workspace, ...teamScopes.map((card) => card.workspace)].filter((workspace) => {
+        if (seen.has(workspace.id)) return false
         seen.add(workspace.id)
         return true
       })
@@ -75,17 +67,16 @@ function BillingWorkspaceUsageScreen({
   )
 
   useEffect(() => {
-    if (!overview) return
+    if (!overview || activityScopes.length === 0) return
     let cancelled = false
-    if (ledgerTargets.length === 0) return
-
     queueMicrotask(() => {
-      if (!cancelled) setIsLedgerLoading(true)
+      if (!cancelled) setIsActivityLoading(true)
     })
-    Promise.all(ledgerTargets.map(async (workspace) => {
+
+    Promise.all(activityScopes.map(async (workspace) => {
       const [ledger, payments] = await Promise.allSettled([
-        loadCreditLedger({ limit: 12, workspaceId: workspace.id }, { workspace }),
-        loadBillingPayments({ limit: 8, workspaceScoped: true }, { workspace }),
+        loadCreditLedger({ limit: 10, workspaceId: workspace.id }, { workspace }),
+        loadBillingPayments({ limit: 6, workspaceScoped: true }, { workspace }),
       ])
       return [
         ...(ledger.status === 'fulfilled' ? ledger.value.entries.map((entry) => ({
@@ -96,369 +87,150 @@ function BillingWorkspaceUsageScreen({
           scopeLabel: workspace.name,
         })) : []),
         ...(payments.status === 'fulfilled' ? payments.value.payments.map((payment) => ({
-          actionLabel: formatPaymentAction(payment.kind, payment.status),
-          amountLabel: formatCurrency(payment.amountCents, payment.currency),
+          actionLabel: `${payment.kind.replace(/_/g, ' ')} · ${payment.status}`,
+          amountLabel: formatPaymentAmount(payment.amountCents, payment.currency),
           happenedAt: payment.createdAt,
           id: payment.id,
           scopeLabel: workspace.name,
         })) : []),
       ]
     }))
-      .then((loadedEntries) => {
+      .then((rows) => {
         if (cancelled) return
-        setEntries(loadedEntries.flat().sort((left, right) => new Date(right.happenedAt).getTime() - new Date(left.happenedAt).getTime()))
-      })
-      .catch(() => {
-        if (cancelled) return
-        setEntries([])
+        setActivityRows(rows.flat().sort((left, right) => new Date(right.happenedAt).getTime() - new Date(left.happenedAt).getTime()))
       })
       .finally(() => {
-        if (!cancelled) setIsLedgerLoading(false)
+        if (!cancelled) setIsActivityLoading(false)
       })
 
     return () => {
       cancelled = true
     }
-  }, [ledgerTargets, overview])
+  }, [activityScopes, overview])
 
   if (!overview && status === 'loading') {
-    return (
-      <div className="product-page workspace-commerce-page">
-        <section className="product-page-header workspace-commerce-header">
-          <div className="workspace-commerce-header-copy">
-            <h1 className="product-page-title">Billing and usage</h1>
-            <p className="workspace-commerce-status">Loading live credit balances and workspace activity…</p>
-          </div>
-        </section>
-      </div>
-    )
+    return <UsageShell subtitle="Loading active plans, workspace credits, and recent activity…" />
   }
 
   if (!overview) {
-    return (
-      <div className="product-page workspace-commerce-page">
-        <section className="product-page-header workspace-commerce-header">
-          <div className="workspace-commerce-header-copy">
-            <h1 className="product-page-title">Billing and usage</h1>
-            <p className="workspace-commerce-status">{error ?? 'Workspace billing failed to load.'}</p>
-          </div>
-        </section>
-      </div>
-    )
+    return <UsageShell subtitle={error ?? 'Usage failed to load.'} />
   }
 
-  const totalTeamCreditsRemaining = ownedTeams.reduce((total, card) => total + card.remainingCredits, 0)
-  const totalTeamCreditsCapacity = ownedTeams.reduce((total, card) => total + card.totalCredits, 0)
-  const totalTeamSeats = ownedTeams.reduce((total, card) => total + card.seatLimit, 0)
-  const totalTeamSeatsUsed = ownedTeams.reduce((total, card) => total + card.seatsUsed, 0)
+  const { groupSummary } = overview
 
   return (
     <div className="product-page workspace-commerce-page">
       <section className="product-page-header workspace-commerce-header">
         <div className="workspace-commerce-header-copy">
-          <h1 className="product-page-title">Billing and usage</h1>
+          <h1 className="product-page-title">Usage</h1>
+          <p className="product-hero-copy">
+            Active personal and Team plans, current credit state, and recent activity across the workspaces you actually use.
+          </p>
           {statusMessage ? <p className="workspace-commerce-status" role="status">{statusMessage}</p> : null}
           {!statusMessage && error ? <p className="workspace-commerce-status" role="status">{error}</p> : null}
         </div>
       </section>
 
-      <section className="workspace-commerce-section-shell" aria-label="Team subscriptions">
-        <div className="workspace-commerce-section-head">
-          <h2>Team subscriptions</h2>
-          <span className="workspace-commerce-note">{ownedTeams.length} owned · {joinedTeams.length} joined</span>
-        </div>
-        <div className="workspace-commerce-summary-grid workspace-commerce-summary-grid-compact">
-          <SummaryCard label="Subscribed teams" meta="Owner workspaces" value={String(ownedTeams.length)} />
-          <SummaryCard label="Credits" meta="Across Team plans" value={`${formatCredits(totalTeamCreditsRemaining)} / ${formatCredits(totalTeamCreditsCapacity)}`} />
-          <SummaryCard label="Seats" meta="Across Team plans" value={`${totalTeamSeatsUsed} / ${totalTeamSeats}`} />
-        </div>
-        {ownedTeams.length ? (
-          <div className="workspace-commerce-card-list">
-            {ownedTeams.map((card) => (
-              <TeamUsageCard
-                card={card}
-                isPending={isActionPending?.startsWith(`${card.id}:`) ?? false}
-                key={card.id}
-                onBuySeat={() => void handleTeamSeat(card)}
-                onTopUp={() => void handleTeamTopUp(card)}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="workspace-commerce-empty-card">No owned Team subscriptions yet.</div>
-        )}
-        {joinedTeams.length ? (
-          <div className="workspace-commerce-subsection">
-            <div className="workspace-commerce-section-head is-subsection">
-              <h3>Joined teams</h3>
-              <span className="workspace-commerce-note">{joinedTeams.length}</span>
-            </div>
-            <div className="workspace-commerce-card-list">
-              {joinedTeams.map((card) => <TeamUsageCard card={card} key={card.id} />)}
-            </div>
-          </div>
-        ) : null}
-      </section>
-
-      <section className="workspace-commerce-section-shell" aria-label="Group subscription">
-        <div className="workspace-commerce-section-head">
-          <h2>Group subscription</h2>
-          <span className="workspace-commerce-note">{overview.groupSummary.groupsCreated} created · {overview.groupSummary.joinedGroups} joined</span>
-        </div>
-        <GroupUsageCard
-          groupSummary={overview.groupSummary}
-          isPending={isActionPending?.startsWith('group:') ?? false}
+      <section className="workspace-commerce-section-shell">
+        <BillingSectionHeader
+          action={<Link className="workspace-commerce-tertiary-link" href="/billing">Open Subscription</Link>}
+          description="Personal plan state, personal wallet balance, Group creation capacity, and personal-credit-backed Group activity."
+          title="Personal usage"
+        />
+        <PersonalUsageBand
+          groupSummary={groupSummary}
+          isPending={Boolean(isActionPending?.startsWith('group:'))}
           onAddGroup={() => void handleGroupAdd()}
-          onTopUp={() => void handleGroupTopUp()}
+          onTopUp={() => void handlePersonalTopUp()}
         />
       </section>
 
-      <section className="workspace-commerce-ledger">
-        <div className="workspace-commerce-section-head">
-          <h2>Ledger</h2>
-          <span className="workspace-commerce-note">{isLedgerLoading ? 'Refreshing' : `${ledgerTargets.length === 0 ? 0 : entries.length} rows`}</span>
+      <section className="workspace-commerce-section-shell">
+        <BillingSectionHeader
+          description="Owned Team workspaces can top up or buy seats here. Joined Team workspaces are visible for status, but only owner/admin can change billing."
+          title="Team usage"
+        />
+        <div className="workspace-commerce-band-stack">
+          {ownedTeams.length ? ownedTeams.map((team) => (
+            <TeamUsageBand
+              isPending={Boolean(isActionPending?.startsWith(`${team.id}:`))}
+              key={team.id}
+              onBuySeat={() => void handleTeamSeat(team)}
+              onTopUp={() => void handleTeamTopUp(team)}
+              team={team}
+            />
+          )) : <BillingEmptyState message="No owned Team workspaces yet." />}
+          {joinedTeams.length ? joinedTeams.map((team) => <TeamUsageBand key={team.id} team={team} />) : null}
         </div>
-        <div className="workspace-commerce-ledger-table">
-          <div className="workspace-commerce-ledger-head">
-            <span>When</span>
-            <span>Scope</span>
-            <span>Action</span>
-            <span>Change</span>
-          </div>
-          {(ledgerTargets.length === 0 ? [] : entries).map((entry) => (
-            <div className="workspace-commerce-ledger-row" key={entry.id}>
-              <span>{formatDate(entry.happenedAt)}</span>
-              <span>{entry.scopeLabel}</span>
-              <span>{entry.actionLabel}</span>
-              <span className="workspace-commerce-ledger-amount">{entry.amountLabel}</span>
-            </div>
-          ))}
-        </div>
+      </section>
+
+      <section className="workspace-commerce-section-shell workspace-commerce-ledger">
+        <BillingSectionHeader
+          action={<span className="workspace-commerce-note">{isActivityLoading ? 'Refreshing…' : `${activityRows.length} rows`}</span>}
+          description="Recent credit ledger and payment activity from your personal scope and visible Team workspaces."
+          title="Recent activity"
+        />
+        <UsageActivityTable activityRows={activityRows} />
       </section>
     </div>
   )
 
-  async function handleTeamTopUp(card: CommerceTeamCard) {
-    const credits = card.planKey === 'team_growth' ? 1200 : 800
-    await runAction(`${card.id}:topup`, async () => {
+  async function handleTeamTopUp(team: CommerceTeamCard) {
+    await runAction(`${team.id}:topup`, async () => {
       const checkout = await createWorkspaceTopupCheckout({
-        credits,
-        metadata: { action: 'team_wallet_topup', workspaceId: card.id },
-      }, { workspace: card.workspace })
-      const result = await continueBillingCheckout(checkout, { manualCompleteWorkspace: card.workspace })
-      await refreshUsage()
+        credits: team.planKey === 'team_growth' ? 1200 : 800,
+        metadata: { action: 'team_wallet_topup', workspaceId: team.id },
+      }, { workspace: team.workspace })
+      const result = await continueBillingCheckout(checkout, { manualCompleteWorkspace: team.workspace })
+      refreshUsage()
       return result.message
     })
   }
 
-  async function handleTeamSeat(card: CommerceTeamCard) {
-    await runAction(`${card.id}:seat`, async () => {
+  async function handleTeamSeat(team: CommerceTeamCard) {
+    await runAction(`${team.id}:seat`, async () => {
       const checkout = await createWorkspaceSeatCheckout({
-        metadata: { action: 'team_seat_purchase', workspaceId: card.id },
-        planKey: card.planKey,
+        metadata: { action: 'team_seat_purchase', workspaceId: team.id },
+        planKey: team.planKey,
         quantity: 1,
-      }, { workspace: card.workspace })
-      const result = await continueBillingCheckout(checkout, { manualCompleteWorkspace: card.workspace })
-      await refreshUsage()
+      }, { workspace: team.workspace })
+      const result = await continueBillingCheckout(checkout, { manualCompleteWorkspace: team.workspace })
+      refreshUsage()
       return result.message
     })
   }
 
-  async function handleGroupTopUp() {
+  async function handlePersonalTopUp() {
     await runAction('group:topup', async () => {
-      const checkout = await createBillingTopupCheckout({
-        credits: 400,
-        metadata: { action: 'personal_group_topup' },
-      })
+      const checkout = await createBillingTopupCheckout({ credits: 400, metadata: { action: 'personal_topup' } })
       const result = await continueBillingCheckout(checkout)
-      await refreshUsage()
+      refreshUsage()
       return result.message
     })
   }
 
   async function handleGroupAdd() {
     await runAction('group:add', async () => {
-      const name = window.prompt('Group name', 'New Group')?.trim()
-      if (!name) throw new Error('Group name is required.')
-      const response = await createGroupWorkspace({ name })
-      await refreshUsage()
-      return `${response.workspace.name} created.`
+      const created = await createGroupWorkspace({ name: `Group ${groupSummary.groupsCreated + 1}` })
+      refreshUsage()
+      return created.workspace ? `${created.workspace.name} created.` : 'Group created.'
     })
   }
 
-  async function refreshUsage() {
+  function refreshUsage() {
     requestCurrentSessionRefresh()
     reload()
-    setStatusMessage('Refreshing workspace billing…')
   }
 
-  async function runAction(actionId: string, action: () => Promise<string>) {
-    setIsActionPending(actionId)
+  async function runAction(actionKey: string, callback: () => Promise<string>) {
+    setIsActionPending(actionKey)
     setStatusMessage(null)
     try {
-      setStatusMessage(await action())
+      setStatusMessage(await callback())
     } catch (nextError) {
-      setStatusMessage(nextError instanceof Error ? nextError.message : 'Billing action failed.')
+      setStatusMessage(nextError instanceof Error ? nextError.message : 'Action failed.')
     } finally {
       setIsActionPending(null)
     }
   }
-}
-
-function TeamUsageCard({
-  card,
-  isPending = false,
-  onBuySeat,
-  onTopUp,
-}: {
-  card: CommerceTeamCard
-  isPending?: boolean
-  onBuySeat?: () => void
-  onTopUp?: () => void
-}) {
-  const creditPercent = percent(card.remainingCredits, card.totalCredits)
-  const seatPercent = percent(card.seatsUsed, card.seatLimit)
-
-  return (
-    <article className={`workspace-commerce-usage-card${card.relationship === 'joined' ? ' is-muted' : ''}`} data-tone="team">
-      <div className="workspace-commerce-card-top">
-        <div>
-          <span className="workspace-commerce-card-eyebrow">Team workspace</span>
-          <h3>{card.name}</h3>
-        </div>
-        <span className="workspace-commerce-plan-badge">{formatPlanLabel(card.planKey)}</span>
-      </div>
-      <div className="workspace-commerce-usage-tag-row">
-        <span className="workspace-commerce-usage-tag">{card.relationship === 'created' ? 'Owned' : 'Joined'}</span>
-        <span className="workspace-commerce-usage-tag">{card.membershipRole}</span>
-        <span className="workspace-commerce-note">{card.memberCount} members</span>
-      </div>
-      <div className="workspace-commerce-card-stats">
-        <Stat label="Credits" value={`${formatCredits(card.remainingCredits)} / ${formatCredits(card.totalCredits)}`} />
-        <Stat label="Seats" value={`${card.seatsUsed} / ${card.seatLimit}`} />
-        <Stat label="Valid until" value={formatPeriodEnd(card.currentPeriodEnd)} />
-      </div>
-      <div className="workspace-commerce-progress"><span style={{ width: `${creditPercent}%` }} /></div>
-      <div className="workspace-commerce-progress is-light"><span style={{ width: `${seatPercent}%` }} /></div>
-      <div className="workspace-commerce-card-actions">
-        <Link className="workspace-commerce-secondary-button" href={`/team/${encodeURIComponent(card.id)}`}>Open</Link>
-        {card.canManageBilling ? (
-          <>
-            <button className="workspace-commerce-secondary-button" disabled={isPending} onClick={onTopUp} type="button">Top up</button>
-            <button className="workspace-commerce-secondary-button" disabled={isPending} onClick={onBuySeat} type="button">Buy seat</button>
-          </>
-        ) : null}
-      </div>
-    </article>
-  )
-}
-
-function GroupUsageCard({
-  groupSummary,
-  isPending = false,
-  onAddGroup,
-  onTopUp,
-}: {
-  groupSummary: CommerceGroupSummary
-  isPending?: boolean
-  onAddGroup: () => void
-  onTopUp: () => void
-}) {
-  const creditPercent = percent(groupSummary.remainingCredits, groupSummary.totalCredits)
-  const groupPercent = percent(groupSummary.groupsCreated, groupSummary.groupLimit || 1)
-
-  return (
-    <article className="workspace-commerce-usage-card" data-tone="group">
-      <div className="workspace-commerce-card-top">
-        <div>
-          <span className="workspace-commerce-card-eyebrow">Personal collaboration</span>
-          <h3>{groupSummary.name}</h3>
-        </div>
-        <span className="workspace-commerce-plan-badge">{formatPlanLabel(groupSummary.planKey)}</span>
-      </div>
-      <div className="workspace-commerce-usage-tag-row">
-        <span className="workspace-commerce-usage-tag">Created {groupSummary.groupsCreated}</span>
-        <span className="workspace-commerce-note">{groupSummary.joinedGroups} joined groups</span>
-      </div>
-      <div className="workspace-commerce-card-stats">
-        <Stat label="Credits" value={`${formatCredits(groupSummary.remainingCredits)} / ${formatCredits(groupSummary.totalCredits)}`} />
-        <Stat label="Groups" value={formatGroupLimit(groupSummary.groupsCreated, groupSummary.groupLimit)} />
-        <Stat label="Valid until" value={formatPeriodEnd(groupSummary.currentPeriodEnd)} />
-      </div>
-      <div className="workspace-commerce-progress"><span style={{ width: `${creditPercent}%` }} /></div>
-      <div className="workspace-commerce-progress is-light"><span style={{ width: `${groupPercent}%` }} /></div>
-      <div className="workspace-commerce-card-actions">
-        <Link className="workspace-commerce-secondary-button" href="/group">Open</Link>
-        <button className="workspace-commerce-secondary-button" disabled={isPending} onClick={onTopUp} type="button">Top up</button>
-        <button className="workspace-commerce-secondary-button" disabled={isPending} onClick={onAddGroup} type="button">Add group</button>
-      </div>
-    </article>
-  )
-}
-
-function SummaryCard({
-  label,
-  meta,
-  value,
-}: {
-  label: string
-  meta: string
-  value: string
-}) {
-  return (
-    <article className="workspace-commerce-summary-card">
-      <span className="workspace-commerce-summary-label">{label}</span>
-      <strong className="workspace-commerce-summary-value">{value}</strong>
-      <span className="workspace-commerce-summary-meta">{meta}</span>
-    </article>
-  )
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="workspace-commerce-stat">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  )
-}
-
-function percent(value: number, total: number) {
-  if (total <= 0) return 0
-  return Math.max(0, Math.min(100, Math.round((value / total) * 100)))
-}
-
-function formatPeriodEnd(value?: null | string) {
-  if (!value) return 'No expiry'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date)
-}
-
-function formatLedgerAction(reason: string) {
-  if (reason === 'subscription_grant') return 'Subscription grant'
-  if (reason === 'topup_purchase') return 'Top-up purchase'
-  if (reason === 'usage_charge') return 'Usage charge'
-  if (reason === 'usage_refund') return 'Usage refund'
-  return reason.replace(/_/g, ' ')
-}
-
-function formatPaymentAction(kind: string, status: string) {
-  return `${kind.replace(/_/g, ' ')} · ${status}`
-}
-
-function formatCurrency(amountCents: number, currency: string) {
-  return new Intl.NumberFormat('en-US', {
-    currency: currency.toUpperCase(),
-    style: 'currency',
-  }).format(amountCents / 100)
-}
-
-function formatPlanLabel(value: string) {
-  return value.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
-}
-
-function formatGroupLimit(created: number, limit: number) {
-  if (!Number.isFinite(limit) || limit <= 0) return `${created} active`
-  return `${created} / ${limit}`
 }

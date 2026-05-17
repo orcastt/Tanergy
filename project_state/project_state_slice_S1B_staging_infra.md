@@ -1,7 +1,7 @@
 # Project State Slice S1B: Staging Infrastructure And Online Prep
 
-**Updated**: 2026-05-15
-**Status**: In progress; the rebuilt Hetzner staging API host is back online, public HTTPS API smoke is green again, local-against-real-DB plus public API smoke now pass against Neon + R2, the public Vercel alias now points to a fresh Konva-only web deploy, Cloudflare-proxied staging Web/API records with Full (strict) TLS are in place, real Clerk session/admin smoke is green, the tracked staging deploy docs are now redacted back to placeholder/checklist form, and a production deploy runbook/env template are prepared. The first signed-in board/browser pass is now green; the remaining gates are the second-round reopen/conflict/thumbnail edge cases, Google/email verification and one live provider AI smoke.
+**Updated**: 2026-05-16
+**Status**: In progress; the rebuilt Hetzner staging API host is back online, public HTTPS API smoke is green again, local-against-real-DB plus public API smoke now pass against Neon + R2, the public Vercel alias now points to the current Konva-only web deploy, Cloudflare-proxied staging Web/API records with Full (strict) TLS are in place, real Clerk session/admin smoke is green, the tracked staging deploy docs are now redacted back to placeholder/checklist form, and a production deploy runbook/env template are prepared. The 2026-05-16 deploy at `fe568e1` is live on staging, old release directories were cleaned from the host, invalid-token plus CORS public smoke are green, and the remaining gates are the second-round signed-in board/browser/browser-UX edge cases, email verification and one real Jiekou-backed live AI smoke.
 
 ## Objective
 
@@ -49,7 +49,7 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - [ ] Second-round board/browser acceptance now looks green on solo reopen, History persistence, thumbnail persistence and current private-board owner flows; the remaining explicit browser issue is the `Manage board -> Copy board` Free-plan limit modal path.
 - [ ] Email-based staging auth smoke delivers to a test inbox, returns to `/workspaces`, and preserves the expected session shape. This is still pending because Clerk email auth is not yet enabled for the current lane.
 - [x] Google OAuth login on staging returns provider session/JWT.
-- [ ] FastAPI rejects invalid/expired provider JWT.
+- [~] FastAPI rejects invalid/expired provider JWT. Missing token and obviously malformed bearer token now return `401` on public staging with the expected CORS headers; a real expired/wrong-azp token smoke still remains.
 
 ## Current Staging Result
 
@@ -77,12 +77,15 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - The first signed-in browser pass is now green on staging for Google login, `/workspaces`, board open, refresh/session persistence, private-board create/delete, paste/upload and reload recovery.
 - The second-round signed-in browser pass is now mostly green too: solo reopen is acceptable, History persistence is acceptable, thumbnail persistence is acceptable, private-board owner delete/copy is acceptable, and Google re-login is acceptable.
 - The remaining explicit browser edge is now the `Manage board -> Copy board` Free-plan limit modal path.
+- The current release commit `fe568e1` has now been pushed and deployed to staging Web/API. Public `/health`, web `200`, invalid-token `401` and CORS preflight from `https://staging.tanergy.cc` all returned green after deploy.
+- Old server release directories `Tangent_release_1dd6d84` and `Tangent_release_8ba677c` were removed after the current release came up healthy; only `Tangent_release_fe568e1` remains as the active clean release tree.
+- The retired dirty worktree `~/apps/Tangent` has now been removed too. Before deletion, its staging `api.env` was checked against the active release, confirmed identical, migrated into a private server-local shared secret copy, and mirrored back into the live release as `deploy/staging/api.env` so future cleanup no longer depends on the old tree.
 - Runtime Postgres connections now prefer `DATABASE_POOL_URL` when present while keeping Alembic on `DATABASE_URL`; backend cursors log SQL taking longer than `TANGENT_DATABASE_SLOW_QUERY_MS` without logging parameters.
 - Clerk/Google/email runtime secrets have been restored enough for real session/admin smoke; Google is now manually green, while remaining work is one email-based staging auth smoke through Clerk once that method is enabled, plus any last secret cleanup before wider staging use.
-- The tracked staging deployment worksheet no longer stores raw live secrets; runtime truth should now be maintained only in Vercel env, the staging server `deploy/staging/api.env`, provider dashboards and private operator storage.
+- The tracked staging deployment worksheet no longer stores raw live secrets; runtime truth should now be maintained only in Vercel env, the staging server-local shared `api.env` mirrored into the active release, provider dashboards and private operator storage.
 - Cloudflare edge hardening is now partly in place: proxied DNS, Full (strict) TLS and source-host firewall narrowing are done, while deeper WAF/rate-limit coverage still needs either remaining free-plan room or a paid/security-specific follow-up.
 - `deploy/production/README.md` and `deploy/production/api.env.example` now define the production boundary: separate web/API domains, separate database/storage/auth/payment secrets and a stage-to-prod promotion flow from one reviewed commit.
-- Staging live AI acceptance is now explicitly blocked on a real provider credential such as `GEEKAI_API_KEY`; deployed environments should no longer fake-success through local mock asset ids.
+- Staging live AI acceptance is now explicitly blocked on a real Jiekou-backed live-provider smoke with valid server env keys; deployed environments should no longer fake-success through local mock asset ids.
 
 ## Handoff Notes
 

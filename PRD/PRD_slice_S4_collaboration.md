@@ -11,11 +11,21 @@ Enable multiple users to edit the same Board without breaking Asset, Board, Auth
 
 Keep this slice outside the current release promise until the signed-in browser, Google/email and live AI gates are closed. Planning, schema alignment and a bounded first implementation plan are allowed now because invite/member/role boundaries affect billing and account-deletion behavior too.
 
+## 2026-05-16 Foundation Gate
+
+Before deeper Yjs behavior is promised, the Team / Group / Billing / Invite baseline must stay fixed:
+
+- invite accept is resolved from invite validity plus target workspace capacity/state, not from whether the invitee is free or paid
+- free users may join Team and Group workspaces if the target workspace has capacity
+- Team owner transfer is the first supported ownership-transfer path
+- Group owner transfer remains blocked until billing-owner semantics are explicitly designed
+- Group collaboration continues to use actor-personal credits, while Team collaboration uses the Team wallet
+
 ## Product Requirements
 
 | Area | Requirement |
 | --- | --- |
-| Invite lifecycle | Team and Group invite links are the first entry point into collaboration. A collaborator should be able to open a real invite page, continue through sign-in/sign-up if needed, and join through that link before live cursor work is considered complete. |
+| Invite lifecycle | Team and Group invite links are the first entry point into collaboration. A collaborator should be able to open a real invite page, continue through sign-in/sign-up if needed, and join through that link before live cursor work is considered complete. Invite acceptance depends on invite validity plus Team seat or Group member capacity, not on the invitee's personal plan tier. |
 | Workspace roles | `owner/admin/editor/viewer` are the canonical collaboration roles shown in product UI. Legacy `member/guest` may remain as compatibility values internally, but new UX should not introduce them as primary labels. |
 | Workspace ownership | Paid Team governance needs a user-visible ownership-transfer path before self-delete or paid-membership exit feels complete. The first safe product cut is Team-only owner transfer to an existing member; Group transfer remains explicitly blocked until billing ownership rules are defined. |
 | Board roles | Board roles support `owner/admin/editor/viewer/temporary_viewer`; board ownership and board delete/copy stay stricter than workspace membership. |
@@ -37,7 +47,7 @@ S1X keeps Yjs viability open, but production collaboration remains P0.5. The cur
 
 ## First Rollout Order
 
-1. Reuse the existing Team/Group invite-link contracts and canonicalize visible role language around `owner/admin/editor/viewer`.
+1. Keep the confirmed Team/Group/Billing/Invite baseline fixed, then reuse the existing Team/Group invite-link contracts and canonicalize visible role language around `owner/admin/editor/viewer`.
 2. Give invite links a real product landing page so copy/paste links are human-usable, not raw API accept endpoints.
 3. Let sign-in/sign-up preserve invite continuation and land the user back on the invite accept page.
 4. Add first-pass Miro-style live presence polish: cursor, name and per-session color identity.

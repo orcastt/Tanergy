@@ -36,7 +36,7 @@ Do not recreate mirror files such as `ARCH/00-current-map.md` or `project_state/
 - Board documents, Board History documents, node props and future collaboration docs must not persist `data:`, `blob:`, Base64 images, provider raw responses, complete logs or long generated text.
 - New AI nodes must update Node Registry, Model Registry, AiRun contracts, routes, tests and Board guard together.
 - Admin access must be server-side through `admin_roles`; all admin writes need audit logs.
-- Source files target under 300 lines; split before adding more behavior to large files.
+- Source files target under 300 lines; this is a project-wide acceptance gate, not a soft preference. Split before adding more behavior to large files, and record any remaining slimming follow-up in the active plan before signoff.
 
 ## Quality Gates
 

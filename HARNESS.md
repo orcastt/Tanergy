@@ -1,6 +1,6 @@
 # TANGENT Development Harness
 
-**Updated**: 2026-05-06
+**Updated**: 2026-05-17
 **Purpose**: concise execution rules. Product, architecture and state details live in the folderized docs.
 
 ## Read Order
@@ -32,6 +32,7 @@ Architecture/API/Auth/AI/Admin/Billing/Deploy/Collaboration:
 ## Definition Of Done
 
 - Code implements only the current slice.
+- Touched source files stay under 300 lines, or are split before new composite behavior lands; if a safe split must be staged, the remaining slimming step is recorded in the active plan before signoff.
 - Required quality gates pass.
 - The relevant slice docs are updated.
 - Folder total docs are updated only if a stable checkpoint or progress percentage changes.
@@ -78,3 +79,4 @@ git diff --check
 - Do not enable production `/admin` before real Auth and server-side admin roles.
 - Do not start collaboration until Auth, Board, Asset and AiRun authority boundaries are stable.
 - Do not treat Board edit rights as AI spend authority; every run needs server-side entitlement and payer resolution.
+- Do not let new behavior accumulate inside already-large source files; the under-300-lines rule is a project-wide delivery gate.

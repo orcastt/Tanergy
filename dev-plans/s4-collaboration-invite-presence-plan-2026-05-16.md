@@ -1,7 +1,7 @@
 # S4 Collaboration Invite/Presence Plan
 
 **Created**: 2026-05-16
-**Status**: In progress. Invite -> board entry is now wired in product UI, invite history now has explicit `pending / accepted / revoked` states, Team owner transfer has a first safe product/backend cut, and real signed-in two-user smoke remains the next acceptance pass.
+**Status**: In progress. Invite -> board entry is now wired in product UI, invite history now has explicit `pending / accepted / revoked` states, Team owner transfer has a first safe product/backend cut, the board route now requests session context for the target workspace instead of relying on stale active-session selection, and real signed-in two-user smoke remains the next acceptance pass.
 **Owner slice**: S4, with S1D/S3 dependencies.
 
 ## Goal
@@ -51,6 +51,7 @@ Exit criteria:
 - Current implementation note:
   - invite links may now carry optional `boardId` / `boardTitle`
   - accept may land directly on `/boards/[boardId]?workspace=...`
+  - the board route now rehydrates session access against that `workspace` query target before loading the board, so accept-to-board does not depend on the previous active workspace cache winning the race
   - Team/Group dashboard board cards now open the real board route
   - `services/api/scripts/s4_workspace_invite_smoke.py` now covers the owner-create -> invite -> accept -> reopen-board API path
 
@@ -90,6 +91,55 @@ Exit criteria:
 
 - Keep draw/move/page operations optimistic and mergeable
 - Do not globally lock the whole Board
+- Current slimming note before deeper realtime work:
+  - `useKonvaLocalYjsSync.ts` has now been split into:
+    1. `konvaLocalYjsSnapshotFlow.ts`
+    2. `useKonvaLocalYjsPublishScheduler.ts`
+    3. `useKonvaLocalYjsRealtimeConnection.ts`
+    4. `konvaLocalYjsSyncContract.ts`
+    5. a thin `useKonvaLocalYjsSync.ts` orchestrator
+  - `webSocketBoardRealtimeRoom.ts` has now been split into:
+    1. thin `webSocketBoardRealtimeRoom.ts` entry exports
+    2. `webSocketBoardRealtimeSharedRoom.ts` coordinator
+    3. `webSocketBoardRealtimeAwarenessStore.ts`
+    4. `webSocketBoardRealtimeDocumentBridge.ts`
+  - `useKonvaCanvasBoardCollaborationBridge.ts` has started slimming into pure derived helpers:
+    1. `konvaCanvasBoardCollaborationDerived.ts` now owns page summaries, remote edge session projection and read-only/tool-mode derivation
+  - transient board overlay prop assembly has been separated:
+    1. `konvaCanvasSpikeTransientUiProps.ts` now owns transient UI prop composition
+    2. `konvaCanvasSpikeViewProps.ts` is now a thin shell/transient export surface
+  - `useBoardCollaborationPresence.ts` has now been reduced to a thin presence/session orchestrator:
+    1. `useBoardCollaborationLocalPresence.ts` now owns local cursor/hover/editing refs and local presence snapshot publishing
+  - `KonvaBoardSaveAudit.tsx` has now been reduced to a thin save/status surface:
+    1. `useKonvaBoardPersistenceLifecycle.ts` owns autosave/save/load status transitions
+    2. `useKonvaBoardRestoreLifecycle.ts` owns restore/autoload/snapshot-restore state
+    3. `useKonvaBoardDocumentPreparation.ts` owns guarded document prep and thumbnail capture
+  - Board access-entry surfaces for real collaboration testing have also been thinned:
+    1. `BoardManagementMembers.tsx` now delegates member list/search/mutation state to `useBoardManagementMembers.ts`
+    2. `localBoardClient.ts` is now a thin export surface over persistence / members / share / snapshots sub-clients
+    3. `WorkspaceBoardGallery.tsx` is now split into render/runtime/data/derived layers so board-entry testing is no longer blocked by a single 500+ line page surface
+    4. backend board routing is now split into `boards.py` core CRUD/snapshots, `boards_collaboration.py` members/share/validate, and `boards_realtime.py` sessions/websocket flow
+    5. board storage backends are now also flattened into thin facades plus focused modules:
+       - `local_board_store.py` -> `local_board_store_boards.py` / `records.py` / `members.py` / `shares.py` / `support.py`
+       - `postgres_board_store.py` -> `postgres_board_store_boards.py` / `mutations.py` / `members.py` / `shares.py` / `support.py`
+    6. local app collaboration route storage is now also flattened:
+       - `localBoardCollaborationStore.ts` -> `access.ts` / `presence.ts` / `sessionStore.ts` / `support.ts`
+    7. local app board member/share entry is now flattened too:
+       - `localBoardMembersStore.ts` -> member CRUD/search facade
+       - `localBoardShareStore.ts` / `localBoardWorkspacePeopleStore.ts` / `localBoardRecordAccess.ts` / `localBoardMembersSupport.ts`
+    8. backend collaboration session persistence is now flattened too:
+       - shared normalization lives in `board_collaboration_store_support.py`
+       - `local_board_collaboration_store.py` stays as the file-session facade
+       - `postgres_board_collaboration_store.py` stays as the SQL-session facade
+    9. realtime hub follow-up: `board_realtime_hub.py` is now a thin room façade over `board_realtime_room_support.py`, which owns broadcast plus awareness pruning helpers.
+  - 2026-05-17 storage regression checkpoint:
+    1. `test_board_permission_contracts.py` passed
+    2. `test_board_persistence_contracts.py` passed
+    3. `test_board_collaboration_contracts.py` passed
+    4. `test_board_realtime_websocket.py` passed
+  - Remaining next seam inside websocket transport:
+    - backend next: move on to `team_subscription_lifecycle.py` and the remaining admin/billing client type files
+    - frontend next: if/when it grows again, split `webSocketBoardRealtimeSharedRoom.ts` into socket lifecycle transport and room coordinator before adding more behavior
 - Preserve server authority for:
   - permissions
   - AI runs

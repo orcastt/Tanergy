@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from tangent_api.main import app
@@ -237,6 +238,36 @@ def test_admin_operator_user_delete_route_returns_mutation_shape(monkeypatch):
         "userId": "user_ada",
         "warning": None,
     }
+
+
+def test_admin_operator_user_delete_route_surfaces_structured_blockers(monkeypatch):
+    monkeypatch.setattr(
+        "tangent_api.routers.admin_operator.require_admin_role",
+        lambda context, allowed_roles=None: [SimpleNamespace(role="admin")],
+    )
+
+    def raise_blocked_delete(**kwargs):
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "blockers": [{"code": "active_team_seat", "workspaceName": "Team One"}],
+                "error": "account_delete_blocked",
+                "message": "Account deletion is blocked until Team, Group, seat, subscription, and invite bindings are cleared.",
+            },
+        )
+
+    monkeypatch.setattr("tangent_api.routers.admin_operator.hard_delete_admin_operator_user", raise_blocked_delete)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/admin/operator/users/user_ada/delete",
+        headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_admin"},
+        json={"reason": "refund"},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["error"] == "account_delete_blocked"
+    assert response.json()["detail"]["blockers"][0]["code"] == "active_team_seat"
 
 
 def test_admin_operator_subscription_freeze_route_returns_mutation_shape(monkeypatch):

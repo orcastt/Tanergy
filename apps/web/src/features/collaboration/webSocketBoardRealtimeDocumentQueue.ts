@@ -7,7 +7,7 @@ type RealtimeDocumentUpdateQueueLimits = {
   maxUpdateBytes: number
 }
 
-type RealtimeDocumentUpdateQueueSnapshot = {
+export type RealtimeDocumentUpdateQueueSnapshot = {
   bytes: number
   count: number
   state: BoardRealtimeOutboundQueueState

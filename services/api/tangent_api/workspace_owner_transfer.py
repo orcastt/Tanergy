@@ -5,7 +5,7 @@ from fastapi import HTTPException
 
 from tangent_api.storage.postgres_connection import connect_to_postgres, require_database_url
 from tangent_api.request_context import ApiRequestContext
-from tangent_api.workspace_entitlements import _load_workspace_member_row, _workspace_dashboard_member_from_row
+from tangent_api.workspace_entitlement_members import load_workspace_member_row, workspace_dashboard_member_from_row
 from tangent_api.workspace_schemas import BillingWorkspaceSummary, WorkspaceOwnerTransferRecord
 
 ID_PATTERN = re.compile(r"^[a-zA-Z0-9._-]+$")
@@ -35,7 +35,7 @@ def transfer_workspace_owner(user_id: str, context: ApiRequestContext) -> Worksp
                 )
             if workspace_owner_id != context.user_id:
                 raise HTTPException(status_code=403, detail="Only the current workspace owner can transfer ownership.")
-            target_member = _load_workspace_member_row(cursor, context.workspace_id, normalized_user_id)
+            target_member = load_workspace_member_row(cursor, context.workspace_id, normalized_user_id)
             if target_member is None:
                 raise HTTPException(status_code=404, detail="Workspace member not found.")
             if str(target_member[3] or "") == "owner":
@@ -68,13 +68,13 @@ def transfer_workspace_owner(user_id: str, context: ApiRequestContext) -> Worksp
                 """,
                 ("owner", context.workspace_id, normalized_user_id),
             )
-            transferred_member = _load_workspace_member_row(cursor, context.workspace_id, normalized_user_id)
+            transferred_member = load_workspace_member_row(cursor, context.workspace_id, normalized_user_id)
         connection.commit()
 
     if transferred_member is None:
         raise HTTPException(status_code=404, detail="Workspace member not found.")
     return WorkspaceOwnerTransferRecord(
-        member=_workspace_dashboard_member_from_row(transferred_member, None, False),
+        member=workspace_dashboard_member_from_row(transferred_member, None, False),
         previousOwnerUserId=context.user_id,
         workspace=BillingWorkspaceSummary(
             id=context.workspace_id,

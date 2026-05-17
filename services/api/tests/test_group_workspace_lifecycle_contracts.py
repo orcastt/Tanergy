@@ -53,7 +53,7 @@ def test_collaborate_user_can_create_group_workspace(monkeypatch):
     assert fake_db.workspace_members[0]["user_id"] == "user_group_owner"
 
 
-def test_group_workspace_create_requires_collaborate_subscription(monkeypatch):
+def test_free_user_can_create_single_group_workspace(monkeypatch):
     fake_db = FakePostgresDatabase()
     monkeypatch.setenv("DATABASE_URL", "postgresql://test")
     monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
@@ -69,9 +69,44 @@ def test_group_workspace_create_requires_collaborate_subscription(monkeypatch):
         json={"name": "No Plan Group"},
     )
 
-    assert response.status_code == 402
-    assert response.json()["detail"] == "Collaborate subscription is required to create a Group workspace."
-    assert fake_db.workspaces == []
+    assert response.status_code == 200
+    workspace = response.json()["workspace"]
+    assert workspace["kind"] == "group_workspace"
+    assert workspace["name"] == "No Plan Group"
+    assert workspace["role"] == "owner"
+    assert fake_db.workspaces[0]["owner_id"] == "user_free"
+    assert fake_db.workspace_members[0]["role"] == "owner"
+    assert fake_db.workspace_members[0]["user_id"] == "user_free"
+
+
+def test_free_canvas_group_create_enforces_single_group_limit(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.workspaces = [
+        {
+            "id": "workspace_group_0",
+            "kind": "group_workspace",
+            "name": "Existing Group",
+            "owner_id": "user_free",
+            "status": "active",
+        }
+    ]
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/workspaces/groups",
+        headers={
+            "x-tangent-user-id": "user_free",
+            "x-tangent-workspace-id": "workspace_personal",
+            "x-tangent-workspace-kind": "solo_workspace",
+        },
+        json={"name": "Second Group"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Current plan allows up to 1 group workspaces."
+    assert len(fake_db.workspaces) == 1
 
 
 def test_collaborate_start_group_create_enforces_group_limit(monkeypatch):
@@ -122,5 +157,5 @@ def test_collaborate_start_group_create_enforces_group_limit(monkeypatch):
     )
 
     assert response.status_code == 400
-    assert response.json()["detail"] == "Collaborate plan allows up to 10 Groups."
+    assert response.json()["detail"] == "Current plan allows up to 10 group workspaces."
     assert len(fake_db.workspaces) == 10

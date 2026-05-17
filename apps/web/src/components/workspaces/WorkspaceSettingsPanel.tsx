@@ -36,6 +36,12 @@ export function WorkspaceSettingsPanel({
   const canManageSettings = workspace.role === 'owner'
   const kindLabel = kind === 'team' ? 'Team' : 'Group'
   const planLabel = formatWorkspacePlanName(planKey)
+  const settingsFacts = [
+    { label: 'Plan', value: planLabel },
+    { label: 'AI billing', value: kind === 'team' ? 'Team wallet' : 'Personal credits' },
+    { label: 'Delete effect', value: 'Boards, members, invites removed' },
+    { label: 'Credits after delete', value: 'Stay on active plan' },
+  ]
 
   return (
     <>
@@ -44,9 +50,18 @@ export function WorkspaceSettingsPanel({
           <div>
             <h2>Settings</h2>
             <small>
-              Rename this {kindLabel.toLowerCase()} or remove its boards and collaborators.
+              Rename this {kindLabel.toLowerCase()} or remove its boards, invite links, and collaborators.
             </small>
           </div>
+        </div>
+
+        <div className="workspace-detail-settings-facts">
+          {settingsFacts.map((fact) => (
+            <div className="workspace-detail-settings-fact" key={fact.label}>
+              <span>{fact.label}</span>
+              <strong>{fact.value}</strong>
+            </div>
+          ))}
         </div>
 
         <form className="workspace-detail-settings-form" onSubmit={submitRename}>
@@ -87,7 +102,9 @@ export function WorkspaceSettingsPanel({
         <div className="workspace-detail-settings-note">
           <strong>{planLabel}</strong>
           <p>
-            Deleting this {kindLabel.toLowerCase()} removes its boards and collaborators. Remaining credits stay on the subscribed plan.
+            {kind === 'team'
+              ? 'Team AI always charges the Team wallet. Deleting this Team clears boards, pages, invites, and members, but does not erase the subscribed credit pack.'
+              : 'Group AI always charges each member’s own personal credits. Deleting this Group clears boards, pages, invites, and members, but does not merge or remove personal credits.'}
           </p>
         </div>
 

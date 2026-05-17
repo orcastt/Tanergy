@@ -77,10 +77,32 @@
   gap: 18px;
 }
 
+.admin-plan-catalog-section,
 .admin-plan-catalog-card,
 .admin-plan-catalog-field,
-.admin-plan-catalog-meta {
+.admin-plan-catalog-meta,
+.admin-plan-catalog-facts,
+.admin-plan-catalog-fact {
   display: grid;
+}
+
+.admin-plan-catalog-overview,
+.admin-plan-catalog-section-head {
+  gap: 16px;
+}
+
+.admin-plan-catalog-section-head p,
+.admin-plan-catalog-rule {
+  margin: 8px 0 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.admin-plan-catalog-overview-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .admin-plan-catalog-card {
@@ -114,6 +136,47 @@
   gap: 6px;
 }
 
+.admin-plan-catalog-readonly {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px solid var(--color-hairline);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-canvas) 90%, var(--color-surface));
+  color: var(--color-ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.admin-plan-catalog-facts {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-plan-catalog-fact {
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--color-hairline);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-canvas) 84%, var(--color-surface));
+}
+
+.admin-plan-catalog-fact span {
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-plan-catalog-fact strong {
+  color: var(--color-ink);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
 .admin-workspace-detail-grid {
   display: grid;
   gap: 18px;
@@ -127,6 +190,8 @@
 
 @media (max-width: 980px) {
   .admin-plan-catalog-grid,
+  .admin-plan-catalog-facts,
+  .admin-plan-catalog-overview-grid,
   .admin-workspace-detail-grid,
   .admin-workspace-summary-grid,
   .admin-detail-finance-grid,

@@ -8,10 +8,11 @@ import {
 } from './billingClient'
 import { continueBillingCheckout } from './billingCheckoutFlow'
 import { requestCurrentSessionRefresh } from '@/features/auth/sessionClient'
-import type { PlanKey } from './billingTypes'
+import type { BillingInterval, PlanKey } from './billingTypes'
 
 type SubscriptionPlanActionProps = {
   activeCount: number
+  billingInterval?: Extract<BillingInterval, 'annual' | 'monthly'>
   className: string
   href: string
   label: string
@@ -21,6 +22,7 @@ type SubscriptionPlanActionProps = {
 
 export function SubscriptionPlanAction({
   activeCount,
+  billingInterval = 'monthly',
   className,
   href,
   label,
@@ -49,9 +51,9 @@ export function SubscriptionPlanAction({
     setStatus(null)
     try {
       const checkout = isCollaboratePlan(planKey)
-        ? await createCollaborateSubscriptionCheckout({ planKey })
+        ? await createCollaborateSubscriptionCheckout({ billingInterval, planKey })
         : isTeamPlan(planKey)
-          ? await createTeamCheckout(planKey, planName)
+          ? await createTeamCheckout(planKey, planName, billingInterval)
           : null
       if (!checkout) throw new Error('This plan is not available for checkout.')
       const { completed, message, openedHostedCheckout } = await continueBillingCheckout(checkout)
@@ -70,13 +72,17 @@ export function SubscriptionPlanAction({
   }
 }
 
-async function createTeamCheckout(planKey: Extract<PlanKey, 'team_growth' | 'team_start'>, planName: string) {
+async function createTeamCheckout(
+  planKey: Extract<PlanKey, 'team_growth' | 'team_start'>,
+  planName: string,
+  billingInterval: Extract<BillingInterval, 'annual' | 'monthly'>,
+) {
   const teamName = window.prompt('Team name', `${planName} Workspace`)?.trim()
   if (!teamName) throw new Error('Team name is required.')
   const rawQuantity = window.prompt('Seats to start with', '2')?.trim() ?? '2'
   const quantity = Number.parseInt(rawQuantity, 10)
   if (!Number.isFinite(quantity) || quantity < 1) throw new Error('Seat quantity must be at least one.')
-  return createTeamSubscriptionCheckout({ planKey, quantity, teamName })
+  return createTeamSubscriptionCheckout({ billingInterval, planKey, quantity, teamName })
 }
 
 function isCollaboratePlan(planKey: PlanKey): planKey is Extract<PlanKey, 'collaborate_plus' | 'collaborate_start'> {

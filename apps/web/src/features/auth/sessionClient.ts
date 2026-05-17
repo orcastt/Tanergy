@@ -1,5 +1,6 @@
 'use client'
 
+import type { TangentWorkspace } from './sessionTypes'
 import { persistenceAuthHeaders } from '@/features/api/persistenceApi'
 import { clearCachedBillingResources } from '@/features/billing/billingResourceCache'
 import { clearCachedBoardResources } from '@/features/boards/boardResourceCache'
@@ -7,6 +8,7 @@ import type { AuthSessionResponse } from './sessionTypes'
 
 type LoadCurrentSessionOptions = {
   getAuthToken?: () => Promise<null | string>
+  requestedWorkspace?: null | Pick<TangentWorkspace, 'id'> & Partial<TangentWorkspace>
 }
 
 export const SESSION_REFRESH_EVENT = 'tanergy:session-refresh'
@@ -14,9 +16,13 @@ export const SESSION_REFRESH_MARKER_KEY = 'tanergy.session.refresh'
 
 export async function loadCurrentSession(options: LoadCurrentSessionOptions = {}) {
   const token = await options.getAuthToken?.()
+  const headers = {
+    ...buildWorkspaceSelectionHeaders(options.requestedWorkspace),
+    ...(token ? { Authorization: `Bearer ${token}` } : persistenceAuthHeaders()),
+  }
   const response = await fetch('/api/auth/session', {
     cache: 'no-store',
-    headers: token ? { Authorization: `Bearer ${token}` } : persistenceAuthHeaders(),
+    headers,
   })
   const payload = await readSessionPayload(response)
   if (!response.ok || !payload.ok || !payload.session) {
@@ -59,4 +65,18 @@ export function readPendingSessionRefreshMarker() {
 export function clearPendingSessionRefreshMarker() {
   if (typeof window === 'undefined') return
   window.localStorage.removeItem(SESSION_REFRESH_MARKER_KEY)
+}
+
+function buildWorkspaceSelectionHeaders(
+  workspace?: null | Pick<TangentWorkspace, 'id'> & Partial<TangentWorkspace>,
+) {
+  if (!workspace?.id?.trim()) return {}
+  const headers: Record<string, string> = {
+    'x-tangent-workspace-id': workspace.id.trim(),
+  }
+  if (workspace.kind?.trim()) headers['x-tangent-workspace-kind'] = workspace.kind.trim()
+  if (workspace.name?.trim()) headers['x-tangent-workspace-name'] = workspace.name.trim()
+  if (workspace.role?.trim()) headers['x-tangent-workspace-role'] = workspace.role.trim()
+  if (workspace.planKey?.trim()) headers['x-tangent-plan-key'] = workspace.planKey.trim()
+  return headers
 }

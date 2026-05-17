@@ -11,6 +11,8 @@ Implement the new commercial model without letting Team billing, Group collabora
 Core rule:
 
 - Team Start/Growth uses a Team wallet owned by the Team workspace.
+- Team Start/Growth pricing is per seat. Monthly checkout is `monthly price × seat_count`; annual checkout is `annual price × 12 × seat_count` billed upfront.
+- Collaborate Start/Plus annual pricing is also upfront annual-term billing: `annual price × 12` billed once for a 365-day term.
 - Collaborate Start/Plus uses the paying user's personal wallet.
 - A user may own multiple Teams.
 - A user may have only one active Collaborate subscription: Start or Plus.
@@ -32,6 +34,7 @@ Core rule:
   - `team_start`
   - `team_growth`
 - Define exact seat capacity rules: initial seats, min seats, max seats, add-seat behavior and downgrade behavior.
+- Keep Team pricing semantics explicit in all docs and checkout math: monthly and annual catalog values are per-seat inputs, and annual Team billing is prepaid for 12 months.
 - Define whether Group count is limited by Collaborate tier. Do not block the wallet/payer work on this if not decided.
 
 Exit criteria:
@@ -154,6 +157,8 @@ User UI:
 - [x] Group create/invite/member remove/role-update first-pass UI.
 - [x] Personal wallet top-up from `/usage` calls real billing route.
 - Clear AI node payer hints.
+- [ ] Redesign the `Subscription` surface (which may continue to use the `/billing` route in the near term) into vertically stacked long-form `Personal Plans` and `Workspace / Team Plans` sections. Each plan band must show current status, monthly/annual price, current period, valid until, next refresh, credits, limits, seat/group capacity facts and CTA without modal drill-in.
+- [ ] Redesign `/usage` into vertically stacked `Personal usage` and `Team usage` bands. It must list active personal/team plans first, then their remaining credits, top-up balance, validity facts and the relevant management CTA.
 
 Admin/developer UI:
 

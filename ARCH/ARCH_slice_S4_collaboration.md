@@ -11,6 +11,17 @@ Realtime multi-user Board editing after S1/S2 boundaries are stable.
 
 Keep this slice outside the current release promise until the signed-in browser, Google/email and live AI gates are closed. Readiness notes, schema alignment and a bounded implementation plan are allowed because collaboration reuses S1D/S3 member-role and invite contracts.
 
+## 2026-05-16 Foundation Gate
+
+The collaboration slice now has an explicit dependency on the confirmed Team / Group / Billing / Invite baseline:
+
+- invite acceptance is capacity-based, not personal-plan-tier-based
+- free users may join Team and Group workspaces through valid invites when the target workspace still has capacity
+- Team collaboration always charges the Team wallet
+- Group collaboration always charges the acting user's personal wallet
+- Team owner transfer can move forward first, while Group owner transfer remains blocked
+- deeper Yjs conflict policy and presence polish should be layered on top of these fixed membership/billing rules, not alongside another round of policy churn
+
 ## Current Readiness Notes
 
 - Existing reusable member/invite contracts already exist in the product path:
@@ -19,8 +30,10 @@ Keep this slice outside the current release promise until the signed-in browser,
   - stored active workspace roles currently accept `owner/admin/editor/viewer/member/guest`
   - stored board-member roles currently accept `owner/admin/editor/viewer/temporary_viewer`
 - Frontend invite generation now needs to point at a product route, not the raw API `POST /accept` endpoint. The active product path is `/invite/[token]`, and the token parser must accept both that route and the legacy API accept URL so old copied links still work.
+- Invite-to-board reopen now has an additional frontend session-selection boundary: when `/boards/[boardId]` carries `?workspace=...`, the client session loader must request authenticated session context for that target workspace before board load/realtime setup, instead of assuming the previously active workspace cache has already switched.
 - Clerk sign-in/sign-up continuation for invites is now a frontend boundary too: `redirect_url`/`redirectUrl`/`next` must be sanitized to same-app relative paths before being passed into the auth components.
 - The next collaboration implementation should reuse those contracts instead of inventing a second invite or role table. Product-facing language should standardize on `owner/admin/editor/viewer`, while `member/guest` stay compatibility-only until a later cleanup migration removes them.
+- Invite acceptance semantics now align with S3 commercial rules too: Team accepts check Team seat capacity, Group accepts check Group member capacity, and neither path should reject a user simply for being on `free_canvas`.
 - Canonical role normalization is now applied at the session/invite/local-collaboration boundary: authenticated sessions, workspace invites and local-dev board presence/member metadata should surface `owner/admin/editor/viewer`, while legacy `member/guest` are accepted only as compatibility aliases that map to `editor/viewer`.
 - Team workspace owner transfer is now part of the collaboration-adjacent governance boundary: current safe support is Team-only transfer to an existing member, while Group workspace ownership transfer stays blocked until billing-owner semantics are defined.
 - Collaboration transport is now two-tier. The board-realtime hooks prefer a FastAPI websocket room when a remote persistence API plus `boardId` are available, and otherwise fall back to the existing board-scoped `BroadcastChannel` rooms for local/dev use.
@@ -29,6 +42,7 @@ Keep this slice outside the current release promise until the signed-in browser,
 - The browser collaboration hook now uses the native structured Yjs board record (`pages[]`, `activePageId`, shared canvas settings, changed-page metadata) as its runtime apply contract. Legacy full-document snapshot fallback/materialization is removed from this path, and the synchronization baseline now keeps only structured page data plus signature metadata instead of a duplicated serialized board envelope.
 - The local Yjs incoming-record gate is now page-aware instead of globally conservative. When both sides have structured `changedPageIds`, the browser may immediately restore a remote update while unsynced local edits still exist if the two change sets are page-disjoint and neither side is publishing a `full-board` snapshot. Same-page overlap and full-board snapshots still queue pending remote state until the local publish settles.
 - Presence currently includes cursor, active page, selected ids, hovered shape id, editing shape ids, tool and derived viewing state. The first visible frontend pass now surfaces that data through cursor labels, compact board-header activity chips, and a header roster popover that lists active collaborators with session-aware color identity plus role/activity metadata. Temporary occupancy/soft-lock UI is derived from awareness owner identity plus awareness TTL expiry rather than a persisted server lock table.
+- Remote cursor motion on the canvas now uses a lightweight client-side easing layer in world space, so the display can soften collaborator movement without letting local camera pan/zoom inherit extra lag or adding extra payload churn to awareness.
 - Presence now also carries an optional lightweight `selectionBox` world-bounds payload for active drag-select gestures. This is awareness-only geometry, not document state, and is sanitized/rounded on both frontend and backend before transport or persistence.
 - Presence also carries optional `transformKind` + `transformBox` metadata for in-progress move/resize/rotate gestures. This remains awareness-only preview geometry, so remote transform hints can be rendered without storing transient manipulation state in the board document.
 - Presence now also carries optional `selectedEdgeId` and `connectionPreview` metadata for node-edge collaboration. `connectionPreview` contains only data type, source/source-batch endpoints, pointer and optional snapped target endpoint; it never stores resolved port geometry in persisted collaboration state.

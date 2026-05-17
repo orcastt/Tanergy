@@ -63,7 +63,7 @@ function normalizePlanKey(value: null | string | undefined, workspaceKind: Works
   if (!trimmed) return undefined
   const allowedByKind: Record<WorkspaceKind, PlanKey[]> = {
     enterprise_workspace: ['enterprise'],
-    group_workspace: ['collaborate_plus', 'collaborate_start'],
+    group_workspace: ['free_canvas', 'collaborate_plus', 'collaborate_start'],
     solo_workspace: ['free_canvas'],
     team_workspace: ['team_growth', 'team_start'],
   }

@@ -237,7 +237,7 @@ async function loadServerAdminJson<T>(path: string): Promise<T> {
     headers,
   })
   const payload = await readServerAdminPayload<T>(response)
-  if (!response.ok) throw new Error(payload.error || payload.detail || 'Admin resource lookup failed.')
+  if (!response.ok) throw new Error(payload.error || formatServerAdminErrorDetail(payload.detail) || 'Admin resource lookup failed.')
   return payload
 }
 
@@ -253,12 +253,41 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Admin resource lookup failed.'
 }
 
-async function readServerAdminPayload<T>(response: Response): Promise<T & { detail?: string; error?: string }> {
+async function readServerAdminPayload<T>(response: Response): Promise<T & { detail?: unknown; error?: string }> {
   const text = await response.text()
-  if (!text) return {} as T & { detail?: string; error?: string }
+  if (!text) return {} as T & { detail?: unknown; error?: string }
   try {
-    return JSON.parse(text) as T & { detail?: string; error?: string }
+    return JSON.parse(text) as T & { detail?: unknown; error?: string }
   } catch {
-    return { error: text } as T & { detail?: string; error?: string }
+    return { error: text } as T & { detail?: unknown; error?: string }
   }
+}
+
+function formatServerAdminErrorDetail(detail: unknown): string | null {
+  if (typeof detail === 'string' && detail.trim()) {
+    return detail.trim()
+  }
+  if (!detail || typeof detail !== 'object') {
+    return null
+  }
+  const record = detail as { blockers?: Array<{ code?: string; message?: string; workspaceName?: string }>; message?: string }
+  const message = typeof record.message === 'string' && record.message.trim() ? record.message.trim() : null
+  const blockerLabels = Array.isArray(record.blockers)
+    ? record.blockers
+      .map((blocker) => {
+        if (typeof blocker?.message === 'string' && blocker.message.trim()) return blocker.message.trim()
+        if (typeof blocker?.workspaceName === 'string' && blocker.workspaceName.trim()) return blocker.workspaceName.trim()
+        if (typeof blocker?.code === 'string' && blocker.code.trim()) return blocker.code.trim().replaceAll('_', ' ')
+        return null
+      })
+      .filter((value): value is string => Boolean(value))
+      .slice(0, 3)
+    : []
+  if (!message && blockerLabels.length === 0) {
+    return null
+  }
+  if (blockerLabels.length === 0) {
+    return message
+  }
+  return `${message ?? 'Action is blocked.'} ${blockerLabels.join(' · ')}`
 }

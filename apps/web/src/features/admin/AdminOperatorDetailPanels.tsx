@@ -1,11 +1,20 @@
 'use client'
 
 import { EmptyRow, buildStableListKey, formatCompactDate, formatNumber, truncateMiddle } from './adminAiShared'
-import { BillingHistoryTable, CreditBar, formatPlanKey, periodText } from './AdminOperatorDetailTables'
+import { BillingHistoryTable, CreditBar } from './AdminOperatorDetailTables'
 import { GroupPlanRow } from './adminOperatorDetailActionBuilders'
+import {
+  buildBillingCreditTargets,
+  formatRegistrationState,
+  isActivePlan,
+  StatusText,
+  UserPlanStack,
+  WorkspaceCreditStack,
+  WorkspacePlanStack,
+} from './adminOperatorDetailPanelSupport'
 import { JoinedGroupTable, JoinedTeamTable } from './AdminOperatorJoinedPlanTables'
 import { OwnedGroupsTable, OwnedTeamPlansTable } from './AdminOperatorOwnedPlanTables'
-import type { AdminOperatorAction, AdminOperatorCreditTarget } from './adminOperatorActions'
+import type { AdminOperatorAction } from './adminOperatorActions'
 import type {
   AdminOperatorUserDetail,
   AdminOperatorWorkspacePlan,
@@ -263,80 +272,4 @@ export function AdminOperatorGroupPlanPanel({
       </div>
     </section>
   )
-}
-
-function WorkspacePlanStack({ rows }: { rows: AdminOperatorWorkspacePlan[] }) {
-  if (!rows.length) return <span>-</span>
-  return (
-    <div className="admin-plan-stack">
-      {rows.map((row) => (
-        <span className={`admin-plan-line ${isCurrentPlan(row.planStatus ?? '') ? '' : 'is-muted'}`} key={row.id}>
-          <strong>{formatPlanKey(row.planKey)}</strong>
-          <small className={isCurrentPlan(row.planStatus ?? '') ? 'is-active' : 'is-muted'}>{periodText(row.periodStart, row.periodEnd)}</small>
-        </span>
-      ))}
-    </div>
-  )
-}
-
-function WorkspaceCreditStack({ rows }: { rows: AdminOperatorWorkspacePlan[] }) {
-  if (!rows.length) return <span>-</span>
-  return (
-    <div className="admin-credit-stack">
-      {rows.map((row) => (
-        <CreditBar key={row.id} credit={row.credit} tone={isCurrentPlan(row.planStatus ?? '') ? 'active' : 'muted'} />
-      ))}
-    </div>
-  )
-}
-
-function UserPlanStack({
-  rows,
-}: {
-  rows: Array<{ periodEnd?: null | string; periodStart?: null | string; planKey: string; status: string; subscriptionId: string }>
-}) {
-  if (!rows.length) return <span>-</span>
-  return (
-    <div className="admin-plan-stack">
-      {rows.map((row, index) => (
-        <span
-          className={`admin-plan-line ${isCurrentPlan(row.status) ? '' : 'is-muted'}`}
-          key={buildStableListKey([row.subscriptionId, row.planKey, row.periodStart, row.periodEnd], index)}
-        >
-          <strong>{formatPlanKey(row.planKey)}</strong>
-          <small className={isCurrentPlan(row.status) ? 'is-active' : 'is-muted'}>{periodText(row.periodStart, row.periodEnd)}</small>
-        </span>
-      ))}
-    </div>
-  )
-}
-
-function isCurrentPlan(status: string) {
-  return status === 'active' || status === 'trialing' || status === 'paused'
-}
-
-function isActivePlan(status: string) {
-  return status === 'active' || status === 'trialing'
-}
-
-function StatusText({ status }: { status: string }) {
-  const isActive = status === 'active'
-  const label = isActive ? 'Active' : status.replaceAll('_', ' ')
-  return <span className={`admin-user-status-text ${isActive ? 'is-active' : 'is-inactive'}`}>{label}</span>
-}
-
-function buildBillingCreditTargets(teams: AdminOperatorWorkspacePlan[]): AdminOperatorCreditTarget[] {
-  return [
-    { id: 'personal', kind: 'personal', label: 'Personal credits' },
-    ...teams.map((team) => ({
-      id: `team:${team.id}`,
-      kind: 'team_wallet' as const,
-      label: `${team.workspaceName || formatPlanKey(team.planKey)} Team wallet`,
-      workspaceId: team.id,
-    })),
-  ]
-}
-
-function formatRegistrationState(value: string) {
-  return value ? value.replaceAll('_', ' ') : 'unknown'
 }

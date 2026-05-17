@@ -115,11 +115,7 @@ export function AdminPageClient({
               <AdminApiRoutesDashboard enabled={resourcesEnabled} />
             </AdminTabPanel>
             <AdminTabPanel active={clientTab === 'finance'} mounted={mountedTabs.includes('finance')}>
-              <AdminFinanceDashboard
-                enabled={resourcesEnabled}
-                groupsSeed={groupsSeed}
-                teamsSeed={teamsSeed}
-              />
+              <AdminFinanceDashboard enabled={resourcesEnabled} />
             </AdminTabPanel>
             <AdminTabPanel active={clientTab === 'access'} mounted={mountedTabs.includes('access')}>
               <AdminAccessDashboard adminAccess={access} enabled={resourcesEnabled} usersSeed={usersSeed} />

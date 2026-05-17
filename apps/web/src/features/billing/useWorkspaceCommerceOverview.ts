@@ -8,7 +8,7 @@ import {
   loadBillingPlans,
   loadWorkspaceDashboard,
 } from './billingClient'
-import type { PlanCatalogRecord, PlanKey } from './billingTypes'
+import type { BillingInterval, PlanCatalogRecord, PlanKey } from './billingTypes'
 import {
   normalizeWorkspaceMembershipRole,
   workspaceRelationshipFromRole,
@@ -19,14 +19,21 @@ import { mapWithConcurrency } from '@/features/shared/asyncConcurrency'
 export type CommercePlanMap = Partial<Record<PlanKey, PlanCatalogRecord>>
 
 export type CommerceTeamCard = {
+  billingInterval: BillingInterval
   boardCount: number
   canManageBilling: boolean
+  currentPeriodStart?: null | string
   currentPeriodEnd?: null | string
   id: string
+  includedCredits: number
   memberCount: number
   membershipRole: ReturnType<typeof normalizeWorkspaceMembershipRole>
   name: string
+  nextRefreshAt?: null | string
+  pageLimit?: null | number
   planKey: Extract<PlanKey, 'team_growth' | 'team_start'>
+  seatMax?: null | number
+  seatMin?: null | number
   relationship: WorkspaceRelationship
   remainingCredits: number
   seatLimit: number
@@ -38,11 +45,18 @@ export type CommerceTeamCard = {
 }
 
 export type CommerceGroupSummary = {
+  billingInterval: BillingInterval
+  boardLimit?: null | number
+  currentPeriodStart?: null | string
   currentPeriodEnd?: null | string
   groupLimit: number
+  groupMemberLimit?: null | number
   groupsCreated: number
+  includedCredits: number
   joinedGroups: number
   name: string
+  nextRefreshAt?: null | string
+  pageLimit?: null | number
   planKey: Extract<PlanKey, 'collaborate_plus' | 'collaborate_start' | 'free_canvas'>
   remainingCredits: number
   topUpBalance: number
@@ -146,9 +160,16 @@ async function loadGroupSummary(
 
   return {
     groupLimit: plan?.groupWorkspaceLimit ?? 0,
+    groupMemberLimit: plan?.groupMemberLimit ?? 0,
     groupsCreated: createdGroups.length,
+    billingInterval: normalizeBillingInterval(billing.billingInterval, plan?.billingPeriod),
     joinedGroups: joinedGroups.length,
+    boardLimit: plan?.boardLimit ?? null,
+    currentPeriodStart: billing.currentPeriodStart,
     name: personalWorkspace.kind === 'solo_workspace' ? 'Personal collaboration' : personalWorkspace.name,
+    includedCredits: billing.credits.includedTotal,
+    nextRefreshAt: billing.nextRefreshAt,
+    pageLimit: plan?.pageLimit ?? null,
     planKey,
     currentPeriodEnd: billing.currentPeriodEnd,
     remainingCredits: billing.credits.includedRemaining + billing.credits.topUpBalance,
@@ -171,16 +192,23 @@ async function loadTeamCards(
     ])
     const planKey = normalizeTeamPlanKey(billing.plan.planKey)
     return {
+      billingInterval: normalizeBillingInterval(billing.billingInterval, billing.plan.billingPeriod),
       boardCount: dashboard.dashboard.boardCount,
       canManageBilling: relationship === 'created' && (workspace.role === 'owner' || workspace.role === 'admin'),
+      currentPeriodStart: billing.currentPeriodStart,
       currentPeriodEnd: billing.currentPeriodEnd,
       id: workspace.id,
+      includedCredits: billing.credits.includedTotal,
       memberCount: dashboard.dashboard.memberCount,
       membershipRole: normalizeWorkspaceMembershipRole(workspace.role),
       name: workspace.name,
+      nextRefreshAt: billing.nextRefreshAt,
+      pageLimit: billing.plan.pageLimit ?? null,
       planKey,
       relationship,
       remainingCredits: billing.credits.includedRemaining + billing.credits.topUpBalance,
+      seatMax: billing.plan.seatMax ?? null,
+      seatMin: billing.plan.seatMin ?? null,
       seatLimit: billing.plan.seatMax ?? Math.max(dashboard.dashboard.memberCount, 1),
       seatsUsed: dashboard.dashboard.memberCount,
       topUpBalance: billing.credits.topUpBalance,
@@ -196,9 +224,9 @@ async function loadTeamCards(
 }
 
 function selectPersonalWorkspace(workspaces: TangentWorkspace[]) {
-  return workspaces.find((workspace) => workspace.kind === 'group_workspace' && workspace.role === 'owner')
+  return workspaces.find((workspace) => workspace.kind === 'solo_workspace')
+    ?? workspaces.find((workspace) => workspace.kind === 'group_workspace' && workspace.role === 'owner')
     ?? workspaces.find((workspace) => workspace.kind === 'group_workspace')
-    ?? workspaces.find((workspace) => workspace.kind === 'solo_workspace')
     ?? workspaces[0]!
 }
 
@@ -209,4 +237,14 @@ function normalizeGroupPlanKey(value: string): Extract<PlanKey, 'collaborate_plu
 
 function normalizeTeamPlanKey(value: string): Extract<PlanKey, 'team_growth' | 'team_start'> {
   return value === 'team_growth' ? 'team_growth' : 'team_start'
+}
+
+function normalizeBillingInterval(
+  value: BillingInterval | null | undefined,
+  billingPeriod?: null | string,
+): BillingInterval {
+  if (value === 'annual' || value === 'contract' || value === 'monthly' || value === 'none') return value
+  if (billingPeriod === 'contract') return 'contract'
+  if (billingPeriod === 'none') return 'none'
+  return 'monthly'
 }

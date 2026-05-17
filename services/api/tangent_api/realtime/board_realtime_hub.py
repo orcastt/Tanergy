@@ -2,27 +2,25 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import WebSocket
 
 from tangent_api.realtime.board_realtime_limits import (
-    BOARD_REALTIME_AWARENESS_STATE_COUNT_LIMIT,
     BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD,
     can_append_realtime_document_update,
     normalize_realtime_awareness_state,
     normalize_realtime_document_updates,
-    parse_realtime_awareness_expiry,
 )
-
-
-@dataclass
-class BoardRealtimeConnection:
-    client_instance_id: str
-    connection_id: str
-    websocket: WebSocket
+from tangent_api.realtime.board_realtime_room_support import (
+    BoardRealtimeConnection,
+    _broadcast_json,
+    _limit_awareness_states,
+    _parse_awareness_expiry,
+    _prune_expired_awareness_states,
+    _should_request_compaction,
+)
 
 
 class BoardRealtimeRoom:
@@ -46,8 +44,8 @@ class BoardRealtimeRoom:
             if not self.document_updates and initial_updates:
                 self.document_updates = normalize_realtime_document_updates(initial_updates)
                 self.document_version = len(self.document_updates)
-            removed_client_ids = self._prune_expired_awareness_locked()
-            self.compaction_requested = self._should_request_compaction_locked()
+            removed_client_ids = _prune_expired_awareness_states(self.awareness_states)
+            self.compaction_requested = _should_request_compaction(self.document_updates)
             self.connections[connection_id] = BoardRealtimeConnection(
                 client_instance_id=client_instance_id,
                 connection_id=connection_id,
@@ -107,7 +105,7 @@ class BoardRealtimeRoom:
         update: list[int],
     ) -> tuple[list[list[int]], bool, int, bool]:
         async with self.lock:
-            removed_client_ids = self._prune_expired_awareness_locked()
+            removed_client_ids = _prune_expired_awareness_states(self.awareness_states)
             if not can_append_realtime_document_update(self.document_updates, update):
                 self.compaction_requested = True
                 document_updates = [list(item) for item in self.document_updates]
@@ -121,7 +119,7 @@ class BoardRealtimeRoom:
             else:
                 self.document_updates.append(update)
                 self.document_version += 1
-                if self._should_request_compaction_locked():
+                if _should_request_compaction(self.document_updates):
                     self.compaction_requested = True
                 document_updates = [list(item) for item in self.document_updates]
                 document_version = self.document_version
@@ -152,7 +150,7 @@ class BoardRealtimeRoom:
         expected_document_version: int | None,
     ) -> tuple[list[list[int]], bool, bool, int]:
         async with self.lock:
-            self._prune_expired_awareness_locked()
+            _prune_expired_awareness_states(self.awareness_states)
             if self.document_version > 0 and expected_document_version != self.document_version:
                 return (
                     [list(item) for item in self.document_updates],
@@ -185,7 +183,7 @@ class BoardRealtimeRoom:
         state: dict[str, Any] | None,
     ) -> None:
         async with self.lock:
-            removed_client_ids = self._prune_expired_awareness_locked()
+            removed_client_ids = _prune_expired_awareness_states(self.awareness_states)
             if state is None:
                 removed = self.awareness_states.pop(client_instance_id, None)
                 recipients = [item.websocket for item in self.connections.values()]
@@ -216,7 +214,7 @@ class BoardRealtimeRoom:
                         } if removed is not None else None
                     else:
                         self.awareness_states[client_instance_id] = normalized_state
-                        self._limit_awareness_states_locked()
+                        _limit_awareness_states(self.awareness_states)
                         payload = {
                             "from": client_instance_id,
                             "state": normalized_state,
@@ -239,33 +237,6 @@ class BoardRealtimeRoom:
     async def snapshot_document(self) -> list[list[int]]:
         async with self.lock:
             return [list(item) for item in self.document_updates]
-
-    def _should_request_compaction_locked(self) -> bool:
-        return len(self.document_updates) >= BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD
-
-    def _limit_awareness_states_locked(self) -> None:
-        if len(self.awareness_states) <= BOARD_REALTIME_AWARENESS_STATE_COUNT_LIMIT:
-            return
-        stale_client_ids = [
-            client_id
-            for client_id, _state in sorted(
-                self.awareness_states.items(),
-                key=lambda item: _awareness_sort_timestamp(item[1]),
-                reverse=True,
-            )[BOARD_REALTIME_AWARENESS_STATE_COUNT_LIMIT:]
-        ]
-        for client_id in stale_client_ids:
-            self.awareness_states.pop(client_id, None)
-
-    def _prune_expired_awareness_locked(self) -> list[str]:
-        now = datetime.now(timezone.utc)
-        removed_client_ids: list[str] = []
-        for client_instance_id, state in list(self.awareness_states.items()):
-            expires_at = _parse_awareness_expiry(state)
-            if expires_at is None or expires_at <= now:
-                self.awareness_states.pop(client_instance_id, None)
-                removed_client_ids.append(client_instance_id)
-        return removed_client_ids
 
 
 class BoardRealtimeHub:
@@ -316,28 +287,3 @@ class BoardRealtimeHub:
 
 
 board_realtime_hub = BoardRealtimeHub()
-
-
-async def _broadcast_json(websockets: list[WebSocket], payload: dict[str, Any]) -> None:
-    for websocket in websockets:
-        try:
-            await websocket.send_json(payload)
-        except Exception:
-            continue
-
-
-def _parse_awareness_expiry(state: dict[str, Any]) -> datetime | None:
-    return parse_realtime_awareness_expiry(state)
-
-
-def _awareness_sort_timestamp(state: dict[str, Any]) -> float:
-    updated_at = state.get("updatedAt")
-    if not isinstance(updated_at, str):
-        return 0
-    try:
-        parsed = datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
-    except ValueError:
-        return 0
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.timestamp()

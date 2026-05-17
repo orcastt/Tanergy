@@ -24,6 +24,24 @@ Server authority and data contracts for:
 - Provider secrets, raw provider routes and provider pricing stay server-side.
 - Board documents, node props and Board History store compact refs and summaries only.
 
+## 2026-05-16 Confirmed Policy Invariants
+
+These commercial invariants are now fixed and should be treated as backend/frontend contract authority:
+
+- `group_workspace` is a collaboration shell, not a shared wallet owner.
+- Team workspaces always resolve AI charging to a workspace-owned `team_wallet`.
+- Solo and Group workspaces always resolve AI charging to the acting user's personal wallet.
+- Invite acceptance checks invite validity plus target workspace capacity/state only. It does not reject a user for being on the free tier.
+- `free_canvas` may create exactly one Group and may still join other Groups/Teams.
+- Group member limit is currently `15` across personal plans.
+- A free-owned Group inherits the free-canvas workspace envelope for collaboration: `1` Board and `3` Pages per Board.
+- Collaborate Start / Plus expand Group count and personal included credits only; they do not mint any Group-owned credit pool.
+- Personal-plan annual pricing must be interpreted as `annual_price_usd × 12` collected upfront for a 365-day term.
+- Subscription included credits are cycle-scoped runtime grants: the cycle starts at payment completion, refreshes every 30 days and does not carry unused included credits forward.
+- Team included-credit grants remain seat-based: `2500 / seat` for Team Start and `5500 / seat` for Team Growth.
+- Team pricing is seat-based too: monthly catalog values are per-seat monthly prices, and annual catalog values are per-seat annual-term monthly rates that must be collected as `price × 12 × seat_count` upfront for a 365-day term.
+- Upgrade flows must preserve existing top-up balances and apply included-credit grants additively rather than resetting balance state.
+
 ## Admin Operator Console Redesign
 
 The current admin backend has useful primitives, but the operator UI should not compose slow per-panel fetches. A first server-owned admin operator read model now sits on top of existing users, workspaces, subscriptions, wallets, ledger, payments and audit logs.
@@ -74,7 +92,7 @@ Implemented first pass:
 - `/admin/users/[userId]` Team Plan and Group Plan tabs now consume those plan-operation contracts directly for renew/upgrade/delete/freeze/unfreeze instead of routing owned-plan actions through the older set-plan plus generic subscription-write split.
 - Native operator writes now cover user block/unblock/delete, subscription freeze/unfreeze and joined Team/Group member role/remove actions so those actions do not have to flow through the manual-finance bridge.
 - User delete is no longer just a status flip: operator delete now runs the shared hard-delete path, removes local user-owned solo data, preserves shared Board content by reassigning authored Board/Asset/Snapshot/AiRun rows to the workspace owner, deletes direct log rows, and blocks deletion when the target still owns a non-solo Team/Group workspace or is the last active admin owner.
-- The current hard-delete guard is intentionally conservative but not yet complete for paid collaboration cleanup. The next cut should keep the same hard-delete service and add structured blockers for joined paid Team/Group memberships, active Team seat assignments, active owned subscriptions and still-pending owned invite state before self-delete can proceed.
+- The shared hard-delete service now returns a structured `409 account_delete_blocked` detail model for both `/api/v1/auth/account` and admin delete. First-pass blockers now cover owned Team/Group workspaces, joined Team/Group memberships, active Team seat assignments, active subscriptions and still-pending invites owned by the deleting actor. The next cut is no longer the blocker model itself; it is richer operator/self-serve UI rendering plus broader real-account smoke around those blockers.
 - Operator-owned Team and Group rows now render as dense inventory tables: Team rows expose Team wallet, seats, members, boards and Team plan actions in one pass, while owned Team/Group member rows can now open native role-change or remove-member modals inline from the table itself.
 - Owned Team/Group rows now also expose native operator `Invite` and `Add member` actions against arbitrary workspaces, and board rows can now trigger audited admin `Copy` and `Delete` writes instead of stopping at read-only labels.
 - Joined Team and Joined Group now also expose native operator `Join Team` / `Join Group` entry points. The modal uses `/api/v1/admin/directory/workspaces?kind=...&search=...` for server-side workspace lookup, then executes the existing `POST /api/v1/admin/operator/workspaces/{workspace_id}/members` contract with the target user.
@@ -90,7 +108,13 @@ Implemented first pass:
 - Subscription freeze/unfreeze now persists `paused_at`, `paused_by` and `pause_reason`, and unfreeze extends `current_period_end` by the paused duration instead of silently resuming on the original expiry date.
 - Manual plan grants now follow operator semantics instead of the older blunt overwrite path: `assign` and `renew` grant the full included-credit pack for the target plan, while `upgrade` grants only the delta from the current included-credit pack to the target included-credit pack.
 - Finance now also exposes a DB-backed plan catalog editor. The catalog merges code defaults with `tangent_plan_catalog` overrides, and the admin write surface is `GET/PUT /api/v1/admin/finance/plan-catalog/{plan_key}` with a public read-only `GET /api/v1/billing/plans`.
+- The plan catalog editor is now the intended market-adjustment control plane too: admins can change monthly price, annual price, included credits and registration credits there without shipping a frontend rebuild, and downstream runtime readers must honor those updated values.
 - Runtime billing and entitlement readers now consume the active plan catalog for free-registration credits, Team/Collaborate included credits, board/page limits, group caps, seat caps and plan pricing instead of relying only on static constants.
+- The next `Subscription`/`Usage` UI pass will need richer read models too. `Subscription` may continue to sit on the existing `/billing` route in the near term, but the product-surface contract is now two tabs: `Subscription` for plan catalog/purchase and `Usage` for active-plan/consumption state. Personal-plan and Team-plan payloads must include current period start/end, valid-until, next-refresh, included credits, remaining credits, top-up balance, board limits, page limits, group limits, seat limits and active workspace counts so the frontend can render long-form vertical comparison/usage bands without stitching facts from many small calls.
+- That read model should be explicit enough to drive full-width long containers directly:
+  - Personal plan bands need plan status, monthly/annual display price, annual upfront note, current period, valid-until, next-refresh, included credits, top-up balance, group create cap, group member cap, solo board/page limits, free-owned Group board/page limits and CTA state.
+  - Team plan bands need workspace identity, plan status, monthly/annual seat price, annual upfront note, current period, valid-until, next-refresh, included credits per seat, remaining Team credits, current seat count, seat cap, Team board count, Team member count, wallet scope and CTA state.
+  - `Usage` needs the same validity facts plus active plan/workspace facts and ledger slice facts, because the UI target is not a modal drill-in flow; it is a vertically stacked status surface.
 
 ### AI Routes Progress Swimlane
 
@@ -271,9 +295,38 @@ seat_range
 Authority rules:
 
 - The backend must treat the active plan catalog as the source of truth for commercial limits and included-credit math.
+- Monthly price, annual price, included credits and registration credits are market-tunable admin inputs, not frontend constants.
+- For personal plans, annual checkout amount must multiply `annual_price_usd` by `12` and create a 365-day term.
+- For Team plans, `monthly_price_usd` and `annual_price_usd` are both per-seat inputs. Annual checkout amount must multiply the annual per-seat rate by `12` and by `seat_count`, and create a 365-day term.
 - New-user bootstrap reads `free_canvas.registration_credits`.
 - Board creation/save guards read the active board/page limits.
 - Team and Collaborate purchase/manual-plan flows read the active included-credit and cap values.
+- Subscription-period ledger/grant logic must distinguish cycle-scoped included credits from persistent top-up credits.
+- Invite capacity checks and workspace-create guards must read the active group/seat caps from the same catalog authority.
+
+Billing UI contract additions:
+
+- Personal plan cards need:
+  - currentPeriodStart
+  - currentPeriodEnd / validUntil
+  - includedCredits
+  - remainingCredits
+  - topUpBalance
+  - groupWorkspaceLimit
+  - groupMemberLimit
+  - boardLimit
+  - pageLimit
+- Team plan cards need:
+  - currentPeriodStart
+  - currentPeriodEnd / validUntil
+  - includedCreditsPerSeat
+  - remainingCredits
+  - topUpBalance
+  - seatCapacity
+  - seatsUsed
+  - boardCount
+  - memberCount
+  - role / permission summary
 
 ## Payer Resolution Matrix
 
@@ -312,7 +365,7 @@ payment completed
   -> audit admin/system facts
 ```
 
-Implementation checkpoint: the backend checkout/complete contract exists with manual-test payment completion. Checkout responses now include a `checkout` object; non-manual providers require hosted checkout configuration before a payment is created, can expose a hosted checkout URL with amount/currency/kind/client-reference handoff metadata and cannot be manually completed. The payment layer is provider-neutral: `manual_test` and generic hosted checkout can keep staging moving while Stripe is unavailable. The optional Stripe checkout adapter first cut requires `TANGENT_STRIPE_SECRET_KEY` only when `stripe` is selected, creates Checkout Sessions through Stripe's server API, writes internal payment/session references into provider metadata and labels `checkout.adapter=stripe_checkout`; it does not read local secret files. A first signed webhook inbox also exists: `POST /api/v1/billing/webhooks/{provider}` validates `TANGENT_PAYMENT_WEBHOOK_SECRET`, stores provider events in `tangent_webhook_events`, calls the shared payment completion path for supported checkout success events by internal payment id, client reference or provider metadata checkout session id and avoids duplicate grants for repeated provider event ids. The frontend now has hosted checkout return routes at `/billing/success` and `/billing/cancel`, and `/usage` buttons call the real Team top-up, Team seat checkout, personal top-up and Group create routes. Admin finance reconciliation now has server-gated read endpoints and frontend panels for payments, credit ledger rows, subscriptions, wallets and Team member usage. Admin directory APIs now expose user, Team and Group aggregates plus workspace member/board detail, and `/admin` is split into Overview, Users, Teams, Groups, AI API Routes, Finance and Access tabs. Because Stripe is not available yet, the developer panel also has audited `admin_manual` operations for user personal-wallet top-up, user/Team credit deduction, Collaborate/Group plan assignment, Team plan assignment, Team/Group workspace creation, subscription cancellation and workspace deletion. Every manual write requires an operation reason, and plan windows are driven by `effectMode` plus `durationCount * durationUnitDays` rather than a date picker. Local disposable-Postgres smoke now covers admin finance reads plus manual admin, manual-test and hosted payment flows; local live API smoke covers the new admin directory and AI route metrics endpoints. Remote staging still needs a redeploy before real-login smoke can pass. Provider-specific signatures, invoices, refunds and production payment reconciliation still need implementation.
+Implementation checkpoint: the backend checkout/complete contract exists with manual-test payment completion. Checkout amount semantics should now be read as `monthly_price_usd` for personal monthly billing, `annual_price_usd × 12` for personal annual billing, `monthly_price_usd × seat_count` for Team monthly billing, and `annual_price_usd × 12 × seat_count` for Team annual billing, with annual terms collected upfront for 365 days. Checkout responses now include a `checkout` object; non-manual providers require hosted checkout configuration before a payment is created, can expose a hosted checkout URL with amount/currency/kind/client-reference handoff metadata and cannot be manually completed. The payment layer is provider-neutral: `manual_test` and generic hosted checkout can keep staging moving while Stripe is unavailable. The optional Stripe checkout adapter first cut requires `TANGENT_STRIPE_SECRET_KEY` only when `stripe` is selected, creates Checkout Sessions through Stripe's server API, writes internal payment/session references into provider metadata and labels `checkout.adapter=stripe_checkout`; it does not read local secret files. A first signed webhook inbox also exists: `POST /api/v1/billing/webhooks/{provider}` validates `TANGENT_PAYMENT_WEBHOOK_SECRET`, stores provider events in `tangent_webhook_events`, calls the shared payment completion path for supported checkout success events by internal payment id, client reference or provider metadata checkout session id and avoids duplicate grants for repeated provider event ids. The frontend now has hosted checkout return routes at `/billing/success` and `/billing/cancel`, and `/usage` buttons call the real Team top-up, Team seat checkout, personal top-up and Group create routes. Admin finance reconciliation now has server-gated read endpoints and frontend panels for payments, credit ledger rows, subscriptions, wallets and Team member usage. Admin directory APIs now expose user, Team and Group aggregates plus workspace member/board detail, and `/admin` is split into Overview, Users, Teams, Groups, AI API Routes, Finance and Access tabs. Because Stripe is not available yet, the developer panel also has audited `admin_manual` operations for user personal-wallet top-up, user/Team credit deduction, Collaborate/Group plan assignment, Team plan assignment, Team/Group workspace creation, subscription cancellation and workspace deletion. Every manual write requires an operation reason, and plan windows are driven by `effectMode` plus `durationCount * durationUnitDays` rather than a date picker. Local disposable-Postgres smoke now covers admin finance reads plus manual admin, manual-test and hosted payment flows; local live API smoke covers the new admin directory and AI route metrics endpoints. Remote staging still needs a redeploy before real-login smoke can pass. Provider-specific signatures, invoices, refunds and production payment reconciliation still need implementation.
 
 Team seat add:
 
@@ -342,17 +395,21 @@ checkout completed
   -> allow Group creation/invite flows according to plan limits
 ```
 
-Implementation checkpoint: `/api/v1/billing/collaborate/checkout` and payment completion now create/update the user's single active Collaborate subscription and grant included credits to the personal wallet.
+Implementation checkpoint: `/api/v1/billing/collaborate/checkout` and payment completion now create/update the user's single active Collaborate subscription and grant included credits to the personal wallet. Included-credit upgrades must be additive and preserve any pre-existing personal top-up balance.
 
 Group create:
 
 ```text
 POST /api/v1/workspaces/groups
-  -> require active user-owned Collaborate subscription
+  -> resolve actor personal plan from the active plan catalog (default free_canvas)
+  -> enforce the plan's group_workspace_limit against owned active group_workspaces
   -> create group_workspace
   -> create owner workspace_members row
+  -> apply the plan-derived Group board/page entitlement envelope
   -> future invites share Boards while AI spend stays actor-personal
 ```
+
+Implementation checkpoint: Group creation no longer depends on the invitee or owner being on a paid Collaborate plan. Free Canvas may create one Group, and the resulting free-owned Group inherits the free-canvas Board/Page caps while still allowing the owner to join other Groups.
 
 Invite acceptance:
 
@@ -376,6 +433,21 @@ owner/admin removes member
   -> delete workspace_members row
   -> if team_workspace, revoke active workspace_seat_assignments for that member
 ```
+
+Admin/operator member-management chain:
+
+```text
+admin detail view
+  -> invite create / invite revoke
+  -> add member directly
+  -> change member role
+  -> remove member
+  -> searchable Join Team / Join Group
+  -> Team owner transfer
+  -> Group owner transfer stays blocked
+```
+
+Contract rule: these flows all mutate the same workspace membership, invitation and seat tables. The admin UI must not maintain a separate collaboration-membership model.
 
 ## Permission Boundaries
 

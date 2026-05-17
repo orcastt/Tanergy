@@ -10,12 +10,12 @@ Treat staging configuration as four separate surfaces:
 
 1. Runtime configuration that must be correct for the deployment to work.
    - Vercel staging env
-   - staging API host `deploy/staging/api.env`
+   - staging API host private env store, mirrored into the active release as `deploy/staging/api.env`
    - Clerk dashboard origins, redirects and auth toggles
    - SSH key authorization and source-host firewall rules
 2. Operator records that may describe the setup but must not contain live secrets in tracked docs.
    - `deploy/staging/deployment-secrets.local.md` is now a redacted worksheet only
-   - real values belong in dashboards, untracked local env files, the server `api.env`, and private operator storage
+   - real values belong in dashboards, untracked local env files, the server-local shared `api.env`, and private operator storage
 3. Status-only product docs.
    - `ARCH/`, `PRD/`, `project_state/`, and `dev-plans/` may record rotation state and acceptance state
    - they must not store raw keys, passwords, bearer tokens, or connection strings
@@ -102,18 +102,22 @@ SSH to the Hetzner source host and redeploy there:
 
 ```bash
 ssh deploy@5.78.122.74
-cd ~/TanvasAgent
-git pull
-docker compose -f deploy/staging/docker-compose.api.yml build
-docker compose -f deploy/staging/docker-compose.api.yml run --rm api alembic upgrade head
-docker compose -f deploy/staging/docker-compose.api.yml up -d
-docker compose -f deploy/staging/docker-compose.api.yml ps
+release_dir="$HOME/apps/Tangent_release_<commit-sha>"
+git clone --depth 1 --branch <branch> <repo-url> "$release_dir"
+cp "$HOME/apps/shared/staging/api.env" "$release_dir/deploy/staging/api.env"
+cd "$release_dir"
+docker compose -p staging -f deploy/staging/docker-compose.api.yml build api
+docker compose -p staging -f deploy/staging/docker-compose.api.yml run --rm api alembic upgrade head
+docker compose -p staging -f deploy/staging/docker-compose.api.yml up -d api
+docker compose -p staging -f deploy/staging/docker-compose.api.yml ps
 curl http://127.0.0.1:8000/health
 curl -sS https://api-staging.tanergy.cc/health
 ```
 
 Rules:
 
+- Do not treat an old long-lived repo clone as the active deploy tree. Staging should move forward through clean `Tangent_release_<sha>` directories.
+- Keep the authoritative staging API env in a private server-local location such as `~/apps/shared/staging/api.env`, then copy or symlink it into each active release.
 - Run Alembic whenever migrations changed.
 - If only the frontend changed, do not touch the Hetzner API host.
 - If only the API changed, Vercel does not need a fresh deploy unless the web build also changed.
@@ -228,12 +232,11 @@ Do not use `Flexible` SSL for staging or production. The source host should pres
 On the staging server:
 
 ```bash
-git clone <repo-url> TanvasAgent
-cd TanvasAgent
-cp deploy/staging/api.env.example deploy/staging/api.env
+mkdir -p ~/apps/shared/staging
+cp deploy/staging/api.env.example ~/apps/shared/staging/api.env
 ```
 
-Edit `deploy/staging/api.env` and fill:
+Edit `~/apps/shared/staging/api.env` and fill:
 
 - `DATABASE_URL`
 - `DATABASE_POOL_URL` when your Postgres provider exposes a pooled runtime URL, such as Neon pooling
@@ -247,23 +250,24 @@ Edit `deploy/staging/api.env` and fill:
 - `S3_BUCKET`
 - `S3_ACCESS_KEY_ID`
 - `S3_SECRET_ACCESS_KEY`
-- `GEEKAI_API_KEY` for the balanced image channel used by `gpt-image-2`, `jimeng_t2i_v40`, and `doubao-seedream-5.0-lite`
-- `GEEKAI_NANO_BANANA_API_KEY` for the dedicated Nano Banana 2 official channel when you want separate billing or routing
-- `GEEKAI_NANO_BANANA_BASE_URL` when that Nano Banana channel uses a different base URL
-- `GEEKAI_TEXT_API_KEY` for the active GeekAI text channel used by `analysis`, `chat`, and `prompt optimizer`
-- `GEEKAI_TEXT_BASE_URL` as the optional base URL for that text channel
-- `GEEKAI_VIDEO_API_KEY` as a reserved placeholder for a future GeekAI video channel split
-- `GEEKAI_VIDEO_BASE_URL` as the optional base URL for that future video split
+- `JIEKOU_TEXT_KEY` for the active text + multimodal text lane used by `analysis`, `chat`, and `prompt optimizer`
+- `JIEKOU_IMAGE_KEY` for the active image lane used by `gpt-image-2`, `nano-banana-2`, and `doubao-seedream-5.0-lite`
+- `JIEKOU_VIDEO_KEY` as the reserved placeholder for a future video split
+- optional `JIEKOU_BASE_URL` or scope-specific overrides such as `JIEKOU_TEXT_BASE_URL` and `JIEKOU_IMAGE_BASE_URL` only when you are not using the default Jiekou endpoints
 
-Do not put live secret values into this repo's tracked markdown notes. Keep them in the server `api.env`, Vercel env, Clerk dashboard, or private operator storage.
+Do not put live secret values into this repo's tracked markdown notes. Keep them in the server-local shared `api.env`, Vercel env, Clerk dashboard, or private operator storage.
 
 Start the API:
 
 ```bash
-docker compose -f deploy/staging/docker-compose.api.yml build
-docker compose -f deploy/staging/docker-compose.api.yml run --rm api alembic upgrade head
-docker compose -f deploy/staging/docker-compose.api.yml up -d
-docker compose -f deploy/staging/docker-compose.api.yml ps
+release_dir="$HOME/apps/Tangent_release_<commit-sha>"
+git clone --depth 1 --branch <branch> <repo-url> "$release_dir"
+ln -s "$HOME/apps/shared/staging/api.env" "$release_dir/deploy/staging/api.env"
+cd "$release_dir"
+docker compose -p staging -f deploy/staging/docker-compose.api.yml build api
+docker compose -p staging -f deploy/staging/docker-compose.api.yml run --rm api alembic upgrade head
+docker compose -p staging -f deploy/staging/docker-compose.api.yml up -d api
+docker compose -p staging -f deploy/staging/docker-compose.api.yml ps
 curl http://127.0.0.1:8000/health
 ```
 
@@ -455,7 +459,7 @@ Post-rotation browser checks:
 - Auth still needs full deployed browser smoke: local can use `dev-user` / `dev-workspace` plus dev bypass, but staging/prod must verify Clerk session, JWT issuer/JWKS/audience/authorized-party, exact allowed origins and the actual signed-in user's `admin_roles`.
 - Admin finance deploy smoke requires Alembic migrated to head before calling `/api/v1/admin/finance/summary`; stale DB schema can produce missing-column errors.
 - `TANGENT_POSTGRES_AUTO_CREATE_TABLES=0` is the preferred staging/prod path after running Alembic migrations. Temporary staging smoke can still use `1` while debugging a fresh database.
-- Staging AI smoke now expects a real live provider credential such as `GEEKAI_API_KEY`; deployed environments should fail closed instead of silently returning mock `asset_mock_*` success.
+- Staging AI smoke now expects real live Jiekou credentials such as `JIEKOU_IMAGE_KEY` and `JIEKOU_TEXT_KEY`; deployed environments should fail closed instead of silently returning mock `asset_mock_*` success.
 - Cloudflare SSL mode, WAF managed rules and rate limits still need either dashboard setup or a wider-scoped API token than DNS-only automation.
 - No backup / restore automation yet.
 - The active web app is Konva-only; staging/prod should not depend on any tldraw runtime or license path.

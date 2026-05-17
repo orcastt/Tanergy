@@ -17,10 +17,15 @@ import { hasRemotePersistenceApi } from '@/features/api/persistenceApi'
 type TangentSessionStatus = 'error' | 'loading' | 'ready'
 const tangentSessionStore = new Map<string, { data?: TangentSession; error?: string | null; promise?: Promise<TangentSession>; updatedAt: number }>()
 
-export function useTangentSession() {
+type UseTangentSessionOptions = {
+  requestedWorkspaceId?: string | null
+}
+
+export function useTangentSession(options: UseTangentSessionOptions = {}) {
   const { getToken, isLoaded, userId } = useAuth()
-  const storageKey = 'tanergy.session.current'
-  const cacheKey = 'current'
+  const requestedWorkspaceId = options.requestedWorkspaceId?.trim() || null
+  const storageKey = requestedWorkspaceId ? undefined : 'tanergy.session.current'
+  const cacheKey = requestedWorkspaceId ? `workspace:${requestedWorkspaceId}` : 'current'
   const previousUserIdRef = useRef<null | string | undefined>(undefined)
   const snapshot = readClientResource(tangentSessionStore, cacheKey, {
     storage: 'local',
@@ -78,7 +83,10 @@ export function useTangentSession() {
       return loadClientResource(
         tangentSessionStore,
         cacheKey,
-        () => loadCurrentSession({ getAuthToken: getToken }),
+        () => loadCurrentSession({
+          getAuthToken: getToken,
+          requestedWorkspace: requestedWorkspaceId ? { id: requestedWorkspaceId } : null,
+        }),
         {
           canReuse: (data) => (
             (!hasRemotePersistenceApi() || data.isDevFallback !== true)
@@ -128,7 +136,7 @@ export function useTangentSession() {
       isCancelled = true
       window.removeEventListener(SESSION_REFRESH_EVENT, handleRefresh)
     }
-  }, [cacheKey, getToken, isLoaded, storageKey, userId])
+  }, [cacheKey, getToken, isLoaded, requestedWorkspaceId, storageKey, userId])
 
   return { error, session, status }
 }

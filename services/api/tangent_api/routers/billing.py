@@ -86,6 +86,7 @@ def post_team_subscription_checkout(
 ) -> BillingPaymentMutationResponse:
     payment = create_team_subscription_checkout(
         context,
+        billing_interval=input_data.billing_interval,
         currency=input_data.currency,
         metadata=input_data.metadata,
         plan_key=input_data.plan_key,
@@ -102,6 +103,7 @@ def post_collaborate_subscription_checkout(
 ) -> BillingPaymentMutationResponse:
     payment = create_collaborate_subscription_checkout(
         context,
+        billing_interval=input_data.billing_interval,
         currency=input_data.currency,
         metadata=input_data.metadata,
         plan_key=input_data.plan_key,

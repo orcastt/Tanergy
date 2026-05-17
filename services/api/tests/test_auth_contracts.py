@@ -1,5 +1,6 @@
 from typing import Optional
 
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from tangent_api.main import app
@@ -311,3 +312,59 @@ def test_auth_account_delete_deletes_authenticated_account(monkeypatch):
         "target_user_id": "user_clerk_123",
         "workspace_id": "workspace_clerk_123",
     }]
+
+
+def test_auth_account_delete_surfaces_structured_blockers(monkeypatch):
+    monkeypatch.setenv("TANGENT_REQUIRE_API_AUTH", "1")
+
+    async def fake_resolve_authenticated_request_context(
+        token: str,
+        requested_workspace_id: Optional[str] = None,
+        request_ip: Optional[str] = None,
+    ) -> ApiRequestContext:
+        assert token == "valid-token"
+        return ApiRequestContext(
+            auth_mode="required",
+            is_dev_fallback=False,
+            user_avatar_initials="CU",
+            user_display_name="Clerk User",
+            user_email="user@example.com",
+            user_email_verified=True,
+            user_id="user_clerk_123",
+            user_profile_completed=True,
+            workspace_board_count=2,
+            workspace_id="workspace_clerk_123",
+            workspace_name="Tanergy Workspace",
+            workspace_plan_key="free_canvas",
+            workspace_memberships=[],
+            workspace_role="owner",
+        )
+
+    monkeypatch.setattr(
+        "tangent_api.request_context.resolve_authenticated_request_context",
+        fake_resolve_authenticated_request_context,
+    )
+
+    def raise_blocked_delete(**kwargs):
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "blockers": [{"code": "joined_team_workspace", "workspaceName": "Team One"}],
+                "error": "account_delete_blocked",
+                "message": "Account deletion is blocked until Team, Group, seat, subscription, and invite bindings are cleared.",
+            },
+        )
+
+    monkeypatch.setattr("tangent_api.routers.auth.delete_user_account", raise_blocked_delete)
+    client = TestClient(app)
+
+    response = client.request(
+        "DELETE",
+        "/api/v1/auth/account",
+        headers={"Authorization": "Bearer valid-token"},
+        json={"confirmation": "DELETE", "reason": "self delete"},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["error"] == "account_delete_blocked"
+    assert response.json()["detail"]["blockers"][0]["workspaceName"] == "Team One"

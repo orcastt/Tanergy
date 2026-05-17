@@ -1,7 +1,7 @@
 # PRD Slice S1B: Staging Infrastructure And Online Prep
 
-**Updated**: 2026-05-14
-**Status**: In progress; staging Web/API/Neon/R2 smoke, the Konva-only redeploy, Cloudflare-proxied Full (strict) staging domains and real Clerk session/admin smoke are back in place, while signed-in board/browser acceptance, Google/email flow verification and live AI smoke remain before production can open.
+**Updated**: 2026-05-16
+**Status**: In progress; staging Web/API/Neon/R2 smoke, the Konva-only redeploy, Cloudflare-proxied Full (strict) staging domains and real Clerk session/admin smoke are back in place. The active staging API now runs from a clean release tree instead of the old dirty long-lived clone, the authoritative staging `api.env` has been migrated into a server-local private secret store and mirrored into the active release, and signed-in board/browser acceptance, Google/email flow verification and live AI smoke still remain before production can open.
 
 ## User Value
 
@@ -21,6 +21,7 @@ The app becomes testable outside local dev. Real browsers can access staging Web
 - Production Google OAuth preparation documented before public launch.
 - Production deployment docs and API env template prepared before opening the public site.
 - Konva-only Board route redeployed, with legacy Board documents blocked in the active app path.
+- Staging deploys must not depend on an old mutable repo clone for live secrets; the current release receives `deploy/staging/api.env` from private operator storage or a server-local shared secret store.
 
 ## Online Preparation Checklist
 
@@ -56,4 +57,5 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - Google login succeeds on staging.
 - FastAPI accepts valid provider JWT and rejects invalid/expired JWT.
 - `/boards/[boardId]` opens Konva v2 on staging without any legacy paid-canvas runtime path.
+- Retiring an old staging worktree does not remove the live API env or break the active release.
 - Production launch has separate database, storage, auth and payment secrets from staging.

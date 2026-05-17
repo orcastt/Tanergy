@@ -224,7 +224,7 @@ function GroupDashboardLayout({
         </div>
         <div className="workspace-detail-side-stack">
           <section className="workspace-detail-panel workspace-detail-side-panel">
-            <div className="workspace-detail-panel-head"><h2>Plan & usage</h2></div>
+            <div className="workspace-detail-panel-head"><h2>My credits</h2></div>
             <div className="workspace-detail-dark-card">
               <div className="workspace-detail-dark-row">
                 <strong>{formatCredits(record.totalCreditsRemaining)}</strong>
@@ -237,19 +237,19 @@ function GroupDashboardLayout({
             </div>
             <div className="workspace-detail-summary-list">
               <div className="workspace-detail-summary-row">
-                <span>Valid until</span>
-                <strong>{formatPeriodEnd(record.currentPeriodEnd)}</strong>
+                <span>My personal plan</span>
+                <strong>{formatWorkspacePlanName(record.planKey)}</strong>
               </div>
               <div className="workspace-detail-summary-row">
-                <span>Plan</span>
-                <strong>{formatWorkspacePlanName(record.planKey)}</strong>
+                <span>Valid until</span>
+                <strong>{formatPeriodEnd(record.currentPeriodEnd)}</strong>
               </div>
               <div className="workspace-detail-summary-row">
                 <span>Boards</span>
                 <strong>{record.boards.length}</strong>
               </div>
             </div>
-            <small className="workspace-detail-status">Your Group uses the owner subscription. Credits stay on that plan if the Group is removed.</small>
+            <small className="workspace-detail-status">AI runs in this Group always charge your own personal credits. Removing the Group does not move or merge credits.</small>
           </section>
           <WorkspaceSettingsPanel key={`${workspace.id}:${record.name}`} kind="group" onWorkspaceRefresh={onMembersChanged} planKey={record.planKey} workspace={workspace} />
         </div>

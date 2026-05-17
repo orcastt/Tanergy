@@ -3,13 +3,18 @@
 import { useClerk } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import { useState, type FormEvent } from 'react'
-import { deleteCurrentAuthAccount } from '@/features/auth/profileClient'
+import {
+  AuthAccountDeleteError,
+  type AuthAccountDeleteBlocker,
+  deleteCurrentAuthAccount,
+} from '@/features/auth/profileClient'
 import { clearSessionScopedClientState } from '@/features/auth/sessionClient'
 
 export function AuthAccountDeletionPanel() {
   const clerk = useClerk()
   const router = useRouter()
   const [confirmation, setConfirmation] = useState('')
+  const [blockers, setBlockers] = useState<AuthAccountDeleteBlocker[]>([])
   const [error, setError] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -21,6 +26,7 @@ export function AuthAccountDeletionPanel() {
     }
 
     setIsDeleting(true)
+    setBlockers([])
     setError(null)
     try {
       await deleteCurrentAuthAccount({
@@ -34,6 +40,11 @@ export function AuthAccountDeletionPanel() {
         router.replace('/')
       }
     } catch (nextError) {
+      if (nextError instanceof AuthAccountDeleteError) {
+        setBlockers(nextError.detail?.blockers ?? [])
+      } else {
+        setBlockers([])
+      }
       setError(nextError instanceof Error ? nextError.message : 'Account deletion failed.')
       setIsDeleting(false)
     }
@@ -58,6 +69,15 @@ export function AuthAccountDeletionPanel() {
       </label>
 
       {error ? <p className="auth-profile-status is-error" role="alert">{error}</p> : null}
+      {blockers.length > 0 ? (
+        <ul className="management-inline-note" role="list">
+          {blockers.map((blocker, index) => (
+            <li key={`${blocker.code ?? 'blocker'}-${index}`}>
+              {blocker.message ?? blocker.workspaceName ?? blocker.code ?? 'Account deletion is blocked.'}
+            </li>
+          ))}
+        </ul>
+      ) : null}
 
       <div className="management-actions is-start">
         <button

@@ -52,12 +52,14 @@ class BillingSeatPurchaseCheckoutRequest(TangentApiModel):
 
 
 class BillingCollaborateSubscriptionCheckoutRequest(TangentApiModel):
+    billing_interval: str = Field(default="monthly", alias="billingInterval")
     currency: str = "usd"
     metadata: dict[str, Any] = Field(default_factory=dict)
     plan_key: str = Field(alias="planKey")
 
 
 class BillingTeamSubscriptionCheckoutRequest(TangentApiModel):
+    billing_interval: str = Field(default="monthly", alias="billingInterval")
     currency: str = "usd"
     metadata: dict[str, Any] = Field(default_factory=dict)
     plan_key: str = Field(alias="planKey")

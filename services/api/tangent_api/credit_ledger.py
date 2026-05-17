@@ -1,13 +1,18 @@
-import json
 import os
 from typing import Any, Optional
-from uuid import uuid4
 
 from fastapi import HTTPException
 
-from tangent_api.ai_schemas import AiRunChargeSummary
+from tangent_api.credit_ledger_support import (
+    LEDGER_REASONS,
+    build_credit_preflight_for_account,
+    credit_ledger_entry_from_row,
+    load_credit_ledger_rows,
+    normalize_limit,
+    positive_credits,
+    write_credit_ledger_entry_for_account,
+)
 from tangent_api.credit_schemas import (
-    CreditLedgerEntryRecord,
     CreditLedgerMutationResponse,
     CreditLedgerResponse,
     CreditPreflightResponse,
@@ -17,16 +22,6 @@ from tangent_api.storage.postgres_connection import connect_to_postgres as stora
 from tangent_api.workspace_entitlements import resolve_ai_charge_summary
 
 connect_to_postgres = storage_connect_to_postgres
-
-LEDGER_REASONS = {
-    "admin_adjustment",
-    "plan_change_adjustment",
-    "seat_change_adjustment",
-    "subscription_grant",
-    "topup_purchase",
-    "usage_charge",
-    "usage_refund",
-}
 
 
 def build_credit_ledger_response(
@@ -39,49 +34,25 @@ def build_credit_ledger_response(
     source_type: Optional[str] = None,
     workspace_id: Optional[str] = None,
 ) -> CreditLedgerResponse:
-    normalized_limit = _normalize_limit(limit)
+    normalized_limit = normalize_limit(limit)
     charge = resolve_ai_charge_summary(context)
     account_id = charge.charged_account_id
     if not os.getenv("DATABASE_URL"):
         return CreditLedgerResponse(accountId=account_id, balanceCredits=0, entries=[], ok=True)
-    filters: list[str] = ["account_id = %s"]
-    params: list[object] = [account_id]
-    if actor_user_id:
-        filters.append("actor_user_id = %s")
-        params.append(actor_user_id.strip())
-    if reason:
-        filters.append("reason = %s")
-        params.append(reason.strip())
-    if source_id:
-        filters.append("source_id = %s")
-        params.append(source_id.strip())
-    if source_type:
-        filters.append("source_type = %s")
-        params.append(source_type.strip())
-    if workspace_id:
-        filters.append("workspace_id = %s")
-        params.append(workspace_id.strip())
-    where_sql = " AND ".join(filters)
-
-    with _connect_to_postgres() as connection:
-        with connection.cursor() as cursor:
-            balance = _load_credit_balance(cursor, account_id)
-            cursor.execute(
-                f"""
-                SELECT id, account_id, workspace_id, actor_user_id, source_type, source_id,
-                       credits_delta, reason, metadata, created_at
-                FROM tangent_credit_ledger
-                WHERE {where_sql}
-                ORDER BY created_at DESC
-                LIMIT %s
-                """,
-                tuple([*params, normalized_limit]),
-            )
-            rows = cursor.fetchall()
+    balance, rows = load_credit_ledger_rows(
+        account_id,
+        normalized_limit,
+        actor_user_id=actor_user_id,
+        connect_db=_connect_to_postgres,
+        reason=reason,
+        source_id=source_id,
+        source_type=source_type,
+        workspace_id=workspace_id,
+    )
     return CreditLedgerResponse(
         accountId=account_id,
         balanceCredits=balance,
-        entries=[_credit_ledger_entry_from_row(row) for row in rows],
+        entries=[credit_ledger_entry_from_row(row) for row in rows],
         ok=True,
     )
 
@@ -93,24 +64,13 @@ def build_credit_preflight_response(
     if required_credits < 0:
         raise HTTPException(status_code=400, detail="Required credits must be non-negative.")
     charge = resolve_ai_charge_summary(context)
-    account_id = charge.charged_account_id
-    available_credits = 0.0
-    if os.getenv("DATABASE_URL"):
-        with _connect_to_postgres() as connection:
-            with connection.cursor() as cursor:
-                available_credits = _load_credit_balance(cursor, account_id)
-    can_run = available_credits >= required_credits
-    shortfall = max(0.0, required_credits - available_credits)
-    return CreditPreflightResponse(
-        accountId=account_id,
-        availableCredits=available_credits,
-        canRun=can_run,
-        charge=charge,
-        ok=True,
-        preflightStatus="ok" if can_run else "insufficient_credits",
-        requiredCredits=required_credits,
-        shortfallCredits=shortfall,
+    preflight = build_credit_preflight_for_account(
+        charge.charged_account_id,
+        required_credits,
+        connect_db=_connect_to_postgres,
+        has_database_url=bool(os.getenv("DATABASE_URL")),
     )
+    return CreditPreflightResponse(**{**preflight.model_dump(by_alias=True), "charge": charge})
 
 
 def grant_subscription_credits(
@@ -138,14 +98,15 @@ def grant_subscription_credits_to_account(
     source_id: str,
     metadata: Optional[dict[str, Any]] = None,
 ) -> CreditLedgerMutationResponse:
-    return _write_credit_ledger_entry_for_account(
+    return write_credit_ledger_entry_for_account(
         account_id=account_id,
         actor_user_id=actor_user_id,
         workspace_id=workspace_id,
-        credits_delta=_positive_credits(credits, "Granted credits"),
+        credits_delta=positive_credits(credits, "Granted credits"),
         reason="subscription_grant",
         source_id=source_id,
         source_type="subscription",
+        connect_db=_connect_to_postgres,
         metadata=metadata,
     )
 
@@ -175,14 +136,15 @@ def record_topup_purchase_to_account(
     source_id: str,
     metadata: Optional[dict[str, Any]] = None,
 ) -> CreditLedgerMutationResponse:
-    return _write_credit_ledger_entry_for_account(
+    return write_credit_ledger_entry_for_account(
         account_id=account_id,
         actor_user_id=actor_user_id,
         workspace_id=workspace_id,
-        credits_delta=_positive_credits(credits, "Top-up credits"),
+        credits_delta=positive_credits(credits, "Top-up credits"),
         reason="topup_purchase",
         source_id=source_id,
         source_type="payment",
+        connect_db=_connect_to_postgres,
         metadata=metadata,
     )
 
@@ -193,7 +155,7 @@ def settle_usage_charge(
     run_id: str,
     metadata: Optional[dict[str, Any]] = None,
 ) -> CreditLedgerMutationResponse:
-    required_credits = _positive_credits(credits, "Usage credits")
+    required_credits = positive_credits(credits, "Usage credits")
     charge = resolve_ai_charge_summary(context)
     return settle_usage_charge_to_account(
         account_id=charge.charged_account_id,
@@ -213,11 +175,16 @@ def settle_usage_charge_to_account(
     run_id: str,
     metadata: Optional[dict[str, Any]] = None,
 ) -> CreditLedgerMutationResponse:
-    required_credits = _positive_credits(credits, "Usage credits")
-    preflight = _build_credit_preflight_for_account(account_id, required_credits)
+    required_credits = positive_credits(credits, "Usage credits")
+    preflight = build_credit_preflight_for_account(
+        account_id,
+        required_credits,
+        connect_db=_connect_to_postgres,
+        has_database_url=bool(os.getenv("DATABASE_URL")),
+    )
     if not preflight.can_run:
         raise HTTPException(status_code=402, detail="Insufficient credits for this AI run.")
-    return _write_credit_ledger_entry_for_account(
+    return write_credit_ledger_entry_for_account(
         account_id=account_id,
         actor_user_id=actor_user_id,
         workspace_id=workspace_id,
@@ -225,6 +192,7 @@ def settle_usage_charge_to_account(
         reason="usage_charge",
         source_id=run_id,
         source_type="ai_run",
+        connect_db=_connect_to_postgres,
         metadata=metadata,
     )
 
@@ -237,7 +205,7 @@ def settle_usage_refund(
 ) -> CreditLedgerMutationResponse:
     return write_credit_ledger_entry(
         context=context,
-        credits_delta=_positive_credits(credits, "Refund credits"),
+        credits_delta=positive_credits(credits, "Refund credits"),
         reason="usage_refund",
         source_id=run_id,
         source_type="ai_run",
@@ -279,7 +247,7 @@ def write_credit_ledger_entry(
         raise HTTPException(status_code=501, detail="Credit ledger persistence is not configured.")
 
     charge = resolve_ai_charge_summary(context)
-    return _write_credit_ledger_entry_for_account(
+    return write_credit_ledger_entry_for_account(
         account_id=charge.charged_account_id,
         actor_user_id=context.user_id,
         workspace_id=context.workspace_id,
@@ -287,137 +255,9 @@ def write_credit_ledger_entry(
         reason=reason,
         source_id=source_id,
         source_type=source_type,
+        connect_db=_connect_to_postgres,
         metadata=metadata,
     )
-
-
-def _build_credit_preflight_for_account(
-    account_id: str,
-    required_credits: float,
-) -> CreditPreflightResponse:
-    available_credits = 0.0
-    if os.getenv("DATABASE_URL"):
-        with _connect_to_postgres() as connection:
-            with connection.cursor() as cursor:
-                available_credits = _load_credit_balance(cursor, account_id)
-    can_run = available_credits >= required_credits
-    shortfall = max(0.0, required_credits - available_credits)
-    return CreditPreflightResponse(
-        accountId=account_id,
-        availableCredits=available_credits,
-        canRun=can_run,
-        charge=AiRunChargeSummary(
-            chargedAccountId=account_id,
-            chargedScope="actor_personal",
-            entitlementSource="ledger_account_override",
-            payerLabel="Charges your credits",
-            planKey="unknown",
-            preflightStatus="ok" if can_run else "insufficient_credits",
-            workspaceKind="solo_workspace",
-            workspaceSeatId=None,
-        ),
-        ok=True,
-        preflightStatus="ok" if can_run else "insufficient_credits",
-        requiredCredits=required_credits,
-        shortfallCredits=shortfall,
-    )
-
-
-def _write_credit_ledger_entry_for_account(
-    account_id: str,
-    actor_user_id: str,
-    workspace_id: str,
-    credits_delta: float,
-    reason: str,
-    source_id: Optional[str],
-    source_type: str,
-    metadata: Optional[dict[str, Any]] = None,
-) -> CreditLedgerMutationResponse:
-    entry_id = f"credit_ledger_{uuid4()}"
-    with _connect_to_postgres() as connection:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                """
-                INSERT INTO tangent_credit_ledger (
-                    id,
-                    account_id,
-                    workspace_id,
-                    actor_user_id,
-                    source_type,
-                    source_id,
-                    credits_delta,
-                    reason,
-                    metadata
-                )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb)
-                RETURNING id, account_id, workspace_id, actor_user_id, source_type, source_id,
-                          credits_delta, reason, metadata, created_at
-                """,
-                (
-                    entry_id,
-                    account_id,
-                    workspace_id,
-                    actor_user_id,
-                    source_type,
-                    source_id,
-                    credits_delta,
-                    reason,
-                    json.dumps(metadata or {}),
-                ),
-            )
-            row = cursor.fetchone()
-            balance = _load_credit_balance(cursor, account_id)
-        connection.commit()
-    return CreditLedgerMutationResponse(
-        accountId=account_id,
-        balanceCredits=balance,
-        entry=_credit_ledger_entry_from_row(row),
-        ok=True,
-    )
-
-
-def _load_credit_balance(cursor: object, account_id: str) -> float:
-    cursor.execute(
-        """
-        SELECT COALESCE(SUM(credits_delta), 0)
-        FROM tangent_credit_ledger
-        WHERE account_id = %s
-        """,
-        (account_id,),
-    )
-    row = cursor.fetchone()
-    return float(row[0] or 0) if row else 0.0
-
-
-def _positive_credits(value: float, label: str) -> float:
-    if value <= 0:
-        raise HTTPException(status_code=400, detail=f"{label} must be greater than zero.")
-    return value
-
-
-def _credit_ledger_entry_from_row(row: tuple[object, ...]) -> CreditLedgerEntryRecord:
-    return CreditLedgerEntryRecord(
-        accountId=str(row[1]),
-        actorUserId=row[3],
-        createdAt=_to_iso(row[9]),
-        creditsDelta=float(row[6] or 0),
-        id=str(row[0]),
-        metadata=_normalize_metadata(row[8]),
-        reason=str(row[7]),
-        sourceId=row[5],
-        sourceType=str(row[4]),
-        workspaceId=row[2],
-    )
-
-
-def _normalize_limit(limit: int) -> int:
-    if limit < 1:
-        return 1
-    return min(limit, 100)
-
-
-def _normalize_metadata(value: object) -> dict[str, Any]:
-    return value if isinstance(value, dict) else {}
 
 
 def _connect_to_postgres():
@@ -429,9 +269,3 @@ def _connect_to_postgres():
     except Exception:
         pass
     return connect_to_postgres()
-
-
-def _to_iso(value: object) -> str:
-    if hasattr(value, "isoformat"):
-        return value.isoformat()
-    return str(value)

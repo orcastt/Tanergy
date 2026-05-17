@@ -1,6 +1,6 @@
 # Dev Plans Index
 
-**Updated**: 2026-05-16
+**Updated**: 2026-05-17
 
 Detailed product, architecture and state truth now lives in:
 
@@ -20,6 +20,7 @@ Detailed product, architecture and state truth now lives in:
 | `s2-ai-provider-route-billing-control-plane-2026-05-07.md` | Active S2 tactical plan | Moves provider route switching, credit charging, provider-cost settlement and admin observability behind one server-owned AiRun control plane. |
 | `s3-admin-operator-console-redesign-2026-05-09.md` | Active S3 tactical plan | Rebuilds the admin developer console around a fast user inventory, one-call user detail bundle, Team/Group plan tabs, modal operations and missing admin write/read contracts. |
 | `s3-team-group-wallets-membership-billing-plan-2026-05-08.md` | Active S3 tactical plan | Supersedes the old Team actor-personal charging strategy with Team wallet, personal Collaborate wallet, invites, seats, membership, billing usage and payer-resolver phases. |
+| `s3s4-team-group-foundation-unification-2026-05-16.md` | Active foundation baseline | Chinese consolidation baseline for free/team/group/invite/billing/collaboration rules, confirmed on 2026-05-16 and ready to drive PRD/ARCH/project_state alignment before deeper multiplayer testing. |
 | `s4-collaboration-invite-presence-plan-2026-05-16.md` | Planned S4 tactical plan | Reuses the existing invite/member/role contracts to sequence invite-link acceptance, live cursors/presence, sensitive-edit occupancy and optimistic sync. |
 | `s1b-staging-deployment-runbook-2026-05-02.md` | Active S1B runbook | Chinese beginner guide for domain, DNS, Vercel, Hetzner, Neon, R2, Clerk, Google OAuth and email setup. |
 | `s1x-canvas-engine-migration-reference-2026-05-03.md` | Reference S1X migration note | Historical migration baseline plus Konva-only route/public share/admin-adjacent checkpoints; keep as background context, not the main execution spine. |
@@ -28,7 +29,7 @@ Detailed product, architecture and state truth now lives in:
 ## Current Tactical Focus
 
 1. Stabilize the current P0 alpha spine defined in `p0-alpha-stabilization-and-acceptance-2026-05-06.md`.
-2. Run the staging / real DB / real login smoke first: public host repair if needed, Alembic head, `/health`, `/api/v1/admin/me`, operator users, finance summary, board list/save/load and billing plans. Keep `deploy/production/README.md` as the pre-provision boundary and do not open production before this smoke is green.
+2. Keep staging on release-style deploys with a private server-local shared `api.env`, not a long-lived dirty checkout; then run the staging / real DB / real login smoke first: public host repair if needed, Alembic head, `/health`, `/api/v1/admin/me`, operator users, finance summary, board list/save/load and billing plans. Keep `deploy/production/README.md` as the pre-provision boundary and do not open production before this smoke is green.
 3. Treat the real Clerk session/admin smoke as a green checkpoint, and treat the first signed-in board/browser pass as green too. The remaining staging browser work is now the second-round acceptance: the solo-edit reopen conflict chooser, thumbnail persistence, history behavior and any last private-board owner edge cases before relying on staging as the final truth.
 4. Finish Google/email and CORS/origin acceptance after the signed-in board pass so the Auth boundary is fully believable outside local fallback assumptions.
 5. Finish the S2 provider-route/billing control-plane cut with one real AiRun/provider image smoke using the refreshed four-model image lane, then keep broader provider coverage moving.
@@ -42,6 +43,7 @@ Working rule for the current pass:
 - avoid stacking transitional fallbacks or patchy side paths when a bounded rewrite is cleaner
 - keep memory-pressure and slow-path auditing active while touching admin, canvas, AI and persistence code
 - if a follow-on idea is useful but not urgent, record it in the relevant plan/slice first and keep the current mainline sequence intact
+- treat `source file < 300 lines` as a project-wide acceptance rule; when a touched file is already too large, the split belongs in the current implementation cut rather than a vague cleanup bucket
 
 ## Archive
 
@@ -54,12 +56,13 @@ Working rule for the current pass:
 - Do not duplicate PRD/ARCH/Project_state details here.
 - A new implementation cut can get a small `dev-plans/<slice>.md` if it needs a tactical checklist.
 - When that cut completes, update the relevant slice docs and move the tactical plan to `Archive/` if it is no longer active.
+- Active plans should explicitly record any required large-file splits and the order in which they will be taken down.
 
 ## 中文完整翻译
 
 # Dev Plans 索引
 
-**更新日期**：2026-05-15
+**更新日期**：2026-05-17
 
 详细的产品、架构和状态事实现在位于：
 

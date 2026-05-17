@@ -9,7 +9,20 @@ type DeleteCurrentAuthAccountInput = {
   reason?: string
 }
 
+export type AuthAccountDeleteBlocker = {
+  code?: string
+  message?: string
+  workspaceName?: string
+}
+
+export type AuthAccountDeleteErrorDetail = {
+  blockers?: AuthAccountDeleteBlocker[]
+  error?: string
+  message?: string
+}
+
 type AuthAccountDeleteResponse = {
+  detail?: unknown
   error?: string
   message?: string
   ok: boolean
@@ -43,7 +56,10 @@ export async function deleteCurrentAuthAccount(input: DeleteCurrentAuthAccountIn
   })
   const payload = await readDeletePayload(response)
   if (!response.ok || !payload.ok || !payload.message) {
-    throw new Error(payload.error || 'Account deletion failed.')
+    throw new AuthAccountDeleteError(
+      payload.error || formatDeleteFailureDetail(payload.detail) || 'Account deletion failed.',
+      readDeleteErrorDetail(payload.detail),
+    )
   }
   return payload
 }
@@ -65,5 +81,49 @@ async function readDeletePayload(response: Response): Promise<AuthAccountDeleteR
     return JSON.parse(text) as AuthAccountDeleteResponse
   } catch {
     return { error: text, ok: false }
+  }
+}
+
+function formatDeleteFailureDetail(detail: unknown): string | null {
+  const parsed = readDeleteErrorDetail(detail)
+  if (!parsed) {
+    return typeof detail === 'string' && detail.trim() ? detail.trim() : null
+  }
+  const message = typeof parsed.message === 'string' && parsed.message.trim() ? parsed.message.trim() : null
+  const blockerLabels = Array.isArray(parsed.blockers)
+    ? parsed.blockers
+      .map((blocker) => {
+        if (typeof blocker?.message === 'string' && blocker.message.trim()) return blocker.message.trim()
+        if (typeof blocker?.workspaceName === 'string' && blocker.workspaceName.trim()) return blocker.workspaceName.trim()
+        if (typeof blocker?.code === 'string' && blocker.code.trim()) return blocker.code.trim().replaceAll('_', ' ')
+        return null
+      })
+      .filter((value): value is string => Boolean(value))
+      .slice(0, 3)
+    : []
+  if (!message && blockerLabels.length === 0) {
+    return null
+  }
+  if (blockerLabels.length === 0) {
+    return message
+  }
+  return `${message ?? 'Account deletion is blocked.'} ${blockerLabels.join(' · ')}`
+}
+
+function readDeleteErrorDetail(detail: unknown): AuthAccountDeleteErrorDetail | null {
+  if (!detail || typeof detail !== 'object') {
+    return null
+  }
+  const record = detail as AuthAccountDeleteErrorDetail
+  return record
+}
+
+export class AuthAccountDeleteError extends Error {
+  detail: AuthAccountDeleteErrorDetail | null
+
+  constructor(message: string, detail: AuthAccountDeleteErrorDetail | null) {
+    super(message)
+    this.detail = detail
+    this.name = 'AuthAccountDeleteError'
   }
 }

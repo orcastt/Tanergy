@@ -29,12 +29,14 @@ type BoardLoadState =
 export default function BoardCanvasPage() {
   const params = useParams<{ boardId?: string | string[] }>()
   const searchParams = useSearchParams()
-  const { error: sessionError, session, status: sessionStatus } = useTangentSession()
   const rawBoardId = Array.isArray(params.boardId) ? params.boardId[0] : params.boardId
   const boardId = rawBoardId ? decodeURIComponent(rawBoardId) : 'untitled-board'
   const isNewBoard = searchParams.get('new') === '1'
   const shareId = searchParams.get('share')
   const requestedWorkspaceId = searchParams.get('workspace')
+  const { error: sessionError, session, status: sessionStatus } = useTangentSession({
+    requestedWorkspaceId: shareId ? null : requestedWorkspaceId,
+  })
   const [loadState, setLoadState] = useState<BoardLoadState>({ status: isNewBoard ? 'idle' : 'loading' })
   const [boardTitleOverride, setBoardTitleOverride] = useState<{ boardId: string; title: string } | null>(null)
   const detectedEngine = loadState.status === 'loaded' ? detectBoardCanvasEngine(loadState.board.document) : null

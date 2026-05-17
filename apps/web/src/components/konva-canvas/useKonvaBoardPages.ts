@@ -1,27 +1,32 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
-import { createEmptyCanvasDocument, type CanvasCamera, type CanvasDocument } from '@/features/canvas-engine'
+import { type CanvasCamera, type CanvasDocument } from '@/features/canvas-engine'
 import {
   createKonvaBoardPage,
   defaultKonvaBoardPageId,
   type SerializedKonvaBoardPage,
 } from '@/features/boards/konvaBoardPageContract'
-import {
-  cloneKonvaPageCanvasDocument,
-  createKonvaBoardPageId,
-  deleteKonvaBoardPage,
-  duplicateKonvaBoardPage,
-  getNextKonvaBoardPageTitle,
-  moveKonvaSelectionToPage,
-  normalizeKonvaBoardPageIndexes,
-  reorderKonvaBoardPage,
-  type KonvaBoardPageReorderDirection,
-} from './konvaBoardPageActions'
-import { mergeKonvaBoardPages } from '@/features/collaboration/konvaYjsPageMerge'
-import type {
-  KonvaBoardDocumentSerializationOptions,
-  KonvaBoardRestorePayload,
-} from '@/features/boards/konvaBoardDocument'
+import type { KonvaBoardPageReorderDirection } from './konvaBoardPageActions'
 import type { KonvaCanvasHistoryPageState } from './useKonvaCanvasHistory'
+import type { KonvaBoardDocumentSerializationOptions, KonvaBoardRestorePayload } from '@/features/boards/konvaBoardDocument'
+import {
+  persistActivePage,
+  restoreKonvaBoardHistoryState,
+  restoreKonvaBoardPages,
+  type RemotePageApplyOptions,
+  type RemotePageApplyResult,
+  type RestorePageOptions,
+} from './konvaBoardPageSync'
+import { applyRemoteKonvaPageChanges } from './konvaBoardPageRemoteApply'
+import {
+  createKonvaBoardPageMutation,
+  deleteKonvaBoardPageMutation,
+  duplicateKonvaBoardPageMutation,
+  moveKonvaBoardPageMutation,
+  moveKonvaSelectionToBoardPage,
+  renameKonvaBoardPage,
+  selectKonvaBoardPage,
+  updateKonvaBoardPageDocument,
+} from './konvaBoardPageMutations'
 
 type UseKonvaBoardPagesOptions = {
   activeDocument: CanvasDocument
@@ -29,24 +34,6 @@ type UseKonvaBoardPagesOptions = {
   onCameraChange: Dispatch<SetStateAction<CanvasCamera>>
   onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
   onTransientClear: () => void
-}
-
-type RestorePageOptions = {
-  bumpCollaborationRevision?: boolean
-  preserveActivePage?: boolean
-  preserveCamera?: boolean
-}
-
-type RemotePageApplyResult = {
-  activePageChanged: boolean
-  applied: boolean
-}
-
-type RemotePageApplyOptions = {
-  basePages?: SerializedKonvaBoardPage[]
-  changedPageIds?: readonly string[]
-  preserveCamera?: boolean
-  remoteActivePageId?: string
 }
 
 type CollaborationChange = {
@@ -128,324 +115,146 @@ export function useKonvaBoardPages({
   }, [])
 
   const selectPage = useCallback((pageId: string) => {
-    if (pageId === activePageIdRef.current) return
-    const nextPages = persistActivePage(pagesRef.current, activePageIdRef.current, getActiveDocument())
-    const targetPage = nextPages.find((page) => page.id === pageId)
-    if (!targetPage) return
-    const nextDocument = cloneKonvaPageCanvasDocument(targetPage.canvasDocument)
-    pagesRef.current = nextPages
-    activePageIdRef.current = targetPage.id
-    setPages(nextPages)
-    setActivePageId(targetPage.id)
-    onDocumentChange(nextDocument)
-    onCameraChange(nextDocument.camera)
-    onTransientClear()
-    setRevision((value) => value + 1)
+    selectKonvaBoardPage({
+      activeDocument: getActiveDocument(),
+      pageId,
+      refs: { activePageIdRef, cameraRef, pagesRef },
+      setters: { onCameraChange, onDocumentChange, onTransientClear, setActivePageId, setPages, setRevision },
+    })
   }, [getActiveDocument, onCameraChange, onDocumentChange, onTransientClear])
 
   const createPage = useCallback(() => {
-    const previousActivePageId = activePageIdRef.current
-    const currentPages = persistActivePage(pagesRef.current, previousActivePageId, getActiveDocument())
-    const title = getNextKonvaBoardPageTitle(currentPages)
-    const nextDocument = createEmptyCanvasDocument({
-      camera: cameraRef.current,
-      name: title,
-      shapes: [],
+    createKonvaBoardPageMutation({
+      activeDocument: getActiveDocument(),
+      noteCollaborationChange,
+      refs: { activePageIdRef, cameraRef, pagesRef },
+      setters: { onCameraChange, onDocumentChange, onTransientClear, setActivePageId, setPages, setRevision },
     })
-    const nextPage = createKonvaBoardPage(nextDocument, {
-      id: createKonvaBoardPageId(),
-      index: currentPages.length,
-      title,
-    })
-    const nextPages = normalizeKonvaBoardPageIndexes([...currentPages, nextPage])
-    pagesRef.current = nextPages
-    activePageIdRef.current = nextPage.id
-    setPages(nextPages)
-    setActivePageId(nextPage.id)
-    onDocumentChange(nextDocument)
-    onCameraChange(nextDocument.camera)
-    onTransientClear()
-    setRevision((value) => value + 1)
-    noteCollaborationChange([previousActivePageId, nextPage.id])
   }, [getActiveDocument, noteCollaborationChange, onCameraChange, onDocumentChange, onTransientClear])
 
   const renamePage = useCallback((pageId: string, title: string) => {
-    const nextTitle = title.trim()
-    if (!nextTitle) return
-    const now = new Date().toISOString()
-    const nextPages = persistActivePage(pagesRef.current, activePageIdRef.current, getActiveDocument()).map((page) => {
-      if (page.id !== pageId) return page
-      return {
-        ...page,
-        canvasDocument: {
-          ...page.canvasDocument,
-          metadata: {
-            ...page.canvasDocument.metadata,
-            name: nextTitle,
-            updatedAt: now,
-          },
-        },
-        title: nextTitle,
-        updatedAt: now,
-      }
+    renameKonvaBoardPage({
+      activeDocument: getActiveDocument(),
+      noteCollaborationChange,
+      pageId,
+      refs: { activePageIdRef, cameraRef, pagesRef },
+      setters: { onCameraChange, onDocumentChange, onTransientClear, setActivePageId, setPages, setRevision },
+      title,
     })
-    pagesRef.current = nextPages
-    setPages(nextPages)
-    if (pageId === activePageIdRef.current) {
-      onDocumentChange((current) => ({
-        ...current,
-        metadata: {
-          ...current.metadata,
-          name: nextTitle,
-          updatedAt: now,
-        },
-      }))
-    }
-    setRevision((value) => value + 1)
-    noteCollaborationChange([pageId])
-  }, [getActiveDocument, noteCollaborationChange, onDocumentChange])
+  }, [getActiveDocument, noteCollaborationChange, onCameraChange, onDocumentChange, onTransientClear])
 
   const deletePage = useCallback((pageId: string) => {
-    const previousActivePageId = activePageIdRef.current
-    const result = deleteKonvaBoardPage(
-      persistActivePage(pagesRef.current, previousActivePageId, getActiveDocument()),
-      previousActivePageId,
-      pageId
-    )
-    if (!result) return
-    pagesRef.current = result.pages
-    activePageIdRef.current = result.activePageId
-    setPages(result.pages)
-    setActivePageId(result.activePageId)
-    if (result.deletedActivePage && result.document) {
-      onDocumentChange(result.document)
-      onCameraChange(result.document.camera)
-      onTransientClear()
-    }
-    setRevision((value) => value + 1)
-    noteCollaborationChange([pageId, previousActivePageId, result.activePageId])
+    deleteKonvaBoardPageMutation({
+      activeDocument: getActiveDocument(),
+      noteCollaborationChange,
+      pageId,
+      refs: { activePageIdRef, cameraRef, pagesRef },
+      setters: { onCameraChange, onDocumentChange, onTransientClear, setActivePageId, setPages, setRevision },
+    })
   }, [getActiveDocument, noteCollaborationChange, onCameraChange, onDocumentChange, onTransientClear])
 
   const duplicatePage = useCallback((pageId: string) => {
-    const result = duplicateKonvaBoardPage(
-      persistActivePage(pagesRef.current, activePageIdRef.current, getActiveDocument()),
-      activePageIdRef.current,
-      pageId
-    )
-    if (!result) return
-    pagesRef.current = result.pages
-    activePageIdRef.current = result.activePageId
-    setPages(result.pages)
-    setActivePageId(result.activePageId)
-    onDocumentChange(result.document)
-    onCameraChange(result.document.camera)
-    onTransientClear()
-    setRevision((value) => value + 1)
-    noteCollaborationChange([pageId, result.activePageId])
+    duplicateKonvaBoardPageMutation({
+      activeDocument: getActiveDocument(),
+      noteCollaborationChange,
+      pageId,
+      refs: { activePageIdRef, cameraRef, pagesRef },
+      setters: { onCameraChange, onDocumentChange, onTransientClear, setActivePageId, setPages, setRevision },
+    })
   }, [getActiveDocument, noteCollaborationChange, onCameraChange, onDocumentChange, onTransientClear])
 
   const movePage = useCallback((pageId: string, direction: KonvaBoardPageReorderDirection) => {
-    const nextPages = reorderKonvaBoardPage(
-      persistActivePage(pagesRef.current, activePageIdRef.current, getActiveDocument()),
+    moveKonvaBoardPageMutation({
+      activeDocument: getActiveDocument(),
+      direction,
+      noteCollaborationChange,
       pageId,
-      direction
-    )
-    if (!nextPages) return
-    pagesRef.current = nextPages
-    setPages(nextPages)
-    setRevision((value) => value + 1)
-    noteCollaborationChange([pageId])
-  }, [getActiveDocument, noteCollaborationChange])
+      refs: { activePageIdRef, cameraRef, pagesRef },
+      setters: { onCameraChange, onDocumentChange, onTransientClear, setActivePageId, setPages, setRevision },
+    })
+  }, [getActiveDocument, noteCollaborationChange, onCameraChange, onDocumentChange, onTransientClear])
 
   const moveSelectionToPage = useCallback((targetPageId: string, shapeIds: readonly string[]) => {
-    const previousActivePageId = activePageIdRef.current
-    const result = moveKonvaSelectionToPage(
-      persistActivePage(pagesRef.current, previousActivePageId, getActiveDocument()),
-      previousActivePageId,
+    moveKonvaSelectionToBoardPage({
+      activeDocument: getActiveDocument(),
+      noteCollaborationChange,
+      refs: { activePageIdRef, cameraRef, pagesRef },
+      setters: { onCameraChange, onDocumentChange, onTransientClear, setActivePageId, setPages, setRevision },
+      shapeIds,
       targetPageId,
-      shapeIds
-    )
-    if (!result) return
-    pagesRef.current = result.pages
-    setPages(result.pages)
-    onDocumentChange(result.document)
-    onTransientClear()
-    setRevision((value) => value + 1)
-    noteCollaborationChange([previousActivePageId, targetPageId])
-  }, [getActiveDocument, noteCollaborationChange, onDocumentChange, onTransientClear])
+    })
+  }, [getActiveDocument, noteCollaborationChange, onCameraChange, onDocumentChange, onTransientClear])
 
   const updatePageDocument = useCallback((
     pageId: string,
     updater: (document: CanvasDocument) => CanvasDocument,
   ) => {
-    const currentPages = persistActivePage(pagesRef.current, activePageIdRef.current, getActiveDocument())
-    const now = new Date().toISOString()
-    let didUpdate = false
-    const nextPages = currentPages.map((page) => {
-      if (page.id !== pageId) return page
-      didUpdate = true
-      const nextDocument = updater(cloneKonvaPageCanvasDocument(page.canvasDocument))
-      return {
-        ...page,
-        canvasDocument: nextDocument,
-        index: page.index,
-        title: page.title || nextDocument.metadata.name || `Page ${page.index + 1}`,
-        updatedAt: nextDocument.metadata.updatedAt || now,
-      }
+    return updateKonvaBoardPageDocument({
+      activeDocument: getActiveDocument(),
+      noteCollaborationChange,
+      pageId,
+      refs: { activePageIdRef, cameraRef, pagesRef },
+      setters: { onCameraChange, onDocumentChange, onTransientClear, setActivePageId, setPages, setRevision },
+      updater,
     })
-    if (!didUpdate) return false
-    pagesRef.current = nextPages
-    setPages(nextPages)
-    if (pageId === activePageIdRef.current) {
-      const activePage = nextPages.find((page) => page.id === pageId)
-      if (activePage) onDocumentChange(cloneKonvaPageCanvasDocument(activePage.canvasDocument))
-    }
-    setRevision((value) => value + 1)
-    noteCollaborationChange([pageId])
-    return true
-  }, [getActiveDocument, noteCollaborationChange, onDocumentChange])
+  }, [getActiveDocument, noteCollaborationChange, onCameraChange, onDocumentChange, onTransientClear])
 
   const restorePages = useCallback((restore: KonvaBoardRestorePayload, options: RestorePageOptions = {}) => {
-    const nextPages = normalizeKonvaBoardPageIndexes(restore.pages)
-    const preferredActivePageId = options.preserveActivePage
-      ? activePageIdRef.current
-      : restore.activePageId
-    const activePage = nextPages.find((page) => page.id === preferredActivePageId)
-      ?? nextPages.find((page) => page.id === restore.activePageId)
-      ?? nextPages[0]
-    if (!activePage) return
-
-    const shouldPreserveCamera = Boolean(options.preserveActivePage && options.preserveCamera && activePage.id === activePageIdRef.current)
-    const nextCamera = shouldPreserveCamera ? { ...cameraRef.current } : { ...activePage.canvasDocument.camera }
-    const nextDocument = cloneKonvaPageCanvasDocument(activePage.canvasDocument)
-    nextDocument.camera = nextCamera
-    const resolvedPages = shouldPreserveCamera
-      ? nextPages.map((page) => {
-          if (page.id !== activePage.id) return page
-          const pageDocument = cloneKonvaPageCanvasDocument(page.canvasDocument)
-          pageDocument.camera = nextCamera
-          return {
-            ...page,
-            canvasDocument: pageDocument,
-          }
-        })
-      : nextPages
-
-    pagesRef.current = resolvedPages
-    activePageIdRef.current = activePage.id
-    setPages(resolvedPages)
-    setActivePageId(activePage.id)
-    onDocumentChange(nextDocument)
-    onCameraChange(nextCamera)
-    onTransientClear()
-    setRevision((value) => value + 1)
-    if (options.bumpCollaborationRevision ?? true) {
-      noteCollaborationChange(resolvedPages.map((page) => page.id), { requiresFullBoardSync: true })
-    }
+    restoreKonvaBoardPages({
+      noteCollaborationChange,
+      options,
+      refs: { activePageIdRef, cameraRef, pagesRef },
+      restore,
+      setters: {
+        onCameraChange,
+        onDocumentChange,
+        onTransientClear,
+        setActivePageId,
+        setPages,
+        setRevision,
+      },
+    })
   }, [noteCollaborationChange, onCameraChange, onDocumentChange, onTransientClear])
 
   const restoreHistoryState = useCallback((
     state: KonvaCanvasHistoryPageState,
     options: { preserveCamera?: boolean } = {},
   ) => {
-    const preserveCamera = options.preserveCamera ?? true
-    const currentPages = persistActivePage(pagesRef.current, activePageIdRef.current, getActiveDocument())
-    const currentPageCameraById = new Map(currentPages.map((page) => [page.id, { ...page.canvasDocument.camera }]))
-    const nextPages = normalizeKonvaBoardPageIndexes(state.pages).map((page) => {
-      if (!preserveCamera) return page
-      const preservedCamera = currentPageCameraById.get(page.id)
-      if (!preservedCamera) return page
-      const pageDocument = cloneKonvaPageCanvasDocument(page.canvasDocument)
-      pageDocument.camera = preservedCamera
-      return {
-        ...page,
-        canvasDocument: pageDocument,
-      }
+    restoreKonvaBoardHistoryState({
+      activeDocument: getActiveDocument(),
+      noteCollaborationChange,
+      options,
+      refs: { activePageIdRef, cameraRef, pagesRef },
+      setters: {
+        onCameraChange,
+        onDocumentChange,
+        onTransientClear,
+        setActivePageId,
+        setPages,
+        setRevision,
+      },
+      state,
     })
-    const activePage = nextPages.find((page) => page.id === state.activePageId) ?? nextPages[0]
-    if (!activePage) return
-    const nextDocument = cloneKonvaPageCanvasDocument(activePage.canvasDocument)
-    if (preserveCamera) {
-      nextDocument.camera = { ...cameraRef.current }
-      const activePageIndex = nextPages.findIndex((page) => page.id === activePage.id)
-      if (activePageIndex >= 0) {
-        const activePageDocument = cloneKonvaPageCanvasDocument(nextPages[activePageIndex]!.canvasDocument)
-        activePageDocument.camera = { ...cameraRef.current }
-        nextPages[activePageIndex] = {
-          ...nextPages[activePageIndex]!,
-          canvasDocument: activePageDocument,
-        }
-      }
-    }
-    pagesRef.current = nextPages
-    activePageIdRef.current = activePage.id
-    setPages(nextPages)
-    setActivePageId(activePage.id)
-    onDocumentChange(nextDocument)
-    onCameraChange(preserveCamera ? { ...cameraRef.current } : nextDocument.camera)
-    onTransientClear()
-    setRevision((value) => value + 1)
-    noteCollaborationChange(nextPages.map((page) => page.id), { requiresFullBoardSync: true })
   }, [getActiveDocument, noteCollaborationChange, onCameraChange, onDocumentChange, onTransientClear])
 
   const applyRemotePageChanges = useCallback((
     incomingPages: SerializedKonvaBoardPage[],
     options: RemotePageApplyOptions = {},
   ): RemotePageApplyResult => {
-    const currentPages = persistActivePage(pagesRef.current, activePageIdRef.current, getActiveDocument())
-    const normalizedIncomingPages = normalizeKonvaBoardPageIndexes(incomingPages)
-    if (normalizedIncomingPages.length === 0) {
-      return { activePageChanged: false, applied: false }
-    }
-
-    const activePageId = activePageIdRef.current
-    const currentPageMap = new Map(currentPages.map((page) => [page.id, page]))
-    const nextPages = options.basePages && options.basePages.length > 0
-      ? preserveRemoteApplyCamera(
-          mergeKonvaBoardPages(
-            currentPages,
-            normalizedIncomingPages,
-            normalizeKonvaBoardPageIndexes(options.basePages),
-          ),
-          activePageId,
-          options.preserveCamera ? cameraRef.current : null,
-        )
-      : replaceRemotePages(currentPages, normalizedIncomingPages, {
-          activePageId,
-          changedPageIds: options.changedPageIds,
-          preserveCamera: options.preserveCamera ? cameraRef.current : null,
-        })
-    const didApply = !isSameJsonValue(currentPages, nextPages)
-
-    if (!didApply) return { activePageChanged: false, applied: false }
-
-    const nextActivePage = nextPages.find((page) => page.id === activePageId)
-      ?? nextPages.find((page) => page.id === options.remoteActivePageId)
-      ?? nextPages[0]
-    if (!nextActivePage) {
-      return { activePageChanged: false, applied: false }
-    }
-
-    const currentActivePage = currentPageMap.get(activePageId)
-    const activePageChanged = nextActivePage.id !== activePageId || !isSameJsonValue(currentActivePage, nextActivePage)
-    pagesRef.current = nextPages
-    setPages(nextPages)
-    if (activePageChanged) {
-      const nextDocument = cloneKonvaPageCanvasDocument(nextActivePage.canvasDocument)
-      activePageIdRef.current = nextActivePage.id
-      setActivePageId(nextActivePage.id)
-      onDocumentChange(nextDocument)
-      onCameraChange(nextDocument.camera)
-      onTransientClear()
-    } else if (activePageIdRef.current !== nextActivePage.id) {
-      activePageIdRef.current = nextActivePage.id
-      setActivePageId(nextActivePage.id)
-    }
-    setRevision((value) => value + 1)
-    return {
-      activePageChanged,
-      applied: true,
-    }
+    return applyRemoteKonvaPageChanges({
+      activeDocument: getActiveDocument(),
+      incomingPages,
+      options,
+      refs: { activePageIdRef, cameraRef, pagesRef },
+      setters: {
+        onCameraChange,
+        onDocumentChange,
+        onTransientClear,
+        setActivePageId,
+        setPages,
+        setRevision,
+      },
+    })
   }, [getActiveDocument, onCameraChange, onDocumentChange, onTransientClear])
 
   return {
@@ -472,88 +281,4 @@ export function useKonvaBoardPages({
     selectPage,
     updatePageDocument,
   }
-}
-
-function persistActivePage(
-  pages: SerializedKonvaBoardPage[],
-  activePageId: string,
-  activeDocument: CanvasDocument
-) {
-  const now = new Date().toISOString()
-  let didPersist = false
-  const nextPages = normalizeKonvaBoardPageIndexes(pages).map((page, index) => {
-    if (page.id !== activePageId) return page
-    didPersist = true
-    return {
-      ...page,
-      canvasDocument: cloneKonvaPageCanvasDocument(activeDocument),
-      index,
-      title: page.title || activeDocument.metadata.name || `Page ${index + 1}`,
-      updatedAt: activeDocument.metadata.updatedAt || now,
-    }
-  })
-  if (didPersist) return nextPages
-  return normalizeKonvaBoardPageIndexes([
-    ...nextPages,
-    createKonvaBoardPage(activeDocument, {
-      id: activePageId,
-      index: nextPages.length,
-      title: activeDocument.metadata.name ?? `Page ${nextPages.length + 1}`,
-    }),
-  ])
-}
-
-function replaceRemotePages(
-  currentPages: SerializedKonvaBoardPage[],
-  incomingPages: SerializedKonvaBoardPage[],
-  options: {
-    activePageId: string
-    changedPageIds?: readonly string[]
-    preserveCamera?: CanvasCamera | null
-  },
-) {
-  const changedPageIds = new Set(options.changedPageIds ?? [])
-  const currentPageMap = new Map(currentPages.map((page) => [page.id, page]))
-
-  return incomingPages.map((incomingPage, index) => {
-    const currentPage = currentPageMap.get(incomingPage.id)
-    if (!currentPage) return incomingPage
-    const shouldReplace = changedPageIds.size === 0 || changedPageIds.has(incomingPage.id)
-    if (!shouldReplace) {
-      return {
-        ...currentPage,
-        index,
-      }
-    }
-    const nextPageDocument = cloneKonvaPageCanvasDocument(incomingPage.canvasDocument)
-    if (incomingPage.id === options.activePageId && options.preserveCamera) {
-      nextPageDocument.camera = { ...options.preserveCamera }
-    }
-    return {
-      ...incomingPage,
-      canvasDocument: nextPageDocument,
-      index,
-    }
-  })
-}
-
-function preserveRemoteApplyCamera(
-  pages: SerializedKonvaBoardPage[],
-  activePageId: string,
-  camera: CanvasCamera | null,
-) {
-  if (!camera) return pages
-  return pages.map((page) => {
-    if (page.id !== activePageId) return page
-    const nextDocument = cloneKonvaPageCanvasDocument(page.canvasDocument)
-    nextDocument.camera = { ...camera }
-    return {
-      ...page,
-      canvasDocument: nextDocument,
-    }
-  })
-}
-
-function isSameJsonValue(left: unknown, right: unknown) {
-  return JSON.stringify(left) === JSON.stringify(right)
 }

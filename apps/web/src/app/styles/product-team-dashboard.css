@@ -462,6 +462,40 @@ section.workspace-detail-side-panel:has(.workspace-detail-field) .workspace-deta
   gap: 16px;
 }
 
+.workspace-detail-settings-facts,
+.workspace-invite-stats {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.workspace-detail-settings-fact,
+.workspace-invite-stat {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid rgba(24, 29, 38, 0.08);
+  border-radius: 14px;
+  background: #fbfbfc;
+}
+
+.workspace-detail-settings-fact span,
+.workspace-invite-stat span {
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.workspace-detail-settings-fact strong,
+.workspace-invite-stat strong {
+  color: var(--color-ink);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
 .workspace-detail-settings-actions,
 .workspace-settings-dialog-actions {
   display: flex;
@@ -630,6 +664,10 @@ section.workspace-detail-side-panel:has(.workspace-detail-field) .workspace-deta
 
 .workspace-invite-more-button {
   justify-self: flex-start;
+}
+
+.workspace-invite-note {
+  margin-top: 2px;
 }
 
 .workspace-detail-summary-list,
@@ -805,6 +843,11 @@ section.workspace-detail-side-panel:has(.workspace-detail-field) .workspace-deta
   .workspace-invite-history-actions {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .workspace-detail-settings-facts,
+  .workspace-invite-stats {
+    grid-template-columns: 1fr;
   }
 
   .workspace-invite-toggle {

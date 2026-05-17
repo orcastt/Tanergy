@@ -1,8 +1,8 @@
 # ARCH Slice S1B: Staging Infrastructure And Online Prep
 
-**Updated**: 2026-05-15
+**Updated**: 2026-05-16
 **Mode**: Architecture slice.
-**Status**: In progress; rebuilt staging Web/API/Neon/R2 smoke, the Konva-only redeploy and real Clerk session/admin smoke are green again, Cloudflare-proxied staging domains now run with Full (strict) TLS, production runbook/templates now exist, and the remaining gates are signed-in board/browser acceptance, Google/email verification and one live provider path under strict staging auth.
+**Status**: In progress; rebuilt staging Web/API/Neon/R2 smoke, the Konva-only redeploy and real Clerk session/admin smoke are green again, Cloudflare-proxied staging domains now run with Full (strict) TLS, production runbook/templates now exist, the active API release now reads `deploy/staging/api.env` from a clean release tree backed by a server-local shared secret copy instead of the retired dirty worktree, and the remaining gates are signed-in board/browser acceptance, Google/email verification and one live provider path under strict staging auth.
 
 ## Goal
 
@@ -162,7 +162,8 @@ Promotion policy:
 - FastAPI `TANGENT_ALLOWED_ORIGINS` allows only the matching Web origin(s) for that environment.
 - Clerk allowed origins and redirect URLs include the exact staging/production Web domains before turning on required Web Auth.
 - Local-only auth helpers such as `/api/auth/dev-bypass` and the `tangent_dev_auth` cookie remain disabled in production and are never used for staging/prod acceptance.
-- Tracked deploy docs stay redacted. The live staging runtime truth now belongs in Vercel env, the staging API host `deploy/staging/api.env`, provider dashboards and private operator storage, while repo docs record only safe facts and checklist state.
+- Tracked deploy docs stay redacted. The live staging runtime truth now belongs in Vercel env, the private server-local shared staging `api.env` mirrored into the active release, provider dashboards and private operator storage, while repo docs record only safe facts and checklist state.
+- Staging deployment should use release-style directories such as `~/apps/Tangent_release_<sha>` instead of mutating a long-lived checkout. The active release may receive `deploy/staging/api.env` as a copy or symlink from a private server-local shared secret store.
 - Public staging DNS remains proxied through Cloudflare, and SSL mode stays Full (strict) instead of Flexible.
 - Public FastAPI `/health` returns 200 over HTTPS.
 - CORS allows only staging Web origin.

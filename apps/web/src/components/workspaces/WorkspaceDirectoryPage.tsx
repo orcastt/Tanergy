@@ -81,11 +81,11 @@ export function WorkspaceDirectoryPage({
     if (kind !== 'group_workspace' || !overview) return null
     return {
       currentPeriodEnd: overview.groupSummary.currentPeriodEnd,
-      label: 'Personal credits',
+      label: 'My credits',
       meta: formatGroupSummaryMeta(overview.groupSummary.groupsCreated, overview.groupSummary.groupLimit),
       planLabel: formatWorkspacePlanName(overview.groupSummary.planKey),
       remainingCredits: overview.groupSummary.remainingCredits,
-      title: 'Group subscription',
+      title: 'My personal plan',
       totalCredits: overview.groupSummary.totalCredits,
       usedThisCycle: overview.groupSummary.usedThisCycle,
     }
@@ -176,7 +176,7 @@ function normalizePlanKey(
   kind: Extract<WorkspaceKind, 'group_workspace' | 'team_workspace'>,
 ): PlanKey {
   if (planKey) return planKey
-  return kind === 'team_workspace' ? 'team_start' : 'collaborate_start'
+  return kind === 'team_workspace' ? 'team_start' : 'free_canvas'
 }
 
 function formatGroupSummaryMeta(groupsCreated: number, groupLimit: number) {

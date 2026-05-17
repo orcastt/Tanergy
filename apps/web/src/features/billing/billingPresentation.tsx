@@ -1,4 +1,4 @@
-import type { ChargeScope, CreditLedgerEntryRecord, WorkspaceKind } from './billingTypes'
+import type { BillingInterval, ChargeScope, CreditLedgerEntryRecord, WorkspaceKind } from './billingTypes'
 
 export function BillingLedgerTable({
   emptyMessage,
@@ -83,6 +83,39 @@ export function formatDate(value?: null | string) {
     minute: '2-digit',
     month: 'short',
   })
+}
+
+export function formatDateOnly(value?: null | string) {
+  if (!value) return '—'
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return value
+  return parsed.toLocaleDateString('en-US', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+export function formatBillingIntervalLabel(value?: BillingInterval | null) {
+  if (value === 'annual') return 'Annual'
+  if (value === 'contract') return 'Contract'
+  if (value === 'none') return 'Free'
+  return 'Monthly'
+}
+
+export function formatPeriodRange(
+  start?: null | string,
+  end?: null | string,
+) {
+  if (!start && !end) return 'No active period'
+  if (start && end) return `${formatDateOnly(start)} – ${formatDateOnly(end)}`
+  if (end) return `Until ${formatDateOnly(end)}`
+  return `From ${formatDateOnly(start)}`
+}
+
+export function formatFactValue(value?: null | number | string) {
+  if (value === null || value === undefined || value === '') return '—'
+  return String(value)
 }
 
 export function formatLabel(value: string) {

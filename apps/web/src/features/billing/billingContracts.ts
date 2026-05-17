@@ -60,8 +60,8 @@ export const planCatalog: Record<PlanKey, WorkspacePlanSummary> = {
     annualPriceUsd: 0,
     billingPeriod: 'none',
     boardLimit: 1,
-    groupMemberLimit: 0,
-    groupWorkspaceLimit: 0,
+    groupMemberLimit: 15,
+    groupWorkspaceLimit: 1,
     includedCredits: 0,
     monthlyPriceUsd: 0,
     name: 'Free Canvas',
@@ -140,14 +140,14 @@ export function createAiChargeSummaryForContext(input: {
 
 export function resolvePlanKey(workspaceKind: WorkspaceKind, explicitPlanKey?: PlanKey): PlanKey {
   if (explicitPlanKey && isPlanKeyAllowedForWorkspaceKind(explicitPlanKey, workspaceKind)) return explicitPlanKey
-  if (workspaceKind === 'group_workspace') return 'collaborate_start'
+  if (workspaceKind === 'group_workspace') return 'free_canvas'
   if (workspaceKind === 'team_workspace') return 'team_start'
   if (workspaceKind === 'enterprise_workspace') return 'enterprise'
   return 'free_canvas'
 }
 
 function isPlanKeyAllowedForWorkspaceKind(planKey: PlanKey, workspaceKind: WorkspaceKind) {
-  if (workspaceKind === 'group_workspace') return ['collaborate_plus', 'collaborate_start'].includes(planKey)
+  if (workspaceKind === 'group_workspace') return ['free_canvas', 'collaborate_plus', 'collaborate_start'].includes(planKey)
   if (workspaceKind === 'team_workspace') return ['team_growth', 'team_start'].includes(planKey)
   if (workspaceKind === 'enterprise_workspace') return planKey === 'enterprise'
   return planKey === 'free_canvas'

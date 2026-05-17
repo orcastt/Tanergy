@@ -4,6 +4,11 @@ from uuid import uuid4
 
 from fastapi import HTTPException
 
+from tangent_api.billing_payment_checkout_support import (
+    assert_team_seat_purchase_within_capacity,
+    resolve_payment_account_id,
+    topup_cents_per_credit,
+)
 from tangent_api.billing_credit_accounts import ensure_credit_account
 from tangent_api.billing_payment_provider import get_payment_provider, require_checkout_provider_ready
 from tangent_api.billing_payment_schemas import BillingPaymentRecord
@@ -12,23 +17,13 @@ from tangent_api.collaborate_subscription_lifecycle import (
     build_collaborate_subscription_metadata,
     calculate_collaborate_subscription_amount_cents,
 )
-from tangent_api.plan_catalog import included_credits_for_plan, monthly_price_usd_for_plan, seat_max_for_plan
+from tangent_api.plan_catalog import included_credits_for_plan, monthly_price_usd_for_plan
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.storage.postgres_connection import require_database_url
 from tangent_api.team_subscription_lifecycle import (
-    TEAM_SEAT_MAX,
     build_team_subscription_metadata,
     calculate_team_subscription_amount_cents,
 )
-
-TOPUP_CENTS_PER_CREDIT = {
-    "collaborate_plus": 1,
-    "collaborate_start": 1,
-    "enterprise": 1,
-    "free_canvas": 2,
-    "team_growth": 1,
-    "team_start": 1,
-}
 
 
 def list_billing_payments(
@@ -42,7 +37,7 @@ def list_billing_payments(
     require_database_url()
     from tangent_api.workspace_entitlements import connect_to_postgres
 
-    account_id = _resolve_payment_account_id(context, kind, workspace_scoped)
+    account_id = resolve_payment_account_id(context, kind, workspace_scoped)
     with connect_to_postgres() as connection:
         with connection.cursor() as cursor:
             cursor.execute(
@@ -77,7 +72,7 @@ def create_topup_checkout(
     require_database_url()
     if credits <= 0:
         raise HTTPException(status_code=400, detail="Top-up credits must be greater than zero.")
-    cents_per_credit = TOPUP_CENTS_PER_CREDIT.get(context.workspace_plan_key or "free_canvas", 1)
+    cents_per_credit = topup_cents_per_credit(context.workspace_plan_key, "free_canvas")
     amount_cents = max(1, int(round(float(credits) * cents_per_credit)))
     payment_metadata = {
         **metadata,
@@ -109,7 +104,7 @@ def create_workspace_topup_checkout(
         raise HTTPException(status_code=403, detail="Only workspace owners or admins may top up the Team wallet.")
     if credits <= 0:
         raise HTTPException(status_code=400, detail="Top-up credits must be greater than zero.")
-    cents_per_credit = TOPUP_CENTS_PER_CREDIT.get(context.workspace_plan_key or "team_start", 1)
+    cents_per_credit = topup_cents_per_credit(context.workspace_plan_key, "team_start")
     payment_metadata = {
         **metadata,
         "credits": float(credits),
@@ -143,7 +138,7 @@ def create_workspace_seat_checkout(
         raise HTTPException(status_code=400, detail="Invalid team plan key.")
     if quantity < 1:
         raise HTTPException(status_code=400, detail="Seat quantity must be at least one.")
-    _assert_team_seat_purchase_within_capacity(context.workspace_id, plan_key, quantity)
+    assert_team_seat_purchase_within_capacity(context.workspace_id, plan_key, quantity)
     monthly_price_usd = int(monthly_price_usd_for_plan(plan_key) or 0)
     included_credits = included_credits_for_plan(plan_key)
     payment_metadata = {
@@ -166,6 +161,7 @@ def create_workspace_seat_checkout(
 def create_team_subscription_checkout(
     context: ApiRequestContext,
     *,
+    billing_interval: str,
     currency: str,
     metadata: dict[str, object],
     plan_key: str,
@@ -175,12 +171,13 @@ def create_team_subscription_checkout(
     require_database_url()
     payment_metadata = build_team_subscription_metadata(
         context,
+        billing_interval=billing_interval,
         metadata=metadata,
         plan_key=plan_key,
         quantity=quantity,
         team_name=team_name,
     )
-    amount_cents = calculate_team_subscription_amount_cents(plan_key, quantity)
+    amount_cents = calculate_team_subscription_amount_cents(plan_key, quantity, billing_interval)
     return _create_payment(
         account_owner_id=context.user_id,
         account_owner_type="user",
@@ -194,6 +191,7 @@ def create_team_subscription_checkout(
 def create_collaborate_subscription_checkout(
     context: ApiRequestContext,
     *,
+    billing_interval: str,
     currency: str,
     metadata: dict[str, object],
     plan_key: str,
@@ -201,13 +199,14 @@ def create_collaborate_subscription_checkout(
     require_database_url()
     payment_metadata = build_collaborate_subscription_metadata(
         context,
+        billing_interval=billing_interval,
         metadata=metadata,
         plan_key=plan_key,
     )
     return _create_payment(
         account_owner_id=context.user_id,
         account_owner_type="user",
-        amount_cents=calculate_collaborate_subscription_amount_cents(plan_key),
+        amount_cents=calculate_collaborate_subscription_amount_cents(plan_key, billing_interval),
         currency=currency,
         kind="collaborate_subscription",
         metadata=payment_metadata,
@@ -264,40 +263,3 @@ def _create_payment(
             row = cursor.fetchone()
         connection.commit()
     return payment_from_row(row)
-
-
-def _resolve_payment_account_id(context: ApiRequestContext, kind: Optional[str], workspace_scoped: bool) -> str:
-    if workspace_scoped or kind == "seat_purchase":
-        return f"credit_workspace_{context.workspace_id}"
-    return f"credit_user_{context.user_id}"
-
-
-def _assert_team_seat_purchase_within_capacity(workspace_id: str, plan_key: str, quantity: int) -> None:
-    from tangent_api.workspace_entitlements import connect_to_postgres
-
-    with connect_to_postgres() as connection:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                """
-                SELECT plan_key, seat_capacity
-                FROM tangent_subscriptions
-                WHERE owner_type = 'workspace'
-                  AND owner_id = %s
-                  AND plan_family = 'team'
-                  AND status IN ('active', 'trialing')
-                  AND (current_period_end IS NULL OR current_period_end > NOW())
-                ORDER BY updated_at DESC
-                LIMIT 1
-                """,
-                (workspace_id,),
-            )
-            row = cursor.fetchone()
-    if row is None:
-        raise HTTPException(status_code=402, detail="Active Team subscription is required to buy seats.")
-    active_plan_key = str(row[0] or "")
-    if active_plan_key != plan_key:
-        raise HTTPException(status_code=400, detail="Seat purchase plan must match the active Team subscription.")
-    current_capacity = int(row[1] or 0)
-    max_seats = seat_max_for_plan(plan_key) or TEAM_SEAT_MAX
-    if current_capacity + quantity > max_seats:
-        raise HTTPException(status_code=400, detail=f"Team seat capacity cannot exceed {max_seats}.")

@@ -79,21 +79,36 @@ export function WorkspaceInvitePanel({
     totalInviteCount,
     visibleInvites,
   } = useWorkspaceInvitations({ workspace })
+  const inviteStats = [
+    { label: 'Pending', value: String(inviteGroups.pending.length) },
+    { label: 'Accepted', value: String(inviteGroups.accepted.length) },
+    { label: 'Revoked', value: String(inviteGroups.revoked.length) },
+    seatLabel ? { label: 'Seats', value: seatLabel } : null,
+  ].filter(Boolean) as Array<{ label: string; value: string }>
+  const inviteRule = workspace.kind === 'team_workspace'
+    ? 'Accepted Team invites join the same Team wallet workspace. A seat is consumed only after acceptance.'
+    : 'Accepted Group invites join the same Group structure, but AI still charges each member’s own personal credits.'
 
   return (
     <section className="workspace-detail-panel workspace-detail-side-panel">
       <div className="workspace-detail-panel-head">
         <div>
           <h2>Invite</h2>
-          <small>{canManageInvites ? 'Create invite links. Optional email only restricts who can accept.' : 'Only owners and admins can invite.'}</small>
+          <small>{canManageInvites ? 'Create manual invite links. Optional email only restricts who can accept; nothing is emailed automatically yet.' : 'Only owners and admins can invite.'}</small>
         </div>
       </div>
-      {seatLabel ? (
-        <div className="workspace-detail-dark-card">
-          <div className="workspace-detail-dark-row"><strong>{seatLabel}</strong></div>
-          <small>seats</small>
-        </div>
-      ) : null}
+      <div className="workspace-invite-stats">
+        {inviteStats.map((stat) => (
+          <div className="workspace-invite-stat" key={stat.label}>
+            <span>{stat.label}</span>
+            <strong>{stat.value}</strong>
+          </div>
+        ))}
+      </div>
+      <div className="workspace-detail-settings-note workspace-invite-note">
+        <strong>Invite rules</strong>
+        <p>{inviteRule}</p>
+      </div>
       <label className="workspace-detail-field">
         <span>Restrict to email</span>
         <div className="workspace-detail-field-row">
@@ -131,6 +146,9 @@ export function WorkspaceInvitePanel({
               Copy
             </button>
           </div>
+          <small className="workspace-detail-status">
+            {selectedBoard ? `Join opens ${selectedBoard.title}.` : 'Join opens workspace home.'}
+          </small>
         </label>
       ) : null}
       {status ? <small className="workspace-detail-status" role="status">{status}</small> : null}
