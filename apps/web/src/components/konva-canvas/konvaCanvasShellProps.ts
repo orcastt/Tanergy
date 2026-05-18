@@ -44,6 +44,7 @@ type CreateKonvaCanvasShellPropsOptions = {
   handleStageNodeTextEditStart: (shapeId: string, fieldName: KonvaNodeTextFieldName) => void
   handleStageReady: (stage: Konva.Stage | null) => void
   handleStageTextEditStart: (shapeId: string) => void
+  handleLocalDocumentCommit?: () => void
   handleToolbarOpenSettings: NonNullable<ShellProps['toolbarProps']>['onOpenSettings']
   handleToolChange: NonNullable<ShellProps['toolbarProps']>['onToolChange']
   headerLocalSync: HeaderProps['localSync']
@@ -200,6 +201,7 @@ export function createKonvaCanvasShellProps(options: CreateKonvaCanvasShellProps
       onEdgeSelect: options.writableStagePropsExtras.onEdgeSelect,
       onGeneratedImageToCanvas: options.sendGeneratedOutputToCanvas,
       onHistoryCheckpoint: options.writableStagePropsExtras.onHistoryCheckpoint,
+      onLocalDocumentCommit: options.handleLocalDocumentCommit,
       onImageNodeToCanvas: options.sendImageNodeToCanvas,
       onInteractionShapeIdsChange: options.setInteractionShapeIds,
       onNodeChatClean: options.writableStagePropsExtras.onNodeChatClean,

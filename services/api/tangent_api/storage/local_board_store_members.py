@@ -3,6 +3,7 @@ from typing import Optional
 
 from fastapi import HTTPException
 
+from tangent_api.board_access import assert_board_allows_member_management
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.schemas import BoardMemberCandidateRecord, BoardMemberRecord
 from tangent_api.storage.local_board_store_records import (
@@ -33,6 +34,7 @@ def upsert_board_member(
     context: ApiRequestContext,
 ) -> BoardMemberRecord:
     record = _load_board_without_touch(board_id, context, required_access="manage")
+    assert_board_allows_member_management(context.workspace_kind)
     normalized_role = _normalize_board_member_role(role)
     people = _read_workspace_people(record.workspace_id, record, context)
     person = next((item for item in people if item["user_id"] == user_id), None)
@@ -56,6 +58,7 @@ def upsert_board_member(
 
 def remove_board_member(board_id: str, user_id: str, context: ApiRequestContext) -> str:
     record = _load_board_without_touch(board_id, context, required_access="manage")
+    assert_board_allows_member_management(context.workspace_kind)
     if user_id == record.owner_id:
         raise HTTPException(status_code=400, detail="Board owner cannot be removed.")
     members = _read_member_records(record.id, record, context)
@@ -69,6 +72,7 @@ def search_board_member_candidates(
     context: ApiRequestContext,
 ) -> list[BoardMemberCandidateRecord]:
     record = _load_board_without_touch(board_id, context, required_access="manage")
+    assert_board_allows_member_management(context.workspace_kind)
     normalized_query = query.strip().lower()
     if not normalized_query:
         return []
@@ -111,6 +115,7 @@ def invite_board_member_by_email(
     context: ApiRequestContext,
 ) -> BoardMemberRecord:
     record = _load_board_without_touch(board_id, context, required_access="manage")
+    assert_board_allows_member_management(context.workspace_kind)
     normalized_email = _normalize_email(email)
     normalized_display_name = _normalize_display_name(display_name) or normalized_email.split("@")[0]
     people = _read_workspace_people(record.workspace_id, record, context)

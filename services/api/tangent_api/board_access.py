@@ -98,13 +98,9 @@ def can_own_board(
     context: ApiRequestContext,
     board_member_role: Optional[str] = None,
 ) -> bool:
-    if resolve_effective_board_permission(record, context, board_member_role) == "owner":
-        return True
-    return (
-        record.workspace_id == context.workspace_id
-        and context.workspace_kind == "solo_workspace"
-        and context.workspace_role == "owner"
-    )
+    if context.workspace_kind in SHAREABLE_BOARD_WORKSPACE_KINDS:
+        return record.workspace_id == context.workspace_id and _normalize_workspace_role(context.workspace_role) == "owner"
+    return resolve_effective_board_permission(record, context, board_member_role) == "owner"
 
 
 def assert_can_create_board(context: ApiRequestContext) -> None:
@@ -116,7 +112,7 @@ def assert_can_create_board(context: ApiRequestContext) -> None:
 
 
 def assert_board_page_limit(page_count: int, context: ApiRequestContext) -> None:
-    page_limit = page_limit_for_plan(context.workspace_plan_key or "free_canvas")
+    page_limit = _effective_board_page_limit(context)
     if page_limit is not None and page_count > page_limit:
         raise HTTPException(status_code=400, detail=f"Plan allows up to {page_limit} pages per board.")
 
@@ -170,6 +166,14 @@ def assert_board_allows_share_links(record: BoardRecord, workspace_kind: Optiona
         )
 
 
+def assert_board_allows_member_management(workspace_kind: Optional[str]) -> None:
+    if not workspace_kind_allows_board_sharing(workspace_kind):
+        raise HTTPException(
+            status_code=403,
+            detail="Board members are only configurable in Team or Group workspaces.",
+        )
+
+
 def assert_can_own_board(
     record: BoardRecord,
     context: ApiRequestContext,
@@ -177,6 +181,13 @@ def assert_can_own_board(
 ) -> None:
     if not can_own_board(record, context, board_member_role):
         raise HTTPException(status_code=403, detail="Only the Board owner can copy or delete this board.")
+
+
+def _effective_board_page_limit(context: ApiRequestContext) -> Optional[int]:
+    plan_limit = page_limit_for_plan(context.workspace_plan_key or "free_canvas")
+    if context.workspace_kind in {"group_workspace", "team_workspace"}:
+        return min(plan_limit, 10) if plan_limit is not None else 10
+    return plan_limit
 
 
 def _normalize_workspace_role(value: str) -> str:

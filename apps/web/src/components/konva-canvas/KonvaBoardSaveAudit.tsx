@@ -20,6 +20,7 @@ type KonvaBoardSaveAuditProps = {
   boardId?: string
   boardTitle?: string
   camera: CanvasCamera
+  createIfMissing?: boolean
   document: CanvasDocument
   mode?: 'board' | 'dev'
   onBoardLoaded?: (board: BoardPersistenceRecord) => void
@@ -45,6 +46,7 @@ export const KonvaBoardSaveAudit = forwardRef<KonvaBoardSaveAuditHandle, KonvaBo
   boardId = defaultBoardId,
   boardTitle = defaultBoardTitle,
   camera,
+  createIfMissing = true,
   document,
   getPageEnvelope,
   historyTitle,
@@ -62,6 +64,7 @@ export const KonvaBoardSaveAudit = forwardRef<KonvaBoardSaveAuditHandle, KonvaBo
     boardId,
     boardTitle,
     camera,
+    createIfMissing,
     document,
     getPageEnvelope,
     mode,

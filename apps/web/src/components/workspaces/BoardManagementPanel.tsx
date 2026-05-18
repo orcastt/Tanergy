@@ -64,7 +64,8 @@ export function BoardManagementPanel({
   const [thumbnailUrl, setThumbnailUrl] = useState(board.thumbnailUrl ?? '')
   const [title, setTitle] = useState(board.title)
   const editDisabled = !canManageBoard || isPending
-  const canShareBoard = canManageBoard && Boolean(workspace && sharedWorkspaceKinds.has(workspace.kind))
+  const isSharedWorkspace = Boolean(workspace && sharedWorkspaceKinds.has(workspace.kind))
+  const canShareBoard = canManageBoard && isSharedWorkspace
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -109,23 +110,27 @@ export function BoardManagementPanel({
           <header className="board-panel-header">
             <div>
               <h2>Board settings</h2>
-              <p>{canManageBoard ? 'Edit metadata, appearance and members.' : 'View the board summary and members.'}</p>
+              <p>{canManageBoard ? getBoardSettingsDescription(isSharedWorkspace) : getBoardViewDescription(isSharedWorkspace)}</p>
             </div>
             <div className="board-panel-top-actions">
               <button className="product-button product-button-primary" disabled={editDisabled} form="board-management-form" type="submit">
                 Save
               </button>
-              <button className="product-button product-button-secondary" disabled={isPending || !canShareBoard} onClick={onShare} type="button">
-                Copy link
-              </button>
-              <button
-                className="product-button product-button-secondary"
-                disabled={!canManageBoard}
-                onClick={() => document.getElementById('board-members-lookup')?.focus()}
-                type="button"
-              >
-                Add member
-              </button>
+              {isSharedWorkspace ? (
+                <>
+                  <button className="product-button product-button-secondary" disabled={isPending || !canShareBoard} onClick={onShare} type="button">
+                    Copy link
+                  </button>
+                  <button
+                    className="product-button product-button-secondary"
+                    disabled={!canManageBoard}
+                    onClick={() => document.getElementById('board-members-lookup')?.focus()}
+                    type="button"
+                  >
+                    Add member
+                  </button>
+                </>
+              ) : null}
               <button className="product-button product-button-secondary" onClick={onOpen} type="button">
                 Open
               </button>
@@ -137,7 +142,7 @@ export function BoardManagementPanel({
             <p className="board-panel-permission-note">Read only.</p>
           ) : null}
 
-          <div className="board-panel-content">
+          <div className={isSharedWorkspace ? 'board-panel-content' : 'board-panel-content board-panel-content--personal'}>
             <form className="board-panel-form board-panel-editor-column" id="board-management-form" onSubmit={submit}>
               <BoardManagementThumbnailSection
                 board={board}
@@ -216,9 +221,11 @@ export function BoardManagementPanel({
               </section>
             </form>
 
-            <div className="board-panel-members-column">
-              <BoardManagementMembers board={board} canManageBoard={canManageBoard} disabled={isPending} workspace={workspace} />
-            </div>
+            {isSharedWorkspace ? (
+              <div className="board-panel-members-column">
+                <BoardManagementMembers board={board} canManageBoard={canManageBoard} disabled={isPending} workspace={workspace} />
+              </div>
+            ) : null}
           </div>
         </main>
       </section>
@@ -234,6 +241,15 @@ function formatDate(value: string) {
 
 function getBoardAccessLabel(workspace: BoardManagementPanelProps['workspace'], canManageBoard: boolean) {
   if (!workspace) return canManageBoard ? 'Can manage' : 'View only'
+  if (workspace.kind === 'solo_workspace') return 'Personal board'
   const scope = workspace.kind === 'team_workspace' ? 'Team' : workspace.kind === 'group_workspace' ? 'Group' : 'Personal'
   return canManageBoard ? `${scope} manager or assigned board access` : 'Assigned board access'
+}
+
+function getBoardSettingsDescription(isSharedWorkspace: boolean) {
+  return isSharedWorkspace ? 'Edit metadata, appearance and members.' : 'Edit metadata and appearance.'
+}
+
+function getBoardViewDescription(isSharedWorkspace: boolean) {
+  return isSharedWorkspace ? 'View the board summary and members.' : 'View your personal board summary.'
 }

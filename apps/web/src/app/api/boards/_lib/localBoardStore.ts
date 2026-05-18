@@ -31,6 +31,7 @@ export async function saveLocalBoard(input: BoardSaveInput, context: ApiRequestC
   const metrics = getBoardDocumentMetrics(input.document)
   const existing = await readLocalBoardRecord(boardId, context)
   if (existing) assertBoardAccess(existing, context)
+  if (!existing && input.createIfMissing === false) throw new Error('Board not found in workspace.')
   const savedAt = new Date().toISOString()
   const record: BoardPersistenceRecord = {
     assetCount: metrics.assetCount,

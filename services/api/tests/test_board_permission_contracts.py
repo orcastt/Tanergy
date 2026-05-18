@@ -10,13 +10,14 @@ from tests.persistence_fakes import FakePostgresDatabase
 
 def test_board_copy_and_delete_are_owner_only(monkeypatch):
     fake_db = FakePostgresDatabase()
+    fake_db.workspaces = [{"id": "workspace_group", "kind": "group_workspace"}]
     monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
     store = PostgresBoardStore()
 
-    owner = make_context("user_owner", role="owner")
-    workspace_admin = make_context("user_workspace_admin", role="admin")
-    workspace_member = make_context("user_workspace_member", role="member")
-    board_admin = make_context("user_board_admin", role="guest")
+    owner = make_context("user_owner", role="owner", workspace_id="workspace_group", workspace_kind="group_workspace")
+    workspace_admin = make_context("user_workspace_admin", role="admin", workspace_id="workspace_group", workspace_kind="group_workspace")
+    workspace_member = make_context("user_workspace_member", role="member", workspace_id="workspace_group", workspace_kind="group_workspace")
+    board_admin = make_context("user_board_admin", role="guest", workspace_id="workspace_group", workspace_kind="group_workspace")
 
     store.save_board(
         BoardSaveRequest(
@@ -61,10 +62,10 @@ def test_board_copy_and_delete_are_owner_only(monkeypatch):
 
     deleted_id = store.delete_board("owner_only_board", owner)
     assert deleted_id == "owner_only_board"
-    assert ("dev-workspace", "owner_only_board") not in fake_db.boards
+    assert ("workspace_group", "owner_only_board") not in fake_db.boards
 
 
-def test_solo_workspace_owner_can_copy_and_delete_stale_owned_board(monkeypatch):
+def test_solo_workspace_owner_cannot_copy_or_delete_stale_unowned_board(monkeypatch):
     fake_db = FakePostgresDatabase()
     monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
     store = PostgresBoardStore()
@@ -81,13 +82,14 @@ def test_solo_workspace_owner_can_copy_and_delete_stale_owned_board(monkeypatch)
         original_owner,
     )
 
-    copied = store.copy_board("stale_private_board", solo_workspace_owner)
-    assert copied.id != "stale_private_board"
-    assert copied.title == "Stale Private Board Copy"
+    with pytest.raises(HTTPException) as copy_error:
+        store.copy_board("stale_private_board", solo_workspace_owner)
+    assert copy_error.value.status_code == 403
 
-    deleted_id = store.delete_board("stale_private_board", solo_workspace_owner)
-    assert deleted_id == "stale_private_board"
-    assert ("dev-workspace", "stale_private_board") not in fake_db.boards
+    with pytest.raises(HTTPException) as delete_error:
+        store.delete_board("stale_private_board", solo_workspace_owner)
+    assert delete_error.value.status_code == 403
+    assert ("dev-workspace", "stale_private_board") in fake_db.boards
 
 
 def test_expired_share_link_blocks_resolve_and_shared_board_load(monkeypatch):
@@ -208,13 +210,14 @@ def test_solo_workspace_board_cannot_become_public(monkeypatch):
 
 def test_effective_permission_resolver_allows_editor_snapshots_but_not_manage(monkeypatch):
     fake_db = FakePostgresDatabase()
+    fake_db.workspaces = [{"id": "workspace_group", "kind": "group_workspace"}]
     monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
     monkeypatch.setattr("tangent_api.storage.postgres_board_snapshot_store.connect_to_postgres", fake_db.connect)
     board_store = PostgresBoardStore()
     snapshot_store = PostgresBoardSnapshotStore()
-    owner = make_context("user_owner", role="owner")
-    guest_editor = make_context("user_editor", role="guest")
-    guest_viewer = make_context("user_viewer", role="guest")
+    owner = make_context("user_owner", role="owner", workspace_id="workspace_group", workspace_kind="group_workspace")
+    guest_editor = make_context("user_editor", role="guest", workspace_id="workspace_group", workspace_kind="group_workspace")
+    guest_viewer = make_context("user_viewer", role="guest", workspace_id="workspace_group", workspace_kind="group_workspace")
 
     board_store.save_board(
         BoardSaveRequest(

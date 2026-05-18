@@ -45,6 +45,7 @@ export type CreateSpikeTransientUiPropsOptions = {
   fileInput?: ReactNode
   focusedEditNotice?: string | null
   getPageEnvelope: NonNullable<TransientUiProps['saveAuditProps']>['getPageEnvelope']
+  hasPersistedBoard: boolean
   handleCaptureSelectionToImageNode: () => Promise<void>
   handleEditingNodeTextCommit: NonNullable<TransientUiProps['nodeTextEditorProps']>['onCommit']
   handleEditingNodeTextSubmit: NonNullable<TransientUiProps['nodeTextEditorProps']>['onSubmit']
@@ -123,6 +124,7 @@ export function createKonvaCanvasSpikeTransientUiProps({
   fileInput,
   focusedEditNotice,
   getPageEnvelope,
+  hasPersistedBoard,
   handleCaptureSelectionToImageNode,
   handleEditingNodeTextCommit,
   handleEditingNodeTextSubmit,
@@ -236,6 +238,7 @@ export function createKonvaCanvasSpikeTransientUiProps({
       boardId,
       boardTitle,
       camera,
+      createIfMissing: !hasPersistedBoard,
       document,
       getPageEnvelope,
       activePageId,

@@ -62,8 +62,12 @@ class PostgresBoardStoreMutationsMixin:
         if existing:
             assert_can_write_board(existing, context, self._load_board_member_role(board_id, context))
         else:
+            if not input_data.create_if_missing:
+                raise HTTPException(status_code=404, detail="Board not found in workspace.")
             assert_can_create_board(context)
         record = build_board_record(input_data, context, board_id, existing, audit.byte_size, metrics, saved_at)
+        if not existing:
+            record = record.model_copy(update={"owner_id": self._resolve_new_board_owner_id(context)})
 
         with connect_to_postgres() as connection:
             with connection.cursor() as cursor:
@@ -145,6 +149,37 @@ class PostgresBoardStoreMutationsMixin:
             connection.commit()
 
         return BoardSaveResponse(audit=audit, board=summarize_board_record(record), ok=True)
+
+    def _resolve_new_board_owner_id(self, context: ApiRequestContext) -> str:
+        if context.workspace_kind not in {"group_workspace", "team_workspace"}:
+            return context.user_id
+        if context.workspace_role == "owner":
+            return context.user_id
+        with connect_to_postgres() as connection:
+            with connection.cursor() as cursor:
+                ensure_board_schema(cursor)
+                cursor.execute(
+                    """
+                    SELECT COALESCE(
+                        NULLIF(w.owner_id, ''),
+                        (
+                            SELECT wm.user_id
+                            FROM tangent_workspace_members wm
+                            WHERE wm.workspace_id = w.id
+                              AND wm.role = 'owner'
+                            ORDER BY wm.joined_at ASC, wm.user_id ASC
+                            LIMIT 1
+                        )
+                    )
+                    FROM tangent_workspaces w
+                    WHERE w.id = %s
+                    LIMIT 1
+                    """,
+                    (context.workspace_id,),
+                )
+                row = cursor.fetchone()
+        owner_id = str(row[0]).strip() if row and row[0] else ""
+        return owner_id or context.user_id
 
     def update_board_metadata(
         self,

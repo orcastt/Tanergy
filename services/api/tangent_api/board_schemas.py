@@ -35,6 +35,7 @@ class BoardValidateResponse(TangentApiModel):
 class BoardSaveRequest(TangentApiModel):
     board_id: Optional[str] = Field(default=None, alias="boardId")
     card_color: Optional[str] = Field(default=None, alias="cardColor")
+    create_if_missing: bool = Field(default=True, alias="createIfMissing")
     description: Optional[str] = None
     document: Any
     thumbnail_url: Optional[str] = Field(default=None, alias="thumbnailUrl")

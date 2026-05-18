@@ -220,6 +220,7 @@ export function useKonvaCanvasSpikeRuntime({
       handleCameraPreview: controls.handleCameraPreview, handleCreatePage: pageActions.handleCreatePage, handleDeletePage: pageActions.handleDeletePage,
       handleDuplicatePage: pageActions.handleDuplicatePage, handleMovePage: pageActions.handleMovePage, handleRenamePage: pageActions.handleRenamePage,
       handleSelectionChange, handleStageNodeTextEditStart: textEditing.handleStageNodeTextEditStart, handleStageReady: commandActions.handleStageReady,
+      handleLocalDocumentCommit: collaboration.collaborationEnabled ? collaboration.localYjsSync.publishLocalSnapshot : undefined,
       handleStageTextEditStart: textEditing.handleStageTextEditStart, handleToolbarOpenSettings: commandActions.handleToolbarOpenSettings, handleToolChange,
       headerLocalSync: collaboration.collaborationEnabled ? collaboration.localYjsSync : undefined, isSpacePanning, localSyncBannerProps: collaboration.collaborationEnabled ? { localSync: collaboration.localYjsSync } : undefined,
       mode, nextStyle, onBoardTitleRename, overlayOccupancy: collaboration.collaboration.shapeOccupancy, overlaySessions: collaboration.collaboration.activeSessions,
@@ -258,7 +259,7 @@ export function useKonvaCanvasSpikeRuntime({
     onRemoveBackground: imageOps.removeBackground, onSelectionChange: handleSelectionChange, onUngroupSelection: () => commandActions.runContextAction('ungroup'),
     onUnlockSelection: () => commandActions.runContextAction('unlock'), onZoomIn: () => controls.zoomAtCenter(1.12), onZoomOut: () => controls.zoomAtCenter(0.88),
     onZoomReset: controls.resetZoom, pageRevision: boardPages.revision, pages: boardPages.pages, pointCount: selectionSaveState.pointCount,
-    saveAuditRef, selectedIds, selectionActionError, settingsOpen, shellRect, size, stage, workspace, zoom: camera.zoom,
+    hasPersistedBoard, saveAuditRef, selectedIds, selectionActionError, settingsOpen, shellRect, size, stage, workspace, zoom: camera.zoom,
   })
 
   return { shellProps, transientUiProps }
@@ -268,8 +269,12 @@ function resolveCanvasPagePlan(workspace?: TangentWorkspace) {
   if (!workspace) return { pageLimit: null, planName: undefined }
   const planKey = resolvePlanKey(workspace.kind, workspace.planKey)
   const plan = planCatalog[planKey]
+  const planPageLimit = plan.pageLimit ?? null
+  const pageLimit = workspace.kind === 'group_workspace' || workspace.kind === 'team_workspace'
+    ? Math.min(planPageLimit ?? 10, 10)
+    : planPageLimit
   return {
-    pageLimit: plan.pageLimit ?? null,
+    pageLimit,
     planName: plan.name,
   }
 }

@@ -29,6 +29,7 @@ export type BoardPersistenceSummary = Omit<BoardPersistenceRecord, 'document'>
 export type BoardSaveInput<Document = unknown> = {
   boardId?: string
   cardColor?: BoardCardColor | null
+  createIfMissing?: boolean
   description?: string | null
   document: Document
   thumbnailUrl?: string | null

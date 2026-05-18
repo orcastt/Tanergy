@@ -144,6 +144,15 @@ export default function BoardCanvasPage() {
     )
   }
 
+  if (loadState.status === 'missing') {
+    return (
+      <BoardRouteState
+        title="Board unavailable"
+        detail={loadState.error ?? 'This board was deleted or you no longer have access.'}
+      />
+    )
+  }
+
   return (
     <KonvaCanvasSpike
       autoLoadBoard={false}

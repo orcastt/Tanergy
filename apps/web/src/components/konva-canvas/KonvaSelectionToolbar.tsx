@@ -60,7 +60,7 @@ export function KonvaSelectionToolbar({
   selectedIds,
   shellRect,
 }: KonvaSelectionToolbarProps) {
-  if (isSingleNodeSelection(document.shapes, selectedIds)) return null
+  if (selectedIds.length < 2) return null
   const point = getSelectionToolbarPoint(document.shapes, selectedIds, camera, shellRect)
   if (!point) return null
   const showGroupToggle = canGroupSelection || canUngroupSelection
@@ -166,11 +166,6 @@ export function KonvaSelectionToolbar({
       ) : null}
     </div>
   )
-}
-
-function isSingleNodeSelection(shapes: CanvasShape[], selectedIds: string[]) {
-  if (selectedIds.length !== 1) return false
-  return shapes.some((shape) => shape.id === selectedIds[0] && shape.type === 'node_card')
 }
 
 function getSelectionToolbarPoint(

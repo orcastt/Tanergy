@@ -559,11 +559,12 @@ def test_board_guard_rejects_invalid_konva_v2_pages_contract(tmp_path, monkeypat
 
 def test_postgres_board_owner_is_preserved_on_collaborator_save(monkeypatch):
     fake_db = FakePostgresDatabase()
+    fake_db.workspaces = [{"id": "workspace_group", "kind": "group_workspace"}]
     monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
     store = PostgresBoardStore()
 
-    owner = make_context("user_owner", role="owner")
-    collaborator = make_context("user_editor", role="member")
+    owner = make_context("user_owner", role="owner", workspace_id="workspace_group", workspace_kind="group_workspace")
+    collaborator = make_context("user_editor", role="member", workspace_id="workspace_group", workspace_kind="group_workspace")
 
     store.save_board(
         BoardSaveRequest(
@@ -583,7 +584,7 @@ def test_postgres_board_owner_is_preserved_on_collaborator_save(monkeypatch):
         collaborator,
     )
 
-    assert fake_db.boards[("dev-workspace", "shared_board")][2] == "user_owner"
+    assert fake_db.boards[("workspace_group", "shared_board")][2] == "user_owner"
 
 
 def test_postgres_board_guest_permissions_first_pass(monkeypatch):
@@ -638,11 +639,12 @@ def test_postgres_board_guest_permissions_first_pass(monkeypatch):
 
 def test_postgres_board_member_roles_enable_guest_access_first_pass(monkeypatch):
     fake_db = FakePostgresDatabase()
+    fake_db.workspaces = [{"id": "workspace_group", "kind": "group_workspace"}]
     monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
     store = PostgresBoardStore()
 
-    owner = make_context("user_owner", role="owner")
-    guest = make_context("user_guest", role="guest")
+    owner = make_context("user_owner", role="owner", workspace_id="workspace_group", workspace_kind="group_workspace")
+    guest = make_context("user_guest", role="guest", workspace_id="workspace_group", workspace_kind="group_workspace")
 
     store.save_board(
         BoardSaveRequest(
@@ -835,7 +837,9 @@ def test_board_postgres_copy_and_restore_contract(monkeypatch):
 
 def test_board_members_scaffold_contract(monkeypatch):
     fake_db = FakePostgresDatabase()
+    fake_db.workspaces = [{"id": "dev-workspace", "kind": "group_workspace"}]
     monkeypatch.setenv("TANGENT_BOARD_STORAGE_DRIVER", "postgres")
+    monkeypatch.setenv("TANGENT_DEV_WORKSPACE_KIND", "group_workspace")
     monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
     monkeypatch.setattr("tangent_api.storage.postgres_board_snapshot_store.connect_to_postgres", fake_db.connect)
     client = TestClient(app)

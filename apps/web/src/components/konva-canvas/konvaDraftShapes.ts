@@ -11,7 +11,7 @@ import {
 import type { KonvaCanvasTool, KonvaToolSession } from './konvaCanvasTypes'
 import { resolveKonvaShapeStyle } from './konvaCanvasStyle'
 
-const boxTools = new Set<KonvaCanvasTool>(['rect', 'diamond', 'ellipse', 'triangle', 'cloud', 'frame', 'sticky'])
+const boxTools = new Set<KonvaCanvasTool>(['rect', 'diamond', 'ellipse', 'triangle', 'cloud', 'frame', 'sticky', 'text'])
 
 export function updateStrokeDraft(session: Extract<KonvaToolSession, { type: 'create' }>, point: StrokePoint): CanvasShape {
   if (session.draft.type !== 'stroke') return session.draft
@@ -63,11 +63,8 @@ export function createDraftShape(
   const height = Math.abs(end.y - origin.y)
   if (tool === 'frame') return { id: createShapeId('frame'), props: { height, title: 'Frame', width }, style: frameStyle(), type: 'frame', x, y }
   if (tool === 'sticky') return { id: createShapeId('sticky'), props: { authorName: 'You', height, text: 'Sticky', width }, style: stickyStyle(options.style), type: 'sticky', x, y }
+  if (tool === 'text') return { id: createShapeId('text'), props: { height, text: '', width }, style: baseStyle(options.style), type: 'text', x, y }
   return { id: createShapeId(tool), props: { height, width }, style: baseStyle(options.style), type: tool, x, y } as CanvasShape
-}
-
-export function createTextShape(point: CanvasPoint, style?: CanvasShapeStyle): CanvasShape {
-  return { id: createShapeId('text'), props: { height: 56, text: 'Text', width: 180 }, style: baseStyle(style), type: 'text', x: point.x, y: point.y }
 }
 
 export function createStrokePoint(point: CanvasPoint, event: PointerEvent, previous?: StrokePoint): StrokePoint {

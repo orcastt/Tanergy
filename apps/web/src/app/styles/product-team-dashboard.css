@@ -719,6 +719,11 @@ section.workspace-detail-side-panel:has(.workspace-detail-field) .workspace-deta
   margin-top: 2px;
 }
 
+.workspace-detail-page .workspace-invite-generate-button {
+  width: 100%;
+  margin-top: 16px;
+}
+
 .workspace-detail-summary-list,
 .workspace-detail-action-list {
   display: grid;

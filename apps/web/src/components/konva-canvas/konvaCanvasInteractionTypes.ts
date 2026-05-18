@@ -21,9 +21,11 @@ export type UseKonvaCanvasInteractionsOptions = {
   onDocumentPreview: Dispatch<SetStateAction<CanvasDocument>>
   onDraftPreviewChange?: (shape: CanvasShape | null) => void
   onHistoryCheckpoint: (document: CanvasDocument) => void
+  onLocalDocumentCommit?: () => void
   onConnectionPreviewChange?: (preview: BoardCollaborationConnectionPreview | null) => void
   onSelectionBoxChange?: (bounds: CanvasBounds | null) => void
   onTransformPreviewChange?: (preview: { bounds: CanvasBounds; kind: BoardCollaborationTransformKind } | null) => void
   onSelectionChange: (shapeIds: string[]) => void
   onToolChange: (tool: KonvaCanvasTool) => void
+  onTextEditStart?: (shapeId: string) => void
 }

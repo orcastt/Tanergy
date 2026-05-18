@@ -54,6 +54,7 @@ type KonvaCanvasStageProps = {
   onEdgeSelect: (edgeId: string | null) => void
   onGeneratedImageToCanvas: (input: { ref: RuntimeGraphImageAssetRef; shapeId: string }) => void
   onHistoryCheckpoint: (document: CanvasDocument) => void
+  onLocalDocumentCommit?: () => void
   onImageNodeToCanvas: (shapeId: string) => void
   onNodeImagePreviewOpen: (input: { batches: RuntimeGraphImageAssetRef[][]; selectedBatchIndex?: number; selectedIndex?: number; title: string }) => void
   onNodeChatClean: (shapeId: string) => void

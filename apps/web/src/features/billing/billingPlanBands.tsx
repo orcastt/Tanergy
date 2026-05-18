@@ -3,12 +3,10 @@
 import { type BillingInterval, type PlanCatalogRecord, type PlanKey } from './billingTypes'
 import {
   formatDateOnly,
-  formatBillingIntervalLabel,
   formatCredits,
   formatFactValue,
 } from './billingPresentation'
 import {
-  BillingProgress,
   BillingStatusPill,
 } from './billingSurfaceBlocks'
 import { resolveCreditUsageMetrics } from './billingCreditUsage'
@@ -56,7 +54,7 @@ export function PersonalPlanBand({
   const actionLabel = isCurrent ? 'Manage' : plan.planKey === 'free_canvas' ? 'Open' : 'Select'
   const usage = resolveCreditUsageMetrics(groupSummary.remainingCredits, groupSummary.totalCredits)
   const groupCap = plan.groupWorkspaceLimit ?? 0
-  const pageEnvelope = `${formatFactValue(plan.boardLimit)} board${plan.boardLimit === 1 ? '' : 's'} / ${formatFactValue(plan.pageLimit)} pages`
+  const pageEnvelope = formatBoardPageEnvelope(plan)
 
   return (
     <PricingBand
@@ -78,21 +76,16 @@ export function PersonalPlanBand({
       title={plan.name}
       tone={isCurrent ? 'group' : 'muted'}
     >
-      <PricingMetricList title="Included">
-        <PricingMetric label="Credits / cycle" value={formatCredits(plan.includedCredits)} hint="Refreshes every 30 days, does not roll over." />
-        <PricingMetric label="Group create cap" value={groupCap === 0 ? 'No Group create access' : `${groupCap} Group${groupCap === 1 ? '' : 's'}`} hint={`${formatFactValue(plan.groupMemberLimit)} members per Group`} />
-        <PricingMetric label="Solo envelope" value={pageEnvelope} hint={plan.planKey === 'free_canvas' ? 'One private board stays inside Free Canvas.' : 'Higher plans expand your own working envelope.'} />
+      <PricingMetricList>
+        <PricingMetric label="Credits" value={`${formatCredits(plan.includedCredits)} / cycle`} />
+        <PricingMetric label="Groups" value={formatGroupCap(groupCap, plan.groupMemberLimit)} />
+        <PricingMetric label="Boards" value={pageEnvelope} />
+        <PricingMetric label="Top-up" value={isCurrent ? formatCredits(groupSummary.topUpBalance) : 'Available'} />
+        <PricingMetric label="Term" value={formatPlanTerm(plan, cycle)} />
+        {isCurrent ? <PricingMetric label="Current usage" value={`${formatCredits(usage.used)} / ${formatCredits(usage.total)}`} /> : null}
       </PricingMetricList>
 
-      {isCurrent ? <BillingProgress total={usage.total} used={usage.used} /> : null}
-
-      <PricingMetricList title={isCurrent ? 'Current usage' : 'Billing'}>
-        <PricingMetric label="Used credits" value={isCurrent ? `${formatCredits(usage.used)} / ${formatCredits(usage.total)}` : formatBillingIntervalLabel(cycle)} hint={isCurrent ? 'Includes plan credits plus any top-up usage.' : cycle === 'annual' ? 'Annual is billed upfront for 12 months.' : 'Monthly renews every 30 days.'} />
-        <PricingMetric label="Top-up balance" value={isCurrent ? formatCredits(groupSummary.topUpBalance) : 'Pay as you go'} hint={isCurrent ? 'Top-up credits stay personal and separate.' : 'Top-up stays available without changing your Group wallet rules.'} />
-        <PricingMetric label="Valid until" value={isCurrent ? formatDateOnly(groupSummary.currentPeriodEnd) : 'Starts at checkout'} hint={isCurrent ? `Next refresh ${formatDateOnly(groupSummary.nextRefreshAt)}` : 'Invite acceptance still depends on workspace capacity, not the invitee plan.'} />
-      </PricingMetricList>
-
-      <PricingTagList items={buildPersonalPlanFeatures(plan)} />
+      <PricingTagList items={buildPersonalPlanTerms(plan, cycle, isCurrent ? groupSummary.currentPeriodEnd : null)} />
     </PricingBand>
   )
 }
@@ -117,12 +110,12 @@ export function WorkspacePlanBand({
         title={plan.name}
         tone="enterprise"
       >
-        <PricingMetricList title="Enterprise scope">
-          <PricingMetric label="Seat range" value={formatFactValue(plan.seatRange)} hint="Workspace limits are contract-defined." />
-          <PricingMetric label="Credits" value="Custom credit pack" hint="Supports tailored wallet and SLA agreements." />
-          <PricingMetric label="Billing" value="Enterprise contract" hint="Handled outside self-serve checkout." />
+        <PricingMetricList>
+          <PricingMetric label="Seats" value={formatFactValue(plan.seatRange)} />
+          <PricingMetric label="Credits" value="Custom" />
+          <PricingMetric label="Billing" value="Contract" />
         </PricingMetricList>
-        <PricingTagList items={['Dedicated rollout support', 'Custom seat envelopes and governance', 'Operator and finance workflows stay auditable']} />
+        <PricingTagList items={['Custom limits and governance.', 'Manual finance review.']} />
       </PricingBand>
     )
   }
@@ -156,21 +149,16 @@ export function WorkspacePlanBand({
       title={plan.name}
       tone={workspaceCount > 0 ? 'team' : 'muted'}
     >
-      <PricingMetricList title="Included">
-        <PricingMetric label="Credits / seat" value={formatCredits(plan.includedCredits)} hint="Every paid seat adds one Team credit pack." />
-        <PricingMetric label="Seat envelope" value={formatFactValue(plan.seatRange)} hint={plan.seatMax ? `Expandable up to ${plan.seatMax} seats.` : 'Seat growth follows plan rules.'} />
-        <PricingMetric label="Billing model" value="Team wallet" hint="All Team AI usage charges the workspace wallet, never each member personally." />
+      <PricingMetricList>
+        <PricingMetric label="Credits" value={`${formatCredits(plan.includedCredits)} / seat`} />
+        <PricingMetric label="Seats" value={workspaceCount > 0 ? `${seatsUsed} / ${seatLimit}` : formatFactValue(plan.seatRange)} />
+        <PricingMetric label="Billing" value="Team wallet" />
+        <PricingMetric label="Term" value={formatPlanTerm(plan, cycle)} />
+        {workspaceCount > 0 ? <PricingMetric label="Team usage" value={`${formatCredits(usedCredits)} / ${formatCredits(totalCredits)}`} /> : null}
+        {workspaceCount > 0 ? <PricingMetric label="Boards" value={String(boardCount)} /> : null}
       </PricingMetricList>
 
-      {workspaceCount > 0 ? <BillingProgress total={totalCredits} used={usedCredits} /> : null}
-
-      <PricingMetricList title={workspaceCount > 0 ? 'Current usage' : 'Checkout'}>
-        <PricingMetric label="Team credits used" value={workspaceCount > 0 ? `${formatCredits(usedCredits)} / ${formatCredits(totalCredits)}` : formatBillingIntervalLabel(cycle)} hint={workspaceCount > 0 ? 'Across all owned Teams on this plan.' : cycle === 'annual' ? 'Annual is billed once for the full 12-month term.' : 'Monthly is charged per active seat every 30 days.'} />
-        <PricingMetric label="Seats" value={workspaceCount > 0 ? `${seatsUsed} / ${seatLimit}` : `${plan.seatMin ?? 1}+ seats`} hint={workspaceCount > 0 ? `${memberCount} members currently assigned.` : 'Seat purchases happen at checkout and can be expanded later.'} />
-        <PricingMetric label="Boards now" value={workspaceCount > 0 ? String(boardCount) : 'Create after purchase'} hint={workspaceCount > 0 ? `${workspaceCount} owned Team workspace${workspaceCount > 1 ? 's' : ''}.` : 'Team creation depends on the purchased workspace plan.'} />
-      </PricingMetricList>
-
-      <PricingTagList items={buildWorkspacePlanFeatures(plan)} />
+      <PricingTagList items={buildWorkspacePlanTerms(plan, cycle, workspaceCount, memberCount)} />
     </PricingBand>
   )
 }
@@ -199,46 +187,43 @@ function formatAnnualUpfront(plan: PlanCatalogRecord) {
   return `$${annualRate * 12}`
 }
 
-function buildPersonalPlanFeatures(plan: PlanCatalogRecord) {
+function formatBoardPageEnvelope(plan: PlanCatalogRecord) {
+  const boardLimit = typeof plan.boardLimit === 'number' ? formatFactValue(plan.boardLimit) : 'Unlimited'
+  const pageLimit = typeof plan.pageLimit === 'number' ? formatFactValue(plan.pageLimit) : 'Unlimited'
+  return `${boardLimit} board${plan.boardLimit === 1 ? '' : 's'} / ${pageLimit} pages`
+}
+
+function formatGroupCap(groupCap: number, memberLimit?: null | number) {
+  if (groupCap === 0) return 'No create access'
+  return `${groupCap} Group${groupCap === 1 ? '' : 's'} · ${formatFactValue(memberLimit)} members`
+}
+
+function formatPlanTerm(plan: PlanCatalogRecord, cycle: PricingCycle) {
+  if (plan.planKey === 'free_canvas') return 'Always free'
+  if (cycle === 'annual') return 'Annual upfront'
+  return '30-day renewal'
+}
+
+function buildPersonalPlanTerms(plan: PlanCatalogRecord, cycle: PricingCycle, currentPeriodEnd?: null | string) {
+  const renewal = currentPeriodEnd ? `Valid until ${formatDateOnly(currentPeriodEnd)}.` : cycle === 'annual' ? 'Annual billing covers 365 days.' : 'Monthly billing renews every 30 days.'
   if (plan.planKey === 'free_canvas') {
     return [
-      'Free users cannot create Team workspaces, but they can join Teams.',
-      'Free users can create one Group and still join other Groups.',
-      'Group AI always charges the current actor’s own credits.',
-    ]
-  }
-  if (plan.planKey === 'collaborate_start') {
-    return [
-      'Expands your personal credits without creating any shared Group wallet.',
-      'Keeps Group collaboration personal-credit based for every member.',
-      'Works with top-up credits when you need extra capacity between refreshes.',
+      'Can join Teams; cannot create Team workspaces.',
+      'Group AI uses personal credits.',
     ]
   }
   return [
-    'Highest personal collaboration tier before moving into Team wallets.',
-    'Best fit for heavy Group participation while keeping spend personal.',
-    'Annual pricing pays once for the full 12-month 365-day term.',
+    renewal,
+    'No shared Group wallet.',
   ]
 }
 
-function buildWorkspacePlanFeatures(plan: PlanCatalogRecord) {
-  if (plan.planKey === 'team_start') {
-    return [
-      'Built for small Teams that need seat-based AI credits and board ownership.',
-      'Owner and admin roles can invite members, remove them, and manage boards.',
-      'Workspace billing stays attached to the Team plan even if members rotate out.',
-    ]
-  }
-  if (plan.planKey === 'team_growth') {
-    return [
-      'Scales Team seats and Team wallet credits together as the workspace grows.',
-      'Seats are bought per member, not as one fixed workspace bundle.',
-      'Best choice when multiple editors need shared Team-board access and spend control.',
-    ]
-  }
+function buildWorkspacePlanTerms(plan: PlanCatalogRecord, cycle: PricingCycle, workspaceCount: number, memberCount: number) {
+  if (plan.planKey === 'enterprise') return ['Contract limits.', 'Manual finance review.']
+  const renewal = cycle === 'annual' ? 'Annual billing covers 365 days.' : 'Monthly billing renews every 30 days.'
+  if (workspaceCount > 0) return [renewal, `${memberCount} active member${memberCount === 1 ? '' : 's'}.`]
   return [
-    'Enterprise pricing is contract-managed.',
-    'Custom envelopes can cover seats, boards, credits, and governance.',
-    'Designed for admin-operated rollout and finance review.',
+    renewal,
+    'Seats can be expanded later.',
   ]
 }

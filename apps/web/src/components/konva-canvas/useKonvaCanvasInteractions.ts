@@ -14,7 +14,6 @@ import {
   createDraftShape,
   createStrokeEndPoint,
   createStrokePoint,
-  createTextShape,
   finalizeDraft,
   updateStrokeDraft,
 } from './konvaDraftShapes'
@@ -243,20 +242,6 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       eraseAtPoint(worldPoint)
       return
     }
-    if (options.activeTool === 'text') {
-      if (!startedOnStage && !canCreateInsideFrame) return
-      event.evt.preventDefault()
-      publishInteractionShapeIds([])
-      options.onHistoryCheckpoint(documentRef.current)
-      const shape = createTextShape(worldPoint, options.nextStyle)
-      options.onDocumentChange((current) => {
-        const nextDocument = appendCanvasShape(current, shape)
-        return withCanvasShapes(nextDocument, applyFrameContainment([...nextDocument.shapes], [shape.id]))
-      })
-      options.onSelectionChange([])
-      options.onToolChange('select')
-      return
-    }
     const draftShape = createDraftShape(options.activeTool, worldPoint, worldPoint, { constrainProportions: event.evt.shiftKey, style: options.nextStyle })
     if (!draftShape) return
     if (!startedOnStage && options.activeTool !== 'draw' && !canCreateInsideFrame) return
@@ -413,7 +398,11 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
         const nextDocument = appendCanvasShape(current, nextDraft)
         return withCanvasShapes(nextDocument, applyFrameContainment([...nextDocument.shapes], [nextDraft.id]))
       })
-      options.onSelectionChange([])
+      options.onSelectionChange(nextDraft.type === 'text' ? [nextDraft.id] : [])
+      if (nextDraft.type === 'text') {
+        window.setTimeout(() => options.onTextEditStart?.(nextDraft.id), 0)
+      }
+      window.setTimeout(() => options.onLocalDocumentCommit?.(), 48)
     }
     publishInteractionShapeIds([])
   }

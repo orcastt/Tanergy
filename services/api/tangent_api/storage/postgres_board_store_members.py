@@ -4,6 +4,7 @@ from typing import Optional
 
 from fastapi import HTTPException
 
+from tangent_api.board_access import assert_board_allows_member_management
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.schemas import BoardMemberCandidateRecord, BoardMemberRecord
 from tangent_api.storage.postgres_board_schema import ensure_board_schema
@@ -48,6 +49,7 @@ class PostgresBoardStoreMembersMixin:
         context: ApiRequestContext,
     ) -> BoardMemberRecord:
         record = self._load_board_without_touch(board_id, context, required_access="manage")
+        assert_board_allows_member_management(context.workspace_kind)
         normalized_role = normalize_board_member_role(role)
         with connect_to_postgres() as connection:
             with connection.cursor() as cursor:
@@ -75,6 +77,7 @@ class PostgresBoardStoreMembersMixin:
 
     def remove_member(self, board_id: str, user_id: str, context: ApiRequestContext) -> str:
         record = self._load_board_without_touch(board_id, context, required_access="manage")
+        assert_board_allows_member_management(context.workspace_kind)
         if user_id == record.owner_id:
             raise HTTPException(status_code=400, detail="Board owner cannot be removed.")
         with connect_to_postgres() as connection:
@@ -97,6 +100,7 @@ class PostgresBoardStoreMembersMixin:
         context: ApiRequestContext,
     ) -> list[BoardMemberCandidateRecord]:
         record = self._load_board_without_touch(board_id, context, required_access="manage")
+        assert_board_allows_member_management(context.workspace_kind)
         normalized_query = query.strip().lower()
         if not normalized_query:
             return []
@@ -154,6 +158,7 @@ class PostgresBoardStoreMembersMixin:
         context: ApiRequestContext,
     ) -> BoardMemberRecord:
         record = self._load_board_without_touch(board_id, context, required_access="manage")
+        assert_board_allows_member_management(context.workspace_kind)
         normalized_email = normalize_email(email)
         with connect_to_postgres() as connection:
             with connection.cursor() as cursor:

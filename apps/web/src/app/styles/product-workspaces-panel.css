@@ -140,6 +140,10 @@
   align-items: start;
 }
 
+.board-panel-content--personal {
+  grid-template-columns: minmax(0, 720px);
+}
+
 .board-panel-form,
 .board-panel-editor-column,
 .board-panel-members-column {

@@ -46,6 +46,7 @@ type UseKonvaBoardPersistenceLifecycleArgs = {
   boardId: string
   boardTitle: string
   camera: CanvasCamera
+  createIfMissing?: boolean
   document: CanvasDocument
   getPageEnvelope?: (document: CanvasDocument) => KonvaBoardDocumentSerializationOptions
   mode: 'board' | 'dev'
@@ -63,6 +64,7 @@ export function useKonvaBoardPersistenceLifecycle({
   boardId,
   boardTitle,
   camera,
+  createIfMissing = true,
   document,
   getPageEnvelope,
   mode,
@@ -183,6 +185,7 @@ export function useKonvaBoardPersistenceLifecycle({
       const thumbnailUrl = capturedThumbnailUrl ?? currentThumbnailUrl
       const saved = await saveLocalBoardDocument({
         boardId,
+        createIfMissing,
         document: nextResult.document,
         thumbnailUrl,
         title: boardTitle,
@@ -224,6 +227,7 @@ export function useKonvaBoardPersistenceLifecycle({
     boardTitle,
     captureThumbnail,
     clearAutosaveTimer,
+    createIfMissing,
     createGuardedDocument,
     getPreparedDocument,
     mode,

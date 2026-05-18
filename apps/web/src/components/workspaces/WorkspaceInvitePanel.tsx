@@ -84,7 +84,7 @@ export function WorkspaceInvitePanel({
       <div className="workspace-detail-panel-head">
         <div>
           <h2>Invite</h2>
-          <small>Create manual invite links. Optional email only restricts who can accept; nothing is emailed automatically yet.</small>
+          <small>Generate a manual invite link first. Email is optional and only restricts who can accept.</small>
         </div>
       </div>
       <div className="workspace-invite-stats">
@@ -100,20 +100,18 @@ export function WorkspaceInvitePanel({
         <p>{inviteRule}</p>
       </div>
       <label className="workspace-detail-field">
-        <span>Restrict to email</span>
-        <div className="workspace-detail-field-row">
-          <input onChange={(event) => setEmail(event.target.value)} placeholder="Optional: name@example.com" value={email} />
-          <button className="workspace-detail-danger-button" disabled={isPending || !canManageInvites} onClick={createInvite} type="button">
-            Invite
-          </button>
-        </div>
-      </label>
-      <label className="workspace-detail-field">
-        <span>Role</span>
+        <span>Link role</span>
         <select disabled={!canManageInvites} onChange={(event) => setRole(event.target.value as InviteRole)} value={inviteRoles.includes(role) ? role : 'editor'}>
           {inviteRoles.map((inviteRole) => <option key={inviteRole} value={inviteRole}>{formatInviteRole(inviteRole)}</option>)}
         </select>
       </label>
+      <label className="workspace-detail-field">
+        <span>Optional email restriction</span>
+        <input onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" value={email} />
+      </label>
+      <button className="workspace-detail-danger-button workspace-invite-generate-button" disabled={isPending || !canManageInvites} onClick={createInvite} type="button">
+        {isPending ? 'Generating...' : 'Generate invite link'}
+      </button>
       {inviteLink ? (
         <label className="workspace-detail-field">
           <span>Latest link</span>

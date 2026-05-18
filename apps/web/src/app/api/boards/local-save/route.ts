@@ -13,6 +13,7 @@ export async function POST(request: Request) {
     const body = await readJsonRequestWithLimit<{
       boardId?: string
       cardColor?: BoardCardColor | null
+      createIfMissing?: boolean
       description?: string | null
       document?: unknown
       thumbnailUrl?: string | null
@@ -23,6 +24,7 @@ export async function POST(request: Request) {
     const { audit, board } = await getBoardStorageAdapter().saveLocalBoard({
       boardId: body.boardId,
       cardColor: body.cardColor,
+      createIfMissing: body.createIfMissing,
       description: body.description,
       document: body.document,
       thumbnailUrl: body.thumbnailUrl,

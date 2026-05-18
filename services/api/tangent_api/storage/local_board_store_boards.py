@@ -43,6 +43,7 @@ from tangent_api.storage.local_board_store_records import (
     _load_board_without_touch,
     _read_board_record,
     _read_existing_board,
+    _read_workspace_people,
     _write_board_record,
     _write_member_records,
 )
@@ -69,6 +70,8 @@ def save_board(input_data: BoardSaveRequest, context: ApiRequestContext) -> Boar
     if existing:
         assert_can_write_board(existing, context, _get_board_member_role(existing.id, existing, context))
     else:
+        if not input_data.create_if_missing:
+            raise HTTPException(status_code=404, detail="Board not found in workspace.")
         assert_can_create_board(context)
     saved_at = datetime.now(timezone.utc).isoformat()
     record = BoardRecord(
@@ -82,7 +85,7 @@ def save_board(input_data: BoardSaveRequest, context: ApiRequestContext) -> Boar
         isPinned=existing.is_pinned if existing else False,
         isStarred=existing.is_starred if existing else False,
         lastOpenedAt=existing.last_opened_at if existing else None,
-        ownerId=existing.owner_id if existing else context.user_id,
+        ownerId=existing.owner_id if existing else _resolve_local_board_owner_id(context, saved_at),
         savedAt=saved_at,
         shapeCount=metrics["shape_count"],
         shareId=normalize_board_share_id(existing.share_id if existing else None),
@@ -106,6 +109,33 @@ def save_board(input_data: BoardSaveRequest, context: ApiRequestContext) -> Boar
             ],
         )
     return BoardSaveResponse(audit=audit, board=summarize_board_record(record), ok=True)
+
+
+def _resolve_local_board_owner_id(context: ApiRequestContext, saved_at: str) -> str:
+    if context.workspace_kind not in {"group_workspace", "team_workspace"} or context.workspace_role == "owner":
+        return context.user_id
+    placeholder = BoardRecord(
+        assetCount=0,
+        byteSize=0,
+        cardColor=None,
+        createdAt=saved_at,
+        description=None,
+        document={},
+        id="temp",
+        isPinned=False,
+        isStarred=False,
+        lastOpenedAt=None,
+        ownerId=context.user_id,
+        savedAt=saved_at,
+        shapeCount=0,
+        shareId=None,
+        thumbnailUrl=None,
+        title="",
+        visibility="private",
+        workspaceId=context.workspace_id,
+    )
+    owner = next((person for person in _read_workspace_people(context.workspace_id, placeholder, context) if person["workspace_role"] == "owner"), None)
+    return owner["user_id"] if owner else context.user_id
 
 
 def load_board(board_id: str, context: ApiRequestContext) -> BoardRecord:
