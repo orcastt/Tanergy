@@ -86,7 +86,7 @@ API / server:
 - `S3_ACCESS_KEY_ID`
 - `S3_SECRET_ACCESS_KEY`
 - `RESEND_API_KEY` or the chosen email provider key
-- live AI provider keys such as `GEEKAI_API_KEY`
+- live AI provider keys such as `JIEKOU_IMAGE_KEY` and `JIEKOU_TEXT_KEY`
 - future payment live secrets and webhook secrets
 
 Use [api.env.example](./api.env.example) as the production API template and [docker-compose.api.yml](./docker-compose.api.yml) as the production API compose file.
@@ -94,7 +94,7 @@ Use [api.env.example](./api.env.example) as the production API template and [doc
 ## Provisioning Order
 
 1. Provision production database.
-   - Create a separate database or separate Neon project.
+   - Create a separate Supabase project/database or another dedicated managed Postgres instance.
    - Create a dedicated production DB user and password.
    - Record both the direct URL and pooled URL.
 

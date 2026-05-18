@@ -256,6 +256,8 @@ Edit `~/apps/shared/staging/api.env` and fill:
 - `JIEKOU_VIDEO_KEY` as the reserved placeholder for a future video split
 - optional `JIEKOU_BASE_URL` or scope-specific overrides such as `JIEKOU_TEXT_BASE_URL` and `JIEKOU_IMAGE_BASE_URL` only when you are not using the default Jiekou endpoints
 
+Retired provider env names such as `GEEKAI_API_KEY` may remain commented in private worksheets for rotation history, but they should not be active in staging unless a rollback plan explicitly re-enables legacy provider routes. Do not delete old key notes from private operator records; comment them with the date/reason, rotate the live runtime env to the current Jiekou variables, then rerun the AI smoke.
+
 Do not put live secret values into this repo's tracked markdown notes. Keep them in the server-local shared `api.env`, Vercel env, Clerk dashboard, or private operator storage.
 
 Start the API:

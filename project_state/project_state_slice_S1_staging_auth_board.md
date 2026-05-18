@@ -1,7 +1,7 @@
 # Project State Slice S1: Staging, Auth And Board
 
 **Updated**: 2026-05-18
-**Status**: Active umbrella. Use S1A/S1B/S1C/S1D/S1X slice files for detailed truth; this file summarizes the current launch boundary where staging Web/API/Supabase Pro/R2 plus real session/admin smoke are green. The first signed-in board/browser pass is green; R2 clean asset smoke, re-created staging data, Google/email verification, second-round board/browser edges and one live AI smoke remain.
+**Status**: Active umbrella. Use S1A/S1B/S1C/S1D/S1X slice files for detailed truth; this file summarizes the current launch boundary where staging Web/API/Supabase Pro/R2 plus real session/admin smoke are green. The first signed-in board/browser pass is green and the second-round pass is mostly green; R2 clean asset smoke, re-created staging data, the `Manage board -> Copy board` Free-plan limit modal edge, Google/email verification and one live AI smoke remain.
 
 ## Purpose
 

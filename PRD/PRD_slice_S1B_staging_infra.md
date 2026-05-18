@@ -1,7 +1,7 @@
 # PRD Slice S1B: Staging Infrastructure And Online Prep
 
 **Updated**: 2026-05-18
-**Status**: In progress; staging Web/API/Supabase Pro/R2 smoke, the Konva-only redeploy, Cloudflare-proxied Full (strict) staging domains and real Clerk session/admin smoke are back in place. Neon is now historical after its data-transfer quota pause, the temporary Hetzner `staging-postgres` fallback and volume have been removed, R2 staging objects were cleared for a clean asset lane, and board realtime persistence now keeps process updates in the WebSocket room while persisting only compacted/final snapshots by default. The remaining gates are R2 clean asset smoke, re-created minimal staging data, second-round board/browser acceptance, Google/email flow verification and live AI smoke before production can open.
+**Status**: In progress; staging Web/API/Supabase Pro/R2 smoke, the Konva-only redeploy, Cloudflare-proxied Full (strict) staging domains and real Clerk session/admin smoke are back in place. Neon is now historical after its data-transfer quota pause, the temporary Hetzner `staging-postgres` fallback and volume have been removed, R2 staging objects were cleared for a clean asset lane, and board realtime persistence now keeps process updates in the WebSocket room while persisting only compacted/final snapshots by default. The second-round signed-in board/browser pass is mostly green; the remaining gates are R2 clean asset smoke, re-created minimal staging data, the `Manage board -> Copy board` Free-plan limit modal edge, Google/email flow verification and live AI smoke before production can open.
 
 ## User Value
 

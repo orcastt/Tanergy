@@ -14,6 +14,7 @@ Detailed product, architecture and state truth now lives in:
 
 | File | Status | Notes |
 | --- | --- | --- |
+| `p0-project-wide-acceptance-audit-2026-05-18.md` | Active acceptance ledger | Project-wide audit for PRD/ARCH/project_state/dev-plans, quality gates, memory/line-budget hotspots and secret-flow hygiene. |
 | `p0-alpha-stabilization-and-acceptance-2026-05-06.md` | Active release-spine plan | Defines the current shipping-now list, deferred/frozen list, route map, risk matrix and acceptance guide for the P0 alpha pass. |
 | `s1c-auth-admin-production-boundary-2026-05-08.md` | Active S1C tactical plan | Hardens real Clerk login, admin_roles bootstrap, CORS/origin contract, spoof tests and default solo workspace + personal wallet creation before staging/admin acceptance. |
 | `s1e-tgy-board-package-export-import-2026-05-08.md` | Planned S1E tactical plan | Defines `.tgy` Tanergy Board Package export/import, package contents, asset rehydration, validation and smoke phases. |
@@ -29,7 +30,7 @@ Detailed product, architecture and state truth now lives in:
 
 1. Stabilize the current P0 alpha spine defined in `p0-alpha-stabilization-and-acceptance-2026-05-06.md`.
 2. Keep staging on release-style deploys with a private server-local shared `api.env`, not a long-lived dirty checkout; then run the staging / real DB / real login smoke first: public host repair if needed, Alembic head, `/health`, `/api/v1/admin/me`, operator users, finance summary, board list/save/load and billing plans. Keep `deploy/production/README.md` as the pre-provision boundary and do not open production before this smoke is green.
-3. Treat the real Clerk session/admin smoke as a green checkpoint, and treat the first signed-in board/browser pass as green too. The remaining staging browser work is now the second-round acceptance: the solo-edit reopen conflict chooser, thumbnail persistence, history behavior and any last private-board owner edge cases before relying on staging as the final truth.
+3. Treat the real Clerk session/admin smoke, first signed-in board/browser pass and mostly-green second-round board pass as green checkpoints. The remaining staging browser edge is the `Manage board -> Copy board` Free-plan limit modal path before relying on staging as the final truth.
 4. Finish Google/email and CORS/origin acceptance after the signed-in board pass so the Auth boundary is fully believable outside local fallback assumptions.
 5. Finish the S2 provider-route/billing control-plane cut with one real AiRun/provider image smoke using the refreshed four-model image lane, then keep broader provider coverage moving.
 6. Return to S1D/S3 closeout after the live image smoke: permission hardening, Team/Group payer visibility, billing language, credits, usage and staged payment truth should converge before the next expansion.
@@ -75,6 +76,7 @@ Working rule for the current pass:
 
 | 文件 | 状态 | 说明 |
 | --- | --- | --- |
+| `p0-project-wide-acceptance-audit-2026-05-18.md` | 活跃验收台账 | 本轮全项目验收文档，覆盖 PRD/ARCH/project_state/dev-plans、质量门、内存/大文件热点和 secret-flow hygiene。 |
 | `p0-alpha-stabilization-and-acceptance-2026-05-06.md` | 活跃 release-spine plan | 定义本轮 P0 alpha 的 shipping-now list、deferred/frozen list、route map、risk matrix 和 acceptance guide。 |
 | `s1c-auth-admin-production-boundary-2026-05-08.md` | 活跃 S1C tactical plan | 在 staging/admin 验收前，硬化真实 Clerk 登录、admin_roles bootstrap、CORS/origin contract、spoof tests，以及默认 solo workspace + personal wallet 创建。 |
 | `s1e-tgy-board-package-export-import-2026-05-08.md` | 已规划 S1E tactical plan | 定义 `.tgy` Tanergy Board Package export/import、package contents、asset rehydration、validation 和 smoke phases。 |
@@ -89,7 +91,7 @@ Working rule for the current pass:
 ## 当前战术焦点
 
 1. 以 `p0-alpha-stabilization-and-acceptance-2026-05-06.md` 为准，稳定当前 P0 alpha 主线。
-2. 先把 staging / real DB / real login smoke 以及 signed-in browser 首轮验收视为已转绿 checkpoint，再完成剩余的第二轮 board/browser 验收；这一步要明确覆盖 solo 编辑后 reopen 冲突提示、history、thumbnail，以及剩余的 private board owner 边界项。
+2. 先把 staging / real DB / real login smoke、signed-in browser 首轮验收以及大部分第二轮 board 验收视为已转绿 checkpoint；剩余 browser 边界集中在 `Manage board -> Copy board` Free-plan limit 弹窗路径。
 3. 接着完成 Google/email 与 CORS/origin 验收，让 Auth 边界不再依赖本地 fallback 假设。
 4. 再完成 S2 provider-route/billing control-plane cut 和一条基于刷新后四模型生图线的真实 AiRun/provider 路径，然后继续扩大 AI 覆盖。
 5. 然后回到 S1D/S3 收口：permission hardening、Team/Group payer visibility、billing language、credits、usage 和 staged payment truth 需要在继续扩线前对齐。

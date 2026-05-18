@@ -109,10 +109,10 @@ Example:
 
 ```text
 model_key: gpt-image-2
-route_id: route_gpt_image_2_geekai_primary
-provider_key: geekai
+route_id: route_gpt_image_2_jiekou_primary
+provider_key: jiekou
 provider_model: gpt-image-2
-api_key_env_name: GEEKAI_API_KEY
+api_key_env_name: JIEKOU_IMAGE_KEY
 priority: 10
 enabled: true
 ```

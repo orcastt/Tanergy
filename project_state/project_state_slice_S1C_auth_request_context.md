@@ -1,7 +1,7 @@
 # Project State Slice S1C: Auth And Request Context
 
 **Updated**: 2026-05-18
-**Status**: Clerk frontend routes plus FastAPI bearer verification first pass landed. The current checkpoint also includes Tanergy-owned profile completion and editing: first real sign-in now gates on a profile modal, `/account` persists editable display name, `/forgot-password` exposes a real Clerk recovery flow, session payloads now return `profileCompleted`, and local auth/admin contracts now include a real account-deletion service for self-delete plus admin delete. The next gate is still the ordered second-round signed-in browser pass, then Google/email/logout hardening, with email currently scoped to one truthful staging smoke rather than a new native Tanergy-owned auth system.
+**Status**: Clerk frontend routes plus FastAPI bearer verification first pass landed. The current checkpoint also includes Tanergy-owned profile completion and editing: first real sign-in now gates on a profile modal, `/account` persists editable display name, `/forgot-password` exposes a real Clerk recovery flow, session payloads now return `profileCompleted`, and local auth/admin contracts now include a real account-deletion service for self-delete plus admin delete. The second-round signed-in browser pass is mostly green; the next gate is the remaining `Manage board -> Copy board` Free-plan limit modal edge, then Google/email/logout hardening, with email currently scoped to one truthful staging smoke rather than a new native Tanergy-owned auth system.
 
 ## Objective
 
@@ -38,7 +38,7 @@ Replace dev headers/mock identity with real server-side sessions and workspace m
 Current release-order note:
 
 - S1C is the first blocking verification lane together with S1B staging smoke.
-- Public staging auth is now reachable enough for real session/admin smoke, so the immediate next path is the ordered second-round signed-in board/browser acceptance, then Google/email verification, then invalid-token/origin confirmation.
+- Public staging auth is now reachable enough for real session/admin smoke, and the second-round signed-in board/browser pass is mostly green. The immediate next path is the remaining `Manage board -> Copy board` Free-plan limit modal edge, then Google/email verification, then invalid-token/origin confirmation.
 
 ## Clerk-First Implementation Notes
 

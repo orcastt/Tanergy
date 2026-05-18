@@ -36,7 +36,7 @@ Everything else should be described as deferred, frozen or internal scaffolding 
 | Slice | File | Owns | Current status |
 | --- | --- | --- | --- |
 | S0 Local Product Shell | `Finished/PRD_slice_S0_local_product_shell.md` | Local user-visible app shell, Workspace, Board canvas, Board History, Canvas Settings, Board Management, Smart Drawing | Finished baseline; regression reference only |
-| S1 Staging/Auth/Board CRUD | `PRD_slice_S1_staging_auth_board.md` | Real staging infra, real Auth, real user/workspace/board ownership, production Board CRUD | Active foundation slice; staging Web/API/Supabase Pro/R2 plus real Clerk session/admin smoke are green, while Google/email flow verification, final signed-in board acceptance and permission hardening remain |
+| S1 Staging/Auth/Board CRUD | `PRD_slice_S1_staging_auth_board.md` | Real staging infra, real Auth, real user/workspace/board ownership, production Board CRUD | Active foundation slice; staging Web/API/Supabase Pro/R2 plus real Clerk session/admin smoke are green; second-round signed-in Board acceptance is mostly green with the remaining `Manage board -> Copy board` Free-plan limit modal edge, while Google/email flow verification and permission hardening remain |
 | S1A DB Schema | `PRD_slice_S1A_db_schema.md` | Product data model for accounts, workspaces, Boards, History, Assets and future billing/AI/admin joins | S1A core implemented through migration `0006`; current schema head also includes S2/S3 control-plane migrations; fresh Supabase Pro Alembic-head smoke is green |
 | S1B Staging Infra | `PRD_slice_S1B_staging_infra.md` | Online staging Web/API, Postgres, R2, DNS and email readiness | In progress; rebuilt staging Web/API/Supabase Pro/R2 and Konva-only redeploy are green, the active release no longer depends on the retired dirty worktree or temporary local Postgres fallback, and R2 clean asset, Google/email plus live AI acceptance remain |
 | S1C Auth Context | `PRD_slice_S1C_auth_request_context.md` | Registration, login, logout, session and default workspace flow | Clerk frontend/session bridge, FastAPI bearer verification, Tanergy profile onboarding/editing, Clerk-backed forgot-password flow and a real `/account` delete path landed; Google/email/logout hardening remains |
@@ -100,7 +100,7 @@ Deferred or frozen for this pass:
 
 Near-term execution order:
 
-1. Finish R2 clean asset smoke, second-round signed-in browser acceptance, Google/email verification and production-like CORS/origin behavior.
+1. Finish R2 clean asset smoke, close the remaining signed-in Board browser edge around `Manage board -> Copy board` Free-plan limit handling, and finish Google/email verification plus production-like CORS/origin behavior.
 2. Stabilize S1/S1X/S1D on staging/Auth/share/page/permission boundaries.
 3. Rebuild S3 payer semantics around Team wallet, personal Collaborate wallet and auditable usage.
 4. Rebuild the S3 admin operator console around fast User inventory and one-call user detail bundles.
@@ -149,7 +149,7 @@ S1 deliberately does not finish Admin, credits, subscriptions or collaboration. 
 # TANGENT 产品需求索引
 
 **更新日期**：2026-05-18
-**状态**：规范产品总览和 PRD 切片索引，当前已对齐本轮 P0 alpha 的并行工作流、S3 商业口径调整，以及最新 S1B/S2 检查点：Konva-only staging 部署已恢复上线，严格 Clerk session/admin smoke 已转绿，staging 数据库事实源已切到 fresh Supabase Pro Postgres，临时 Hetzner 本机 Postgres fallback 已删除，R2 staging 对象已清理，协同过程更新不再逐条写入 Postgres，活跃生图产品面已收口到四个真实 Jiekou-first 图片模型；剩余闸门是 R2 clean asset smoke、第二轮 browser/auth 验收和一条真实服务端生图 smoke，然后才继续更深的 Yjs/provider 工作。
+**状态**：规范产品总览和 PRD 切片索引，当前已对齐本轮 P0 alpha 的并行工作流、S3 商业口径调整，以及最新 S1B/S2 检查点：Konva-only staging 部署已恢复上线，严格 Clerk session/admin smoke 已转绿，staging 数据库事实源已切到 fresh Supabase Pro Postgres，临时 Hetzner 本机 Postgres fallback 已删除，R2 staging 对象已清理，协同过程更新不再逐条写入 Postgres，活跃生图产品面已收口到四个真实 Jiekou-first 图片模型；第二轮 signed-in Board 验收大部分已绿，剩余闸门是 R2 clean asset smoke、`Manage board -> Copy board` 的 Free-plan limit 弹窗边界、Google/email 和一条真实服务端生图 smoke，然后才继续更深的 Yjs/provider 工作。
 
 本文件夹取代原来的根级长 PRD 台账。根目录 `PRD.md` 现在只做指针用途。产品细节位于下面的切片文件中。
 

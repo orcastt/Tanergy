@@ -22,7 +22,7 @@ S1A Schema/DB foundation      84%  [#################---]
 
 S1B Deploy/staging            88%  [##################--]
   Stable: rebuilt Hetzner API host, public HTTPS API, Supabase Pro fresh schema, historical R2/board smoke, Konva-only staging web deploy, pooled-runtime preference, slow-SQL logging, release-style env handling and final-snapshot realtime persistence are green.
-  Gate: R2 clean asset smoke, re-created staging data, second-round browser board acceptance, Google/email/OAuth verification and one live provider smoke under staging auth.
+  Gate: R2 clean asset smoke, re-created staging data, the remaining `Manage board -> Copy board` Free-plan modal edge, Google/email/OAuth verification and one live provider smoke under staging auth.
 
 S1C Auth/registration         78%  [################----]
   Stable: Clerk frontend shell, FastAPI bearer verification, authorized-party checks, first-session personal wallet creation, admin bootstrap, Tanergy profile onboarding/editing, Clerk-backed forgot-password and real staging session/admin smoke.
@@ -480,7 +480,7 @@ Dependency rules:
 # TANGENT 架构索引
 
 **更新日期**：2026-05-18
-**状态**：规范架构总览和切片索引，当前已对齐正在并行推进的 P0 alpha 工作流、S3 Team-wallet 调整、S3/S4 Team-Group foundation baseline，以及最新 S1B infra cleanup：Konva-only staging 部署与真实 Clerk session/admin smoke 已转绿，staging 数据库事实源已切到 fresh Supabase Pro Postgres，旧 Hetzner `staging-postgres` fallback 与 volume 已删除，R2 staging 对象已清理，board realtime 过程流量留在 WebSocket room memory，只有 compacted/final snapshots 写入 Postgres；后端 `AiRun` 已支持 durable `text_output`，活跃生图线路也已刷新到 Jiekou-first live models。下一道闸门是第二轮 browser Board 验收、Google/email 与一条 live provider smoke，然后才继续更深的 provider / collaboration 工作。
+**状态**：规范架构总览和切片索引，当前已对齐正在并行推进的 P0 alpha 工作流、S3 Team-wallet 调整、S3/S4 Team-Group foundation baseline，以及最新 S1B infra cleanup：Konva-only staging 部署与真实 Clerk session/admin smoke 已转绿，staging 数据库事实源已切到 fresh Supabase Pro Postgres，旧 Hetzner `staging-postgres` fallback 与 volume 已删除，R2 staging 对象已清理，board realtime 过程流量留在 WebSocket room memory，只有 compacted/final snapshots 写入 Postgres；后端 `AiRun` 已支持 durable `text_output`，活跃生图线路也已刷新到 Jiekou-first live models。第二轮 browser Board 验收大部分已绿，下一道闸门是 R2 clean asset smoke、`Manage board -> Copy board` Free-plan modal 边界、Google/email 与一条 live provider smoke，然后才继续更深的 provider / collaboration 工作。
 
 本文件取代原来的重复 `ARCH/00-current-map.md` 和根目录长 `ARCH.md`。根目录 `ARCH.md` 现在只做指针用途。
 
@@ -501,7 +501,7 @@ S1A Schema/DB foundation      84%  [#################---]
 
 S1B Deploy/staging            88%  [##################--]
   已稳定：重建后的 Hetzner API 主机、public HTTPS API、Supabase Pro fresh schema、历史 R2/board smoke、Konva-only staging Web deploy、pooled runtime / slow-SQL 观测、release-style env 和 realtime final-snapshot persistence 已转绿。
-  闸门：R2 clean asset smoke、重新创建 staging 数据、第二轮 browser Board 验收、Google/email/OAuth 验证，以及 staging auth 下的一条 live provider smoke。
+  闸门：R2 clean asset smoke、重新创建 staging 数据、`Manage board -> Copy board` 的 Free-plan modal 边界、Google/email/OAuth 验证，以及 staging auth 下的一条 live provider smoke。
 
 S1C Auth/registration         78%  [################----]
   已稳定：Clerk frontend shell、FastAPI bearer verification、authorized-party checks、first-session personal wallet、admin bootstrap、Tanergy profile onboarding/editing、Clerk-backed forgot-password，以及真实 staging session/admin smoke。

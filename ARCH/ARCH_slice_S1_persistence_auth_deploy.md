@@ -52,7 +52,7 @@ S1 is the identity and ownership foundation. It should not implement every futur
 - S3-compatible Asset adapter exists.
 - Alembic P0 migration scaffold exists.
 - S1A formal schema migrations are implemented locally through revision `20260502_0006` and passed disposable Docker Postgres smoke.
-- Staging server, Supabase Pro Postgres, R2 bucket, domain and TLS have first smoke coverage; real signed-in Clerk session/admin smoke and the first signed-in board/browser pass are now green, while R2 clean asset smoke, Google/email flow verification and second-round board/browser acceptance still need final staging verification.
+- Staging server, Supabase Pro Postgres, R2 bucket, domain and TLS have first smoke coverage; real signed-in Clerk session/admin smoke and the first signed-in board/browser pass are green, and the second-round board/browser pass is mostly green. Remaining staging verification is R2 clean asset smoke, the `Manage board -> Copy board` Free-plan limit modal edge and Google/email flow verification.
 - Clerk frontend/session bridge and FastAPI bearer verification first pass are in place; hardening remains around logout/revocation and Google/email coverage.
 - S1X now provides a Konva-only Board route locally, with legacy v1 Board docs/history blocked from the active app path; staging must redeploy/smoke that same truth before public use.
 
