@@ -66,7 +66,6 @@ export function PersonalPlanBand({
           href={actionHref}
           label={actionLabel}
           planKey={plan.planKey as PlanKey}
-          planName={plan.name}
         />
       )}
       badge={<BillingStatusPill>{status}</BillingStatusPill>}
@@ -102,7 +101,7 @@ export function WorkspacePlanBand({
   if (plan.planKey === 'enterprise') {
     return (
       <PricingBand
-        actions={<SubscriptionPlanAction activeCount={0} className="workspace-commerce-secondary-button" href="/admin?tab=finance" label="Contact" planKey="enterprise" planName={plan.name} />}
+        actions={<SubscriptionPlanAction activeCount={0} className="workspace-commerce-secondary-button" href="/admin?tab=finance" label="Contact" planKey="enterprise" />}
         badge={<BillingStatusPill>Custom</BillingStatusPill>}
         eyebrow="Workspace plan"
         price="Custom"
@@ -139,7 +138,6 @@ export function WorkspacePlanBand({
           href={workspaceCount > 0 ? '/usage?scope=teams' : '/billing'}
           label={workspaceCount > 0 ? 'Manage' : 'Select'}
           planKey={plan.planKey as PlanKey}
-          planName={plan.name}
         />
       )}
       badge={<BillingStatusPill>{status}</BillingStatusPill>}

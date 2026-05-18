@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import type { WorkspaceKind } from '@/features/billing/billingTypes'
+import type { PlanKey, WorkspaceKind } from '@/features/billing/billingTypes'
 import { WorkspaceDirectoryActions } from './WorkspaceDirectoryActions'
 import {
   DirectorySection,
@@ -14,6 +14,7 @@ import {
 
 type WorkspaceDirectoryViewProps = {
   createLabel: string
+  currentPlanKey?: null | PlanKey
   emptyCreatedLabel: string
   emptyJoinedLabel: string
   featuredSummary?: null | {
@@ -36,6 +37,7 @@ type WorkspaceDirectoryViewProps = {
 
 export function WorkspaceDirectoryView({
   createLabel,
+  currentPlanKey,
   emptyCreatedLabel,
   emptyJoinedLabel,
   featuredSummary = null,
@@ -70,6 +72,7 @@ export function WorkspaceDirectoryView({
           <h1 className="product-page-title">{title}</h1>
           <WorkspaceDirectoryActions
             createLabel={createLabel}
+            currentPlanKey={currentPlanKey}
             joinLabel={joinLabel}
             kind={kind}
             onWorkspaceAdded={appendDirectoryItem}

@@ -130,6 +130,7 @@ export function WorkspaceDirectoryPage({
   return (
     <WorkspaceDirectoryView
       createLabel={createLabel}
+      currentPlanKey={kind === 'group_workspace' ? overview?.groupSummary.planKey : null}
       emptyCreatedLabel={emptyCreatedLabel}
       emptyJoinedLabel={emptyJoinedLabel}
       isLoading={sessionStatus === 'loading'}

@@ -9,8 +9,11 @@
 }
 
 .workspace-subscription-page .workspace-commerce-header-row {
+  display: grid;
   width: 100%;
+  gap: 18px;
   justify-content: center;
+  justify-items: center;
 }
 
 .workspace-subscription-page .workspace-commerce-header-copy {

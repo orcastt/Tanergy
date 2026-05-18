@@ -15,12 +15,12 @@ import {
 } from './AdminFinanceFields'
 import {
   adminManualAdjustUserCredits,
-  adminManualCancelSubscription,
   adminManualCreateGroupWorkspace,
   adminManualCreateTeamWorkspace,
   adminManualSetCollaboratePlan,
   adminManualTopupUser,
 } from './adminFinanceClient'
+import { adminManualOperateGroupPlan } from './adminFinancePlanOperationsClient'
 import { formatDate, formatNumber } from './adminAiShared'
 import type { AdminDirectoryUserRecord } from './adminTypes'
 
@@ -144,12 +144,17 @@ export function AdminUserFinanceActions({
               }))}
               type="button"
             >
-              Change Group plan
+              Assign Group plan
             </button>
             <button
               className="product-button product-button-secondary"
               disabled={!enabled || running || !user?.collaborateSubscriptionId || !hasReason}
-              onClick={() => run('Delete group plan', () => adminManualCancelSubscription(user?.collaborateSubscriptionId ?? '', note))}
+              onClick={() => run('Delete group plan', () => adminManualOperateGroupPlan({
+                action: 'delete',
+                note,
+                subscriptionId: user?.collaborateSubscriptionId ?? undefined,
+                userId,
+              }))}
               type="button"
             >
               Delete plan

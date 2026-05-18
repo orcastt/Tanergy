@@ -1,10 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { EmptyRow, buildStableListKey, formatCompactDate, formatNumber, truncateMiddle } from './adminAiShared'
+import { EmptyRow, formatCompactDate, formatNumber, truncateMiddle } from './adminAiShared'
 import { BillingHistoryTable, CreditBar } from './AdminOperatorDetailTables'
 import { loadAdminPlanCatalogResource } from './adminPlanCatalogCache'
-import { GroupPlanRow } from './adminOperatorDetailActionBuilders'
 import {
   buildBillingCreditTargets,
   formatRegistrationState,
@@ -195,12 +194,27 @@ export function AdminOperatorGroupPlanPanel({
   const primaryPlan = detail?.groupPlansActive[0] ?? detail?.groupPlansExpired[0] ?? null
   const effectivePlanKey = primaryPlan?.planKey ?? 'free_canvas'
   const [groupLimitState, setGroupLimitState] = useState<GroupLimitState>({ limit: null, planKey: '', status: 'loading' })
-  const historyPlans = [...(detail?.groupPlansActive ?? []).slice(1), ...(detail?.groupPlansExpired ?? [])]
   const createdGroups = detail?.ownedGroups ?? []
   const liveGroupLimit = groupLimitState.planKey === effectivePlanKey ? groupLimitState.limit : null
   const groupLimitStatus = groupLimitState.planKey === effectivePlanKey ? groupLimitState.status : 'loading'
   const groupLimitReady = typeof liveGroupLimit === 'number'
-  const groupLimitReached = !groupLimitReady || createdGroups.length >= liveGroupLimit
+  const groupLimitReached = groupLimitReady && createdGroups.length >= liveGroupLimit
+  const planActions = primaryPlan
+    ? [{
+        label: 'Delete plan',
+        onClick: () => onAction({
+          currentPlanKey: primaryPlan.planKey,
+          currentStatus: primaryPlan.status,
+          mode: 'delete' as const,
+          periodEnd: primaryPlan.periodEnd,
+          periodStart: primaryPlan.periodStart,
+          subscriptionId: primaryPlan.subscriptionId,
+          title: `Delete ${primaryPlan.planKey}`,
+          type: 'group-plan' as const,
+          userId,
+        }),
+      }]
+    : []
   useEffect(() => {
     let cancelled = false
     loadAdminPlanCatalogResource()
@@ -228,9 +242,25 @@ export function AdminOperatorGroupPlanPanel({
         <div className="management-actions">
           <button
             className="product-button product-button-secondary"
+            onClick={() => onAction({
+              currentPlanKey: effectivePlanKey,
+              currentStatus: primaryPlan?.status,
+              periodEnd: primaryPlan?.periodEnd,
+              periodStart: primaryPlan?.periodStart,
+              subscriptionId: primaryPlan?.subscriptionId,
+              title: 'Assign Group plan',
+              type: 'group-plan',
+              userId,
+            })}
+            type="button"
+          >
+            Assign Group plan
+          </button>
+          <button
+            className="product-button product-button-secondary"
             disabled={groupLimitReached}
             onClick={() => onAction({ type: 'create-group', userId })}
-            title={!groupLimitReady ? 'Live plan catalog is required before creating a Group.' : undefined}
+            title={groupLimitReached ? 'This user has reached the current Group workspace limit.' : undefined}
             type="button"
           >
             Create new group
@@ -238,24 +268,7 @@ export function AdminOperatorGroupPlanPanel({
         </div>
       </div>
       <div className="admin-group-plan-section">
-        <OwnedGroupsTable effectivePlanKey={effectivePlanKey} groupLimit={liveGroupLimit} groupLimitStatus={groupLimitStatus} onAction={onAction} plan={primaryPlan} rows={createdGroups} userId={userId} />
-        {historyPlans.length ? (
-          <div className="management-table-wrap admin-group-plan-history">
-            <table className="management-table compact admin-group-plan-history-table">
-              <thead><tr><th>Past plan</th><th>Period</th><th>Status</th><th>Manage</th></tr></thead>
-              <tbody>
-                {historyPlans.map((plan, index) => (
-                  <GroupPlanRow
-                    key={buildStableListKey([plan.subscriptionId, plan.planKey, plan.periodStart, plan.periodEnd], index)}
-                    onAction={onAction}
-                    plan={plan}
-                    userId={userId}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : null}
+        <OwnedGroupsTable effectivePlanKey={effectivePlanKey} groupLimit={liveGroupLimit} groupLimitStatus={groupLimitStatus} onAction={onAction} plan={primaryPlan} planActions={planActions} rows={createdGroups} />
       </div>
     </section>
   )

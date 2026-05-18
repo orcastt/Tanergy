@@ -49,11 +49,21 @@ export function AdminOperatorUserInventoryRow({
         <strong>{formatNumber(user.totalCreditsSpent)}</strong>
       </td>
       <td>
-        <div className="admin-user-status-cell">
-          <StatusText status={user.status} />
+        <StatusText status={user.status} />
+      </td>
+      <td>
+        <div className="admin-detail-action-stack">
+          <Link
+            className="admin-detail-button"
+            href={detailHref}
+            onClick={() => onWarmDetail(user)}
+            onFocus={() => onWarmDetail(user)}
+            prefetch={false}
+          >
+            Detail
+          </Link>
           <button
-            className="admin-inline-action"
-            data-tone={user.status === 'active' ? 'danger' : undefined}
+            className="admin-detail-button admin-detail-button-danger"
             onClick={() => onAction({
               nextStatus: user.status === 'active' ? 'suspended' : 'active',
               title: user.status === 'active' ? 'Block user' : 'Unblock user',
@@ -65,17 +75,6 @@ export function AdminOperatorUserInventoryRow({
             {user.status === 'active' ? 'Block' : 'Unblock'}
           </button>
         </div>
-      </td>
-      <td>
-        <Link
-          className="admin-detail-button"
-          href={detailHref}
-          onClick={() => onWarmDetail(user)}
-          onFocus={() => onWarmDetail(user)}
-          prefetch={false}
-        >
-          Detail
-        </Link>
       </td>
     </tr>
   )

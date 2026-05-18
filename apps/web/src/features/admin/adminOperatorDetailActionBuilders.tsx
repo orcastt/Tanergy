@@ -1,29 +1,8 @@
 'use client'
 
-import { formatPlanKey, periodText } from './AdminOperatorDetailTables'
 import { isCurrentPlanStatus } from './adminOperatorActionPresentation'
 import type { AdminOperatorAction } from './adminOperatorActions'
 import type { AdminOperatorUserPlan, AdminOperatorWorkspacePlan } from './adminTypes'
-
-export function GroupPlanRow({
-  onAction,
-  plan,
-  userId,
-}: {
-  onAction: (action: AdminOperatorAction) => void
-  plan: AdminOperatorUserPlan
-  userId: string
-}) {
-  const actions = buildGroupPlanActions(plan, userId, onAction)
-  return (
-    <tr>
-      <td><strong>{formatPlanKey(plan.planKey)}</strong></td>
-      <td>{periodText(plan.periodStart, plan.periodEnd)}</td>
-      <td><span className="management-badge">{plan.status}</span></td>
-      <td><ActionStrip actions={actions} /></td>
-    </tr>
-  )
-}
 
 export function buildTeamPlanActions(workspace: AdminOperatorWorkspacePlan, onAction: (action: AdminOperatorAction) => void) {
   const isCurrentPlan = isCurrentPlanStatus(workspace.planStatus)
@@ -80,34 +59,6 @@ export function buildJoinedWorkspaceActions(
     }),
   })
   return actions
-}
-
-export function buildPrimaryGroupPlanActions(
-  plan: AdminOperatorUserPlan | null | undefined,
-  planKeyFallback: string,
-  userId: string,
-  onAction: (action: AdminOperatorAction) => void,
-) {
-  if (plan) return buildGroupPlanActions(plan, userId, onAction, { includeWalletActions: true })
-  return [
-    {
-      label: 'Assign',
-      onClick: () => onAction({
-        currentPlanKey: planKeyFallback,
-        title: 'Assign Group plan',
-        type: 'group-plan',
-        userId,
-      }),
-    },
-    {
-      label: 'Top up',
-      onClick: () => onAction({ title: 'Top up personal credits', type: 'user-topup', userId }),
-    },
-    {
-      label: 'Deduct',
-      onClick: () => onAction({ title: 'Deduct personal credits', type: 'user-deduct', userId }),
-    },
-  ]
 }
 
 export function buildGroupPlanActions(
@@ -209,30 +160,4 @@ export function buildGroupPlanActions(
     })
   }
   return actions
-}
-
-function ActionStrip({ actions }: { actions: Array<{ label: string; onClick: () => void }> }) {
-  if (!actions.length) return <span>-</span>
-  return (
-    <div className="admin-operator-actions">
-      {actions.map((action) => (
-        <button
-          className="product-button product-button-secondary admin-table-button admin-plan-action-button"
-          data-tone={buttonTone(action.label)}
-          key={action.label}
-          onClick={action.onClick}
-          type="button"
-        >
-          {action.label}
-        </button>
-      ))}
-    </div>
-  )
-}
-
-function buttonTone(label: string) {
-  if (label === 'Delete' || label === 'Delete history') return 'danger'
-  if (label === 'Upgrade' || label === 'Buy seat') return 'primary'
-  if (label === 'Renew' || label === 'Unfreeze' || label === 'Leave') return 'positive'
-  return 'neutral'
 }

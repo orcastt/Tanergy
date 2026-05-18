@@ -144,16 +144,18 @@ export function AdminUserDetailPage({
   return (
     <div className="product-page management-page admin-operator-detail-page">
       <section className="product-page-header admin-user-detail-header">
-        <div>
-          <p className="product-kicker">Admin</p>
-          <h1 className="product-page-title">{detail?.user.displayName || detail?.user.email || userId}</h1>
+        <div className="admin-user-detail-header-main">
+          <Link className="admin-icon-button admin-icon-button-primary" href="/admin?tab=users" aria-label="Back to users">
+            <BackIcon />
+          </Link>
+          <div>
+            <p className="product-kicker">Admin</p>
+            <h1 className="product-page-title">{detail?.user.displayName || detail?.user.email || userId}</h1>
+          </div>
         </div>
         <div className="admin-user-detail-actions">
-          <Link className="product-button product-button-secondary" href="/admin?tab=users">
-            Back to users
-          </Link>
-          <button className="product-button product-button-secondary" onClick={refresh} type="button">
-            Refresh
+          <button className="admin-icon-button" onClick={refresh} type="button" aria-label="Refresh user detail">
+            <RefreshIcon />
           </button>
         </div>
       </section>
@@ -232,4 +234,23 @@ function DetailPanel({ active, children }: { active: boolean; children: ReactNod
 
 function Notice({ body, title }: { body: string; title: string }) {
   return <section className="management-notice"><div><h2>{title}</h2><p>{body}</p></div><Link className="product-button product-button-secondary" href="/admin">Back to admin</Link></section>
+}
+
+function BackIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" height="18" viewBox="0 0 24 24" width="18">
+      <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+    </svg>
+  )
+}
+
+function RefreshIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" height="17" viewBox="0 0 24 24" width="17">
+      <path d="M20 11a8 8 0 0 0-14.7-4.4L4 8" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+      <path d="M4 4v4h4" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+      <path d="M4 13a8 8 0 0 0 14.7 4.4L20 16" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+      <path d="M20 20v-4h-4" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+    </svg>
+  )
 }

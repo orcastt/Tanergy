@@ -107,7 +107,7 @@ export function AdminOverviewDashboard({
     <>
       {error ? <section className="management-notice"><div><h2>Overview data warning</h2><p>{error}</p></div></section> : null}
 
-      <section className="management-summary-grid" aria-label="Admin overview">
+      <section className="management-summary-grid admin-overview-summary-grid" aria-label="Admin overview">
         <AiCallout label="Users" value={value(summary.summary?.usersCount, status)} />
         <AiCallout label="Teams" value={overviewTeamCount.toLocaleString('en-US')} />
         <AiCallout label="Groups" value={overviewGroupCount.toLocaleString('en-US')} />
@@ -116,7 +116,7 @@ export function AdminOverviewDashboard({
         <AiCallout label="Team credits" value={formatNumber(teamWalletCredits)} />
       </section>
 
-      <section className="management-section-grid">
+      <section className="management-section-grid admin-overview-section-grid">
         <AdminOverviewTrendChart users={overviewUsers} workspaces={[...overviewTeams, ...overviewGroups]} />
       </section>
     </>

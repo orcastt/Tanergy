@@ -2,9 +2,11 @@
 
 import { CreditBar, formatPlanKey, periodText } from './AdminOperatorDetailTables'
 import { ActionStack, BoardStack, MemberStack } from './AdminOperatorWorkspaceCellStacks'
-import { buildPrimaryGroupPlanActions, buildTeamPlanActions } from './adminOperatorDetailActionBuilders'
+import { buildTeamPlanActions } from './adminOperatorDetailActionBuilders'
 import type { AdminOperatorAction } from './adminOperatorActions'
 import type { AdminOperatorUserPlan, AdminOperatorWorkspacePlan } from './adminTypes'
+
+type PlanAction = { disabled?: boolean; label: string; onClick: () => void; title?: string }
 
 export function OwnedTeamPlansTable({
   onAction,
@@ -77,18 +79,17 @@ export function OwnedGroupsTable({
   groupLimitStatus = 'ready',
   onAction,
   plan = null,
+  planActions = [],
   rows,
-  userId,
 }: {
   effectivePlanKey?: string
   groupLimit?: null | number
   groupLimitStatus?: 'error' | 'loading' | 'ready'
   onAction: (action: AdminOperatorAction) => void
   plan?: AdminOperatorUserPlan | null
+  planActions?: PlanAction[]
   rows: AdminOperatorWorkspacePlan[]
-  userId: string
 }) {
-  const planActions = buildPrimaryGroupPlanActions(plan, effectivePlanKey, userId, onAction)
   return (
     <div className="management-table-wrap">
       <table className="management-table admin-owned-plan-table admin-owned-group-table">

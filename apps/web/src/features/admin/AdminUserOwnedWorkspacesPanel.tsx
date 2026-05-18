@@ -91,6 +91,7 @@ export function AdminUserOwnedWorkspacesPanel({
               <AdminWorkspaceFinanceActions
                 enabled={enabled}
                 onMutated={onMutated}
+                ownerUserId={selectedWorkspace.ownerId}
                 subscriptionId={kind === 'group' ? selectedWorkspace.ownerCollaborateSubscriptionId : selectedWorkspace.subscriptionId}
                 workspaceKind={kind}
                 workspaceId={selectedWorkspace.id}

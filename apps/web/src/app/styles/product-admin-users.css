@@ -92,6 +92,43 @@
   flex-wrap: wrap;
 }
 
+.admin-user-detail-header-main {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-icon-button {
+  display: inline-grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid rgba(24, 29, 38, 0.12);
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--color-ink);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.admin-icon-button:hover {
+  border-color: rgba(24, 29, 38, 0.22);
+  background: #f8fafc;
+}
+
+.admin-icon-button-primary {
+  border-color: var(--color-ink);
+  background: var(--color-ink);
+  color: #ffffff;
+}
+
+.admin-icon-button-primary:hover {
+  background: #242a33;
+  color: #ffffff;
+}
+
 .admin-users-directory .management-table-wrap {
   overflow-x: auto;
 }
@@ -283,8 +320,29 @@
   white-space: nowrap;
 }
 
+.admin-detail-action-stack {
+  display: grid;
+  width: min(92px, 100%);
+  gap: 6px;
+}
+
+button.admin-detail-button {
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.admin-detail-button-danger {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
 .admin-detail-button:hover {
   background: #242a33;
+}
+
+.admin-detail-button-danger:hover {
+  background: #fee2e2;
 }
 
 @media (max-width: 760px) {

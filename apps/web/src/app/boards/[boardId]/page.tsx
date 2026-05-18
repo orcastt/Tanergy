@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import { useParams, useSearchParams } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Component, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import { useTangentSession } from '@/features/auth/useTangentSession'
 import type { BoardPersistenceRecord, BoardPersistenceSummary } from '@/features/boards/boardTypes'
@@ -30,7 +30,7 @@ export default function BoardCanvasPage() {
   const params = useParams<{ boardId?: string | string[] }>()
   const searchParams = useSearchParams()
   const rawBoardId = Array.isArray(params.boardId) ? params.boardId[0] : params.boardId
-  const boardId = rawBoardId ? decodeURIComponent(rawBoardId) : 'untitled-board'
+  const boardId = rawBoardId ? safeDecodeURIComponent(rawBoardId) : 'untitled-board'
   const isNewBoard = searchParams.get('new') === '1'
   const shareId = searchParams.get('share')
   const requestedWorkspaceId = searchParams.get('workspace')
@@ -121,7 +121,7 @@ export default function BoardCanvasPage() {
       setBoardTitleOverride({ boardId: effectiveBoardId, title: nextTitle })
       return nextTitle
     }
-  }, [boardTitle, effectiveBoardId, isNewBoard, loadState.status, resolvedWorkspace])
+  }, [boardTitle, effectiveBoardId, isNewBoard, loadState.status, resolvedWorkspace, setBoardTitleOverride])
 
   if (!shareId && sessionStatus === 'error') {
     return <BoardRouteState title="Board unavailable" detail={sessionError ?? 'Workspace session failed to load.'} />
@@ -154,28 +154,77 @@ export default function BoardCanvasPage() {
   }
 
   return (
-    <KonvaCanvasSpike
-      autoLoadBoard={false}
-      boardId={effectiveBoardId}
-      boardTitle={boardTitle}
-      initialBoard={loadedBoard && detectedEngine === 'konva' ? loadedBoard : null}
-      mode="board"
-      onBoardLoaded={(title) => setBoardTitleOverride({ boardId: effectiveBoardId, title })}
-      onBoardSaved={clearNewBoardQuery}
-      onBoardTitleRename={renameBoardTitle}
-      seedOnMount={false}
-      workspace={resolvedWorkspace}
-    />
+    <BoardCanvasErrorBoundary boardId={effectiveBoardId}>
+      <KonvaCanvasSpike
+        autoLoadBoard={false}
+        boardId={effectiveBoardId}
+        boardTitle={boardTitle}
+        initialBoard={loadedBoard && detectedEngine === 'konva' ? loadedBoard : null}
+        mode="board"
+        onBoardLoaded={(title) => setBoardTitleOverride({ boardId: effectiveBoardId, title })}
+        onBoardSaved={clearNewBoardQuery}
+        onBoardTitleRename={renameBoardTitle}
+        seedOnMount={false}
+        workspace={resolvedWorkspace}
+      />
+    </BoardCanvasErrorBoundary>
   )
 }
 
-function BoardRouteState({ detail, title }: { detail: string; title: string }) {
+function BoardRouteState({ actions, detail, title }: { actions?: ReactNode; detail: string; title: string }) {
   return (
     <main className="canvas-board-route-state">
       <strong>{title}</strong>
       <span>{detail}</span>
+      {actions ? <div className="canvas-board-route-actions">{actions}</div> : null}
     </main>
   )
+}
+
+class BoardCanvasErrorBoundary extends Component<{ boardId: string; children: ReactNode }, { error: null | string }> {
+  state: { error: null | string } = { error: null }
+
+  static getDerivedStateFromError(error: unknown) {
+    return { error: error instanceof Error ? error.message : 'Board canvas failed to load.' }
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error('Board canvas failed to render.', error)
+  }
+
+  componentDidUpdate(previousProps: { boardId: string }) {
+    if (previousProps.boardId !== this.props.boardId && this.state.error) {
+      this.setState({ error: null })
+    }
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children
+    return (
+      <BoardRouteState
+        actions={(
+          <>
+            <button className="product-button product-button-secondary" onClick={() => window.location.assign('/workspaces')} type="button">
+              Back to workspace
+            </button>
+            <button className="product-button" onClick={() => window.location.reload()} type="button">
+              Reload
+            </button>
+          </>
+        )}
+        detail={this.state.error}
+        title="Board could not load"
+      />
+    )
+  }
+}
+
+function safeDecodeURIComponent(value: string) {
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return value
+  }
 }
 
 function formatBoardTitle(boardId: string) {

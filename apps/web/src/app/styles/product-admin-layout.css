@@ -118,6 +118,10 @@
   min-height: 360px;
 }
 
+.admin-overview-section-grid {
+  margin-top: 24px;
+}
+
 .admin-trend-legend,
 .admin-trend-legend span {
   display: inline-flex;

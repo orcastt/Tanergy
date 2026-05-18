@@ -7,7 +7,7 @@ import {
   createGroupWorkspace,
 } from '@/features/billing/billingClient'
 import { requestCurrentSessionRefresh } from '@/features/auth/sessionClient'
-import type { WorkspaceKind } from '@/features/billing/billingTypes'
+import type { PlanKey, WorkspaceKind } from '@/features/billing/billingTypes'
 import { useTangentSession } from '@/features/auth/useTangentSession'
 import type {
   WorkspaceDirectoryItem,
@@ -18,6 +18,7 @@ import { parseWorkspaceInvitationToken } from '@/features/workspaces/workspaceIn
 
 type WorkspaceDirectoryActionsProps = {
   createLabel: string
+  currentPlanKey?: null | PlanKey
   joinLabel: string
   kind: Extract<WorkspaceKind, 'group_workspace' | 'team_workspace'>
   onWorkspaceAdded: (item: WorkspaceDirectoryItem) => void
@@ -25,15 +26,19 @@ type WorkspaceDirectoryActionsProps = {
 
 export function WorkspaceDirectoryActions({
   createLabel,
+  currentPlanKey,
   joinLabel,
   kind,
   onWorkspaceAdded,
 }: WorkspaceDirectoryActionsProps) {
   const router = useRouter()
   const { session, status: sessionStatus } = useTangentSession()
+  const [approvalNotice, setApprovalNotice] = useState<ApprovalNotice | null>(null)
   const [status, setStatus] = useState<null | string>(null)
   const [isPending, setIsPending] = useState(false)
   const isDisabled = isPending || sessionStatus !== 'ready'
+  const needsAdminApproval = kind === 'team_workspace'
+    || (kind === 'group_workspace' && Boolean(currentPlanKey) && currentPlanKey !== 'free_canvas')
 
   return (
     <>
@@ -46,11 +51,26 @@ export function WorkspaceDirectoryActions({
         </button>
       </div>
       {status ? <p className="workspace-directory-status" role="status">{status}</p> : null}
+      {approvalNotice ? (
+        <WorkspaceDirectoryApprovalDialog
+          notice={approvalNotice}
+          onClose={() => setApprovalNotice(null)}
+          onOpenBilling={() => {
+            setApprovalNotice(null)
+            router.push('/billing')
+          }}
+        />
+      ) : null}
     </>
   )
 
   async function createWorkspace() {
     if (sessionStatus !== 'ready') return
+    if (needsAdminApproval) {
+      setStatus(null)
+      setApprovalNotice(buildApprovalNotice(kind))
+      return
+    }
     setIsPending(true)
     setStatus(null)
     try {
@@ -60,7 +80,11 @@ export function WorkspaceDirectoryActions({
         await createTeam()
       }
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : 'Workspace action failed.')
+      setApprovalNotice({
+        eyebrow: 'Group',
+        message: error instanceof Error ? error.message : 'Workspace action failed.',
+        title: 'Admin approval required',
+      })
     } finally {
       setIsPending(false)
     }
@@ -68,7 +92,7 @@ export function WorkspaceDirectoryActions({
 
   async function createGroup() {
     const name = window.prompt('Group name', 'New Group')?.trim()
-    if (!name) throw new Error('Group name is required.')
+    if (!name) return
     const response = await createGroupWorkspace({ name })
     onWorkspaceAdded({
       boardCount: 0,
@@ -87,7 +111,7 @@ export function WorkspaceDirectoryActions({
   }
 
   async function createTeam() {
-    setStatus('Team workspaces are enabled from Admin Finance during beta.')
+    setApprovalNotice(buildApprovalNotice('team_workspace'))
   }
 
   async function joinWorkspace() {
@@ -120,6 +144,63 @@ export function WorkspaceDirectoryActions({
     } finally {
       setIsPending(false)
     }
+  }
+}
+
+type ApprovalNotice = {
+  eyebrow: string
+  message: string
+  title: string
+}
+
+function WorkspaceDirectoryApprovalDialog({
+  notice,
+  onClose,
+  onOpenBilling,
+}: {
+  notice: ApprovalNotice
+  onClose: () => void
+  onOpenBilling: () => void
+}) {
+  return (
+    <div className="workspace-limit-dialog-backdrop" onMouseDown={onClose} role="presentation">
+      <section
+        aria-label={notice.title}
+        aria-modal="true"
+        className="workspace-limit-dialog"
+        onMouseDown={(event) => event.stopPropagation()}
+        role="dialog"
+      >
+        <div className="workspace-limit-dialog-copy">
+          <span className="workspace-limit-dialog-eyebrow">{notice.eyebrow}</span>
+          <h2>{notice.title}</h2>
+          <p>{notice.message}</p>
+        </div>
+        <div className="workspace-limit-dialog-actions">
+          <button className="product-button product-button-secondary" onClick={onClose} type="button">
+            Not now
+          </button>
+          <button className="product-button product-button-primary" onClick={onOpenBilling} type="button">
+            Open Subscription
+          </button>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function buildApprovalNotice(kind: Extract<WorkspaceKind, 'group_workspace' | 'team_workspace'>): ApprovalNotice {
+  if (kind === 'team_workspace') {
+    return {
+      eyebrow: 'Team',
+      message: 'Team workspaces require manual admin approval while payments and seats are still controlled from Admin Finance.',
+      title: 'Admin approval required',
+    }
+  }
+  return {
+    eyebrow: 'Group',
+    message: 'Paid Group capacity is enabled by admin approval during beta. Please open Subscription to review the available plan path.',
+    title: 'Admin approval required',
   }
 }
 

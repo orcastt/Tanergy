@@ -13,11 +13,12 @@ import {
 } from './AdminFinanceFields'
 import {
   adminManualAdjustWorkspaceCredits,
-  adminManualDeleteWorkspace,
   adminManualCancelSubscription,
+  adminManualDeleteWorkspace,
   adminManualSetTeamPlan,
   adminManualTopupWorkspace,
 } from './adminFinanceClient'
+import { adminManualOperateGroupPlan } from './adminFinancePlanOperationsClient'
 
 type WorkspaceKind = 'group' | 'team'
 
@@ -25,11 +26,13 @@ export function AdminWorkspaceFinanceActions({
   enabled,
   onMutated,
   workspaceId,
+  ownerUserId,
   subscriptionId,
   workspaceKind = 'team',
 }: {
   enabled: boolean
   onMutated: () => void
+  ownerUserId?: null | string
   workspaceId: string
   subscriptionId?: null | string
   workspaceKind?: WorkspaceKind
@@ -145,8 +148,13 @@ export function AdminWorkspaceFinanceActions({
         {workspaceKind === 'group' ? (
           <button
             className="product-button product-button-secondary"
-            disabled={!enabled || running || !subscriptionId || !hasReason}
-            onClick={() => run('Delete group plan', () => adminManualCancelSubscription(subscriptionId ?? '', note))}
+            disabled={!enabled || running || !subscriptionId || !ownerUserId || !hasReason}
+            onClick={() => run('Delete group plan', () => adminManualOperateGroupPlan({
+              action: 'delete',
+              note,
+              subscriptionId: subscriptionId ?? undefined,
+              userId: ownerUserId ?? '',
+            }))}
             type="button"
           >
             Delete Group plan

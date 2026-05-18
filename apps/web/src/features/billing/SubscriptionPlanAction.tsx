@@ -10,7 +10,6 @@ type SubscriptionPlanActionProps = {
   href: string
   label: string
   planKey: PlanKey
-  planName: string
 }
 
 export function SubscriptionPlanAction({
@@ -19,7 +18,6 @@ export function SubscriptionPlanAction({
   href,
   label,
   planKey,
-  planName,
 }: SubscriptionPlanActionProps) {
   const shouldNavigate = activeCount > 0 || planKey === 'enterprise' || planKey === 'free_canvas'
 
@@ -32,9 +30,6 @@ export function SubscriptionPlanAction({
       <button className={className} disabled type="button">
         Admin setup only
       </button>
-      <span className="workspace-commerce-note" role="status">
-        {planName} can be enabled from Admin Finance after manual approval.
-      </span>
     </div>
   )
 }
