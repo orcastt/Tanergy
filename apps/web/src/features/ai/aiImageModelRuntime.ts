@@ -80,7 +80,7 @@ export function getEstimatedImageGenerationDurationMs(data: JsonObject, nodeType
   const count = nodeType === 'image_gen_4' ? 4 : 1
   if (normalized.modelId === 'nano-banana-2') {
     const imageSize = String(normalized.imageSize ?? '1K')
-    const baseMs = imageSize === '2K' ? 58_000 : imageSize === '4K' ? 84_000 : 42_000
+    const baseMs = imageSize === '0.5K' ? 32_000 : imageSize === '2K' ? 58_000 : imageSize === '4K' ? 84_000 : 42_000
     return Math.round(baseMs * (1 + (count - 1) * 0.5))
   }
   if (normalized.modelId === 'doubao-seedream-5.0-lite') {
@@ -144,7 +144,7 @@ function getAllowedFieldValue<T extends string | number>(value: T, allowedValues
 
 function mapLegacyImageSize(data: JsonObject) {
   const legacyResolution = typeof data.resolution === 'string' ? data.resolution : '1K'
-  return legacyResolution === '2K' || legacyResolution === '4K' ? legacyResolution : '1K'
+  return legacyResolution === '0.5K' || legacyResolution === '2K' || legacyResolution === '4K' ? legacyResolution : '1K'
 }
 
 function mapLegacyGptImage2AspectRatio(data: JsonObject) {

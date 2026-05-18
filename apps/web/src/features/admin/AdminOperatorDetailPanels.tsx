@@ -1,8 +1,9 @@
 'use client'
 
-import { resolveGroupWorkspaceLimit } from '@/features/workspaces/groupPersonalPlanSupport'
+import { useEffect, useState } from 'react'
 import { EmptyRow, buildStableListKey, formatCompactDate, formatNumber, truncateMiddle } from './adminAiShared'
 import { BillingHistoryTable, CreditBar } from './AdminOperatorDetailTables'
+import { loadAdminPlanCatalogResource } from './adminPlanCatalogCache'
 import { GroupPlanRow } from './adminOperatorDetailActionBuilders'
 import {
   buildBillingCreditTargets,
@@ -88,7 +89,7 @@ export function AdminOperatorBillingPanel({
                   </td>
                   <td><WorkspacePlanStack rows={teamPlans} /></td>
                   <td><WorkspaceCreditStack rows={teamPlans} /></td>
-                  <td><UserPlanStack fallbackPlanKey="free_canvas" rows={groupPlans} /></td>
+                  <td><UserPlanStack emptyPlanKey="free_canvas" rows={groupPlans} /></td>
                   <td><CreditBar credit={user.personalCredit} /></td>
                   <td className="admin-users-cell-spent">
                     <strong>{formatNumber(user.totalCreditsSpent)}</strong>
@@ -192,14 +193,34 @@ export function AdminOperatorGroupPlanPanel({
   userId: string
 }) {
   const primaryPlan = detail?.groupPlansActive[0] ?? detail?.groupPlansExpired[0] ?? null
-  const primaryPlanKey = primaryPlan?.planKey ?? 'free_canvas'
+  const effectivePlanKey = primaryPlan?.planKey ?? 'free_canvas'
+  const [groupLimitState, setGroupLimitState] = useState<GroupLimitState>({ limit: null, planKey: '', status: 'loading' })
   const historyPlans = [...(detail?.groupPlansActive ?? []).slice(1), ...(detail?.groupPlansExpired ?? [])]
   const createdGroups = detail?.ownedGroups ?? []
-  const groupLimit = resolveGroupWorkspaceLimit(primaryPlanKey)
-  const groupLimitReached = createdGroups.length >= groupLimit
-  const canFreezePlan = primaryPlan?.status === 'active' || primaryPlan?.status === 'trialing' || primaryPlan?.status === 'paused'
-  const freezeActionMode = primaryPlan?.status === 'paused' ? 'unfreeze' : 'freeze'
-  const freezeActionLabel = primaryPlan?.status === 'paused' ? 'Unfreeze' : 'Freeze'
+  const liveGroupLimit = groupLimitState.planKey === effectivePlanKey ? groupLimitState.limit : null
+  const groupLimitStatus = groupLimitState.planKey === effectivePlanKey ? groupLimitState.status : 'loading'
+  const groupLimitReady = typeof liveGroupLimit === 'number'
+  const groupLimitReached = !groupLimitReady || createdGroups.length >= liveGroupLimit
+  useEffect(() => {
+    let cancelled = false
+    loadAdminPlanCatalogResource()
+      .then((resource) => {
+        if (cancelled) return
+        const plan = resource.plans.find((item) => item.planKey === effectivePlanKey)
+        if (typeof plan?.groupWorkspaceLimit === 'number') {
+          setGroupLimitState({ limit: plan.groupWorkspaceLimit, planKey: effectivePlanKey, status: 'ready' })
+          return
+        }
+        setGroupLimitState({ limit: null, planKey: effectivePlanKey, status: 'error' })
+      })
+      .catch(() => {
+        if (cancelled) return
+        setGroupLimitState({ limit: null, planKey: effectivePlanKey, status: 'error' })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [effectivePlanKey])
   return (
     <section className="management-panel admin-operator-section">
       <div className="management-panel-heading compact">
@@ -209,49 +230,15 @@ export function AdminOperatorGroupPlanPanel({
             className="product-button product-button-secondary"
             disabled={groupLimitReached}
             onClick={() => onAction({ type: 'create-group', userId })}
+            title={!groupLimitReady ? 'Live plan catalog is required before creating a Group.' : undefined}
             type="button"
           >
             Create new group
           </button>
-          <button
-            className="product-button product-button-secondary"
-            onClick={() => onAction({
-              currentPlanKey: primaryPlanKey,
-              currentStatus: primaryPlan?.status,
-              periodEnd: primaryPlan?.periodEnd,
-              periodStart: primaryPlan?.periodStart,
-              subscriptionId: primaryPlan?.subscriptionId,
-              title: 'Change plan',
-              type: 'group-plan',
-              userId,
-            })}
-            type="button"
-          >
-            Change plan
-          </button>
-          {primaryPlan?.subscriptionId && canFreezePlan ? (
-            <button
-              className="product-button product-button-secondary"
-              onClick={() => onAction({
-                currentPlanKey: primaryPlan.planKey,
-                currentStatus: primaryPlan.status,
-                mode: freezeActionMode,
-                periodEnd: primaryPlan.periodEnd,
-                periodStart: primaryPlan.periodStart,
-                subscriptionId: primaryPlan.subscriptionId,
-                title: `${freezeActionLabel} ${primaryPlan.planKey}`,
-                type: 'group-plan',
-                userId,
-              })}
-              type="button"
-            >
-              {freezeActionLabel}
-            </button>
-          ) : null}
         </div>
       </div>
       <div className="admin-group-plan-section">
-        <OwnedGroupsTable groupLimit={groupLimit} onAction={onAction} plan={primaryPlan} planKeyFallback={primaryPlanKey} rows={createdGroups} />
+        <OwnedGroupsTable effectivePlanKey={effectivePlanKey} groupLimit={liveGroupLimit} groupLimitStatus={groupLimitStatus} onAction={onAction} plan={primaryPlan} rows={createdGroups} userId={userId} />
         {historyPlans.length ? (
           <div className="management-table-wrap admin-group-plan-history">
             <table className="management-table compact admin-group-plan-history-table">
@@ -272,4 +259,10 @@ export function AdminOperatorGroupPlanPanel({
       </div>
     </section>
   )
+}
+
+type GroupLimitState = {
+  limit: null | number
+  planKey: string
+  status: 'error' | 'loading' | 'ready'
 }

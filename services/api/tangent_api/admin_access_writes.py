@@ -121,7 +121,7 @@ def revoke_admin_role(
 
 def _normalize_admin_role_name(role: str) -> str:
     normalized = role.strip().lower()
-    if normalized not in {"owner", "admin", "support", "analyst", "finance", "moderator"}:
+    if normalized not in {"owner", "admin", "finance"}:
         raise HTTPException(status_code=400, detail="Invalid admin role.")
     return normalized
 

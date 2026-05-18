@@ -1,3 +1,4 @@
+import os
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
@@ -70,6 +71,7 @@ def post_topup_checkout(
     input_data: BillingTopupCheckoutRequest,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> BillingPaymentMutationResponse:
+    _require_self_serve_checkout_enabled()
     payment = create_topup_checkout(
         context,
         credits=input_data.credits,
@@ -84,6 +86,7 @@ def post_team_subscription_checkout(
     input_data: BillingTeamSubscriptionCheckoutRequest,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> BillingPaymentMutationResponse:
+    _require_self_serve_checkout_enabled()
     payment = create_team_subscription_checkout(
         context,
         billing_interval=input_data.billing_interval,
@@ -101,6 +104,7 @@ def post_collaborate_subscription_checkout(
     input_data: BillingCollaborateSubscriptionCheckoutRequest,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> BillingPaymentMutationResponse:
+    _require_self_serve_checkout_enabled()
     payment = create_collaborate_subscription_checkout(
         context,
         billing_interval=input_data.billing_interval,
@@ -116,6 +120,7 @@ def post_billing_payment_complete(
     payment_id: str,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> BillingPaymentMutationResponse:
+    _require_self_serve_checkout_enabled()
     return complete_billing_payment(payment_id, context)
 
 
@@ -124,6 +129,7 @@ def post_workspace_seat_checkout(
     input_data: BillingSeatPurchaseCheckoutRequest,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> BillingPaymentMutationResponse:
+    _require_self_serve_checkout_enabled()
     payment = create_workspace_seat_checkout(
         context,
         currency=input_data.currency,
@@ -139,6 +145,7 @@ def post_workspace_topup_checkout(
     input_data: BillingTopupCheckoutRequest,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> BillingPaymentMutationResponse:
+    _require_self_serve_checkout_enabled()
     payment = create_workspace_topup_checkout(
         context,
         credits=input_data.credits,
@@ -179,3 +186,18 @@ async def _read_billing_webhook_body(request: Request) -> bytes:
             raise HTTPException(status_code=413, detail="Billing webhook body is too large.")
         chunks.append(chunk)
     return b"".join(chunks)
+
+
+def _require_self_serve_checkout_enabled() -> None:
+    if os.getenv("TANGENT_BILLING_SELF_SERVE_CHECKOUT", "").strip() == "1":
+        return
+    runtime_values = {
+        os.getenv(name, "").strip().lower()
+        for name in ("APP_ENV", "ENVIRONMENT", "TANGENT_ENV", "PYTHON_ENV")
+        if os.getenv(name, "").strip()
+    }
+    if runtime_values.intersection({"prod", "production", "stage", "staging"}):
+        raise HTTPException(
+            status_code=403,
+            detail="Self-serve billing checkout is disabled during beta. Admin Finance must enable plans manually.",
+        )

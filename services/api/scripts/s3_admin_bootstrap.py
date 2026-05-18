@@ -10,7 +10,7 @@ from uuid import uuid4
 from tangent_api.env_bootstrap import load_repo_env
 
 
-ALLOWED_ROLES = {"owner", "admin", "support", "analyst", "finance", "moderator"}
+ALLOWED_ROLES = {"owner", "admin", "finance"}
 
 
 def main() -> None:
@@ -80,7 +80,7 @@ def parse_args() -> argparse.Namespace:
     target = parser.add_mutually_exclusive_group(required=True)
     target.add_argument("--user-id", help="Existing tangent_users.id to grant.")
     target.add_argument("--email", help="Existing tangent_users.email to grant after first real login.")
-    parser.add_argument("--role", default="owner", help="Admin role to grant.")
+    parser.add_argument("--role", default="admin", help="Admin role to grant.")
     parser.add_argument("--note", default="Bootstrap grant", help="Audit note stored on tangent_admin_roles.")
     parser.add_argument(
         "--granted-by",

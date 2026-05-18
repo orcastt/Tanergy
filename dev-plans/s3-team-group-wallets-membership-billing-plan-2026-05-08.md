@@ -157,8 +157,8 @@ User UI:
 - [x] Group create/invite/member remove/role-update first-pass UI.
 - [x] Personal wallet top-up from `/usage` calls real billing route.
 - Clear AI node payer hints.
-- [ ] Redesign the `Subscription` surface (which may continue to use the `/billing` route in the near term) into vertically stacked long-form `Personal Plans` and `Workspace / Team Plans` sections. Each plan band must show current status, monthly/annual price, current period, valid until, next refresh, credits, limits, seat/group capacity facts and CTA without modal drill-in.
-- [ ] Redesign `/usage` into vertically stacked `Personal usage` and `Team usage` bands. It must list active personal/team plans first, then their remaining credits, top-up balance, validity facts and the relevant management CTA.
+- [x] Redesign the `Subscription` surface (currently `/billing`) into vertically stacked long-form `Personal Plans` and `Workspace / Team Plans` sections. Each plan band shows current status, monthly/annual price, current period, valid until, next refresh, credits, limits, seat/group capacity facts and a beta-safe CTA without modal drill-in.
+- [x] Redesign `/usage` into vertically stacked `Personal usage` and `Team usage` bands. It lists active personal/team plans first, then their remaining credits, top-up balance, validity facts and beta-safe management CTAs.
 
 Admin/developer UI:
 
@@ -166,6 +166,8 @@ Admin/developer UI:
 - [x] Inspect Team wallet ledger and personal wallet ledger through admin finance read APIs and frontend panels.
 - [x] Inspect subscription, seat capacity, wallet balance, payment facts and Team member usage through admin finance panels.
 - [x] Manual admin billing bridge for Stripe-unavailable operations: user wallet top-up/deduction, Team wallet top-up/deduction, Collaborate/Group plan assignment, Team plan assignment, Team/Group creation, subscription cancellation and workspace deletion, all audited through `/admin` finance controls.
+- [x] Group Plan operator detail now manages the primary user Collaborate/Free plan even when no Group workspace has been created: assign/upgrade/renew/freeze/unfreeze/delete personal plan plus personal-wallet top-up/deduct share the same modal/audit bridge as Team plan operations.
+- [x] Public `/pricing` now reads the live billing plan catalog and shows an explicit unavailable state when that catalog cannot be reached instead of rendering stale local defaults.
 - [x] Manual admin writes require an operation reason and use `effectMode` plus `durationCount * durationUnitDays` for plan windows instead of date-picker expiry edits.
 - [x] Split `/admin` into Overview, Users, Teams, Groups, AI API Routes, Finance and Access tabs backed by admin directory APIs and AI route metrics.
 - [x] Rebuild admin operator console around the new inventory/detail mock: fast User inventory, one-call user detail bundle, Billing / Team Plan / Joined Team / Group Plan / Joined Group tabs, modal operations and no helper-copy UI. Local acceptance against the reference inventory/detail shape passed on 2026-05-11; staging and higher-volume smoke remain tracked in `dev-plans/s3-admin-operator-console-redesign-2026-05-09.md`.

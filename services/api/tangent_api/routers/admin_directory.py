@@ -20,7 +20,7 @@ from tangent_api.request_context import ApiRequestContext, get_request_context
 
 router = APIRouter(prefix="/api/v1/admin/directory", tags=["admin"])
 
-DIRECTORY_READ_ROLES = {"owner", "admin", "support", "analyst", "finance"}
+DIRECTORY_READ_ROLES = {"owner", "admin", "finance"}
 
 
 @router.get("/users", response_model=AdminDirectoryUsersResponse)

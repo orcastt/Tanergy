@@ -33,7 +33,7 @@ def post_admin_role(
     payload: AdminRoleGrantRequest,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminRoleMutationResponse:
-    require_admin_role(context, allowed_roles={"owner"})
+    require_admin_role(context, allowed_roles={"owner", "admin"})
     granted, audit_id = grant_admin_role(
         actor_user_id=context.user_id,
         target_user_id=payload.user_id,
@@ -53,7 +53,7 @@ def delete_admin_role(
     reason: str = Query(min_length=1),
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminRoleMutationResponse:
-    require_admin_role(context, allowed_roles={"owner"})
+    require_admin_role(context, allowed_roles={"owner", "admin"})
     revoked, audit_id = revoke_admin_role(
         actor_user_id=context.user_id,
         target_user_id=user_id,

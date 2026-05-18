@@ -321,6 +321,12 @@
   cursor: pointer;
 }
 
+.workspace-commerce-primary-button:disabled,
+.workspace-commerce-secondary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
 .workspace-commerce-primary-button {
   border: 0;
   background: var(--color-ink);
@@ -368,8 +374,7 @@
 .workspace-commerce-band-stack {
   display: grid;
   gap: 24px;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 340px));
-  justify-content: flex-start;
+  grid-template-columns: 1fr;
 }
 
 .workspace-commerce-band {
@@ -615,9 +620,11 @@
 }
 
 .workspace-commerce-ledger-row span {
+  min-width: 0;
   color: var(--color-ink);
   font-size: 13px;
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .workspace-commerce-ledger-empty {

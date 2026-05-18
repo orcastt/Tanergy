@@ -4,12 +4,8 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { requestCurrentSessionRefresh } from '@/features/auth/sessionClient'
-import { continueBillingCheckout } from './billingCheckoutFlow'
 import {
-  createBillingTopupCheckout,
   createGroupWorkspace,
-  createWorkspaceSeatCheckout,
-  createWorkspaceTopupCheckout,
   loadBillingPayments,
   loadCreditLedger,
 } from './billingClient'
@@ -31,7 +27,6 @@ import {
 } from './billingUsageBands'
 import {
   useWorkspaceCommerceOverview,
-  type CommerceTeamCard,
 } from './useWorkspaceCommerceOverview'
 
 export function BillingWorkspaceUsageView() {
@@ -141,7 +136,6 @@ function UsageScreen({ requestedWorkspaceId }: { requestedWorkspaceId: null | st
           groupSummary={groupSummary}
           isPending={Boolean(isActionPending?.startsWith('group:'))}
           onAddGroup={() => void handleGroupAdd()}
-          onTopUp={() => void handlePersonalTopUp()}
         />
       </section>
 
@@ -153,10 +147,7 @@ function UsageScreen({ requestedWorkspaceId }: { requestedWorkspaceId: null | st
         <div className="workspace-commerce-band-stack">
           {ownedTeams.length ? ownedTeams.map((team) => (
             <TeamUsageBand
-              isPending={Boolean(isActionPending?.startsWith(`${team.id}:`))}
               key={team.id}
-              onBuySeat={() => void handleTeamSeat(team)}
-              onTopUp={() => void handleTeamTopUp(team)}
               team={team}
             />
           )) : <BillingEmptyState message="No owned Team workspaces yet." />}
@@ -174,40 +165,6 @@ function UsageScreen({ requestedWorkspaceId }: { requestedWorkspaceId: null | st
       </section>
     </div>
   )
-
-  async function handleTeamTopUp(team: CommerceTeamCard) {
-    await runAction(`${team.id}:topup`, async () => {
-      const checkout = await createWorkspaceTopupCheckout({
-        credits: team.planKey === 'team_growth' ? 1200 : 800,
-        metadata: { action: 'team_wallet_topup', workspaceId: team.id },
-      }, { workspace: team.workspace })
-      const result = await continueBillingCheckout(checkout, { manualCompleteWorkspace: team.workspace })
-      refreshUsage()
-      return result.message
-    })
-  }
-
-  async function handleTeamSeat(team: CommerceTeamCard) {
-    await runAction(`${team.id}:seat`, async () => {
-      const checkout = await createWorkspaceSeatCheckout({
-        metadata: { action: 'team_seat_purchase', workspaceId: team.id },
-        planKey: team.planKey,
-        quantity: 1,
-      }, { workspace: team.workspace })
-      const result = await continueBillingCheckout(checkout, { manualCompleteWorkspace: team.workspace })
-      refreshUsage()
-      return result.message
-    })
-  }
-
-  async function handlePersonalTopUp() {
-    await runAction('group:topup', async () => {
-      const checkout = await createBillingTopupCheckout({ credits: 400, metadata: { action: 'personal_topup' } })
-      const result = await continueBillingCheckout(checkout)
-      refreshUsage()
-      return result.message
-    })
-  }
 
   async function handleGroupAdd() {
     await runAction('group:add', async () => {

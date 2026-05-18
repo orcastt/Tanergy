@@ -1,7 +1,6 @@
 'use client'
 
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
-import { completeBillingPayment } from './billingClient'
 import type { BillingPaymentMutationResponse } from './billingTypes'
 
 type CheckoutFlowOptions = {
@@ -26,12 +25,6 @@ export async function continueBillingCheckout(
       openedHostedCheckout: true,
     }
   }
-  const completed = await completeBillingPayment(checkout.payment.id, {
-    workspace: options.manualCompleteWorkspace,
-  })
-  return {
-    completed,
-    message: 'Checkout completed.',
-    openedHostedCheckout: false,
-  }
+  void options.manualCompleteWorkspace
+  throw new Error('Checkout completion is disabled during beta. Ask Admin Finance to enable the plan manually.')
 }

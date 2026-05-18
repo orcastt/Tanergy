@@ -51,7 +51,7 @@ export function PersonalUsageBand({
   groupSummary: CommerceGroupSummary
   isPending: boolean
   onAddGroup: () => void
-  onTopUp: () => void
+  onTopUp?: () => void
 }) {
   const usage = resolveCreditUsageMetrics(groupSummary.remainingCredits, groupSummary.totalCredits)
   return (
@@ -60,7 +60,7 @@ export function PersonalUsageBand({
         <>
           <Link className="workspace-commerce-secondary-button" href="/billing">Change plan</Link>
           <button className="workspace-commerce-secondary-button" disabled={isPending} onClick={onAddGroup} type="button">Create Group</button>
-          <button className="workspace-commerce-primary-button" disabled={isPending} onClick={onTopUp} type="button">Top up</button>
+          {onTopUp ? <button className="workspace-commerce-primary-button" disabled={isPending} onClick={onTopUp} type="button">Top up</button> : <button className="workspace-commerce-primary-button" disabled type="button">Admin top-up only</button>}
         </>
       )}
       badge={<BillingStatusPill>{groupSummary.planName}</BillingStatusPill>}
@@ -92,25 +92,19 @@ export function PersonalUsageBand({
 }
 
 export function TeamUsageBand({
-  isPending = false,
-  onBuySeat,
-  onTopUp,
   team,
 }: {
-  isPending?: boolean
-  onBuySeat?: () => void
-  onTopUp?: () => void
   team: CommerceTeamCard
 }) {
-  const canManage = team.canManageBilling && onTopUp && onBuySeat
+  const canManage = team.canManageBilling
   const usage = resolveCreditUsageMetrics(team.remainingCredits, team.totalCredits)
   return (
     <BillingBand
       actions={(
         <>
           <Link className="workspace-commerce-secondary-button" href={`/team/${encodeURIComponent(team.id)}`}>Open workspace</Link>
-          {canManage ? <button className="workspace-commerce-secondary-button" disabled={isPending} onClick={onBuySeat} type="button">Buy seat</button> : null}
-          {canManage ? <button className="workspace-commerce-primary-button" disabled={isPending} onClick={onTopUp} type="button">Top up</button> : null}
+          {team.canManageBilling ? <button className="workspace-commerce-secondary-button" disabled type="button">Admin seats only</button> : null}
+          {team.canManageBilling ? <button className="workspace-commerce-primary-button" disabled type="button">Admin top-up only</button> : null}
         </>
       )}
       badge={<BillingStatusPill>{team.relationship === 'created' ? 'Owned Team' : 'Joined Team'}</BillingStatusPill>}
@@ -134,7 +128,7 @@ export function TeamUsageBand({
         items={[
           `${formatCredits(team.includedCredits)} included credits on current pack`,
           `${formatFact(team.seatMin)}-${formatFact(team.seatMax)} seat range`,
-          canManage ? 'Owner/admin can invite members, remove them, and buy more seats' : 'Read-only billing view for joined Team',
+          canManage ? 'Plan changes and top-ups are handled in Admin Finance during beta' : 'Read-only billing view for joined Team',
         ]}
       />
     </BillingBand>

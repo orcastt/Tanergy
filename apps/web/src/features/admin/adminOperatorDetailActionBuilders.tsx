@@ -82,10 +82,39 @@ export function buildJoinedWorkspaceActions(
   return actions
 }
 
-function buildGroupPlanActions(
+export function buildPrimaryGroupPlanActions(
+  plan: AdminOperatorUserPlan | null | undefined,
+  planKeyFallback: string,
+  userId: string,
+  onAction: (action: AdminOperatorAction) => void,
+) {
+  if (plan) return buildGroupPlanActions(plan, userId, onAction, { includeWalletActions: true })
+  return [
+    {
+      label: 'Assign',
+      onClick: () => onAction({
+        currentPlanKey: planKeyFallback,
+        title: 'Assign Group plan',
+        type: 'group-plan',
+        userId,
+      }),
+    },
+    {
+      label: 'Top up',
+      onClick: () => onAction({ title: 'Top up personal credits', type: 'user-topup', userId }),
+    },
+    {
+      label: 'Deduct',
+      onClick: () => onAction({ title: 'Deduct personal credits', type: 'user-deduct', userId }),
+    },
+  ]
+}
+
+export function buildGroupPlanActions(
   plan: AdminOperatorUserPlan,
   userId: string,
   onAction: (action: AdminOperatorAction) => void,
+  options: { includeWalletActions?: boolean } = {},
 ) {
   const isCurrentPlan = isCurrentPlanStatus(plan.status)
   const actions = []
@@ -100,6 +129,22 @@ function buildGroupPlanActions(
         periodStart: plan.periodStart,
         subscriptionId: plan.subscriptionId,
         title: `Renew ${plan.planKey}`,
+        type: 'group-plan',
+        userId,
+      }),
+    })
+  }
+  if (isCurrentPlan && plan.planKey === 'collaborate_start') {
+    actions.push({
+      label: 'Upgrade',
+      onClick: () => onAction({
+        currentPlanKey: plan.planKey,
+        currentStatus: plan.status,
+        mode: 'upgrade',
+        periodEnd: plan.periodEnd,
+        periodStart: plan.periodStart,
+        subscriptionId: plan.subscriptionId,
+        title: `Upgrade ${plan.planKey}`,
         type: 'group-plan',
         userId,
       }),
@@ -135,6 +180,16 @@ function buildGroupPlanActions(
         type: 'group-plan',
         userId,
       }),
+    })
+  }
+  if (options.includeWalletActions && isCurrentPlan) {
+    actions.push({
+      label: 'Top up',
+      onClick: () => onAction({ title: 'Top up personal credits', type: 'user-topup', userId }),
+    })
+    actions.push({
+      label: 'Deduct',
+      onClick: () => onAction({ title: 'Deduct personal credits', type: 'user-deduct', userId }),
     })
   }
   if (plan.status !== 'canceled') {

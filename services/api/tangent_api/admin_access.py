@@ -19,7 +19,7 @@ from tangent_api.request_context import ApiRequestContext
 from tangent_api.schemas import AdminRoleRecord
 from tangent_api.storage.postgres_connection import connect_to_postgres, require_database_url
 
-ADMIN_ACCESS_ROLES = {"owner", "admin", "support", "analyst", "finance", "moderator"}
+ADMIN_ACCESS_ROLES = {"owner", "admin", "finance"}
 _ADMIN_ROLE_CACHE_MAX = 256
 _ADMIN_ROLE_CACHE: dict[tuple[str, str, int], tuple[float, list[AdminRoleRecord]]] = {}
 

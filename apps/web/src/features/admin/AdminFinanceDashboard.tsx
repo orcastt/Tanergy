@@ -141,6 +141,10 @@ export function AdminFinanceDashboard({
             <span className={`management-status ${status === 'ready' ? 'is-success' : ''}`}>{status}</span>
           </div>
         </div>
+        <p className="admin-plan-catalog-rule">
+          Catalog saves update live pricing screens and future manual plan operations. Existing subscriptions and ledger
+          balances stay unchanged until an operator renews, upgrades, tops up, or deducts credits.
+        </p>
         {error ? <p>{error}</p> : null}
         <div className="admin-plan-catalog-overview-grid">
           <div className="management-mini-stat">

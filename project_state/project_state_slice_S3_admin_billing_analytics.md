@@ -35,7 +35,9 @@
 
 - `/pricing` now exists as a public, no-auth subscription page linked from the landing navigation and footer. It uses narrow long-form plan containers, exposes Personal and Team plan positioning, and keeps CTAs at Start free / waitlist / contact instead of triggering live checkout.
 - `/privacy`, `/terms` and `/ai-policy` now exist as public draft policy pages linked from the public surfaces. They cover beta status, data handling, AI providers, AI output responsibility, prohibited content, moderation, deletion, payment-readiness boundaries and user choices.
-- Public pricing currently reads the frontend plan catalog for no-auth reliability. Before paid launch, decide whether the public page must read `GET /api/v1/billing/plans` so admin-edited catalog prices are the market-authoritative source.
+- Public pricing now requires `GET /api/v1/billing/plans`; if the live catalog cannot load, the page shows an explicit unavailable state instead of rendering stale static plan data.
+- Admin Finance plan-catalog edits are now explicitly documented in the UI as market-ops defaults for live pricing screens and future manual plan operations. Existing subscriptions and already-written credit ledger balances remain immutable until an operator renews, upgrades, tops up or deducts credits.
+- Admin operator Group Plan now exposes the primary personal Collaborate/Free plan in the `Manage` column even when the user has not created any Group workspaces. The primary row can assign/upgrade/renew/freeze/unfreeze/delete the personal Group plan and top up/deduct the user personal wallet, while created Group rows remain workspace inventory/delete actions.
 - Live checkout, tax calculation, invoice issuance, refund policy enforcement and merchant-of-record/provider routing remain explicitly disabled until legal/compliance and payment-provider readiness is complete.
 
 2026-05-13 checkpoint notes:

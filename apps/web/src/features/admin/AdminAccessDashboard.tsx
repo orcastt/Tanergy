@@ -15,7 +15,7 @@ import type { AdminDirectoryUsersResource } from './adminTypes'
 import { EmptyRow, FilterSelect, MetaLine, formatDate, selectStyle } from './adminAiShared'
 
 const auditActions = ['', 'admin.role.grant', 'admin.role.revoke', 'admin.directory.users.list', 'admin.directory.workspaces.list', 'admin.ai.route_metrics.list']
-const roleOptions = ['owner', 'admin', 'support', 'analyst', 'finance', 'moderator'] as const
+const roleOptions = ['admin', 'finance'] as const
 const baseUsersQuery = { limit: 100 }
 const emptyUsers: AdminDirectoryUsersResource = { limit: 100, offset: 0, ok: false, totalCount: 0, users: [] }
 
@@ -44,7 +44,8 @@ export function AdminAccessDashboard({
   const [selectedUserId, setSelectedUserId] = useState('')
   const [reloadToken, setReloadToken] = useState(0)
   const roleNames = useMemo(() => adminAccess.roles.map((role) => role.role), [adminAccess.roles])
-  const isOwner = roleNames.includes('owner')
+  const displayRoleNames = useMemo(() => formatAdminRoleLabels(roleNames), [roleNames])
+  const canManageRoles = roleNames.includes('owner') || roleNames.includes('admin')
   const users = usersResource.users
   const selectedUser = users.find((user) => user.id === selectedUserId) ?? users[0] ?? null
 
@@ -113,7 +114,7 @@ export function AdminAccessDashboard({
 
   async function grantRole() {
     const reason = draftReason.trim()
-    if (!selectedUser || !isOwner || !reason) return
+    if (!selectedUser || !canManageRoles || !reason) return
     try {
       await grantAdminRole({ note: draftNote || undefined, reason, role: draftRole, userId: selectedUser.id })
       setDraftNote('')
@@ -127,7 +128,7 @@ export function AdminAccessDashboard({
 
   async function revokeRole(role: string) {
     const reason = draftReason.trim()
-    if (!selectedUser || !isOwner || !reason) return
+    if (!selectedUser || !canManageRoles || !reason) return
     try {
       await revokeAdminRole(selectedUser.id, role, reason)
       setDraftReason('')
@@ -143,7 +144,7 @@ export function AdminAccessDashboard({
       <article className="management-panel">
         <div className="management-panel-heading">
           <div><h2>Admin roles</h2></div>
-          <span className="management-badge">{roleNames.join(', ') || 'none'}</span>
+          <span className="management-badge">{displayRoleNames.join(', ') || 'none'}</span>
         </div>
         <FilterSelect
           label="User"
@@ -156,16 +157,16 @@ export function AdminAccessDashboard({
         <dl className="management-definition-list">
           {(loadedRolesUserId === selectedUser?.id ? roles : []).map((role) => (
             <div key={`${role.role}-${role.createdAt}`}>
-              <dt>{role.role}</dt>
+              <dt>{formatAdminRoleLabel(role.role)}</dt>
               <dd>
                 Granted {formatDate(role.createdAt)}
                 {role.grantedBy ? <MetaLine>by {role.grantedBy}</MetaLine> : null}
-                {isOwner ? <button className="product-button product-button-secondary compact" disabled={!draftReason.trim()} onClick={() => revokeRole(role.role)} type="button">Revoke</button> : null}
+                {canManageRoles ? <button className="product-button product-button-secondary compact" disabled={!draftReason.trim()} onClick={() => revokeRole(role.role)} type="button">Revoke</button> : null}
               </dd>
             </div>
           ))}
         </dl>
-        {isOwner ? (
+        {canManageRoles ? (
           <div className="management-section-gap">
             <select onChange={(event) => setDraftRole(event.target.value as (typeof roleOptions)[number])} style={selectStyle} value={draftRole}>
               {roleOptions.map((role) => <option key={role} value={role}>{role}</option>)}
@@ -174,7 +175,7 @@ export function AdminAccessDashboard({
             <input onChange={(event) => setDraftNote(event.target.value)} placeholder="Optional note" style={selectStyle} value={draftNote} />
             <button className="product-button" disabled={!selectedUser || !draftReason.trim()} onClick={grantRole} type="button">Grant role</button>
           </div>
-        ) : <p>Owner role is required to grant or revoke admin access.</p>}
+        ) : <p>Admin role is required to grant or revoke admin access.</p>}
       </article>
 
       <article className="management-panel">
@@ -194,4 +195,14 @@ export function AdminAccessDashboard({
       </article>
     </section>
   )
+}
+
+function formatAdminRoleLabel(role: string) {
+  if (role === 'owner' || role === 'admin') return 'Admin'
+  if (role === 'finance') return 'Finance'
+  return `Legacy ${role}`
+}
+
+function formatAdminRoleLabels(roles: string[]) {
+  return Array.from(new Set(roles.map(formatAdminRoleLabel)))
 }

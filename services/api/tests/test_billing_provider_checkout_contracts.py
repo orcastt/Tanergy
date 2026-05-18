@@ -8,6 +8,20 @@ from tangent_api.main import app
 from tests.persistence_fakes import FakePostgresDatabase
 
 
+def test_self_serve_checkout_is_disabled_in_staging_without_explicit_gate(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "staging")
+    client = TestClient(app)
+
+    checkout = client.post(
+        "/api/v1/billing/collaborate/checkout",
+        headers={"x-tangent-user-id": "user_beta", "x-tangent-workspace-id": "workspace_beta"},
+        json={"planKey": "collaborate_start"},
+    )
+
+    assert checkout.status_code == 403
+    assert checkout.json()["detail"] == "Self-serve billing checkout is disabled during beta. Admin Finance must enable plans manually."
+
+
 def test_stripe_checkout_session_completes_only_by_webhook(monkeypatch):
     fake_db = FakePostgresDatabase()
     stripe_calls = []

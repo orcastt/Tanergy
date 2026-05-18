@@ -5,11 +5,9 @@ import { useState } from 'react'
 import {
   acceptWorkspaceInvitation,
   createGroupWorkspace,
-  createTeamSubscriptionCheckout,
 } from '@/features/billing/billingClient'
-import { continueBillingCheckout } from '@/features/billing/billingCheckoutFlow'
 import { requestCurrentSessionRefresh } from '@/features/auth/sessionClient'
-import type { PlanKey, WorkspaceKind } from '@/features/billing/billingTypes'
+import type { WorkspaceKind } from '@/features/billing/billingTypes'
 import { useTangentSession } from '@/features/auth/useTangentSession'
 import type {
   WorkspaceDirectoryItem,
@@ -89,33 +87,7 @@ export function WorkspaceDirectoryActions({
   }
 
   async function createTeam() {
-    const teamName = window.prompt('Team name', 'New Team')?.trim()
-    if (!teamName) throw new Error('Team name is required.')
-    const planKey = normalizeTeamPlan(window.prompt('Plan key', 'team_start') ?? 'team_start')
-    const quantity = normalizeQuantity(window.prompt('Seats to start with', '2') ?? '2')
-    const checkout = await createTeamSubscriptionCheckout({ planKey, quantity, teamName })
-    const { completed, message, openedHostedCheckout } = await continueBillingCheckout(checkout)
-    if (openedHostedCheckout) {
-      setStatus(message)
-      return
-    }
-    const metadata = completed?.payment?.metadata ?? {}
-    const workspaceId = typeof metadata.workspaceId === 'string' ? metadata.workspaceId : checkout.payment?.id ?? teamName
-    const workspaceName = typeof metadata.workspaceName === 'string' ? metadata.workspaceName : teamName
-    onWorkspaceAdded({
-      boardCount: 0,
-      id: workspaceId,
-      kind: 'team_workspace',
-      memberCount: quantity,
-      memberInitials: [session.user.avatarInitials],
-      membershipRole: 'owner',
-      name: workspaceName,
-      planKey,
-      relationship: 'created',
-    })
-    requestCurrentSessionRefresh()
-    router.refresh()
-    setStatus(`${workspaceName} is active.`)
+    setStatus('Team workspaces are enabled from Admin Finance during beta.')
   }
 
   async function joinWorkspace() {
@@ -153,18 +125,6 @@ export function WorkspaceDirectoryActions({
 
 function normalizeMembershipRole(role: string): WorkspaceMembershipRole {
   return normalizeWorkspaceMembershipRole(role)
-}
-
-function normalizeQuantity(value: string) {
-  const quantity = Number.parseInt(value.trim(), 10)
-  if (!Number.isFinite(quantity) || quantity < 1) throw new Error('Seat quantity must be at least one.')
-  return quantity
-}
-
-function normalizeTeamPlan(value: string): Extract<PlanKey, 'team_growth' | 'team_start'> {
-  const normalized = value.trim()
-  if (normalized === 'team_growth' || normalized === 'team_start') return normalized
-  throw new Error('Plan must be team_start or team_growth.')
 }
 
 function parseInviteToken(value: string) {

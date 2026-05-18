@@ -7,10 +7,12 @@ export type LegalSection = {
 
 export function LegalPage({
   intro,
+  label = 'Draft legal policy',
   sections,
   title,
 }: {
   intro: string
+  label?: string
   sections: LegalSection[]
   title: string
 }) {
@@ -20,6 +22,7 @@ export function LegalPage({
         <Link className="tanergy-legal-brand" href="/">Tanergy</Link>
         <div>
           <Link href="/pricing">Pricing</Link>
+          <Link href="/pricing-guide">Plan guide</Link>
           <Link href="/privacy">Privacy</Link>
           <Link href="/terms">Terms</Link>
           <Link href="/ai-policy">AI Policy</Link>
@@ -28,7 +31,7 @@ export function LegalPage({
 
       <article className="tanergy-legal-document">
         <header className="tanergy-legal-header">
-          <span>Draft legal policy</span>
+          <span>{label}</span>
           <h1>{title}</h1>
           <p>{intro}</p>
           <small>Last updated: May 18, 2026</small>

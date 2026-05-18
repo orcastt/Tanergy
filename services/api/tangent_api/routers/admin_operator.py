@@ -43,8 +43,8 @@ from tangent_api.request_context import ApiRequestContext, get_request_context
 
 router = APIRouter(prefix="/api/v1/admin/operator", tags=["admin"])
 
-OPERATOR_READ_ROLES = {"owner", "admin", "support", "analyst", "finance"}
-OPERATOR_WRITE_ROLES = {"owner", "admin", "support"}
+OPERATOR_READ_ROLES = {"owner", "admin", "finance"}
+OPERATOR_WRITE_ROLES = {"owner", "admin"}
 
 
 @router.get("/users", response_model=AdminOperatorUsersResponse)

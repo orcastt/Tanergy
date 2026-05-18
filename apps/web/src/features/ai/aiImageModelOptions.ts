@@ -50,9 +50,14 @@ export const nanoBananaAspectRatioOptions = [
   { label: '9:16', value: '9:16' },
   { label: '16:9', value: '16:9' },
   { label: '21:9', value: '21:9' },
+  { label: '1:4', value: '1:4' },
+  { label: '4:1', value: '4:1' },
+  { label: '1:8', value: '1:8' },
+  { label: '8:1', value: '8:1' },
 ]
 
 export const nanoBananaImageSizeOptions = [
+  { label: '0.5K', value: '0.5K' },
   { label: '1K', value: '1K' },
   { label: '2K', value: '2K' },
   { label: '4K', value: '4K' },

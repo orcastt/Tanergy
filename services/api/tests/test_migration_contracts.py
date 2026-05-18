@@ -58,6 +58,7 @@ def test_alembic_revision_chain_is_linear():
         load_migration("20260516_0026_jiekou_text_multimodal_models.py"),
         load_migration("20260516_0027_jiekou_only_ai_provider.py"),
         load_migration("20260516_0028_gpt_image_2_4k_tier.py"),
+        load_migration("20260518_0029_jiekou_gemini_flash_nano_banana.py"),
     ]
 
     for previous, current in zip(migrations, migrations[1:]):
@@ -90,6 +91,7 @@ def test_s1a_migrations_keep_required_schema_contracts():
     jiekou_text_models = load_migration("20260516_0026_jiekou_text_multimodal_models.py")
     jiekou_only_provider = load_migration("20260516_0027_jiekou_only_ai_provider.py")
     gpt_image_2_4k_tier = load_migration("20260516_0028_gpt_image_2_4k_tier.py")
+    jiekou_gemini_flash_nano_banana = load_migration("20260518_0029_jiekou_gemini_flash_nano_banana.py")
     core_sql = "\n".join(core.UPGRADE)
     future_sql = "\n".join(future.UPGRADE)
     hardening_sql = "\n".join(hardening.UPGRADE)
@@ -115,6 +117,7 @@ def test_s1a_migrations_keep_required_schema_contracts():
     jiekou_text_models_sql = "\n".join(jiekou_text_models.UPGRADE)
     jiekou_only_provider_sql = "\n".join(jiekou_only_provider.UPGRADE)
     gpt_image_2_4k_tier_sql = "\n".join(gpt_image_2_4k_tier.UPGRADE)
+    jiekou_gemini_flash_nano_banana_sql = "\n".join(jiekou_gemini_flash_nano_banana.UPGRADE)
 
     for table_name in [
         "tangent_workspace_members",
@@ -341,6 +344,15 @@ def test_s1a_migrations_keep_required_schema_contracts():
         "price_gpt_image_2_4k_v1",
     ]:
         assert contract in gpt_image_2_4k_tier_sql
+
+    for contract in [
+        "gemini-3.1-flash-image",
+        "tier_nano_banana_2_0_5k",
+        "price_nano_banana_2_0_5k_v1",
+        '"imageSize":["0.5K","1K","2K","4K"]',
+        '"size":"0.5K"',
+    ]:
+        assert contract in jiekou_gemini_flash_nano_banana_sql
 
 
 def test_text_route_seed_uses_driver_sql_for_json_literals(monkeypatch):

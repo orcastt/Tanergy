@@ -1,13 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
-import {
-  createCollaborateSubscriptionCheckout,
-  createTeamSubscriptionCheckout,
-} from './billingClient'
-import { continueBillingCheckout } from './billingCheckoutFlow'
-import { requestCurrentSessionRefresh } from '@/features/auth/sessionClient'
 import type { BillingInterval, PlanKey } from './billingTypes'
 
 type SubscriptionPlanActionProps = {
@@ -22,15 +15,12 @@ type SubscriptionPlanActionProps = {
 
 export function SubscriptionPlanAction({
   activeCount,
-  billingInterval = 'monthly',
   className,
   href,
   label,
   planKey,
   planName,
 }: SubscriptionPlanActionProps) {
-  const [status, setStatus] = useState<null | string>(null)
-  const [isPending, setIsPending] = useState(false)
   const shouldNavigate = activeCount > 0 || planKey === 'enterprise' || planKey === 'free_canvas'
 
   if (shouldNavigate) {
@@ -39,56 +29,12 @@ export function SubscriptionPlanAction({
 
   return (
     <div className="workspace-commerce-action-stack">
-      <button className={className} disabled={isPending} onClick={selectPlan} type="button">
-        {isPending ? 'Processing' : label}
+      <button className={className} disabled type="button">
+        Admin setup only
       </button>
-      {status ? <span className="workspace-commerce-note" role="status">{status}</span> : null}
+      <span className="workspace-commerce-note" role="status">
+        {planName} can be enabled from Admin Finance after manual approval.
+      </span>
     </div>
   )
-
-  async function selectPlan() {
-    setIsPending(true)
-    setStatus(null)
-    try {
-      const checkout = isCollaboratePlan(planKey)
-        ? await createCollaborateSubscriptionCheckout({ billingInterval, planKey })
-        : isTeamPlan(planKey)
-          ? await createTeamCheckout(planKey, planName, billingInterval)
-          : null
-      if (!checkout) throw new Error('This plan is not available for checkout.')
-      const { completed, message, openedHostedCheckout } = await continueBillingCheckout(checkout)
-      if (openedHostedCheckout) {
-        setStatus(message)
-        return
-      }
-      requestCurrentSessionRefresh()
-      const workspaceName = completed?.payment?.metadata.workspaceName
-      setStatus(typeof workspaceName === 'string' ? `${workspaceName} is active.` : `${planName} is active.`)
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : 'Checkout failed.')
-    } finally {
-      setIsPending(false)
-    }
-  }
-}
-
-async function createTeamCheckout(
-  planKey: Extract<PlanKey, 'team_growth' | 'team_start'>,
-  planName: string,
-  billingInterval: Extract<BillingInterval, 'annual' | 'monthly'>,
-) {
-  const teamName = window.prompt('Team name', `${planName} Workspace`)?.trim()
-  if (!teamName) throw new Error('Team name is required.')
-  const rawQuantity = window.prompt('Seats to start with', '2')?.trim() ?? '2'
-  const quantity = Number.parseInt(rawQuantity, 10)
-  if (!Number.isFinite(quantity) || quantity < 1) throw new Error('Seat quantity must be at least one.')
-  return createTeamSubscriptionCheckout({ billingInterval, planKey, quantity, teamName })
-}
-
-function isCollaboratePlan(planKey: PlanKey): planKey is Extract<PlanKey, 'collaborate_plus' | 'collaborate_start'> {
-  return planKey === 'collaborate_plus' || planKey === 'collaborate_start'
-}
-
-function isTeamPlan(planKey: PlanKey): planKey is Extract<PlanKey, 'team_growth' | 'team_start'> {
-  return planKey === 'team_growth' || planKey === 'team_start'
 }

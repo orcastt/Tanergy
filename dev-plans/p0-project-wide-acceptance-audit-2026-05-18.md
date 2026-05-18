@@ -146,7 +146,7 @@
 | `npm -C apps/web run lint` | Passed | Frontend lint completed cleanly. |
 | `npm -C apps/web run typecheck` | Passed | TypeScript `--noEmit` completed cleanly. |
 | `npm -C apps/web run build` | Passed | Next.js production build completed successfully. |
-| `PYTHONPATH=services/api python3 -m pytest services/api/tests` | Passed | 274 backend tests passed. |
+| `PYTHONPATH=services/api python3 -m pytest services/api/tests` | Passed | 275 backend tests passed. |
 | `python3 -m compileall services/api/tangent_api services/api/migrations` | Passed | API modules and migrations compile. |
 
 ### Gates To Rerun After Code Changes
@@ -183,7 +183,6 @@ These files are above the `<300 lines` target and should be split only when a re
 | P1 | 457 | `services/api/tangent_api/storage/board_storage_adapter.py` | Storage adapter contract breadth. | Split read/write/history/share boundaries if touched. |
 | P2 | 435 | `apps/web/src/components/konva-canvas/KonvaCanvasShape.tsx` | Main canvas renderer still holds mixed visual concerns. | Split shape rendering, hit state and render helpers with the next canvas polish pass. |
 | P2 | 426 | `services/api/tangent_api/ai_provider_adapters.py` | Adapter dispatch and capability mapping are growing. | Split provider registry from request execution. |
-| P2 | 422 | `services/api/tangent_api/ai_provider_jiekou.py` | Jiekou provider specifics are now large enough to deserve narrower helpers. | Split image/text payload building and response parsing. |
 | P2 | 397 | `apps/web/src/components/konva-canvas/konvaChatNodeStreaming.ts` | Chat streaming UI/runtime bridge is dense. | Split stream transport, optimistic UI and message normalization. |
 
 ## Secret And Server Key Chain

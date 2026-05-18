@@ -19,6 +19,7 @@ export type ProviderImageResponse = {
     url?: string
   }>
   error?: { message?: string }
+  image_urls?: string[]
   images?: Array<string | { b64_json?: string; image_base64?: string; image_url?: string; base64?: string; url?: string }>
   message?: string
   model?: string
@@ -61,12 +62,12 @@ export function normalizeGptImageQuality(quality: string | undefined) {
 }
 
 export function normalizeNanoBananaAspectRatio(aspectRatio: string | undefined) {
-  const allowed = new Set(['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9'])
+  const allowed = new Set(['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9', '1:4', '4:1', '1:8', '8:1'])
   return aspectRatio && allowed.has(aspectRatio) ? aspectRatio : '1:1'
 }
 
 export function normalizeNanoBananaImageSize(imageSize: string | undefined) {
-  return imageSize === '1K' || imageSize === '2K' || imageSize === '4K' ? imageSize : '1K'
+  return imageSize === '0.5K' || imageSize === '1K' || imageSize === '2K' || imageSize === '4K' ? imageSize : '1K'
 }
 
 export function normalizeSeedreamSize(size: string | undefined) {
@@ -87,7 +88,7 @@ export function mapLegacyGptQuality(resolution: string | undefined) {
 }
 
 export function mapLegacyNanoBananaImageSize(resolution: string | undefined) {
-  return resolution === '2K' || resolution === '4K' ? resolution : '1K'
+  return resolution === '0.5K' || resolution === '2K' || resolution === '4K' ? resolution : '1K'
 }
 
 export function getImageModelFamily(modelId: string): ImageModelFamily {
@@ -121,11 +122,11 @@ export function buildJiekouImagePath(endpoint: string) {
 }
 
 export function toJiekouNanoBananaSize(aspectRatio: string) {
-  return { '1:1': '1x1', '2:3': '2x3', '3:2': '3x2', '3:4': '3x4', '4:3': '4x3', '4:5': '4x5', '5:4': '5x4', '9:16': '9x16', '16:9': '16x9', '21:9': '21x9' }[aspectRatio] ?? '1x1'
+  return { '1:1': '1:1', '2:3': '2:3', '3:2': '3:2', '3:4': '3:4', '4:3': '4:3', '4:5': '4:5', '5:4': '5:4', '9:16': '9:16', '16:9': '16:9', '21:9': '21:9', '1:4': '1:4', '4:1': '4:1', '1:8': '1:8', '8:1': '8:1' }[aspectRatio] ?? '1:1'
 }
 
-export function toJiekouNanoBananaQuality(imageSize: string) {
-  return imageSize === '4K' ? '4k' : imageSize === '2K' ? '2k' : '1k'
+export function toJiekouNanoBananaImageSize(imageSize: string) {
+  return imageSize === '0.5K' || imageSize === '2K' || imageSize === '4K' ? imageSize : '1K'
 }
 
 export function clampCount(value: number) {

@@ -37,7 +37,7 @@ def ensure_local_real_login_admin(
             note,
             granted_by,
             revoked_at
-        ) VALUES (%s, 'owner', %s::jsonb, %s, %s, NULL)
+        ) VALUES (%s, 'admin', %s::jsonb, %s, %s, NULL)
         ON CONFLICT (user_id, role) DO UPDATE SET
             permissions = EXCLUDED.permissions,
             note = EXCLUDED.note,
@@ -63,7 +63,7 @@ def ensure_local_real_login_admin(
             user_id,
             None,
             "admin.bootstrap.real_login",
-            json.dumps({"role": "owner", **permissions}),
+            json.dumps({"role": "admin", **permissions}),
         ),
     )
 

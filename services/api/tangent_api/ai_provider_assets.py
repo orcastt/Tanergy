@@ -12,6 +12,7 @@ from tangent_api.storage.asset_store_common import MAX_ASSET_BYTES
 from tangent_api.storage.asset_storage_adapter import AssetStorageAdapter, get_asset_storage_adapter
 
 _RESOLUTION_PIXELS = {
+    "0_5k": 512,
     "1k": 1024,
     "2k": 2048,
     "3k": 3072,

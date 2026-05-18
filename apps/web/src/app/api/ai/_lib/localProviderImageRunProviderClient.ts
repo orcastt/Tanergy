@@ -72,7 +72,7 @@ export async function settleImageTask(payload: ProviderImageResponse, clientConf
 }
 
 export function extractImageSources(payload: ProviderImageResponse) {
-  const items = payload.images ?? payload.data ?? []
+  const items = payload.image_urls ?? payload.images ?? payload.data ?? []
   return items.flatMap((item) => {
     if (typeof item === 'string' && item.trim()) {
       if (item.startsWith('data:')) return [item.trim()]

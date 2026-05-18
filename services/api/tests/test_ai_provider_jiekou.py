@@ -38,7 +38,7 @@ def test_run_jiekou_attempt_routes_nano_banana_i2i(monkeypatch):
 
     monkeypatch.setattr("tangent_api.ai_provider_jiekou.httpx.Client", FakeClient)
     monkeypatch.setattr(
-        "tangent_api.ai_provider_jiekou.load_provider_input_assets",
+        "tangent_api.ai_provider_jiekou_image_requests.load_provider_input_assets",
         lambda payload, context, prefer_preview=False: [
             ProviderInputAsset(
                 asset_id="asset_ref_1",
@@ -52,7 +52,7 @@ def test_run_jiekou_attempt_routes_nano_banana_i2i(monkeypatch):
         ],
     )
     monkeypatch.setattr(
-        "tangent_api.ai_provider_jiekou.download_provider_image",
+        "tangent_api.ai_provider_jiekou_image_requests.download_provider_image",
         lambda url, timeout_seconds, headers=None: ProviderImageOutput(content=b"\x89PNG\r\n\x1a\nout", mime="image/png"),
     )
     monkeypatch.setattr(
@@ -64,7 +64,7 @@ def test_run_jiekou_attempt_routes_nano_banana_i2i(monkeypatch):
         _run_record(model_id="nano-banana-2"),
         _request(
             model_id="nano-banana-2",
-            params={"aspectRatio": "16:9", "count": 1, "imageSize": "2K"},
+            params={"aspectRatio": "1:4", "count": 1, "imageSize": "0.5K"},
             input_asset_ids=["asset_ref_1"],
         ),
         _route(provider_model="nano-banana-2"),
@@ -75,14 +75,14 @@ def test_run_jiekou_attempt_routes_nano_banana_i2i(monkeypatch):
 
     assert result.status == "succeeded"
     assert result.output_asset_ids == ["asset_generated_1"]
-    assert captured_request["url"] == "https://api.jiekou.ai/v3/nano-banana-2-i2i"
+    assert captured_request["url"] == "https://api.jiekou.ai/v3/gemini-3.1-flash-image-edit"
     request_json = captured_request["json"]
     assert isinstance(request_json, dict)
-    assert request_json["size"] == "16x9"
-    assert request_json["quality"] == "2k"
-    assert request_json["response_format"] == "url"
+    assert request_json["size"] == "0.5K"
+    assert request_json["aspect_ratio"] == "1:4"
+    assert request_json["output_format"] == "png"
     expected_base64 = base64.b64encode(b"\x89PNG\r\n\x1a\nmock").decode("ascii")
-    assert request_json["image"] == f"data:image/png;base64,{expected_base64}"
+    assert request_json["image_base64s"] == [expected_base64]
 
 
 def test_run_jiekou_attempt_posts_seedream_group_generation(monkeypatch):
@@ -114,7 +114,7 @@ def test_run_jiekou_attempt_posts_seedream_group_generation(monkeypatch):
 
     monkeypatch.setattr("tangent_api.ai_provider_jiekou.httpx.Client", FakeClient)
     monkeypatch.setattr(
-        "tangent_api.ai_provider_jiekou.download_provider_image",
+        "tangent_api.ai_provider_jiekou_image_requests.download_provider_image",
         lambda url, timeout_seconds, headers=None: ProviderImageOutput(content=b"\x89PNG\r\n\x1a\nout", mime="image/png"),
     )
     monkeypatch.setattr(
@@ -174,7 +174,7 @@ def test_run_jiekou_attempt_routes_gpt_image_2_edit(monkeypatch):
 
     monkeypatch.setattr("tangent_api.ai_provider_jiekou.httpx.Client", FakeClient)
     monkeypatch.setattr(
-        "tangent_api.ai_provider_jiekou.load_provider_input_assets",
+        "tangent_api.ai_provider_jiekou_image_requests.load_provider_input_assets",
         lambda payload, context, prefer_preview=False: [
             ProviderInputAsset(
                 asset_id="asset_ref_1",
@@ -188,7 +188,7 @@ def test_run_jiekou_attempt_routes_gpt_image_2_edit(monkeypatch):
         ],
     )
     monkeypatch.setattr(
-        "tangent_api.ai_provider_jiekou.download_provider_image",
+        "tangent_api.ai_provider_jiekou_image_requests.download_provider_image",
         lambda url, timeout_seconds, headers=None: ProviderImageOutput(content=b"\x89PNG\r\n\x1a\nout", mime="image/png"),
     )
     monkeypatch.setattr(

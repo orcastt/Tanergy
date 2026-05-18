@@ -2,7 +2,7 @@ import {
   buildJiekouImagePath,
   getImageModelFamily,
   nanoBanana2ModelId,
-  toJiekouNanoBananaQuality,
+  toJiekouNanoBananaImageSize,
   toJiekouNanoBananaSize,
   type ImageModelExecutor,
   type ImageModelFamily,
@@ -92,9 +92,9 @@ async function runNanoBanana2(input: { aspectRatio: string; clientConfig: Provid
 }
 
 async function runJiekouNanoBanana2(input: { aspectRatio: string; clientConfig: ProviderClientConfig; count: number; imageSize: string; inputImages: string[]; prompt: string }) {
-  const sharedBody = { prompt: input.prompt, quality: toJiekouNanoBananaQuality(input.imageSize), response_format: 'url', size: toJiekouNanoBananaSize(input.aspectRatio) }
-  const endpoint = input.inputImages.length > 0 ? 'nano-banana-2-i2i' : 'nano-banana-2-t2i'
-  return runRepeatedJiekouImageGenerations(endpoint, { ...sharedBody, ...(input.inputImages.length > 0 ? { image: input.inputImages.length === 1 ? input.inputImages[0] : input.inputImages } : {}) }, input.count, input.clientConfig)
+  const sharedBody = { aspect_ratio: toJiekouNanoBananaSize(input.aspectRatio), output_format: 'png', prompt: input.prompt, size: toJiekouNanoBananaImageSize(input.imageSize) }
+  const endpoint = input.inputImages.length > 0 ? 'gemini-3.1-flash-image-edit' : 'gemini-3.1-flash-image-text-to-image'
+  return runRepeatedJiekouImageGenerations(endpoint, { ...sharedBody, ...(input.inputImages.length > 0 ? { image_base64s: input.inputImages.map(toJiekouInlineImageBase64) } : {}) }, input.count, input.clientConfig)
 }
 
 async function runGptImage2(input: { clientConfig: ProviderClientConfig; count: number; inputImages: string[]; prompt: string; quality: string; size: string }) {
@@ -157,4 +157,8 @@ async function runSingleImageGeneration(body: Record<string, unknown>, clientCon
 function createImageReferenceBody(inputImages: string[]) {
   if (inputImages.length === 0) return {}
   return { image: inputImages.length === 1 ? inputImages[0] : inputImages }
+}
+
+function toJiekouInlineImageBase64(image: string) {
+  return image.startsWith('data:') && image.includes(',') ? image.split(',', 2)[1] : image
 }

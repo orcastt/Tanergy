@@ -9,7 +9,7 @@ from tangent_api.request_context import ApiRequestContext, get_request_context
 
 router = APIRouter(prefix="/api/v1/admin/ai", tags=["admin"])
 
-AI_ANALYTICS_ROLES = {"owner", "admin", "support", "analyst", "finance"}
+AI_ANALYTICS_ROLES = {"owner", "admin", "finance"}
 
 
 @router.get("/route-metrics", response_model=AdminAiRouteMetricsResponse)

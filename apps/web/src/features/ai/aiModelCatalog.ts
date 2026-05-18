@@ -70,11 +70,12 @@ const fallbackAiModels: AiModelOption[] = [
     isDefault: false,
     isEnabled: true,
     parameterSchema: {
-      aspectRatio: ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9'],
-      imageSize: ['1K', '2K', '4K'],
+      aspectRatio: ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9', '1:4', '4:1', '1:8', '8:1'],
+      imageSize: ['0.5K', '1K', '2K', '4K'],
     },
     provider: 'jiekou',
     tierOptions: [
+      { key: '0_5k', label: '0.5K', parameterKey: 'imageSize' },
       { key: '1k', label: '1K', parameterKey: 'imageSize' },
       { key: '2k', label: '2K', parameterKey: 'imageSize' },
       { key: '4k', label: '4K', parameterKey: 'imageSize' },

@@ -2,7 +2,7 @@
 
 import { CreditBar, formatPlanKey, periodText } from './AdminOperatorDetailTables'
 import { ActionStack, BoardStack, MemberStack } from './AdminOperatorWorkspaceCellStacks'
-import { buildTeamPlanActions } from './adminOperatorDetailActionBuilders'
+import { buildPrimaryGroupPlanActions, buildTeamPlanActions } from './adminOperatorDetailActionBuilders'
 import type { AdminOperatorAction } from './adminOperatorActions'
 import type { AdminOperatorUserPlan, AdminOperatorWorkspacePlan } from './adminTypes'
 
@@ -72,18 +72,23 @@ export function OwnedTeamPlansTable({
 }
 
 export function OwnedGroupsTable({
-  groupLimit = 10,
+  effectivePlanKey = 'free_canvas',
+  groupLimit = null,
+  groupLimitStatus = 'ready',
   onAction,
   plan = null,
-  planKeyFallback = 'free_canvas',
   rows,
+  userId,
 }: {
-  groupLimit?: number
+  effectivePlanKey?: string
+  groupLimit?: null | number
+  groupLimitStatus?: 'error' | 'loading' | 'ready'
   onAction: (action: AdminOperatorAction) => void
   plan?: AdminOperatorUserPlan | null
-  planKeyFallback?: string
   rows: AdminOperatorWorkspacePlan[]
+  userId: string
 }) {
+  const planActions = buildPrimaryGroupPlanActions(plan, effectivePlanKey, userId, onAction)
   return (
     <div className="management-table-wrap">
       <table className="management-table admin-owned-plan-table admin-owned-group-table">
@@ -97,16 +102,22 @@ export function OwnedGroupsTable({
         <thead>
           <tr>
             <th>Group plan</th>
-            <th>Created Group <span className="admin-cell-count admin-cell-count-pill">{rows.length}/{groupLimit}</span></th>
+            <th>Created Group <span className="admin-cell-count admin-cell-count-pill">{formatGroupLimitCount(rows.length, groupLimit, groupLimitStatus)}</span></th>
             <th>Group members</th>
             <th>Boards</th>
             <th>Manage</th>
           </tr>
         </thead>
         <tbody>
-          {rows.length ? rows.map((workspace, index) => (
+          <tr>
+            <td rowSpan={Math.max(rows.length + 1, 1)}><GroupPlanCell effectivePlanKey={effectivePlanKey} plan={plan} /></td>
+            <td><span className="admin-member-empty">{rows.length ? 'Plan controls' : 'No created Groups.'}</span></td>
+            <td><span className="admin-member-empty">Personal wallet</span></td>
+            <td><span className="admin-cell-count admin-cell-count-pill">{formatGroupLimitCount(rows.length, groupLimit, groupLimitStatus)}</span></td>
+            <td><ActionStack actions={planActions} /></td>
+          </tr>
+          {rows.map((workspace) => (
             <tr key={workspace.id}>
-              {index === 0 ? <td rowSpan={rows.length}><GroupPlanCell plan={plan} planKeyFallback={planKeyFallback} /></td> : null}
               <td><WorkspaceCell workspace={workspace} /></td>
               <td>
                 <MemberStack
@@ -128,12 +139,7 @@ export function OwnedGroupsTable({
                 <ActionStack actions={buildOwnedWorkspaceActions(workspace, onAction, false)} />
               </td>
             </tr>
-          )) : (
-            <tr>
-              <td><GroupPlanCell plan={plan} planKeyFallback={planKeyFallback} /></td>
-              <td colSpan={4}>No created Groups.</td>
-            </tr>
-          )}
+          ))}
         </tbody>
       </table>
     </div>
@@ -197,13 +203,13 @@ function workspaceMemberActions(
 }
 
 function GroupPlanCell({
+  effectivePlanKey,
   plan,
-  planKeyFallback,
 }: {
+  effectivePlanKey: string
   plan?: AdminOperatorUserPlan | null
-  planKeyFallback?: string
 }) {
-  if (!plan) return <strong>{formatPlanKey(planKeyFallback)}</strong>
+  if (!plan) return <strong>{formatPlanKey(effectivePlanKey)}</strong>
   return (
     <div className="admin-plan-heading">
       <strong>{formatPlanKey(plan.planKey)}</strong>
@@ -214,4 +220,10 @@ function GroupPlanCell({
 
 function isCurrentPlan(status?: null | string) {
   return status === 'active' || status === 'trialing' || status === 'paused'
+}
+
+function formatGroupLimitCount(count: number, limit: null | number, status: 'error' | 'loading' | 'ready') {
+  if (status === 'loading') return `${count}/loading`
+  if (typeof limit === 'number') return `${count}/${limit}`
+  return `${count}/unavailable`
 }

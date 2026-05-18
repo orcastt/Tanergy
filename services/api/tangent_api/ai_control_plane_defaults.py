@@ -64,7 +64,7 @@ DEFAULT_MODEL_ROWS = [
         "estimated_latency": "4-10s",
         "is_default": False,
         "model_key": "nano-banana-2",
-        "parameter_schema": {"aspectRatio": ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"], "imageSize": ["1K", "2K", "4K"]},
+        "parameter_schema": {"aspectRatio": ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9", "1:4", "4:1", "1:8", "8:1"], "imageSize": ["0.5K", "1K", "2K", "4K"]},
         "provider_key": "jiekou",
     },
     {
@@ -86,9 +86,10 @@ DEFAULT_TIER_ROWS = [
     {"enabled": True, "id": "tier_gpt_image_2_1k", "model_key": "gpt-image-2", "parameter_key": "resolution", "provider_params": {"resolution": "1K"}, "public_label": "1K", "sort_order": 10, "tier_key": "1k"},
     {"enabled": True, "id": "tier_gpt_image_2_2k", "model_key": "gpt-image-2", "parameter_key": "resolution", "provider_params": {"resolution": "2K"}, "public_label": "2K", "sort_order": 20, "tier_key": "2k"},
     {"enabled": True, "id": "tier_gpt_image_2_4k", "model_key": "gpt-image-2", "parameter_key": "resolution", "provider_params": {"resolution": "4K"}, "public_label": "4K", "sort_order": 30, "tier_key": "4k"},
-    {"enabled": True, "id": "tier_nano_banana_2_1k", "model_key": "nano-banana-2", "parameter_key": "imageSize", "provider_params": {"quality": "1k"}, "public_label": "1K", "sort_order": 10, "tier_key": "1k"},
-    {"enabled": True, "id": "tier_nano_banana_2_2k", "model_key": "nano-banana-2", "parameter_key": "imageSize", "provider_params": {"quality": "2k"}, "public_label": "2K", "sort_order": 20, "tier_key": "2k"},
-    {"enabled": True, "id": "tier_nano_banana_2_4k", "model_key": "nano-banana-2", "parameter_key": "imageSize", "provider_params": {"quality": "4k"}, "public_label": "4K", "sort_order": 30, "tier_key": "4k"},
+    {"enabled": True, "id": "tier_nano_banana_2_0_5k", "model_key": "nano-banana-2", "parameter_key": "imageSize", "provider_params": {"size": "0.5K"}, "public_label": "0.5K", "sort_order": 5, "tier_key": "0_5k"},
+    {"enabled": True, "id": "tier_nano_banana_2_1k", "model_key": "nano-banana-2", "parameter_key": "imageSize", "provider_params": {"size": "1K"}, "public_label": "1K", "sort_order": 10, "tier_key": "1k"},
+    {"enabled": True, "id": "tier_nano_banana_2_2k", "model_key": "nano-banana-2", "parameter_key": "imageSize", "provider_params": {"size": "2K"}, "public_label": "2K", "sort_order": 20, "tier_key": "2k"},
+    {"enabled": True, "id": "tier_nano_banana_2_4k", "model_key": "nano-banana-2", "parameter_key": "imageSize", "provider_params": {"size": "4K"}, "public_label": "4K", "sort_order": 30, "tier_key": "4k"},
 ]
 
 DEFAULT_ROUTE_ROWS = [
@@ -96,7 +97,7 @@ DEFAULT_ROUTE_ROWS = [
     {"created_at": "2026-05-16T00:00:00Z", "enabled": True, "health_status": "healthy", "id": "route_deepseek_v3_1_primary", "model_key": "deepseek/deepseek-v3.1", "priority": 10, "provider_key": "jiekou", "provider_model": "deepseek/deepseek-v3.1", "retry_policy": {"maxAttempts": 2}, "route_key": "jiekou-deepseek-v3-1-primary", "timeout_ms": 60000, "updated_at": "2026-05-16T00:00:00Z", "weight": 100},
     {"created_at": "2026-05-16T00:00:00Z", "enabled": True, "health_status": "healthy", "id": "route_qwen_2_5_vl_72b_primary", "model_key": "qwen/qwen2.5-vl-72b-instruct", "priority": 10, "provider_key": "jiekou", "provider_model": "qwen/qwen2.5-vl-72b-instruct", "retry_policy": {"maxAttempts": 2}, "route_key": "jiekou-qwen-2-5-vl-72b-primary", "timeout_ms": 90000, "updated_at": "2026-05-16T00:00:00Z", "weight": 100},
     {"created_at": "2026-05-16T00:00:00Z", "enabled": True, "health_status": "healthy", "id": "route_gpt_image_2_primary", "model_key": "gpt-image-2", "priority": 10, "provider_key": "jiekou", "provider_model": "gpt-image-2", "retry_policy": {"maxAttempts": 2}, "route_key": "jiekou-gpt-image-2-primary", "timeout_ms": 240000, "updated_at": "2026-05-16T00:00:00Z", "weight": 100},
-    {"created_at": "2026-05-16T00:00:00Z", "enabled": True, "health_status": "healthy", "id": "route_nano_banana_2_primary", "model_key": "nano-banana-2", "priority": 10, "provider_key": "jiekou", "provider_model": "nano-banana-2", "retry_policy": {"maxAttempts": 2}, "route_key": "jiekou-nano-banana-2-primary", "timeout_ms": 240000, "updated_at": "2026-05-16T00:00:00Z", "weight": 100},
+    {"created_at": "2026-05-16T00:00:00Z", "enabled": True, "health_status": "healthy", "id": "route_nano_banana_2_primary", "model_key": "nano-banana-2", "priority": 10, "provider_key": "jiekou", "provider_model": "gemini-3.1-flash-image", "retry_policy": {"maxAttempts": 2}, "route_key": "jiekou-nano-banana-2-primary", "timeout_ms": 240000, "updated_at": "2026-05-16T00:00:00Z", "weight": 100},
     {"created_at": "2026-05-16T00:00:00Z", "enabled": True, "health_status": "healthy", "id": "route_doubao_seedream_5_0_lite_primary", "model_key": "doubao-seedream-5.0-lite", "priority": 10, "provider_key": "jiekou", "provider_model": "doubao-seedream-5.0-lite", "retry_policy": {"maxAttempts": 2}, "route_key": "jiekou-seedream-5-lite-primary", "timeout_ms": 240000, "updated_at": "2026-05-16T00:00:00Z", "weight": 100},
 ]
 
@@ -108,6 +109,7 @@ DEFAULT_PRICING_ROWS = [
     {"billing_unit": "per_image", "created_at": "2026-05-06T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-06T00:00:00Z", "effective_to": None, "estimated_credits": 9.0, "id": "price_gpt_image_2_2k_v1", "min_credits": 9.0, "model_key": "gpt-image-2", "provider_cost_formula": {"amount": 0.08, "currency": "USD", "type": "per_image"}, "status": "active", "tier_key": "2k", "updated_at": "2026-05-06T00:00:00Z"},
     {"billing_unit": "per_image", "created_at": "2026-05-16T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-16T00:00:00Z", "effective_to": None, "estimated_credits": 16.0, "id": "price_gpt_image_2_4k_v1", "min_credits": 16.0, "model_key": "gpt-image-2", "provider_cost_formula": {"amount": 0.16, "currency": "USD", "type": "per_image"}, "status": "active", "tier_key": "4k", "updated_at": "2026-05-16T00:00:00Z"},
     {"billing_unit": "per_image", "created_at": "2026-05-14T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-14T00:00:00Z", "effective_to": None, "estimated_credits": 4.0, "id": "price_nano_banana_2_1k_v1", "min_credits": 4.0, "model_key": "nano-banana-2", "provider_cost_formula": {"amount": 0.03, "currency": "USD", "type": "per_image"}, "status": "active", "tier_key": "1k", "updated_at": "2026-05-14T00:00:00Z"},
+    {"billing_unit": "per_image", "created_at": "2026-05-18T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-18T00:00:00Z", "effective_to": None, "estimated_credits": 2.5, "id": "price_nano_banana_2_0_5k_v1", "min_credits": 2.5, "model_key": "nano-banana-2", "provider_cost_formula": {"amount": 0.015, "currency": "USD", "type": "per_image"}, "status": "active", "tier_key": "0_5k", "updated_at": "2026-05-18T00:00:00Z"},
     {"billing_unit": "per_image", "created_at": "2026-05-14T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-14T00:00:00Z", "effective_to": None, "estimated_credits": 7.0, "id": "price_nano_banana_2_2k_v1", "min_credits": 7.0, "model_key": "nano-banana-2", "provider_cost_formula": {"amount": 0.06, "currency": "USD", "type": "per_image"}, "status": "active", "tier_key": "2k", "updated_at": "2026-05-14T00:00:00Z"},
     {"billing_unit": "per_image", "created_at": "2026-05-14T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-14T00:00:00Z", "effective_to": None, "estimated_credits": 12.0, "id": "price_nano_banana_2_4k_v1", "min_credits": 12.0, "model_key": "nano-banana-2", "provider_cost_formula": {"amount": 0.12, "currency": "USD", "type": "per_image"}, "status": "active", "tier_key": "4k", "updated_at": "2026-05-14T00:00:00Z"},
 ]

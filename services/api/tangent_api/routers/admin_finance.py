@@ -27,7 +27,7 @@ from tangent_api.routers.admin_finance_manual import router as manual_router
 router = APIRouter(prefix="/api/v1/admin/finance", tags=["admin"])
 router.include_router(manual_router)
 
-FINANCE_READ_ROLES = {"owner", "admin", "finance", "analyst"}
+FINANCE_READ_ROLES = {"owner", "admin", "finance"}
 FINANCE_WRITE_ROLES = {"owner", "admin", "finance"}
 
 
