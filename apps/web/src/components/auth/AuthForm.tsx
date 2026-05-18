@@ -105,9 +105,9 @@ export function AuthForm({ mode }: AuthFormProps) {
 
   return (
     <main className={`auth-split auth-split-${copy.surface}`}>
-      <section className="auth-side-panel" aria-label="TANGENT account context">
-        <Link className="auth-wordmark" href="/boards">
-          TANGENT
+      <section className="auth-side-panel" aria-label="Tanergy account context">
+        <Link className="auth-wordmark" href="/">
+          Tanergy
         </Link>
         <div className="auth-side-copy">
           <h2>{copy.panelTitle}</h2>
@@ -128,7 +128,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       </section>
 
       <section className="auth-canvas">
-        <div className="auth-mobile-wordmark">TANGENT</div>
+        <div className="auth-mobile-wordmark">Tanergy</div>
         <div className="auth-form-wrap">
           <header className="auth-header">
             <h1>{copy.title}</h1>

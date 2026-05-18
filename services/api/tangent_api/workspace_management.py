@@ -3,6 +3,7 @@ from typing import Optional
 from fastapi import HTTPException
 
 from tangent_api.request_context import ApiRequestContext
+from tangent_api.storage.postgres_board_deletion import soft_delete_workspace_boards
 from tangent_api.storage.postgres_connection import connect_to_postgres, require_database_url
 from tangent_api.workspace_schemas import (
     BillingWorkspaceSummary,
@@ -52,6 +53,7 @@ def delete_current_workspace(confirmation: str, context: ApiRequestContext) -> W
                 SELECT COUNT(*)
                 FROM tangent_boards
                 WHERE workspace_id = %s
+                  AND deleted_at IS NULL
                 """,
                 (context.workspace_id,),
             )
@@ -88,10 +90,7 @@ def delete_current_workspace(confirmation: str, context: ApiRequestContext) -> W
                 )
             cursor.execute("DELETE FROM tangent_workspace_invitations WHERE workspace_id = %s", (context.workspace_id,))
             cursor.execute("DELETE FROM tangent_workspace_members WHERE workspace_id = %s", (context.workspace_id,))
-            cursor.execute("DELETE FROM tangent_board_snapshots WHERE workspace_id = %s", (context.workspace_id,))
-            cursor.execute("DELETE FROM tangent_board_share_links WHERE workspace_id = %s", (context.workspace_id,))
-            cursor.execute("DELETE FROM tangent_board_members WHERE workspace_id = %s", (context.workspace_id,))
-            cursor.execute("DELETE FROM tangent_boards WHERE workspace_id = %s", (context.workspace_id,))
+            soft_delete_workspace_boards(cursor, [context.workspace_id])
             cursor.execute(
                 """
                 UPDATE tangent_workspaces

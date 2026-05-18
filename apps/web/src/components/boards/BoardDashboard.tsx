@@ -151,7 +151,7 @@ export function BoardDashboard() {
     <section className="boards-shell">
       <header className="boards-topbar">
         <div>
-          <p className="product-kicker">TANGENT P0</p>
+          <p className="product-kicker">Tanergy P0</p>
           <h1>Boards</h1>
         </div>
         <div className="boards-status">

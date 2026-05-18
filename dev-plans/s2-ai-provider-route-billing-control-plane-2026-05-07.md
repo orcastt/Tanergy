@@ -1,6 +1,6 @@
 # S2 AI Provider Route + Billing Control Plane
 
-**Updated**: 2026-05-16
+**Updated**: 2026-05-18
 **Status**: Active tactical plan for keeping AI provider calls, route switching, credit charging and admin observability behind one server-owned AiRun control plane while the current deployment is Jiekou-first and the architecture remains provider-neutral.
 
 ## Goal
@@ -72,6 +72,7 @@ Current gap:
 - Prompt Optimizer and the message-native Chat node now share a backend short-text `AiRun` path with durable terminal `text_output` when the canvas is pointed at FastAPI; backend analysis-capable model/route/pricing seed plus one reusable `s2_live_ai_smoke.py` image->analysis acceptance script now also exist; remaining work is credentialed live image/analysis smoke and reducing production dependence on local Next fallbacks
 - provider parameter mapping for models like GPT Image 2, Nano Banana 2, Doubao Seedream and Jimeng needs to live in route/model configuration or provider adapter code, not scattered in node components
 - credit estimation and final settlement still need a clean end-to-end smoke path with real credentials
+- 2026-05-18 pricing checkpoint: DeepSeek OCR 2 is removed from active model/route/pricing defaults, short-text chat now defaults to DeepSeek V3.1, image analysis defaults to Qwen 2.5 VL 72B, token-priced text/image-analysis runs estimate credits from prompt/system/history/context size, and fixed-cost image tiers use a `1 credit = $0.01`, 25% target gross margin rule rounded up to 0.5-credit steps. Doubao Seedream 5.0 Lite is temporarily conservative at 5 credits until the Jiekou image pricing table is verified.
 
 ## Target Data Facts
 

@@ -76,9 +76,9 @@ export function AppShell({ children }: AppShellProps) {
     <div className="product-shell">
       <header className="product-top-nav">
         <div className="product-top-nav-inner">
-          <Link className="product-wordmark" href="/workspaces" onClick={() => setIsMenuOpen(false)}>
+          <Link className="product-wordmark" href="/" onClick={() => setIsMenuOpen(false)}>
             <span className="product-wordmark-mark">T</span>
-            <span>TANGENT</span>
+            <span>Tanergy</span>
           </Link>
 
           <Link

@@ -44,6 +44,8 @@ class FakePostgresCursor:
         self.rows = []
         if normalized.startswith("INSERT INTO tangent_boards"):
             key = (params[1], params[0])
+            if key in self.database.deleted_boards:
+                raise AssertionError(f"Attempted to resurrect soft-deleted board: {key}")
             self.database.boards[key] = params
         elif normalized.startswith("INSERT INTO tangent_admin_audit_logs"):
             self.database.admin_audit_logs.append(
@@ -330,8 +332,8 @@ class FakePostgresCursor:
                     row[17],
                     _detect_canvas_engine(row[4]),
                 )
-                for (workspace, _board_id), row in self.database.boards.items()
-                if workspace == workspace_id
+                for (workspace, board_id), row in self.database.boards.items()
+                if workspace == workspace_id and (workspace, board_id) not in self.database.deleted_boards
             ]
             rows.sort(key=lambda row: row[11], reverse=True)
             self.rows = rows
@@ -348,13 +350,24 @@ class FakePostgresCursor:
             matches.sort(key=lambda row: row["created_at"], reverse=True)
             if matches:
                 share_link = matches[0]
-                self.row = self.database.boards.get((share_link["workspace_id"], share_link["board_id"]))
+                key = (share_link["workspace_id"], share_link["board_id"])
+                if key not in self.database.deleted_boards:
+                    self.row = self.database.boards.get(key)
+        elif normalized.startswith("SELECT deleted_at FROM tangent_boards"):
+            key = (params[0], params[1])
+            if key in self.database.boards or key in self.database.deleted_boards:
+                self.row = ("now",) if key in self.database.deleted_boards else (None,)
         elif normalized.startswith("SELECT id, workspace_id, owner_id, title, document") and "ORDER BY saved_at DESC" in normalized:
             workspace_id = params[0]
-            self.rows = [row for (workspace, _board_id), row in self.database.boards.items() if workspace == workspace_id]
+            self.rows = [
+                row for (workspace, board_id), row in self.database.boards.items()
+                if workspace == workspace_id and (workspace, board_id) not in self.database.deleted_boards
+            ]
             self.rows.sort(key=lambda row: row[12], reverse=True)
         elif normalized.startswith("SELECT id, workspace_id, owner_id, title, document"):
-            self.row = self.database.boards.get((params[0], params[1]))
+            key = (params[0], params[1])
+            if key not in self.database.deleted_boards:
+                self.row = self.database.boards.get(key)
         elif normalized.startswith(
             "SELECT id, board_id, charged_account_id, charged_scope, cost_credits, workspace_kind, workspace_seat_id, entitlement_source, input_asset_ids, latency_ms, model_id, node_id, output_asset_ids, provider, run_type, status, prompt_preview, created_at, pricing_rule_id, route_id, route_key, estimated_credits, selected_tier_key, preflight_status, params, error_message, text_output, provider_cost, provider_currency FROM tangent_ai_runs"
         ):
@@ -687,7 +700,7 @@ class FakePostgresCursor:
         elif normalized.startswith("UPDATE tangent_boards SET title"):
             key = (params[9], params[10])
             row = self.database.boards.get(key)
-            if row:
+            if row and key not in self.database.deleted_boards:
                 self.database.boards[key] = (
                     row[0],
                     row[1],
@@ -711,7 +724,7 @@ class FakePostgresCursor:
         elif normalized.startswith("UPDATE tangent_boards SET last_opened_at"):
             key = (params[1], params[2])
             row = self.database.boards.get(key)
-            if row:
+            if row and key not in self.database.deleted_boards:
                 self.database.boards[key] = (
                     row[0],
                     row[1],
@@ -732,11 +745,26 @@ class FakePostgresCursor:
                     row[16],
                     row[17],
                 )
+        elif normalized.startswith("UPDATE tangent_boards SET deleted_at = COALESCE(deleted_at, NOW()) WHERE workspace_id = ANY(%s)"):
+            workspace_ids = set(params[0])
+            for key in list(self.database.boards):
+                if key[0] in workspace_ids and key not in self.database.deleted_boards:
+                    self.database.deleted_boards.add(key)
+                    self.rowcount += 1
+        elif normalized.startswith("UPDATE tangent_boards SET deleted_at = COALESCE(deleted_at, NOW()) WHERE workspace_id = %s"):
+            key = (params[0], params[1])
+            if key in self.database.boards and key not in self.database.deleted_boards:
+                self.database.deleted_boards.add(key)
+                self.rowcount = 1
         elif normalized.startswith("DELETE FROM tangent_boards"):
             if len(params) == 1:
                 workspace_id = params[0]
                 self.database.boards = {
                     key: row for key, row in self.database.boards.items()
+                    if key[0] != workspace_id
+                }
+                self.database.deleted_boards = {
+                    key for key in self.database.deleted_boards
                     if key[0] != workspace_id
                 }
                 self.database.board_members = {
@@ -757,6 +785,7 @@ class FakePostgresCursor:
                 ]
             else:
                 self.database.boards.pop((params[0], params[1]), None)
+                self.database.deleted_boards.discard((params[0], params[1]))
                 self.database.board_members = {
                     key: row for key, row in self.database.board_members.items()
                     if key[0] != params[0] or key[1] != params[1]
@@ -1043,11 +1072,23 @@ class FakePostgresCursor:
             if workspace_member:
                 workspace_member["role"] = role
         elif normalized.startswith("DELETE FROM tangent_board_members"):
-            if len(params) == 1:
+            if len(params) == 1 and isinstance(params[0], list):
+                workspace_ids = set(params[0])
+                self.database.board_members = {
+                    key: row for key, row in self.database.board_members.items()
+                    if key[0] not in workspace_ids
+                }
+            elif len(params) == 1:
                 workspace_id = params[0]
                 self.database.board_members = {
                     key: row for key, row in self.database.board_members.items()
                     if key[0] != workspace_id
+                }
+            elif len(params) == 2:
+                workspace_id, board_id = params
+                self.database.board_members = {
+                    key: row for key, row in self.database.board_members.items()
+                    if key[0] != workspace_id or key[1] != board_id
                 }
             else:
                 self.database.board_members.pop((params[0], params[1], params[2]), None)
@@ -1107,6 +1148,18 @@ class FakePostgresCursor:
                     row["access_role"] = access_role
                     self.rowcount = 1
                     break
+        elif normalized.startswith("UPDATE tangent_board_share_links SET revoked_at = COALESCE(revoked_at, NOW()) WHERE workspace_id = ANY(%s)"):
+            workspace_ids = set(params[0])
+            for row in self.database.board_share_links:
+                if row["workspace_id"] in workspace_ids and row["revoked_at"] is None:
+                    row["revoked_at"] = "2026-05-05T03:00:00Z"
+                    self.rowcount += 1
+        elif normalized.startswith("UPDATE tangent_board_share_links SET revoked_at = COALESCE(revoked_at, NOW()) WHERE workspace_id = %s"):
+            workspace_id, board_id = params
+            for row in self.database.board_share_links:
+                if row["workspace_id"] == workspace_id and row["board_id"] == board_id and row["revoked_at"] is None:
+                    row["revoked_at"] = "2026-05-05T03:00:00Z"
+                    self.rowcount += 1
         elif normalized.startswith("UPDATE tangent_board_share_links SET revoked_at = NOW()"):
             workspace_id, board_id, share_id = params
             updated = 0
@@ -1135,15 +1188,17 @@ class FakePostgresCursor:
             matches.sort(key=lambda row: row["created_at"], reverse=True)
             if matches:
                 row = matches[0]
-                board = self.database.boards.get((row["workspace_id"], row["board_id"]))
-                title = board[3] if board else row["board_id"]
-                self.row = (
-                    row["share_id"],
-                    row["workspace_id"],
-                    row["board_id"],
-                    title,
-                    row["access_role"],
-                )
+                key = (row["workspace_id"], row["board_id"])
+                if key not in self.database.deleted_boards:
+                    board = self.database.boards.get(key)
+                    title = board[3] if board else row["board_id"]
+                    self.row = (
+                        row["share_id"],
+                        row["workspace_id"],
+                        row["board_id"],
+                        title,
+                        row["access_role"],
+                    )
         elif normalized.startswith("SELECT id, workspace_id, board_id, created_by, title, document_hash"):
             workspace_id, board_id = params
             rows = [
@@ -1183,6 +1238,14 @@ class FakePostgresCursor:
             self.database.snapshots = {
                 key: row for key, row in self.database.snapshots.items()
                 if key[0] != workspace_id or key[1] != board_id
+            }
+            self.rowcount = before - len(self.database.snapshots)
+        elif normalized.startswith("DELETE FROM tangent_board_snapshots WHERE workspace_id = ANY(%s)"):
+            workspace_ids = set(params[0])
+            before = len(self.database.snapshots)
+            self.database.snapshots = {
+                key: row for key, row in self.database.snapshots.items()
+                if key[0] not in workspace_ids
             }
             self.rowcount = before - len(self.database.snapshots)
         elif normalized.startswith("DELETE FROM tangent_board_snapshots"):
@@ -1510,14 +1573,46 @@ class FakePostgresCursor:
         elif normalized.startswith("SELECT COUNT(*) FROM tangent_boards WHERE workspace_id = %s"):
             workspace_id = params[0]
             self.row = (
-                sum(1 for (entry_workspace_id, _board_id) in self.database.boards if entry_workspace_id == workspace_id),
+                sum(
+                    1
+                    for key in self.database.boards
+                    if key[0] == workspace_id and key not in self.database.deleted_boards
+                ),
             )
+        elif normalized.startswith("DELETE FROM tangent_board_realtime_documents WHERE workspace_id = ANY(%s)"):
+            workspace_ids = set(params[0])
+            before = len(self.database.board_realtime_documents)
+            self.database.board_realtime_documents = [
+                row for row in self.database.board_realtime_documents
+                if row["workspace_id"] not in workspace_ids
+            ]
+            self.rowcount = before - len(self.database.board_realtime_documents)
+        elif normalized.startswith("DELETE FROM tangent_board_realtime_documents WHERE workspace_id = %s"):
+            workspace_id, board_id = params
+            before = len(self.database.board_realtime_documents)
+            self.database.board_realtime_documents = [
+                row for row in self.database.board_realtime_documents
+                if row["workspace_id"] != workspace_id or row["board_id"] != board_id
+            ]
+            self.rowcount = before - len(self.database.board_realtime_documents)
         elif normalized.startswith("DELETE FROM tangent_board_share_links WHERE workspace_id = %s"):
             workspace_id = params[0]
             self.database.board_share_links = [
                 row for row in self.database.board_share_links
                 if row["workspace_id"] != workspace_id
             ]
+        elif normalized.startswith("UPDATE tangent_board_collaboration_sessions SET disconnected_at = COALESCE(disconnected_at, NOW()) WHERE workspace_id = ANY(%s)"):
+            workspace_ids = set(params[0])
+            for row in self.database.board_collaboration_sessions:
+                if row["workspace_id"] in workspace_ids and row.get("disconnected_at") is None:
+                    row["disconnected_at"] = "2026-05-05T03:05:00Z"
+                    self.rowcount += 1
+        elif normalized.startswith("UPDATE tangent_board_collaboration_sessions SET disconnected_at = COALESCE(disconnected_at, NOW()) WHERE workspace_id = %s"):
+            workspace_id, board_id = params
+            for row in self.database.board_collaboration_sessions:
+                if row["workspace_id"] == workspace_id and row["board_id"] == board_id and row.get("disconnected_at") is None:
+                    row["disconnected_at"] = "2026-05-05T03:05:00Z"
+                    self.rowcount += 1
         elif normalized.startswith("UPDATE tangent_board_collaboration_sessions SET disconnected_at = %s WHERE workspace_id = %s AND board_id = %s AND disconnected_at IS NULL AND expires_at <= %s"):
             disconnected_at, workspace_id, board_id, expires_at = params
             for row in self.database.board_collaboration_sessions:
@@ -1608,6 +1703,16 @@ class FakePostgresCursor:
             row = next((row for row in self.database.workspaces if row["id"] == workspace_id), None)
             if row:
                 self.row = (row.get("kind", "solo_workspace"),)
+        elif normalized.startswith("SELECT COALESCE(kind, 'solo_workspace'), COALESCE(status, 'active') FROM tangent_workspaces"):
+            workspace_id = params[0]
+            row = next((row for row in self.database.workspaces if row["id"] == workspace_id), None)
+            if row:
+                self.row = (row.get("kind", "solo_workspace"), row.get("status", "active"))
+        elif normalized.startswith("SELECT COALESCE(status, 'active') FROM tangent_workspaces"):
+            workspace_id = params[0]
+            row = next((row for row in self.database.workspaces if row["id"] == workspace_id), None)
+            if row:
+                self.row = (row.get("status", "active"),)
         elif normalized.startswith("SELECT kind, owner_id, billing_owner_user_id, status FROM tangent_workspaces"):
             workspace_id = params[0]
             row = next((row for row in self.database.workspaces if row["id"] == workspace_id), None)
@@ -2020,7 +2125,7 @@ class FakePostgresCursor:
                 for row in self.database.subscriptions:
                     if (
                         (row.get("workspace_id") == workspace_id or (row.get("owner_type") == "workspace" and row.get("owner_id") == workspace_id))
-                        and row.get("status", "active") in {"active", "trialing"}
+                        and row.get("status", "active") in {"active", "paused", "trialing"}
                     ):
                         row["status"] = "canceled"
                         row["current_period_end"] = "2026-05-06T00:52:00Z"
@@ -2144,7 +2249,9 @@ class FakePostgresCursor:
         elif normalized.startswith("SELECT COUNT(*) FROM tangent_workspaces WHERE status <> 'deleted'"):
             self.row = (sum(1 for row in self.database.workspaces if row.get("status") != "deleted"),)
         elif normalized.startswith("SELECT COUNT(*) FROM tangent_boards WHERE deleted_at IS NULL"):
-            self.row = (len(self.database.boards),)
+            self.row = (
+                sum(1 for key in self.database.boards if key not in self.database.deleted_boards),
+            )
         elif normalized.startswith("SELECT COUNT(DISTINCT user_id) FROM tangent_admin_roles WHERE revoked_at IS NULL"):
             self.row = (len({row["user_id"] for row in self.database.admin_roles if row["revoked_at"] is None}),)
         elif normalized.startswith("SELECT 1 FROM tangent_users WHERE id = %s"):
@@ -2270,7 +2377,9 @@ class FakePostgresCursor:
         elif normalized.startswith("SELECT id, workspace_id, owner_id, title, visibility, saved_at FROM tangent_boards"):
             limit = params[0]
             rows = []
-            for row in self.database.boards.values():
+            for key, row in self.database.boards.items():
+                if key in self.database.deleted_boards:
+                    continue
                 rows.append(
                     (
                         row[0],
@@ -2370,6 +2479,7 @@ class FakePostgresDatabase:
         self.board_members = {}
         self.board_share_links = []
         self.boards = {}
+        self.deleted_boards = set()
         self.credit_accounts = []
         self.credit_ledger = []
         self.model_parameter_tiers = []

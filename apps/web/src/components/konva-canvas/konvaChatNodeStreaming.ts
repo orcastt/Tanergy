@@ -12,7 +12,7 @@ import {
 } from './konvaChatNodeActions'
 
 const chatSystemPrompt = [
-  'You are the AI assistant inside the TANGENT canvas.',
+  'You are the AI assistant inside the Tanergy canvas.',
   'Use the provided text and image context when relevant.',
   'Be concrete, concise, and do not claim you read files unless file contents are actually attached.',
 ].join(' ')

@@ -60,9 +60,26 @@ def test_board_copy_and_delete_are_owner_only(monkeypatch):
     assert copied.id != "owner_only_board"
     assert copied.title == "Managed title Copy"
 
+    share_link = store.ensure_share_link("owner_only_board", "viewer", owner)
+    fake_db.board_collaboration_sessions = [
+        {"board_id": "owner_only_board", "disconnected_at": None, "workspace_id": "workspace_group"}
+    ]
+    fake_db.board_realtime_documents = [{"board_id": "owner_only_board", "workspace_id": "workspace_group"}]
+    fake_db.snapshots[("workspace_group", "owner_only_board", "snapshot_1")] = (
+        "snapshot_1",
+        "workspace_group",
+        "owner_only_board",
+    )
+
     deleted_id = store.delete_board("owner_only_board", owner)
     assert deleted_id == "owner_only_board"
-    assert ("workspace_group", "owner_only_board") not in fake_db.boards
+    assert ("workspace_group", "owner_only_board") in fake_db.deleted_boards
+    assert ("workspace_group", "owner_only_board", "user_owner") not in fake_db.board_members
+    assert fake_db.board_share_links[0]["share_id"] == share_link.share_id
+    assert fake_db.board_share_links[0]["revoked_at"] is not None
+    assert fake_db.board_collaboration_sessions[0]["disconnected_at"] is not None
+    assert fake_db.board_realtime_documents == []
+    assert fake_db.snapshots == {}
 
 
 def test_solo_workspace_owner_cannot_copy_or_delete_stale_unowned_board(monkeypatch):

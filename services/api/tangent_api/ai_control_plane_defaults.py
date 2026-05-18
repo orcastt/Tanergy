@@ -1,26 +1,13 @@
 DEFAULT_MODEL_ROWS = [
     {
-        "capabilities": ["text", "image_analysis"],
-        "capability": "text",
-        "cost_hint": "Low-cost multimodal OCR and document understanding for chat and visual analysis.",
-        "default_tier_key": None,
-        "display_name": "DeepSeek OCR 2",
-        "enabled": True,
-        "estimated_latency": "1-4s",
-        "is_default": True,
-        "model_key": "deepseek/deepseek-ocr-2",
-        "parameter_schema": {},
-        "provider_key": "jiekou",
-    },
-    {
         "capabilities": ["text"],
         "capability": "text",
-        "cost_hint": "Fast text reasoning for prompt optimization and general chat.",
+        "cost_hint": "Token-priced text reasoning for prompt optimization and general chat.",
         "default_tier_key": None,
         "display_name": "DeepSeek V3.1",
         "enabled": True,
         "estimated_latency": "1-4s",
-        "is_default": False,
+        "is_default": True,
         "model_key": "deepseek/deepseek-v3.1",
         "parameter_schema": {},
         "provider_key": "jiekou",
@@ -93,7 +80,6 @@ DEFAULT_TIER_ROWS = [
 ]
 
 DEFAULT_ROUTE_ROWS = [
-    {"created_at": "2026-05-16T00:00:00Z", "enabled": True, "health_status": "healthy", "id": "route_deepseek_ocr_2_primary", "model_key": "deepseek/deepseek-ocr-2", "priority": 10, "provider_key": "jiekou", "provider_model": "deepseek/deepseek-ocr-2", "retry_policy": {"maxAttempts": 2}, "route_key": "jiekou-deepseek-ocr-2-primary", "timeout_ms": 60000, "updated_at": "2026-05-16T00:00:00Z", "weight": 100},
     {"created_at": "2026-05-16T00:00:00Z", "enabled": True, "health_status": "healthy", "id": "route_deepseek_v3_1_primary", "model_key": "deepseek/deepseek-v3.1", "priority": 10, "provider_key": "jiekou", "provider_model": "deepseek/deepseek-v3.1", "retry_policy": {"maxAttempts": 2}, "route_key": "jiekou-deepseek-v3-1-primary", "timeout_ms": 60000, "updated_at": "2026-05-16T00:00:00Z", "weight": 100},
     {"created_at": "2026-05-16T00:00:00Z", "enabled": True, "health_status": "healthy", "id": "route_qwen_2_5_vl_72b_primary", "model_key": "qwen/qwen2.5-vl-72b-instruct", "priority": 10, "provider_key": "jiekou", "provider_model": "qwen/qwen2.5-vl-72b-instruct", "retry_policy": {"maxAttempts": 2}, "route_key": "jiekou-qwen-2-5-vl-72b-primary", "timeout_ms": 90000, "updated_at": "2026-05-16T00:00:00Z", "weight": 100},
     {"created_at": "2026-05-16T00:00:00Z", "enabled": True, "health_status": "healthy", "id": "route_gpt_image_2_primary", "model_key": "gpt-image-2", "priority": 10, "provider_key": "jiekou", "provider_model": "gpt-image-2", "retry_policy": {"maxAttempts": 2}, "route_key": "jiekou-gpt-image-2-primary", "timeout_ms": 240000, "updated_at": "2026-05-16T00:00:00Z", "weight": 100},
@@ -102,14 +88,14 @@ DEFAULT_ROUTE_ROWS = [
 ]
 
 DEFAULT_PRICING_ROWS = [
-    {"billing_unit": "per_run", "created_at": "2026-05-16T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-16T00:00:00Z", "effective_to": None, "estimated_credits": 1.0, "id": "price_deepseek_ocr_2_v1", "min_credits": 1.0, "model_key": "deepseek/deepseek-ocr-2", "provider_cost_formula": {"amount": 0.005, "currency": "USD", "type": "per_run"}, "status": "active", "tier_key": None, "updated_at": "2026-05-16T00:00:00Z"},
-    {"billing_unit": "per_run", "created_at": "2026-05-16T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-16T00:00:00Z", "effective_to": None, "estimated_credits": 1.5, "id": "price_deepseek_v3_1_v1", "min_credits": 1.5, "model_key": "deepseek/deepseek-v3.1", "provider_cost_formula": {"amount": 0.008, "currency": "USD", "type": "per_run"}, "status": "active", "tier_key": None, "updated_at": "2026-05-16T00:00:00Z"},
-    {"billing_unit": "per_run", "created_at": "2026-05-16T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-16T00:00:00Z", "effective_to": None, "estimated_credits": 3.0, "id": "price_qwen_2_5_vl_72b_v1", "min_credits": 3.0, "model_key": "qwen/qwen2.5-vl-72b-instruct", "provider_cost_formula": {"amount": 0.02, "currency": "USD", "type": "per_run"}, "status": "active", "tier_key": None, "updated_at": "2026-05-16T00:00:00Z"},
-    {"billing_unit": "per_image", "created_at": "2026-05-06T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-06T00:00:00Z", "effective_to": None, "estimated_credits": 5.0, "id": "price_gpt_image_2_1k_v1", "min_credits": 5.0, "model_key": "gpt-image-2", "provider_cost_formula": {"amount": 0.04, "currency": "USD", "type": "per_image"}, "status": "active", "tier_key": "1k", "updated_at": "2026-05-06T00:00:00Z"},
-    {"billing_unit": "per_image", "created_at": "2026-05-06T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-06T00:00:00Z", "effective_to": None, "estimated_credits": 9.0, "id": "price_gpt_image_2_2k_v1", "min_credits": 9.0, "model_key": "gpt-image-2", "provider_cost_formula": {"amount": 0.08, "currency": "USD", "type": "per_image"}, "status": "active", "tier_key": "2k", "updated_at": "2026-05-06T00:00:00Z"},
-    {"billing_unit": "per_image", "created_at": "2026-05-16T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-16T00:00:00Z", "effective_to": None, "estimated_credits": 16.0, "id": "price_gpt_image_2_4k_v1", "min_credits": 16.0, "model_key": "gpt-image-2", "provider_cost_formula": {"amount": 0.16, "currency": "USD", "type": "per_image"}, "status": "active", "tier_key": "4k", "updated_at": "2026-05-16T00:00:00Z"},
-    {"billing_unit": "per_image", "created_at": "2026-05-14T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-14T00:00:00Z", "effective_to": None, "estimated_credits": 4.0, "id": "price_nano_banana_2_1k_v1", "min_credits": 4.0, "model_key": "nano-banana-2", "provider_cost_formula": {"amount": 0.03, "currency": "USD", "type": "per_image"}, "status": "active", "tier_key": "1k", "updated_at": "2026-05-14T00:00:00Z"},
-    {"billing_unit": "per_image", "created_at": "2026-05-18T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-18T00:00:00Z", "effective_to": None, "estimated_credits": 2.5, "id": "price_nano_banana_2_0_5k_v1", "min_credits": 2.5, "model_key": "nano-banana-2", "provider_cost_formula": {"amount": 0.015, "currency": "USD", "type": "per_image"}, "status": "active", "tier_key": "0_5k", "updated_at": "2026-05-18T00:00:00Z"},
-    {"billing_unit": "per_image", "created_at": "2026-05-14T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-14T00:00:00Z", "effective_to": None, "estimated_credits": 7.0, "id": "price_nano_banana_2_2k_v1", "min_credits": 7.0, "model_key": "nano-banana-2", "provider_cost_formula": {"amount": 0.06, "currency": "USD", "type": "per_image"}, "status": "active", "tier_key": "2k", "updated_at": "2026-05-14T00:00:00Z"},
-    {"billing_unit": "per_image", "created_at": "2026-05-14T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-14T00:00:00Z", "effective_to": None, "estimated_credits": 12.0, "id": "price_nano_banana_2_4k_v1", "min_credits": 12.0, "model_key": "nano-banana-2", "provider_cost_formula": {"amount": 0.12, "currency": "USD", "type": "per_image"}, "status": "active", "tier_key": "4k", "updated_at": "2026-05-14T00:00:00Z"},
+    {"billing_unit": "per_run", "created_at": "2026-05-18T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-18T00:00:00Z", "effective_to": None, "estimated_credits": 1.0, "id": "price_deepseek_v3_1_v1", "min_credits": 1.0, "model_key": "deepseek/deepseek-v3.1", "provider_cost_formula": {"creditUsd": 0.01, "currency": "USD", "estimatedInputTokens": 1200, "estimatedOutputTokens": 800, "grossMargin": 0.25, "inputUsdPerMTok": 0.27, "outputUsdPerMTok": 1.0, "type": "token_usage_estimate"}, "status": "active", "tier_key": None, "updated_at": "2026-05-18T00:00:00Z"},
+    {"billing_unit": "per_run", "created_at": "2026-05-18T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-18T00:00:00Z", "effective_to": None, "estimated_credits": 3.0, "id": "price_qwen_2_5_vl_72b_v1", "min_credits": 3.0, "model_key": "qwen/qwen2.5-vl-72b-instruct", "provider_cost_formula": {"creditUsd": 0.01, "currency": "USD", "estimatedInputTokens": 1600, "estimatedOutputTokens": 900, "grossMargin": 0.25, "imageInputTokens": 1200, "inputUsdPerMTok": 0.8, "outputUsdPerMTok": 0.8, "type": "token_usage_estimate"}, "status": "active", "tier_key": None, "updated_at": "2026-05-18T00:00:00Z"},
+    {"billing_unit": "per_image", "created_at": "2026-05-06T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-06T00:00:00Z", "effective_to": None, "estimated_credits": 5.5, "id": "price_gpt_image_2_1k_v1", "min_credits": 5.5, "model_key": "gpt-image-2", "provider_cost_formula": {"amount": 0.04, "creditUsd": 0.01, "currency": "USD", "grossMargin": 0.25, "type": "per_image"}, "status": "active", "tier_key": "1k", "updated_at": "2026-05-18T00:00:00Z"},
+    {"billing_unit": "per_image", "created_at": "2026-05-06T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-06T00:00:00Z", "effective_to": None, "estimated_credits": 11.0, "id": "price_gpt_image_2_2k_v1", "min_credits": 11.0, "model_key": "gpt-image-2", "provider_cost_formula": {"amount": 0.08, "creditUsd": 0.01, "currency": "USD", "grossMargin": 0.25, "type": "per_image"}, "status": "active", "tier_key": "2k", "updated_at": "2026-05-18T00:00:00Z"},
+    {"billing_unit": "per_image", "created_at": "2026-05-16T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-16T00:00:00Z", "effective_to": None, "estimated_credits": 21.5, "id": "price_gpt_image_2_4k_v1", "min_credits": 21.5, "model_key": "gpt-image-2", "provider_cost_formula": {"amount": 0.16, "creditUsd": 0.01, "currency": "USD", "grossMargin": 0.25, "type": "per_image"}, "status": "active", "tier_key": "4k", "updated_at": "2026-05-18T00:00:00Z"},
+    {"billing_unit": "per_image", "created_at": "2026-05-18T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-18T00:00:00Z", "effective_to": None, "estimated_credits": 2.0, "id": "price_nano_banana_2_0_5k_v1", "min_credits": 2.0, "model_key": "nano-banana-2", "provider_cost_formula": {"amount": 0.015, "creditUsd": 0.01, "currency": "USD", "grossMargin": 0.25, "type": "per_image"}, "status": "active", "tier_key": "0_5k", "updated_at": "2026-05-18T00:00:00Z"},
+    {"billing_unit": "per_image", "created_at": "2026-05-14T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-14T00:00:00Z", "effective_to": None, "estimated_credits": 4.0, "id": "price_nano_banana_2_1k_v1", "min_credits": 4.0, "model_key": "nano-banana-2", "provider_cost_formula": {"amount": 0.03, "creditUsd": 0.01, "currency": "USD", "grossMargin": 0.25, "type": "per_image"}, "status": "active", "tier_key": "1k", "updated_at": "2026-05-18T00:00:00Z"},
+    {"billing_unit": "per_image", "created_at": "2026-05-14T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-14T00:00:00Z", "effective_to": None, "estimated_credits": 8.0, "id": "price_nano_banana_2_2k_v1", "min_credits": 8.0, "model_key": "nano-banana-2", "provider_cost_formula": {"amount": 0.06, "creditUsd": 0.01, "currency": "USD", "grossMargin": 0.25, "type": "per_image"}, "status": "active", "tier_key": "2k", "updated_at": "2026-05-18T00:00:00Z"},
+    {"billing_unit": "per_image", "created_at": "2026-05-14T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-14T00:00:00Z", "effective_to": None, "estimated_credits": 16.0, "id": "price_nano_banana_2_4k_v1", "min_credits": 16.0, "model_key": "nano-banana-2", "provider_cost_formula": {"amount": 0.12, "creditUsd": 0.01, "currency": "USD", "grossMargin": 0.25, "type": "per_image"}, "status": "active", "tier_key": "4k", "updated_at": "2026-05-18T00:00:00Z"},
+    {"billing_unit": "per_image", "created_at": "2026-05-18T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-18T00:00:00Z", "effective_to": None, "estimated_credits": 5.0, "id": "price_doubao_seedream_5_0_lite_v1", "min_credits": 5.0, "model_key": "doubao-seedream-5.0-lite", "provider_cost_formula": {"amount": 0.035, "creditUsd": 0.01, "currency": "USD", "grossMargin": 0.25, "source": "seedream_5_lite_market_reference_pending_jiekou_price_table", "type": "per_image"}, "status": "active", "tier_key": None, "updated_at": "2026-05-18T00:00:00Z"},
 ]

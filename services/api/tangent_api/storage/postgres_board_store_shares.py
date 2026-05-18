@@ -139,6 +139,7 @@ class PostgresBoardStoreSharesMixin:
                     JOIN tangent_boards b
                       ON b.workspace_id = sl.workspace_id AND b.id = sl.board_id
                     WHERE sl.share_id = %s AND sl.revoked_at IS NULL
+                      AND b.deleted_at IS NULL
                       AND (sl.expires_at IS NULL OR sl.expires_at > NOW())
                     ORDER BY sl.created_at DESC
                     LIMIT 1
@@ -170,6 +171,7 @@ class PostgresBoardStoreSharesMixin:
                     JOIN tangent_boards b
                       ON b.workspace_id = sl.workspace_id AND b.id = sl.board_id
                     WHERE sl.share_id = %s AND sl.revoked_at IS NULL
+                      AND b.deleted_at IS NULL
                       AND (sl.expires_at IS NULL OR sl.expires_at > NOW())
                     ORDER BY sl.created_at DESC
                     LIMIT 1
@@ -206,6 +208,7 @@ class PostgresBoardStoreSharesMixin:
                     JOIN tangent_boards b
                       ON b.workspace_id = sl.workspace_id AND b.id = sl.board_id
                     WHERE sl.share_id = %s AND sl.revoked_at IS NULL
+                      AND b.deleted_at IS NULL
                       AND (sl.expires_at IS NULL OR sl.expires_at > NOW())
                     ORDER BY sl.created_at DESC
                     LIMIT 1
@@ -223,7 +226,7 @@ class PostgresBoardStoreSharesMixin:
                 ensure_board_schema(cursor)
                 cursor.execute(
                     """
-                    SELECT COALESCE(kind, 'solo_workspace')
+                    SELECT COALESCE(kind, 'solo_workspace'), COALESCE(status, 'active')
                     FROM tangent_workspaces
                     WHERE id = %s
                     """,
@@ -231,7 +234,8 @@ class PostgresBoardStoreSharesMixin:
                 )
                 row = cursor.fetchone()
         workspace_kind = str(row[0] or "solo_workspace") if row else "solo_workspace"
-        if not workspace_kind_allows_board_sharing(workspace_kind):
+        workspace_status = str(row[1] or "active") if row else "active"
+        if workspace_status == "deleted" or not workspace_kind_allows_board_sharing(workspace_kind):
             raise HTTPException(status_code=404, detail="Board share link not found.")
 
 

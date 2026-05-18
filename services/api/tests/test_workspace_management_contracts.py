@@ -119,10 +119,10 @@ def test_group_owner_delete_workspace_clears_workspace_content_but_keeps_subscri
     assert fake_db.workspaces[0]["status"] == "deleted"
     assert fake_db.workspace_members == []
     assert fake_db.workspace_invitations == []
-    assert fake_db.boards == {}
+    assert ("workspace_group", "board_group") in fake_db.deleted_boards
     assert fake_db.board_members == {}
     assert fake_db.snapshots == {}
-    assert fake_db.board_share_links == []
+    assert fake_db.board_share_links[0]["revoked_at"] is not None
     assert fake_db.subscriptions[0]["status"] == "active"
 
 
@@ -169,6 +169,6 @@ def test_team_owner_delete_workspace_revokes_seats_and_keeps_team_subscription(m
     assert response.json()["result"]["boardsRemoved"] == 1
     assert fake_db.workspaces[0]["status"] == "deleted"
     assert fake_db.workspace_members == []
-    assert fake_db.boards == {}
+    assert ("workspace_team", "board_team") in fake_db.deleted_boards
     assert fake_db.workspace_seat_assignments[0]["status"] == "revoked"
     assert fake_db.subscriptions[0]["status"] == "active"

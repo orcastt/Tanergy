@@ -46,7 +46,7 @@ export default function WorkspaceInvitePage() {
     <main className="workspace-invite-page">
       <section className="workspace-invite-card">
         <Link className="workspace-invite-brand" href="/">
-          TANGENT
+          Tanergy
         </Link>
         <span className="workspace-invite-eyebrow">Workspace invite</span>
         <h1 className="workspace-invite-title">{heading}</h1>

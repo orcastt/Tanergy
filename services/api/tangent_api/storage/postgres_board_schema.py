@@ -64,6 +64,7 @@ def ensure_board_schema(cursor: Any) -> None:
     cursor.execute("ALTER TABLE tangent_boards ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN NOT NULL DEFAULT FALSE")
     cursor.execute("ALTER TABLE tangent_boards ADD COLUMN IF NOT EXISTS visibility TEXT NOT NULL DEFAULT 'private'")
     cursor.execute("ALTER TABLE tangent_boards ADD COLUMN IF NOT EXISTS share_id TEXT")
+    cursor.execute("ALTER TABLE tangent_boards ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ")
     cursor.execute("UPDATE tangent_boards SET created_at = saved_at WHERE created_at IS NULL")
     cursor.execute(
         """

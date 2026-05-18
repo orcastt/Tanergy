@@ -609,8 +609,8 @@ def test_admin_ai_runtime_routes_return_persisted_runs_and_api_calls(monkeypatch
     assert [item["id"] for item in runs.json()["runs"]] == [run_id]
     assert run_record["boardId"] == "board_runtime"
     assert run_record["chargedAccountId"] == "credit_user_user_runtime"
-    assert run_record["costCredits"] == 5.0
-    assert run_record["estimatedCredits"] == 5.0
+    assert run_record["costCredits"] == 5.5
+    assert run_record["estimatedCredits"] == 5.5
     assert run_record["modelId"] == "gpt-image-2"
     assert run_record["outputAssetIds"] == [f"asset_mock_{run_id}_1_admin-runtime-readback_refs0"]
     assert run_record["preflightStatus"] == "settled"
@@ -632,7 +632,7 @@ def test_admin_ai_runtime_routes_return_persisted_runs_and_api_calls(monkeypatch
         {
             "boardId": "board_runtime",
             "createdAt": fake_db.ai_api_calls[-1]["created_at"].isoformat(),
-            "creditsCharged": 5.0,
+            "creditsCharged": 5.5,
             "creditsRefunded": 0.0,
             "errorCode": None,
             "id": f"ai_call_{run_id}_a1",

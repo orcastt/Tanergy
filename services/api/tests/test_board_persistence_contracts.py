@@ -326,7 +326,20 @@ def test_board_postgres_contract(monkeypatch):
     delete_response = client.delete("/api/v1/boards/api-postgres-board", headers=group_headers)
     assert delete_response.status_code == 200
     assert delete_response.json()["boardId"] == "api-postgres-board"
-    assert ("workspace_group", "api-postgres-board") not in fake_db.boards
+    assert ("workspace_group", "api-postgres-board") in fake_db.deleted_boards
+    assert client.get("/api/v1/boards/api-postgres-board", headers=group_headers).status_code == 404
+
+    stale_save_response = client.post(
+        "/api/v1/boards",
+        headers=group_headers,
+        json={
+            "boardId": "api-postgres-board",
+            "document": {"assets": [], "shapes": [{"id": "shape_stale"}]},
+            "title": "Stale Save",
+        },
+    )
+    assert stale_save_response.status_code == 404
+    assert ("workspace_group", "api-postgres-board") in fake_db.deleted_boards
 
 
 def test_board_postgres_requires_database_url(monkeypatch):
@@ -585,6 +598,27 @@ def test_postgres_board_owner_is_preserved_on_collaborator_save(monkeypatch):
     )
 
     assert fake_db.boards[("workspace_group", "shared_board")][2] == "user_owner"
+
+
+def test_postgres_board_save_rejects_deleted_workspace(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.workspaces = [{"id": "workspace_group", "kind": "group_workspace", "status": "deleted"}]
+    monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
+    store = PostgresBoardStore()
+    owner = make_context("user_owner", role="owner", workspace_id="workspace_group", workspace_kind="group_workspace")
+
+    with pytest.raises(HTTPException) as save_error:
+        store.save_board(
+            BoardSaveRequest(
+                boardId="deleted_workspace_board",
+                document={"assets": [], "shapes": [{"id": "shape_1"}]},
+                title="Deleted workspace board",
+            ),
+            owner,
+        )
+
+    assert save_error.value.status_code == 404
+    assert fake_db.boards == {}
 
 
 def test_postgres_board_guest_permissions_first_pass(monkeypatch):

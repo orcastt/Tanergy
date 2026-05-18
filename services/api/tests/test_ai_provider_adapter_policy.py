@@ -112,8 +112,8 @@ def test_execute_ai_provider_attempt_uses_jiekou_text_key_alias(monkeypatch):
             provider_cost=None,
             provider_currency=None,
             retryable=False,
-            route_id="route_deepseek_ocr_2_primary",
-            route_key="jiekou-deepseek-ocr-2-primary",
+            route_id="route_deepseek_v3_1_primary",
+            route_key="jiekou-deepseek-v3-1-primary",
             status="succeeded",
             text_output="ok",
             work_started=True,
@@ -122,12 +122,12 @@ def test_execute_ai_provider_attempt_uses_jiekou_text_key_alias(monkeypatch):
     monkeypatch.setattr("tangent_api.ai_provider_adapters.run_openai_compatible_attempt", fake_live_attempt)
 
     result = execute_ai_provider_attempt(
-        _run_record(model_id="deepseek/deepseek-ocr-2", route_id="route_deepseek_ocr_2_primary", run_type="text"),
-        _request(model_id="deepseek/deepseek-ocr-2", node_type="chat", run_type="text"),
+        _run_record(model_id="deepseek/deepseek-v3.1", route_id="route_deepseek_v3_1_primary", run_type="text"),
+        _request(model_id="deepseek/deepseek-v3.1", node_type="chat", run_type="text"),
         _route(
-            provider_model="deepseek/deepseek-ocr-2",
-            route_id="route_deepseek_ocr_2_primary",
-            route_key="jiekou-deepseek-ocr-2-primary",
+            provider_model="deepseek/deepseek-v3.1",
+            route_id="route_deepseek_v3_1_primary",
+            route_key="jiekou-deepseek-v3-1-primary",
         ),
         _context(),
     )

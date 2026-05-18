@@ -168,7 +168,7 @@ export function useKonvaCanvasSpikeRuntime({
   const collaboration = useKonvaCanvasBoardCollaborationBridge({
     activeToolPreference, boardId, boardPageHistoryRef, boardPages, clearTransientState, connectionPreviewPresence, cropEditingImageId,
     document, editingNodeText, editingTextId, handleSelectionChange, hasPersistedBoard, history, initialBoard, interactionShapeIds, interactionLockedRef,
-    mode, onBoardLoaded, readOnly, saveAuditRef, selectedEdgeId, selectionMarqueeBounds, setCropEditingImageId,
+    mode, onBoardLoaded, readOnly, saveAuditRef, selectedEdgeId, selectedIds, selectionMarqueeBounds, setCropEditingImageId,
     setSelectedEdgeId, setSettingsOpen, transformPreview, workspace, ydoc,
   })
   const textEditing = useKonvaCanvasTextEditing({

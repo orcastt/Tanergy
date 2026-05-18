@@ -36,6 +36,7 @@ from tangent_api.schemas import (
 )
 from tangent_api.storage.postgres_board_codec import sanitize_board_id
 from tangent_api.storage.postgres_board_schema import ensure_board_schema
+from tangent_api.storage.postgres_board_deletion import soft_delete_board
 from tangent_api.storage.postgres_board_store_support import (
     build_board_record,
     connect_to_postgres_via_store as connect_to_postgres,
@@ -58,10 +59,12 @@ class PostgresBoardStoreMutationsMixin:
         saved_at = datetime.now(timezone.utc).isoformat()
         metrics = get_board_document_metrics(input_data.document)
         assert_board_page_limit(metrics.get("page_count", 1), context)
+        self._assert_workspace_active(context)
         existing = self._read_existing_board(board_id, context)
         if existing:
             assert_can_write_board(existing, context, self._load_board_member_role(board_id, context))
         else:
+            self._assert_board_not_soft_deleted(board_id, context)
             if not input_data.create_if_missing:
                 raise HTTPException(status_code=404, detail="Board not found in workspace.")
             assert_can_create_board(context)
@@ -257,13 +260,7 @@ class PostgresBoardStoreMutationsMixin:
         with connect_to_postgres() as connection:
             with connection.cursor() as cursor:
                 ensure_board_schema(cursor)
-                cursor.execute(
-                    """
-                    DELETE FROM tangent_boards
-                    WHERE workspace_id = %s AND id = %s
-                    """,
-                    (context.workspace_id, record.id),
-                )
+                soft_delete_board(cursor, context.workspace_id, record.id)
             connection.commit()
         return record.id
 

@@ -522,43 +522,31 @@
   position: absolute;
 }
 
-.konva-collaboration-transform__outline {
+.konva-collaboration-transform__shade {
   position: absolute;
   inset: 0;
-  border: 2px solid rgba(31, 41, 55, 0.58);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.02);
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
-}
-
-.konva-collaboration-transform.is-move .konva-collaboration-transform__outline {
-  animation: konva-collaboration-pulse 1.5s ease-in-out infinite;
-}
-
-.konva-collaboration-transform.is-resize .konva-collaboration-transform__outline {
-  border-style: dashed;
-}
-
-.konva-collaboration-transform.is-rotate .konva-collaboration-transform__outline {
-  border-style: solid;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14);
+  border-radius: 8px;
+  background: rgba(107, 114, 128, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(107, 114, 128, 0.22);
 }
 
 .konva-collaboration-transform__label {
   position: absolute;
-  top: -28px;
+  top: -22px;
   left: 0;
   display: inline-flex;
   align-items: center;
-  max-width: min(220px, 100%);
-  padding: 6px 9px;
-  border-radius: 999px;
-  background: rgba(17, 24, 39, 0.92);
+  max-width: min(180px, 100%);
+  padding: 4px 7px;
+  border-radius: 5px;
+  background: var(--collab-accent, #2563eb);
   color: #ffffff;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
-  font-size: 11px;
-  font-weight: 700;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--collab-accent, #2563eb), transparent 74%);
+  font-size: 10px;
+  font-weight: 600;
   line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -566,30 +554,31 @@
   position: absolute;
 }
 
-.konva-collaboration-occupancy__outline {
+.konva-collaboration-occupancy__shade {
   position: absolute;
   inset: 0;
-  border: 2px solid rgba(31, 41, 55, 0.48);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.1);
+  border-radius: 8px;
+  background: rgba(107, 114, 128, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(107, 114, 128, 0.2);
 }
 
 .konva-collaboration-occupancy__label {
   position: absolute;
-  top: -28px;
+  top: -22px;
   left: 0;
   display: inline-flex;
   align-items: center;
-  max-width: min(220px, 100%);
-  padding: 6px 9px;
-  border-radius: 999px;
-  background: rgba(17, 24, 39, 0.92);
+  max-width: min(180px, 100%);
+  padding: 4px 7px;
+  border-radius: 5px;
+  background: var(--collab-accent, #2563eb);
   color: #ffffff;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
-  font-size: 11px;
-  font-weight: 700;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--collab-accent, #2563eb), transparent 74%);
+  font-size: 10px;
+  font-weight: 600;
   line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 

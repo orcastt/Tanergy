@@ -8,7 +8,6 @@ import type {
 } from '@/features/boards/boardCollaborationTypes'
 import { getCollaborationAccent } from '@/features/collaboration/collaborationAccent'
 import {
-  formatSessionPresenceActivity,
   type KonvaPresencePageSummary,
 } from './konvaCollaborationPresencePresentation'
 import { useSmoothedCollaborationCursors } from './useSmoothedCollaborationCursors'
@@ -29,7 +28,6 @@ export function KonvaCollaborationOverlay({
   camera,
   document,
   occupancy,
-  pageSummaries = [],
   sessions,
   stageHeight,
   stageWidth,
@@ -61,9 +59,11 @@ export function KonvaCollaborationOverlay({
       return { rect, session, transformKind }
     })
     .filter((item): item is { rect: ScreenRect; session: BoardCollaborationSessionRecord; transformKind: NonNullable<BoardCollaborationSessionRecord['presence']['transformKind']> } => Boolean(item))
+  const visibleTransformSessionIds = new Set(visibleTransformHints.map((item) => item.session.id))
   const occupancyRects = occupancy
     .filter((entry) => !entry.isSelf)
-    .filter((entry) => entry.kind === 'editing')
+    .filter((entry) => entry.kind === 'editing' || entry.kind === 'selection')
+    .filter((entry) => !visibleTransformSessionIds.has(entry.sessionId))
     .filter((entry) => isSessionVisibleOnPage(activePageId, entry.activePageId))
     .map((entry) => {
       const bounds = getOccupancyBounds(shapeById, entry.shapeIds)
@@ -89,11 +89,12 @@ export function KonvaCollaborationOverlay({
             top: `${rect.y}px`,
             width: `${rect.width}px`,
             height: `${rect.height}px`,
+            ['--collab-accent' as string]: getCollaborationAccent(session.clientInstanceId),
           }}
         >
-          <span className="konva-collaboration-transform__outline" />
+          <span className="konva-collaboration-transform__shade" />
           <span className="konva-collaboration-transform__label">
-            {session.displayName} {getTransformLabel(transformKind)}
+            {session.displayName}
           </span>
         </div>
       ))}
@@ -106,17 +107,17 @@ export function KonvaCollaborationOverlay({
             top: `${rect.y}px`,
             width: `${rect.width}px`,
             height: `${rect.height}px`,
+            ['--collab-accent' as string]: getCollaborationAccent(entry.clientInstanceId),
           }}
         >
-          <span className="konva-collaboration-occupancy__outline" />
+          <span className="konva-collaboration-occupancy__shade" />
           <span className="konva-collaboration-occupancy__label">
-            {getOccupancyLabel(entry)}
+            {entry.displayName}
           </span>
         </div>
       ))}
       {visibleSessions.map((session) => {
         const cursor = animatedCursorPositions.get(session.id) ?? session.presence.cursor
-        const activity = formatSessionPresenceActivity(session, { currentPageId: activePageId, pageSummaries })
         if (!cursor) return null
         const point = worldToScreen(cursor, camera)
         if (point.x < -120 || point.y < -80 || point.x > stageWidth + 120 || point.y > stageHeight + 80) {
@@ -133,11 +134,7 @@ export function KonvaCollaborationOverlay({
           >
             <span className="konva-collaboration-cursor__pointer" />
             <span className="konva-collaboration-cursor__label">
-              <span className="konva-collaboration-cursor__identity">
-                <span className="konva-collaboration-cursor__avatar">{session.displayName.slice(0, 1).toUpperCase()}</span>
-                <strong>{session.displayName}</strong>
-              </span>
-              {activity ? <small>{activity}</small> : null}
+              <strong>{session.displayName}</strong>
             </span>
           </div>
         )
@@ -185,20 +182,4 @@ function projectBounds(bounds: CanvasBounds, camera: CanvasCamera): ScreenRect {
     x: origin.x,
     y: origin.y,
   }
-}
-
-function getOccupancyLabel(entry: BoardCollaborationShapeOccupancy) {
-  if (entry.kind === 'editing') return `${entry.displayName} editing here`
-  if (entry.kind === 'selection') {
-    return entry.shapeIds.length > 1
-      ? `${entry.displayName} selected ${entry.shapeIds.length} objects`
-      : `${entry.displayName} selected this object`
-  }
-  return `${entry.displayName} hovering here`
-}
-
-function getTransformLabel(kind: NonNullable<BoardCollaborationSessionRecord['presence']['transformKind']>) {
-  if (kind === 'move') return 'moving'
-  if (kind === 'resize') return 'resizing'
-  return 'rotating'
 }

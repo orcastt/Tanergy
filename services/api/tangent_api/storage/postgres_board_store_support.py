@@ -39,6 +39,7 @@ class PostgresBoardStoreAccessMixin:
         safe_board_id = sanitize_board_id(board_id)
         if not safe_board_id:
             raise HTTPException(status_code=400, detail="Invalid board id.")
+        self._assert_workspace_active(context)
 
         with connect_to_postgres() as connection:
             with connection.cursor() as cursor:
@@ -48,6 +49,7 @@ class PostgresBoardStoreAccessMixin:
                     SELECT {BOARD_SELECT_COLUMNS}
                     FROM tangent_boards
                     WHERE workspace_id = %s AND id = %s
+                      AND deleted_at IS NULL
                     """,
                     (context.workspace_id, safe_board_id),
                 )
@@ -72,6 +74,39 @@ class PostgresBoardStoreAccessMixin:
             if exc.status_code == 404:
                 return None
             raise
+
+    def _assert_board_not_soft_deleted(self, board_id: str, context: ApiRequestContext) -> None:
+        with connect_to_postgres() as connection:
+            with connection.cursor() as cursor:
+                ensure_board_schema(cursor)
+                cursor.execute(
+                    """
+                    SELECT deleted_at
+                    FROM tangent_boards
+                    WHERE workspace_id = %s AND id = %s
+                    LIMIT 1
+                    """,
+                    (context.workspace_id, board_id),
+                )
+                row = cursor.fetchone()
+        if row and row[0] is not None:
+            raise HTTPException(status_code=404, detail="Board not found in workspace.")
+
+    def _assert_workspace_active(self, context: ApiRequestContext) -> None:
+        with connect_to_postgres() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT COALESCE(status, 'active')
+                    FROM tangent_workspaces
+                    WHERE id = %s
+                    LIMIT 1
+                    """,
+                    (context.workspace_id,),
+                )
+                row = cursor.fetchone()
+        if row and str(row[0] or "active").strip().lower() == "deleted":
+            raise HTTPException(status_code=404, detail="Workspace not found.")
 
     def _load_board_member_role(self, board_id: str, context: ApiRequestContext) -> Optional[str]:
         with connect_to_postgres() as connection:

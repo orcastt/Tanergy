@@ -51,6 +51,7 @@ type UseKonvaCanvasBoardCollaborationBridgeOptions = {
   readOnly: boolean
   saveAuditRef: RefObject<KonvaBoardSaveAuditHandle | null>
   selectedEdgeId: string | null
+  selectedIds: string[]
   selectionMarqueeBounds: CanvasBounds | null
   setCropEditingImageId: Dispatch<SetStateAction<string | null>>
   setSelectedEdgeId: Dispatch<SetStateAction<string | null>>
@@ -82,6 +83,7 @@ export function useKonvaCanvasBoardCollaborationBridge({
   readOnly,
   saveAuditRef,
   selectedEdgeId,
+  selectedIds,
   selectionMarqueeBounds,
   setCropEditingImageId,
   setSelectedEdgeId,
@@ -107,7 +109,7 @@ export function useKonvaCanvasBoardCollaborationBridge({
     enabled: collaborationEnabled,
     selectedEdgeId: readOnly ? null : selectedEdgeId,
     selectionBox: readOnly ? null : selectionMarqueeBounds,
-    selectedIds: readOnly ? [] : interactionShapeIds,
+    selectedIds: readOnly ? [] : mergePresenceShapeIds(selectedIds, interactionShapeIds),
     tool: activeToolPreference,
     transformBox: readOnly ? null : transformPreview?.bounds ?? null,
     transformKind: readOnly ? null : transformPreview?.kind ?? null,
@@ -200,4 +202,8 @@ export function useKonvaCanvasBoardCollaborationBridge({
     stageToolMode,
     visiblePendingImagePastes,
   }
+}
+
+function mergePresenceShapeIds(selectedIds: string[], interactionShapeIds: string[]) {
+  return [...new Set([...selectedIds, ...interactionShapeIds])]
 }

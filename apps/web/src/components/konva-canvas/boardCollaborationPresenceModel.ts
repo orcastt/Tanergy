@@ -50,6 +50,8 @@ const emptyPresenceSnapshot: BoardCollaborationPresence = {
   transformKind: null,
 }
 
+const maxPresenceShapeIds = 50
+
 export function createEmptyPresenceSnapshot(): BoardCollaborationPresence {
   return {
     ...emptyPresenceSnapshot,
@@ -176,7 +178,7 @@ export function createPresenceSnapshot(input: {
     hoveredShapeId: input.hoveredShapeId,
     selectedEdgeId: input.selectedEdgeId,
     selectionBox: input.selectionBox,
-    selectionIds: input.selectedIds.slice(0, 12),
+    selectionIds: input.selectedIds.slice(0, maxPresenceShapeIds),
     state: derivePresenceState(
       input.tool,
       input.selectedIds,

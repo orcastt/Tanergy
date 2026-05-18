@@ -2,26 +2,13 @@ import type { AiCapability, AiModelOption } from './aiTypes'
 
 const fallbackAiModels: AiModelOption[] = [
   {
-    capabilities: ['text', 'image_analysis'],
-    costHint: 'Low-cost multimodal OCR and document understanding for chat and visual analysis.',
-    defaultTierKey: null,
-    displayName: 'DeepSeek OCR 2',
-    estimatedLatency: '1-4s',
-    id: 'deepseek/deepseek-ocr-2',
-    isDefault: true,
-    isEnabled: true,
-    parameterSchema: {},
-    provider: 'jiekou',
-    tierOptions: [],
-  },
-  {
     capabilities: ['text'],
-    costHint: 'Fast text reasoning for prompt optimization and general chat.',
+    costHint: 'Token-priced text reasoning for prompt optimization and general chat.',
     defaultTierKey: null,
     displayName: 'DeepSeek V3.1',
     estimatedLatency: '1-4s',
     id: 'deepseek/deepseek-v3.1',
-    isDefault: false,
+    isDefault: true,
     isEnabled: true,
     parameterSchema: {},
     provider: 'jiekou',
@@ -117,14 +104,14 @@ export function getDefaultImageModelId() {
 }
 
 export function getDefaultChatModelId() {
-  return getChatCapableModels().find((model) => model.id === 'deepseek/deepseek-ocr-2' && model.isEnabled)?.id
+  return getChatCapableModels().find((model) => model.id === 'deepseek/deepseek-v3.1' && model.isEnabled)?.id
     ?? getChatCapableModels().find((model) => model.isDefault && model.isEnabled)?.id
     ?? getChatCapableModels().find((model) => model.isEnabled)?.id
     ?? fallbackAiModels[0].id
 }
 
 export function getDefaultAnalysisModelId() {
-  return getAiModels('image_analysis').find((model) => model.id === 'deepseek/deepseek-ocr-2' && model.isEnabled)?.id
+  return getAiModels('image_analysis').find((model) => model.id === 'qwen/qwen2.5-vl-72b-instruct' && model.isEnabled)?.id
     ?? getAiModels('image_analysis').find((model) => model.isDefault && model.isEnabled)?.id
     ?? getAiModels('image_analysis').find((model) => model.isEnabled)?.id
     ?? fallbackAiModels[0].id
@@ -184,7 +171,7 @@ export function getAiModelDefinition(modelId: null | string | undefined) {
 }
 
 function getChatCapableModels() {
-  return getAiModels('text').filter((model) => model.capabilities.includes('image_analysis'))
+  return getAiModels('text')
 }
 
 function getPromptOptimizerModels() {

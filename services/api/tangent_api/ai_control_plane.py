@@ -22,6 +22,7 @@ from tangent_api.ai_control_plane_support import (
     tier_row_from_tuple,
     model_row_from_tuple,
 )
+from tangent_api.ai_credit_pricing import estimate_credits_for_rule
 from tangent_api.ai_schemas import AiModelOption, AiRunQuoteRecord, AiRunRequest
 from tangent_api.credit_ledger import build_credit_preflight_response
 from tangent_api.request_context import ApiRequestContext
@@ -234,21 +235,12 @@ def _select_route_row(model_key: str, rows: list[dict[str, Any]]) -> Optional[di
 def _estimate_credits(payload: AiRunRequest, model_id: str, pricing_row: Optional[dict[str, Any]]) -> float:
     if payload.run_type in {"image_analysis", "text"}:
         if pricing_row:
-            unit = float(pricing_row.get("estimated_credits", 1) or 1)
-            minimum = float(pricing_row.get("min_credits", unit) or unit)
-            multiplier = float(pricing_row.get("credit_multiplier", 1) or 1)
-            return max(minimum, unit * multiplier)
+            return estimate_credits_for_rule(payload, pricing_row, fallback_credits=1)
         if payload.run_type == "text":
             return 1
         return 2 + (0.5 * len(payload.input_asset_ids))
     if pricing_row:
-        count = clamp_count(payload.params.get("count", 1))
-        unit = float(pricing_row.get("estimated_credits", 0) or 0)
-        minimum = float(pricing_row.get("min_credits", 0) or 0)
-        multiplier = float(pricing_row.get("credit_multiplier", 1) or 1)
-        if pricing_row.get("billing_unit") == "per_image":
-            return max(minimum, unit * count * multiplier)
-        return max(minimum, unit * multiplier)
+        return estimate_credits_for_rule(payload, pricing_row, fallback_credits=0)
     return 5 * clamp_count(payload.params.get("count", 1))
 
 

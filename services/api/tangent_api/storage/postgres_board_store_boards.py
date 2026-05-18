@@ -51,6 +51,7 @@ class PostgresBoardStoreBoardsMixin:
     ) -> tuple[list[BoardSummary], Optional[str]]:
         if not can_read_workspace(context):
             return [], None
+        self._assert_workspace_active(context)
         member_roles = self._load_workspace_board_member_roles(context)
         with connect_to_postgres() as connection:
             with connection.cursor() as db_cursor:
@@ -69,6 +70,7 @@ class PostgresBoardStoreBoardsMixin:
                            END AS canvas_engine
                     FROM tangent_boards
                     WHERE workspace_id = %s
+                      AND deleted_at IS NULL
                     ORDER BY saved_at DESC
                     """,
                     (context.workspace_id,),

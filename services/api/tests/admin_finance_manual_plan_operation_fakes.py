@@ -19,6 +19,7 @@ class PlanOperationCursor:
     def __init__(self, database):
         self.database = database
         self.row = None
+        self.rows = []
 
     def __enter__(self):
         return self
@@ -29,6 +30,7 @@ class PlanOperationCursor:
     def execute(self, query, params=None):
         normalized = " ".join(query.split())
         self.row = None
+        self.rows = []
         if normalized.startswith("SELECT 1 FROM tangent_users WHERE id = %s"):
             self.row = (1,) if params[0] in self.database.users else None
         elif normalized.startswith("SELECT kind FROM tangent_workspaces WHERE id = %s LIMIT 1"):
@@ -79,18 +81,77 @@ class PlanOperationCursor:
                     "account_id": params[1],
                     "credits_delta": params[6],
                     "id": params[0],
+                    "source_id": params[5],
+                    "source_type": params[4],
                     "reason": params[7],
                     "workspace_id": params[2],
                 }
             )
+        elif normalized.startswith("SELECT COALESCE(SUM(credits_delta), 0) FROM tangent_credit_ledger WHERE account_id = %s AND source_type = 'subscription'"):
+            balance = sum(
+                row["credits_delta"]
+                for row in self.database.credit_ledger
+                if row["account_id"] == params[0]
+                and row.get("source_type") == "subscription"
+                and row.get("source_id") == params[1]
+                and row.get("reason") == "subscription_grant"
+                and float(row.get("credits_delta", 0)) > 0
+            )
+            self.row = (balance,)
         elif normalized.startswith("SELECT COALESCE(SUM(credits_delta), 0) FROM tangent_credit_ledger WHERE account_id = %s"):
             balance = sum(row["credits_delta"] for row in self.database.credit_ledger if row["account_id"] == params[0])
             self.row = (balance,)
         elif normalized.startswith("INSERT INTO tangent_admin_audit_logs ("):
             self.database.admin_audit_logs.append({"action": params[4], "id": params[0], "metadata": params[5]})
+        elif normalized.startswith("UPDATE tangent_workspaces SET status = 'deleted' WHERE id = ANY(%s)"):
+            for workspace_id in params[0]:
+                if workspace_id in self.database.workspaces:
+                    self.database.workspaces[workspace_id]["status"] = "deleted"
+        elif normalized.startswith("UPDATE tangent_boards SET deleted_at = COALESCE(deleted_at, NOW()) WHERE workspace_id = ANY(%s)"):
+            for board in self.database.boards:
+                if board["workspace_id"] in params[0] and board.get("deleted_at") is None:
+                    board["deleted_at"] = "now"
+        elif normalized.startswith("UPDATE tangent_board_share_links SET revoked_at = COALESCE(revoked_at, NOW()) WHERE workspace_id = ANY(%s)"):
+            for row in self.database.board_share_links:
+                if row["workspace_id"] in params[0] and row.get("revoked_at") is None:
+                    row["revoked_at"] = "now"
+        elif normalized.startswith("UPDATE tangent_board_collaboration_sessions SET disconnected_at = COALESCE(disconnected_at, NOW()) WHERE workspace_id = ANY(%s)"):
+            for row in self.database.board_collaboration_sessions:
+                if row["workspace_id"] in params[0] and row.get("disconnected_at") is None:
+                    row["disconnected_at"] = "now"
+        elif normalized.startswith("DELETE FROM tangent_board_members WHERE workspace_id = ANY(%s)"):
+            workspace_ids = set(params[0])
+            self.database.board_members = [
+                row for row in self.database.board_members
+                if row["workspace_id"] not in workspace_ids
+            ]
+        elif normalized.startswith("DELETE FROM tangent_board_snapshots WHERE workspace_id = ANY(%s)"):
+            workspace_ids = set(params[0])
+            self.database.board_snapshots = [
+                row for row in self.database.board_snapshots
+                if row["workspace_id"] not in workspace_ids
+            ]
+        elif normalized.startswith("DELETE FROM tangent_board_realtime_documents WHERE workspace_id = ANY(%s)"):
+            workspace_ids = set(params[0])
+            self.database.board_realtime_documents = [
+                row for row in self.database.board_realtime_documents
+                if row["workspace_id"] not in workspace_ids
+            ]
+        elif normalized.startswith("UPDATE tangent_subscriptions SET status = 'canceled', current_period_end = NOW(), updated_at = NOW() WHERE workspace_id = ANY(%s)"):
+            for row in self.database.subscriptions:
+                if row.get("workspace_id") in params[0] and row.get("status") in {"active", "trialing", "paused"}:
+                    row["status"] = "canceled"
         elif normalized.startswith("UPDATE tangent_subscriptions SET status = 'canceled', current_period_end = NOW(), updated_at = NOW() WHERE id = %s"):
             row = self.database.subscription_by_id(params[0])
             row["status"] = "canceled"
+        elif normalized.startswith("SELECT id FROM tangent_workspaces WHERE owner_id = %s AND kind = 'group_workspace'"):
+            self.rows = [
+                (workspace_id,)
+                for workspace_id, workspace in self.database.workspaces.items()
+                if workspace.get("owner_id") == params[0]
+                and workspace.get("kind") == "group_workspace"
+                and workspace.get("status", "active") != "deleted"
+            ]
         elif normalized.startswith("SELECT id, owner_type, owner_id, workspace_id, plan_family, plan_key, status, current_period_end, paused_at, paused_by, pause_reason FROM tangent_subscriptions"):
             row = self.database.subscription_by_id(params[0])
             if row:
@@ -130,14 +191,29 @@ class PlanOperationCursor:
     def fetchone(self):
         return self.row
 
+    def fetchall(self):
+        return self.rows
+
 
 class PlanOperationDatabase:
-    def __init__(self, subscriptions):
+    def __init__(self, subscriptions, boards=None, credit_ledger=None, workspaces=None):
         self.admin_audit_logs = []
-        self.credit_ledger = []
+        self.board_collaboration_sessions = []
+        self.board_members = []
+        self.board_realtime_documents = []
+        self.board_share_links = []
+        self.board_snapshots = []
+        self.boards = boards or []
+        self.credit_ledger = credit_ledger or []
         self.subscriptions = subscriptions
         self.users = {"user_member", "user_admin"}
-        self.workspaces = {"workspace_team": {"kind": "team_workspace"}}
+        self.workspaces = workspaces or {
+            "workspace_team": {
+                "kind": "team_workspace",
+                "owner_id": "user_member",
+                "status": "active",
+            }
+        }
 
     def connect(self):
         return PlanOperationConnection(self)

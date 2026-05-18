@@ -59,6 +59,7 @@ def test_alembic_revision_chain_is_linear():
         load_migration("20260516_0027_jiekou_only_ai_provider.py"),
         load_migration("20260516_0028_gpt_image_2_4k_tier.py"),
         load_migration("20260518_0029_jiekou_gemini_flash_nano_banana.py"),
+        load_migration("20260518_0030_ai_credit_pricing_and_remove_ocr.py"),
     ]
 
     for previous, current in zip(migrations, migrations[1:]):
@@ -92,6 +93,7 @@ def test_s1a_migrations_keep_required_schema_contracts():
     jiekou_only_provider = load_migration("20260516_0027_jiekou_only_ai_provider.py")
     gpt_image_2_4k_tier = load_migration("20260516_0028_gpt_image_2_4k_tier.py")
     jiekou_gemini_flash_nano_banana = load_migration("20260518_0029_jiekou_gemini_flash_nano_banana.py")
+    ai_credit_pricing_remove_ocr = load_migration("20260518_0030_ai_credit_pricing_and_remove_ocr.py")
     core_sql = "\n".join(core.UPGRADE)
     future_sql = "\n".join(future.UPGRADE)
     hardening_sql = "\n".join(hardening.UPGRADE)
@@ -118,6 +120,7 @@ def test_s1a_migrations_keep_required_schema_contracts():
     jiekou_only_provider_sql = "\n".join(jiekou_only_provider.UPGRADE)
     gpt_image_2_4k_tier_sql = "\n".join(gpt_image_2_4k_tier.UPGRADE)
     jiekou_gemini_flash_nano_banana_sql = "\n".join(jiekou_gemini_flash_nano_banana.UPGRADE)
+    ai_credit_pricing_remove_ocr_sql = "\n".join(ai_credit_pricing_remove_ocr.UPGRADE)
 
     for table_name in [
         "tangent_workspace_members",
@@ -353,6 +356,19 @@ def test_s1a_migrations_keep_required_schema_contracts():
         '"size":"0.5K"',
     ]:
         assert contract in jiekou_gemini_flash_nano_banana_sql
+
+    for contract in [
+        "DELETE FROM tangent_model_provider_routes WHERE id = 'route_deepseek_ocr_2_primary'",
+        "DELETE FROM tangent_model_pricing_rules WHERE id = 'price_deepseek_ocr_2_v1'",
+        "DELETE FROM tangent_model_registry WHERE model_key = 'deepseek/deepseek-ocr-2'",
+        '"type":"token_usage_estimate"',
+        '"inputUsdPerMTok":0.27',
+        '"inputUsdPerMTok":0.8',
+        "price_doubao_seedream_5_0_lite_v1",
+        "price_gpt_image_2_4k_v1",
+        "21.5",
+    ]:
+        assert contract in ai_credit_pricing_remove_ocr_sql
 
 
 def test_text_route_seed_uses_driver_sql_for_json_literals(monkeypatch):

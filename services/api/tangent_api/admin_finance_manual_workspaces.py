@@ -17,6 +17,7 @@ from tangent_api.admin_finance_manual_utils import TEAM_PLAN_KEYS, normalize_id,
 from tangent_api.admin_finance_manual_workspace_utils import insert_owner_membership, insert_workspace, normalize_workspace_name
 from tangent_api.billing_credit_accounts import ensure_credit_account
 from tangent_api.plan_catalog import included_credits_for_plan
+from tangent_api.storage.postgres_board_deletion import soft_delete_workspace_boards
 from tangent_api.storage.postgres_connection import connect_to_postgres, require_database_url
 
 
@@ -232,6 +233,7 @@ def manual_delete_workspace(
                 """,
                 (normalized_workspace_id,),
             )
+            soft_delete_workspace_boards(cursor, [normalized_workspace_id])
             cursor.execute(
                 """
                 UPDATE tangent_subscriptions
@@ -239,7 +241,7 @@ def manual_delete_workspace(
                     current_period_end = NOW(),
                     updated_at = NOW()
                 WHERE (workspace_id = %s OR (owner_type = 'workspace' AND owner_id = %s))
-                  AND status IN ('active', 'trialing')
+                  AND status IN ('active', 'trialing', 'paused')
                 """,
                 (normalized_workspace_id, normalized_workspace_id),
             )

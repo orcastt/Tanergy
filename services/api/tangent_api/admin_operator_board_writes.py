@@ -10,6 +10,7 @@ from tangent_api.admin_operator_schemas import AdminOperatorBoardMutationRespons
 from tangent_api.board_schemas import BoardSummary
 from tangent_api.schemas import summarize_board_record
 from tangent_api.storage.postgres_board_codec import board_record_from_row, sanitize_board_id
+from tangent_api.storage.postgres_board_deletion import soft_delete_board
 from tangent_api.storage.postgres_board_schema import BOARD_SELECT_COLUMNS, ensure_board_schema
 from tangent_api.storage.postgres_connection import connect_to_postgres, require_database_url
 
@@ -146,14 +147,7 @@ def delete_admin_operator_board(
         with connection.cursor() as cursor:
             board = _load_board(cursor, normalized_workspace_id, normalized_board_id)
             workspace_name = _load_workspace_name(cursor, normalized_workspace_id)
-            cursor.execute(
-                """
-                DELETE FROM tangent_boards
-                WHERE workspace_id = %s
-                  AND id = %s
-                """,
-                (normalized_workspace_id, normalized_board_id),
-            )
+            soft_delete_board(cursor, normalized_workspace_id, normalized_board_id)
             audit_id = _insert_admin_audit_log(
                 cursor,
                 action="admin.operator.board.delete",
@@ -186,6 +180,7 @@ def _load_board(cursor: object, workspace_id: str, board_id: str):
         FROM tangent_boards
         WHERE workspace_id = %s
           AND id = %s
+          AND deleted_at IS NULL
         LIMIT 1
         """,
         (workspace_id, board_id),

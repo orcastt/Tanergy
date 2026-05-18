@@ -4,7 +4,7 @@ import type {
   BoardCollaborationShapeOccupancy,
 } from './boardCollaborationTypes'
 
-const maxPresenceShapeIds = 12
+const maxPresenceShapeIds = 50
 
 export function deriveBoardShapeOccupancy(
   sessions: BoardCollaborationSessionRecord[],

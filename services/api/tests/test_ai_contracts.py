@@ -36,7 +36,6 @@ def test_ai_model_registry_contract():
     assert analysis_response.status_code == 200
     analysis_models = analysis_response.json()["models"]
     assert {model["id"] for model in analysis_models} == {
-        "deepseek/deepseek-ocr-2",
         "qwen/qwen2.5-vl-72b-instruct",
     }
 
@@ -45,7 +44,6 @@ def test_ai_model_registry_contract():
     assert text_response.status_code == 200
     text_models = text_response.json()["models"]
     assert [model["id"] for model in text_models] == [
-        "deepseek/deepseek-ocr-2",
         "deepseek/deepseek-v3.1",
         "qwen/qwen2.5-vl-72b-instruct",
     ]
@@ -75,7 +73,7 @@ def test_ai_run_mock_contract_round_trip():
     assert run["charge"]["chargedScope"] == "actor_personal"
     assert run["charge"]["payerLabel"] == "Charges your credits"
     assert run["costCredits"] == 0
-    assert run["estimatedCredits"] == 20
+    assert run["estimatedCredits"] == 22
     assert run["entitlementSource"] == "personal_topup_or_free"
     assert run["modelId"] == "gpt-image-2"
     assert run["outputAssetIds"] == []
@@ -99,19 +97,19 @@ def test_ai_run_mock_analysis_uses_supported_analysis_model():
             "nodeType": "analysis",
             "prompt": "Describe the lighting and composition.",
             "runType": "image_analysis",
-            "selectedModelId": "deepseek/deepseek-ocr-2",
+            "selectedModelId": "qwen/qwen2.5-vl-72b-instruct",
         },
     )
 
     assert response.status_code == 200
     run = response.json()["run"]
-    assert run["estimatedCredits"] == 1
-    assert run["modelId"] == "deepseek/deepseek-ocr-2"
+    assert run["estimatedCredits"] == 3
+    assert run["modelId"] == "qwen/qwen2.5-vl-72b-instruct"
     assert run["provider"] == "jiekou"
     assert run["status"] == "queued"
 
     loaded = _wait_for_run_status(client, run["runId"], {"succeeded"})
-    assert loaded["modelId"] == "deepseek/deepseek-ocr-2"
+    assert loaded["modelId"] == "qwen/qwen2.5-vl-72b-instruct"
     assert loaded["outputAssetIds"] == []
     assert loaded["textOutput"]
     assert "Mock analysis" in loaded["textOutput"]
@@ -168,7 +166,7 @@ def test_provider_input_assets_reject_total_oversize_payload(monkeypatch):
         input_asset_ids=["asset_a", "asset_b"],
         prompt="Describe the attached images.",
         run_type="image_analysis",
-        selected_model_id="deepseek/deepseek-ocr-2",
+        selected_model_id="qwen/qwen2.5-vl-72b-instruct",
     )
 
     try:
@@ -212,7 +210,7 @@ def test_provider_input_assets_can_prefer_preview_bytes(monkeypatch):
         input_asset_ids=["asset_preview"],
         prompt="Describe the attached image.",
         run_type="image_analysis",
-        selected_model_id="deepseek/deepseek-ocr-2",
+        selected_model_id="qwen/qwen2.5-vl-72b-instruct",
     )
 
     assets = ai_provider_assets.load_provider_input_assets(payload, context, prefer_preview=True)
@@ -356,10 +354,10 @@ def test_ai_run_mock_can_settle_against_credit_ledger(monkeypatch):
     assert run["status"] == "queued"
     assert run["costCredits"] == 0
     settled_run = _wait_for_run_status(client, run["runId"], {"succeeded"})
-    assert settled_run["costCredits"] == 10
+    assert settled_run["costCredits"] == 11
     assert settled_run["charge"]["preflightStatus"] == "settled"
-    assert settled_run["costHint"] == "Mock AI run · charged 10 credits · Charges your credits"
-    assert fake_db.credit_ledger[-1]["credits_delta"] == -10
+    assert settled_run["costHint"] == "Mock AI run · charged 11 credits · Charges your credits"
+    assert fake_db.credit_ledger[-1]["credits_delta"] == -11
     assert fake_db.credit_ledger[-1]["reason"] == "usage_charge"
     assert fake_db.credit_ledger[-1]["metadata"]["modelId"] == "gpt-image-2"
     assert fake_db.credit_ledger[-1]["source_id"] == settled_run["runId"]
@@ -370,7 +368,7 @@ def test_ai_run_mock_can_settle_against_credit_ledger(monkeypatch):
     assert fake_db.ai_api_calls[-1]["status"] == "succeeded"
     assert fake_db.api_cost_ledger[-1]["id"] == f"api_cost_{settled_run['runId']}_a1"
     assert fake_db.api_cost_ledger[-1]["settlement_kind"] == "usage"
-    assert fake_db.api_cost_ledger[-1]["credits_charged"] == 10.0
+    assert fake_db.api_cost_ledger[-1]["credits_charged"] == 11.0
     assert fake_db.api_cost_ledger[-1]["provider"] == "jiekou"
     assert fake_db.api_cost_ledger[-1]["provider_currency"] == "USD"
 
@@ -479,11 +477,11 @@ def test_ai_run_mock_settles_team_workspace_against_team_wallet(monkeypatch):
     assert run["charge"]["chargedScope"] == "team_wallet"
     assert run["charge"]["workspaceSeatId"] == "seat_team_member_1"
     settled_run = _wait_for_run_status(client, run["runId"], {"succeeded"})
-    assert settled_run["costCredits"] == 10
+    assert settled_run["costCredits"] == 11
     assert settled_run["charge"]["preflightStatus"] == "settled"
     assert fake_db.credit_ledger[-1]["account_id"] == "credit_db_team_wallet"
     assert fake_db.credit_ledger[-1]["actor_user_id"] == "user_team_member"
-    assert fake_db.credit_ledger[-1]["credits_delta"] == -10
+    assert fake_db.credit_ledger[-1]["credits_delta"] == -11
     assert fake_db.credit_ledger[-1]["reason"] == "usage_charge"
     assert fake_db.credit_ledger[-1]["workspace_id"] == "workspace_team"
     assert fake_db.ai_runs[settled_run["runId"]]["charged_account_id"] == "credit_db_team_wallet"
@@ -625,7 +623,7 @@ def test_ai_run_mock_persists_quote_facts_and_loads_from_database(monkeypatch):
     assert response.status_code == 200
     run = response.json()["run"]
     persisted = fake_db.ai_runs[run["runId"]]
-    assert persisted["estimated_credits"] == 9
+    assert persisted["estimated_credits"] == 11
     assert persisted["pricing_rule_id"] == "price_gpt_image_2_2k_v1"
     assert persisted["route_id"] == "route_gpt_image_2_primary"
     assert persisted["preflight_status"] == "mock_contract_only"
@@ -634,7 +632,7 @@ def test_ai_run_mock_persists_quote_facts_and_loads_from_database(monkeypatch):
     payload = _wait_for_run_status(client, run["runId"], {"succeeded"})
     assert payload["pricingRuleId"] == "price_gpt_image_2_2k_v1"
     assert payload["routeId"] == "route_gpt_image_2_primary"
-    assert payload["estimatedCredits"] == 9
+    assert payload["estimatedCredits"] == 11
     assert payload["status"] == "succeeded"
 
 
@@ -696,7 +694,7 @@ def test_ai_text_run_persists_text_output_and_system_prompt(monkeypatch):
 
     assert response.status_code == 200
     run = response.json()["run"]
-    assert run["estimatedCredits"] == 1.5
+    assert run["estimatedCredits"] == 1
     assert run["modelId"] == "deepseek/deepseek-v3.1"
     assert run["status"] == "queued"
 
@@ -1199,10 +1197,10 @@ def test_ai_run_quote_returns_tier_based_estimate_and_preflight(monkeypatch):
             "model_key": "gpt-image-2",
             "tier_key": "2k",
             "billing_unit": "per_image",
-            "estimated_credits": 9,
-            "min_credits": 9,
+            "estimated_credits": 11,
+            "min_credits": 11,
             "credit_multiplier": 1,
-            "provider_cost_formula": {"unit": "image"},
+            "provider_cost_formula": {"amount": 0.08, "creditUsd": 0.01, "currency": "USD", "grossMargin": 0.25, "type": "per_image"},
             "status": "active",
             "effective_from": "2026-05-06T00:00:00Z",
             "effective_to": None,
@@ -1244,7 +1242,7 @@ def test_ai_run_quote_returns_tier_based_estimate_and_preflight(monkeypatch):
     quote = response.json()["quote"]
     assert quote["modelId"] == "gpt-image-2"
     assert quote["selectedTierKey"] == "2k"
-    assert quote["estimatedCredits"] == 18
+    assert quote["estimatedCredits"] == 22
     assert quote["canRun"] is True
     assert quote["preflightStatus"] == "ok"
 
@@ -1572,10 +1570,10 @@ def test_openai_compatible_live_attempt_supports_image_analysis(monkeypatch):
         health_status="healthy",
         priority=10,
         provider_key="jiekou",
-        provider_model="deepseek/deepseek-ocr-2",
+        provider_model="qwen/qwen2.5-vl-72b-instruct",
         retry_policy={"maxAttempts": 2},
-        route_id="route_deepseek_ocr_2_primary",
-        route_key="jiekou-deepseek-ocr-2-primary",
+        route_id="route_qwen_2_5_vl_72b_primary",
+        route_key="jiekou-qwen-2-5-vl-72b-primary",
         timeout_ms=45000,
         weight=100,
     )
@@ -1600,7 +1598,7 @@ def test_openai_compatible_live_attempt_supports_image_analysis(monkeypatch):
         node_type="analysis",
         prompt="Describe the attached image.",
         run_type="image_analysis",
-        selected_model_id="deepseek/deepseek-ocr-2",
+        selected_model_id="qwen/qwen2.5-vl-72b-instruct",
     )
     run = AiRunRecord(
         board_id="board_analysis_live",
@@ -1617,22 +1615,22 @@ def test_openai_compatible_live_attempt_supports_image_analysis(monkeypatch):
         charged_account_id="credit_user_test",
         charged_scope="actor_personal",
         cost_credits=0,
-        cost_hint="Estimated 1 credits · DeepSeek OCR 2",
+        cost_hint="Estimated 3 credits · Qwen 2.5 VL 72B",
         created_at="2026-05-13T00:00:00Z",
-        estimated_credits=1,
+        estimated_credits=3,
         entitlement_source="personal_topup_or_free",
         error=None,
         input_asset_ids=["asset_ref_1"],
         latency_ms=0,
-        model_id="deepseek/deepseek-ocr-2",
+        model_id="qwen/qwen2.5-vl-72b-instruct",
         node_id="node_analysis",
         output_asset_ids=[],
-        pricing_rule_id="price_deepseek_ocr_2_v1",
+        pricing_rule_id="price_qwen_2_5_vl_72b_v1",
         provider="jiekou",
         provider_cost=None,
         provider_currency=None,
-        route_id="route_deepseek_ocr_2_primary",
-        route_key="jiekou-deepseek-ocr-2-primary",
+        route_id="route_qwen_2_5_vl_72b_primary",
+        route_key="jiekou-qwen-2-5-vl-72b-primary",
         run_id="run_analysis_live",
         run_type="image_analysis",
         selected_tier_key=None,
