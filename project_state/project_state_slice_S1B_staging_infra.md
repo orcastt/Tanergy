@@ -1,7 +1,7 @@
 # Project State Slice S1B: Staging Infrastructure And Online Prep
 
-**Updated**: 2026-05-16
-**Status**: In progress; the rebuilt Hetzner staging API host is back online, public HTTPS API smoke is green again, local-against-real-DB plus public API smoke now pass against Neon + R2, the public Vercel alias now points to the current Konva-only web deploy, Cloudflare-proxied staging Web/API records with Full (strict) TLS are in place, real Clerk session/admin smoke is green, the tracked staging deploy docs are now redacted back to placeholder/checklist form, and a production deploy runbook/env template are prepared. The 2026-05-16 deploy at `fe568e1` is live on staging, old release directories were cleaned from the host, invalid-token plus CORS public smoke are green, and the remaining gates are the second-round signed-in board/browser/browser-UX edge cases, email verification and one real Jiekou-backed live AI smoke.
+**Updated**: 2026-05-18
+**Status**: In progress; the rebuilt Hetzner staging API host is back online, public HTTPS API smoke is green again, and the public Vercel alias points to the current Konva-only web deploy. The previous Neon staging project hit its monthly data-transfer quota and paused on 2026-05-17, and the API briefly used a Hetzner-local Docker Postgres container named `staging-postgres` as an emergency fallback. That server-local DB is now historical only and must not become a staging pattern. The next clean staging path is a fresh Supabase Pro Postgres project from an empty database, with Cloudflare R2 staging objects cleared and recreated rather than migrated. Cloudflare-proxied staging Web/API records with Full (strict) TLS remain in place; the remaining gates are Supabase clean rebuild, R2 clean asset smoke, second-round signed-in board/browser/browser-UX edges, email verification and one real Jiekou-backed live AI smoke.
 
 ## Objective
 
@@ -18,7 +18,7 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - [x] Domain under Cloudflare DNS.
 - [x] Vercel project connected to GitHub.
 - [x] FastAPI host, likely Hetzner VPS or equivalent.
-- [x] Managed Postgres project, Supabase or Neon acceptable for staging.
+- [ ] Supabase Pro managed Postgres staging project, created fresh with no Neon/Hetzner local restore.
 - [x] Cloudflare R2 bucket and S3 credentials.
 - [ ] Email provider account and verified sending domain.
 - [x] Clerk Auth project prepared.
@@ -38,8 +38,10 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 
 - [x] `/health` over HTTPS.
 - [x] CORS from staging Web origin.
-- [x] Alembic migration against staging DB.
-- [x] Asset upload/read through R2.
+- [x] Alembic migration against the previous staging DB.
+- [ ] Alembic migration against the fresh Supabase Pro staging DB.
+- [x] Asset upload/read through the existing R2 bucket.
+- [ ] R2 clean-bucket or clean-prefix upload/read smoke after stale staging objects are deleted.
 - [x] Board save/load/history through staging API.
 - [x] Vercel Web domain opens Workspace/Board routes.
 - [x] Public staging Web/API DNS stays behind Cloudflare proxying with Full (strict) TLS.
@@ -57,7 +59,9 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - Source-host firewall is now explicitly tightened: public traffic is limited to `80/tcp` and `443/tcp`, while `22/tcp` is restricted to the maintainer's current public IP instead of remaining open to the Internet.
 - FastAPI is deployed again behind Caddy at `https://api-staging.tanergy.cc`.
 - Public API health is live again at the staging API domain.
-- Neon migration is now at Alembic head on the rebuilt host.
+- 2026-05-17 temporary DB fallback: Neon paused the original staging project after exceeding its monthly data-transfer quota. The server-local `api.env` was backed up as `api.env.neon-quota-20260517214117.bak`, the active API env was briefly pointed at `staging-postgres:5432`, Alembic was applied to that temporary database, and `staging_postgres_data` was created as a provisional volume.
+- 2026-05-18 clean rebuild decision: do not migrate the temporary Hetzner-local Postgres data. The next staging database should be a fresh Supabase Pro project with Alembic applied from empty schema, followed by re-created test user/workspace/admin/board data.
+- 2026-05-18 R2 cleanup decision: because the old boards were deleted, current staging R2 objects can be deleted too. Keep Cloudflare R2 as the object storage provider, but clear the staging bucket/prefix before recreating asset smoke data.
 - Temporary dev user/workspace seed still exists for the pre-Auth smoke lane.
 - Local-against-real-DB and public API smoke both passed for:
   - `/health`
@@ -86,6 +90,7 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - Cloudflare edge hardening is now partly in place: proxied DNS, Full (strict) TLS and source-host firewall narrowing are done, while deeper WAF/rate-limit coverage still needs either remaining free-plan room or a paid/security-specific follow-up.
 - `deploy/production/README.md` and `deploy/production/api.env.example` now define the production boundary: separate web/API domains, separate database/storage/auth/payment secrets and a stage-to-prod promotion flow from one reviewed commit.
 - Staging live AI acceptance is now explicitly blocked on a real Jiekou-backed live-provider smoke with valid server env keys; deployed environments should no longer fake-success through local mock asset ids.
+- The nested web env shadows under `apps/web/.env.local` and `apps/web/.vercel/.env.production.local` are now treated as non-authoritative; they exist only as local convenience files and must not be allowed to drift deployment truth.
 
 ## Handoff Notes
 
@@ -97,7 +102,8 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
   - staging/prod Web must use the real HTTPS domain
   - staging/prod API must use the real HTTPS API domain
 - Every deployment needs `NEXT_PUBLIC_API_BASE_URL`, FastAPI `TANGENT_ALLOWED_ORIGINS`, and Clerk allowed origins/redirect URLs to agree on the exact domains.
-- For Neon or other serverless Postgres providers, set `DATABASE_POOL_URL` to the provider's pooled connection string for the API runtime and keep `DATABASE_URL` as the direct migration/admin URL.
+- For Supabase or other serverless Postgres providers, set `DATABASE_POOL_URL` to the provider's pooled connection string for the API runtime and keep `DATABASE_URL` as the direct Alembic/admin URL when available.
+- Replace the temporary Hetzner-local `staging-postgres` database before treating staging as durable again. The accepted follow-up path is now a fresh Supabase Pro managed Postgres target from an empty database; do not restore the old local DB and do not provision Hetzner server-local Postgres for staging again.
 - Local `/api/auth/dev-bypass` and `tangent_dev_auth` are development helpers only; do not count them as staging/prod Auth smoke.
 - Do not expose server keys to Vercel public env.
 - Keep firewall narrow: public 80/443, SSH restricted where possible.

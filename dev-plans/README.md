@@ -1,6 +1,6 @@
 # Dev Plans Index
 
-**Updated**: 2026-05-17
+**Updated**: 2026-05-18
 
 Detailed product, architecture and state truth now lives in:
 
@@ -22,6 +22,7 @@ Detailed product, architecture and state truth now lives in:
 | `s3-team-group-wallets-membership-billing-plan-2026-05-08.md` | Active S3 tactical plan | Supersedes the old Team actor-personal charging strategy with Team wallet, personal Collaborate wallet, invites, seats, membership, billing usage and payer-resolver phases. |
 | `s3s4-team-group-foundation-unification-2026-05-16.md` | Active foundation baseline | Chinese consolidation baseline for free/team/group/invite/billing/collaboration rules, confirmed on 2026-05-16 and ready to drive PRD/ARCH/project_state alignment before deeper multiplayer testing. |
 | `s4-collaboration-invite-presence-plan-2026-05-16.md` | Planned S4 tactical plan | Reuses the existing invite/member/role contracts to sequence invite-link acceptance, live cursors/presence, sensitive-edit occupancy and optimistic sync. |
+| `s1b-supabase-r2-redis-collaboration-infra-plan-2026-05-18.md` | Accepted S1B infra decision plan | Chinese plan for rebuilding staging on a fresh Supabase Pro Postgres project, clearing stale R2 staging objects, keeping R2 for assets, and moving collaboration process traffic to WebSocket/Redis with Postgres storing final snapshots. |
 | `s1b-staging-deployment-runbook-2026-05-02.md` | Active S1B runbook | Chinese beginner guide for domain, DNS, Vercel, Hetzner, Neon, R2, Clerk, Google OAuth and email setup. |
 | `s1x-canvas-engine-migration-reference-2026-05-03.md` | Reference S1X migration note | Historical migration baseline plus Konva-only route/public share/admin-adjacent checkpoints; keep as background context, not the main execution spine. |
 | `s1-launch-readiness-and-acceptance-report-2026-05-05.md` | Reference handoff report | Unified S1X/S1B/S1C/S1D/S2/S3/S4 launch-readiness order and acceptance checklist; keep as a review document while the active shipping spine stays in `p0-alpha-stabilization-and-acceptance-2026-05-06.md`. |
@@ -62,7 +63,7 @@ Working rule for the current pass:
 
 # Dev Plans 索引
 
-**更新日期**：2026-05-17
+**更新日期**：2026-05-18
 
 详细的产品、架构和状态事实现在位于：
 
@@ -82,6 +83,7 @@ Working rule for the current pass:
 | `s2-ai-provider-route-billing-control-plane-2026-05-07.md` | 活跃 S2 tactical plan | 把 provider route 切换、credits 扣费、provider-cost settlement 和 admin observability 收口到服务端 AiRun control plane。 |
 | `s3-admin-operator-console-redesign-2026-05-09.md` | 活跃 S3 tactical plan | 围绕快速 User inventory、一次性 user detail bundle、Team/Group plan tabs、弹窗操作，以及缺失的 admin read/write contracts，重做 developer admin console。 |
 | `s3-team-group-wallets-membership-billing-plan-2026-05-08.md` | 活跃 S3 tactical plan | 用 Team wallet、个人 Collaborate wallet、invites、seats、membership、billing usage 和 payer-resolver 阶段，取代旧的 Team actor-personal 扣费策略。 |
+| `s1b-supabase-r2-redis-collaboration-infra-plan-2026-05-18.md` | Accepted S1B infra decision plan | 中文方案：用全新的 Supabase Pro Postgres 重建 staging，清理旧 R2 staging 对象，R2 继续做图片资产存储，协同过程改走 WebSocket/Redis，Postgres 只落最终快照。 |
 | `s1b-staging-deployment-runbook-2026-05-02.md` | 活跃 S1B runbook | 面向新手的中文指南，覆盖 domain、DNS、Vercel、Hetzner、Neon、R2、Clerk、Google OAuth 和 email setup。 |
 | `s1x-canvas-engine-migration-reference-2026-05-03.md` | 参考型 S1X migration note | 历史迁移基线 + Konva-only route / public share / admin-adjacent checkpoints；保留作背景上下文，不再作为主执行脊柱。 |
 | `s1-launch-readiness-and-acceptance-report-2026-05-05.md` | 参考型 handoff report | 统一的 S1X/S1B/S1C/S1D/S2/S3/S4 launch-readiness 顺序和 acceptance checklist；保留作复盘/验收参考，当前 shipping spine 以 `p0-alpha-stabilization-and-acceptance-2026-05-06.md` 为准。 |
