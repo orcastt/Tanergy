@@ -36,6 +36,7 @@ import { getResizeSnapSourceKeys, getRotationSnapGuides, snapResizeBoundsToShape
 import { getKonvaGroupMemberIds } from './konvaGroupCommands'
 import { hasRemoteShapeLock } from './konvaCollaborationLocks'
 import { applyFrameContainment } from './konvaFrameContainment'
+import { useKonvaCollaborationDraftPresence } from './useKonvaCollaborationDraftPresence'
 import { useKonvaDraftPreview } from './useKonvaDraftPreview'
 import { useKonvaDocumentPreviewScheduler } from './useKonvaDocumentPreviewScheduler'
 import { useKonvaEraserSession } from './useKonvaEraserSession'
@@ -48,6 +49,7 @@ import { useKonvaTransformStartHandlers } from './useKonvaTransformStartHandlers
 import { useKonvaWheelHandler } from './useKonvaWheelHandler'
 import { isKonvaCreateTool, type KonvaToolSession } from './konvaCanvasTypes'
 import type { UseKonvaCanvasInteractionsOptions } from './konvaCanvasInteractionTypes'
+
 export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOptions) {
   const stageRef = useRef<Konva.Stage | null>(null)
   const sessionRef = useRef<KonvaToolSession | null>(null)
@@ -62,6 +64,9 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     stageRef,
   })
   const { clearDraft, draft, scheduleDraft } = useKonvaDraftPreview()
+  const { scheduleDraftPresence } = useKonvaCollaborationDraftPresence({
+    onDraftPreviewChange: options.onDraftPreviewChange,
+  })
   const { flushPreviewDocument, previewDocument, previewDocumentNow } = useKonvaDocumentPreviewScheduler({
     documentRef,
     onDocumentPreview: options.onDocumentPreview,
@@ -181,6 +186,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       event.evt.preventDefault()
       sessionRef.current = null
       clearDraft()
+      scheduleDraftPresence(null, { immediate: true })
       clearNodeConnectionPreview()
       setResizeSnapGuides([])
       setSelectionBox(null)
@@ -265,6 +271,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
       type: 'create',
     }
     scheduleDraft(draftShape)
+    scheduleDraftPresence(draftShape, { immediate: true })
   }
   const handlePointerMove = (event: KonvaEventObject<PointerEvent>) => {
     const session = sessionRef.current
@@ -398,6 +405,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     const nextDraft = session?.type === 'create' ? finalizeDraft(session.draft) : null
     clearDraft()
     const shouldStayInTool = session?.type === 'create' && options.activeTool === 'draw'
+    if (session?.type === 'create') scheduleDraftPresence(null, { immediate: true })
     if (session?.type === 'create' && isKonvaCreateTool(options.activeTool) && !shouldStayInTool) options.onToolChange('select')
     if (nextDraft) {
       options.onHistoryCheckpoint(documentRef.current)
@@ -430,6 +438,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     if (!nextDraft) return
     session.draft = nextDraft
     scheduleDraft(nextDraft)
+    scheduleDraftPresence(nextDraft)
   }
   function finishBoxSelection(session: Extract<KonvaToolSession, { type: 'select-box' }>) {
     const bounds = boundsFromPoints(session.origin, session.current)

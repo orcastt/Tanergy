@@ -1,6 +1,6 @@
 # PRD Slice S2: AI Productization
 
-**Updated**: 2026-05-16
+**Updated**: 2026-05-18
 **Mode**: Product slice.
 
 ## Goal
@@ -72,7 +72,7 @@ Current canvas readiness note: Konva node UI and runtimeGraph dataflow are stron
 
 # PRD 切片 S2：AI 产品化
 
-**更新日期**：2026-05-14
+**更新日期**：2026-05-18
 **模式**：产品切片。
 
 ## 目标
@@ -84,7 +84,7 @@ Current canvas readiness note: Konva node UI and runtimeGraph dataflow are stron
 当前这一轮，这个切片的范围是刻意收窄的：
 
 - P0 alpha 只要求一条真实的、服务端驱动的 AI 图像路径，具备 quote/preflight、payer transparency、Asset 结果持久化和 settlement。
-- 画布现在已经有一条可用的 GeekAI 本地 fast path，用于验证 image、analysis、chat 和 prompt optimization UX，但生产验收仍要求这条路径通过服务端 AiRun/provider-route/billing contracts。
+- 画布现在已经有一条可用的 Jiekou-first 本地 fast path，用于验证 image、analysis、chat 和 prompt optimization UX，但生产验收仍要求这条路径通过服务端 AiRun/provider-route/billing contracts。
 - 当前活跃生图产品面是 GPT Image 2、Nano Banana 2、Doubao Seedream 5.0 Lite 和 Jimeng 4.0；`gemini-3.1-flash-image-preview` 已不再属于活跃生图面。
 - 长耗时生图在运行时最多允许 240 秒后才判定超时。
 - 覆盖所有 node type 的更广 provider 覆盖，都继续延后到第一条 live server AiRun 路径稳定之后。
@@ -95,9 +95,9 @@ Current canvas readiness note: Konva node UI and runtimeGraph dataflow are stron
 | 领域 | 要求 | 状态 |
 | --- | --- | --- |
 | Model Registry | UI 从服务端读取可用 image/text models 和能力。 | Mock/local catalog 与 DB-backed control-plane scaffold 已存在；生产 route source 仍需收口 |
-| Image Gen | Prompt Node -> Image Gen 创建一个 image Asset。 | 本地 GeekAI fast path 和刷新后的四模型 UI 已存在；生产闸门是 server AiRun route/settlement path |
+| Image Gen | Prompt Node -> Image Gen 创建一个 image Asset。 | 本地 Jiekou-first fast path 和刷新后的四模型 UI 已存在；生产闸门是 server AiRun route/settlement path |
 | Image Gen 4 | Prompt Node -> Image Gen 4 创建四个候选 image Assets。 | 本地 repeated-call UX 和刷新后的四模型 UI 已存在；生产闸门是 server AiRun output-slot settlement |
-| Image edit/reference | Image Node + Prompt Node -> Image Gen 创建 edited/fused image Asset。 | 本地 GeekAI image/reference path 已覆盖 GPT Image 2、Nano Banana 2、Doubao Seedream 和 Jimeng 风格控件；生产闸门是 server Asset refs 和 provider adapter mapping |
+| Image edit/reference | Image Node + Prompt Node -> Image Gen 创建 edited/fused image Asset。 | 本地 Jiekou-first image/reference path 已覆盖 GPT Image 2、Nano Banana 2、Doubao Seedream 和 Jimeng 风格控件；生产闸门是 server Asset refs 和 provider adapter mapping |
 | Analysis | Image Node + Prompt Node -> Analysis 创建 text/prompt output。 | 本地 model-select analysis path 已存在；backend `AiRun` route integration、durable terminal `text_output`、默认 analysis-capable model seed，以及可复用的 live smoke harness 都已存在；剩余闸门是带真实凭据的 provider smoke 和更广覆盖 |
 | Chat | Chat Node 把 message history 加可选 image refs 转成短 assistant answer。 | 本地 streaming UX 已存在；当画布指向 FastAPI 时，backend create/poll/cancel 与 durable terminal `text_output` 已存在；本地开发仍保留 fallback |
 | Prompt Optimizer | Prompt Optimizer Node 通过 text model 把粗略出图提示词优化成更完整的生成提示词。 | 本地 streaming UX 已存在；当画布指向 FastAPI 时，backend create/poll/cancel text AiRun path 已存在；本地开发仍保留 fallback |
@@ -108,7 +108,7 @@ Current canvas readiness note: Konva node UI and runtimeGraph dataflow are stron
 | Provider routing | 一个产品模型可以拥有多条 provider routes，developer/admin operators 可以在不部署前端的情况下启用、禁用、排序或 fail over 这些线路。 | Planned |
 | AI Chat planner | Chat 可以提出合法 graph spec；用户确认后才 apply/running。 | 延后 |
 
-当前 canvas readiness note：Konva node UI 和 runtimeGraph dataflow 已足够做产品验证。最新本地路径使用 GeekAI 验证 chat streaming、prompt optimization、image generation/edit/reference 和 image analysis；模型感知图片控件覆盖 GPT Image 2 的 size/quality、Nano Banana 2 的 aspect/size、Doubao Seedream 的 size/output/search-style 参数，以及 Jimeng 的 size/strength-style 参数。2026-05-14 又通过 migration `20260514_0021_ai_image_model_refresh.py` 对齐了后端 seeds，把 `gemini-3.1-flash-image-preview` 从活跃生图面移出，并统一了 240000 ms 的长耗时生图超时边界。这是产品证明，不是最终生产边界。生产 provider calls 仍需要收口进 server AiRun/provider-route control plane，让 Auth、rate limits、credit preflight、provider-cost facts、Asset upload 和 admin observability 都保持服务端拥有。
+当前 canvas readiness note：Konva node UI 和 runtimeGraph dataflow 已足够做产品验证。最新本地路径使用 Jiekou-first 验证 chat streaming、prompt optimization、image generation/edit/reference 和 image analysis；模型感知图片控件覆盖 GPT Image 2 的 size/quality、Nano Banana 2 的 aspect/size、Doubao Seedream 的 size/output/search-style 参数，以及 Jimeng 的 size/strength-style 参数。2026-05-16 control-plane checkpoint 已把活跃部署路线移到 Jiekou-first，但长期合同仍保持 provider-neutral：产品模型稳定，provider keys、base URLs、routes 和 pricing 都由服务端拥有。这是产品证明，不是最终生产边界。生产 provider calls 仍需要收口进 server AiRun/provider-route control plane，让 Auth、rate limits、credit preflight、provider-cost facts、Asset upload 和 admin observability 都保持服务端拥有。
 
 ## 模型定价产品规则
 

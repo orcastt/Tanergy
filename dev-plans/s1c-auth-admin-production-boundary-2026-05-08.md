@@ -1,8 +1,8 @@
 # S1C Auth/Admin Production Boundary Plan
 
 **Created**: 2026-05-08
-**Updated**: 2026-05-14
-**Status**: Active tactical plan.
+**Updated**: 2026-05-18
+**Status**: Active tactical plan; real staging session/admin smoke, profile onboarding/editing, Clerk-backed forgot-password and account delete first pass are green, while Google/email/logout hardening and second-round signed-in browser acceptance remain.
 **Owner slice**: S1C, with S1B/S1D/S3 dependencies.
 
 ## Goal
@@ -36,6 +36,8 @@ Current implementation checkpoint:
 - [x] Clerk authorized-party validation now fails if configured origins exist and JWT `azp` is missing or mismatched.
 - [x] `s3_admin_bootstrap.py` can grant `admin_roles` by local user id or login email after first real login.
 - [x] Authenticated `/api/v1/auth/session` now returns the full validated workspace membership list and server-side workspace plan facts.
+- [x] Tanergy profile onboarding/editing and visible Clerk-backed forgot-password flow now exist.
+- [x] `/account` self-delete and admin delete now share a server-owned hard-delete service with Team/Group ownership guards.
 - [x] Remote smoke helper exists: `services/api/scripts/s1c_remote_admin_smoke.py`.
 - [x] Remote real-login admin smoke now passes on staging for session/admin/operator/finance/AI-route reads.
 - [ ] Google/email flow verification and broader signed-in browser acceptance still remain.

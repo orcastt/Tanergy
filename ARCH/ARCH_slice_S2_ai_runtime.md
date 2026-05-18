@@ -1,6 +1,6 @@
 # ARCH Slice S2: AI Runtime
 
-**Updated**: 2026-05-16
+**Updated**: 2026-05-18
 **Mode**: Architecture slice.
 
 ## Scope
@@ -196,7 +196,7 @@ enterprise          -> contract-defined workspace pool or personal fallback
 
 # ARCH 切片 S2：AI 运行时
 
-**更新日期**：2026-05-14
+**更新日期**：2026-05-18
 **模式**：架构切片。
 
 ## 范围
@@ -354,7 +354,7 @@ enterprise          -> contract-defined workspace pool or personal fallback
 - 成功 run 的 settlement 现在也会把归一化后的 `provider_cost` / `provider_currency` 写进最终 `ai_runs` 行和成功的 `ai_api_calls` attempt 行，同时还会按尝试写入 `api_cost_ledger`，让 Admin 可以把供应商成本与用户积分扣费拆开看。
 - `AiRunRequest` 现在也承认 `runType="text"` 与 `systemPrompt`；控制平面会按 text capability 选 model/route/pricing，而不会再在缺省路径里跌回 image default。
 - `tangent_ai_runs` 现在持久化 `text_output`，因此短文本结果不再只依赖进程内存或 `image_analysis` 的临时重建逻辑。
-- OpenAI-compatible / GeekAI live adapter 现在可以用非流式 `chat/completions` 返回 terminal `text_output`，并且已经接受 `image_analysis` 这类 prompt + inline image refs 的分析请求；Google `generateContent` 路径也已经接受 text runs；当画布指向 FastAPI persistence API 时，Prompt Optimizer 和 message-native Chat 都会走同一套 create/poll/cancel AiRun lifecycle，而不是只依赖 Next 本地 chat proxy。
+- OpenAI-compatible / Jiekou-compatible live adapter 现在可以用非流式 `chat/completions` 返回 terminal `text_output`，并且已经接受 `image_analysis` 这类 prompt + inline image refs 的分析请求；Google `generateContent` 路径也已经接受 text runs；当画布指向 FastAPI persistence API 时，Prompt Optimizer 和 message-native Chat 都会走同一套 create/poll/cancel AiRun lifecycle，而不是只依赖 Next 本地 chat proxy。
 - `20260514_0021_ai_image_model_refresh.py` 现在会把活跃生图目录对齐到 `gpt-image-2`、`nano-banana-2`、`doubao-seedream-5.0-lite` 和 `jimeng_t2i_v40`；`gemini-3.1-flash-image-preview` 只保留兼容用途，不再属于活跃生图面，同时长耗时生图的 live-provider 超时边界已统一到 `240000 ms`。
 - Image Gen / Image Gen 4 的 model dropdown 已读取该合同。
 - Konva runtimeGraph mock 流程现在已经覆盖 Prompt / Image / Chat / Image Gen / Analysis 的数据传递、导出端口，以及生成 Asset refs 的流程，同时不会把 provider 原始载荷写入文档。

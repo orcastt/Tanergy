@@ -7,14 +7,19 @@ import {
   createUnsupportedBoardRealtimeState,
   type BoardRealtimeConnectionState,
 } from './boardRealtimeState'
+import {
+  decodeRealtimeUpdatePayload,
+  encodeRealtimeUpdatePayload,
+  type RealtimeUpdatePayload,
+} from './realtimeUpdatePayload'
 
 const initialSyncTimeoutMs = 400
-const maxLocalYjsMessageBytes = 512 * 1024
+const maxLocalYjsMessageBytes = 1024 * 1024
 
 type LocalYjsSyncMessage =
   | { from: string; type: 'sync-request' }
-  | { from: string; to: string; type: 'sync-state'; update: number[] }
-  | { from: string; type: 'update'; update: number[] }
+  | { from: string; to: string; type: 'sync-state'; update: RealtimeUpdatePayload }
+  | { from: string; type: 'update'; update: RealtimeUpdatePayload }
 
 const remoteYjsOrigin = Symbol('tangent-local-yjs-remote')
 
@@ -78,8 +83,9 @@ export function connectLocalYjsRoom(ydoc: Y.Doc, roomKey: string, clientId = cre
     }
     if (message.type === 'sync-state' && message.to !== clientId) return
     if (message.type !== 'update' && message.type !== 'sync-state') return
-    if (!isValidUpdatePayload(message.update)) return
-    Y.applyUpdate(ydoc, Uint8Array.from(message.update), remoteYjsOrigin)
+    const update = decodeRealtimeUpdatePayload(message.update, maxLocalYjsMessageBytes)
+    if (!update) return
+    Y.applyUpdate(ydoc, update, remoteYjsOrigin)
     stateMachine.markSynced()
   }
   const handleMessageError = () => {
@@ -133,15 +139,9 @@ function createUpdatePayload(
   label: string,
   stateMachine: ReturnType<typeof createBoardRealtimeStateMachine>,
 ) {
-  if (update.byteLength > maxLocalYjsMessageBytes) {
-    stateMachine.markError(`${label} exceeded the local broadcast limit.`)
-    return null
-  }
-  return Array.from(update)
-}
-
-function isValidUpdatePayload(value: unknown) {
-  return Array.isArray(value)
-    && value.length <= maxLocalYjsMessageBytes
-    && value.every((item) => typeof item === 'number' && Number.isInteger(item) && item >= 0 && item <= 255)
+  return encodeRealtimeUpdatePayload(update, {
+    label,
+    maxBytes: maxLocalYjsMessageBytes,
+    onError: (message) => stateMachine.markError(message.replace('websocket', 'local broadcast')),
+  })
 }

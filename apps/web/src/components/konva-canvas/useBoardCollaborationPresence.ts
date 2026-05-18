@@ -124,7 +124,7 @@ export function useBoardCollaborationPresence({
     workspace,
   })
 
-  const { setCursor, setEditingShapeIds, setHoveredShapeId } = useBoardCollaborationLocalPresence({
+  const { setCursor, setDraftPreview, setEditingShapeIds, setHoveredShapeId } = useBoardCollaborationLocalPresence({
     activePageId,
     connectionPreview,
     currentSessionIdRef,
@@ -148,6 +148,7 @@ export function useBoardCollaborationPresence({
     clientInstanceId,
     otherSessions: state.activeSessions.filter((session) => !session.isSelf),
     setCursor,
+    setDraftPreview,
     setEditingShapeIds,
     setHoveredShapeId,
   }

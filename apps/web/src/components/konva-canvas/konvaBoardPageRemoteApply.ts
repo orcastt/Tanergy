@@ -31,6 +31,7 @@ export function applyRemoteKonvaPageChanges({
 
   const activePageId = refs.activePageIdRef.current
   const currentPageMap = new Map(currentPages.map((page) => [page.id, page]))
+  const changedPageIds = options.changedPageIds ?? []
   const nextPages = options.basePages && options.basePages.length > 0
     ? preserveRemoteApplyCamera(
         mergeKonvaBoardPages(
@@ -43,10 +44,10 @@ export function applyRemoteKonvaPageChanges({
       )
     : replaceRemotePages(currentPages, normalizedIncomingPages, {
         activePageId,
-        changedPageIds: options.changedPageIds,
+        changedPageIds,
         preserveCamera: options.preserveCamera ? refs.cameraRef.current : null,
       })
-  const didApply = !isSameJsonValue(currentPages, nextPages)
+  const didApply = hasRemotePageChange(currentPages, nextPages, changedPageIds)
 
   if (!didApply) return { activePageChanged: false, applied: false }
 
@@ -58,7 +59,12 @@ export function applyRemoteKonvaPageChanges({
   }
 
   const currentActivePage = currentPageMap.get(activePageId)
-  const activePageChanged = nextActivePage.id !== activePageId || !isSameJsonValue(currentActivePage, nextActivePage)
+  const activePageChanged = shouldRefreshActivePage({
+    activePageId,
+    changedPageIds,
+    currentActivePage,
+    nextActivePage,
+  })
   refs.pagesRef.current = nextPages
   setters.setPages(nextPages)
   if (activePageChanged) {
@@ -132,4 +138,36 @@ function preserveRemoteApplyCamera(
 
 function isSameJsonValue(left: unknown, right: unknown) {
   return JSON.stringify(left) === JSON.stringify(right)
+}
+
+function hasRemotePageChange(
+  currentPages: SerializedKonvaBoardPage[],
+  nextPages: SerializedKonvaBoardPage[],
+  changedPageIds: readonly string[],
+) {
+  if (currentPages.length !== nextPages.length) return true
+  for (let index = 0; index < currentPages.length; index += 1) {
+    if (currentPages[index]?.id !== nextPages[index]?.id) return true
+  }
+  if (changedPageIds.length === 0) return !isSameJsonValue(currentPages, nextPages)
+  const currentPageMap = new Map(currentPages.map((page) => [page.id, page]))
+  const nextPageMap = new Map(nextPages.map((page) => [page.id, page]))
+  return changedPageIds.some((pageId) => !isSameJsonValue(currentPageMap.get(pageId), nextPageMap.get(pageId)))
+}
+
+function shouldRefreshActivePage({
+  activePageId,
+  changedPageIds,
+  currentActivePage,
+  nextActivePage,
+}: {
+  activePageId: string
+  changedPageIds: readonly string[]
+  currentActivePage?: SerializedKonvaBoardPage
+  nextActivePage: SerializedKonvaBoardPage
+}) {
+  if (nextActivePage.id !== activePageId) return true
+  if (!currentActivePage) return true
+  if (changedPageIds.length === 0) return !isSameJsonValue(currentActivePage, nextActivePage)
+  return changedPageIds.includes(nextActivePage.id)
 }

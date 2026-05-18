@@ -42,7 +42,6 @@ export const config = {
   matcher: [
     '/admin/:path*',
     '/account/:path*',
-    '/api/auth/session',
     '/billing/:path*',
     '/boards/:path*',
     '/collections/:path*',
@@ -54,7 +53,7 @@ export const config = {
 }
 
 function shouldRunClerkProxy(pathname: string) {
-  return pathname === '/api/auth/session' || isProtectedProductPath(pathname)
+  return isProtectedProductPath(pathname)
 }
 
 function isLocalDevAuthBypass(request: NextRequest) {

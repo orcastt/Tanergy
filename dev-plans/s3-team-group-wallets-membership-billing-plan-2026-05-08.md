@@ -201,7 +201,7 @@ This phase can start after Phase 5 smoke is stable.
 - Team wallet pivot can silently conflict with old actor-personal resolver. Add tests before live provider charging.
 - Seat assignment must not create payer accounts by accident.
 - Group admin UX must not leak personal wallet data.
-- Fast local GeekAI routes must not bypass server payer resolution in production.
+- Fast local Jiekou-first routes must not bypass server payer resolution in production.
 - Payment completion and webhook handlers must be idempotent.
 
 ## Recommended Next Implementation Order

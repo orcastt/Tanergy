@@ -1,7 +1,7 @@
 # PRD Slice S1A: Database Schema And Migration
 
-**Updated**: 2026-05-08
-**Status**: S1A core implemented and locally smoke-tested through migration `20260502_0006`; current migration head also includes later S3 entitlement extension `20260506_0007`. The next schema delta belongs to S3 Team/Group wallets.
+**Updated**: 2026-05-18
+**Status**: S1A core implemented and locally smoke-tested through migration `20260502_0006`; current migration head also includes later S3 entitlement, Team/Group wallet and S2/S3 control-plane migrations. A fresh Supabase Pro staging database has now run Alembic to head; the retired Neon/Hetzner-local staging data is intentionally not carried forward.
 
 ## User Value
 
@@ -16,7 +16,7 @@ Users can trust that their Boards, uploads and account data belong to them. Futu
 - [x] Define indexes for cursor pagination and common filters.
 - [x] Provide a guarded Postgres smoke runner for empty DB and P0-seeded DB migration checks.
 - [x] Run real empty-database and migrated-P0 smoke against disposable Docker Postgres.
-- [ ] Run real empty-database and migrated-P0 smoke against staging Postgres in S1B.
+- [x] Run real empty-database Alembic-to-head smoke against the fresh Supabase Pro staging Postgres in S1B.
 
 ## Must-Have Tables
 
@@ -73,8 +73,8 @@ The next database cut should keep the S1A foundation and add only the missing Te
 
 ## Acceptance
 
-- Migration from empty DB succeeds. Passed locally with disposable Docker Postgres; staging smoke pending S1B.
-- Migration from current P0 scaffold succeeds. Passed locally with disposable Docker Postgres; staging smoke pending S1B.
+- Migration from empty DB succeeds. Passed locally with disposable Docker Postgres and on the fresh Supabase Pro staging database.
+- Migration from current P0 scaffold succeeds locally with disposable Docker Postgres. Old staging data migration is no longer a release gate because the 2026-05-18 Supabase rebuild is intentionally clean.
 - Schema can represent private/public Board, members, owner/editor/viewer and per-user pin/star/opened state.
 - Schema can represent personal, Team and future enterprise credit accounts.
 - Schema can connect AI runs to user/workspace/board/node/model/provider later.

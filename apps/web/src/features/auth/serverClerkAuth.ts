@@ -1,8 +1,9 @@
-import { auth } from '@clerk/nextjs/server'
+import { auth, getAuth } from '@clerk/nextjs/server'
 import { cookies } from 'next/headers'
+import { type NextRequest } from 'next/server'
 
-export async function buildServerClerkApiHeaders() {
-  const token = await loadServerClerkToken()
+export async function buildServerClerkApiHeaders(request?: NextRequest) {
+  const token = await loadServerClerkToken(request)
   if (token) {
     return { Authorization: `Bearer ${token}` } satisfies Record<string, string>
   }
@@ -21,7 +22,19 @@ export async function buildServerClerkApiHeaders() {
   return {} as Record<string, string>
 }
 
-async function loadServerClerkToken() {
+async function loadServerClerkToken(request?: NextRequest) {
+  if (request) {
+    try {
+      const requestAuth = getAuth(request)
+      if (requestAuth.userId) {
+        const token = await requestAuth.getToken()
+        if (token) return token
+      }
+    } catch {
+      // Fall through to auth(), which covers server components and actions.
+    }
+  }
+
   try {
     const authState = await auth()
     if (!authState.userId) return null

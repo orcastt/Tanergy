@@ -75,6 +75,7 @@ git diff --check
 - Do not touch legacy unless explicitly requested.
 - Do not read `.env`.
 - Do not put secrets in frontend code, docs or logs.
+- Do not treat nested local env files such as `apps/web/.env.local` or pulled `.vercel/.env.production.local` copies as deployment truth; Web runtime truth belongs in Vercel env, API runtime truth belongs in the server-local shared env file.
 - Do not store image binaries, Base64, provider payloads or full logs in Board/History documents.
 - Do not enable production `/admin` before real Auth and server-side admin roles.
 - Do not start collaboration until Auth, Board, Asset and AiRun authority boundaries are stable.

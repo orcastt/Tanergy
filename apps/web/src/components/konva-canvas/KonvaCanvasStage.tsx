@@ -1,20 +1,24 @@
 import type Konva from 'konva'
-import { useCallback, type Dispatch, type SetStateAction } from 'react'
+import { useCallback, useMemo, type Dispatch, type SetStateAction } from 'react'
 import { Group, Layer, Stage } from 'react-konva'
 import type { CanvasBounds, CanvasCamera, CanvasDocument, CanvasNodeShape, CanvasShape, CanvasShapeStyle } from '@/features/canvas-engine'
 import type {
   BoardCollaborationConnectionPreview,
+  BoardCollaborationSessionRecord,
   BoardCollaborationTransformKind,
 } from '@/features/boards/boardCollaborationTypes'
 import { KonvaCanvasBackground } from './KonvaCanvasBackground'
 import { KonvaCanvasShape } from './KonvaCanvasShape'
 import { KonvaEraserTrail } from './KonvaEraserTrail'
 import { KonvaFrameChrome } from './KonvaFrameChrome'
+import { KonvaLocalDraftLayer } from './KonvaLocalDraftLayer'
 import { KonvaNodeEdgeLayer, type KonvaCollaborationEdgeSession } from './KonvaNodeEdgeLayer'
 import { KonvaPendingImagePasteLayer, type KonvaPendingImagePaste } from './KonvaPendingImagePasteLayer'
+import { KonvaRemoteDraftLayer } from './KonvaRemoteDraftLayer'
 import { KonvaSelectionOverlay } from './KonvaSelectionOverlay'
 import { useKonvaCanvasInteractions } from './useKonvaCanvasInteractions'
 import { canKonvaShapeDragWithTool, canKonvaShapeSelectWithTool } from './konvaShapeCapabilities'
+import { normalizeKonvaShapeMinResizeSize } from './konvaNodeCardSizing'
 import { konvaCaptureExcludeName } from './konvaSelectionExport'
 import { getVisibleKonvaShapes } from './konvaViewportCulling'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
@@ -23,9 +27,11 @@ import type { RuntimeGraphImageAssetRef } from '@/features/node-runtime/runtimeG
 
 type KonvaCanvasStageProps = {
   activeTool: KonvaCanvasTool
+  activePageId?: string | null
   camera: CanvasCamera
   captureMode?: boolean
   collaborationSessions?: readonly KonvaCollaborationEdgeSession[]
+  collaborationPresenceSessions?: readonly BoardCollaborationSessionRecord[]
   document: CanvasDocument
   height: number
   isSpacePanning: boolean
@@ -43,6 +49,7 @@ type KonvaCanvasStageProps = {
   onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
   onDocumentPreview: Dispatch<SetStateAction<CanvasDocument>>
   onConnectionPreviewChange?: (preview: BoardCollaborationConnectionPreview | null) => void
+  onDraftPreviewChange?: (shape: CanvasShape | null) => void
   onEdgeDisconnect: (edgeId: string) => void
   onEdgeSelect: (edgeId: string | null) => void
   onGeneratedImageToCanvas: (input: { ref: RuntimeGraphImageAssetRef; shapeId: string }) => void
@@ -103,7 +110,7 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
   const selectionMode = props.activeTool === 'select'
   const shapesAreInteractive = !props.captureMode && selectionMode
   const canDragShape = shapesAreInteractive && !props.isSpacePanning
-  const sourceShapes = dragPreviewShapes ?? props.document.shapes
+  const sourceShapes = useMemo(() => (dragPreviewShapes ?? props.document.shapes).map(normalizeKonvaShapeMinResizeSize), [dragPreviewShapes, props.document.shapes])
   const renderShapes = getVisibleKonvaShapes({
     camera: renderCamera,
     captureMode: props.captureMode,
@@ -217,37 +224,23 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
         })}
       </Layer>
 
+      {props.captureMode || !props.collaborationPresenceSessions || props.collaborationPresenceSessions.length === 0 ? null : (
+        <Layer listening={false} name={konvaCaptureExcludeName}>
+          <KonvaRemoteDraftLayer
+            activePageId={props.activePageId}
+            document={props.document}
+            sessions={props.collaborationPresenceSessions}
+            zoom={renderCamera.zoom}
+          />
+        </Layer>
+      )}
+
       {draft && !props.captureMode ? (
         <Layer listening={false} name={konvaCaptureExcludeName}>
-          <KonvaCanvasShape
+          <KonvaLocalDraftLayer
             document={props.document}
-            editingNodeTextField={null}
-            hideEditableText={false}
-            interactive={false}
-            isSelected={false}
-            onDragMove={handleShapeDragMove}
-            onDragEnd={handleShapeDragEnd}
-            onDragStart={handleShapeDragStart}
-            onDoubleClick={props.onTextEditStart}
-            onGeneratedImageToCanvas={props.onGeneratedImageToCanvas}
-            onImageNodeToCanvas={props.onImageNodeToCanvas}
-            onNodeImagePreviewOpen={props.onNodeImagePreviewOpen}
-            onNodeChatClean={props.onNodeChatClean}
-            onNodeChatRegenerate={props.onNodeChatRegenerate}
-            onNodeChatModelChange={props.onNodeChatModelChange}
-            onNodeChatSend={props.onNodeChatSend}
-            onNodeChatUpload={props.onNodeChatUpload}
-            onNodeFieldChange={props.onNodeFieldChange}
-            onNodeFocusedEditRequest={props.onNodeFocusedEditRequest}
-            onNodeFocusedEditStateChange={props.onNodeFocusedEditStateChange}
-            onSelect={handleShapeSelect}
-            onNodeRunToggle={props.onNodeRunToggle}
-            onNodeTextEditStart={props.onNodeTextEditStart}
+            draft={draft}
             panMode={props.isSpacePanning}
-            previewMode={false}
-            selectable={false}
-            shape={draft}
-            toolAllowsDrag={false}
             zoom={renderCamera.zoom}
           />
         </Layer>

@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react'
-import type { CanvasBounds, CanvasCamera, CanvasDocument, CanvasShapeStyle } from '@/features/canvas-engine'
+import type { CanvasBounds, CanvasCamera, CanvasDocument, CanvasShape, CanvasShapeStyle } from '@/features/canvas-engine'
 import type {
   BoardCollaborationConnectionPreview,
   BoardCollaborationTransformKind,
@@ -19,6 +19,7 @@ export type UseKonvaCanvasInteractionsOptions = {
   onCameraPreview: (camera: CanvasCamera) => void
   onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
   onDocumentPreview: Dispatch<SetStateAction<CanvasDocument>>
+  onDraftPreviewChange?: (shape: CanvasShape | null) => void
   onHistoryCheckpoint: (document: CanvasDocument) => void
   onConnectionPreviewChange?: (preview: BoardCollaborationConnectionPreview | null) => void
   onSelectionBoxChange?: (bounds: CanvasBounds | null) => void

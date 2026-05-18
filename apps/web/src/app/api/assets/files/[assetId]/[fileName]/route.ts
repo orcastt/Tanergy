@@ -56,7 +56,7 @@ async function proxyRemoteAssetFile(request: NextRequest, context: AssetFileRout
 }
 
 async function buildProxyHeaders(request: NextRequest) {
-  const headers = new Headers(await buildServerClerkApiHeaders())
+  const headers = new Headers(await buildServerClerkApiHeaders(request))
   copyRequestHeader(request, headers, 'accept')
   copyRequestHeader(request, headers, 'authorization')
   copyRequestHeader(request, headers, 'cookie')

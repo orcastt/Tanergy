@@ -103,7 +103,7 @@ Implemented first pass:
 - Operator detail bundles now hydrate pending workspace invitations directly into owned and joined Team/Group rows, so invite state lives beside the member stack instead of requiring an extra workspace fetch.
 - After the first detail load, member role/remove, add-member, invite create/revoke and board copy/delete actions can patch the local detail bundle immediately; full refetch is still reserved for larger billing/plan/workspace mutations.
 - Search-backed join-workspace actions can now also patch the local detail bundle by projecting the selected workspace lookup row into the joined Team/Group table, so the operator does not wait on a forced detail reload just to see the new membership row appear.
-- A local/demo-rich QA seed now exists at `services/api/scripts/seed_admin_operator_demo.py`, so the operator console can be exercised against owned Teams, joined Teams, owned Groups, joined Groups, pending invites, boards, ledger rows and manual-payment rows without hand-building fixtures in Neon.
+- A local/demo-rich QA seed now exists at `services/api/scripts/seed_admin_operator_demo.py`, so the operator console can be exercised against owned Teams, joined Teams, owned Groups, joined Groups, pending invites, boards, ledger rows and manual-payment rows without hand-building fixtures in the current staging database.
 - Operator inventory/user detail now expose derived registration state plus `tangent_users.last_ip_address`, so the later dense-table redesign can render real access facts instead of placeholders.
 - Subscription freeze/unfreeze now persists `paused_at`, `paused_by` and `pause_reason`, and unfreeze extends `current_period_end` by the paused duration instead of silently resuming on the original expiry date.
 - Manual plan grants now follow operator semantics instead of the older blunt overwrite path: `assign` and `renew` grant the full included-credit pack for the target plan, while `upgrade` grants only the delta from the current included-credit pack to the target included-credit pack.
@@ -650,4 +650,4 @@ Remaining rework:
 - Hosted live-provider run-settlement smoke still needs to exercise real provider output persistence through the same payer contract.
 - Provider-specific webhook signatures, invoice/refund handling and deployed staging smoke must replace manual-test completion as the authority for grants and subscription state.
 - Email invites, board-specific assignment UI and richer audit events remain.
-- GeekAI canvas fast path must be reconciled into S2 server provider-route/billing control plane before production reliance.
+- Jiekou-first canvas fast path must be reconciled into S2 server provider-route/billing control plane before production reliance.

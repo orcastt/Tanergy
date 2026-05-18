@@ -53,8 +53,9 @@ async function loadRemoteSession(request: NextRequest) {
   }
   if (!response.ok) {
     const error = payload?.error
+    const detail = payload?.detail
     return NextResponse.json(
-      { error: typeof error === 'string' ? error : 'Session lookup failed.', ok: false },
+      { error: getResponseErrorMessage(error, detail, 'Session lookup failed.'), ok: false },
       { status: response.status },
     )
   }
@@ -172,7 +173,7 @@ function isClerkEmailVerified(claims: Record<string, unknown> | null) {
 }
 
 async function buildProxyHeaders(request: NextRequest) {
-  const headers = new Headers(await buildServerClerkApiHeaders())
+  const headers = new Headers(await buildServerClerkApiHeaders(request))
 
   copyHeader(request, headers, 'authorization')
   copyHeader(request, headers, 'content-type')
@@ -185,6 +186,12 @@ async function buildProxyHeaders(request: NextRequest) {
   copyHeader(request, headers, 'x-tangent-plan-key')
 
   return headers
+}
+
+function getResponseErrorMessage(error: unknown, detail: unknown, fallback: string) {
+  if (typeof error === 'string' && error.trim()) return error.trim()
+  if (typeof detail === 'string' && detail.trim()) return detail.trim()
+  return fallback
 }
 
 function copyHeader(request: NextRequest, headers: Headers, name: string) {

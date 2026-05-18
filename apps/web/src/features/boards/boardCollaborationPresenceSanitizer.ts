@@ -5,6 +5,7 @@ import type {
   BoardCollaborationPortEndpoint,
   BoardCollaborationTransformKind,
 } from './boardCollaborationTypes'
+import { normalizeBoardCollaborationDraftPreview } from './boardCollaborationDraftPresenceSanitizer'
 
 const activePresenceStates = new Set<BoardCollaborationPresenceState>([
   'drawing',
@@ -32,6 +33,7 @@ export function sanitizeBoardCollaborationPresence(
     activePageId: normalizeId(presence.activePageId),
     connectionPreview: normalizeConnectionPreview(presence.connectionPreview),
     cursor: normalizeCursor(presence.cursor),
+    draftPreview: normalizeBoardCollaborationDraftPreview(presence.draftPreview),
     editingShapeIds: normalizeIds(presence.editingShapeIds),
     hoveredShapeId: normalizeId(presence.hoveredShapeId),
     selectedEdgeId: normalizeId(presence.selectedEdgeId),

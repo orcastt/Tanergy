@@ -1,7 +1,7 @@
 # ARCH Slice S1X: Canvas Engine Migration
 
-**Updated**: 2026-05-14
-**Status**: Konva v2 formal Board route is accepted as the production path for active Boards, and the remaining tldraw web runtime/reference code has now been removed from `apps/web`. Page polish, runtimeGraph mock dataflow, public share view and the Konva-only staging path are first-pass stable; Yjs collaboration, export/background polish and real AiRun remain.
+**Updated**: 2026-05-18
+**Status**: Konva v2 formal Board route is accepted as the production path for active Boards, and the remaining tldraw web runtime/reference code has now been removed from `apps/web`. Page polish, runtimeGraph mock dataflow, public share view, the Konva-only staging path, page-limit modal, node minimum sizing and first draft-preview collaboration pass are first-pass stable; export/background polish, real AiRun and production-grade multi-instance collaboration remain.
 **Branch**: `feature/s1c-auth-admin-production-boundary`
 **Reason**: This slice began as the exit from the old paid-canvas dependency. That runtime migration is now closed in the active web app, and the remaining work is Konva-only stabilization plus collaboration/provider follow-through.
 
@@ -11,7 +11,7 @@ This slice is now in stabilization mode:
 
 - Konva-only `/boards/[boardId]` is the production-facing canvas path.
 - Share viewing, page safety and Board persistence are in scope.
-- Yjs room sync, rendered page-thumbnail assets, page duplicate and broader export polish remain deferred.
+- Production-grade Yjs room sync, rendered page-thumbnail assets, page duplicate and broader export polish remain deferred.
 
 ## Decision
 
@@ -132,6 +132,7 @@ Current Phase 4 Node/Port/Edge foundation boundary:
 - `node_card` is the renderer-neutral canvas node carrier. Konva can render a lightweight card in the canvas layer, while heavier React/HTML controls should only mount for selected, editing or running nodes.
 - Node creation and display must stay registry-driven. `node-runtime/registry.ts` owns display name, palette label/order, default card size, accent color, default data, fields, output summary and port definitions. Future text optimizer, multi-text merge, perspective image generation or other AI nodes should not require changes in `KonvaCanvasStage`, `KonvaNodeEdgeLayer` or generic port rendering.
 - `node_card` is not a normal drawing shape for transform purposes. Selection overlay, rotate sessions, group rotation utilities, render transforms, port coordinate math, Properties actions and context-menu commands must ignore node-card rotation/flip. Node cards may move/select/connect/edit, but they should not expose rotate or flip affordances.
+- Node cards now use registry default dimensions as their minimum resize size. Loading and resizing normalize node cards back to at least their default card size so chat inputs, controls and image previews do not drift outside the card after excessive shrink transforms.
 - Ports are UI affordances derived from node registry metadata. Their screen/world anchors and hit targets must be stable under pan/zoom, but a visible port dot by itself is not a runtime connection.
 - `CanvasDocument.runtimeEdges` is the local first-pass runtime edge store. A runtime edge references source node/port and target node/port ids plus `dataType`; it is not serialized as a visual `arrow` or `line`.
 - `features/node-runtime/runtimeGraph.ts` owns renderer-neutral runtime edge mutation and reconciliation: add/remove/reconnect, input uniqueness, output fan-out, invalid-edge pruning, dynamic Image Gen/Image Gen 4 image input counts and Image Node upstream preview mirroring. Local Image Node upload clears the incoming `image_in` edge before writing own asset refs so upstream mirrors cannot overwrite user-uploaded images. Konva wrappers must call this layer instead of duplicating runtime dataflow rules.
@@ -153,7 +154,7 @@ Current Phase 5A persistence boundary:
 
 - Konva persistence is now the only active Board persistence path in the web app. `KonvaBoardSaveAudit` is mounted in `/spikes/konva-canvas` and `/boards/[boardId]`, uses the shared Board API client, and serializes through `features/boards/konvaBoardDocument.ts`.
 - `/boards/[boardId]` is now a Konva-only shell. `boardCanvasEngine.ts` recognizes only persisted Konva v2 documents; legacy v1 or unknown documents render an unsupported state, while the guard layer blocks legacy restore/save paths instead of silently opening a fallback runtime.
-- The persisted Konva envelope is `{ version: 2, renderer: 'konva', activePageId, pages, canvasDocument, canvasSettings, assets, serializedAt }`. `canvasDocument` remains the active page mirror for older consumers and active-page thumbnail capture. `pages[]` is now the page-switching contract; the right-side collapsible Pages drawer writes the current `CanvasDocument` back into the active page before save/snapshot/switch/page mutations, and restore/load returns both the active page document and normalized page list. Page delete/reorder are local page-list mutations, and right-click Move to page moves selected shapes into the target page document after expanding grouped members and frame children. Runtime edges whose source and target shapes both move are copied to the target page; edges touching only one moved endpoint are removed because cross-page runtime edges are not in scope yet. The drawer currently renders lightweight geometry thumbnails from page shapes; true rendered per-page thumbnail assets, page duplicate, Move selection to new page and page-scoped collaboration are follow-ups. `assets` is a compact derived list across page documents used for Board summaries; raw image bytes stay in Asset storage.
+- The persisted Konva envelope is `{ version: 2, renderer: 'konva', activePageId, pages, canvasDocument, canvasSettings, assets, serializedAt }`. `canvasDocument` remains the active page mirror for older consumers and active-page thumbnail capture. `pages[]` is now the page-switching contract; the right-side collapsible Pages drawer writes the current `CanvasDocument` back into the active page before save/snapshot/switch/page mutations, and restore/load returns both the active page document and normalized page list. Page delete/reorder are local page-list mutations, and right-click Move to page moves selected shapes into the target page document after expanding grouped members and frame children. Runtime edges whose source and target shapes both move are copied to the target page; edges touching only one moved endpoint are removed because cross-page runtime edges are not in scope yet. The drawer currently renders lightweight geometry thumbnails from page shapes and enforces the current workspace/plan page limit before create/duplicate, showing a centered upgrade dialog when the limit is reached. True rendered per-page thumbnail assets, Move selection to new page and page-scoped production collaboration are follow-ups. `assets` is a compact derived list across page documents used for Board summaries; raw image bytes stay in Asset storage.
 - Restore validates the v2 envelope, runs the existing Board guard, replaces Konva document/camera/settings and clears transient selection, edge selection, crop, edit and context-menu state. Legacy tldraw documents/history are rejected before they can enter the active restore path.
 - Restore also normalizes any persisted backend asset file URLs onto the web proxy path before image render, so same-board assets continue to display when the backend requires bearer auth and browser `Image()` elements cannot call the API origin directly.
 - Board thumbnails for Konva use `captureKonvaBoardThumbnailUrl`: all shapes are captured through the offscreen Konva clone/export path and uploaded with `origin=board_thumbnail`. This keeps thumbnail generation separate from user `merge_capture` assets.
@@ -170,7 +171,7 @@ The replacement engine must preserve these current product behaviors unless a de
 ### Shell and Layout
 
 - Board route loads `/boards/[boardId]` into the product canvas.
-- Header provides Workspace back, TANGENT home/logo, Board switcher and recent Board affordances.
+- Header provides Workspace back plus inline Board rename. Board switcher, recent Board and new/open affordances belong outside the canvas top bar.
 - Top toolbar stays above the canvas with hand/select, shape, arrow, line, draw, text and eraser tools.
 - Frame and Sticky are first-class canvas tools; Frame starts as a labeled outline container, Sticky starts as a resizable editable note.
 - Frame containment is represented with `parentId=frame.id` and rendered through a Konva clip group, so child shapes are visible only inside the frame bounds.
@@ -546,13 +547,13 @@ S1X is not accepted until these gates pass:
 
 ## Detailed Parity Matrix
 
-The detailed Chinese feature-by-feature replication matrix lives in:
+The historical Chinese feature-by-feature replication matrix now lives in the archive:
 
 ```text
-dev-plans/s1x-canvas-engine-migration-reference-2026-05-03.md
+dev-plans/Archive/s1x-canvas-engine-migration-reference-2026-05-03.md
 ```
 
-That tactical plan is the working checklist for matching the historical baseline behavior across:
+That archived tactical plan is background context only. The active Konva stabilization truth now lives in this slice, the PRD S1X slice and the P0 stabilization plan.
 
 - handfeel and pan/zoom
 - toolbar and fixed properties drawer

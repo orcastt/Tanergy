@@ -1,6 +1,6 @@
 # ARCH Slice S1C: Auth And Request Context
 
-**Updated**: 2026-05-16
+**Updated**: 2026-05-18
 **Mode**: Architecture slice.
 **Status**: Clerk frontend/session bridge plus FastAPI bearer verification first pass are in place. The local Tanergy profile layer now sits on top of Clerk identity with a post-signup onboarding modal, editable `/account` profile form, visible Clerk-backed forgot-password route and a shared hard-delete service for self-delete plus admin delete; logout/session revocation hardening still remains.
 
@@ -21,7 +21,7 @@ register/login
 
 ## Auth Provider Direction
 
-P0 staging should prefer an Auth provider instead of hand-rolling password and OAuth flows. The current recommended path is Clerk for Next.js, with Supabase Auth as an acceptable fallback if the product chooses to consolidate Auth and Postgres around Supabase.
+P0 staging should prefer an Auth provider instead of hand-rolling password and OAuth flows. The active path is Clerk for Next.js. Supabase is currently used for managed Postgres only; Supabase Auth is deliberately not part of the active migration so the database cutover does not also change login authority.
 
 Architecture boundary:
 

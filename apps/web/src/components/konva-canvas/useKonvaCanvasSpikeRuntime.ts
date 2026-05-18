@@ -5,6 +5,7 @@ import type Konva from 'konva'
 import * as Y from 'yjs'
 import type { CanvasBounds, CanvasCamera, CanvasDocument, CanvasPoint, CanvasShape, CanvasShapeStyle } from '@/features/canvas-engine'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
+import { planCatalog, resolvePlanKey } from '@/features/billing/billingContracts'
 import type {
   BoardCollaborationConnectionPreview,
   BoardCollaborationTransformKind,
@@ -156,6 +157,7 @@ export function useKonvaCanvasSpikeRuntime({
   const { fileInput, promptImageNodeUpload, uploadDropFileAtPoint } = imageUploadApi
   const { activeToolPreference, camera, connectionPreviewPresence, contextMenu, cropEditingImageId, document, dropHintKind, editingNodeText, editingTextId, interactionShapeIds, nextStyle, nodeImageLightbox, selectedEdgeId, selectedIds, selectionActionError, selectionMarqueeBounds, settingsOpen, stage, transformPreview } = canvasState
   const { setCamera, setClipboardShapeCount, setConnectionPreviewPresence, setContextMenu, setCropEditingImageId, setDocument, setDocumentState, setDropHintKind, setEditingNodeText, setEditingTextId, setInteractionShapeIds, setIsSpacePanning, setNextStyle, setNodeImageLightbox, setPersistedBoardIds, setSelectedEdgeId, setSelectionActionError, setSelectionMarqueeBounds, setSettingsOpen, setStage, setTransformPreview } = canvasSetters
+  const canvasPagePlan = resolveCanvasPagePlan(workspace)
 
   const boardPages = useKonvaBoardPages({ activeDocument: document, camera, onCameraChange: setCamera, onDocumentChange: setDocumentState, onTransientClear: clearTransientState })
   useKonvaCanvasDocumentChangeBridge({
@@ -221,9 +223,12 @@ export function useKonvaCanvasSpikeRuntime({
       handleStageTextEditStart: textEditing.handleStageTextEditStart, handleToolbarOpenSettings: commandActions.handleToolbarOpenSettings, handleToolChange,
       headerLocalSync: collaboration.collaborationEnabled ? collaboration.localYjsSync : undefined, isSpacePanning, localSyncBannerProps: collaboration.collaborationEnabled ? { localSync: collaboration.localYjsSync } : undefined,
       mode, nextStyle, onBoardTitleRename, overlayOccupancy: collaboration.collaboration.shapeOccupancy, overlaySessions: collaboration.collaboration.activeSessions,
-      remoteEdgeSessions: collaboration.remoteEdgeSessions, remoteLockedShapeOwnerById: collaboration.remoteShapeLockOwners, requestFocusedEdit: collaboration.requestFocusedEditShape, selectionExportCaptureMode: selectionExport.captureMode,
+      pageLimit: canvasPagePlan.pageLimit, pageLimitPlanName: canvasPagePlan.planName,
+      remoteEdgeSessions: collaboration.remoteEdgeSessions, remoteLockedShapeOwnerById: collaboration.remoteShapeLockOwners, remotePresenceSessions: collaboration.collaboration.otherSessions,
+      requestFocusedEdit: collaboration.requestFocusedEditShape, selectionExportCaptureMode: selectionExport.captureMode,
       sendGeneratedOutputToCanvas: imageNodeActions.sendGeneratedOutputToCanvas, sendImageNodeToCanvas: imageNodeActions.sendImageNodeToCanvas,
-      setConnectionPreviewPresence, setDocument, setFocusedControlShapeState: collaboration.setFocusedControlShapeState, setInteractionShapeIds, setNodeField, setSelectionMarqueeBounds,
+      setConnectionPreviewPresence, setDocument, setDraftPreviewPresence: collaboration.collaboration.setDraftPreview, setFocusedControlShapeState: collaboration.setFocusedControlShapeState,
+      setInteractionShapeIds, setNodeField, setSelectionMarqueeBounds,
       setTransformPreview, settingsOpen, size, stageDomEvents, stageToolMode: collaboration.stageToolMode, themeMode, toggleNodeRun,
       boardPages: { activePageId: boardPages.activePageId, pages: boardPages.pages, selectPage: boardPages.selectPage },
       writableStagePropsExtras: {
@@ -257,4 +262,14 @@ export function useKonvaCanvasSpikeRuntime({
   })
 
   return { shellProps, transientUiProps }
+}
+
+function resolveCanvasPagePlan(workspace?: TangentWorkspace) {
+  if (!workspace) return { pageLimit: null, planName: undefined }
+  const planKey = resolvePlanKey(workspace.kind, workspace.planKey)
+  const plan = planCatalog[planKey]
+  return {
+    pageLimit: plan.pageLimit ?? null,
+    planName: plan.name,
+  }
 }

@@ -11,6 +11,9 @@ from tangent_api.storage.board_realtime_storage_adapter import (
 )
 
 DEFAULT_PERSIST_DEBOUNCE_SECONDS = float(os.getenv("TANGENT_BOARD_REALTIME_PERSIST_DEBOUNCE_SECONDS", "0.25"))
+PERSIST_MODE_FINAL_SNAPSHOT = "final_snapshot"
+PERSIST_MODE_UPDATE_CHAIN = "update_chain"
+DEFAULT_PERSIST_MODE = PERSIST_MODE_FINAL_SNAPSHOT
 
 
 @dataclass
@@ -34,15 +37,37 @@ class BoardRealtimePersistenceCoordinator:
         self,
         storage: BoardRealtimeStorageAdapter | None = None,
         debounce_seconds: float = DEFAULT_PERSIST_DEBOUNCE_SECONDS,
+        persist_mode: str | None = None,
     ) -> None:
         self._storage = storage
         self._debounce_seconds = max(0.0, debounce_seconds)
+        self._persist_mode = persist_mode
         self._loop_states: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, _LoopPersistenceState] = (
             weakref.WeakKeyDictionary()
         )
 
     def load_document(self, workspace_id: str, board_id: str) -> list[list[int]]:
         return self._get_storage().load_document(workspace_id, board_id)
+
+    async def persist_compacted_document(
+        self,
+        workspace_id: str,
+        board_id: str,
+        room_key: str,
+        document_updates: list[list[int]],
+    ) -> None:
+        await self.finalize_document(workspace_id, board_id, room_key, document_updates)
+
+    async def persist_incremental_document(
+        self,
+        workspace_id: str,
+        board_id: str,
+        room_key: str,
+        document_updates: list[list[int]],
+    ) -> None:
+        if self._get_persist_mode() != PERSIST_MODE_UPDATE_CHAIN:
+            return
+        await self.queue_document(workspace_id, board_id, room_key, document_updates)
 
     async def queue_document(
         self,
@@ -152,6 +177,12 @@ class BoardRealtimePersistenceCoordinator:
     def _get_storage(self) -> BoardRealtimeStorageAdapter:
         return self._storage or get_board_realtime_storage_adapter()
 
+    def _get_persist_mode(self) -> str:
+        configured = self._persist_mode
+        if configured is None:
+            configured = os.getenv("TANGENT_BOARD_REALTIME_PERSIST_MODE", DEFAULT_PERSIST_MODE)
+        return _normalize_persist_mode(configured)
+
     def _get_loop_state(self) -> _LoopPersistenceState:
         loop = asyncio.get_running_loop()
         state = self._loop_states.get(loop)
@@ -181,6 +212,13 @@ class BoardRealtimePersistenceCoordinator:
             if write_lock.locked():
                 return
             loop_state.write_locks.pop(key, None)
+
+
+def _normalize_persist_mode(value: str | None) -> str:
+    normalized = (value or DEFAULT_PERSIST_MODE).strip().lower()
+    if normalized == PERSIST_MODE_UPDATE_CHAIN:
+        return PERSIST_MODE_UPDATE_CHAIN
+    return PERSIST_MODE_FINAL_SNAPSHOT
 
 
 board_realtime_persistence = BoardRealtimePersistenceCoordinator()

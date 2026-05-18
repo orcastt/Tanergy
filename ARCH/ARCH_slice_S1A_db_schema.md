@@ -2,7 +2,7 @@
 
 **Updated**: 2026-05-08
 **Mode**: Architecture slice.
-**Status**: S1A core implemented and locally smoke-tested through `20260502_0006`; current migration head also includes later S3 entitlement/AI-charge extension `20260506_0007`. The next schema cut is the S3 Team-wallet/personal-wallet delta.
+**Status**: S1A core implemented and locally smoke-tested through `20260502_0006`; current migration head also includes later S3 entitlement/AI-charge extension `20260506_0007`, the S3 Team-wallet/personal-wallet delta and current S2/S3 control-plane migrations. A fresh Supabase Pro staging database has now run Alembic to head; the retired Neon/Hetzner-local staging data is intentionally not migrated into the clean rebuild.
 
 ## Goal
 
@@ -203,21 +203,20 @@ P0 owner/member preference backfill
 
 ## Acceptance
 
-- Empty database can run all migrations from scratch. Passed against disposable Docker Postgres; staging Neon/Postgres smoke pending S1B.
-- Existing local/staging P0 tables can migrate forward without data loss. P0-seeded Docker Postgres smoke passed; staging Neon/Postgres smoke pending S1B.
+- Empty database can run all migrations from scratch. Passed against disposable Docker Postgres and the fresh Supabase Pro staging database.
+- Existing local P0 tables can migrate forward without data loss. P0-seeded Docker Postgres smoke passed; old staging data-preservation is superseded by the deliberate Supabase clean rebuild.
 - Schema contains formal user/workspace/board permission facts.
 - Cross-user isolation can be tested using SQL fixtures.
 - S2/S3/S4 can reference stable `user_id`, `workspace_id`, `board_id`, `asset_id`, `ai_run_id`.
 
 ## Next Database Optimization Pass
 
-- Add the S3 Team/Group wallet delta before real provider charging:
+- Keep the S3 Team/Group wallet delta and later control-plane migrations compatible before real provider charging:
   - `credit_accounts.account_kind` or equivalent constrained metadata for `personal_wallet`, `team_wallet`, `enterprise_pool`
   - `subscriptions.plan_family`, `seat_capacity`, provider ids and active-period fields
   - partial unique constraint for one active Collaborate subscription per user
   - Team checkout linkage from payment/subscription to workspace and Team wallet
   - workspace invite token expiry/revoke/acceptance facts
   - charge-scope or `entitlement_source=team_wallet` compatibility facts on AiRun
-- Run S1A smoke against staging Postgres after S1B redeploy.
-- Collect `EXPLAIN` for Board list, Board History list, Asset list, AiRun list and Admin user search queries.
+- Collect `EXPLAIN` against Supabase staging for Board list, Board History list, Asset list, AiRun list and Admin user search queries.
 - Tune measured cursor indexes and retention limits only; avoid speculative index churn before real query shapes exist.

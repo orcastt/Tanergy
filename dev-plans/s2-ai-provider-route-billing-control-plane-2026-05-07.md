@@ -208,7 +208,7 @@ Exit criteria:
   - API-call attempts
   - cost ledger rows
 - Ensure save/publish/rollback is audited and versioned for model, route and pricing edits.
-- Add a practical route toggle smoke path: disable GeekAI primary, enable backup/fallback route when one exists.
+- Add a practical route toggle smoke path: disable the current Jiekou primary route, enable a backup/fallback route when one exists.
 
 Exit criteria:
 

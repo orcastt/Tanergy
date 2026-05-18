@@ -1,4 +1,5 @@
 import asyncio
+import time
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 
@@ -343,6 +344,89 @@ def test_postgres_board_realtime_websocket_persists_document_state(monkeypatch):
             "updates": [[7, 7, 7], [8, 8, 8]],
         }
         assert websocket.receive_json() == {"states": [], "type": "awareness-batch"}
+
+
+def test_postgres_board_realtime_websocket_skips_process_writes_until_room_empty(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.workspaces = [{"id": "workspace_group", "kind": "group_workspace"}]
+    monkeypatch.setenv("TANGENT_BOARD_STORAGE_DRIVER", "postgres")
+    monkeypatch.delenv("TANGENT_BOARD_REALTIME_PERSIST_MODE", raising=False)
+    monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.storage.postgres_board_collaboration_store.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.storage.postgres_board_realtime_store.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+    group_headers = {
+        "x-tangent-user-id": "dev-user",
+        "x-tangent-workspace-id": "workspace_group",
+        "x-tangent-workspace-kind": "group_workspace",
+        "x-tangent-workspace-name": "Group workspace",
+    }
+
+    save_response = client.post(
+        "/api/v1/boards",
+        headers=group_headers,
+        json={
+            "boardId": "realtime_final_snapshot_board",
+            "document": {"assets": [], "shapes": [{"id": "shape_snapshot"}]},
+            "title": "Realtime Final Snapshot Board",
+        },
+    )
+    assert save_response.status_code == 200
+
+    visibility_response = client.patch(
+        "/api/v1/boards/realtime_final_snapshot_board",
+        headers=group_headers,
+        json={"visibility": "workspace"},
+    )
+    assert visibility_response.status_code == 200
+
+    room_key = "board:workspace_group:realtime_final_snapshot_board"
+    with client.websocket_connect(
+        _realtime_url(
+            "realtime_final_snapshot_board",
+            "tab_owner_snapshot",
+            room_key,
+            workspace_id="workspace_group",
+            workspace_kind="group_workspace",
+            workspace_name="Group workspace",
+        )
+    ) as ws_owner:
+        assert ws_owner.receive_json() == {
+            "documentVersion": 0,
+            "requestCompaction": False,
+            "seedRoom": True,
+            "type": "sync-state",
+            "updates": [],
+        }
+        assert ws_owner.receive_json() == {"states": [], "type": "awareness-batch"}
+
+        ws_owner.send_json({"type": "yjs-update", "update": [3, 3, 3]})
+        time.sleep(0.35)
+        assert fake_db.board_realtime_documents == []
+
+        with client.websocket_connect(
+            _realtime_url(
+                "realtime_final_snapshot_board",
+                "tab_observer_snapshot",
+                room_key,
+                workspace_id="workspace_group",
+                workspace_kind="group_workspace",
+                workspace_name="Group workspace",
+            )
+        ) as ws_observer:
+            assert ws_observer.receive_json() == {
+                "documentVersion": 1,
+                "requestCompaction": False,
+                "seedRoom": False,
+                "type": "sync-state",
+                "updates": [[3, 3, 3]],
+            }
+            assert ws_observer.receive_json() == {"states": [], "type": "awareness-batch"}
+
+        time.sleep(0.1)
+        assert fake_db.board_realtime_documents == []
+
+    assert fake_db.board_realtime_documents[-1]["document_updates"] == [[3, 3, 3]]
 
 
 def test_local_board_realtime_websocket_requests_compaction_and_replaces_chain(tmp_path, monkeypatch):

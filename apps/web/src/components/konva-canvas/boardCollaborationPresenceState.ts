@@ -25,6 +25,7 @@ export function createLocalSessionPresenceSnapshot(
     ...presence,
     connectionPreview: normalizeLocalConnectionPreview(presence.connectionPreview ?? null),
     cursor: null,
+    draftPreview: null,
     hoveredShapeId: null,
     selectionBox: null,
     transformBox: null,
@@ -104,6 +105,7 @@ export function isSamePresence(left: BoardCollaborationPresence, right: BoardCol
   return (
     left.activePageId === right.activePageId
     && isSamePoint(left.cursor ?? null, right.cursor ?? null)
+    && isSamePresenceDraft(left.draftPreview ?? null, right.draftPreview ?? null)
     && areSameStringArrays(left.editingShapeIds ?? [], right.editingShapeIds ?? [])
     && left.hoveredShapeId === right.hoveredShapeId
     && isSameConnectionPreview(left.connectionPreview ?? null, right.connectionPreview ?? null)
@@ -115,6 +117,14 @@ export function isSamePresence(left: BoardCollaborationPresence, right: BoardCol
     && isSameBounds(left.transformBox ?? null, right.transformBox ?? null)
     && left.transformKind === right.transformKind
   )
+}
+
+function isSamePresenceDraft(
+  left: BoardCollaborationPresence['draftPreview'] | null,
+  right: BoardCollaborationPresence['draftPreview'] | null,
+) {
+  if (!left || !right) return left === right
+  return JSON.stringify(left) === JSON.stringify(right)
 }
 
 function normalizeLocalConnectionPreview(

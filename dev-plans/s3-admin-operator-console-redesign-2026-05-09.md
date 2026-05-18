@@ -14,7 +14,7 @@ Rebuild the developer admin console around the operator mock:
 - No explanatory helper copy in the UI.
 - Frontend must render real aggregated data, not stitch together many slow detail calls.
 
-This is not a database rewrite. Keep the existing Neon/Postgres schema, wallet, subscription, ledger and AiRun facts. Add only the missing admin-read fields, indexes and operations needed by the mock.
+This is not a database rewrite. Keep the existing Postgres schema, wallet, subscription, ledger and AiRun facts. Add only the missing admin-read fields, indexes and operations needed by the mock.
 
 ## Product Contract
 
@@ -337,7 +337,7 @@ Local checkpoint on 2026-05-11:
 6. Frontend user detail five-tab layout and modal shell. Done locally.
 7. Hook existing manual finance writes into the new modals. Done locally.
 8. Role-aware joined Team/Group management actions. First pass done locally.
-9. Local smoke with demo data and real Neon/local Postgres. Local gates are green; staging remains.
+9. Local smoke with demo data and real local/Supabase-compatible Postgres. Local gates are green; staging remains.
 
 ## Open Decisions
 

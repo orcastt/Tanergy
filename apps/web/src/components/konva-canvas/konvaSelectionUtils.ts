@@ -6,6 +6,7 @@ import {
   type CanvasShape,
 } from '@/features/canvas-engine'
 import type { KonvaResizeHandle } from './konvaCanvasTypes'
+import { getKonvaShapeMinResizeSize } from './konvaNodeCardSizing'
 import { scaleStandaloneTextStyle } from './konvaTextAutoFit'
 
 const minResizeSize = 12
@@ -69,12 +70,13 @@ export function mergeSelectedIds(current: string[], next: string[]) {
 export function resizeShapeToBounds(shape: CanvasShape, bounds: CanvasBounds): CanvasShape {
   if (!isResizableShape(shape)) return shape
   const rect = boundsToRect(bounds)
+  const minSize = getKonvaShapeMinResizeSize(shape)
   return {
     ...shape,
     props: {
       ...shape.props,
-      height: Math.max(minResizeSize, rect.height),
-      width: Math.max(minResizeSize, rect.width),
+      height: Math.max(minSize.height, rect.height),
+      width: Math.max(minSize.width, rect.width),
     },
     x: rect.x,
     y: rect.y,
@@ -223,12 +225,13 @@ function transformShapeFromBounds(shape: CanvasShape, originBounds: CanvasBounds
 
   if (isResizableShape(shape)) {
     const scaledShape = shape.type === 'text' && options.scaleText !== false ? scaleStandaloneTextStyle(shape, scaleY) : shape
+    const minSize = getKonvaShapeMinResizeSize(shape)
     return {
       ...scaledShape,
       props: {
         ...scaledShape.props,
-        height: Math.max(minResizeSize, shape.props.height * scaleY),
-        width: Math.max(minResizeSize, shape.props.width * scaleX),
+        height: Math.max(minSize.height, shape.props.height * scaleY),
+        width: Math.max(minSize.width, shape.props.width * scaleX),
       },
       x: nextOrigin.x,
       y: nextOrigin.y,

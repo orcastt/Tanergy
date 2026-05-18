@@ -1,6 +1,6 @@
 # PRD Slice S1C: Auth And Request Context
 
-**Updated**: 2026-05-16
+**Updated**: 2026-05-18
 **Status**: Clerk frontend/session bridge, FastAPI bearer verification, Tanergy-owned profile onboarding/editing, visible Clerk-backed forgot-password flow and a real `/account` delete path for personal accounts are landed; logout/session hardening remains.
 
 ## User Value
@@ -48,7 +48,7 @@ Remaining hardening:
 
 ## Provider Decision
 
-Use an Auth provider for P0 rather than building password storage and OAuth from scratch. Clerk is the preferred Next.js path because it gives hosted/modal sign-in, Google OAuth, user profile UI and JWT issuance quickly. Supabase Auth remains an acceptable alternative if the infrastructure decision favors Supabase.
+Use an Auth provider for P0 rather than building password storage and OAuth from scratch. Clerk is the active path for this project because it gives hosted/modal sign-in, Google OAuth, user profile UI and JWT issuance quickly. Supabase is now used only for Postgres in the current staging plan; Supabase Auth is not part of the active migration.
 
 Product behavior should be the same regardless of provider:
 

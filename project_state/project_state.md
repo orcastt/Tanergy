@@ -2,7 +2,7 @@
 
 **Updated**: 2026-05-18
 **Branch**: `feature/s1c-auth-admin-production-boundary`
-**Latest local checkpoint**: S1X Konva route stabilization + local collaboration presence/read-only foundation + passive remote-save sync + local Yjs room/snapshot foundation with visible sync state, deferred remote-apply controls, native page/shape/edge Yjs storage, collaboration-origin autosave suppression, structural page-reconcile improvements, server-room-key alignment, provider-ready transport shaping, document/awareness initial-sync gating, bounded websocket queued-update reconnect semantics and local collaborative undo/redo + S1D permission/share hardening + S2/S3 DB-backed AI control-plane scaffolds + first-pass billing/team/usage/admin surfaces + S3 admin-operator acceptance pass + DB-backed workspace/subscription frontend alignment + Jiekou-first local canvas UX proof + admin hot-path performance cleanup with pooled Postgres runtime preference and slow-SQL observability + backend text `AiRun` support with durable terminal `text_output` persistence, Prompt Optimizer remote create/poll/cancel wiring and message-native chat backendization + rebuilt S1B staging API host recovery with rotated Neon/R2 runtime secrets, hardened SSH, Docker/Caddy restore, wheel-safe API env bootstrap, green local/public API smoke on `api-staging.tanergy.cc`, a root-level Vercel packaging cleanup, restored production `CLERK_SECRET_KEY`, a fresh `staging.tanergy.cc` alias that now serves the Konva-only web deploy without the old tldraw/license failure, real Clerk session/admin smoke on staging, the 2026-05-14 AI image-model refresh onto GPT Image 2, Nano Banana 2, Doubao Seedream 5.0 Lite and Jimeng 4.0 with a 240s live-image timeout boundary, the 2026-05-16 shared account-deletion path that now powers `/account` self-delete plus admin user delete with Team/Group ownership guards, the 2026-05-16 staging secret cleanup that migrated the live `api.env` out of the retired dirty worktree into a private shared server-local store mirrored into the active release, and the 2026-05-17 maintainability checkpoint that further split oversized AI runtime, admin control-plane, board store, billing client and Konva chat/collaboration modules while keeping the S3/S4 Team-Group foundation baseline as the active business-system ground truth. The current mainline order is now explicit: signed-in board/browser acceptance, Google/email plus CORS/origin acceptance, one real live AI image smoke, then S1D/S3 closeout, and only after that S4 collaboration. Non-urgent follow-on development should be documented first and kept out of this mainline until these gates are complete.
+**Latest local checkpoint**: S1X Konva route stabilization + local collaboration presence/read-only foundation + passive remote-save sync + local Yjs room/snapshot foundation with visible sync state, deferred remote-apply controls, native page/shape/edge Yjs storage, collaboration-origin autosave suppression, structural page-reconcile improvements, server-room-key alignment, provider-ready transport shaping, document/awareness initial-sync gating, bounded websocket queued-update reconnect semantics and local collaborative undo/redo + draft drawing presence preview + S1D permission/share hardening + S2/S3 DB-backed AI control-plane scaffolds + first-pass billing/team/usage/admin surfaces + S3 admin-operator acceptance pass + DB-backed workspace/subscription frontend alignment + Jiekou-first local canvas UX proof + admin hot-path performance cleanup with pooled Postgres runtime preference and slow-SQL observability + backend text `AiRun` support with durable terminal `text_output` persistence, Prompt Optimizer remote create/poll/cancel wiring and message-native chat backendization + rebuilt S1B staging API host recovery, Supabase Pro staging cutover, R2 cleanup and final-snapshot realtime persistence, hardened SSH, Docker/Caddy restore, wheel-safe API env bootstrap, green local/public API smoke on `api-staging.tanergy.cc`, a root-level Vercel packaging cleanup, restored production `CLERK_SECRET_KEY`, a fresh `staging.tanergy.cc` alias that now serves the Konva-only web deploy without the old tldraw/license failure, real Clerk session/admin smoke on staging, the 2026-05-14 AI image-model refresh onto GPT Image 2, Nano Banana 2, Doubao Seedream 5.0 Lite and Jimeng 4.0 with a 240s live-image timeout boundary, the 2026-05-16 shared account-deletion path that now powers `/account` self-delete plus admin user delete with Team/Group ownership guards, the 2026-05-16 staging secret cleanup that migrated the live `api.env` out of the retired dirty worktree into a private shared server-local store mirrored into the active release, and the 2026-05-17 maintainability checkpoint that further split oversized AI runtime, admin control-plane, board store, billing client and Konva chat/collaboration modules while keeping the S3/S4 Team-Group foundation baseline as the active business-system ground truth. The current mainline order is now explicit: second-round signed-in board/browser acceptance, Google/email plus CORS/origin acceptance, one real live AI image smoke, then S1D/S3 closeout, and only after that deeper S4 collaboration. Non-urgent follow-on development should be documented first and kept out of this mainline until these gates are complete.
 
 This folder replaces the former root-level long project ledger and short mirror files. The root `project_state.md` is now only a pointer.
 
@@ -26,7 +26,7 @@ The next documented business-system target is now the S3 Team/Group wallet slice
 
 Operationally, this means `/boards/[boardId]` is the production-facing canvas surface to keep polishing, while `/spikes/konva-canvas` is only a dev regression harness. New canvas requirements should update the S1X slice docs before this total index is touched again.
 
-2026-05-18 staging database decision: the original Neon staging project paused after exceeding its monthly data-transfer quota, and the Hetzner API host briefly used a server-local Docker Postgres container named `staging-postgres` as an emergency fallback. That fallback is now historical only and should not be reused or extended. The next clean staging path is a fresh Supabase Pro Postgres project with Alembic run from an empty database, no old Neon/Hetzner data restore, and Cloudflare R2 staging objects cleared before new board/asset smoke data is recreated.
+2026-05-18 staging database decision and cleanup: the original Neon staging project paused after exceeding its monthly data-transfer quota, and the Hetzner API host briefly used a server-local Docker Postgres container named `staging-postgres` as an emergency fallback. That fallback is now historical only and should not be reused or extended. The Hetzner `staging-postgres` container and `staging_postgres_data` volume have been removed, the Cloudflare R2 `tanergy-assets` bucket was cleared to 0 objects, and staging now points at a fresh Supabase Pro Postgres project with Alembic applied to head. Public API `/health` is green again. Board realtime persistence now defaults to final snapshots: ordinary websocket `yjs-update` process traffic is room-broadcast only, while compacted/final realtime document snapshots are persisted to Postgres.
 
 S1E is now planned as the portable Board package lane: `.tgy` will be the Tanergy Board Package extension for exporting and importing a complete Board with drawings, images, AI nodes, prompts, model parameters and runtime edges. No user-facing `.tgy` implementation exists yet.
 
@@ -51,15 +51,15 @@ These percentages are coarse readiness markers, not time estimates:
 
 ```text
 S1X Canvas/Konva runtime      78%  stable local Board path; export/Yjs/live AiRun polish pending
-S1A Schema/DB foundation      82%  core join points and Team-wallet schema delta exist; staging DB smoke remains
-S1B Deploy/staging            86%  rebuilt Hetzner API host, public HTTPS API, historical Neon/R2/board smoke, CORS and the Konva-only staging web deploy are green; the live env no longer depends on the retired dirty worktree, a first signed-in browser pass is now green, and the remaining work is the Supabase Pro clean rebuild, R2 clean asset smoke, second-round reopen/conflict/thumbnail edge cases, Google/email flow verification and one live AI smoke
+S1A Schema/DB foundation      84%  core join points and Team-wallet schema delta exist; fresh Supabase Pro Alembic-head smoke is green, measured query-plan tuning remains
+S1B Deploy/staging            88%  rebuilt Hetzner API host, public HTTPS API, Supabase Pro fresh schema, historical R2/board smoke, CORS and the Konva-only staging web deploy are green; the live env no longer depends on the retired dirty worktree, a first signed-in browser pass is now green, and the remaining work is R2 clean asset smoke, re-created staging admin/workspace/board data, second-round reopen/conflict/thumbnail edge cases, Google/email flow verification and one live AI smoke
 S1C Auth/registration         78%  Clerk/FastAPI bearer boundary, admin bootstrap, real staging session/admin smoke, Tanergy profile onboarding/editing and a visible Clerk-backed forgot-password flow now exist; session revocation/logout hardening plus Google/email verification remain
 S1D Board/share/invites       73%  CRUD/share/member first pass, workspace invite backend contracts and role-gated Team/Group UI first pass exist; billing visibility separation pending
 S1E Board packages            05%  `.tgy` package docs exist; export/import UI, asset bundling and asset rehydration pending
 S2 AI runtime/provider routes 68%  Jiekou-first local UX path exists; backend short-text `AiRun`, durable `text_output`, message-native chat backendization, four-model image refresh and longer live-image timeout now exist; live image smoke and broader provider coverage remain
 S3 Admin/billing/team         97%  admin/billing/team scaffolds, Team-wallet payer + settlement contract tests, Team/Collaborate checkout, provider-neutral checkout adapter, signed payment webhook inbox, Group create, workspace invite/member contracts, real `/usage` checkout buttons, billing return routes, admin directory APIs, tabbed admin console, active-tab server bootstrap, idle-warmed client tab keepalive, paginated Team/Group dashboards, AI route metrics, table-first AI route management, admin finance reconciliation panels, manual admin operations, operator User inventory/detail read model, five-tab user detail, centered manual-finance modals, native user status/delete, native subscription freeze/unfreeze, arbitrary Team/Group invite-add-member ops, searchable Join Team/Join Group detail modals, inline pending invite rows, local detail patching for invite/member/board mutations, board copy/delete ops, unified billing-history rows, an opt-in local operator demo seed and DB-backed Team/Group/Billing frontend reads now exist; remote staging redeploy, Alembic-head/admin_roles real-login smoke plus payment/invoice/refund depth pending
 Frontend product UI alignment 69%  major surfaces, wide board/workspace/subscription polish, DB-backed Team/Group directories, live billing/usage cards and table-first AI route management exist; nav, plan labels and cost messaging still need another tightening pass
-S4 Collaboration              27%  local Yjs room/document foundation plus bounded websocket queued-update reconnect semantics exist; provider-grade reconnect/resync, persistence and conflict semantics still remain
+S4 Collaboration              34%  local Yjs room/document foundation, bounded websocket queued-update reconnect semantics, low-rate draft drawing presence preview and final-snapshot backend persistence exist; Redis backplane, provider-grade multi-instance reconnect/resync, TTL locks and deeper conflict semantics still remain
 ```
 
 ## Current Execution Order
@@ -131,18 +131,18 @@ Done locally:
   Admin bootstrap groundwork
 
 Not production-complete:
-  real Auth/email/session
+  Google/email verification plus logout/session revocation hardening
   share editor/invite-accept and full team/share permissions
   real Group/Team workspace governance depth, deployed staging payment smoke, paid seat renewal/cancellation flows, external payment-provider reconciliation and hosted live provider settlement smoke
   staging auth/email/license hardening
   precise old-board style/binding migration beyond first-pass copy tooling
   `.tgy` Board Package export/import and asset rehydration
-  Konva collaboration/Yjs provider sync
+  production-grade Konva collaboration/Yjs provider sync
   true rendered Konva page-thumbnail assets/page duplicate/Move selection to new page
   local Jiekou-first path folded into the server AiRun/provider-route/billing control plane
-  full real AI provider coverage and durable text-output persistence
+  full real AI provider coverage beyond the first live image smoke
   full Admin/Billing/Analytics depth, including external billing reconciliation and richer finance views
-  collaboration
+  production multiplayer collaboration beyond the current draft-preview/final-snapshot bridge
 ```
 
 ## State Slice Index
@@ -152,11 +152,11 @@ Not production-complete:
 | S0 Local Polish | `Finished/project_state_slice_S0_local_polish.md` | Finished baseline; regression reference only |
 | S1 Staging/Auth/Board | `project_state_slice_S1_staging_auth_board.md` | Active umbrella slice; detailed truth now lives in S1A/S1B/S1C/S1D/S1X |
 | S1A DB Schema | `project_state_slice_S1A_db_schema.md` | S1A core implemented through `0006`; current migration head also includes S3 `0007` |
-| S1B Staging Infra | `project_state_slice_S1B_staging_infra.md` | In progress; rebuilt public API host plus historical Neon/R2/board smoke passed, the dirty old worktree has been retired after env migration, and Supabase Pro clean rebuild plus auth/email/web acceptance still remain |
+| S1B Staging Infra | `project_state_slice_S1B_staging_infra.md` | In progress; rebuilt public API host plus Supabase Pro fresh schema, historical R2/board smoke and current API health passed, the dirty old worktree has been retired after env migration, and R2 clean asset smoke plus re-created staging data, auth/email and second-round browser acceptance still remain |
 | S1C Auth Context | `project_state_slice_S1C_auth_request_context.md` | Active checkpoint; provider-backed auth, Tanergy profile ownership, Clerk recovery flow and a local account-deletion path are in place, while logout/session hardening and broader verification remain |
 | S1D Board CRUD | `project_state_slice_S1D_auth_board_crud.md` | Stable first-pass CRUD/member/share/public-share-open checkpoint with owner-only copy/delete, share expiry and known-foreign Asset guard |
 | S1E Board Packages | `project_state_slice_S1E_board_packages.md` | Planned; `.tgy` package decision and docs exist, implementation not started |
-| S1X Canvas Engine Migration | `project_state_slice_S1X_canvas_engine_migration.md` | Konva Board route accepted; Page polish and v1 copy tooling landed; local presence/read-only, passive remote-save sync and a local Yjs room/snapshot foundation with visible sync/conflict controls, native page/shape/edge Yjs storage, structural page reconcile, server-room-key alignment, provider-ready transport shaping, document/awareness initial-sync gating and local collaborative undo/redo are wired; provider/awareness remains pending |
+| S1X Canvas Engine Migration | `project_state_slice_S1X_canvas_engine_migration.md` | Konva Board route accepted; Page polish, v1 copy tooling, page-limit guard, node minimum sizing and draft drawing preview landed; local presence/read-only, passive remote-save sync and a local/Yjs websocket room foundation with visible sync/conflict controls, native page/shape/edge Yjs storage, structural page reconcile, server-room-key alignment, provider-ready transport shaping, document/awareness initial-sync gating, local collaborative undo/redo and final-snapshot realtime persistence are wired; production multi-instance provider/awareness remains pending |
 | S2 AI Runtime | `project_state_slice_S2_ai_runtime.md` | Mock/runtime dataflow, persisted route/settlement shell and local Jiekou-first canvas path are usable; DB-backed quote/preflight/lifecycle/attempt facts exist; production gate is folding the remaining local bridge logic into the server provider-route/billing control plane and validating one live image path with durable Asset/text-output handling |
 | S3 Admin/Billing/Analytics | `project_state_slice_S3_admin_billing_analytics.md` | Active pivot: migration `20260508_0012/0013`, payer resolver plus settlement contracts, Team/Collaborate checkout, provider-neutral checkout adapter, signed webhook inbox, Group create, workspace invite/member contracts, frontend actions, admin directory APIs, tabbed admin console, active-tab server bootstrap, idle-warmed client tab keepalive, paginated Team/Group dashboards, AI route metrics, table-first AI route management, admin finance reconciliation panels, manual admin billing bridge, disposable Postgres smoke, local manual/hosted payment smoke, first-pass operator inventory/detail, native user status/delete, native subscription freeze/unfreeze, arbitrary Team/Group invite-add-member writes, inline pending invite rows, local detail patching for invite/member/board mutations and board copy/delete writes now support Team wallet vs personal Collaborate wallet while Stripe is unavailable; user delete is now a real hard-delete path with ownership guards, while remote staging redeploy smoke and invoice/refund depth remain |
 
@@ -175,7 +175,7 @@ If external resources are not ready:
 If external resources are ready:
 
 1. Finish recording S1B staging smoke status and deploy the Konva-only Board route with legacy Board documents blocked in the active app path.
-2. Run fresh Supabase Pro Alembic/query smoke and R2 clean-bucket/prefix asset smoke.
+2. Run R2 clean-bucket/prefix asset smoke and recreate minimal staging admin/workspace/board data after the fresh Supabase Pro Alembic/query smoke.
 3. Continue S1C Auth rollout and harden S1D Auth-backed Board CRUD/public share on top of the Konva v2 Board contract.
 4. Harden S1D Group/Team workspace permissions and S3 Team-wallet/personal-wallet entitlements on top of real identity.
 5. Move S2 real AI provider work through server-side AiRun contracts, starting with the current Jiekou-first provider-route reconciliation plan and the new payer resolver.
@@ -212,7 +212,7 @@ S1C real Auth
   +--> S4 Collaboration
 ```
 
-Current recommendation: treat S1X as a Konva-only production path, keep historical migration notes only as background context, and use `dev-plans/s1-launch-readiness-and-acceptance-report-2026-05-05.md`, `dev-plans/s2-ai-provider-route-billing-control-plane-2026-05-07.md`, `dev-plans/s3-team-group-wallets-membership-billing-plan-2026-05-08.md` and `dev-plans/s3-admin-operator-console-redesign-2026-05-09.md` as the handoff checklists. S1A is implemented but needs the Team-wallet delta, S1D first-pass share flow is in place, and S3 should not start real provider charging until Team wallet and personal Collaborate wallet payer tests pass.
+Current recommendation: treat S1X as a Konva-only production path, keep historical migration notes only as background context in `dev-plans/Archive/`, and use `dev-plans/p0-alpha-stabilization-and-acceptance-2026-05-06.md`, `dev-plans/s1b-supabase-r2-redis-collaboration-infra-plan-2026-05-18.md`, `dev-plans/s2-ai-provider-route-billing-control-plane-2026-05-07.md`, `dev-plans/s3-team-group-wallets-membership-billing-plan-2026-05-08.md` and `dev-plans/s3-admin-operator-console-redesign-2026-05-09.md` as the handoff checklists. S1D first-pass share flow is in place, and S3 should not start real provider charging until Team wallet and personal Collaborate wallet payer tests pass.
 
 Next major checkpoint should move from repaired staging infrastructure into the remaining production-facing S1B/S1C/S2 gates in this explicit order: finish the second-round signed-in board/browser acceptance after the now-green first pass, then Google/email plus CORS/origin verification, then the refreshed four-model live image smoke, then S1D/S3 closeout, and only then the deeper S4 Yjs/provider proof with cleaner server boundaries. Avoid reintroducing legacy canvas compatibility layers, and avoid interrupting this order for non-urgent backlog work that can be recorded in docs first.
 
@@ -228,9 +228,9 @@ Next major checkpoint should move from repaired staging infrastructure into the 
 
 # TANGENT 项目状态索引
 
-**更新日期**：2026-05-15
+**更新日期**：2026-05-18
 **分支**：`feature/s1c-auth-admin-production-boundary`
-**最新本地检查点**：S1X Konva 路由稳定化 + 本地协同 presence/read-only + 被动远端保存同步 + 本地 Yjs room/snapshot foundation（含结构性 page reconcile、server room key 对齐、本地协同 undo/redo）+ S1D permission/share hardening + S2/S3 DB-backed AI control-plane 脚手架 + 第一阶段 billing/team/usage/admin surfaces + Jiekou-first 本地画布 UX proof + staging Konva-only 部署恢复 + 真实 Clerk session/admin smoke 转绿 + 2026-05-14 生图模型刷新到 GPT Image 2、Nano Banana 2、Doubao Seedream 5.0 Lite 和 Jimeng 4.0，并把长耗时生图超时边界抬到 240s；2026-05-16 又完成 staging `api.env` 从旧脏工作树迁出到私有共享存储并镜像回当前 release。当前业务系统检查点是 S3 Team/Group wallet 调整：Team 套餐使用彼此隔离的 Team workspace 和 Team wallet，Group/Collaborate 使用个人钱包。
+**最新本地检查点**：S1X Konva 路由稳定化 + 本地协同 presence/read-only + 被动远端保存同步 + 本地 Yjs room/snapshot foundation（含结构性 page reconcile、server room key 对齐、本地协同 undo/redo、draft drawing presence preview）+ S1D permission/share hardening + S2/S3 DB-backed AI control-plane 脚手架 + 第一阶段 billing/team/usage/admin surfaces + Jiekou-first 本地画布 UX proof + staging Konva-only 部署恢复 + Supabase Pro staging 数据库 clean rebuild + R2 清理 + realtime final snapshot persistence + 真实 Clerk session/admin smoke 转绿 + 2026-05-14 生图模型刷新到 GPT Image 2、Nano Banana 2、Doubao Seedream 5.0 Lite 和 Jimeng 4.0，并把长耗时生图超时边界抬到 240s；2026-05-16 又完成 staging `api.env` 从旧脏工作树迁出到私有共享存储并镜像回当前 release。当前业务系统检查点是 S3 Team/Group wallet 调整：Team 套餐使用彼此隔离的 Team workspace 和 Team wallet，Group/Collaborate 使用个人钱包。
 
 本目录取代了原来的根级长项目台账和短镜像文件。根目录 `project_state.md` 现在只做指针用途。
 
@@ -273,15 +273,15 @@ S2/S3 现在也已经开始了第一条真正的 AI control-plane backend 主线
 
 ```text
 S1X Canvas/Konva runtime      78%  本地 Board 主路径稳定；export/Yjs/live AiRun polish 待完成
-S1A Schema/DB foundation      82%  core join points 与 Team-wallet schema delta 已存在；staging DB smoke 仍待完成
-S1B Deploy/staging            84%  重建后的 Hetzner API、public HTTPS API、历史 Neon/R2/board smoke、CORS 和 Konva-only staging Web deploy 已转绿；signed-in browser 首轮已转绿，剩余工作是 Supabase Pro 干净重建、R2 clean asset smoke、第二轮 reopen/conflict/thumbnail 边界项、Google/email 和一条 live AI smoke
+S1A Schema/DB foundation      84%  core join points 与 Team-wallet schema delta 已存在；fresh Supabase Pro Alembic-head smoke 已转绿，剩余是实测 query plan 调优
+S1B Deploy/staging            88%  重建后的 Hetzner API、public HTTPS API、Supabase Pro fresh schema、历史 R2/board smoke、CORS 和 Konva-only staging Web deploy 已转绿；signed-in browser 首轮已转绿，剩余工作是 R2 clean asset smoke、重新创建 staging admin/workspace/board 数据、第二轮 reopen/conflict/thumbnail 边界项、Google/email 和一条 live AI smoke
 S1C Auth/registration         78%  Clerk/FastAPI bearer 边界、admin bootstrap、真实 staging session/admin smoke、Tanergy profile onboarding/editing 以及可见的 Clerk forgot-password 流程已存在；session revocation/logout hardening 与 Google/email 验证仍待完成
 S1D Board/share/invites       73%  CRUD/share/member 第一阶段、workspace invite backend contracts 和带角色门控的 Team/Group UI first pass 已存在；billing visibility separation 待完成
 S1E Board packages            05%  `.tgy` package docs 已存在；export/import UI、asset bundling 和 asset rehydration 待完成
 S2 AI runtime/provider routes 68%  Jiekou-first 本地 UX 路径存在；后端短文本 `AiRun`、durable `text_output`、message-native chat backendization、四模型生图刷新和更长生图超时已存在；剩余闸门是 live image smoke 与更广 provider 覆盖
 S3 Admin/billing/team         96%  admin/billing/team 脚手架、Team-wallet payer + settlement 合同测试、Team/Collaborate checkout、provider-neutral checkout adapter、signed payment webhook inbox、Group create、workspace invite/member contracts、real `/usage` checkout buttons、billing return routes、admin directory APIs、tabbed admin console、active-tab server bootstrap、idle-warmed client tab keepalive、分页 Team/Group dashboards、AI route metrics、table-first AI route management、admin finance reconciliation panels、manual admin operations、operator User inventory/detail read model、五标签 user detail、centered manual-finance modals、native user status/delete、native subscription freeze/unfreeze、任意 Team/Group 的 invite-add-member ops、可搜索的 Join Team/Join Group detail modals、inline pending invite rows、invite/member/board mutation 的本地 detail patching、board copy/delete ops、unified billing-history rows，以及本地可选的 operator demo seed 已存在；remote staging redeploy、payment/invoice/refund 深度待完成
 Frontend product UI alignment 63%  主要界面、table-first AI route management、带角色门控的 Team/Group member actions、第一阶段 Billing actions、tabbed admin console、admin finance panels，以及 operator 行内 invite/member/board 操作回路已存在；导航、套餐语言和扣费文案需要对齐
-S4 Collaboration              27%  本地 Yjs room/document 基础与 reconnect/resync smoke harness 已存在；Yjs/provider proof 仍后置
+S4 Collaboration              34%  本地 Yjs room/document 基础、reconnect/resync smoke harness、低频 draft drawing presence preview 和后端 final snapshot persistence 已存在；Redis backplane、TTL locks、多实例 Yjs/provider proof 仍后置
 ```
 
 ## 当前主线顺序
@@ -342,18 +342,18 @@ S4 Collaboration              27%  本地 Yjs room/document 基础与 reconnect/
   Admin bootstrap groundwork
 
 尚未达到生产完成：
-  real Auth/email/session
+  Google/email verification plus logout/session revocation hardening
   share editor/invite-accept and full team/share permissions
   real Group/Team workspace governance、deployed staging payment smoke、paid seat renewal/cancellation flows、external payment-provider reconciliation 和 hosted live provider settlement smoke
   staging auth/email/license hardening
   precise old-board style/binding migration beyond first-pass copy tooling
   `.tgy` Board Package export/import 和 asset rehydration
-  Konva collaboration/Yjs provider sync
+  production-grade Konva collaboration/Yjs provider sync
   true rendered Konva page-thumbnail assets/page duplicate/Move selection to new page
   local Jiekou-first path 收口到 server AiRun/provider-route/billing control plane
-  full real AI provider coverage 和 durable text-output persistence
+  live AI provider 覆盖范围继续扩大，超出第一条 live image smoke
   full Admin/Billing/Analytics 深度能力，包括 billing-history reconciliation、external billing reconciliation 和更丰富的 finance views
-  collaboration
+  超出当前 draft-preview / final-snapshot bridge 的生产级多人协作
 ```
 
 ## 状态切片索引
@@ -363,11 +363,11 @@ S4 Collaboration              27%  本地 Yjs room/document 基础与 reconnect/
 | S0 本地打磨 | `Finished/project_state_slice_S0_local_polish.md` | 已完成 baseline；仅作为 regression reference |
 | S1 Staging/Auth/Board | `project_state_slice_S1_staging_auth_board.md` | 活跃 umbrella；详细事实现在位于 S1A/S1B/S1C/S1D/S1X |
 | S1A DB Schema | `project_state_slice_S1A_db_schema.md` | S1A core 已通过 `0006` 实现；当前 migration head 还包含 S3 `0007` |
-| S1B Staging Infra | `project_state_slice_S1B_staging_infra.md` | 进行中；FastAPI / 历史 Neon / R2 smoke 已通过，Supabase Pro 干净重建待执行 |
+| S1B Staging Infra | `project_state_slice_S1B_staging_infra.md` | 进行中；FastAPI / Supabase Pro fresh schema / 历史 R2 smoke 已通过，R2 clean asset smoke、重新创建 staging 数据、auth/email 和第二轮 browser acceptance 仍待完成 |
 | S1C Auth Context | `project_state_slice_S1C_auth_request_context.md` | 活跃检查点；provider-backed auth、Tanergy profile ownership 与 Clerk recovery flow 已到位，但 logout/session hardening 与更广验证仍待完成 |
 | S1D Board CRUD | `project_state_slice_S1D_auth_board_crud.md` | 第一阶段 CRUD/member/share/public-share-open 检查点稳定，并已带 owner-only copy/delete、share expiry 和 known-foreign Asset guard |
 | S1E Board Packages | `project_state_slice_S1E_board_packages.md` | 已规划；`.tgy` package 决策和文档已存在，implementation 还未开始 |
-| S1X Canvas Engine Migration | `project_state_slice_S1X_canvas_engine_migration.md` | Konva Board 路由已接受；Page polish 和 v1 copy tooling 已落地；本地 presence/read-only、被动远端保存同步、本地 Yjs room/snapshot foundation、同步/冲突可见控制、native page/shape/edge Yjs 存储、结构性 page reconcile、server room key 对齐与本地协同 undo/redo 已接通；协同/画布 memory audit 已补 bounded cache/history/update-chain、presence sanitize 和 image-cache 规则；provider/awareness 仍待完成 |
+| S1X Canvas Engine Migration | `project_state_slice_S1X_canvas_engine_migration.md` | Konva Board 路由已接受；Page polish、v1 copy tooling、page-limit guard、node minimum sizing 和 draft drawing preview 已落地；本地 presence/read-only、被动远端保存同步、本地/Yjs websocket room foundation、同步/冲突可见控制、native page/shape/edge Yjs 存储、结构性 page reconcile、server room key 对齐、本地协同 undo/redo 与 final-snapshot realtime persistence 已接通；生产级多实例 provider/awareness 仍待完成 |
 | S2 AI Runtime | `project_state_slice_S2_ai_runtime.md` | Mock/runtime dataflow、持久化 route/settlement shell 和本地 Jiekou-first canvas path 都已可用；DB-backed quote/preflight/lifecycle/attempt facts 已存在；AI chat/image inline、provider b64、remote import 和 retained text 已补大小/流式/输出上限；生产闸门是把 Jiekou 和未来 providers 收口到服务端 provider-route/billing control plane，并用 durable Asset/text-output handling 验证一条 live image path |
 | S3 Admin/Billing/Analytics | `project_state_slice_S3_admin_billing_analytics.md` | 活跃调整：migration `20260508_0012/0013`、payer resolver、settlement contracts、Team/Collaborate checkout、provider-neutral checkout adapter、signed webhook inbox、Group create、workspace invite/member contracts、frontend actions、admin directory APIs、tabbed admin console、active-tab server bootstrap、分页 Team/Group dashboards、AI route metrics、table-first AI route management、admin finance reconciliation panels、manual admin billing bridge、disposable Postgres smoke、本地 manual/hosted payment smoke、first-pass operator inventory/detail、native user status/delete、native subscription freeze/unfreeze、任意 Team/Group 的 invite-add-member writes、inline pending invite rows、invite/member/board mutation 的本地 detail patching、bounded admin/billing/board resource caches、workspace/billing/admin mock fallback cleanup 和 board copy/delete writes 已在 Stripe 不可用时支持 Team wallet vs personal Collaborate wallet；remote staging redeploy smoke 以及 invoice/refund 深度仍待完成 |
 
@@ -385,7 +385,7 @@ S4 Collaboration              27%  本地 Yjs room/document 基础与 reconnect/
 如果外部资源已经准备好：
 
 1. 补全 S1B staging smoke 状态记录，并部署 Konva-only 路由，同时确认 legacy Board 文档在 active app path 中保持阻止状态。
-2. 运行 fresh Supabase Pro Alembic/query smoke 和 R2 clean-bucket/prefix asset smoke。
+2. 运行 R2 clean-bucket/prefix asset smoke，并在 fresh Supabase Pro Alembic/query smoke 后重新创建最小 staging admin/workspace/board 数据。
 3. 继续推进 S1C Auth rollout，并在 Konva v2 Board 合同之上继续加固 S1D Auth-backed Board CRUD / public share。
 4. 在真实 identity 之上继续硬化 S1D 的 Group/Team workspace 权限，以及 S3 的 billing 可见性 entitlement。
 5. 通过服务端 AiRun 合同推进 S2 的真实 AI provider 工作，先从当前 Jiekou-first provider-route reconciliation plan 开始。
@@ -422,7 +422,7 @@ S1D Auth-backed Board CRUD
   +--> S4 Collaboration
 ```
 
-当前建议是：把 S1X 视为 Konva-only 的生产路径，历史迁移说明只保留为背景上下文；除非出现回归，否则把 S1X page polish 视为已接受；并使用 `dev-plans/s1-launch-readiness-and-acceptance-report-2026-05-05.md`、`dev-plans/s2-ai-provider-route-billing-control-plane-2026-05-07.md`、`dev-plans/s3-team-group-wallets-membership-billing-plan-2026-05-08.md` 和 `dev-plans/s3-admin-operator-console-redesign-2026-05-09.md` 作为交接检查清单。S1A 已实现但需要 Team-wallet delta，S1D 第一阶段 share flow 已就绪，S3 在 Team wallet 和 personal Collaborate wallet payer 测试通过前，不应开始真实 provider charging。
+当前建议是：把 S1X 视为 Konva-only 的生产路径，历史迁移说明只保留在 `dev-plans/Archive/` 作为背景上下文；除非出现回归，否则把 S1X page polish 视为已接受；并使用 `dev-plans/p0-alpha-stabilization-and-acceptance-2026-05-06.md`、`dev-plans/s1b-supabase-r2-redis-collaboration-infra-plan-2026-05-18.md`、`dev-plans/s2-ai-provider-route-billing-control-plane-2026-05-07.md`、`dev-plans/s3-team-group-wallets-membership-billing-plan-2026-05-08.md` 和 `dev-plans/s3-admin-operator-console-redesign-2026-05-09.md` 作为交接检查清单。S1D 第一阶段 share flow 已就绪，S3 在 Team wallet 和 personal Collaborate wallet payer 测试通过前，不应开始真实 provider charging。
 
 下一个主要检查点应当按这个明确顺序推进：在 signed-in browser 首轮已转绿的基础上，先补完第二轮 board/browser 验收，再完成 Google/email 与 CORS/origin 验收，然后跑一条刷新后四模型生图线的真实 live image smoke，接着回到 S1D/S3 收口，最后才继续更深的 S4 Yjs/provider proof。避免重新引入 legacy canvas compatibility 行为，也不要为了不紧急的 backlog 项目打断这条顺序。
 

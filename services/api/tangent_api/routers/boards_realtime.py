@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisco
 from tangent_api.realtime.board_realtime_hub import board_realtime_hub
 from tangent_api.realtime.board_realtime_limits import (
     BOARD_REALTIME_WEBSOCKET_MESSAGE_BYTE_LIMIT,
+    encode_realtime_update_payload,
     normalize_realtime_update,
 )
 from tangent_api.realtime.board_realtime_persistence import board_realtime_persistence
@@ -105,7 +106,7 @@ async def board_realtime_room(websocket: WebSocket, board_id: str) -> None:
                         document_version,
                     )
                     if accepted:
-                        await board_realtime_persistence.queue_document(
+                        await board_realtime_persistence.persist_compacted_document(
                             collaboration.workspace_id,
                             board_id,
                             room_key,
@@ -117,7 +118,7 @@ async def board_realtime_room(websocket: WebSocket, board_id: str) -> None:
                             "requestCompaction": request_compaction,
                             "seedRoom": len(document_updates) == 0,
                             "type": "sync-state",
-                            "updates": document_updates,
+                            "updates": [encode_realtime_update_payload(update) for update in document_updates],
                         })
                 continue
             if message_type == "yjs-update":
@@ -134,7 +135,7 @@ async def board_realtime_room(websocket: WebSocket, board_id: str) -> None:
                         update,
                     )
                     if accepted:
-                        await board_realtime_persistence.queue_document(
+                        await board_realtime_persistence.persist_incremental_document(
                             collaboration.workspace_id,
                             board_id,
                             room_key,

@@ -1,6 +1,6 @@
 # PRD Slice S1: Staging, Auth And Board CRUD
 
-**Updated**: 2026-05-14
+**Updated**: 2026-05-18
 **Mode**: Product slice.
 
 ## Goal
@@ -22,8 +22,8 @@ Group/Team business-system depth, real billing automation, collaboration and oth
 | Area | Requirement | Status |
 | --- | --- | --- |
 | Staging Web/API | A public staging Web origin can call a public staging FastAPI origin over HTTPS. | Green on rebuilt staging |
-| Object storage | Uploaded and captured images persist in R2/S3-compatible storage and reload from URL. | R2 smoke passed; production hardening pending |
-| Database | Board, Asset and History data persist in managed Postgres via migrations. | Neon/Alembic smoke passed; current head includes `20260506_0007` entitlement extension |
+| Object storage | Uploaded and captured images persist in R2/S3-compatible storage and reload from URL. | Historical R2 smoke passed; clean-bucket asset smoke remains after R2 reset |
+| Database | Board, Asset and History data persist in managed Postgres via migrations. | Fresh Supabase Pro Alembic-to-head smoke passed; old Neon/Hetzner-local data is intentionally not migrated |
 | Auth | Users can register/login/logout through email OTP, magic link or Google OAuth. | Clerk frontend/session bridge, FastAPI JWT verification and real staging session/admin smoke are green; Google/email/logout hardening still pending |
 | Workspace ownership | New users get a workspace; API queries are scoped by user/workspace. | Default workspace first pass exists; multi-workspace hardening pending |
 | Board CRUD | Board list/search/pagination/open/rename/delete/copy is server-side and permission checked. | Staging list/open/save/load/history first pass is green; search/sort/effective permission hardening pending |
@@ -46,7 +46,7 @@ Group/Team business-system depth, real billing automation, collaboration and oth
 
 | Sub-slice | File | Product outcome |
 | --- | --- | --- |
-| S1A DB schema + migrations | `PRD_slice_S1A_db_schema.md` | Account/workspace/Board facts are modeled locally; staging DB smoke still pending. |
+| S1A DB schema + migrations | `PRD_slice_S1A_db_schema.md` | Account/workspace/Board facts are modeled locally; fresh Supabase Pro Alembic smoke is green. |
 | S1B staging infra | `PRD_slice_S1B_staging_infra.md` | The app can be tested online against real staging services. |
 | S1C Auth/request context | `PRD_slice_S1C_auth_request_context.md` | Users can register/login and get their own workspace. |
 | S1D Auth-backed Board CRUD | `PRD_slice_S1D_auth_board_crud.md` | Users can safely save, reopen and manage only authorized Boards. |
@@ -82,7 +82,7 @@ Group/Team business-system depth, real billing automation, collaboration and oth
 
 # PRD 切片 S1：Staging、Auth 与 Board CRUD
 
-**更新日期**：2026-05-14
+**更新日期**：2026-05-18
 **模式**：产品切片。
 
 ## 目标
@@ -104,8 +104,8 @@ Group/Team 的业务系统深度、真实 billing automation、collaboration 以
 | 领域 | 要求 | 状态 |
 | --- | --- | --- |
 | Staging Web/API | 一个公开 staging Web origin 可以通过 HTTPS 调用公开 staging FastAPI origin。 | 重建后的 staging 已转绿 |
-| Object storage | 上传和 capture 的图片持久化到 R2/S3-compatible storage，并能从 URL 重新加载。 | R2 smoke 已通过；production hardening 待完成 |
-| Database | Board、Asset 和 History data 通过 migrations 持久化到 managed Postgres。 | Neon/Alembic smoke 已通过；当前 head 包含 `20260506_0007` entitlement extension |
+| Object storage | 上传和 capture 的图片持久化到 R2/S3-compatible storage，并能从 URL 重新加载。 | 历史 R2 smoke 已通过；R2 清桶后的 clean asset smoke 仍待补 |
+| Database | Board、Asset 和 History data 通过 migrations 持久化到 managed Postgres。 | fresh Supabase Pro Alembic-to-head smoke 已通过；旧 Neon / Hetzner-local 数据不迁移 |
 | Auth | 用户可以通过 email OTP、magic link 或 Google OAuth 注册 / 登录 / 登出。 | Clerk frontend/session bridge、FastAPI JWT verification 与真实 staging session/admin smoke 已转绿；Google/email/logout hardening 待完成 |
 | Workspace ownership | 新用户会获得 workspace；API queries 按 user/workspace scope。 | Default workspace 第一阶段存在；multi-workspace hardening 待完成 |
 | Board CRUD | Board list/search/pagination/open/rename/delete/copy 在服务端执行并带权限检查。 | staging list/open/save/load/history 第一阶段已转绿；search/sort/effective permission hardening 待完成 |
@@ -128,7 +128,7 @@ Group/Team 的业务系统深度、真实 billing automation、collaboration 以
 
 | 子切片 | 文件 | 产品结果 |
 | --- | --- | --- |
-| S1A DB schema + migrations | `PRD_slice_S1A_db_schema.md` | Account/workspace/Board facts 已在本地建模；staging DB smoke 仍待完成。 |
+| S1A DB schema + migrations | `PRD_slice_S1A_db_schema.md` | Account/workspace/Board facts 已在本地建模；fresh Supabase Pro Alembic smoke 已转绿。 |
 | S1B staging infra | `PRD_slice_S1B_staging_infra.md` | App 可以在线对真实 staging services 测试。 |
 | S1C Auth/request context | `PRD_slice_S1C_auth_request_context.md` | 用户可以 register/login，并获得自己的 workspace。 |
 | S1D Auth-backed Board CRUD | `PRD_slice_S1D_auth_board_crud.md` | 用户只能安全保存、重新打开和管理已授权 Boards。 |

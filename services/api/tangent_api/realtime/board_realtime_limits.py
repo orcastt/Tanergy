@@ -1,20 +1,38 @@
 from __future__ import annotations
 
+import base64
+import binascii
 import json
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Union
 
 BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD = 48
 BOARD_REALTIME_DOCUMENT_UPDATE_COUNT_LIMIT = 96
-BOARD_REALTIME_DOCUMENT_TOTAL_BYTE_LIMIT = 8 * 1024 * 1024
-BOARD_REALTIME_UPDATE_BYTE_LIMIT = 256 * 1024
+BOARD_REALTIME_DOCUMENT_TOTAL_BYTE_LIMIT = 12 * 1024 * 1024
+BOARD_REALTIME_UPDATE_BASE64_THRESHOLD = 64 * 1024
+BOARD_REALTIME_UPDATE_BYTE_LIMIT = 1024 * 1024
 BOARD_REALTIME_WEBSOCKET_MESSAGE_BYTE_LIMIT = 2 * 1024 * 1024
 BOARD_REALTIME_AWARENESS_STATE_COUNT_LIMIT = 128
 BOARD_REALTIME_AWARENESS_STATE_BYTE_LIMIT = 16 * 1024
 BOARD_REALTIME_AWARENESS_TTL_SECONDS = 300
 
 
+RealtimeUpdatePayload = Union[list[int], dict[str, Any]]
+
+
+def encode_realtime_update_payload(update: list[int]) -> RealtimeUpdatePayload:
+    if len(update) < BOARD_REALTIME_UPDATE_BASE64_THRESHOLD:
+        return update
+    return {
+        "byteLength": len(update),
+        "data": base64.b64encode(bytes(update)).decode("ascii"),
+        "encoding": "base64",
+    }
+
+
 def normalize_realtime_update(value: Any) -> list[int] | None:
+    if isinstance(value, dict):
+        return _normalize_base64_realtime_update(value)
     if not isinstance(value, list):
         return None
     if len(value) > BOARD_REALTIME_UPDATE_BYTE_LIMIT:
@@ -25,6 +43,24 @@ def normalize_realtime_update(value: Any) -> list[int] | None:
             return None
         normalized.append(item)
     return normalized
+
+
+def _normalize_base64_realtime_update(value: dict[str, Any]) -> list[int] | None:
+    if value.get("encoding") != "base64":
+        return None
+    data = value.get("data")
+    byte_length = value.get("byteLength")
+    if not isinstance(data, str) or not isinstance(byte_length, int):
+        return None
+    if byte_length < 0 or byte_length > BOARD_REALTIME_UPDATE_BYTE_LIMIT:
+        return None
+    try:
+        decoded = base64.b64decode(data.encode("ascii"), validate=True)
+    except (binascii.Error, UnicodeEncodeError, ValueError):
+        return None
+    if len(decoded) != byte_length:
+        return None
+    return list(decoded)
 
 
 def normalize_realtime_document_updates(value: object) -> list[list[int]]:

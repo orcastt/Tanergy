@@ -2,7 +2,7 @@ import { type NextRequest } from 'next/server'
 import { buildServerClerkApiHeaders } from '@/features/auth/serverClerkAuth'
 
 export async function buildAuthProxyHeaders(request: NextRequest) {
-  const headers = new Headers(await buildServerClerkApiHeaders())
+  const headers = new Headers(await buildServerClerkApiHeaders(request))
 
   copyHeader(request, headers, 'authorization')
   copyHeader(request, headers, 'content-type')

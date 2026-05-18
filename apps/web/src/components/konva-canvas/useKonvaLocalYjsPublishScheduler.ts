@@ -5,7 +5,8 @@ import type { KonvaYjsSnapshotWriteMode } from '@/features/collaboration/konvaYj
 import { resolveKonvaYjsPublishPlan } from './konvaLocalYjsSyncHelpers'
 import type { KonvaLocalYjsSyncController } from './konvaLocalYjsSyncContract'
 
-const publishDebounceMs = 110
+const contentPublishDebounceMs = 32
+const fullBoardPublishDebounceMs = 80
 
 type UseKonvaLocalYjsPublishSchedulerOptions = {
   activePageId?: string
@@ -74,7 +75,7 @@ export function useKonvaLocalYjsPublishScheduler({
     publishTimerRef.current = window.setTimeout(() => {
       publishTimerRef.current = null
       publishCurrentSnapshot({ mode: publishPlan.mode })
-    }, publishDebounceMs)
+    }, resolvePublishDebounceMs(publishPlan.mode))
     return () => {
       cancelScheduledPublish()
     }
@@ -96,4 +97,8 @@ export function useKonvaLocalYjsPublishScheduler({
     setHasUnsyncedLocalChanges,
     skipNextPublishRef,
   ])
+}
+
+function resolvePublishDebounceMs(mode: KonvaYjsSnapshotWriteMode) {
+  return mode === 'full-board' ? fullBoardPublishDebounceMs : contentPublishDebounceMs
 }

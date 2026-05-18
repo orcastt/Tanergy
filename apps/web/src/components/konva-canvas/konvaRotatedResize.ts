@@ -1,6 +1,7 @@
 import { canCanvasShapeRotate, type CanvasBounds, type CanvasPoint, type CanvasShape } from '@/features/canvas-engine'
 import type { KonvaResizeHandle } from './konvaCanvasTypes'
 import { isBoxCanvasShape } from './konvaRotationUtils'
+import { getKonvaShapeMinResizeSize } from './konvaNodeCardSizing'
 import { getKonvaOrientedBounds } from './konvaOrientedBounds'
 import { resizeBoundsFromHandle } from './konvaSelectionUtils'
 import { scaleStandaloneTextStyle } from './konvaTextAutoFit'
@@ -52,8 +53,9 @@ function transformShapeFromRotatedBounds(shape: CanvasShape, rotatedBox: KonvaRo
   if (isBoxCanvasShape(shape)) {
     const scale = getRotatedBoundsScale(rotatedBox.localBounds, nextBounds)
     const center = transformPoint({ x: shape.x + shape.props.width / 2, y: shape.y + shape.props.height / 2 })
-    const width = Math.max(12, shape.props.width * Math.abs(scale.x))
-    const height = Math.max(12, shape.props.height * Math.abs(scale.y))
+    const minSize = getKonvaShapeMinResizeSize(shape)
+    const width = Math.max(minSize.width, shape.props.width * Math.abs(scale.x))
+    const height = Math.max(minSize.height, shape.props.height * Math.abs(scale.y))
     const scaledShape = shape.type === 'text' && options.scaleText !== false ? scaleStandaloneTextStyle(shape, scale.y) : shape
     return {
       ...scaledShape,

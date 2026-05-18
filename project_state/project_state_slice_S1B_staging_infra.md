@@ -1,7 +1,7 @@
 # Project State Slice S1B: Staging Infrastructure And Online Prep
 
 **Updated**: 2026-05-18
-**Status**: In progress; the rebuilt Hetzner staging API host is back online, public HTTPS API smoke is green again, and the public Vercel alias points to the current Konva-only web deploy. The previous Neon staging project hit its monthly data-transfer quota and paused on 2026-05-17, and the API briefly used a Hetzner-local Docker Postgres container named `staging-postgres` as an emergency fallback. That server-local DB is now historical only and must not become a staging pattern. The next clean staging path is a fresh Supabase Pro Postgres project from an empty database, with Cloudflare R2 staging objects cleared and recreated rather than migrated. Cloudflare-proxied staging Web/API records with Full (strict) TLS remain in place; the remaining gates are Supabase clean rebuild, R2 clean asset smoke, second-round signed-in board/browser/browser-UX edges, email verification and one real Jiekou-backed live AI smoke.
+**Status**: In progress; the rebuilt Hetzner staging API host is back online, public HTTPS API smoke is green again, and the public Vercel alias points to the current Konva-only web deploy. The previous Neon staging project hit its monthly data-transfer quota and paused on 2026-05-17, and the API briefly used a Hetzner-local Docker Postgres container named `staging-postgres` as an emergency fallback. That server-local DB is now historical only and must not become a staging pattern. The Hetzner `staging-postgres` container and `staging_postgres_data` volume have been removed, the Cloudflare R2 `tanergy-assets` bucket was cleared to 0 objects, and staging has now been cut over to a fresh Supabase Pro Postgres project with Alembic applied to head. Board realtime persistence now defaults to final snapshots, so process `yjs-update` traffic stays in the WebSocket room and no longer debounce-writes every update chain to Postgres. Cloudflare-proxied staging Web/API records with Full (strict) TLS remain in place; the remaining gates are R2 clean asset smoke, re-created staging admin/workspace/board data, second-round signed-in board/browser UX edges, email verification and one real Jiekou-backed live AI smoke.
 
 ## Objective
 
@@ -18,7 +18,7 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - [x] Domain under Cloudflare DNS.
 - [x] Vercel project connected to GitHub.
 - [x] FastAPI host, likely Hetzner VPS or equivalent.
-- [ ] Supabase Pro managed Postgres staging project, created fresh with no Neon/Hetzner local restore.
+- [x] Supabase Pro managed Postgres staging project, created fresh with no Neon/Hetzner local restore.
 - [x] Cloudflare R2 bucket and S3 credentials.
 - [ ] Email provider account and verified sending domain.
 - [x] Clerk Auth project prepared.
@@ -39,8 +39,8 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - [x] `/health` over HTTPS.
 - [x] CORS from staging Web origin.
 - [x] Alembic migration against the previous staging DB.
-- [ ] Alembic migration against the fresh Supabase Pro staging DB.
-- [x] Asset upload/read through the existing R2 bucket.
+- [x] Alembic migration against the fresh Supabase Pro staging DB.
+- [x] Asset upload/read through the previous R2 bucket before cleanup.
 - [ ] R2 clean-bucket or clean-prefix upload/read smoke after stale staging objects are deleted.
 - [x] Board save/load/history through staging API.
 - [x] Vercel Web domain opens Workspace/Board routes.
@@ -60,8 +60,9 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - FastAPI is deployed again behind Caddy at `https://api-staging.tanergy.cc`.
 - Public API health is live again at the staging API domain.
 - 2026-05-17 temporary DB fallback: Neon paused the original staging project after exceeding its monthly data-transfer quota. The server-local `api.env` was backed up as `api.env.neon-quota-20260517214117.bak`, the active API env was briefly pointed at `staging-postgres:5432`, Alembic was applied to that temporary database, and `staging_postgres_data` was created as a provisional volume.
-- 2026-05-18 clean rebuild decision: do not migrate the temporary Hetzner-local Postgres data. The next staging database should be a fresh Supabase Pro project with Alembic applied from empty schema, followed by re-created test user/workspace/admin/board data.
-- 2026-05-18 R2 cleanup decision: because the old boards were deleted, current staging R2 objects can be deleted too. Keep Cloudflare R2 as the object storage provider, but clear the staging bucket/prefix before recreating asset smoke data.
+- 2026-05-18 cleanup execution: the Hetzner `staging-postgres` container and `staging_postgres_data` volume were removed, and the Cloudflare R2 `tanergy-assets` bucket was cleared to zero objects.
+- 2026-05-18 Supabase cutover: the staging API env now points at the fresh Supabase Pro staging database, Alembic `upgrade head` completed successfully, the API container restarted, and both local host and public `https://api-staging.tanergy.cc/health` returned `{"status":"ok"}`.
+- 2026-05-18 collaboration persistence update: `TANGENT_BOARD_REALTIME_PERSIST_MODE` now defaults to `final_snapshot`; ordinary websocket `yjs-update` process traffic broadcasts through the room without writing Postgres, while `sync-state-publish` / compacted state and room-empty finalize still persist the final realtime document snapshot.
 - Temporary dev user/workspace seed still exists for the pre-Auth smoke lane.
 - Local-against-real-DB and public API smoke both passed for:
   - `/health`
@@ -102,8 +103,8 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
   - staging/prod Web must use the real HTTPS domain
   - staging/prod API must use the real HTTPS API domain
 - Every deployment needs `NEXT_PUBLIC_API_BASE_URL`, FastAPI `TANGENT_ALLOWED_ORIGINS`, and Clerk allowed origins/redirect URLs to agree on the exact domains.
-- For Supabase or other serverless Postgres providers, set `DATABASE_POOL_URL` to the provider's pooled connection string for the API runtime and keep `DATABASE_URL` as the direct Alembic/admin URL when available.
-- Replace the temporary Hetzner-local `staging-postgres` database before treating staging as durable again. The accepted follow-up path is now a fresh Supabase Pro managed Postgres target from an empty database; do not restore the old local DB and do not provision Hetzner server-local Postgres for staging again.
+- For Supabase or other serverless Postgres providers, set `DATABASE_POOL_URL` to the provider's pooled connection string for the API runtime and keep `DATABASE_URL` as the direct/session Alembic/admin URL when available.
+- Do not restore the old Hetzner-local `staging-postgres` database and do not provision Hetzner server-local Postgres for staging again. Supabase Pro is now the staging database truth.
 - Local `/api/auth/dev-bypass` and `tangent_dev_auth` are development helpers only; do not count them as staging/prod Auth smoke.
 - Do not expose server keys to Vercel public env.
 - Keep firewall narrow: public 80/443, SSH restricted where possible.
@@ -111,4 +112,4 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - Keep production separate from staging: separate Vercel env/project, separate API env file or host, separate DB credentials, separate R2 write keys, separate Clerk keys and separate payment mode/webhooks.
 - `services/api/tangent_api/env_bootstrap.py` now tolerates wheel-installed/container layouts instead of assuming the source tree always lives four parents above the module path. This was required to get the rebuilt staging container to boot cleanly.
 - Production Google OAuth requires Google Cloud Console setup, verified domain, app branding, privacy policy and terms URLs.
-- Use `dev-plans/s1-launch-readiness-and-acceptance-report-2026-05-05.md` for the current deploy/database/Auth/AI/Admin/collaboration acceptance checklist.
+- Use `dev-plans/p0-alpha-stabilization-and-acceptance-2026-05-06.md` for the release-spine acceptance checklist and `dev-plans/s1b-supabase-r2-redis-collaboration-infra-plan-2026-05-18.md` for the current database/R2/realtime infrastructure checklist. The old launch-readiness report now lives in `dev-plans/Archive/` for history only.

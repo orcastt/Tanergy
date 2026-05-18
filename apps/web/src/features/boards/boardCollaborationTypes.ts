@@ -1,5 +1,6 @@
 import type { NodePortDataType } from '@/types/nodeRuntime'
 import type { WorkspaceRole } from '@/features/auth/sessionTypes'
+import type { CanvasShape } from '@/features/canvas-engine'
 
 export const boardCollaborationPermissionValues = ['view', 'edit', 'manage', 'owner'] as const
 
@@ -44,6 +45,7 @@ export type BoardCollaborationPresenceState =
 export type BoardCollaborationPresence = {
   activePageId?: string | null
   cursor?: BoardCollaborationPresenceCursor | null
+  draftPreview?: CanvasShape | null
   editingShapeIds?: string[]
   hoveredShapeId?: string | null
   connectionPreview?: BoardCollaborationConnectionPreview | null

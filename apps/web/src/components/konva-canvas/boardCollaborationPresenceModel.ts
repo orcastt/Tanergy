@@ -38,6 +38,7 @@ const emptyPresenceSnapshot: BoardCollaborationPresence = {
   activePageId: null,
   connectionPreview: null,
   cursor: null,
+  draftPreview: null,
   editingShapeIds: [],
   hoveredShapeId: null,
   selectedEdgeId: null,
@@ -52,6 +53,7 @@ const emptyPresenceSnapshot: BoardCollaborationPresence = {
 export function createEmptyPresenceSnapshot(): BoardCollaborationPresence {
   return {
     ...emptyPresenceSnapshot,
+    draftPreview: null,
     editingShapeIds: [],
     selectionIds: [],
   }
@@ -155,6 +157,7 @@ export function createPresenceSnapshot(input: {
   activePageId: string | null
   connectionPreview: BoardCollaborationConnectionPreview | null
   cursor: BoardCollaborationPresence['cursor']
+  draftPreview: BoardCollaborationPresence['draftPreview']
   editingShapeIds: string[]
   hoveredShapeId: string | null
   selectedEdgeId: string | null
@@ -168,6 +171,7 @@ export function createPresenceSnapshot(input: {
     activePageId: input.activePageId,
     connectionPreview: input.connectionPreview,
     cursor: input.cursor,
+    draftPreview: input.draftPreview ?? null,
     editingShapeIds: input.editingShapeIds,
     hoveredShapeId: input.hoveredShapeId,
     selectedEdgeId: input.selectedEdgeId,
@@ -180,6 +184,7 @@ export function createPresenceSnapshot(input: {
       input.selectionBox,
       input.selectedEdgeId,
       input.connectionPreview,
+      input.draftPreview,
     ),
     tool: input.tool?.trim() ? input.tool.trim() : null,
     transformBox: input.transformBox,
@@ -194,8 +199,10 @@ function derivePresenceState(
   selectionBox: CanvasBounds | null,
   selectedEdgeId: string | null,
   connectionPreview: BoardCollaborationConnectionPreview | null,
+  draftPreview: BoardCollaborationPresence['draftPreview'],
 ) {
   if (editingShapeIds.length > 0) return 'typing' as const
+  if (draftPreview) return 'drawing' as const
   if (connectionPreview) return 'selecting' as const
   if (selectionBox) return 'selecting' as const
   if (tool === 'draw') return 'drawing' as const

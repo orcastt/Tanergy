@@ -2,17 +2,22 @@ import type Konva from 'konva'
 import { useCallback, useRef } from 'react'
 import { Layer, Group, Stage } from 'react-konva'
 import type { CanvasCamera, CanvasDocument, CanvasNodeShape, CanvasPoint, CanvasShape } from '@/features/canvas-engine'
+import type { BoardCollaborationSessionRecord } from '@/features/boards/boardCollaborationTypes'
 import { KonvaCanvasBackground } from './KonvaCanvasBackground'
 import { KonvaCanvasShape } from './KonvaCanvasShape'
 import { KonvaFrameChrome } from './KonvaFrameChrome'
 import { KonvaNodeEdgeLayer } from './KonvaNodeEdgeLayer'
+import { KonvaRemoteDraftLayer } from './KonvaRemoteDraftLayer'
+import { konvaCaptureExcludeName } from './konvaSelectionExport'
 import { getVisibleKonvaShapes } from './konvaViewportCulling'
 import { getStagePointer } from './konvaStageHelpers'
 import { useKonvaStageCamera } from './useKonvaStageCamera'
 import { useKonvaWheelHandler } from './useKonvaWheelHandler'
 
 type KonvaCanvasViewerStageProps = {
+  activePageId?: string | null
   camera: CanvasCamera
+  collaborationPresenceSessions?: readonly BoardCollaborationSessionRecord[]
   document: CanvasDocument
   height: number
   width: number
@@ -22,7 +27,9 @@ type KonvaCanvasViewerStageProps = {
 }
 
 export function KonvaCanvasViewerStage({
+  activePageId = null,
   camera,
+  collaborationPresenceSessions,
   document,
   height,
   width,
@@ -130,6 +137,17 @@ export function KonvaCanvasViewerStage({
           )
         })}
       </Layer>
+
+      {!collaborationPresenceSessions || collaborationPresenceSessions.length === 0 ? null : (
+        <Layer listening={false} name={konvaCaptureExcludeName}>
+          <KonvaRemoteDraftLayer
+            activePageId={activePageId}
+            document={document}
+            sessions={collaborationPresenceSessions}
+            zoom={camera.zoom}
+          />
+        </Layer>
+      )}
     </Stage>
   )
 }

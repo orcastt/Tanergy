@@ -1,6 +1,6 @@
 # Project State Slice S1C: Auth And Request Context
 
-**Updated**: 2026-05-16
+**Updated**: 2026-05-18
 **Status**: Clerk frontend routes plus FastAPI bearer verification first pass landed. The current checkpoint also includes Tanergy-owned profile completion and editing: first real sign-in now gates on a profile modal, `/account` persists editable display name, `/forgot-password` exposes a real Clerk recovery flow, session payloads now return `profileCompleted`, and local auth/admin contracts now include a real account-deletion service for self-delete plus admin delete. The next gate is still the ordered second-round signed-in browser pass, then Google/email/logout hardening, with email currently scoped to one truthful staging smoke rather than a new native Tanergy-owned auth system.
 
 ## Objective
@@ -10,7 +10,7 @@ Replace dev headers/mock identity with real server-side sessions and workspace m
 ## Work Items
 
 - [~] Auth API contracts. Clerk-backed `/api/v1/auth/session` is first-pass; native OTP/logout/session-revocation routes remain pending.
-- [x] Choose Auth provider for S1C implementation: Clerk preferred, Supabase Auth acceptable fallback.
+- [x] Choose Auth provider for S1C implementation: Clerk is the active provider; Supabase Auth is not part of the current Supabase Postgres migration.
 - [x] Add Google OAuth signup/login flow in Clerk and Tanergy `/sign-in` / `/sign-up` pages.
 - [x] Add Next.js provider shell: `ClerkProvider`, route protection proxy and account/avatar control.
 - [x] Attach provider JWT to remote session, Board, Asset, Image Op and AI clients when `NEXT_PUBLIC_API_BASE_URL` points at FastAPI.

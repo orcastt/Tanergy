@@ -18,6 +18,11 @@ docs
 legacy
 .env
 .env.*
+**/.env
+**/.env.*
+!**/.env.example
 *.log
 .DS_Store
 apps/web/tsconfig.tsbuildinfo
+**/.vercel
+**/.vercel/**

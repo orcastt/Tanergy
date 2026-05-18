@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react'
 import type Konva from 'konva'
 import type { CanvasCamera, CanvasDocument, CanvasShapeStyle } from '@/features/canvas-engine'
+import type { BoardCollaborationSessionRecord } from '@/features/boards/boardCollaborationTypes'
 import { KonvaCanvasShell } from './KonvaCanvasShell'
 import type { KonvaNodeTextFieldName } from './KonvaNodeTextEditor'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
@@ -53,13 +54,17 @@ type CreateKonvaCanvasShellPropsOptions = {
   onBoardTitleRename?: HeaderProps['onBoardTitleRename']
   overlayOccupancy: OverlayProps['occupancy']
   overlaySessions: OverlayProps['sessions']
+  pageLimit?: number | null
+  pageLimitPlanName?: string
   remoteEdgeSessions: KonvaCollaborationEdgeSession[]
+  remotePresenceSessions: BoardCollaborationSessionRecord[]
   remoteLockedShapeOwnerById?: WritableStageProps['remoteLockedShapeOwnerById']
   requestFocusedEdit: (shapeId: string, targetLabel: string) => boolean
   selectionExportCaptureMode: WritableStageProps['captureMode']
   sendGeneratedOutputToCanvas: WritableStageProps['onGeneratedImageToCanvas']
   sendImageNodeToCanvas: WritableStageProps['onImageNodeToCanvas']
   setConnectionPreviewPresence: WritableStageProps['onConnectionPreviewChange']
+  setDraftPreviewPresence: WritableStageProps['onDraftPreviewChange']
   setDocument: WritableStageProps['onDocumentChange']
   setFocusedControlShapeState: WritableStageProps['onNodeFocusedEditStateChange']
   setInteractionShapeIds: WritableStageProps['onInteractionShapeIdsChange']
@@ -106,7 +111,6 @@ export function createKonvaCanvasShellProps(options: CreateKonvaCanvasShellProps
     dropHintKind: options.dropHintKind,
     effectiveReadOnly: options.effectiveReadOnly,
     headerProps: {
-      boardId: !options.effectiveReadOnly && options.mode === 'board' ? options.boardId : undefined,
       boardTitle: options.boardTitle,
       collaboration: options.collaboration,
       currentPageId: options.boardPages.activePageId,
@@ -134,6 +138,8 @@ export function createKonvaCanvasShellProps(options: CreateKonvaCanvasShellProps
       onMovePage: options.handleMovePage,
       onRenamePage: options.handleRenamePage,
       onSelectPage: options.boardPages.selectPage,
+      pageLimit: options.pageLimit,
+      pageLimitPlanName: options.pageLimitPlanName,
       pages: options.boardPages.pages,
       readOnly: options.effectiveReadOnly,
     },
@@ -160,7 +166,9 @@ export function createKonvaCanvasShellProps(options: CreateKonvaCanvasShellProps
       onToolChange: options.handleToolChange,
     },
     viewerStageProps: {
+      activePageId: options.boardPages.activePageId,
       camera: options.camera,
+      collaborationPresenceSessions: options.remotePresenceSessions,
       document: options.document,
       height: options.size.height,
       onCameraCommit: options.handleCameraCommit,
@@ -170,9 +178,11 @@ export function createKonvaCanvasShellProps(options: CreateKonvaCanvasShellProps
     },
     writableStageProps: {
       activeTool: options.activeTool,
+      activePageId: options.boardPages.activePageId,
       camera: options.camera,
       captureMode: options.selectionExportCaptureMode,
       collaborationSessions: options.remoteEdgeSessions,
+      collaborationPresenceSessions: options.remotePresenceSessions,
       cropEditingImageId: options.writableStagePropsExtras.cropEditingImageId,
       editingNodeText: options.writableStagePropsExtras.editingNodeText,
       editingTextId: options.writableStagePropsExtras.editingTextId,
@@ -185,6 +195,7 @@ export function createKonvaCanvasShellProps(options: CreateKonvaCanvasShellProps
       onConnectionPreviewChange: options.setConnectionPreviewPresence,
       onDocumentChange: options.setDocument,
       onDocumentPreview: options.setDocument,
+      onDraftPreviewChange: options.setDraftPreviewPresence,
       onEdgeDisconnect: options.writableStagePropsExtras.onEdgeDisconnect,
       onEdgeSelect: options.writableStagePropsExtras.onEdgeSelect,
       onGeneratedImageToCanvas: options.sendGeneratedOutputToCanvas,

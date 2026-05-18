@@ -56,7 +56,10 @@ export class RealtimeAwarenessStore {
   }
 
   handleBatch(states: unknown[]) {
-    this.states = createAwarenessStateMap(states.filter(isLocalAwarenessState).filter((state) => !isExpiredAwarenessState(state)))
+    this.states = createAwarenessStateMap(states
+      .map(normalizeAwarenessState)
+      .filter((state): state is LocalAwarenessState => Boolean(state))
+      .filter((state) => !isExpiredAwarenessState(state)))
     this.notify()
     return true
   }
@@ -69,11 +72,12 @@ export class RealtimeAwarenessStore {
   }
 
   handleState(state: unknown) {
-    if (!isLocalAwarenessState(state)) return false
-    if (isExpiredAwarenessState(state)) {
-      this.states.delete(state.clientInstanceId)
+    const normalizedState = normalizeAwarenessState(state)
+    if (!normalizedState) return false
+    if (isExpiredAwarenessState(normalizedState)) {
+      this.states.delete(normalizedState.clientInstanceId)
     } else {
-      rememberAwarenessState(this.states, state)
+      rememberAwarenessState(this.states, normalizedState)
     }
     this.notify()
     return true
@@ -132,6 +136,19 @@ function isLocalAwarenessState(value: unknown): value is LocalAwarenessState {
 
 function isExpiredAwarenessState(state: LocalAwarenessState) {
   return Date.parse(state.expiresAt) <= Date.now()
+}
+
+function normalizeAwarenessState(value: unknown): LocalAwarenessState | null {
+  if (!isLocalAwarenessState(value)) return null
+  if (isExpiredAwarenessState(value)) return value
+  const presence = sanitizeBoardCollaborationPresence(value.presence)
+  if (!presence) return null
+  return {
+    clientInstanceId: value.clientInstanceId,
+    expiresAt: value.expiresAt,
+    presence,
+    updatedAt: value.updatedAt,
+  }
 }
 
 function createAwarenessStateMap(states: LocalAwarenessState[]) {

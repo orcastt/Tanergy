@@ -1,7 +1,7 @@
 # Project State Slice S1A: Database Schema And Migration
 
-**Updated**: 2026-05-08
-**Status**: S1A core implemented and locally smoke-tested through `20260502_0006`; current migration head also includes S3 entitlement/AI-charge extension `20260506_0007` and S3 Team-wallet/personal-wallet delta `20260508_0012`.
+**Updated**: 2026-05-18
+**Status**: S1A core implemented and locally smoke-tested through `20260502_0006`; current migration head also includes S3 entitlement/AI-charge extension `20260506_0007`, the S3 Team-wallet/personal-wallet delta `20260508_0012`, and later S2/S3 control-plane migrations through the current Alembic head. The fresh Supabase Pro staging database has now run `alembic upgrade head`; data-preserving migration of the retired Neon/Hetzner-local staging data is intentionally not part of the current clean rebuild.
 
 ## Objective
 
@@ -19,7 +19,7 @@ Create the formal schema and migrations that S1C Auth, S1D Board CRUD, S2 AI, S3
 - [x] Add guarded local Postgres smoke runner for empty DB and P0-seeded DB migration checks.
 - [x] Run real migration smoke from empty database against disposable Docker Postgres.
 - [x] Run real migration smoke from current P0 scaffold data against disposable Docker Postgres.
-- [ ] Run staging Neon/Postgres migration smoke in S1B.
+- [x] Run fresh Supabase Pro staging `alembic upgrade head` in S1B.
 
 ## Implemented Files
 
@@ -40,8 +40,8 @@ services/api/tests/test_migration_contracts.py
 - `board_user_preferences` holds per-user pin/star/recent-open facts; current API still reads legacy board columns until S1D rewires queries.
 - `credit_accounts` supports both personal and team/workspace credit pools.
 - New S3 product rule: Team workspaces use a workspace-owned Team wallet; Collaborate/Group uses a user-owned personal wallet. Migration `20260508_0012` adds account-kind constraints, subscription ownership/family/seat-capacity fields, one-active Collaborate index, Team workspace subscription index, invite token facts and `team_wallet` charge scope.
-- Alembic now normalizes `postgresql://` to `postgresql+psycopg://` so Neon-style URLs work with the project's `psycopg` v3 dependency.
-- Local real Postgres smoke passed with disposable Docker Postgres; staging Neon/Postgres smoke still belongs to S1B.
+- Alembic now normalizes `postgresql://` to `postgresql+psycopg://` so managed Postgres URLs work with the project's `psycopg` v3 dependency.
+- Local real Postgres smoke passed with disposable Docker Postgres; fresh Supabase Pro staging Alembic-to-head passed during the 2026-05-18 clean rebuild. The old Neon and Hetzner-local fallback data were deliberately not migrated.
 - Migration `20260506_0007_workspace_entitlements_ai_charge_contract` is a later S3 extension on top of the S1A foundation. It adds workspace kind, seat assignment, usage/dashboard facts and AiRun charge fields.
 
 ## Local Smoke Runner
@@ -90,4 +90,4 @@ Docker S1A migration smoke with disposable Postgres
 - Do not implement full Stripe, Admin dashboard or collaboration here.
 - Do make their future joins explicit.
 - Next migration after `0012` should focus on the remaining workspace invite acceptance and purchase lifecycle facts that are not yet backed by routes/webhooks.
-- Next database optimization pass should happen against staging data/query plans: run S1A smoke on staging Postgres, collect `EXPLAIN` for Board list, History list, Asset list and future AiRun/Admin list queries, then add only measured indexes or retention/size limits.
+- Next database optimization pass should happen against Supabase staging data/query plans: collect `EXPLAIN` for Board list, History list, Asset list and future AiRun/Admin list queries, then add only measured indexes or retention/size limits.

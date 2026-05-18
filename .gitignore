@@ -8,6 +8,9 @@ __pycache__/
 .env
 .env.local
 .env.production
+**/.env
+**/.env.local
+**/.env.production
 
 # Build
 dist/
@@ -65,7 +68,9 @@ src-tauri/target/
 # Local secrets and generated archives
 .env.*
 !.env.example
+!**/.env.example
 legacy/**/.env*
+**/.vercel
 legacy/**/node_modules/
 legacy/**/.next/
 legacy/**/.venv/

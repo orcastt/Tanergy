@@ -59,6 +59,7 @@ export function useBoardCollaborationLocalPresence({
   transformKind,
 }: UseBoardCollaborationLocalPresenceOptions) {
   const latestCursorRef = useRef<BoardCollaborationPresence['cursor']>(null)
+  const latestDraftPreviewRef = useRef<BoardCollaborationPresence['draftPreview']>(null)
   const latestEditingShapeIdsRef = useRef<string[]>([])
   const latestHoveredShapeIdRef = useRef<string | null>(null)
 
@@ -92,6 +93,7 @@ export function useBoardCollaborationLocalPresence({
       activePageId,
       connectionPreview,
       cursor: latestCursorRef.current,
+      draftPreview: latestDraftPreviewRef.current,
       editingShapeIds: latestEditingShapeIdsRef.current,
       hoveredShapeId: latestHoveredShapeIdRef.current,
       selectedEdgeId,
@@ -161,9 +163,25 @@ export function useBoardCollaborationLocalPresence({
     applyLocalPresencePatch({ editingShapeIds: nextEditingShapeIds })
   }, [applyLocalPresencePatch, shouldConnect])
 
+  const setDraftPreview = useCallback((draftPreview: BoardCollaborationPresence['draftPreview'] | null) => {
+    if (!shouldConnect) return
+    if (isSameDraftPreview(latestDraftPreviewRef.current ?? null, draftPreview ?? null)) return
+    latestDraftPreviewRef.current = draftPreview ?? null
+    applyLocalPresencePatch({ draftPreview: draftPreview ?? null })
+  }, [applyLocalPresencePatch, shouldConnect])
+
   return {
     setCursor,
+    setDraftPreview,
     setEditingShapeIds,
     setHoveredShapeId,
   }
+}
+
+function isSameDraftPreview(
+  left: BoardCollaborationPresence['draftPreview'] | null,
+  right: BoardCollaborationPresence['draftPreview'] | null,
+) {
+  if (!left || !right) return left === right
+  return JSON.stringify(left) === JSON.stringify(right)
 }

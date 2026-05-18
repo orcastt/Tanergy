@@ -1,12 +1,12 @@
 # Project State Slice S2: AI Runtime
 
-**Updated**: 2026-05-17
+**Updated**: 2026-05-18
 **Status**: Mock runtime/dataflow is usable locally; the canvas also has a Jiekou-first fast path for chat streaming, prompt optimization, image generation/edit/reference and analysis UX; mock AiRun can optionally exercise credit-ledger usage charging behind `TANGENT_AI_MOCK_LEDGER_CHARGING=1`; migrations `20260506_0008`, `20260506_0009`, `20260506_0010` and `20260506_0011` now add the first DB-backed AI control-plane tables, quote-time persistence facts, provider-currency/runtime-cost normalization fields, version-history storage and attempt-level `api_cost_ledger` settlement fields. Migration `20260508_0012` adds `team_wallet` charge scope, migration `20260513_0019` adds durable terminal `text_output`, migration `20260513_0020` seeds default analysis-capable models/routes/pricing, and migrations `20260516_0025` through `20260516_0028` move the active control plane onto Jiekou-first image/text routes plus GPT Image 2 `4K` tier support. Full local frontend/backend quality gates are green again after the stale visibility + entitlement test reset, but the current alpha gate is still the same: finish the remaining staging/browser acceptance, hand-test one credentialed real provider-backed image path end to end, then keep widening live-provider capability coverage while continuing to strip provider-shaped logic out of the local Next bridge.
 
 ## Current Alpha Boundary
 
 - release-critical: quote/preflight, payer summary, persisted Team-wallet/personal-wallet resolver, persisted run lifecycle, one real provider-backed image path
-- local product proof: GeekAI-backed chat, prompt optimizer, image gen/edit/reference and analysis flows in the canvas
+- local product proof: Jiekou-first chat, prompt optimizer, image gen/edit/reference and analysis flows in the canvas
 - not current-alpha promise: full provider breadth, broad refund/reconciliation depth, or the automatic graph-planning layer on top of message-native chat
 
 ## Current State
@@ -14,7 +14,7 @@
 - Mock Model Registry exists and is consumed by Image Gen / Image Gen 4 node controls.
 - Canvas-facing AI node UX now has a Jiekou-first fast path for local product validation: Chat streams text, Prompt Optimizer streams enriched image prompts, Analysis can choose multimodal text/vision models, and Image Gen / Image Gen 4 can return images into slots and board Assets through the current web app route.
 - Canvas image operations still need truthful closeout: `Remove BG` currently has a visible frontend entry point, but the end-to-end backend/API/staging path is not yet part of the accepted live product boundary for this pass. `Object Cutout` remains an explicit future operation after that.
-- 2026-05-13 memory/fallback audit: AI chat streaming now caps buffered SSE text and retained output text; the local chat completions route only inlines JPEG/PNG/WebP images up to 20MB and streams same-origin/local image reads with a byte cap; GeekAI image generation/edit/reference now rejects oversize inline input/output images before base64 expansion/decode; remote image imports stream with byte caps; provider `b64_json` handling estimates size before decode; and AI run text retained in memory is capped before persistence/runtime use.
+- 2026-05-13 memory/fallback audit: AI chat streaming now caps buffered SSE text and retained output text; the local chat completions route only inlines JPEG/PNG/WebP images up to 20MB and streams same-origin/local image reads with a byte cap; Jiekou-first image generation/edit/reference now rejects oversize inline input/output images before base64 expansion/decode; remote image imports stream with byte caps; provider `b64_json` handling estimates size before decode; and AI run text retained in memory is capped before persistence/runtime use.
 - 2026-05-13 AI/upload hardening continuation: `/api/ai/runs` now fails closed for unsupported local text runs instead of silently returning a fabricated run; `/api/assets/upload` uses shared content-length plus streamed file-read limits; chat/image-analysis/image-generation reference images now enforce both per-image and total inline byte budgets before base64 expansion; backend provider input assets also enforce a total-byte ceiling; and remote image import now releases/cancels stream readers cleanly on abort or oversize exit.
 - 2026-05-13 asset memory cleanup continuation: primary board thumbnail, selection-capture, runtime asset migration and mock-generated image paths now upload through multipart file payloads instead of using large `data:` JSON bodies as the main path; `/api/v1/assets/from-data-url` and the local Next `/api/assets/from-data-url` route are now treated as small-fallback-only paths with an 8MB request ceiling, which reduces base64 request amplification on save/capture flows.
 - Image node controls now reflect model-specific parameter surfaces for GPT Image 2, Nano Banana 2, Doubao Seedream and Jimeng-style generation/edit/reference flows. These controls are useful UX proof, but their provider-specific parameter mapping still needs to move behind the server provider adapter/control-plane boundary before production reliance.
@@ -77,19 +77,19 @@
 
 # Project State 切片 S2：AI 运行时
 
-**更新日期**：2026-05-14
-**状态**：Mock runtime / dataflow 已经可以在本地使用；画布也已有 GeekAI-backed fast path，用于验证 chat streaming、prompt optimization、image generation/edit/reference 和 analysis UX；Mock AiRun 可以在 `TANGENT_AI_MOCK_LEDGER_CHARGING=1` 后面选择性演练 credit-ledger usage charging；migrations `20260506_0008`、`20260506_0009`、`20260506_0010` 和 `20260506_0011` 现在已经补上第一批 DB-backed AI 控制平面表、quote-time persistence facts、provider-currency / runtime-cost normalization 字段、版本历史存储，以及按尝试分行的 `api_cost_ledger` settlement 字段。Migration `20260508_0012` 已把 `team_wallet` 充入 charge scope，Migration `20260513_0019` 已增加 durable terminal `text_output`，Migration `20260513_0020` 已把 analysis-capable 默认 model/route/pricing seed 进后端 control plane，而 `20260514_0021` 又把活跃生图目录刷新成 GPT Image 2、Nano Banana 2、Doubao Seedream 5.0 Lite 和 Jimeng 4.0，并把 `gemini-3.1-flash-image-preview` 从活跃生图面移出。当前 alpha 的关键闸门是先完成剩余 staging/browser 验收，再用真实凭据把一条 provider-backed image path 端到端手测通过，并继续扩大 live-provider coverage。
+**更新日期**：2026-05-18
+**状态**：Mock runtime / dataflow 已经可以在本地使用；画布也已有 Jiekou-first fast path，用于验证 chat streaming、prompt optimization、image generation/edit/reference 和 analysis UX；Mock AiRun 可以在 `TANGENT_AI_MOCK_LEDGER_CHARGING=1` 后面选择性演练 credit-ledger usage charging；migrations `20260506_0008`、`20260506_0009`、`20260506_0010` 和 `20260506_0011` 现在已经补上第一批 DB-backed AI 控制平面表、quote-time persistence facts、provider-currency / runtime-cost normalization 字段、版本历史存储，以及按尝试分行的 `api_cost_ledger` settlement 字段。Migration `20260508_0012` 已把 `team_wallet` 充入 charge scope，Migration `20260513_0019` 已增加 durable terminal `text_output`，Migration `20260513_0020` 已把 analysis-capable 默认 model/route/pricing seed 进后端 control plane，而 `20260516_0025` 到 `20260516_0028` 已把活跃 control plane 移到 Jiekou-first image/text routes，并补上 GPT Image 2 `4K` tier support。当前 alpha 的关键闸门是先完成剩余 staging/browser 验收，再用真实凭据把一条 provider-backed image path 端到端手测通过，并继续扩大 live-provider coverage。
 
 ## 当前 Alpha 边界
 
 - 发布关键：quote/preflight、payer summary、Team-wallet/personal-wallet resolver、持久化 run lifecycle，以及一条真实的 provider-backed image path
-- 本地产品证明：画布里的 GeekAI-backed chat、prompt optimizer、image gen/edit/reference 和 analysis flows
+- 本地产品证明：画布里的 Jiekou-first chat、prompt optimizer、image gen/edit/reference 和 analysis flows
 - 非当前 alpha 承诺：完整 provider breadth、更广的 refund/reconciliation depth，以及叠加在 message-native chat 之上的自动 graph-planning 层
 
 ## 当前状态
 
 - Mock Model Registry 已存在，并被 Image Gen / Image Gen 4 节点控件消费。
-- 面向画布的 AI node UX 现在已有 GeekAI fast path 用于本地产品验证：Chat 可以流式输出文本，Prompt Optimizer 可以流式输出优化后的出图提示词，Analysis 可以选择 OpenAI-style 或 Gemini-style visual analysis，Image Gen / Image Gen 4 可以通过当前 web app route 把图片返回到 slots 和 board Assets。
+- 面向画布的 AI node UX 现在已有 Jiekou-first fast path 用于本地产品验证：Chat 可以流式输出文本，Prompt Optimizer 可以流式输出优化后的出图提示词，Analysis 可以选择 OpenAI-style 或 Gemini-style visual analysis，Image Gen / Image Gen 4 可以通过当前 web app route 把图片返回到 slots 和 board Assets。
 - 图片节点控件现在已经体现 GPT Image 2、Nano Banana 2、Doubao Seedream 和 Jimeng-style generation/edit/reference flows 的模型特定参数界面。这些控件是有价值的 UX proof，但 provider-specific 参数映射在生产依赖前仍需要移动到服务端 provider adapter/control-plane 边界后面。
 - Mock AiRun route 已存在，并返回 payer facts：`workspaceKind`、`chargedScope`、`chargedAccountId`、`entitlementSource`、可选 `workspaceSeatId` 和用户可见 payer label。
 - 当 `TANGENT_AI_MOCK_LEDGER_CHARGING=1` 且 `DATABASE_URL` 已配置时，Mock AiRun 可以选择性通过内部 credit ledger service 扣当前 payer。余额不足会返回 `402`，成功时会写入一条 `usage_charge`；默认本地路径仍然不扣费。

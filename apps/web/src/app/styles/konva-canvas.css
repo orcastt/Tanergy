@@ -770,6 +770,19 @@
   font-weight: 800;
 }
 
+.konva-canvas-pages__heading {
+  align-items: baseline;
+  display: inline-flex;
+  gap: 6px;
+  min-width: 0;
+}
+
+.konva-canvas-pages__heading small {
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 800;
+}
+
 .konva-canvas-shell[data-theme='dark'] .konva-canvas-pages strong,
 .konva-canvas-shell[data-theme='dark'] .konva-canvas-pages__title {
   color: #f8fafc;
@@ -938,6 +951,107 @@
 .konva-canvas-pages__actions button:disabled {
   color: #cbd5e1;
   cursor: default;
+}
+
+.konva-canvas-page-limit-dialog-backdrop {
+  align-items: center;
+  background: rgba(15, 23, 42, 0.34);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 18px;
+  position: fixed;
+  z-index: 80;
+}
+
+.konva-canvas-page-limit-dialog {
+  background: #ffffff;
+  border: 1px solid rgba(31, 42, 55, 0.12);
+  border-radius: 12px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.22);
+  display: grid;
+  gap: 18px;
+  max-width: min(360px, calc(100vw - 36px));
+  padding: 22px;
+  width: 360px;
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-page-limit-dialog {
+  background: #111827;
+  border-color: rgba(148, 163, 184, 0.24);
+}
+
+.konva-canvas-page-limit-dialog__copy {
+  display: grid;
+  gap: 8px;
+}
+
+.konva-canvas-page-limit-dialog__copy span {
+  color: #6b5cff;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.konva-canvas-page-limit-dialog__copy h2 {
+  color: #111827;
+  font-size: 22px;
+  line-height: 1.12;
+  margin: 0;
+}
+
+.konva-canvas-page-limit-dialog__copy p {
+  color: #5b6472;
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-page-limit-dialog__copy h2 {
+  color: #f8fafc;
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-page-limit-dialog__copy p {
+  color: #cbd5e1;
+}
+
+.konva-canvas-page-limit-dialog__actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.konva-canvas-page-limit-dialog__actions a,
+.konva-canvas-page-limit-dialog__actions button {
+  align-items: center;
+  border-radius: 8px;
+  display: inline-flex;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  height: 36px;
+  justify-content: center;
+  padding: 0 14px;
+  text-decoration: none;
+}
+
+.konva-canvas-page-limit-dialog__actions button {
+  background: #ffffff;
+  border: 1px solid rgba(31, 42, 55, 0.14);
+  color: #475569;
+  cursor: pointer;
+}
+
+.konva-canvas-page-limit-dialog__actions a {
+  background: #111827;
+  border: 1px solid #111827;
+  color: #ffffff;
+}
+
+.konva-canvas-page-limit-dialog__actions button:hover,
+.konva-canvas-page-limit-dialog__actions a:hover {
+  transform: translateY(-1px);
 }
 
 .konva-canvas-file-input {

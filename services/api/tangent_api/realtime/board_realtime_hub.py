@@ -10,6 +10,7 @@ from fastapi import WebSocket
 from tangent_api.realtime.board_realtime_limits import (
     BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD,
     can_append_realtime_document_update,
+    encode_realtime_update_payload,
     normalize_realtime_awareness_state,
     normalize_realtime_document_updates,
 )
@@ -60,7 +61,7 @@ class BoardRealtimeRoom:
                 "requestCompaction": self.compaction_requested,
                 "seedRoom": len(document_updates) == 0,
                 "type": "sync-state",
-                "updates": document_updates,
+                "updates": _encode_document_updates(document_updates),
             })
             await websocket.send_json({
                 "states": awareness_states,
@@ -140,7 +141,7 @@ class BoardRealtimeRoom:
                 "documentVersion": document_version,
                 "from": client_instance_id,
                 "type": "yjs-update",
-                "update": update,
+                "update": encode_realtime_update_payload(update),
             })
         return document_updates, request_compaction, document_version, accepted
 
@@ -287,3 +288,7 @@ class BoardRealtimeHub:
 
 
 board_realtime_hub = BoardRealtimeHub()
+
+
+def _encode_document_updates(document_updates: list[list[int]]) -> list[list[int] | dict[str, Any]]:
+    return [encode_realtime_update_payload(update) for update in document_updates]

@@ -50,7 +50,7 @@ async function proxyAdminRequest(request: NextRequest, context: RouteContext) {
 }
 
 async function buildProxyHeaders(request: NextRequest) {
-  const headers = new Headers(await buildServerClerkApiHeaders())
+  const headers = new Headers(await buildServerClerkApiHeaders(request))
   copyHeader(request, headers, 'authorization')
   copyHeader(request, headers, 'content-type')
   copyHeader(request, headers, 'cookie')

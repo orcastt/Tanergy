@@ -1,6 +1,6 @@
 # P0 Alpha Stabilization And Acceptance
 
-**Updated**: 2026-05-15
+**Updated**: 2026-05-18
 **Status**: Active stabilization spine for the current release pass.
 **Branch**: `feature/s1c-auth-admin-production-boundary`
 
@@ -14,8 +14,8 @@ Only these four lanes are release-critical for the current pass:
 
 | Lane | Release requirement | Current state | Remaining gate |
 | --- | --- | --- | --- |
-| Canvas / Board / Page / Share / Auth | Public landing, Clerk entry, protected workspace shell, Konva-only Board route, page/history flows, public share view, permission-scoped Board CRUD | Staging Web/API/Neon/R2 plus real session/admin smoke are green; signed-in board/browser and Google/email acceptance remain | Finish the remaining browser/Auth regression sweep and deployment cleanup |
-| One real AI provider path | One server-backed AI image path through AiRun, preflight, provider execution, Asset output and settlement | Runtime shell, quote, ledger and provider adapter scaffold exist; GeekAI local fast path proves chat, prompt optimization, image generation/edit/reference and analysis UX in the canvas, Prompt Optimizer now has a backend short-text `AiRun` path with durable `text_output`, and the active image-generation lane is refreshed onto GPT Image 2 / Nano Banana 2 / Doubao Seedream / Jimeng | Finish staging/browser smoke, then hand-test one live provider path end to end |
+| Canvas / Board / Page / Share / Auth | Public landing, Clerk entry, protected workspace shell, Konva-only Board route, page/history flows, public share view, permission-scoped Board CRUD | Staging Web/API/Supabase Pro/R2 plus real session/admin smoke are green; signed-in board/browser and Google/email acceptance remain | Finish the remaining browser/Auth regression sweep and deployment cleanup |
+| One real AI provider path | One server-backed AI image path through AiRun, preflight, provider execution, Asset output and settlement | Runtime shell, quote, ledger and provider adapter scaffold exist; Jiekou-first local fast path proves chat, prompt optimization, image generation/edit/reference and analysis UX in the canvas, Prompt Optimizer now has a backend short-text `AiRun` path with durable `text_output`, and the active image-generation lane is refreshed onto GPT Image 2 / Nano Banana 2 / Doubao Seedream / Jimeng | Finish staging/browser smoke, then hand-test one live provider path end to end |
 | Billing mock + usage / ledger visible | User can see plan, payer, included credits, top-up balance, ledger activity and workspace usage visibility rules | First-pass stable locally, but Team wallet semantics are now the next S3 gate | Keep mock/manual payment path honest; real payments stay deferred |
 | Admin minimum operating surface | Server-gated `/admin`, summary/users/workspaces/boards/audit plus first-pass AI model/route/pricing/runtime inspection | First-pass stable locally | Keep server-gated, audited and bounded; deeper finance/admin tooling stays deferred |
 
@@ -45,7 +45,7 @@ Release rule:
 - First live provider adapter path for one image-generation flow.
 - Active image-generation surface is limited to GPT Image 2, Nano Banana 2, Doubao Seedream 5.0 Lite and Jimeng 4.0, with the long-running image timeout boundary at 240s.
 - Generated result persists as Asset refs; Board/node state stores only compact summaries and refs.
-- Current GeekAI canvas-facing path is accepted as UX proof only; production reliance requires the unified server AiRun route and settlement path.
+- Current Jiekou-first canvas-facing path is accepted as UX proof only; production reliance requires the unified server AiRun route and settlement path.
 
 ### 3. Billing Mock + Usage / Ledger Visible
 
@@ -67,7 +67,7 @@ Release rule:
 These are intentionally not part of the current P0 alpha promise:
 
 - Real-time collaboration / Yjs room sync / presence / multi-user live canvas.
-- Full production provider coverage across image gen, image gen 4, analysis, text persistence and refund depth beyond the current GeekAI local proof, the refreshed four-model image lane and the first live server smoke route.
+- Full production provider coverage across image gen, image gen 4, analysis, text persistence and refund depth beyond the current Jiekou-first local proof, the refreshed four-model image lane and the first live server smoke route.
 - Real external payment provider integration, invoices, webhooks, renewals and reconciliation.
 - Full Team governance, Team wallet payment automation, enterprise pooled charging, advanced billing operations and finance workflows.
 - Collections as a real asset-library product.
@@ -104,8 +104,9 @@ Freeze rule:
 ## Document Archive Actions
 
 - New active stabilization spine: this file.
-- Keep active: `s1-launch-readiness-and-acceptance-report-2026-05-05.md` as the detailed cross-slice checklist.
-- Keep active: `s2-ai-provider-route-billing-control-plane-2026-05-07.md` as the tactical checklist for folding GeekAI and future providers into server-owned route switching, credit settlement and admin observability.
+- Archive: `Archive/s1-launch-readiness-and-acceptance-report-2026-05-05.md` as historical cross-slice checklist.
+- Archive: `Archive/s1x-canvas-engine-migration-reference-2026-05-03.md` as historical migration context.
+- Keep active: `s2-ai-provider-route-billing-control-plane-2026-05-07.md` as the tactical checklist for folding Jiekou-first and future providers into server-owned route switching, credit settlement and admin observability.
 - Keep active: `s3-team-group-wallets-membership-billing-plan-2026-05-08.md` as the tactical checklist for Team wallet, personal Collaborate wallet, invites, seats, membership and payer resolver.
 - Archive: `s1-s3-document-consolidation-report-2026-05-06.md` after this stabilization pass, because its purpose is historical and parts of its S2/S3 truth are already stale.
 
@@ -115,7 +116,7 @@ Freeze rule:
 | --- | --- | --- | --- |
 | Auth + entry flow | Landing -> sign in -> workspace redirect; protected route gating; sign-out return to landing | Mixed public/protected routing can confuse the product story | Must pass before P0 alpha claim |
 | Board + Page + Share | Create/open/save/history/restore; page create/rename/delete/reorder; `Move to page`; public share open | Permission edge cases, page regressions and stale runtime-edge behavior | Must pass before P0 alpha claim |
-| AI runtime | Quote/preflight, payer summary, one real provider path, Asset result persistence, no raw payloads in Board | Local GeekAI route proves UX but can bypass the intended production control plane if left unreconciled | One server AiRun live path must pass before P0 alpha claim |
+| AI runtime | Quote/preflight, payer summary, one real provider path, Asset result persistence, no raw payloads in Board | Local Jiekou-first route proves UX but can bypass the intended production control plane if left unreconciled | One server AiRun live path must pass before P0 alpha claim |
 | Billing + usage | Billing summary, top-up mock flow, ledger filters, usage drill-down, Team/Group visibility rules | Over-promising real billing when flows are still mocked/manual | Accept as first-pass only; do not market as real payments |
 | Admin | Server gate, summary/audit reads, role management, AI route/pricing/runtime inspection | Expanding `/admin` too fast makes it look more complete than it is | Accept as minimum operator surface only |
 | Deferred areas | Collaboration, Collections, deep finance, broad provider coverage | Users may assume these exist if docs/nav are noisy | Keep clearly frozen and out of the main promise |
@@ -188,7 +189,7 @@ Current acceptance split:
   - payer summary
   - persisted run lifecycle shell
   - runtime/admin observability
-  - local GeekAI UX proof for chat, prompt optimization, image generation/edit/reference and analysis
+  - local Jiekou-first UX proof for chat, prompt optimization, image generation/edit/reference and analysis
 - Remaining gate before P0 alpha is complete:
 - one real provider-backed server AiRun image path from run request to Asset output and settlement, using one of the refreshed active image models
 
@@ -259,7 +260,7 @@ These items are intentionally documented now, but should wait until the ordered 
 
 # P0 Alpha 稳定化与验收
 
-**更新日期**：2026-05-15
+**更新日期**：2026-05-18
 **状态**：当前发布轮次的活跃稳定化主线文档。
 **分支**：`feature/s1c-auth-admin-production-boundary`
 
@@ -273,8 +274,8 @@ These items are intentionally documented now, but should wait until the ordered 
 
 | 线路 | 发布要求 | 当前状态 | 剩余闸门 |
 | --- | --- | --- | --- |
-| Canvas / Board / Page / Share / Auth | 公开 landing、Clerk 登录入口、受保护的 workspace shell、Konva-only Board 路由、page/history 流程、公开 share 查看和按权限收口的 Board CRUD | staging Web/API/Neon/R2 与真实 session/admin smoke 已转绿；signed-in board/browser 与 Google/email 验收仍待完成 | 完成剩余浏览器/Auth 回归和部署清理 |
-| 一个真实 AI provider 路径 | 一条经由 AiRun、preflight、provider execution、Asset 输出和 settlement 的服务端 AI 图像路径 | runtime shell、quote、ledger 和 provider adapter scaffold 已存在；GeekAI 本地 fast path 已在画布里证明 chat、prompt optimization、image generation/edit/reference 和 analysis UX，Prompt Optimizer 也已有带 durable `text_output` 的后端短文本 `AiRun`，活跃生图线已刷新到 GPT Image 2 / Nano Banana 2 / Doubao Seedream / Jimeng | 先完成 staging/browser smoke，再端到端手测一条真实 provider 路径 |
+| Canvas / Board / Page / Share / Auth | 公开 landing、Clerk 登录入口、受保护的 workspace shell、Konva-only Board 路由、page/history 流程、公开 share 查看和按权限收口的 Board CRUD | staging Web/API/Supabase Pro/R2 与真实 session/admin smoke 已转绿；signed-in board/browser 与 Google/email 验收仍待完成 | 完成剩余浏览器/Auth 回归和部署清理 |
+| 一个真实 AI provider 路径 | 一条经由 AiRun、preflight、provider execution、Asset 输出和 settlement 的服务端 AI 图像路径 | runtime shell、quote、ledger 和 provider adapter scaffold 已存在；Jiekou-first 本地 fast path 已在画布里证明 chat、prompt optimization、image generation/edit/reference 和 analysis UX，Prompt Optimizer 也已有带 durable `text_output` 的后端短文本 `AiRun`，活跃生图线已刷新到 GPT Image 2 / Nano Banana 2 / Doubao Seedream / Jimeng | 先完成 staging/browser smoke，再端到端手测一条真实 provider 路径 |
 | Billing mock + usage / ledger 可见 | 用户能看到 plan、payer、included credits、top-up 余额、ledger 活动和 workspace usage 可见性规则 | 本地第一阶段稳定，但 Team wallet semantics 是下一道 S3 闸门 | 保持 mock/manual payment 路径诚实；真实支付继续后置 |
 | Admin 最小可运营面 | 服务端门控的 `/admin`，带 summary/users/workspaces/boards/audit，以及第一阶段 AI model/route/pricing/runtime 检查面 | 本地第一阶段稳定 | 持续保持 server-gated、audited 且边界有限；更深 finance/admin 能力后置 |
 
@@ -304,7 +305,7 @@ These items are intentionally documented now, but should wait until the ordered 
 - 一条 image-generation 流程的第一条 live provider adapter 路径。
 - 活跃生图产品面当前只包含 GPT Image 2、Nano Banana 2、Doubao Seedream 5.0 Lite 和 Jimeng 4.0，长耗时生图超时边界是 240s。
 - 生成结果以 Asset refs 方式落地；Board/node state 只保存 compact summaries 和 refs。
-- 当前 GeekAI 画布路径只按 UX proof 验收；生产依赖必须走统一的服务端 AiRun route 和 settlement path。
+- 当前 Jiekou-first 画布路径只按 UX proof 验收；生产依赖必须走统一的服务端 AiRun route 和 settlement path。
 
 ### 3. Billing Mock + Usage / Ledger 可见
 
@@ -326,7 +327,7 @@ These items are intentionally documented now, but should wait until the ordered 
 下面这些内容明确不属于当前 P0 alpha 承诺：
 
 - real-time collaboration / Yjs 房间同步 / presence / 多人实时画布。
-- 超出当前 GeekAI 本地证明、刷新后的四模型生图线和第一条服务端 live smoke route 的完整生产 provider 覆盖，包括 image gen、image gen 4、analysis、text persistence 和 refund depth。
+- 超出当前 Jiekou-first 本地证明、刷新后的四模型生图线和第一条服务端 live smoke route 的完整生产 provider 覆盖，包括 image gen、image gen 4、analysis、text persistence 和 refund depth。
 - 真实外部 payment provider integration、发票、webhooks、renewals 和 reconciliation。
 - 完整的 Team governance、Team wallet payment automation、enterprise pooled charging、高级 billing operations 和 finance workflows。
 - 作为真实资产库产品的 Collections。
@@ -363,8 +364,9 @@ These items are intentionally documented now, but should wait until the ordered 
 ## 文档归档动作
 
 - 新的活跃稳定化主线：本文件。
-- 保持活跃：`s1-launch-readiness-and-acceptance-report-2026-05-05.md`，继续作为细粒度 cross-slice checklist。
-- 保持活跃：`s2-ai-provider-route-billing-control-plane-2026-05-07.md`，作为把 GeekAI 和后续 providers 收口到服务端 route switching、credit settlement 和 admin observability 的战术 checklist。
+- 归档：`Archive/s1-launch-readiness-and-acceptance-report-2026-05-05.md`，作为历史 cross-slice checklist。
+- 归档：`Archive/s1x-canvas-engine-migration-reference-2026-05-03.md`，作为历史迁移背景。
+- 保持活跃：`s2-ai-provider-route-billing-control-plane-2026-05-07.md`，作为把 Jiekou-first 和后续 providers 收口到服务端 route switching、credit settlement 和 admin observability 的战术 checklist。
 - 保持活跃：`s3-team-group-wallets-membership-billing-plan-2026-05-08.md`，作为 Team wallet、personal Collaborate wallet、invites、seats、membership 和 payer resolver 的战术 checklist。
 - 归档：`s1-s3-document-consolidation-report-2026-05-06.md`，因为它的作用已经转为历史记录，而且其中部分 S2/S3 事实已经过时。
 
@@ -374,7 +376,7 @@ These items are intentionally documented now, but should wait until the ordered 
 | --- | --- | --- | --- |
 | Auth + entry flow | Landing -> sign in -> workspace redirect；protected route gating；sign-out return to landing | 公共/受保护路由混杂会让产品故事变乱 | 在宣称 P0 alpha 前必须通过 |
 | Board + Page + Share | Create/open/save/history/restore；page create/rename/delete/reorder；`Move to page`；public share open | 权限边界、page regressions 和 stale runtime-edge 行为 | 在宣称 P0 alpha 前必须通过 |
-| AI runtime | Quote/preflight、payer summary、一条真实 provider path、Asset result persistence、Board 不含 raw payloads | 本地 GeekAI route 已证明 UX，但如果不收口会绕过目标生产 control plane | 一条 server AiRun live 路径必须通过，才能叫 P0 alpha 完成 |
+| AI runtime | Quote/preflight、payer summary、一条真实 provider path、Asset result persistence、Board 不含 raw payloads | 本地 Jiekou-first route 已证明 UX，但如果不收口会绕过目标生产 control plane | 一条 server AiRun live 路径必须通过，才能叫 P0 alpha 完成 |
 | Billing + usage | Billing summary、top-up mock flow、ledger filters、usage drill-down、Team/Group visibility rules | 容易把 mocked/manual 的计费说得像真实支付 | 只能按第一阶段能力验收；不能当成真实支付能力宣传 |
 | Admin | Server gate、summary/audit 读取、role management、AI route/pricing/runtime inspection | `/admin` 扩太快会让它看起来比实际更完整 | 只按最小 operator surface 验收 |
 | Deferred areas | Collaboration、Collections、deep finance、broad provider coverage | 如果 docs/nav 太吵，用户会误以为这些已经可用 | 必须持续冻结并从主承诺里剔除 |
@@ -460,7 +462,7 @@ These items are intentionally documented now, but should wait until the ordered 
   - payer summary
   - persisted run lifecycle shell
   - runtime/admin observability
-  - 本地 GeekAI UX proof：chat、prompt optimization、image generation/edit/reference 和 analysis
+  - 本地 Jiekou-first UX proof：chat、prompt optimization、image generation/edit/reference 和 analysis
 - 在 P0 alpha 完成前仍需补上的闸门：
   - 一条真实 provider-backed server AiRun image path，从 run request 到 Asset output 和 settlement
 
@@ -468,6 +470,6 @@ These items are intentionally documented now, but should wait until the ordered 
 
 1. 完成发布主线上的 Auth/staging hardening。
 2. 完成 Board/share/page flows 的权限回归扫测。
-3. 通过刷新后的四模型生图线，把 GeekAI 收口到服务端 provider-route/billing control plane，并手测一条真实 AI provider 路径。
+3. 通过刷新后的四模型生图线，把 Jiekou-first 收口到服务端 provider-route/billing control plane，并手测一条真实 AI provider 路径。
 4. 保持 billing/admin 语言诚实：是第一阶段可见面，不是完整商业系统。
 5. 把 collaboration 和其他 frozen lanes 持续排除在本轮发布承诺之外。

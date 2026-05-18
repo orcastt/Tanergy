@@ -1,8 +1,8 @@
 # ARCH Slice S1B: Staging Infrastructure And Online Prep
 
-**Updated**: 2026-05-16
+**Updated**: 2026-05-18
 **Mode**: Architecture slice.
-**Status**: In progress; rebuilt staging Web/API/Neon/R2 smoke, the Konva-only redeploy and real Clerk session/admin smoke are green again, Cloudflare-proxied staging domains now run with Full (strict) TLS, production runbook/templates now exist, the active API release now reads `deploy/staging/api.env` from a clean release tree backed by a server-local shared secret copy instead of the retired dirty worktree, and the remaining gates are signed-in board/browser acceptance, Google/email verification and one live provider path under strict staging auth.
+**Status**: In progress; rebuilt staging Web/API smoke is green again, Supabase Pro staging is now the database truth, the old Hetzner `staging-postgres` fallback and volume have been removed, R2 was cleared for a clean asset smoke lane, and board realtime persistence now keeps process updates in WebSocket room memory while writing only compacted/final snapshots to Postgres by default. The remaining gates are R2 clean asset smoke, second-round signed-in board/browser acceptance, Google/email verification and one live provider path under strict staging auth.
 
 ## Goal
 
@@ -14,10 +14,10 @@ Create a real staging environment where the Next.js web app calls a public FastA
 Browser
   -> Vercel Web: staging.tangent...
   -> FastAPI API: api-staging.tangent...
-      -> Managed Postgres
+      -> Supabase Pro Postgres
       -> Cloudflare R2
       -> Email provider
-      -> Auth provider: Clerk or Supabase Auth
+      -> Auth provider: Clerk
       -> Google OAuth production client
 ```
 
@@ -25,11 +25,11 @@ Browser
 
 - Frontend: Vercel project connected to GitHub, with `NEXT_PUBLIC_API_BASE_URL` pointing at staging FastAPI.
 - Backend: Hetzner Cloud VPS in US West/Hillsboro if using a fixed-cost VPS, or another US region close to both Asia and Europe.
-- Database: managed Postgres, preferably Supabase or Neon for early staging.
+- Database: Supabase Pro managed Postgres for staging.
 - Object storage: Cloudflare R2 bucket using S3-compatible credentials.
 - DNS/domain: Cloudflare DNS. Register domain at Cloudflare Registrar or point existing registrar nameservers to Cloudflare.
 - Email: Resend or similar transactional email provider for OTP/magic-link delivery.
-- Auth provider: Clerk preferred for P0 Google OAuth + Next.js UI; Supabase Auth acceptable if the team wants Auth and Postgres under one provider.
+- Auth provider: Clerk for P0 Google OAuth + Next.js UI; Supabase Auth is not part of this migration.
 - Google OAuth: Auth provider development mode is acceptable locally, but production needs a Google Cloud OAuth client, verified domain, privacy policy URL and app branding.
 
 ## Purchase And Setup Checklist
@@ -93,7 +93,7 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
    - Smoke test OTP email to real mailbox.
 
 7. Auth provider and Google OAuth
-   - Create Clerk or Supabase Auth project for staging.
+   - Create Clerk project for staging.
    - Enable Email address login.
    - Enable Google social login.
    - Add frontend env:
@@ -127,7 +127,7 @@ Recommended production boundary:
 
 - separate Vercel project or at minimum separate production env/domain wiring
 - separate API env file and compose stack
-- separate Postgres database credentials, preferably a separate database or Neon project
+- separate Postgres database credentials, preferably a separate Supabase project/database
 - separate R2 bucket and write credentials
 - separate Clerk production keys and redirect/origin settings
 - separate email and payment secrets
@@ -144,10 +144,8 @@ Promotion policy:
 - Cloudflare R2 pricing/docs: https://developers.cloudflare.com/r2/pricing/
 - Hetzner Cloud docs/pricing entry: https://www.hetzner.com/cloud/
 - Supabase pricing: https://supabase.com/pricing
-- Neon pricing: https://neon.com/pricing
 - Resend pricing: https://resend.com/pricing
 - Clerk docs: https://clerk.com/docs
-- Supabase Auth docs: https://supabase.com/docs/guides/auth
 - Google OAuth docs: https://developers.google.com/identity/protocols/oauth2
 
 ## Deployment Gates
@@ -163,6 +161,7 @@ Promotion policy:
 - Clerk allowed origins and redirect URLs include the exact staging/production Web domains before turning on required Web Auth.
 - Local-only auth helpers such as `/api/auth/dev-bypass` and the `tangent_dev_auth` cookie remain disabled in production and are never used for staging/prod acceptance.
 - Tracked deploy docs stay redacted. The live staging runtime truth now belongs in Vercel env, the private server-local shared staging `api.env` mirrored into the active release, provider dashboards and private operator storage, while repo docs record only safe facts and checklist state.
+- Nested env shadow files such as `apps/web/.env.local` or pulled `.vercel/.env.production.local` copies must never override deployed Web secrets; the deployed Web lane reads only the Vercel project env for its target environment.
 - Staging deployment should use release-style directories such as `~/apps/Tangent_release_<sha>` instead of mutating a long-lived checkout. The active release may receive `deploy/staging/api.env` as a copy or symlink from a private server-local shared secret store.
 - Public staging DNS remains proxied through Cloudflare, and SSL mode stays Full (strict) instead of Flexible.
 - Public FastAPI `/health` returns 200 over HTTPS.
@@ -173,6 +172,7 @@ Promotion policy:
 - Alembic migration succeeds against staging Postgres.
 - Asset upload/read succeeds through R2.
 - Board save/load/history works through staging API.
+- Board realtime process updates stay in WebSocket room memory; only compacted/final snapshots are persisted to Postgres unless `TANGENT_BOARD_REALTIME_PERSIST_MODE=update_chain` is explicitly set for a rollback.
 - Signed-in browser acceptance covers Board create/open/save/delete, paste/upload placeholder -> persisted Asset, reload, history and thumbnail behavior.
 - Guard rejects `data:` and `blob:` documents.
 - A production runbook and env template exist before public launch.

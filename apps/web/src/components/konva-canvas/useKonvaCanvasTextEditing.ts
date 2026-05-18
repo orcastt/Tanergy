@@ -3,6 +3,7 @@
 import { useCallback, type Dispatch, type SetStateAction } from 'react'
 import type { CanvasDocument, CanvasNodeShape } from '@/features/canvas-engine'
 import { updateTextShape } from './konvaShapeCommands'
+import { normalizeKonvaNodeCardSize } from './konvaNodeCardSizing'
 import { canReplaceImageNode } from './useKonvaImageNodeUpload'
 import { getEditableKonvaNodeTextField, type KonvaNodeTextFieldName } from './KonvaNodeTextEditor'
 import { isKonvaEditableTextShape, type KonvaEditableTextShape } from './KonvaTextEditor'
@@ -41,7 +42,7 @@ export function useKonvaCanvasTextEditing({
   )) ?? null
 
   const editingNodeTextShape = editingNodeText
-    ? document.shapes.find((shape): shape is CanvasNodeShape => shape.id === editingNodeText.shapeId && shape.type === 'node_card') ?? null
+    ? normalizeEditingNodeTextShape(document.shapes.find((shape): shape is CanvasNodeShape => shape.id === editingNodeText.shapeId && shape.type === 'node_card') ?? null)
     : null
 
   const handleStageNodeTextEditStart = useCallback((shapeId: string, fieldName: KonvaNodeTextFieldName) => {
@@ -105,4 +106,8 @@ export function useKonvaCanvasTextEditing({
     handleStageNodeTextEditStart,
     handleStageTextEditStart,
   }
+}
+
+function normalizeEditingNodeTextShape(shape: CanvasNodeShape | null) {
+  return shape ? normalizeKonvaNodeCardSize(shape) : null
 }

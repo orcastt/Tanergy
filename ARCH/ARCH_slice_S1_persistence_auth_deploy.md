@@ -1,6 +1,6 @@
 # ARCH Slice S1: Persistence, Auth And Deploy
 
-**Updated**: 2026-05-14
+**Updated**: 2026-05-18
 **Mode**: Architecture slice.
 
 ## Scope
@@ -21,7 +21,7 @@ It must not absorb collaboration, finance or deep admin scope.
 
 ```text
 Next Web
-  -> Auth Provider UI/JWT: Clerk preferred, Supabase Auth acceptable
+  -> Auth Provider UI/JWT: Clerk is the active authority; Supabase Auth is out of scope
   -> NEXT_PUBLIC_API_BASE_URL
   -> FastAPI /api/v1
       -> request context from verified session/JWT
@@ -52,7 +52,7 @@ S1 is the identity and ownership foundation. It should not implement every futur
 - S3-compatible Asset adapter exists.
 - Alembic P0 migration scaffold exists.
 - S1A formal schema migrations are implemented locally through revision `20260502_0006` and passed disposable Docker Postgres smoke.
-- Staging server, managed Postgres, R2 bucket, domain and TLS have first smoke coverage; real signed-in Clerk session/admin smoke is now green, while Google/email flow verification and full browser acceptance still need final staging verification.
+- Staging server, Supabase Pro Postgres, R2 bucket, domain and TLS have first smoke coverage; real signed-in Clerk session/admin smoke and the first signed-in board/browser pass are now green, while R2 clean asset smoke, Google/email flow verification and second-round board/browser acceptance still need final staging verification.
 - Clerk frontend/session bridge and FastAPI bearer verification first pass are in place; hardening remains around logout/revocation and Google/email coverage.
 - S1X now provides a Konva-only Board route locally, with legacy v1 Board docs/history blocked from the active app path; staging must redeploy/smoke that same truth before public use.
 
@@ -183,8 +183,8 @@ Deferred:
 
 | Sub-slice | File | Status | Output |
 | --- | --- | --- | --- |
-| S1A DB schema + migrations | `ARCH_slice_S1A_db_schema.md` | S1A core done through `0006`; current head includes S3 `0007` | Formal schema, constraints, indexes and future-compatible join points. |
-| S1B staging infra smoke | `ARCH_slice_S1B_staging_infra.md` | Web/API/Neon/R2, Konva redeploy and real session/admin smoke passed; Google/email/live-AI pending | Public Web/API, Postgres, R2, DNS/TLS and email provider smoke. |
+| S1A DB schema + migrations | `ARCH_slice_S1A_db_schema.md` | S1A core done through `0006`; current head includes later S2/S3 migrations and passed fresh Supabase Pro Alembic smoke | Formal schema, constraints, indexes and future-compatible join points. |
+| S1B staging infra smoke | `ARCH_slice_S1B_staging_infra.md` | Web/API/Supabase Pro/R2, Konva redeploy, real session/admin smoke and final-snapshot realtime persistence passed; R2 clean asset, Google/email/live-AI smoke pending | Public Web/API, Postgres, R2, DNS/TLS and email provider smoke. |
 | S1C Auth/request context | `ARCH_slice_S1C_auth_request_context.md` | Clerk/FastAPI bearer first pass landed; real session/admin smoke passed | Real sessions, default workspace and server-side request context. |
 | S1D Auth-backed Board CRUD | `ARCH_slice_S1D_auth_board_crud.md` | First-pass CRUD/member/share/public-share stable | Board/History/Asset APIs scoped by user, workspace and role. |
 

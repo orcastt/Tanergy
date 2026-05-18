@@ -16,7 +16,7 @@ import {
 } from '@/features/collaboration/boardRealtimeState'
 import type { BoardCollaborationPresence } from '@/features/boards/boardCollaborationTypes'
 
-const awarenessPublishIntervalMs = 120
+const awarenessPublishIntervalMs = 72
 
 type UseBoardRealtimeAwarenessOptions = {
   boardId?: string

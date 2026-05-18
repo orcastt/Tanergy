@@ -20,7 +20,7 @@ Treat staging configuration as four separate surfaces:
    - `ARCH/`, `PRD/`, `project_state/`, and `dev-plans/` may record rotation state and acceptance state
    - they must not store raw keys, passwords, bearer tokens, or connection strings
 4. Business data.
-   - rotating a key does not usually require changing application data unless the underlying Clerk, Neon, or R2 instance also changed
+   - rotating a key does not usually require changing application data unless the underlying Clerk, Supabase, or R2 instance also changed
 
 Important Clerk note:
 
@@ -32,7 +32,7 @@ Important Clerk note:
 
 - Web: Vercel preview, Cloudflare Pages preview, or local `next dev`.
 - API: one VPS running the FastAPI Docker container.
-- Database: managed Postgres, such as Neon or Supabase.
+- Database: Supabase Pro managed Postgres for staging.
 - Object storage: Cloudflare R2 or another S3-compatible bucket.
 - DNS / TLS: Cloudflare + a reverse proxy on the VPS.
 
@@ -51,10 +51,10 @@ As of 2026-05-15, the staging chain is intentionally split:
   - web runtime uses Clerk publishable/server keys
   - FastAPI bearer verification uses `CLERK_JWT_ISSUER`, `CLERK_JWKS_URL`, optional audience and `CLERK_AUTHORIZED_PARTIES`
   - Clerk changes are dashboard/env sync work, not a standalone server deploy
-- Database: Neon Postgres
+- Database: Supabase Pro Postgres
   - API runtime should prefer `DATABASE_POOL_URL`
   - Alembic and admin tasks should keep using direct `DATABASE_URL`
-  - Neon itself is not "deployed"; schema changes are applied from the API host with Alembic
+  - Supabase itself is not "deployed"; schema changes are applied from the API host with Alembic
 - Object storage: Cloudflare R2
   - runtime keys live in API env
   - bucket/domain changes are env and dashboard work, not web-only deploy work
@@ -147,7 +147,7 @@ S1C_SMOKE_BEARER_TOKEN=<real-clerk-token> \
 python3 services/api/scripts/s1c_remote_admin_smoke.py
 ```
 
-### 4. Neon changes
+### 4. Supabase database changes
 
 Examples:
 
@@ -156,13 +156,13 @@ Examples:
 - branching / new DB
 - migrations
 
-Neon changes are applied by updating env and, when schema changed, re-running Alembic from the API host.
+Supabase database changes are applied by updating env and, when schema changed, re-running Alembic from the API host.
 
 Rules:
 
 - `DATABASE_POOL_URL` is for API runtime traffic.
 - `DATABASE_URL` remains the direct admin/migration URL.
-- Rotating a Neon password usually means:
+- Rotating a Supabase database password usually means:
   1. update the API host env
   2. update private operator records
   3. restart/redeploy the API container
@@ -174,7 +174,7 @@ Rules:
 Only web files changed?        -> Vercel deploy only
 API code or API env changed?   -> Hetzner redeploy (+ Alembic if needed)
 Clerk dashboard changed?       -> sync env + rerun auth smoke
-Neon credentials changed?      -> update API env + redeploy API
+Supabase credentials changed?  -> update API env + redeploy API
 R2 credentials changed?        -> update API env + redeploy API
 Docs only?                     -> no runtime deploy required unless you want a matching web release
 ```
@@ -239,7 +239,8 @@ cp deploy/staging/api.env.example ~/apps/shared/staging/api.env
 Edit `~/apps/shared/staging/api.env` and fill:
 
 - `DATABASE_URL`
-- `DATABASE_POOL_URL` when your Postgres provider exposes a pooled runtime URL, such as Neon pooling
+- `DATABASE_POOL_URL` when Supabase exposes a pooled runtime URL
+- `TANGENT_BOARD_REALTIME_PERSIST_MODE=final_snapshot`
 - `CLERK_JWT_ISSUER`
 - `CLERK_JWT_AUDIENCE` when configured
 - `CLERK_JWKS_URL`
@@ -273,7 +274,7 @@ curl http://127.0.0.1:8000/health
 
 The compose file binds FastAPI to `127.0.0.1:8000`. Put Caddy, Nginx, or a platform proxy in front of it for HTTPS.
 
-Keep Alembic migrations on `DATABASE_URL`. At runtime the API prefers `DATABASE_POOL_URL` when it is set, and logs SQL taking longer than `TANGENT_DATABASE_SLOW_QUERY_MS` milliseconds without logging query parameters.
+Keep Alembic migrations on `DATABASE_URL`. At runtime the API prefers `DATABASE_POOL_URL` when it is set, and logs SQL taking longer than `TANGENT_DATABASE_SLOW_QUERY_MS` milliseconds without logging query parameters. Board realtime persistence should stay on `TANGENT_BOARD_REALTIME_PERSIST_MODE=final_snapshot` so websocket drawing/process updates are broadcast through the room and Postgres only receives compacted/final snapshots.
 
 For a disposable staging database, S1A migration smoke can run:
 
@@ -452,7 +453,7 @@ Post-rotation browser checks:
 3. Open a board, edit it, refresh, and reopen it.
 4. Create and delete a private board.
 5. Paste or upload an image, wait for persistence, then refresh and reopen.
-6. If Neon, Clerk issuer, or R2 bucket changed, rerun the relevant smoke before treating staging as green.
+6. If Supabase, Clerk issuer, or R2 bucket changed, rerun the relevant smoke before treating staging as green.
 
 ## Current Gaps
 

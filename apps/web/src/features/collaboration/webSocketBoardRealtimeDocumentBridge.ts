@@ -3,13 +3,17 @@
 import * as Y from 'yjs'
 import { createCompactKonvaYjsStateUpdate } from './konvaYjsRoomRecordHelpers'
 import {
+  decodeRealtimeUpdatePayload,
+  encodeRealtimeUpdatePayload,
+} from './realtimeUpdatePayload'
+import {
   RealtimeDocumentUpdateQueue,
   type RealtimeDocumentUpdateQueueSnapshot,
 } from './webSocketBoardRealtimeDocumentQueue'
 
-const maxQueuedRealtimeUpdateBytes = 2 * 1024 * 1024
+const maxQueuedRealtimeUpdateBytes = 4 * 1024 * 1024
 const maxQueuedRealtimeUpdateCount = 64
-const maxRealtimeUpdateBytes = 256 * 1024
+const maxRealtimeUpdateBytes = 1024 * 1024
 const remoteYjsOrigin = Symbol('tangent-websocket-yjs-remote')
 
 type DocumentBridgeMessage = Record<string, unknown>
@@ -85,9 +89,7 @@ export class RealtimeDocumentBridge {
   handleSyncState(payload: Record<string, unknown>) {
     const updates = Array.isArray(payload.updates) ? payload.updates : []
     for (const update of updates) {
-      if (Array.isArray(update) && update.every((item) => typeof item === 'number')) {
-        this.applyRemoteUpdate(update as number[])
-      }
+      this.applyRemoteUpdate(update)
     }
     this.documentVersion = resolveDocumentVersion(payload.documentVersion, updates.length, this.documentVersion)
     this.pendingSeedRequest = payload.seedRoom === true
@@ -105,9 +107,7 @@ export class RealtimeDocumentBridge {
   }
 
   handleYjsUpdate(payload: Record<string, unknown>) {
-    const update = payload.update
-    if (!Array.isArray(update) || !update.every((item) => typeof item === 'number')) return
-    this.applyRemoteUpdate(update as number[])
+    this.applyRemoteUpdate(payload.update)
     this.documentVersion = resolveDocumentVersion(payload.documentVersion, this.documentVersion + 1, this.documentVersion)
   }
 
@@ -115,8 +115,9 @@ export class RealtimeDocumentBridge {
     this.initialDocumentSyncComplete = false
   }
 
-  private applyRemoteUpdate(update: number[]) {
-    const payload = Uint8Array.from(update)
+  private applyRemoteUpdate(update: unknown) {
+    const payload = decodeRealtimeUpdatePayload(update, maxRealtimeUpdateBytes)
+    if (!payload) return
     for (const ydoc of this.docSubscriptions.keys()) {
       Y.applyUpdate(ydoc, payload, remoteYjsOrigin)
     }
@@ -131,11 +132,11 @@ export class RealtimeDocumentBridge {
   }
 
   private createUpdatePayload(update: Uint8Array, label: string) {
-    if (update.byteLength > maxRealtimeUpdateBytes) {
-      this.options.onError(`${label} exceeded the websocket update limit.`)
-      return null
-    }
-    return Array.from(update)
+    return encodeRealtimeUpdatePayload(update, {
+      label,
+      maxBytes: maxRealtimeUpdateBytes,
+      onError: this.options.onError,
+    })
   }
 
   private detachAllYdocs() {
