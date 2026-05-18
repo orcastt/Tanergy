@@ -39,7 +39,7 @@ export function SubscriptionPlansView() {
   const ownedTeams = overview.teamCards.filter((card) => card.relationship === 'created')
 
   return (
-    <div className="product-page workspace-commerce-page">
+    <div className="product-page workspace-commerce-page workspace-subscription-page">
       <section className="product-page-header workspace-commerce-header">
         <div className="workspace-commerce-header-row">
           <div className="workspace-commerce-header-copy">
@@ -62,7 +62,7 @@ export function SubscriptionPlansView() {
           description="Personal plans stay tied to your own credits. Group collaboration never becomes a shared Group wallet."
           title="Personal Plans"
         />
-        <div className="workspace-commerce-band-stack">
+        <div className="workspace-commerce-band-stack workspace-commerce-band-stack--pricing">
           {personalPlans.map((plan) => (
             <PersonalPlanBand
               cycle={cycle}
@@ -80,7 +80,7 @@ export function SubscriptionPlansView() {
           description="Workspace plans are Team-only. Team AI always charges the Team wallet, never each member’s personal credits."
           title="Workspace / Team Plans"
         />
-        <div className="workspace-commerce-band-stack">
+        <div className="workspace-commerce-band-stack workspace-commerce-band-stack--pricing">
           {workspacePlans.map((plan) => (
             <WorkspacePlanBand
               cycle={cycle}

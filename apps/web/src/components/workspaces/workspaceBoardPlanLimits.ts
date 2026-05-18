@@ -1,6 +1,8 @@
 'use client'
 
 import { loadBillingPlans } from '@/features/billing/billingClient'
+import { planCatalog } from '@/features/billing/billingContracts'
+import type { WorkspacePlanSummary } from '@/features/billing/billingTypes'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import type { BoardPersistenceSummary } from '@/features/boards/boardTypes'
 import { readCachedBoardList } from '@/features/boards/boardResourceCache'
@@ -21,17 +23,12 @@ export async function resolveWorkspaceBoardLimitDialog(
   action: WorkspaceBoardLimitAction,
 ) {
   if (!workspace.planKey) return null
-  try {
-    const response = await loadBillingPlans()
-    const plan = response.plans.find((item) => item.planKey === workspace.planKey)
-    const boardLimit = plan?.boardLimit
-    const boardCount = resolveWorkspaceBoardCount(workspace, boards, loadedWorkspaceIds)
-    if (typeof boardLimit !== 'number' || boardCount < boardLimit) return null
-    const planName = plan?.name?.trim() || formatWorkspacePlanName(workspace.planKey)
-    return buildWorkspaceBoardLimitDialogState(planName, boardLimit, workspace, action)
-  } catch {
-    return null
-  }
+  const plan = await resolveWorkspacePlan(workspace)
+  const boardLimit = plan?.boardLimit
+  const boardCount = resolveWorkspaceBoardCount(workspace, boards, loadedWorkspaceIds)
+  if (typeof boardLimit !== 'number' || boardCount < boardLimit) return null
+  const planName = plan?.name?.trim() || formatWorkspacePlanName(workspace.planKey)
+  return buildWorkspaceBoardLimitDialogState(planName, boardLimit, workspace, action)
 }
 
 export function describeWorkspaceBoardLimitError(
@@ -86,4 +83,14 @@ function isWorkspaceBoardLimitMessage(message: string) {
 
 function normalizeLimitMessage(message: string) {
   return message.replace(/\b1 boards\b/i, '1 board').trim()
+}
+
+async function resolveWorkspacePlan(workspace: TangentWorkspace): Promise<WorkspacePlanSummary | null> {
+  if (!workspace.planKey) return null
+  try {
+    const response = await loadBillingPlans()
+    return response.plans.find((item) => item.planKey === workspace.planKey) ?? planCatalog[workspace.planKey] ?? null
+  } catch {
+    return planCatalog[workspace.planKey] ?? null
+  }
 }

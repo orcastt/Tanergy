@@ -14,9 +14,15 @@ import {
 import { getShareUrl } from './boardMemberUtils'
 import { WorkspaceBoardPanelHost } from './WorkspaceBoardPanelHost'
 import { WorkspaceBoardSection } from './WorkspaceBoardSection'
+import { WorkspaceBoardLimitDialog } from './WorkspaceBoardLimitDialog'
 import type { WorkspaceBoardViewMode } from './WorkspaceBoardItem'
 import { getBoardCapabilities } from './boardCapabilities'
 import { createBoardId } from './workspaceBoardUtils'
+import {
+  describeWorkspaceBoardLimitError,
+  resolveWorkspaceBoardLimitDialog,
+  type WorkspaceBoardLimitDialogState,
+} from './workspaceBoardPlanLimits'
 
 type WorkspaceDashboardBoardsPanelProps = {
   boards: BoardPersistenceSummary[]
@@ -38,6 +44,7 @@ export function WorkspaceDashboardBoardsPanel({
   const [editingBoardId, setEditingBoardId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [limitDialog, setLimitDialog] = useState<WorkspaceBoardLimitDialogState | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [panelBoardId, setPanelBoardId] = useState<string | null>(null)
   const [pendingBoardId, setPendingBoardId] = useState<string | null>(null)
@@ -52,6 +59,13 @@ export function WorkspaceDashboardBoardsPanel({
     <section className="workspace-detail-panel workspace-detail-board-panel">
       {error ? <p className="workspace-detail-status" role="alert">{error}</p> : null}
       {notice ? <p className="workspace-detail-status" role="status">{notice}</p> : null}
+      {limitDialog ? (
+        <WorkspaceBoardLimitDialog
+          notice={limitDialog}
+          onClose={() => setLimitDialog(null)}
+          onOpenBilling={openBilling}
+        />
+      ) : null}
 
       <WorkspaceBoardSection
         boards={displayBoards}
@@ -115,8 +129,32 @@ export function WorkspaceDashboardBoardsPanel({
   }
 
   function createBoard() {
+    void createBoardAfterLimitCheck()
+  }
+
+  async function createBoardAfterLimitCheck() {
+    if (await openBoardLimitDialog('create')) return
     const query = new URLSearchParams({ new: '1', workspace: workspace.id })
     router.push(`/boards/${encodeURIComponent(createBoardId())}?${query.toString()}`)
+  }
+
+  function openBilling() {
+    setLimitDialog(null)
+    router.push('/billing')
+  }
+
+  async function openBoardLimitDialog(
+    action: 'copy' | 'create',
+    fallbackMessage?: string,
+    targetWorkspace = workspace,
+  ) {
+    const loadedWorkspaceIds = new Set([targetWorkspace.id])
+    const nextDialog = await resolveWorkspaceBoardLimitDialog(targetWorkspace, displayBoards, loadedWorkspaceIds, action)
+      ?? (fallbackMessage ? describeWorkspaceBoardLimitError(targetWorkspace, fallbackMessage, action) : null)
+    if (!nextDialog) return false
+    setError(null)
+    setLimitDialog(nextDialog)
+    return true
   }
 
   async function renameBoard(event: FormEvent<HTMLFormElement>, boardId: string) {
@@ -195,17 +233,21 @@ export function WorkspaceDashboardBoardsPanel({
       setError('Only the board owner can copy this board.')
       return
     }
+    const targetWorkspace = workspaceArg ?? workspace
+    if (await openBoardLimitDialog('copy', undefined, targetWorkspace)) return
     setPendingBoardId(board.id)
     setError(null)
     try {
-      const response = await copyLocalBoardDocument(board.id, workspaceArg ?? workspace)
+      const response = await copyLocalBoardDocument(board.id, targetWorkspace)
       if (!response.board) throw new Error('Board copy failed.')
       setDisplayBoards((current) => [response.board!, ...current])
       requestCurrentSessionRefresh()
       onWorkspaceRefresh()
       setNotice(`Copied "${board.title}".`)
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : 'Board copy failed.')
+      const message = nextError instanceof Error ? nextError.message : 'Board copy failed.'
+      if (await openBoardLimitDialog('copy', message, targetWorkspace)) return
+      setError(message)
     } finally {
       setPendingBoardId(null)
     }

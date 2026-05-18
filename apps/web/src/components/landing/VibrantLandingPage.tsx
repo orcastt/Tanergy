@@ -17,7 +17,12 @@ const statusItems = [
   { label: 'Final Render', tone: 'ink' },
 ]
 
-const footerLinks = ['Privacy', 'Terms', 'API', 'Status']
+const footerLinks = [
+  { href: '/privacy', label: 'Privacy' },
+  { href: '/terms', label: 'Terms' },
+  { href: '/ai-policy', label: 'AI Policy' },
+  { href: '/pricing', label: 'Pricing' },
+]
 
 export function VibrantLandingPage() {
   useEffect(() => {
@@ -51,6 +56,7 @@ export function VibrantLandingPage() {
             Canvas
           </a>
           <a href="#library">Library</a>
+          <Link href="/pricing">Pricing</Link>
           <Link href="/workspaces">Boards</Link>
           <Link href="/group">Team</Link>
         </div>
@@ -195,9 +201,9 @@ export function VibrantLandingPage() {
           <small>© 2026 TANERGY AI. Quietly Editorial.</small>
           <div className="tanergy-vibrant-footer__links">
             {footerLinks.map((item) => (
-              <a href="#canvas" key={item}>
-                {item}
-              </a>
+              <Link href={item.href} key={item.href}>
+                {item.label}
+              </Link>
             ))}
           </div>
         </div>

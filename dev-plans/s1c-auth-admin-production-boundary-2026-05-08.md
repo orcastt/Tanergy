@@ -2,7 +2,7 @@
 
 **Created**: 2026-05-08
 **Updated**: 2026-05-18
-**Status**: Active tactical plan; real staging session/admin smoke, profile onboarding/editing, Clerk-backed forgot-password, account delete first pass and most second-round signed-in browser acceptance are green, while Google/email/logout hardening and the `Manage board -> Copy board` Free-plan limit modal edge remain.
+**Status**: Active tactical plan; real staging session/admin smoke, profile onboarding/editing, Clerk-backed forgot-password, account delete first pass and most second-round signed-in browser acceptance are green, the `Manage board -> Copy board` Free-plan limit modal path is wired locally, and Google/email/logout hardening plus staging modal spot check remain.
 **Owner slice**: S1C, with S1B/S1D/S3 dependencies.
 
 ## Goal

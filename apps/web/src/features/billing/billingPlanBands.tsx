@@ -115,7 +115,7 @@ export function WorkspacePlanBand({
         price="Custom"
         priceHint="Contract pricing"
         title={plan.name}
-        tone="muted"
+        tone="enterprise"
       >
         <PricingMetricList title="Enterprise scope">
           <PricingMetric label="Seat range" value={formatFactValue(plan.seatRange)} hint="Workspace limits are contract-defined." />

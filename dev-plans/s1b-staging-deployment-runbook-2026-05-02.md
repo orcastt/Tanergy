@@ -16,7 +16,7 @@
 - `staging.tanergy.cc` 已重新指向 Konva-only Web 部署，不再暴露旧 tldraw/license 路径。
 - Hetzner 源站 UFW 已收口到：公网只开 80/443，22 只允许当前维护机器公网 IP；不要指望 Cloudflare 代替 SSH 防护。
 - Cloudflare DNS 当前已经把 `staging.tanergy.cc` 的 Vercel CNAME 和 `api-staging.tanergy.cc` 的 Hetzner A 记录都切到橙云代理，但 `staging` 仍然必须保持 Vercel 源站，不能改成指向 Hetzner。
-- 真实 Clerk session/admin smoke、第一轮 signed-in board/browser 和大部分第二轮 board/browser 已转绿；剩余 staging 闸门是 R2 clean asset smoke、`Manage board -> Copy board` Free-plan limit 弹窗边界、Google/email 和一条 live AI smoke。
+- 真实 Clerk session/admin smoke、第一轮 signed-in board/browser 和大部分第二轮 board/browser 已转绿；`Manage board -> Copy board` Free-plan limit 弹窗路径已完成本地 wiring；剩余 staging 闸门是 R2 clean asset smoke、该弹窗路径的 staging spot check、Google/email 和一条 live AI smoke。
 - `deploy/production/README.md` 与 `deploy/production/api.env.example` 已建立 production 边界，但 production 仍保持关闭，直到 staging 验收完整转绿。
 
 ## 2026-05-15 实操捷径

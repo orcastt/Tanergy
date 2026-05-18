@@ -2,7 +2,7 @@
 
 **Updated**: 2026-05-18
 **Mode**: Architecture slice.
-**Status**: In progress; rebuilt staging Web/API smoke is green again, Supabase Pro staging is now the database truth, the old Hetzner `staging-postgres` fallback and volume have been removed, R2 was cleared for a clean asset smoke lane, and board realtime persistence now keeps process updates in WebSocket room memory while writing only compacted/final snapshots to Postgres by default. The second-round signed-in board/browser pass is mostly green; the remaining gates are R2 clean asset smoke, the `Manage board -> Copy board` Free-plan limit modal edge, Google/email verification and one live provider path under strict staging auth.
+**Status**: In progress; rebuilt staging Web/API smoke is green again, Supabase Pro staging is now the database truth, the old Hetzner `staging-postgres` fallback and volume have been removed, R2 was cleared for a clean asset smoke lane, and board realtime persistence now keeps process updates in WebSocket room memory while writing only compacted/final snapshots to Postgres by default. The second-round signed-in board/browser pass is mostly green, and the `Manage board -> Copy board` Free-plan modal path is wired locally across gallery/dashboard/manage-panel copy entrypoints; the remaining gates are R2 clean asset smoke, a staging spot check for that modal path, Google/email verification and one live provider path under strict staging auth.
 
 ## Goal
 

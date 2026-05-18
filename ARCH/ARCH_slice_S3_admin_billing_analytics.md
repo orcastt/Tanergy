@@ -1,8 +1,8 @@
 # ARCH Slice S3: Team, Group, Wallets, Billing And Admin
 
-**Updated**: 2026-05-16
+**Updated**: 2026-05-18
 **Mode**: Architecture slice.
-**Status**: Active architecture pivot. Existing admin, ledger, seat, subscription and AiRun facts are reusable, but Team charging must move to a workspace-owned Team wallet. Local operator/admin hot paths have now been tightened around dedicated read models and pooled-runtime observability; real staging session/admin smoke is green, while live AI/payment depth and remaining browser verification are the next gates.
+**Status**: Active architecture pivot. Existing admin, ledger, seat, subscription and AiRun facts are reusable, but Team charging must move to a workspace-owned Team wallet. Local operator/admin hot paths have now been tightened around dedicated read models and pooled-runtime observability; public pricing and legal/policy pages now exist without Auth while live checkout stays disabled; real staging session/admin smoke is green, while live AI/payment depth and remaining browser verification are the next gates.
 
 ## Scope
 
@@ -14,6 +14,7 @@ Server authority and data contracts for:
 - Billing usage, top-ups, seat additions, subscription lifecycle and ledger facts.
 - Admin/developer observability for users, teams, boards, AiRuns, provider routes, costs and credits.
 - Admin operator read models for fast user inventory, one-call user detail bundles, Team/Group plan tabs and modal-backed operations.
+- Public no-auth pricing, Privacy, Terms and AI policy pages that can describe the commercial model before registration without holding payment secrets or creating payments.
 
 ## Authority Rules
 
@@ -23,6 +24,8 @@ Server authority and data contracts for:
 - Frontend may request an active workspace, model and parameter tier, but the server resolves membership, permission, payer, route and price.
 - Provider secrets, raw provider routes and provider pricing stay server-side.
 - Board documents, node props and Board History store compact refs and summaries only.
+- Public `/pricing` may display plan facts, but live checkout, tax, invoice and refund authority must stay server-owned behind payment-provider readiness, signed webhooks, ledger writes and legal/compliance review.
+- Public legal/policy pages are static product documents for now. They must not read `.env`, payment credentials, database URLs or private operator notes.
 
 ## 2026-05-16 Confirmed Policy Invariants
 

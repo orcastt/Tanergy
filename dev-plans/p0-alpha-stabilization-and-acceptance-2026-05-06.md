@@ -16,7 +16,7 @@ Only these four lanes are release-critical for the current pass:
 | --- | --- | --- | --- |
 | Canvas / Board / Page / Share / Auth | Public landing, Clerk entry, protected workspace shell, Konva-only Board route, page/history flows, public share view, permission-scoped Board CRUD | Staging Web/API/Supabase Pro/R2 plus real session/admin smoke are green; signed-in board/browser and Google/email acceptance remain | Finish the remaining browser/Auth regression sweep and deployment cleanup |
 | One real AI provider path | One server-backed AI image path through AiRun, preflight, provider execution, Asset output and settlement | Runtime shell, quote, ledger and provider adapter scaffold exist; Jiekou-first local fast path proves chat, prompt optimization, image generation/edit/reference and analysis UX in the canvas, Prompt Optimizer now has a backend short-text `AiRun` path with durable `text_output`, and the active image-generation lane is refreshed onto GPT Image 2 / Nano Banana 2 / Doubao Seedream / Jimeng | Finish staging/browser smoke, then hand-test one live provider path end to end |
-| Billing mock + usage / ledger visible | User can see plan, payer, included credits, top-up balance, ledger activity and workspace usage visibility rules | First-pass stable locally, but Team wallet semantics are now the next S3 gate | Keep mock/manual payment path honest; real payments stay deferred |
+| Billing mock + usage / ledger visible | Public visitors can see pricing before sign-up; authenticated users can see plan, payer, included credits, top-up balance, ledger activity and workspace usage visibility rules | First-pass stable locally; public `/pricing` now exposes the plan shape without checkout, while Team wallet semantics and internal usage surfaces remain the next S3 gate | Keep public pricing honest as beta/waitlist; real payments, taxes, invoices and MoR/checkout stay deferred |
 | Admin minimum operating surface | Server-gated `/admin`, summary/users/workspaces/boards/audit plus first-pass AI model/route/pricing/runtime inspection | First-pass stable locally | Keep server-gated, audited and bounded; deeper finance/admin tooling stays deferred |
 
 Release rule:
@@ -49,11 +49,13 @@ Release rule:
 
 ### 3. Billing Mock + Usage / Ledger Visible
 
+- `/pricing` is public and linked from the landing nav/footer so subscription positioning is visible before registration.
 - `/billing` shows current plan, included credits, remaining credits, top-up balance and payer summary.
 - `/usage` shows ledger activity, filters and workspace-vs-personal usage drill-down.
 - `/team` shows Group/Team workspace visibility differences plus first-pass seat/member controls.
 - S3 implementation must now treat Team plans as Team-wallet backed and Group/Collaborate as personal-wallet backed.
 - Internal ledger mutation helpers remain valid for grants, top-ups, usage and refunds, even while public payment provider flows stay mocked/manual.
+- Public pricing CTAs must not start a live checkout until provider, tax, invoice, refund and legal review are ready.
 
 ### 4. Admin Minimum Operating Surface
 
@@ -86,6 +88,8 @@ Freeze rule:
 | Route | Audience | Status | Notes |
 | --- | --- | --- | --- |
 | `/` | Public | Shipping now | Primary landing page before Auth |
+| `/pricing` | Public | Shipping now | Public subscription/pricing page before Auth; beta/waitlist CTAs only, no live checkout |
+| `/privacy` / `/terms` / `/ai-policy` | Public | Shipping now as draft policy pages | Product/legal drafts linked from public nav/footer; final operator/company details and counsel review pending |
 | `/sign-in` / `/sign-up` | Public | Shipping now | Clerk entry surfaces |
 | `/workspaces` | Authenticated product user | Shipping now | Main workspace gallery/list shell |
 | `/boards/[boardId]` | Authenticated product user | Shipping now | Formal Konva-only Board runtime |
@@ -115,6 +119,7 @@ Freeze rule:
 | Lane | What to hand-test now | Main risk | Release decision |
 | --- | --- | --- | --- |
 | Auth + entry flow | Landing -> sign in -> workspace redirect; protected route gating; sign-out return to landing | Mixed public/protected routing can confuse the product story | Must pass before P0 alpha claim |
+| Public pricing + legal | Landing -> `/pricing`, `/privacy`, `/terms`, `/ai-policy`; no-auth access; no live checkout | Public pages can accidentally over-promise commercial readiness | Accept as beta disclosure only; paid checkout remains blocked |
 | Board + Page + Share | Create/open/save/history/restore; page create/rename/delete/reorder; `Move to page`; public share open | Permission edge cases, page regressions and stale runtime-edge behavior | Must pass before P0 alpha claim |
 | AI runtime | Quote/preflight, payer summary, one real provider path, Asset result persistence, no raw payloads in Board | Local Jiekou-first route proves UX but can bypass the intended production control plane if left unreconciled | One server AiRun live path must pass before P0 alpha claim |
 | Billing + usage | Billing summary, top-up mock flow, ledger filters, usage drill-down, Team/Group visibility rules | Over-promising real billing when flows are still mocked/manual | Accept as first-pass only; do not market as real payments |
@@ -126,10 +131,11 @@ Freeze rule:
 ### Accepted now as first-pass product behavior
 
 1. Public landing -> Auth entry -> protected workspace flow.
-2. Konva-only Board editing, save/load/history and public share viewing.
-3. Page management first pass.
-4. First-pass billing, team and usage visibility surfaces.
-5. First-pass server-gated admin/operator surface.
+2. Public pricing and draft legal/policy pages reachable without registration.
+3. Konva-only Board editing, save/load/history and public share viewing.
+4. Page management first pass.
+5. First-pass billing, team and usage visibility surfaces.
+6. First-pass server-gated admin/operator surface.
 
 ### Not yet acceptable to claim as done
 
@@ -138,6 +144,7 @@ Freeze rule:
 3. Broad real AI coverage across all node types.
 4. Deep Team governance or enterprise administration.
 5. Full asset-library/Collection productization.
+6. Legally finalized Privacy/Terms/AI policy text with final operator address, support contact and counsel sign-off.
 
 ## Clear Acceptance Guide For The Current Build
 
@@ -145,9 +152,11 @@ Freeze rule:
 
 1. Open `/`.
 2. Confirm landing page is the first screen.
-3. Use `/sign-in` or `/sign-up`.
-4. After successful Auth, confirm the user can reach `/workspaces`.
-5. Confirm protected routes redirect when web auth is required and the user is not signed in.
+3. Open `/pricing`, `/privacy`, `/terms` and `/ai-policy` while signed out; confirm each page loads without registration.
+4. Confirm `/pricing` shows public subscription containers but does not trigger live checkout.
+5. Use `/sign-in` or `/sign-up`.
+6. After successful Auth, confirm the user can reach `/workspaces`.
+7. Confirm protected routes redirect when web auth is required and the user is not signed in.
 
 ### B. Workspace, Board, Pages and Share
 
@@ -211,7 +220,7 @@ Current acceptance split:
 - [ ] Confirm the solo reopen flow does not surface a false `remote update / use remote / keep mine` chooser; if it still appears, record it as a blocking Board/browser bug.
 - [ ] Create or refresh Board History, reopen the History panel and confirm the latest save row and preview remain visible after reload.
 - [ ] Confirm thumbnail persistence is truthful after save, refresh and reopen.
-- [ ] Confirm Free-plan Board limit actions such as create/copy use the centered plan-limit dialog rather than a top-page error.
+- [ ] Confirm Free-plan Board limit actions such as create/copy use the centered plan-limit dialog rather than a top-page error. Implementation now covers workspace gallery plus workspace dashboard/manage-panel paths; staging browser confirmation still pending.
 - [ ] Confirm private Board owner actions still work, especially delete/copy, while unauthorized actions remain blocked.
 - [ ] Paste or upload an image, wait for the placeholder/upload state to finish, then refresh and reopen to confirm persistence.
 
@@ -238,6 +247,7 @@ Current acceptance split:
 - [ ] Recheck payer visibility and usage wording on `/billing`, `/usage` and `/team`.
 - [ ] Recheck Board permission edge cases that affect paid limits or owner-only actions.
 - [ ] Keep payment language honest as mocked/manual until real provider-backed settlement is ready.
+- [ ] Replace public `/pricing` static catalog with the backend public plan-catalog read if admin-edited prices must be launch-authoritative.
 
 Non-urgent follow-on work:
 

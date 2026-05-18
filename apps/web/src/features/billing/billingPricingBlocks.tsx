@@ -19,24 +19,22 @@ export function PricingBand({
   price: ReactNode
   priceHint?: ReactNode
   title: string
-  tone?: 'group' | 'muted' | 'team'
+  tone?: 'enterprise' | 'group' | 'muted' | 'team'
 }) {
   return (
     <article className={`workspace-pricing-band${tone ? ` is-${tone}` : ''}`}>
-      <div className="workspace-pricing-band__hero">
-        <div className="workspace-pricing-band__copy">
-          <span className="workspace-commerce-card-eyebrow">{eyebrow}</span>
-          <div className="workspace-pricing-band__title-row">
-            <h3>{title}</h3>
-            {badge ? <div className="workspace-pricing-band__badge">{badge}</div> : null}
-          </div>
-          <div className="workspace-pricing-band__price">
-            <strong>{price}</strong>
-            {priceHint ? <small>{priceHint}</small> : null}
-          </div>
+      <div className="workspace-pricing-band__top">
+        <span className="workspace-commerce-card-eyebrow">{eyebrow}</span>
+        <div className="workspace-pricing-band__title-row">
+          <h3>{title}</h3>
+          {badge ? <div className="workspace-pricing-band__badge">{badge}</div> : null}
         </div>
-        {actions ? <div className="workspace-pricing-band__actions">{actions}</div> : null}
       </div>
+      <div className="workspace-pricing-band__price">
+        <strong>{price}</strong>
+        {priceHint ? <small>{priceHint}</small> : null}
+      </div>
+      {actions ? <div className="workspace-pricing-band__actions">{actions}</div> : null}
       <div className="workspace-pricing-band__body">{children}</div>
     </article>
   )

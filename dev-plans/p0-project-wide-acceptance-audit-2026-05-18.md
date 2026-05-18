@@ -116,7 +116,8 @@
 | --- | --- | --- |
 | Team wallet and personal Collaborate wallet semantics | Green | Core backend contracts and local smoke exist. |
 | Group/Team invite/member contracts | Green/Manual gate | Capacity-based invite acceptance exists; browser/product smoke still needed. |
-| Subscription/Usage UI | Manual gate | Needs vertical plan-card pricing pass and cleaner marketing layout before final product acceptance. |
+| Public pricing and legal policy drafts | Green/Manual gate | `/pricing`, `/privacy`, `/terms` and `/ai-policy` are public no-auth pages linked from landing; content remains draft and live checkout is still disabled. |
+| Subscription/Usage UI | Manual gate | Public pricing now uses narrow vertical plan containers; authenticated `/billing` and `/usage` still need the next product-language and live-catalog alignment pass. |
 | Admin operator console | Green/Manual gate | Local acceptance green; staging/high-volume smoke remains. |
 | Payment provider automation, invoices and refunds | Planned | Keep honest as mock/manual until hosted-provider staging smoke deepens. |
 
@@ -215,11 +216,13 @@ These files are above the `<300 lines` target and should be split only when a re
 
 ## Not Done / Next Round
 
-1. Close the remaining `Manage board -> Copy board` Free-plan limit modal path and rerun a small signed-in Board browser spot check on staging.
+1. Rerun a small signed-in Board browser spot check on staging for the now-wired `Manage board -> Copy board` Free-plan limit modal path.
 2. Run R2 clean-bucket asset upload/read/thumbnail smoke.
 3. Recreate minimal staging admin/workspace/board data after the clean Supabase reset.
 4. Verify Google/email/logout/session-revocation flows.
 5. Run one credentialed Jiekou-backed server AiRun image smoke.
-6. Tighten Subscription/Usage UI into vertical pricing/usage containers.
-7. Real two-user browser collaboration smoke: invite, page delete fallback, draft preview, final snapshot recovery.
-8. Redis/multi-instance collaboration backplane remains deferred until the P0 spine is green.
+6. Replace public `/pricing` static catalog with the backend public plan-catalog read if admin-edited prices must be launch-authoritative.
+7. Finalize Privacy/Terms/AI policy text with operator address, support contact, subprocessor list and counsel/compliance review.
+8. Tighten authenticated Subscription/Usage UI into vertical pricing/usage containers.
+9. Real two-user browser collaboration smoke: invite, page delete fallback, draft preview, final snapshot recovery.
+10. Redis/multi-instance collaboration backplane remains deferred until the P0 spine is green.
