@@ -60,11 +60,14 @@ export function KonvaSelectionToolbar({
   selectedIds,
   shellRect,
 }: KonvaSelectionToolbarProps) {
-  if (selectedIds.length < 2) return null
   const point = getSelectionToolbarPoint(document.shapes, selectedIds, camera, shellRect)
   if (!point) return null
-  const showGroupToggle = canGroupSelection || canUngroupSelection
-  const showLockToggle = canLockSelection || canUnlockSelection
+  const showGroupToggle = selectedIds.length > 1 && (canGroupSelection || canUngroupSelection)
+  const showLockToggle = selectedIds.length > 1 && (canLockSelection || canUnlockSelection)
+  const showCaptureSelection = selectedIds.length > 1 && canCaptureSelection
+  const showImageActions = canConvertImageToNode || canCropImage || canRemoveBackground || canStartObjectCutout
+  const showMultiSelectionActions = selectedIds.length > 1 && (showCaptureSelection || showGroupToggle || showLockToggle)
+  if (!showImageActions && !showMultiSelectionActions) return null
   const groupAction = canUngroupSelection
     ? { icon: 'style-action-icon style-action-icon--ungroup', label: 'Ungroup', onClick: onUngroupSelection }
     : { icon: 'style-action-icon style-action-icon--group', label: 'Group', onClick: onGroupSelection }
@@ -127,16 +130,18 @@ export function KonvaSelectionToolbar({
           </button>
         </>
       ) : null}
-      <button
-        aria-label="Capture selection to image node"
-        className="selection-toolbar__btn"
-        data-tooltip={isCapturingSelection ? 'Capturing selection' : 'Capture selection to image node'}
-        disabled={!canCaptureSelection || isCapturingSelection}
-        onClick={onCaptureSelection}
-        type="button"
-      >
-        <span aria-hidden className="style-action-icon style-action-icon--capture" />
-      </button>
+      {showCaptureSelection ? (
+        <button
+          aria-label="Capture selection to image node"
+          className="selection-toolbar__btn"
+          data-tooltip={isCapturingSelection ? 'Capturing selection' : 'Capture selection to image node'}
+          disabled={!canCaptureSelection || isCapturingSelection}
+          onClick={onCaptureSelection}
+          type="button"
+        >
+          <span aria-hidden className="style-action-icon style-action-icon--capture" />
+        </button>
+      ) : null}
       {showGroupToggle ? (
         <button
           aria-label={groupAction.label}

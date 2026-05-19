@@ -449,7 +449,7 @@ Image operations are server-side first. The browser sends an existing image asse
 
 Current truthful release note:
 
-- `Remove BG` is exposed in the frontend selection UI, but the end-to-end backend/API/staging flow still needs to be reconnected and re-accepted before it is treated as a live supported feature in this pass.
+- `Remove BG` is exposed for single persisted image selections, calls the FastAPI image-op route, creates a new transparent PNG asset and places the result near the source image. Staging API images install the optional `services/api[image-ops]` dependency via the Docker build arg; live acceptance still needs one uploaded-image smoke after deploy.
 - `Object Cutout` remains planned only.
 
 Planned algorithms:

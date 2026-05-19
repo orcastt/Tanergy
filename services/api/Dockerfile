@@ -6,6 +6,8 @@ ENV PIP_NO_CACHE_DIR=1 \
 
 WORKDIR /app
 
+ARG TANGENT_INSTALL_IMAGE_OPS=0
+
 COPY pyproject.toml README.md ./
 COPY alembic.ini ./
 COPY migrations ./migrations
@@ -13,7 +15,11 @@ COPY scripts ./scripts
 COPY tangent_api ./tangent_api
 
 RUN python -m pip install --upgrade pip \
-  && python -m pip install .
+  && if [ "$TANGENT_INSTALL_IMAGE_OPS" = "1" ]; then \
+    python -m pip install '.[image-ops]'; \
+  else \
+    python -m pip install .; \
+  fi
 
 EXPOSE 8000
 

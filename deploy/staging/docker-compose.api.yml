@@ -3,6 +3,8 @@ services:
     build:
       context: ../../services/api
       dockerfile: Dockerfile
+      args:
+        TANGENT_INSTALL_IMAGE_OPS: "1"
     env_file:
       - ./api.env
     ports:
