@@ -16,6 +16,8 @@ import { expandKonvaGroupedShapeIds } from './konvaGroupCommands'
 import { appendShapes, cloneKonvaShapes } from './konvaShapeCommands'
 import { snapBoundsToTargetBounds, type KonvaSnapGuide } from './konvaSnapping'
 
+const remoteMoveReleaseHoldMs = 1_200
+
 type UseKonvaShapeDragHandlersOptions = {
   activeTool: KonvaCanvasTool
   camera: CanvasCamera
@@ -45,6 +47,7 @@ export function useKonvaShapeDragHandlers(options: UseKonvaShapeDragHandlersOpti
   const snapDistance = useCanvasSettingsStore((state) => state.settings.snapDistance)
   const dragRef = useRef<KonvaShapeDragSession | null>(null)
   const dragPreviewFrameRef = useRef<number | null>(null)
+  const remoteMoveReleaseTimerRef = useRef<number | null>(null)
   const pendingDragPreviewRef = useRef<DragPreviewState | null>(null)
   const [dragPreviewShapes, setDragPreviewShapes] = useState<CanvasShape[] | null>(null)
   const [draggingShapeIds, setDraggingShapeIds] = useState<string[]>([])
@@ -73,7 +76,24 @@ export function useKonvaShapeDragHandlers(options: UseKonvaShapeDragHandlersOpti
     pendingDragPreviewRef.current = null
   }, [])
 
-  useEffect(() => () => clearPendingDragPreview(), [clearPendingDragPreview])
+  const clearRemoteMoveReleaseTimer = useCallback(() => {
+    if (remoteMoveReleaseTimerRef.current === null) return
+    window.clearTimeout(remoteMoveReleaseTimerRef.current)
+    remoteMoveReleaseTimerRef.current = null
+  }, [])
+
+  const scheduleRemoteMoveRelease = useCallback(() => {
+    clearRemoteMoveReleaseTimer()
+    remoteMoveReleaseTimerRef.current = window.setTimeout(() => {
+      remoteMoveReleaseTimerRef.current = null
+      onTransformPreviewChange?.(null)
+    }, remoteMoveReleaseHoldMs)
+  }, [clearRemoteMoveReleaseTimer, onTransformPreviewChange])
+
+  useEffect(() => () => {
+    clearPendingDragPreview()
+    clearRemoteMoveReleaseTimer()
+  }, [clearPendingDragPreview, clearRemoteMoveReleaseTimer])
 
   const getSnappedDragPoint = useCallback((drag: KonvaShapeDragSession, x: number, y: number) => {
     if (!snapAlignment) {
@@ -92,6 +112,7 @@ export function useKonvaShapeDragHandlers(options: UseKonvaShapeDragHandlersOpti
   }, [camera.zoom, snapAlignment, snapDistance])
 
   const handleShapeDragStart = useCallback((shapeId: string, config: { duplicate?: boolean } = {}) => {
+    clearRemoteMoveReleaseTimer()
     const current = documentRef.current
     const baseDragShapeIds = selectedIds.includes(shapeId) ? selectedIds : [shapeId]
     const groupedShapeIds = expandKonvaGroupedShapeIds(current.shapes, baseDragShapeIds)
@@ -123,6 +144,7 @@ export function useKonvaShapeDragHandlers(options: UseKonvaShapeDragHandlersOpti
     })
     return { lockSource: true }
   }, [
+    clearRemoteMoveReleaseTimer,
     documentRef,
     onHistoryCheckpoint,
     onInteractionShapeIdsChange,
@@ -156,17 +178,25 @@ export function useKonvaShapeDragHandlers(options: UseKonvaShapeDragHandlersOpti
     setDragPreviewShapes(null)
     setDraggingShapeIds([])
     setSnapGuides([])
-    onTransformPreviewChange?.(null)
     onInteractionShapeIdsChange?.([])
-    if (!drag || (drag.shapeId !== shapeId && !drag.movingShapeIds.includes(shapeId))) return
+    if (!drag || (drag.shapeId !== shapeId && !drag.movingShapeIds.includes(shapeId))) {
+      clearRemoteMoveReleaseTimer()
+      onTransformPreviewChange?.(null)
+      return
+    }
     const finalPoint = drag.lastPoint ?? getSnappedDragPoint(drag, x, y).point
     const previewShapes = getShapeDragSessionShapes(drag, finalPoint.x, finalPoint.y)
     const finalShapes = applyFrameContainment(previewShapes, drag.movingShapeIds)
     const finalDocument = withCanvasShapes(documentRef.current, finalShapes)
     documentRef.current = finalDocument
+    onTransformPreviewChange?.({
+      bounds: getShapeDragSessionBounds(drag, finalPoint.x, finalPoint.y),
+      kind: 'move',
+    })
     onDocumentChange(finalDocument)
     if (drag.selectOnEndIds) onSelectionChange(drag.selectOnEndIds)
-  }, [clearPendingDragPreview, documentRef, getSnappedDragPoint, onDocumentChange, onInteractionShapeIdsChange, onSelectionChange, onTransformPreviewChange])
+    scheduleRemoteMoveRelease()
+  }, [clearPendingDragPreview, clearRemoteMoveReleaseTimer, documentRef, getSnappedDragPoint, onDocumentChange, onInteractionShapeIdsChange, onSelectionChange, onTransformPreviewChange, scheduleRemoteMoveRelease])
 
   return {
     handleShapeDragEnd,

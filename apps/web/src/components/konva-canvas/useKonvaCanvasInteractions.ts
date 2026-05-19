@@ -68,14 +68,16 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
   })
   const { flushPreviewDocument, previewDocument, previewDocumentNow } = useKonvaDocumentPreviewScheduler({
     documentRef,
+    onDocumentCommit: options.onDocumentChange,
     onDocumentPreview: options.onDocumentPreview,
+    onPreviewStateChange: options.onDocumentPreviewStateChange,
   })
   const [resizeSnapGuides, setResizeSnapGuides] = useState<KonvaSnapGuide[]>([])
   const [selectionBox, setSelectionBox] = useState<CanvasBounds | null>(null)
   const { clearEraserTrail, eraseAtPoint, eraserTrail, updateEraserTrail } = useKonvaEraserSession({
     cameraRef,
     documentRef,
-    onDocumentPreview: options.onDocumentPreview,
+    onDocumentPreview: previewDocumentNow,
   })
   const {
     handleLineEndpointStart: startLineEndpoint,
@@ -379,7 +381,7 @@ export function useKonvaCanvasInteractions(options: UseKonvaCanvasInteractionsOp
     }
     sessionRef.current = null
     if (session?.type === 'pan') scheduleCameraCommit(0)
-    if (session?.type === 'erase') clearEraserTrail(120)
+    if (session?.type === 'erase') { flushPreviewDocument(); clearEraserTrail(120) }
     if (session?.type === 'select-box') finishBoxSelection(session)
     if (session?.type === 'resize') { flushPreviewDocument(); setResizeSnapGuides([]); setSelectedBoundsOverride(null); options.onTransformPreviewChange?.(null) }
     if (session?.type === 'rotate') { flushPreviewDocument(); setResizeSnapGuides([]); options.onTransformPreviewChange?.(null) }

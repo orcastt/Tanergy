@@ -1,11 +1,11 @@
-import { useCallback, useState, type Dispatch, type SetStateAction } from 'react'
+import { useCallback, useState } from 'react'
 import { withCanvasShapes, type CanvasCamera, type CanvasDocument, type CanvasPoint } from '@/features/canvas-engine'
 import { getShapesAfterPreciseErase } from './konvaEraserHitTest'
 
 type UseKonvaEraserSessionOptions = {
   cameraRef: { current: CanvasCamera }
   documentRef: { current: CanvasDocument }
-  onDocumentPreview: Dispatch<SetStateAction<CanvasDocument>>
+  onDocumentPreview: (document: CanvasDocument) => void
 }
 
 export function useKonvaEraserSession({ cameraRef, documentRef, onDocumentPreview }: UseKonvaEraserSessionOptions) {

@@ -10,6 +10,7 @@ import {
 import {
   areSamePresenceShapeIds,
   createLocalSessionPresenceSnapshot,
+  isSamePresence,
 } from './boardCollaborationPresenceState'
 import {
   applyLocalPresenceState,
@@ -63,6 +64,7 @@ export function useBoardCollaborationLocalPresence({
   const latestDraftPreviewRef = useRef<BoardCollaborationPresence['draftPreview']>(null)
   const latestEditingShapeIdsRef = useRef<string[]>([])
   const latestHoveredShapeIdRef = useRef<string | null>(null)
+  const latestSessionPresenceRef = useRef<BoardCollaborationPresence | null>(null)
   const selectionBroadcastRefreshTimerRef = useRef<number | null>(null)
   const selectionBroadcastTimerRef = useRef<number | null>(null)
   const [broadcastSelectedIds, setBroadcastSelectedIds] = useState<string[]>([])
@@ -100,6 +102,13 @@ export function useBoardCollaborationLocalPresence({
     }, 0)
   }, [clearSelectionBroadcastRefreshTimer, refreshSelectionBroadcast])
 
+  const scheduleSessionSyncIfStablePresenceChanged = useCallback((presence: BoardCollaborationPresence) => {
+    const nextSessionPresence = createLocalSessionPresenceSnapshot(presence)
+    if (latestSessionPresenceRef.current && isSamePresence(latestSessionPresenceRef.current, nextSessionPresence)) return
+    latestSessionPresenceRef.current = nextSessionPresence
+    schedulePresenceSync()
+  }, [schedulePresenceSync])
+
   const applyLocalPresencePatch = useCallback((
     patch: Partial<BoardCollaborationPresence>,
     options: { refreshSelectionBroadcast?: boolean } = {},
@@ -119,14 +128,14 @@ export function useBoardCollaborationLocalPresence({
       )
     ))
     scheduleAwarenessPresencePublish(latestPresenceRef.current)
-    schedulePresenceSync()
+    scheduleSessionSyncIfStablePresenceChanged(latestPresenceRef.current)
   }, [
     currentSessionIdRef,
     latestPresenceRef,
     realtimeAwarenessRef,
     refreshSelectionBroadcast,
     scheduleAwarenessPresencePublish,
-    schedulePresenceSync,
+    scheduleSessionSyncIfStablePresenceChanged,
     setState,
   ])
 
@@ -160,7 +169,7 @@ export function useBoardCollaborationLocalPresence({
     })
     latestPresenceRef.current = nextPresence
     scheduleAwarenessPresencePublish(nextPresence)
-    schedulePresenceSync()
+    scheduleSessionSyncIfStablePresenceChanged(nextPresence)
     const localSessionPresence = createLocalSessionPresenceSnapshot(nextPresence)
     setState((current) => (
       applyLocalPresenceState(
@@ -177,7 +186,7 @@ export function useBoardCollaborationLocalPresence({
     latestPresenceRef,
     realtimeAwarenessRef,
     scheduleAwarenessPresencePublish,
-    schedulePresenceSync,
+    scheduleSessionSyncIfStablePresenceChanged,
     broadcastSelectedIds,
     selectedEdgeId,
     selectionBox,

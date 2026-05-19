@@ -56,6 +56,7 @@ type UseKonvaBoardPersistenceLifecycleArgs = {
   pageRevision: number
   recordHistoryRef: MutableRefObject<KonvaBoardHistoryRecorder | null>
   stage: Konva.Stage | null
+  suppressDirtyTracking?: boolean
   workspace?: TangentWorkspace
 }
 
@@ -74,6 +75,7 @@ export function useKonvaBoardPersistenceLifecycle({
   pageRevision,
   recordHistoryRef,
   stage,
+  suppressDirtyTracking = false,
   workspace,
 }: UseKonvaBoardPersistenceLifecycleArgs) {
   const isSaving = useRef(false)
@@ -150,11 +152,11 @@ export function useKonvaBoardPersistenceLifecycle({
   })
 
   const markDirty = useCallback(() => {
-    if (mode !== 'board' || isRestoringRef.current) return
+    if (mode !== 'board' || isRestoringRef.current || suppressDirtyTracking) return
     setStatus((current) => current === 'loading' ? current : 'dirty')
     setSaveError(null)
     if (!isSaving.current) scheduleAutosave()
-  }, [isRestoringRef, mode, scheduleAutosave])
+  }, [isRestoringRef, mode, scheduleAutosave, suppressDirtyTracking])
 
   useBoardSettingsDirtyTracking(mode, markDirty)
 
@@ -259,7 +261,7 @@ export function useKonvaBoardPersistenceLifecycle({
       window.clearTimeout(dirtyCheckTimer.current)
       dirtyCheckTimer.current = null
     }
-    if (mode !== 'board' || isRestoringRef.current) return
+    if (mode !== 'board' || isRestoringRef.current || suppressDirtyTracking) return
     dirtyCheckTimer.current = window.setTimeout(() => {
       dirtyCheckTimer.current = null
       if (isRestoringRef.current) return
@@ -269,7 +271,7 @@ export function useKonvaBoardPersistenceLifecycle({
       suppressedDirtySignatureRef.current = null
       if (lastSavedSignatureRef.current !== nextSignature) markDirty()
     }, 420)
-  }, [camera, createGuardedDocument, document, getPreparedDocument, isRestoringRef, markDirty, mode, pageRevision])
+  }, [camera, createGuardedDocument, document, getPreparedDocument, isRestoringRef, markDirty, mode, pageRevision, suppressDirtyTracking])
 
   useEffect(() => () => {
     if (dirtyCheckTimer.current !== null) window.clearTimeout(dirtyCheckTimer.current)

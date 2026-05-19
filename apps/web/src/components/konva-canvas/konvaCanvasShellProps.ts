@@ -67,6 +67,8 @@ type CreateKonvaCanvasShellPropsOptions = {
   setConnectionPreviewPresence: WritableStageProps['onConnectionPreviewChange']
   setDraftPreviewPresence: WritableStageProps['onDraftPreviewChange']
   setDocument: WritableStageProps['onDocumentChange']
+  setDocumentPreview: WritableStageProps['onDocumentPreview']
+  setDocumentPreviewing: NonNullable<WritableStageProps['onDocumentPreviewStateChange']>
   setFocusedControlShapeState: WritableStageProps['onNodeFocusedEditStateChange']
   setInteractionShapeIds: WritableStageProps['onInteractionShapeIdsChange']
   setNodeField: WritableStageProps['onNodeFieldChange']
@@ -195,7 +197,8 @@ export function createKonvaCanvasShellProps(options: CreateKonvaCanvasShellProps
       onCameraPreview: options.handleCameraPreview,
       onConnectionPreviewChange: options.setConnectionPreviewPresence,
       onDocumentChange: options.setDocument,
-      onDocumentPreview: options.setDocument,
+      onDocumentPreview: options.setDocumentPreview,
+      onDocumentPreviewStateChange: options.setDocumentPreviewing,
       onDraftPreviewChange: options.setDraftPreviewPresence,
       onEdgeDisconnect: options.writableStagePropsExtras.onEdgeDisconnect,
       onEdgeSelect: options.writableStagePropsExtras.onEdgeSelect,

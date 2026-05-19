@@ -15,12 +15,14 @@ import { KonvaLocalDraftLayer } from './KonvaLocalDraftLayer'
 import { KonvaNodeEdgeLayer, type KonvaCollaborationEdgeSession } from './KonvaNodeEdgeLayer'
 import { KonvaPendingImagePasteLayer, type KonvaPendingImagePaste } from './KonvaPendingImagePasteLayer'
 import { KonvaRemoteDraftLayer } from './KonvaRemoteDraftLayer'
+import { KonvaRemoteMovePreviewLayer } from './KonvaRemoteMovePreviewLayer'
 import { KonvaSelectionOverlay } from './KonvaSelectionOverlay'
 import { useKonvaCanvasInteractions } from './useKonvaCanvasInteractions'
 import { canKonvaShapeDragWithTool, canKonvaShapeSelectWithTool } from './konvaShapeCapabilities'
 import { normalizeKonvaShapeMinResizeSize } from './konvaNodeCardSizing'
 import { konvaCaptureExcludeName } from './konvaSelectionExport'
 import { getVisibleKonvaShapes } from './konvaViewportCulling'
+import { createKonvaRemoteMovePreviews, getKonvaRemoteMoveHiddenShapeIds } from './konvaRemoteMovePreview'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
 import type { KonvaNodeTextFieldName } from './KonvaNodeTextEditor'
 import type { RuntimeGraphImageAssetRef } from '@/features/node-runtime/runtimeGraphAssets'
@@ -48,6 +50,7 @@ type KonvaCanvasStageProps = {
   onCameraPreview: (camera: CanvasCamera) => void
   onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
   onDocumentPreview: Dispatch<SetStateAction<CanvasDocument>>
+  onDocumentPreviewStateChange?: (active: boolean) => void
   onConnectionPreviewChange?: (preview: BoardCollaborationConnectionPreview | null) => void
   onDraftPreviewChange?: (shape: CanvasShape | null) => void
   onEdgeDisconnect: (edgeId: string) => void
@@ -111,7 +114,15 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
   const selectionMode = props.activeTool === 'select'
   const shapesAreInteractive = !props.captureMode && selectionMode
   const canDragShape = shapesAreInteractive && !props.isSpacePanning
-  const sourceShapes = useMemo(() => (dragPreviewShapes ?? props.document.shapes).map(normalizeKonvaShapeMinResizeSize), [dragPreviewShapes, props.document.shapes])
+  const remoteMovePreviews = useMemo(() => createKonvaRemoteMovePreviews({
+    activePageId: props.activePageId,
+    document: props.document,
+    sessions: props.collaborationPresenceSessions,
+  }), [props.activePageId, props.collaborationPresenceSessions, props.document])
+  const remoteMoveHiddenShapeIds = useMemo(() => getKonvaRemoteMoveHiddenShapeIds(remoteMovePreviews), [remoteMovePreviews])
+  const sourceShapes = useMemo(() => (dragPreviewShapes ?? props.document.shapes)
+    .filter((shape) => !remoteMoveHiddenShapeIds.has(shape.id))
+    .map(normalizeKonvaShapeMinResizeSize), [dragPreviewShapes, props.document.shapes, remoteMoveHiddenShapeIds])
   const renderShapes = getVisibleKonvaShapes({
     camera: renderCamera,
     captureMode: props.captureMode,
@@ -228,6 +239,16 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
           )
         })}
       </Layer>
+
+      {props.captureMode || remoteMovePreviews.length === 0 ? null : (
+        <Layer listening={false} name={konvaCaptureExcludeName}>
+          <KonvaRemoteMovePreviewLayer
+            document={props.document}
+            previews={remoteMovePreviews}
+            zoom={renderCamera.zoom}
+          />
+        </Layer>
+      )}
 
       {props.captureMode || !props.collaborationPresenceSessions || props.collaborationPresenceSessions.length === 0 ? null : (
         <Layer listening={false} name={konvaCaptureExcludeName}>

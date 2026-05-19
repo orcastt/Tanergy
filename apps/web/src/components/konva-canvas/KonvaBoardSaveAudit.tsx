@@ -30,6 +30,7 @@ type KonvaBoardSaveAuditProps = {
   getPageEnvelope?: (document: CanvasDocument) => KonvaBoardDocumentSerializationOptions
   historyTitle?: string
   pageRevision?: number
+  suppressDirtyTracking?: boolean
   workspace?: TangentWorkspace
 }
 
@@ -56,6 +57,7 @@ export const KonvaBoardSaveAudit = forwardRef<KonvaBoardSaveAuditHandle, KonvaBo
   onDocumentRestore,
   pageRevision = 0,
   stage,
+  suppressDirtyTracking = false,
   workspace,
 }, ref) {
   const recordHistoryRef = useRef<KonvaBoardHistoryRecorder | null>(null)
@@ -74,6 +76,7 @@ export const KonvaBoardSaveAudit = forwardRef<KonvaBoardSaveAuditHandle, KonvaBo
     pageRevision,
     recordHistoryRef,
     stage,
+    suppressDirtyTracking,
     workspace,
   })
 

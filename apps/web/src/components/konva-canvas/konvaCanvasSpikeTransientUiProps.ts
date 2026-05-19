@@ -39,6 +39,7 @@ export type CreateSpikeTransientUiPropsOptions = {
   cropImage: () => void
   diagnostics: ComponentProps<typeof KonvaCanvasTransientUi>['diagnosticsProps']['diagnostics']
   document: CanvasDocument
+  documentPreviewing: boolean
   editingNodeText: { fieldName: KonvaNodeTextFieldName; shapeId: string } | null
   editingNodeTextShape: NonNullable<TransientUiProps['nodeTextEditorProps']>['shape'] | null
   editingTextShape: NonNullable<TransientUiProps['textEditorProps']>['shape'] | null
@@ -120,6 +121,7 @@ export function createKonvaCanvasSpikeTransientUiProps({
   cropImage,
   diagnostics,
   document,
+  documentPreviewing,
   editingNodeText,
   editingNodeTextShape,
   editingTextShape,
@@ -248,6 +250,7 @@ export function createKonvaCanvasSpikeTransientUiProps({
       camera,
       createIfMissing: !hasPersistedBoard,
       document,
+      suppressDirtyTracking: documentPreviewing,
       getPageEnvelope,
       activePageId,
       historyTitle,

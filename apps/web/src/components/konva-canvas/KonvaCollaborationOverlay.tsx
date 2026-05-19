@@ -45,25 +45,29 @@ export function KonvaCollaborationOverlay({
     }),
     [visibleSessions],
   ))
+  const activeTransformSessionIds = new Set(sessions
+    .filter((session) => !session.isSelf)
+    .filter((session) => isSessionVisibleOnPage(activePageId, session.presence.activePageId ?? null))
+    .filter((session) => Boolean(session.presence.transformBox && session.presence.transformKind))
+    .map((session) => session.id))
   const visibleTransformHints = sessions
     .filter((session) => !session.isSelf)
     .filter((session) => isSessionVisibleOnPage(activePageId, session.presence.activePageId ?? null))
-    .map((session) => {
+    .flatMap((session) => {
       const transformBox = session.presence.transformBox
       const transformKind = session.presence.transformKind
-      if (!transformBox || !transformKind) return null
+      if (!transformBox || !transformKind) return []
+      if (transformKind === 'move') return []
       const rect = projectBounds(transformBox, camera)
-      if (rect.width <= 0 || rect.height <= 0) return null
-      if (rect.x > stageWidth + 160 || rect.y > stageHeight + 120) return null
-      if (rect.x + rect.width < -160 || rect.y + rect.height < -120) return null
-      return { rect, session, transformKind }
+      if (rect.width <= 0 || rect.height <= 0) return []
+      if (rect.x > stageWidth + 160 || rect.y > stageHeight + 120) return []
+      if (rect.x + rect.width < -160 || rect.y + rect.height < -120) return []
+      return [{ rect, session, transformKind }]
     })
-    .filter((item): item is { rect: ScreenRect; session: BoardCollaborationSessionRecord; transformKind: NonNullable<BoardCollaborationSessionRecord['presence']['transformKind']> } => Boolean(item))
-  const visibleTransformSessionIds = new Set(visibleTransformHints.map((item) => item.session.id))
   const occupancyRects = occupancy
     .filter((entry) => !entry.isSelf)
     .filter((entry) => entry.kind === 'editing' || entry.kind === 'selection')
-    .filter((entry) => !visibleTransformSessionIds.has(entry.sessionId))
+    .filter((entry) => !activeTransformSessionIds.has(entry.sessionId))
     .filter((entry) => isSessionVisibleOnPage(activePageId, entry.activePageId))
     .map((entry) => {
       const bounds = getOccupancyBounds(shapeById, entry.shapeIds)

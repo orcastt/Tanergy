@@ -10,6 +10,7 @@ import type {
   BoardCollaborationPresence,
   BoardCollaborationSessionsResponse,
 } from '@/features/boards/boardCollaborationTypes'
+import { createLocalSessionPresenceSnapshot } from './boardCollaborationPresenceState'
 
 const heartbeatIntervalMs = 20_000
 const presenceDebounceMs = 900
@@ -81,7 +82,7 @@ export function useBoardCollaborationSessionSync({
         boardId,
         {
           clientInstanceId,
-          presence: latestPresenceRef.current,
+          presence: createLocalSessionPresenceSnapshot(latestPresenceRef.current),
           ttlSeconds: 45,
         },
         workspace,

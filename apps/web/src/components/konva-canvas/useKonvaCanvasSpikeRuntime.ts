@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, type Dispatch, type MutableRefObject, type RefObject, type SetStateAction } from 'react'
+import { useCallback, useState, type Dispatch, type MutableRefObject, type RefObject, type SetStateAction } from 'react'
 import type Konva from 'konva'
 import * as Y from 'yjs'
 import type { CanvasBounds, CanvasCamera, CanvasDocument, CanvasPoint, CanvasShape, CanvasShapeStyle } from '@/features/canvas-engine'
@@ -160,6 +160,7 @@ export function useKonvaCanvasSpikeRuntime({
   const { activeToolPreference, aiCreditDialogMessage, camera, connectionPreviewPresence, contextMenu, cropEditingImageId, document, dropHintKind, editingNodeText, editingTextId, interactionShapeIds, nextStyle, nodeImageLightbox, selectedEdgeId, selectedIds, selectionActionError, selectionMarqueeBounds, settingsOpen, stage, transformPreview } = canvasState
   const { setAiCreditDialogMessage, setCamera, setClipboardShapeCount, setConnectionPreviewPresence, setContextMenu, setCropEditingImageId, setDocument, setDocumentState, setDropHintKind, setEditingNodeText, setEditingTextId, setInteractionShapeIds, setIsSpacePanning, setNextStyle, setNodeImageLightbox, setPersistedBoardIds, setSelectedEdgeId, setSelectionActionError, setSelectionMarqueeBounds, setSettingsOpen, setStage, setTransformPreview } = canvasSetters
   const canvasPagePlan = useKonvaCanvasPagePlan(workspace)
+  const [documentPreviewing, setDocumentPreviewing] = useState(false)
 
   const boardPages = useKonvaBoardPages({ activeDocument: document, camera, onCameraChange: setCamera, onDocumentChange: setDocumentState, onTransientClear: clearTransientState })
   useKonvaCanvasDocumentChangeBridge({
@@ -230,7 +231,7 @@ export function useKonvaCanvasSpikeRuntime({
       remoteEdgeSessions: collaboration.remoteEdgeSessions, remoteLockedShapeOwnerById: collaboration.remoteShapeLockOwners, remotePresenceSessions: collaboration.collaboration.otherSessions,
       requestFocusedEdit: collaboration.requestFocusedEditShape, selectionExportCaptureMode: selectionExport.captureMode,
       sendGeneratedOutputToCanvas: imageNodeActions.sendGeneratedOutputToCanvas, sendImageNodeToCanvas: imageNodeActions.sendImageNodeToCanvas,
-      setConnectionPreviewPresence, setDocument, setDraftPreviewPresence: collaboration.collaboration.setDraftPreview, setFocusedControlShapeState: collaboration.setFocusedControlShapeState,
+      setConnectionPreviewPresence, setDocument, setDocumentPreview: setDocumentState, setDocumentPreviewing, setDraftPreviewPresence: collaboration.collaboration.setDraftPreview, setFocusedControlShapeState: collaboration.setFocusedControlShapeState,
       setInteractionShapeIds, setNodeField, setSelectionMarqueeBounds,
       setTransformPreview, settingsOpen, size, stageDomEvents, stageToolMode: collaboration.stageToolMode, themeMode, toggleNodeRun,
       boardPages: { activePageId: boardPages.activePageId, pages: boardPages.pages, selectPage: boardPages.selectPage },
@@ -247,7 +248,7 @@ export function useKonvaCanvasSpikeRuntime({
     activePageId: boardPages.activePageId, aiCreditDialogMessage, activeTool: collaboration.activeTool, autoLoadBoard, boardId, boardTitle, camera, canCaptureSelection: selectionExport.canCaptureSelection,
     canConvertImageToNode: imageNodeActions.canConvertImageToNode, canCropImage: selectionSaveState.canCropImage, canGroupSelection: selectionSaveState.canGroupSelection,
     canLockSelection: selectionSaveState.canLockSelection, canRemoveBackground: imageOps.canRemoveBackground, canStartObjectCutout: imageOps.canStartObjectCutout,
-    canUngroupSelection: selectionSaveState.canUngroupSelection, canUnlockSelection: selectionSaveState.canUnlockSelection,
+    canUngroupSelection: selectionSaveState.canUngroupSelection, canUnlockSelection: selectionSaveState.canUnlockSelection, documentPreviewing,
     contextMenu, convertImageToNode: imageNodeActions.convertImageToNode, createNodeCard, cropImage: selectionSaveState.cropImage, diagnostics, document, editingNodeText,
     editingNodeTextShape: textEditing.editingNodeTextShape, editingTextShape: textEditing.editingTextShape, effectiveReadOnly: collaboration.effectiveReadOnly,
     fileInput, focusedEditNotice: collaboration.focusedEditNotice, getPageEnvelope: boardPages.getPageEnvelope, handleCaptureSelectionToImageNode: selectionExport.handleCaptureSelectionToImageNode,

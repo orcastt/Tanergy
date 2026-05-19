@@ -19,6 +19,7 @@ export type UseKonvaCanvasInteractionsOptions = {
   onCameraPreview: (camera: CanvasCamera) => void
   onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
   onDocumentPreview: Dispatch<SetStateAction<CanvasDocument>>
+  onDocumentPreviewStateChange?: (active: boolean) => void
   onDraftPreviewChange?: (shape: CanvasShape | null) => void
   onHistoryCheckpoint: (document: CanvasDocument) => void
   onLocalDocumentCommit?: () => void

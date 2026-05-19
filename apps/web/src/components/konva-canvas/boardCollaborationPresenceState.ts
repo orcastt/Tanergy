@@ -21,14 +21,24 @@ export function areSamePresenceShapeIds(left: string[], right: string[]) {
 export function createLocalSessionPresenceSnapshot(
   presence: BoardCollaborationPresence,
 ): BoardCollaborationPresence {
+  const editingShapeIds = [...(presence.editingShapeIds ?? [])]
+  const selectionIds = [...(presence.selectionIds ?? [])]
+  const selectedEdgeId = presence.selectedEdgeId ?? null
+  const tool = presence.tool?.trim() ? presence.tool.trim() : null
   return {
-    ...presence,
-    connectionPreview: normalizeLocalConnectionPreview(presence.connectionPreview ?? null),
+    activePageId: presence.activePageId ?? null,
+    connectionPreview: null,
     cursor: null,
     draftPreview: null,
+    editingShapeIds,
     hoveredShapeId: null,
+    selectedEdgeId,
     selectionBox: null,
+    selectionIds,
+    state: deriveLocalSessionState({ editingShapeIds, selectedEdgeId, selectionIds, tool }),
+    tool,
     transformBox: null,
+    transformKind: null,
   }
 }
 
@@ -127,17 +137,17 @@ function isSamePresenceDraft(
   return JSON.stringify(left) === JSON.stringify(right)
 }
 
-function normalizeLocalConnectionPreview(
-  preview: BoardCollaborationConnectionPreview | null,
-): BoardCollaborationConnectionPreview | null {
-  if (!preview) return null
-  return {
-    ...preview,
-    pointer: { x: 0, y: 0 },
-    source: { ...preview.source },
-    sources: preview.sources?.map((source) => ({ ...source })),
-    target: preview.target ? { ...preview.target } : null,
-  }
+function deriveLocalSessionState(input: {
+  editingShapeIds: string[]
+  selectedEdgeId: string | null
+  selectionIds: string[]
+  tool: string | null
+}): BoardCollaborationPresence['state'] {
+  if (input.editingShapeIds.length > 0) return 'typing'
+  if (input.selectedEdgeId || input.selectionIds.length > 0) return 'selecting'
+  if (input.tool === 'hand') return 'panning'
+  if (input.tool === 'draw') return 'drawing'
+  return 'viewing'
 }
 
 function isSameConnectionPreview(
