@@ -28,7 +28,7 @@ dev = [
   "ruff>=0.5,<1",
 ]
 image-ops = [
-  "rembg>=2.0,<3",
+  "rembg[cpu]>=2.0,<3",
 ]
 
 [tool.ruff]
