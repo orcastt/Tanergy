@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { buildWorkspaceInvitationLink } from '@/features/workspaces/workspaceInvitationLinks'
+import { clearCachedBillingResources } from '@/features/billing/billingResourceCache'
 import { selectStyle } from './adminAiShared'
 import { AdminOperatorWorkspacePicker } from './AdminOperatorWorkspacePicker'
 import {
@@ -114,6 +115,7 @@ export function AdminOperatorActionModal({
         })
         void navigator.clipboard?.writeText(inviteUrl).catch(() => undefined)
       }
+      clearCachedBillingResources()
       setStatus(result.message || 'saved')
       onDone(result)
       onClose()

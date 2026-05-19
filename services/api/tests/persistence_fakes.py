@@ -2160,6 +2160,16 @@ class FakePostgresCursor:
                 totals.setdefault(row["reason"], 0.0)
                 totals[row["reason"]] += float(row.get("credits_delta", 0))
             self.rows = [(reason, value) for reason, value in totals.items()]
+        elif normalized.startswith("SELECT COALESCE(SUM(CASE WHEN credits_delta < 0 THEN -credits_delta ELSE 0 END), 0) FROM tangent_credit_ledger WHERE account_id = %s"):
+            account_id = params[0]
+            spent = 0.0
+            for row in self.database.credit_ledger:
+                if row["account_id"] != account_id:
+                    continue
+                delta = float(row.get("credits_delta", 0))
+                if delta < 0:
+                    spent += -delta
+            self.row = (spent,)
         elif normalized.startswith("SELECT plan_key, plan_family, name, billing_period, included_credits, monthly_price_usd, annual_price_usd, seat_range, seat_min, seat_max, board_limit, page_limit, registration_credits, group_workspace_limit, group_member_limit, metadata, created_at, updated_at FROM tangent_plan_catalog"):
             rows = [_plan_catalog_tuple(row) for row in self.database.plan_catalog]
             rows.sort(key=lambda row: row[0])
@@ -2392,8 +2402,9 @@ class FakePostgresCursor:
                 )
             rows.sort(key=lambda row: row[5], reverse=True)
             self.rows = rows[:limit]
-        elif normalized.startswith(
-            "SELECT id, actor_user_id, target_user_id, workspace_id, action, metadata, created_at FROM tangent_admin_audit_logs"
+        elif (
+            normalized.startswith("SELECT id, actor_user_id, target_user_id, workspace_id, action, metadata, created_at FROM tangent_admin_audit_logs")
+            or normalized.startswith("SELECT a.id, a.actor_user_id, a.target_user_id, a.workspace_id, a.action, a.metadata, a.created_at")
         ):
             filters = {
                 "action": None,
@@ -2419,6 +2430,8 @@ class FakePostgresCursor:
                     continue
                 if filters["target_user_id"] and row.get("target_user_id") != filters["target_user_id"]:
                     continue
+                actor = _find_user(self.database, row.get("actor_user_id")) if row.get("actor_user_id") else None
+                target = _find_user(self.database, row.get("target_user_id")) if row.get("target_user_id") else None
                 rows.append(
                     (
                         row.get("id"),
@@ -2428,6 +2441,10 @@ class FakePostgresCursor:
                         row.get("action"),
                         row.get("metadata", {}),
                         row.get("created_at", "1970-01-01T00:00:00Z"),
+                        actor.get("email") if actor else None,
+                        actor.get("display_name") if actor else None,
+                        target.get("email") if target else None,
+                        target.get("display_name") if target else None,
                     )
                 )
             rows.sort(key=lambda row: row[6], reverse=True)

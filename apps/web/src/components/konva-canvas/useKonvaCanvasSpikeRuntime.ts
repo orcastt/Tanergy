@@ -5,7 +5,6 @@ import type Konva from 'konva'
 import * as Y from 'yjs'
 import type { CanvasBounds, CanvasCamera, CanvasDocument, CanvasPoint, CanvasShape, CanvasShapeStyle } from '@/features/canvas-engine'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
-import { planCatalog, resolvePlanKey } from '@/features/billing/billingContracts'
 import type {
   BoardCollaborationConnectionPreview,
   BoardCollaborationTransformKind,
@@ -23,6 +22,7 @@ import { useKonvaCanvasCommandActions } from './useKonvaCanvasCommandActions'
 import { useKonvaCanvasControls } from './useKonvaCanvasControls'
 import { useKonvaCanvasHistory, type KonvaCanvasHistoryPageState } from './useKonvaCanvasHistory'
 import { useKonvaCanvasMetrics } from './useKonvaCanvasMetrics'
+import { useKonvaCanvasPagePlan } from './useKonvaCanvasPagePlan'
 import { useKonvaCanvasPageActions } from './useKonvaCanvasPageActions'
 import { useKonvaCanvasSelectionSaveState } from './useKonvaCanvasSelectionSaveState'
 import { useKonvaCanvasTextEditing } from './useKonvaCanvasTextEditing'
@@ -157,7 +157,7 @@ export function useKonvaCanvasSpikeRuntime({
   const { fileInput, promptImageNodeUpload, uploadDropFileAtPoint } = imageUploadApi
   const { activeToolPreference, camera, connectionPreviewPresence, contextMenu, cropEditingImageId, document, dropHintKind, editingNodeText, editingTextId, interactionShapeIds, nextStyle, nodeImageLightbox, selectedEdgeId, selectedIds, selectionActionError, selectionMarqueeBounds, settingsOpen, stage, transformPreview } = canvasState
   const { setCamera, setClipboardShapeCount, setConnectionPreviewPresence, setContextMenu, setCropEditingImageId, setDocument, setDocumentState, setDropHintKind, setEditingNodeText, setEditingTextId, setInteractionShapeIds, setIsSpacePanning, setNextStyle, setNodeImageLightbox, setPersistedBoardIds, setSelectedEdgeId, setSelectionActionError, setSelectionMarqueeBounds, setSettingsOpen, setStage, setTransformPreview } = canvasSetters
-  const canvasPagePlan = resolveCanvasPagePlan(workspace)
+  const canvasPagePlan = useKonvaCanvasPagePlan(workspace)
 
   const boardPages = useKonvaBoardPages({ activeDocument: document, camera, onCameraChange: setCamera, onDocumentChange: setDocumentState, onTransientClear: clearTransientState })
   useKonvaCanvasDocumentChangeBridge({
@@ -263,18 +263,4 @@ export function useKonvaCanvasSpikeRuntime({
   })
 
   return { shellProps, transientUiProps }
-}
-
-function resolveCanvasPagePlan(workspace?: TangentWorkspace) {
-  if (!workspace) return { pageLimit: null, planName: undefined }
-  const planKey = resolvePlanKey(workspace.kind, workspace.planKey)
-  const plan = planCatalog[planKey]
-  const planPageLimit = plan.pageLimit ?? null
-  const pageLimit = workspace.kind === 'group_workspace' || workspace.kind === 'team_workspace'
-    ? Math.min(planPageLimit ?? 10, 10)
-    : planPageLimit
-  return {
-    pageLimit,
-    planName: plan.name,
-  }
 }

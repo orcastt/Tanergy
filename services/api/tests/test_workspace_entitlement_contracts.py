@@ -233,6 +233,116 @@ def test_billing_me_uses_database_personal_subscription(monkeypatch):
     assert payload["credits"]["includedTotal"] == 2000
 
 
+def test_billing_me_uses_personal_collaborate_plan_for_solo_workspace(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.credit_accounts = [
+        {
+            "id": "credit_user_solo_paid",
+            "owner_id": "user_solo_paid",
+            "owner_type": "user",
+            "status": "active",
+        }
+    ]
+    fake_db.subscriptions = [
+        {
+            "account_id": "credit_user_solo_paid",
+            "owner_id": "user_solo_paid",
+            "owner_type": "user",
+            "plan_family": "collaborate",
+            "plan_key": "collaborate_start",
+            "status": "active",
+            "updated_at": "2026-05-06T00:00:00Z",
+        }
+    ]
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    response = client.get(
+        "/api/v1/billing/me",
+        headers={
+            "x-tangent-user-id": "user_solo_paid",
+            "x-tangent-workspace-id": "workspace_solo",
+            "x-tangent-workspace-kind": "solo_workspace",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["chargeScope"] == "actor_personal"
+    assert payload["plan"]["planKey"] == "collaborate_start"
+    assert payload["plan"]["includedCredits"] == 1500
+
+
+def test_billing_me_counts_admin_deducted_personal_credits(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.credit_accounts = [
+        {
+            "id": "credit_user_deducted",
+            "owner_id": "user_deducted",
+            "owner_type": "user",
+            "status": "active",
+        }
+    ]
+    fake_db.subscriptions = [
+        {
+            "account_id": "credit_user_deducted",
+            "owner_id": "user_deducted",
+            "owner_type": "user",
+            "plan_family": "collaborate",
+            "plan_key": "collaborate_start",
+            "status": "active",
+            "updated_at": "2026-05-06T00:00:00Z",
+        }
+    ]
+    fake_db.credit_ledger = [
+        {
+            "account_id": "credit_user_deducted",
+            "actor_user_id": "user_deducted",
+            "credits_delta": 50,
+            "id": "registration_grant",
+            "reason": "registration_grant",
+            "source_type": "registration",
+        },
+        {
+            "account_id": "credit_user_deducted",
+            "actor_user_id": "admin_user",
+            "credits_delta": 1500,
+            "id": "subscription_grant",
+            "reason": "subscription_grant",
+            "source_type": "subscription",
+        },
+        {
+            "account_id": "credit_user_deducted",
+            "actor_user_id": "admin_user",
+            "credits_delta": -1500,
+            "id": "admin_deduct",
+            "reason": "admin_adjustment",
+            "source_type": "admin_manual",
+        },
+    ]
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    response = client.get(
+        "/api/v1/billing/me",
+        headers={
+            "x-tangent-user-id": "user_deducted",
+            "x-tangent-workspace-id": "workspace_solo",
+            "x-tangent-workspace-kind": "solo_workspace",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["plan"]["planKey"] == "collaborate_start"
+    assert payload["credits"]["includedTotal"] == 1500
+    assert payload["credits"]["includedRemaining"] == 50
+    assert payload["credits"]["topUpBalance"] == 0
+    assert payload["credits"]["usedThisCycle"] == 1500
+
+
 def test_billing_me_rejects_plan_key_for_wrong_workspace_kind():
     client = TestClient(app)
 

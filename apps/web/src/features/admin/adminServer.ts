@@ -94,8 +94,8 @@ export async function loadAdminPageBootstrap(activeTab: AdminConsoleTab): Promis
   const needsSummary = activeTab === 'overview'
   const needsUsers = activeTab === 'overview' || activeTab === 'access'
   const needsOperatorUsers = activeTab === 'users'
-  const needsTeams = activeTab === 'overview' || activeTab === 'teams' || activeTab === 'finance'
-  const needsGroups = activeTab === 'overview' || activeTab === 'groups' || activeTab === 'finance'
+  const needsTeams = activeTab === 'overview'
+  const needsGroups = activeTab === 'overview'
 
   try {
     const payload = await loadServerAdminJson<{

@@ -99,6 +99,22 @@
   gap: 12px;
 }
 
+.admin-user-detail-back-link {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  min-height: 28px;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.admin-user-detail-back-link:hover {
+  color: var(--color-ink);
+}
+
 .admin-icon-button {
   display: inline-grid;
   width: 38px;

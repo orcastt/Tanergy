@@ -1,5 +1,5 @@
 import type Konva from 'konva'
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { Layer, Group, Stage } from 'react-konva'
 import type { CanvasCamera, CanvasDocument, CanvasNodeShape, CanvasPoint, CanvasShape } from '@/features/canvas-engine'
 import type { BoardCollaborationSessionRecord } from '@/features/boards/boardCollaborationTypes'
@@ -92,10 +92,15 @@ export function KonvaCanvasViewerStage({
     scheduleCameraCommit(0)
   }, [scheduleCameraCommit])
 
-  const handleStageRef = useCallback((stage: Konva.Stage | null) => {
-    stageRef.current = stage
-    onStageReady?.(stage)
+  const onStageReadyRef = useRef(onStageReady)
+  useEffect(() => {
+    onStageReadyRef.current = onStageReady
   }, [onStageReady])
+  const handleStageRef = useCallback((stage: Konva.Stage | null) => {
+    if (stageRef.current === stage) return
+    stageRef.current = stage
+    onStageReadyRef.current?.(stage)
+  }, [])
 
   return (
     <Stage

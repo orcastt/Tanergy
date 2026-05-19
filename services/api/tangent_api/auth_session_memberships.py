@@ -54,6 +54,18 @@ def load_workspace_memberships(cursor: Any, user_id: str, active_workspace_id: s
                         LIMIT 1
                     ), 'free_canvas')
                 )
+                WHEN COALESCE(w.kind, 'solo_workspace') = 'solo_workspace' THEN (
+                    COALESCE((
+                        SELECT s.plan_key
+                        FROM tangent_subscriptions s
+                        WHERE s.owner_type = 'user'
+                          AND s.owner_id = wm.user_id
+                          AND s.plan_family = 'collaborate'
+                          AND s.status IN ('active', 'trialing')
+                        ORDER BY s.updated_at DESC NULLS LAST, s.created_at DESC
+                        LIMIT 1
+                    ), 'free_canvas')
+                )
                 WHEN COALESCE(w.kind, 'solo_workspace') = 'enterprise_workspace' THEN (
                     SELECT s.plan_key
                     FROM tangent_subscriptions s

@@ -90,8 +90,8 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 
 function formatEnvelope(boardLimit?: null | number, pageLimit?: null | number) {
   const boards = boardLimit === null || boardLimit === undefined ? 'Unlimited boards' : `${boardLimit} board${boardLimit === 1 ? '' : 's'}`
-  const pages = pageLimit === null || pageLimit === undefined ? 'unlimited pages' : `${pageLimit} page${pageLimit === 1 ? '' : 's'}`
-  return `${boards} / ${pages}`
+  const pages = pageLimit === null || pageLimit === undefined ? 10 : Math.min(pageLimit, 10)
+  return `${boards} / ${pages} page${pages === 1 ? '' : 's'} per board`
 }
 
 function formatPeriodFact(value: null | string | undefined, fallback: string) {

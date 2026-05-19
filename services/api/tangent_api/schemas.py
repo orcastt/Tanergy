@@ -261,10 +261,14 @@ class AdminAiPricingRuleMutationResponse(TangentApiModel):
 
 class AdminAuditLogRecord(TangentApiModel):
     action: str
+    actor_display_name: Optional[str] = Field(default=None, alias="actorDisplayName")
+    actor_email: Optional[str] = Field(default=None, alias="actorEmail")
     actor_user_id: Optional[str] = Field(default=None, alias="actorUserId")
     created_at: str = Field(alias="createdAt")
     id: str
     metadata: dict[str, Any] = Field(default_factory=dict)
+    target_display_name: Optional[str] = Field(default=None, alias="targetDisplayName")
+    target_email: Optional[str] = Field(default=None, alias="targetEmail")
     target_user_id: Optional[str] = Field(default=None, alias="targetUserId")
     workspace_id: Optional[str] = Field(default=None, alias="workspaceId")
 

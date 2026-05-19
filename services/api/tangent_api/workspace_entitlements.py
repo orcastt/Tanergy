@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import HTTPException
 
 from tangent_api.ai_schemas import AiRunChargeSummary
-from tangent_api.billing_balance import load_credit_balance_for_account, load_credit_reason_totals, split_credit_balance
+from tangent_api.billing_balance import load_credit_balance_for_account, load_credit_reason_totals, load_credit_spent_for_account, split_credit_balance
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.storage.postgres_connection import connect_to_postgres, require_database_url
 from tangent_api.workspace_entitlement_members import (
@@ -25,7 +25,6 @@ from tangent_api.workspace_entitlement_policy import (
     resolve_billing_interval,
     resolve_next_refresh_at,
     resolve_plan_key,
-    usage_from_reason_totals,
 )
 from tangent_api.workspace_dashboard_seats import load_workspace_dashboard_seat_capacity
 from tangent_api.workspace_schemas import (
@@ -57,7 +56,7 @@ def build_billing_me_response(context: ApiRequestContext) -> BillingMeResponse:
     if os.getenv("DATABASE_URL"):
         total_balance = load_credit_balance_for_account(charge.charged_account_id)
         reason_totals = load_credit_reason_totals(charge.charged_account_id)
-        usage = usage_from_reason_totals(reason_totals)
+        usage = int(round(load_credit_spent_for_account(charge.charged_account_id)))
         if total_balance > 0 and reason_totals.get("subscription_grant", 0) > 0:
             included_remaining, top_up_balance = split_credit_balance(total_balance, included_total)
         else:

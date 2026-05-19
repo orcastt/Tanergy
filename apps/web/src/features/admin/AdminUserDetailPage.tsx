@@ -22,6 +22,7 @@ import {
 import { getAdminOperatorActionKey, type AdminOperatorAction } from './adminOperatorActions'
 import type { AdminAccess, AdminOperatorUserDetail } from './adminTypes'
 import { readAdminUserDetailViewState, writeAdminUserDetailViewState, type AdminUserDetailTab } from './adminUserDetailViewState'
+import { invalidateAdminOperatorUsersCache } from './adminOperatorUsersCache'
 import { hasRemotePersistenceApi } from '@/features/api/persistenceApi'
 
 type DetailStatus = 'error' | 'loading' | 'ready' | 'refreshing'
@@ -114,6 +115,7 @@ export function AdminUserDetailPage({
   }
 
   async function handleActionDone(action: AdminOperatorAction, result: AdminOperatorMutationResult) {
+    invalidateAdminOperatorUsersCache()
     if ('subscriptionId' in result) {
       await refresh()
       return
@@ -145,8 +147,8 @@ export function AdminUserDetailPage({
     <div className="product-page management-page admin-operator-detail-page">
       <section className="product-page-header admin-user-detail-header">
         <div className="admin-user-detail-header-main">
-          <Link className="admin-icon-button admin-icon-button-primary" href="/admin?tab=users" aria-label="Back to users">
-            <BackIcon />
+          <Link className="admin-user-detail-back-link" href="/admin?tab=users" aria-label="Back to users">
+            &lt; Back
           </Link>
           <div>
             <p className="product-kicker">Admin</p>
@@ -234,14 +236,6 @@ function DetailPanel({ active, children }: { active: boolean; children: ReactNod
 
 function Notice({ body, title }: { body: string; title: string }) {
   return <section className="management-notice"><div><h2>{title}</h2><p>{body}</p></div><Link className="product-button product-button-secondary" href="/admin">Back to admin</Link></section>
-}
-
-function BackIcon() {
-  return (
-    <svg aria-hidden="true" fill="none" height="18" viewBox="0 0 24 24" width="18">
-      <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-    </svg>
-  )
 }
 
 function RefreshIcon() {

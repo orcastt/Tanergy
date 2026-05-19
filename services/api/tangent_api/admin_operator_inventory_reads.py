@@ -25,11 +25,11 @@ def list_admin_operator_inventory_users(
 def _user_from_inventory_row(row: tuple[object, ...]) -> AdminOperatorUserRow:
     user = user_from_row(row[1:9])
     personal_credit = credit_from_values(row[9], row[10])
-    actor_spend = float(row[11] or personal_credit.spent_credits)
+    actor_spend = float(row[11] or 0)
     team_plans = _workspace_plans(row[13])
     group_plans = _user_plans(row[14])
     user.personal_credit = personal_credit
-    user.total_credits_spent = actor_spend
+    user.total_credits_spent = max(actor_spend, personal_credit.spent_credits)
     user.owned_group_count = int(row[12] or 0)
     user.owned_team_count = len(team_plans)
     user.team_plans_active = [plan for plan in team_plans if _is_current(plan.plan_status)]

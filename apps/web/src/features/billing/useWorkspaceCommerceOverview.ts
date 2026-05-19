@@ -8,6 +8,8 @@ import {
   loadBillingPlans,
   loadWorkspaceDashboard,
 } from './billingClient'
+import { resolveCreditWalletMetrics } from './billingCreditUsage'
+import { subscribeToBillingInvalidation } from './billingResourceCache'
 import type { BillingInterval, PlanCatalogRecord, PlanKey } from './billingTypes'
 import {
   normalizeWorkspaceMembershipRole,
@@ -125,6 +127,13 @@ export function useWorkspaceCommerceOverview() {
     }
   }, [reloadToken, session.workspaces, sessionStatus, workspaceSignature])
 
+  useEffect(() => (
+    subscribeToBillingInvalidation(() => {
+      setStatus('loading')
+      setReloadToken((value) => value + 1)
+    })
+  ), [])
+
   return {
     error: sessionStatus === 'error' ? (sessionError ?? 'Session lookup failed.') : error,
     overview,
@@ -140,7 +149,7 @@ async function loadWorkspaceCommerceOverview(
   workspaces: TangentWorkspace[],
   force = false,
 ): Promise<WorkspaceCommerceOverviewLoadResult> {
-  const planResponse = await loadBillingPlans({ force })
+  const planResponse = await loadBillingPlans({ force: true })
   const planMap = Object.fromEntries(planResponse.plans.map((plan) => [plan.planKey, plan])) as CommercePlanMap
   const personalWorkspace = selectPersonalWorkspace(workspaces)
   const [groupSummary, teamCardResult] = await Promise.all([
@@ -175,7 +184,7 @@ async function loadGroupSummary(
   const billing = await loadBillingMe({ force, workspace: personalWorkspace })
   const planKey = normalizeGroupPlanKey(billing.plan.planKey)
   const plan = planMap[planKey]
-  const totalCredits = billing.credits.includedTotal + billing.credits.topUpBalance
+  const creditMetrics = resolveCreditWalletMetrics(billing.credits)
 
   return {
     groupLimit: plan?.groupWorkspaceLimit ?? 0,
@@ -192,10 +201,10 @@ async function loadGroupSummary(
     planKey,
     planName: billing.plan.name || plan?.name || 'Personal plan',
     currentPeriodEnd: billing.currentPeriodEnd,
-    remainingCredits: billing.credits.includedRemaining + billing.credits.topUpBalance,
+    remainingCredits: creditMetrics.remainingCredits,
     topUpBalance: billing.credits.topUpBalance,
-    totalCredits,
-    usedThisCycle: billing.credits.usedThisCycle,
+    totalCredits: creditMetrics.totalCredits,
+    usedThisCycle: creditMetrics.usedCredits,
     workspace: personalWorkspace,
   }
 }
@@ -216,6 +225,7 @@ async function loadTeamCards(
         loadWorkspaceDashboard({ force, workspace }),
       ])
       const planKey = normalizeTeamPlanKey(billing.plan.planKey)
+      const creditMetrics = resolveCreditWalletMetrics(billing.credits)
       const card: CommerceTeamCard = {
         billingInterval: normalizeBillingInterval(billing.billingInterval, billing.plan.billingPeriod),
         boardCount: dashboard.dashboard.boardCount,
@@ -232,14 +242,14 @@ async function loadTeamCards(
         planKey,
         planName: billing.plan.name || workspace.name,
         relationship,
-        remainingCredits: billing.credits.includedRemaining + billing.credits.topUpBalance,
+        remainingCredits: creditMetrics.remainingCredits,
         seatMax: billing.plan.seatMax ?? null,
         seatMin: billing.plan.seatMin ?? null,
         seatLimit: dashboard.dashboard.seatCapacity ?? billing.plan.seatMax ?? Math.max(dashboard.dashboard.memberCount, 1),
         seatsUsed: dashboard.dashboard.memberCount,
         topUpBalance: billing.credits.topUpBalance,
-        totalCredits: billing.credits.includedTotal + billing.credits.topUpBalance,
-        usedThisCycle: billing.credits.usedThisCycle,
+        totalCredits: creditMetrics.totalCredits,
+        usedThisCycle: creditMetrics.usedCredits,
         workspace: {
           ...workspace,
           boardCount: dashboard.dashboard.boardCount,

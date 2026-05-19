@@ -79,7 +79,7 @@ def _attach_user_collections(users: list[AdminOperatorUserRow], *, include_works
 
     for user in users:
         user.personal_credit = personal_credit.get(user.id, empty_credit())
-        user.total_credits_spent = actor_spend.get(user.id, user.personal_credit.spent_credits)
+        user.total_credits_spent = max(actor_spend.get(user.id, 0), user.personal_credit.spent_credits)
         user.owned_group_count = owned_group_counts.get(user.id, 0)
         user.team_plans_active = [plan for plan in team_plans.get(user.id, []) if _is_current(plan.plan_status)]
         user.team_plans_expired = [plan for plan in team_plans.get(user.id, []) if not _is_current(plan.plan_status)]

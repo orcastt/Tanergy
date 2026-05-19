@@ -39,10 +39,10 @@
   align-items: center;
   min-width: 132px;
   gap: 12px;
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  line-height: 1.4;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1;
   text-transform: uppercase;
 }
 

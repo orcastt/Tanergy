@@ -42,6 +42,35 @@ def test_user_plan_from_row_maps_pause_fields():
     assert plan.pause_reason == "pause for review"
 
 
+def test_inventory_row_uses_wallet_spend_when_admin_actor_deducts_personal_credit():
+    from tangent_api.admin_operator_inventory_reads import _user_from_inventory_row
+
+    user = _user_from_inventory_row(
+        (
+            1,
+            "user_target",
+            "target@example.com",
+            "Target",
+            "active",
+            "2026-05-10T08:00:00Z",
+            None,
+            True,
+            "203.0.113.21",
+            50,
+            1500,
+            0,
+            0,
+            [],
+            [],
+        )
+    )
+
+    assert user.personal_credit.remaining_credits == 50
+    assert user.personal_credit.spent_credits == 1500
+    assert user.personal_credit.total_credits == 1550
+    assert user.total_credits_spent == 1500
+
+
 def test_registration_state_falls_back_to_registered_without_email_verification():
     assert registration_state_from_values(email_verified=False, last_login_at="2026-05-10T09:00:00Z") == "registered"
     assert registration_state_from_values(email_verified=False, last_login_at=None) == "pending_verification"

@@ -1,5 +1,5 @@
 import type Konva from 'konva'
-import { useCallback, useMemo, type Dispatch, type SetStateAction } from 'react'
+import { useCallback, useEffect, useMemo, useRef, type Dispatch, type SetStateAction } from 'react'
 import { Group, Layer, Stage } from 'react-konva'
 import type { CanvasBounds, CanvasCamera, CanvasDocument, CanvasNodeShape, CanvasShape, CanvasShapeStyle } from '@/features/canvas-engine'
 import type {
@@ -168,11 +168,15 @@ export function KonvaCanvasStage(props: KonvaCanvasStageProps) {
       />
     )
   }
-  const onStageReady = props.onStageReady
+  const onStageReadyRef = useRef(props.onStageReady)
+  useEffect(() => {
+    onStageReadyRef.current = props.onStageReady
+  }, [props.onStageReady])
   const setStageRef = useCallback((stage: Konva.Stage | null) => {
+    if (stageRef.current === stage) return
     stageRef.current = stage
-    onStageReady?.(stage)
-  }, [onStageReady, stageRef])
+    onStageReadyRef.current?.(stage)
+  }, [stageRef])
 
   return (
     <Stage

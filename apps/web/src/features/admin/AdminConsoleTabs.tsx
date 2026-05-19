@@ -3,8 +3,6 @@
 export const adminConsoleTabs = [
   { id: 'overview', label: 'Overview' },
   { id: 'users', label: 'Users' },
-  { id: 'teams', label: 'Teams' },
-  { id: 'groups', label: 'Groups' },
   { id: 'ai', label: 'AI API Routes' },
   { id: 'finance', label: 'Finance' },
   { id: 'access', label: 'Access' },

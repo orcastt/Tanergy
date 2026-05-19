@@ -34,7 +34,7 @@ export async function loadBillingPlans(options: { force?: boolean } = {}): Promi
   return loadCachedBillingResource(
     'plans',
     () => loadBillingJson<PlanCatalogResponse>('/api/v1/billing/plans'),
-    { force: options.force, ttlMs: 300_000 },
+    { force: options.force, ttlMs: 30_000 },
   )
 }
 

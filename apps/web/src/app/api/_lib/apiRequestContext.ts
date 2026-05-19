@@ -64,7 +64,7 @@ function normalizePlanKey(value: null | string | undefined, workspaceKind: Works
   const allowedByKind: Record<WorkspaceKind, PlanKey[]> = {
     enterprise_workspace: ['enterprise'],
     group_workspace: ['free_canvas', 'collaborate_plus', 'collaborate_start'],
-    solo_workspace: ['free_canvas'],
+    solo_workspace: ['free_canvas', 'collaborate_plus', 'collaborate_start'],
     team_workspace: ['team_growth', 'team_start'],
   }
   if (!allowedByKind[workspaceKind].includes(trimmed as PlanKey)) {

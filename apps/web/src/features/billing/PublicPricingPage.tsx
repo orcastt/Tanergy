@@ -64,7 +64,7 @@ export function PublicPricingPage() {
 
   useEffect(() => {
     let cancelled = false
-    loadBillingPlans()
+    loadBillingPlans({ force: true })
       .then((resource) => {
         if (cancelled) return
         setPlans(resource.plans)
@@ -194,7 +194,7 @@ function selectPlans(plans: WorkspacePlanSummary[], order: PlanKey[]) {
 function formatPrice(plan: WorkspacePlanSummary, cycle: PricingCycle) {
   if (plan.planKey === 'enterprise') return 'Custom'
   if (plan.planKey === 'free_canvas') return '$0'
-  if (cycle === 'annual') return `$${(plan.annualPriceUsd ?? 0) * 12}`
+  if (cycle === 'annual') return `$${plan.annualPriceUsd ?? plan.monthlyPriceUsd ?? 0}`
   return `$${plan.monthlyPriceUsd ?? 0}`
 }
 
@@ -202,9 +202,9 @@ function formatPriceHint(plan: WorkspacePlanSummary, cycle: PricingCycle) {
   if (plan.planKey === 'enterprise') return 'Contract pricing'
   if (plan.planKey === 'free_canvas') return 'Free private beta entry'
   if (plan.planKey === 'team_growth' || plan.planKey === 'team_start') {
-    return cycle === 'annual' ? 'per seat / year' : 'per seat / month'
+    return cycle === 'annual' ? 'per seat / month, billed annually' : 'per seat / month'
   }
-  return cycle === 'annual' ? 'per year' : 'per month'
+  return cycle === 'annual' ? 'per month, billed annually' : 'per month'
 }
 
 function buildPublicPlanTags(plan: WorkspacePlanSummary) {
@@ -231,7 +231,7 @@ function buildPublicPlanTags(plan: WorkspacePlanSummary) {
 }
 
 function formatLimit(value: null | number | undefined, label: string) {
-  if (value === null || value === undefined) return `Unlimited ${label}s`
+  if (value === null || value === undefined) return label === 'page' ? '10 pages per board' : `Unlimited ${label}s`
   return `${formatCount(value)} ${label}${value === 1 ? '' : 's'}`
 }
 

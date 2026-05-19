@@ -332,7 +332,7 @@ def _normalize_workspace_plan_key(value: Optional[str], workspace_kind: str) -> 
         return None
     normalized = value.strip()
     allowed_by_kind = {
-        "solo_workspace": {"free_canvas"},
+        "solo_workspace": {"free_canvas", "collaborate_start", "collaborate_plus"},
         "group_workspace": {"free_canvas", "collaborate_start", "collaborate_plus"},
         "team_workspace": {"team_start", "team_growth"},
         "enterprise_workspace": {"enterprise"},

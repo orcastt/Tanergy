@@ -140,21 +140,25 @@ def list_admin_audit_logs(
     params: list[object] = []
 
     if action:
-        where.append("action = %s")
+        where.append("a.action = %s")
         params.append(action.strip())
     if actor_user_id:
-        where.append("actor_user_id = %s")
+        where.append("a.actor_user_id = %s")
         params.append(actor_user_id.strip())
     if target_user_id:
-        where.append("target_user_id = %s")
+        where.append("a.target_user_id = %s")
         params.append(target_user_id.strip())
 
     where_sql = f"WHERE {' AND '.join(where)}" if where else ""
     query = f"""
-        SELECT id, actor_user_id, target_user_id, workspace_id, action, metadata, created_at
-        FROM tangent_admin_audit_logs
+        SELECT a.id, a.actor_user_id, a.target_user_id, a.workspace_id, a.action, a.metadata, a.created_at,
+               actor_user.email, actor_user.display_name,
+               target_user.email, target_user.display_name
+        FROM tangent_admin_audit_logs a
+        LEFT JOIN tangent_users actor_user ON actor_user.id = a.actor_user_id
+        LEFT JOIN tangent_users target_user ON target_user.id = a.target_user_id
         {where_sql}
-        ORDER BY created_at DESC
+        ORDER BY a.created_at DESC
         LIMIT %s
     """
     params.append(limit)
@@ -235,10 +239,14 @@ def _row_to_admin_audit_log(row: tuple[object, ...]) -> AdminAuditLogRecord:
     metadata = row[5] if isinstance(row[5], dict) else {}
     return AdminAuditLogRecord(
         action=str(row[4]),
+        actorDisplayName=str(row[8]) if len(row) > 8 and row[8] is not None else None,
+        actorEmail=str(row[7]) if len(row) > 7 and row[7] is not None else None,
         actorUserId=str(row[1]) if row[1] is not None else None,
         createdAt=_coerce_timestamp(row[6]) or "",
         id=str(row[0]),
         metadata=metadata,
+        targetDisplayName=str(row[10]) if len(row) > 10 and row[10] is not None else None,
+        targetEmail=str(row[9]) if len(row) > 9 and row[9] is not None else None,
         targetUserId=str(row[2]) if row[2] is not None else None,
         workspaceId=str(row[3]) if row[3] is not None else None,
     )

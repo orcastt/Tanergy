@@ -43,6 +43,10 @@ export function AppShell({ children }: AppShellProps) {
   const hideCreateBoardAction = isActivePath(pathname, '/workspaces')
     || isActivePath(pathname, '/team')
     || isActivePath(pathname, '/group')
+    || isActivePath(pathname, '/usage')
+    || isActivePath(pathname, '/billing')
+    || isActivePath(pathname, '/admin')
+  const hideUserAction = isActivePath(pathname, '/usage') || isActivePath(pathname, '/billing')
   const topItems = canAccessAdmin ? [...topNavItems, { href: '/admin', label: 'Admin' }] : topNavItems
   const sideItems = canAccessAdmin
     ? [...sideNavItems, { href: '/admin', icon: 'A', label: 'Admin', type: 'link' as const }]
@@ -104,7 +108,7 @@ export function AppShell({ children }: AppShellProps) {
           </nav>
 
           <div className="product-nav-actions">
-            <UserButton />
+            {hideUserAction ? null : <UserButton />}
             {hideCreateBoardAction ? null : (
               <button className="product-button product-button-primary" onClick={createBoard} type="button">
                 Create Board

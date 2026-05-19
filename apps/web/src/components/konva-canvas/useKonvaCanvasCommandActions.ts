@@ -90,6 +90,7 @@ export function useKonvaCanvasCommandActions({
   size,
   workspace,
 }: UseKonvaCanvasCommandActionsOptions) {
+  const handleSelectionExportStageReady = selectionExport.handleStageReady
   const handleUndoShortcut = useCallback(() => {
     if (hasRunningKonvaNodes(document)) return
     if (localYjsSync.hasUnsyncedLocalChanges || !localYjsSync.canUndo) {
@@ -109,9 +110,9 @@ export function useKonvaCanvasCommandActions({
   }, [document, history, localYjsSync])
 
   const handleStageReady = useCallback((nextStage: Konva.Stage | null) => {
-    if (!effectiveReadOnly) selectionExport.handleStageReady(nextStage)
-    setStage(nextStage)
-  }, [effectiveReadOnly, selectionExport, setStage])
+    if (!effectiveReadOnly) handleSelectionExportStageReady(nextStage)
+    setStage((current) => (current === nextStage ? current : nextStage))
+  }, [effectiveReadOnly, handleSelectionExportStageReady, setStage])
 
   useKonvaCanvasShortcuts({
     clipboardRef,

@@ -1,7 +1,7 @@
 'use client'
 
 import { loadBillingPlans } from '@/features/billing/billingClient'
-import { planCatalog } from '@/features/billing/billingContracts'
+import { planCatalog, resolvePlanKey } from '@/features/billing/billingContracts'
 import type { WorkspacePlanSummary } from '@/features/billing/billingTypes'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import type { BoardPersistenceSummary } from '@/features/boards/boardTypes'
@@ -22,12 +22,12 @@ export async function resolveWorkspaceBoardLimitDialog(
   loadedWorkspaceIds: ReadonlySet<string>,
   action: WorkspaceBoardLimitAction,
 ) {
-  if (!workspace.planKey) return null
+  const planKey = resolvePlanKey(workspace.kind, workspace.planKey)
   const plan = await resolveWorkspacePlan(workspace)
   const boardLimit = plan?.boardLimit
   const boardCount = resolveWorkspaceBoardCount(workspace, boards, loadedWorkspaceIds)
   if (typeof boardLimit !== 'number' || boardCount < boardLimit) return null
-  const planName = plan?.name?.trim() || formatWorkspacePlanName(workspace.planKey)
+  const planName = plan?.name?.trim() || formatWorkspacePlanName(planKey)
   return buildWorkspaceBoardLimitDialogState(planName, boardLimit, workspace, action)
 }
 
@@ -86,11 +86,11 @@ function normalizeLimitMessage(message: string) {
 }
 
 async function resolveWorkspacePlan(workspace: TangentWorkspace): Promise<WorkspacePlanSummary | null> {
-  if (!workspace.planKey) return null
+  const planKey = resolvePlanKey(workspace.kind, workspace.planKey)
   try {
-    const response = await loadBillingPlans()
-    return response.plans.find((item) => item.planKey === workspace.planKey) ?? planCatalog[workspace.planKey] ?? null
+    const response = await loadBillingPlans({ force: true })
+    return response.plans.find((item) => item.planKey === planKey) ?? planCatalog[planKey] ?? null
   } catch {
-    return planCatalog[workspace.planKey] ?? null
+    return planCatalog[planKey] ?? null
   }
 }

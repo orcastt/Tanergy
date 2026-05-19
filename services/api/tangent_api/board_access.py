@@ -185,9 +185,9 @@ def assert_can_own_board(
 
 def _effective_board_page_limit(context: ApiRequestContext) -> Optional[int]:
     plan_limit = page_limit_for_plan(context.workspace_plan_key or "free_canvas")
-    if context.workspace_kind in {"group_workspace", "team_workspace"}:
-        return min(plan_limit, 10) if plan_limit is not None else 10
-    return plan_limit
+    if plan_limit is None:
+        return 10
+    return min(plan_limit, 10)
 
 
 def _normalize_workspace_role(value: str) -> str:

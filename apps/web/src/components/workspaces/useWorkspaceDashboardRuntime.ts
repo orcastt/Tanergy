@@ -6,6 +6,8 @@ import {
   loadBillingMe,
   loadWorkspaceDashboard,
 } from '@/features/billing/billingClient'
+import { resolveCreditWalletMetrics } from '@/features/billing/billingCreditUsage'
+import { subscribeToBillingInvalidation } from '@/features/billing/billingResourceCache'
 import type {
   BillingMeResponse,
   WorkspaceDashboardRecord as RemoteWorkspaceDashboardRecord,
@@ -78,6 +80,12 @@ export function useWorkspaceDashboardRuntime(kind: WorkspaceDashboardKind, works
       cancelled = true
     }
   }, [defaultWorkspace, reloadToken, remoteApiAvailable])
+  useEffect(() => (
+    subscribeToBillingInvalidation(() => {
+      if (!remoteApiAvailable) return
+      setReloadToken((value) => value + 1)
+    })
+  ), [remoteApiAvailable])
   const workspace = useMemo<TangentWorkspace>(() => {
     const remoteWorkspace = remoteBilling?.workspace ?? remoteDashboard?.workspace
     if (!remoteWorkspace) return defaultWorkspace
@@ -173,8 +181,9 @@ function buildTeamRecord({
 }): TeamWorkspaceDashboardRecord | null {
   if (!billing && !dashboard) return null
   const members = dashboard ? mapRemoteMembers(dashboard, boardAssignmentCounts) : []
-  const totalCredits = billing ? billing.credits.includedTotal + billing.credits.topUpBalance : 0
-  const remainingCredits = billing ? billing.credits.includedRemaining + billing.credits.topUpBalance : totalCredits
+  const creditMetrics = billing ? resolveCreditWalletMetrics(billing.credits) : null
+  const totalCredits = creditMetrics?.totalCredits ?? 0
+  const remainingCredits = creditMetrics?.remainingCredits ?? totalCredits
 
   return {
     boards,
@@ -185,7 +194,7 @@ function buildTeamRecord({
     inviteCode: `${workspace.id}-invite`,
     memberUsageLimit: Math.max(
       ...members.map((member) => member.usageCredits ?? 0),
-      billing?.credits.usedThisCycle ?? 0,
+      creditMetrics?.usedCredits ?? 0,
       100,
     ),
     memberCount: dashboard?.memberCount ?? members.length,
@@ -218,8 +227,9 @@ function buildGroupRecord({
 }): GroupWorkspaceDashboardRecord | null {
   if (!billing && !dashboard) return null
   const members = dashboard ? mapRemoteMembers(dashboard, boardAssignmentCounts) : []
-  const totalCredits = billing ? billing.credits.includedTotal + billing.credits.topUpBalance : 0
-  const remainingCredits = billing ? billing.credits.includedRemaining + billing.credits.topUpBalance : totalCredits
+  const creditMetrics = billing ? resolveCreditWalletMetrics(billing.credits) : null
+  const totalCredits = creditMetrics?.totalCredits ?? 0
+  const remainingCredits = creditMetrics?.remainingCredits ?? totalCredits
 
   return {
     boards,

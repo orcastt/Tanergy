@@ -13,3 +13,25 @@ export function resolveCreditUsageMetrics(remaining: number, total: number): Cre
   const percent = safeTotal > 0 ? Math.max(0, Math.min(100, Math.round((used / safeTotal) * 100))) : 0
   return { percent, total: safeTotal, used }
 }
+
+export type CreditWalletMetrics = {
+  remainingCredits: number
+  totalCredits: number
+  usedCredits: number
+}
+
+export function resolveCreditWalletMetrics(credits: {
+  includedRemaining: number
+  includedTotal: number
+  topUpBalance: number
+  usedThisCycle: number
+}): CreditWalletMetrics {
+  const remainingCredits = Math.max(0, credits.includedRemaining + credits.topUpBalance)
+  const plannedTotal = Math.max(0, credits.includedTotal + credits.topUpBalance)
+  const usedCredits = Math.max(0, credits.usedThisCycle)
+  return {
+    remainingCredits,
+    totalCredits: Math.max(plannedTotal, remainingCredits + usedCredits),
+    usedCredits,
+  }
+}

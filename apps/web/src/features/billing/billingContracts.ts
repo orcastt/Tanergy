@@ -17,7 +17,7 @@ export const planCatalog: Record<PlanKey, WorkspacePlanSummary> = {
     includedCredits: 2000,
     monthlyPriceUsd: 25,
     name: 'Collaborate Plus',
-    pageLimit: null,
+    pageLimit: 10,
     planKey: 'collaborate_plus',
     registrationCredits: 0,
     seatMax: 1,
@@ -33,7 +33,7 @@ export const planCatalog: Record<PlanKey, WorkspacePlanSummary> = {
     includedCredits: 1500,
     monthlyPriceUsd: 18,
     name: 'Collaborate Start',
-    pageLimit: null,
+    pageLimit: 10,
     planKey: 'collaborate_start',
     registrationCredits: 0,
     seatMax: 1,
@@ -147,6 +147,7 @@ export function resolvePlanKey(workspaceKind: WorkspaceKind, explicitPlanKey?: P
 }
 
 function isPlanKeyAllowedForWorkspaceKind(planKey: PlanKey, workspaceKind: WorkspaceKind) {
+  if (workspaceKind === 'solo_workspace') return ['free_canvas', 'collaborate_plus', 'collaborate_start'].includes(planKey)
   if (workspaceKind === 'group_workspace') return ['free_canvas', 'collaborate_plus', 'collaborate_start'].includes(planKey)
   if (workspaceKind === 'team_workspace') return ['team_growth', 'team_start'].includes(planKey)
   if (workspaceKind === 'enterprise_workspace') return planKey === 'enterprise'

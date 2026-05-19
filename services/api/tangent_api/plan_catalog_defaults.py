@@ -111,7 +111,7 @@ DEFAULT_PLAN_CATALOG: dict[str, dict[str, Any]] = {
         "metadata": {},
         "monthly_price_usd": None,
         "name": "Enterprise",
-        "page_limit": None,
+        "page_limit": 10,
         "plan_family": "enterprise",
         "plan_key": "enterprise",
         "registration_credits": 0,

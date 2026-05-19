@@ -126,6 +126,8 @@ def resolve_next_refresh_at(
 
 
 def is_plan_key_allowed_for_workspace_kind(plan_key: str, workspace_kind: str) -> bool:
+    if workspace_kind == "solo_workspace":
+        return plan_key in {"free_canvas", "collaborate_start", "collaborate_plus"}
     if workspace_kind == "group_workspace":
         return plan_key in {"free_canvas", "collaborate_start", "collaborate_plus"}
     if workspace_kind == "team_workspace":

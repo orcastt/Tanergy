@@ -30,7 +30,7 @@ export default async function AdminPage({
 }
 
 function resolveAdminConsoleTab(value: string | null): AdminConsoleTab {
-  return value === 'users' || value === 'teams' || value === 'groups' || value === 'ai' || value === 'finance' || value === 'access'
+  return value === 'users' || value === 'ai' || value === 'finance' || value === 'access'
     ? value
     : 'overview'
 }

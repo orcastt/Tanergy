@@ -1447,6 +1447,29 @@ def test_admin_audit_logs_route_returns_filtered_entries_and_writes_access_log(m
             "revoked_at": None,
         }
     ]
+    fake_db.users = [
+        {
+            "id": "user_admin",
+            "email": "admin@example.com",
+            "display_name": "Admin User",
+            "status": "active",
+            "created_at": "2026-05-05T00:00:00Z",
+        },
+        {
+            "id": "user_owner",
+            "email": "owner@example.com",
+            "display_name": "Owner User",
+            "status": "active",
+            "created_at": "2026-05-05T00:00:00Z",
+        },
+        {
+            "id": "user_target",
+            "email": "target@example.com",
+            "display_name": "Target User",
+            "status": "active",
+            "created_at": "2026-05-05T00:00:00Z",
+        },
+    ]
     fake_db.admin_audit_logs = [
         {
             "id": "admin_audit_1",
@@ -1490,10 +1513,14 @@ def test_admin_audit_logs_route_returns_filtered_entries_and_writes_access_log(m
     assert [log["id"] for log in payload["logs"]] == ["admin_audit_1", "admin_audit_2"]
     assert payload["logs"][0] == {
         "action": "admin.role.grant",
+        "actorDisplayName": "Owner User",
+        "actorEmail": "owner@example.com",
         "actorUserId": "user_owner",
         "createdAt": "2026-05-05T02:00:00Z",
         "id": "admin_audit_1",
         "metadata": {"role": "support"},
+        "targetDisplayName": "Target User",
+        "targetEmail": "target@example.com",
         "targetUserId": "user_target",
         "workspaceId": "workspace_one",
     }

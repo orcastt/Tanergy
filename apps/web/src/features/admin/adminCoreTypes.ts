@@ -43,10 +43,14 @@ export type AdminBoardRecord = {
 
 export type AdminAuditLogRecord = {
   action: string
+  actorDisplayName?: null | string
+  actorEmail?: null | string
   actorUserId?: null | string
   createdAt: string
   id: string
   metadata: Record<string, unknown>
+  targetDisplayName?: null | string
+  targetEmail?: null | string
   targetUserId?: null | string
   workspaceId?: null | string
 }

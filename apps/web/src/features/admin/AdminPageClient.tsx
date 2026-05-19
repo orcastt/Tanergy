@@ -8,7 +8,6 @@ import { AdminConsoleTabs, type AdminConsoleTab } from './AdminConsoleTabs'
 import { AdminFinanceDashboard } from './AdminFinanceDashboard'
 import { AdminOverviewDashboard } from './AdminOverviewDashboard'
 import { AdminUsersDashboard } from './AdminUsersDashboard'
-import { AdminWorkspacesDashboard } from './AdminWorkspacesDashboard'
 import { discardStaleAdminLocalStorage } from './adminStorageCleanup'
 import type {
   AdminAccess,
@@ -95,22 +94,6 @@ export function AdminPageClient({
             <AdminTabPanel active={clientTab === 'users'} mounted={mountedTabs.includes('users')}>
               <AdminUsersDashboard enabled={resourcesEnabled} seedResource={operatorUsersSeed} />
             </AdminTabPanel>
-            <AdminTabPanel active={clientTab === 'teams'} mounted={mountedTabs.includes('teams')}>
-              <AdminWorkspacesDashboard
-                enabled={resourcesEnabled}
-                kind="team"
-                label="Teams"
-                seedResource={teamsSeed}
-              />
-            </AdminTabPanel>
-            <AdminTabPanel active={clientTab === 'groups'} mounted={mountedTabs.includes('groups')}>
-              <AdminWorkspacesDashboard
-                enabled={resourcesEnabled}
-                kind="group"
-                label="Groups"
-                seedResource={groupsSeed}
-              />
-            </AdminTabPanel>
             <AdminTabPanel active={clientTab === 'ai'} mounted={mountedTabs.includes('ai')}>
               <AdminApiRoutesDashboard enabled={resourcesEnabled} />
             </AdminTabPanel>
@@ -155,7 +138,7 @@ function hrefForAdminTab(tab: AdminConsoleTab) {
 function readAdminTabFromLocation(): AdminConsoleTab {
   const search = new URLSearchParams(window.location.search)
   const tab = search.get('tab')
-  return tab === 'users' || tab === 'teams' || tab === 'groups' || tab === 'ai' || tab === 'finance' || tab === 'access'
+  return tab === 'users' || tab === 'ai' || tab === 'finance' || tab === 'access'
     ? tab
     : 'overview'
 }

@@ -80,11 +80,10 @@ export function PersonalPlanBand({
         <PricingMetric label="Groups" value={formatGroupCap(groupCap, plan.groupMemberLimit)} />
         <PricingMetric label="Boards" value={pageEnvelope} />
         <PricingMetric label="Top-up" value={isCurrent ? formatCredits(groupSummary.topUpBalance) : 'Available'} />
-        <PricingMetric label="Term" value={formatPlanTerm(plan, cycle)} />
         {isCurrent ? <PricingMetric label="Current usage" value={`${formatCredits(usage.used)} / ${formatCredits(usage.total)}`} /> : null}
       </PricingMetricList>
 
-      <PricingTagList items={buildPersonalPlanTerms(plan, cycle, isCurrent ? groupSummary.currentPeriodEnd : null)} />
+      <PricingTagList items={buildPersonalPlanTerms(plan, isCurrent ? groupSummary.currentPeriodEnd : null)} />
     </PricingBand>
   )
 }
@@ -150,13 +149,14 @@ export function WorkspacePlanBand({
       <PricingMetricList>
         <PricingMetric label="Credits" value={`${formatCredits(plan.includedCredits)} / seat`} />
         <PricingMetric label="Seats" value={workspaceCount > 0 ? `${seatsUsed} / ${seatLimit}` : formatFactValue(plan.seatRange)} />
+        <PricingMetric label="Boards" value={formatBoardPageEnvelope(plan)} />
+        <PricingMetric label="Top-up" value={workspaceCount > 0 ? formatCredits(ownedTeams.reduce((total, team) => total + team.topUpBalance, 0)) : 'Available'} />
         <PricingMetric label="Billing" value="Team wallet" />
-        <PricingMetric label="Term" value={formatPlanTerm(plan, cycle)} />
         {workspaceCount > 0 ? <PricingMetric label="Team usage" value={`${formatCredits(usedCredits)} / ${formatCredits(totalCredits)}`} /> : null}
-        {workspaceCount > 0 ? <PricingMetric label="Boards" value={String(boardCount)} /> : null}
+        {workspaceCount > 0 ? <PricingMetric label="Active boards" value={String(boardCount)} /> : null}
       </PricingMetricList>
 
-      <PricingTagList items={buildWorkspacePlanTerms(plan, cycle, workspaceCount, memberCount)} />
+      <PricingTagList items={buildWorkspacePlanTerms(plan, workspaceCount, memberCount)} />
     </PricingBand>
   )
 }
@@ -164,31 +164,28 @@ export function WorkspacePlanBand({
 function formatBillingHint(plan: PlanCatalogRecord, cycle: PricingCycle) {
   if (plan.planKey === 'free_canvas') return 'Always free'
   if (cycle === 'annual') {
-    return `Charged upfront as ${formatAnnualUpfront(plan)} for 365 days`
+    return plan.planKey === 'team_start' || plan.planKey === 'team_growth'
+      ? 'per seat / month, billed annually'
+      : 'per month, billed annually'
   }
-  return 'Renews every 30 days'
+  return plan.planKey === 'team_start' || plan.planKey === 'team_growth' ? 'per seat / month' : 'per month'
 }
 
 function formatPersonalPlanPrice(plan: PlanCatalogRecord, cycle: PricingCycle) {
   if (plan.planKey === 'free_canvas') return '$0'
-  if (cycle === 'annual') return `${formatAnnualUpfront(plan)}/year`
-  return `$${plan.monthlyPriceUsd ?? 0}/mo`
+  if (cycle === 'annual') return `$${plan.annualPriceUsd ?? plan.monthlyPriceUsd ?? 0}`
+  return `$${plan.monthlyPriceUsd ?? 0}`
 }
 
 function formatWorkspacePlanPrice(plan: PlanCatalogRecord, cycle: PricingCycle) {
-  if (cycle === 'annual') return `${formatAnnualUpfront(plan)}/seat/year`
-  return `$${plan.monthlyPriceUsd ?? 0}/seat/mo`
-}
-
-function formatAnnualUpfront(plan: PlanCatalogRecord) {
-  const annualRate = plan.annualPriceUsd ?? 0
-  return `$${annualRate * 12}`
+  if (cycle === 'annual') return `$${plan.annualPriceUsd ?? plan.monthlyPriceUsd ?? 0}`
+  return `$${plan.monthlyPriceUsd ?? 0}`
 }
 
 function formatBoardPageEnvelope(plan: PlanCatalogRecord) {
   const boardLimit = typeof plan.boardLimit === 'number' ? formatFactValue(plan.boardLimit) : 'Unlimited'
-  const pageLimit = typeof plan.pageLimit === 'number' ? formatFactValue(plan.pageLimit) : 'Unlimited'
-  return `${boardLimit} board${plan.boardLimit === 1 ? '' : 's'} / ${pageLimit} pages`
+  const pageLimit = typeof plan.pageLimit === 'number' ? Math.min(plan.pageLimit, 10) : 10
+  return `${boardLimit} board${plan.boardLimit === 1 ? '' : 's'} / ${formatFactValue(pageLimit)} pages per board`
 }
 
 function formatGroupCap(groupCap: number, memberLimit?: null | number) {
@@ -196,14 +193,7 @@ function formatGroupCap(groupCap: number, memberLimit?: null | number) {
   return `${groupCap} Group${groupCap === 1 ? '' : 's'} · ${formatFactValue(memberLimit)} members`
 }
 
-function formatPlanTerm(plan: PlanCatalogRecord, cycle: PricingCycle) {
-  if (plan.planKey === 'free_canvas') return 'Always free'
-  if (cycle === 'annual') return 'Annual upfront'
-  return '30-day renewal'
-}
-
-function buildPersonalPlanTerms(plan: PlanCatalogRecord, cycle: PricingCycle, currentPeriodEnd?: null | string) {
-  const renewal = currentPeriodEnd ? `Valid until ${formatDateOnly(currentPeriodEnd)}.` : cycle === 'annual' ? 'Annual billing covers 365 days.' : 'Monthly billing renews every 30 days.'
+function buildPersonalPlanTerms(plan: PlanCatalogRecord, currentPeriodEnd?: null | string) {
   if (plan.planKey === 'free_canvas') {
     return [
       'Can join Teams; cannot create Team workspaces.',
@@ -211,17 +201,15 @@ function buildPersonalPlanTerms(plan: PlanCatalogRecord, cycle: PricingCycle, cu
     ]
   }
   return [
-    renewal,
+    ...(currentPeriodEnd ? [`Valid until ${formatDateOnly(currentPeriodEnd)}.`] : []),
     'No shared Group wallet.',
   ]
 }
 
-function buildWorkspacePlanTerms(plan: PlanCatalogRecord, cycle: PricingCycle, workspaceCount: number, memberCount: number) {
+function buildWorkspacePlanTerms(plan: PlanCatalogRecord, workspaceCount: number, memberCount: number) {
   if (plan.planKey === 'enterprise') return ['Contract limits.', 'Manual finance review.']
-  const renewal = cycle === 'annual' ? 'Annual billing covers 365 days.' : 'Monthly billing renews every 30 days.'
-  if (workspaceCount > 0) return [renewal, `${memberCount} active member${memberCount === 1 ? '' : 's'}.`]
+  if (workspaceCount > 0) return [`${memberCount} active member${memberCount === 1 ? '' : 's'}.`]
   return [
-    renewal,
-    'Seats can be expanded later.',
+    'Shared Team wallet.',
   ]
 }
