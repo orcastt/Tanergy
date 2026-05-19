@@ -92,7 +92,7 @@ async function runNanoBanana2(input: { aspectRatio: string; clientConfig: Provid
 }
 
 async function runJiekouNanoBanana2(input: { aspectRatio: string; clientConfig: ProviderClientConfig; count: number; imageSize: string; inputImages: string[]; prompt: string }) {
-  const sharedBody = { aspect_ratio: toJiekouNanoBananaSize(input.aspectRatio), output_format: 'png', prompt: input.prompt, size: toJiekouNanoBananaImageSize(input.imageSize) }
+  const sharedBody = { aspect_ratio: toJiekouNanoBananaSize(input.aspectRatio), output_format: 'image/png', prompt: input.prompt, size: toJiekouNanoBananaImageSize(input.imageSize) }
   const endpoint = input.inputImages.length > 0 ? 'gemini-3.1-flash-image-edit' : 'gemini-3.1-flash-image-text-to-image'
   return runRepeatedJiekouImageGenerations(endpoint, { ...sharedBody, ...(input.inputImages.length > 0 ? { image_base64s: input.inputImages.map(toJiekouInlineImageBase64) } : {}) }, input.count, input.clientConfig)
 }

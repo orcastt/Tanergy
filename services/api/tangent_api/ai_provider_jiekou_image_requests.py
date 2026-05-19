@@ -55,9 +55,10 @@ def _run_gpt_image_2(
 ) -> list[ProviderImageOutput]:
     input_images = _load_input_images(payload, context)
     endpoint = "gpt-image-2-edit" if input_images else "gpt-image-2-text-to-image"
+    count = _count(payload)
     shared_body: dict[str, object] = {
         "background": "auto",
-        "n": 1,
+        "n": count,
         "output_format": "png",
         "prompt": _prompt_for_payload(payload),
         "quality": _gpt_quality_for_payload(payload),
@@ -67,7 +68,19 @@ def _run_gpt_image_2(
         shared_body["image"] = input_images[0] if len(input_images) == 1 else input_images
     else:
         shared_body["moderation"] = "auto"
-    return _run_repeated_generations(client, api_key, base_url, endpoint, shared_body, _count(payload), timeout_seconds)
+    outputs = _extract_image_outputs(_post_json(client, _endpoint(base_url, endpoint), api_key, shared_body), timeout_seconds, api_key)
+    if len(outputs) >= count:
+        return outputs[:count]
+    retry_body = {**shared_body, "n": 1}
+    return outputs + _run_repeated_generations(
+        client,
+        api_key,
+        base_url,
+        endpoint,
+        retry_body,
+        count - len(outputs),
+        timeout_seconds,
+    )
 
 
 def _run_nano_banana_2(
@@ -82,7 +95,7 @@ def _run_nano_banana_2(
     endpoint = "gemini-3.1-flash-image-edit" if input_images else "gemini-3.1-flash-image-text-to-image"
     shared_body: dict[str, object] = {
         "aspect_ratio": _nano_banana_aspect_ratio_for_payload(payload),
-        "output_format": "png",
+        "output_format": "image/png",
         "prompt": _prompt_for_payload(payload),
         "size": _nano_banana_size_for_payload(payload),
     }
