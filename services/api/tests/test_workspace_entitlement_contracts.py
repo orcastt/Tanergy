@@ -141,6 +141,51 @@ def test_workspace_entitlement_uses_database_team_seat_assignment(monkeypatch):
     assert payload["plan"]["includedCredits"] == 6200
 
 
+def test_workspace_entitlement_repairs_legacy_team_without_seat_assignment(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.credit_accounts = [
+        {
+            "account_kind": "team_wallet",
+            "id": "credit_db_team_wallet",
+            "owner_id": "workspace_team",
+            "owner_type": "workspace",
+            "status": "active",
+        }
+    ]
+    fake_db.subscriptions = [
+        {
+            "account_id": "credit_db_team_wallet",
+            "id": "subscription_team_start",
+            "owner_id": "workspace_team",
+            "owner_type": "workspace",
+            "plan_family": "team",
+            "plan_key": "team_start",
+            "seat_capacity": 2,
+            "status": "active",
+            "updated_at": "2026-05-06T00:00:00Z",
+        }
+    ]
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    response = client.get(
+        "/api/v1/billing/me",
+        headers={
+            "x-tangent-user-id": "user_team_owner",
+            "x-tangent-workspace-id": "workspace_team",
+            "x-tangent-workspace-kind": "team_workspace",
+            "x-tangent-workspace-role": "owner",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["chargeScope"] == "team_wallet"
+    assert payload["credits"]["includedTotal"] == 2500
+    assert payload["plan"]["planKey"] == "team_start"
+
+
 def test_workspace_entitlement_rejects_paused_team_subscription(monkeypatch):
     fake_db = FakePostgresDatabase()
     fake_db.credit_accounts = [

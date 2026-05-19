@@ -18,6 +18,7 @@ type TransientUiProps = ComponentProps<typeof KonvaCanvasTransientUi>
 
 export type CreateSpikeTransientUiPropsOptions = {
   activePageId: string
+  aiCreditDialogMessage: string | null
   activeTool: KonvaCanvasTool
   autoLoadBoard: boolean
   boardId: string
@@ -62,6 +63,7 @@ export type CreateSpikeTransientUiPropsOptions = {
   nodeMenu: { world: { x: number; y: number }; x: number; y: number } | null
   onBoardLoaded: (board: BoardPersistenceSummary) => void
   onBoardSaved: (board: BoardPersistenceSummary) => void
+  onCloseAiCreditDialog: () => void
   onCloseLightbox: () => void
   onCloseNodeTextEditor: () => void
   onCloseSettings: () => void
@@ -97,6 +99,7 @@ export type CreateSpikeTransientUiPropsOptions = {
 
 export function createKonvaCanvasSpikeTransientUiProps({
   activePageId,
+  aiCreditDialogMessage,
   activeTool,
   autoLoadBoard,
   boardId,
@@ -141,6 +144,7 @@ export function createKonvaCanvasSpikeTransientUiProps({
   nodeMenu,
   onBoardLoaded,
   onBoardSaved,
+  onCloseAiCreditDialog,
   onCloseContextMenu,
   onCloseLightbox,
   onCloseNodeTextEditor,
@@ -174,6 +178,10 @@ export function createKonvaCanvasSpikeTransientUiProps({
   zoom,
 }: CreateSpikeTransientUiPropsOptions): TransientUiProps {
   return {
+    aiCreditDialogProps: aiCreditDialogMessage ? {
+      message: aiCreditDialogMessage,
+      onClose: onCloseAiCreditDialog,
+    } : undefined,
     contextMenuHostProps: effectiveReadOnly ? undefined : contextMenu ? {
       activePageId,
       canLockSelection,

@@ -6,6 +6,7 @@ from fastapi import HTTPException
 
 from tangent_api.ai_schemas import AiRunChargeSummary
 from tangent_api.billing_balance import load_credit_balance_for_account, load_credit_reason_totals, load_credit_spent_for_account, split_credit_balance
+from tangent_api.plan_catalog import included_credits_for_plan
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.storage.postgres_connection import connect_to_postgres, require_database_url
 from tangent_api.workspace_entitlement_members import (
@@ -34,6 +35,10 @@ from tangent_api.workspace_schemas import (
     WorkspaceDashboardRecord,
     WorkspaceEntitlementResponse,
 )
+
+TEAM_PLAN_KEYS = {"team_start", "team_growth", "enterprise"}
+TEAM_WALLET_MEMBER_ROLES = {"admin", "editor", "owner", "viewer"}
+
 @dataclass(frozen=True)
 class EntitlementResolution:
     charged_account_id: Optional[str]
@@ -206,7 +211,7 @@ def _resolve_database_entitlement(context: ApiRequestContext) -> Optional[Entitl
                     (context.workspace_id, context.user_id),
                 )
                 seat_row = cursor.fetchone()
-                if seat_row and str(seat_row[1]) in {"team_start", "team_growth", "enterprise"}:
+                if seat_row and str(seat_row[1]) in TEAM_PLAN_KEYS:
                     charged_account_id = _select_credit_account_id(
                         cursor,
                         "workspace",
@@ -220,6 +225,22 @@ def _resolve_database_entitlement(context: ApiRequestContext) -> Optional[Entitl
                         included_credits_override=int(seat_row[2] or 0),
                         plan_key=str(seat_row[1]),
                         workspace_seat_id=str(seat_row[0]),
+                    )
+                subscription_plan_key = str(subscription_row[0] or "")
+                if subscription_plan_key in TEAM_PLAN_KEYS and context.workspace_role in TEAM_WALLET_MEMBER_ROLES:
+                    charged_account_id = _select_credit_account_id(
+                        cursor,
+                        "workspace",
+                        context.workspace_id,
+                        account_kind="team_wallet",
+                    )
+                    return EntitlementResolution(
+                        charged_account_id=charged_account_id,
+                        current_period_start=optional_iso(subscription_row[2]),
+                        current_period_end=optional_iso(subscription_row[3]),
+                        included_credits_override=included_credits_for_plan(subscription_plan_key),
+                        plan_key=subscription_plan_key,
+                        workspace_seat_id=f"seat_{context.workspace_id}_{context.user_id}",
                     )
                 raise HTTPException(status_code=402, detail="Active Team seat is required to use Team wallet.")
             owner_type = "workspace" if context.workspace_kind == "enterprise_workspace" else "user"

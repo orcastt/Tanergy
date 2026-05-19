@@ -6,6 +6,7 @@ from fastapi import HTTPException
 
 from tangent_api.admin_finance_manual_ops import assert_user_exists, assert_workspace_exists, grant_included_credits as grant_plan_credits, insert_audit, load_credit_balance, upsert_subscription
 from tangent_api.admin_finance_manual_schemas import AdminManualFinanceMutationResponse
+from tangent_api.admin_finance_manual_team_seats import sync_team_seat_assignments
 from tangent_api.admin_finance_manual_utils import COLLABORATE_PLAN_KEYS, TEAM_PLAN_KEYS, manual_response, normalize_id, normalize_plan_key, normalize_subscription_status, resolve_collaborate_term_months, resolve_subscription_window, resolve_team_term_months
 from tangent_api.billing_credit_accounts import ensure_credit_account
 from tangent_api.plan_catalog import included_credits_for_plan
@@ -143,6 +144,15 @@ def manual_set_team_plan(
                 plan_key=normalized_plan,
                 seat_capacity=seat_capacity,
                 status=normalized_status,
+                workspace_id=workspace_id,
+            )
+            sync_team_seat_assignments(
+                cursor,
+                actor_user_id=actor_user_id,
+                period_end=resolved_period_end,
+                period_start=resolved_period_start,
+                plan_key=normalized_plan,
+                seat_capacity=seat_capacity,
                 workspace_id=workspace_id,
             )
             credits = float(included_credits_for_plan(normalized_plan)) * seat_capacity * duration_months

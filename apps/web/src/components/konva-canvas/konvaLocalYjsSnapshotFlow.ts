@@ -37,7 +37,6 @@ type ApplyIncomingKonvaYjsSnapshotOptions = {
   hasSynchronizedPages: boolean
   hasUnsyncedLocalChanges: boolean
   lastSynchronizedSignature: string | null
-  markSkipNextPublish: () => void
   onRemoteRestore: (document: KonvaLocalYjsRemoteRestorePayload, meta: KonvaLocalYjsRemoteRestoreMeta) => void
   onRepublishLocal: () => void
   patchSyncState: PatchSyncState
@@ -58,7 +57,6 @@ export function applyIncomingKonvaYjsSnapshot({
   hasSynchronizedPages,
   hasUnsyncedLocalChanges,
   lastSynchronizedSignature,
-  markSkipNextPublish,
   onRemoteRestore,
   onRepublishLocal,
   patchSyncState,
@@ -79,6 +77,7 @@ export function applyIncomingKonvaYjsSnapshot({
     record,
     workspaceKind,
   })
+  const hadUnsyncedLocalChanges = canWrite && hasUnsyncedLocalChanges
   if (decision.kind === 'duplicate') {
     rememberSynchronizedRecord(record)
     clearPendingRemoteSnapshot()
@@ -121,12 +120,12 @@ export function applyIncomingKonvaYjsSnapshot({
       lastRemotePublishedAt: record.publishedAt,
       pendingRemoteActorId: null,
     })
-    markSkipNextPublish()
     onRemoteRestore(createRemoteRestorePayload(record), {
       activePageId: record.activePageId,
       actorId: record.actorId,
       basePages: previousPages,
       changedPageIds: record.changedPageIds,
+      hadUnsyncedLocalChanges,
       mode: record.mode,
       publishedAt: record.publishedAt,
       signature: record.signature,

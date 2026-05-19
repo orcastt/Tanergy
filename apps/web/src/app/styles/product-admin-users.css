@@ -93,17 +93,17 @@
 }
 
 .admin-user-detail-header-main {
-  display: flex;
+  display: grid;
   min-width: 0;
-  align-items: center;
-  gap: 12px;
+  align-items: start;
+  gap: 10px;
 }
 
 .admin-user-detail-back-link {
   display: inline-flex;
   align-items: center;
   align-self: flex-start;
-  min-height: 28px;
+  min-height: 18px;
   color: var(--color-muted);
   font-size: 12px;
   font-weight: 600;

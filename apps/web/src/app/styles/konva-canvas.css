@@ -32,10 +32,15 @@
 }
 
 .konva-canvas-back {
+  align-items: center;
   border: 1px solid rgba(31, 42, 55, 0.18);
   border-radius: 999px;
+  display: inline-flex;
+  flex: 0 0 30px;
   height: 30px;
+  justify-content: center;
   position: relative;
+  text-decoration: none;
   width: 30px;
 }
 

@@ -9,7 +9,6 @@ from tangent_api.schemas import BoardRecord
 from tangent_api.workspace_roles import (
     workspace_role_can_manage,
     workspace_role_can_read,
-    workspace_role_can_write,
     normalize_workspace_role,
 )
 READ_BOARD_MEMBER_ROLES = {"owner", "admin", "editor", "viewer", "temporary_viewer"}
@@ -31,7 +30,7 @@ def can_read_workspace(context: ApiRequestContext) -> bool:
 
 
 def can_create_board(context: ApiRequestContext) -> bool:
-    return workspace_role_can_write(context.workspace_role)
+    return workspace_role_can_manage(context.workspace_role)
 
 
 def resolve_effective_board_permission(
@@ -100,6 +99,16 @@ def can_own_board(
 ) -> bool:
     if context.workspace_kind in SHAREABLE_BOARD_WORKSPACE_KINDS:
         return record.workspace_id == context.workspace_id and _normalize_workspace_role(context.workspace_role) == "owner"
+    return resolve_effective_board_permission(record, context, board_member_role) == "owner"
+
+
+def can_delete_board(
+    record: BoardRecord,
+    context: ApiRequestContext,
+    board_member_role: Optional[str] = None,
+) -> bool:
+    if context.workspace_kind in SHAREABLE_BOARD_WORKSPACE_KINDS:
+        return record.workspace_id == context.workspace_id and workspace_role_can_manage(context.workspace_role)
     return resolve_effective_board_permission(record, context, board_member_role) == "owner"
 
 
@@ -181,6 +190,15 @@ def assert_can_own_board(
 ) -> None:
     if not can_own_board(record, context, board_member_role):
         raise HTTPException(status_code=403, detail="Only the Board owner can copy or delete this board.")
+
+
+def assert_can_delete_board(
+    record: BoardRecord,
+    context: ApiRequestContext,
+    board_member_role: Optional[str] = None,
+) -> None:
+    if not can_delete_board(record, context, board_member_role):
+        raise HTTPException(status_code=403, detail="Only workspace owners or admins can delete this board.")
 
 
 def _effective_board_page_limit(context: ApiRequestContext) -> Optional[int]:

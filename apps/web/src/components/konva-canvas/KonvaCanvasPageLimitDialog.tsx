@@ -14,6 +14,7 @@ export function KonvaCanvasPageLimitDialog({
   pageLimit,
   planName,
 }: KonvaCanvasPageLimitDialogProps) {
+  const canUpgradeForMorePages = pageLimit < 10
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose()
@@ -33,12 +34,16 @@ export function KonvaCanvasPageLimitDialog({
       >
         <div className="konva-canvas-page-limit-dialog__copy">
           <span>{planName ?? 'Current plan'}</span>
-          <h2>Upgrade to add more pages</h2>
-          <p>This board is limited to {pageLimit} pages on the current plan.</p>
+          <h2>{canUpgradeForMorePages ? 'Upgrade to add more pages' : `One board is limited to ${pageLimit} pages`}</h2>
+          <p>
+            {canUpgradeForMorePages
+              ? `Free boards are limited to ${pageLimit} pages. Upgrade to create up to 10 pages per board.`
+              : `This plan already uses the maximum board page limit. One board can contain up to ${pageLimit} pages.`}
+          </p>
         </div>
         <div className="konva-canvas-page-limit-dialog__actions">
-          <button onClick={onClose} type="button">Not now</button>
-          <Link href="/billing">See plans</Link>
+          <button onClick={onClose} type="button">{canUpgradeForMorePages ? 'Not now' : 'Got it'}</button>
+          {canUpgradeForMorePages ? <Link href="/billing">See plans</Link> : null}
         </div>
       </section>
     </div>

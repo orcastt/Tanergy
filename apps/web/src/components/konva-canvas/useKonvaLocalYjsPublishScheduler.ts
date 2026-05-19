@@ -24,7 +24,6 @@ type UseKonvaLocalYjsPublishSchedulerOptions = {
   requiresFullBoardSync: boolean
   resolvedRoomKey: string | null
   setHasUnsyncedLocalChanges: (value: boolean) => void
-  skipNextPublishRef: MutableRefObject<boolean>
 }
 
 export function useKonvaLocalYjsPublishScheduler({
@@ -43,7 +42,6 @@ export function useKonvaLocalYjsPublishScheduler({
   requiresFullBoardSync,
   resolvedRoomKey,
   setHasUnsyncedLocalChanges,
-  skipNextPublishRef,
 }: UseKonvaLocalYjsPublishSchedulerOptions) {
   useEffect(() => {
     if (!resolvedRoomKey || !latestCanWriteRef.current) return
@@ -61,12 +59,6 @@ export function useKonvaLocalYjsPublishScheduler({
     nextChangedPageIdsRef.current = publishPlan.changedPageIds
     if (publishPlan.didSwitchPage && !publishPlan.didRevisionChange) {
       cancelScheduledPublish()
-      return
-    }
-    if (skipNextPublishRef.current) {
-      skipNextPublishRef.current = false
-      cancelScheduledPublish()
-      patchSyncState({ hasUnsyncedLocalChanges: false })
       return
     }
     cancelScheduledPublish()
@@ -95,7 +87,6 @@ export function useKonvaLocalYjsPublishScheduler({
     requiresFullBoardSync,
     resolvedRoomKey,
     setHasUnsyncedLocalChanges,
-    skipNextPublishRef,
   ])
 }
 

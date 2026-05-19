@@ -12,6 +12,8 @@ import type { KonvaCanvasTool, KonvaToolSession } from './konvaCanvasTypes'
 import { resolveKonvaShapeStyle } from './konvaCanvasStyle'
 
 const boxTools = new Set<KonvaCanvasTool>(['rect', 'diamond', 'ellipse', 'triangle', 'cloud', 'frame', 'sticky', 'text'])
+const defaultTextDraftHeight = 96
+const defaultTextDraftWidth = 220
 
 export function updateStrokeDraft(session: Extract<KonvaToolSession, { type: 'create' }>, point: StrokePoint): CanvasShape {
   if (session.draft.type !== 'stroke') return session.draft
@@ -38,6 +40,16 @@ export function finalizeDraft(shape: CanvasShape): CanvasShape | null {
     const points = simplifyStrokePoints(smoothed, { minDistance: 0.45, tolerance: 0.35 })
     return { ...shape, props: { points } }
   }
+  if (shape.type === 'text' && ('width' in shape.props && 'height' in shape.props) && (shape.props.width < 6 || shape.props.height < 6)) {
+    return {
+      ...shape,
+      props: {
+        ...shape.props,
+        height: defaultTextDraftHeight,
+        width: defaultTextDraftWidth,
+      },
+    }
+  }
   if ('width' in shape.props && 'height' in shape.props && (shape.props.width < 6 || shape.props.height < 6)) return null
   if ((shape.type === 'line' || shape.type === 'arrow') && distanceBetweenPoints(createPoint(), shape.props.end) < 8) return null
   return shape
@@ -63,7 +75,20 @@ export function createDraftShape(
   const height = Math.abs(end.y - origin.y)
   if (tool === 'frame') return { id: createShapeId('frame'), props: { height, title: 'Frame', width }, style: frameStyle(), type: 'frame', x, y }
   if (tool === 'sticky') return { id: createShapeId('sticky'), props: { authorName: 'You', height, text: 'Sticky', width }, style: stickyStyle(options.style), type: 'sticky', x, y }
-  if (tool === 'text') return { id: createShapeId('text'), props: { height, text: '', width }, style: baseStyle(options.style), type: 'text', x, y }
+  if (tool === 'text') {
+    return {
+      id: createShapeId('text'),
+      props: {
+        height: height < 6 ? defaultTextDraftHeight : height,
+        text: '',
+        width: width < 6 ? defaultTextDraftWidth : width,
+      },
+      style: baseStyle(options.style),
+      type: 'text',
+      x,
+      y,
+    }
+  }
   return { id: createShapeId(tool), props: { height, width }, style: baseStyle(options.style), type: tool, x, y } as CanvasShape
 }
 

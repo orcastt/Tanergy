@@ -90,13 +90,16 @@ export function useKonvaCanvasBoardSync({
     options: {
       basePages?: NonNullable<KonvaLocalYjsRemoteRestorePayload['pages']>
       changedPageIds?: readonly string[]
+      hadUnsyncedLocalChanges?: boolean
       clearTransient?: boolean
     } = {},
   ) => {
     useCanvasSettingsStore.getState().replace(remoteDocument.canvasSettings ?? defaultCanvasSettings)
     const remotePages = remoteDocument.pages
     const remoteActivePageId = remoteDocument.activePageId
-    const basePages = options.basePages ? [...options.basePages] : undefined
+    const basePages = options.hadUnsyncedLocalChanges && options.basePages?.length
+      ? [...options.basePages]
+      : undefined
     const applied = boardPages.applyRemotePageChanges(remotePages, {
       basePages,
       changedPageIds: options.changedPageIds,
@@ -186,6 +189,7 @@ export function useKonvaCanvasBoardSync({
       restoreCollaborativeDocument(restore, {
         basePages: meta.basePages ?? undefined,
         changedPageIds: meta.changedPageIds,
+        hadUnsyncedLocalChanges: meta.hadUnsyncedLocalChanges,
       })
     },
     pageChangedPageIds: boardPages.collaborationChange.changedPageIds,

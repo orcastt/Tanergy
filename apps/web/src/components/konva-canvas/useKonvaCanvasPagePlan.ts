@@ -60,11 +60,8 @@ function resolveCanvasPagePlan(
   const planKey = resolvePlanKey(workspace.kind, workspace.planKey)
   const plan = livePlans[planKey] ?? planCatalog[planKey]
   const planPageLimit = plan.pageLimit ?? null
-  const pageLimit = workspace.kind === 'group_workspace' || workspace.kind === 'team_workspace'
-    ? Math.min(planPageLimit ?? 10, 10)
-    : planPageLimit
   return {
-    pageLimit,
+    pageLimit: Math.min(planPageLimit ?? 10, 10),
     planName: plan.name,
   }
 }

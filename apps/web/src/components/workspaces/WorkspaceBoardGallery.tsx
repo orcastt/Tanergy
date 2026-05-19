@@ -6,6 +6,7 @@ import { WorkspaceBoardPanelHost } from './WorkspaceBoardPanelHost'
 import { WorkspaceBoardSection } from './WorkspaceBoardSection'
 import { WorkspaceLoadingState } from './WorkspaceBoardStates'
 import { WorkspaceBoardToolbar } from './WorkspaceBoardToolbar'
+import { canCreateWorkspaceBoards } from './boardCapabilities'
 import { useWorkspaceBoardGalleryRuntime } from './useWorkspaceBoardGalleryRuntime'
 
 export function WorkspaceBoardGallery() {
@@ -73,7 +74,7 @@ export function WorkspaceBoardGallery() {
                     onTogglePin={(board) => void gallery.updateBoard({ boardId: board.id, isPinned: !board.isPinned })}
                     pendingBoardId={gallery.pendingBoardId}
                     session={gallery.session}
-                    showNewBoardTile={!gallery.searchQuery.trim() && workspace.role !== 'viewer' && workspace.role !== 'guest'}
+                    showNewBoardTile={!gallery.searchQuery.trim() && canCreateWorkspaceBoards(workspace)}
                     viewMode={gallery.viewMode}
                     workspace={workspace}
                   />

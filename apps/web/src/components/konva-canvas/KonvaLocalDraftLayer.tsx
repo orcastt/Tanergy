@@ -1,4 +1,5 @@
 import type { CanvasDocument, CanvasShape } from '@/features/canvas-engine'
+import { Group, Rect, Text } from 'react-konva'
 import { KonvaCanvasShape } from './KonvaCanvasShape'
 
 type KonvaLocalDraftLayerProps = {
@@ -16,6 +17,31 @@ export function KonvaLocalDraftLayer({
   panMode,
   zoom,
 }: KonvaLocalDraftLayerProps) {
+  if (draft.type === 'text') {
+    return (
+      <Group x={draft.x} y={draft.y}>
+        <Rect
+          cornerRadius={4}
+          dash={[6 / Math.max(zoom, 0.1), 4 / Math.max(zoom, 0.1)]}
+          fill="rgba(255,255,255,0.72)"
+          height={draft.props.height}
+          stroke="rgba(17,24,39,0.38)"
+          strokeWidth={1 / Math.max(zoom, 0.1)}
+          width={draft.props.width}
+        />
+        <Text
+          fill="rgba(17,24,39,0.36)"
+          fontFamily="Inter, system-ui, sans-serif"
+          fontSize={14 / Math.max(zoom, 0.1)}
+          listening={false}
+          text="Text"
+          x={12 / Math.max(zoom, 0.1)}
+          y={12 / Math.max(zoom, 0.1)}
+        />
+      </Group>
+    )
+  }
+
   return (
     <KonvaCanvasShape
       document={document}

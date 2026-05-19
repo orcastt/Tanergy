@@ -18,6 +18,7 @@ from tangent_api.admin_finance_manual_plan_context import (
 )
 from tangent_api.admin_finance_manual_plan_lifecycle import operate_plan_lifecycle_action
 from tangent_api.admin_finance_manual_schemas import AdminManualFinanceMutationResponse
+from tangent_api.admin_finance_manual_team_seats import sync_team_seat_assignments
 from tangent_api.admin_finance_manual_utils import (
     COLLABORATE_PLAN_KEYS,
     TEAM_PLAN_KEYS,
@@ -189,6 +190,16 @@ def _operate_plan(
         period_start=period_start,
         period_end=period_end,
     )
+    if context.plan_family == "team" and context.workspace_id:
+        sync_team_seat_assignments(
+            cursor,
+            actor_user_id=actor_user_id,
+            period_end=period_end,
+            period_start=period_start,
+            plan_key=normalized_plan_key,
+            seat_capacity=seat_capacity,
+            workspace_id=context.workspace_id,
+        )
 
     ledger_entry_id = None
     if grant_included_credits and granted_credits > 0:

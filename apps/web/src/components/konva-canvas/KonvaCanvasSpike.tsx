@@ -98,6 +98,7 @@ export function KonvaCanvasSpike({
   ))
   const hasPersistedBoard = Boolean(initialBoard) || Boolean(persistedBoardIds[boardId])
   const [selectionActionError, setSelectionActionError] = useState<string | null>(null)
+  const [aiCreditDialogMessage, setAiCreditDialogMessage] = useState<string | null>(null)
   const themeMode = useResolvedCanvasThemeMode()
   const [, setClipboardShapeCount] = useState(0)
   const clipboardRef = useRef<CanvasShape[]>([])
@@ -137,6 +138,7 @@ export function KonvaCanvasSpike({
     document,
     history,
     lastPastePointRef,
+    onAiRunCreditError: setAiCreditDialogMessage,
     onDocumentChange: setDocument,
     onEdgeSelectionChange: setSelectedEdgeId,
     onSelectionChange: handleSelectionChange,
@@ -171,6 +173,7 @@ export function KonvaCanvasSpike({
     boardTitle,
     boardPageHistoryRef,
     canvasSetters: {
+      setAiCreditDialogMessage,
       setCamera,
       setClipboardShapeCount,
       setConnectionPreviewPresence,
@@ -195,6 +198,7 @@ export function KonvaCanvasSpike({
     },
     canvasState: {
       activeToolPreference,
+      aiCreditDialogMessage,
       camera,
       connectionPreviewPresence,
       contextMenu,

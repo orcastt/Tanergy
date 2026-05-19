@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
+import { useCallback, useEffect, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
 import { distanceBetweenPoints, type CanvasBounds, type CanvasPoint } from '@/features/canvas-engine'
 import type { BoardCollaborationConnectionPreview, BoardCollaborationPresence, BoardCollaborationTransformKind } from '@/features/boards/boardCollaborationTypes'
 import {
@@ -19,6 +19,7 @@ import {
 import type { LocalBoardAwarenessState } from '@/features/collaboration/localBoardAwareness'
 
 const cursorSyncDistance = 10
+const selectionBroadcastIdleMs = 10_000
 
 type UseBoardCollaborationLocalPresenceOptions = {
   activePageId: string | null
@@ -62,8 +63,48 @@ export function useBoardCollaborationLocalPresence({
   const latestDraftPreviewRef = useRef<BoardCollaborationPresence['draftPreview']>(null)
   const latestEditingShapeIdsRef = useRef<string[]>([])
   const latestHoveredShapeIdRef = useRef<string | null>(null)
+  const selectionBroadcastRefreshTimerRef = useRef<number | null>(null)
+  const selectionBroadcastTimerRef = useRef<number | null>(null)
+  const [broadcastSelectedIds, setBroadcastSelectedIds] = useState<string[]>([])
 
-  const applyLocalPresencePatch = useCallback((patch: Partial<BoardCollaborationPresence>) => {
+  const clearSelectionBroadcastRefreshTimer = useCallback(() => {
+    if (selectionBroadcastRefreshTimerRef.current === null) return
+    window.clearTimeout(selectionBroadcastRefreshTimerRef.current)
+    selectionBroadcastRefreshTimerRef.current = null
+  }, [])
+
+  const clearSelectionBroadcastTimer = useCallback(() => {
+    if (selectionBroadcastTimerRef.current === null) return
+    window.clearTimeout(selectionBroadcastTimerRef.current)
+    selectionBroadcastTimerRef.current = null
+  }, [])
+
+  const refreshSelectionBroadcast = useCallback(() => {
+    clearSelectionBroadcastTimer()
+    if (!shouldConnect || selectedIds.length === 0) {
+      setBroadcastSelectedIds((current) => current.length === 0 ? current : [])
+      return
+    }
+    setBroadcastSelectedIds((current) => areSamePresenceShapeIds(current, selectedIds) ? current : selectedIds)
+    selectionBroadcastTimerRef.current = window.setTimeout(() => {
+      selectionBroadcastTimerRef.current = null
+      setBroadcastSelectedIds([])
+    }, selectionBroadcastIdleMs)
+  }, [clearSelectionBroadcastTimer, selectedIds, shouldConnect])
+
+  const scheduleSelectionBroadcastRefresh = useCallback(() => {
+    clearSelectionBroadcastRefreshTimer()
+    selectionBroadcastRefreshTimerRef.current = window.setTimeout(() => {
+      selectionBroadcastRefreshTimerRef.current = null
+      refreshSelectionBroadcast()
+    }, 0)
+  }, [clearSelectionBroadcastRefreshTimer, refreshSelectionBroadcast])
+
+  const applyLocalPresencePatch = useCallback((
+    patch: Partial<BoardCollaborationPresence>,
+    options: { refreshSelectionBroadcast?: boolean } = {},
+  ) => {
+    if (options.refreshSelectionBroadcast) refreshSelectionBroadcast()
     latestPresenceRef.current = {
       ...latestPresenceRef.current,
       ...patch,
@@ -83,10 +124,24 @@ export function useBoardCollaborationLocalPresence({
     currentSessionIdRef,
     latestPresenceRef,
     realtimeAwarenessRef,
+    refreshSelectionBroadcast,
     scheduleAwarenessPresencePublish,
     schedulePresenceSync,
     setState,
   ])
+
+  useEffect(() => {
+    scheduleSelectionBroadcastRefresh()
+  }, [scheduleSelectionBroadcastRefresh])
+
+  useEffect(() => {
+    if (connectionPreview || selectionBox || transformBox) scheduleSelectionBroadcastRefresh()
+  }, [connectionPreview, scheduleSelectionBroadcastRefresh, selectionBox, transformBox])
+
+  useEffect(() => () => {
+    clearSelectionBroadcastRefreshTimer()
+    clearSelectionBroadcastTimer()
+  }, [clearSelectionBroadcastRefreshTimer, clearSelectionBroadcastTimer])
 
   useEffect(() => {
     const nextPresence = createPresenceSnapshot({
@@ -97,7 +152,7 @@ export function useBoardCollaborationLocalPresence({
       editingShapeIds: latestEditingShapeIdsRef.current,
       hoveredShapeId: latestHoveredShapeIdRef.current,
       selectedEdgeId,
-      selectedIds,
+      selectedIds: broadcastSelectedIds,
       selectionBox,
       tool,
       transformBox,
@@ -123,8 +178,8 @@ export function useBoardCollaborationLocalPresence({
     realtimeAwarenessRef,
     scheduleAwarenessPresencePublish,
     schedulePresenceSync,
+    broadcastSelectedIds,
     selectedEdgeId,
-    selectedIds,
     selectionBox,
     setState,
     tool,
@@ -160,7 +215,7 @@ export function useBoardCollaborationLocalPresence({
     const nextEditingShapeIds = normalizePresenceShapeIds(shapeIds)
     if (areSamePresenceShapeIds(latestEditingShapeIdsRef.current, nextEditingShapeIds)) return
     latestEditingShapeIdsRef.current = nextEditingShapeIds
-    applyLocalPresencePatch({ editingShapeIds: nextEditingShapeIds })
+    applyLocalPresencePatch({ editingShapeIds: nextEditingShapeIds }, { refreshSelectionBroadcast: true })
   }, [applyLocalPresencePatch, shouldConnect])
 
   const setDraftPreview = useCallback((draftPreview: BoardCollaborationPresence['draftPreview'] | null) => {

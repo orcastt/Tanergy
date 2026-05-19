@@ -2,6 +2,7 @@
 
 import type { ComponentProps, ReactNode } from 'react'
 import { CanvasSettingsPanel } from '@/components/canvas/CanvasSettingsPanel'
+import { KonvaAiCreditDialog } from './KonvaAiCreditDialog'
 import { KonvaBoardSaveAudit } from './KonvaBoardSaveAudit'
 import { KonvaCanvasDiagnostics } from './KonvaCanvasDiagnostics'
 import { KonvaCanvasNavigator } from './KonvaCanvasNavigator'
@@ -14,6 +15,7 @@ import { KonvaSelectionToolbar } from './KonvaSelectionToolbar'
 import { KonvaTextEditor } from './KonvaTextEditor'
 
 type KonvaCanvasTransientUiProps = {
+  aiCreditDialogProps?: ComponentProps<typeof KonvaAiCreditDialog>
   contextMenuHostProps?: ComponentProps<typeof KonvaContextMenuHost>
   diagnosticsProps: ComponentProps<typeof KonvaCanvasDiagnostics>
   fileInput?: ReactNode
@@ -31,6 +33,7 @@ type KonvaCanvasTransientUiProps = {
 }
 
 export function KonvaCanvasTransientUi({
+  aiCreditDialogProps,
   contextMenuHostProps,
   diagnosticsProps,
   fileInput,
@@ -84,6 +87,7 @@ export function KonvaCanvasTransientUi({
       <KonvaCanvasNavigator {...navigatorProps} />
       {saveAuditProps ? <KonvaBoardSaveAudit {...saveAuditProps} /> : null}
       {settingsPanelProps ? <CanvasSettingsPanel {...settingsPanelProps} /> : null}
+      {aiCreditDialogProps ? <KonvaAiCreditDialog {...aiCreditDialogProps} /> : null}
       <KonvaCanvasDiagnostics {...diagnosticsProps} />
       {contextMenuHostProps ? <KonvaContextMenuHost {...contextMenuHostProps} /> : null}
       {fileInput}

@@ -9,6 +9,7 @@ import {
 } from '@/features/canvas-engine'
 import { hasRemotePersistenceApi } from '@/features/api/persistenceApi'
 import { cancelAiRun, createAiRun } from '@/features/ai/aiClient'
+import { isInsufficientCreditsError } from '@/features/ai/aiRunErrors'
 import { streamAiChatCompletion } from '@/features/ai/chatClient'
 import { getAiRunCompletionTimeoutMs, getAiRunTerminalError, waitForAiRunCompletion } from '@/features/ai/aiRunLifecycle'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
@@ -54,6 +55,7 @@ type UseKonvaNodeCreationMenuOptions = {
   history: KonvaCanvasHistory
   lastPastePointRef: RefObject<CanvasPoint | null>
   size: { height: number; width: number }
+  onAiRunCreditError?: (message: string) => void
   onDocumentChange: Dispatch<SetStateAction<CanvasDocument>>
   onEdgeSelectionChange: (edgeId: string | null) => void
   onSelectionChange: (shapeIds: string[]) => void
@@ -67,6 +69,7 @@ export function useKonvaNodeCreationMenu({
   document,
   history,
   lastPastePointRef,
+  onAiRunCreditError,
   onDocumentChange,
   onEdgeSelectionChange,
   onSelectionChange,
@@ -83,12 +86,21 @@ export function useKonvaNodeCreationMenu({
     latestDocumentRef.current = document
   }, [document])
 
-	  useEffect(() => () => {
+  useEffect(() => () => {
 	    activeChatControllersRef.current.forEach((controller) => controller.abort())
 	    activeChatControllersRef.current.clear()
 	    activeRunControllersRef.current.forEach((controller) => controller.abort())
 	    activeRunControllersRef.current.clear()
 	  }, [])
+
+  const normalizeRunError = useCallback((error: unknown, fallback: string) => {
+    if (!isInsufficientCreditsError(error)) {
+      return error instanceof Error ? error.message : fallback
+    }
+    const message = 'Insufficient credits. Top up, upgrade plan, or contact an administrator.'
+    onAiRunCreditError?.(message)
+    return message
+  }, [onAiRunCreditError])
 
   const getUnlockedNode = useCallback((shapeId: string) => {
     const node = latestDocumentRef.current.shapes.find((shape): shape is CanvasNodeShape => (
@@ -211,7 +223,7 @@ export function useKonvaNodeCreationMenu({
           })
           .catch((error) => {
             if (controller.signal.aborted) return
-            const message = error instanceof Error ? error.message : 'Prompt optimization failed.'
+            const message = normalizeRunError(error, 'Prompt optimization failed.')
             const next = failKonvaPromptOptimizerRequest(latestDocumentRef.current, shapeId, prepared.runId, message)
             latestDocumentRef.current = next
             onDocumentChange(next)
@@ -247,7 +259,7 @@ export function useKonvaNodeCreationMenu({
         workspace,
       }).catch((error) => {
         if (controller.signal.aborted) return
-        const message = error instanceof Error ? error.message : 'Prompt optimization failed.'
+        const message = normalizeRunError(error, 'Prompt optimization failed.')
         const next = failKonvaPromptOptimizerRequest(latestDocumentRef.current, shapeId, prepared.runId, message)
         latestDocumentRef.current = next
         onDocumentChange(next)
@@ -304,14 +316,15 @@ export function useKonvaNodeCreationMenu({
 	      })
 	      .catch((error) => {
 	        if (controller.signal.aborted) return
-	        onDocumentChange((current) => failRuntimeGraphNodeRun(current, runInput, error))
+	        const message = normalizeRunError(error, 'AI run failed.')
+	        onDocumentChange((current) => failRuntimeGraphNodeRun(current, runInput, new Error(message)))
 	      })
 	      .finally(() => {
 	        if (activeRunControllersRef.current.get(shapeId) === controller) {
 	          activeRunControllersRef.current.delete(shapeId)
 	        }
 	      })
-  }, [boardId, document, getUnlockedNode, history, onDocumentChange, workspace])
+  }, [boardId, document, getUnlockedNode, history, normalizeRunError, onDocumentChange, workspace])
 
   const sendChatMessage = useCallback((shapeId: string, draftOverride?: string) => {
     const snapshot = latestDocumentRef.current
@@ -372,7 +385,7 @@ export function useKonvaNodeCreationMenu({
         })
         .catch((error) => {
           if (controller.signal.aborted) return
-          const message = error instanceof Error ? error.message : 'Chat request failed.'
+          const message = normalizeRunError(error, 'Chat request failed.')
           const next = failKonvaChatRequest(
             latestDocumentRef.current,
             shapeId,
@@ -415,7 +428,7 @@ export function useKonvaNodeCreationMenu({
       workspace,
     }).catch((error) => {
       if (controller.signal.aborted) return
-      const message = error instanceof Error ? error.message : 'Chat request failed.'
+      const message = normalizeRunError(error, 'Chat request failed.')
       const next = failKonvaChatRequest(
         latestDocumentRef.current,
         shapeId,
@@ -429,7 +442,7 @@ export function useKonvaNodeCreationMenu({
         activeChatControllersRef.current.delete(shapeId)
       }
     })
-  }, [boardId, getUnlockedNode, history, onDocumentChange, workspace])
+  }, [boardId, getUnlockedNode, history, normalizeRunError, onDocumentChange, workspace])
 
   const regenerateChatMessage = useCallback((shapeId: string, messageId: string) => {
     const snapshot = latestDocumentRef.current
@@ -490,7 +503,7 @@ export function useKonvaNodeCreationMenu({
         })
         .catch((error) => {
           if (controller.signal.aborted) return
-          const message = error instanceof Error ? error.message : 'Chat request failed.'
+          const message = normalizeRunError(error, 'Chat request failed.')
           const next = failKonvaChatRequest(
             latestDocumentRef.current,
             shapeId,
@@ -533,7 +546,7 @@ export function useKonvaNodeCreationMenu({
       workspace,
     }).catch((error) => {
       if (controller.signal.aborted) return
-      const message = error instanceof Error ? error.message : 'Chat request failed.'
+      const message = normalizeRunError(error, 'Chat request failed.')
       const next = failKonvaChatRequest(
         latestDocumentRef.current,
         shapeId,
@@ -547,7 +560,7 @@ export function useKonvaNodeCreationMenu({
         activeChatControllersRef.current.delete(shapeId)
       }
     })
-  }, [boardId, getUnlockedNode, history, onDocumentChange, workspace])
+  }, [boardId, getUnlockedNode, history, normalizeRunError, onDocumentChange, workspace])
 
   const setChatModel = useCallback((shapeId: string, modelId: string) => {
     const snapshot = latestDocumentRef.current

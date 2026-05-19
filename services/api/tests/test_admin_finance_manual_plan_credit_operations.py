@@ -57,6 +57,8 @@ def test_team_plan_upgrade_grants_credit_delta(monkeypatch):
     assert result.subscription_status == "active"
     assert fake_db.subscriptions[0]["plan_key"] == "team_growth"
     assert fake_db.credit_ledger[-1]["credits_delta"] == 6000
+    assert [seat["user_id"] for seat in fake_db.workspace_seat_assignments] == ["user_member", "user_editor"]
+    assert all(seat["plan_key"] == "team_growth" for seat in fake_db.workspace_seat_assignments)
 
 
 def test_team_plan_assign_multiplies_monthly_credits_by_duration(monkeypatch):
@@ -81,6 +83,8 @@ def test_team_plan_assign_multiplies_monthly_credits_by_duration(monkeypatch):
     assert result.action == "assign"
     assert result.granted_credits == 30000
     assert fake_db.credit_ledger[-1]["credits_delta"] == 30000
+    assert [seat["user_id"] for seat in fake_db.workspace_seat_assignments] == ["user_member", "user_editor"]
+    assert all(seat["status"] == "active" for seat in fake_db.workspace_seat_assignments)
 
 
 def test_team_plan_rejects_non_monthly_duration_unit(monkeypatch):

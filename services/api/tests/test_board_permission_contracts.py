@@ -8,7 +8,7 @@ from tangent_api.storage.postgres_board_store import PostgresBoardStore
 from tests.persistence_fakes import FakePostgresDatabase
 
 
-def test_board_copy_and_delete_are_owner_only(monkeypatch):
+def test_board_copy_is_owner_only_and_shared_delete_is_workspace_manager(monkeypatch):
     fake_db = FakePostgresDatabase()
     fake_db.workspaces = [{"id": "workspace_group", "kind": "group_workspace"}]
     monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
@@ -42,7 +42,7 @@ def test_board_copy_and_delete_are_owner_only(monkeypatch):
         board_admin,
     )
 
-    expected_status_by_user = {
+    expected_copy_status_by_user = {
         workspace_admin.user_id: 403,
         workspace_member.user_id: 404,
         board_admin.user_id: 403,
@@ -50,36 +50,82 @@ def test_board_copy_and_delete_are_owner_only(monkeypatch):
     for context in [workspace_admin, workspace_member, board_admin]:
         with pytest.raises(HTTPException) as copy_error:
             store.copy_board("owner_only_board", context)
-        assert copy_error.value.status_code == expected_status_by_user[context.user_id]
+        assert copy_error.value.status_code == expected_copy_status_by_user[context.user_id]
 
+    deleted_by_admin = store.delete_board("owner_only_board", workspace_admin)
+    assert deleted_by_admin == "owner_only_board"
+    assert ("workspace_group", "owner_only_board") in fake_db.deleted_boards
+
+    for context in [workspace_member, board_admin]:
         with pytest.raises(HTTPException) as delete_error:
             store.delete_board("owner_only_board", context)
-        assert delete_error.value.status_code == expected_status_by_user[context.user_id]
+        assert delete_error.value.status_code == 404
 
-    copied = store.copy_board("owner_only_board", owner)
+    store.save_board(
+        BoardSaveRequest(
+            boardId="owner_cleanup_board",
+            document={"assets": [], "shapes": [{"id": "shape_2"}]},
+            title="Owner Cleanup Board",
+        ),
+        owner,
+    )
+    copied = store.copy_board("owner_cleanup_board", owner)
     assert copied.id != "owner_only_board"
-    assert copied.title == "Managed title Copy"
+    assert copied.title == "Owner Cleanup Board Copy"
 
-    share_link = store.ensure_share_link("owner_only_board", "viewer", owner)
+    share_link = store.ensure_share_link("owner_cleanup_board", "viewer", owner)
     fake_db.board_collaboration_sessions = [
-        {"board_id": "owner_only_board", "disconnected_at": None, "workspace_id": "workspace_group"}
+        {"board_id": "owner_cleanup_board", "disconnected_at": None, "workspace_id": "workspace_group"}
     ]
-    fake_db.board_realtime_documents = [{"board_id": "owner_only_board", "workspace_id": "workspace_group"}]
-    fake_db.snapshots[("workspace_group", "owner_only_board", "snapshot_1")] = (
+    fake_db.board_realtime_documents = [{"board_id": "owner_cleanup_board", "workspace_id": "workspace_group"}]
+    fake_db.snapshots[("workspace_group", "owner_cleanup_board", "snapshot_1")] = (
         "snapshot_1",
         "workspace_group",
-        "owner_only_board",
+        "owner_cleanup_board",
     )
 
-    deleted_id = store.delete_board("owner_only_board", owner)
-    assert deleted_id == "owner_only_board"
-    assert ("workspace_group", "owner_only_board") in fake_db.deleted_boards
-    assert ("workspace_group", "owner_only_board", "user_owner") not in fake_db.board_members
+    deleted_id = store.delete_board("owner_cleanup_board", owner)
+    assert deleted_id == "owner_cleanup_board"
+    assert ("workspace_group", "owner_cleanup_board") in fake_db.deleted_boards
+    assert ("workspace_group", "owner_cleanup_board", "user_owner") not in fake_db.board_members
     assert fake_db.board_share_links[0]["share_id"] == share_link.share_id
     assert fake_db.board_share_links[0]["revoked_at"] is not None
     assert fake_db.board_collaboration_sessions[0]["disconnected_at"] is not None
     assert fake_db.board_realtime_documents == []
     assert fake_db.snapshots == {}
+
+
+def test_team_editor_cannot_create_board_but_admin_can(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.workspaces = [{"id": "workspace_team", "kind": "team_workspace"}]
+    monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
+    store = PostgresBoardStore()
+
+    editor = make_context("user_editor", role="editor", workspace_id="workspace_team", workspace_kind="team_workspace")
+    admin = make_context("user_admin", role="admin", workspace_id="workspace_team", workspace_kind="team_workspace")
+
+    with pytest.raises(HTTPException) as editor_error:
+        store.save_board(
+            BoardSaveRequest(
+                boardId="editor_created_board",
+                document={"assets": [], "shapes": [{"id": "shape_1"}]},
+                title="Editor Created Board",
+            ),
+            editor,
+        )
+    assert editor_error.value.status_code == 403
+
+    response = store.save_board(
+        BoardSaveRequest(
+            boardId="admin_created_board",
+            document={"assets": [], "shapes": [{"id": "shape_2"}]},
+            title="Admin Created Board",
+        ),
+        admin,
+    )
+    assert response.ok is True
+    assert response.board is not None
+    assert response.board.id == "admin_created_board"
 
 
 def test_solo_workspace_owner_cannot_copy_or_delete_stale_unowned_board(monkeypatch):

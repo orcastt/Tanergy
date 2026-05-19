@@ -13,6 +13,7 @@ from tangent_api.admin_finance_manual_ops import (
 )
 from tangent_api.admin_finance_manual_schemas import AdminManualFinanceMutationResponse
 from tangent_api.admin_finance_manual_subscriptions import parse_period_end
+from tangent_api.admin_finance_manual_team_seats import sync_team_seat_assignments
 from tangent_api.admin_finance_manual_utils import TEAM_PLAN_KEYS, normalize_id, normalize_plan_key, normalize_subscription_status, positive_credits, resolve_subscription_window, resolve_team_term_months
 from tangent_api.admin_finance_manual_workspace_utils import insert_owner_membership, insert_workspace, normalize_workspace_name
 from tangent_api.billing_credit_accounts import ensure_credit_account
@@ -125,6 +126,15 @@ def manual_create_team_workspace(
                 plan_key=normalized_plan,
                 seat_capacity=seat_capacity,
                 status=normalized_status,
+                workspace_id=workspace_id,
+            )
+            sync_team_seat_assignments(
+                cursor,
+                actor_user_id=actor_user_id,
+                period_end=resolved_period_end,
+                period_start=resolved_period_start,
+                plan_key=normalized_plan,
+                seat_capacity=seat_capacity,
                 workspace_id=workspace_id,
             )
             included_credits = float(included_credits_for_plan(normalized_plan)) * seat_capacity * duration_months

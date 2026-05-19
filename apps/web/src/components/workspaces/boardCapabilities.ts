@@ -1,4 +1,4 @@
-import type { TangentSession } from '@/features/auth/sessionTypes'
+import type { TangentSession, TangentWorkspace } from '@/features/auth/sessionTypes'
 import type { BoardPersistenceSummary } from '@/features/boards/boardTypes'
 
 export type BoardCapabilities = {
@@ -18,12 +18,17 @@ export function getBoardCapabilities(board: BoardPersistenceSummary, session: Ta
   const canAdministerWorkspace = ['admin', 'owner'].includes(workspaceRole)
   const isSharedWorkspace = ['group_workspace', 'team_workspace'].includes(workspaceKind)
   const canOwnBoard = isSharedWorkspace ? workspaceRole === 'owner' : isBoardOwner
+  const canDeleteBoard = isSharedWorkspace ? canAdministerWorkspace : isBoardOwner
   const canManageBoard = isBoardOwner || canAdministerWorkspace
   return {
     canCopyBoard: canOwnBoard,
-    canDeleteBoard: canOwnBoard,
+    canDeleteBoard,
     canManageBoard,
     canShareBoard: canManageBoard && ['group_workspace', 'team_workspace'].includes(workspaceKind),
     isBoardOwner,
   }
+}
+
+export function canCreateWorkspaceBoards(workspace: Pick<TangentWorkspace, 'role'>) {
+  return workspace.role === 'owner' || workspace.role === 'admin'
 }

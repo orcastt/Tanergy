@@ -11,6 +11,7 @@ import {
 import { assertAiRuntimeAvailable, canUseLocalAiBridge } from '@/features/api/runtimeBridgePolicy'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import type { AiCapability, AiModelsResponse, AiRunRequest, AiRunResponse } from './aiTypes'
+import { AiApiError, extractAiApiErrorMessage } from './aiRunErrors'
 import { getAiModels } from './mockAiContracts'
 
 export async function loadAiModels(capability: AiCapability = 'image_generation') {
@@ -19,9 +20,9 @@ export async function loadAiModels(capability: AiCapability = 'image_generation'
   const response = await fetch(getAiUrl(`/models?capability=${encodeURIComponent(capability)}`), {
     headers,
   })
-  const payload = await response.json() as AiModelsResponse
+  const payload = await readAiJson<AiModelsResponse>(response)
   if (!response.ok || !payload.ok) {
-    throw new Error(payload.error || 'AI model registry failed.')
+    throw new AiApiError(extractAiApiErrorMessage(payload, 'AI model registry failed.'), response.status)
   }
   return payload.models
 }
@@ -37,9 +38,9 @@ export async function createAiRun(input: AiRunRequest, options?: { signal?: Abor
     method: 'POST',
     signal: options?.signal,
   })
-  const payload = await response.json() as AiRunResponse
+  const payload = await readAiJson<AiRunResponse>(response)
   if (!response.ok || !payload.ok || !payload.run) {
-    throw new Error(payload.error || 'AI run failed.')
+    throw new AiApiError(extractAiApiErrorMessage(payload, 'AI run failed.'), response.status)
   }
   return payload.run
 }
@@ -53,9 +54,9 @@ export async function getAiRun(runId: string, options?: { signal?: AbortSignal; 
     headers,
     signal: options?.signal,
   })
-  const payload = await response.json() as AiRunResponse
+  const payload = await readAiJson<AiRunResponse>(response)
   if (!response.ok || !payload.ok || !payload.run) {
-    throw new Error(payload.error || 'AI run lookup failed.')
+    throw new AiApiError(extractAiApiErrorMessage(payload, 'AI run lookup failed.'), response.status)
   }
   return payload.run
 }
@@ -69,9 +70,9 @@ export async function cancelAiRun(runId: string, options?: { signal?: AbortSigna
     method: 'POST',
     signal: options?.signal,
   })
-  const payload = await response.json() as AiRunResponse
+  const payload = await readAiJson<AiRunResponse>(response)
   if (!response.ok || !payload.ok || !payload.run) {
-    throw new Error(payload.error || 'AI run cancel failed.')
+    throw new AiApiError(extractAiApiErrorMessage(payload, 'AI run cancel failed.'), response.status)
   }
   return payload.run
 }
@@ -86,4 +87,12 @@ export function canUseAiModelFallback() {
 
 function getAiUrl(path: string) {
   return hasRemotePersistenceApi() ? persistenceApiUrl(`/api/v1/ai${path}`) : `/api/ai${path}`
+}
+
+async function readAiJson<T>(response: Response): Promise<T> {
+  try {
+    return await response.json() as T
+  } catch {
+    return {} as T
+  }
 }

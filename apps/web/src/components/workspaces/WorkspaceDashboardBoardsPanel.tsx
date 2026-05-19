@@ -16,7 +16,7 @@ import { WorkspaceBoardPanelHost } from './WorkspaceBoardPanelHost'
 import { WorkspaceBoardSection } from './WorkspaceBoardSection'
 import { WorkspaceBoardLimitDialog } from './WorkspaceBoardLimitDialog'
 import type { WorkspaceBoardViewMode } from './WorkspaceBoardItem'
-import { getBoardCapabilities } from './boardCapabilities'
+import { canCreateWorkspaceBoards, getBoardCapabilities } from './boardCapabilities'
 import { createBoardId } from './workspaceBoardUtils'
 import {
   describeWorkspaceBoardLimitError,
@@ -48,7 +48,7 @@ export function WorkspaceDashboardBoardsPanel({
   const [notice, setNotice] = useState<string | null>(null)
   const [panelBoardId, setPanelBoardId] = useState<string | null>(null)
   const [pendingBoardId, setPendingBoardId] = useState<string | null>(null)
-  const canCreateBoards = workspace.role !== 'viewer' && workspace.role !== 'guest'
+  const canCreateBoards = canCreateWorkspaceBoards(workspace)
 
   const panelBoard = useMemo(
     () => displayBoards.find((board) => board.id === panelBoardId) ?? null,

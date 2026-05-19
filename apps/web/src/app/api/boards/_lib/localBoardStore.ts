@@ -32,6 +32,7 @@ export async function saveLocalBoard(input: BoardSaveInput, context: ApiRequestC
   const existing = await readLocalBoardRecord(boardId, context)
   if (existing) assertBoardAccess(existing, context)
   if (!existing && input.createIfMissing === false) throw new Error('Board not found in workspace.')
+  if (!existing) assertWorkspaceCanCreateBoard(context)
   const savedAt = new Date().toISOString()
   const record: BoardPersistenceRecord = {
     assetCount: metrics.assetCount,
@@ -152,7 +153,7 @@ export async function updateLocalBoardMetadata(input: BoardMetadataUpdateInput, 
 
 export async function deleteLocalBoard(boardId: string, context: ApiRequestContext) {
   const board = await readRequiredBoardRecord(boardId, context)
-  assertBoardOwner(board, context)
+  assertBoardDeleteAllowed(board, context)
   await unlink(getBoardPath(board.id))
   return board.id
 }
@@ -228,6 +229,22 @@ function assertBoardOwner(board: BoardPersistenceRecord, context: ApiRequestCont
   if (board.ownerId !== context.userId) {
     throw new Error('Only the Board owner can copy or delete this board.')
   }
+}
+
+function assertBoardDeleteAllowed(board: BoardPersistenceRecord, context: ApiRequestContext) {
+  assertBoardAccess(board, context)
+  if (shareableWorkspaceKinds.has(context.workspaceKind) && isWorkspaceManager(context)) return
+  if (board.ownerId === context.userId) return
+  throw new Error('Only workspace owners or admins can delete this board.')
+}
+
+function assertWorkspaceCanCreateBoard(context: ApiRequestContext) {
+  if (isWorkspaceManager(context)) return
+  throw new Error('Workspace role cannot create or save boards.')
+}
+
+function isWorkspaceManager(context: ApiRequestContext) {
+  return context.workspaceRole === 'owner' || context.workspaceRole === 'admin'
 }
 
 async function readLocalBoardRecord(boardId: string, context: ApiRequestContext) {

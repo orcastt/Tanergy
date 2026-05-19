@@ -42,6 +42,7 @@ type MetricsApi = ReturnType<typeof useKonvaCanvasMetrics>
 
 type CanvasState = {
   activeToolPreference: KonvaCanvasTool
+  aiCreditDialogMessage: string | null
   camera: CanvasCamera
   connectionPreviewPresence: BoardCollaborationConnectionPreview | null
   contextMenu: { worldX: number; worldY: number; x: number; y: number } | null
@@ -63,6 +64,7 @@ type CanvasState = {
 }
 
 type CanvasSetters = {
+  setAiCreditDialogMessage: Dispatch<SetStateAction<string | null>>
   setCamera: Dispatch<SetStateAction<CanvasCamera>>
   setClipboardShapeCount: Dispatch<SetStateAction<number>>
   setConnectionPreviewPresence: Dispatch<SetStateAction<BoardCollaborationConnectionPreview | null>>
@@ -155,8 +157,8 @@ export function useKonvaCanvasSpikeRuntime({
   const { diagnostics, setShellRect, shellRect, size } = metrics
   const { cleanChatHistory, closeNodeMenu, createNodeCard, nodeMenu, openNodeMenu, regenerateChatMessage, sendChatMessage, setChatModel, setNodeField, setNodeTextField, toggleNodeRun } = nodeMenuApi
   const { fileInput, promptImageNodeUpload, uploadDropFileAtPoint } = imageUploadApi
-  const { activeToolPreference, camera, connectionPreviewPresence, contextMenu, cropEditingImageId, document, dropHintKind, editingNodeText, editingTextId, interactionShapeIds, nextStyle, nodeImageLightbox, selectedEdgeId, selectedIds, selectionActionError, selectionMarqueeBounds, settingsOpen, stage, transformPreview } = canvasState
-  const { setCamera, setClipboardShapeCount, setConnectionPreviewPresence, setContextMenu, setCropEditingImageId, setDocument, setDocumentState, setDropHintKind, setEditingNodeText, setEditingTextId, setInteractionShapeIds, setIsSpacePanning, setNextStyle, setNodeImageLightbox, setPersistedBoardIds, setSelectedEdgeId, setSelectionActionError, setSelectionMarqueeBounds, setSettingsOpen, setStage, setTransformPreview } = canvasSetters
+  const { activeToolPreference, aiCreditDialogMessage, camera, connectionPreviewPresence, contextMenu, cropEditingImageId, document, dropHintKind, editingNodeText, editingTextId, interactionShapeIds, nextStyle, nodeImageLightbox, selectedEdgeId, selectedIds, selectionActionError, selectionMarqueeBounds, settingsOpen, stage, transformPreview } = canvasState
+  const { setAiCreditDialogMessage, setCamera, setClipboardShapeCount, setConnectionPreviewPresence, setContextMenu, setCropEditingImageId, setDocument, setDocumentState, setDropHintKind, setEditingNodeText, setEditingTextId, setInteractionShapeIds, setIsSpacePanning, setNextStyle, setNodeImageLightbox, setPersistedBoardIds, setSelectedEdgeId, setSelectionActionError, setSelectionMarqueeBounds, setSettingsOpen, setStage, setTransformPreview } = canvasSetters
   const canvasPagePlan = useKonvaCanvasPagePlan(workspace)
 
   const boardPages = useKonvaBoardPages({ activeDocument: document, camera, onCameraChange: setCamera, onDocumentChange: setDocumentState, onTransientClear: clearTransientState })
@@ -242,7 +244,7 @@ export function useKonvaCanvasSpikeRuntime({
   })
 
   const transientUiProps = createKonvaCanvasSpikeTransientUiProps({
-    activePageId: boardPages.activePageId, activeTool: collaboration.activeTool, autoLoadBoard, boardId, boardTitle, camera, canCaptureSelection: selectionExport.canCaptureSelection,
+    activePageId: boardPages.activePageId, aiCreditDialogMessage, activeTool: collaboration.activeTool, autoLoadBoard, boardId, boardTitle, camera, canCaptureSelection: selectionExport.canCaptureSelection,
     canConvertImageToNode: imageNodeActions.canConvertImageToNode, canCropImage: selectionSaveState.canCropImage, canGroupSelection: selectionSaveState.canGroupSelection,
     canLockSelection: selectionSaveState.canLockSelection, canRemoveBackground: imageOps.canRemoveBackground, canStartObjectCutout: imageOps.canStartObjectCutout,
     canUngroupSelection: selectionSaveState.canUngroupSelection, canUnlockSelection: selectionSaveState.canUnlockSelection,
@@ -252,7 +254,7 @@ export function useKonvaCanvasSpikeRuntime({
     handleEditingNodeTextCommit: textEditing.handleEditingNodeTextCommit, handleEditingNodeTextSubmit: textEditing.handleEditingNodeTextSubmit, handleEditingTextCommit: textEditing.handleEditingTextCommit,
     historyClear: history.clear, historyTitle: boardPages.activePageTitle, isCapturingSelection: selectionExport.isCapturingSelection, isRemovingBackground: imageOps.isRemovingBackground,
     lightboxState: nodeImageLightbox, mode, navigatorStageHeight: size.height, navigatorStageWidth: size.width, nextStyle, nodeMenu, onBoardLoaded: selectionSaveState.handleSaveAuditBoardLoaded,
-    onBoardSaved: selectionSaveState.handleSaveAuditBoardSaved, onCloseContextMenu: () => setContextMenu(null), onCloseLightbox: () => setNodeImageLightbox(null),
+    onBoardSaved: selectionSaveState.handleSaveAuditBoardSaved, onCloseAiCreditDialog: () => setAiCreditDialogMessage(null), onCloseContextMenu: () => setContextMenu(null), onCloseLightbox: () => setNodeImageLightbox(null),
     onCloseNodeTextEditor: () => setEditingNodeText(null), onCloseSettings: () => setSettingsOpen(false), onCloseTextEditor: () => setEditingTextId(null),
     onContextAction: commandActions.runContextAction, onDocumentChange: setDocument, onDocumentRestore: boardPages.restorePages, onGroupSelection: () => commandActions.runContextAction('group'),
     onHistoryCheckpoint: history.checkpoint, onLockSelection: () => commandActions.runContextAction('lock'), onNextStyleChange: setNextStyle,

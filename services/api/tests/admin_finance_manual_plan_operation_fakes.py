@@ -75,6 +75,58 @@ class PlanOperationCursor:
                     "workspace_id": params[4],
                 }
             )
+        elif normalized.startswith("SELECT user_id FROM tangent_workspace_members WHERE workspace_id = %s"):
+            workspace_id, limit = params
+            role_rank = {"owner": 0, "admin": 1, "editor": 2, "viewer": 3, "member": 4, "guest": 5}
+            rows = [
+                row for row in self.database.workspace_members
+                if row["workspace_id"] == workspace_id
+                and row["role"] in {"owner", "admin", "editor", "viewer", "member", "guest"}
+            ]
+            rows.sort(key=lambda row: (role_rank.get(row["role"], 5), row["user_id"]))
+            self.rows = [(row["user_id"],) for row in rows[:limit]]
+        elif normalized.startswith("UPDATE tangent_workspace_seat_assignments SET status = 'revoked', updated_at = NOW() WHERE workspace_id = %s AND user_id = %s AND plan_key <> %s"):
+            workspace_id, user_id, plan_key = params
+            for row in self.database.workspace_seat_assignments:
+                if row["workspace_id"] == workspace_id and row["user_id"] == user_id and row["plan_key"] != plan_key and row["status"] != "revoked":
+                    row["status"] = "revoked"
+        elif normalized.startswith("INSERT INTO tangent_workspace_seat_assignments"):
+            seat_id, workspace_id, user_id, plan_key, included_credits, period_start, period_end, assigned_by = params
+            existing = next((
+                row for row in self.database.workspace_seat_assignments
+                if row["workspace_id"] == workspace_id and row["user_id"] == user_id and row["plan_key"] == plan_key
+            ), None)
+            if existing:
+                existing.update({
+                    "assigned_by": assigned_by,
+                    "current_period_end": period_end,
+                    "current_period_start": period_start,
+                    "included_credits": included_credits,
+                    "status": "active",
+                })
+            else:
+                self.database.workspace_seat_assignments.append({
+                    "assigned_by": assigned_by,
+                    "current_period_end": period_end,
+                    "current_period_start": period_start,
+                    "id": seat_id,
+                    "included_credits": included_credits,
+                    "plan_key": plan_key,
+                    "status": "active",
+                    "user_id": user_id,
+                    "workspace_id": workspace_id,
+                })
+        elif normalized.startswith("UPDATE tangent_workspace_seat_assignments SET status = 'revoked', updated_at = NOW() WHERE workspace_id = %s AND status <> 'revoked' AND NOT"):
+            workspace_id, assigned_user_ids = params
+            assigned = set(assigned_user_ids)
+            for row in self.database.workspace_seat_assignments:
+                if row["workspace_id"] == workspace_id and row["status"] != "revoked" and row["user_id"] not in assigned:
+                    row["status"] = "revoked"
+        elif normalized.startswith("UPDATE tangent_workspace_seat_assignments SET status = 'revoked', updated_at = NOW() WHERE workspace_id = %s AND status <> 'revoked'"):
+            workspace_id = params[0]
+            for row in self.database.workspace_seat_assignments:
+                if row["workspace_id"] == workspace_id and row["status"] != "revoked":
+                    row["status"] = "revoked"
         elif normalized.startswith("INSERT INTO tangent_credit_ledger ("):
             self.database.credit_ledger.append(
                 {
@@ -207,6 +259,11 @@ class PlanOperationDatabase:
         self.credit_ledger = credit_ledger or []
         self.subscriptions = subscriptions
         self.users = {"user_member", "user_admin"}
+        self.workspace_members = [
+            {"role": "owner", "user_id": "user_member", "workspace_id": "workspace_team"},
+            {"role": "editor", "user_id": "user_editor", "workspace_id": "workspace_team"},
+        ]
+        self.workspace_seat_assignments = []
         self.workspaces = workspaces or {
             "workspace_team": {
                 "kind": "team_workspace",

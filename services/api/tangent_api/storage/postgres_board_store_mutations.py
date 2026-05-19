@@ -11,6 +11,7 @@ from fastapi import HTTPException
 from tangent_api.board_access import (
     assert_board_page_limit,
     assert_can_create_board,
+    assert_can_delete_board,
     assert_can_own_board,
     assert_can_write_board,
     assert_workspace_allows_board_visibility,
@@ -256,7 +257,7 @@ class PostgresBoardStoreMutationsMixin:
 
     def delete_board(self, board_id: str, context: ApiRequestContext) -> str:
         record = self._load_board_without_touch(board_id, context, required_access="read")
-        assert_can_own_board(record, context, self._load_board_member_role(record.id, context))
+        assert_can_delete_board(record, context, self._load_board_member_role(record.id, context))
         with connect_to_postgres() as connection:
             with connection.cursor() as cursor:
                 ensure_board_schema(cursor)

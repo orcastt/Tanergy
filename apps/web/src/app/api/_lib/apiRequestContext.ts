@@ -8,7 +8,10 @@ export type ApiRequestContext = {
   workspaceId: string
   workspaceKind: WorkspaceKind
   workspacePlanKey?: PlanKey
+  workspaceRole: WorkspaceRole
 }
+
+type WorkspaceRole = 'admin' | 'editor' | 'guest' | 'member' | 'owner' | 'viewer'
 
 const idPattern = /^[a-zA-Z0-9._-]+$/
 
@@ -16,6 +19,7 @@ export function getApiRequestContext(request: Request): ApiRequestContext {
   const explicitUserId = request.headers.get('x-tangent-user-id')
   const explicitWorkspaceId = request.headers.get('x-tangent-workspace-id')
   const explicitWorkspaceKind = request.headers.get('x-tangent-workspace-kind')
+  const explicitWorkspaceRole = request.headers.get('x-tangent-workspace-role')
   const explicitPlanKey = request.headers.get('x-tangent-plan-key')
   const hasExplicitContext = Boolean(explicitUserId && explicitWorkspaceId)
 
@@ -35,6 +39,7 @@ export function getApiRequestContext(request: Request): ApiRequestContext {
     ),
     workspaceKind,
     workspacePlanKey: normalizePlanKey(explicitPlanKey ?? process.env.TANGENT_DEV_WORKSPACE_PLAN_KEY, workspaceKind),
+    workspaceRole: normalizeWorkspaceRole(explicitWorkspaceRole ?? process.env.TANGENT_DEV_WORKSPACE_ROLE ?? 'owner'),
   }
 }
 
@@ -56,6 +61,14 @@ function normalizeWorkspaceKind(value: string): WorkspaceKind {
     throw new Error('Invalid workspace kind.')
   }
   return trimmed as WorkspaceKind
+}
+
+function normalizeWorkspaceRole(value: string): WorkspaceRole {
+  const trimmed = value.trim().toLowerCase()
+  if (!['admin', 'editor', 'guest', 'member', 'owner', 'viewer'].includes(trimmed)) {
+    throw new Error('Invalid workspace role.')
+  }
+  return trimmed as WorkspaceRole
 }
 
 function normalizePlanKey(value: null | string | undefined, workspaceKind: WorkspaceKind): PlanKey | undefined {

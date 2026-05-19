@@ -20,6 +20,7 @@ export type KonvaLocalYjsRemoteRestoreMeta = Pick<
   'activePageId' | 'actorId' | 'changedPageIds' | 'mode' | 'publishedAt' | 'signature'
 > & {
   basePages: SerializedKonvaBoardPage[] | null
+  hadUnsyncedLocalChanges: boolean
 }
 
 export type KonvaLocalYjsRemoteRestorePayload = {

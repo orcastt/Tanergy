@@ -45,11 +45,14 @@ def test_normalize_workspace_role_maps_legacy_aliases_to_product_roles():
     assert normalize_workspace_role("guest") == "viewer"
 
 
-def test_board_access_preserves_legacy_member_and_guest_permissions():
+def test_board_access_preserves_legacy_member_and_guest_read_permissions():
     private_board = _make_board()
     workspace_board = _make_board("workspace")
 
-    assert can_create_board(_make_context("member")) is True
+    assert can_create_board(_make_context("owner")) is True
+    assert can_create_board(_make_context("admin")) is True
+    assert can_create_board(_make_context("editor")) is False
+    assert can_create_board(_make_context("member")) is False
     assert can_create_board(_make_context("guest")) is False
     assert resolve_effective_board_permission(private_board, _make_context("guest")) == "none"
     assert resolve_effective_board_permission(workspace_board, _make_context("guest")) == "none"

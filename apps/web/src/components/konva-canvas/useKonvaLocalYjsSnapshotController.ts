@@ -69,7 +69,6 @@ export function useKonvaLocalYjsSnapshotController({
   const hasUnsyncedLocalChangesRef = useRef(false)
   const nextChangedPageIdsRef = useRef<string[]>(activePageId ? [activePageId] : [])
   const nextPublishModeRef = useRef<KonvaYjsSnapshotWriteMode>('full-board')
-  const skipNextPublishRef = useRef(false)
   const lastObservedActivePageIdRef = useRef<string | undefined>(activePageId)
   const lastObservedPageRevisionRef = useRef(pageRevision)
   const initialSyncSettledRef = useRef(false)
@@ -109,7 +108,6 @@ export function useKonvaLocalYjsSnapshotController({
   }, [patchSyncState])
   const setHasUnsyncedLocalChanges = useCallback((value: boolean) => { hasUnsyncedLocalChangesRef.current = value }, [])
   const setPendingRemoteSnapshot = useCallback((pending: PendingRemoteSnapshotMeta | null) => { pendingRemoteSnapshotRef.current = pending }, [])
-  const markSkipNextPublish = useCallback(() => { skipNextPublishRef.current = true }, [])
   const syncUndoAvailability = useCallback((undoManager: Y.UndoManager | null = undoManagerRef.current) => {
     patchSyncState({
       canRedo: Boolean(undoManager?.canRedo()),
@@ -141,7 +139,6 @@ export function useKonvaLocalYjsSnapshotController({
       hasSynchronizedPages: lastSynchronizedPagesRef.current !== null,
       hasUnsyncedLocalChanges: hasUnsyncedLocalChangesRef.current,
       lastSynchronizedSignature: lastSynchronizedSignatureRef.current,
-      markSkipNextPublish,
       onRemoteRestore: latestRemoteRestoreRef.current,
       onRepublishLocal: () => publishCurrentSnapshotRef.current?.({
         force: true,
@@ -155,7 +152,7 @@ export function useKonvaLocalYjsSnapshotController({
       setPendingRemoteSnapshot,
       workspaceKind: workspace?.kind,
     })
-  }, [cancelScheduledPublish, clearPendingRemoteSnapshot, markSkipNextPublish, patchSyncState, readCurrentDocumentSignature, rememberSynchronizedRecord, setHasUnsyncedLocalChanges, setPendingRemoteSnapshot, workspace?.kind])
+  }, [cancelScheduledPublish, clearPendingRemoteSnapshot, patchSyncState, readCurrentDocumentSignature, rememberSynchronizedRecord, setHasUnsyncedLocalChanges, setPendingRemoteSnapshot, workspace?.kind])
   const maybeApplyCurrentSnapshot = useCallback(() => {
     const pending = pendingRemoteSnapshotRef.current
     const current = readRoomRecordSafely()
@@ -249,7 +246,6 @@ export function useKonvaLocalYjsSnapshotController({
     requiresFullBoardSync,
     resolvedRoomKey,
     setHasUnsyncedLocalChanges,
-    skipNextPublishRef,
   })
   return {
     actorIdRef,
