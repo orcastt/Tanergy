@@ -31,6 +31,18 @@ def test_api_responses_include_security_headers(monkeypatch):
     assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
 
 
+def test_health_response_is_not_cacheable(monkeypatch):
+    reset_http_rate_limit_state()
+    monkeypatch.setenv("TANGENT_HTTP_RATE_LIMIT_ENABLED", "0")
+    client = TestClient(app)
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
+
+
 def test_api_observability_logs_slow_response_without_query_string(monkeypatch, caplog):
     monkeypatch.setenv("TANGENT_API_SLOW_RESPONSE_MS", "10")
     request = SimpleNamespace(method="GET", url=SimpleNamespace(path="/api/v1/boards"))

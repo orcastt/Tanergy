@@ -13,7 +13,7 @@ def apply_security_headers(request: Request, response: Response) -> Response:
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
-    if request.url.path.startswith("/api/"):
+    if _needs_no_store(request.url.path):
         response.headers.setdefault("Cache-Control", "no-store")
         response.headers.setdefault("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'; base-uri 'none'")
     if _is_asset_file_path(request.url.path):
@@ -31,3 +31,7 @@ def _is_asset_file_path(path: str) -> bool:
 
 def _is_public_share_path(path: str) -> bool:
     return path.startswith(PUBLIC_SHARE_PREFIX)
+
+
+def _needs_no_store(path: str) -> bool:
+    return path == "/health" or path.startswith("/api/")
