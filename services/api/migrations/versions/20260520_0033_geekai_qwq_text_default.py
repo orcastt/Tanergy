@@ -58,7 +58,7 @@ INSERT INTO tangent_model_registry (
     TRUE,
     'geekai',
     NULL,
-    'price_qwq_plus_latest_v1'
+    NULL
 )
 ON CONFLICT (model_key) DO UPDATE SET
     display_name = EXCLUDED.display_name,
@@ -70,7 +70,7 @@ ON CONFLICT (model_key) DO UPDATE SET
     enabled = EXCLUDED.enabled,
     is_default = EXCLUDED.is_default,
     provider_key = EXCLUDED.provider_key,
-    default_pricing_rule_id = EXCLUDED.default_pricing_rule_id,
+    default_pricing_rule_id = NULL,
     updated_at = NOW()
 """
 
@@ -174,8 +174,8 @@ UPGRADE = [
 
 DOWNGRADE = [
     "DELETE FROM tangent_model_provider_routes WHERE id = 'route_qwq_plus_latest_primary'",
-    "DELETE FROM tangent_model_pricing_rules WHERE id = 'price_qwq_plus_latest_v1'",
     "DELETE FROM tangent_model_registry WHERE model_key = 'qwq-plus-latest'",
+    "DELETE FROM tangent_model_pricing_rules WHERE id = 'price_qwq_plus_latest_v1'",
     """
     UPDATE tangent_model_registry
     SET is_default = FALSE,

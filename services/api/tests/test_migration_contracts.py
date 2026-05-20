@@ -406,6 +406,12 @@ def test_s1a_migrations_keep_required_schema_contracts():
     ]:
         assert contract in geekai_qwq_text_default_sql
 
+    assert geekai_qwq_text_default_sql.index(
+        "INSERT INTO tangent_model_pricing_rules"
+    ) < geekai_qwq_text_default_sql.index(
+        "default_pricing_rule_id = 'price_qwq_plus_latest_v1'"
+    )
+
 
 def test_text_route_seed_uses_driver_sql_for_json_literals(monkeypatch):
     text_route_seed = load_migration("20260511_0016_ai_text_route_seed.py")
