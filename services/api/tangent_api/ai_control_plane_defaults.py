@@ -2,15 +2,28 @@ DEFAULT_MODEL_ROWS = [
     {
         "capabilities": ["text"],
         "capability": "text",
-        "cost_hint": "Token-priced text reasoning for prompt optimization and general chat.",
+        "cost_hint": "GeekAI streaming chat default for canvas chat and prompt optimization.",
+        "default_tier_key": None,
+        "display_name": "QwQ Plus Latest",
+        "enabled": True,
+        "estimated_latency": "2-8s",
+        "is_default": True,
+        "model_key": "qwq-plus-latest",
+        "parameter_schema": {},
+        "provider_key": "geekai",
+    },
+    {
+        "capabilities": ["text"],
+        "capability": "text",
+        "cost_hint": "GeekAI fallback text model kept for operator rollback.",
         "default_tier_key": None,
         "display_name": "DeepSeek V3.1",
         "enabled": True,
         "estimated_latency": "1-4s",
-        "is_default": True,
+        "is_default": False,
         "model_key": "deepseek/deepseek-v3.1",
         "parameter_schema": {},
-        "provider_key": "jiekou",
+        "provider_key": "geekai",
     },
     {
         "capabilities": ["text", "image_analysis"],
@@ -23,12 +36,12 @@ DEFAULT_MODEL_ROWS = [
         "is_default": False,
         "model_key": "qwen/qwen2.5-vl-72b-instruct",
         "parameter_schema": {},
-        "provider_key": "jiekou",
+        "provider_key": "geekai",
     },
     {
         "capabilities": ["image_generation", "image_edit"],
         "capability": "image_generation",
-        "cost_hint": "Aspect ratio UI maps to the supported Jiekou GPT Image 2 render tiers.",
+        "cost_hint": "GeekAI GPT Image 2 with tested 1K, 2K, and 4K render tiers.",
         "default_tier_key": "1k",
         "display_name": "GPT Image 2",
         "enabled": True,
@@ -39,12 +52,12 @@ DEFAULT_MODEL_ROWS = [
             "aspectRatio": ["1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", "21:9", "9:21", "2:1", "1:2", "3:1", "1:3"],
             "resolution": ["1K", "2K", "4K"],
         },
-        "provider_key": "jiekou",
+        "provider_key": "geekai",
     },
     {
         "capabilities": ["image_generation", "image_edit", "image_reference"],
         "capability": "image_generation",
-        "cost_hint": "Fast Nano Banana 2 image generation and edits.",
+        "cost_hint": "GeekAI Nano Banana 2 with common and extended aspect ratios.",
         "default_tier_key": "1k",
         "display_name": "Nano Banana 2",
         "enabled": True,
@@ -52,7 +65,7 @@ DEFAULT_MODEL_ROWS = [
         "is_default": False,
         "model_key": "nano-banana-2",
         "parameter_schema": {"aspectRatio": ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9", "1:4", "4:1", "1:8", "8:1"], "imageSize": ["0.5K", "1K", "2K", "4K"]},
-        "provider_key": "jiekou",
+        "provider_key": "geekai",
     },
     {
         "capabilities": ["image_generation", "image_edit", "image_reference"],
@@ -65,7 +78,7 @@ DEFAULT_MODEL_ROWS = [
         "is_default": False,
         "model_key": "doubao-seedream-5.0-lite",
         "parameter_schema": {"seedreamSize": ["2K", "3K", "4K", "2048x2048", "2304x1728", "1728x2304", "2848x1600", "1600x2848", "2496x1664", "1664x2496", "3136x1344", "3072x3072", "3456x2592", "2592x3456", "4096x2304", "2304x4096", "3744x2496", "2496x3744", "4704x2016", "4096x4096", "3520x4704", "4704x3520", "5504x3040", "3040x5504", "3328x4992", "4992x3328", "6240x2656"]},
-        "provider_key": "jiekou",
+        "provider_key": "geekai",
     },
 ]
 
@@ -80,14 +93,16 @@ DEFAULT_TIER_ROWS = [
 ]
 
 DEFAULT_ROUTE_ROWS = [
-    {"created_at": "2026-05-16T00:00:00Z", "enabled": True, "health_status": "healthy", "id": "route_deepseek_v3_1_primary", "model_key": "deepseek/deepseek-v3.1", "priority": 10, "provider_key": "jiekou", "provider_model": "deepseek/deepseek-v3.1", "retry_policy": {"maxAttempts": 2}, "route_key": "jiekou-deepseek-v3-1-primary", "timeout_ms": 60000, "updated_at": "2026-05-16T00:00:00Z", "weight": 100},
-    {"created_at": "2026-05-16T00:00:00Z", "enabled": True, "health_status": "healthy", "id": "route_qwen_2_5_vl_72b_primary", "model_key": "qwen/qwen2.5-vl-72b-instruct", "priority": 10, "provider_key": "jiekou", "provider_model": "qwen/qwen2.5-vl-72b-instruct", "retry_policy": {"maxAttempts": 2}, "route_key": "jiekou-qwen-2-5-vl-72b-primary", "timeout_ms": 90000, "updated_at": "2026-05-16T00:00:00Z", "weight": 100},
-    {"created_at": "2026-05-16T00:00:00Z", "enabled": True, "health_status": "healthy", "id": "route_gpt_image_2_primary", "model_key": "gpt-image-2", "priority": 10, "provider_key": "jiekou", "provider_model": "gpt-image-2", "retry_policy": {"maxAttempts": 2}, "route_key": "jiekou-gpt-image-2-primary", "timeout_ms": 240000, "updated_at": "2026-05-16T00:00:00Z", "weight": 100},
-    {"created_at": "2026-05-16T00:00:00Z", "enabled": True, "health_status": "healthy", "id": "route_nano_banana_2_primary", "model_key": "nano-banana-2", "priority": 10, "provider_key": "jiekou", "provider_model": "gemini-3.1-flash-image", "retry_policy": {"maxAttempts": 2}, "route_key": "jiekou-nano-banana-2-primary", "timeout_ms": 240000, "updated_at": "2026-05-16T00:00:00Z", "weight": 100},
-    {"created_at": "2026-05-16T00:00:00Z", "enabled": True, "health_status": "healthy", "id": "route_doubao_seedream_5_0_lite_primary", "model_key": "doubao-seedream-5.0-lite", "priority": 10, "provider_key": "jiekou", "provider_model": "doubao-seedream-5.0-lite", "retry_policy": {"maxAttempts": 2}, "route_key": "jiekou-seedream-5-lite-primary", "timeout_ms": 240000, "updated_at": "2026-05-16T00:00:00Z", "weight": 100},
+    {"created_at": "2026-05-20T00:00:00Z", "enabled": True, "health_status": "healthy", "id": "route_qwq_plus_latest_primary", "model_key": "qwq-plus-latest", "priority": 10, "provider_key": "geekai", "provider_model": "qwq-plus-latest", "retry_policy": {"maxAttempts": 2}, "route_key": "geekai-qwq-plus-latest-primary", "timeout_ms": 90000, "updated_at": "2026-05-20T00:00:00Z", "weight": 100},
+    {"created_at": "2026-05-20T00:00:00Z", "enabled": True, "health_status": "healthy", "id": "route_deepseek_v3_1_primary", "model_key": "deepseek/deepseek-v3.1", "priority": 10, "provider_key": "geekai", "provider_model": "deepseek/deepseek-v3.1", "retry_policy": {"maxAttempts": 2}, "route_key": "geekai-deepseek-v3-1-primary", "timeout_ms": 60000, "updated_at": "2026-05-20T00:00:00Z", "weight": 100},
+    {"created_at": "2026-05-20T00:00:00Z", "enabled": True, "health_status": "healthy", "id": "route_qwen_2_5_vl_72b_primary", "model_key": "qwen/qwen2.5-vl-72b-instruct", "priority": 10, "provider_key": "geekai", "provider_model": "qwen/qwen2.5-vl-72b-instruct", "retry_policy": {"maxAttempts": 2}, "route_key": "geekai-qwen-2-5-vl-72b-primary", "timeout_ms": 90000, "updated_at": "2026-05-20T00:00:00Z", "weight": 100},
+    {"created_at": "2026-05-20T00:00:00Z", "enabled": True, "health_status": "healthy", "id": "route_gpt_image_2_primary", "model_key": "gpt-image-2", "priority": 10, "provider_key": "geekai", "provider_model": "gpt-image-2", "retry_policy": {"maxAttempts": 2}, "route_key": "geekai-gpt-image-2-primary", "timeout_ms": 240000, "updated_at": "2026-05-20T00:00:00Z", "weight": 100},
+    {"created_at": "2026-05-20T00:00:00Z", "enabled": True, "health_status": "healthy", "id": "route_nano_banana_2_primary", "model_key": "nano-banana-2", "priority": 10, "provider_key": "geekai", "provider_model": "gemini-3.1-flash-image-preview", "retry_policy": {"maxAttempts": 2}, "route_key": "geekai-nano-banana-2-primary", "timeout_ms": 240000, "updated_at": "2026-05-20T00:00:00Z", "weight": 100},
+    {"created_at": "2026-05-20T00:00:00Z", "enabled": True, "health_status": "healthy", "id": "route_doubao_seedream_5_0_lite_primary", "model_key": "doubao-seedream-5.0-lite", "priority": 10, "provider_key": "geekai", "provider_model": "doubao-seedream-5.0-lite", "retry_policy": {"maxAttempts": 2}, "route_key": "geekai-seedream-5-lite-primary", "timeout_ms": 240000, "updated_at": "2026-05-20T00:00:00Z", "weight": 100},
 ]
 
 DEFAULT_PRICING_ROWS = [
+    {"billing_unit": "per_run", "created_at": "2026-05-20T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-20T00:00:00Z", "effective_to": None, "estimated_credits": 1.0, "id": "price_qwq_plus_latest_v1", "min_credits": 1.0, "model_key": "qwq-plus-latest", "provider_cost_formula": {"creditUsd": 0.01, "currency": "USD", "estimatedInputTokens": 1200, "estimatedOutputTokens": 800, "grossMargin": 0.25, "inputUsdPerMTok": 0.0, "outputUsdPerMTok": 0.0, "source": "geekai_model_page_is_free_true", "type": "token_usage_estimate"}, "status": "active", "tier_key": None, "updated_at": "2026-05-20T00:00:00Z"},
     {"billing_unit": "per_run", "created_at": "2026-05-18T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-18T00:00:00Z", "effective_to": None, "estimated_credits": 1.0, "id": "price_deepseek_v3_1_v1", "min_credits": 1.0, "model_key": "deepseek/deepseek-v3.1", "provider_cost_formula": {"creditUsd": 0.01, "currency": "USD", "estimatedInputTokens": 1200, "estimatedOutputTokens": 800, "grossMargin": 0.25, "inputUsdPerMTok": 0.27, "outputUsdPerMTok": 1.0, "type": "token_usage_estimate"}, "status": "active", "tier_key": None, "updated_at": "2026-05-18T00:00:00Z"},
     {"billing_unit": "per_run", "created_at": "2026-05-18T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-18T00:00:00Z", "effective_to": None, "estimated_credits": 3.0, "id": "price_qwen_2_5_vl_72b_v1", "min_credits": 3.0, "model_key": "qwen/qwen2.5-vl-72b-instruct", "provider_cost_formula": {"creditUsd": 0.01, "currency": "USD", "estimatedInputTokens": 1600, "estimatedOutputTokens": 900, "grossMargin": 0.25, "imageInputTokens": 1200, "inputUsdPerMTok": 0.8, "outputUsdPerMTok": 0.8, "type": "token_usage_estimate"}, "status": "active", "tier_key": None, "updated_at": "2026-05-18T00:00:00Z"},
     {"billing_unit": "per_image", "created_at": "2026-05-06T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-06T00:00:00Z", "effective_to": None, "estimated_credits": 5.5, "id": "price_gpt_image_2_1k_v1", "min_credits": 5.5, "model_key": "gpt-image-2", "provider_cost_formula": {"amount": 0.04, "creditUsd": 0.01, "currency": "USD", "grossMargin": 0.25, "type": "per_image"}, "status": "active", "tier_key": "1k", "updated_at": "2026-05-18T00:00:00Z"},
@@ -97,5 +112,5 @@ DEFAULT_PRICING_ROWS = [
     {"billing_unit": "per_image", "created_at": "2026-05-14T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-14T00:00:00Z", "effective_to": None, "estimated_credits": 4.0, "id": "price_nano_banana_2_1k_v1", "min_credits": 4.0, "model_key": "nano-banana-2", "provider_cost_formula": {"amount": 0.03, "creditUsd": 0.01, "currency": "USD", "grossMargin": 0.25, "type": "per_image"}, "status": "active", "tier_key": "1k", "updated_at": "2026-05-18T00:00:00Z"},
     {"billing_unit": "per_image", "created_at": "2026-05-14T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-14T00:00:00Z", "effective_to": None, "estimated_credits": 8.0, "id": "price_nano_banana_2_2k_v1", "min_credits": 8.0, "model_key": "nano-banana-2", "provider_cost_formula": {"amount": 0.06, "creditUsd": 0.01, "currency": "USD", "grossMargin": 0.25, "type": "per_image"}, "status": "active", "tier_key": "2k", "updated_at": "2026-05-18T00:00:00Z"},
     {"billing_unit": "per_image", "created_at": "2026-05-14T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-14T00:00:00Z", "effective_to": None, "estimated_credits": 16.0, "id": "price_nano_banana_2_4k_v1", "min_credits": 16.0, "model_key": "nano-banana-2", "provider_cost_formula": {"amount": 0.12, "creditUsd": 0.01, "currency": "USD", "grossMargin": 0.25, "type": "per_image"}, "status": "active", "tier_key": "4k", "updated_at": "2026-05-18T00:00:00Z"},
-    {"billing_unit": "per_image", "created_at": "2026-05-18T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-18T00:00:00Z", "effective_to": None, "estimated_credits": 5.0, "id": "price_doubao_seedream_5_0_lite_v1", "min_credits": 5.0, "model_key": "doubao-seedream-5.0-lite", "provider_cost_formula": {"amount": 0.035, "creditUsd": 0.01, "currency": "USD", "grossMargin": 0.25, "source": "seedream_5_lite_market_reference_pending_jiekou_price_table", "type": "per_image"}, "status": "active", "tier_key": None, "updated_at": "2026-05-18T00:00:00Z"},
+    {"billing_unit": "per_image", "created_at": "2026-05-18T00:00:00Z", "credit_multiplier": 1.0, "effective_from": "2026-05-18T00:00:00Z", "effective_to": None, "estimated_credits": 5.0, "id": "price_doubao_seedream_5_0_lite_v1", "min_credits": 5.0, "model_key": "doubao-seedream-5.0-lite", "provider_cost_formula": {"amount": 0.035, "creditUsd": 0.01, "currency": "USD", "grossMargin": 0.25, "source": "seedream_5_lite_market_reference_pending_geekai_price_table", "type": "per_image"}, "status": "active", "tier_key": None, "updated_at": "2026-05-18T00:00:00Z"},
 ]

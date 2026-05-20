@@ -14,7 +14,7 @@ ALLOWED_CAPABILITIES = {"image_generation", "image_edit", "image_analysis", "ima
 ALLOWED_HEALTH_STATUSES = {"healthy", "unknown", "degraded", "failed", "disabled"}
 ALLOWED_PRICING_STATUSES = {"active", "draft", "retired"}
 ALLOWED_BILLING_UNITS = {"per_image", "per_run", "per_output_token", "per_input_token", "blended"}
-DEFAULT_ALLOWED_PROVIDER_KEYS = {"jiekou"}
+DEFAULT_ALLOWED_PROVIDER_KEYS = {"geekai"}
 
 
 def row_to_admin_ai_model(row: tuple[object, ...]) -> AdminAiModelRecord:

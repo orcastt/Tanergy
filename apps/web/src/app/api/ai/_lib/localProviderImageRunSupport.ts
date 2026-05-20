@@ -1,14 +1,26 @@
 import { getProviderDisplayLabel } from './providerApiConfig'
-import { normalizeImageGenerationModelId } from '@/features/ai/aiImageModelCatalog'
+import {
+  gptImage2SupportedSizeMap,
+  nanoBananaAspectRatios,
+  nanoBananaImageSizes,
+  normalizeImageGenerationModelId,
+  seedreamSizeValues,
+} from '@/features/ai/aiImageModelCatalog'
 
 export const defaultGeneratedMime = 'image/png'
 export const maxImageReferenceInputs = 8
 export const pollIntervalMs = 1400
 export const pollTimeoutMs = 240000
 export const nanoBanana2ModelId = 'nano-banana-2'
+export const geekAiNanoBanana2ModelId = 'gemini-3.1-flash-image-preview'
 
 export type ProviderImageResponse = {
-  choices?: never
+  choices?: Array<{
+    message?: {
+      content?: string | Array<{ text?: string; type?: string }>
+      image?: { url?: string }
+    }
+  }>
   created?: number
   data?: Array<{
     b64_json?: string
@@ -53,8 +65,7 @@ export type ImageModelExecutorInput = ImageModelRunInput & { clientConfig: Provi
 export type ImageModelExecutor = (input: ImageModelExecutorInput) => Promise<string[]>
 
 export function normalizeGptImageSize(size: string | undefined) {
-  const allowed = new Set(['1024x1024', '1024x1536', '1536x1024', '2048x2048', '2048x1152', '3840x2160', '2160x3840', '2048x1360', '1360x2048', '1152x2048', '2048x1536', '1536x2048', '2048x880', '880x2048', '688x2048', '2048x688', '2048x1024', '1024x2048'])
-  return size && allowed.has(size) ? size : '1024x1024'
+  return size && gptImage2AllowedSizes.has(size) ? size : '1024x1024'
 }
 
 export function normalizeGptImageQuality(quality: string | undefined) {
@@ -62,17 +73,15 @@ export function normalizeGptImageQuality(quality: string | undefined) {
 }
 
 export function normalizeNanoBananaAspectRatio(aspectRatio: string | undefined) {
-  const allowed = new Set(['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9', '1:4', '4:1', '1:8', '8:1'])
-  return aspectRatio && allowed.has(aspectRatio) ? aspectRatio : '1:1'
+  return aspectRatio && nanoBananaAspectRatioSet.has(aspectRatio) ? aspectRatio : '1:1'
 }
 
 export function normalizeNanoBananaImageSize(imageSize: string | undefined) {
-  return imageSize === '0.5K' || imageSize === '1K' || imageSize === '2K' || imageSize === '4K' ? imageSize : '1K'
+  return imageSize && nanoBananaImageSizeSet.has(imageSize) ? imageSize : '1K'
 }
 
 export function normalizeSeedreamSize(size: string | undefined) {
-  const allowed = new Set(['2K', '3K', '4K', '2048x2048', '2304x1728', '1728x2304', '2848x1600', '1600x2848', '2496x1664', '1664x2496', '3136x1344', '3072x3072', '3456x2592', '2592x3456', '4096x2304', '2304x4096', '3744x2496', '2496x3744', '4704x2016', '4096x4096', '3520x4704', '4704x3520', '5504x3040', '3040x5504', '3328x4992', '4992x3328', '6240x2656'])
-  return size && allowed.has(size) ? size : '2K'
+  return size && seedreamSizeSet.has(size) ? size : '2K'
 }
 
 export function normalizeSeedreamOutputFormat(outputFormat: string | undefined) {
@@ -122,7 +131,7 @@ export function buildJiekouImagePath(endpoint: string) {
 }
 
 export function toJiekouNanoBananaSize(aspectRatio: string) {
-  return { '1:1': '1:1', '2:3': '2:3', '3:2': '3:2', '3:4': '3:4', '4:3': '4:3', '4:5': '4:5', '5:4': '5:4', '9:16': '9:16', '16:9': '16:9', '21:9': '21:9', '1:4': '1:4', '4:1': '4:1', '1:8': '1:8', '8:1': '8:1' }[aspectRatio] ?? '1:1'
+  return normalizeNanoBananaAspectRatio(aspectRatio)
 }
 
 export function toJiekouNanoBananaImageSize(imageSize: string) {
@@ -142,3 +151,12 @@ export function createRunId() {
 export function getString(value: unknown) {
   return typeof value === 'string' && value.trim() ? value : undefined
 }
+
+const gptImage2AllowedSizes = new Set(
+  Object.values(gptImage2SupportedSizeMap)
+    .flatMap((sizeMap) => Object.values(sizeMap))
+    .filter((value): value is string => typeof value === 'string')
+)
+const nanoBananaAspectRatioSet = new Set<string>([...nanoBananaAspectRatios])
+const nanoBananaImageSizeSet = new Set<string>([...nanoBananaImageSizes])
+const seedreamSizeSet = new Set<string>([...seedreamSizeValues])

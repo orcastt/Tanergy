@@ -30,6 +30,8 @@ def test_ai_model_registry_contract():
     assert models[0]["parameterSchema"]["aspectRatio"]
     assert models[0]["parameterSchema"]["resolution"]
     assert models[-1]["parameterSchema"]["imageSize"]
+    assert "1:8" in models[-1]["parameterSchema"]["aspectRatio"]
+    assert "21:9" in models[-1]["parameterSchema"]["aspectRatio"]
 
     analysis_response = client.get("/api/v1/ai/models?capability=image_analysis")
 
@@ -44,6 +46,7 @@ def test_ai_model_registry_contract():
     assert text_response.status_code == 200
     text_models = text_response.json()["models"]
     assert [model["id"] for model in text_models] == [
+        "qwq-plus-latest",
         "deepseek/deepseek-v3.1",
         "qwen/qwen2.5-vl-72b-instruct",
     ]
@@ -105,7 +108,7 @@ def test_ai_run_mock_analysis_uses_supported_analysis_model():
     run = response.json()["run"]
     assert run["estimatedCredits"] == 3
     assert run["modelId"] == "qwen/qwen2.5-vl-72b-instruct"
-    assert run["provider"] == "jiekou"
+    assert run["provider"] == "geekai"
     assert run["status"] == "queued"
 
     loaded = _wait_for_run_status(client, run["runId"], {"succeeded"})
@@ -283,7 +286,7 @@ def test_persist_provider_output_assets_prefers_detected_output_dimensions(monke
         [ai_provider_assets.ProviderImageOutput(content=_png_with_dimensions(640, 960), mime="image/png")],
         context,
         payload,
-        "jiekou",
+        "geekai",
     )
 
     assert asset_ids == ["asset_generated"]
@@ -369,7 +372,7 @@ def test_ai_run_mock_can_settle_against_credit_ledger(monkeypatch):
     assert fake_db.api_cost_ledger[-1]["id"] == f"api_cost_{settled_run['runId']}_a1"
     assert fake_db.api_cost_ledger[-1]["settlement_kind"] == "usage"
     assert fake_db.api_cost_ledger[-1]["credits_charged"] == 11.0
-    assert fake_db.api_cost_ledger[-1]["provider"] == "jiekou"
+    assert fake_db.api_cost_ledger[-1]["provider"] == "geekai"
     assert fake_db.api_cost_ledger[-1]["provider_currency"] == "USD"
 
 
@@ -687,7 +690,7 @@ def test_ai_text_run_persists_text_output_and_system_prompt(monkeypatch):
             "nodeType": "prompt_optimizer",
             "prompt": "A clean ceramic cup poster",
             "runType": "text",
-            "selectedModelId": "deepseek/deepseek-v3.1",
+            "selectedModelId": "qwq-plus-latest",
             "systemPrompt": "You are a prompt optimizer for AI image generation.",
         },
     )
@@ -695,7 +698,7 @@ def test_ai_text_run_persists_text_output_and_system_prompt(monkeypatch):
     assert response.status_code == 200
     run = response.json()["run"]
     assert run["estimatedCredits"] == 1
-    assert run["modelId"] == "deepseek/deepseek-v3.1"
+    assert run["modelId"] == "qwq-plus-latest"
     assert run["status"] == "queued"
 
     settled = _wait_for_run_status(client, run["runId"], {"succeeded"})
@@ -754,7 +757,7 @@ def test_ai_run_uses_backup_route_when_primary_route_fails(monkeypatch):
             "estimated_latency": "5-12s",
             "enabled": True,
             "is_default": True,
-            "provider_key": "jiekou",
+            "provider_key": "geekai",
             "default_tier_key": "1k",
             "default_pricing_rule_id": "price_gpt_image_2_1k_v1",
             "created_at": "2026-05-06T00:00:00Z",
@@ -765,9 +768,9 @@ def test_ai_run_uses_backup_route_when_primary_route_fails(monkeypatch):
         {
             "id": "route_gpt_image_2_primary",
             "model_key": "gpt-image-2",
-            "provider_key": "jiekou",
+            "provider_key": "geekai",
             "provider_model": "gpt-image-2",
-            "route_key": "jiekou-primary",
+            "route_key": "geekai-primary",
             "priority": 10,
             "weight": 100,
             "health_status": "healthy",
@@ -864,7 +867,7 @@ def test_ai_run_fails_when_all_provider_routes_fail(monkeypatch):
             "estimated_latency": "5-12s",
             "enabled": True,
             "is_default": True,
-            "provider_key": "jiekou",
+            "provider_key": "geekai",
             "default_tier_key": "1k",
             "default_pricing_rule_id": "price_gpt_image_2_1k_v1",
             "created_at": "2026-05-06T00:00:00Z",
@@ -875,9 +878,9 @@ def test_ai_run_fails_when_all_provider_routes_fail(monkeypatch):
         {
             "id": "route_gpt_image_2_primary",
             "model_key": "gpt-image-2",
-            "provider_key": "jiekou",
+            "provider_key": "geekai",
             "provider_model": "gpt-image-2",
-            "route_key": "jiekou-primary",
+            "route_key": "geekai-primary",
             "priority": 10,
             "weight": 100,
             "health_status": "healthy",
@@ -949,7 +952,7 @@ def test_ai_run_retries_same_route_before_failing_over(monkeypatch):
             "estimated_latency": "5-12s",
             "enabled": True,
             "is_default": True,
-            "provider_key": "jiekou",
+            "provider_key": "geekai",
             "default_tier_key": "1k",
             "default_pricing_rule_id": "price_gpt_image_2_1k_v1",
             "created_at": "2026-05-06T00:00:00Z",
@@ -960,9 +963,9 @@ def test_ai_run_retries_same_route_before_failing_over(monkeypatch):
         {
             "id": "route_gpt_image_2_primary",
             "model_key": "gpt-image-2",
-            "provider_key": "jiekou",
+            "provider_key": "geekai",
             "provider_model": "gpt-image-2",
-            "route_key": "jiekou-primary",
+            "route_key": "geekai-primary",
             "priority": 10,
             "weight": 100,
             "health_status": "healthy",
@@ -1057,7 +1060,7 @@ def test_ai_run_timeout_stops_failover_to_avoid_duplicate_provider_work(monkeypa
             "estimated_latency": "5-12s",
             "enabled": True,
             "is_default": True,
-            "provider_key": "jiekou",
+            "provider_key": "geekai",
             "default_tier_key": "1k",
             "default_pricing_rule_id": "price_gpt_image_2_1k_v1",
             "created_at": "2026-05-06T00:00:00Z",
@@ -1068,9 +1071,9 @@ def test_ai_run_timeout_stops_failover_to_avoid_duplicate_provider_work(monkeypa
         {
             "id": "route_gpt_image_2_primary",
             "model_key": "gpt-image-2",
-            "provider_key": "jiekou",
+            "provider_key": "geekai",
             "provider_model": "gpt-image-2",
-            "route_key": "jiekou-primary",
+            "route_key": "geekai-primary",
             "priority": 10,
             "weight": 100,
             "health_status": "healthy",
@@ -1151,11 +1154,11 @@ def test_ai_run_quote_returns_tier_based_estimate_and_preflight(monkeypatch):
             "capability": "image_generation",
             "capabilities": ["image_generation", "image_edit"],
             "parameter_schema": {"resolution": ["1K", "2K", "4K"]},
-            "cost_hint": "Aspect ratio UI maps to the supported Jiekou GPT Image 2 render tiers.",
+            "cost_hint": "GeekAI GPT Image 2 with tested 1K, 2K, and 4K render tiers.",
             "estimated_latency": "5-12s",
             "enabled": True,
             "is_default": True,
-            "provider_key": "jiekou",
+            "provider_key": "geekai",
             "default_tier_key": "1k",
             "default_pricing_rule_id": "price_gpt_image_2_1k_v1",
             "created_at": "2026-05-06T00:00:00Z",
@@ -1178,9 +1181,9 @@ def test_ai_run_quote_returns_tier_based_estimate_and_preflight(monkeypatch):
         {
             "id": "route_gpt_image_2_primary",
             "model_key": "gpt-image-2",
-            "provider_key": "jiekou",
+            "provider_key": "geekai",
             "provider_model": "gpt-image-2",
-            "route_key": "jiekou-primary",
+            "route_key": "geekai-primary",
             "priority": 10,
             "weight": 100,
             "health_status": "healthy",
@@ -1256,11 +1259,11 @@ def test_ai_run_quote_supports_gpt_image_2_4k_tier(monkeypatch):
             "capability": "image_generation",
             "capabilities": ["image_generation", "image_edit"],
             "parameter_schema": {"aspectRatio": ["1:1", "16:9"], "resolution": ["1K", "2K", "4K"]},
-            "cost_hint": "Aspect ratio UI maps to the supported Jiekou GPT Image 2 render tiers.",
+            "cost_hint": "GeekAI GPT Image 2 with tested 1K, 2K, and 4K render tiers.",
             "estimated_latency": "5-12s",
             "enabled": True,
             "is_default": True,
-            "provider_key": "jiekou",
+            "provider_key": "geekai",
             "default_tier_key": "1k",
             "default_pricing_rule_id": "price_gpt_image_2_1k_v1",
             "created_at": "2026-05-16T00:00:00Z",
@@ -1283,9 +1286,9 @@ def test_ai_run_quote_supports_gpt_image_2_4k_tier(monkeypatch):
         {
             "id": "route_gpt_image_2_primary",
             "model_key": "gpt-image-2",
-            "provider_key": "jiekou",
+            "provider_key": "geekai",
             "provider_model": "gpt-image-2",
-            "route_key": "jiekou-gpt-image-2-primary",
+            "route_key": "geekai-gpt-image-2-primary",
             "priority": 10,
             "weight": 100,
             "health_status": "healthy",
@@ -1569,11 +1572,11 @@ def test_openai_compatible_live_attempt_supports_image_analysis(monkeypatch):
     route = AiProviderRouteCandidate(
         health_status="healthy",
         priority=10,
-        provider_key="jiekou",
+        provider_key="geekai",
         provider_model="qwen/qwen2.5-vl-72b-instruct",
         retry_policy={"maxAttempts": 2},
         route_id="route_qwen_2_5_vl_72b_primary",
-        route_key="jiekou-qwen-2-5-vl-72b-primary",
+        route_key="geekai-qwen-2-5-vl-72b-primary",
         timeout_ms=45000,
         weight=100,
     )
@@ -1626,11 +1629,11 @@ def test_openai_compatible_live_attempt_supports_image_analysis(monkeypatch):
         node_id="node_analysis",
         output_asset_ids=[],
         pricing_rule_id="price_qwen_2_5_vl_72b_v1",
-        provider="jiekou",
+        provider="geekai",
         provider_cost=None,
         provider_currency=None,
         route_id="route_qwen_2_5_vl_72b_primary",
-        route_key="jiekou-qwen-2-5-vl-72b-primary",
+        route_key="geekai-qwen-2-5-vl-72b-primary",
         run_id="run_analysis_live",
         run_type="image_analysis",
         selected_tier_key=None,

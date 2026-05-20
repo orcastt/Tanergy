@@ -72,6 +72,7 @@ export async function settleImageTask(payload: ProviderImageResponse, clientConf
 }
 
 export function extractImageSources(payload: ProviderImageResponse) {
+  const chatImages = extractChatCompletionImages(payload)
   const items = payload.image_urls ?? payload.images ?? payload.data ?? []
   return items.flatMap((item) => {
     if (typeof item === 'string' && item.trim()) {
@@ -87,7 +88,29 @@ export function extractImageSources(payload: ProviderImageResponse) {
       return [normalizeAiInlineBase64DataUrl(b64Image, defaultGeneratedMime)]
     }
     return []
+  }).concat(chatImages)
+}
+
+function extractChatCompletionImages(payload: ProviderImageResponse) {
+  return (payload.choices ?? []).flatMap((choice) => {
+    const message = choice.message
+    if (!message) return []
+    const directUrl = message.image?.url?.trim()
+    const urls = directUrl ? [directUrl] : []
+    if (typeof message.content === 'string') {
+      return urls.concat(extractMarkdownImageUrls(message.content))
+    }
+    if (Array.isArray(message.content)) {
+      return urls.concat(message.content.flatMap((part) => (
+        typeof part.text === 'string' ? extractMarkdownImageUrls(part.text) : []
+      )))
+    }
+    return urls
   })
+}
+
+function extractMarkdownImageUrls(content: string) {
+  return [...content.matchAll(/!\[[^\]]*]\((https?:\/\/[^)\s]+)\)/g)].map((match) => match[1])
 }
 
 function wait(durationMs: number) {

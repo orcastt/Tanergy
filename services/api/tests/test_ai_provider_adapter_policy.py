@@ -16,8 +16,8 @@ def test_execute_ai_provider_attempt_disables_stub_in_staging(monkeypatch):
 
 def test_execute_ai_provider_attempt_defaults_to_live_in_staging_when_provider_credentials_exist(monkeypatch):
     monkeypatch.setenv("APP_ENV", "staging")
-    monkeypatch.setenv("JIEKOU_API_KEY", "test-key")
-    monkeypatch.setenv("JIEKOU_BASE_URL", "https://example.com/v3")
+    monkeypatch.setenv("GEEKAI_API_KEY", "test-key")
+    monkeypatch.setenv("GEEKAI_BASE_URL", "https://example.com/api/v1")
 
     def fake_live_attempt(*_args, **_kwargs):
         return AiProviderAttemptResult(
@@ -26,18 +26,18 @@ def test_execute_ai_provider_attempt_defaults_to_live_in_staging_when_provider_c
             error_message=None,
             latency_ms=120,
             output_asset_ids=["asset_live_1"],
-            provider="jiekou",
+            provider="geekai",
             provider_cost=None,
             provider_currency=None,
             retryable=False,
             route_id="route_gpt_image_2_primary",
-            route_key="jiekou-primary",
+            route_key="geekai-primary",
             status="succeeded",
             text_output=None,
             work_started=True,
         )
 
-    monkeypatch.setattr("tangent_api.ai_provider_adapters.run_jiekou_attempt", fake_live_attempt)
+    monkeypatch.setattr("tangent_api.ai_provider_adapters.run_geekai_attempt", fake_live_attempt)
 
     result = execute_ai_provider_attempt(_run_record(), _request(), _route(), _context())
 
@@ -54,11 +54,11 @@ def test_execute_ai_provider_attempt_keeps_stub_in_local_default(monkeypatch):
     assert result.output_asset_ids == ["asset_mock_run_test_1_sunset-forest_refs0"]
 
 
-def test_execute_ai_provider_attempt_uses_jiekou_image_key_alias(monkeypatch):
+def test_execute_ai_provider_attempt_uses_geekai_balance_image_key_alias(monkeypatch):
     monkeypatch.setenv("APP_ENV", "staging")
-    monkeypatch.delenv("JIEKOU_API_KEY", raising=False)
-    monkeypatch.delenv("JIEKOU_BASE_URL", raising=False)
-    monkeypatch.setenv("JIEKOU_IMAGE_KEY", "jiekou-image-key")
+    monkeypatch.delenv("GEEKAI_API_KEY", raising=False)
+    monkeypatch.delenv("GEEKAI_BASE_URL", raising=False)
+    monkeypatch.setenv("GEEKAI_BALANCE_IMAGE_API_KEY", "geekai-balance-image-key")
 
     def fake_live_attempt(*_args, **_kwargs):
         return AiProviderAttemptResult(
@@ -66,19 +66,19 @@ def test_execute_ai_provider_attempt_uses_jiekou_image_key_alias(monkeypatch):
             error_code=None,
             error_message=None,
             latency_ms=95,
-            output_asset_ids=["asset_jiekou_1"],
-            provider="jiekou",
+            output_asset_ids=["asset_geekai_1"],
+            provider="geekai",
             provider_cost=None,
             provider_currency=None,
             retryable=False,
             route_id="route_nano_banana_2_primary",
-            route_key="jiekou-nano-banana-2-primary",
+            route_key="geekai-nano-banana-2-primary",
             status="succeeded",
             text_output=None,
             work_started=True,
         )
 
-    monkeypatch.setattr("tangent_api.ai_provider_adapters.run_jiekou_attempt", fake_live_attempt)
+    monkeypatch.setattr("tangent_api.ai_provider_adapters.run_geekai_attempt", fake_live_attempt)
 
     result = execute_ai_provider_attempt(
         _run_record(model_id="nano-banana-2", route_id="route_nano_banana_2_primary"),
@@ -86,20 +86,20 @@ def test_execute_ai_provider_attempt_uses_jiekou_image_key_alias(monkeypatch):
         _route(
             provider_model="nano-banana-2",
             route_id="route_nano_banana_2_primary",
-            route_key="jiekou-nano-banana-2-primary",
+            route_key="geekai-nano-banana-2-primary",
         ),
         _context(),
     )
 
     assert result.status == "succeeded"
-    assert result.output_asset_ids == ["asset_jiekou_1"]
+    assert result.output_asset_ids == ["asset_geekai_1"]
 
 
-def test_execute_ai_provider_attempt_uses_jiekou_text_key_alias(monkeypatch):
+def test_execute_ai_provider_attempt_uses_geekai_text_key_alias(monkeypatch):
     monkeypatch.setenv("APP_ENV", "staging")
-    monkeypatch.delenv("JIEKOU_API_KEY", raising=False)
-    monkeypatch.delenv("JIEKOU_BASE_URL", raising=False)
-    monkeypatch.setenv("JIEKOU_TEXT_KEY", "jiekou-text-key")
+    monkeypatch.delenv("GEEKAI_API_KEY", raising=False)
+    monkeypatch.delenv("GEEKAI_BASE_URL", raising=False)
+    monkeypatch.setenv("GEEKAI_TEXT_API_KEY", "geekai-text-key")
 
     def fake_live_attempt(*_args, **_kwargs):
         return AiProviderAttemptResult(
@@ -108,12 +108,12 @@ def test_execute_ai_provider_attempt_uses_jiekou_text_key_alias(monkeypatch):
             error_message=None,
             latency_ms=85,
             output_asset_ids=[],
-            provider="jiekou",
+            provider="geekai",
             provider_cost=None,
             provider_currency=None,
             retryable=False,
-            route_id="route_deepseek_v3_1_primary",
-            route_key="jiekou-deepseek-v3-1-primary",
+            route_id="route_qwq_plus_latest_primary",
+            route_key="geekai-qwq-plus-latest-primary",
             status="succeeded",
             text_output="ok",
             work_started=True,
@@ -122,12 +122,12 @@ def test_execute_ai_provider_attempt_uses_jiekou_text_key_alias(monkeypatch):
     monkeypatch.setattr("tangent_api.ai_provider_adapters.run_openai_compatible_attempt", fake_live_attempt)
 
     result = execute_ai_provider_attempt(
-        _run_record(model_id="deepseek/deepseek-v3.1", route_id="route_deepseek_v3_1_primary", run_type="text"),
-        _request(model_id="deepseek/deepseek-v3.1", node_type="chat", run_type="text"),
+        _run_record(model_id="qwq-plus-latest", route_id="route_qwq_plus_latest_primary", run_type="text"),
+        _request(model_id="qwq-plus-latest", node_type="chat", run_type="text"),
         _route(
-            provider_model="deepseek/deepseek-v3.1",
-            route_id="route_deepseek_v3_1_primary",
-            route_key="jiekou-deepseek-v3-1-primary",
+            provider_model="qwq-plus-latest",
+            route_id="route_qwq_plus_latest_primary",
+            route_key="geekai-qwq-plus-latest-primary",
         ),
         _context(),
     )
@@ -136,11 +136,11 @@ def test_execute_ai_provider_attempt_uses_jiekou_text_key_alias(monkeypatch):
     assert result.text_output == "ok"
 
 
-def _route(provider_model="gpt-image-2", route_id="route_gpt_image_2_primary", route_key="jiekou-primary"):
+def _route(provider_model="gpt-image-2", route_id="route_gpt_image_2_primary", route_key="geekai-primary"):
     return AiProviderRouteCandidate(
         health_status="healthy",
         priority=10,
-        provider_key="jiekou",
+        provider_key="geekai",
         provider_model=provider_model,
         retry_policy={"maxAttempts": 1},
         route_id=route_id,
@@ -192,11 +192,11 @@ def _run_record(model_id="gpt-image-2", route_id="route_gpt_image_2_primary", ru
         nodeId=None,
         outputAssetIds=[],
         pricingRuleId="price_test",
-        provider="jiekou",
+        provider="geekai",
         providerCost=None,
         providerCurrency=None,
         routeId=route_id,
-        routeKey="jiekou-primary",
+        routeKey="geekai-primary",
         runId="run_test",
         runType=run_type,
         selectedTierKey="1k",

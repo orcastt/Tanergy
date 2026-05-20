@@ -422,7 +422,7 @@ def test_admin_ai_routes_return_filtered_resources_and_write_audit_logs(monkeypa
             "estimated_latency": "5-12s",
             "enabled": True,
             "is_default": True,
-            "provider_key": "jiekou",
+            "provider_key": "geekai",
             "default_tier_key": "1k",
             "default_pricing_rule_id": "price_gpt_image_2_1k_v1",
             "created_at": "2026-05-06T00:00:00Z",
@@ -449,7 +449,7 @@ def test_admin_ai_routes_return_filtered_resources_and_write_audit_logs(monkeypa
         {
             "id": "route_gpt_primary",
             "model_key": "gpt-image-2",
-            "provider_key": "jiekou",
+            "provider_key": "geekai",
             "provider_model": "gpt-image-2",
             "route_key": "primary",
             "priority": 10,
@@ -614,17 +614,17 @@ def test_admin_ai_runtime_routes_return_persisted_runs_and_api_calls(monkeypatch
     assert run_record["modelId"] == "gpt-image-2"
     assert run_record["outputAssetIds"] == [f"asset_mock_{run_id}_1_admin-runtime-readback_refs0"]
     assert run_record["preflightStatus"] == "settled"
-    assert run_record["provider"] == "jiekou"
+    assert run_record["provider"] == "geekai"
     assert run_record["providerCost"] == 0.04
     assert run_record["providerCurrency"] == "USD"
-    assert run_record["routeKey"] == "jiekou-gpt-image-2-primary"
+    assert run_record["routeKey"] == "geekai-gpt-image-2-primary"
     assert run_record["runType"] == "image_generation"
     assert run_record["selectedTierKey"] == "1k"
     assert run_record["status"] == "succeeded"
     assert run_record["workspaceId"] == "workspace_group"
 
     api_calls = client.get(
-        "/api/v1/admin/ai/api-calls?status=succeeded&provider=jiekou",
+        "/api/v1/admin/ai/api-calls?status=succeeded&provider=geekai",
         headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
     )
     assert api_calls.status_code == 200
@@ -640,11 +640,11 @@ def test_admin_ai_runtime_routes_return_persisted_runs_and_api_calls(monkeypatch
             "modelId": "gpt-image-2",
             "nodeId": None,
             "pricingRuleId": "price_gpt_image_2_1k_v1",
-            "provider": "jiekou",
+            "provider": "geekai",
             "providerCost": 0.04,
             "providerCurrency": "USD",
             "routeId": "route_gpt_image_2_primary",
-            "routeKey": "jiekou-gpt-image-2-primary",
+            "routeKey": "geekai-gpt-image-2-primary",
             "runId": run_id,
             "status": "succeeded",
             "userId": "user_runtime",
@@ -652,14 +652,14 @@ def test_admin_ai_runtime_routes_return_persisted_runs_and_api_calls(monkeypatch
         }
     ]
     filtered_runs = client.get(
-        f"/api/v1/admin/ai/runs?runId={run_id}&routeId=route_gpt_image_2_primary&routeKey=jiekou-gpt-image-2-primary&provider=jiekou&pricingRuleId=price_gpt_image_2_1k_v1&preflightStatus=settled&workspaceId=workspace_group&boardId=board_runtime",
+        f"/api/v1/admin/ai/runs?runId={run_id}&routeId=route_gpt_image_2_primary&routeKey=geekai-gpt-image-2-primary&provider=geekai&pricingRuleId=price_gpt_image_2_1k_v1&preflightStatus=settled&workspaceId=workspace_group&boardId=board_runtime",
         headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
     )
     assert filtered_runs.status_code == 200
     assert [item["id"] for item in filtered_runs.json()["runs"]] == [run_id]
 
     filtered_api_calls = client.get(
-        f"/api/v1/admin/ai/api-calls?runId={run_id}&routeId=route_gpt_image_2_primary&routeKey=jiekou-gpt-image-2-primary&pricingRuleId=price_gpt_image_2_1k_v1&workspaceId=workspace_group&boardId=board_runtime",
+        f"/api/v1/admin/ai/api-calls?runId={run_id}&routeId=route_gpt_image_2_primary&routeKey=geekai-gpt-image-2-primary&pricingRuleId=price_gpt_image_2_1k_v1&workspaceId=workspace_group&boardId=board_runtime",
         headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
     )
     assert filtered_api_calls.status_code == 200
@@ -668,7 +668,7 @@ def test_admin_ai_runtime_routes_return_persisted_runs_and_api_calls(monkeypatch
 
     fake_db.ai_runs[run_id]["route_id"] = None
     legacy_filtered_runs = client.get(
-        "/api/v1/admin/ai/runs?routeId=route_gpt_image_2_primary&routeKey=jiekou-gpt-image-2-primary&provider=jiekou",
+        "/api/v1/admin/ai/runs?routeId=route_gpt_image_2_primary&routeKey=geekai-gpt-image-2-primary&provider=geekai",
         headers={"x-tangent-user-id": "user_admin", "x-tangent-workspace-id": "workspace_one"},
     )
     assert legacy_filtered_runs.status_code == 200
@@ -718,7 +718,7 @@ def test_admin_ai_route_metrics_report_direct_fallback_and_terminal_health(monke
             "estimated_latency": "5-12s",
             "enabled": True,
             "is_default": True,
-            "provider_key": "jiekou",
+            "provider_key": "geekai",
             "default_tier_key": "1k",
             "default_pricing_rule_id": "price_gpt_image_2_1k_v1",
             "created_at": "2026-05-06T00:00:00Z",
@@ -734,7 +734,7 @@ def test_admin_ai_route_metrics_report_direct_fallback_and_terminal_health(monke
             "node_id": None,
             "run_type": "image_generation",
             "model_id": "gpt-image-2",
-            "provider": "jiekou",
+            "provider": "geekai",
             "status": "succeeded",
             "input_asset_ids": [],
             "output_asset_ids": ["asset_direct"],
@@ -806,7 +806,7 @@ def test_admin_ai_route_metrics_report_direct_fallback_and_terminal_health(monke
             "node_id": None,
             "run_type": "image_generation",
             "model_id": "gpt-image-2",
-            "provider": "jiekou",
+            "provider": "geekai",
             "status": "failed",
             "input_asset_ids": [],
             "output_asset_ids": [],
@@ -844,7 +844,7 @@ def test_admin_ai_route_metrics_report_direct_fallback_and_terminal_health(monke
             "board_id": "board_runtime",
             "node_id": None,
             "model_id": "gpt-image-2",
-            "provider": "jiekou",
+            "provider": "geekai",
             "route_key": "primary",
             "route_id": "route_primary",
             "pricing_rule_id": "price_gpt_image_2_1k_v1",
@@ -865,7 +865,7 @@ def test_admin_ai_route_metrics_report_direct_fallback_and_terminal_health(monke
             "board_id": "board_runtime",
             "node_id": None,
             "model_id": "gpt-image-2",
-            "provider": "jiekou",
+            "provider": "geekai",
             "route_key": "primary",
             "route_id": "route_primary",
             "pricing_rule_id": "price_gpt_image_2_1k_v1",
@@ -907,7 +907,7 @@ def test_admin_ai_route_metrics_report_direct_fallback_and_terminal_health(monke
             "board_id": "board_runtime",
             "node_id": None,
             "model_id": "gpt-image-2",
-            "provider": "jiekou",
+            "provider": "geekai",
             "route_key": "primary",
             "route_id": "route_primary",
             "pricing_rule_id": "price_gpt_image_2_1k_v1",
@@ -997,7 +997,7 @@ def test_admin_ai_control_plane_patch_routes_persist_updates_and_audit(monkeypat
             "estimated_latency": "5-12s",
             "enabled": True,
             "is_default": True,
-            "provider_key": "jiekou",
+            "provider_key": "geekai",
             "default_tier_key": "1k",
             "default_pricing_rule_id": "price_gpt_image_2_1k_v1",
             "created_at": "2026-05-06T00:00:00Z",
@@ -1008,7 +1008,7 @@ def test_admin_ai_control_plane_patch_routes_persist_updates_and_audit(monkeypat
         {
             "id": "route_gpt_primary",
             "model_key": "gpt-image-2",
-            "provider_key": "jiekou",
+            "provider_key": "geekai",
             "provider_model": "gpt-image-2",
             "route_key": "primary",
             "priority": 10,
@@ -1097,7 +1097,7 @@ def test_admin_ai_control_plane_patch_routes_persist_updates_and_audit(monkeypat
     ]
 
 
-def test_admin_ai_provider_route_update_rejects_non_jiekou_provider(monkeypatch):
+def test_admin_ai_provider_route_update_rejects_non_geekai_provider(monkeypatch):
     fake_db = FakePostgresDatabase()
     fake_db.admin_roles = [
         {
@@ -1114,9 +1114,9 @@ def test_admin_ai_provider_route_update_rejects_non_jiekou_provider(monkeypatch)
         {
             "id": "route_gpt_primary",
             "model_key": "gpt-image-2",
-            "provider_key": "jiekou",
+            "provider_key": "geekai",
             "provider_model": "gpt-image-2",
-            "route_key": "jiekou-gpt-image-2-primary",
+            "route_key": "geekai-gpt-image-2-primary",
             "priority": 10,
             "weight": 100,
             "health_status": "healthy",
@@ -1166,7 +1166,7 @@ def test_admin_ai_publish_list_and_rollback_versions(monkeypatch):
             "estimated_latency": "5-12s",
             "enabled": True,
             "is_default": True,
-            "provider_key": "jiekou",
+            "provider_key": "geekai",
             "default_tier_key": "1k",
             "default_pricing_rule_id": "price_gpt_image_2_1k_v1",
             "created_at": "2026-05-06T00:00:00Z",
@@ -1323,7 +1323,7 @@ def test_admin_ai_api_calls_route_surfaces_failover_attempt_history(monkeypatch)
             "estimated_latency": "5-12s",
             "enabled": True,
             "is_default": True,
-            "provider_key": "jiekou",
+            "provider_key": "geekai",
             "default_tier_key": "1k",
             "default_pricing_rule_id": "price_gpt_image_2_1k_v1",
             "created_at": "2026-05-06T00:00:00Z",
@@ -1334,9 +1334,9 @@ def test_admin_ai_api_calls_route_surfaces_failover_attempt_history(monkeypatch)
         {
             "id": "route_gpt_image_2_primary",
             "model_key": "gpt-image-2",
-            "provider_key": "jiekou",
+            "provider_key": "geekai",
             "provider_model": "gpt-image-2",
-            "route_key": "jiekou-primary",
+            "route_key": "geekai-primary",
             "priority": 10,
             "weight": 100,
             "health_status": "healthy",

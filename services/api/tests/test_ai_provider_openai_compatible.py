@@ -62,8 +62,62 @@ def test_run_openai_compatible_attempt_flattens_hunyuan_system_prompt(monkeypatc
     first_message = messages[0]
     assert isinstance(first_message, dict)
     assert first_message["role"] == "user"
+    assert request_json["stream"] is True
     assert "System instruction:" in str(first_message["content"])
     assert "A clean ceramic cup poster" in str(first_message["content"])
+
+
+def test_run_openai_compatible_attempt_parses_streaming_text(monkeypatch):
+    captured_request: dict[str, object] = {}
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            _ = args
+            _ = kwargs
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            _ = exc_type
+            _ = exc
+            _ = tb
+            return False
+
+        def post(self, path: str, headers: dict[str, str], json: dict[str, object]):
+            captured_request["path"] = path
+            captured_request["headers"] = headers
+            captured_request["json"] = json
+            body = (
+                'data: {"choices":[{"delta":{"content":"Polished "}}]}\n\n'
+                'data: {"choices":[{"delta":{"content":"prompt."}}]}\n\n'
+                "data: [DONE]\n\n"
+            )
+            return httpx.Response(
+                200,
+                content=body.encode("utf-8"),
+                headers={"content-type": "text/event-stream"},
+                request=httpx.Request("POST", f"https://example.test{path}"),
+            )
+
+    monkeypatch.setattr("tangent_api.ai_provider_openai_compatible.httpx.Client", FakeClient)
+
+    result = run_openai_compatible_attempt(
+        _run_record(model_id="qwq-plus-latest", route_id="route_qwq_plus_latest_primary", run_type="text"),
+        _request(model_id="qwq-plus-latest", node_type="prompt_optimizer", run_type="text"),
+        _route(provider_model="qwq-plus-latest", route_id="route_qwq_plus_latest_primary"),
+        _context(),
+        api_key="test-key",
+        base_url="https://example.test/v1",
+    )
+
+    assert result.status == "succeeded"
+    assert result.text_output == "Polished prompt."
+    assert captured_request["path"] == "/chat/completions"
+    request_json = captured_request["json"]
+    assert isinstance(request_json, dict)
+    assert request_json["model"] == "qwq-plus-latest"
+    assert request_json["stream"] is True
 
 
 def _route(provider_model="gpt-image-2", route_id="route_gpt_image_2_primary"):

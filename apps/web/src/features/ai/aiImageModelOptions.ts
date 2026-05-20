@@ -1,67 +1,22 @@
 import type { NodeCardField } from '@/types/nodeRuntime'
 import { getDefaultImageModelId, getImageModelSelectOptions, normalizeAiModelId } from './aiModelCatalog'
+import {
+  gptImage2AspectRatios,
+  gptImage2Resolutions,
+  gptImage2SupportedSizeMap as gptImage2SupportedSizeMapContract,
+  nanoBananaAspectRatios,
+  nanoBananaImageSizes,
+} from './aiImageModelContracts'
 
-export const gptImage2AspectRatioOptions = [
-  { label: '1:1', value: '1:1' },
-  { label: '2:3', value: '2:3' },
-  { label: '3:2', value: '3:2' },
-  { label: '3:4', value: '3:4' },
-  { label: '4:3', value: '4:3' },
-  { label: '9:16', value: '9:16' },
-  { label: '16:9', value: '16:9' },
-  { label: '21:9', value: '21:9' },
-  { label: '9:21', value: '9:21' },
-  { label: '2:1', value: '2:1' },
-  { label: '1:2', value: '1:2' },
-  { label: '3:1', value: '3:1' },
-  { label: '1:3', value: '1:3' },
-]
+export const gptImage2SupportedSizeMap = gptImage2SupportedSizeMapContract
 
-export const gptImage2ResolutionOptions = [
-  { label: '1K', value: '1K' },
-  { label: '2K', value: '2K' },
-  { label: '4K', value: '4K' },
-]
+export const gptImage2AspectRatioOptions = toSimpleOptions(gptImage2AspectRatios)
 
-export const gptImage2SupportedSizeMap: Record<string, Partial<Record<string, string>>> = {
-  '1:1': { '1K': '1024x1024', '2K': '2048x2048' },
-  '2:3': { '1K': '1024x1536', '2K': '1360x2048' },
-  '3:2': { '1K': '1536x1024', '2K': '2048x1360' },
-  '3:4': { '2K': '1536x2048' },
-  '4:3': { '2K': '2048x1536' },
-  '9:16': { '2K': '1152x2048', '4K': '2160x3840' },
-  '16:9': { '2K': '2048x1152', '4K': '3840x2160' },
-  '21:9': { '2K': '2048x880' },
-  '9:21': { '2K': '880x2048' },
-  '2:1': { '2K': '2048x1024' },
-  '1:2': { '2K': '1024x2048' },
-  '3:1': { '2K': '2048x688' },
-  '1:3': { '2K': '688x2048' },
-}
+export const gptImage2ResolutionOptions = toSimpleOptions(gptImage2Resolutions)
 
-export const nanoBananaAspectRatioOptions = [
-  { label: '1:1', value: '1:1' },
-  { label: '2:3', value: '2:3' },
-  { label: '3:2', value: '3:2' },
-  { label: '3:4', value: '3:4' },
-  { label: '4:3', value: '4:3' },
-  { label: '4:5', value: '4:5' },
-  { label: '5:4', value: '5:4' },
-  { label: '9:16', value: '9:16' },
-  { label: '16:9', value: '16:9' },
-  { label: '21:9', value: '21:9' },
-  { label: '1:4', value: '1:4' },
-  { label: '4:1', value: '4:1' },
-  { label: '1:8', value: '1:8' },
-  { label: '8:1', value: '8:1' },
-]
+export const nanoBananaAspectRatioOptions = toSimpleOptions(nanoBananaAspectRatios)
 
-export const nanoBananaImageSizeOptions = [
-  { label: '0.5K', value: '0.5K' },
-  { label: '1K', value: '1K' },
-  { label: '2K', value: '2K' },
-  { label: '4K', value: '4K' },
-]
+export const nanoBananaImageSizeOptions = toSimpleOptions(nanoBananaImageSizes)
 
 export const seedreamSizeOptions = [
   { label: '2K auto', value: '2K' },
@@ -142,4 +97,8 @@ export function getImageGenerationCardFields(
 export function getGptImage2ResolutionOptions(aspectRatio: string) {
   const sizes = gptImage2SupportedSizeMap[aspectRatio] ?? gptImage2SupportedSizeMap['1:1']
   return gptImage2ResolutionOptions.filter((option) => Boolean(sizes[option.value]))
+}
+
+function toSimpleOptions(values: readonly string[]) {
+  return values.map((value) => ({ label: value, value }))
 }

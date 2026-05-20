@@ -89,7 +89,7 @@ API / server:
 - `S3_SECRET_ACCESS_KEY`
 - `RESEND_API_KEY` or the chosen email provider key
 - `SENTRY_DSN` or `TANGENT_ERROR_TRACKING_DSN` when backend error tracking is enabled
-- live AI provider keys such as `JIEKOU_IMAGE_KEY` and `JIEKOU_TEXT_KEY`
+- live AI provider keys such as `GEEKAI_BALANCE_IMAGE_API_KEY` and `GEEKAI_TEXT_API_KEY`
 - future payment live secrets and webhook secrets
 
 Use [api.env.example](./api.env.example) as the production API template and [docker-compose.api.yml](./docker-compose.api.yml) as the production API compose file.

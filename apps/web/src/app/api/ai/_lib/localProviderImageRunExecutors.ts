@@ -1,5 +1,6 @@
 import {
   buildJiekouImagePath,
+  geekAiNanoBanana2ModelId,
   getImageModelFamily,
   nanoBanana2ModelId,
   toJiekouNanoBananaImageSize,
@@ -45,6 +46,24 @@ const defaultImageModelExecutors: Record<ImageModelFamily, ImageModelExecutor> =
 }
 
 const providerImageModelExecutors: Partial<Record<string, Partial<Record<ImageModelFamily, ImageModelExecutor>>>> = {
+  geekai: {
+    'gpt-image-2': (input) => runGptImage2({
+      clientConfig: input.clientConfig,
+      count: input.count,
+      inputImages: input.inputImages,
+      prompt: input.prompt,
+      quality: input.gptQuality,
+      size: input.gptSize,
+    }),
+    'nano-banana-2': (input) => runGeekAiNanoBanana2({
+      aspectRatio: input.nanoBananaAspectRatio,
+      clientConfig: input.clientConfig,
+      count: input.count,
+      imageSize: input.nanoBananaImageSize,
+      inputImages: input.inputImages,
+      prompt: input.prompt,
+    }),
+  },
   jiekou: {
     'doubao-seedream-5.0-lite': (input) => runJiekouSeedreamLite({
       clientConfig: input.clientConfig,
@@ -95,6 +114,30 @@ async function runJiekouNanoBanana2(input: { aspectRatio: string; clientConfig: 
   const sharedBody = { aspect_ratio: toJiekouNanoBananaSize(input.aspectRatio), output_format: 'image/png', prompt: input.prompt, size: toJiekouNanoBananaImageSize(input.imageSize) }
   const endpoint = input.inputImages.length > 0 ? 'gemini-3.1-flash-image-edit' : 'gemini-3.1-flash-image-text-to-image'
   return runRepeatedJiekouImageGenerations(endpoint, { ...sharedBody, ...(input.inputImages.length > 0 ? { image_base64s: input.inputImages.map(toJiekouInlineImageBase64) } : {}) }, input.count, input.clientConfig)
+}
+
+async function runGeekAiNanoBanana2(input: { aspectRatio: string; clientConfig: ProviderClientConfig; count: number; imageSize: string; inputImages: string[]; prompt: string }) {
+  const sharedBody = {
+    image: {
+      aspect_ratio: input.aspectRatio,
+      image_size: input.imageSize,
+    },
+    messages: [{
+      content: createNanoBananaMessageContent(input.prompt, input.inputImages),
+      role: 'user',
+    }],
+    model: geekAiNanoBanana2ModelId,
+    stream: false,
+  }
+  const outputs: string[] = []
+  for (let index = 0; index < input.count; index += 1) {
+    outputs.push(...extractImageSources(await postProviderJson<ProviderImageResponse>(
+      '/chat/completions',
+      sharedBody,
+      input.clientConfig
+    )))
+  }
+  return outputs
 }
 
 async function runGptImage2(input: { clientConfig: ProviderClientConfig; count: number; inputImages: string[]; prompt: string; quality: string; size: string }) {
@@ -161,4 +204,14 @@ function createImageReferenceBody(inputImages: string[]) {
 
 function toJiekouInlineImageBase64(image: string) {
   return image.startsWith('data:') && image.includes(',') ? image.split(',', 2)[1] : image
+}
+
+function createNanoBananaMessageContent(prompt: string, inputImages: string[]) {
+  return [
+    { text: prompt, type: 'text' },
+    ...inputImages.map((imageUrl) => ({
+      image_url: { url: imageUrl },
+      type: 'image_url',
+    })),
+  ]
 }

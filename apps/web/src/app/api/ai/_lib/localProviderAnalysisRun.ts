@@ -12,6 +12,10 @@ import {
   readJsonResponseWithLimit,
   toAiInlineImageDataUrl,
 } from './aiInlineImageGuards'
+import {
+  postProviderChatCompletion,
+  type ProviderChatCompletionResponse,
+} from './localProviderChatCompletionStream'
 import { getAiModelDefinition } from '@/features/ai/mockAiContracts'
 import type { AiRunRecord, AiRunRequest } from '@/features/ai/aiTypes'
 import type { AiRunChargeSummary } from '@/features/billing/billingTypes'
@@ -32,20 +36,6 @@ type ProviderResponsesResponse = {
     type?: string
   }>
   output_text?: string | null
-}
-
-type ProviderChatMessageContent = string | Array<{ text?: string; type?: string }>
-
-type ProviderChatCompletionResponse = {
-  choices?: Array<{
-    message?: {
-      content?: ProviderChatMessageContent
-    }
-  }>
-  error?: {
-    message?: string
-  } | null
-  message?: string
 }
 
 type ProviderTextClientConfig = {
@@ -150,7 +140,7 @@ async function runResponsesAnalysis(input: { clientConfig: ProviderTextClientCon
 }
 
 async function runChatCompletionsAnalysis(input: { clientConfig: ProviderTextClientConfig; imageUrls: string[]; modelId: string; prompt: string }) {
-  const payload = await postProviderJson<ProviderChatCompletionResponse>('/chat/completions', {
+  const payload = await postProviderChatCompletion('/chat/completions', {
     max_completion_tokens: 1200,
     messages: [
       {
@@ -167,13 +157,12 @@ async function runChatCompletionsAnalysis(input: { clientConfig: ProviderTextCli
       },
     ],
     model: input.modelId,
-    stream: false,
   }, input.clientConfig)
   return extractChatCompletionText(payload).trim()
 }
 
 async function runOpenAiCompatibleAnalysis(input: { clientConfig: ProviderTextClientConfig; imageUrls: string[]; modelId: string; prompt: string }) {
-  const payload = await postProviderJson<ProviderChatCompletionResponse>('/chat/completions', {
+  const payload = await postProviderChatCompletion('/chat/completions', {
     max_completion_tokens: 1200,
     messages: [
       {
@@ -190,7 +179,6 @@ async function runOpenAiCompatibleAnalysis(input: { clientConfig: ProviderTextCl
       },
     ],
     model: input.modelId,
-    stream: false,
   }, input.clientConfig)
   return extractChatCompletionText(payload).trim()
 }

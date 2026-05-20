@@ -61,6 +61,8 @@ def test_alembic_revision_chain_is_linear():
         load_migration("20260518_0029_jiekou_gemini_flash_nano_banana.py"),
         load_migration("20260518_0030_ai_credit_pricing_and_remove_ocr.py"),
         load_migration("20260520_0031_security_rate_limit_idempotency.py"),
+        load_migration("20260520_0032_geekai_provider_routes.py"),
+        load_migration("20260520_0033_geekai_qwq_text_default.py"),
     ]
 
     for previous, current in zip(migrations, migrations[1:]):
@@ -96,6 +98,8 @@ def test_s1a_migrations_keep_required_schema_contracts():
     jiekou_gemini_flash_nano_banana = load_migration("20260518_0029_jiekou_gemini_flash_nano_banana.py")
     ai_credit_pricing_remove_ocr = load_migration("20260518_0030_ai_credit_pricing_and_remove_ocr.py")
     security_rate_limit_idempotency = load_migration("20260520_0031_security_rate_limit_idempotency.py")
+    geekai_provider_routes = load_migration("20260520_0032_geekai_provider_routes.py")
+    geekai_qwq_text_default = load_migration("20260520_0033_geekai_qwq_text_default.py")
     core_sql = "\n".join(core.UPGRADE)
     future_sql = "\n".join(future.UPGRADE)
     hardening_sql = "\n".join(hardening.UPGRADE)
@@ -124,6 +128,8 @@ def test_s1a_migrations_keep_required_schema_contracts():
     jiekou_gemini_flash_nano_banana_sql = "\n".join(jiekou_gemini_flash_nano_banana.UPGRADE)
     ai_credit_pricing_remove_ocr_sql = "\n".join(ai_credit_pricing_remove_ocr.UPGRADE)
     security_rate_limit_idempotency_sql = "\n".join(security_rate_limit_idempotency.UPGRADE)
+    geekai_provider_routes_sql = "\n".join(geekai_provider_routes.UPGRADE)
+    geekai_qwq_text_default_sql = "\n".join(geekai_qwq_text_default.UPGRADE)
 
     for table_name in [
         "tangent_workspace_members",
@@ -381,6 +387,24 @@ def test_s1a_migrations_keep_required_schema_contracts():
         "21.5",
     ]:
         assert contract in ai_credit_pricing_remove_ocr_sql
+
+    for contract in [
+        "provider_key = 'geekai'",
+        "geekai-deepseek-v3-1-primary",
+        "gemini-3.1-flash-image-preview",
+        '"aspectRatio":["1:1","2:3","3:2","3:4","4:3","4:5","5:4","9:16","16:9","21:9","1:4","4:1","1:8","8:1"]',
+        "geekai-seedream-5-lite-primary",
+    ]:
+        assert contract in geekai_provider_routes_sql
+
+    for contract in [
+        "qwq-plus-latest",
+        "route_qwq_plus_latest_primary",
+        "price_qwq_plus_latest_v1",
+        "geekai-qwq-plus-latest-primary",
+        "default_pricing_rule_id = 'price_qwq_plus_latest_v1'",
+    ]:
+        assert contract in geekai_qwq_text_default_sql
 
 
 def test_text_route_seed_uses_driver_sql_for_json_literals(monkeypatch):

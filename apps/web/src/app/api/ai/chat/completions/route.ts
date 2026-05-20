@@ -43,13 +43,14 @@ export async function POST(request: Request) {
     const model = getAiModelDefinition(body.model)
     const apiKey = getProviderApiKey(model.provider, 'text')
     const baseUrl = getProviderBaseUrl(model.provider, 'text')
+    const shouldStream = true
 
     const providerMessages = await normalizeMessagesForProvider(request, body.messages)
     const providerResponse = await fetch(`${baseUrl}/chat/completions`, {
       body: JSON.stringify({
         ...body,
         messages: providerMessages,
-        stream: body.stream ?? true,
+        stream: shouldStream,
       }),
       headers: {
         Accept: 'text/event-stream, application/json',
@@ -66,9 +67,8 @@ export async function POST(request: Request) {
       )
     }
 
-    if (!body.stream || !providerResponse.body) {
-      const payload = await readJsonResponseWithLimit(providerResponse)
-      return NextResponse.json(payload, { status: providerResponse.status })
+    if (!providerResponse.body) {
+      return NextResponse.json({ error: 'Provider stream response was empty.' }, { status: 502 })
     }
 
     return new Response(createCappedProviderStream(providerResponse.body), {

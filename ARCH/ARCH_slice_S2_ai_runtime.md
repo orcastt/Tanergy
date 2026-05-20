@@ -1,6 +1,6 @@
 # ARCH Slice S2: AI Runtime
 
-**Updated**: 2026-05-18
+**Updated**: 2026-05-20
 **Mode**: Architecture slice.
 
 ## Scope
@@ -155,13 +155,14 @@ enterprise          -> contract-defined workspace pool or personal fallback
 - Mock AiRun responses now include workspace kind, charged scope, charged account id, entitlement source and payer label, so frontend nodes can display the payer contract before real provider execution exists.
 - Mock AiRun now persists a simple lifecycle contract: create queues the run, a background executor moves it through running -> succeeded/failed, GET reads current state without mutating it, and cancel stops queued/running runs.
 - A first-pass provider-route execution shell now exists behind that lifecycle: route candidates are resolved from the control plane, a lightweight provider-adapter registry now owns the per-provider attempt boundary, route retry policy is honored inside the shell, and failover now stops on timeouts or work-started failures to avoid duplicate provider work.
-- The provider-adapter boundary now also has an opt-in live path: OpenAI-compatible routes can execute server-side image generation/edit calls, Google routes can execute `generateContent`-style requests, and successful image outputs are persisted as Assets through the existing storage adapter.
+- The provider-adapter boundary now also has an opt-in live path: GeekAI routes execute OpenAI-compatible text/analysis calls plus GeekAI-specific GPT Image 2 and Nano Banana 2 image calls, Google routes can execute `generateContent`-style requests, and successful image outputs are persisted as Assets through the existing storage adapter.
 - Stub-provider execution is now treated as a local/dev/test-only fallback unless explicitly re-enabled. In non-local runtimes such as staging, missing live-provider credentials fail closed instead of returning mock `asset_mock_*` outputs, and present credentials can drive live execution without depending on a separate staging-only mock switch.
 - Mock AiRun can optionally exercise real credit-ledger settlement when `TANGENT_AI_MOCK_LEDGER_CHARGING=1` and `DATABASE_URL` are configured: it estimates mock credits, rejects insufficient balance before success and writes a `usage_charge` ledger entry. That settlement now stays bound to the run's originally resolved charged account rather than the later read request context. The default local path still does not charge credits.
 - Successful run settlement now also persists normalized `provider_cost` / `provider_currency` onto the final `ai_runs` row and the final successful `ai_api_calls` attempt row, and the shell also writes attempt-level `api_cost_ledger` rows so Admin can inspect supplier-cost facts separately from user-credit charging.
 - The text-run path is now shared by both Prompt Optimizer and the message-native Chat node when the canvas is pointed at the FastAPI API: `AiRunRequest` accepts `params.messages`, optional `inputAssetIds` can be inlined server-side for OpenAI-compatible text calls, and terminal short text output is persisted on the run row.
-- Migration `20260514_0021_ai_image_model_refresh.py` now aligns the active image-generation catalog to `gpt-image-2`, `nano-banana-2`, `doubao-seedream-5.0-lite` and `jimeng_t2i_v40`. Legacy `gemini-3.1-flash-image-preview` remains compatibility-only and is no longer part of the active image-generation surface.
-- The current image-generation route defaults also stretch the live-provider timeout boundary to `240000 ms`, which matches the longer-running staged Jiekou image path instead of the shorter local defaults.
+- Migration `20260520_0032_geekai_provider_routes.py` switches active text, analysis and image route defaults back to GeekAI; `20260520_0033_geekai_qwq_text_default.py` makes `qwq-plus-latest` the active text/chat/prompt-optimizer default while keeping `qwen/qwen2.5-vl-72b-instruct` as the image-analysis default. `gpt-image-2` uses `/images/generations`; `nano-banana-2` maps to GeekAI `gemini-3.1-flash-image-preview` through `/chat/completions` with `image.aspect_ratio` and `image.image_size`. The Nano Banana 2 schema now includes the GeekAI extended aspect ratios `21:9`, `1:4`, `4:1`, `1:8` and `8:1` end to end.
+- GeekAI text calls now use `/chat/completions` with `stream: true`: the local Next chat proxy forwards SSE to the browser, and the FastAPI OpenAI-compatible AiRun adapter requests upstream streaming then folds SSE chunks back into the existing durable terminal `text_output` contract.
+- The current image-generation route defaults also stretch the live-provider timeout boundary to `240000 ms`, which matches the longer-running staged image path instead of the shorter local defaults.
 - The local Next bridge now reads shared frontend AI model/image metadata modules rather than duplicating aspect-ratio, tier and provider-compatibility facts across node-registry/runtime codepaths. Deprecated local Hunyuan message-shaping is removed from chat completions, and dead bridge-only text config stubs are no longer part of the active runtime surface.
 - Image Gen / Image Gen 4 model dropdown reads contract.
 - Konva runtimeGraph mock flow now exercises Prompt/Image/Chat/Image Gen/Analysis data passing, export ports and generated Asset refs without provider raw payloads.
@@ -171,7 +172,7 @@ enterprise          -> contract-defined workspace pool or personal fallback
 - OpenAI-compatible live execution now accepts `image_analysis` by sending prompt plus inline image refs through `chat/completions`, so live analysis is no longer Google-only at the adapter boundary.
 - Local Next AI/upload hardening is now more fail-closed and byte-budgeted: `/api/ai/runs` rejects unsupported text/local mock execution instead of silently fabricating a run, upload routes share bounded request/file readers, chat/image-analysis/image-generation reference images now enforce both per-image and total inline byte budgets before base64 expansion, and backend provider input assets now also enforce a total-byte ceiling so multi-image runs do not scale memory linearly without a hard stop.
 - Asset persistence is now moving off `data:` JSON as the primary browser upload contract: board thumbnails, selection captures, runtime asset migration and mock-generated images now prefer multipart file upload, while `/api/v1/assets/from-data-url` remains only as a small fallback path with an 8MB ceiling for explicitly bounded cases that still need client-generated inline thumbnails.
-- Remaining gaps are broader live-provider capability coverage, especially real image and analysis smoke on credentialed environments, plus staging/provider acceptance. Durable terminal short `text_output` persistence now exists, the message-native Chat node is on the same create/poll/cancel boundary, and the execution/settlement shell is separated enough to plug the rest in without rewriting the route contract. The largest decoupling gap is now the parallel Next local AI bridge, which still carries provider-specific payload shaping and should keep collapsing toward thin dev-only wrappers around the same server control-plane semantics.
+- Remaining gaps are broader live-provider capability coverage, especially real image and analysis smoke on credentialed environments, plus staging/provider acceptance. Durable terminal short `text_output` persistence now exists, the message-native Chat node is on the same create/poll/cancel boundary, and the execution/settlement shell is separated enough to plug the rest in without rewriting the route contract. The largest decoupling gap is now the parallel Next local AI bridge, which still carries some provider-specific payload shaping and should keep collapsing toward thin dev-only wrappers around the same server control-plane semantics.
 
 ## Launch-Readiness Sequence
 
@@ -181,7 +182,7 @@ enterprise          -> contract-defined workspace pool or personal fallback
 4. A persisted background executor plus timeout-safe primary->backup route shell now exist; live provider-specific adapters can plug into the same one-run / one-payer / no-double-charge boundary.
 5. Expand capability coverage, provider-cost normalization depth and real post-provider settlement on top of the new per-attempt `ai_api_calls` timeline and extracted finalization boundary.
 6. Upload generated outputs as Assets; return Asset refs and short summaries only.
-7. Hand-test and harden the Konva Run/Stop create/poll/cancel path against one credentialed live provider route from the refreshed GPT Image 2 / Nano Banana 2 / Doubao Seedream / Jimeng lane.
+7. Hand-test and harden the Konva Run/Stop create/poll/cancel path against one credentialed live provider route from the refreshed GeekAI GPT Image 2 / Nano Banana 2 / Doubao Seedream lane.
 8. Add provider failure, timeout, rate-limit and cost tests.
 
 ## Do Not Do
@@ -354,7 +355,8 @@ enterprise          -> contract-defined workspace pool or personal fallback
 - 成功 run 的 settlement 现在也会把归一化后的 `provider_cost` / `provider_currency` 写进最终 `ai_runs` 行和成功的 `ai_api_calls` attempt 行，同时还会按尝试写入 `api_cost_ledger`，让 Admin 可以把供应商成本与用户积分扣费拆开看。
 - `AiRunRequest` 现在也承认 `runType="text"` 与 `systemPrompt`；控制平面会按 text capability 选 model/route/pricing，而不会再在缺省路径里跌回 image default。
 - `tangent_ai_runs` 现在持久化 `text_output`，因此短文本结果不再只依赖进程内存或 `image_analysis` 的临时重建逻辑。
-- OpenAI-compatible / Jiekou-compatible live adapter 现在可以用非流式 `chat/completions` 返回 terminal `text_output`，并且已经接受 `image_analysis` 这类 prompt + inline image refs 的分析请求；Google `generateContent` 路径也已经接受 text runs；当画布指向 FastAPI persistence API 时，Prompt Optimizer 和 message-native Chat 都会走同一套 create/poll/cancel AiRun lifecycle，而不是只依赖 Next 本地 chat proxy。
+- OpenAI-compatible / GeekAI-compatible live adapter 现在会用 `stream: true` 调用 `/chat/completions`，再把 SSE chunks 聚合成现有 terminal `text_output`；它已经接受 `image_analysis` 这类 prompt + inline image refs 的分析请求。Google `generateContent` 路径也已经接受 text runs；当画布指向 FastAPI persistence API 时，Prompt Optimizer 和 message-native Chat 都会走同一套 create/poll/cancel AiRun lifecycle，而不是只依赖 Next 本地 chat proxy。
+- `20260520_0033_geekai_qwq_text_default.py` 已把文本默认切到 GeekAI `qwq-plus-latest`，Chat 和 Prompt Optimizer 默认使用该模型；Analysis 仍默认 `qwen/qwen2.5-vl-72b-instruct`，因为 QwQ 在 GeekAI 模型页标记为 chat/text 模型，不作为视觉分析默认。
 - `20260514_0021_ai_image_model_refresh.py` 现在会把活跃生图目录对齐到 `gpt-image-2`、`nano-banana-2`、`doubao-seedream-5.0-lite` 和 `jimeng_t2i_v40`；`gemini-3.1-flash-image-preview` 只保留兼容用途，不再属于活跃生图面，同时长耗时生图的 live-provider 超时边界已统一到 `240000 ms`。
 - Image Gen / Image Gen 4 的 model dropdown 已读取该合同。
 - Konva runtimeGraph mock 流程现在已经覆盖 Prompt / Image / Chat / Image Gen / Analysis 的数据传递、导出端口，以及生成 Asset refs 的流程，同时不会把 provider 原始载荷写入文档。

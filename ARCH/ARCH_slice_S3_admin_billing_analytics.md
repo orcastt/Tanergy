@@ -653,4 +653,4 @@ Remaining rework:
 - Hosted live-provider run-settlement smoke still needs to exercise real provider output persistence through the same payer contract.
 - Provider-specific webhook signatures, invoice/refund handling and deployed staging smoke must replace manual-test completion as the authority for grants and subscription state.
 - Email invites, board-specific assignment UI and richer audit events remain.
-- Jiekou-first canvas fast path must be reconciled into S2 server provider-route/billing control plane before production reliance.
+- GeekAI-first canvas fast path must be reconciled into S2 server provider-route/billing control plane before production reliance.

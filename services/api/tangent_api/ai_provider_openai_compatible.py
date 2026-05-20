@@ -4,6 +4,7 @@ from typing import Optional
 
 import httpx
 
+from tangent_api.ai_provider_chat_streaming import parse_chat_completion_response
 from tangent_api.ai_provider_assets import (
     decode_b64_image,
     download_provider_image,
@@ -50,7 +51,10 @@ def run_openai_compatible_attempt(
             else:
                 response = _post_image_generation(client, api_key, payload, route)
             response.raise_for_status()
-            body = _parse_provider_json(response)
+            if payload.run_type in {"image_analysis", "text"}:
+                body = _parse_text_completion_response(response)
+            else:
+                body = _parse_provider_json(response)
     except httpx.HTTPStatusError as exc:
         return _http_failure(route, exc, started_at)
     except httpx.HTTPError as exc:
@@ -152,7 +156,7 @@ def _post_text_completion(
     request_json = {
         "model": route.provider_model,
         "messages": _text_messages(payload, context, route),
-        "stream": False,
+        "stream": True,
     }
     max_completion_tokens = _optional_positive_int(payload.params.get("maxCompletionTokens"))
     if max_completion_tokens is not None:
@@ -220,6 +224,15 @@ def _parse_provider_json(response: httpx.Response) -> dict[str, object]:
     if not isinstance(body, dict):
         raise ValueError("Provider response was not a JSON object.")
     return body
+
+
+def _parse_text_completion_response(response: httpx.Response) -> dict[str, object]:
+    return parse_chat_completion_response(
+        response.content,
+        content_length=response.headers.get("content-length"),
+        content_type=response.headers.get("content-type"),
+        max_bytes=MAX_PROVIDER_JSON_BYTES,
+    )
 
 
 def _failure(

@@ -1,17 +1,40 @@
 import type { AiCapability, AiModelOption } from './aiTypes'
+import {
+  gptImage2AspectRatios,
+  gptImage2Resolutions,
+  nanoBananaAspectRatios,
+  nanoBananaImageSizes,
+  seedreamSizeValues,
+} from './aiImageModelContracts'
+
+const qwqPlusLatestModelId = 'qwq-plus-latest'
+const qwenVisionModelId = 'qwen/qwen2.5-vl-72b-instruct'
 
 const fallbackAiModels: AiModelOption[] = [
   {
     capabilities: ['text'],
-    costHint: 'Token-priced text reasoning for prompt optimization and general chat.',
+    costHint: 'GeekAI streaming chat default for canvas chat and prompt optimization.',
+    defaultTierKey: null,
+    displayName: 'QwQ Plus Latest',
+    estimatedLatency: '2-8s',
+    id: qwqPlusLatestModelId,
+    isDefault: true,
+    isEnabled: true,
+    parameterSchema: {},
+    provider: 'geekai',
+    tierOptions: [],
+  },
+  {
+    capabilities: ['text'],
+    costHint: 'GeekAI fallback text model kept for operator rollback.',
     defaultTierKey: null,
     displayName: 'DeepSeek V3.1',
     estimatedLatency: '1-4s',
     id: 'deepseek/deepseek-v3.1',
-    isDefault: true,
+    isDefault: false,
     isEnabled: true,
     parameterSchema: {},
-    provider: 'jiekou',
+    provider: 'geekai',
     tierOptions: [],
   },
   {
@@ -20,16 +43,16 @@ const fallbackAiModels: AiModelOption[] = [
     defaultTierKey: null,
     displayName: 'Qwen 2.5 VL 72B',
     estimatedLatency: '2-8s',
-    id: 'qwen/qwen2.5-vl-72b-instruct',
+    id: qwenVisionModelId,
     isDefault: false,
     isEnabled: true,
     parameterSchema: {},
-    provider: 'jiekou',
+    provider: 'geekai',
     tierOptions: [],
   },
   {
     capabilities: ['image_generation', 'image_edit'],
-    costHint: 'Aspect ratio UI maps to the supported Jiekou GPT Image 2 render tiers.',
+    costHint: 'GeekAI GPT Image 2 with tested 1K, 2K, and 4K render tiers.',
     defaultTierKey: '1k',
     displayName: 'GPT Image 2',
     estimatedLatency: '5-12s',
@@ -37,10 +60,10 @@ const fallbackAiModels: AiModelOption[] = [
     isDefault: true,
     isEnabled: true,
     parameterSchema: {
-      aspectRatio: ['1:1', '2:3', '3:2', '3:4', '4:3', '9:16', '16:9', '21:9', '9:21', '2:1', '1:2', '3:1', '1:3'],
-      resolution: ['1K', '2K', '4K'],
+      aspectRatio: [...gptImage2AspectRatios],
+      resolution: [...gptImage2Resolutions],
     },
-    provider: 'jiekou',
+    provider: 'geekai',
     tierOptions: [
       { key: '1k', label: '1K', parameterKey: 'resolution' },
       { key: '2k', label: '2K', parameterKey: 'resolution' },
@@ -49,7 +72,7 @@ const fallbackAiModels: AiModelOption[] = [
   },
   {
     capabilities: ['image_generation', 'image_edit', 'image_reference'],
-    costHint: 'Nano Banana 2 backend for fast image generation and edits.',
+    costHint: 'GeekAI Nano Banana 2 with common and extended aspect ratios.',
     defaultTierKey: '1k',
     displayName: 'Nano Banana 2',
     estimatedLatency: '4-10s',
@@ -57,10 +80,10 @@ const fallbackAiModels: AiModelOption[] = [
     isDefault: false,
     isEnabled: true,
     parameterSchema: {
-      aspectRatio: ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9', '1:4', '4:1', '1:8', '8:1'],
-      imageSize: ['0.5K', '1K', '2K', '4K'],
+      aspectRatio: [...nanoBananaAspectRatios],
+      imageSize: [...nanoBananaImageSizes],
     },
-    provider: 'jiekou',
+    provider: 'geekai',
     tierOptions: [
       { key: '0_5k', label: '0.5K', parameterKey: 'imageSize' },
       { key: '1k', label: '1K', parameterKey: 'imageSize' },
@@ -78,9 +101,9 @@ const fallbackAiModels: AiModelOption[] = [
     isDefault: false,
     isEnabled: true,
     parameterSchema: {
-      seedreamSize: ['2K', '3K', '4K', '2048x2048', '2304x1728', '1728x2304', '2848x1600', '1600x2848', '2496x1664', '1664x2496', '3136x1344', '3072x3072', '3456x2592', '2592x3456', '4096x2304', '2304x4096', '3744x2496', '2496x3744', '4704x2016', '4096x4096', '3520x4704', '4704x3520', '5504x3040', '3040x5504', '3328x4992', '4992x3328', '6240x2656'],
+      seedreamSize: [...seedreamSizeValues],
     },
-    provider: 'jiekou',
+    provider: 'geekai',
     tierOptions: [],
   },
 ]
@@ -104,21 +127,21 @@ export function getDefaultImageModelId() {
 }
 
 export function getDefaultChatModelId() {
-  return getChatCapableModels().find((model) => model.id === 'deepseek/deepseek-v3.1' && model.isEnabled)?.id
+  return getChatCapableModels().find((model) => model.id === qwqPlusLatestModelId && model.isEnabled)?.id
     ?? getChatCapableModels().find((model) => model.isDefault && model.isEnabled)?.id
     ?? getChatCapableModels().find((model) => model.isEnabled)?.id
     ?? fallbackAiModels[0].id
 }
 
 export function getDefaultAnalysisModelId() {
-  return getAiModels('image_analysis').find((model) => model.id === 'qwen/qwen2.5-vl-72b-instruct' && model.isEnabled)?.id
+  return getAiModels('image_analysis').find((model) => model.id === qwenVisionModelId && model.isEnabled)?.id
     ?? getAiModels('image_analysis').find((model) => model.isDefault && model.isEnabled)?.id
     ?? getAiModels('image_analysis').find((model) => model.isEnabled)?.id
     ?? fallbackAiModels[0].id
 }
 
 export function getDefaultPromptOptimizerModelId() {
-  return getPromptOptimizerModels().find((model) => model.id === 'deepseek/deepseek-v3.1' && model.isEnabled)?.id
+  return getPromptOptimizerModels().find((model) => model.id === qwqPlusLatestModelId && model.isEnabled)?.id
     ?? getPromptOptimizerModels().find((model) => model.isEnabled)?.id
     ?? fallbackAiModels[0].id
 }

@@ -251,14 +251,15 @@ Edit `~/apps/shared/staging/api.env` and fill:
 - `S3_BUCKET`
 - `S3_ACCESS_KEY_ID`
 - `S3_SECRET_ACCESS_KEY`
-- `JIEKOU_TEXT_KEY` for the active text + multimodal text lane used by `analysis`, `chat`, and `prompt optimizer`
-- `JIEKOU_IMAGE_KEY` for the active image lane used by `gpt-image-2`, `nano-banana-2`, and `doubao-seedream-5.0-lite`
-- `JIEKOU_VIDEO_KEY` as the reserved placeholder for a future video split
-- optional `JIEKOU_BASE_URL` or scope-specific overrides such as `JIEKOU_TEXT_BASE_URL` and `JIEKOU_IMAGE_BASE_URL` only when you are not using the default Jiekou endpoints
+- `GEEKAI_TEXT_API_KEY` for the active text + multimodal text lane used by `analysis`, `chat`, and `prompt optimizer`
+- `GEEKAI_BALANCE_IMAGE_API_KEY` for the active image lane used by `gpt-image-2`, `nano-banana-2`, and `doubao-seedream-5.0-lite`
+- `GEEKAI_OFFICIAL_IMAGE_API_KEY` as an optional secondary image lane for manual fallback
+- `GEEKAI_VIDEO_API_KEY` as the reserved placeholder for a future video split
+- optional `GEEKAI_BASE_URL` or scope-specific overrides such as `GEEKAI_TEXT_BASE_URL` and `GEEKAI_BALANCE_IMAGE_API_KEY_BASE_URL` only when you are not using `https://geekai.co/api/v1`
 - optional `SENTRY_DSN` or `TANGENT_ERROR_TRACKING_DSN` when backend error tracking is enabled
 - optional `TANGENT_API_SLOW_RESPONSE_MS` and `TANGENT_MEMORY_RSS_WARN_MB` for API performance alerts
 
-Retired provider env names such as `GEEKAI_API_KEY` may remain commented in private worksheets for rotation history, but they should not be active in staging unless a rollback plan explicitly re-enables legacy provider routes. Do not delete old key notes from private operator records; comment them with the date/reason, rotate the live runtime env to the current Jiekou variables, then rerun the AI smoke.
+Retired provider env names such as `JIEKOU_IMAGE_KEY` may remain commented in private worksheets for rotation history, but they should not be active in staging unless a rollback plan explicitly re-enables legacy provider routes. Do not delete old key notes from private operator records; comment them with the date/reason, rotate the live runtime env to the current GeekAI variables, then rerun the AI smoke.
 
 Do not put live secret values into this repo's tracked markdown notes. Keep them in the server-local shared `api.env`, Vercel env, Clerk dashboard, or private operator storage.
 
@@ -499,7 +500,7 @@ Post-rotation browser checks:
 - Auth still needs full deployed browser smoke: local can use `dev-user` / `dev-workspace` plus dev bypass, but staging/prod must verify Clerk session, JWT issuer/JWKS/audience/authorized-party, exact allowed origins and the actual signed-in user's `admin_roles`.
 - Admin finance deploy smoke requires Alembic migrated to head before calling `/api/v1/admin/finance/summary`; stale DB schema can produce missing-column errors.
 - `TANGENT_POSTGRES_AUTO_CREATE_TABLES=0` is the preferred staging/prod path after running Alembic migrations. Temporary staging smoke can still use `1` while debugging a fresh database.
-- Staging AI smoke now expects real live Jiekou credentials such as `JIEKOU_IMAGE_KEY` and `JIEKOU_TEXT_KEY`; deployed environments should fail closed instead of silently returning mock `asset_mock_*` success.
+- Staging AI smoke now expects real live GeekAI credentials such as `GEEKAI_BALANCE_IMAGE_API_KEY` and `GEEKAI_TEXT_API_KEY`; deployed environments should fail closed instead of silently returning mock `asset_mock_*` success.
 - Cloudflare SSL mode, WAF managed rules and rate limits still need either dashboard setup or a wider-scoped API token than DNS-only automation.
 - No backup / restore automation yet.
 - The active web app is Konva-only; staging/prod should not depend on any tldraw runtime or license path.

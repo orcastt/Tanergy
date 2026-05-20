@@ -1,4 +1,12 @@
 export {
+  gptImage2AspectRatios,
+  gptImage2Resolutions,
+  nanoBananaAspectRatios,
+  nanoBananaImageSizes,
+  seedreamSizeValues,
+} from './aiImageModelContracts'
+
+export {
   getGptImage2ResolutionOptions,
   getImageGenerationCardFields,
   gptImage2AspectRatioOptions,
