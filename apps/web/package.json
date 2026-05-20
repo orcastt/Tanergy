@@ -5,11 +5,16 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "start": "next start",
     "lint": "eslint .",
+    "test:e2e": "npm run build && playwright test",
+    "test:e2e:ci": "playwright test",
+    "test:e2e:install": "playwright install chromium firefox webkit",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.3.0",
+    "@sentry/nextjs": "^10.53.1",
     "clsx": "latest",
     "konva": "^10.3.0",
     "next": "latest",
@@ -21,6 +26,7 @@
     "zustand": "latest"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",

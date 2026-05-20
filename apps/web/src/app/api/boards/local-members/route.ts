@@ -3,6 +3,7 @@ import type {
   BoardMemberCreateInput,
   BoardMemberUpdateInput,
 } from '@/features/boards/boardTypes'
+import { rejectCrossSiteMutation } from '../../_lib/csrfGuard'
 import { getApiRequestContext } from '../../_lib/apiRequestContext'
 import { readJsonRequestWithLimit, requestBodyErrorStatus } from '../../_lib/requestBodyLimits'
 import { getBoardStorageAdapter } from '../_lib/boardStorageAdapter'
@@ -37,6 +38,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const originRejection = rejectCrossSiteMutation(request)
+    if (originRejection) return originRejection
     const body = await readJsonRequestWithLimit<Partial<BoardMemberCreateInput>>(request, maxBoardMemberRequestBytes)
     if (!body.boardId || !body.userId || !body.role) throw new Error('Missing board member fields.')
     const member = await getBoardStorageAdapter().upsertLocalBoardMember(
@@ -57,6 +60,8 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    const originRejection = rejectCrossSiteMutation(request)
+    if (originRejection) return originRejection
     const body = await readJsonRequestWithLimit<Partial<BoardMemberUpdateInput>>(request, maxBoardMemberRequestBytes)
     if (!body.boardId || !body.userId) throw new Error('Missing board member fields.')
     const member = await getBoardStorageAdapter().upsertLocalBoardMember(
@@ -77,6 +82,8 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const originRejection = rejectCrossSiteMutation(request)
+    if (originRejection) return originRejection
     const body = await readJsonRequestWithLimit<{ boardId?: string; userId?: string }>(request, maxBoardMemberRequestBytes)
     if (!body.boardId || !body.userId) throw new Error('Missing boardId or userId.')
     const userId = await getBoardStorageAdapter().removeLocalBoardMember(

@@ -1,7 +1,22 @@
+import base64
+import hashlib
+import secrets
 from typing import Any, Optional
+
+from fastapi import HTTPException
+
+from tangent_api.safe_text import normalize_optional_safe_text, normalize_safe_label
 
 BOARD_CARD_COLORS = {"cream", "mint", "peach", "yellow", "soft"}
 BOARD_VISIBILITY = {"private", "workspace", "public"}
+BOARD_SHARE_ID_BYTES = 32
+BOARD_SHARE_PASSWORD_HASH_ITERATIONS = 210_000
+BOARD_SHARE_PASSWORD_MAX_LENGTH = 256
+
+
+def normalize_board_title(value: Optional[str], fallback: str = "Untitled Board") -> str:
+    source = value if value is not None else fallback
+    return normalize_safe_label(source, field_name="Board title")
 
 
 def normalize_board_card_color(value: Optional[str]) -> Optional[str]:
@@ -9,10 +24,7 @@ def normalize_board_card_color(value: Optional[str]) -> Optional[str]:
 
 
 def normalize_board_description(value: Optional[str]) -> Optional[str]:
-    if not value:
-        return None
-    trimmed = value.strip()
-    return trimmed[:280] if trimmed else None
+    return normalize_optional_safe_text(value, field_name="Board note", max_length=280)
 
 
 def normalize_board_share_id(value: Optional[str]) -> Optional[str]:
@@ -22,6 +34,73 @@ def normalize_board_share_id(value: Optional[str]) -> Optional[str]:
     if 8 <= len(trimmed) <= 64 and all(char.isalnum() or char in "_-" for char in trimmed):
         return trimmed
     return None
+
+
+def create_board_share_id() -> str:
+    return secrets.token_urlsafe(BOARD_SHARE_ID_BYTES)
+
+
+def normalize_board_share_password(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise HTTPException(status_code=400, detail="Invalid board share password.")
+    if not value.strip():
+        raise HTTPException(status_code=400, detail="Board share password cannot be empty.")
+    if len(value) > BOARD_SHARE_PASSWORD_MAX_LENGTH:
+        raise HTTPException(status_code=400, detail="Board share password is too long.")
+    return value
+
+
+def create_board_share_password_hash(password: str) -> str:
+    normalized = normalize_board_share_password(password)
+    if normalized is None:
+        raise HTTPException(status_code=400, detail="Board share password is required.")
+    salt = secrets.token_bytes(16)
+    digest = _hash_board_share_password(normalized, salt, BOARD_SHARE_PASSWORD_HASH_ITERATIONS)
+    return "$".join(
+        [
+            "pbkdf2_sha256",
+            str(BOARD_SHARE_PASSWORD_HASH_ITERATIONS),
+            _urlsafe_b64encode(salt),
+            _urlsafe_b64encode(digest),
+        ]
+    )
+
+
+def verify_board_share_password(password: Optional[str], password_hash: Optional[str]) -> bool:
+    if not password_hash:
+        return True
+    try:
+        normalized = normalize_board_share_password(password)
+    except HTTPException:
+        return False
+    if normalized is None:
+        return False
+    try:
+        algorithm, iterations_value, salt_value, digest_value = password_hash.split("$", 3)
+        iterations = int(iterations_value)
+        salt = _urlsafe_b64decode(salt_value)
+        expected_digest = _urlsafe_b64decode(digest_value)
+    except (TypeError, ValueError):
+        return False
+    if algorithm != "pbkdf2_sha256" or iterations < 100_000:
+        return False
+    actual_digest = _hash_board_share_password(normalized, salt, iterations)
+    return secrets.compare_digest(actual_digest, expected_digest)
+
+
+def _hash_board_share_password(password: str, salt: bytes, iterations: int) -> bytes:
+    return hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations)
+
+
+def _urlsafe_b64encode(value: bytes) -> str:
+    return base64.urlsafe_b64encode(value).decode("ascii").rstrip("=")
+
+
+def _urlsafe_b64decode(value: str) -> bytes:
+    padded = value + "=" * (-len(value) % 4)
+    return base64.urlsafe_b64decode(padded.encode("ascii"))
 
 
 def normalize_board_thumbnail_url(value: Optional[str]) -> Optional[str]:

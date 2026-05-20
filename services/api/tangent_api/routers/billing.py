@@ -26,6 +26,8 @@ from tangent_api.billing_webhooks import process_billing_webhook
 from tangent_api.plan_catalog import list_plan_catalog
 from tangent_api.plan_catalog_schemas import PlanCatalogResponse
 from tangent_api.request_context import ApiRequestContext, get_request_context
+from tangent_api.security_business_limits import assert_daily_business_limit
+from tangent_api.security_idempotency import run_idempotent
 from tangent_api.workspace_entitlements import build_billing_me_response
 from tangent_api.workspace_schemas import BillingMeResponse
 
@@ -69,50 +71,74 @@ def get_billing_plans() -> PlanCatalogResponse:
 @router.post("/topups/checkout", response_model=BillingPaymentMutationResponse)
 def post_topup_checkout(
     input_data: BillingTopupCheckoutRequest,
+    request: Request,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> BillingPaymentMutationResponse:
     _require_self_serve_checkout_enabled()
-    payment = create_topup_checkout(
+    return run_billing_checkout_idempotent(
+        request,
         context,
-        credits=input_data.credits,
-        currency=input_data.currency,
-        metadata=input_data.metadata,
+        action="billing.topup.checkout",
+        fingerprint_payload=input_data,
+        produce=lambda: payment_checkout_response(
+            create_topup_checkout(
+                context,
+                credits=input_data.credits,
+                currency=input_data.currency,
+                metadata=input_data.metadata,
+            )
+        ),
     )
-    return payment_checkout_response(payment)
 
 
 @router.post("/teams/checkout", response_model=BillingPaymentMutationResponse)
 def post_team_subscription_checkout(
     input_data: BillingTeamSubscriptionCheckoutRequest,
+    request: Request,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> BillingPaymentMutationResponse:
     _require_self_serve_checkout_enabled()
-    payment = create_team_subscription_checkout(
+    return run_billing_checkout_idempotent(
+        request,
         context,
-        billing_interval=input_data.billing_interval,
-        currency=input_data.currency,
-        metadata=input_data.metadata,
-        plan_key=input_data.plan_key,
-        quantity=input_data.quantity,
-        team_name=input_data.team_name,
+        action="billing.team.checkout",
+        fingerprint_payload=input_data,
+        produce=lambda: payment_checkout_response(
+            create_team_subscription_checkout(
+                context,
+                billing_interval=input_data.billing_interval,
+                currency=input_data.currency,
+                metadata=input_data.metadata,
+                plan_key=input_data.plan_key,
+                quantity=input_data.quantity,
+                team_name=input_data.team_name,
+            )
+        ),
     )
-    return payment_checkout_response(payment)
 
 
 @router.post("/collaborate/checkout", response_model=BillingPaymentMutationResponse)
 def post_collaborate_subscription_checkout(
     input_data: BillingCollaborateSubscriptionCheckoutRequest,
+    request: Request,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> BillingPaymentMutationResponse:
     _require_self_serve_checkout_enabled()
-    payment = create_collaborate_subscription_checkout(
+    return run_billing_checkout_idempotent(
+        request,
         context,
-        billing_interval=input_data.billing_interval,
-        currency=input_data.currency,
-        metadata=input_data.metadata,
-        plan_key=input_data.plan_key,
+        action="billing.collaborate.checkout",
+        fingerprint_payload=input_data,
+        produce=lambda: payment_checkout_response(
+            create_collaborate_subscription_checkout(
+                context,
+                billing_interval=input_data.billing_interval,
+                currency=input_data.currency,
+                metadata=input_data.metadata,
+                plan_key=input_data.plan_key,
+            )
+        ),
     )
-    return payment_checkout_response(payment)
 
 
 @router.post("/payments/{payment_id}/complete", response_model=BillingPaymentMutationResponse)
@@ -127,32 +153,48 @@ def post_billing_payment_complete(
 @router.post("/workspaces/current/seats/checkout", response_model=BillingPaymentMutationResponse)
 def post_workspace_seat_checkout(
     input_data: BillingSeatPurchaseCheckoutRequest,
+    request: Request,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> BillingPaymentMutationResponse:
     _require_self_serve_checkout_enabled()
-    payment = create_workspace_seat_checkout(
+    return run_billing_checkout_idempotent(
+        request,
         context,
-        currency=input_data.currency,
-        metadata=input_data.metadata,
-        plan_key=input_data.plan_key,
-        quantity=input_data.quantity,
+        action="billing.workspace_seat.checkout",
+        fingerprint_payload=input_data,
+        produce=lambda: payment_checkout_response(
+            create_workspace_seat_checkout(
+                context,
+                currency=input_data.currency,
+                metadata=input_data.metadata,
+                plan_key=input_data.plan_key,
+                quantity=input_data.quantity,
+            )
+        ),
     )
-    return payment_checkout_response(payment)
 
 
 @router.post("/workspaces/current/topups/checkout", response_model=BillingPaymentMutationResponse)
 def post_workspace_topup_checkout(
     input_data: BillingTopupCheckoutRequest,
+    request: Request,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> BillingPaymentMutationResponse:
     _require_self_serve_checkout_enabled()
-    payment = create_workspace_topup_checkout(
+    return run_billing_checkout_idempotent(
+        request,
         context,
-        credits=input_data.credits,
-        currency=input_data.currency,
-        metadata=input_data.metadata,
+        action="billing.workspace_topup.checkout",
+        fingerprint_payload=input_data,
+        produce=lambda: payment_checkout_response(
+            create_workspace_topup_checkout(
+                context,
+                credits=input_data.credits,
+                currency=input_data.currency,
+                metadata=input_data.metadata,
+            )
+        ),
     )
-    return payment_checkout_response(payment)
 
 
 @router.post("/webhooks/{provider}", response_model=BillingWebhookMutationResponse)
@@ -201,3 +243,34 @@ def _require_self_serve_checkout_enabled() -> None:
             status_code=403,
             detail="Self-serve billing checkout is disabled during beta. Admin Finance must enable plans manually.",
         )
+
+
+def assert_billing_checkout_daily_limit(context: ApiRequestContext) -> None:
+    assert_daily_business_limit(
+        context,
+        action="billing.checkout",
+        default_limit=100,
+        env_name="TANGENT_BILLING_CHECKOUT_DAILY_LIMIT",
+    )
+
+
+def run_billing_checkout_idempotent(
+    request: Request,
+    context: ApiRequestContext,
+    *,
+    action: str,
+    fingerprint_payload: object,
+    produce,
+) -> BillingPaymentMutationResponse:
+    return run_idempotent(
+        request,
+        context,
+        action=action,
+        fingerprint_payload=fingerprint_payload,
+        produce=lambda: _produce_billing_checkout_with_quota(context, produce),
+    )
+
+
+def _produce_billing_checkout_with_quota(context: ApiRequestContext, produce) -> BillingPaymentMutationResponse:
+    assert_billing_checkout_daily_limit(context)
+    return produce()

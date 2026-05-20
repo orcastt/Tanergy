@@ -13,6 +13,7 @@ from tangent_api.realtime.board_realtime_hub import (
     BoardRealtimeRoom,
 )
 from tangent_api.realtime.board_realtime_limits import BOARD_REALTIME_DOCUMENT_UPDATE_COUNT_LIMIT
+from tangent_api.security_events import list_recent_security_events, reset_security_events
 from tests.persistence_fakes import FakePostgresDatabase
 
 
@@ -80,6 +81,7 @@ def test_local_board_realtime_websocket_replays_updates_and_presence_cleanup(tmp
                 "updatedAt": "2099-05-12T12:00:00+00:00",
             },
         })
+        assert ws_one.receive_json()["type"] == "awareness-state"
 
         with client.websocket_connect(_realtime_url("realtime_local_board", "tab_two", room_key)) as ws_two:
             assert ws_two.receive_json() == {
@@ -583,6 +585,93 @@ def test_board_realtime_websocket_blocks_guest_document_writes(monkeypatch):
         assert websocket.receive_json() == {"states": [], "type": "awareness-batch"}
 
 
+def test_postgres_board_realtime_revalidates_editor_after_member_removed(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.workspaces = [{"id": "workspace_group", "kind": "group_workspace"}]
+    monkeypatch.setenv("TANGENT_BOARD_STORAGE_DRIVER", "postgres")
+    monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.storage.postgres_board_collaboration_store.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.storage.postgres_board_realtime_store.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+    group_headers = {
+        "x-tangent-user-id": "dev-user",
+        "x-tangent-workspace-id": "workspace_group",
+        "x-tangent-workspace-kind": "group_workspace",
+        "x-tangent-workspace-name": "Group workspace",
+    }
+
+    save_response = client.post(
+        "/api/v1/boards",
+        headers=group_headers,
+        json={
+            "boardId": "realtime_revoked_editor_board",
+            "document": {"assets": [], "shapes": [{"id": "shape_owner"}]},
+            "title": "Realtime Revoked Editor Board",
+        },
+    )
+    assert save_response.status_code == 200
+    editor_response = client.post(
+        "/api/v1/boards/realtime_revoked_editor_board/members",
+        headers=group_headers,
+        json={"userId": "user_editor", "role": "editor", "displayName": "Editor User"},
+    )
+    assert editor_response.status_code == 200
+
+    room_key = "board:workspace_group:realtime_revoked_editor_board"
+    reset_security_events()
+    with client.websocket_connect(
+        _realtime_url(
+            "realtime_revoked_editor_board",
+            "tab_editor_revoked",
+            room_key,
+            user_id="user_editor",
+            workspace_id="workspace_group",
+            workspace_kind="group_workspace",
+            workspace_name="Group workspace",
+            workspace_role="guest",
+        )
+    ) as websocket:
+        assert websocket.receive_json() == {
+            "documentVersion": 0,
+            "requestCompaction": False,
+            "seedRoom": True,
+            "type": "sync-state",
+            "updates": [],
+        }
+        assert websocket.receive_json() == {"states": [], "type": "awareness-batch"}
+
+        delete_response = client.delete(
+            "/api/v1/boards/realtime_revoked_editor_board/members/user_editor",
+            headers=group_headers,
+        )
+        assert delete_response.status_code == 200
+
+        websocket.send_json({"type": "yjs-update", "update": [4, 4, 4]})
+        with pytest.raises(WebSocketDisconnect) as excinfo:
+            websocket.receive_json()
+        assert excinfo.value.code == 4403
+
+    assert list_recent_security_events()[-1]["reason"] == "realtime_write_access_revoked"
+    with client.websocket_connect(
+        _realtime_url(
+            "realtime_revoked_editor_board",
+            "tab_owner_after_revoked",
+            room_key,
+            workspace_id="workspace_group",
+            workspace_kind="group_workspace",
+            workspace_name="Group workspace",
+        )
+    ) as websocket:
+        assert websocket.receive_json() == {
+            "documentVersion": 0,
+            "requestCompaction": False,
+            "seedRoom": True,
+            "type": "sync-state",
+            "updates": [],
+        }
+        assert websocket.receive_json() == {"states": [], "type": "awareness-batch"}
+
+
 def test_local_board_realtime_websocket_drops_expired_awareness_state(tmp_path, monkeypatch):
     monkeypatch.setenv("TANGENT_BOARD_STORAGE_DIR", str(tmp_path / "boards"))
     monkeypatch.setenv("TANGENT_BOARD_STORAGE_DRIVER", "local-dev")
@@ -631,90 +720,6 @@ def test_local_board_realtime_websocket_drops_expired_awareness_state(tmp_path, 
                 "updates": [],
             }
             assert ws_two.receive_json() == {"states": [], "type": "awareness-batch"}
-
-
-def test_local_board_realtime_websocket_rejects_stale_compaction_publish(tmp_path, monkeypatch):
-    monkeypatch.setenv("TANGENT_BOARD_STORAGE_DIR", str(tmp_path / "boards"))
-    monkeypatch.setenv("TANGENT_BOARD_STORAGE_DRIVER", "local-dev")
-    client = TestClient(app)
-
-    save_response = client.post(
-        "/api/v1/boards",
-        json={
-            "boardId": "realtime_stale_compaction_board",
-            "document": {"assets": [], "shapes": [{"id": "shape_stale"}]},
-            "title": "Realtime Stale Compaction Board",
-        },
-    )
-    assert save_response.status_code == 200
-
-    collaboration_response = client.get("/api/v1/boards/realtime_stale_compaction_board/collaboration")
-    assert collaboration_response.status_code == 200
-    room_key = collaboration_response.json()["roomKey"]
-
-    with client.websocket_connect(_realtime_url("realtime_stale_compaction_board", "tab_compactor", room_key)) as ws_compactor:
-        assert ws_compactor.receive_json()["type"] == "sync-state"
-        assert ws_compactor.receive_json() == {"states": [], "type": "awareness-batch"}
-        ws_compactor.send_json({"documentVersion": 0, "type": "sync-state-publish", "update": [5, 5, 5]})
-        assert ws_compactor.receive_json() == {
-            "documentVersion": 1,
-            "requestCompaction": False,
-            "type": "sync-state-accepted",
-            "updateCount": 1,
-        }
-
-        with client.websocket_connect(_realtime_url("realtime_stale_compaction_board", "tab_other", room_key)) as ws_other:
-            assert ws_other.receive_json() == {
-                "documentVersion": 1,
-                "requestCompaction": False,
-                "seedRoom": False,
-                "type": "sync-state",
-                "updates": [[5, 5, 5]],
-            }
-            assert ws_other.receive_json() == {"states": [], "type": "awareness-batch"}
-
-            for index in range(BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD - 1):
-                ws_compactor.send_json({"type": "yjs-update", "update": [index, index + 1]})
-
-            assert ws_compactor.receive_json() == {
-                "documentVersion": BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD,
-                "requestCompaction": True,
-                "type": "document-compact-request",
-                "updateCount": BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD,
-            }
-
-            ws_other.send_json({"type": "yjs-update", "update": [99, 100]})
-            ws_compactor.send_json({
-                "documentVersion": BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD,
-                "type": "sync-state-publish",
-                "update": [4, 4, 4, 4],
-            })
-
-            assert ws_compactor.receive_json() == {
-                "documentVersion": BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD + 1,
-                "from": "tab_other",
-                "type": "yjs-update",
-                "update": [99, 100],
-            }
-            resync_state = ws_compactor.receive_json()
-            assert resync_state["documentVersion"] == BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD + 1
-            assert resync_state["requestCompaction"] is True
-            assert resync_state["seedRoom"] is False
-            assert resync_state["type"] == "sync-state"
-            assert len(resync_state["updates"]) == BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD + 1
-            assert resync_state["updates"][0] == [5, 5, 5]
-            assert resync_state["updates"][-1] == [99, 100]
-
-    with client.websocket_connect(_realtime_url("realtime_stale_compaction_board", "tab_verify", room_key)) as websocket:
-        sync_state = websocket.receive_json()
-        assert sync_state["documentVersion"] == BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD + 1
-        assert sync_state["requestCompaction"] is True
-        assert sync_state["seedRoom"] is False
-        assert sync_state["type"] == "sync-state"
-        assert len(sync_state["updates"]) == BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD + 1
-        assert sync_state["updates"][0] == [5, 5, 5]
-        assert sync_state["updates"][-1] == [99, 100]
-        assert websocket.receive_json() == {"states": [], "type": "awareness-batch"}
 
 
 def test_local_board_realtime_websocket_resyncs_stale_compaction_after_room_already_compacted(tmp_path, monkeypatch):
@@ -791,6 +796,163 @@ def test_board_realtime_room_rejects_update_chain_after_hard_limit():
         assert request_compaction is True
         assert document_version == BOARD_REALTIME_DOCUMENT_UPDATE_COUNT_LIMIT
         assert len(document_updates) == BOARD_REALTIME_DOCUMENT_UPDATE_COUNT_LIMIT
+
+    asyncio.run(run_test())
+
+
+def test_board_realtime_room_coalesces_compaction_request_to_editors():
+    class FakeWebSocket:
+        def __init__(self):
+            self.messages = []
+
+        async def send_json(self, payload):
+            self.messages.append(payload)
+
+    async def run_test():
+        room = BoardRealtimeRoom("board:workspace:coalesced_compaction_board")
+        editor_one = FakeWebSocket()
+        editor_two = FakeWebSocket()
+        viewer = FakeWebSocket()
+        initial_updates = [[index % 256] for index in range(BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD - 1)]
+        connection_id = await room.connect(editor_one, "tab_editor_one", initial_updates, can_edit=True)
+        await room.connect(editor_two, "tab_editor_two", can_edit=True)
+        await room.connect(viewer, "tab_viewer", can_edit=False)
+        editor_one.messages.clear()
+        editor_two.messages.clear()
+        viewer.messages.clear()
+
+        document_updates, request_compaction, document_version, accepted = await room.publish_document_update(
+            connection_id,
+            "tab_editor_one",
+            [1, 2, 3],
+        )
+
+        assert accepted is True
+        assert request_compaction is True
+        assert document_version == BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD
+        assert len(document_updates) == BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD
+        assert editor_one.messages == [
+            {
+                "documentVersion": BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD,
+                "requestCompaction": True,
+                "type": "document-compact-request",
+                "updateCount": BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD,
+            }
+        ]
+        assert editor_two.messages[-1] == editor_one.messages[0]
+        assert viewer.messages == [
+            {
+                "documentVersion": BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD,
+                "from": "tab_editor_one",
+                "type": "yjs-update",
+                "update": [1, 2, 3],
+            }
+        ]
+
+        editor_one.messages.clear()
+        editor_two.messages.clear()
+        viewer.messages.clear()
+        await room.publish_document_update(
+            connection_id,
+            "tab_editor_one",
+            [4, 5, 6],
+        )
+
+        assert editor_one.messages == []
+        assert [message["type"] for message in editor_two.messages] == ["yjs-update"]
+        assert [message["type"] for message in viewer.messages] == ["yjs-update"]
+
+    asyncio.run(run_test())
+
+
+def test_board_realtime_room_rejects_stale_compaction_publish_after_new_update():
+    class FakeWebSocket:
+        def __init__(self):
+            self.messages = []
+
+        async def send_json(self, payload):
+            self.messages.append(payload)
+
+    async def run_test():
+        room = BoardRealtimeRoom("board:workspace:stale_compaction_unit_board")
+        compactor = FakeWebSocket()
+        other = FakeWebSocket()
+        initial_updates = [[5, 5, 5]] + [
+            [index, index + 1]
+            for index in range(BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD - 1)
+        ]
+        await room.connect(compactor, "tab_compactor", initial_updates, can_edit=True)
+        other_connection_id = await room.connect(other, "tab_other", can_edit=True)
+        compactor.messages.clear()
+        other.messages.clear()
+
+        document_updates, request_compaction, document_version, accepted = await room.publish_document_update(
+            other_connection_id,
+            "tab_other",
+            [99, 100],
+        )
+        assert accepted is True
+        assert request_compaction is True
+        assert document_version == BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD + 1
+        assert len(document_updates) == BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD + 1
+        assert {
+            "documentVersion": BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD + 1,
+            "from": "tab_other",
+            "type": "yjs-update",
+            "update": [99, 100],
+        } in compactor.messages
+
+        stale_updates, compact_accepted, still_needs_compaction, current_version = await room.replace_document_state(
+            [4, 4, 4, 4],
+            BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD,
+        )
+        assert compact_accepted is False
+        assert still_needs_compaction is True
+        assert current_version == BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD + 1
+        assert len(stale_updates) == BOARD_REALTIME_DOCUMENT_COMPACTION_THRESHOLD + 1
+        assert stale_updates[0] == [5, 5, 5]
+        assert stale_updates[-1] == [99, 100]
+
+        verify_updates = await room.snapshot_document()
+        assert verify_updates == stale_updates
+
+    asyncio.run(run_test())
+
+
+def test_board_realtime_room_serializes_concurrent_sends_per_connection():
+    class FakeWebSocket:
+        def __init__(self):
+            self.active_sends = 0
+            self.max_concurrent_sends = 0
+            self.messages = []
+
+        async def send_json(self, payload):
+            self.active_sends += 1
+            self.max_concurrent_sends = max(self.max_concurrent_sends, self.active_sends)
+            await asyncio.sleep(0.001)
+            self.messages.append(payload)
+            self.active_sends -= 1
+
+    async def run_test():
+        room = BoardRealtimeRoom("board:workspace:concurrent_send_board")
+        sockets = [FakeWebSocket() for _index in range(6)]
+        connection_ids = []
+        for index, socket in enumerate(sockets):
+            connection_ids.append(await room.connect(socket, f"tab_{index}", can_edit=True))
+        for socket in sockets:
+            socket.messages.clear()
+
+        await asyncio.gather(
+            *[
+                room.publish_document_update(connection_id, f"tab_{index}", [index, index + 1])
+                for index, connection_id in enumerate(connection_ids)
+            ]
+        )
+
+        for socket in sockets:
+            received_updates = [message for message in socket.messages if message.get("type") == "yjs-update"]
+            assert len(received_updates) == len(sockets) - 1
+            assert socket.max_concurrent_sends == 1
 
     asyncio.run(run_test())
 

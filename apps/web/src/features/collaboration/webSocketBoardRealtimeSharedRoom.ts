@@ -21,7 +21,7 @@ import { RealtimeDocumentBridge } from './webSocketBoardRealtimeDocumentBridge'
 
 const websocketRoomRegistry = new Map<string, SharedRealtimeRoom>()
 const maxRealtimeInboundMessageChars = 12 * 1024 * 1024
-const maxRealtimeSocketBufferedBytes = 1 * 1024 * 1024
+const maxRealtimeSocketBufferedBytes = 4 * 1024 * 1024
 const reconnectBaseDelayMs = 600
 const reconnectMaxDelayMs = 5_000
 

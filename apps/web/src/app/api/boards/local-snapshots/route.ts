@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { rejectCrossSiteMutation } from '../../_lib/csrfGuard'
 import { getApiRequestContext } from '../../_lib/apiRequestContext'
 import { getBoardStorageAdapter } from '../_lib/boardStorageAdapter'
 
@@ -20,6 +21,8 @@ export async function GET(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const originRejection = rejectCrossSiteMutation(request)
+    if (originRejection) return originRejection
     const boardId = new URL(request.url).searchParams.get('boardId')
     if (!boardId) throw new Error('Missing boardId.')
     const deletedCount = await getBoardStorageAdapter().clearLocalBoardSnapshots(boardId, getApiRequestContext(request))

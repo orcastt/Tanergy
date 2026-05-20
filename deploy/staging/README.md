@@ -255,6 +255,8 @@ Edit `~/apps/shared/staging/api.env` and fill:
 - `JIEKOU_IMAGE_KEY` for the active image lane used by `gpt-image-2`, `nano-banana-2`, and `doubao-seedream-5.0-lite`
 - `JIEKOU_VIDEO_KEY` as the reserved placeholder for a future video split
 - optional `JIEKOU_BASE_URL` or scope-specific overrides such as `JIEKOU_TEXT_BASE_URL` and `JIEKOU_IMAGE_BASE_URL` only when you are not using the default Jiekou endpoints
+- optional `SENTRY_DSN` or `TANGENT_ERROR_TRACKING_DSN` when backend error tracking is enabled
+- optional `TANGENT_API_SLOW_RESPONSE_MS` and `TANGENT_MEMORY_RSS_WARN_MB` for API performance alerts
 
 Retired provider env names such as `GEEKAI_API_KEY` may remain commented in private worksheets for rotation history, but they should not be active in staging unless a rollback plan explicitly re-enables legacy provider routes. Do not delete old key notes from private operator records; comment them with the date/reason, rotate the live runtime env to the current Jiekou variables, then rerun the AI smoke.
 
@@ -355,6 +357,41 @@ It prints one JSON report with per-endpoint status, payload and CORS headers, an
 ## Smoke Checklist
 
 Run these after every staging deploy.
+
+Ops readiness smoke:
+
+```bash
+PYTHONPATH=services/api python3 services/api/scripts/security_deploy_config_smoke.py \
+  --env-file deploy/staging/api.env.example \
+  --production-like
+
+PYTHONPATH=services/api python3 services/api/scripts/security_object_storage_smoke.py \
+  --env-file deploy/staging/api.env \
+  --required \
+  --probe-public-url
+
+PYTHONPATH=services/api python3 services/api/scripts/ops_external_proof_smoke.py \
+  --env-file deploy/staging/api.env \
+  --production-like \
+  --required \
+  --check-urls
+
+PYTHONPATH=services/api python3 services/api/scripts/ops_readiness_smoke.py \
+  --web-url https://staging.tanergy.cc \
+  --api-url https://api-staging.tanergy.cc \
+  --origin https://staging.tanergy.cc
+```
+
+Monitoring, backup and incident references:
+
+- Readiness acceptance: `docs/ops-readiness-acceptance.md`.
+- Incident response: `docs/incident-response-runbook.md`.
+- External monitor owner: TODO; alert channel: TODO.
+- Status-page owner: TODO; escalate user-visible outages within 15 minutes.
+- Backup/PITR owner: TODO; confirm Supabase or managed Postgres retention,
+  restore drill date, RTO and RPO before production promotion.
+- Error tracking owner: TODO; configure Sentry or equivalent DSN, source maps and
+  alert routing before treating staging as production-ready.
 
 ```bash
 curl -sS https://api-staging.example.com/health

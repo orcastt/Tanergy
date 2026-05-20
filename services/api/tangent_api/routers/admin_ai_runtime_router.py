@@ -9,6 +9,8 @@ from tangent_api.request_context import ApiRequestContext, get_request_context
 
 router = APIRouter(prefix="/ai")
 
+AI_RUNTIME_READ_ROLES = {"owner", "admin", "finance"}
+
 
 @router.get("/runs", response_model=AdminAiRunsResponse)
 def get_admin_ai_runs(
@@ -26,7 +28,7 @@ def get_admin_ai_runs(
     workspace_id: Optional[str] = Query(default=None, alias="workspaceId", min_length=1),
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminAiRunsResponse:
-    roles = require_admin_role(context)
+    roles = require_admin_role(context, allowed_roles=AI_RUNTIME_READ_ROLES)
     runs = list_admin_ai_runs(
         limit=limit,
         board_id=board_id,
@@ -79,7 +81,7 @@ def get_admin_ai_api_calls(
     workspace_id: Optional[str] = Query(default=None, alias="workspaceId", min_length=1),
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminAiApiCallsResponse:
-    roles = require_admin_role(context)
+    roles = require_admin_role(context, allowed_roles=AI_RUNTIME_READ_ROLES)
     api_calls = list_admin_ai_api_calls(
         limit=limit,
         board_id=board_id,

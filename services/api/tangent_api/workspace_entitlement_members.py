@@ -6,6 +6,7 @@ from fastapi import HTTPException
 
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.storage.postgres_connection import connect_to_postgres, require_database_url
+from tangent_api.workspace_access import assert_workspace_actor_role
 from tangent_api.workspace_entitlement_policy import optional_iso
 from tangent_api.workspace_schemas import WorkspaceDashboardMember
 
@@ -35,18 +36,25 @@ def update_workspace_member_role_with_connections(
     connect_to_postgres_fn: object,
     require_database_url_fn: object,
 ) -> WorkspaceDashboardMember:
-    assert_can_manage_workspace_members(context)
     normalized_user_id = normalize_id(user_id, "user id")
     normalized_role = normalize_workspace_role(role)
     require_database_url_fn()
 
     with connect_to_postgres_fn() as connection:
         with connection.cursor() as cursor:
+            _workspace_kind, actor_role = assert_workspace_actor_role(
+                cursor,
+                context,
+                allowed_kinds={"group_workspace", "team_workspace", "enterprise_workspace"},
+                allowed_roles={"admin", "owner"},
+                feature_unavailable_detail="Workspace member management is unavailable for this workspace.",
+                forbidden_detail="Workspace role cannot manage workspace members.",
+            )
             current_member = load_workspace_member_row(cursor, context.workspace_id, normalized_user_id)
             if current_member is None:
                 raise HTTPException(status_code=404, detail="Workspace member not found.")
             current_role = str(current_member[3])
-            assert_role_mutation_allowed(context.workspace_role, normalized_user_id, context.user_id, current_role, normalized_role)
+            assert_role_mutation_allowed(actor_role, normalized_user_id, context.user_id, current_role, normalized_role)
             cursor.execute(
                 """
                 UPDATE tangent_workspace_members

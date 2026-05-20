@@ -4,7 +4,7 @@ from tangent_api.image_dimensions import get_image_dimensions
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.schemas import AssetRecord
 from tangent_api.storage.asset_storage_adapter import AssetStorageAdapter
-from tangent_api.storage.asset_store_common import assert_image_mime
+from tangent_api.storage.asset_store_common import assert_image_content_matches_mime, assert_image_mime
 
 MAX_IMAGE_OP_INPUT_BYTES = 30 * 1024 * 1024
 MAX_IMAGE_OP_PIXELS = 24_000_000
@@ -47,6 +47,7 @@ def _read_original_asset_bytes(
     assert_image_mime(asset.mime)
     file_name = asset.original_url.rsplit("/", 1)[-1]
     content = storage.get_file_bytes(asset.id, file_name, context)
+    assert_image_content_matches_mime(content, asset.mime)
     if len(content) > MAX_IMAGE_OP_INPUT_BYTES:
         raise HTTPException(status_code=413, detail="Image operation input must be 30MB or smaller.")
     if asset.width <= 0 or asset.height <= 0:

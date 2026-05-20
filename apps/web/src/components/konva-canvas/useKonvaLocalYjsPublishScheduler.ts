@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, type MutableRefObject } from 'react'
+import { useCallback, useEffect, useRef, type MutableRefObject } from 'react'
 import type { KonvaYjsSnapshotWriteMode } from '@/features/collaboration/konvaYjsSnapshot'
 import { resolveKonvaYjsPublishPlan } from './konvaLocalYjsSyncHelpers'
 import type { KonvaLocalYjsSyncController } from './konvaLocalYjsSyncContract'
 
-const contentPublishDebounceMs = 32
-const fullBoardPublishDebounceMs = 80
+const contentPublishDebounceMs = 120
+const fullBoardPublishDebounceMs = 220
+const maxPendingPublishLatencyMs = 900
 
 type UseKonvaLocalYjsPublishSchedulerOptions = {
   activePageId?: string
@@ -43,6 +44,15 @@ export function useKonvaLocalYjsPublishScheduler({
   resolvedRoomKey,
   setHasUnsyncedLocalChanges,
 }: UseKonvaLocalYjsPublishSchedulerOptions) {
+  const firstPendingPublishAtRef = useRef<number | null>(null)
+
+  const flushPendingPublish = useCallback(() => {
+    if (publishTimerRef.current === null) return
+    cancelScheduledPublish()
+    firstPendingPublishAtRef.current = null
+    publishCurrentSnapshot({ mode: nextPublishModeRef.current })
+  }, [cancelScheduledPublish, nextPublishModeRef, publishCurrentSnapshot, publishTimerRef])
+
   useEffect(() => {
     if (!resolvedRoomKey || !latestCanWriteRef.current) return
     const publishPlan = resolveKonvaYjsPublishPlan({
@@ -59,15 +69,19 @@ export function useKonvaLocalYjsPublishScheduler({
     nextChangedPageIdsRef.current = publishPlan.changedPageIds
     if (publishPlan.didSwitchPage && !publishPlan.didRevisionChange) {
       cancelScheduledPublish()
+      firstPendingPublishAtRef.current = null
       return
     }
     cancelScheduledPublish()
+    const firstPendingAt = firstPendingPublishAtRef.current ?? Date.now()
+    firstPendingPublishAtRef.current = firstPendingAt
     setHasUnsyncedLocalChanges(true)
     patchSyncState({ hasUnsyncedLocalChanges: true })
     publishTimerRef.current = window.setTimeout(() => {
       publishTimerRef.current = null
+      firstPendingPublishAtRef.current = null
       publishCurrentSnapshot({ mode: publishPlan.mode })
-    }, resolvePublishDebounceMs(publishPlan.mode))
+    }, resolvePublishDelayMs(publishPlan.mode, firstPendingAt))
     return () => {
       cancelScheduledPublish()
     }
@@ -88,8 +102,31 @@ export function useKonvaLocalYjsPublishScheduler({
     resolvedRoomKey,
     setHasUnsyncedLocalChanges,
   ])
+
+  useEffect(() => {
+    if (!resolvedRoomKey || !latestCanWriteRef.current) return
+    const handlePointerUp = () => {
+      flushPendingPublish()
+    }
+    const handlePageHide = () => {
+      flushPendingPublish()
+    }
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') flushPendingPublish()
+    }
+    window.addEventListener('pointerup', handlePointerUp, true)
+    window.addEventListener('pagehide', handlePageHide)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      window.removeEventListener('pointerup', handlePointerUp, true)
+      window.removeEventListener('pagehide', handlePageHide)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [flushPendingPublish, latestCanWriteRef, resolvedRoomKey])
 }
 
-function resolvePublishDebounceMs(mode: KonvaYjsSnapshotWriteMode) {
-  return mode === 'full-board' ? fullBoardPublishDebounceMs : contentPublishDebounceMs
+function resolvePublishDelayMs(mode: KonvaYjsSnapshotWriteMode, firstPendingAt: number) {
+  const elapsedMs = Date.now() - firstPendingAt
+  const debounceMs = mode === 'full-board' ? fullBoardPublishDebounceMs : contentPublishDebounceMs
+  return Math.max(0, Math.min(debounceMs, maxPendingPublishLatencyMs - elapsedMs))
 }

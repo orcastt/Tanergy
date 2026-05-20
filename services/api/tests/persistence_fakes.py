@@ -337,7 +337,10 @@ class FakePostgresCursor:
             ]
             rows.sort(key=lambda row: row[11], reverse=True)
             self.rows = rows
-        elif normalized.startswith("SELECT id, workspace_id, owner_id, title, document") and "FROM tangent_board_share_links sl JOIN tangent_boards b" in normalized:
+        elif (
+            normalized.startswith("SELECT id, workspace_id, owner_id, title, document")
+            or normalized.startswith("SELECT b.id, b.workspace_id, b.owner_id, b.title, b.document")
+        ) and "FROM tangent_board_share_links sl JOIN tangent_boards b" in normalized:
             share_id = params[0]
             matches = [
                 row for row in self.database.board_share_links
@@ -352,7 +355,11 @@ class FakePostgresCursor:
                 share_link = matches[0]
                 key = (share_link["workspace_id"], share_link["board_id"])
                 if key not in self.database.deleted_boards:
-                    self.row = self.database.boards.get(key)
+                    board = self.database.boards.get(key)
+                    if board and "sl.password_hash" in normalized:
+                        self.row = (*board, share_link.get("password_hash"))
+                    else:
+                        self.row = board
         elif normalized.startswith("SELECT deleted_at FROM tangent_boards"):
             key = (params[0], params[1])
             if key in self.database.boards or key in self.database.deleted_boards:
@@ -1093,6 +1100,7 @@ class FakePostgresCursor:
             else:
                 self.database.board_members.pop((params[0], params[1], params[2]), None)
         elif normalized.startswith("INSERT INTO tangent_board_share_links"):
+            password_hash = params[7] if len(params) > 7 else None
             self.database.board_share_links.append(
                 {
                     "id": params[0],
@@ -1102,13 +1110,14 @@ class FakePostgresCursor:
                     "access_role": params[4],
                     "created_by": params[5],
                     "expires_at": params[6],
+                    "password_hash": password_hash,
                     "created_at": f"2026-05-05T02:00:{len(self.database.board_share_links):02d}Z",
                     "revoked_at": None,
                 }
             )
             self.rowcount = 1
         elif normalized.startswith(
-            "SELECT id, workspace_id, board_id, share_id, access_role, created_by, expires_at, created_at FROM tangent_board_share_links"
+            "SELECT id, workspace_id, board_id, share_id, access_role, created_by, expires_at, created_at"
         ):
             workspace_id, board_id = params
             matches = [
@@ -1132,7 +1141,19 @@ class FakePostgresCursor:
                     row["created_by"],
                     row["expires_at"],
                     row["created_at"],
+                    row.get("password_hash"),
                 )
+        elif normalized.startswith(
+            "UPDATE tangent_board_share_links SET access_role = %s, expires_at = %s, password_hash = %s WHERE id = %s"
+        ):
+            access_role, expires_at, password_hash, share_link_id = params
+            for row in self.database.board_share_links:
+                if row["id"] == share_link_id:
+                    row["access_role"] = access_role
+                    row["expires_at"] = expires_at
+                    row["password_hash"] = password_hash
+                    self.rowcount = 1
+                    break
         elif normalized.startswith("UPDATE tangent_board_share_links SET access_role = %s, expires_at = %s WHERE id = %s"):
             access_role, expires_at, share_link_id = params
             for row in self.database.board_share_links:
@@ -1160,6 +1181,12 @@ class FakePostgresCursor:
                 if row["workspace_id"] == workspace_id and row["board_id"] == board_id and row["revoked_at"] is None:
                     row["revoked_at"] = "2026-05-05T03:00:00Z"
                     self.rowcount += 1
+        elif normalized.startswith("UPDATE tangent_board_share_links SET revoked_at = NOW() WHERE id = %s"):
+            share_link_id = params[0]
+            for row in self.database.board_share_links:
+                if row["id"] == share_link_id and row["revoked_at"] is None:
+                    row["revoked_at"] = "2026-05-05T03:00:00Z"
+                    self.rowcount += 1
         elif normalized.startswith("UPDATE tangent_board_share_links SET revoked_at = NOW()"):
             workspace_id, board_id, share_id = params
             updated = 0
@@ -1174,7 +1201,7 @@ class FakePostgresCursor:
                     updated += 1
             self.rowcount = updated
         elif normalized.startswith(
-            "SELECT sl.share_id, sl.workspace_id, sl.board_id, b.title, sl.access_role FROM tangent_board_share_links sl"
+            "SELECT sl.share_id, sl.workspace_id, sl.board_id, b.title, sl.access_role"
         ):
             share_id = params[0]
             matches = [
@@ -1198,6 +1225,7 @@ class FakePostgresCursor:
                         row["board_id"],
                         title,
                         row["access_role"],
+                        row.get("password_hash"),
                     )
         elif normalized.startswith("SELECT id, workspace_id, board_id, created_by, title, document_hash"):
             workspace_id, board_id = params
@@ -1567,9 +1595,26 @@ class FakePostgresCursor:
             )
         elif normalized.startswith("SELECT COUNT(*) FROM tangent_workspace_invitations WHERE workspace_id = %s"):
             workspace_id = params[0]
-            self.row = (
-                sum(1 for row in self.database.workspace_invitations if row["workspace_id"] == workspace_id),
-            )
+            target_user_id = params[1] if len(params) > 1 else None
+            matches = [
+                row for row in self.database.workspace_invitations
+                if row["workspace_id"] == workspace_id
+            ]
+            if "accepted_at is null" in normalized.lower():
+                matches = [
+                    row for row in matches
+                    if (
+                        row.get("accepted_at") is None
+                        and row.get("revoked_at") is None
+                        and _invite_is_active(row)
+                    )
+                ]
+            if "target_user_id is null or target_user_id <> %s" in normalized.lower() and target_user_id is not None:
+                matches = [
+                    row for row in matches
+                    if row.get("target_user_id") is None or row.get("target_user_id") != target_user_id
+                ]
+            self.row = (len(matches),)
         elif normalized.startswith("SELECT COUNT(*) FROM tangent_boards WHERE workspace_id = %s"):
             workspace_id = params[0]
             self.row = (

@@ -11,9 +11,10 @@ import {
   type RealtimeDocumentUpdateQueueSnapshot,
 } from './webSocketBoardRealtimeDocumentQueue'
 
-const maxQueuedRealtimeUpdateBytes = 4 * 1024 * 1024
+const maxQueuedRealtimeUpdateBytes = 8 * 1024 * 1024
 const maxQueuedRealtimeUpdateCount = 64
-const maxRealtimeUpdateBytes = 1024 * 1024
+const maxRealtimeUpdateBytes = 4 * 1024 * 1024
+const minCompactionPublishIntervalMs = 800
 const remoteYjsOrigin = Symbol('tangent-websocket-yjs-remote')
 
 type DocumentBridgeMessage = Record<string, unknown>
@@ -26,10 +27,12 @@ type RealtimeDocumentBridgeOptions = {
 }
 
 export class RealtimeDocumentBridge {
+  private compactPublishTimer: number | null = null
   private compactionRequestPending = false
   private documentVersion = 0
   private readonly docSubscriptions = new Map<Y.Doc, (update: Uint8Array, origin: unknown) => void>()
   private initialDocumentSyncComplete = false
+  private lastCompactionPublishAt = 0
   private pendingSeedRequest = false
   private readonly documentQueue: RealtimeDocumentUpdateQueue
 
@@ -50,7 +53,10 @@ export class RealtimeDocumentBridge {
         return
       }
       const updatePayload = this.createUpdatePayload(update, 'Realtime update')
-      if (!updatePayload) return
+      if (!updatePayload) {
+        this.requestFullStatePublish(ydoc)
+        return
+      }
       const didSend = this.options.sendMessage({ type: 'yjs-update', update: updatePayload })
       if (didSend) {
         this.documentVersion += 1
@@ -70,6 +76,7 @@ export class RealtimeDocumentBridge {
     this.initialDocumentSyncComplete = false
     this.pendingSeedRequest = false
     this.compactionRequestPending = false
+    this.clearCompactPublishTimer()
   }
 
   detachYdoc(ydoc: Y.Doc) {
@@ -83,7 +90,7 @@ export class RealtimeDocumentBridge {
     this.documentVersion = resolveDocumentVersion(payload.documentVersion, this.documentVersion, this.documentVersion)
     this.compactionRequestPending = true
     this.initialDocumentSyncComplete = true
-    this.syncTransportAfterRoomEvent()
+    this.scheduleCompactionPublish()
   }
 
   handleSyncState(payload: Record<string, unknown>) {
@@ -95,6 +102,10 @@ export class RealtimeDocumentBridge {
     this.pendingSeedRequest = payload.seedRoom === true
     this.compactionRequestPending = payload.requestCompaction === true
     this.initialDocumentSyncComplete = true
+    if (this.compactionRequestPending && !this.pendingSeedRequest) {
+      this.scheduleCompactionPublish()
+      return
+    }
     this.syncTransportAfterRoomEvent()
   }
 
@@ -102,6 +113,7 @@ export class RealtimeDocumentBridge {
     this.documentVersion = resolveDocumentVersion(payload.documentVersion, this.documentVersion, 0)
     this.pendingSeedRequest = false
     this.compactionRequestPending = false
+    this.clearCompactPublishTimer()
     this.initialDocumentSyncComplete = true
     this.syncTransportAfterRoomEvent()
   }
@@ -129,6 +141,12 @@ export class RealtimeDocumentBridge {
 
   private clearPendingDocumentUpdates() {
     this.documentQueue.clear()
+  }
+
+  private clearCompactPublishTimer() {
+    if (this.compactPublishTimer === null) return
+    window.clearTimeout(this.compactPublishTimer)
+    this.compactPublishTimer = null
   }
 
   private createUpdatePayload(update: Uint8Array, label: string) {
@@ -174,6 +192,8 @@ export class RealtimeDocumentBridge {
       update,
     })
     if (!didSend) return false
+    this.lastCompactionPublishAt = Date.now()
+    this.clearCompactPublishTimer()
     this.pendingSeedRequest = false
     this.compactionRequestPending = false
     this.clearPendingDocumentUpdates()
@@ -183,6 +203,10 @@ export class RealtimeDocumentBridge {
   private queueDocumentUpdate(update: Uint8Array, ydoc?: Y.Doc) {
     const result = this.documentQueue.queue(update)
     if (!result.ok) {
+      if (ydoc) {
+        this.requestFullStatePublish(ydoc)
+        return
+      }
       this.options.onError('Realtime update exceeded the websocket update limit.')
       return
     }
@@ -190,6 +214,27 @@ export class RealtimeDocumentBridge {
     this.compactionRequestPending = true
     const didSendFullState = this.maybeSendFullState(ydoc)
     if (!didSendFullState) this.maybeFlushPendingDocumentUpdates(ydoc)
+  }
+
+  private requestFullStatePublish(ydoc: Y.Doc) {
+    this.compactionRequestPending = true
+    const didSendFullState = this.maybeSendFullState(ydoc)
+    if (!didSendFullState) this.maybeFlushPendingDocumentUpdates(ydoc)
+  }
+
+  private scheduleCompactionPublish() {
+    if (!this.canSendDocumentUpdates()) return
+    const elapsedMs = Date.now() - this.lastCompactionPublishAt
+    const waitMs = Math.max(0, minCompactionPublishIntervalMs - elapsedMs)
+    if (waitMs === 0) {
+      this.syncTransportAfterRoomEvent()
+      return
+    }
+    if (this.compactPublishTimer !== null) return
+    this.compactPublishTimer = window.setTimeout(() => {
+      this.compactPublishTimer = null
+      this.syncTransportAfterRoomEvent()
+    }, waitMs)
   }
 
   private syncTransportAfterRoomEvent() {

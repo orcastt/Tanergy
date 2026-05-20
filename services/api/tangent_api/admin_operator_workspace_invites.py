@@ -20,6 +20,10 @@ from tangent_api.workspace_invitations import (
     _normalize_optional_id,
     normalize_workspace_role,
 )
+from tangent_api.workspace_invitation_support import (
+    assert_team_invitation_capacity,
+    resolve_invitation_target_user_id,
+)
 from tangent_api.workspace_schemas import WorkspaceInvitationRecord
 
 MANAGEABLE_INVITE_WORKSPACE_KINDS = {"group_workspace", "team_workspace"}
@@ -75,6 +79,10 @@ def create_admin_operator_workspace_invitation(
     with connect_to_postgres() as connection:
         with connection.cursor() as cursor:
             workspace = _load_workspace(cursor, normalized_workspace_id)
+            if normalized_target_user_id is None:
+                normalized_target_user_id = resolve_invitation_target_user_id(cursor, normalized_email)
+            if workspace["workspace_kind"] == "team_workspace":
+                assert_team_invitation_capacity(cursor, normalized_workspace_id, normalized_target_user_id)
             invite_metadata = {
                 **metadata,
                 "createdBy": "admin_operator",

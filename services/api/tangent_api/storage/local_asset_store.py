@@ -11,7 +11,7 @@ from tangent_api.request_context import ApiRequestContext
 from tangent_api.schemas import AssetDataUrlRequest, AssetRecord, AssetThumbnailInput
 from tangent_api.storage.asset_store_common import (
     assert_asset_size,
-    assert_image_mime,
+    assert_image_content_matches_mime,
     assert_safe_path_segment,
     assert_workspace_access,
     extension_for_mime,
@@ -26,7 +26,6 @@ def create_asset_from_data_url(
     context: ApiRequestContext,
 ) -> AssetRecord:
     original = parse_image_data_url(input_data.data_url)
-    assert_image_mime(original.mime)
     assert_asset_size(len(original.content))
 
     asset_id = f"asset_{uuid4()}"
@@ -65,8 +64,8 @@ async def create_asset_from_upload(
     height: int,
 ) -> AssetRecord:
     mime = file.content_type or ""
-    assert_image_mime(mime)
     content = await read_upload_file_with_limit(file)
+    assert_image_content_matches_mime(content, mime)
     assert_asset_size(len(content))
 
     asset_id = f"asset_{uuid4()}"
@@ -103,7 +102,7 @@ def create_asset_from_bytes(
     width: int,
     height: int,
 ) -> AssetRecord:
-    assert_image_mime(mime)
+    assert_image_content_matches_mime(content, mime)
     assert_asset_size(len(content))
 
     asset_id = f"asset_{uuid4()}"
@@ -162,7 +161,6 @@ def _write_thumbnails(
         if not thumbnail:
             continue
         parsed = parse_image_data_url(thumbnail.data_url)
-        assert_image_mime(parsed.mime)
         assert_asset_size(len(parsed.content))
         file_name = f"thumb-{size}.{extension_for_mime(parsed.mime)}"
         (asset_dir / file_name).write_bytes(parsed.content)

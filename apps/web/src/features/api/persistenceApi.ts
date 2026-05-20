@@ -95,7 +95,8 @@ function shouldUseLocalDevHeaders() {
   if (process.env.NEXT_PUBLIC_USE_CLERK_API_AUTH === '1') return false
   if (typeof window === 'undefined') return false
   const host = window.location.hostname
-  const apiHost = apiBaseUrl ? new URL(apiBaseUrl).hostname : ''
+  const apiHost = apiBaseUrl ? getApiHost(apiBaseUrl) : ''
+  if (apiBaseUrl && !apiHost) return false
   return ['localhost', '127.0.0.1'].includes(host) && ['localhost', '127.0.0.1'].includes(apiHost)
 }
 
@@ -134,19 +135,23 @@ function getBaseJsonHeaders(workspace?: TangentWorkspace): HeadersInit {
 }
 
 function getLocalDevSessionHeaders(workspace?: TangentWorkspace): Record<string, string> {
-  if (process.env.NODE_ENV === 'production') return workspace ? getWorkspaceSelectionHeaders(workspace) : {}
-  return getSessionRequestHeaders(workspace)
+  if (shouldUseFullLocalDevHeaders()) return getSessionRequestHeaders(workspace)
+  return workspace ? getWorkspaceSelectionHeaders(workspace) : {}
 }
 
 function getWorkspaceSelectionHeaders(workspace: TangentWorkspace): Record<string, string> {
-  const headers: Record<string, string> = {
-    'x-tangent-workspace-id': workspace.id,
-    'x-tangent-workspace-kind': workspace.kind,
-    'x-tangent-workspace-name': workspace.name,
-    'x-tangent-workspace-role': workspace.role,
-  }
-  if (workspace.planKey) headers['x-tangent-plan-key'] = workspace.planKey
-  return headers
+  return { 'x-tangent-workspace-id': workspace.id }
+}
+
+function shouldUseFullLocalDevHeaders() {
+  if (process.env.NODE_ENV === 'production') return false
+  if (process.env.NEXT_PUBLIC_USE_CLERK_API_AUTH === '1') return false
+  if (!apiBaseUrl) return true
+  if (typeof window === 'undefined') return false
+  const host = window.location.hostname
+  const apiHost = getApiHost(apiBaseUrl)
+  if (!apiHost) return false
+  return ['localhost', '127.0.0.1'].includes(host) && ['localhost', '127.0.0.1'].includes(apiHost)
 }
 
 function sleep(ms: number) {
@@ -157,6 +162,15 @@ function getApiOrigin(baseUrl: string) {
   if (!baseUrl) return ''
   try {
     return new URL(baseUrl).origin
+  } catch {
+    return ''
+  }
+}
+
+function getApiHost(baseUrl: string) {
+  if (!baseUrl) return ''
+  try {
+    return new URL(baseUrl).hostname
   } catch {
     return ''
   }

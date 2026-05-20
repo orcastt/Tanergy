@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from fastapi import HTTPException
 
 from tangent_api.auth_session_profile import get_auth_session_initials
+from tangent_api.safe_text import normalize_safe_label
 from tangent_api.storage.postgres_connection import connect_to_postgres, require_database_url
 
 
@@ -64,9 +65,4 @@ def update_auth_profile(user_id: str, display_name: str) -> StoredAuthProfile:
 
 
 def _normalize_display_name(value: str) -> str:
-    trimmed = value.strip()
-    if not trimmed:
-        raise HTTPException(status_code=422, detail="Display name is required.")
-    if len(trimmed) > 80:
-        raise HTTPException(status_code=422, detail="Display name must be 80 characters or fewer.")
-    return trimmed
+    return normalize_safe_label(value, field_name="Display name", status_code=422)

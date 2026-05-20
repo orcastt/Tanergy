@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { rejectCrossSiteMutation } from '../../../../_lib/csrfGuard'
 import { getApiRequestContext } from '../../../../_lib/apiRequestContext'
 import { releaseLocalBoardCollaborationSession } from '../../../_lib/localBoardCollaborationStore'
 
@@ -9,6 +10,8 @@ export async function DELETE(
   { params }: { params: Promise<{ sessionId: string }> },
 ) {
   try {
+    const originRejection = rejectCrossSiteMutation(request)
+    if (originRejection) return originRejection
     const { searchParams } = new URL(request.url)
     const boardId = searchParams.get('boardId')
     const { sessionId } = await params

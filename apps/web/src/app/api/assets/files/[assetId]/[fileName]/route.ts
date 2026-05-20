@@ -6,6 +6,11 @@ import { getAssetStorageAdapter } from '../../../_lib/assetStorageAdapter'
 
 export const runtime = 'nodejs'
 const remoteApiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL ?? '').replace(/\/+$/, '')
+const assetFileSecurityHeaders = {
+  'Cache-Control': 'private, max-age=3600',
+  'Cross-Origin-Resource-Policy': 'same-site',
+  'X-Robots-Tag': 'noindex, nofollow',
+}
 
 type AssetFileRouteContext = {
   params: Promise<{ assetId: string; fileName: string }>
@@ -21,7 +26,7 @@ export async function GET(request: NextRequest, context: AssetFileRouteContext) 
     const { file, mime } = await getAssetStorageAdapter().readFile(assetId, fileName, getApiRequestContext(request))
     return new NextResponse(file, {
       headers: {
-        'Cache-Control': 'private, max-age=31536000, immutable',
+        ...assetFileSecurityHeaders,
         'Content-Type': mime,
       },
     })
@@ -49,6 +54,7 @@ async function proxyRemoteAssetFile(request: NextRequest, context: AssetFileRout
   copyResponseHeader(upstream, headers, 'content-type')
   copyResponseHeader(upstream, headers, 'etag')
   copyResponseHeader(upstream, headers, 'last-modified')
+  applyAssetFileSecurityHeaders(headers)
   return new NextResponse(upstream.body, {
     headers,
     status: upstream.status,
@@ -58,15 +64,8 @@ async function proxyRemoteAssetFile(request: NextRequest, context: AssetFileRout
 async function buildProxyHeaders(request: NextRequest) {
   const headers = new Headers(await buildServerClerkApiHeaders(request))
   copyRequestHeader(request, headers, 'accept')
-  copyRequestHeader(request, headers, 'authorization')
-  copyRequestHeader(request, headers, 'cookie')
-  copyRequestHeader(request, headers, 'x-tangent-plan-key')
-  copyRequestHeader(request, headers, 'x-tangent-workspace-id')
-  copyRequestHeader(request, headers, 'x-tangent-workspace-kind')
-  copyRequestHeader(request, headers, 'x-tangent-workspace-name')
-  copyRequestHeader(request, headers, 'x-tangent-workspace-role')
-  const queryWorkspaceId = request.nextUrl.searchParams.get('workspaceId')?.trim()
-  if (queryWorkspaceId && !headers.get('x-tangent-workspace-id')) {
+  const queryWorkspaceId = normalizeWorkspaceId(request.nextUrl.searchParams.get('workspaceId'))
+  if (queryWorkspaceId) {
     headers.set('x-tangent-workspace-id', queryWorkspaceId)
   }
   return headers
@@ -80,4 +79,16 @@ function copyRequestHeader(request: NextRequest, headers: Headers, name: string)
 function copyResponseHeader(response: Response, headers: Headers, name: string) {
   const value = response.headers.get(name)
   if (value) headers.set(name, value)
+}
+
+function applyAssetFileSecurityHeaders(headers: Headers) {
+  for (const [name, value] of Object.entries(assetFileSecurityHeaders)) {
+    headers.set(name, value)
+  }
+}
+
+function normalizeWorkspaceId(value: null | string) {
+  const trimmed = value?.trim()
+  if (!trimmed || trimmed.includes('..') || !/^[a-zA-Z0-9._-]+$/.test(trimmed)) return null
+  return trimmed
 }

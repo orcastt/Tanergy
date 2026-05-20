@@ -34,6 +34,7 @@ from tangent_api.schemas import (
     normalize_board_description,
     normalize_board_share_id,
     normalize_board_thumbnail_url,
+    normalize_board_title,
     normalize_board_visibility,
     summarize_board_record,
 )
@@ -90,7 +91,7 @@ def save_board(input_data: BoardSaveRequest, context: ApiRequestContext) -> Boar
         shapeCount=metrics["shape_count"],
         shareId=normalize_board_share_id(existing.share_id if existing else None),
         thumbnailUrl=normalize_board_thumbnail_url(input_data.thumbnail_url or (existing.thumbnail_url if existing else None)),
-        title=(input_data.title or "Untitled Board").strip() or "Untitled Board",
+        title=normalize_board_title(input_data.title, existing.title if existing else "Untitled Board"),
         visibility=normalize_board_visibility(existing.visibility if existing else None),
         workspaceId=context.workspace_id,
     )
@@ -202,11 +203,7 @@ def update_board_metadata(
     context: ApiRequestContext,
 ) -> BoardSummary:
     record = _load_board_without_touch(board_id, context, required_access="manage")
-    next_title = title.strip() if title is not None else record.title
-    if not next_title:
-        raise HTTPException(status_code=400, detail="Board title is required.")
-    if len(next_title) > 80:
-        raise HTTPException(status_code=400, detail="Board title must be 80 characters or fewer.")
+    next_title = normalize_board_title(title, record.title) if title is not None else record.title
 
     update_data = {"title": next_title, "saved_at": datetime.now(timezone.utc).isoformat()}
     if description is not None:

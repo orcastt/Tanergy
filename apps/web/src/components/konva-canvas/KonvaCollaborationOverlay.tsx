@@ -57,7 +57,6 @@ export function KonvaCollaborationOverlay({
       const transformBox = session.presence.transformBox
       const transformKind = session.presence.transformKind
       if (!transformBox || !transformKind) return []
-      if (transformKind === 'move') return []
       const rect = projectBounds(transformBox, camera)
       if (rect.width <= 0 || rect.height <= 0) return []
       if (rect.x > stageWidth + 160 || rect.y > stageHeight + 120) return []
@@ -96,7 +95,7 @@ export function KonvaCollaborationOverlay({
             ['--collab-accent' as string]: getCollaborationAccent(session.clientInstanceId),
           }}
         >
-          <span className="konva-collaboration-transform__shade" />
+          {transformKind === 'move' ? null : <span className="konva-collaboration-transform__shade" />}
           <span className="konva-collaboration-transform__label">
             {session.displayName}
           </span>

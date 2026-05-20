@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Group, Image as KonvaImage, Rect } from 'react-konva'
 import type { JsonObject } from '@/types/nodeRuntime'
 import { getRuntimeGraphImageCrop, type RuntimeGraphImageAssetRef, type RuntimeGraphImageCrop } from '@/features/node-runtime/runtimeGraphAssets'
+import { firstSafeImageDisplayUrl, safeImageDisplayUrl } from '@/features/security/safeUrl'
 
 const loadedNodeImageCache = new Map<string, HTMLImageElement>()
 const maxLoadedNodeImages = 24
@@ -44,12 +45,12 @@ export function NodeImagePreview({
 }
 
 export function getNodeImageSource(data: JsonObject, zoom: number) {
-  const original = getStringValue(data.originalUrl)
+  const original = safeImageDisplayUrl(getStringValue(data.originalUrl))
   if (data.source === 'merge_capture' && zoom > 0.5 && original) return original
-  if (zoom <= 0.25) return getStringValue(data.thumbnail256Url) ?? getStringValue(data.thumbnail512Url) ?? getStringValue(data.thumbnail1024Url) ?? null
-  if (zoom <= 0.5) return getStringValue(data.thumbnail512Url) ?? getStringValue(data.thumbnail1024Url) ?? getStringValue(data.thumbnail256Url) ?? getStringValue(data.originalUrl) ?? null
-  if (zoom <= 1) return getStringValue(data.thumbnail1024Url) ?? getStringValue(data.thumbnail512Url) ?? getStringValue(data.originalUrl) ?? getStringValue(data.thumbnail256Url) ?? null
-  return getStringValue(data.originalUrl) ?? getStringValue(data.thumbnail1024Url) ?? getStringValue(data.thumbnail512Url) ?? getStringValue(data.thumbnail256Url) ?? null
+  if (zoom <= 0.25) return firstSafeImageDisplayUrl(getStringValue(data.thumbnail256Url), getStringValue(data.thumbnail512Url), getStringValue(data.thumbnail1024Url))
+  if (zoom <= 0.5) return firstSafeImageDisplayUrl(getStringValue(data.thumbnail512Url), getStringValue(data.thumbnail1024Url), getStringValue(data.thumbnail256Url), getStringValue(data.originalUrl))
+  if (zoom <= 1) return firstSafeImageDisplayUrl(getStringValue(data.thumbnail1024Url), getStringValue(data.thumbnail512Url), getStringValue(data.originalUrl), getStringValue(data.thumbnail256Url))
+  return firstSafeImageDisplayUrl(getStringValue(data.originalUrl), getStringValue(data.thumbnail1024Url), getStringValue(data.thumbnail512Url), getStringValue(data.thumbnail256Url))
 }
 
 export function getNodeImageCrop(data: JsonObject) {
@@ -57,10 +58,10 @@ export function getNodeImageCrop(data: JsonObject) {
 }
 
 export function getGeneratedOutputSource(ref: RuntimeGraphImageAssetRef, zoom: number) {
-  if (zoom <= 0.25) return ref.thumbnail256Url ?? ref.thumbnail512Url ?? ref.thumbnail1024Url ?? null
-  if (zoom <= 0.5) return ref.thumbnail512Url ?? ref.thumbnail256Url ?? ref.thumbnail1024Url ?? ref.originalUrl ?? null
-  if (zoom <= 1) return ref.thumbnail1024Url ?? ref.thumbnail512Url ?? ref.thumbnail256Url ?? ref.originalUrl ?? null
-  return ref.originalUrl ?? ref.thumbnail1024Url ?? ref.thumbnail512Url ?? ref.thumbnail256Url ?? null
+  if (zoom <= 0.25) return firstSafeImageDisplayUrl(ref.thumbnail256Url, ref.thumbnail512Url, ref.thumbnail1024Url)
+  if (zoom <= 0.5) return firstSafeImageDisplayUrl(ref.thumbnail512Url, ref.thumbnail256Url, ref.thumbnail1024Url, ref.originalUrl)
+  if (zoom <= 1) return firstSafeImageDisplayUrl(ref.thumbnail1024Url, ref.thumbnail512Url, ref.thumbnail256Url, ref.originalUrl)
+  return firstSafeImageDisplayUrl(ref.originalUrl, ref.thumbnail1024Url, ref.thumbnail512Url, ref.thumbnail256Url)
 }
 
 function useLoadedNodeImage(src: string | null) {

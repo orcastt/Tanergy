@@ -2,6 +2,7 @@ from fastapi import HTTPException
 
 from tangent_api.plan_catalog import annual_price_usd_for_plan, included_credits_for_plan, monthly_price_usd_for_plan, seat_max_for_plan
 from tangent_api.request_context import ApiRequestContext
+from tangent_api.safe_text import normalize_safe_label
 
 TEAM_PLAN_KEYS = {"team_start", "team_growth"}
 TEAM_SEAT_MAX = 15
@@ -84,9 +85,4 @@ def _resolve_next_seat_capacity(*, current_capacity: int, payment_kind: str, qua
 
 
 def _normalize_team_name(team_name: str) -> str:
-    normalized = " ".join(team_name.strip().split())
-    if not normalized:
-        raise HTTPException(status_code=400, detail="Team name is required.")
-    if len(normalized) > 80:
-        raise HTTPException(status_code=400, detail="Team name is too long.")
-    return normalized
+    return normalize_safe_label(team_name, field_name="Team name")

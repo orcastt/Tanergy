@@ -13,6 +13,9 @@ MANAGER_ROLES = {"owner", "admin"}
 PRODUCT_INVITE_ROLES = {"admin", "editor", "viewer"}
 GROUP_MEMBER_MAX = 15
 TEAM_INVITE_PLAN_KEYS = {"team_start", "team_growth"}
+TEAM_SEATS_FULL_DETAIL = (
+    "Team seats are full. Buy more seats or contact an administrator before inviting another member."
+)
 
 
 def normalize_workspace_role(role: str) -> str:
@@ -65,9 +68,10 @@ def load_workspace_kind(cursor: object, workspace_id: str, metadata: dict[str, o
     return str(metadata.get("workspaceKind") or "solo_workspace")
 
 
-def load_active_team_subscription(cursor: object, workspace_id: str) -> Optional[tuple[str, int]]:
+def load_active_team_subscription(cursor: object, workspace_id: str, *, lock: bool = False) -> Optional[tuple[str, int]]:
+    lock_clause = "FOR UPDATE" if lock else ""
     cursor.execute(
-        """
+        f"""
         SELECT plan_key, seat_capacity
         FROM tangent_subscriptions
         WHERE owner_type = 'workspace'
@@ -77,6 +81,7 @@ def load_active_team_subscription(cursor: object, workspace_id: str) -> Optional
           AND (current_period_end IS NULL OR current_period_end > NOW())
         ORDER BY updated_at DESC
         LIMIT 1
+        {lock_clause}
         """,
         (workspace_id,),
     )
@@ -86,8 +91,8 @@ def load_active_team_subscription(cursor: object, workspace_id: str) -> Optional
     return str(row[0]), int(row[1] or 0)
 
 
-def assert_team_invite_workspace_ready(cursor: object, workspace_id: str) -> tuple[str, int]:
-    subscription = load_active_team_subscription(cursor, workspace_id)
+def assert_team_invite_workspace_ready(cursor: object, workspace_id: str, *, lock: bool = False) -> tuple[str, int]:
+    subscription = load_active_team_subscription(cursor, workspace_id, lock=lock)
     if subscription is None:
         raise HTTPException(
             status_code=402,
@@ -99,36 +104,7 @@ def assert_team_invite_workspace_ready(cursor: object, workspace_id: str) -> tup
     return plan_key, seat_capacity
 
 
-def resolve_team_invite_seat_policy(
-    cursor: object,
-    workspace_id: str,
-    user_id: str,
-    workspace_kind: str,
-) -> Optional[dict[str, object]]:
-    if workspace_kind != "team_workspace":
-        return None
-    plan_key, seat_capacity = assert_team_invite_workspace_ready(cursor, workspace_id)
-    cursor.execute(
-        """
-        SELECT COUNT(*)
-        FROM tangent_workspace_seat_assignments
-        WHERE workspace_id = %s
-          AND status = 'active'
-          AND user_id <> %s
-        """,
-        (workspace_id, user_id),
-    )
-    count_row = cursor.fetchone()
-    active_seats = int(count_row[0] or 0) if count_row else 0
-    if active_seats >= seat_capacity:
-        raise HTTPException(status_code=402, detail="No Team seats remain for this invite.")
-    return {
-        "included_credits": included_credits_for_plan(plan_key),
-        "plan_key": plan_key,
-    }
-
-
-def assert_group_member_capacity(cursor: object, workspace_id: str, target_user_id: Optional[str]) -> None:
+def count_workspace_members_for_capacity(cursor: object, workspace_id: str, target_user_id: Optional[str]) -> int:
     cursor.execute(
         """
         SELECT COUNT(*)
@@ -140,7 +116,63 @@ def assert_group_member_capacity(cursor: object, workspace_id: str, target_user_
         (workspace_id, target_user_id, target_user_id),
     )
     row = cursor.fetchone()
-    active_members = int(row[0] or 0) if row else 0
+    return int(row[0] or 0) if row else 0
+
+
+def count_pending_workspace_invitations_for_capacity(
+    cursor: object,
+    workspace_id: str,
+    target_user_id: Optional[str],
+) -> int:
+    cursor.execute(
+        """
+        SELECT COUNT(*)
+        FROM tangent_workspace_invitations
+        WHERE workspace_id = %s
+          AND accepted_at IS NULL
+          AND revoked_at IS NULL
+          AND expires_at > NOW()
+          AND (%s IS NULL OR target_user_id IS NULL OR target_user_id <> %s)
+        """,
+        (workspace_id, target_user_id, target_user_id),
+    )
+    row = cursor.fetchone()
+    return int(row[0] or 0) if row else 0
+
+
+def assert_team_invitation_capacity(
+    cursor: object,
+    workspace_id: str,
+    target_user_id: Optional[str],
+) -> tuple[str, int]:
+    plan_key, seat_capacity = assert_team_invite_workspace_ready(cursor, workspace_id, lock=True)
+    active_members = count_workspace_members_for_capacity(cursor, workspace_id, target_user_id)
+    pending_invites = count_pending_workspace_invitations_for_capacity(cursor, workspace_id, target_user_id)
+    if active_members + pending_invites >= seat_capacity:
+        raise HTTPException(status_code=402, detail=TEAM_SEATS_FULL_DETAIL)
+    return plan_key, seat_capacity
+
+
+def resolve_team_invite_seat_policy(
+    cursor: object,
+    workspace_id: str,
+    user_id: str,
+    workspace_kind: str,
+) -> Optional[dict[str, object]]:
+    if workspace_kind != "team_workspace":
+        return None
+    plan_key, seat_capacity = assert_team_invite_workspace_ready(cursor, workspace_id, lock=True)
+    active_members = count_workspace_members_for_capacity(cursor, workspace_id, user_id)
+    if active_members >= seat_capacity:
+        raise HTTPException(status_code=402, detail=TEAM_SEATS_FULL_DETAIL)
+    return {
+        "included_credits": included_credits_for_plan(plan_key),
+        "plan_key": plan_key,
+    }
+
+
+def assert_group_member_capacity(cursor: object, workspace_id: str, target_user_id: Optional[str]) -> None:
+    active_members = count_workspace_members_for_capacity(cursor, workspace_id, target_user_id)
     group_member_max = group_member_limit_for_plan("collaborate_plus") or GROUP_MEMBER_MAX
     if active_members >= group_member_max:
         raise HTTPException(status_code=400, detail=f"Group member cap is {group_member_max}.")

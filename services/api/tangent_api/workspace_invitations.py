@@ -7,11 +7,14 @@ from uuid import uuid4
 from fastapi import HTTPException
 
 from tangent_api.request_context import ApiRequestContext
+from tangent_api.security_business_limits import assert_daily_business_limit
 from tangent_api.storage.postgres_connection import require_database_url
+from tangent_api.workspace_access import assert_workspace_actor_role
 from tangent_api.workspace_invitation_support import (
     assert_can_manage_workspace_invites,
     assert_group_member_capacity,
     assert_invitation_target,
+    assert_team_invitation_capacity,
     assert_team_invite_workspace_ready,
     hash_token,
     invitation_from_row as _invitation_from_row,
@@ -34,6 +37,7 @@ from tangent_api.workspace_schemas import (
 _assert_can_manage_workspace_invites = assert_can_manage_workspace_invites
 _assert_group_member_capacity = assert_group_member_capacity
 _assert_invitation_target = assert_invitation_target
+_assert_team_invitation_capacity = assert_team_invitation_capacity
 _assert_team_invite_workspace_ready = assert_team_invite_workspace_ready
 _hash_token = hash_token
 _load_active_invitation_by_token_hash = load_active_invitation_by_token_hash
@@ -55,7 +59,12 @@ def create_workspace_invitation(
     target_user_id: Optional[str],
     context: ApiRequestContext,
 ) -> WorkspaceInvitationCreateRecord:
-    assert_can_manage_workspace_invites(context)
+    assert_daily_business_limit(
+        context,
+        action="workspace.invite.create",
+        default_limit=100,
+        env_name="TANGENT_WORKSPACE_INVITE_DAILY_LIMIT",
+    )
     normalized_role = normalize_workspace_role(role)
     normalized_email = normalize_optional_email(email)
     normalized_target_user_id = normalize_optional_id(target_user_id, "target user id")
@@ -71,12 +80,21 @@ def create_workspace_invitation(
 
     with connect_to_postgres() as connection:
         with connection.cursor() as cursor:
-            if context.workspace_kind == "group_workspace":
-                assert_group_member_capacity(cursor, context.workspace_id, None)
-            elif context.workspace_kind == "team_workspace":
-                assert_team_invite_workspace_ready(cursor, context.workspace_id)
+            workspace_kind, _actor_role = assert_workspace_actor_role(
+                cursor,
+                context,
+                allowed_kinds={"group_workspace", "team_workspace"},
+                allowed_roles={"admin", "owner"},
+                feature_unavailable_detail="Workspace invitations are unavailable for this workspace.",
+                forbidden_detail="Workspace role cannot manage workspace invitations.",
+            )
+            invite_metadata["workspaceKind"] = workspace_kind
             if normalized_target_user_id is None:
                 normalized_target_user_id = resolve_invitation_target_user_id(cursor, normalized_email)
+            if workspace_kind == "group_workspace":
+                assert_group_member_capacity(cursor, context.workspace_id, normalized_target_user_id)
+            elif workspace_kind == "team_workspace":
+                assert_team_invitation_capacity(cursor, context.workspace_id, normalized_target_user_id)
             cursor.execute(
                 """
                 INSERT INTO tangent_workspace_invitations (
@@ -196,12 +214,19 @@ def accept_workspace_invitation(token: str, context: ApiRequestContext) -> Works
 
 
 def list_workspace_invitations(context: ApiRequestContext) -> list[WorkspaceInvitationRecord]:
-    assert_can_manage_workspace_invites(context)
     require_database_url()
     from tangent_api.workspace_entitlements import connect_to_postgres
 
     with connect_to_postgres() as connection:
         with connection.cursor() as cursor:
+            assert_workspace_actor_role(
+                cursor,
+                context,
+                allowed_kinds={"group_workspace", "team_workspace"},
+                allowed_roles={"admin", "owner"},
+                feature_unavailable_detail="Workspace invitations are unavailable for this workspace.",
+                forbidden_detail="Workspace role cannot manage workspace invitations.",
+            )
             cursor.execute(
                 """
                 SELECT id, workspace_id, email, role, invited_by, accepted_by, expires_at,
@@ -217,13 +242,20 @@ def list_workspace_invitations(context: ApiRequestContext) -> list[WorkspaceInvi
 
 
 def revoke_workspace_invitation(invitation_id: str, context: ApiRequestContext) -> WorkspaceInvitationRecord:
-    assert_can_manage_workspace_invites(context)
     normalized_invitation_id = normalize_id(invitation_id, "invitation id")
     require_database_url()
     from tangent_api.workspace_entitlements import connect_to_postgres
 
     with connect_to_postgres() as connection:
         with connection.cursor() as cursor:
+            assert_workspace_actor_role(
+                cursor,
+                context,
+                allowed_kinds={"group_workspace", "team_workspace"},
+                allowed_roles={"admin", "owner"},
+                feature_unavailable_detail="Workspace invitations are unavailable for this workspace.",
+                forbidden_detail="Workspace role cannot manage workspace invitations.",
+            )
             cursor.execute(
                 """
                 UPDATE tangent_workspace_invitations

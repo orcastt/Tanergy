@@ -24,6 +24,8 @@ from tangent_api.schemas import (
 
 router = APIRouter()
 
+CORE_ADMIN_ROLES = {"owner", "admin", "finance"}
+
 
 @router.get("/me", response_model=AdminMeResponse)
 def get_admin_me(
@@ -31,7 +33,7 @@ def get_admin_me(
 ) -> AdminMeResponse:
     roles = load_active_admin_roles(context.user_id)
     return AdminMeResponse(
-        canAccessAdmin=bool(roles),
+        canAccessAdmin=any(role.role in CORE_ADMIN_ROLES for role in roles),
         ok=True,
         roles=roles,
         userId=context.user_id,
@@ -42,7 +44,7 @@ def get_admin_me(
 def get_admin_summary(
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminSummaryResponse:
-    roles = require_admin_role(context)
+    roles = require_admin_role(context, allowed_roles=CORE_ADMIN_ROLES)
     summary = load_admin_summary()
     write_admin_audit_log(
         action="admin.summary.read",
@@ -58,7 +60,7 @@ def get_admin_users(
     limit: int = Query(default=25, ge=1, le=100),
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminUsersResponse:
-    roles = require_admin_role(context)
+    roles = require_admin_role(context, allowed_roles=CORE_ADMIN_ROLES)
     users = list_admin_users(limit)
     write_admin_audit_log(
         action="admin.users.list",
@@ -74,7 +76,7 @@ def get_admin_workspaces(
     limit: int = Query(default=25, ge=1, le=100),
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminWorkspacesResponse:
-    roles = require_admin_role(context)
+    roles = require_admin_role(context, allowed_roles=CORE_ADMIN_ROLES)
     workspaces = list_admin_workspaces(limit)
     write_admin_audit_log(
         action="admin.workspaces.list",
@@ -90,7 +92,7 @@ def get_admin_boards(
     limit: int = Query(default=25, ge=1, le=100),
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminBoardsResponse:
-    roles = require_admin_role(context)
+    roles = require_admin_role(context, allowed_roles=CORE_ADMIN_ROLES)
     boards = list_admin_boards(limit)
     write_admin_audit_log(
         action="admin.boards.list",
@@ -109,7 +111,7 @@ def get_admin_audit_logs(
     target_user_id: Optional[str] = Query(default=None, alias="targetUserId", min_length=1),
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminAuditLogsResponse:
-    roles = require_admin_role(context)
+    roles = require_admin_role(context, allowed_roles=CORE_ADMIN_ROLES)
     logs = list_admin_audit_logs(
         limit=limit,
         action=action,

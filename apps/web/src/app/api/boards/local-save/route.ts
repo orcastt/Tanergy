@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { summarizeBoardRecord, type BoardCardColor } from '@/features/boards/boardTypes'
+import { rejectCrossSiteMutation } from '../../_lib/csrfGuard'
 import { getApiRequestContext } from '../../_lib/apiRequestContext'
 import { readJsonRequestWithLimit, requestBodyErrorStatus } from '../../_lib/requestBodyLimits'
 import { getBoardStorageAdapter } from '../_lib/boardStorageAdapter'
@@ -10,6 +11,8 @@ const maxBoardSaveRequestBytes = 3 * 1024 * 1024
 
 export async function POST(request: Request) {
   try {
+    const originRejection = rejectCrossSiteMutation(request)
+    if (originRejection) return originRejection
     const body = await readJsonRequestWithLimit<{
       boardId?: string
       cardColor?: BoardCardColor | null

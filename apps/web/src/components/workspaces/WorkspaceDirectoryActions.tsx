@@ -15,6 +15,7 @@ import type {
 } from '@/features/workspaces/workspacePresentation'
 import { normalizeWorkspaceMembershipRole } from '@/features/workspaces/workspacePresentation'
 import { parseWorkspaceInvitationToken } from '@/features/workspaces/workspaceInvitationLinks'
+import { normalizeUserLabelInput } from '@/features/security/safeText'
 
 type WorkspaceDirectoryActionsProps = {
   createLabel: string
@@ -91,7 +92,7 @@ export function WorkspaceDirectoryActions({
   }
 
   async function createGroup() {
-    const name = window.prompt('Group name', 'New Group')?.trim()
+    const name = normalizeUserLabelInput(window.prompt('Group name', 'New Group') ?? '')
     if (!name) return
     const response = await createGroupWorkspace({ name })
     onWorkspaceAdded({

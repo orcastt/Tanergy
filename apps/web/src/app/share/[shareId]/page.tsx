@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import { useParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { detectBoardCanvasEngine } from '@/features/boards/boardCanvasEngine'
 import type {
   BoardPersistenceRecord,
@@ -20,6 +20,7 @@ const KonvaCanvasSpike = dynamic(
 
 type ShareLoadState =
   | { status: 'loading' }
+  | { error?: string; status: 'password' }
   | { error: string; status: 'missing' | 'unsupported' }
   | { board: BoardPersistenceRecord; shareLink: BoardShareLinkResolveRecord; status: 'loaded' }
 
@@ -28,6 +29,8 @@ export default function PublicShareBoardPage() {
   const rawShareId = Array.isArray(params.shareId) ? params.shareId[0] : params.shareId
   const shareId = rawShareId ? decodeURIComponent(rawShareId) : ''
   const [state, setState] = useState<ShareLoadState>({ status: 'loading' })
+  const [passwordInput, setPasswordInput] = useState('')
+  const [sharePassword, setSharePassword] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -38,10 +41,8 @@ export default function PublicShareBoardPage() {
       }
       if (!cancelled) setState({ status: 'loading' })
       try {
-        const [shareResponse, boardResponse] = await Promise.all([
-          resolveLocalBoardShareLink(shareId),
-          loadSharedBoardDocument(shareId),
-        ])
+        const shareResponse = await resolveLocalBoardShareLink(shareId, sharePassword ?? undefined)
+        const boardResponse = await loadSharedBoardDocument(shareId, sharePassword ?? undefined)
         const shareLink = shareResponse.shareLink
         const board = boardResponse.board
         if (!shareLink || !board) throw new Error('Shared board was not found.')
@@ -52,6 +53,10 @@ export default function PublicShareBoardPage() {
       } catch (error) {
         if (cancelled) return
         const message = error instanceof Error ? error.message : 'Shared board load failed.'
+        if (isSharePasswordError(message)) {
+          setState({ error: sharePassword ? 'That password did not unlock this share link.' : undefined, status: 'password' })
+          return
+        }
         setState({
           error: message,
           status: message.includes('Konva v2') ? 'unsupported' : 'missing',
@@ -62,10 +67,29 @@ export default function PublicShareBoardPage() {
     return () => {
       cancelled = true
     }
-  }, [shareId])
+  }, [shareId, sharePassword])
 
   if (state.status === 'loading') {
     return <ShareRouteState detail="Loading shared board..." title="Opening Share Link" />
+  }
+
+  if (state.status === 'password') {
+    return (
+      <SharePasswordState
+        error={state.error}
+        onChange={setPasswordInput}
+        onSubmit={(event) => {
+          event.preventDefault()
+          const trimmed = passwordInput.trim()
+          if (!trimmed) {
+            setState({ error: 'Enter the share password.', status: 'password' })
+            return
+          }
+          setSharePassword(trimmed)
+        }}
+        password={passwordInput}
+      />
+    )
   }
 
   if (state.status === 'missing') {
@@ -101,4 +125,38 @@ function ShareRouteState({ detail, title }: { detail: string; title: string }) {
       <span>{detail}</span>
     </main>
   )
+}
+
+function SharePasswordState({
+  error,
+  onChange,
+  onSubmit,
+  password,
+}: {
+  error?: string
+  onChange: (value: string) => void
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void
+  password: string
+}) {
+  return (
+    <main className="canvas-board-route-state">
+      <strong>Share Link Password</strong>
+      <form onSubmit={onSubmit}>
+        <input
+          autoFocus
+          onChange={(event) => onChange(event.target.value)}
+          placeholder="Password"
+          type="password"
+          value={password}
+        />
+        <button type="submit">Open Board</button>
+      </form>
+      {error ? <span>{error}</span> : null}
+    </main>
+  )
+}
+
+function isSharePasswordError(message: string) {
+  const normalized = message.toLowerCase()
+  return normalized.includes('share') && normalized.includes('password')
 }

@@ -1,6 +1,6 @@
 # Dev Plans Index
 
-**Updated**: 2026-05-18
+**Updated**: 2026-05-20
 
 Detailed product, architecture and state truth now lives in:
 
@@ -26,11 +26,12 @@ Detailed product, architecture and state truth now lives in:
 | `s4-collaboration-invite-presence-plan-2026-05-16.md` | Planned S4 tactical plan | Reuses the existing invite/member/role contracts to sequence invite-link acceptance, live cursors/presence, sensitive-edit occupancy and optimistic sync. |
 | `s1b-supabase-r2-redis-collaboration-infra-plan-2026-05-18.md` | Accepted S1B infra decision plan | Chinese plan for rebuilding staging on a fresh Supabase Pro Postgres project, clearing stale R2 staging objects, keeping R2 for assets, and moving collaboration process traffic to WebSocket/Redis with Postgres storing final snapshots. |
 | `s1b-staging-deployment-runbook-2026-05-02.md` | Active S1B runbook | Chinese beginner guide for domain, DNS, Vercel, Hetzner API hosting, Supabase Pro Postgres, R2, Clerk, Google OAuth and email setup. |
+| `p0-collaboration-security-hardening-2026-05-19.md` | Active security/ops hardening ledger | Tracks P0/P1 security hardening, anti-abuse, deployment config smoke, public ops readiness smoke, observability hooks and remaining external ops blockers. |
 
 ## Current Tactical Focus
 
 1. Stabilize the current P0 alpha spine defined in `p0-alpha-stabilization-and-acceptance-2026-05-06.md`.
-2. Keep staging on release-style deploys with a private server-local shared `api.env`, not a long-lived dirty checkout; then run the staging / real DB / real login smoke first: public host repair if needed, Alembic head, `/health`, `/api/v1/admin/me`, operator users, finance summary, board list/save/load and billing plans. Keep `deploy/production/README.md` as the pre-provision boundary and do not open production before this smoke is green.
+2. Keep staging on release-style deploys with a private server-local shared `api.env`, not a long-lived dirty checkout; then run the staging / real DB / real login smoke first: public ops readiness smoke, Alembic head, `/health`, `/api/v1/admin/me`, operator users, finance summary, board list/save/load and billing plans. Keep `deploy/production/README.md` as the pre-provision boundary and do not open production before this smoke is green and external uptime/backup/error-tracking proof exists.
 3. Treat the real Clerk session/admin smoke, first signed-in board/browser pass and mostly-green second-round board pass as green checkpoints. The `Manage board -> Copy board` Free-plan limit modal path is now wired locally; spot-check it on staging before relying on staging as the final truth.
 4. Finish Google/email and CORS/origin acceptance after the signed-in board pass so the Auth boundary is fully believable outside local fallback assumptions.
 5. Finish the S2 provider-route/billing control-plane cut with one real AiRun/provider image smoke using the refreshed four-model image lane, then keep broader provider coverage moving.
@@ -63,7 +64,7 @@ Working rule for the current pass:
 
 # Dev Plans 索引
 
-**更新日期**：2026-05-18
+**更新日期**：2026-05-20
 
 详细的产品、架构和状态事实现在位于：
 
@@ -89,18 +90,20 @@ Working rule for the current pass:
 | `s4-collaboration-invite-presence-plan-2026-05-16.md` | 已规划 S4 tactical plan | 在现有 invite/member/role 合同上继续推进 invite-link acceptance、live cursors/presence、sensitive-edit occupancy 和 optimistic sync。 |
 | `s1b-supabase-r2-redis-collaboration-infra-plan-2026-05-18.md` | Accepted S1B infra decision plan | 中文方案：用全新的 Supabase Pro Postgres 重建 staging，清理旧 R2 staging 对象，R2 继续做图片资产存储，协同过程改走 WebSocket/Redis，Postgres 只落最终快照。 |
 | `s1b-staging-deployment-runbook-2026-05-02.md` | 活跃 S1B runbook | 面向新手的中文指南，覆盖 domain、DNS、Vercel、Hetzner API hosting、Supabase Pro Postgres、R2、Clerk、Google OAuth 和 email setup。 |
+| `p0-collaboration-security-hardening-2026-05-19.md` | 活跃安全/运维加固台账 | 跟踪 P0/P1 安全加固、防刷、部署配置 smoke、公开 ops readiness smoke、观测 hooks 和剩余外部 ops 阻塞项。 |
 
 ## 当前战术焦点
 
 1. 以 `p0-alpha-stabilization-and-acceptance-2026-05-06.md` 为准，稳定当前 P0 alpha 主线。
-2. 先把 staging / real DB / real login smoke、signed-in browser 首轮验收以及大部分第二轮 board 验收视为已转绿 checkpoint；`Manage board -> Copy board` Free-plan limit 弹窗路径已完成本地 wiring，下一步集中做 staging spot check。
-3. 接着完成 Google/email 与 CORS/origin 验收，让 Auth 边界不再依赖本地 fallback 假设。
-4. 再完成 S2 provider-route/billing control-plane cut 和一条基于刷新后四模型生图线的真实 AiRun/provider 路径，然后继续扩大 AI 覆盖。
-5. 然后回到 S1D/S3 收口：permission hardening、Team/Group payer visibility、billing language、credits、usage 和 staged payment truth 需要在继续扩线前对齐。
-6. 在上面的 release-spine 服务端边界更干净、更可信之后，再恢复 Yjs/provider 深化。
-7. 在 Board/Asset guards 稳定后加入 S1E `.tgy` Board Package export/import。
-8. 把前端产品 UI 对齐视为并行线路：navigation、套餐标签、角色语言、loading states 和 AI 扣费文案在上线前必须匹配当前更窄的 P0 alpha 承诺。
-9. 如果是有价值但不紧急的后续开发，先写进对应 plan / slice 文档，不打断当前主线顺序。
+2. staging 继续使用 release-style deploy 和私有 server-local shared `api.env`，下一次部署后先跑 public ops readiness smoke，再跑 Alembic、`/health`、admin/session、board list/save/load 和 billing plans。
+3. 先把 staging / real DB / real login smoke、signed-in browser 首轮验收以及大部分第二轮 board 验收视为已转绿 checkpoint；`Manage board -> Copy board` Free-plan limit 弹窗路径已完成本地 wiring，下一步集中做 staging spot check。
+4. 接着完成 Google/email 与 CORS/origin 验收，让 Auth 边界不再依赖本地 fallback 假设。
+5. 再完成 S2 provider-route/billing control-plane cut 和一条基于刷新后四模型生图线的真实 AiRun/provider 路径，然后继续扩大 AI 覆盖。
+6. 然后回到 S1D/S3 收口：permission hardening、Team/Group payer visibility、billing language、credits、usage 和 staged payment truth 需要在继续扩线前对齐。
+7. 在上面的 release-spine 服务端边界更干净、更可信，并且外部 uptime/backup/error-tracking 证明到位之后，再恢复 Yjs/provider 深化。
+8. 在 Board/Asset guards 稳定后加入 S1E `.tgy` Board Package export/import。
+9. 把前端产品 UI 对齐视为并行线路：navigation、套餐标签、角色语言、loading states 和 AI 扣费文案在上线前必须匹配当前更窄的 P0 alpha 承诺。
+10. 如果是有价值但不紧急的后续开发，先写进对应 plan / slice 文档，不打断当前主线顺序。
 
 ## 归档
 

@@ -81,7 +81,7 @@ def test_admin_page_bootstrap_returns_requested_sections(monkeypatch):
 def test_admin_user_detail_bootstrap_returns_user_and_owned_workspaces(monkeypatch):
     monkeypatch.setattr(
         "tangent_api.routers.admin_bootstrap.load_active_admin_roles",
-        lambda user_id: [{"createdAt": "2026-05-09T10:00:00Z", "permissions": {}, "role": "support"}],
+        lambda user_id: [{"createdAt": "2026-05-09T10:00:00Z", "permissions": {}, "role": "finance"}],
     )
     monkeypatch.setattr(
         "tangent_api.routers.admin_bootstrap.get_admin_directory_user",
@@ -124,7 +124,7 @@ def test_admin_user_detail_bootstrap_returns_user_and_owned_workspaces(monkeypat
     client = TestClient(app)
     response = client.get(
         "/api/v1/admin/bootstrap/users/user_grace?limit=100",
-        headers={"x-tangent-user-id": "user_support", "x-tangent-workspace-id": "workspace_support"},
+        headers={"x-tangent-user-id": "user_finance", "x-tangent-workspace-id": "workspace_finance"},
     )
 
     assert response.status_code == 200

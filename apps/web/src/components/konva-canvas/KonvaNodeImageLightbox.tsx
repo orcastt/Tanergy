@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { firstSafeImageDisplayUrl, safeExternalOpenUrl } from '@/features/security/safeUrl'
 import type { RuntimeGraphImageAssetRef } from '@/features/node-runtime/runtimeGraphAssets'
 import { copyKonvaPngBlobToClipboard, downloadKonvaBlob } from './konvaSelectionExport'
 
@@ -187,12 +188,12 @@ export function KonvaNodeImageLightbox({ onClose, state }: KonvaNodeImageLightbo
 
 function getLightboxImageUrl(image: RuntimeGraphImageAssetRef | null) {
   if (!image) return null
-  return image.originalUrl ?? image.thumbnail1024Url ?? image.thumbnail512Url ?? image.thumbnail256Url ?? null
+  return firstSafeImageDisplayUrl(image.originalUrl, image.thumbnail1024Url, image.thumbnail512Url, image.thumbnail256Url)
 }
 
 function getLightboxThumbUrl(image: RuntimeGraphImageAssetRef | null) {
   if (!image) return null
-  return image.thumbnail512Url ?? image.thumbnail256Url ?? image.thumbnail1024Url ?? image.originalUrl ?? null
+  return firstSafeImageDisplayUrl(image.thumbnail512Url, image.thumbnail256Url, image.thumbnail1024Url, image.originalUrl)
 }
 
 function clampIndex(value: number, length: number) {
@@ -215,7 +216,9 @@ async function loadLightboxImageBlob(src: string) {
 }
 
 function openLightboxImage(src: string) {
-  window.open(src, '_blank', 'noopener,noreferrer')
+  const safeSrc = safeExternalOpenUrl(src)
+  if (!safeSrc) return
+  window.open(safeSrc, '_blank', 'noopener,noreferrer')
 }
 
 function getLightboxFileName(title: string, image: RuntimeGraphImageAssetRef) {

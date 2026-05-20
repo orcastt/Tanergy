@@ -1,5 +1,6 @@
 import type { CanvasShape } from '@/features/canvas-engine'
 import type { JsonObject } from '@/types/nodeRuntime'
+import { safeImageDisplayUrl } from '@/features/security/safeUrl'
 import type { KonvaSelectionSvgExportDiagnostic } from './konvaSelectionSvgExport'
 
 const FONT_FAMILY = 'Inter, system-ui, sans-serif'
@@ -58,10 +59,11 @@ function getImageNodeSource(data: JsonObject) {
 }
 
 function getSvgImageHref(value: string | undefined) {
-  if (!value) return null
-  if (/^(https?:|data:)/i.test(value)) return value
-  if (typeof window !== 'undefined' && value.startsWith('/')) return `${window.location.origin}${value}`
-  return value
+  const safeValue = safeImageDisplayUrl(value)
+  if (!safeValue) return null
+  if (/^https?:/i.test(safeValue)) return safeValue
+  if (typeof window !== 'undefined' && safeValue.startsWith('/')) return `${window.location.origin}${safeValue}`
+  return null
 }
 
 function renderText(text: string, x: number, y: number, width: number, fontSize: number, fill: string): string {

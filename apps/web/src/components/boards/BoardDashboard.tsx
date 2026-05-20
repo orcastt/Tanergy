@@ -9,6 +9,7 @@ import {
   renameLocalBoardDocument,
 } from '@/features/boards/localBoardClient'
 import type { BoardPersistenceSummary } from '@/features/boards/boardTypes'
+import { normalizeUserLabelInput } from '@/features/security/safeText'
 import { BoardDashboardRow } from './BoardDashboardRow'
 
 const boardIdPattern = /^[a-zA-Z0-9._-]+$/
@@ -98,7 +99,7 @@ export function BoardDashboard() {
 
   const renameBoard = async (event: FormEvent<HTMLFormElement>, boardId: string) => {
     event.preventDefault()
-    const title = editingTitle.trim()
+    const title = normalizeUserLabelInput(editingTitle)
     if (!title) {
       setError('Board title is required.')
       return

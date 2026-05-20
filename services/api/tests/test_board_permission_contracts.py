@@ -321,6 +321,31 @@ def test_effective_permission_resolver_allows_editor_snapshots_but_not_manage(mo
     assert editor_clear_error.value.status_code == 403
 
 
+def test_board_member_api_rejects_owner_role_escalation(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.workspaces = [{"id": "workspace_group", "kind": "group_workspace"}]
+    monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)
+    store = PostgresBoardStore()
+    owner = make_context("user_owner", role="owner", workspace_id="workspace_group", workspace_kind="group_workspace")
+
+    store.save_board(
+        BoardSaveRequest(
+            boardId="role_escalation_board",
+            document={"assets": [], "shapes": [{"id": "shape_1"}]},
+            title="Role Escalation Board",
+        ),
+        owner,
+    )
+
+    for blocked_role in ("owner", "temporary_viewer"):
+        with pytest.raises(HTTPException) as role_error:
+            store.upsert_member("role_escalation_board", "user_target", blocked_role, "Target User", owner)
+        assert role_error.value.status_code == 400
+        assert role_error.value.detail == "Invalid board member role."
+
+    assert ("workspace_group", "role_escalation_board", "user_target") not in fake_db.board_members
+
+
 def test_board_save_rejects_known_foreign_asset_refs(monkeypatch):
     fake_db = FakePostgresDatabase()
     monkeypatch.setattr("tangent_api.storage.postgres_board_store.connect_to_postgres", fake_db.connect)

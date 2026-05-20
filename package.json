@@ -12,6 +12,8 @@
     "dev:web": "npm -C apps/web run dev",
     "build:web": "npm -C apps/web run build",
     "lint:web": "npm -C apps/web run lint",
+    "security:gate": "PYTHONPATH=services/api python3 services/api/scripts/security_release_gate.py",
+    "test:e2e:web": "npm -C apps/web run test:e2e",
     "typecheck:web": "npm -C apps/web run typecheck"
   }
 }

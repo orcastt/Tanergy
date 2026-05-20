@@ -10,8 +10,9 @@ from tangent_api.request_context import ApiRequestContext
 from tangent_api.schemas import AssetDataUrlRequest, AssetRecord, AssetThumbnailInput
 from tangent_api.storage.asset_metadata_adapter import get_asset_metadata_adapter
 from tangent_api.storage.asset_store_common import (
+    ASSET_FILE_SECURITY_HEADERS,
     assert_asset_size,
-    assert_image_mime,
+    assert_image_content_matches_mime,
     assert_safe_path_segment,
     extension_for_mime,
     file_url,
@@ -37,7 +38,6 @@ class S3AssetStore:
         context: ApiRequestContext,
     ) -> AssetRecord:
         original = parse_image_data_url(input_data.data_url)
-        assert_image_mime(original.mime)
         assert_asset_size(len(original.content))
 
         asset_id = f"asset_{uuid4()}"
@@ -73,8 +73,8 @@ class S3AssetStore:
         height: int,
     ) -> AssetRecord:
         mime = file.content_type or ""
-        assert_image_mime(mime)
         content = await read_upload_file_with_limit(file)
+        assert_image_content_matches_mime(content, mime)
         assert_asset_size(len(content))
 
         asset_id = f"asset_{uuid4()}"
@@ -108,7 +108,7 @@ class S3AssetStore:
         width: int,
         height: int,
     ) -> AssetRecord:
-        assert_image_mime(mime)
+        assert_image_content_matches_mime(content, mime)
         assert_asset_size(len(content))
 
         asset_id = f"asset_{uuid4()}"
@@ -153,7 +153,7 @@ class S3AssetStore:
         media_type = result.get("ContentType") or mime_for_file_name(file_name) or record.mime
         return StreamingResponse(
             self._iter_body_chunks(body),
-            headers={"Cache-Control": "private, max-age=3600"},
+            headers={"Cache-Control": "private, max-age=3600", **ASSET_FILE_SECURITY_HEADERS},
             media_type=media_type,
             background=BackgroundTask(body.close),
         )
@@ -179,7 +179,6 @@ class S3AssetStore:
             if not thumbnail:
                 continue
             parsed = parse_image_data_url(thumbnail.data_url)
-            assert_image_mime(parsed.mime)
             assert_asset_size(len(parsed.content))
             file_name = f"thumb-{size}.{extension_for_mime(parsed.mime)}"
             self._put_asset_file(context, asset_id, file_name, parsed.content, parsed.mime)

@@ -7,10 +7,11 @@ from uuid import uuid4
 
 from fastapi import HTTPException
 
-from tangent_api.schemas import BoardShareLinkRecord, BoardSummary, normalize_board_share_id
+from tangent_api.safe_text import normalize_safe_label
+from tangent_api.schemas import BoardShareLinkRecord, BoardSummary, create_board_share_id, normalize_board_share_id
 
 BOARD_ID_PATTERN = re.compile(r"^[a-zA-Z0-9._-]+$")
-BOARD_MEMBER_ROLE_PATTERN = {"owner", "admin", "editor", "viewer", "temporary_viewer"}
+BOARD_MEMBER_ROLE_PATTERN = {"admin", "editor", "viewer"}
 BOARD_SHARE_ACCESS_ROLE_PATTERN = {"viewer", "editor"}
 WORKSPACE_ROLE_PATTERN = {"owner", "admin", "member", "guest"}
 
@@ -86,8 +87,9 @@ def _normalize_board_share_access_role(role: str) -> str:
 def _normalize_display_name(value: object) -> Optional[str]:
     if not isinstance(value, str):
         return None
-    trimmed = value.strip()
-    return trimmed[:80] if trimmed else None
+    if not value.strip():
+        return None
+    return normalize_safe_label(value, field_name="Display name")
 
 
 def _normalize_email(value: object) -> str:
@@ -113,7 +115,7 @@ def _create_local_person_id(email: str) -> str:
 
 
 def _create_share_id() -> str:
-    return uuid4().hex[:16]
+    return create_board_share_id()
 
 
 def _require_share_id(value: str) -> str:

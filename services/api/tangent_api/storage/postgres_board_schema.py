@@ -1,28 +1,35 @@
-from typing import Any
+from typing import Any, Optional
 
 from tangent_api.storage.postgres_connection import should_auto_create_tables
 
 
-BOARD_SELECT_COLUMNS = """
-    id,
-    workspace_id,
-    owner_id,
-    title,
-    document,
-    byte_size,
-    asset_count,
-    shape_count,
-    description,
-    card_color,
-    thumbnail_url,
-    last_opened_at,
-    saved_at,
-    created_at,
-    is_starred,
-    is_pinned,
-    visibility,
-    share_id
-"""
+BOARD_SELECT_COLUMN_NAMES = [
+    "id",
+    "workspace_id",
+    "owner_id",
+    "title",
+    "document",
+    "byte_size",
+    "asset_count",
+    "shape_count",
+    "description",
+    "card_color",
+    "thumbnail_url",
+    "last_opened_at",
+    "saved_at",
+    "created_at",
+    "is_starred",
+    "is_pinned",
+    "visibility",
+    "share_id",
+]
+
+def board_select_columns(alias: Optional[str] = None) -> str:
+    prefix = f"{alias.strip()}." if alias and alias.strip() else ""
+    return "\n    " + ",\n    ".join(f"{prefix}{column}" for column in BOARD_SELECT_COLUMN_NAMES) + "\n"
+
+
+BOARD_SELECT_COLUMNS = board_select_columns()
 
 
 def ensure_board_schema(cursor: Any) -> None:

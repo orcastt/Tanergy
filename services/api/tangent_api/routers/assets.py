@@ -5,6 +5,7 @@ from fastapi.responses import Response
 from tangent_api.request_context import ApiRequestContext, get_request_context
 from tangent_api.remote_image_import import fetch_remote_image
 from tangent_api.schemas import AssetDataUrlRequest, AssetFromUrlRequest, AssetResponse
+from tangent_api.security_business_limits import assert_daily_business_limit
 from tangent_api.storage.asset_storage_adapter import get_asset_storage_adapter
 
 router = APIRouter(prefix="/api/v1/assets", tags=["assets"])
@@ -15,6 +16,12 @@ def create_asset_from_data_url(
     payload: AssetDataUrlRequest,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AssetResponse:
+    assert_daily_business_limit(
+        context,
+        action="asset.create",
+        default_limit=500,
+        env_name="TANGENT_ASSET_CREATE_DAILY_LIMIT",
+    )
     return AssetResponse(asset=get_asset_storage_adapter().create_from_data_url(payload, context))
 
 
@@ -23,6 +30,12 @@ def create_asset_from_url(
     payload: AssetFromUrlRequest,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AssetResponse:
+    assert_daily_business_limit(
+        context,
+        action="asset.create",
+        default_limit=500,
+        env_name="TANGENT_ASSET_CREATE_DAILY_LIMIT",
+    )
     remote = fetch_remote_image(payload.url)
     asset = get_asset_storage_adapter().create_from_bytes(
         remote.content,
@@ -45,6 +58,12 @@ async def upload_asset(
     width: int = Form(default=0),
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AssetResponse:
+    assert_daily_business_limit(
+        context,
+        action="asset.upload",
+        default_limit=500,
+        env_name="TANGENT_ASSET_UPLOAD_DAILY_LIMIT",
+    )
     asset = await get_asset_storage_adapter().create_from_upload(file, context, origin, title, width, height)
     return AssetResponse(asset=asset)
 

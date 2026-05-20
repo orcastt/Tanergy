@@ -3,6 +3,7 @@ from typing import Optional
 from fastapi import HTTPException
 
 from tangent_api.request_context import ApiRequestContext
+from tangent_api.safe_text import normalize_safe_label
 from tangent_api.storage.postgres_board_deletion import soft_delete_workspace_boards
 from tangent_api.storage.postgres_connection import connect_to_postgres, require_database_url
 from tangent_api.workspace_schemas import (
@@ -150,12 +151,7 @@ def _load_workspace_for_mutation(cursor: object, context: ApiRequestContext) -> 
 
 
 def _normalize_workspace_name(name: str) -> str:
-    normalized = " ".join(name.strip().split())
-    if not normalized:
-        raise HTTPException(status_code=400, detail="Workspace name is required.")
-    if len(normalized) > 80:
-        raise HTTPException(status_code=400, detail="Workspace name is too long.")
-    return normalized
+    return normalize_safe_label(name, field_name="Workspace name")
 
 
 def _read_count(row: Optional[tuple[object, ...]]) -> int:

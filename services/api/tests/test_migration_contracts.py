@@ -60,6 +60,7 @@ def test_alembic_revision_chain_is_linear():
         load_migration("20260516_0028_gpt_image_2_4k_tier.py"),
         load_migration("20260518_0029_jiekou_gemini_flash_nano_banana.py"),
         load_migration("20260518_0030_ai_credit_pricing_and_remove_ocr.py"),
+        load_migration("20260520_0031_security_rate_limit_idempotency.py"),
     ]
 
     for previous, current in zip(migrations, migrations[1:]):
@@ -94,6 +95,7 @@ def test_s1a_migrations_keep_required_schema_contracts():
     gpt_image_2_4k_tier = load_migration("20260516_0028_gpt_image_2_4k_tier.py")
     jiekou_gemini_flash_nano_banana = load_migration("20260518_0029_jiekou_gemini_flash_nano_banana.py")
     ai_credit_pricing_remove_ocr = load_migration("20260518_0030_ai_credit_pricing_and_remove_ocr.py")
+    security_rate_limit_idempotency = load_migration("20260520_0031_security_rate_limit_idempotency.py")
     core_sql = "\n".join(core.UPGRADE)
     future_sql = "\n".join(future.UPGRADE)
     hardening_sql = "\n".join(hardening.UPGRADE)
@@ -121,6 +123,7 @@ def test_s1a_migrations_keep_required_schema_contracts():
     gpt_image_2_4k_tier_sql = "\n".join(gpt_image_2_4k_tier.UPGRADE)
     jiekou_gemini_flash_nano_banana_sql = "\n".join(jiekou_gemini_flash_nano_banana.UPGRADE)
     ai_credit_pricing_remove_ocr_sql = "\n".join(ai_credit_pricing_remove_ocr.UPGRADE)
+    security_rate_limit_idempotency_sql = "\n".join(security_rate_limit_idempotency.UPGRADE)
 
     for table_name in [
         "tangent_workspace_members",
@@ -160,6 +163,15 @@ def test_s1a_migrations_keep_required_schema_contracts():
         "tangent_ai_api_calls_user_idx",
     ]:
         assert contract in hardening_sql
+
+    for contract in [
+        "tangent_security_events",
+        "tangent_security_daily_usage",
+        "request_fingerprint",
+        "response_json",
+        "tangent_idempotency_keys_scope_idx",
+    ]:
+        assert contract in security_rate_limit_idempotency_sql
 
     for contract in [
         "tangent_model_registry",

@@ -9,6 +9,7 @@ import {
   type BoardMemberRole,
   type BoardPersistenceSummary,
 } from '@/features/boards/boardTypes'
+import { normalizeUserLabelInput, sanitizeUserLabelInput } from '@/features/security/safeText'
 import {
   createLocalBoardMember,
   deleteLocalBoardMember,
@@ -123,7 +124,7 @@ export function useBoardManagementMembers({
     try {
       const response = await createLocalBoardMember({
         boardId: board.id,
-        displayName: candidate.displayName ?? undefined,
+        displayName: candidate.displayName ? normalizeUserLabelInput(candidate.displayName) : undefined,
         role: createRole,
         userId: candidate.userId,
       }, workspace)
@@ -149,7 +150,7 @@ export function useBoardManagementMembers({
     try {
       const response = await updateLocalBoardMember({
         boardId: board.id,
-        displayName: draft.displayName.trim() || undefined,
+        displayName: normalizeUserLabelInput(draft.displayName) || undefined,
         role: draft.role,
         userId: member.userId,
       }, workspace)
@@ -186,7 +187,9 @@ export function useBoardManagementMembers({
   const updateDraft = (userId: string, field: keyof MemberDraft) => (
     event: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
-    const value = event.target.value
+    const value = field === 'displayName'
+      ? sanitizeUserLabelInput(event.target.value)
+      : event.target.value
     setDrafts((current) => ({
       ...current,
       [userId]: {

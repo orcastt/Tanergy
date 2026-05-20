@@ -1,7 +1,7 @@
 # Project State Slice S1B: Staging Infrastructure And Online Prep
 
-**Updated**: 2026-05-18
-**Status**: In progress; the rebuilt Hetzner staging API host is back online, public HTTPS API smoke is green again, and the public Vercel alias points to the current Konva-only web deploy. The previous Neon staging project hit its monthly data-transfer quota and paused on 2026-05-17, and the API briefly used a Hetzner-local Docker Postgres container named `staging-postgres` as an emergency fallback. That server-local DB is now historical only and must not become a staging pattern. The Hetzner `staging-postgres` container and `staging_postgres_data` volume have been removed, the Cloudflare R2 `tanergy-assets` bucket was cleared to 0 objects, and staging has now been cut over to a fresh Supabase Pro Postgres project with Alembic applied to head. Board realtime persistence now defaults to final snapshots, so process `yjs-update` traffic stays in the WebSocket room and no longer debounce-writes every update chain to Postgres. Cloudflare-proxied staging Web/API records with Full (strict) TLS remain in place; the second-round signed-in board/browser pass is mostly green, the `Manage board -> Copy board` Free-plan limit modal path is wired locally across gallery/dashboard/manage-panel copy entrypoints, and the remaining gates are a staging browser spot check for that modal path, R2 clean asset smoke, re-created staging admin/workspace/board data, email verification and one real Jiekou-backed live AI smoke.
+**Updated**: 2026-05-20
+**Status**: In progress; the rebuilt Hetzner staging API host is back online, public HTTPS API smoke is green again, and the public Vercel alias points to the current Konva-only web deploy. The previous Neon staging project hit its monthly data-transfer quota and paused on 2026-05-17, and the API briefly used a Hetzner-local Docker Postgres container named `staging-postgres` as an emergency fallback. That server-local DB is now historical only and must not become a staging pattern. The Hetzner `staging-postgres` container and `staging_postgres_data` volume have been removed, the Cloudflare R2 `tanergy-assets` bucket was cleared to 0 objects, and staging has now been cut over to a fresh Supabase Pro Postgres project with Alembic applied to head. Board realtime persistence now defaults to final snapshots, so process `yjs-update` traffic stays in the WebSocket room and no longer debounce-writes every update chain to Postgres. Cloudflare-proxied staging Web/API records with Full (strict) TLS remain in place; deployment/ops readiness now has Web/API env templates, public TLS/header/CORS smoke, slow API/RSS observability logs and an acceptance report, while external uptime monitoring, status page, backup/PITR drill, WAF/rate-limit dashboard confirmation and error tracking/APM remain production blockers. The second-round signed-in board/browser pass is mostly green, the `Manage board -> Copy board` Free-plan limit modal path is wired locally across gallery/dashboard/manage-panel copy entrypoints, and the remaining product gates are a staging browser spot check for that modal path, R2 clean asset smoke, re-created staging admin/workspace/board data, email verification and one real Jiekou-backed live AI smoke.
 
 ## Objective
 
@@ -20,6 +20,7 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - [x] FastAPI host, likely Hetzner VPS or equivalent.
 - [x] Supabase Pro managed Postgres staging project, created fresh with no Neon/Hetzner local restore.
 - [x] Cloudflare R2 bucket and S3 credentials.
+- [~] Uptime/status/error tracking/APM providers selected and wired. Repo env templates and smokes exist; external services still need operator setup.
 - [ ] Email provider account and verified sending domain.
 - [x] Clerk Auth project prepared.
 - [x] Google social login configured in Clerk.
@@ -45,6 +46,7 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - [x] Board save/load/history through staging API.
 - [x] Vercel Web domain opens Workspace/Board routes.
 - [x] Public staging Web/API DNS stays behind Cloudflare proxying with Full (strict) TLS.
+- [~] Public ops readiness smoke for Web/API TLS, headers, `/health` and CORS exists. Run it after each deploy and record any domain/dashboard failures.
 - [x] Konva-only `/boards/[boardId]` route opens new Boards on staging without any legacy canvas dependency.
 - [x] Production-like env blocks legacy v1/unknown Board documents in the active app path.
 - [x] First signed-in board/browser pass covers Board create/open/save/delete plus paste/upload -> reload behavior.
@@ -86,6 +88,11 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - Old server release directories `Tangent_release_1dd6d84` and `Tangent_release_8ba677c` were removed after the current release came up healthy; only `Tangent_release_fe568e1` remains as the active clean release tree.
 - The retired dirty worktree `~/apps/Tangent` has now been removed too. Before deletion, its staging `api.env` was checked against the active release, confirmed identical, migrated into a private server-local shared secret copy, and mirrored back into the live release as `deploy/staging/api.env` so future cleanup no longer depends on the old tree.
 - Runtime Postgres connections now prefer `DATABASE_POOL_URL` when present while keeping Alembic on `DATABASE_URL`; backend cursors log SQL taking longer than `TANGENT_DATABASE_SLOW_QUERY_MS` without logging parameters.
+- 2026-05-20 ops readiness checkpoint: `deploy/staging/web.env.example` and `deploy/production/web.env.example` now define Web/Vercel env separation, `security_deploy_config_smoke.py` checks recommended observability env, and `ops_readiness_smoke.py` verifies public Web/API certificates, security headers, static cache hints, API `/health` and CORS.
+- API middleware now logs slow HTTP responses via `TANGENT_API_SLOW_RESPONSE_MS` and high RSS warnings via `TANGENT_MEMORY_RSS_WARN_MB` / `TANGENT_MEMORY_LOG_INTERVAL_SECONDS`; the log message uses the path without query strings.
+- Optional Sentry SDK wiring now exists for Next client/server/edge and FastAPI. It stays disabled without DSNs and scrubs cookies, query strings and sensitive headers before send.
+- The 2026-05-20 public staging ops smoke passed TLS, CORS and static cache, but failed Web home and API `/health` security-header checks because the currently deployed release has not picked up this code yet.
+- `docs/ops-readiness-acceptance.md` records the current acceptance matrix. Production remains blocked until Cloudflare WAF/rate-limit rules, managed database backups/PITR and restore drill, uptime/status alerts, error tracking and APM dashboards are configured and tested outside the repo.
 - Clerk/Google/email runtime secrets have been restored enough for real session/admin smoke; Google is now manually green, while remaining work is one email-based staging auth smoke through Clerk once that method is enabled, plus any last secret cleanup before wider staging use.
 - The tracked staging deployment worksheet no longer stores raw live secrets; runtime truth should now be maintained only in Vercel env, the staging server-local shared `api.env` mirrored into the active release, provider dashboards and private operator storage.
 - Cloudflare edge hardening is now partly in place: proxied DNS, Full (strict) TLS and source-host firewall narrowing are done, while deeper WAF/rate-limit coverage still needs either remaining free-plan room or a paid/security-specific follow-up.

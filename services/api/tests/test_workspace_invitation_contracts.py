@@ -8,6 +8,7 @@ from tests.persistence_fakes import FakePostgresDatabase
 
 def test_workspace_invite_create_and_accept_adds_member(monkeypatch):
     fake_db = FakePostgresDatabase()
+    _seed_workspace_access(fake_db, "workspace_team", "team_workspace", "user_team_owner")
     fake_db.subscriptions = [
         {
             "id": "subscription_team",
@@ -57,17 +58,127 @@ def test_workspace_invite_create_and_accept_adds_member(monkeypatch):
     accepted_result = accepted.json()["result"]
     assert accepted_result["role"] == "editor"
     assert accepted_result["workspaceId"] == "workspace_team"
-    assert fake_db.workspace_members[0]["workspace_id"] == "workspace_team"
-    assert fake_db.workspace_members[0]["user_id"] == "user_new_editor"
-    assert fake_db.workspace_members[0]["role"] == "editor"
+    assert any(
+        row["workspace_id"] == "workspace_team"
+        and row["user_id"] == "user_new_editor"
+        and row["role"] == "editor"
+        for row in fake_db.workspace_members
+    )
     assert fake_db.workspace_seat_assignments[0]["plan_key"] == "team_start"
     assert fake_db.workspace_seat_assignments[0]["status"] == "active"
     assert fake_db.workspace_seat_assignments[0]["user_id"] == "user_new_editor"
     assert fake_db.workspace_invitations[0]["accepted_by"] == "user_new_editor"
 
 
+def test_team_workspace_invite_create_requires_available_seat_capacity(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    _seed_workspace_access(fake_db, "workspace_team", "team_workspace", "user_team_owner")
+    fake_db.subscriptions = [
+        {
+            "id": "subscription_team_full",
+            "owner_id": "workspace_team",
+            "owner_type": "workspace",
+            "plan_family": "team",
+            "plan_key": "team_start",
+            "seat_capacity": 2,
+            "status": "active",
+            "updated_at": "2026-05-08T00:00:00Z",
+        }
+    ]
+    fake_db.workspace_members.append(
+        {
+            "display_name": "Owner",
+            "role": "owner",
+            "user_id": "user_team_owner",
+            "workspace_id": "workspace_team",
+        }
+    )
+    fake_db.workspace_members.append(
+        {
+            "display_name": "Editor",
+            "role": "editor",
+            "user_id": "user_existing_editor",
+            "workspace_id": "workspace_team",
+        }
+    )
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v1/workspaces/current/invitations",
+        headers={
+            "x-tangent-user-id": "user_team_owner",
+            "x-tangent-workspace-id": "workspace_team",
+            "x-tangent-workspace-kind": "team_workspace",
+        },
+        json={"expiresInDays": 3, "metadata": {"source": "team_panel"}, "role": "editor"},
+    )
+
+    assert created.status_code == 402
+    assert created.json()["detail"] == (
+        "Team seats are full. Buy more seats or contact an administrator before inviting another member."
+    )
+    assert fake_db.workspace_invitations == []
+
+
+def test_team_workspace_invite_create_counts_pending_invites_as_reserved_seats(monkeypatch):
+    token = "pending-seat-token"
+    fake_db = FakePostgresDatabase()
+    _seed_workspace_access(fake_db, "workspace_team", "team_workspace", "user_team_owner")
+    fake_db.subscriptions = [
+        {
+            "id": "subscription_team_pending_full",
+            "owner_id": "workspace_team",
+            "owner_type": "workspace",
+            "plan_family": "team",
+            "plan_key": "team_start",
+            "seat_capacity": 2,
+            "status": "active",
+            "updated_at": "2026-05-08T00:00:00Z",
+        }
+    ]
+    fake_db.workspace_invitations = [
+        {
+            "accepted_at": None,
+            "accepted_by": None,
+            "created_at": "2026-05-08T00:00:00Z",
+            "email": None,
+            "expires_at": "2999-01-01T00:00:00Z",
+            "id": "invite_pending_team",
+            "invited_by": "user_team_owner",
+            "metadata": {"workspaceKind": "team_workspace"},
+            "revoked_at": None,
+            "role": "editor",
+            "target_user_id": None,
+            "token_hash": hashlib.sha256(token.encode("utf-8")).hexdigest(),
+            "workspace_id": "workspace_team",
+        }
+    ]
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v1/workspaces/current/invitations",
+        headers={
+            "x-tangent-user-id": "user_team_owner",
+            "x-tangent-workspace-id": "workspace_team",
+            "x-tangent-workspace-kind": "team_workspace",
+        },
+        json={"expiresInDays": 3, "role": "editor"},
+    )
+
+    assert created.status_code == 402
+    assert created.json()["detail"] == (
+        "Team seats are full. Buy more seats or contact an administrator before inviting another member."
+    )
+    assert [row["id"] for row in fake_db.workspace_invitations] == ["invite_pending_team"]
+
+
 def test_solo_workspace_cannot_create_workspace_invites(monkeypatch):
     fake_db = FakePostgresDatabase()
+    _seed_workspace_access(fake_db, "workspace_personal", "solo_workspace", "user_personal_owner")
     monkeypatch.setenv("DATABASE_URL", "postgresql://test")
     monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
     client = TestClient(app)
@@ -88,6 +199,7 @@ def test_solo_workspace_cannot_create_workspace_invites(monkeypatch):
 
 def test_workspace_invite_revoke_blocks_accept(monkeypatch):
     fake_db = FakePostgresDatabase()
+    _seed_workspace_access(fake_db, "workspace_group", "group_workspace", "user_group_owner")
     monkeypatch.setenv("DATABASE_URL", "postgresql://test")
     monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
     client = TestClient(app)
@@ -127,7 +239,7 @@ def test_workspace_invite_revoke_blocks_accept(monkeypatch):
     )
 
     assert accepted.status_code == 404
-    assert fake_db.workspace_members == []
+    assert not any(row["user_id"] == "user_viewer" for row in fake_db.workspace_members)
 
 
 def test_expired_workspace_invite_cannot_be_accepted(monkeypatch):
@@ -199,6 +311,14 @@ def test_team_workspace_invite_accept_requires_available_seat(monkeypatch):
             "workspace_id": "workspace_team",
         }
     ]
+    fake_db.workspace_members = [
+        {
+            "display_name": "Existing Editor",
+            "role": "editor",
+            "user_id": "user_existing_editor",
+            "workspace_id": "workspace_team",
+        }
+    ]
     fake_db.workspace_seat_assignments = [
         {
             "assigned_by": "user_team_owner",
@@ -224,9 +344,11 @@ def test_team_workspace_invite_accept_requires_available_seat(monkeypatch):
     )
 
     assert accepted.status_code == 402
-    assert accepted.json()["detail"] == "No Team seats remain for this invite."
+    assert accepted.json()["detail"] == (
+        "Team seats are full. Buy more seats or contact an administrator before inviting another member."
+    )
     assert [row["user_id"] for row in fake_db.workspace_seat_assignments] == ["user_existing_editor"]
-    assert fake_db.workspace_members == []
+    assert [row["user_id"] for row in fake_db.workspace_members] == ["user_existing_editor"]
 
 
 def test_group_workspace_invite_accept_enforces_member_cap(monkeypatch):
@@ -354,6 +476,7 @@ def test_group_workspace_invite_accept_does_not_count_owned_groups_against_join(
 
 def test_workspace_invite_accept_preserves_board_target_metadata(monkeypatch):
     fake_db = FakePostgresDatabase()
+    _seed_workspace_access(fake_db, "workspace_group", "group_workspace", "user_group_owner")
     monkeypatch.setenv("DATABASE_URL", "postgresql://test")
     monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
     client = TestClient(app)
@@ -390,3 +513,30 @@ def test_workspace_invite_accept_preserves_board_target_metadata(monkeypatch):
     assert accepted_metadata["boardId"] == "board_launch"
     assert accepted_metadata["boardTitle"] == "Launch Board"
     assert accepted_metadata["workspaceKind"] == "group_workspace"
+
+
+def _seed_workspace_access(
+    fake_db: FakePostgresDatabase,
+    workspace_id: str,
+    kind: str,
+    owner_id: str,
+) -> None:
+    fake_db.workspaces.append(
+        {
+            "billing_owner_user_id": owner_id,
+            "id": workspace_id,
+            "kind": kind,
+            "name": "Workspace",
+            "owner_id": owner_id,
+            "status": "active",
+        }
+    )
+    if not any(row["workspace_id"] == workspace_id and row["user_id"] == owner_id for row in fake_db.workspace_members):
+        fake_db.workspace_members.append(
+            {
+                "display_name": "Owner",
+                "role": "owner",
+                "user_id": owner_id,
+                "workspace_id": workspace_id,
+            }
+        )

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import type { FormEvent } from 'react'
 import type { BoardPersistenceSummary } from '@/features/boards/boardTypes'
+import { sanitizeUserLabelInput } from '@/features/security/safeText'
 import { BoardThumbnail } from './BoardThumbnail'
 
 type BoardDashboardRowProps = {
@@ -42,7 +43,7 @@ export function BoardDashboardRow({
               aria-label="Board title"
               autoFocus
               maxLength={80}
-              onChange={(event) => onTitleChange(event.target.value)}
+              onChange={(event) => onTitleChange(sanitizeUserLabelInput(event.target.value))}
               value={editingTitle}
             />
             <button disabled={isPending} type="submit">Save</button>

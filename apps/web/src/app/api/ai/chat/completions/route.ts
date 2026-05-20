@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import type { AiChatCompletionRequest, AiChatMessage, AiChatMessageContentPart } from '@/features/ai/aiTypes'
 import { getAiModelDefinition } from '@/features/ai/mockAiContracts'
 import { assertLocalAiBridgeAvailable } from '@/features/api/runtimeBridgePolicy'
+import { buildServerClerkApiHeaders } from '@/features/auth/serverClerkAuth'
+import { rejectCrossSiteMutation } from '../../../_lib/csrfGuard'
 import { getApiRequestContext } from '../../../_lib/apiRequestContext'
 import { readJsonRequestWithLimit, requestBodyErrorStatus } from '../../../_lib/requestBodyLimits'
 import { getProviderApiKey, getProviderBaseUrl } from '../../_lib/providerApiConfig'
@@ -27,6 +29,8 @@ const chatProviderStreamTimeoutMs = 120_000
 
 export async function POST(request: Request) {
   try {
+    const originRejection = rejectCrossSiteMutation(request)
+    if (originRejection) return originRejection
     assertLocalAiBridgeAvailable()
     const body = await readJsonRequestWithLimit<AiChatCompletionRequest>(request, maxChatRequestBytes)
     if (!body.model?.trim()) {
@@ -138,7 +142,7 @@ async function resolveProviderImageUrl(request: Request, rawUrl: string, usage: 
   if (!shouldInlineImageUrl(requestUrl, resolvedUrl)) return resolvedUrl.toString()
 
   const assetResponse = await fetch(resolvedUrl, {
-    headers: getForwardHeaders(request),
+    headers: await getForwardHeaders(request),
   })
   if (!assetResponse.ok) {
     throw new Error(`Failed to load reference image (${assetResponse.status}).`)
@@ -160,15 +164,11 @@ function shouldInlineImageUrl(requestUrl: URL, targetUrl: URL) {
   return Boolean(apiBaseOrigin && targetUrl.origin === apiBaseOrigin)
 }
 
-function getForwardHeaders(request: Request) {
+async function getForwardHeaders(request: Request) {
   const context = getApiRequestContext(request)
-  const headers = new Headers()
+  const headers = new Headers(await buildServerClerkApiHeaders())
   headers.set('x-tangent-user-id', context.userId)
   headers.set('x-tangent-workspace-id', context.workspaceId)
-  headers.set('x-tangent-workspace-kind', context.workspaceKind)
-  if (context.workspacePlanKey) headers.set('x-tangent-plan-key', context.workspacePlanKey)
-  const authorization = request.headers.get('authorization')
-  if (authorization) headers.set('authorization', authorization)
   return headers
 }
 

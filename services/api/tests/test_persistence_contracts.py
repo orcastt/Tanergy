@@ -11,6 +11,9 @@ from tangent_api.storage.asset_storage_adapter import get_asset_storage_adapter
 from tangent_api.storage import asset_store_common
 from tests.persistence_fakes import FakePostgresDatabase, FakeS3Client
 
+PNG_BYTES = b"\x89PNG\r\n\x1a\n"
+PNG_DATA_URL = "data:image/png;base64,iVBORw0KGgo="
+
 
 def test_asset_local_dev_contract(tmp_path, monkeypatch):
     monkeypatch.setenv("TANGENT_ASSET_STORAGE_DIR", str(tmp_path / "assets"))
@@ -19,12 +22,12 @@ def test_asset_local_dev_contract(tmp_path, monkeypatch):
     response = client.post(
         "/api/v1/assets/from-data-url",
         json={
-            "dataUrl": "data:image/png;base64,AAAA",
+            "dataUrl": PNG_DATA_URL,
             "fileName": "smoke.png",
             "height": 1,
             "origin": "upload",
             "thumbnails": {
-                "256": {"dataUrl": "data:image/png;base64,AAAA", "height": 1, "width": 1}
+                "256": {"dataUrl": PNG_DATA_URL, "height": 1, "width": 1}
             },
             "title": "Smoke asset",
             "width": 1,
@@ -44,6 +47,8 @@ def test_asset_local_dev_contract(tmp_path, monkeypatch):
     file_response = client.get(asset["originalUrl"])
     assert file_response.status_code == 200
     assert file_response.headers["content-type"].startswith("image/png")
+    assert file_response.headers["x-robots-tag"] == "noindex, nofollow"
+    assert file_response.headers["cross-origin-resource-policy"] == "same-site"
 
     cross_workspace = client.get(
         f"/api/v1/assets/{asset['id']}",
@@ -59,7 +64,7 @@ def test_asset_upload_contract(tmp_path, monkeypatch):
     response = client.post(
         "/api/v1/assets/upload",
         data={"height": "1", "origin": "upload", "title": "Upload smoke", "width": "1"},
-        files={"file": ("smoke.png", b"\x00\x00\x00", "image/png")},
+        files={"file": ("smoke.png", PNG_BYTES, "image/png")},
     )
 
     assert response.status_code == 200
@@ -67,6 +72,28 @@ def test_asset_upload_contract(tmp_path, monkeypatch):
     assert asset["createdBy"] == "dev-user"
     assert asset["workspaceId"] == "dev-workspace"
     assert asset["originalUrl"].endswith("/original.png")
+
+
+def test_asset_upload_rejects_mime_magic_mismatch(tmp_path, monkeypatch):
+    monkeypatch.setenv("TANGENT_ASSET_STORAGE_DIR", str(tmp_path / "assets"))
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/assets/upload",
+        data={"height": "1", "origin": "upload", "title": "Not an image", "width": "1"},
+        files={"file": ("smoke.png", b"<script>alert(1)</script>", "image/png")},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Image content does not match MIME type."
+
+
+def test_asset_data_url_rejects_mime_magic_mismatch():
+    with pytest.raises(HTTPException) as exc:
+        asset_store_common.parse_image_data_url("data:image/png;base64,SGVsbG8=")
+
+    assert getattr(exc.value, "status_code", None) == 400
+    assert "Image content does not match MIME type" in str(getattr(exc.value, "detail", ""))
 
 
 def test_asset_data_url_rejects_unsupported_mime_before_decode():
@@ -92,7 +119,7 @@ def test_asset_from_url_contract(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "tangent_api.routers.assets.fetch_remote_image",
         lambda url: RemoteImageImport(
-            content=b"\x00\x00\x00",
+            content=PNG_BYTES,
             file_name="remote.png",
             height=4,
             mime="image/png",
@@ -122,7 +149,7 @@ def test_remove_background_contract(tmp_path, monkeypatch):
     upload = client.post(
         "/api/v1/assets/upload",
         data={"height": "8", "origin": "upload", "title": "Source image", "width": "8"},
-        files={"file": ("source.png", b"\x00\x00\x00", "image/png")},
+        files={"file": ("source.png", PNG_BYTES, "image/png")},
     )
     asset_id = upload.json()["asset"]["id"]
 
@@ -143,7 +170,7 @@ def test_remove_background_rejects_large_pixel_budget(tmp_path, monkeypatch):
     upload = client.post(
         "/api/v1/assets/upload",
         data={"height": "5000", "origin": "upload", "title": "Huge source", "width": "6000"},
-        files={"file": ("source.png", b"\x00\x00\x00", "image/png")},
+        files={"file": ("source.png", PNG_BYTES, "image/png")},
     )
     asset_id = upload.json()["asset"]["id"]
 
@@ -166,7 +193,7 @@ def test_asset_s3_compatible_driver_requires_config(monkeypatch):
 
     response = client.post(
         "/api/v1/assets/from-data-url",
-        json={"dataUrl": "data:image/png;base64,AAAA", "height": 1, "origin": "upload", "width": 1},
+        json={"dataUrl": PNG_DATA_URL, "height": 1, "origin": "upload", "width": 1},
     )
 
     assert response.status_code == 501
@@ -190,12 +217,12 @@ def test_asset_s3_compatible_contract(monkeypatch):
     response = client.post(
         "/api/v1/assets/from-data-url",
         json={
-            "dataUrl": "data:image/png;base64,AAAA",
+            "dataUrl": PNG_DATA_URL,
             "fileName": "smoke.png",
             "height": 1,
             "origin": "upload",
             "thumbnails": {
-                "256": {"dataUrl": "data:image/png;base64,BBBB", "height": 1, "width": 1}
+                "256": {"dataUrl": PNG_DATA_URL, "height": 1, "width": 1}
             },
             "title": "S3 smoke asset",
             "width": 1,
@@ -221,7 +248,9 @@ def test_asset_s3_compatible_contract(monkeypatch):
 
     file_response = client.get(asset["originalUrl"])
     assert file_response.status_code == 200
-    assert file_response.content == b"\x00\x00\x00"
+    assert file_response.content == PNG_BYTES
+    assert file_response.headers["x-robots-tag"] == "noindex, nofollow"
+    assert file_response.headers["cross-origin-resource-policy"] == "same-site"
 
 
 def test_asset_s3_postgres_metadata_resolves_files_across_workspace_membership(monkeypatch):
@@ -329,7 +358,7 @@ def test_asset_s3_compatible_postgres_metadata_contract(monkeypatch):
     response = client.post(
         "/api/v1/assets/from-data-url",
         json={
-            "dataUrl": "data:image/png;base64,AAAA",
+            "dataUrl": PNG_DATA_URL,
             "fileName": "smoke.png",
             "height": 1,
             "origin": "upload",
@@ -352,7 +381,7 @@ def test_asset_s3_compatible_postgres_metadata_contract(monkeypatch):
 
     file_response = client.get(asset["originalUrl"])
     assert file_response.status_code == 200
-    assert file_response.content == b"\x00\x00\x00"
+    assert file_response.content == PNG_BYTES
 
     cross_workspace = client.get(
         f"/api/v1/assets/{asset['id']}",
@@ -367,7 +396,7 @@ def test_asset_unknown_driver_fails(monkeypatch):
 
     response = client.post(
         "/api/v1/assets/from-data-url",
-        json={"dataUrl": "data:image/png;base64,AAAA", "height": 1, "origin": "upload", "width": 1},
+        json={"dataUrl": PNG_DATA_URL, "height": 1, "origin": "upload", "width": 1},
     )
 
     assert response.status_code == 501

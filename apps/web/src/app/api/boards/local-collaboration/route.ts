@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { BoardCollaborationSessionUpsertInput } from '@/features/boards/boardCollaborationTypes'
+import { rejectCrossSiteMutation } from '../../_lib/csrfGuard'
 import { getApiRequestContext } from '../../_lib/apiRequestContext'
 import { readJsonRequestWithLimit, requestBodyErrorStatus } from '../../_lib/requestBodyLimits'
 import {
@@ -28,6 +29,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const originRejection = rejectCrossSiteMutation(request)
+    if (originRejection) return originRejection
     const body = await readJsonRequestWithLimit<BoardCollaborationSessionUpsertInput & { boardId?: string }>(request, maxBoardPresenceRequestBytes)
     if (!body.boardId) throw new Error('Missing board id.')
     if (!body.clientInstanceId) throw new Error('Missing client instance id.')

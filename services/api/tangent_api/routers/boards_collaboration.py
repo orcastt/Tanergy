@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import hashlib
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
 from tangent_api.board_guard import audit_board_document
 from tangent_api.request_context import ApiRequestContext, get_request_context
+from tangent_api.security_events import record_security_event
+from tangent_api.security_share_password import enforce_share_password_attempt_limit
 from tangent_api.schemas import (
     BoardMemberCandidatesResponse,
     BoardMemberCreateRequest,
@@ -120,7 +123,15 @@ def ensure_board_share_link(
     payload: BoardShareLinkCreateRequest,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> BoardShareLinkResponse:
-    share_link = get_board_storage_adapter().ensure_share_link(board_id, payload.access_role, context, payload.expires_at)
+    share_link = get_board_storage_adapter().ensure_share_link(
+        board_id,
+        payload.access_role,
+        context,
+        payload.expires_at,
+        payload.password,
+        payload.clear_password,
+        payload.regenerate,
+    )
     return BoardShareLinkResponse(ok=True, shareLink=share_link)
 
 
@@ -135,12 +146,44 @@ def revoke_board_share_link(
 
 
 @router.get("/share-links/{share_id}", response_model=BoardShareLinkResolveResponse)
-def resolve_board_share_link(share_id: str) -> BoardShareLinkResolveResponse:
-    share_link = get_board_storage_adapter().resolve_share_link(share_id)
+def resolve_board_share_link(
+    share_id: str,
+    request: Request,
+) -> BoardShareLinkResolveResponse:
+    share_password = request.headers.get("x-tangent-share-password")
+    enforce_share_password_attempt_limit(request, share_id, share_password)
+    try:
+        share_link = get_board_storage_adapter().resolve_share_link(share_id, share_password)
+    except HTTPException as exc:
+        _record_public_share_access(share_id, "board_share.resolve", "deny", f"share_link_{exc.status_code}")
+        raise
+    _record_public_share_access(share_id, "board_share.resolve", "allow", "share_link_resolved")
     return BoardShareLinkResolveResponse(ok=True, shareLink=share_link)
 
 
 @router.get("/share-links/{share_id}/board", response_model=BoardLoadResponse)
-def load_shared_board(share_id: str) -> BoardLoadResponse:
-    board = get_board_storage_adapter().load_shared_board(share_id)
+def load_shared_board(
+    share_id: str,
+    request: Request,
+) -> BoardLoadResponse:
+    share_password = request.headers.get("x-tangent-share-password")
+    enforce_share_password_attempt_limit(request, share_id, share_password)
+    try:
+        board = get_board_storage_adapter().load_shared_board(share_id, share_password)
+    except HTTPException as exc:
+        _record_public_share_access(share_id, "board_share.load_board", "deny", f"share_link_{exc.status_code}")
+        raise
+    _record_public_share_access(share_id, "board_share.load_board", "allow", "shared_board_loaded")
     return BoardLoadResponse(board=board, ok=True)
+
+
+def _record_public_share_access(share_id: str, action: str, decision: str, reason: str) -> None:
+    share_hash = hashlib.sha256(share_id.encode("utf-8", errors="replace")).hexdigest()[:16]
+    record_security_event(
+        action=action,
+        decision=decision,
+        metadata={"shareHash": share_hash},
+        reason=reason,
+        resource_id=share_hash,
+        resource_type="board_share_link",
+    )

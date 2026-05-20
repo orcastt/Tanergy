@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { rejectCrossSiteMutation } from '../../_lib/csrfGuard'
 
 export const runtime = 'nodejs'
 
@@ -7,6 +8,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const originRejection = rejectCrossSiteMutation(request)
+  if (originRejection) return originRejection
   return createLocalDevBypassResponse(request, 'json')
 }
 
@@ -16,9 +19,8 @@ function createLocalDevBypassResponse(request: NextRequest, mode: 'json' | 'redi
   }
 
   const nextPath = getSafeNextPath(request.nextUrl.searchParams.get('next')) ?? '/admin'
-  const redirectUrl = new URL(nextPath, getRequestOrigin(request))
   const response = mode === 'redirect'
-    ? new NextResponse(null, { headers: { Location: redirectUrl.toString() }, status: 307 })
+    ? new NextResponse(null, { headers: { Location: nextPath }, status: 307 })
     : NextResponse.json({ next: nextPath, ok: true })
 
   response.cookies.set('tangent_dev_auth', '1', {
@@ -35,12 +37,4 @@ function createLocalDevBypassResponse(request: NextRequest, mode: 'json' | 'redi
 function getSafeNextPath(value: string | null) {
   if (!value || !value.startsWith('/') || value.startsWith('//')) return null
   return value
-}
-
-function getRequestOrigin(request: NextRequest) {
-  const forwardedProto = request.headers.get('x-forwarded-proto')
-  const forwardedHost = request.headers.get('x-forwarded-host')
-  const host = forwardedHost || request.headers.get('host')
-  if (!host) return request.nextUrl.origin
-  return `${forwardedProto || request.nextUrl.protocol.replace(':', '')}://${host}`
 }

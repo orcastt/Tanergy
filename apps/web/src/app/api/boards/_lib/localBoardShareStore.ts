@@ -1,9 +1,8 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { randomBytes } from 'node:crypto'
 import {
-  normalizeBoardShareId,
   type BoardPersistenceRecord,
   type BoardShareAccessRole,
-  type BoardShareLinkRecord,
   type BoardShareLinkResolveRecord,
 } from '@/features/boards/boardTypes'
 import type { ApiRequestContext } from '../../_lib/apiRequestContext'
@@ -19,20 +18,41 @@ import {
   readRequiredLocalBoardRecord,
   writeLocalBoardRecord,
 } from './localBoardRecordAccess'
+import {
+  assertLocalBoardSharePassword,
+  localBoardShareEntryToRecord,
+  normalizeLocalBoardShareLinkEntry,
+  setLocalBoardSharePassword,
+  type LocalBoardShareLinkEntry,
+} from './localBoardSharePassword'
 
 export async function ensureLocalBoardShareLink(
   boardId: string,
   accessRole: BoardShareAccessRole,
   context: ApiRequestContext,
   expiresAt?: string | null,
+  password?: string | null,
+  clearPassword = false,
+  regenerate = false,
 ) {
   const board = await readRequiredLocalBoardRecord(boardId, context)
   assertLocalBoardCanCreateShareLink(context)
+  if (clearPassword && password !== undefined && password !== null) {
+    throw new Error('Board share password cannot be set and cleared together.')
+  }
   const links = await readLocalBoardShareLinks(board.id)
   const normalizedExpiresAt = normalizeLocalBoardShareExpiresAt(expiresAt)
-  const existing = links.find((link) => isLocalBoardShareLinkActive(link))
-  const nextLink: BoardShareLinkRecord = existing
-    ? { ...existing, accessRole, expiresAt: normalizedExpiresAt }
+  let existing = links.find((link) => isLocalBoardShareLinkActive(link))
+  if (existing && regenerate) {
+    existing.revokedAt = new Date().toISOString()
+    existing = undefined
+  }
+  const nextLink: LocalBoardShareLinkEntry = existing
+    ? {
+        ...existing,
+        accessRole,
+        expiresAt: normalizedExpiresAt,
+      }
     : {
         accessRole,
         boardId: board.id,
@@ -40,46 +60,58 @@ export async function ensureLocalBoardShareLink(
         createdBy: context.userId,
         expiresAt: normalizedExpiresAt,
         id: `board_share_${crypto.randomUUID()}`,
-        shareId: crypto.randomUUID().replace(/-/g, '').slice(0, 16),
+        passwordHash: null,
+        passwordProtected: false,
+        revokedAt: null,
+        shareId: createLocalBoardShareId(),
         workspaceId: board.workspaceId,
       }
-  await writeLocalBoardShareLinks(board.id, [nextLink])
+  setLocalBoardSharePassword(nextLink, password, clearPassword)
+  await writeLocalBoardShareLinks(board.id, moveLocalBoardShareLinkToFront(links, nextLink))
   await writeLocalBoardRecord({ ...board, shareId: nextLink.shareId })
-  return nextLink
+  return localBoardShareEntryToRecord(nextLink)
 }
 
 export async function revokeLocalBoardShareLink(boardId: string, shareId: string, context: ApiRequestContext) {
   const board = await readRequiredLocalBoardRecord(boardId, context)
   const normalizedShareId = requireLocalBoardShareId(shareId)
   const links = await readLocalBoardShareLinks(board.id)
-  const nextLinks = links.filter((link) => link.shareId !== normalizedShareId)
-  if (nextLinks.length === links.length) throw new Error('Board share link not found.')
-  await writeLocalBoardShareLinks(board.id, nextLinks)
+  const target = links.find((link) => link.shareId === normalizedShareId)
+  if (!target) throw new Error('Board share link not found.')
+  target.revokedAt = new Date().toISOString()
+  await writeLocalBoardShareLinks(board.id, links)
   await writeLocalBoardRecord({ ...board, shareId: null })
   return normalizedShareId
 }
 
-export async function resolveLocalBoardShareLink(shareId: string): Promise<BoardShareLinkResolveRecord> {
-  const match = await findLocalBoardShareLink(shareId)
+export async function resolveLocalBoardShareLink(
+  shareId: string,
+  password?: string | null,
+): Promise<BoardShareLinkResolveRecord> {
+  const match = await findLocalBoardShareLink(shareId, password)
   const board = await readLocalBoardRecordById(match.boardId)
   return {
     accessRole: match.accessRole,
     boardId: board.id,
     boardTitle: board.title,
+    passwordProtected: Boolean(match.passwordHash),
     shareId: match.shareId,
     workspaceId: board.workspaceId,
   }
 }
 
-export async function loadLocalSharedBoard(shareId: string): Promise<BoardPersistenceRecord> {
-  const match = await findLocalBoardShareLink(shareId)
+export async function loadLocalSharedBoard(
+  shareId: string,
+  password?: string | null,
+): Promise<BoardPersistenceRecord> {
+  const match = await findLocalBoardShareLink(shareId, password)
   const board = await readLocalBoardRecordById(match.boardId)
   const updatedBoard = { ...board, lastOpenedAt: new Date().toISOString() }
   await writeLocalBoardRecord(updatedBoard)
   return updatedBoard
 }
 
-async function findLocalBoardShareLink(shareId: string) {
+async function findLocalBoardShareLink(shareId: string, password?: string | null) {
   const normalizedShareId = requireLocalBoardShareId(shareId)
   try {
     const files = await readLocalBoardRecordFileIndex()
@@ -87,7 +119,10 @@ async function findLocalBoardShareLink(shareId: string) {
       const boardId = file.replace(/\.shares\.json$/, '')
       const links = await readLocalBoardShareLinks(boardId)
       const match = links.find((link) => link.shareId === normalizedShareId && isLocalBoardShareLinkActive(link))
-      if (match) return match
+      if (match) {
+        assertLocalBoardSharePassword(match, password)
+        return match
+      }
     }
   } catch (error) {
     if (isNodeError(error) && error.code === 'ENOENT') {
@@ -101,11 +136,11 @@ async function findLocalBoardShareLink(shareId: string) {
 async function readLocalBoardShareLinks(boardId: string) {
   try {
     const raw = await readFile(getLocalBoardSharePath(boardId), 'utf8')
-    const parsed = JSON.parse(raw) as Partial<BoardShareLinkRecord>[]
+    const parsed = JSON.parse(raw) as Partial<LocalBoardShareLinkEntry>[]
     return Array.isArray(parsed)
       ? parsed
-        .map(normalizeLocalBoardShareLinkRecord)
-        .filter((link): link is BoardShareLinkRecord => link !== null)
+        .map(normalizeLocalBoardShareLinkEntry)
+        .filter((link): link is LocalBoardShareLinkEntry => link !== null)
       : []
   } catch (error) {
     if (isNodeError(error) && error.code === 'ENOENT') return []
@@ -113,30 +148,13 @@ async function readLocalBoardShareLinks(boardId: string) {
   }
 }
 
-async function writeLocalBoardShareLinks(boardId: string, links: BoardShareLinkRecord[]) {
+async function writeLocalBoardShareLinks(boardId: string, links: LocalBoardShareLinkEntry[]) {
   await mkdir(localBoardRecordsRoot, { recursive: true })
   await writeFile(getLocalBoardSharePath(boardId), `${JSON.stringify(links, null, 2)}\n`)
 }
 
-function normalizeLocalBoardShareLinkRecord(link: Partial<BoardShareLinkRecord>): BoardShareLinkRecord | null {
-  const shareId = typeof link.shareId === 'string' ? normalizeBoardShareId(link.shareId) : null
-  if (!shareId || typeof link.id !== 'string' || typeof link.boardId !== 'string' || typeof link.workspaceId !== 'string' || typeof link.createdAt !== 'string' || typeof link.createdBy !== 'string') {
-    return null
-  }
-  if (link.accessRole !== 'viewer' && link.accessRole !== 'editor') return null
-  return {
-    accessRole: link.accessRole,
-    boardId: link.boardId,
-    createdAt: link.createdAt,
-    createdBy: link.createdBy,
-    expiresAt: link.expiresAt ?? null,
-    id: link.id,
-    shareId,
-    workspaceId: link.workspaceId,
-  }
-}
-
-function isLocalBoardShareLinkActive(link: BoardShareLinkRecord) {
+function isLocalBoardShareLinkActive(link: LocalBoardShareLinkEntry) {
+  if (link.revokedAt) return false
   if (!link.expiresAt) return true
   const expiresAt = new Date(link.expiresAt)
   return !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() > Date.now()
@@ -153,4 +171,15 @@ function normalizeLocalBoardShareExpiresAt(value?: string | null) {
 async function readLocalBoardRecordFileIndex() {
   const { readdir } = await import('node:fs/promises')
   return readdir(localBoardRecordsRoot)
+}
+
+function moveLocalBoardShareLinkToFront(
+  links: LocalBoardShareLinkEntry[],
+  target: LocalBoardShareLinkEntry,
+) {
+  return [target, ...links.filter((link) => link.id !== target.id)]
+}
+
+function createLocalBoardShareId() {
+  return randomBytes(32).toString('base64url')
 }

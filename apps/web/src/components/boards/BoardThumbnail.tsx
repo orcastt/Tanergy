@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element -- Thumbnail URLs can come from local API, FastAPI, or R2. */
 import { persistenceAssetProxyUrl } from '@/features/api/persistenceApi'
 import type { BoardPersistenceSummary } from '@/features/boards/boardTypes'
+import { safeImageDisplayUrl } from '@/features/security/safeUrl'
 
 type BoardThumbnailProps = {
   board: BoardPersistenceSummary
@@ -9,7 +10,7 @@ type BoardThumbnailProps = {
 const thumbnailSurface = '#d9a441'
 
 export function BoardThumbnail({ board }: BoardThumbnailProps) {
-  const thumbnailSrc = persistenceAssetProxyUrl(board.thumbnailUrl, board.workspaceId) ?? board.thumbnailUrl
+  const thumbnailSrc = safeImageDisplayUrl(persistenceAssetProxyUrl(board.thumbnailUrl, board.workspaceId) ?? board.thumbnailUrl)
   if (thumbnailSrc) {
     return <img alt="" className="boards-thumbnail" src={thumbnailSrc} />
   }

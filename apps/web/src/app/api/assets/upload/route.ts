@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { isTangentAssetOrigin, type TangentAssetOrigin } from '@/features/assets/assetTypes'
 import { assertLocalAssetBridgeAvailable } from '@/features/api/runtimeBridgePolicy'
+import { rejectCrossSiteMutation } from '../../_lib/csrfGuard'
 import { getApiRequestContext } from '../../_lib/apiRequestContext'
 import {
   assertRequestContentLength,
@@ -17,6 +18,8 @@ const maxUploadRequestBytes = maxUploadImageBytes + 1024 * 1024
 
 export async function POST(request: Request) {
   try {
+    const originRejection = rejectCrossSiteMutation(request)
+    if (originRejection) return originRejection
     assertLocalAssetBridgeAvailable()
     assertRequestContentLength(request, maxUploadRequestBytes, 'Upload request is too large.')
     const form = await request.formData()

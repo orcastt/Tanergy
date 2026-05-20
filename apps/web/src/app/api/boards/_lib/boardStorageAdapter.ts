@@ -1,4 +1,5 @@
 import type { ApiRequestContext } from '../../_lib/apiRequestContext'
+import { assertLocalBoardBridgeAvailable } from '@/features/api/runtimeBridgePolicy'
 import {
   clearLocalBoardSnapshots,
   createLocalBoardSnapshot,
@@ -35,15 +36,18 @@ export type BoardStorageAdapter = {
     accessRole: Parameters<typeof ensureLocalBoardShareLink>[1],
     context: ApiRequestContext,
     expiresAt?: string | null,
+    password?: string | null,
+    clearPassword?: boolean,
+    regenerate?: boolean,
   ) => ReturnType<typeof ensureLocalBoardShareLink>
   listLocalBoardMembers: (boardId: string, context: ApiRequestContext) => ReturnType<typeof listLocalBoardMembers>
   listLocalBoardSnapshots: (boardId: string, context: ApiRequestContext) => ReturnType<typeof listLocalBoardSnapshots>
   listLocalBoards: (context: ApiRequestContext) => ReturnType<typeof listLocalBoards>
   loadLocalBoardSnapshot: (boardId: string, snapshotId: string, context: ApiRequestContext) => ReturnType<typeof loadLocalBoardSnapshot>
   loadLocalBoard: (boardId: string, context: ApiRequestContext) => ReturnType<typeof loadLocalBoard>
-  loadLocalSharedBoard: (shareId: string) => ReturnType<typeof loadLocalSharedBoard>
+  loadLocalSharedBoard: (shareId: string, password?: string | null) => ReturnType<typeof loadLocalSharedBoard>
   renameLocalBoard: (boardId: string, title: string, context: ApiRequestContext) => ReturnType<typeof renameLocalBoard>
-  resolveLocalBoardShareLink: (shareId: string) => ReturnType<typeof resolveLocalBoardShareLink>
+  resolveLocalBoardShareLink: (shareId: string, password?: string | null) => ReturnType<typeof resolveLocalBoardShareLink>
   removeLocalBoardMember: (boardId: string, userId: string, context: ApiRequestContext) => ReturnType<typeof removeLocalBoardMember>
   revokeLocalBoardShareLink: (
     boardId: string,
@@ -89,6 +93,7 @@ const localBoardAdapter: BoardStorageAdapter = {
 }
 
 export function getBoardStorageAdapter(): BoardStorageAdapter {
+  assertLocalBoardBridgeAvailable()
   const driver = process.env.TANGENT_BOARD_STORAGE_DRIVER ?? 'local-dev'
   if (driver === 'local-dev') return localBoardAdapter
   throw new Error(`Unsupported board storage driver "${driver}". Supported driver: local-dev.`)

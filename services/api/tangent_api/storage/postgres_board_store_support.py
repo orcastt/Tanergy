@@ -22,6 +22,7 @@ from tangent_api.schemas import (
     normalize_board_description,
     normalize_board_share_id,
     normalize_board_thumbnail_url,
+    normalize_board_title,
     normalize_board_visibility,
 )
 from tangent_api.storage.postgres_board_codec import board_record_from_row, sanitize_board_id
@@ -221,7 +222,7 @@ def build_board_record(
         shapeCount=metrics["shape_count"],
         shareId=normalize_board_share_id(existing.share_id if existing else None),
         thumbnailUrl=normalize_board_thumbnail_url(input_data.thumbnail_url or (existing.thumbnail_url if existing else None)),
-        title=(input_data.title or "Untitled Board").strip() or "Untitled Board",
+        title=normalize_board_title(input_data.title, existing.title if existing else "Untitled Board"),
         visibility=normalize_board_visibility(existing.visibility if existing else None),
         workspaceId=context.workspace_id,
     )

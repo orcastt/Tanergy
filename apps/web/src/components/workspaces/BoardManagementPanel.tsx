@@ -8,6 +8,7 @@ import {
   type BoardCardColor,
   type BoardPersistenceSummary,
 } from '@/features/boards/boardTypes'
+import { normalizeUserLabelInput, sanitizeUserLabelInput } from '@/features/security/safeText'
 import { getPublicOwnerLabel } from '@/features/shared/publicUserDisplay'
 import { BoardManagementMembers } from './BoardManagementMembers'
 import { BoardManagementThumbnailSection } from './BoardManagementThumbnailSection'
@@ -78,7 +79,7 @@ export function BoardManagementPanel({
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (editDisabled) return
-    onSave({ cardColor, description, isPinned, thumbnailUrl, title })
+    onSave({ cardColor, description, isPinned, thumbnailUrl, title: normalizeUserLabelInput(title) })
   }
 
   return (
@@ -161,14 +162,14 @@ export function BoardManagementPanel({
                 </div>
                 <label>
                   <span>Name</span>
-                  <input disabled={editDisabled} maxLength={80} onChange={(event) => setTitle(event.target.value)} required value={title} />
+                  <input disabled={editDisabled} maxLength={80} onChange={(event) => setTitle(sanitizeUserLabelInput(event.target.value))} required value={title} />
                 </label>
                 <label>
                   <span>Note</span>
                   <textarea
                     disabled={editDisabled}
                     maxLength={280}
-                    onChange={(event) => setDescription(event.target.value)}
+                    onChange={(event) => setDescription(sanitizeUserLabelInput(event.target.value, 280))}
                     placeholder="Short note"
                     rows={3}
                     value={description}

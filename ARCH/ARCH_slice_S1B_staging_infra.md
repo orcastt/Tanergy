@@ -1,8 +1,8 @@
 # ARCH Slice S1B: Staging Infrastructure And Online Prep
 
-**Updated**: 2026-05-18
+**Updated**: 2026-05-20
 **Mode**: Architecture slice.
-**Status**: In progress; rebuilt staging Web/API smoke is green again, Supabase Pro staging is now the database truth, the old Hetzner `staging-postgres` fallback and volume have been removed, R2 was cleared for a clean asset smoke lane, and board realtime persistence now keeps process updates in WebSocket room memory while writing only compacted/final snapshots to Postgres by default. The second-round signed-in board/browser pass is mostly green, and the `Manage board -> Copy board` Free-plan modal path is wired locally across gallery/dashboard/manage-panel copy entrypoints; the remaining gates are R2 clean asset smoke, a staging spot check for that modal path, Google/email verification and one live provider path under strict staging auth.
+**Status**: In progress; rebuilt staging Web/API smoke is green again, Supabase Pro staging is now the database truth, the old Hetzner `staging-postgres` fallback and volume have been removed, R2 was cleared for a clean asset smoke lane, and board realtime persistence now keeps process updates in WebSocket room memory while writing only compacted/final snapshots to Postgres by default. The deployment/ops readiness layer now includes separate Web/API env templates, public TLS/header/CORS smoke, API slow-response/RSS log hooks and an ops acceptance artifact. Production still requires external uptime monitors, status page, backup/PITR proof, WAF/rate-limit dashboard confirmation and an error-tracking/APM provider before public launch. The second-round signed-in board/browser pass is mostly green, and the `Manage board -> Copy board` Free-plan modal path is wired locally across gallery/dashboard/manage-panel copy entrypoints; the remaining gates are R2 clean asset smoke, a staging spot check for that modal path, Google/email verification and one live provider path under strict staging auth.
 
 ## Goal
 
@@ -138,6 +138,22 @@ Promotion policy:
 - production opens only after staging real-login, email/OAuth, admin and live-AI smokes are green
 - deploy the same reviewed commit SHA from staging to production
 
+## Deployment And Ops Readiness
+
+Operational readiness now has a repo-owned verification layer:
+
+- Web env templates live in `deploy/staging/web.env.example` and `deploy/production/web.env.example`; API env templates remain split in the same deploy folders.
+- `services/api/scripts/security_deploy_config_smoke.py` checks production-like API auth, Redis security counters, origin allowlists, Clerk verification, object storage and recommended observability env.
+- `services/api/scripts/ops_readiness_smoke.py` checks public Web/API HTTPS certificates, security headers, Next static cache headers, API `/health` and CORS preflight.
+- FastAPI middleware records slow API responses and high RSS warnings through `tangent_api.ops_observability` without logging query strings.
+- The detailed acceptance matrix is `docs/ops-readiness-acceptance.md`.
+
+External infrastructure still owns these production blockers:
+
+- Cloudflare WAF, bot/rate-limit rules and SSL mode must be confirmed in the dashboard.
+- Managed Postgres backups/PITR and one restore drill must be completed outside repo code.
+- Uptime monitor, status page, alert channel, error tracking and APM dashboards must exist before public launch.
+
 ## Official References
 
 - Vercel pricing/docs: https://vercel.com/pricing
@@ -165,6 +181,7 @@ Promotion policy:
 - Staging deployment should use release-style directories such as `~/apps/Tangent_release_<sha>` instead of mutating a long-lived checkout. The active release may receive `deploy/staging/api.env` as a copy or symlink from a private server-local shared secret store.
 - Public staging DNS remains proxied through Cloudflare, and SSL mode stays Full (strict) instead of Flexible.
 - Public FastAPI `/health` returns 200 over HTTPS.
+- Public staging Web/API pass `ops_readiness_smoke.py`, or failures are tracked as explicit external-infra blockers.
 - CORS allows only staging Web origin.
 - Vercel route can call FastAPI.
 - Google OAuth login returns a provider JWT in staging.

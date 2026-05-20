@@ -368,6 +368,31 @@ def test_board_guard_blocks_runtime_urls():
     assert response.json()["audit"]["issues"][0]["code"] == "runtime-url"
 
 
+def test_board_guard_blocks_unsafe_image_urls():
+    client = TestClient(app)
+
+    for value in ("javascript:alert(1)", "JaVa\nScRiPt:alert(1)", "file:///etc/passwd", "//evil.example/image.png"):
+        response = client.post(
+            "/api/v1/boards/validate-document",
+            json={"document": {"originalUrl": value}},
+        )
+
+        assert response.status_code == 422
+        assert response.json()["audit"]["issues"][0]["code"] == "runtime-url"
+
+
+def test_board_guard_allows_uploaded_asset_urls():
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/boards/validate-document",
+        json={"document": {"originalUrl": "/api/v1/assets/files/asset_1/original.png"}},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["ok"] is True
+
+
 def test_board_guard_blocks_legacy_tldraw_documents():
     client = TestClient(app)
     legacy_document = {
@@ -1011,7 +1036,9 @@ def test_board_member_candidates_invite_and_share_link_contract(monkeypatch):
     assert share_link["workspaceId"] == "workspace_group"
     assert share_link["accessRole"] == "viewer"
     assert share_link["expiresAt"] == "2999-01-01T00:00:00+00:00"
+    assert share_link["passwordProtected"] is False
     assert share_link["shareId"] is not None
+    assert len(share_link["shareId"]) >= 40
 
     resolved = client.get(f"/api/v1/boards/share-links/{share_link['shareId']}")
     assert resolved.status_code == 200
@@ -1019,6 +1046,7 @@ def test_board_member_candidates_invite_and_share_link_contract(monkeypatch):
         "accessRole": "viewer",
         "boardId": "share_board",
         "boardTitle": "Share Board",
+        "passwordProtected": False,
         "shareId": share_link["shareId"],
         "workspaceId": "workspace_group",
     }

@@ -6,9 +6,12 @@ from fastapi import HTTPException
 
 from tangent_api.board_access import assert_board_allows_member_management
 from tangent_api.request_context import ApiRequestContext
+from tangent_api.safe_text import normalize_safe_label
 from tangent_api.schemas import BoardMemberCandidateRecord, BoardMemberRecord
 from tangent_api.storage.postgres_board_schema import ensure_board_schema
 from tangent_api.storage.postgres_board_store_support import connect_to_postgres_via_store as connect_to_postgres
+
+ASSIGNABLE_BOARD_MEMBER_ROLES = {"admin", "editor", "viewer"}
 
 
 class PostgresBoardStoreMembersMixin:
@@ -51,6 +54,7 @@ class PostgresBoardStoreMembersMixin:
         record = self._load_board_without_touch(board_id, context, required_access="manage")
         assert_board_allows_member_management(context.workspace_kind)
         normalized_role = normalize_board_member_role(role)
+        normalized_display_name = normalize_optional_member_display_name(display_name)
         with connect_to_postgres() as connection:
             with connection.cursor() as cursor:
                 ensure_board_schema(cursor)
@@ -69,7 +73,7 @@ class PostgresBoardStoreMembersMixin:
                     """,
                     (context.workspace_id, record.id, user_id, normalized_role, context.user_id),
                 )
-                row = self._select_board_member_row(cursor, context.workspace_id, record.id, user_id, display_name)
+                row = self._select_board_member_row(cursor, context.workspace_id, record.id, user_id, normalized_display_name)
             connection.commit()
         if not row:
             raise HTTPException(status_code=404, detail="Board member upsert failed.")
@@ -182,7 +186,7 @@ class PostgresBoardStoreMembersMixin:
                 person = cursor.fetchone()
         if not person:
             raise HTTPException(status_code=404, detail="Workspace person for that email was not found.")
-        preferred_display_name = display_name.strip() if isinstance(display_name, str) and display_name.strip() else person[2]
+        preferred_display_name = normalize_optional_member_display_name(display_name) or person[2]
         return self.upsert_member(board_id, str(person[0]), role, preferred_display_name, context)
 
     def _select_board_member_row(
@@ -217,7 +221,7 @@ class PostgresBoardStoreMembersMixin:
 
 def normalize_board_member_role(role: str) -> str:
     normalized = role.strip().lower()
-    if normalized not in {"owner", "admin", "editor", "viewer", "temporary_viewer"}:
+    if normalized not in ASSIGNABLE_BOARD_MEMBER_ROLES:
         raise HTTPException(status_code=400, detail="Invalid board member role.")
     return normalized
 
@@ -240,3 +244,9 @@ def normalize_email(value: str) -> str:
     if "@" not in trimmed or "." not in trimmed.split("@", 1)[-1]:
         raise HTTPException(status_code=400, detail="Valid email is required.")
     return trimmed[:320]
+
+
+def normalize_optional_member_display_name(value: Optional[str]) -> Optional[str]:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    return normalize_safe_label(value, field_name="Display name")

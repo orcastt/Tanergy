@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type SyntheticEvent } from 'react'
 import type { CanvasDocument } from '@/features/canvas-engine'
 import type { SerializedKonvaBoardPage } from '@/features/boards/konvaBoardPageContract'
+import { sanitizeUserLabelInput } from '@/features/security/safeText'
 import type { KonvaBoardPageReorderDirection } from './konvaBoardPageActions'
 import { KonvaCanvasPageLimitDialog } from './KonvaCanvasPageLimitDialog'
 import { KonvaCanvasPageThumbnail } from './KonvaCanvasPageThumbnail'
@@ -154,7 +155,7 @@ export function KonvaCanvasPagesPanel({
                       <input
                         aria-label="Page name"
                         onBlur={commitRename}
-                        onChange={(event) => setDraftTitle(event.target.value)}
+                        onChange={(event) => setDraftTitle(sanitizeUserLabelInput(event.target.value))}
                         onClick={(event) => event.stopPropagation()}
                         onKeyDown={handleTitleKeyDown}
                         ref={inputRef}

@@ -1,6 +1,7 @@
 import type Konva from 'konva'
 import { boundsToRect, expandBounds, getShapeBounds, type CanvasBounds, type CanvasDocument, type CanvasImageShape, type CanvasNodeShape } from '@/features/canvas-engine'
 import { getRuntimeGraphGeneratedOutputRefs } from '@/features/node-runtime/runtimeGraphAssets'
+import { firstSafeImageDisplayUrl } from '@/features/security/safeUrl'
 import { mapWithConcurrency } from '@/features/shared/asyncConcurrency'
 import { konvaCaptureExcludeName, konvaRuntimeEdgeNodeIdPrefix, konvaRuntimeEdgeNodeName } from './konvaCaptureNames'
 import { getKonvaNodePortWorldPoint } from './konvaNodePorts'
@@ -264,14 +265,14 @@ function pickCaptureAssetUrl(
   targetEdge: number,
 ) {
   const requiredEdge = Math.max(1, Math.ceil(targetEdge * 1.2))
-  if (requiredEdge <= 256 && source.thumbnail256Url) return source.thumbnail256Url
+  if (requiredEdge <= 256 && source.thumbnail256Url) return firstSafeImageDisplayUrl(source.thumbnail256Url)
   if (requiredEdge <= 512) {
-    return source.thumbnail512Url ?? source.thumbnail1024Url ?? source.originalUrl ?? source.thumbnail256Url
+    return firstSafeImageDisplayUrl(source.thumbnail512Url, source.thumbnail1024Url, source.originalUrl, source.thumbnail256Url)
   }
   if (requiredEdge <= 1024) {
-    return source.thumbnail1024Url ?? source.originalUrl ?? source.thumbnail512Url ?? source.thumbnail256Url
+    return firstSafeImageDisplayUrl(source.thumbnail1024Url, source.originalUrl, source.thumbnail512Url, source.thumbnail256Url)
   }
-  return source.originalUrl ?? source.thumbnail1024Url ?? source.thumbnail512Url ?? source.thumbnail256Url
+  return firstSafeImageDisplayUrl(source.originalUrl, source.thumbnail1024Url, source.thumbnail512Url, source.thumbnail256Url)
 }
 
 function findShapeNode(stage: Konva.Stage, shapeId: string) {
@@ -302,7 +303,7 @@ function getString(value: unknown) {
   return typeof value === 'string' && value.trim() ? value : undefined
 }
 
-function isString(value: string | undefined): value is string {
+function isString(value: string | null | undefined): value is string {
   return typeof value === 'string' && value.length > 0
 }
 

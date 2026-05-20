@@ -71,6 +71,8 @@ Web / Vercel:
 - `NEXT_PUBLIC_API_BASE_URL=https://api.<domain>`
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
 - `CLERK_SECRET_KEY`
+- `NEXT_PUBLIC_SENTRY_DSN` and `SENTRY_DSN` when error tracking is enabled
+- `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN` when uploading source maps
 
 API / server:
 
@@ -86,6 +88,7 @@ API / server:
 - `S3_ACCESS_KEY_ID`
 - `S3_SECRET_ACCESS_KEY`
 - `RESEND_API_KEY` or the chosen email provider key
+- `SENTRY_DSN` or `TANGENT_ERROR_TRACKING_DSN` when backend error tracking is enabled
 - live AI provider keys such as `JIEKOU_IMAGE_KEY` and `JIEKOU_TEXT_KEY`
 - future payment live secrets and webhook secrets
 
@@ -161,6 +164,32 @@ Do not mix staging-only commits with production deploys after acceptance has sta
 
 ## Production Smoke Checklist
 
+- Run the deployment configuration and public ops readiness smokes:
+
+```bash
+PYTHONPATH=services/api python3 services/api/scripts/security_deploy_config_smoke.py \
+  --env-file deploy/production/api.env \
+  --production-like
+
+PYTHONPATH=services/api python3 services/api/scripts/security_object_storage_smoke.py \
+  --env-file deploy/production/api.env \
+  --required \
+  --probe-public-url
+
+PYTHONPATH=services/api python3 services/api/scripts/ops_external_proof_smoke.py \
+  --env-file deploy/production/api.env \
+  --production-like \
+  --required \
+  --check-urls
+
+PYTHONPATH=services/api python3 services/api/scripts/ops_readiness_smoke.py \
+  --web-url https://app.<domain> \
+  --api-url https://api.<domain> \
+  --origin https://app.<domain> \
+  --require-hsts \
+  --require-static-cache
+```
+
 - `https://api.<domain>/health` returns `200`.
 - Clerk sign-in works from the real production domain.
 - `/api/v1/auth/session` creates or resumes the local user/session row.
@@ -170,6 +199,18 @@ Do not mix staging-only commits with production deploys after acceptance has sta
 - `/admin` denies non-admin users and admits a real admin role.
 - one live AI text or image run completes through the backend `AiRun` path.
 - slow SQL log stays quiet on the common board/admin paths.
+
+## Ops Readiness References
+
+- Readiness acceptance: `docs/ops-readiness-acceptance.md`.
+- Incident response: `docs/incident-response-runbook.md`.
+- External monitor owner: TODO; alert channel: TODO; status-page owner: TODO.
+- Backups/PITR: TODO owner must confirm retention, restore drill date, RTO and
+  RPO before launch.
+- Error tracking: TODO owner must configure Sentry or equivalent DSN, source maps
+  and severity routing before launch.
+- Status page: publish investigating updates for user-visible API down,
+  database-loss, provider-outage, security, DNS/SSL and object-storage incidents.
 
 ## Rollback
 

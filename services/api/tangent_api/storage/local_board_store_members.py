@@ -40,7 +40,7 @@ def upsert_board_member(
     person = next((item for item in people if item["user_id"] == user_id), None)
     members = _read_member_records(record.id, record, context)
     now = datetime.now(timezone.utc).isoformat()
-    next_display_name = display_name.strip() if isinstance(display_name, str) and display_name.strip() else None
+    next_display_name = _normalize_display_name(display_name)
     next_member = BoardMemberRecord(
         displayName=next_display_name or (person["display_name"] if person else user_id),
         email=person["email"] if person else None,

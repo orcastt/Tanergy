@@ -5,6 +5,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import { requestCurrentSessionRefresh } from '@/features/auth/sessionClient'
 import type { TangentSession, TangentWorkspace } from '@/features/auth/sessionTypes'
 import type { BoardMetadataUpdateInput, BoardPersistenceSummary } from '@/features/boards/boardTypes'
+import { normalizeUserLabelInput } from '@/features/security/safeText'
 import {
   copyLocalBoardDocument,
   deleteLocalBoardDocument,
@@ -159,7 +160,7 @@ export function WorkspaceDashboardBoardsPanel({
 
   async function renameBoard(event: FormEvent<HTMLFormElement>, boardId: string) {
     event.preventDefault()
-    const title = editingTitle.trim()
+    const title = normalizeUserLabelInput(editingTitle)
     if (!title) {
       setError('Board title is required.')
       return

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import type { AiRunRequest } from '@/features/ai/aiTypes'
 import { createAiChargeSummaryForContext } from '@/features/billing/billingContracts'
 import { assertLocalAiBridgeAvailable } from '@/features/api/runtimeBridgePolicy'
+import { rejectCrossSiteMutation } from '../../_lib/csrfGuard'
 import { getApiRequestContext } from '../../_lib/apiRequestContext'
 import { readJsonRequestWithLimit, requestBodyErrorStatus } from '../../_lib/requestBodyLimits'
 import { createLocalProviderAnalysisRun } from '../_lib/localProviderAnalysisRun'
@@ -14,6 +15,8 @@ const maxAiRunRequestBytes = 64 * 1024
 
 export async function POST(request: Request) {
   try {
+    const originRejection = rejectCrossSiteMutation(request)
+    if (originRejection) return originRejection
     assertLocalAiBridgeAvailable()
     const context = getApiRequestContext(request)
     const body = await readJsonRequestWithLimit<AiRunRequest>(request, maxAiRunRequestBytes)

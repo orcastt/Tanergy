@@ -5,13 +5,13 @@ from fastapi import HTTPException
 
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.storage.postgres_connection import require_database_url
+from tangent_api.workspace_access import assert_workspace_actor_role
 
 ID_PATTERN = re.compile(r"^[a-zA-Z0-9._-]+$")
 MANAGER_ROLES = {"owner", "admin"}
 
 
 def remove_workspace_member(user_id: str, context: ApiRequestContext) -> str:
-    _assert_can_manage_workspace_members(context)
     normalized_user_id = _normalize_id(user_id, "user id")
     if normalized_user_id == context.user_id:
         raise HTTPException(status_code=400, detail="Workspace members cannot remove themselves.")
@@ -20,10 +20,18 @@ def remove_workspace_member(user_id: str, context: ApiRequestContext) -> str:
 
     with connect_to_postgres() as connection:
         with connection.cursor() as cursor:
+            _workspace_kind, actor_role = assert_workspace_actor_role(
+                cursor,
+                context,
+                allowed_kinds={"group_workspace", "team_workspace", "enterprise_workspace"},
+                allowed_roles=MANAGER_ROLES,
+                feature_unavailable_detail="Workspace member management is unavailable for this workspace.",
+                forbidden_detail="Workspace role cannot manage workspace members.",
+            )
             current_role = _load_workspace_member_role(cursor, context.workspace_id, normalized_user_id)
             if current_role is None:
                 raise HTTPException(status_code=404, detail="Workspace member not found.")
-            _assert_remove_allowed(context.workspace_role, current_role)
+            _assert_remove_allowed(actor_role, current_role)
             cursor.execute(
                 """
                 DELETE FROM tangent_workspace_members

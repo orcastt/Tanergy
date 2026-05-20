@@ -17,6 +17,11 @@ export async function readJsonRequestWithLimit<T>(request: Request, maxBytes: nu
   return JSON.parse(body.toString('utf8')) as T
 }
 
+export async function readTextRequestWithLimit(request: Request, maxBytes: number): Promise<string> {
+  assertRequestContentLength(request, maxBytes)
+  return (await readRequestBufferWithLimit(request, maxBytes)).toString('utf8')
+}
+
 export function assertRequestContentLength(
   request: Request,
   maxBytes: number,

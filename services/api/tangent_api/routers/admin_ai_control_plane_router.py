@@ -26,6 +26,9 @@ from tangent_api.schemas import (
 
 router = APIRouter(prefix="/ai")
 
+AI_CONTROL_READ_ROLES = {"owner", "admin", "finance"}
+AI_CONTROL_WRITE_ROLES = {"owner", "admin"}
+
 
 @router.get("/models", response_model=AdminAiModelsResponse)
 def get_admin_ai_models(
@@ -34,7 +37,7 @@ def get_admin_ai_models(
     enabled: Optional[bool] = Query(default=None),
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminAiModelsResponse:
-    roles = require_admin_role(context)
+    roles = require_admin_role(context, allowed_roles=AI_CONTROL_READ_ROLES)
     models = list_admin_ai_models(limit=limit, capability=capability, enabled=enabled)
     write_admin_audit_log(
         action="admin.ai.models.list",
@@ -51,7 +54,7 @@ def patch_admin_ai_model(
     input_data: AdminAiModelUpdateRequest,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminAiModelMutationResponse:
-    roles = require_admin_role(context, allowed_roles={"owner", "admin"})
+    roles = require_admin_role(context, allowed_roles=AI_CONTROL_WRITE_ROLES)
     model = update_admin_ai_model(model_key, input_data)
     write_admin_audit_log(
         action="admin.ai.model.update",
@@ -70,7 +73,7 @@ def get_admin_ai_provider_routes(
     enabled: Optional[bool] = Query(default=None),
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminAiProviderRoutesResponse:
-    roles = require_admin_role(context)
+    roles = require_admin_role(context, allowed_roles=AI_CONTROL_READ_ROLES)
     routes = list_admin_ai_provider_routes(
         limit=limit,
         model_key=model_key,
@@ -98,7 +101,7 @@ def patch_admin_ai_provider_route(
     input_data: AdminAiProviderRouteUpdateRequest,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminAiProviderRouteMutationResponse:
-    roles = require_admin_role(context, allowed_roles={"owner", "admin"})
+    roles = require_admin_role(context, allowed_roles=AI_CONTROL_WRITE_ROLES)
     route = update_admin_ai_provider_route(route_id, input_data)
     write_admin_audit_log(
         action="admin.ai.provider_route.update",
@@ -117,7 +120,7 @@ def get_admin_ai_pricing_rules(
     status: Optional[str] = Query(default=None, min_length=1),
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminAiPricingRulesResponse:
-    roles = require_admin_role(context)
+    roles = require_admin_role(context, allowed_roles=AI_CONTROL_READ_ROLES)
     pricing_rules = list_admin_ai_pricing_rules(limit=limit, model_key=model_key, tier_key=tier_key, status=status)
     write_admin_audit_log(
         action="admin.ai.pricing_rules.list",
@@ -140,7 +143,7 @@ def patch_admin_ai_pricing_rule(
     input_data: AdminAiPricingRuleUpdateRequest,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminAiPricingRuleMutationResponse:
-    roles = require_admin_role(context, allowed_roles={"owner", "admin"})
+    roles = require_admin_role(context, allowed_roles=AI_CONTROL_WRITE_ROLES)
     pricing_rule = update_admin_ai_pricing_rule(rule_id, input_data)
     write_admin_audit_log(
         action="admin.ai.pricing_rule.update",

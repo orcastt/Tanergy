@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { ClerkProvider } from '@clerk/nextjs'
+import { SentryUserContext } from '@/features/observability/SentryUserContext'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -21,7 +22,10 @@ export default function RootLayout({
       signUpUrl="/sign-up"
     >
       <html lang="en">
-        <body>{children}</body>
+        <body>
+          <SentryUserContext />
+          {children}
+        </body>
       </html>
     </ClerkProvider>
   )

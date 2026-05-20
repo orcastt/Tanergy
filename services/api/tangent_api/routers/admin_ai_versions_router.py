@@ -11,6 +11,9 @@ from tangent_api.request_context import ApiRequestContext, get_request_context
 
 router = APIRouter(prefix="/ai")
 
+AI_VERSION_READ_ROLES = {"owner", "admin", "finance"}
+AI_VERSION_WRITE_ROLES = {"owner", "admin"}
+
 
 @router.get("/versions", response_model=AdminAiControlPlaneVersionsResponse)
 def get_admin_ai_versions(
@@ -19,7 +22,7 @@ def get_admin_ai_versions(
     limit: int = Query(default=20, ge=1, le=100),
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminAiControlPlaneVersionsResponse:
-    roles = require_admin_role(context)
+    roles = require_admin_role(context, allowed_roles=AI_VERSION_READ_ROLES)
     versions = list_admin_ai_versions(resource_type, resource_id, limit)
     write_admin_audit_log(
         action="admin.ai.versions.list",
@@ -41,7 +44,7 @@ def publish_admin_ai_model(
     payload: AdminAiPublishRequest,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminAiVersionMutationResponse:
-    roles = require_admin_role(context, allowed_roles={"owner", "admin"})
+    roles = require_admin_role(context, allowed_roles=AI_VERSION_WRITE_ROLES)
     version = publish_admin_ai_version(
         "model",
         model_key,
@@ -65,7 +68,7 @@ def rollback_admin_ai_model(
     payload: AdminAiPublishRequest,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminAiVersionMutationResponse:
-    roles = require_admin_role(context, allowed_roles={"owner", "admin"})
+    roles = require_admin_role(context, allowed_roles=AI_VERSION_WRITE_ROLES)
     version = rollback_admin_ai_version(
         "model",
         model_key,
@@ -89,7 +92,7 @@ def publish_admin_ai_provider_route(
     payload: AdminAiPublishRequest,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminAiVersionMutationResponse:
-    roles = require_admin_role(context, allowed_roles={"owner", "admin"})
+    roles = require_admin_role(context, allowed_roles=AI_VERSION_WRITE_ROLES)
     version = publish_admin_ai_version(
         "provider_route",
         route_id,
@@ -113,7 +116,7 @@ def rollback_admin_ai_provider_route(
     payload: AdminAiPublishRequest,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminAiVersionMutationResponse:
-    roles = require_admin_role(context, allowed_roles={"owner", "admin"})
+    roles = require_admin_role(context, allowed_roles=AI_VERSION_WRITE_ROLES)
     version = rollback_admin_ai_version(
         "provider_route",
         route_id,
@@ -137,7 +140,7 @@ def publish_admin_ai_pricing_rule(
     payload: AdminAiPublishRequest,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminAiVersionMutationResponse:
-    roles = require_admin_role(context, allowed_roles={"owner", "admin"})
+    roles = require_admin_role(context, allowed_roles=AI_VERSION_WRITE_ROLES)
     version = publish_admin_ai_version(
         "pricing_rule",
         rule_id,
@@ -161,7 +164,7 @@ def rollback_admin_ai_pricing_rule(
     payload: AdminAiPublishRequest,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminAiVersionMutationResponse:
-    roles = require_admin_role(context, allowed_roles={"owner", "admin"})
+    roles = require_admin_role(context, allowed_roles=AI_VERSION_WRITE_ROLES)
     version = rollback_admin_ai_version(
         "pricing_rule",
         rule_id,

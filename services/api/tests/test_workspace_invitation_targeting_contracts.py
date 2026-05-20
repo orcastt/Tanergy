@@ -113,6 +113,7 @@ def test_team_invite_workspace_ready_requires_active_subscription():
 
 def test_team_workspace_invite_create_requires_active_subscription(monkeypatch):
     fake_db = FakePostgresDatabase()
+    _seed_workspace_access(fake_db, "workspace_team", "team_workspace", "user_team_owner")
     monkeypatch.setenv("DATABASE_URL", "postgresql://test")
     monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
     client = TestClient(app)
@@ -129,6 +130,32 @@ def test_team_workspace_invite_create_requires_active_subscription(monkeypatch):
 
     assert response.status_code == 402
     assert response.json()["detail"] == "This Team workspace needs an active Team subscription before invite links can be used."
+
+
+def _seed_workspace_access(
+    fake_db: FakePostgresDatabase,
+    workspace_id: str,
+    kind: str,
+    owner_id: str,
+) -> None:
+    fake_db.workspaces.append(
+        {
+            "billing_owner_user_id": owner_id,
+            "id": workspace_id,
+            "kind": kind,
+            "name": "Workspace",
+            "owner_id": owner_id,
+            "status": "active",
+        }
+    )
+    fake_db.workspace_members.append(
+        {
+            "display_name": "Owner",
+            "role": "owner",
+            "user_id": owner_id,
+            "workspace_id": workspace_id,
+        }
+    )
 
 
 def build_context(*, user_email: str, user_id: str = "user_current") -> ApiRequestContext:

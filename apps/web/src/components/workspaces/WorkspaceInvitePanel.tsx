@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   createWorkspaceInvitation,
   revokeWorkspaceInvitation,
@@ -21,7 +21,9 @@ type WorkspaceInvitePanelProps = {
   members?: WorkspaceDashboardMember[]
   onWorkspaceRefresh?: () => void
   seatLabel?: string
+  seatLimit?: number
   seatPlanMax?: null | number
+  seatsUsed?: number
   workspace: TangentWorkspace
 }
 
@@ -33,16 +35,21 @@ export function WorkspaceInvitePanel({
   members = [],
   onWorkspaceRefresh,
   seatLabel,
+  seatLimit,
   seatPlanMax = null,
+  seatsUsed,
   workspace,
 }: WorkspaceInvitePanelProps) {
   const [email, setEmail] = useState('')
   const [inviteLink, setInviteLink] = useState('')
   const [role, setRole] = useState<InviteRole>('editor')
+  const [seatDialogMessage, setSeatDialogMessage] = useState<null | string>(null)
   const [status, setStatus] = useState<null | string>(null)
   const [isPending, setIsPending] = useState(false)
 
   const canManageInvites = managerRoles.has(workspace.role)
+  const teamSeatLimit = workspace.kind === 'team_workspace' && typeof seatLimit === 'number' && seatLimit > 0 ? seatLimit : null
+  const teamSeatsUsed = workspace.kind === 'team_workspace' && typeof seatsUsed === 'number' ? seatsUsed : null
   const inviteRoles = workspace.role === 'owner'
     ? ['admin', 'editor', 'viewer'] as InviteRole[]
     : ['editor', 'viewer'] as InviteRole[]
@@ -69,15 +76,32 @@ export function WorkspaceInvitePanel({
     totalInviteCount,
     visibleInvites,
   } = useWorkspaceInvitations({ workspace })
+  useEffect(() => {
+    if (!seatDialogMessage) return undefined
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSeatDialogMessage(null)
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [seatDialogMessage])
+
   const inviteStats = [
     { label: 'Pending', value: String(inviteGroups.pending.length) },
     { label: 'Accepted', value: String(inviteGroups.accepted.length) },
     { label: 'Revoked', value: String(inviteGroups.revoked.length) },
     seatLabel ? { label: 'Seats', value: seatLabel } : null,
   ].filter(Boolean) as Array<{ label: string; value: string }>
+  const pendingSeatReservations = workspace.kind === 'team_workspace' ? inviteGroups.pending.length : 0
+  const teamSeatsReserved = teamSeatsUsed !== null ? teamSeatsUsed + pendingSeatReservations : null
+  const isTeamSeatFull = teamSeatLimit !== null && teamSeatsReserved !== null && teamSeatsReserved >= teamSeatLimit
   const inviteRule = workspace.kind === 'team_workspace'
-    ? `Accepted Team invites join the same Team wallet workspace. A seat is consumed only after acceptance.${seatPlanMax ? ` Current purchased seats are shown above; the plan can expand to ${seatPlanMax}.` : ''}`
+    ? `Team invite links reserve a purchased seat until accepted, revoked, or expired.${seatPlanMax ? ` Current purchased seats are shown above; the plan can expand to ${seatPlanMax}.` : ''}`
     : 'Accepted Group invites join the same Group structure, but AI still charges each member’s own personal credits.'
+  const seatFullMessage = teamSeatLimit && teamSeatsUsed !== null && pendingSeatReservations > 0
+    ? `This Team has ${teamSeatsUsed}/${teamSeatLimit} active seats plus ${pendingSeatReservations} pending invite${pendingSeatReservations === 1 ? '' : 's'}. Revoke a pending invite, buy another seat, or contact an administrator before inviting another member.`
+    : teamSeatLimit && teamSeatsUsed !== null
+      ? `This Team has used ${teamSeatsUsed}/${teamSeatLimit} seats. Buy another seat or contact an administrator before inviting another member.`
+      : 'This Team has used all purchased seats. Buy another seat or contact an administrator before inviting another member.'
 
   return (
     <section className="workspace-detail-panel workspace-detail-side-panel">
@@ -109,7 +133,13 @@ export function WorkspaceInvitePanel({
         <span>Optional email restriction</span>
         <input onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" value={email} />
       </label>
-      <button className="workspace-detail-danger-button workspace-invite-generate-button" disabled={isPending || !canManageInvites} onClick={createInvite} type="button">
+      <button
+        aria-disabled={isTeamSeatFull}
+        className="workspace-detail-danger-button workspace-invite-generate-button"
+        disabled={isPending || !canManageInvites}
+        onClick={createInvite}
+        type="button"
+      >
         {isPending ? 'Generating...' : 'Generate invite link'}
       </button>
       {inviteLink ? (
@@ -181,11 +211,39 @@ export function WorkspaceInvitePanel({
           ) : null}
         </>
       )}
+      {seatDialogMessage ? (
+        <div className="workspace-limit-dialog-backdrop" onMouseDown={() => setSeatDialogMessage(null)} role="presentation">
+          <section
+            aria-label="Team seat limit"
+            aria-modal="true"
+            className="workspace-limit-dialog"
+            onMouseDown={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <div className="workspace-limit-dialog-copy">
+              <span className="workspace-limit-dialog-eyebrow">Team seats</span>
+              <h2>Team seats are full</h2>
+              <p>{seatDialogMessage}</p>
+              <small>{workspace.name}</small>
+            </div>
+            <div className="workspace-limit-dialog-actions">
+              <button className="product-button product-button-primary" onClick={() => setSeatDialogMessage(null)} type="button">
+                OK
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </section>
   )
 
   async function createInvite() {
     if (!canManageInvites) return setStatus('Your workspace role cannot create invites.')
+    if (isTeamSeatFull) {
+      setStatus(null)
+      setSeatDialogMessage(seatFullMessage)
+      return
+    }
     setIsPending(true)
     setStatus(null)
     try {
@@ -206,7 +264,12 @@ export function WorkspaceInvitePanel({
       const copied = await writeInviteLink(nextLink)
       setStatus(copied ? 'Invite link copied. Share it manually.' : 'Invite ready. Copy and share it.')
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : 'Invite failed.')
+      const message = error instanceof Error ? error.message : 'Invite failed.'
+      if (workspace.kind === 'team_workspace' && isTeamSeatLimitError(message)) {
+        setSeatDialogMessage(message)
+      } else {
+        setStatus(message)
+      }
     } finally {
       setIsPending(false)
     }
@@ -252,4 +315,9 @@ async function writeInviteLink(value: string) {
   } catch {
     return false
   }
+}
+
+function isTeamSeatLimitError(message: string) {
+  const normalized = message.toLowerCase()
+  return normalized.includes('team seats are full') || normalized.includes('no team seats remain')
 }

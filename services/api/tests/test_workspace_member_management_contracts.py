@@ -6,7 +6,14 @@ from tests.persistence_fakes import FakePostgresDatabase
 
 def test_team_owner_remove_member_revokes_active_seat(monkeypatch):
     fake_db = FakePostgresDatabase()
+    _seed_workspace(fake_db, "workspace_team", "team_workspace", "user_team_owner")
     fake_db.workspace_members = [
+        {
+            "display_name": "Team Owner",
+            "role": "owner",
+            "user_id": "user_team_owner",
+            "workspace_id": "workspace_team",
+        },
         {
             "display_name": "Team Editor",
             "role": "editor",
@@ -40,17 +47,25 @@ def test_team_owner_remove_member_revokes_active_seat(monkeypatch):
 
     assert response.status_code == 200
     assert response.json() == {"ok": True, "userId": "user_team_editor"}
-    assert fake_db.workspace_members == []
+    assert not any(row["user_id"] == "user_team_editor" for row in fake_db.workspace_members)
+    assert any(row["user_id"] == "user_team_owner" for row in fake_db.workspace_members)
     assert fake_db.workspace_seat_assignments[0]["status"] == "revoked"
 
 
 def test_workspace_admin_cannot_remove_owner(monkeypatch):
     fake_db = FakePostgresDatabase()
+    _seed_workspace(fake_db, "workspace_group", "group_workspace", "user_group_owner")
     fake_db.workspace_members = [
         {
             "display_name": "Owner",
             "role": "owner",
             "user_id": "user_group_owner",
+            "workspace_id": "workspace_group",
+        },
+        {
+            "display_name": "Admin",
+            "role": "admin",
+            "user_id": "user_group_admin",
             "workspace_id": "workspace_group",
         }
     ]
@@ -172,3 +187,16 @@ def test_workspace_admin_cannot_transfer_owner(monkeypatch):
 
     assert response.status_code == 403
     assert response.json()["detail"] == "Only workspace owners can transfer ownership."
+
+
+def _seed_workspace(fake_db: FakePostgresDatabase, workspace_id: str, kind: str, owner_id: str) -> None:
+    fake_db.workspaces.append(
+        {
+            "billing_owner_user_id": owner_id,
+            "id": workspace_id,
+            "kind": kind,
+            "name": "Workspace",
+            "owner_id": owner_id,
+            "status": "active",
+        }
+    )

@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from tangent_api.request_context import ApiRequestContext, get_request_context
+from tangent_api.security_idempotency import run_idempotent
 from tangent_api.workspace_invitations import (
     accept_workspace_invitation,
     create_workspace_invitation,
@@ -98,18 +99,25 @@ def get_current_workspace_invitations(
 @router.post("/current/invitations", response_model=WorkspaceInvitationCreateResponse)
 def post_current_workspace_invitation(
     input_data: WorkspaceInvitationCreateRequest,
+    request: Request,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> WorkspaceInvitationCreateResponse:
-    return WorkspaceInvitationCreateResponse(
-        result=create_workspace_invitation(
-            email=input_data.email,
-            expires_in_days=input_data.expires_in_days,
-            metadata=input_data.metadata,
-            role=input_data.role,
-            target_user_id=input_data.target_user_id,
-            context=context,
+    return run_idempotent(
+        request,
+        context,
+        action="workspace.invite.create",
+        fingerprint_payload=input_data,
+        produce=lambda: WorkspaceInvitationCreateResponse(
+            result=create_workspace_invitation(
+                email=input_data.email,
+                expires_in_days=input_data.expires_in_days,
+                metadata=input_data.metadata,
+                role=input_data.role,
+                target_user_id=input_data.target_user_id,
+                context=context,
+            ),
+            ok=True,
         ),
-        ok=True,
     )
 
 

@@ -12,13 +12,16 @@ from tangent_api.schemas import AdminRoleGrantRequest, AdminRoleListResponse, Ad
 
 router = APIRouter()
 
+ROLES_READ_ROLES = {"owner", "admin", "finance"}
+ROLES_WRITE_ROLES = {"owner", "admin"}
+
 
 @router.get("/roles", response_model=AdminRoleListResponse)
 def get_admin_roles_for_user(
     user_id: str = Query(alias="userId", min_length=1),
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminRoleListResponse:
-    roles = require_admin_role(context)
+    roles = require_admin_role(context, allowed_roles=ROLES_READ_ROLES)
     write_admin_audit_log(
         action="admin.roles.read",
         actor_user_id=context.user_id,
@@ -33,7 +36,7 @@ def post_admin_role(
     payload: AdminRoleGrantRequest,
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminRoleMutationResponse:
-    require_admin_role(context, allowed_roles={"owner", "admin"})
+    require_admin_role(context, allowed_roles=ROLES_WRITE_ROLES)
     granted, audit_id = grant_admin_role(
         actor_user_id=context.user_id,
         target_user_id=payload.user_id,
@@ -53,7 +56,7 @@ def delete_admin_role(
     reason: str = Query(min_length=1),
     context: ApiRequestContext = Depends(get_request_context),
 ) -> AdminRoleMutationResponse:
-    require_admin_role(context, allowed_roles={"owner", "admin"})
+    require_admin_role(context, allowed_roles=ROLES_WRITE_ROLES)
     revoked, audit_id = revoke_admin_role(
         actor_user_id=context.user_id,
         target_user_id=user_id,

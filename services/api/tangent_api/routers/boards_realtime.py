@@ -5,6 +5,11 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 
+from tangent_api.realtime.board_realtime_access import ensure_realtime_write_access
+from tangent_api.realtime.board_realtime_abuse import (
+    RealtimeMessageRateLimiter,
+    allow_realtime_room_connection,
+)
 from tangent_api.realtime.board_realtime_hub import board_realtime_hub
 from tangent_api.realtime.board_realtime_limits import (
     BOARD_REALTIME_WEBSOCKET_MESSAGE_BYTE_LIMIT,
@@ -12,13 +17,21 @@ from tangent_api.realtime.board_realtime_limits import (
     normalize_realtime_update,
 )
 from tangent_api.realtime.board_realtime_persistence import board_realtime_persistence
-from tangent_api.request_context import ApiRequestContext, get_request_context, get_websocket_context
+from tangent_api.request_context import (
+    ApiRequestContext,
+    get_request_context,
+    get_websocket_context,
+)
+from tangent_api.security_events import record_security_event
+from tangent_api.security_origin import is_request_origin_allowed, should_require_websocket_origin
 from tangent_api.schemas import (
     BoardCollaborationSessionDeleteResponse,
     BoardCollaborationSessionUpsertRequest,
     BoardCollaborationSessionsResponse,
 )
-from tangent_api.storage.board_collaboration_storage_adapter import get_board_collaboration_storage_adapter
+from tangent_api.storage.board_collaboration_storage_adapter import (
+    get_board_collaboration_storage_adapter,
+)
 
 router = APIRouter(tags=["boards"])
 
@@ -31,7 +44,10 @@ def list_board_collaboration_sessions(
     return get_board_collaboration_storage_adapter().list_sessions(board_id, context)
 
 
-@router.post("/{board_id}/collaboration/sessions", response_model=BoardCollaborationSessionsResponse)
+@router.post(
+    "/{board_id}/collaboration/sessions",
+    response_model=BoardCollaborationSessionsResponse,
+)
 def claim_board_collaboration_session(
     board_id: str,
     payload: BoardCollaborationSessionUpsertRequest,
@@ -54,6 +70,21 @@ def release_board_collaboration_session(
 
 @router.websocket("/{board_id}/realtime")
 async def board_realtime_room(websocket: WebSocket, board_id: str) -> None:
+    if not is_request_origin_allowed(
+        websocket.headers.get("origin"),
+        require_origin=should_require_websocket_origin(),
+    ):
+        record_security_event(
+            action="realtime.origin",
+            decision="deny",
+            metadata={"boardId": board_id, "origin": websocket.headers.get("origin")},
+            reason="websocket_origin_not_allowed",
+            resource_id=board_id,
+            resource_type="board",
+        )
+        await websocket.close(code=4403, reason="Realtime origin is not allowed.")
+        return
+
     client_instance_id = websocket.query_params.get("clientInstanceId")
     if not isinstance(client_instance_id, str) or not client_instance_id.strip():
         await websocket.close(code=4400, reason="Missing clientInstanceId.")
@@ -82,26 +113,103 @@ async def board_realtime_room(websocket: WebSocket, board_id: str) -> None:
         await websocket.close(code=4403, reason="Room key mismatch.")
         return
 
-    persisted_updates = board_realtime_persistence.load_document(collaboration.workspace_id, board_id)
+    if not allow_realtime_room_connection(
+        board_id=board_id,
+        room_key=room_key,
+        user_id=context.user_id,
+        workspace_id=context.workspace_id,
+    ):
+        record_security_event(
+            action="realtime.connection_limit",
+            context=context,
+            decision="deny",
+            metadata={"boardId": board_id, "roomKey": room_key},
+            reason="websocket_room_connection_limit_exceeded",
+            resource_id=board_id,
+            resource_type="board",
+        )
+        await websocket.close(code=4408, reason="Realtime connection limit exceeded.")
+        return
+
+    persisted_updates = board_realtime_persistence.load_document(
+        collaboration.workspace_id,
+        board_id,
+    )
     await websocket.accept()
-    room, connection_id = await board_realtime_hub.connect(
-        room_key,
-        websocket,
-        normalized_client_instance_id,
-        persisted_updates,
+    try:
+        room, connection_id = await board_realtime_hub.connect(
+            room_key,
+            websocket,
+            normalized_client_instance_id,
+            persisted_updates,
+            can_edit=collaboration.can_edit,
+        )
+    except RuntimeError as error:
+        reason = str(error)
+        record_security_event(
+            action="realtime.connection_limit",
+            context=context,
+            decision="deny",
+            metadata={"boardId": board_id, "roomKey": room_key},
+            reason="websocket_room_connection_limit_exceeded",
+            resource_id=board_id,
+            resource_type="board",
+        )
+        await websocket.close(
+            code=4408,
+            reason=reason[:120] or "Realtime connection limit exceeded.",
+        )
+        return
+    message_rate_limiter = RealtimeMessageRateLimiter(
+        board_id=board_id,
+        client_instance_id=normalized_client_instance_id,
+        room_key=room_key,
+        user_id=context.user_id,
+        workspace_id=context.workspace_id,
     )
     try:
         while True:
             payload = await _receive_realtime_json(websocket)
-            message_type = payload.get("type") if isinstance(payload, dict) else None
-            if message_type in {"sync-state-publish", "yjs-update"} and not collaboration.can_edit:
-                await websocket.close(code=4403, reason="Realtime document writes require board edit access.")
+            if not message_rate_limiter.allow():
+                record_security_event(
+                    action="realtime.message_rate",
+                    context=context,
+                    decision="deny",
+                    metadata={
+                        "boardId": board_id,
+                        "clientInstanceId": normalized_client_instance_id,
+                    },
+                    reason="websocket_message_rate_exceeded",
+                    resource_id=board_id,
+                    resource_type="board",
+                )
+                await websocket.close(code=4408, reason="Realtime message rate limit exceeded.")
                 break
+            message_type = payload.get("type") if isinstance(payload, dict) else None
+            if message_type in {"sync-state-publish", "yjs-update"}:
+                refreshed_collaboration = await ensure_realtime_write_access(
+                    board_id=board_id,
+                    connection_id=connection_id,
+                    context=context,
+                    expected_room_key=room_key,
+                    room=room,
+                    websocket=websocket,
+                )
+                if refreshed_collaboration is None:
+                    break
+                collaboration = refreshed_collaboration
             if message_type == "sync-state-publish":
-                update = _normalize_realtime_update(payload.get("update"))
+                update = normalize_realtime_update(payload.get("update"))
                 if update is not None:
-                    document_version = _normalize_realtime_document_version(payload.get("documentVersion"))
-                    document_updates, accepted, request_compaction, current_document_version = await room.replace_document_state(
+                    document_version = _normalize_realtime_document_version(
+                        payload.get("documentVersion")
+                    )
+                    (
+                        document_updates,
+                        accepted,
+                        request_compaction,
+                        current_document_version,
+                    ) = await room.replace_document_state(
                         update,
                         document_version,
                     )
@@ -118,16 +226,19 @@ async def board_realtime_room(websocket: WebSocket, board_id: str) -> None:
                             "requestCompaction": request_compaction,
                             "seedRoom": len(document_updates) == 0,
                             "type": "sync-state",
-                            "updates": [encode_realtime_update_payload(update) for update in document_updates],
+                            "updates": [
+                                encode_realtime_update_payload(update)
+                                for update in document_updates
+                            ],
                         })
                 continue
             if message_type == "yjs-update":
-                update = _normalize_realtime_update(payload.get("update"))
+                update = normalize_realtime_update(payload.get("update"))
                 if update is not None:
                     (
                         document_updates,
-                        request_compaction,
-                        current_document_version,
+                        _request_compaction,
+                        _current_document_version,
                         accepted,
                     ) = await room.publish_document_update(
                         connection_id,
@@ -141,13 +252,6 @@ async def board_realtime_room(websocket: WebSocket, board_id: str) -> None:
                             room_key,
                             document_updates,
                         )
-                    if request_compaction:
-                        await websocket.send_json({
-                            "documentVersion": current_document_version,
-                            "requestCompaction": True,
-                            "type": "document-compact-request",
-                            "updateCount": len(document_updates),
-                        })
                 continue
             if message_type == "awareness-state":
                 state = payload.get("state") if isinstance(payload.get("state"), dict) else None
@@ -172,10 +276,6 @@ async def board_realtime_room(websocket: WebSocket, board_id: str) -> None:
                 room_key,
                 snapshot,
             )
-
-
-def _normalize_realtime_update(value: Any) -> list[int] | None:
-    return normalize_realtime_update(value)
 
 
 async def _receive_realtime_json(websocket: WebSocket) -> Any:

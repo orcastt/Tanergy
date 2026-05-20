@@ -7,6 +7,7 @@ import {
   updateCurrentWorkspace,
 } from '@/features/billing/billingClient'
 import { requestCurrentSessionRefresh } from '@/features/auth/sessionClient'
+import { normalizeUserLabelInput, sanitizeUserLabelInput } from '@/features/security/safeText'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 
 type WorkspaceSettingsPanelProps = {
@@ -67,7 +68,7 @@ export function WorkspaceSettingsPanel({
             <input
               disabled={!canManageSettings || isDeleting || isSaving}
               maxLength={80}
-              onChange={(event) => setDraftName(event.target.value)}
+              onChange={(event) => setDraftName(sanitizeUserLabelInput(event.target.value))}
               value={draftName}
             />
           </label>
@@ -179,7 +180,7 @@ export function WorkspaceSettingsPanel({
     setError(null)
     setStatus(null)
     try {
-      const nextWorkspace = await updateCurrentWorkspace({ name: draftName }, { workspace })
+      const nextWorkspace = await updateCurrentWorkspace({ name: normalizeUserLabelInput(draftName) }, { workspace })
       setDraftName(nextWorkspace.name)
       setStatus(`${kindLabel} name saved.`)
       onWorkspaceRefresh?.()

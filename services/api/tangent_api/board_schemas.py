@@ -247,13 +247,17 @@ class BoardShareLinkRecord(TangentApiModel):
     created_by: str = Field(alias="createdBy")
     expires_at: Optional[str] = Field(default=None, alias="expiresAt")
     id: str
+    password_protected: bool = Field(default=False, alias="passwordProtected")
     share_id: str = Field(alias="shareId")
     workspace_id: str = Field(alias="workspaceId")
 
 
 class BoardShareLinkCreateRequest(TangentApiModel):
     access_role: str = Field(default="viewer", alias="accessRole")
+    clear_password: bool = Field(default=False, alias="clearPassword")
     expires_at: Optional[str] = Field(default=None, alias="expiresAt")
+    password: Optional[str] = None
+    regenerate: bool = False
 
 
 class BoardShareLinkResponse(TangentApiModel):
@@ -272,6 +276,7 @@ class BoardShareLinkResolveRecord(TangentApiModel):
     access_role: str = Field(alias="accessRole")
     board_id: str = Field(alias="boardId")
     board_title: str = Field(alias="boardTitle")
+    password_protected: bool = Field(default=False, alias="passwordProtected")
     share_id: str = Field(alias="shareId")
     workspace_id: str = Field(alias="workspaceId")
 

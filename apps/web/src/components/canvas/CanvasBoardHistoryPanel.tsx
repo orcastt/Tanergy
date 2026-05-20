@@ -4,6 +4,7 @@
 import { useMemo, useState, type SyntheticEvent } from 'react'
 import type { BoardSnapshotSummary } from '@/features/boards/boardTypes'
 import { useTangentSession } from '@/features/auth/useTangentSession'
+import { safeImageDisplayUrl } from '@/features/security/safeUrl'
 import { getPublicUserInitials, getPublicUserLabel } from '@/features/shared/publicUserDisplay'
 import { CanvasLineIcon, type CanvasLineIconName } from './CanvasLineIcon'
 
@@ -82,33 +83,36 @@ export function CanvasBoardHistoryPanel({
       <div className="canvas-board-history__list">
         {visibleSnapshots.length === 0 ? (
           <p>No history yet. Autosave and Snapshot entries will appear here.</p>
-        ) : visibleSnapshots.map((snapshot) => (
-          <article key={snapshot.id} className="canvas-board-history__item" data-kind={getSnapshotKind(snapshot.reason)}>
-            <div className="canvas-board-history__preview" aria-hidden="true">
-              {snapshot.thumbnailUrl ? <img alt="" src={snapshot.thumbnailUrl} /> : <span>{getInitials(snapshot.title)}</span>}
-            </div>
-            <div>
-              <strong>{snapshot.title}</strong>
-              <span>{formatDate(snapshot.createdAt)} · {formatReason(snapshot.reason)}</span>
-              <small>{snapshot.shapeCount} shapes / {snapshot.assetCount} assets · {formatBytes(snapshot.byteSize)}</small>
-              <span className="canvas-board-history__author">
-                <span>{resolveSnapshotAuthorInitials(snapshot.createdBy, session.user.id, session.user.displayName, session.user.email)}</span>
-                Saved by {resolveSnapshotAuthor(snapshot.createdBy, session.user.id, session.user.displayName, session.user.email)}
-              </span>
-            </div>
-            <IconActionButton
-              ariaLabel={`Restore ${snapshot.title}`}
-              disabled={isRunning}
-              icon="restore"
-              onClick={() => {
-                if (window.confirm('Restore this history entry? Current unsaved canvas changes will be replaced.')) {
-                  onRestore(snapshot.id)
-                }
-              }}
-              tooltip="Restore"
-            />
-          </article>
-        ))}
+        ) : visibleSnapshots.map((snapshot) => {
+          const thumbnailUrl = safeImageDisplayUrl(snapshot.thumbnailUrl)
+          return (
+            <article key={snapshot.id} className="canvas-board-history__item" data-kind={getSnapshotKind(snapshot.reason)}>
+              <div className="canvas-board-history__preview" aria-hidden="true">
+                {thumbnailUrl ? <img alt="" src={thumbnailUrl} /> : <span>{getInitials(snapshot.title)}</span>}
+              </div>
+              <div>
+                <strong>{snapshot.title}</strong>
+                <span>{formatDate(snapshot.createdAt)} · {formatReason(snapshot.reason)}</span>
+                <small>{snapshot.shapeCount} shapes / {snapshot.assetCount} assets · {formatBytes(snapshot.byteSize)}</small>
+                <span className="canvas-board-history__author">
+                  <span>{resolveSnapshotAuthorInitials(snapshot.createdBy, session.user.id, session.user.displayName, session.user.email)}</span>
+                  Saved by {resolveSnapshotAuthor(snapshot.createdBy, session.user.id, session.user.displayName, session.user.email)}
+                </span>
+              </div>
+              <IconActionButton
+                ariaLabel={`Restore ${snapshot.title}`}
+                disabled={isRunning}
+                icon="restore"
+                onClick={() => {
+                  if (window.confirm('Restore this history entry? Current unsaved canvas changes will be replaced.')) {
+                    onRestore(snapshot.id)
+                  }
+                }}
+                tooltip="Restore"
+              />
+            </article>
+          )
+        })}
       </div>
       <footer>
         <span>Free retention target: latest 100 autosaves + 100 user saves per board.</span>

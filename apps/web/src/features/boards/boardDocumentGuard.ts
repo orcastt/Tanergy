@@ -31,7 +31,18 @@ const defaultOptions = {
   maxDocumentBytes: 2_000_000,
 } satisfies Required<BoardDocumentGuardOptions>
 
-const runtimeUrlPrefixes = ['data:', 'blob:']
+const controlAndWhitespaceChars = /[\u0000-\u001f\u007f\s]/g
+const unsafeUrlPrefixes = ['blob:', 'data:', 'file:', 'javascript:', 'vbscript:']
+const boardUrlFieldNames = new Set([
+  'imageUrl',
+  'originalUrl',
+  'sourceUrl',
+  'thumbnail1024Url',
+  'thumbnail256Url',
+  'thumbnail512Url',
+  'thumbnailUrl',
+  'url',
+])
 
 export function auditBoardDocument(
   document: unknown,
@@ -140,12 +151,22 @@ function auditString(
   options: Required<BoardDocumentGuardOptions>
 ) {
   const trimmed = value.trim()
-  const runtimePrefix = runtimeUrlPrefixes.find((prefix) => trimmed.startsWith(prefix))
-  if (runtimePrefix) {
+  const unsafePrefix = getUnsafeUrlPrefix(trimmed)
+  if (unsafePrefix) {
     issues.push({
       blocking: true,
       code: 'runtime-url',
-      message: `${formatPath(path)} contains a ${runtimePrefix} runtime URL; upload it as an Asset before saving.`,
+      message: `${formatPath(path)} contains an unsafe ${unsafePrefix} URL; upload it as an Asset before saving.`,
+      path: formatPath(path),
+    })
+    return
+  }
+
+  if (isBoardUrlField(path) && !isAllowedBoardUrl(trimmed)) {
+    issues.push({
+      blocking: true,
+      code: 'runtime-url',
+      message: `${formatPath(path)} contains an unsupported URL; use http(s) or an uploaded Asset URL before saving.`,
       path: formatPath(path),
     })
     return
@@ -158,6 +179,27 @@ function auditString(
       message: `${formatPath(path)} looks like a large base64 payload; store binary data in Asset storage instead.`,
       path: formatPath(path),
     })
+  }
+}
+
+function getUnsafeUrlPrefix(value: string) {
+  const compactPrefix = value.slice(0, 32).replace(controlAndWhitespaceChars, '').toLowerCase()
+  return unsafeUrlPrefixes.find((prefix) => compactPrefix.startsWith(prefix)) ?? null
+}
+
+function isBoardUrlField(path: string[]) {
+  const key = path[path.length - 1]
+  return typeof key === 'string' && boardUrlFieldNames.has(key)
+}
+
+function isAllowedBoardUrl(value: string) {
+  if (!value) return true
+  if (value.startsWith('/')) return !value.startsWith('//')
+  try {
+    const parsed = new URL(value)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
   }
 }
 

@@ -1,4 +1,5 @@
 import type { JsonObject } from '@/types/nodeRuntime'
+import { safeImageDisplayUrl } from '@/features/security/safeUrl'
 
 export type RuntimeGraphImageAssetRef = {
   assetId: string
@@ -76,8 +77,8 @@ export function getRuntimeGraphImageAssetRef(value: unknown): RuntimeGraphImageA
   const data = asJsonObject(value)
   if (!data) return null
   const assetId = getString(data.assetId)
-  const originalUrl = getString(data.originalUrl)
-  const thumbnail512Url = getString(data.thumbnail512Url)
+  const originalUrl = getSafeUrl(data.originalUrl)
+  const thumbnail512Url = getSafeUrl(data.thumbnail512Url)
   if (!assetId && !originalUrl && !thumbnail512Url) return null
   return pruneUndefined({
     assetId: assetId ?? '',
@@ -85,8 +86,8 @@ export function getRuntimeGraphImageAssetRef(value: unknown): RuntimeGraphImageA
     imageHeight: getNumber(data.imageHeight),
     imageWidth: getNumber(data.imageWidth),
     originalUrl,
-    thumbnail1024Url: getString(data.thumbnail1024Url),
-    thumbnail256Url: getString(data.thumbnail256Url),
+    thumbnail1024Url: getSafeUrl(data.thumbnail1024Url),
+    thumbnail256Url: getSafeUrl(data.thumbnail256Url),
     thumbnail512Url,
     title: getString(data.title),
   }) as RuntimeGraphImageAssetRef
@@ -98,10 +99,10 @@ export function runtimeGraphImageRefToPayload(ref: RuntimeGraphImageAssetRef): J
     crop: ref.crop,
     imageHeight: ref.imageHeight,
     imageWidth: ref.imageWidth,
-    originalUrl: ref.originalUrl,
-    thumbnail1024Url: ref.thumbnail1024Url,
-    thumbnail256Url: ref.thumbnail256Url,
-    thumbnail512Url: ref.thumbnail512Url,
+    originalUrl: safeImageDisplayUrl(ref.originalUrl),
+    thumbnail1024Url: safeImageDisplayUrl(ref.thumbnail1024Url),
+    thumbnail256Url: safeImageDisplayUrl(ref.thumbnail256Url),
+    thumbnail512Url: safeImageDisplayUrl(ref.thumbnail512Url),
     title: ref.title,
   })
 }
@@ -145,6 +146,10 @@ function asJsonObject(value: unknown): JsonObject | null {
 
 function getString(value: unknown) {
   return typeof value === 'string' && value.trim() ? value : undefined
+}
+
+function getSafeUrl(value: unknown) {
+  return typeof value === 'string' ? safeImageDisplayUrl(value) ?? undefined : undefined
 }
 
 function getNumber(value: unknown) {

@@ -23,6 +23,11 @@ export function canUseLocalAssetBridge() {
   return process.env.NEXT_PUBLIC_TANGENT_ENABLE_LOCAL_ASSET_BRIDGE === '1' || process.env.NODE_ENV !== 'production'
 }
 
+export function canUseLocalBoardBridge() {
+  if (hasConfiguredRemoteApiBaseUrl()) return false
+  return process.env.NEXT_PUBLIC_TANGENT_ENABLE_LOCAL_BOARD_BRIDGE === '1' || process.env.NODE_ENV !== 'production'
+}
+
 export function assertAiRuntimeAvailable() {
   if (hasConfiguredRemoteApiBaseUrl() || canUseLocalAiBridge()) return
   throw new Error(
@@ -45,5 +50,14 @@ export function assertLocalAssetBridgeAvailable() {
     hasConfiguredRemoteApiBaseUrl()
       ? 'Local asset bridge is disabled while NEXT_PUBLIC_API_BASE_URL is configured. Use the backend /api/v1/assets API.'
       : 'Local asset bridge is disabled. Configure NEXT_PUBLIC_API_BASE_URL or explicitly opt into the local-only fallback.'
+  )
+}
+
+export function assertLocalBoardBridgeAvailable() {
+  if (canUseLocalBoardBridge()) return
+  throw new LocalRuntimeBridgeDisabledError(
+    hasConfiguredRemoteApiBaseUrl()
+      ? 'Local board bridge is disabled while NEXT_PUBLIC_API_BASE_URL is configured. Use the backend /api/v1/boards API.'
+      : 'Local board bridge is disabled. Configure NEXT_PUBLIC_API_BASE_URL or explicitly opt into the local-only fallback.'
   )
 }

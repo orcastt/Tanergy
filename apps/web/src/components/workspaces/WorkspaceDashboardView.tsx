@@ -142,7 +142,9 @@ function TeamDashboardLayout({
             members={record.members}
             onWorkspaceRefresh={onMembersChanged}
             seatLabel={`${record.seatsUsed}/${record.seatLimit}`}
+            seatLimit={record.seatLimit}
             seatPlanMax={record.seatMax}
+            seatsUsed={record.seatsUsed}
             workspace={workspace}
           />
         ) : null}

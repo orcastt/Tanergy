@@ -142,16 +142,19 @@ class BoardStorageAdapter:
         access_role: str,
         context: ApiRequestContext,
         expires_at: Optional[str] = None,
+        password: Optional[str] = None,
+        clear_password: bool = False,
+        regenerate: bool = False,
     ) -> BoardShareLinkRecord:
         raise NotImplementedError
 
     def revoke_share_link(self, board_id: str, share_id: str, context: ApiRequestContext) -> str:
         raise NotImplementedError
 
-    def resolve_share_link(self, share_id: str) -> BoardShareLinkResolveRecord:
+    def resolve_share_link(self, share_id: str, password: Optional[str] = None) -> BoardShareLinkResolveRecord:
         raise NotImplementedError
 
-    def load_shared_board(self, share_id: str) -> BoardRecord:
+    def load_shared_board(self, share_id: str, password: Optional[str] = None) -> BoardRecord:
         raise NotImplementedError
 
 
@@ -292,25 +295,28 @@ class LocalBoardStorageAdapter(BoardStorageAdapter):
         access_role: str,
         context: ApiRequestContext,
         expires_at: Optional[str] = None,
+        password: Optional[str] = None,
+        clear_password: bool = False,
+        regenerate: bool = False,
     ) -> BoardShareLinkRecord:
         from tangent_api.storage.local_board_store import ensure_board_share_link
 
-        return ensure_board_share_link(board_id, access_role, context, expires_at)
+        return ensure_board_share_link(board_id, access_role, context, expires_at, password, clear_password, regenerate)
 
     def revoke_share_link(self, board_id: str, share_id: str, context: ApiRequestContext) -> str:
         from tangent_api.storage.local_board_store import revoke_board_share_link
 
         return revoke_board_share_link(board_id, share_id, context)
 
-    def resolve_share_link(self, share_id: str) -> BoardShareLinkResolveRecord:
+    def resolve_share_link(self, share_id: str, password: Optional[str] = None) -> BoardShareLinkResolveRecord:
         from tangent_api.storage.local_board_store import resolve_board_share_link
 
-        return resolve_board_share_link(share_id)
+        return resolve_board_share_link(share_id, password)
 
-    def load_shared_board(self, share_id: str) -> BoardRecord:
+    def load_shared_board(self, share_id: str, password: Optional[str] = None) -> BoardRecord:
         from tangent_api.storage.local_board_store import load_shared_board
 
-        return load_shared_board(share_id)
+        return load_shared_board(share_id, password)
 
 
 class PostgresBoardStorageAdapter(BoardStorageAdapter):
@@ -432,17 +438,20 @@ class PostgresBoardStorageAdapter(BoardStorageAdapter):
         access_role: str,
         context: ApiRequestContext,
         expires_at: Optional[str] = None,
+        password: Optional[str] = None,
+        clear_password: bool = False,
+        regenerate: bool = False,
     ) -> BoardShareLinkRecord:
-        return self.store.ensure_share_link(board_id, access_role, context, expires_at)
+        return self.store.ensure_share_link(board_id, access_role, context, expires_at, password, clear_password, regenerate)
 
     def revoke_share_link(self, board_id: str, share_id: str, context: ApiRequestContext) -> str:
         return self.store.revoke_share_link(board_id, share_id, context)
 
-    def resolve_share_link(self, share_id: str) -> BoardShareLinkResolveRecord:
-        return self.store.resolve_share_link(share_id)
+    def resolve_share_link(self, share_id: str, password: Optional[str] = None) -> BoardShareLinkResolveRecord:
+        return self.store.resolve_share_link(share_id, password)
 
-    def load_shared_board(self, share_id: str) -> BoardRecord:
-        return self.store.load_shared_board(share_id)
+    def load_shared_board(self, share_id: str, password: Optional[str] = None) -> BoardRecord:
+        return self.store.load_shared_board(share_id, password)
 
 
 def get_board_storage_adapter() -> BoardStorageAdapter:

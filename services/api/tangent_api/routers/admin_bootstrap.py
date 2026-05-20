@@ -16,6 +16,10 @@ from tangent_api.schemas import AdminMeResponse, AdminSummaryResponse
 
 router = APIRouter(prefix="/api/v1/admin/bootstrap", tags=["admin"])
 
+SUMMARY_READ_ROLES = {"owner", "admin", "finance"}
+DIRECTORY_READ_ROLES = {"owner", "admin", "finance"}
+OPERATOR_READ_ROLES = {"owner", "admin", "finance"}
+
 
 @router.get("", response_model=AdminPageBootstrapResponse)
 def get_admin_page_bootstrap(
@@ -40,21 +44,21 @@ def get_admin_page_bootstrap(
         )
 
     summary = AdminSummaryResponse(ok=False, summary=None)
-    if include_summary:
+    if include_summary and _has_role(access, SUMMARY_READ_ROLES):
         summary = AdminSummaryResponse(ok=True, summary=load_admin_summary())
 
     users = AdminDirectoryUsersResponse(ok=False, limit=limit, offset=0, totalCount=0, users=[])
-    if include_users:
+    if include_users and _has_role(access, DIRECTORY_READ_ROLES):
         user_rows, total_count = list_admin_directory_users(limit=limit, offset=0, search=None)
         users = AdminDirectoryUsersResponse(ok=True, limit=limit, offset=0, totalCount=total_count, users=user_rows)
 
     operator_users = AdminOperatorUsersResponse(ok=False, limit=limit, offset=0, totalCount=0, users=[])
-    if include_operator_users:
+    if include_operator_users and _has_role(access, OPERATOR_READ_ROLES):
         operator_rows, total_count = list_admin_operator_users(limit=limit, offset=0, search=None)
         operator_users = AdminOperatorUsersResponse(ok=True, limit=limit, offset=0, totalCount=total_count, users=operator_rows)
 
     teams = AdminDirectoryWorkspacesResponse(ok=False, limit=limit, offset=0, totalCount=0, workspaces=[])
-    if include_teams:
+    if include_teams and _has_role(access, DIRECTORY_READ_ROLES):
         team_rows, team_total_count = list_admin_directory_workspaces_page(
             kind="team_workspace",
             limit=limit,
@@ -69,7 +73,7 @@ def get_admin_page_bootstrap(
         )
 
     groups = AdminDirectoryWorkspacesResponse(ok=False, limit=limit, offset=0, totalCount=0, workspaces=[])
-    if include_groups:
+    if include_groups and _has_role(access, DIRECTORY_READ_ROLES):
         group_rows, group_total_count = list_admin_directory_workspaces_page(
             kind="group_workspace",
             limit=limit,
@@ -136,8 +140,22 @@ def get_admin_user_detail_bootstrap(
 def _load_access(context: ApiRequestContext) -> AdminMeResponse:
     roles = load_active_admin_roles(context.user_id)
     return AdminMeResponse(
-        canAccessAdmin=bool(roles),
+        canAccessAdmin=_has_any_bootstrap_access(roles),
         ok=True,
         roles=roles,
         userId=context.user_id,
     )
+
+
+def _has_any_bootstrap_access(roles: list[object]) -> bool:
+    return any(_role_name(role) in (SUMMARY_READ_ROLES | DIRECTORY_READ_ROLES | OPERATOR_READ_ROLES) for role in roles)
+
+
+def _has_role(access: AdminMeResponse, allowed_roles: set[str]) -> bool:
+    return any(role.role in allowed_roles for role in access.roles)
+
+
+def _role_name(role: object) -> str:
+    if isinstance(role, dict):
+        return str(role.get("role", ""))
+    return str(getattr(role, "role", ""))

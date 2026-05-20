@@ -1,12 +1,19 @@
-import os
+import time
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from tangent_api.env_bootstrap import load_repo_env
+from tangent_api.error_tracking import configure_error_tracking
+from tangent_api.ops_observability import elapsed_ms_since, observe_http_response
+from tangent_api.security_csrf import check_csrf_origin
+from tangent_api.security_headers import apply_security_headers
+from tangent_api.security_origin import configured_http_origins
+from tangent_api.security_rate_limit import check_http_rate_limit
 
 load_repo_env()
+configure_error_tracking()
 
 from tangent_api.routers import (
     admin,
@@ -35,31 +42,36 @@ BILLING_WEBHOOK_BODY_LIMIT_BYTES = 512 * 1024
 
 
 @app.middleware("http")
-async def reject_oversized_http_bodies(request: Request, call_next):
+async def enforce_http_security_boundary(request: Request, call_next):
+    started_at = time.perf_counter()
+    rate_limit_response = check_http_rate_limit(request)
+    if rate_limit_response is not None:
+        return _observed_response(request, apply_security_headers(request, rate_limit_response), started_at)
+
+    csrf_response = check_csrf_origin(request)
+    if csrf_response is not None:
+        return _observed_response(request, apply_security_headers(request, csrf_response), started_at)
+
     content_length = request.headers.get("content-length")
     if content_length:
         try:
             byte_length = int(content_length)
         except ValueError:
-            return JSONResponse({"detail": "Invalid Content-Length header."}, status_code=400)
+            response = JSONResponse({"detail": "Invalid Content-Length header."}, status_code=400)
+            return _observed_response(request, apply_security_headers(request, response), started_at)
         max_bytes = _body_limit_for_path(request.url.path)
         if byte_length > max_bytes:
-            return JSONResponse({"detail": "Request body is too large."}, status_code=413)
-    return await call_next(request)
+            response = JSONResponse({"detail": "Request body is too large."}, status_code=413)
+            return _observed_response(request, apply_security_headers(request, response), started_at)
+    response = await call_next(request)
+    return _observed_response(request, apply_security_headers(request, response), started_at)
 
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
     allow_headers=["*"],
     allow_methods=["*"],
-    allow_origins=[
-        origin.strip()
-        for origin in os.getenv(
-            "TANGENT_ALLOWED_ORIGINS",
-            "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3100,http://127.0.0.1:3100",
-        ).split(",")
-        if origin.strip()
-    ],
+    allow_origins=configured_http_origins(),
 )
 
 app.include_router(ai.router)
@@ -93,3 +105,8 @@ def _body_limit_for_path(path: str) -> int:
     if path.startswith("/api/v1/billing/webhooks/"):
         return BILLING_WEBHOOK_BODY_LIMIT_BYTES
     return DEFAULT_HTTP_BODY_LIMIT_BYTES
+
+
+def _observed_response(request: Request, response, started_at: float):
+    observe_http_response(request, response, elapsed_ms_since(started_at))
+    return response

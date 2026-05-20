@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
+from dataclasses import field
 from datetime import datetime, timezone
 from typing import Any
 
@@ -15,17 +17,28 @@ from tangent_api.realtime.board_realtime_limits import (
 
 @dataclass
 class BoardRealtimeConnection:
+    can_edit: bool
     client_instance_id: str
     connection_id: str
     websocket: WebSocket
+    send_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
 
-async def _broadcast_json(websockets: list[WebSocket], payload: dict[str, Any]) -> None:
-    for websocket in websockets:
-        try:
-            await websocket.send_json(payload)
-        except Exception:
-            continue
+async def _broadcast_json(connections: list[BoardRealtimeConnection], payload: dict[str, Any]) -> None:
+    if not connections:
+        return
+    await asyncio.gather(
+        *[_send_connection_json(connection, payload) for connection in connections],
+        return_exceptions=True,
+    )
+
+
+async def _send_connection_json(connection: BoardRealtimeConnection, payload: dict[str, Any]) -> None:
+    try:
+        async with connection.send_lock:
+            await connection.websocket.send_json(payload)
+    except Exception:
+        return
 
 
 def _parse_awareness_expiry(state: dict[str, Any]) -> datetime | None:

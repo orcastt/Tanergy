@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { TangentAssetDataUrlInput } from '@/features/assets/assetTypes'
 import { assertLocalAssetBridgeAvailable } from '@/features/api/runtimeBridgePolicy'
+import { rejectCrossSiteMutation } from '../../_lib/csrfGuard'
 import { getApiRequestContext } from '../../_lib/apiRequestContext'
 import { readJsonRequestWithLimit, requestBodyErrorStatus } from '../../_lib/requestBodyLimits'
 import { getAssetStorageAdapter } from '../_lib/assetStorageAdapter'
@@ -11,6 +12,8 @@ const maxDataUrlAssetRequestBytes = 8 * 1024 * 1024
 
 export async function POST(request: Request) {
   try {
+    const originRejection = rejectCrossSiteMutation(request)
+    if (originRejection) return originRejection
     assertLocalAssetBridgeAvailable()
     const input = await readJsonRequestWithLimit<TangentAssetDataUrlInput>(request, maxDataUrlAssetRequestBytes)
     const record = await getAssetStorageAdapter().createFromDataUrl(input, getApiRequestContext(request))

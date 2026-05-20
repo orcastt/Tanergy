@@ -107,6 +107,7 @@ export type BoardShareLinkRecord = {
   createdBy: string
   expiresAt?: string | null
   id: string
+  passwordProtected?: boolean
   shareId: string
   workspaceId: string
 }
@@ -115,6 +116,7 @@ export type BoardShareLinkResolveRecord = {
   accessRole: BoardShareAccessRole
   boardId: string
   boardTitle: string
+  passwordProtected?: boolean
   shareId: string
   workspaceId: string
 }

@@ -7,6 +7,7 @@ from fastapi.responses import FileResponse, Response
 
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.schemas import AssetDataUrlRequest, AssetRecord
+from tangent_api.storage.asset_store_common import ASSET_FILE_SECURITY_HEADERS
 from tangent_api.storage.local_asset_store import (
     create_asset_from_data_url as create_local_asset_from_data_url,
 )
@@ -64,7 +65,7 @@ class AssetStorageAdapter:
         file_name: str,
         context: ApiRequestContext,
     ) -> Response:
-        return FileResponse(self.get_file_path(asset_id, file_name, context))
+        return FileResponse(self.get_file_path(asset_id, file_name, context), headers=ASSET_FILE_SECURITY_HEADERS)
 
 
 class LocalAssetStorageAdapter(AssetStorageAdapter):

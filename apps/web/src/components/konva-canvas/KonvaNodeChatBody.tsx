@@ -101,6 +101,7 @@ export function KonvaNodeChatBody({
     if (!text.trim() || typeof navigator === 'undefined' || !navigator.clipboard?.writeText) return
     void navigator.clipboard.writeText(text).catch(() => {})
   }
+  const visibleModelMenuOpen = editingFieldName === 'chatDraft' ? false : modelMenuOpen
 
   return (
     <>
@@ -176,9 +177,12 @@ export function KonvaNodeChatBody({
         editing={editingFieldName === 'chatDraft'}
         height={inputBoxHeight}
         modelLabel={modelLabel}
-        modelMenuOpen={modelMenuOpen}
+        modelMenuOpen={visibleModelMenuOpen}
         modelOptions={modelOptions}
-        onEdit={() => onTextEditStart?.(shape.id, 'chatDraft')}
+        onEdit={() => {
+          setModelMenuOpen(false)
+          onTextEditStart?.(shape.id, 'chatDraft')
+        }}
         onModelSelect={(nextModelId) => {
           onChatModelChange?.(shape.id, nextModelId)
           setModelMenuOpen(false)

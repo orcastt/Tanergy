@@ -16,10 +16,7 @@ export const SESSION_REFRESH_MARKER_KEY = 'tanergy.session.refresh'
 
 export async function loadCurrentSession(options: LoadCurrentSessionOptions = {}) {
   const token = await options.getAuthToken?.()
-  const headers = {
-    ...buildWorkspaceSelectionHeaders(options.requestedWorkspace),
-    ...(token ? { Authorization: `Bearer ${token}` } : persistenceAuthHeaders()),
-  }
+  const headers = buildSessionRequestHeaders(options.requestedWorkspace, token)
   const response = await fetch('/api/auth/session', {
     cache: 'no-store',
     headers,
@@ -69,14 +66,32 @@ export function clearPendingSessionRefreshMarker() {
 
 function buildWorkspaceSelectionHeaders(
   workspace?: null | Pick<TangentWorkspace, 'id'> & Partial<TangentWorkspace>,
-) {
+): Record<string, string> {
   if (!workspace?.id?.trim()) return {}
-  const headers: Record<string, string> = {
-    'x-tangent-workspace-id': workspace.id.trim(),
+  return { 'x-tangent-workspace-id': workspace.id.trim() }
+}
+
+function buildSessionRequestHeaders(
+  workspace: LoadCurrentSessionOptions['requestedWorkspace'],
+  token: null | string | undefined,
+): Record<string, string> {
+  const headers = buildWorkspaceSelectionHeaders(workspace)
+  if (token) return { ...headers, Authorization: `Bearer ${token}` }
+  return mergeHeaders(headers, persistenceAuthHeaders())
+}
+
+function mergeHeaders(target: Record<string, string>, source: HeadersInit): Record<string, string> {
+  if (source instanceof Headers) {
+    source.forEach((value, key) => {
+      target[key] = value
+    })
+    return target
   }
-  if (workspace.kind?.trim()) headers['x-tangent-workspace-kind'] = workspace.kind.trim()
-  if (workspace.name?.trim()) headers['x-tangent-workspace-name'] = workspace.name.trim()
-  if (workspace.role?.trim()) headers['x-tangent-workspace-role'] = workspace.role.trim()
-  if (workspace.planKey?.trim()) headers['x-tangent-plan-key'] = workspace.planKey.trim()
-  return headers
+  if (Array.isArray(source)) {
+    for (const [key, value] of source) {
+      target[key] = value
+    }
+    return target
+  }
+  return { ...target, ...source }
 }

@@ -849,6 +849,7 @@ def test_team_seat_checkout_rejects_mismatched_active_plan(monkeypatch):
 
 def test_team_owner_can_assign_and_list_seats(monkeypatch):
     fake_db = FakePostgresDatabase()
+    _seed_workspace(fake_db, "workspace_team", "team_workspace", "user_team_owner")
     fake_db.credit_accounts = [
         {
             "account_kind": "team_wallet",
@@ -889,14 +890,14 @@ def test_team_owner_can_assign_and_list_seats(monkeypatch):
             "updated_at": "2026-05-06T00:00:00Z",
         }
     ]
-    fake_db.workspace_members = [
+    fake_db.workspace_members.append(
         {
             "display_name": "Team Member",
             "role": "member",
             "user_id": "user_team_member",
             "workspace_id": "workspace_team",
         }
-    ]
+    )
     monkeypatch.setenv("DATABASE_URL", "postgresql://test")
     monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
     monkeypatch.setattr("tangent_api.workspace_seats.connect_to_postgres", fake_db.connect)
@@ -942,7 +943,16 @@ def test_team_owner_can_assign_and_list_seats(monkeypatch):
 
 def test_group_owner_can_change_workspace_member_role(monkeypatch):
     fake_db = FakePostgresDatabase()
+    _seed_workspace(fake_db, "workspace_group", "group_workspace", "user_group_owner")
     fake_db.workspace_members = [
+        {
+            "display_name": "Group Owner",
+            "invited_by": None,
+            "joined_at": "2026-05-05T00:00:00Z",
+            "role": "owner",
+            "user_id": "user_group_owner",
+            "workspace_id": "workspace_group",
+        },
         {
             "display_name": "Group Member",
             "invited_by": "user_group_owner",
@@ -982,11 +992,15 @@ def test_group_owner_can_change_workspace_member_role(monkeypatch):
     payload = response.json()
     assert payload["member"]["role"] == "guest"
     assert payload["member"]["invitedBy"] == "user_group_owner"
-    assert fake_db.workspace_members[0]["role"] == "guest"
+    assert any(
+        row["user_id"] == "user_group_member" and row["role"] == "guest"
+        for row in fake_db.workspace_members
+    )
 
 
 def test_team_seat_assignment_revokes_previous_plan_for_same_member(monkeypatch):
     fake_db = FakePostgresDatabase()
+    _seed_workspace(fake_db, "workspace_team", "team_workspace", "user_team_owner")
     fake_db.payments = [
         {
             "account_id": "credit_workspace_workspace_team",
@@ -1018,14 +1032,14 @@ def test_team_seat_assignment_revokes_previous_plan_for_same_member(monkeypatch)
             "updated_at": "2026-05-06T00:00:00Z",
         }
     ]
-    fake_db.workspace_members = [
+    fake_db.workspace_members.append(
         {
             "display_name": "Team Member",
             "role": "member",
             "user_id": "user_team_member",
             "workspace_id": "workspace_team",
         }
-    ]
+    )
     fake_db.workspace_seat_assignments = [
         {
             "assigned_by": "user_team_owner",
@@ -1064,6 +1078,7 @@ def test_team_seat_assignment_revokes_previous_plan_for_same_member(monkeypatch)
 
 def test_team_owner_can_revoke_seat(monkeypatch):
     fake_db = FakePostgresDatabase()
+    _seed_workspace(fake_db, "workspace_team", "team_workspace", "user_team_owner")
     fake_db.workspace_seat_assignments = [
         {
             "assigned_by": "user_team_owner",
@@ -1095,8 +1110,19 @@ def test_team_owner_can_revoke_seat(monkeypatch):
 
 
 def test_seat_assignment_requires_team_admin_or_owner(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    _seed_workspace(fake_db, "workspace_group", "group_workspace", "user_group_owner")
+    _seed_workspace(fake_db, "workspace_team", "team_workspace", "user_team_owner")
+    fake_db.workspace_members.append(
+        {
+            "display_name": "Team Member",
+            "role": "member",
+            "user_id": "user_team_member",
+            "workspace_id": "workspace_team",
+        }
+    )
     monkeypatch.setenv("DATABASE_URL", "postgresql://test")
-    monkeypatch.setattr("tangent_api.workspace_seats.connect_to_postgres", FakePostgresDatabase().connect)
+    monkeypatch.setattr("tangent_api.workspace_seats.connect_to_postgres", fake_db.connect)
 
     with pytest.raises(HTTPException) as group_error:
         upsert_workspace_seat_assignment(
@@ -1111,6 +1137,27 @@ def test_seat_assignment_requires_team_admin_or_owner(monkeypatch):
             make_context("user_team_member", "team_workspace", "member"),
         )
     assert member_error.value.status_code == 403
+
+
+def _seed_workspace(fake_db: FakePostgresDatabase, workspace_id: str, kind: str, owner_id: str) -> None:
+    fake_db.workspaces.append(
+        {
+            "billing_owner_user_id": owner_id,
+            "id": workspace_id,
+            "kind": kind,
+            "name": "Workspace",
+            "owner_id": owner_id,
+            "status": "active",
+        }
+    )
+    fake_db.workspace_members.append(
+        {
+            "display_name": "Owner",
+            "role": "owner",
+            "user_id": owner_id,
+            "workspace_id": workspace_id,
+        }
+    )
 
 
 def make_context(user_id: str, workspace_kind: str, workspace_role: str) -> ApiRequestContext:

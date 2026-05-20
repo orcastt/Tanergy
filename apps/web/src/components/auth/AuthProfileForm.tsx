@@ -5,6 +5,7 @@ import { hasRemotePersistenceApi } from '@/features/api/persistenceApi'
 import { updateCurrentAuthProfile } from '@/features/auth/profileClient'
 import { requestCurrentSessionRefresh } from '@/features/auth/sessionClient'
 import type { TangentUser } from '@/features/auth/sessionTypes'
+import { normalizeUserLabelInput, sanitizeUserLabelInput } from '@/features/security/safeText'
 
 type AuthProfileFormProps = {
   allowPristineSubmit?: boolean
@@ -33,7 +34,7 @@ export function AuthProfileForm({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const nextDisplayName = displayName.trim()
+    const nextDisplayName = normalizeUserLabelInput(displayName)
     if (!nextDisplayName) {
       setError('Display name is required.')
       return
@@ -67,7 +68,7 @@ export function AuthProfileForm({
         <input
           autoComplete="nickname"
           maxLength={80}
-          onChange={(event) => setDisplayName(event.target.value)}
+          onChange={(event) => setDisplayName(sanitizeUserLabelInput(event.target.value))}
           placeholder="How your name appears in Tanergy"
           style={fieldControlStyle}
           type="text"

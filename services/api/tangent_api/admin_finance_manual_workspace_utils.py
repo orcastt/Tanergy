@@ -1,4 +1,4 @@
-from fastapi import HTTPException
+from tangent_api.safe_text import normalize_safe_label
 
 
 def insert_workspace(
@@ -53,9 +53,4 @@ def insert_owner_membership(
 
 
 def normalize_workspace_name(value: str) -> str:
-    normalized = " ".join(value.strip().split())
-    if not normalized:
-        raise HTTPException(status_code=400, detail="Workspace name is required.")
-    if len(normalized) > 80:
-        raise HTTPException(status_code=400, detail="Workspace name is too long.")
-    return normalized
+    return normalize_safe_label(value, field_name="Workspace name")

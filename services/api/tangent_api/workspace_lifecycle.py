@@ -4,6 +4,7 @@ from fastapi import HTTPException
 
 from tangent_api.plan_catalog import group_workspace_limit_for_plan
 from tangent_api.request_context import ApiRequestContext
+from tangent_api.safe_text import normalize_safe_label
 from tangent_api.storage.postgres_connection import require_database_url
 from tangent_api.workspace_schemas import BillingWorkspaceSummary
 
@@ -94,9 +95,4 @@ def _assert_group_create_capacity(cursor: object, user_id: str, plan_key: str) -
 
 
 def _normalize_workspace_name(name: str) -> str:
-    normalized = " ".join(name.strip().split())
-    if not normalized:
-        raise HTTPException(status_code=400, detail="Workspace name is required.")
-    if len(normalized) > 80:
-        raise HTTPException(status_code=400, detail="Workspace name is too long.")
-    return normalized
+    return normalize_safe_label(name, field_name="Workspace name")

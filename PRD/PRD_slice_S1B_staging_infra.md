@@ -1,7 +1,7 @@
 # PRD Slice S1B: Staging Infrastructure And Online Prep
 
-**Updated**: 2026-05-18
-**Status**: In progress; staging Web/API/Supabase Pro/R2 smoke, the Konva-only redeploy, Cloudflare-proxied Full (strict) staging domains and real Clerk session/admin smoke are back in place. Neon is now historical after its data-transfer quota pause, the temporary Hetzner `staging-postgres` fallback and volume have been removed, R2 staging objects were cleared for a clean asset lane, and board realtime persistence now keeps process updates in the WebSocket room while persisting only compacted/final snapshots by default. The second-round signed-in board/browser pass is mostly green, and the `Manage board -> Copy board` Free-plan limit modal path is wired locally across gallery/dashboard/manage-panel copy entrypoints; the remaining gates are R2 clean asset smoke, re-created minimal staging data, staging spot check for that modal path, Google/email flow verification and live AI smoke before production can open.
+**Updated**: 2026-05-20
+**Status**: In progress; staging Web/API/Supabase Pro/R2 smoke, the Konva-only redeploy, Cloudflare-proxied Full (strict) staging domains and real Clerk session/admin smoke are back in place. Neon is now historical after its data-transfer quota pause, the temporary Hetzner `staging-postgres` fallback and volume have been removed, R2 staging objects were cleared for a clean asset lane, and board realtime persistence now keeps process updates in the WebSocket room while persisting only compacted/final snapshots by default. The deployment/ops readiness pass now has separate Web/API env templates, public SSL/header smoke, API slow-response/RSS observability hooks and an ops acceptance report; production remains blocked until external uptime monitoring, status page, backup/PITR drill, WAF/rate-limit dashboard confirmation and error tracking/APM are configured and tested. The second-round signed-in board/browser pass is mostly green, and the `Manage board -> Copy board` Free-plan limit modal path is wired locally across gallery/dashboard/manage-panel copy entrypoints; the remaining product gates are R2 clean asset smoke, re-created minimal staging data, staging spot check for that modal path, Google/email flow verification and live AI smoke before production can open.
 
 ## User Value
 
@@ -21,6 +21,9 @@ The app becomes testable outside local dev. Real browsers can access staging Web
 - Google OAuth enabled for staging login.
 - Production Google OAuth preparation documented before public launch.
 - Production deployment docs and API env template prepared before opening the public site.
+- Staging and production Web env templates prepared separately; secrets stay only in Vercel/server/provider secret stores.
+- Public deployment readiness must be smoke-tested for HTTPS certificates, security headers, API health and CORS before staging sign-off.
+- Production launch requires external uptime monitoring, alert routing, status page, error tracking, performance dashboards and a documented backup/PITR restore drill.
 - Konva-only Board route redeployed, with legacy Board documents blocked in the active app path.
 - Staging deploys must not depend on an old mutable repo clone for live secrets; the current release receives `deploy/staging/api.env` from private operator storage or a server-local shared secret store.
 - Collaboration process updates must not be treated as database writes; Postgres stores compacted/final realtime document snapshots unless `TANGENT_BOARD_REALTIME_PERSIST_MODE=update_chain` is explicitly used as a rollback mode.
@@ -63,3 +66,6 @@ dev-plans/s1b-staging-deployment-runbook-2026-05-02.md
 - `/boards/[boardId]` opens Konva v2 on staging without any legacy paid-canvas runtime path.
 - Retiring an old staging worktree does not remove the live API env or break the active release.
 - Production launch has separate database, storage, auth and payment secrets from staging.
+- Deployment readiness report exists in `docs/ops-readiness-acceptance.md`.
+- Public staging Web/API domains pass the ops readiness smoke, or any failure is recorded as an explicit external-infra blocker.
+- Incident response runbook exists before production opens.

@@ -1,14 +1,26 @@
 import json
 import re
-from typing import Any
+from typing import Any, Optional
+from urllib.parse import urlsplit
 
 from tangent_api.board_konva_guard import audit_konva_board_document_schema
 from tangent_api.schemas import BoardDocumentGuardIssue, BoardDocumentGuardResult
 
 DEFAULT_MAX_BASE64_STRING_LENGTH = 2_048
 DEFAULT_MAX_DOCUMENT_BYTES = 2_000_000
-RUNTIME_URL_PREFIXES = ("data:", "blob:")
+UNSAFE_URL_PREFIXES = ("blob:", "data:", "file:", "javascript:", "vbscript:")
+BOARD_URL_FIELD_NAMES = {
+    "imageUrl",
+    "originalUrl",
+    "sourceUrl",
+    "thumbnail1024Url",
+    "thumbnail256Url",
+    "thumbnail512Url",
+    "thumbnailUrl",
+    "url",
+}
 BASE64_RE = re.compile(r"^[A-Za-z0-9+/]+={0,2}$")
+CONTROL_AND_WHITESPACE_RE = re.compile(r"[\u0000-\u001f\u007f\s]")
 
 
 def audit_board_document(document: Any) -> BoardDocumentGuardResult:
@@ -87,20 +99,34 @@ def _walk_document(value: Any, path: list[str], issues: list[BoardDocumentGuardI
 
 def _audit_string(value: str, path: list[str], issues: list[BoardDocumentGuardIssue]) -> None:
     trimmed = value.strip()
-    for prefix in RUNTIME_URL_PREFIXES:
-        if trimmed.startswith(prefix):
-            issues.append(
-                BoardDocumentGuardIssue(
-                    blocking=True,
-                    code="runtime-url",
-                    message=(
-                        f"{_format_path(path)} contains a {prefix} runtime URL; "
-                        "upload it as an Asset before saving."
-                    ),
-                    path=_format_path(path),
-                )
+    unsafe_prefix = _get_unsafe_url_prefix(trimmed)
+    if unsafe_prefix:
+        issues.append(
+            BoardDocumentGuardIssue(
+                blocking=True,
+                code="runtime-url",
+                message=(
+                    f"{_format_path(path)} contains an unsafe {unsafe_prefix} URL; "
+                    "upload it as an Asset before saving."
+                ),
+                path=_format_path(path),
             )
-            return
+        )
+        return
+
+    if _is_board_url_field(path) and not _is_allowed_board_url(trimmed):
+        issues.append(
+            BoardDocumentGuardIssue(
+                blocking=True,
+                code="runtime-url",
+                message=(
+                    f"{_format_path(path)} contains an unsupported URL; "
+                    "use http(s) or an uploaded Asset URL before saving."
+                ),
+                path=_format_path(path),
+            )
+        )
+        return
 
     if _is_likely_large_base64(trimmed):
         issues.append(
@@ -114,6 +140,31 @@ def _audit_string(value: str, path: list[str], issues: list[BoardDocumentGuardIs
                 path=_format_path(path),
             )
         )
+
+
+def _get_unsafe_url_prefix(value: str) -> Optional[str]:
+    compact_prefix = CONTROL_AND_WHITESPACE_RE.sub("", value[:32]).lower()
+    for prefix in UNSAFE_URL_PREFIXES:
+        if compact_prefix.startswith(prefix):
+            return prefix
+    return None
+
+
+def _is_board_url_field(path: list[str]) -> bool:
+    if not path:
+        return False
+    return path[-1] in BOARD_URL_FIELD_NAMES
+
+
+def _is_allowed_board_url(value: str) -> bool:
+    if not value:
+        return True
+    if value.startswith("/"):
+        return not value.startswith("//")
+    parsed = urlsplit(value)
+    if parsed.scheme not in {"http", "https"}:
+        return False
+    return bool(parsed.netloc)
 
 
 def _is_likely_large_base64(value: str) -> bool:

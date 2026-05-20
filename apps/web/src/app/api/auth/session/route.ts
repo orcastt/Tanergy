@@ -175,15 +175,8 @@ function isClerkEmailVerified(claims: Record<string, unknown> | null) {
 async function buildProxyHeaders(request: NextRequest) {
   const headers = new Headers(await buildServerClerkApiHeaders(request))
 
-  copyHeader(request, headers, 'authorization')
-  copyHeader(request, headers, 'content-type')
-  copyHeader(request, headers, 'cookie')
-  copyHeader(request, headers, 'x-tangent-user-id')
-  copyHeader(request, headers, 'x-tangent-workspace-id')
-  copyHeader(request, headers, 'x-tangent-workspace-kind')
-  copyHeader(request, headers, 'x-tangent-workspace-name')
-  copyHeader(request, headers, 'x-tangent-workspace-role')
-  copyHeader(request, headers, 'x-tangent-plan-key')
+  const workspaceId = normalizeWorkspaceId(request.headers.get('x-tangent-workspace-id'))
+  if (workspaceId) headers.set('x-tangent-workspace-id', workspaceId)
 
   return headers
 }
@@ -194,11 +187,6 @@ function getResponseErrorMessage(error: unknown, detail: unknown, fallback: stri
   return fallback
 }
 
-function copyHeader(request: NextRequest, headers: Headers, name: string) {
-  const value = request.headers.get(name)
-  if (value) headers.set(name, value)
-}
-
 async function readJson(response: Response): Promise<Record<string, unknown>> {
   const text = await response.text()
   if (!text) return {}
@@ -207,6 +195,12 @@ async function readJson(response: Response): Promise<Record<string, unknown>> {
   } catch {
     return { error: text }
   }
+}
+
+function normalizeWorkspaceId(value: null | string) {
+  const trimmed = value?.trim()
+  if (!trimmed || trimmed.includes('..') || !/^[a-zA-Z0-9._-]+$/.test(trimmed)) return null
+  return trimmed
 }
 
 function isDisallowedRemoteFallbackSession(payload: Record<string, unknown>, request: NextRequest) {

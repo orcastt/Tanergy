@@ -7,6 +7,7 @@ from fastapi import HTTPException
 from tangent_api.plan_catalog import included_credits_for_plan, seat_max_for_plan
 from tangent_api.request_context import ApiRequestContext
 from tangent_api.storage.postgres_connection import connect_to_postgres, require_database_url
+from tangent_api.workspace_access import assert_workspace_actor_role
 from tangent_api.workspace_schemas import WorkspaceSeatAssignmentRecord, WorkspaceSeatAssignmentUpsertRequest
 
 ID_PATTERN = re.compile(r"^[a-zA-Z0-9._-]+$")
@@ -14,10 +15,17 @@ TEAM_SEAT_MAX = 15
 
 
 def list_workspace_seat_assignments(context: ApiRequestContext) -> list[WorkspaceSeatAssignmentRecord]:
-    _assert_can_manage_team_seats(context)
     require_database_url()
     with connect_to_postgres() as connection:
         with connection.cursor() as cursor:
+            assert_workspace_actor_role(
+                cursor,
+                context,
+                allowed_kinds={"team_workspace"},
+                allowed_roles={"admin", "owner"},
+                feature_unavailable_detail="Seat assignment is only available for Team workspaces.",
+                forbidden_detail="Workspace role cannot manage team seats.",
+            )
             cursor.execute(
                 """
                 SELECT id, workspace_id, user_id, plan_key, status, included_credits,
@@ -37,12 +45,19 @@ def upsert_workspace_seat_assignment(
     input_data: WorkspaceSeatAssignmentUpsertRequest,
     context: ApiRequestContext,
 ) -> WorkspaceSeatAssignmentRecord:
-    _assert_can_manage_team_seats(context)
     require_database_url()
     user_id = _normalize_id(input_data.user_id, "user id")
     plan_key = _normalize_team_plan_key(input_data.plan_key)
     with connect_to_postgres() as connection:
         with connection.cursor() as cursor:
+            assert_workspace_actor_role(
+                cursor,
+                context,
+                allowed_kinds={"team_workspace"},
+                allowed_roles={"admin", "owner"},
+                feature_unavailable_detail="Seat assignment is only available for Team workspaces.",
+                forbidden_detail="Workspace role cannot manage team seats.",
+            )
             _assert_active_workspace_member(cursor, context.workspace_id, user_id)
             included_credits = _assert_workspace_seat_capacity(cursor, context.workspace_id, plan_key, user_id)
             seat_id = f"seat_{uuid4()}"
@@ -100,11 +115,18 @@ def upsert_workspace_seat_assignment(
 
 
 def revoke_workspace_seat_assignment(user_id: str, context: ApiRequestContext) -> str:
-    _assert_can_manage_team_seats(context)
     require_database_url()
     normalized_user_id = _normalize_id(user_id, "user id")
     with connect_to_postgres() as connection:
         with connection.cursor() as cursor:
+            assert_workspace_actor_role(
+                cursor,
+                context,
+                allowed_kinds={"team_workspace"},
+                allowed_roles={"admin", "owner"},
+                feature_unavailable_detail="Seat assignment is only available for Team workspaces.",
+                forbidden_detail="Workspace role cannot manage team seats.",
+            )
             cursor.execute(
                 """
                 UPDATE tangent_workspace_seat_assignments
