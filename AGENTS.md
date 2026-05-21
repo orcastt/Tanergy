@@ -65,3 +65,18 @@ Docs-only changes may run only `git diff --check`, but say that clearly in the f
 - Do not commit, push or create branches unless the user asks.
 - Before committing, inspect `git status`.
 - Keep checkpoints small and reversible.
+
+## PR workflow (hard rule)
+
+每个进入 `main` 的改动，无论大小、无论类型（代码、文档、配置），都按以下顺序：
+
+1. **先开 issue。** 写清楚 scope 和 acceptance criteria。加入 Tanergy GitHub Project board。
+2. **从 main 拉新分支。** 永远不直接编辑或推送 `main`。
+3. **开 PR**，body 里必须包含 `Closes #N`（或 `Fixes #N` / `Resolves #N`）。CI 的 `link-issue` check 会拦截不符合的 PR。
+4. **由非作者的另一位 reviewer 给出 approving review。** 不能自审自批。
+5. **通过 GitHub UI merge。** 永远不 `git push origin main`。
+
+AI agent 额外约束：
+- 不要 push 到 main，不要 merge 自己开的 PR，不要批准自己作者身份的 PR。
+- 任何一步缺失，停下来告诉用户，不要自己绕过。
+- Branch 命名：`feat/<n>-<slug>` / `fix/<n>-<slug>` / `chore/<slug>`，其中 `<n>` 是 issue 编号。

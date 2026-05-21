@@ -21,6 +21,7 @@ Root `PRD.md`, `ARCH.md` and `project_state.md` are pointers only.
 | Architecture map | `ARCH/ARCH.md` |
 | Execution rules | `AGENTS.md`, `HARNESS.md` |
 | Tactical plans | `dev-plans/README.md` |
+| Cross-slice memory | `knowledge/index.md` |
 
 For S0 regression-only UI polish, start with:
 
@@ -40,14 +41,20 @@ PRD/PRD.md
 ARCH/ARCH.md
 HARNESS.md
 relevant slice files
+knowledge/index.md
 ```
+
+Tracking: GitHub Project <https://github.com/users/orcastt/projects/2>
+
+Archived pivot mirrors live under `docs/archive/pivot-docs-2026-04-29/`; do not use them as active development context.
 
 ## Active Source
 
 - `apps/web/` — Next.js web app and Konva v2 production canvas.
 - `services/api/` — FastAPI service, storage adapters and migrations.
 - `packages/shared/` — shared packages if needed.
-- `legacy/old-tangent-desktop-2026-04-29/` — archived old app; do not read or edit unless explicitly asked.
+- `knowledge/` — cross-slice project memory, provider matrix, connection registry and recurring audit checklists.
+- `legacy/` has been removed from the active worktree/repo; recover old reference material from Git history or archived docs only when explicitly requested.
 
 ## Local Commands
 

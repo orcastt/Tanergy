@@ -1,0 +1,21 @@
+name: PR checks
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+jobs:
+  link-issue:
+    name: link-issue
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify PR body links a tracking issue
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          if printf '%s' "$BODY" | grep -Eiq '(close[sd]?|fix(e[sd])?|resolve[sd]?)[[:space:]]+#[0-9]+'; then
+            echo "PR body links an issue."
+            exit 0
+          fi
+          echo "::error::PR body must contain 'Closes #N' (or Fixes / Resolves) to link a tracking issue. Every PR needs a ticket. See AGENTS.md."
+          exit 1
