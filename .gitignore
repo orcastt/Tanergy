@@ -53,6 +53,20 @@ temp/
 
 # Tauri
 src-tauri/target/
+# AI agent / IDE config — local only, never push
+CLAUDE.md
+GEMINI.md
+.claude/
+.cursor/
+.cursorrules
+.cursorignore
+.windsurfrules
+.windsurf/
+.aider*
+.continue/
+.codeium/
+.github/copilot-instructions.md
+
 # Local secrets and generated archives
 .env.*
 !.env.example

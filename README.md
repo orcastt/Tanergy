@@ -17,6 +17,8 @@ Read these before development:
 3. `ARCH.md`
 4. `dev-plans/web-collaborative-canvas-pivot.md`
 
+Tracking: GitHub Project <https://github.com/users/orcastt/projects/2>
+
 Archived pivot mirrors live under `docs/archive/pivot-docs-2026-04-29/`; do not use them as active development context.
 
 ## Active Source
