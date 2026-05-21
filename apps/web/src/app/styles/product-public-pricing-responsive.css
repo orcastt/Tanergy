@@ -1,0 +1,42 @@
+@media (max-width: 960px) {
+  .public-pricing-nav {
+    position: static;
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: start;
+    padding: 18px;
+  }
+
+  .public-pricing-nav__links {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(4, auto);
+    justify-content: start;
+    gap: 12px 18px;
+  }
+
+  .public-pricing-grid {
+    grid-template-columns: minmax(0, 340px);
+  }
+
+  .public-pricing-card {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .public-pricing-hero {
+    padding-top: 46px;
+  }
+
+  .public-pricing-switch {
+    width: 100%;
+    max-width: 340px;
+  }
+
+  .public-pricing-switch button {
+    min-width: 0;
+  }
+
+  .public-pricing-nav__links {
+    grid-template-columns: repeat(2, auto);
+  }
+}

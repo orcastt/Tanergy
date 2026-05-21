@@ -1,0 +1,71 @@
+.konva-collaboration-cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 18;
+  display: flex;
+  align-items: flex-start;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.konva-collaboration-cursor__pointer {
+  position: relative;
+  display: block;
+  width: 13px;
+  height: 17px;
+  background: var(--collab-accent, #2563eb);
+  clip-path: polygon(0 0, 0 100%, 28% 72%, 46% 100%, 60% 92%, 44% 64%, 100% 64%);
+  filter: drop-shadow(0 6px 10px color-mix(in srgb, var(--collab-accent, #2563eb), transparent 62%));
+}
+
+.konva-collaboration-cursor__pointer::after {
+  position: absolute;
+  top: 1.5px;
+  left: 1.5px;
+  width: 10px;
+  height: 14px;
+  background: #ffffff;
+  clip-path: polygon(0 0, 0 100%, 30% 72%, 46% 100%, 58% 92%, 42% 64%, 100% 64%);
+  content: '';
+}
+
+.konva-collaboration-cursor__pointer::before {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 7px;
+  height: 11px;
+  background: var(--collab-accent, #2563eb);
+  clip-path: polygon(0 0, 0 100%, 30% 72%, 46% 100%, 58% 92%, 42% 64%, 100% 64%);
+  content: '';
+  z-index: 1;
+}
+
+.konva-collaboration-cursor__label {
+  position: absolute;
+  top: 11px;
+  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  min-width: max-content;
+  max-width: 180px;
+  padding: 4px 7px;
+  border-radius: 5px;
+  background: var(--collab-accent, #2563eb);
+  color: #ffffff;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--collab-accent, #2563eb), transparent 72%);
+  white-space: nowrap;
+}
+
+.konva-collaboration-cursor__label strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.konva-collaboration-cursor__label strong {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}

@@ -1,0 +1,301 @@
+.management-page {
+  display: grid;
+  gap: 24px;
+  align-content: start;
+}
+
+.management-page .management-panel,
+.management-page .management-notice {
+  padding: 24px;
+}
+
+.management-page .management-panel-heading {
+  margin-bottom: 18px;
+}
+
+.management-page .management-table th,
+.management-page .management-table td {
+  padding: 13px 10px;
+}
+
+.management-page .management-table thead th {
+  padding-top: 0;
+  padding-bottom: 12px;
+}
+
+.management-page .product-page-header {
+  padding-bottom: 0;
+}
+
+.management-summary-grid,
+.management-section-grid,
+.management-main-grid,
+.management-three-grid {
+  align-items: stretch;
+  margin: 0;
+}
+
+.management-summary-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.management-three-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.management-callout,
+.management-panel,
+.management-notice {
+  box-sizing: border-box;
+  height: 100%;
+}
+
+.management-callout {
+  display: grid;
+  align-content: start;
+  min-height: 144px;
+}
+
+.management-panel {
+  min-width: 0;
+}
+
+.management-subpanel {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 16px;
+}
+
+.management-subpanel h2 {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.management-subpanel p {
+  margin: 10px 0 0;
+  color: var(--color-body);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.management-routes-shell {
+  display: grid;
+  gap: 20px;
+}
+
+.management-routes-shell .management-panel-heading,
+.management-routes-shell .management-console-tabs {
+  margin-bottom: 0;
+}
+
+.management-panel > .management-main-grid,
+.management-panel > .management-three-grid {
+  margin-top: 4px;
+}
+
+.management-console-tabs {
+  min-height: 46px;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 4px;
+  border: 1px solid var(--color-hairline);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-canvas) 64%, var(--color-surface-soft));
+}
+
+.management-console-tabs button {
+  min-height: 36px;
+}
+
+.admin-overview-trend {
+  min-height: 360px;
+}
+
+.admin-overview-section-grid {
+  margin-top: 24px;
+}
+
+.admin-trend-legend,
+.admin-trend-legend span {
+  display: inline-flex;
+  align-items: center;
+}
+
+.admin-trend-legend {
+  gap: 16px;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.admin-trend-legend span {
+  gap: 6px;
+}
+
+.admin-trend-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.admin-trend-legend .is-users {
+  background: #2563eb;
+}
+
+.admin-trend-legend .is-workspaces {
+  background: #0f9f6e;
+}
+
+.admin-trend-chart {
+  min-height: 240px;
+}
+
+.admin-trend-chart svg {
+  width: 100%;
+  height: 240px;
+}
+
+.admin-trend-axis,
+.admin-trend-grid {
+  fill: none;
+  stroke: var(--color-hairline);
+  stroke-width: 1;
+}
+
+.admin-trend-grid {
+  opacity: 0.72;
+}
+
+.admin-trend-line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.5;
+}
+
+.admin-trend-line.is-users {
+  stroke: #2563eb;
+}
+
+.admin-trend-line.is-workspaces {
+  stroke: #0f9f6e;
+}
+
+.admin-trend-x,
+.admin-trend-y {
+  fill: var(--color-muted);
+  font-size: 12px;
+}
+
+.management-workspace-layout,
+.admin-route-editor-grid {
+  display: grid;
+  gap: 18px;
+  align-items: start;
+}
+
+.management-workspace-layout {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.admin-route-editor-grid {
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+}
+
+.admin-route-sidebar,
+.admin-route-detail {
+  min-width: 0;
+}
+
+.admin-route-sidebar,
+.admin-route-detail,
+.admin-route-form,
+.admin-route-filters,
+.admin-route-list {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-route-sidebar {
+  align-content: start;
+}
+
+.admin-route-list {
+  max-height: 680px;
+  overflow: auto;
+}
+
+.admin-route-list button {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--color-hairline);
+  border-radius: 8px;
+  background: var(--color-canvas);
+  color: var(--color-body);
+  cursor: pointer;
+  text-align: left;
+}
+
+.admin-route-list button.is-selected {
+  border-color: color-mix(in srgb, var(--color-primary) 54%, var(--color-hairline));
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-canvas));
+}
+
+.admin-route-list strong,
+.admin-route-list small {
+  display: block;
+}
+
+.admin-route-list strong {
+  color: var(--color-ink);
+  font-weight: 600;
+}
+
+.admin-route-list small {
+  margin-top: 2px;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.admin-route-empty {
+  padding: 18px;
+  border: 1px dashed var(--color-hairline);
+  border-radius: 8px;
+  color: var(--color-muted);
+}
+
+.admin-route-json {
+  display: grid;
+  gap: 6px;
+}
+
+@media (max-width: 1100px) {
+  .management-summary-grid,
+  .management-three-grid,
+  .management-workspace-layout,
+  .admin-route-editor-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .management-summary-grid,
+  .management-section-grid,
+  .management-main-grid,
+  .management-three-grid,
+  .management-workspace-layout,
+  .admin-route-editor-grid {
+    grid-template-columns: 1fr;
+  }
+}

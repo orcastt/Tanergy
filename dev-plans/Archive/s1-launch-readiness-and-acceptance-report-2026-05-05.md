@@ -1,0 +1,292 @@
+# S1 上线准备和验收汇报
+
+**Updated**: 2026-05-16
+**Status**: S1X Konva Page polish、S1D public share + owner-only copy/delete + known-foreign Asset guard hardening、S1C Clerk/Auth first pass、S3 admin/entitlement first pass，以及 staging Konva-only 部署恢复、Cloudflare strict proxy 边界与真实 session/admin smoke 已接上的活跃交接报告；2026-05-16 又完成了一轮全量回归重置：后端旧口径的 7 个失败用例已收口，前后端本地质量门全绿，staging Web/API 已按 `fe568e1` 部署并完成公开 health、CORS 与 invalid-token smoke。当前剩余的仍是需要真人在 staging 完成的第二轮 signed-in board/browser、email auth、一条真实 Jiekou live AI smoke，以及 Team/Group/invite/collaboration 浏览器矩阵。
+**Branch**: `feature/s1c-auth-admin-production-boundary`
+
+## 当前位置
+
+S1X 已经把生产画布方向切到 Konva v2。新建/缺失 Board 和已保存的 Konva Board 都走正式 `/boards/[boardId]` 路由；活跃 Web app 不再保留 tldraw runtime/reference path，legacy v1 Board 文档/历史会被 guard 阻止。
+
+当前 working tree 除了已验收的 Page polish，还已经包含一轮 S1C Auth 接线：
+
+- `/` 是公开 Tanergy homepage；`/sign-in`、`/sign-up` 走 Clerk。
+- `/workspaces` 在 `TANGENT_REQUIRE_WEB_AUTH=1` 时会被 Clerk 保护。
+- workspace 顶部导航里的 `Home` 已移除；点 logo 返回 homepage。
+- localhost 图片上传 / 外部图片粘贴 / 截图粘贴 已重新验证能走本地 asset pipeline，不依赖数据库。
+- FastAPI 在 `TANGENT_REQUIRE_API_AUTH=1` 时不再接受伪造的 `x-tangent-user-id` / `x-tangent-workspace-id` 作为 authority；改为 Bearer Clerk token。
+- 前端 remote Board / Asset / Image Op / AI client 已补 Clerk JWT 透传。
+- Postgres Board/History 现在有第一轮 workspace-role gate：`owner/admin/member` 可写，`guest` 只读，metadata/clear 更严格，copy/delete 已 owner-only。
+- S1D 当前稳定 checkpoint 还包含：Board cursor pagination、owner-only Board copy/delete、snapshot restore、guest-aware board-member roles、share-link expiry enforcement、known-foreign Asset reference guard，以及 Board Panel 里的首轮成员管理流。
+- admin backend 当前稳定 checkpoint 已从最小 access probe 扩到：`GET /api/v1/admin/me`、只读 summary/users/workspaces/boards 首轮资源、owner-only role grant/revoke、bootstrap CLI、audit helper 边界，以及前端 `/admin` access gating。
+
+现在 staging 线上现实补充：
+
+- `api-staging.tanergy.cc` 已恢复，Neon/R2/board smoke 为绿。
+- `staging.tanergy.cc` 已重新指向 Konva-only deploy，不再暴露旧 tldraw/license surface。
+- Cloudflare 代理、Full (strict) TLS 以及源站 UFW 收口已经就位：公网只开 `80/443`，`22` 仅对维护 IP 放行。
+- 真实 Clerk session/admin smoke 已转绿：`/api/auth/session`、`/api/admin-proxy/me`、`/api/admin-proxy/operator/users?limit=3`、`/api/admin-proxy/finance/summary` 和 `/api/admin-proxy/ai/route-metrics?limit=5` 已返回 200。
+- signed-in board/browser 首轮手测已转绿：Google 登录、`/workspaces`、board 打开、刷新后 session 保持、private board create/delete、图片粘贴上传与 reload 恢复都已确认。
+- 剩余发布闸门收窄为 signed-in board/browser 第二轮边界项、Google/email，以及一条真实 live AI image smoke。
+
+## 2026-05-16 回归重置结论
+
+这轮先解决的是“全量后端回归炸出 7 个旧口径测试”这个问题。它们实际分成两类：
+
+1. 旧的 `workspace/public visibility` 预期还停留在历史行为，但当前产品规则已经收成：
+   - `guest` 不会因为 Board `visibility=workspace` 就自动获得访问
+   - 只有显式 board membership 才能给 guest/viewer 打开 board/realtime 读取
+2. Team/Group entitlement 的测试假数据库没有跟上真实 SQL 查询口径：
+   - `SELECT plan_key, seat_capacity, current_period_end ...`
+   - `SELECT ca.id, s.plan_key, s.current_period_end ...`
+
+本轮已经做完的修正：
+
+- `services/api/tests/test_workspace_role_normalization.py`
+  - 明确锁定 `guest -> viewer` 的兼容映射
+  - 明确锁定 guest 对 `workspace` visibility 仍然是 `none`
+- `services/api/tests/test_board_realtime_websocket.py`
+  - 把旧的“workspace visibility 会放 guest 进 realtime”预期改成当前真实规则
+  - 需要可读实时访问的 guest case，改为先显式加入 `viewer` board membership
+- `services/api/tests/persistence_fakes.py`
+  - 扩充 Fake Postgres entitlement 查询形状，补上 `current_period_end` 相关返回
+  - 让 Team/Group wallet / subscription 测试对齐真实 runtime SQL，而不是继续卡在过期假实现
+
+这一轮已经重新跑过并确认通过：
+
+```bash
+PYTHONPATH=services/api python3 -m pytest services/api/tests
+python3 -m compileall services/api/tangent_api services/api/migrations
+npm -C apps/web run lint
+npm -C apps/web run typecheck
+npm -C apps/web run build
+git diff --check
+```
+
+结果：
+
+- backend: `256 passed`
+- frontend: `lint/typecheck/build` 全绿
+- staging public smoke:
+  - `https://staging.tanergy.cc` -> `200`
+  - `https://api-staging.tanergy.cc/health` -> `{"status":"ok"}`
+  - invalid token -> `401`
+  - CORS preflight from `https://staging.tanergy.cc` -> `200`
+
+当前 Page polish 范围：
+
+- 右侧 Pages 抽屉，带轻量几何缩略图。
+- Page 创建、切换、重命名、删除、重排。
+- 右键菜单 `Move to page`。
+- `Move to page` 会把 group 成员和 frame children 一起作为移动范围。
+- Runtime edge 只在 source/target 两端都被移动时跟着迁移；跨 page runtime edge 暂时删除。
+- S1X PRD / ARCH / project state / dev plan 已同步更新。
+
+Page polish 已跑过质量门：
+
+```bash
+npm -C apps/web run lint
+npm -C apps/web run typecheck
+npm -C apps/web run build
+git diff --check
+```
+
+## 建议执行顺序
+
+```text
+1. 补完 staging 第二轮浏览器验收
+   signed-in board/browser: reopen/conflict chooser, thumbnail, history, and any last private-board owner edge cases after the now-green first pass
+   |
+   v
+2. 补完 Google/email + CORS/origin 验收
+   staging sign-in stability, session truth, invalid-token rejection
+   |
+   v
+3. S2 真实 AI provider 路径
+   refreshed four-model image lane, server-side AiRun, provider adapter, asset result upload, cost logs
+   |
+   v
+4. S1D / S3 权限与结算收紧
+   permission edge cases, payer visibility, billing language
+   |
+   v
+5. S4 collaboration proof
+   reconnect/resync, provider bridge, conflict semantics, pressure smoke
+```
+
+## 当前验收 Checklist
+
+### 1. signed-in board/browser 第二轮
+
+最新手测状态：
+
+- `solo reopen / history / thumbnail` 这几个第二轮边角目前都没有问题。
+- 当前还剩下的明确 browser UX 问题，是 `Manage board -> Copy board` 在 Free 限额下仍要统一成页面居中的 limit modal。
+
+- [ ] 用无痕窗口打开 `https://staging.tanergy.cc`。
+- [ ] 只用 Google 登录，确认落到 `/workspaces`。
+- [ ] 打开一个已有 private Board，随手改一点内容，返回 `/workspaces`，再重新打开同一个 Board。
+- [ ] 观察 solo reopen 时是否还会出现 `remote update / use remote / keep mine`；如果仍然在单人编辑流里出现，记为阻塞问题。
+- [ ] 打开 Board History，执行一次 refresh 或生成一次新保存记录，刷新页面后再次打开，确认最新保存记录仍在。
+- [ ] 确认 History 预览和 workspace / gallery 缩略图在保存、刷新、重开后都保持真实。
+- [ ] 在 Free plan 受限 workspace 里测试 `New board` 和 `Copy board`，确认套餐限制提示走页面居中的 modal，而不是页面顶部报错。
+- [ ] 确认 private Board 的 owner 仍然可以 delete / copy；不该有权限的用户仍然被拦住。
+- [ ] 粘贴或上传一张图片，等待占位态和上传完成，然后刷新并重开 Board，确认图片仍然存在。
+
+### 2. Google / email / CORS / origin
+
+- [x] 退出登录，再用同一个 Google 账号重新登录，确认仍然映射到同一个本地 TANGENT user 与 workspace membership。
+- [ ] 跑一遍 email 登录或验证流程，确认邮件实际送达测试邮箱。当前仍待 Clerk email auth 启用。
+- [ ] 完成 email link / code 后回到 staging，并成功落到 `/workspaces`。
+- [ ] 完成 email 流程后再请求 `/api/auth/session`，确认 session shape 仍然正常。
+- [x] 用缺失和明显无效的 Bearer token 打一次 FastAPI，确认 staging 返回 `401`，且 `Access-Control-Allow-Origin` 仍正确指向 `https://staging.tanergy.cc`。
+- [ ] 用真实但过期或 `azp/origin` 不匹配的 token 打一次 FastAPI，确认返回 `401`。
+- [ ] 最后再核对一次 `NEXT_PUBLIC_API_BASE_URL`、FastAPI `TANGENT_ALLOWED_ORIGINS`、Clerk allowed origins 和 `CLERK_AUTHORIZED_PARTIES` 是否完全一致。
+
+### 3. 一条真实 AI image live smoke
+
+- [ ] 从 `gpt-image-2`、`nano-banana-2`、`doubao-seedream-5.0-lite`、`jimeng_t2i_v40` 中任选一个当前活跃模型。
+- [ ] 在 staging 里跑通一条真实 `Prompt -> Image Gen -> Image`。
+- [ ] 确认 quote / preflight、provider 执行、final status 和 Asset 持久化都成功。
+- [ ] 刷新或重开 Board，确认结果来自已保存的 Asset refs，而不是临时本地状态。
+- [ ] 如果 provider 失败，确认前端看到的是可理解错误，后端留下的是 failed run，而不是假成功。
+
+### 4. 回到 S1D / S3 收口
+
+- [ ] 重新核对 Free / Private / Team / Group 的限制、权限和可见性文案。
+- [ ] 重新核对 `/billing`、`/usage`、`/team` 的 payer / usage / mock payment 语言是否一致。
+- [ ] 把影响收费或权限判断的 Board edge cases 再跑一遍：copy、delete、invite/member visibility、owner-only actions。
+- [ ] 保持 payment 文案诚实；在真实 webhook / settlement 没接好前，不要把它写成正式自动扣费。
+
+### 5. Team / Group / Invite / Member 管理
+
+- [ ] Team owner 创建 Team workspace，确认 Team 首页、boards、usage credit bar、settings 入口都能打开。
+- [ ] Group owner 创建 Group workspace，确认 Group 首页、personal credit 展示、boards 和 settings 入口都能打开。
+- [ ] Team owner 发一条 invite link，invite history 明确显示 `pending`。
+- [ ] 第二个真实账号通过 `/invite/[token]` 接受 Team invite，回到 staging 后能在 joined/available Team 列表里看到该 Team。
+- [ ] 回到 Team owner 侧，invite history 对应行变为 `accepted`，member 列表出现新成员，角色正确。
+- [ ] owner/admin 可以 revoke 未接受 invite；被 revoke 的链接再次打开应失败，history 状态显示 `revoked`。
+- [ ] owner/admin 可以修改成员角色；viewer/editor/admin 边界和 UI 文案一致。
+- [ ] owner/admin 可以移除成员；Team 成员被移除时 seat assignment 也同步释放。
+- [ ] Team owner 可以打开 settings 重命名 Team，并执行删除确认弹窗；确认删除只删 workspace/boards/member 关系，不误导成会清空已购 subscription credits。
+- [ ] Group owner 同样验证 rename/delete 确认流；Group owner transfer 仍应保持阻止态，不要出现可误点的假成功路径。
+- [ ] Admin `/admin` 用户详情页继续使用 display name / 用户名作为主要可识别标识，用户、Team、Group 行为读模型可正常打开。
+
+### 6. Collaboration / Realtime / Presence
+
+- [ ] 两个真实账号进入同一 Team 或 Group 下的同一 board。
+- [ ] 通过 invite 进入同一 board 的用户，能直接加入现有 realtime room，而不是只加入 workspace 不进 board。
+- [ ] 双方都能看到 remote cursor、display name、session color。
+- [ ] active page / current tool / selection tint / marquee / transform preview 能被对方看到。
+- [ ] guest/viewer 只应拥有只读协作能力；没有 board membership 的 guest 不能因为 visibility 被放进 realtime。
+- [ ] 聚焦编辑占用态要验证至少一轮：文本编辑、节点文本编辑、图片 crop 或参数菜单被一人占用时，第二人会收到明确拒绝反馈。
+- [ ] 同板多 page 验证一轮：不同 page 操作不应互相覆盖；当前 page 范围内的 presence 与更改应保持 page-scoped。
+- [ ] cursor easing/缓停手感至少做一轮主观验收，确认没有明显抖动、跳点或超长拖尾。
+
+## 上线优化 Backlog
+
+| 线路 | 现在可以开始 | 必须等待 | 验收标准 |
+| --- | --- | --- | --- |
+| S1X Board polish | 真实渲染的 page-thumbnail assets、page duplicate、export background options、route acceptance tests | Collaboration 和真实 AI side effects | `/boards/[boardId]` 在 production mode 下保持 Konva-only，并阻止 legacy 文档 fallback |
+| S1B Deployment | 刷新 staging runbook、核对 env 名称、CORS、health、R2 asset 读写、rollback commands | 用于 Auth smoke 的公开 Auth provider credentials | Web 能调用 staging API，assets 从 R2 加载，Board save/load/history 通过 |
+| Database optimization | Staging migration smoke、Board list / History / Asset list 的 EXPLAIN、文档体积限制、snapshot retention policy | 真实用户流量和 Auth-scoped query volume | cursor indexes 被使用；Board/History list 速度稳定；guard 拒绝超大或不安全文档 |
+| S1C Auth | Auth provider 最终选择、route contracts、request-context implementation plan | Provider project keys 和 Google OAuth setup | 用户不能伪造 user/workspace id；非法 JWT 返回 401 |
+| S1D Board CRUD | Permission matrix、cursor pagination、owner-only copy/delete、restore/member/share/Asset guard contract tests | 真实 Auth request context | User A 不能读/改 User B 的 Board；copy/delete owner-only；copy/restore/share expiry 走 server-side 权限；known foreign Asset refs 被拒绝；member scaffold 不越权 |
+| S2 AI calls | Provider adapter interface、AiRun schema mapping、mock-to-real test plan | Server-side API keys 和 Auth/cost limits | 前端永远拿不到 key；输出是 Asset；Board 只存 refs/summaries |
+| S3 Admin | Admin role/audit contract、只读 summary/users 首轮资源、`/admin` gating | 真实 Auth 和 admin_roles seed | 没有 server-side admin role 不能访问 `/admin`；已有角色时只看到首轮只读能力 |
+| S4 Collaboration | Yjs document mapping proof plan、presence shape、no-binary CRDT rules | Auth、Board members、Asset 和 AiRun authority | 两个用户能编辑测试 Board，CRDT 不存图片二进制/provider payload |
+
+## 后续开发记录
+
+这些工作现在先记入文档，不打断上面的验收顺序：
+
+- Free / Private / Team / Group 的 entitlement matrix 收口，包括 create/copy/delete/member visibility/invite 的统一规则。
+- Free 用户当前仍可创建 Team；这属于后续 entitlement / billing / payment 规则收口，不作为当前 board/browser 基础功能的阻塞项。
+- Team wallet 与 personal Collaborate wallet 的前端语言、扣费归属和升级路径统一。
+- Payment system 正式化：hosted checkout、webhook、invoice、refund、renewal 与对账深度。
+- Admin/operator 深化：用户状态、订阅冻结/恢复、财务调账、套餐切换与审计流统一。
+- Board/browser 继续 polish：thumbnail 真实渲染、history 视觉统一、conflict chooser 文案和时机、workspace plan-limit 提示一致性，尤其是 `Manage board -> Copy board` 也要走页面居中的 limit modal。
+- Image operations 继续补完：`Remove BG` 当前只有前端入口/UI 价值，真实后端/API/staging 接线和验收仍待完成；`Object Cutout` 继续保持后续规划项。
+- AI 路线在第一条 live smoke 通过后，再扩更广的 provider/model coverage 与后台 route health 视图。
+- Collaboration 保持在最后：只有当前面的 Auth、Board、Asset、AiRun 边界稳定后，才继续 provider-grade realtime。
+
+## Page Polish 手测清单
+
+- 创建 3 个 pages，并在每个 page 画不同内容。
+- 双击 page row 重命名；点击外部后保存名字。
+- 用 up/down 重排 pages；active page 和内容保持正确。
+- 删除 inactive page；active page 不变。
+- 删除 active page；fallback page 打开，selection/edit state 清空。
+- 选择一个普通 shape 后 `Move to page`；它从 source 消失并出现在 target。
+- 选择一个 group 后 `Move to page`；所有 group members 一起移动。
+- 选择一个带 children 的 frame 后 `Move to page`；frame children 跟着移动。
+- 移动已连接的 runtime nodes，且两端都被选中；内部 runtime edge 保留。
+- 只移动 runtime edge 的其中一端；跨 page edge 被删除。
+- Save、reload、Snapshot、Restore；page 顺序、标题、内容和 active page 都保留。
+- History 仍然显示 active Page title。
+
+## Deployment / Backend 验收
+
+- production staging 不应包含任何 tldraw runtime/reference env 开关；应验证 legacy 文档在 active app path 中被阻止。
+- staging Web/API 公网记录应继续保留在 Cloudflare 代理后面，并保持 SSL/TLS 为 Full (strict)。
+- 源站入站规则应继续保持公网仅 `80/443`，`22` 仅对维护 IP 放行。
+- Public staging Web 打开新 Board 时 `/boards/<id>` 使用 Konva v2。
+- FastAPI `/health` 通过 HTTPS。
+- CORS 允许 staging Web origin，并拒绝无关 origin。
+- Alembic 在 staging Postgres 上达到 head。
+- localhost / staging asset ingest 不要求数据库才能完成浏览器端图片上传；本地 fallback 使用 `.tangent-assets`。
+- Asset upload/read 通过 R2/S3-compatible storage。
+- Board save/load/history/clean 通过 staging API。
+- signed-in browser 首轮验收已覆盖 private board create/open/save/delete、图片粘贴占位态、后台上传持久化与 reload 后恢复；第二轮还要显式验证 history、thumbnail，以及 solo 编辑后 reopen 的 `remote update / use remote / keep mine` 冲突提示是否符合预期。
+- Board guard 拒绝 `data:`、`blob:`、Base64 images 和 malformed Konva v2 envelopes。
+- Board save / snapshot create 拒绝已知属于另一个 workspace 的 Asset id；后续 explicit Asset-sharing allowlist 再开放合法跨 workspace 共享。
+- `TANGENT_REQUIRE_API_AUTH=1` 后，非法或缺失 Bearer token 会收到 401，不能再靠前端 header 伪造用户或 workspace。
+- Production deploy 前已写好 rollback path。
+
+## AI Provider 验收
+
+- AI API keys 只留在 server-side。
+- Model Registry capabilities 来自 server contract。
+- 当前活跃生图线只接受 `gpt-image-2`、`nano-banana-2`、`doubao-seedream-5.0-lite` 和 `jimeng_t2i_v40`，长耗时生图超时边界按 240s 验收。
+- `Prompt -> Image Gen -> Image` 创建 Asset，并且 Board/node data 只存 asset refs。
+- `Prompt -> Image Gen 4 -> Image` 创建 4 个 candidate Asset refs。
+- `Image + Prompt -> Analysis` 通过 AiRun summary 创建短文本输出，不把 provider raw payload 写进 Board JSON。
+- Provider 调用失败时写入 failed AiRun state，并显示用户可理解的错误。
+- AiRun 和 `ai_api_calls` 记录 user/workspace/board/node/model/provider/status/latency/cost facts。
+- Rate limits 或 credits 能防止未认证用户无限调用。
+
+## Admin 验收
+
+- `/admin` 入口和页面访问都必须走 server-side admin probe/gate。
+- Admin access 通过 server-side `admin_roles` 检查。
+- 前端 role flags 永远不是权限依据。
+- 当前 first pass 是只读 summary/users 首轮能力，不代表完整 users/workspaces/Boards/assets/AiRuns 检索面板都已完成。
+- 每个 admin write 都写 `admin_audit_logs`；当前 audit helper 是为后续 write 路由先铺边界。
+
+## Collaboration 验收
+
+- Collaboration 只能在 Auth、Board members、Asset 和 AiRun authority 稳定后开始。
+- CRDT 只存 lightweight shapes、node params、runtime edges 和 Asset refs。
+- CRDT 永远不存 image binaries、Base64、provider raw payloads 或 long logs。
+- Presence 包含 cursor、selection 和 current tool。
+- Board History 在 collaboration 下仍可 restore。
+- AI runs 和 credit charges 仍然由 server 决定。
+
+## Legacy 边界
+
+不要读取或修改 `legacy/old-tangent-desktop-2026-04-29/`，除非用户明确要求。如果之后需要从 legacy 里复制 AI provider 参考，单独开一个 inspection task，先总结差异，再迁移代码。
+
+## 下一个具体 Checkpoint
+
+当前这轮之后建议直接进入：
+
+1. 先完成 signed-in board/browser staging 第二轮验收，把 solo 编辑后 reopen 冲突提示、history、thumbnail 和剩余 private board 边界项跑透。
+2. 再完成 Google/email 与 invalid-token staging 验收，确认真实 Auth 边界已经闭环。
+3. 然后跑一条真实 S2 live image smoke，把 create -> provider -> Asset -> final status -> settlement 这条线端到端打通。
+4. 在这三步稳定后，再继续 S1D permission hardening 和 S3 entitlement/billing language 收口。
+5. 最后再把主线切回 S4 collaboration proof：reconnect/resync、stale-version、conflict 脚本和 provider-grade persistence。
+
+当前补充规则：
+
+- 如果是有价值但不紧急的后续开发，先记入对应的 plan / slice 文档
+- 不要让这些 follow-on 项目打断上面的主线顺序

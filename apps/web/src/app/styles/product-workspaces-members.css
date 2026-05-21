@@ -1,0 +1,282 @@
+.board-panel-section {
+  display: grid;
+  gap: 14px;
+}
+
+.board-panel-section-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.board-panel-section h3,
+.board-panel-section p {
+  margin: 0;
+}
+
+.board-panel-section p,
+.board-panel-member span,
+.board-panel-member small {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.board-panel-section-heading button {
+  height: 36px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--color-canvas);
+  color: var(--color-muted);
+}
+
+.board-panel-members {
+  display: grid;
+  gap: 2px;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.board-panel-member-add {
+  display: grid;
+  gap: 10px;
+}
+
+.board-panel-member-lookup-shell {
+  position: relative;
+  display: grid;
+  gap: 6px;
+}
+
+.board-panel-member-suggestions {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 6;
+  display: grid;
+  gap: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.12);
+}
+
+.board-panel-candidate-list {
+  display: grid;
+  gap: 8px;
+}
+
+.board-panel-candidate {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--color-hairline);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.board-panel-candidate strong {
+  display: block;
+  color: var(--color-ink);
+  font-size: 12px;
+}
+
+.board-panel-candidate span,
+.board-panel-candidate small {
+  display: block;
+}
+
+.board-panel-candidate button {
+  height: 30px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--color-canvas);
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.board-panel-member-add label,
+.board-panel-member-inline {
+  display: grid;
+  gap: 6px;
+}
+
+.board-panel-member-add span {
+  color: #8aa0bd;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.board-panel-member-add input,
+.board-panel-member-add select,
+.board-panel-member-actions input,
+.board-panel-member-role {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #d8e2ef;
+  border-radius: 12px;
+  background: white;
+  color: #172033;
+}
+
+.board-panel-member-add input,
+.board-panel-member-add select,
+.board-panel-member-actions input {
+  height: 38px;
+  padding: 0 12px;
+}
+
+.board-panel-member-role {
+  height: 38px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+.board-panel-member {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 136px;
+  gap: 8px 12px;
+  align-items: start;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.board-panel-member-suggestions .board-panel-member {
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  padding: 10px 4px;
+}
+
+.board-panel-member-suggestions .board-panel-member:first-child {
+  border-top: 0;
+}
+
+.board-panel-member-suggestions .board-panel-member > small {
+  display: none;
+}
+
+.board-panel-member-suggestions .board-panel-member-actions {
+  grid-column: 3;
+  align-self: center;
+  grid-template-columns: auto;
+}
+
+.board-panel-member-meta {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.board-panel-member button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--color-hairline);
+  border-radius: 999px;
+  background: var(--color-canvas);
+  color: #425266;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.board-panel-avatar {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-signature-mustard);
+  color: var(--color-ink);
+  font-size: 10px;
+  font-weight: 400;
+}
+
+.board-panel-member strong {
+  display: block;
+  color: var(--color-ink);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.board-panel-member > small {
+  grid-column: 2 / 3;
+  grid-row: 2;
+  line-height: 1.45;
+}
+
+.board-panel-member-inline {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  align-self: start;
+}
+
+.board-panel-member-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  grid-column: 2 / -1;
+}
+
+.board-panel-member-actions input {
+  height: 38px;
+  padding: 0 12px;
+}
+
+.board-panel-member-actions small {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 999px;
+  background: rgba(248, 250, 252, 0.92);
+  white-space: nowrap;
+}
+
+.board-panel-member-status {
+  min-height: 16px;
+}
+
+@media (max-width: 1180px) {
+  .board-panel-member {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  .board-panel-member > small,
+  .board-panel-member-inline,
+  .board-panel-member-actions {
+    grid-column: 2 / -1;
+  }
+
+  .board-panel-member-inline {
+    grid-row: auto;
+    max-width: 180px;
+  }
+}
+
+.board-panel :where(button, input, textarea, label, legend, dt, dd, strong, span, small, h2, h3, p) {
+  font-weight: 400;
+}
+
+@media (max-width: 640px) {
+  .board-panel-member {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .board-panel-member-inline,
+  .board-panel-member-actions {
+    grid-column: 2 / -1;
+  }
+
+  .board-panel-member-actions {
+    grid-template-columns: 1fr auto auto;
+  }
+
+  .board-panel-member-actions input {
+    grid-column: 1 / -1;
+  }
+}

@@ -1,0 +1,137 @@
+.style-icon {
+  position: relative;
+  display: block;
+  width: 26px;
+  height: 18px;
+  overflow: hidden;
+}
+
+.style-icon::before,
+.style-icon::after {
+  position: absolute;
+  content: '';
+}
+
+.style-icon--fill-none {
+  border: 2px solid currentColor;
+  border-radius: 5px;
+  background: white;
+}
+
+.style-icon--fill-semi {
+  border: 2px solid currentColor;
+  border-radius: 5px;
+  background: color-mix(in srgb, currentColor 18%, white);
+}
+
+.style-icon--fill-solid {
+  border: 2px solid currentColor;
+  border-radius: 5px;
+  background: color-mix(in srgb, currentColor 28%, white);
+}
+
+.style-icon--fill-pattern {
+  border: 2px solid currentColor;
+  border-radius: 5px;
+  background:
+    repeating-linear-gradient(135deg, color-mix(in srgb, currentColor 52%, white) 0 1px, color-mix(in srgb, currentColor 10%, white) 1px 5px),
+    color-mix(in srgb, currentColor 8%, white);
+}
+
+.style-icon[data-style-icon^='size-']::before {
+  top: 50%;
+  left: 50%;
+  width: 18px;
+  height: 1px;
+  border-radius: 999px;
+  background: currentColor;
+  transform: translate(-50%, -50%);
+}
+
+.style-icon[data-style-icon='size-s']::before {
+  height: 1px;
+}
+
+.style-icon[data-style-icon='size-m']::before {
+  height: 3px;
+}
+
+.style-icon[data-style-icon='size-l']::before {
+  height: 5px;
+}
+
+.style-icon[data-style-icon='size-xl']::before {
+  height: 8px;
+}
+
+.style-icon[data-style-icon^='dash-']::before {
+  top: 50%;
+  left: 50%;
+  width: 18px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  transform: translate(-50%, -50%);
+}
+
+.style-icon[data-style-icon='dash-draw']::before {
+  top: 45%;
+  width: 19px;
+  height: 9px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: inset 0 -2px 0 currentColor;
+  transform: translate(-50%, -50%) rotate(-8deg);
+}
+
+.style-icon[data-style-icon='dash-dashed']::before {
+  height: 3px;
+  background: repeating-linear-gradient(90deg, currentColor 0 4px, transparent 4px 7px);
+}
+
+.style-icon[data-style-icon='dash-dotted']::before {
+  left: 5px;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 8px 0 0 currentColor, 16px 0 0 currentColor;
+  transform: translateY(-50%);
+}
+
+.style-icon--font-draw,
+.style-icon--font-sans,
+.style-icon--font-serif,
+.style-icon--font-mono {
+  display: grid;
+  width: 24px;
+  height: 18px;
+  place-items: center;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.style-icon--font-draw::before,
+.style-icon--font-sans::before,
+.style-icon--font-serif::before,
+.style-icon--font-mono::before {
+  position: static;
+  content: 'A';
+}
+
+.style-icon--font-draw {
+  font-family: cursive;
+}
+
+.style-icon--font-sans {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.style-icon--font-serif {
+  font-family: ui-serif, Georgia, serif;
+}
+
+.style-icon--font-mono {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}

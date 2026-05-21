@@ -1,0 +1,74 @@
+.merge-capture-panel {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  z-index: 21;
+  display: grid;
+  width: 244px;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(36, 36, 36, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: var(--shadow-floating);
+  backdrop-filter: blur(18px);
+}
+
+.merge-capture-panel div {
+  display: grid;
+  gap: 3px;
+}
+
+.merge-capture-panel strong {
+  font-size: 13px;
+  letter-spacing: -0.03em;
+}
+
+.merge-capture-panel span,
+.merge-capture-panel figcaption,
+.merge-capture-panel p {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.merge-capture-panel button {
+  height: 34px;
+  border: 0;
+  border-radius: 10px;
+  background: #242424;
+  color: white;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.merge-capture-panel button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.merge-capture-panel figure {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.merge-capture-panel img {
+  width: 100%;
+  max-height: 132px;
+  border-radius: 12px;
+  background:
+    linear-gradient(45deg, #f1f5f9 25%, transparent 25%),
+    linear-gradient(-45deg, #f1f5f9 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #f1f5f9 75%),
+    linear-gradient(-45deg, transparent 75%, #f1f5f9 75%);
+  background-position:
+    0 0,
+    0 8px,
+    8px -8px,
+    -8px 0;
+  background-size: 16px 16px;
+  object-fit: contain;
+  box-shadow: var(--shadow-ring);
+}

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Register - TANGENT</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "background": "#f8f9fa",
+                        "tertiary": "#000300",
+                        "surface-container-highest": "#e1e3e4",
+                        "tertiary-container": "#002305",
+                        "surface-container": "#edeeef",
+                        "primary": "#000208",
+                        "secondary-container": "#ff693c",
+                        "primary-fixed": "#dee2ef",
+                        "on-error": "#ffffff",
+                        "on-background": "#191c1d",
+                        "secondary-fixed": "#ffdbd1",
+                        "outline-variant": "#c6c6cc",
+                        "on-tertiary-fixed-variant": "#2b4f2b",
+                        "on-primary-fixed": "#171c25",
+                        "tertiary-fixed": "#c4eebd",
+                        "surface-container-low": "#f3f4f5",
+                        "secondary-fixed-dim": "#ffb5a0",
+                        "on-surface": "#191c1d",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed-dim": "#a8d1a2",
+                        "surface-variant": "#e1e3e4",
+                        "on-tertiary-container": "#688e65",
+                        "inverse-on-surface": "#f0f1f2",
+                        "on-primary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "surface-bright": "#f8f9fa",
+                        "primary-container": "#181d26",
+                        "secondary": "#af3003",
+                        "on-surface-variant": "#45474b",
+                        "surface-tint": "#5a5e69",
+                        "on-tertiary-fixed": "#002205",
+                        "on-secondary-container": "#601500",
+                        "on-primary-fixed-variant": "#424751",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-dim": "#d9dadb",
+                        "outline": "#76777c",
+                        "primary-fixed-dim": "#c2c6d3",
+                        "on-secondary-fixed-variant": "#862200",
+                        "inverse-primary": "#c2c6d3",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-container": "#808590",
+                        "on-error-container": "#93000a",
+                        "on-secondary": "#ffffff",
+                        "on-secondary-fixed": "#3b0900",
+                        "inverse-surface": "#2e3132",
+                        "surface-container-high": "#e7e8e9",
+                        "surface": "#f8f9fa"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-md": "24px",
+                        "stack-sm": "12px",
+                        "section-v-padding": "96px",
+                        "container-max-width": "1200px",
+                        "gutter": "32px"
+                    },
+                    "fontFamily": {
+                        "body-base": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-xl": ["Inter"],
+                        "pricing-display": ["Inter"],
+                        "label-caps": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-base": ["14px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["32px", { "lineHeight": "40px", "fontWeight": "500" }],
+                        "headline-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.01em", "fontWeight": "400" }],
+                        "display-xl": ["64px", { "lineHeight": "72px", "letterSpacing": "-0.02em", "fontWeight": "400" }],
+                        "pricing-display": ["40px", { "lineHeight": "48px", "fontWeight": "475" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-surface-container-lowest text-on-surface font-body-base antialiased min-h-screen flex">
+<!-- Left Panel (Brand Context) -->
+<div class="hidden lg:flex lg:w-1/2 relative flex-col justify-between overflow-hidden">
+<!-- Lively Mint Green Background Image -->
+<img class="absolute inset-0 w-full h-full object-cover z-0" data-alt="A vibrant and lively mint green abstract background texture with soft, flowing gradients and subtle, luminous organic overlays. The scene is brightly lit by high-key, diffused white lighting, evoking a fresh, modern, and highly energetic atmosphere perfectly aligned with a premium, quietly editorial creative platform. The smooth transitions of the light green and teal hues create a serene sense of deep, organized potential without visually overwhelming the viewer, maintaining a pristine and minimalist aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCi9iUzV3_nA5aREfgPqguaVWEy7bEFFU2Mzc18d1nJuKMORfIAjumPWO8hxTwdzOgHkwTOyZpia4QVlUTLmrn7ZZA0vnvwSg4SH8CvSHVBi7CzXkPUSkPMh4KmQmdN35Hk_ypnsxdZMKmkN0_xy2lz4dYh_4wBItPZYkz2PuF_hJSXmwZR4_hD_81yR8cwuEQgFlKxLLDBduEoVCoOhZpTx-3CdCYrSXwQk_3w7lj-a5V4QsBH9NDS-nS96pzoBHwI039dVu-tYe4"/>
+<!-- Overlay for contrast if needed, keeping it very light to maintain 'mint' feel -->
+<div class="absolute inset-0 bg-tertiary-fixed/30 z-10 mix-blend-multiply"></div>
+<!-- Content -->
+<div class="relative z-20 flex flex-col justify-between h-full p-section-v-padding">
+<div>
+<!-- Logo Anchor -->
+<h1 class="font-display-xl text-display-xl text-on-tertiary font-bold tracking-tight">TANGENT</h1>
+</div>
+<div>
+<p class="font-headline-md text-headline-md text-on-tertiary max-w-md">
+                    Quietly Editorial.
+                </p>
+</div>
+</div>
+</div>
+<!-- Right Panel (Registration Canvas) -->
+<div class="w-full lg:w-1/2 flex flex-col justify-center items-center p-8 lg:p-section-v-padding relative">
+<!-- Form Container -->
+<div class="w-full max-w-[400px] flex flex-col">
+<!-- Header -->
+<div class="mb-12 text-center lg:text-left">
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-4">Create Account</h2>
+<p class="font-body-base text-body-base text-on-surface-variant">
+                    Join Tangent to begin structuring your creative workflows.
+                </p>
+</div>
+<!-- Inputs -->
+<form class="flex flex-col space-y-8 mb-10">
+<!-- Email Field -->
+<div class="flex flex-col relative group">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase mb-2 transition-colors group-focus-within:text-primary-container" for="email">
+                        Email Address
+                    </label>
+<input class="w-full bg-transparent border-0 border-b border-outline-variant pb-3 px-0 font-body-base text-body-base text-on-surface placeholder:text-outline focus:ring-0 focus:border-b focus:border-primary-container transition-colors" id="email" placeholder="name@example.com" type="email"/>
+</div>
+<!-- Password Field -->
+<div class="flex flex-col relative group">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase mb-2 transition-colors group-focus-within:text-primary-container flex justify-between" for="password">
+<span>Password</span>
+</label>
+<div class="relative">
+<input class="w-full bg-transparent border-0 border-b border-outline-variant pb-3 px-0 font-body-base text-body-base text-on-surface placeholder:text-outline focus:ring-0 focus:border-b focus:border-primary-container transition-colors" id="password" placeholder="Min. 8 characters" type="password"/>
+<button aria-label="Toggle password visibility" class="absolute right-0 bottom-3 text-outline-variant hover:text-on-surface transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]" data-icon="visibility">visibility</span>
+</button>
+</div>
+</div>
+<!-- Primary CTA -->
+<button class="w-full bg-primary-container text-on-primary rounded-xl py-4 mt-4 font-body-base text-body-base font-medium hover:bg-primary transition-colors flex items-center justify-center space-x-2" type="button">
+<span>Sign Up</span>
+<span class="material-symbols-outlined text-[18px]" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</form>
+<!-- Footer Link -->
+<div class="text-center lg:text-left">
+<p class="font-body-base text-body-base text-on-surface-variant">
+                    Already have an account? 
+                    <a class="text-on-surface font-medium border-b border-on-surface hover:text-primary-container transition-colors pb-0.5 ml-1" href="#">Log in</a>
+</p>
+</div>
+</div>
+</div>
+</body></html>

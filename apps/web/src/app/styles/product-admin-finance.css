@@ -1,0 +1,202 @@
+.manual-finance-grid,
+.manual-finance-cancel {
+  display: grid;
+  gap: 14px;
+}
+
+.manual-finance-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.admin-detail-finance-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-detail-finance-shell {
+  display: grid;
+  gap: 12px;
+}
+
+.manual-finance-block {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--color-hairline);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-canvas) 84%, var(--color-surface));
+}
+
+.manual-finance-block h3 {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.manual-finance-cancel {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+  margin-top: 14px;
+}
+
+.manual-finance-toggle {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-body);
+  font-size: 13px;
+}
+
+.management-mini-stat {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--color-hairline);
+  border-radius: 8px;
+  background: var(--color-canvas);
+}
+
+.management-mini-stat span {
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.management-mini-stat strong {
+  color: var(--color-ink);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.admin-plan-catalog-shell {
+  gap: 18px;
+}
+
+.admin-plan-catalog-section,
+.admin-plan-catalog-card,
+.admin-plan-catalog-field,
+.admin-plan-catalog-meta,
+.admin-plan-catalog-facts,
+.admin-plan-catalog-fact {
+  display: grid;
+}
+
+.admin-plan-catalog-overview,
+.admin-plan-catalog-section-head {
+  gap: 16px;
+}
+
+.admin-plan-catalog-section-head p,
+.admin-plan-catalog-rule {
+  margin: 8px 0 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.admin-plan-catalog-overview-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.admin-plan-catalog-card {
+  gap: 18px;
+}
+
+.admin-plan-catalog-meta {
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.admin-plan-catalog-grid,
+.admin-workspace-summary-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-plan-catalog-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.admin-workspace-summary-grid {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  margin-top: 22px;
+}
+
+.admin-plan-catalog-field {
+  gap: 6px;
+}
+
+.admin-plan-catalog-readonly {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px solid var(--color-hairline);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-canvas) 90%, var(--color-surface));
+  color: var(--color-ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.admin-plan-catalog-facts {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-plan-catalog-fact {
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--color-hairline);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-canvas) 84%, var(--color-surface));
+}
+
+.admin-plan-catalog-fact span {
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-plan-catalog-fact strong {
+  color: var(--color-ink);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.admin-workspace-detail-grid {
+  display: grid;
+  gap: 18px;
+  margin-top: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-workspace-detail-span {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 980px) {
+  .admin-plan-catalog-grid,
+  .admin-plan-catalog-facts,
+  .admin-plan-catalog-overview-grid,
+  .admin-workspace-detail-grid,
+  .admin-workspace-summary-grid,
+  .admin-detail-finance-grid,
+  .manual-finance-grid,
+  .manual-finance-cancel {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,42 @@
+.workspace-board-status-badges {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.workspace-board-pin-icon {
+  position: relative;
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid rgba(24, 29, 38, 0.07);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 4px 10px rgba(24, 29, 38, 0.08);
+  color: #475569;
+}
+
+.workspace-board-pin-icon::before {
+  width: 8px;
+  height: 8px;
+  border-radius: 10px 10px 3px 3px;
+  background: #d92d20;
+  content: '';
+  transform: rotate(45deg);
+}
+
+.workspace-board-pin-icon::after {
+  position: absolute;
+  width: 2px;
+  height: 10px;
+  border-radius: 999px;
+  background: #d92d20;
+  content: '';
+  transform: translateY(3px) rotate(45deg);
+}

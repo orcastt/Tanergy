@@ -1,0 +1,153 @@
+.boards-shell {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0 48px 96px;
+  background: var(--color-canvas);
+}
+
+.boards-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 64px 0 32px;
+  background: var(--color-canvas);
+}
+
+.boards-topbar h1 {
+  margin: 0;
+  font-size: 40px;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.boards-status {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--color-canvas);
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.boards-content {
+  padding: 0;
+}
+
+.boards-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.boards-primary-button,
+.boards-secondary-button,
+.boards-open-form button,
+.boards-rename-form button,
+.boards-row-actions button,
+.boards-row-actions a {
+  height: 36px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.boards-primary-button {
+  padding: 0 14px;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.boards-secondary-button,
+.boards-open-form button,
+.boards-rename-form button,
+.boards-row-actions button,
+.boards-row-actions a {
+  padding: 0 12px;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+}
+
+.boards-secondary-button:disabled,
+.boards-rename-form button:disabled,
+.boards-row-actions button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.boards-search-input {
+  width: min(260px, 52vw);
+  height: 44px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  padding: 0 11px;
+  background: var(--color-canvas);
+  outline: none;
+}
+
+.boards-open-form {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--color-canvas);
+}
+
+.boards-open-form input {
+  width: min(280px, 52vw);
+  height: 42px;
+  border: 0;
+  border-right: 1px solid var(--color-hairline);
+  padding: 0 11px;
+  background: transparent;
+  outline: none;
+}
+
+.boards-open-form button {
+  border: 0;
+  border-radius: 0;
+}
+
+.boards-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(170, 45, 0, 0.24);
+  border-radius: var(--radius-md);
+  background: #fff7f2;
+  color: var(--color-signature-coral);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.boards-error button {
+  height: 30px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-lg);
+  padding: 0 12px;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+@media (max-width: 760px) {
+  .boards-shell {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+}

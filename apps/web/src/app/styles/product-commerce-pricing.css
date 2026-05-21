@@ -1,0 +1,247 @@
+.workspace-subscription-page {
+  max-width: 1160px;
+  margin: 0 auto;
+}
+
+.workspace-subscription-page .workspace-commerce-header {
+  justify-items: center;
+  text-align: center;
+}
+
+.workspace-subscription-page .workspace-commerce-header-row {
+  display: grid;
+  width: 100%;
+  gap: 18px;
+  justify-content: center;
+  justify-items: center;
+}
+
+.workspace-subscription-page .workspace-commerce-header-copy {
+  max-width: 760px;
+}
+
+.workspace-subscription-page .workspace-commerce-section-head {
+  justify-content: center;
+  border-bottom: 0;
+  text-align: center;
+}
+
+.workspace-subscription-page .workspace-commerce-section-copy {
+  max-width: 760px;
+}
+
+.workspace-commerce-band-stack--pricing {
+  grid-template-columns: repeat(3, minmax(0, 340px));
+  justify-content: center;
+  gap: 18px;
+}
+
+.workspace-pricing-band,
+.workspace-pricing-band__top,
+.workspace-pricing-band__price,
+.workspace-pricing-band__body,
+.workspace-pricing-metric-list,
+.workspace-pricing-metric-list__grid,
+.workspace-pricing-tag-list {
+  display: grid;
+}
+
+.workspace-pricing-band {
+  grid-template-rows: 112px 78px 42px minmax(0, 1fr);
+  gap: 18px;
+  width: min(100%, 340px);
+  min-height: 500px;
+  padding: 24px;
+  border: 1px solid rgba(24, 29, 38, 0.1);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.06);
+}
+
+.workspace-pricing-band.is-group,
+.workspace-pricing-band.is-team {
+  border-color: rgba(170, 45, 0, 0.26);
+  background: #fff1e8;
+}
+
+.workspace-pricing-band.is-muted {
+  background: #ffffff;
+}
+
+.workspace-pricing-band.is-enterprise {
+  background: #edf5ef;
+}
+
+.workspace-pricing-band__top {
+  align-content: start;
+  gap: 12px;
+  min-height: 0;
+}
+
+.workspace-pricing-band__title-row {
+  display: grid;
+  gap: 10px;
+}
+
+.workspace-pricing-band__title-row h3 {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 30px;
+  font-weight: 480;
+  letter-spacing: 0;
+  line-height: 1.08;
+}
+
+.workspace-pricing-band__badge {
+  display: inline-flex;
+}
+
+.workspace-pricing-band__price {
+  align-content: end;
+  gap: 7px;
+  min-height: 0;
+}
+
+.workspace-pricing-band__price strong {
+  color: var(--color-ink);
+  font-size: 44px;
+  font-weight: 520;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.workspace-pricing-band__price small,
+.workspace-pricing-metric small {
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.workspace-pricing-band__actions {
+  display: grid;
+  width: 100%;
+  align-self: start;
+}
+
+.workspace-pricing-band__actions > * {
+  width: 100%;
+  min-height: 42px;
+  border-radius: 8px;
+}
+
+.workspace-pricing-band .workspace-commerce-primary-button,
+.workspace-pricing-band .workspace-commerce-secondary-button,
+.workspace-pricing-band .workspace-commerce-primary-button:visited,
+.workspace-pricing-band .workspace-commerce-secondary-button:visited,
+.workspace-pricing-band .workspace-commerce-primary-button:hover,
+.workspace-pricing-band .workspace-commerce-secondary-button:hover {
+  border: 0;
+  background: var(--color-ink);
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+}
+
+.workspace-pricing-band__body {
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.workspace-pricing-metric-list {
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.workspace-pricing-metric-list__title {
+  color: var(--color-ink);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.workspace-pricing-metric-list__grid {
+  gap: 9px;
+}
+
+.workspace-pricing-metric {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.workspace-pricing-metric span {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.workspace-pricing-metric strong {
+  color: var(--color-ink);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.35;
+  text-align: right;
+}
+
+.workspace-pricing-metric small {
+  grid-column: 1 / -1;
+}
+
+.workspace-pricing-tag-list {
+  gap: 7px;
+  padding-top: 2px;
+}
+
+.workspace-pricing-tag-list span {
+  position: relative;
+  display: block;
+  min-height: 0;
+  padding: 0 0 0 18px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-ink);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.workspace-pricing-tag-list span::before {
+  position: absolute;
+  top: 8px;
+  left: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(24, 29, 38, 0.7);
+  content: '';
+}
+
+.workspace-pricing-band .workspace-commerce-progress {
+  margin: 0;
+}
+
+@media (max-width: 1120px) {
+  .workspace-commerce-band-stack--pricing {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 340px));
+  }
+}
+
+@media (max-width: 760px) {
+  .workspace-subscription-page {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  .workspace-commerce-band-stack--pricing {
+    grid-template-columns: minmax(0, 340px);
+  }
+
+  .workspace-pricing-band {
+    min-height: 0;
+  }
+}

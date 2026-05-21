@@ -1,0 +1,35 @@
+.board-panel-details {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 18px 0 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.board-panel-details div {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.board-panel-details dt,
+.board-panel-details dd {
+  color: #718399;
+  font-size: 12px;
+}
+
+.board-panel-details dd {
+  margin: 0;
+  color: #172033;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.board-panel-danger {
+  padding-top: 18px;
+  border-top: 1px solid var(--color-hairline);
+}
+
+.board-panel-danger button:last-child {
+  color: var(--color-signature-coral);
+}

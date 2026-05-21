@@ -1,21 +1,48 @@
 # TANGENT — Web AI Image Canvas
 
-TANGENT is restarting as a clean Web-first AI image canvas.
-
-P0 is intentionally small:
+TANGENT is a clean Web-first AI image canvas.
 
 ```text
-Text Node → Multi Generate Node (4 images) → Image Node → Image Editor / Canvas Markup → Merge Capture → New Image Node
+Prompt Node -> Image Gen / Image Gen 4 -> Image Node
+Image Node + Prompt Node -> Image Gen or Analysis -> Image / Prompt Node
+Image Node -> Canvas Markup -> Merge Capture -> New Image Node
+AI Chat -> create allowed nodes -> auto-wire -> user reviews and runs
 ```
 
-## Active Docs
+## Start Here
 
-Read these before development:
+Root `PRD.md`, `ARCH.md` and `project_state.md` are pointers only.
 
-1. `project_state.md`
-2. `PRD.md`
-3. `ARCH.md`
-4. `dev-plans/web-collaborative-canvas-pivot.md`
+| Need | Read |
+| --- | --- |
+| Current state | `project_state/project_state.md` |
+| Accepted local baseline | `project_state/Finished/project_state_slice_S0_local_polish.md` |
+| Product requirements | `PRD/PRD.md` |
+| Architecture map | `ARCH/ARCH.md` |
+| Execution rules | `AGENTS.md`, `HARNESS.md` |
+| Tactical plans | `dev-plans/README.md` |
+| Cross-slice memory | `knowledge/index.md` |
+
+For S0 regression-only UI polish, start with:
+
+```text
+AGENTS.md
+project_state/Finished/project_state_slice_S0_local_polish.md
+PRD/Finished/PRD_slice_S0_local_product_shell.md
+ARCH/Finished/ARCH_slice_S0_local_polish.md
+```
+
+For architecture/API/Auth/AI/Admin/Billing/Deploy/Collaboration, start with:
+
+```text
+AGENTS.md
+project_state/project_state.md
+PRD/PRD.md
+ARCH/ARCH.md
+HARNESS.md
+relevant slice files
+knowledge/index.md
+```
 
 Tracking: GitHub Project <https://github.com/users/orcastt/projects/2>
 
@@ -23,16 +50,27 @@ Archived pivot mirrors live under `docs/archive/pivot-docs-2026-04-29/`; do not 
 
 ## Active Source
 
-Fresh implementation starts under:
+- `apps/web/` — Next.js web app and Konva v2 production canvas.
+- `services/api/` — FastAPI service, storage adapters and migrations.
+- `packages/shared/` — shared packages if needed.
+- `knowledge/` — cross-slice project memory, provider matrix, connection registry and recurring audit checklists.
+- `legacy/` has been removed from the active worktree/repo; recover old reference material from Git history or archived docs only when explicitly requested.
 
-- `apps/web/`
-- `services/api/` if a fresh API service is needed
-- `packages/shared/` for shared types/helpers
+## Local Commands
 
-## Legacy Archive
+```bash
+npm -C apps/web run dev
+npm -C apps/web run lint
+npm -C apps/web run typecheck
+npm -C apps/web run build
+PYTHONPATH=services/api python3 -m pytest services/api/tests
+python3 -m compileall services/api/tangent_api services/api/migrations
+git diff --check
+```
 
-Old desktop/admin/backend/frontend code has been isolated under:
+## Current Next Work
 
-- `legacy/old-tangent-desktop-2026-04-29/`
-
-Do not read or modify the legacy archive unless explicitly recovering an idea.
+1. Finish S1B/S1C staging Auth smoke with Clerk, Google OAuth, Postgres, R2 and Konva-first Board route.
+2. Harden S1D effective Board permissions into `Can view / Can edit / Can manage / Owner`.
+3. Implement S3 entitlement/seat/credit-ledger contracts before real AI charging.
+4. Then move S2 from mock AiRun to real provider execution through server-side contracts.

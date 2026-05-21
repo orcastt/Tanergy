@@ -1,0 +1,334 @@
+import type Konva from 'konva'
+import { boundsToRect, expandBounds, getShapeBounds, type CanvasBounds, type CanvasDocument, type CanvasImageShape, type CanvasNodeShape } from '@/features/canvas-engine'
+import { getRuntimeGraphGeneratedOutputRefs } from '@/features/node-runtime/runtimeGraphAssets'
+import { firstSafeImageDisplayUrl } from '@/features/security/safeUrl'
+import { mapWithConcurrency } from '@/features/shared/asyncConcurrency'
+import { konvaCaptureExcludeName, konvaRuntimeEdgeNodeIdPrefix, konvaRuntimeEdgeNodeName } from './konvaCaptureNames'
+import { getKonvaNodePortWorldPoint } from './konvaNodePorts'
+import { getKonvaRuntimeEdgeBounds } from './konvaRuntimeEdgeGeometry'
+
+export type KonvaSelectionPngCapture = {
+  blob: Blob
+  bounds: CanvasBounds
+  height: number
+  pixelRatio: number
+  width: number
+}
+
+export type KonvaSelectionCaptureOptions = {
+  maxPixelEdge?: number
+  padding?: number
+  pixelRatio?: number
+}
+
+const defaultPadding = 24
+const defaultPixelRatio = 3
+const defaultMaxPixelEdge = 8192
+const maxCapturePixels = 24 * 1024 * 1024
+const maxConcurrentCaptureImageLoads = 8
+export { konvaCaptureExcludeName } from './konvaCaptureNames'
+const shapeNodeName = 'konva-canvas-shape'
+const shapeNodeIdPrefix = 'shape:'
+
+export function getKonvaSelectionExportBounds(
+  document: CanvasDocument,
+  selectedIds: readonly string[],
+  padding = defaultPadding
+): CanvasBounds | null {
+  const selected = new Set(selectedIds)
+  const bounds = document.shapes
+    .filter((shape) => selected.has(shape.id))
+    .map(getShapeBounds)
+    .concat(getSelectedRuntimeEdgeBounds(document, selected))
+
+  if (bounds.length === 0) return null
+  return expandBounds(bounds.slice(1).reduce<CanvasBounds>((current, item) => ({
+    maxX: Math.max(current.maxX, item.maxX),
+    maxY: Math.max(current.maxY, item.maxY),
+    minX: Math.min(current.minX, item.minX),
+    minY: Math.min(current.minY, item.minY),
+  }), bounds[0]), padding)
+}
+
+export async function captureKonvaSelectionPng({
+  document,
+  options = {},
+  selectedIds,
+  stage,
+}: {
+  document: CanvasDocument
+  options?: KonvaSelectionCaptureOptions
+  selectedIds: readonly string[]
+  stage: Konva.Stage
+}): Promise<KonvaSelectionPngCapture> {
+  const bounds = getKonvaSelectionExportBounds(document, selectedIds, options.padding ?? defaultPadding)
+  if (!bounds) throw new Error('Select at least one object to capture.')
+  const rect = boundsToRect(bounds)
+  if (rect.width <= 0 || rect.height <= 0) throw new Error('Selection bounds are empty.')
+
+  const pixelRatio = getSafePixelRatio(
+    rect.width,
+    rect.height,
+    options.pixelRatio ?? defaultPixelRatio,
+    options.maxPixelEdge ?? defaultMaxPixelEdge,
+    maxCapturePixels,
+  )
+  assertSafeCapturePixelCount(rect.width, rect.height, pixelRatio)
+  const captureStage = createOffscreenSelectionStage(stage, document, selectedIds)
+
+  try {
+    await hydrateOffscreenCaptureImages(captureStage.stage, document, selectedIds, pixelRatio)
+    await nextFrame()
+    const blob = await captureStage.stage.toBlob({
+      height: rect.height,
+      mimeType: 'image/png',
+      pixelRatio,
+      width: rect.width,
+      x: rect.x,
+      y: rect.y,
+    }) as Blob | null
+    if (!blob) throw new Error('Selection capture failed.')
+    return {
+      blob,
+      bounds,
+      height: Math.max(1, Math.round(rect.height * pixelRatio)),
+      pixelRatio,
+      width: Math.max(1, Math.round(rect.width * pixelRatio)),
+    }
+  } catch (error) {
+    throw new Error(getCaptureErrorMessage(error))
+  } finally {
+    captureStage.destroy()
+  }
+}
+
+export async function copyKonvaPngBlobToClipboard(blob: Blob) {
+  if (typeof ClipboardItem === 'undefined' || !navigator.clipboard?.write) {
+    throw new Error('PNG clipboard writing is not supported in this browser.')
+  }
+  await navigator.clipboard.write([
+    new ClipboardItem({ [blob.type || 'image/png']: blob }),
+  ])
+}
+
+export async function copyKonvaSvgToClipboard(svg: string) {
+  if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+    try {
+      const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' })
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'image/svg+xml': blob, 'text/plain': new Blob([svg], { type: 'text/plain' }) }),
+      ])
+      return
+    } catch {
+      // Fall through to text clipboard. Some browsers reject image/svg+xml ClipboardItem.
+    }
+  }
+  if (!navigator.clipboard?.writeText) throw new Error('SVG clipboard writing is not supported in this browser.')
+  await navigator.clipboard.writeText(svg)
+}
+
+function downloadKonvaUrl(url: string, fileName: string) {
+  const anchor = document.createElement('a')
+  anchor.download = fileName
+  anchor.href = url
+  anchor.rel = 'noreferrer'
+  anchor.click()
+}
+
+export function downloadKonvaBlob(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob)
+  try {
+    downloadKonvaUrl(url, fileName)
+  } finally {
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+}
+
+function createOffscreenSelectionStage(stage: Konva.Stage, canvasDocument: CanvasDocument, selectedIds: readonly string[]) {
+  const container = document.createElement('div')
+  container.style.cssText = 'position:fixed;left:-100000px;top:-100000px;width:1px;height:1px;overflow:hidden;pointer-events:none;opacity:0;'
+  document.body.appendChild(container)
+  const clone = stage.clone({ container }) as Konva.Stage
+  prepareStageForSelectionCapture(clone, canvasDocument, selectedIds)
+  return {
+    destroy: () => {
+      clone.destroy()
+      container.remove()
+    },
+    stage: clone,
+  }
+}
+
+function prepareStageForSelectionCapture(stage: Konva.Stage, document: CanvasDocument, selectedIds: readonly string[]) {
+  const selected = new Set(selectedIds)
+  const selectedEdgeIds = getSelectedRuntimeEdgeIds(document, selected)
+  const shapeNodes = stage.find(`.${shapeNodeName}`)
+  const edgeNodes = stage.find(`.${konvaRuntimeEdgeNodeName}`)
+
+  stage.find(`.${konvaCaptureExcludeName}`).forEach((node) => node.visible(false))
+  for (const node of shapeNodes) {
+    const shapeId = node.id().startsWith(shapeNodeIdPrefix) ? node.id().slice(shapeNodeIdPrefix.length) : ''
+    node.visible(selected.has(shapeId))
+  }
+  for (const node of edgeNodes) {
+    const edgeId = node.id().startsWith(konvaRuntimeEdgeNodeIdPrefix) ? node.id().slice(konvaRuntimeEdgeNodeIdPrefix.length) : ''
+    node.visible(selectedEdgeIds.has(edgeId))
+  }
+  stage.position({ x: 0, y: 0 })
+  stage.scale({ x: 1, y: 1 })
+  stage.batchDraw()
+}
+
+function getSelectedRuntimeEdgeIds(document: CanvasDocument, selected: Set<string>) {
+  return new Set(document.runtimeEdges
+    .filter((edge) => selected.has(edge.sourceShapeId) && selected.has(edge.targetShapeId))
+    .map((edge) => edge.id))
+}
+
+function getSelectedRuntimeEdgeBounds(document: CanvasDocument, selected: Set<string>) {
+  const nodeShapes = new Map(document.shapes
+    .filter((shape): shape is CanvasNodeShape => shape.type === 'node_card')
+    .map((shape) => [shape.id, shape]))
+  return document.runtimeEdges.flatMap((edge) => {
+    if (!selected.has(edge.sourceShapeId) || !selected.has(edge.targetShapeId)) return []
+    const sourceShape = nodeShapes.get(edge.sourceShapeId)
+    const targetShape = nodeShapes.get(edge.targetShapeId)
+    if (!sourceShape || !targetShape) return []
+    const start = getKonvaNodePortWorldPoint(sourceShape, edge.sourcePortId)
+    const target = getKonvaNodePortWorldPoint(targetShape, edge.targetPortId)
+    return start && target ? [getKonvaRuntimeEdgeBounds(start, target)] : []
+  })
+}
+
+async function hydrateOffscreenCaptureImages(
+  stage: Konva.Stage,
+  document: CanvasDocument,
+  selectedIds: readonly string[],
+  pixelRatio: number,
+) {
+  const selected = new Set(selectedIds)
+  const tasks = document.shapes
+    .filter((shape) => selected.has(shape.id))
+    .flatMap((shape) => getCaptureImageSources(shape, pixelRatio).map((src, index) => ({ index, shapeId: shape.id, src })))
+  if (tasks.length === 0) return
+  await mapWithConcurrency(tasks, maxConcurrentCaptureImageLoads, async (task) => {
+    const group = findShapeNode(stage, task.shapeId)
+    const imageNode = group ? findImageNodes(group)[task.index] : null
+    if (!imageNode) return
+    const image = await loadCaptureImage(task.src).catch(() => null)
+    if (!image) return
+    imageNode.setAttr('image', image)
+  })
+  stage.batchDraw()
+}
+
+function getCaptureImageSources(shape: CanvasDocument['shapes'][number], pixelRatio: number) {
+  const targetEdge = getCaptureTargetEdge(shape, pixelRatio)
+  if (shape.type === 'image') return [getCanvasCaptureSource(shape, targetEdge)].filter(isString)
+  if (shape.type !== 'node_card') return []
+  if (shape.props.nodeType === 'image') {
+    return [pickCaptureAssetUrl({
+      originalUrl: getString(shape.props.data.originalUrl),
+      thumbnail1024Url: getString(shape.props.data.thumbnail1024Url),
+      thumbnail256Url: getString(shape.props.data.thumbnail256Url),
+      thumbnail512Url: getString(shape.props.data.thumbnail512Url),
+    }, targetEdge)].filter(isString)
+  }
+  return getRuntimeGraphGeneratedOutputRefs(shape.props.data)
+    .map((ref) => pickCaptureAssetUrl(ref, targetEdge))
+    .filter(isString)
+}
+
+function getCanvasCaptureSource(shape: CanvasImageShape, targetEdge: number) {
+  return pickCaptureAssetUrl({
+    originalUrl: shape.props.originalUrl,
+    thumbnail1024Url: shape.props.thumbnail1024Url,
+    thumbnail256Url: shape.props.thumbnail256Url,
+    thumbnail512Url: shape.props.thumbnail512Url,
+  }, targetEdge)
+}
+
+function getCaptureTargetEdge(shape: CanvasDocument['shapes'][number], pixelRatio: number) {
+  if (shape.type === 'node_card' || shape.type === 'image') {
+    return Math.max(1, shape.props.width, shape.props.height) * pixelRatio
+  }
+  return 1024
+}
+
+function pickCaptureAssetUrl(
+  source: {
+    originalUrl?: string
+    thumbnail1024Url?: string
+    thumbnail256Url?: string
+    thumbnail512Url?: string
+  },
+  targetEdge: number,
+) {
+  const requiredEdge = Math.max(1, Math.ceil(targetEdge * 1.2))
+  if (requiredEdge <= 256 && source.thumbnail256Url) return firstSafeImageDisplayUrl(source.thumbnail256Url)
+  if (requiredEdge <= 512) {
+    return firstSafeImageDisplayUrl(source.thumbnail512Url, source.thumbnail1024Url, source.originalUrl, source.thumbnail256Url)
+  }
+  if (requiredEdge <= 1024) {
+    return firstSafeImageDisplayUrl(source.thumbnail1024Url, source.originalUrl, source.thumbnail512Url, source.thumbnail256Url)
+  }
+  return firstSafeImageDisplayUrl(source.originalUrl, source.thumbnail1024Url, source.thumbnail512Url, source.thumbnail256Url)
+}
+
+function findShapeNode(stage: Konva.Stage, shapeId: string) {
+  return stage.find(`.${shapeNodeName}`).find((node) => node.id() === `${shapeNodeIdPrefix}${shapeId}`)
+}
+
+function findImageNodes(node: Konva.Node) {
+  if (!hasKonvaFind(node)) return []
+  return node.find('Image')
+}
+
+function hasKonvaFind(node: Konva.Node): node is Konva.Container {
+  return typeof (node as { find?: unknown }).find === 'function'
+}
+
+function loadCaptureImage(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new window.Image()
+    image.decoding = 'async'
+    if (src.startsWith('/') || src.startsWith(window.location.origin)) image.crossOrigin = 'anonymous'
+    image.onerror = () => reject(new Error('Capture image load failed.'))
+    image.onload = () => resolve(image)
+    image.src = src
+  })
+}
+
+function getString(value: unknown) {
+  return typeof value === 'string' && value.trim() ? value : undefined
+}
+
+function isString(value: string | null | undefined): value is string {
+  return typeof value === 'string' && value.length > 0
+}
+
+function getSafePixelRatio(width: number, height: number, preferred: number, maxPixelEdge: number, maxPixels: number) {
+  const safePreferred = Number.isFinite(preferred) && preferred > 0 ? preferred : defaultPixelRatio
+  const maxEdge = Math.max(width, height, 1)
+  const pixelLimitRatio = Math.sqrt(maxPixels / Math.max(1, width * height))
+  return Math.max(0.5, Math.min(safePreferred, maxPixelEdge / maxEdge, pixelLimitRatio))
+}
+
+function assertSafeCapturePixelCount(width: number, height: number, pixelRatio: number) {
+  const outputPixels = Math.ceil(width * pixelRatio) * Math.ceil(height * pixelRatio)
+  if (outputPixels > maxCapturePixels) {
+    throw new Error('Selection is too large to export safely. Reduce the selected area and try again.')
+  }
+}
+
+function nextFrame() {
+  return new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()))
+}
+
+function getCaptureErrorMessage(error: unknown) {
+  if (error instanceof DOMException && error.name === 'SecurityError') {
+    return 'Selection contains an image that cannot be exported by the browser. Upload it as an asset first, then try again.'
+  }
+  if (error instanceof Error && error.message) return error.message
+  return 'Selection capture failed.'
+}

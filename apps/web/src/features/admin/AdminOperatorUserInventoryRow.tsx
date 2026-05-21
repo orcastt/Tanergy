@@ -1,0 +1,217 @@
+'use client'
+
+import { resolveCreditUsageMetrics } from '@/features/billing/billingCreditUsage'
+import Link from 'next/link'
+import { buildStableListKey, formatCompactDate, formatNumber, truncateMiddle } from './adminAiShared'
+import type { AdminOperatorAction } from './adminOperatorActions'
+import type {
+  AdminOperatorCreditSummary,
+  AdminOperatorUserPlan,
+  AdminOperatorUserRecord,
+  AdminOperatorWorkspacePlan,
+} from './adminTypes'
+
+export function AdminOperatorUserInventoryRow({
+  onAction,
+  onWarmDetail,
+  user,
+}: {
+  onAction: (action: AdminOperatorAction) => void
+  onWarmDetail: (user: AdminOperatorUserRecord) => void
+  user: AdminOperatorUserRecord
+}) {
+  const detailHref = `/admin/users/${encodeURIComponent(user.id)}`
+  const teamPlanRows = summarizeWorkspacePlanRows(user.teamPlansActive, user.teamPlansExpired, 3)
+  const groupPlanRows = summarizeUserPlanRows(user.groupPlansActive, user.groupPlansExpired, 2)
+  const userLabel = user.displayName.trim() || user.email || user.id
+
+  return (
+    <tr>
+      <td className="admin-users-cell-id">
+        <strong title={userLabel}>{userLabel}</strong>
+        <small title={user.id}>{truncateMiddle(user.id, 16, 8)}</small>
+      </td>
+      <td className="admin-users-cell-email">
+        <strong title={user.email}>{user.email}</strong>
+      </td>
+      <td className="admin-users-cell-ip">
+        <strong>{user.ipAddress ?? '-'}</strong>
+      </td>
+      <td className="admin-users-cell-register">
+        <strong>{formatCompactDate(user.createdAt)}</strong>
+        <small>{formatRegistrationState(user.registrationState)}</small>
+      </td>
+      <td><TeamPlanStack rows={teamPlanRows} /></td>
+      <td><TeamCreditStack rows={teamPlanRows} /></td>
+      <td><GroupPlanStack rows={groupPlanRows} /></td>
+      <td><CreditBar credit={user.personalCredit} /></td>
+      <td className="admin-users-cell-spent">
+        <strong>{formatNumber(user.totalCreditsSpent)}</strong>
+      </td>
+      <td>
+        <StatusText status={user.status} />
+      </td>
+      <td>
+        <div className="admin-detail-action-stack">
+          <Link
+            className="admin-detail-button"
+            href={detailHref}
+            onClick={() => onWarmDetail(user)}
+            onFocus={() => onWarmDetail(user)}
+            prefetch={false}
+          >
+            Detail
+          </Link>
+          <button
+            className="admin-detail-button admin-detail-button-danger"
+            onClick={() => onAction({
+              nextStatus: user.status === 'active' ? 'suspended' : 'active',
+              title: user.status === 'active' ? 'Block user' : 'Unblock user',
+              type: 'user-status',
+              userId: user.id,
+            })}
+            type="button"
+          >
+            {user.status === 'active' ? 'Block' : 'Unblock'}
+          </button>
+        </div>
+      </td>
+    </tr>
+  )
+}
+
+function TeamPlanStack({ rows }: { rows: WorkspacePlanRow[] }) {
+  if (!rows.length) return <span>-</span>
+  return (
+    <div className="admin-plan-stack">
+      {rows.map((row) => <WorkspacePlanLine key={row.key} plan={row.plan} tone={row.tone} />)}
+    </div>
+  )
+}
+
+function TeamCreditStack({ rows }: { rows: WorkspacePlanRow[] }) {
+  if (!rows.length) return <span>-</span>
+  return (
+    <div className="admin-credit-stack">
+      {rows.map((row) => (
+        <CreditBar
+          key={row.key}
+          credit={row.plan.credit}
+          tone={row.tone}
+        />
+      ))}
+    </div>
+  )
+}
+
+function GroupPlanStack({ rows }: { rows: UserPlanRow[] }) {
+  if (!rows.length) return <span>-</span>
+  return (
+    <div className="admin-plan-stack">
+      {rows.map((row) => <UserPlanLine key={row.key} plan={row.plan} tone={row.tone} />)}
+    </div>
+  )
+}
+
+function WorkspacePlanLine({ plan, tone }: { plan: AdminOperatorWorkspacePlan; tone: 'active' | 'muted' }) {
+  return (
+    <span className={`admin-plan-line is-${tone}`}>
+      <strong>{planLabel(plan.planKey ?? 'free')}</strong>
+      <small title={periodText(plan.periodStart, plan.periodEnd)}>{periodText(plan.periodStart, plan.periodEnd)}</small>
+    </span>
+  )
+}
+
+function UserPlanLine({ plan, tone }: { plan: AdminOperatorUserPlan; tone: 'active' | 'muted' }) {
+  return (
+    <span className={`admin-plan-line is-${tone}`}>
+      <strong>{planLabel(plan.planKey)}</strong>
+      <small title={periodText(plan.periodStart, plan.periodEnd)}>{periodText(plan.periodStart, plan.periodEnd)}</small>
+    </span>
+  )
+}
+
+function CreditBar({
+  credit,
+  tone = 'active',
+}: {
+  credit: AdminOperatorCreditSummary
+  tone?: 'active' | 'muted'
+}) {
+  const total = Math.max(credit.totalCredits, credit.remainingCredits, credit.spentCredits, 1)
+  const usage = resolveCreditUsageMetrics(credit.remainingCredits, total)
+
+  return (
+    <div className={`admin-credit-bar-shell ${tone === 'muted' ? 'is-muted' : ''}`}>
+      <span>{formatNumber(usage.used)}/{formatNumber(usage.total)}</span>
+      <div className={`admin-credit-bar ${tone === 'muted' ? 'is-muted' : ''}`} aria-hidden="true">
+        <i style={{ width: `${usage.percent}%` }} />
+      </div>
+    </div>
+  )
+}
+
+function StatusText({ status }: { status: string }) {
+  const isActive = status === 'active'
+  const label = isActive ? 'Active' : status.replaceAll('_', ' ')
+  return <span className={`admin-user-status-text ${isActive ? 'is-active' : 'is-inactive'}`}>{label}</span>
+}
+
+function formatRegistrationState(value: string) {
+  return value ? value.replaceAll('_', ' ') : 'unknown'
+}
+
+function periodText(periodStart?: null | string, periodEnd?: null | string) {
+  if (!periodStart && !periodEnd) return '-'
+  if (!periodStart) return periodEnd ? formatCompactDate(periodEnd) : '-'
+  if (!periodEnd) return `${formatCompactDate(periodStart)}-`
+  return `${formatCompactDate(periodStart)}-${formatCompactDate(periodEnd)}`
+}
+
+function planLabel(value: string) {
+  return value
+    .split('_')
+    .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
+    .join(' ')
+}
+
+type WorkspacePlanRow = { key: string; plan: AdminOperatorWorkspacePlan; tone: 'active' | 'muted' }
+type UserPlanRow = { key: string; plan: AdminOperatorUserPlan; tone: 'active' | 'muted' }
+
+function summarizeWorkspacePlanRows(
+  activePlans: AdminOperatorWorkspacePlan[],
+  expiredPlans: AdminOperatorWorkspacePlan[],
+  limit: number,
+) {
+  return [
+    ...activePlans.map((plan, index) => ({
+      key: buildStableListKey([plan.id, plan.subscriptionId, plan.planKey, plan.workspaceName], index),
+      plan,
+      tone: 'active' as const,
+    })),
+    ...expiredPlans.map((plan, index) => ({
+      key: buildStableListKey([plan.id, plan.subscriptionId, plan.planKey, plan.workspaceName], activePlans.length + index),
+      plan,
+      tone: 'muted' as const,
+    })),
+  ].slice(0, limit)
+}
+
+function summarizeUserPlanRows(
+  activePlans: AdminOperatorUserPlan[],
+  expiredPlans: AdminOperatorUserPlan[],
+  limit: number,
+) {
+  return [
+    ...activePlans.map((plan, index) => ({
+      key: buildStableListKey([plan.subscriptionId, plan.planKey, plan.periodStart, plan.periodEnd], index),
+      plan,
+      tone: 'active' as const,
+    })),
+    ...expiredPlans.map((plan, index) => ({
+      key: buildStableListKey([plan.subscriptionId, plan.planKey, plan.periodStart, plan.periodEnd], activePlans.length + index),
+      plan,
+      tone: 'muted' as const,
+    })),
+  ].slice(0, limit)
+}

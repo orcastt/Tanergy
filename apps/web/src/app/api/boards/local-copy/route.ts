@@ -1,0 +1,28 @@
+import { NextResponse } from 'next/server'
+import { rejectCrossSiteMutation } from '../../_lib/csrfGuard'
+import { getApiRequestContext } from '../../_lib/apiRequestContext'
+import { readJsonRequestWithLimit, requestBodyErrorStatus } from '../../_lib/requestBodyLimits'
+import { getBoardStorageAdapter } from '../_lib/boardStorageAdapter'
+
+export const runtime = 'nodejs'
+
+const maxBoardCopyRequestBytes = 8 * 1024
+
+export async function POST(request: Request) {
+  try {
+    const originRejection = rejectCrossSiteMutation(request)
+    if (originRejection) return originRejection
+    const body = await readJsonRequestWithLimit<{
+      boardId?: string
+    }>(request, maxBoardCopyRequestBytes)
+    if (!body.boardId) throw new Error('Missing boardId.')
+    const copied = await getBoardStorageAdapter().copyLocalBoard(body.boardId, getApiRequestContext(request))
+    if (!copied.board) throw new Error(copied.audit.issues[0]?.message ?? 'Local board copy failed.')
+    return NextResponse.json({ board: copied.board, ok: true })
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Local board copy failed.', ok: false },
+      { status: requestBodyErrorStatus(error) }
+    )
+  }
+}

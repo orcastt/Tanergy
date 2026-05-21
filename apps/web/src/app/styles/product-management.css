@@ -1,0 +1,895 @@
+.management-page {
+  width: 100%;
+}
+
+.management-summary-grid,
+.management-section-grid,
+.management-visual-grid,
+.management-main-grid,
+.management-sidebar-stack,
+.management-plan-grid,
+.management-mini-stat-grid,
+.management-field-grid,
+.management-filter-grid,
+.management-stack {
+  display: grid;
+  gap: 24px;
+}
+
+.management-summary-grid,
+.management-mini-stat-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.management-section-grid,
+.management-visual-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.management-main-grid {
+  grid-template-columns: minmax(280px, 0.86fr) minmax(0, 1.34fr);
+}
+
+.management-sidebar-stack,
+.management-stack {
+  align-content: start;
+}
+
+.management-plan-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.management-profile-card,
+.management-callout,
+.management-panel,
+.management-notice,
+.management-plan-card,
+.management-dark-card {
+  border-radius: var(--radius-lg);
+}
+
+.management-profile-card,
+.management-callout,
+.management-panel,
+.management-notice,
+.management-plan-card {
+  border: 1px solid rgba(24, 29, 38, 0.08);
+  background: var(--color-canvas);
+}
+
+.management-profile-card,
+.management-callout,
+.management-plan-card {
+  min-height: 144px;
+  padding: 24px;
+}
+
+.management-profile-card {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.management-callout.mint {
+  background: #c4eebd;
+}
+
+.management-callout.cream {
+  background: #f5e9d4;
+}
+
+.management-callout span,
+.management-definition-list dt,
+.management-table th,
+.management-stat-label,
+.management-form-field span,
+.management-plan-price-note,
+.management-plan-card span:first-child {
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.management-profile-card h2,
+.management-callout h2,
+.management-panel h2,
+.management-notice h2,
+.management-plan-card h2 {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.management-callout h2,
+.management-plan-card h2 {
+  margin-top: 8px;
+}
+
+.management-profile-card p,
+.management-callout p,
+.management-panel p,
+.management-notice p,
+.management-plan-card p {
+  margin: 12px 0 0;
+  color: var(--color-body);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.management-callout .product-text-link {
+  display: inline-flex;
+  margin-top: 22px;
+  color: var(--color-link);
+}
+
+.management-avatar {
+  display: inline-grid;
+  width: 58px;
+  height: 58px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.management-avatar.small {
+  width: 40px;
+  height: 40px;
+  font-size: 11px;
+}
+
+.management-panel,
+.management-notice {
+  padding: 32px;
+}
+
+.management-panel-wide {
+  grid-column: 1 / -1;
+}
+
+.management-panel.is-warning {
+  background: #f5e9d4;
+}
+
+.management-panel-heading,
+.management-notice,
+.management-actions,
+.management-badge-row,
+.management-segmented,
+.management-table-toolbar,
+.management-table-meta,
+.management-hero-actions,
+.management-card-actions,
+.management-kpi-row {
+  display: flex;
+  align-items: center;
+}
+
+.management-panel-heading,
+.management-table-toolbar {
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.management-panel-heading {
+  margin-bottom: 22px;
+}
+
+.management-panel-heading.compact {
+  margin-bottom: 12px;
+}
+
+.management-panel-heading h2,
+.management-table-toolbar h2 {
+  font-size: 18px;
+}
+
+.management-panel-copy {
+  max-width: 720px;
+}
+
+.management-definition-list {
+  display: grid;
+  gap: 0;
+  margin: 22px 0 0;
+}
+
+.management-definition-list div {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.45fr) minmax(0, 1fr);
+  gap: 24px;
+  padding: 16px 0;
+  border-top: 1px solid var(--color-hairline);
+}
+
+.management-definition-list dd {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.management-check-list,
+.management-summary-list {
+  display: grid;
+  gap: 12px;
+  margin: 20px 0 0;
+  padding: 0;
+  color: var(--color-body);
+  font-size: 14px;
+  line-height: 1.6;
+  list-style: none;
+}
+
+.management-check-list li,
+.management-summary-list li {
+  position: relative;
+  padding-left: 22px;
+}
+
+.management-check-list li::before,
+.management-summary-list li::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  color: var(--color-success);
+  content: '✓';
+}
+
+.management-badge-row {
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.management-console-tabs {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.management-tab-panels {
+  display: grid;
+  gap: 24px;
+}
+
+.auth-profile-form {
+  display: grid;
+  gap: 16px;
+  width: min(520px, 100%);
+}
+
+.auth-profile-field {
+  display: grid;
+  gap: 6px;
+}
+
+.auth-profile-field input,
+.auth-profile-field select {
+  color: var(--color-ink);
+  font-size: 14px;
+}
+
+.auth-profile-status,
+.auth-profile-note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.auth-profile-status {
+  color: var(--color-body);
+}
+
+.auth-profile-status.is-error {
+  color: #9f3022;
+}
+
+.auth-profile-note {
+  color: var(--color-muted);
+}
+
+.management-inline-note {
+  margin: 14px 0 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.management-method-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.management-method-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-hairline);
+}
+
+.management-method-detail {
+  margin: 6px 0 0;
+  color: var(--color-body);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.management-status-pill {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border: 1px solid var(--color-hairline);
+  border-radius: 999px;
+  background: #f3f4f5;
+  color: var(--color-ink);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.management-status-pill.is-success {
+  border-color: rgba(95, 143, 67, 0.14);
+  background: rgba(196, 238, 189, 0.68);
+}
+
+.auth-profile-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(24, 29, 38, 0.22);
+  backdrop-filter: blur(8px);
+}
+
+.auth-profile-modal {
+  width: min(760px, 100%);
+  display: grid;
+  gap: 28px;
+  padding: 32px;
+  border: 1px solid rgba(24, 29, 38, 0.08);
+  border-radius: var(--radius-lg);
+  background: var(--color-canvas);
+  box-shadow: 0 28px 80px rgba(24, 29, 38, 0.16);
+}
+
+.auth-profile-modal.auth-profile-modal-compact {
+  width: min(520px, 100%);
+}
+
+.auth-profile-modal-copy {
+  display: grid;
+  gap: 12px;
+}
+
+.auth-profile-modal-copy h2 {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 30px;
+  font-weight: 400;
+  line-height: 1.12;
+}
+
+.auth-profile-modal-copy p,
+.auth-profile-modal-aside p {
+  margin: 0;
+  color: var(--color-body);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.auth-profile-modal-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(240px, 0.75fr);
+  gap: 28px;
+}
+
+.auth-profile-modal-aside {
+  display: grid;
+  gap: 20px;
+  align-content: start;
+  padding: 20px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-soft);
+}
+
+.management-tab-panel[hidden] {
+  display: none !important;
+}
+
+.management-field-grid.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.management-field-label,
+.management-subheading {
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.management-subheading {
+  margin: 0 0 12px;
+}
+
+.management-section-gap {
+  display: grid;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.management-inline-panel {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  padding: 18px 0 0;
+  border-top: 1px solid var(--color-hairline);
+}
+
+.management-route-bars {
+  display: grid;
+  gap: 14px;
+}
+
+.management-route-bar {
+  display: grid;
+  gap: 7px;
+}
+
+.management-route-bar strong {
+  color: var(--color-ink);
+  font-weight: 500;
+}
+
+.management-route-bar small {
+  color: var(--color-muted);
+}
+
+.management-route-bar-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--color-hairline);
+}
+
+.management-route-bar-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-primary);
+}
+
+.management-badge-row span,
+.management-badge,
+.management-status,
+.management-pill {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  border-radius: 999px;
+  background: #f3f4f5;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 0 12px;
+  text-transform: uppercase;
+}
+
+.management-status {
+  color: var(--color-success);
+}
+
+.management-status.is-success {
+  background: rgba(34, 197, 94, 0.12);
+}
+
+.management-pill.is-dark {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.management-pill.is-coral {
+  background: #ff693c;
+  color: #601500;
+}
+
+.management-notice {
+  justify-content: space-between;
+  gap: 32px;
+  margin-bottom: 56px;
+}
+
+.management-actions,
+.management-card-actions,
+.management-hero-actions {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.management-actions {
+  justify-content: flex-end;
+}
+
+.management-actions.is-start {
+  justify-content: flex-start;
+}
+
+.management-segmented {
+  flex: 0 0 auto;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-lg);
+  background: #f3f4f5;
+}
+
+.management-segmented button,
+.management-segmented a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 52px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  transition: background-color 140ms ease, color 140ms ease, opacity 140ms ease;
+}
+
+.management-segmented button:hover,
+.management-segmented a:hover {
+  background: rgba(255, 255, 255, 0.52);
+  color: var(--color-ink);
+}
+
+.management-segmented button:active,
+.management-segmented a:active {
+  transform: translateY(1px);
+}
+
+.management-segmented button.is-active,
+.management-segmented a.is-active {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  box-shadow: 0 0 0 1px rgba(24, 29, 38, 0.08);
+}
+
+.management-segmented button.is-pending,
+.management-segmented a.is-pending {
+  color: var(--color-ink);
+  opacity: 0.86;
+}
+
+.management-tab-spinner {
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid rgba(24, 29, 38, 0.16);
+  border-top-color: var(--color-ink);
+  border-radius: 999px;
+  animation: management-spin 720ms linear infinite;
+}
+
+@keyframes management-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.management-progress {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e7e8e9;
+}
+
+.management-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #c4eebd 0%, #a8d1a2 100%);
+}
+
+.management-dark-card {
+  display: grid;
+  gap: 28px;
+  min-height: 236px;
+  padding: 34px 38px;
+  background: linear-gradient(135deg, #181d26 0%, #212834 100%);
+  color: var(--color-on-primary);
+}
+
+.management-dark-card .management-stat-label,
+.management-dark-card p,
+.management-dark-card .management-kpi-row span {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.management-dark-card .management-number {
+  color: var(--color-on-primary);
+}
+
+.management-number {
+  font-size: clamp(44px, 7vw, 72px);
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.management-kpi-row {
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.management-kpi-row span {
+  font-size: 14px;
+}
+
+.management-plan-card {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+}
+
+.management-plan-card.is-current {
+  border: 2px solid var(--color-primary);
+  padding: 31px;
+}
+
+.management-plan-price {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.management-plan-price strong {
+  font-size: 52px;
+  font-weight: 400;
+  line-height: 0.95;
+}
+
+.management-plan-price span {
+  color: var(--color-ink);
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.management-plan-price-note {
+  letter-spacing: 0.04em;
+}
+
+.management-plan-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.management-plan-list li {
+  position: relative;
+  padding-left: 22px;
+  color: var(--color-body);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.management-plan-list li::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  color: var(--color-ink);
+  content: '✓';
+}
+
+.management-plan-footer {
+  margin-top: auto;
+}
+
+.management-anchor-link {
+  display: inline-flex;
+  color: var(--color-link);
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.management-card-actions {
+  justify-content: space-between;
+}
+
+.management-table-toolbar {
+  margin-bottom: 20px;
+}
+
+.management-table-meta {
+  gap: 10px;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.management-field-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.management-filter-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 20px;
+}
+
+.management-form-field {
+  display: grid;
+  gap: 6px;
+}
+
+.management-field {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--color-hairline);
+  border-radius: 12px;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  padding: 0 14px;
+}
+
+.management-field:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(24, 29, 38, 0.08);
+}
+
+.management-inline-note {
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.management-chart {
+  display: grid;
+  gap: 22px;
+}
+
+.management-chart-grid {
+  position: relative;
+  display: grid;
+  height: 220px;
+  align-items: end;
+}
+
+.management-chart-grid::before,
+.management-chart-grid::after {
+  position: absolute;
+  inset: 0;
+  content: '';
+}
+
+.management-chart-grid::before {
+  background:
+    linear-gradient(to top, rgba(24, 29, 38, 0.08) 1px, transparent 1px) 0 100% / 100% 33.333%;
+  pointer-events: none;
+}
+
+.management-chart-bars {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  height: 100%;
+  grid-template-columns: repeat(var(--bar-count, 10), minmax(0, 1fr));
+  align-items: end;
+  gap: 10px;
+}
+
+.management-chart-bar {
+  display: grid;
+  gap: 10px;
+  align-items: end;
+}
+
+.management-chart-bar span {
+  display: block;
+  min-height: 12px;
+  border-radius: 8px 8px 0 0;
+  background: #ff693c;
+}
+
+.management-chart-bar small {
+  color: var(--color-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+@media (max-width: 1180px) {
+  .management-plan-grid,
+  .management-summary-grid,
+  .management-mini-stat-grid,
+  .management-field-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .management-main-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 980px) {
+  .management-summary-grid,
+  .management-section-grid,
+  .management-visual-grid,
+  .management-plan-grid,
+  .management-field-grid,
+  .management-filter-grid,
+  .management-mini-stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .management-panel-heading,
+  .management-notice,
+  .management-table-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .management-actions {
+    justify-content: flex-start;
+  }
+
+  .management-segmented {
+    width: 100%;
+  }
+
+  .management-segmented button,
+  .management-segmented a {
+    flex: 1 1 0;
+  }
+
+  .auth-profile-modal-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .management-definition-list div {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .management-profile-card,
+  .management-callout,
+  .management-panel,
+  .management-notice,
+  .management-plan-card,
+  .management-dark-card {
+    padding: 24px;
+  }
+
+  .management-number {
+    font-size: 44px;
+  }
+}

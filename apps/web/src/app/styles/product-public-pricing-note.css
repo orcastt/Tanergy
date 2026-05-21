@@ -1,0 +1,28 @@
+.public-pricing-note {
+  display: grid;
+  width: min(100% - 36px, 860px);
+  gap: 8px;
+  margin: 26px auto 80px;
+  border: 1px solid rgba(23, 28, 37, 0.1);
+  border-radius: 8px;
+  padding: 20px 22px;
+  background: #ffffff;
+}
+
+.public-pricing-note strong {
+  font-size: 14px;
+}
+
+.public-pricing-note p {
+  margin: 0;
+  color: #5f6570;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.public-pricing-note a {
+  color: #171c25;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

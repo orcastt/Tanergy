@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TANGENT - Quietly Editorial</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;475;500;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed-dim": "#a8d1a2",
+                        "surface-variant": "#e1e3e4",
+                        "on-tertiary-container": "#688e65",
+                        "secondary-fixed-dim": "#ffb5a0",
+                        "tertiary-fixed": "#c4eebd",
+                        "surface-container-low": "#f3f4f5",
+                        "error": "#ba1a1a",
+                        "on-surface": "#191c1d",
+                        "surface-bright": "#f8f9fa",
+                        "primary-container": "#181d26",
+                        "error-container": "#ffdad6",
+                        "on-surface-variant": "#45474b",
+                        "secondary": "#af3003",
+                        "inverse-on-surface": "#f0f1f2",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#000300",
+                        "surface-container-highest": "#e1e3e4",
+                        "background": "#f8f9fa",
+                        "outline-variant": "#c6c6cc",
+                        "on-tertiary-fixed-variant": "#2b4f2b",
+                        "on-primary-fixed": "#171c25",
+                        "secondary-fixed": "#ffdbd1",
+                        "primary": "#000208",
+                        "tertiary-container": "#002305",
+                        "surface-container": "#edeeef",
+                        "secondary-container": "#ff693c",
+                        "primary-fixed": "#dee2ef",
+                        "on-error": "#ffffff",
+                        "on-background": "#191c1d",
+                        "on-primary-container": "#808590",
+                        "on-tertiary": "#ffffff",
+                        "primary-fixed-dim": "#c2c6d3",
+                        "on-secondary-fixed-variant": "#862200",
+                        "inverse-primary": "#c2c6d3",
+                        "surface-container-high": "#e7e8e9",
+                        "surface": "#f8f9fa",
+                        "on-secondary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed": "#3b0900",
+                        "inverse-surface": "#2e3132",
+                        "on-secondary-container": "#601500",
+                        "on-primary-fixed-variant": "#424751",
+                        "surface-tint": "#5a5e69",
+                        "on-tertiary-fixed": "#002205",
+                        "outline": "#76777c",
+                        "surface-dim": "#d9dadb",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "32px",
+                        "stack-sm": "12px",
+                        "section-v-padding": "96px",
+                        "container-max-width": "1200px",
+                        "stack-md": "24px"
+                    },
+                    "fontFamily": {
+                        "body-base": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "pricing-display": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-xl": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-base": ["14px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-md": ["32px", {"lineHeight": "40px", "fontWeight": "500"}],
+                        "pricing-display": ["40px", {"lineHeight": "48px", "fontWeight": "475"}],
+                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "headline-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.01em", "fontWeight": "400"}],
+                        "display-xl": ["64px", {"lineHeight": "72px", "letterSpacing": "-0.02em", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-fill {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+</head>
+<body class="bg-surface-container-lowest text-on-surface antialiased font-body-base overflow-x-hidden selection:bg-secondary-container selection:text-on-secondary">
+<nav class="fixed top-0 w-full z-50 bg-white/90 backdrop-blur-md dark:bg-zinc-950/90 border-b border-zinc-100 dark:border-zinc-800 flat no shadows flex justify-between items-center h-20 px-8 md:px-12">
+<div class="flex items-center gap-12">
+<span class="text-2xl font-black tracking-tighter text-zinc-900 dark:text-zinc-50 uppercase">TANGENT</span>
+<div class="hidden md:flex gap-8 items-center">
+<a class="font-['Inter'] tracking-tight text-sm font-medium text-zinc-900 dark:text-zinc-50 border-b-2 border-zinc-900 dark:border-zinc-50 pb-1 hover:text-zinc-900 dark:hover:text-zinc-100 transition-all scale-95 duration-150 ease-in-out" href="#">Canvas</a>
+<a class="font-['Inter'] tracking-tight text-sm font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-all scale-95 duration-150 ease-in-out" href="#">Library</a>
+<a class="font-['Inter'] tracking-tight text-sm font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-all scale-95 duration-150 ease-in-out" href="#">Boards</a>
+<a class="font-['Inter'] tracking-tight text-sm font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-all scale-95 duration-150 ease-in-out" href="#">Team</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-zinc-900 dark:text-zinc-50 hover:text-zinc-900 dark:hover:text-zinc-100 transition-all cursor-pointer">search</span>
+<button class="bg-primary-container text-on-primary px-4 py-2 rounded-xl font-label-caps text-label-caps uppercase tracking-widest hover:bg-zinc-800 transition-colors">New Project</button>
+</div>
+</nav>
+<main class="pt-[140px]">
+<section class="max-w-container-max-width mx-auto px-8 md:px-12 py-section-v-padding">
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter items-center">
+<div class="col-span-1 md:col-span-7 flex flex-col gap-stack-md pr-0 md:pr-12">
+<h1 class="font-display-xl text-display-xl text-primary leading-[1.05]">Unleash your creative potential with Tangent.</h1>
+<p class="font-body-base text-body-base text-on-surface-variant max-w-lg mt-4">A quietly editorial environment designed for high-fidelity thought. Structure your chaos into pristine, publish-ready architectures without the cognitive overhead.</p>
+<div class="flex flex-wrap gap-4 mt-8">
+<button class="bg-primary-container text-on-primary px-8 py-4 rounded-xl font-label-caps text-label-caps uppercase tracking-widest hover:bg-zinc-800 transition-colors">Start Canvas</button>
+<button class="bg-surface-container-lowest text-primary-container border border-surface-variant px-8 py-4 rounded-xl font-label-caps text-label-caps uppercase tracking-widest hover:bg-surface-container-low transition-colors">View Demo</button>
+</div>
+</div>
+<div class="col-span-1 md:col-span-5 relative mt-12 md:mt-0">
+<div class="aspect-[4/5] bg-surface-container-lowest border border-surface-variant rounded-xl overflow-hidden relative">
+<img alt="Abstract art" class="w-full h-full object-cover" data-alt="A striking digital installation art piece featuring glowing, generative geometric shapes suspended in a vast, minimalist gallery space. The room is illuminated by high-key, soft white lighting that creates a bright, modern light-mode aesthetic. The artwork relies on a sophisticated palette of deep blacks and pristine whites, punctuated by intense accents of vibrant coral. The mood is serene yet technologically advanced, embodying a quietly editorial essence." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDCBG7fWEDjIJH1IJiuow3vN89wmJKZcoDqcMCGSELe-I7my3KzM6aj3fbQMyPUhNbr3j7Mb_0c7vAAh4KUS0WAUEQyxy9xz7CMl2_QaKQTy_VQBs_scpVcXc1LqGQRMg5zVcUIgBsdaB_7GIWpqzFNn1sCYRHbrqW-YngNUdVwo4d7Nyk2jz4M5XE_90nLgyeNDpXU6DhN0kXylCAB8rprgRPspHm21-GFPEpym-oJDLTbPuQkpz8J8kj165hv-7YLyrCY_BGCwjM"/>
+<div class="absolute bottom-6 left-6 right-6 bg-surface-container-lowest/90 backdrop-blur-sm p-6 rounded-lg border border-surface-variant">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-secondary-container">polyline</span>
+<div>
+<h4 class="font-label-caps text-label-caps uppercase text-primary">Structural Integrity</h4>
+<p class="font-body-base text-[13px] text-on-surface-variant leading-tight mt-1">Real-time nodal architecture mapped directly to your workflow.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section class="bg-secondary-container text-on-secondary py-section-v-padding w-full">
+<div class="max-w-container-max-width mx-auto px-8 md:px-12 grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<div class="col-span-1 md:col-span-12 flex flex-col items-center text-center">
+<span class="material-symbols-outlined text-[48px] mb-8 icon-fill">bolt</span>
+<h2 class="font-headline-lg text-headline-lg max-w-4xl tracking-tight leading-tight">Clarity over decoration. Velocity over friction. The definitive canvas for high-leverage teams.</h2>
+<div class="mt-12 flex gap-12 border-t border-on-secondary/20 pt-12 w-full max-w-3xl justify-center">
+<div>
+<p class="font-pricing-display text-pricing-display">10x</p>
+<p class="font-label-caps text-label-caps uppercase opacity-80 mt-2">Faster iteration</p>
+</div>
+<div>
+<p class="font-pricing-display text-pricing-display">0px</p>
+<p class="font-label-caps text-label-caps uppercase opacity-80 mt-2">Visual clutter</p>
+</div>
+<div>
+<p class="font-pricing-display text-pricing-display">99%</p>
+<p class="font-label-caps text-label-caps uppercase opacity-80 mt-2">Signal to noise</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section class="bg-tertiary-fixed py-section-v-padding w-full">
+<div class="max-w-container-max-width mx-auto px-8 md:px-12">
+<div class="flex flex-col md:flex-row justify-between items-end mb-16 gap-8">
+<div>
+<h3 class="font-headline-md text-headline-md text-tertiary-container">Architectural primitives.</h3>
+<p class="font-body-base text-body-base text-on-tertiary-container mt-2 max-w-md">Fragments of the Tangent UI designed for pure utility, floating in an endless canvas.</p>
+</div>
+<button class="bg-tertiary-container text-on-tertiary px-6 py-3 rounded-xl font-label-caps text-label-caps uppercase tracking-widest hover:bg-tertiary transition-colors shrink-0">Explore Library</button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[minmax(300px,auto)]">
+<div class="col-span-1 md:col-span-2 bg-surface-container-lowest rounded-xl border border-tertiary-fixed-dim/50 p-8 flex flex-col relative overflow-hidden">
+<div class="flex justify-between items-center mb-8 z-10">
+<span class="font-label-caps text-label-caps uppercase text-on-surface-variant">Active Board</span>
+<span class="material-symbols-outlined text-surface-tint">more_horiz</span>
+</div>
+<div class="flex-1 flex items-center justify-center relative z-10">
+<div class="bg-secondary-fixed w-full max-w-sm rounded-lg p-6 border border-secondary-fixed-dim/30 shadow-sm rotate-[-2deg] transition-transform hover:rotate-0 duration-300">
+<div class="w-8 h-8 rounded-full bg-secondary-container mb-4 flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary text-sm">edit</span>
+</div>
+<h5 class="font-headline-md text-[20px] text-on-secondary-fixed-variant leading-tight">Campaign Strategy Q3</h5>
+<p class="font-body-base text-body-base text-on-secondary-fixed-variant/70 mt-2">Mapping core metrics to creative deliverables across all channels.</p>
+</div>
+</div>
+<div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,219,209,0.2),transparent_50%)]"></div>
+</div>
+<div class="col-span-1 bg-surface-container-low rounded-xl border border-surface-variant/50 p-8 flex flex-col">
+<div class="mb-6">
+<span class="font-label-caps text-label-caps uppercase text-on-surface-variant">Component Status</span>
+</div>
+<div class="flex-1 flex flex-col gap-4 justify-center">
+<div class="bg-surface-container-lowest p-4 rounded-lg border border-surface-variant flex items-center gap-4">
+<div class="w-3 h-3 rounded-full bg-secondary-container"></div>
+<span class="font-body-base text-body-base text-primary">Nav Syncing</span>
+</div>
+<div class="bg-surface-container-lowest p-4 rounded-lg border border-surface-variant flex items-center gap-4">
+<div class="w-3 h-3 rounded-full bg-tertiary-fixed-dim"></div>
+<span class="font-body-base text-body-base text-primary">Data Binding</span>
+</div>
+<div class="bg-surface-container-lowest p-4 rounded-lg border border-surface-variant flex items-center gap-4">
+<div class="w-3 h-3 rounded-full bg-primary-container"></div>
+<span class="font-body-base text-body-base text-primary">Final Render</span>
+</div>
+</div>
+</div>
+<div class="col-span-1 bg-secondary-fixed rounded-xl border border-secondary-fixed-dim/50 p-8 flex flex-col justify-between">
+<span class="material-symbols-outlined text-on-secondary-container text-[32px]">view_kanban</span>
+<div class="mt-12">
+<h4 class="font-headline-md text-[24px] text-on-secondary-container">Fluid States</h4>
+<p class="font-body-base text-[13px] text-on-secondary-container/80 mt-2">Transitions handled naturally.</p>
+</div>
+</div>
+<div class="col-span-1 md:col-span-2 bg-surface-container-lowest rounded-xl border border-tertiary-fixed-dim/50 p-8 relative overflow-hidden">
+<div class="flex items-center gap-3 mb-6">
+<div class="w-2 h-2 bg-primary rounded-full"></div>
+<span class="font-label-caps text-label-caps uppercase text-primary tracking-widest">Live Document</span>
+</div>
+<div class="pl-5 border-l-2 border-surface-variant mt-8 space-y-6">
+<div>
+<h6 class="font-body-base text-body-base font-bold text-primary">H1 Typography Shift</h6>
+<p class="font-body-base text-body-base text-surface-tint mt-1">Adjusted tracking to -0.02em for display sizes.</p>
+</div>
+<div>
+<h6 class="font-body-base text-body-base font-bold text-primary">Grid Alignment</h6>
+<p class="font-body-base text-body-base text-surface-tint mt-1">Snapped all primary containers to the 12-column baseline.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section class="bg-surface-container-low py-section-v-padding w-full">
+<div class="max-w-container-max-width mx-auto px-8 md:px-12 text-center">
+<span class="font-label-caps text-label-caps uppercase text-surface-tint tracking-[0.2em] block mb-6">The Methodology</span>
+<h2 class="font-headline-md text-headline-md text-primary max-w-2xl mx-auto">We believe white space is functional. Every pixel must earn its place on the screen.</h2>
+<button class="mt-12 bg-surface-container-lowest text-primary border border-surface-variant px-8 py-4 rounded-full font-label-caps text-label-caps uppercase tracking-widest hover:bg-surface-variant/20 transition-colors">Read the Manifesto</button>
+</div>
+</section>
+<section class="bg-primary-container text-on-primary py-[120px] w-full text-center">
+<div class="max-w-3xl mx-auto px-8 md:px-12">
+<h2 class="font-display-xl text-display-xl tracking-tight mb-8">Ready to build?</h2>
+<p class="font-body-base text-body-base text-on-primary-container max-w-lg mx-auto mb-12">Join the waitlist for Tangent Pro and experience the ultimate editorial workspace.</p>
+<div class="flex flex-col sm:flex-row justify-center gap-4">
+<input class="bg-transparent border-b border-on-primary-container/30 px-4 py-3 text-on-primary font-body-base focus:outline-none focus:border-on-primary focus:ring-0 min-w-[280px]" placeholder="Email address" type="email"/>
+<button class="bg-secondary-container text-on-secondary px-8 py-4 rounded-xl font-label-caps text-label-caps uppercase tracking-widest hover:bg-secondary transition-colors shrink-0">Request Access</button>
+</div>
+</div>
+</section>
+</main>
+<footer class="bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 font-['Inter'] text-xs tracking-wide w-full py-24 border-t border-zinc-100 dark:border-zinc-800 flat no shadows">
+<div class="max-w-7xl mx-auto px-12 flex flex-col md:flex-row justify-between items-center gap-8">
+<div class="font-bold text-zinc-900 dark:text-zinc-50">
+                © 2024 TANGENT AI. Quietly Editorial.
+            </div>
+<div class="flex gap-8">
+<a class="text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-opacity duration-300" href="#">Privacy</a>
+<a class="text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-opacity duration-300" href="#">Terms</a>
+<a class="text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-opacity duration-300" href="#">API</a>
+<a class="text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-opacity duration-300" href="#">Status</a>
+</div>
+</div>
+</footer>
+</body></html>

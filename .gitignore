@@ -8,10 +8,16 @@ __pycache__/
 .env
 .env.local
 .env.production
+**/.env
+**/.env.local
+**/.env.production
 
 # Build
 dist/
 build/
+.next/
+**/.next/
+*.tsbuildinfo
 *.egg-info/
 
 # IDE
@@ -34,12 +40,18 @@ logs/
 
 # MinIO data (local dev)
 minio-data/
+.tangent-assets/
+.tangent-boards/
+apps/web/.tangent-assets/
+apps/web/.tangent-boards/
 
 # Redis dump
 dump.rdb
 
 # Docker
 docker-compose.override.yml
+deploy/staging/api.env
+deploy/staging/*.local.md
 
 # Test
 coverage/
@@ -70,12 +82,7 @@ GEMINI.md
 # Local secrets and generated archives
 .env.*
 !.env.example
-legacy/**/.env*
-legacy/**/node_modules/
-legacy/**/.next/
-legacy/**/.venv/
-legacy/**/target/
-legacy/**/dist/
-legacy/**/build/
-legacy/**/*.tsbuildinfo
-legacy/**/.DS_Store
+!**/.env.example
+legacy/
+**/.vercel
+.vercel

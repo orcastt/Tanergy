@@ -1,0 +1,99 @@
+# TANGENT Development Harness
+
+**Updated**: 2026-05-21
+**Purpose**: concise execution rules. Product, architecture and state details live in the folderized docs.
+
+## Read Order
+
+Fast UI polish:
+
+1. `AGENTS.md`
+2. `project_state/Finished/project_state_slice_S0_local_polish.md`
+3. Relevant `PRD/PRD_slice_*.md`
+4. Relevant `ARCH/ARCH_slice_*.md`
+5. `dev-plans/README.md`
+
+Architecture/API/Auth/AI/Admin/Billing/Deploy/Collaboration:
+
+1. `AGENTS.md`
+2. `project_state/project_state.md`
+3. `PRD/PRD.md`
+4. `ARCH/ARCH.md`
+5. Relevant PRD/ARCH/project_state slice files
+6. `dev-plans/README.md`
+7. `knowledge/index.md`
+8. Relevant `knowledge/wiki/*.md`, especially `knowledge/wiki/agent_harness_and_skills.md`
+
+## Definition Of Ready
+
+- The slice is classified as `Fast UI polish` or `Architecture slice`.
+- Scope, non-goals and acceptance are written in the relevant slice docs.
+- External dependencies are identified before coding.
+- Data/API/Auth/AI/Admin changes include schema, permission and test impact.
+
+## Definition Of Done
+
+- Code implements only the current slice.
+- Touched source files stay under 300 lines, or are split before new composite behavior lands; if a safe split must be staged, the remaining slimming step is recorded in the active plan before signoff.
+- Required quality gates pass.
+- The relevant slice docs are updated.
+- Folder total docs are updated only if a stable checkpoint or progress percentage changes.
+- Root pointer docs remain thin.
+
+## Current Priority
+
+1. S1B/S1C staging Auth smoke: Clerk session, Google OAuth, FastAPI JWT verification, Postgres migrations, R2 asset upload/read and Konva-first Board route with tldraw disabled by default.
+2. S1D permission hardening: active membership/invite state, explicit Asset-sharing allowlists and frontend/API role-label alignment on top of the current effective permission resolver and known-foreign Asset guard.
+3. S3 entitlement foundation: plan catalog, seat assignment, actor-personal credit account resolver, credit ledger preflight and Team usage visibility.
+4. S2 real AiRun only after permission and charge ownership are explicit server-side.
+
+## Harness Agent Skill Map
+
+- PRD Skill: user-visible behavior, acceptance and release scope.
+- ARCH Skill: APIs, schemas, storage, provider routes and authority boundaries.
+- Project State Skill: current truth, blockers, smoke results and handoff notes.
+- Harness/QA Skill: quality gates, security/deploy smokes and oversized-file checks.
+- AI Provider Skill: model/key/provider route facts and live text/image/analysis smokes.
+- Deploy/Ops Skill: Vercel, Hetzner, Supabase, R2, Clerk, Cloudflare and monitoring proof.
+- Security Skill: auth bypass, CSRF/origin, upload safety, data leakage, public share and realtime abuse.
+- Collaboration Skill: Yjs/WebSocket, presence, invite chain and multi-user acceptance.
+- Memory Wiki Skill: distilled cross-slice summaries, decision log, source notes and recurring audit checklists.
+
+Detailed operating rules live in `knowledge/wiki/agent_harness_and_skills.md`.
+
+## Required Gates
+
+Frontend:
+
+```bash
+npm -C apps/web run lint
+npm -C apps/web run typecheck
+npm -C apps/web run build
+git diff --check
+```
+
+Backend/API:
+
+```bash
+PYTHONPATH=services/api python3 -m pytest services/api/tests
+python3 -m compileall services/api/tangent_api services/api/migrations
+git diff --check
+```
+
+Docs-only:
+
+```bash
+git diff --check
+```
+
+## Hard Boundaries
+
+- `legacy/` has been removed from the active worktree/repo. Do not recreate it unless explicitly requested; recover old reference material from Git history or archived docs as a separate inspection task.
+- Do not read `.env`.
+- Do not put secrets in frontend code, docs or logs.
+- Do not treat nested local env files such as `apps/web/.env.local` or pulled `.vercel/.env.production.local` copies as deployment truth; Web runtime truth belongs in Vercel env, API runtime truth belongs in the server-local shared env file.
+- Do not store image binaries, Base64, provider payloads or full logs in Board/History documents.
+- Do not enable production `/admin` before real Auth and server-side admin roles.
+- Do not start collaboration until Auth, Board, Asset and AiRun authority boundaries are stable.
+- Do not treat Board edit rights as AI spend authority; every run needs server-side entitlement and payer resolution.
+- Do not let new behavior accumulate inside already-large source files; the under-300-lines rule is a project-wide delivery gate.

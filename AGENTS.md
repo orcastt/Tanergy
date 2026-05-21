@@ -1,44 +1,70 @@
 # TANGENT Fresh Development Rules
 
-本文件适用于当前新项目根目录。旧代码已隔离在 `legacy/old-tangent-desktop-2026-04-29/`，除非用户明确要求恢复或参考，否则不要读取、修改、构建或测试 legacy 目录。
+## Product Boundary
 
-## 当前产品口径
+- Web-first AI image canvas; no desktop client for P0.
+- P0 image flow: `Prompt -> Image Gen / Image Gen 4 -> Image`, `Image + Prompt -> Image Gen / Analysis`, `Image -> Canvas Markup -> Merge Capture -> New Image`.
+- AI Chat may create legal nodes and edges, but provider calls still go through server-side AiRun contracts.
+- Collaboration is P0.5 and waits for Auth, Board, Asset and AiRun boundaries.
+- `legacy/` has been removed from the active worktree/repo. Do not recreate desktop/Tauri code for P0; recover old reference material from Git history or archived docs only when explicitly requested.
 
-- Web-first AI image canvas，不做桌面客户端 P0。
-- P0 只打通最小图像链路：`Text Node → Multi Generate 4图 → Image Node → Image Editor / Canvas Markup → Merge Capture → New Image Node`。
-- AI Chat 自动创建节点和连线保留为降低门槛入口。
-- 多人协作后移到 P0.5。
-- 不做公众号 Html Editor、Writer、Personal Library、Knowledge Graph、复杂 Admin Analytics。
-- 前端视觉保持干净白板、小卡片、轻边框，不大换皮。
+## Canonical Docs
 
-## 工作循环
+Root `PRD.md`, `ARCH.md` and `project_state.md` are pointers only.
 
-每次非简单改动按顺序推进：
+| Folder | Total file | Slice files | Owns |
+| --- | --- | --- | --- |
+| `PRD/` | `PRD/PRD.md` | `PRD/PRD_slice_*.md` | User-visible requirements and acceptance |
+| `ARCH/` | `ARCH/ARCH.md` | `ARCH/ARCH_slice_*.md` | Architecture diagrams, boundaries, APIs, schemas |
+| `project_state/` | `project_state/project_state.md` | `project_state/project_state_slice_*.md` | Current progress, next steps, handoff notes |
+| `dev-plans/` | `dev-plans/README.md` | Active/archived plans | Tactical implementation plans |
+| `knowledge/` | `knowledge/index.md` | `knowledge/wiki/*.md`, `knowledge/raw/*.md`, `knowledge/decisions/log.md` | Cross-slice memory, source notes, decision log, provider/deploy/security/collab lookup pages |
 
-1. 先读 `project_state.md`、`PRD.md`、`ARCH.md` 和相关 `dev-plans/`。
-2. 新功能或跨文件改动先更新 `dev-plans/`。
-3. 只实现当前切片，不顺手重构无关逻辑。
-4. 单文件尽量不超过 300 行，接近上限就拆模块。
-5. UI 改动遵守 `reference/design-system.md` 和 `reference/theme.ts`。
-6. 用户可见文案走 i18n；默认英文，中文环境不混杂英文业务文案。
-7. API Key 只在服务端环境变量，绝不进入前端代码。
-8. 完成后更新 `project_state.md` 和对应计划。
+Do not recreate mirror files such as `ARCH/00-current-map.md` or `project_state/current-slice.md`.
 
-## 质量闸门
+## Update Policy
 
-新 Web app scaffold 完成后，前端改动至少运行：
+- During an active small slice, update only the relevant slice docs.
+- When that slice reaches a stable checkpoint, update the folder total file.
+- Root pointer files should almost never change.
+- PRD changes describe product behavior; ARCH changes describe implementation boundaries; project state changes describe what is currently true.
+- For `Fast UI polish`, read `project_state/Finished/project_state_slice_S0_local_polish.md`, then the relevant `PRD/` and `ARCH/` slice.
+- For data/API/Auth/AI/Admin/Billing/Deploy/Collaboration, read `project_state/project_state.md`, `PRD/PRD.md`, `ARCH/ARCH.md`, `HARNESS.md`, the relevant slices, `knowledge/index.md` and `knowledge/wiki/agent_harness_and_skills.md` for cross-slice memory.
 
-- `npm -C apps/web run build`
-- `npm -C apps/web run lint`
-- `npm -C apps/web run typecheck`
-- `git diff --check`
+## Safety Rules
 
-后端/API 改动运行对应测试或最小 API 检查。
+- API keys and provider secrets stay server-side only.
+- Board documents, Board History documents, node props and future collaboration docs must not persist `data:`, `blob:`, Base64 images, provider raw responses, complete logs or long generated text.
+- New AI nodes must update Node Registry, Model Registry, AiRun contracts, routes, tests and Board guard together.
+- Admin access must be server-side through `admin_roles`; all admin writes need audit logs.
+- Source files target under 300 lines; this is a project-wide acceptance gate, not a soft preference. Split before adding more behavior to large files, and record any remaining slimming follow-up in the active plan before signoff.
+
+## Quality Gates
+
+Frontend changes:
+
+```bash
+npm -C apps/web run lint
+npm -C apps/web run typecheck
+npm -C apps/web run build
+git diff --check
+```
+
+Backend/API changes:
+
+```bash
+PYTHONPATH=services/api python3 -m pytest services/api/tests
+python3 -m compileall services/api/tangent_api services/api/migrations
+git diff --check
+```
+
+Docs-only changes may run only `git diff --check`, but say that clearly in the final response.
 
 ## Git
 
-- 不主动 commit、push、新建分支，除非用户明确要求。
-- 用户要求提交前，先检查 `git status`，确认变更范围。
+- Do not commit, push or create branches unless the user asks.
+- Before committing, inspect `git status`.
+- Keep checkpoints small and reversible.
 
 ## PR workflow (hard rule)
 

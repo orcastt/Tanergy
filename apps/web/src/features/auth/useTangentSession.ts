@@ -1,0 +1,146 @@
+'use client'
+
+import { useAuth } from '@clerk/nextjs'
+import { useEffect, useRef, useState } from 'react'
+import { createLoadingSessionSnapshot, getCurrentSessionSnapshot } from './mockSession'
+import {
+  clearPendingSessionRefreshMarker,
+  clearSessionScopedClientState,
+  loadCurrentSession,
+  readPendingSessionRefreshMarker,
+  SESSION_REFRESH_EVENT,
+} from './sessionClient'
+import type { TangentSession } from './sessionTypes'
+import { loadClientResource, readClientResource } from '@/features/shared/clientResourceCache'
+import { hasRemotePersistenceApi } from '@/features/api/persistenceApi'
+
+type TangentSessionStatus = 'error' | 'loading' | 'ready'
+const tangentSessionStore = new Map<string, { data?: TangentSession; error?: string | null; promise?: Promise<TangentSession>; updatedAt: number }>()
+
+type UseTangentSessionOptions = {
+  requestedWorkspaceId?: string | null
+}
+
+export function useTangentSession(options: UseTangentSessionOptions = {}) {
+  const { getToken, isLoaded, userId } = useAuth()
+  const requestedWorkspaceId = options.requestedWorkspaceId?.trim() || null
+  const storageKey = requestedWorkspaceId ? undefined : 'tanergy.session.current'
+  const cacheKey = requestedWorkspaceId ? `workspace:${requestedWorkspaceId}` : 'current'
+  const previousUserIdRef = useRef<null | string | undefined>(undefined)
+  const snapshot = readClientResource(tangentSessionStore, cacheKey, {
+    storage: 'local',
+    storageKey,
+    ttlMs: 300_000,
+  })
+  const hasPendingRefresh = Boolean(readPendingSessionRefreshMarker())
+  const shouldIgnoreDevFallbackSnapshot = !canUseLocalSessionFallback() && snapshot.data?.isDevFallback === true
+  const resolvedSnapshot = hasPendingRefresh
+    ? { status: 'empty' as const }
+    : shouldIgnoreDevFallbackSnapshot
+    ? { status: 'empty' as const }
+    : userId && snapshot.data?.user.id && snapshot.data.user.id !== userId
+    ? { status: 'empty' as const }
+    : snapshot
+  const [session, setSession] = useState<TangentSession>(() => resolvedSnapshot.data ?? (
+    !canUseLocalSessionFallback()
+      ? createLoadingSessionSnapshot()
+      : getCurrentSessionSnapshot()
+  ))
+  const [status, setStatus] = useState<TangentSessionStatus>(
+    resolvedSnapshot.status === 'error'
+      ? 'error'
+      : resolvedSnapshot.status === 'ready'
+        ? 'ready'
+        : 'loading'
+  )
+  const [error, setError] = useState<string | null>(resolvedSnapshot.status === 'error' ? (resolvedSnapshot.error ?? 'Session lookup failed.') : null)
+
+  useEffect(() => {
+    if (!isLoaded) return
+    const currentUserId = userId ?? null
+    if (previousUserIdRef.current === undefined) {
+      previousUserIdRef.current = currentUserId
+      return
+    }
+    if (previousUserIdRef.current === currentUserId) return
+    previousUserIdRef.current = currentUserId
+    tangentSessionStore.clear()
+    clearSessionScopedClientState()
+    setError(null)
+    setStatus('loading')
+    setSession(
+      !canUseLocalSessionFallback()
+        ? createLoadingSessionSnapshot()
+        : getCurrentSessionSnapshot()
+    )
+  }, [isLoaded, userId])
+
+  useEffect(() => {
+    if (!isLoaded) return
+    let isCancelled = false
+    const hydrateSession = (force = false) => {
+      const refreshMarker = readPendingSessionRefreshMarker()
+      return loadClientResource(
+        tangentSessionStore,
+        cacheKey,
+        () => loadCurrentSession({
+          getAuthToken: getToken,
+          requestedWorkspace: requestedWorkspaceId ? { id: requestedWorkspaceId } : null,
+        }),
+        {
+          canReuse: (data) => (
+            (!hasRemotePersistenceApi() || data.isDevFallback !== true)
+            && (!userId || data.user.id === userId)
+          ),
+          force: force || Boolean(refreshMarker),
+          storage: 'local',
+          storageKey,
+          ttlMs: 300_000,
+        },
+      ).then((nextSession) => {
+        if (refreshMarker) clearPendingSessionRefreshMarker()
+        return nextSession
+      })
+    }
+
+    hydrateSession()
+      .then((nextSession) => {
+        if (isCancelled) return
+        setSession(nextSession)
+        setError(null)
+        setStatus('ready')
+      })
+      .catch((nextError: unknown) => {
+        if (isCancelled) return
+        setError(nextError instanceof Error ? nextError.message : 'Session lookup failed.')
+        setStatus('error')
+      })
+
+    const handleRefresh = () => {
+      void hydrateSession(true)
+        .then((nextSession) => {
+          if (isCancelled) return
+          setSession(nextSession)
+          setError(null)
+          setStatus('ready')
+        })
+        .catch((nextError: unknown) => {
+          if (isCancelled) return
+          setError(nextError instanceof Error ? nextError.message : 'Session lookup failed.')
+          setStatus('error')
+        })
+    }
+
+    window.addEventListener(SESSION_REFRESH_EVENT, handleRefresh)
+    return () => {
+      isCancelled = true
+      window.removeEventListener(SESSION_REFRESH_EVENT, handleRefresh)
+    }
+  }, [cacheKey, getToken, isLoaded, requestedWorkspaceId, storageKey, userId])
+
+  return { error, session, status }
+}
+
+function canUseLocalSessionFallback() {
+  return process.env.NODE_ENV !== 'production' && !hasRemotePersistenceApi()
+}

@@ -1,0 +1,44 @@
+@media (max-width: 760px) {
+  .canvas-spike-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .canvas-spike-title-row {
+    width: 100%;
+  }
+
+  .canvas-board-switcher__control {
+    max-width: calc(100vw - 156px);
+  }
+
+  .canvas-spike-toolbar {
+    right: 12px;
+    left: 12px;
+    justify-content: flex-start;
+    overflow-x: auto;
+    transform: none;
+  }
+
+  .canvas-style-panel {
+    top: 72px;
+    right: auto;
+    left: 12px;
+    width: 214px;
+    max-height: max(220px, calc(100% - 250px));
+  }
+
+  .merge-capture-panel {
+    right: 12px;
+    bottom: 12px;
+  }
+}
+
+@media (max-width: 560px) {
+  .canvas-style-panel {
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-height: calc(100% - 96px);
+  }
+}

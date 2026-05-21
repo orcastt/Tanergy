@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Forgot Password - TANGENT</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "background": "#f8f9fa",
+                "tertiary": "#000300",
+                "surface-container-highest": "#e1e3e4",
+                "tertiary-container": "#002305",
+                "surface-container": "#edeeef",
+                "primary": "#000208",
+                "secondary-container": "#ff693c",
+                "primary-fixed": "#dee2ef",
+                "on-error": "#ffffff",
+                "on-background": "#191c1d",
+                "secondary-fixed": "#ffdbd1",
+                "outline-variant": "#c6c6cc",
+                "on-tertiary-fixed-variant": "#2b4f2b",
+                "on-primary-fixed": "#171c25",
+                "tertiary-fixed": "#c4eebd",
+                "surface-container-low": "#f3f4f5",
+                "secondary-fixed-dim": "#ffb5a0",
+                "on-surface": "#191c1d",
+                "error": "#ba1a1a",
+                "tertiary-fixed-dim": "#a8d1a2",
+                "surface-variant": "#e1e3e4",
+                "on-tertiary-container": "#688e65",
+                "inverse-on-surface": "#f0f1f2",
+                "on-primary": "#ffffff",
+                "error-container": "#ffdad6",
+                "surface-bright": "#f8f9fa",
+                "primary-container": "#181d26",
+                "secondary": "#af3003",
+                "on-surface-variant": "#45474b",
+                "surface-tint": "#5a5e69",
+                "on-tertiary-fixed": "#002205",
+                "on-secondary-container": "#601500",
+                "on-primary-fixed-variant": "#424751",
+                "surface-container-lowest": "#ffffff",
+                "surface-dim": "#d9dadb",
+                "outline": "#76777c",
+                "primary-fixed-dim": "#c2c6d3",
+                "on-secondary-fixed-variant": "#862200",
+                "inverse-primary": "#c2c6d3",
+                "on-tertiary": "#ffffff",
+                "on-primary-container": "#808590",
+                "on-error-container": "#93000a",
+                "on-secondary": "#ffffff",
+                "on-secondary-fixed": "#3b0900",
+                "inverse-surface": "#2e3132",
+                "surface-container-high": "#e7e8e9",
+                "surface": "#f8f9fa"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "stack-md": "24px",
+                "stack-sm": "12px",
+                "section-v-padding": "96px",
+                "container-max-width": "1200px",
+                "gutter": "32px"
+        },
+        "fontFamily": {
+                "body-base": [
+                        "Inter"
+                ],
+                "headline-md": [
+                        "Inter"
+                ],
+                "headline-lg": [
+                        "Inter"
+                ],
+                "display-xl": [
+                        "Inter"
+                ],
+                "pricing-display": [
+                        "Inter"
+                ],
+                "label-caps": [
+                        "Inter"
+                ]
+        },
+        "fontSize": {
+                "body-base": [
+                        "14px",
+                        {
+                                "lineHeight": "24px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "headline-md": [
+                        "32px",
+                        {
+                                "lineHeight": "40px",
+                                "fontWeight": "500"
+                        }
+                ],
+                "headline-lg": [
+                        "48px",
+                        {
+                                "lineHeight": "56px",
+                                "letterSpacing": "-0.01em",
+                                "fontWeight": "400"
+                        }
+                ],
+                "display-xl": [
+                        "64px",
+                        {
+                                "lineHeight": "72px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "400"
+                        }
+                ],
+                "pricing-display": [
+                        "40px",
+                        {
+                                "lineHeight": "48px",
+                                "fontWeight": "475"
+                        }
+                ],
+                "label-caps": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "500"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<style>
+    .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+</style>
+</head>
+<body class="bg-background min-h-screen flex text-on-background font-body-base font-['Inter']">
+<main class="flex-1 flex min-h-screen w-full">
+<!-- Left Panel: Lively Mint Green -->
+<div class="hidden lg:flex lg:w-1/2 bg-tertiary-fixed relative overflow-hidden flex-col justify-between p-12">
+<div class="z-10">
+<span class="font-headline-md text-headline-md text-on-tertiary-fixed font-bold tracking-tight">TANGENT</span>
+</div>
+<div class="z-10 max-w-md">
+<h2 class="font-headline-lg text-headline-lg text-on-tertiary-fixed mb-6">Regain Access.</h2>
+<p class="font-body-base text-body-base text-on-tertiary-fixed-variant opacity-80">
+                    Securely reset your credentials and reconnect with the platform. Our streamlined process ensures you're back up and running in moments.
+                </p>
+</div>
+<!-- Decorative Abstract Graphic -->
+<div class="absolute -bottom-32 -left-32 w-[600px] h-[600px] bg-tertiary-fixed-dim rounded-full blur-3xl opacity-50 pointer-events-none"></div>
+<div class="absolute -top-20 -right-20 w-[400px] h-[400px] bg-white rounded-full blur-3xl opacity-20 pointer-events-none"></div>
+</div>
+<!-- Right Panel: White Canvas Form -->
+<div class="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 lg:p-24 bg-surface-container-lowest">
+<div class="w-full max-w-md flex flex-col">
+<!-- Mobile Brand (Visible only on small screens) -->
+<div class="lg:hidden mb-12 flex justify-center">
+<span class="font-headline-md text-headline-md text-primary font-bold tracking-tight">TANGENT</span>
+</div>
+<div class="mb-10 text-center lg:text-left">
+<h1 class="font-headline-md text-headline-md text-on-background mb-4">Reset Password</h1>
+<p class="font-body-base text-body-base text-on-surface-variant">
+                        Enter your email and we'll send you a link to get back into your account.
+                    </p>
+</div>
+<form action="#" class="space-y-6 flex flex-col" method="POST">
+<div class="flex flex-col space-y-2">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase" for="email">Email Address</label>
+<input autocomplete="email" class="appearance-none block w-full px-4 py-3 bg-transparent border-0 border-b border-outline-variant text-on-background placeholder-outline focus:outline-none focus:ring-0 focus:border-primary transition-colors duration-200 font-body-base text-body-base" id="email" name="email" placeholder="you@example.com" required="" type="email"/>
+</div>
+<div class="pt-4 flex flex-col space-y-4">
+<button class="w-full flex justify-center py-4 px-4 border border-transparent rounded-lg text-on-primary bg-primary-container hover:bg-primary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-200 font-body-base text-body-base" type="submit">
+                            Send Reset Link
+                        </button>
+</div>
+</form>
+<div class="mt-8 text-center lg:text-left">
+<a class="font-body-base text-body-base text-on-surface-variant hover:text-primary transition-colors duration-200 inline-flex items-center gap-2 group" href="#">
+<span class="material-symbols-outlined text-sm group-hover:-translate-x-1 transition-transform duration-200" data-icon="arrow_back">arrow_back</span>
+                        Back to Login
+                    </a>
+</div>
+</div>
+</div>
+</main>
+</body></html>

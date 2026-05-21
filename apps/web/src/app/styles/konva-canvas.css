@@ -1,0 +1,1222 @@
+.konva-canvas-shell {
+  background: #f7f8fb;
+  color: #1f2a37;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  min-height: 620px;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.konva-canvas-shell[data-theme='dark'] {
+  background: #0b101a;
+  color: #e5e7eb;
+}
+
+.konva-canvas-header {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.92);
+  border-bottom: 1px solid rgba(31, 42, 55, 0.08);
+  display: flex;
+  gap: 12px;
+  height: 52px;
+  padding: 0 18px;
+  z-index: 12;
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-header {
+  background: rgba(15, 23, 42, 0.94);
+  border-bottom-color: rgba(148, 163, 184, 0.18);
+}
+
+.konva-canvas-back {
+  align-items: center;
+  border: 1px solid rgba(31, 42, 55, 0.18);
+  border-radius: 999px;
+  display: inline-flex;
+  flex: 0 0 30px;
+  height: 30px;
+  justify-content: center;
+  position: relative;
+  text-decoration: none;
+  width: 30px;
+}
+
+.konva-canvas-back::before {
+  border-bottom: 1.6px solid currentColor;
+  border-left: 1.6px solid currentColor;
+  content: "";
+  height: 8px;
+  left: 11px;
+  position: absolute;
+  top: 10px;
+  transform: rotate(45deg);
+  width: 8px;
+}
+
+.konva-canvas-logo {
+  color: #111827;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-logo {
+  color: #f8fafc;
+}
+
+.konva-canvas-title {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  gap: 0;
+  max-width: min(52vw, 560px);
+  min-width: 0;
+}
+
+.konva-canvas-title span {
+  font-size: 14px;
+}
+
+.konva-canvas-presence {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 999px;
+  display: flex;
+  gap: 8px;
+  margin-left: 0;
+  min-height: 28px;
+  min-width: 0;
+  padding: 0 6px 0 10px;
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-presence {
+  background: rgba(15, 23, 42, 0.72);
+  border-color: rgba(148, 163, 184, 0.18);
+}
+
+.konva-canvas-sync-pill {
+  align-items: center;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 600;
+  height: 28px;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.konva-canvas-sync-pill.is-muted {
+  background: rgba(255, 255, 255, 0.78);
+  color: rgba(31, 42, 55, 0.68);
+}
+
+.konva-canvas-sync-pill.is-success {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.16);
+  color: #166534;
+}
+
+.konva-canvas-sync-pill.is-warning {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.18);
+  color: #92400e;
+}
+
+.konva-canvas-sync-pill.is-danger {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.18);
+  color: #b91c1c;
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-sync-pill.is-muted {
+  background: rgba(15, 23, 42, 0.72);
+  color: rgba(226, 232, 240, 0.74);
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-sync-pill.is-success {
+  background: rgba(34, 197, 94, 0.16);
+  border-color: rgba(34, 197, 94, 0.24);
+  color: #bbf7d0;
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-sync-pill.is-warning {
+  background: rgba(245, 158, 11, 0.18);
+  border-color: rgba(245, 158, 11, 0.22);
+  color: #fcd34d;
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-sync-pill.is-danger {
+  background: rgba(127, 29, 29, 0.48);
+  border-color: rgba(248, 113, 113, 0.24);
+  color: #fca5a5;
+}
+
+.konva-canvas-presence-label {
+  color: rgba(31, 42, 55, 0.68);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-presence-label {
+  color: rgba(226, 232, 240, 0.74);
+}
+
+.konva-canvas-presence-label.is-loading::after {
+  content: '...';
+}
+
+.konva-canvas-presence-list {
+  align-items: center;
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.konva-canvas-presence-avatar {
+  --presence-accent: #94a3b8;
+  align-items: center;
+  background: rgba(31, 42, 55, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  border-radius: 999px;
+  color: #111827;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 600;
+  height: 26px;
+  justify-content: center;
+  margin-left: -6px;
+  min-width: 26px;
+  padding: 0 7px;
+}
+
+.konva-canvas-presence-avatar:not(.is-self):not(.is-overflow) {
+  background: color-mix(in srgb, var(--presence-accent, #94a3b8), white 82%);
+  border-color: color-mix(in srgb, var(--presence-accent, #94a3b8), white 60%);
+  color: color-mix(in srgb, var(--presence-accent, #334155), black 18%);
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-presence-avatar {
+  background: rgba(148, 163, 184, 0.18);
+  border-color: rgba(15, 23, 42, 0.94);
+  color: #f8fafc;
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-presence-avatar:not(.is-self):not(.is-overflow) {
+  background: color-mix(in srgb, var(--presence-accent, #94a3b8), transparent 76%);
+  border-color: color-mix(in srgb, var(--presence-accent, #94a3b8), transparent 42%);
+  color: color-mix(in srgb, var(--presence-accent, #f8fafc), white 24%);
+}
+
+.konva-canvas-presence-avatar.is-self {
+  background: rgba(34, 197, 94, 0.16);
+  color: #166534;
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-presence-avatar.is-self {
+  background: rgba(34, 197, 94, 0.22);
+  color: #bbf7d0;
+}
+
+.konva-canvas-presence-avatar.is-overflow {
+  background: rgba(15, 23, 42, 0.06);
+  color: rgba(31, 42, 55, 0.72);
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-presence-avatar.is-overflow {
+  background: rgba(148, 163, 184, 0.16);
+  color: rgba(226, 232, 240, 0.78);
+}
+
+.konva-canvas-toolbar {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(31, 42, 55, 0.1);
+  border-radius: 999px;
+  box-shadow: 0 14px 34px rgba(31, 42, 55, 0.08);
+  display: flex;
+  gap: 8px;
+  left: 50%;
+  padding: 6px;
+  position: absolute;
+  top: 64px;
+  transform: translateX(-50%);
+  -webkit-user-select: none;
+  user-select: none;
+  z-index: 20;
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-toolbar,
+.konva-canvas-shell[data-theme='dark'] .konva-node-create-menu,
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-pages,
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-navigator {
+  background: rgba(17, 24, 39, 0.94);
+  border-color: rgba(148, 163, 184, 0.2);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.24);
+}
+
+.konva-canvas-toolbar__group {
+  align-items: center;
+  border-right: 1px solid rgba(31, 42, 55, 0.1);
+  display: flex;
+  gap: 4px;
+  padding-right: 8px;
+}
+
+.konva-canvas-toolbar__group:last-child {
+  border-right: 0;
+  padding-right: 0;
+}
+
+.konva-canvas-tool,
+.konva-canvas-action,
+.konva-canvas-node-create,
+.konva-canvas-navigator button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: #314056;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  justify-content: center;
+  min-height: 32px;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-tool,
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-action,
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-node-create,
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-navigator button {
+  color: #cbd5e1;
+}
+
+.konva-canvas-tool {
+  height: 32px;
+  padding: 0;
+  position: relative;
+  width: 32px;
+}
+
+.konva-canvas-tool svg {
+  fill: none;
+  height: 18px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+  width: 18px;
+}
+
+.konva-canvas-tool:hover,
+.konva-canvas-action:hover,
+.konva-canvas-node-create:hover,
+.konva-canvas-navigator button:hover,
+.konva-canvas-tool[data-active="true"] {
+  background: #f0efff;
+  color: #5b4bdb;
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-tool:hover,
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-action:hover,
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-node-create:hover,
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-navigator button:hover,
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-tool[data-active="true"] {
+  background: rgba(99, 102, 241, 0.2);
+  color: #c4b5fd;
+}
+
+.konva-canvas-action {
+  font-size: 12px;
+  padding: 0 10px;
+}
+
+.konva-canvas-toolbar__node-group {
+  position: relative;
+}
+
+.konva-node-create-menu {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(31, 42, 55, 0.12);
+  border-radius: 12px;
+  box-shadow: 0 18px 42px rgba(31, 42, 55, 0.16);
+  display: grid;
+  gap: 12px;
+  min-width: 310px;
+  padding: 14px 16px;
+  position: absolute;
+  -webkit-user-select: none;
+  user-select: none;
+  z-index: 38;
+}
+
+.konva-node-create-menu[data-variant="canvas"] {
+  transform: translate(-50%, -100%);
+}
+
+.konva-node-create-menu[data-variant="toolbar"] {
+  left: 50%;
+  top: 42px;
+  transform: translateX(-50%);
+}
+
+.konva-node-create-menu__label {
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.konva-node-create-menu__row {
+  border-bottom: 1px solid rgba(148, 163, 184, 0.26);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 10px;
+}
+
+.konva-node-create-menu__section:last-child .konva-node-create-menu__row {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.konva-node-create-menu__item {
+  --node-accent: #64748b;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid color-mix(in srgb, var(--node-accent), transparent 72%);
+  border-radius: 9px;
+  color: #243142;
+  cursor: pointer;
+  display: inline-flex;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 800;
+  height: 34px;
+  letter-spacing: 0;
+  padding: 0 12px 0 8px;
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-node-create-menu__item {
+  background: #111827;
+  color: #e5e7eb;
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-node-create-menu__item:hover {
+  background: #172031;
+}
+
+.konva-node-create-menu__item:hover {
+  background: #f8fafc;
+}
+
+.konva-node-create-menu__badge {
+  align-items: center;
+  background: #111827;
+  border-radius: 6px;
+  color: #ffffff;
+  display: inline-flex;
+  font-size: 10px;
+  height: 20px;
+  justify-content: center;
+  min-width: 24px;
+  padding: 0 5px;
+}
+
+.konva-canvas-stage-wrap {
+  background-color: #fbfcff;
+  background-image: radial-gradient(circle, rgba(46, 57, 74, 0.13) 0.7px, transparent 0.8px);
+  background-position: 0 0;
+  background-size: 22px 22px;
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  touch-action: none;
+  transition:
+    background-color 140ms ease,
+    box-shadow 140ms ease;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-stage-wrap {
+  background-color: #121722;
+  background-image: radial-gradient(circle, rgba(148, 163, 184, 0.18) 0.7px, transparent 0.8px);
+}
+
+.konva-canvas-stage-wrap[data-drop-active='true'] {
+  background-color: #f8f7ff;
+  background-image:
+    radial-gradient(circle at center, rgba(91, 75, 219, 0.08), rgba(91, 75, 219, 0.03) 42%, transparent 72%),
+    radial-gradient(circle, rgba(46, 57, 74, 0.1) 0.7px, transparent 0.8px);
+  box-shadow: inset 0 0 0 1px rgba(91, 75, 219, 0.14);
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-stage-wrap[data-drop-active='true'] {
+  background-color: #151b2a;
+  background-image:
+    radial-gradient(circle at center, rgba(124, 58, 237, 0.16), rgba(124, 58, 237, 0.08) 42%, transparent 72%),
+    radial-gradient(circle, rgba(148, 163, 184, 0.16) 0.7px, transparent 0.8px);
+  box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.18);
+}
+
+.konva-canvas-stage-wrap[data-tool-mode='create'] {
+  cursor: crosshair;
+}
+
+.konva-canvas-stage-wrap[data-space-panning='true'] {
+  cursor: grabbing;
+}
+
+.konva-canvas-stage-wrap canvas {
+  cursor: inherit;
+}
+
+.konva-canvas-occupancy-toast {
+  position: absolute;
+  top: 82px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  max-width: min(440px, calc(100% - 32px));
+  min-height: 40px;
+  padding: 10px 14px;
+  border: 1px solid rgba(220, 38, 38, 0.18);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow:
+    0 18px 44px rgba(15, 23, 42, 0.12),
+    0 2px 10px rgba(15, 23, 42, 0.08);
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  pointer-events: none;
+  text-align: center;
+  z-index: 15;
+  backdrop-filter: blur(18px);
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-occupancy-toast {
+  border-color: rgba(248, 113, 113, 0.22);
+  background: rgba(15, 23, 42, 0.9);
+  box-shadow:
+    0 18px 44px rgba(2, 6, 23, 0.42),
+    0 2px 10px rgba(2, 6, 23, 0.3);
+  color: #fecaca;
+}
+
+.konva-collaboration-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 14;
+}
+
+.konva-collaboration-transform {
+  position: absolute;
+}
+
+.konva-collaboration-transform__shade {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  background: rgba(107, 114, 128, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(107, 114, 128, 0.22);
+}
+
+.konva-collaboration-transform__label {
+  position: absolute;
+  top: -22px;
+  left: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: min(180px, 100%);
+  padding: 3px 7px 3px 4px;
+  border-radius: 5px;
+  background: var(--collab-accent, #2563eb);
+  color: #ffffff;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--collab-accent, #2563eb), transparent 74%);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.konva-collaboration-transform__avatar {
+  display: inline-grid;
+  width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.konva-collaboration-transform__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.konva-collaboration-occupancy {
+  position: absolute;
+}
+
+.konva-collaboration-occupancy__shade {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  background: rgba(107, 114, 128, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(107, 114, 128, 0.2);
+}
+
+.konva-collaboration-occupancy__label {
+  position: absolute;
+  top: -22px;
+  left: 0;
+  display: inline-flex;
+  align-items: center;
+  max-width: min(180px, 100%);
+  padding: 4px 7px;
+  border-radius: 5px;
+  background: var(--collab-accent, #2563eb);
+  color: #ffffff;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--collab-accent, #2563eb), transparent 74%);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes konva-collaboration-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.92;
+  }
+  50% {
+    transform: scale(1.01);
+    opacity: 1;
+  }
+}
+
+.konva-canvas-drop-hint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 28;
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  min-width: 280px;
+  max-width: min(420px, calc(100% - 48px));
+  padding: 18px 22px;
+  border: 1px solid rgba(91, 75, 219, 0.18);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow:
+    0 18px 48px rgba(31, 42, 55, 0.16),
+    0 0 0 1px rgba(255, 255, 255, 0.42) inset;
+  pointer-events: none;
+  text-align: center;
+  transform: translate(-50%, -50%);
+  backdrop-filter: blur(10px);
+}
+
+.konva-canvas-drop-hint[data-kind='pdf'] {
+  border-color: rgba(37, 99, 235, 0.18);
+}
+
+.konva-canvas-drop-hint__icon {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  place-items: center;
+  border-radius: 16px;
+  background: rgba(91, 75, 219, 0.1);
+  color: #5b4bdb;
+}
+
+.konva-canvas-drop-hint[data-kind='pdf'] .konva-canvas-drop-hint__icon {
+  background: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
+}
+
+.konva-canvas-drop-hint__icon span {
+  position: relative;
+  display: block;
+  width: 22px;
+  height: 22px;
+  border: 2px dashed currentColor;
+  border-radius: 8px;
+}
+
+.konva-canvas-drop-hint__icon span::before,
+.konva-canvas-drop-hint__icon span::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  background: currentColor;
+  content: '';
+  transform: translate(-50%, -50%);
+}
+
+.konva-canvas-drop-hint__icon span::before {
+  width: 10px;
+  height: 2px;
+}
+
+.konva-canvas-drop-hint__icon span::after {
+  width: 2px;
+  height: 10px;
+}
+
+.konva-canvas-drop-hint__content {
+  display: grid;
+  gap: 6px;
+}
+
+.konva-canvas-drop-hint__content strong {
+  color: #172033;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.konva-canvas-drop-hint__content small {
+  color: #5b6472;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.konva-canvas-pages-drawer {
+  max-height: calc(100% - 178px);
+  position: absolute;
+  right: 18px;
+  top: 124px;
+  -webkit-user-select: none;
+  user-select: none;
+  width: 202px;
+  z-index: 17;
+}
+
+.konva-canvas-pages-drawer[data-open='false'] {
+  width: 0;
+}
+
+.konva-canvas-pages-drawer__handle {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(31, 42, 55, 0.1);
+  border-right: 0;
+  border-radius: 999px 0 0 999px;
+  box-shadow: -10px 10px 24px rgba(31, 42, 55, 0.08);
+  color: #314056;
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 650;
+  height: 54px;
+  justify-content: center;
+  left: -22px;
+  padding: 0;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  z-index: 1;
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-pages-drawer__handle {
+  background: rgba(17, 24, 39, 0.96);
+  border-color: rgba(148, 163, 184, 0.2);
+  box-shadow: -10px 10px 24px rgba(0, 0, 0, 0.22);
+  color: #cbd5e1;
+}
+
+.konva-canvas-pages-drawer__handle:hover {
+  background: #f0efff;
+  color: #5b4bdb;
+}
+
+.konva-canvas-pages {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(31, 42, 55, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 16px 34px rgba(31, 42, 55, 0.1);
+  display: grid;
+  gap: 8px;
+  max-height: max(220px, calc(100vh - 178px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 10px;
+  width: 202px;
+}
+
+.konva-canvas-pages header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.konva-canvas-pages strong {
+  color: #243142;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.konva-canvas-pages__heading {
+  align-items: baseline;
+  display: inline-flex;
+  gap: 6px;
+  min-width: 0;
+}
+
+.konva-canvas-pages__heading small {
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-pages strong,
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-pages__title {
+  color: #f8fafc;
+}
+
+.konva-canvas-pages header button {
+  background: #111827;
+  border: 0;
+  border-radius: 8px;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 15px;
+  height: 26px;
+  line-height: 1;
+  width: 26px;
+}
+
+.konva-canvas-pages__list {
+  display: grid;
+  gap: 6px;
+  padding-right: 1px;
+  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-width: thin;
+}
+
+.konva-canvas-pages__item {
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 42px minmax(0, 1fr) 22px;
+  padding: 5px;
+}
+
+.konva-canvas-pages__item[data-active='true'] {
+  background: #f0efff;
+  border-color: rgba(91, 75, 219, 0.28);
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-pages__item[data-active='true'] {
+  background: rgba(99, 102, 241, 0.18);
+  border-color: rgba(167, 139, 250, 0.32);
+}
+
+.konva-canvas-pages__thumb {
+  align-items: center;
+  aspect-ratio: 4 / 3;
+  background: #ffffff;
+  border: 1px solid rgba(31, 42, 55, 0.14);
+  border-radius: 6px;
+  color: #5b4bdb;
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  justify-content: center;
+  overflow: hidden;
+  padding: 0;
+  width: 42px;
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-pages__thumb,
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-pages__actions button {
+  background: #172031;
+  border-color: rgba(148, 163, 184, 0.22);
+  color: #c4b5fd;
+}
+
+.konva-canvas-pages__thumb-image {
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  display: block;
+  height: 100%;
+  width: 100%;
+}
+
+.konva-canvas-pages__thumb-svg {
+  display: block;
+  height: 100%;
+  width: 100%;
+}
+
+.konva-canvas-pages__meta {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.konva-canvas-pages__title {
+  background: transparent;
+  border: 0;
+  color: #243142;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  overflow: hidden;
+  padding: 0;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.konva-canvas-pages__meta small {
+  color: #94a3b8;
+  font-size: 10px;
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-pages__meta small {
+  color: #94a3b8;
+}
+
+.konva-canvas-pages__meta input {
+  background: #ffffff;
+  border: 1px solid #6b5cff;
+  border-radius: 5px;
+  color: #243142;
+  font: inherit;
+  font-size: 12px;
+  min-width: 0;
+  outline: none;
+  padding: 2px 4px;
+  -webkit-user-select: text;
+  user-select: text;
+  width: 100%;
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-pages__meta input {
+  background: #172031;
+  border-color: #a78bfa;
+  color: #f8fafc;
+}
+
+.konva-canvas-pages__actions {
+  display: grid;
+  gap: 2px;
+}
+
+.konva-canvas-pages__actions button {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid rgba(31, 42, 55, 0.12);
+  border-radius: 5px;
+  color: #475569;
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  font-size: 10px;
+  height: 17px;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  width: 20px;
+}
+
+.konva-canvas-pages__actions button:hover:not(:disabled) {
+  background: #f0efff;
+  border-color: rgba(91, 75, 219, 0.24);
+  color: #5b4bdb;
+}
+
+.konva-canvas-pages__actions button:disabled {
+  color: #cbd5e1;
+  cursor: default;
+}
+
+.konva-canvas-page-limit-dialog-backdrop {
+  align-items: center;
+  background: rgba(15, 23, 42, 0.34);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 18px;
+  position: fixed;
+  z-index: 80;
+}
+
+.konva-canvas-page-limit-dialog {
+  background: #ffffff;
+  border: 1px solid rgba(31, 42, 55, 0.12);
+  border-radius: 12px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.22);
+  display: grid;
+  gap: 18px;
+  max-width: min(360px, calc(100vw - 36px));
+  padding: 22px;
+  width: 360px;
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-page-limit-dialog {
+  background: #111827;
+  border-color: rgba(148, 163, 184, 0.24);
+}
+
+.konva-canvas-page-limit-dialog__copy {
+  display: grid;
+  gap: 8px;
+}
+
+.konva-canvas-page-limit-dialog__copy span {
+  color: #6b5cff;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.konva-canvas-page-limit-dialog__copy h2 {
+  color: #111827;
+  font-size: 22px;
+  line-height: 1.12;
+  margin: 0;
+}
+
+.konva-canvas-page-limit-dialog__copy p {
+  color: #5b6472;
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-page-limit-dialog__copy h2 {
+  color: #f8fafc;
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-page-limit-dialog__copy p {
+  color: #cbd5e1;
+}
+
+.konva-canvas-page-limit-dialog__actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.konva-canvas-page-limit-dialog__actions a,
+.konva-canvas-page-limit-dialog__actions button {
+  align-items: center;
+  border-radius: 8px;
+  display: inline-flex;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  height: 36px;
+  justify-content: center;
+  padding: 0 14px;
+  text-decoration: none;
+}
+
+.konva-canvas-page-limit-dialog__actions button {
+  background: #ffffff;
+  border: 1px solid rgba(31, 42, 55, 0.14);
+  color: #475569;
+  cursor: pointer;
+}
+
+.konva-canvas-page-limit-dialog__actions a {
+  background: #111827;
+  border: 1px solid #111827;
+  color: #ffffff;
+}
+
+.konva-canvas-page-limit-dialog__actions button:hover,
+.konva-canvas-page-limit-dialog__actions a:hover {
+  transform: translateY(-1px);
+}
+
+.konva-canvas-file-input {
+  display: none;
+}
+
+.konva-canvas-node-text-editor::-webkit-scrollbar {
+  width: 8px;
+}
+
+.konva-canvas-node-text-editor::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+.konva-canvas-text-editor {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  caret-color: #6b5cff;
+  color: #243142;
+  font-family: Inter, system-ui, sans-serif;
+  outline: none;
+  padding: 2px 4px;
+  position: absolute;
+  resize: none;
+  transform-origin: center;
+  -webkit-user-select: text;
+  user-select: text;
+  z-index: 35;
+}
+
+.konva-canvas-shell[data-theme='dark'] .konva-canvas-text-editor {
+  caret-color: #c4b5fd;
+  color: #f8fafc;
+}
+
+.konva-canvas-node-text-editor {
+  background: transparent;
+  border-radius: 0;
+  overflow-wrap: anywhere;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  white-space: pre-wrap;
+}
+
+.konva-canvas-text-editor-backdrop {
+  background: transparent;
+  border: 0;
+  inset: 0;
+  padding: 0;
+  position: absolute;
+  z-index: 34;
+}
+
+.konva-canvas-navigator {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(31, 42, 55, 0.1);
+  border-radius: 12px;
+  bottom: 18px;
+  box-shadow: 0 16px 34px rgba(31, 42, 55, 0.1);
+  left: 18px;
+  padding: 8px;
+  position: absolute;
+  -webkit-user-select: none;
+  user-select: none;
+  z-index: 14;
+}
+
+.konva-canvas-navigator__map {
+  display: block;
+  height: 104px;
+  width: 168px;
+}
+
+.konva-canvas-navigator__controls {
+  display: grid;
+  gap: 4px;
+  grid-template-columns: 32px 1fr 32px;
+  margin-top: 8px;
+}
+
+.konva-canvas-navigator button {
+  background: #f7f8fb;
+  font-size: 12px;
+}
+
+.konva-canvas-diagnostics {
+  background: rgba(17, 24, 39, 0.82);
+  border-radius: 12px;
+  bottom: 18px;
+  color: #fff;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(2, minmax(88px, 1fr));
+  padding: 10px;
+  position: absolute;
+  right: 18px;
+  -webkit-user-select: none;
+  user-select: none;
+  z-index: 14;
+}
+
+.konva-canvas-diagnostics div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.konva-canvas-diagnostics span {
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 10px;
+}
+
+.konva-canvas-diagnostics strong {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+@media (max-width: 900px) {
+  .konva-canvas-toolbar {
+    border-radius: 14px;
+    flex-wrap: wrap;
+    left: 12px;
+    right: 12px;
+    top: 60px;
+    transform: none;
+  }
+
+  .konva-canvas-pages-drawer {
+    max-height: 42%;
+    right: 12px;
+    top: 126px;
+    width: min(202px, calc(100% - 36px));
+  }
+
+  .konva-canvas-pages-drawer[data-open='false'] {
+    width: 0;
+  }
+
+  .konva-canvas-pages {
+    max-height: 42vh;
+    width: min(202px, calc(100vw - 36px));
+  }
+
+  .konva-canvas-diagnostics {
+    display: none;
+  }
+}
