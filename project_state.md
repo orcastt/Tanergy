@@ -62,7 +62,7 @@ Text Node → Multi Generate 4图 → Image Node → Image Editor / Canvas Marku
 
 ## 当前 P0 切片顺序
 
-1. **Canvas 坐标 Spike**
+1. **Canvas 坐标 Spike** — tracks #5
    - tldraw 或候选画布技术验证。
    - 验证 50% / 100% / 200% 缩放、resize、Retina、拖拽、框选、连线端口不偏移。
 
@@ -72,7 +72,7 @@ Text Node → Multi Generate 4图 → Image Node → Image Editor / Canvas Marku
    - Image Node。
    - Image Editor Node。
 
-3. **真实四图生成**
+3. **真实四图生成** — tracks #2
    - Text → Multi Generate。
    - 调后端 AI proxy。
    - 默认低成本 `gpt-image-2` 参数。
@@ -97,10 +97,12 @@ Text Node → Multi Generate 4图 → Image Node → Image Editor / Canvas Marku
    - 一句话创建 Text / Multi Generate / Image Editor 节点。
    - 自动布局、自动连线。
 
-8. **P0.5 协作**
+8. **P0.5 协作** — tracks #1
    - Presence。
    - 多人光标。
    - Realtime sync。
+
+> 未在 P0 切片中的跟踪 issue：#3 信用系统、#4 team/group 支付决策（post-MVP）。
 
 ---
 
