@@ -42,6 +42,7 @@ logs/
 minio-data/
 .tangent-assets/
 .tangent-boards/
+.tangent-review/
 apps/web/.tangent-assets/
 apps/web/.tangent-boards/
 
