@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { buildServerClerkApiHeaders } from '@/features/auth/serverClerkAuth'
 import { rejectCrossSiteMutation } from '../../_lib/csrfGuard'
 import { readTextRequestWithLimit, requestBodyErrorStatus } from '../../_lib/requestBodyLimits'
+import { buildServerProxyAuthHeaders } from '../../_lib/serverProxyAuthHeaders'
 import { resolveAdminProxyPath } from '../_lib/adminProxyPolicy'
 
 export const runtime = 'nodejs'
@@ -82,9 +82,11 @@ async function proxyAdminRequest(request: NextRequest, context: RouteContext) {
 }
 
 async function buildProxyHeaders(request: NextRequest) {
-  const headers = new Headers(await buildServerClerkApiHeaders(request))
+  const headers = await buildServerProxyAuthHeaders(request)
   copyJsonHeader(request, headers, 'content-type')
   copyHeader(request, headers, 'accept')
+  copyTrustedOrigin(request, headers)
+  copyWorkspaceContextHeaders(request, headers)
   return headers
 }
 
@@ -96,6 +98,17 @@ function copyHeader(request: NextRequest, headers: Headers, name: string) {
 function copyJsonHeader(request: NextRequest, headers: Headers, name: string) {
   const value = request.headers.get(name)
   if (value && isJsonContentType(value)) headers.set(name, value)
+}
+
+function copyTrustedOrigin(request: NextRequest, headers: Headers) {
+  const origin = request.headers.get('origin') ?? request.nextUrl.origin
+  if (origin) headers.set('origin', origin)
+}
+
+function copyWorkspaceContextHeaders(request: NextRequest, headers: Headers) {
+  for (const name of ['x-tangent-workspace-id']) {
+    copyHeader(request, headers, name)
+  }
 }
 
 function buildResponseHeaders(response: Response) {

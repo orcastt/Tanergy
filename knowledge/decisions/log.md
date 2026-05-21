@@ -1,0 +1,12 @@
+# Decision Log
+
+Append-only log for important project decisions. Routine implementation progress belongs in `project_state/`, not here.
+
+| Date | ID | Decision | Why | Source | Review trigger |
+| --- | --- | --- | --- | --- | --- |
+| 2026-05-21 | D-2026-05-21-001 | Add a lightweight `knowledge/` layer; do not import AIS-OS into the repo. | The project needs faster LLM re-entry and cross-slice memory, but the existing canonical docs should remain authoritative. | User request, Karpathy LLM wiki gist, `AGENTS.md` | If `knowledge/` starts duplicating PRD/ARCH/project_state instead of indexing them. |
+| 2026-05-21 | D-2026-05-21-002 | Keep raw/source notes, wiki synthesis, index/log/schema and decision log separate. | This keeps source facts traceable and prevents one giant project-state ledger from becoming the only memory surface. | `knowledge/schema.md` | If maintenance overhead becomes higher than the value of the memory layer. |
+| 2026-05-21 | D-2026-05-21-003 | Remove `legacy/` from the active worktree/repo and rely on Git history or archived docs for old reference material. | The old desktop/reference tree was large, not part of P0, and no active runtime depends on it. | User deletion, `AGENTS.md`, `HARNESS.md` | If a future migration needs old desktop/Tauri code; recover as a separate explicit inspection task. |
+| 2026-05-20 | D-2026-05-20-001 | GeekAI is the active default AI provider; Jiekou remains historical/rollback fallback only. | GeekAI route facts and text SSE are now the active staging path, while Jiekou is not the current product/catalog default. | `project_state/project_state.md`, `ARCH/ARCH_slice_S2_ai_runtime.md` | Provider outage, cost shift, failed live image smoke or admin route change. |
+| 2026-05-18 | D-2026-05-18-001 | Supabase Pro staging Postgres is the staging database source of truth. | Neon quota and Hetzner-local Postgres were retired/historical; staging now needs managed DB operations and PITR proof. | `project_state/project_state.md`, `docs/ops-readiness-acceptance.md` | DB host migration, backup/PITR failure or production DB decision. |
+| 2026-05-20 | D-2026-05-20-002 | Provider outputs, Board docs and collaboration state must not persist raw provider payloads, Base64 images or long logs. | This is a security, memory and data-portability constraint across Board, Asset, AiRun and collaboration. | `AGENTS.md`, `ARCH/ARCH_slice_S2_ai_runtime.md`, `docs/fullstack-security-acceptance-2026-05-20.md` | New node type, new provider adapter or Board persistence schema change. |

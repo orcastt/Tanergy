@@ -3,6 +3,7 @@ import type { Dirent } from 'node:fs'
 import { mkdir, readdir, readFile, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { auditBoardDocument } from '@/features/boards/boardDocumentGuard'
+import { coerceBoardTitle, normalizeBoardTitle } from '@/features/boards/boardTitle'
 import {
   getBoardDocumentMetrics,
   normalizeBoardCardColor,
@@ -50,7 +51,9 @@ export async function saveLocalBoard(input: BoardSaveInput, context: ApiRequestC
     shapeCount: metrics.shapeCount,
     shareId: normalizeBoardShareId(existing?.shareId),
     thumbnailUrl: normalizeBoardThumbnailUrl(input.thumbnailUrl ?? existing?.thumbnailUrl),
-    title: input.title?.trim() || 'Untitled Board',
+    title: input.title === undefined
+      ? coerceBoardTitle(existing?.title)
+      : normalizeBoardTitle(input.title),
     visibility: normalizeBoardVisibility(existing?.visibility),
     workspaceId: context.workspaceId,
   }
@@ -112,9 +115,7 @@ export async function updateLocalBoardMetadata(input: BoardMetadataUpdateInput, 
   const board = await readRequiredBoardRecord(input.boardId, context)
   assertBoardAccess(board, context)
   const hasTitle = Object.prototype.hasOwnProperty.call(input, 'title')
-  const nextTitle = hasTitle ? input.title?.trim() : board.title
-  if (!nextTitle) throw new Error('Board title is required.')
-  if (nextTitle.length > 80) throw new Error('Board title must be 80 characters or fewer.')
+  const nextTitle = hasTitle ? normalizeBoardTitle(input.title, board.title) : board.title
 
   const nextVisibility = Object.prototype.hasOwnProperty.call(input, 'visibility')
     ? normalizeBoardVisibility(input.visibility)
@@ -212,7 +213,7 @@ function normalizeBoardRecord(
     shapeCount: record.shapeCount ?? metrics.shapeCount,
     shareId: normalizeBoardShareId(record.shareId),
     thumbnailUrl: normalizeBoardThumbnailUrl(record.thumbnailUrl),
-    title: record.title ?? 'Untitled Board',
+    title: coerceBoardTitle(record.title),
     visibility: normalizeBoardVisibility(record.visibility),
     workspaceId: record.workspaceId ?? context.workspaceId,
   }

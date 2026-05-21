@@ -5,10 +5,7 @@ import type Konva from 'konva'
 import * as Y from 'yjs'
 import { type CanvasBounds, type CanvasCamera, type CanvasDocument, type CanvasPoint, type CanvasShape, type CanvasShapeStyle } from '@/features/canvas-engine'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
-import type {
-  BoardCollaborationConnectionPreview,
-  BoardCollaborationTransformKind,
-} from '@/features/boards/boardCollaborationTypes'
+import type { BoardCollaborationConnectionPreview } from '@/features/boards/boardCollaborationTypes'
 import type { BoardPersistenceRecord, BoardPersistenceSummary } from '@/features/boards/boardTypes'
 import { useResolvedCanvasThemeMode } from '@/features/canvas-settings/canvasTheme'
 import type { KonvaBoardSaveAuditHandle } from './KonvaBoardSaveAudit'
@@ -27,6 +24,7 @@ import { useKonvaCanvasMetrics } from './useKonvaCanvasMetrics'
 import { useKonvaImageNodeUpload } from './useKonvaImageNodeUpload'
 import { useKonvaNodeCreationMenu } from './useKonvaNodeCreationMenu'
 import { useKonvaCanvasSpikeRuntime } from './useKonvaCanvasSpikeRuntime'
+import { useKonvaTransformPreviewState } from './useKonvaTransformPreviewState'
 
 type KonvaCanvasSpikeProps = {
   autoLoadBoard?: boolean
@@ -83,7 +81,7 @@ export function KonvaCanvasSpike({
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [interactionShapeIds, setInteractionShapeIds] = useState<string[]>([])
   const [selectionMarqueeBounds, setSelectionMarqueeBounds] = useState<CanvasBounds | null>(null)
-  const [transformPreview, setTransformPreview] = useState<{ bounds: CanvasBounds; kind: BoardCollaborationTransformKind } | null>(null)
+  const { setTransformPreview, setTransformPreviewThrottled, transformPreview } = useKonvaTransformPreviewState()
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
   const [connectionPreviewPresence, setConnectionPreviewPresence] = useState<BoardCollaborationConnectionPreview | null>(null)
   const [cropEditingImageId, setCropEditingImageId] = useState<string | null>(null)
@@ -166,7 +164,7 @@ export function KonvaCanvasSpike({
     setNodeImageLightbox(null)
     setContextMenu(null)
     closeNodeMenu()
-  }, [closeNodeMenu, handleSelectionChange])
+  }, [closeNodeMenu, handleSelectionChange, setTransformPreview])
   const { shellProps, transientUiProps } = useKonvaCanvasSpikeRuntime({
     autoLoadBoard,
     boardId,
@@ -194,7 +192,7 @@ export function KonvaCanvasSpike({
       setSelectionMarqueeBounds,
       setSettingsOpen,
       setStage,
-      setTransformPreview,
+      setTransformPreview: setTransformPreviewThrottled,
     },
     canvasState: {
       activeToolPreference,

@@ -9,6 +9,14 @@ const maxLoadedNodeImages = 24
 const maxLoadedNodeImagePixels = 24 * 1024 * 1024
 const maxLoadedNodeImagePixelsPerImage = 12 * 1024 * 1024
 const nodeImageLoadTimeoutMs = 15_000
+const smallPreviewEdgePx = 160
+const mediumPreviewEdgePx = 420
+const fullPreviewEdgePx = 900
+
+type ImagePreviewSize = {
+  height: number
+  width: number
+}
 
 export function NodeImagePreview({
   bounds,
@@ -44,12 +52,13 @@ export function NodeImagePreview({
   ) : null
 }
 
-export function getNodeImageSource(data: JsonObject, zoom: number) {
+export function getNodeImageSource(data: JsonObject, zoom: number, size?: ImagePreviewSize) {
   const original = safeImageDisplayUrl(getStringValue(data.originalUrl))
-  if (data.source === 'merge_capture' && zoom > 0.5 && original) return original
-  if (zoom <= 0.25) return firstSafeImageDisplayUrl(getStringValue(data.thumbnail256Url), getStringValue(data.thumbnail512Url), getStringValue(data.thumbnail1024Url))
-  if (zoom <= 0.5) return firstSafeImageDisplayUrl(getStringValue(data.thumbnail512Url), getStringValue(data.thumbnail1024Url), getStringValue(data.thumbnail256Url), getStringValue(data.originalUrl))
-  if (zoom <= 1) return firstSafeImageDisplayUrl(getStringValue(data.thumbnail1024Url), getStringValue(data.thumbnail512Url), getStringValue(data.originalUrl), getStringValue(data.thumbnail256Url))
+  const tier = getImagePreviewTier(zoom, size)
+  if (data.source === 'merge_capture' && tier === 'full' && original) return original
+  if (tier === 'small') return firstSafeImageDisplayUrl(getStringValue(data.thumbnail256Url), getStringValue(data.thumbnail512Url), getStringValue(data.thumbnail1024Url), getStringValue(data.originalUrl))
+  if (tier === 'medium') return firstSafeImageDisplayUrl(getStringValue(data.thumbnail512Url), getStringValue(data.thumbnail1024Url), getStringValue(data.thumbnail256Url), getStringValue(data.originalUrl))
+  if (tier === 'large') return firstSafeImageDisplayUrl(getStringValue(data.thumbnail1024Url), getStringValue(data.thumbnail512Url), getStringValue(data.originalUrl), getStringValue(data.thumbnail256Url))
   return firstSafeImageDisplayUrl(getStringValue(data.originalUrl), getStringValue(data.thumbnail1024Url), getStringValue(data.thumbnail512Url), getStringValue(data.thumbnail256Url))
 }
 
@@ -57,11 +66,32 @@ export function getNodeImageCrop(data: JsonObject) {
   return getRuntimeGraphImageCrop(data.crop)
 }
 
-export function getGeneratedOutputSource(ref: RuntimeGraphImageAssetRef, zoom: number) {
-  if (zoom <= 0.25) return firstSafeImageDisplayUrl(ref.thumbnail256Url, ref.thumbnail512Url, ref.thumbnail1024Url)
-  if (zoom <= 0.5) return firstSafeImageDisplayUrl(ref.thumbnail512Url, ref.thumbnail256Url, ref.thumbnail1024Url, ref.originalUrl)
-  if (zoom <= 1) return firstSafeImageDisplayUrl(ref.thumbnail1024Url, ref.thumbnail512Url, ref.thumbnail256Url, ref.originalUrl)
+export function getGeneratedOutputSource(ref: RuntimeGraphImageAssetRef, zoom: number, size?: ImagePreviewSize) {
+  const tier = getImagePreviewTier(zoom, size)
+  if (tier === 'small') return firstSafeImageDisplayUrl(ref.thumbnail256Url, ref.thumbnail512Url, ref.thumbnail1024Url, ref.originalUrl)
+  if (tier === 'medium') return firstSafeImageDisplayUrl(ref.thumbnail512Url, ref.thumbnail256Url, ref.thumbnail1024Url, ref.originalUrl)
+  if (tier === 'large') return firstSafeImageDisplayUrl(ref.thumbnail1024Url, ref.thumbnail512Url, ref.thumbnail256Url, ref.originalUrl)
   return firstSafeImageDisplayUrl(ref.originalUrl, ref.thumbnail1024Url, ref.thumbnail512Url, ref.thumbnail256Url)
+}
+
+export function getImagePreviewTier(zoom: number, size?: ImagePreviewSize) {
+  const safeZoom = Number.isFinite(zoom) && zoom > 0 ? zoom : 1
+  const screenEdge = getScreenPreviewEdge(size, safeZoom)
+  if (screenEdge <= smallPreviewEdgePx) return 'small'
+  if (screenEdge <= mediumPreviewEdgePx) return 'medium'
+  if (screenEdge <= fullPreviewEdgePx) return 'large'
+  return 'full'
+}
+
+function getScreenPreviewEdge(size: ImagePreviewSize | undefined, zoom: number) {
+  const width = typeof size?.width === 'number' && Number.isFinite(size.width) ? size.width : 0
+  const height = typeof size?.height === 'number' && Number.isFinite(size.height) ? size.height : 0
+  const worldEdge = Math.max(width, height)
+  if (worldEdge > 0) return worldEdge * zoom
+  if (zoom <= 0.25) return smallPreviewEdgePx
+  if (zoom <= 0.5) return mediumPreviewEdgePx
+  if (zoom <= 1) return fullPreviewEdgePx
+  return fullPreviewEdgePx + 1
 }
 
 function useLoadedNodeImage(src: string | null) {

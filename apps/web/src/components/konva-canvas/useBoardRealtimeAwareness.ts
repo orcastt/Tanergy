@@ -15,8 +15,9 @@ import {
   createUnsupportedBoardRealtimeState,
 } from '@/features/collaboration/boardRealtimeState'
 import type { BoardCollaborationPresence } from '@/features/boards/boardCollaborationTypes'
+import { isSamePresence } from './boardCollaborationPresenceState'
 
-const awarenessPublishIntervalMs = 72
+const awarenessPublishIntervalMs = 144
 
 type UseBoardRealtimeAwarenessOptions = {
   boardId?: string
@@ -42,6 +43,7 @@ export function useBoardRealtimeAwareness({
   const awarenessConnectionRef = useRef<BoardRealtimeAwarenessConnection | null>(null)
   const awarenessPublishTimerRef = useRef<number | null>(null)
   const lastAwarenessPublishAtRef = useRef(0)
+  const lastPublishedPresenceRef = useRef<BoardCollaborationPresence | null>(null)
   const pendingAwarenessPresenceRef = useRef<BoardCollaborationPresence | null>(null)
 
   const clearAwarenessPublishTimer = useCallback(() => {
@@ -53,8 +55,14 @@ export function useBoardRealtimeAwareness({
   const flushAwarenessPresence = useCallback(() => {
     clearAwarenessPublishTimer()
     if (!awarenessConnectionRef.current) return
+    const nextPresence = pendingAwarenessPresenceRef.current
+    if (isSameNullablePresence(lastPublishedPresenceRef.current, nextPresence)) {
+      pendingAwarenessPresenceRef.current = null
+      return
+    }
     lastAwarenessPublishAtRef.current = Date.now()
-    awarenessConnectionRef.current.setLocalState(pendingAwarenessPresenceRef.current)
+    lastPublishedPresenceRef.current = nextPresence
+    awarenessConnectionRef.current.setLocalState(nextPresence)
     pendingAwarenessPresenceRef.current = null
   }, [clearAwarenessPublishTimer])
 
@@ -102,6 +110,7 @@ export function useBoardRealtimeAwareness({
       unsubscribeState()
       if (awarenessConnectionRef.current === connection) awarenessConnectionRef.current = null
       clearAwarenessPublishTimer()
+      lastPublishedPresenceRef.current = null
       pendingAwarenessPresenceRef.current = null
       connection.disconnect()
     }
@@ -131,4 +140,12 @@ export function resolveInitialTransportState(
   if (!shouldConnect) return createUnsupportedBoardRealtimeState()
   if (!hasSupportedBoardRealtimeTransport(boardId)) return createUnsupportedBoardRealtimeState()
   return createConnectingBoardRealtimeState()
+}
+
+function isSameNullablePresence(
+  left: BoardCollaborationPresence | null,
+  right: BoardCollaborationPresence | null,
+) {
+  if (!left || !right) return left === right
+  return isSamePresence(left, right)
 }

@@ -148,6 +148,7 @@ export function applyLocalPresenceState(
     patchOptimisticSelfSession(current.activeSessions, sessionId, localSessionPresence),
     awarenessRef.current,
   )
+  if (activeSessions === current.activeSessions) return current
   return {
     ...current,
     activeSessions,

@@ -3,6 +3,7 @@ from typing import Any, Optional
 from pydantic import Field
 
 from tangent_api.board_metadata import (
+    coerce_board_title,
     create_board_share_id,
     get_board_document_metrics,
     normalize_board_card_color,

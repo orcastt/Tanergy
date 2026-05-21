@@ -1,7 +1,7 @@
 # Project State Slice S1: Staging, Auth And Board
 
-**Updated**: 2026-05-18
-**Status**: Active umbrella. Use S1A/S1B/S1C/S1D/S1X slice files for detailed truth; this file summarizes the current launch boundary where staging Web/API/Supabase Pro/R2 plus real session/admin smoke are green. The first signed-in board/browser pass is green, the second-round pass is mostly green, and the `Manage board -> Copy board` Free-plan limit modal path is wired locally; R2 clean asset smoke, re-created staging data, staging spot check for that modal path, Google/email verification and one live AI smoke remain.
+**Updated**: 2026-05-20
+**Status**: Active umbrella. Use S1A/S1B/S1C/S1D/S1X slice files for detailed truth; this file summarizes the current launch boundary where staging Web/API/Supabase Pro/R2 plus real session/admin smoke are green, and the current public ops readiness smoke passes Web/API TLS, Web headers, static cache, API `/health` headers and CORS. The first signed-in board/browser pass is green, the second-round pass is mostly green, and the `Manage board -> Copy board` Free-plan limit modal path is wired locally. The 2026-05-20 post-stage fix tightened Board title policy, added same-origin workspace proxying for workspace mutation/invite calls, and fixed admin-proxy auth/origin forwarding without weakening FastAPI CSRF. R2 clean asset smoke, re-created staging data, staging spot checks for board title/admin/invite paths, Google/email verification and one live AI smoke remain.
 
 ## Purpose
 
@@ -52,7 +52,7 @@ Group/Team business depth, real payments and collaboration remain outside this s
 | Sub-slice | Status | Output |
 | --- | --- | --- |
 | S1A DB schema + migrations | `project_state_slice_S1A_db_schema.md` | Implemented and locally smoke-tested; fresh Supabase Pro Alembic-to-head smoke passed | Formal Alembic migrations and schema contracts for identity, workspace, Board, History and Asset facts. |
-| S1B Staging infra smoke | `project_state_slice_S1B_staging_infra.md` | Web/API/Supabase Pro/R2, Konva redeploy, real session/admin smoke and final-snapshot realtime persistence green; R2 clean asset, Google/email/live-AI pending | Public FastAPI health, CORS, staging Postgres, R2/S3 and Web API base URL smoke. |
+| S1B Staging infra smoke | `project_state_slice_S1B_staging_infra.md` | Web/API/Supabase Pro/R2, Konva redeploy, real session/admin smoke, public ops readiness smoke and final-snapshot realtime persistence green; R2 clean asset, Google/email/live-AI pending | Public FastAPI health, CORS, staging Postgres, R2/S3 and Web API base URL smoke. |
 | S1C Auth/request context | `project_state_slice_S1C_auth_request_context.md` | Clerk/FastAPI bearer first pass plus real session/admin smoke landed; hardening pending | Register/login/logout/session and default workspace creation. |
 | S1D Auth-backed Board CRUD | `project_state_slice_S1D_auth_board_crud.md` | First-pass CRUD/member/share/public-share stable | Server-scoped Board list/load/save/history/copy/delete and owner/admin/editor/viewer checks. |
 

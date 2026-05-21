@@ -6,7 +6,7 @@
 - P0 image flow: `Prompt -> Image Gen / Image Gen 4 -> Image`, `Image + Prompt -> Image Gen / Analysis`, `Image -> Canvas Markup -> Merge Capture -> New Image`.
 - AI Chat may create legal nodes and edges, but provider calls still go through server-side AiRun contracts.
 - Collaboration is P0.5 and waits for Auth, Board, Asset and AiRun boundaries.
-- Do not read or modify `legacy/old-tangent-desktop-2026-04-29/` unless the user explicitly asks.
+- `legacy/` has been removed from the active worktree/repo. Do not recreate desktop/Tauri code for P0; recover old reference material from Git history or archived docs only when explicitly requested.
 
 ## Canonical Docs
 
@@ -18,6 +18,7 @@ Root `PRD.md`, `ARCH.md` and `project_state.md` are pointers only.
 | `ARCH/` | `ARCH/ARCH.md` | `ARCH/ARCH_slice_*.md` | Architecture diagrams, boundaries, APIs, schemas |
 | `project_state/` | `project_state/project_state.md` | `project_state/project_state_slice_*.md` | Current progress, next steps, handoff notes |
 | `dev-plans/` | `dev-plans/README.md` | Active/archived plans | Tactical implementation plans |
+| `knowledge/` | `knowledge/index.md` | `knowledge/wiki/*.md`, `knowledge/raw/*.md`, `knowledge/decisions/log.md` | Cross-slice memory, source notes, decision log, provider/deploy/security/collab lookup pages |
 
 Do not recreate mirror files such as `ARCH/00-current-map.md` or `project_state/current-slice.md`.
 
@@ -28,7 +29,7 @@ Do not recreate mirror files such as `ARCH/00-current-map.md` or `project_state/
 - Root pointer files should almost never change.
 - PRD changes describe product behavior; ARCH changes describe implementation boundaries; project state changes describe what is currently true.
 - For `Fast UI polish`, read `project_state/Finished/project_state_slice_S0_local_polish.md`, then the relevant `PRD/` and `ARCH/` slice.
-- For data/API/Auth/AI/Admin/Billing/Deploy/Collaboration, read `project_state/project_state.md`, `PRD/PRD.md`, `ARCH/ARCH.md`, `HARNESS.md` and the relevant slices.
+- For data/API/Auth/AI/Admin/Billing/Deploy/Collaboration, read `project_state/project_state.md`, `PRD/PRD.md`, `ARCH/ARCH.md`, `HARNESS.md`, the relevant slices, `knowledge/index.md` and `knowledge/wiki/agent_harness_and_skills.md` for cross-slice memory.
 
 ## Safety Rules
 

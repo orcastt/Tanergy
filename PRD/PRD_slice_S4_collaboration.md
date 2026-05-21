@@ -1,7 +1,7 @@
 # PRD Slice S4: Collaboration
 
-**Updated**: 2026-05-18
-**Status**: In progress first slice. Production multiplayer is still outside the current release promise, but the invite-entry product path, first presence polish, low-rate draft drawing preview and final-snapshot realtime persistence are now starting inside the real app shell.
+**Updated**: 2026-05-20
+**Status**: In progress first slice. Production multiplayer is still outside the current release promise, but the invite-entry product path, first presence polish, low-rate draft drawing preview and final-snapshot realtime persistence now run inside the real app shell. The latest local regression pass addresses invite generation, mover identity during active transforms, canvas drag smoothness and stale tooltip cleanup; staging still needs a real signed-in two-user browser pass.
 
 ## Goal
 
@@ -36,6 +36,15 @@ Before deeper Yjs behavior is promised, the Team / Group / Billing / Invite base
 | Snapshots | Board History remains recoverable under collaboration. |
 | Authority | AI runs, credit charges, Asset writes and permissions remain server-authoritative. |
 | Persistence | WebSocket room memory or a future Redis backplane carries process updates; Postgres stores final snapshots, Board History checkpoints and business facts rather than every draft point or cursor tick. |
+
+## 2026-05-20 Regression Acceptance
+
+| Area | Expected behavior | Current status |
+| --- | --- | --- |
+| Invite generation | Team/Group invite creation and revoke work from the product UI while backend CSRF/origin checks stay enabled. | Local proxy/auth wiring is in place; staging browser smoke pending. |
+| In-progress mover identity | When user A moves, resizes or rotates selected content, user B sees user A's active editor label/icon during the gesture, not only after the final edit state. | Awareness payload/rendering fixed locally; two-user staging smoke pending. |
+| Canvas drag feel | Local panning should stay smooth and should not flash back to stale preview/navigator coordinates. | Stale camera reapply guard fixed locally; browser performance spot check pending. |
+| Tooltip cleanup | Tooltip/hover UI should not remain stranded after Chat node resize, canvas drag, node move or selection changes. | Hover cleanup fixed locally; mobile/resize smoke pending. |
 
 ## Non-Goals For P0
 

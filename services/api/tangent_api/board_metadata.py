@@ -15,8 +15,32 @@ BOARD_SHARE_PASSWORD_MAX_LENGTH = 256
 
 
 def normalize_board_title(value: Optional[str], fallback: str = "Untitled Board") -> str:
-    source = value if value is not None else fallback
-    return normalize_safe_label(source, field_name="Board title")
+    if value is None:
+        return coerce_board_title(fallback)
+    title = normalize_safe_label(value, field_name="Board title")
+    if any(not _is_board_title_char_allowed(char) for char in title):
+        raise HTTPException(
+            status_code=400,
+            detail="Board title can only use letters, numbers, spaces, hyphen, underscore, and dot.",
+        )
+    return title
+
+
+def coerce_board_title(value: Optional[str], fallback: str = "Untitled Board") -> str:
+    safe = _coerce_board_title_text(value)
+    if not safe:
+        return _coerce_board_title_text(fallback) or "Untitled Board"
+    return safe[:80]
+
+
+def _coerce_board_title_text(value: Optional[str]) -> str:
+    normalized = " ".join((value or "").strip().split())
+    safe = "".join(char for char in normalized if _is_board_title_char_allowed(char)).strip()
+    return " ".join(safe.split())
+
+
+def _is_board_title_char_allowed(char: str) -> bool:
+    return char.isalnum() or char.isspace() or char in "-_."
 
 
 def normalize_board_card_color(value: Optional[str]) -> Optional[str]:

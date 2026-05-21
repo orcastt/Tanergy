@@ -18,6 +18,7 @@ from tangent_api.schemas import (
     BoardSaveRequest,
     BoardRecord,
     BoardSummary,
+    coerce_board_title,
     normalize_board_card_color,
     normalize_board_description,
     normalize_board_share_id,
@@ -187,7 +188,7 @@ def board_summary_from_row(row: tuple[object, ...]) -> BoardSummary:
         shapeCount=int(row[6] or 0),
         shareId=normalize_board_share_id(str(row[16])) if row[16] else None,
         thumbnailUrl=normalize_board_thumbnail_url(row[9]),
-        title=str(row[3] or "Untitled Board"),
+        title=coerce_board_title(str(row[3])) if row[3] else "Untitled Board",
         visibility=normalize_board_visibility(str(row[15]) if row[15] else None),
         workspaceId=str(row[1]),
     )

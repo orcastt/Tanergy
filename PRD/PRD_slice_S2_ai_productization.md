@@ -28,9 +28,9 @@ This slice is intentionally narrower in the current pass:
 | Image Gen 4 | Prompt Node -> Image Gen 4 creates four candidate image Assets. | Local repeated-call UX plus refreshed model UI exist; production gate is server AiRun output-slot settlement |
 | Image edit/reference | Image Node + Prompt Node -> Image Gen creates edited/fused image Asset. | Local GeekAI-first image/reference path exists across GPT Image 2, Nano Banana 2 and Doubao Seedream controls; production gate is server Asset refs and provider adapter mapping |
 | Image operations | Selected image can trigger product-owned image utilities such as `Remove BG`, with the result persisted as a new Asset rather than a temporary browser-only bitmap. | Current truth: the `Remove BG` surface exists in the frontend, but end-to-end backend/API/staging acceptance is still pending; `Object Cutout` remains planned only |
-| Analysis | Image Node + Prompt Node -> Analysis creates text/prompt output. | Local model-select analysis path exists; backend `AiRun` route integration, durable terminal `text_output`, default analysis-capable model seed and reusable live smoke harness now exist; remaining gate is credentialed provider smoke plus broader coverage |
-| Chat | Chat Node turns message history plus optional image refs into a short assistant answer. | GeekAI `qwq-plus-latest` is now the default text model; local proxy streams SSE to the browser, and backend create/poll/cancel plus durable terminal `text_output` exist when the canvas is pointed at FastAPI |
-| Prompt Optimizer | Prompt Optimizer Node turns rough image prompts into richer generation prompts through a text model. | GeekAI `qwq-plus-latest` is now the default optimizer model; local proxy streams SSE to the browser, and backend create/poll/cancel text AiRun remains available |
+| Analysis | Image Node + Prompt Node -> Analysis creates text/prompt output. | Local model-select analysis path now streams deltas through the shared chat-completions proxy; backend `AiRun` route integration, durable terminal `text_output`, default analysis-capable model seed and reusable live smoke harness now exist; remaining gate is credentialed provider smoke plus broader coverage |
+| Chat | Chat Node turns message history plus optional image refs into a short assistant answer. | GeekAI `qwq-plus-latest` is now the default text model; local proxy streams SSE deltas to the browser, and backend create/poll/cancel plus durable terminal `text_output` exist when the canvas is pointed at FastAPI |
+| Prompt Optimizer | Prompt Optimizer Node turns rough image prompts into richer generation prompts through a text model. | GeekAI `qwq-plus-latest` is now the default optimizer model; local proxy streams SSE deltas to the browser, and backend create/poll/cancel text AiRun remains available |
 | AiRun history | User can inspect own AI calls, status, latency, cost and credit impact. | Planned |
 | Charge transparency | Before the user runs AI, the UI can explain whether the run will charge the actor's personal wallet, the active Team wallet or an explicit Enterprise workspace pool. | Mock plus persisted payer contract exist; first Team-wallet resolver cut now exists |
 | Cost controls | Server records provider cost, credits charged/refunded, timeout, failure and retry state. | Internal ledger helper + optional mock charge exercise exist; provider cost controls planned |
@@ -39,6 +39,19 @@ This slice is intentionally narrower in the current pass:
 | AI Chat planner | Chat can propose a legal graph spec; user confirms before applying/running. | Deferred |
 
 Current canvas readiness note: Konva node UI and runtimeGraph dataflow are strong enough for product validation. The latest local path is GeekAI-first for chat streaming, prompt optimization, image generation/edit/reference and image analysis; text defaults now use GeekAI `qwq-plus-latest` for Chat/Prompt Optimizer while Analysis stays on Qwen VL for visual input. Model-aware image controls cover GPT Image 2 size/quality, Nano Banana 2 common/extended aspect ratios plus size, and Doubao Seedream size/output parameters. The 2026-05-20 control-plane checkpoint treats GeekAI as the active deployment route while preserving a provider-neutral product contract: product models stay stable while routes, provider keys, base URLs and pricing remain server-owned. This is a product proof, not the final production boundary. Production provider calls still need to stay folded into the server AiRun/provider-route control plane so Auth, rate limits, credit preflight, provider-cost facts, Asset upload and admin observability stay server-owned.
+
+## 2026-05-20 Staging Acceptance
+
+This staging pass validates the model switch and UI/backend coordination, but it does not yet replace the required real live-image run smoke.
+
+| Product point | Previous stage | Current stage |
+| --- | --- | --- |
+| Chat / Prompt Optimizer | Text default was still blocked by the failed QwQ pricing migration. | Staging control plane now has `qwq-plus-latest` as the enabled/healthy default text model. |
+| Analysis | Visual analysis remains intentionally separate from QwQ. | Staging control plane keeps Qwen VL as the enabled/healthy GeekAI analysis route. |
+| Image Gen / Image Gen 4 | Image route switch was committed but not confirmed against the deployed DB. | Staging control plane confirms GeekAI GPT Image 2 as the default image model, with Nano Banana 2 and Doubao Seedream 5.0 Lite also enabled/healthy. |
+| Ratio/size UX | Nano Banana 2 extended ratio handling was validated locally. | Frontend contracts and staging backend route facts are aligned; the remaining proof is a real generated Asset through the server AiRun path. |
+| Nano Banana 2 output display | A generated image could fail display when the provider returned image bytes behind a mismatched wrapper/header MIME. | Asset persistence now uses byte-detected MIME/dimensions for provider outputs and rejects non-raster payloads; staging live generation smoke is still required. |
+| Text SSE runtime env | The web runtime initially returned `503 Missing GEEKAI text API key` because Vercel still had only the older Jiekou keys. | Server-only GeekAI env is now synced to Vercel, Web redeploy `dpl_CwARDUa1WkLxDbnZLjrZkHppATMg` is live, and a direct Chat SSE smoke returned `200 text/event-stream` plus streamed `data:` chunks. QwQ emits reasoning chunks before final visible content, so visible node text may lag until ordinary content chunks arrive. |
 
 ## Model Pricing Product Rules
 
@@ -129,6 +142,7 @@ Current canvas readiness note: Konva node UI and runtimeGraph dataflow are stron
 - Failed calls 显示有用的 user-facing error state，并且不能静默消耗 credits。
 - Model routing 可以在服务端 disabled 或 changed。
 - staging 上至少要有一条基于活跃生图模型的真实服务端生图 run 成功。
+- GeekAI / Nano Banana 2 image outputs must persist as Assets with the actual byte-detected MIME and dimensions; MIME wrapper mismatches must not produce broken 404/image-display failures, and non-image active-document payloads must still be rejected.
 
 ## 非目标
 

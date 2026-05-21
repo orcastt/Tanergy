@@ -3,7 +3,11 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type SyntheticEvent } from 'react'
 import type { CanvasDocument } from '@/features/canvas-engine'
 import type { SerializedKonvaBoardPage } from '@/features/boards/konvaBoardPageContract'
-import { sanitizeUserLabelInput } from '@/features/security/safeText'
+import {
+  normalizeBoardTitleInput,
+  sanitizeBoardTitleInput,
+  validateBoardTitleInput,
+} from '@/features/security/safeText'
 import type { KonvaBoardPageReorderDirection } from './konvaBoardPageActions'
 import { KonvaCanvasPageLimitDialog } from './KonvaCanvasPageLimitDialog'
 import { KonvaCanvasPageThumbnail } from './KonvaCanvasPageThumbnail'
@@ -40,6 +44,7 @@ export function KonvaCanvasPagesPanel({
   const [isOpen, setIsOpen] = useState(true)
   const [editingPageId, setEditingPageId] = useState<string | null>(null)
   const [draftTitle, setDraftTitle] = useState('')
+  const [draftTitleError, setDraftTitleError] = useState<string | null>(null)
   const [limitDialogOpen, setLimitDialogOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement | null>(null)
   const resolvedPageLimit = typeof pageLimit === 'number' && Number.isFinite(pageLimit) && pageLimit >= 0
@@ -62,16 +67,24 @@ export function KonvaCanvasPagesPanel({
     if (readOnly) return
     setEditingPageId(page.id)
     setDraftTitle(page.title)
+    setDraftTitleError(null)
   }
 
   const commitRename = () => {
     if (!editingPageId) return
-    onRenamePage(editingPageId, draftTitle)
+    const validationError = validateBoardTitleInput(draftTitle)
+    if (validationError) {
+      setDraftTitleError(validationError)
+      return
+    }
+    onRenamePage(editingPageId, normalizeBoardTitleInput(draftTitle))
     setEditingPageId(null)
+    setDraftTitleError(null)
   }
 
   const cancelRename = () => {
     setEditingPageId(null)
+    setDraftTitleError(null)
   }
 
   const handleTitleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -155,7 +168,10 @@ export function KonvaCanvasPagesPanel({
                       <input
                         aria-label="Page name"
                         onBlur={commitRename}
-                        onChange={(event) => setDraftTitle(sanitizeUserLabelInput(event.target.value))}
+                        onChange={(event) => {
+                          setDraftTitle(sanitizeBoardTitleInput(event.target.value))
+                          setDraftTitleError(null)
+                        }}
                         onClick={(event) => event.stopPropagation()}
                         onKeyDown={handleTitleKeyDown}
                         ref={inputRef}
@@ -166,6 +182,7 @@ export function KonvaCanvasPagesPanel({
                         {page.title}
                       </button>
                     )}
+                    {isEditing && draftTitleError ? <small role="alert">{draftTitleError}</small> : null}
                     <small>{page.shapeCount}</small>
                   </span>
                   {readOnly ? null : (

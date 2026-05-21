@@ -1,7 +1,7 @@
 # ARCH Slice S4: Collaboration
 
-**Updated**: 2026-05-18
-**Status**: In progress first slice after the current S1/S2/S3 acceptance gates. Production multiplayer remains outside the current release promise, but the reusable invite/role contracts, first presence UI, low-rate draft drawing previews and final-snapshot realtime persistence are now being wired into the real product path.
+**Updated**: 2026-05-20
+**Status**: In progress first slice after the current S1/S2/S3 acceptance gates. Production multiplayer remains outside the current release promise, but the reusable invite/role contracts, first presence UI, low-rate draft drawing previews and final-snapshot realtime persistence are now wired into the real product path. The 2026-05-20 post-stage regression pass adds local fixes for invite mutation proxying, in-progress mover identity, tooltip cleanup and camera-drag jitter; real two-user staging browser smoke is still required before this is treated as production collaboration.
 
 ## Scope
 
@@ -68,6 +68,10 @@ The collaboration slice now has an explicit dependency on the confirmed Team / G
 - Browser collaboration caches are bounded: websocket/local awareness mirrors keep only the newest active states, websocket rooms detach Yjs listeners on final release, pending remote snapshots retain metadata only, local and websocket Yjs transports reject oversize outbound update payloads before array/JSON expansion, presence is sanitized before API/BroadcastChannel/websocket send, and the old snapshot materialization fallback is no longer used for the structured Konva/Yjs runtime path.
 - The local collaboration permission fallback now fails closed to view-only when member metadata is unavailable; owners still resolve as owner before member lookup. This keeps local/dev presence useful without silently granting edit authority when membership data is missing.
 - The frontend collaboration hook surface has now been split more cleanly too: `boardCollaborationPresenceState.ts` owns session/presence merge helpers, `useBoardRealtimeAwareness.ts` owns awareness room connection plus publish throttling, and `useBoardCollaborationPresence.ts` owns optimistic local presence plus claim/release flow.
+- 2026-05-20 post-stage fix: workspace invite and member mutations that originate from the browser should go through the same-origin workspace proxy when the Web app is configured for a remote FastAPI API. The proxy is allowlisted to workspace/admin-adjacent paths and forwards server-derived auth plus a trusted same-origin `Origin`, so strict CSRF/origin checks stay enabled instead of being bypassed.
+- 2026-05-20 post-stage fix: active move/resize/rotate awareness continues to carry mover identity and transform bounds while the gesture is in progress, so another user's label/icon should remain visible during movement instead of appearing only after a final edit click. This remains awareness-only state and must not be persisted into Board documents.
+- 2026-05-20 post-stage fix: canvas camera interaction now treats navigator/preview camera state as advisory and ignores stale remote/preview camera snapshots while a newer local stage drag is active. This prevents preview synchronization from reapplying old camera coordinates over a fresh local drag, which was the main cause of sticky/flashing pan behavior.
+- 2026-05-20 post-stage fix: hover/tooltip state is cleared on drag/resize/move boundaries so floating tooltips do not remain pinned on the page after Chat or canvas elements are moved.
 
 ## Boundary Diagram
 

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Image as KonvaImage, Rect } from 'react-konva'
 import type { CanvasImageShape } from '@/features/canvas-engine'
 import { firstSafeImageDisplayUrl } from '@/features/security/safeUrl'
+import { getImagePreviewTier } from './KonvaNodeImagePreview'
 
 const loadedCanvasImageCache = new Map<string, HTMLImageElement>()
 const maxLoadedCanvasImages = 32
@@ -138,13 +139,14 @@ function useKonvaImageSource(shape: CanvasImageShape, zoom: number, previewMode:
     if (previewMode) {
       return firstSafeImageDisplayUrl(props.thumbnail256Url, props.thumbnail512Url, props.thumbnail1024Url, props.originalUrl)
     }
-    if (zoom <= 0.25) {
-      return firstSafeImageDisplayUrl(props.thumbnail256Url, props.thumbnail512Url, props.thumbnail1024Url)
+    const tier = getImagePreviewTier(zoom, props)
+    if (tier === 'small') {
+      return firstSafeImageDisplayUrl(props.thumbnail256Url, props.thumbnail512Url, props.thumbnail1024Url, props.originalUrl)
     }
-    if (zoom <= 0.5) {
+    if (tier === 'medium') {
       return firstSafeImageDisplayUrl(props.thumbnail512Url, props.thumbnail1024Url, props.thumbnail256Url, props.originalUrl)
     }
-    if (zoom <= 1) {
+    if (tier === 'large') {
       return firstSafeImageDisplayUrl(props.thumbnail1024Url, props.thumbnail512Url, props.originalUrl, props.thumbnail256Url)
     }
     return firstSafeImageDisplayUrl(props.originalUrl, props.thumbnail1024Url, props.thumbnail512Url, props.thumbnail256Url)

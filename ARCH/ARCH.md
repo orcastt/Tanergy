@@ -1,7 +1,7 @@
 # TANGENT Architecture Index
 
 **Updated**: 2026-05-20
-**Status**: Canonical architecture overview and slice index, aligned with the current parallel P0 alpha workstreams, the S3 Team-wallet pivot, the S3/S4 Team-Group foundation baseline and the latest S1B/S2 cleanup: the rebuilt Konva-only staging deploy plus real Clerk session/admin smoke are green, staging database truth is now a fresh Supabase Pro Postgres project, the old Hetzner `staging-postgres` fallback and volume have been removed, R2 staging objects were cleared for a clean asset lane, board realtime process traffic now stays in WebSocket room memory while compacted/final snapshots persist to Postgres, Web/API env templates plus public TLS/header/CORS smoke and API slow-response/RSS observability are in place, self-delete and admin delete share a real hard-delete service with Team/Group ownership guards, backend `AiRun` supports short text runs with durable `text_output`, Chat/Prompt Optimizer default to GeekAI `qwq-plus-latest` with upstream streaming, and the active AI provider route defaults now point to GeekAI for text, analysis and image lanes before the next live provider and multi-user acceptance pass.
+**Status**: Canonical architecture overview and slice index, aligned with the current parallel P0 alpha workstreams, the S3 Team-wallet pivot, the S3/S4 Team-Group foundation baseline and the latest S1B/S2 cleanup: the rebuilt Konva-only staging deploy plus real Clerk session/admin smoke are green, staging database truth is now a fresh Supabase Pro Postgres project, the old Hetzner `staging-postgres` fallback and volume have been removed, R2 staging objects were cleared for a clean asset lane, board realtime process traffic now stays in WebSocket room memory while compacted/final snapshots persist to Postgres, Web/API env templates plus public TLS/header/CORS smoke and API slow-response/RSS observability are in place, self-delete and admin delete share a real hard-delete service with Team/Group ownership guards, backend `AiRun` supports short text runs with durable `text_output`, Chat/Prompt Optimizer default to GeekAI `qwq-plus-latest` with upstream streaming, and the active AI provider route defaults now point to GeekAI for text, analysis and image lanes before the next live provider and multi-user acceptance pass. The 2026-05-20 `b35adc0` API staging redeploy made the public ops smoke green and confirmed the staged GeekAI route facts in the database; follow-up Vercel deployment `dpl_CwARDUa1WkLxDbnZLjrZkHppATMg` synced server-only GeekAI env and made direct Chat SSE green. The post-stage local regression fixes now cover strict Board title validation, admin/workspace invite proxying, Chat/Optimizer/Analysis streaming, Nano Banana 2 byte-detected image MIME, mover identity during transforms, camera drag jitter and stale tooltip cleanup; FastAPI-side uncommitted fixes still need API redeploy access because SSH from this workstation is currently rejected.
 
 This file replaces the former duplicated `ARCH/00-current-map.md` plus the long root `ARCH.md`. The root `ARCH.md` is now only a pointer.
 
@@ -20,9 +20,9 @@ S1A Schema/DB foundation      84%  [#################---]
   Stable: core user/workspace/board/asset/admin/AI/credit join points, Team-wallet schema delta and fresh Supabase Pro Alembic-head smoke.
   Gate: measured Supabase query-plan tuning after real staging data grows.
 
-S1B Deploy/staging            90%  [##################--]
-  Stable: rebuilt Hetzner API host, public HTTPS API, Supabase Pro fresh schema, historical R2/board smoke, Konva-only staging web deploy, pooled-runtime preference, slow-SQL logging, release-style env handling, Web/API env templates, ops readiness smoke, API slow-response/RSS logs and final-snapshot realtime persistence are green.
-  Gate: R2 clean asset smoke, re-created staging data, staging spot check for the now-wired `Manage board -> Copy board` Free-plan modal path, Google/email/OAuth verification, one live provider smoke under staging auth, plus external uptime/status/error-tracking/APM and backup/PITR proof.
+S1B Deploy/staging            91%  [##################--]
+  Stable: rebuilt Hetzner API host, public HTTPS API, Supabase Pro fresh schema, historical R2/board smoke, Konva-only staging web deploy, pooled-runtime preference, slow-SQL logging, release-style env handling, Web/API env templates, green public ops readiness smoke, Vercel GeekAI env sync, API slow-response/RSS logs and final-snapshot realtime persistence are green.
+  Gate: restore API deploy access for FastAPI-side local fixes, R2 clean asset smoke, re-created staging data, staging spot check for the now-wired `Manage board -> Copy board` Free-plan modal path, Google/email/OAuth verification, one live provider smoke under staging auth, plus external uptime/status/error-tracking/APM and backup/PITR proof.
 
 S1C Auth/registration         78%  [################----]
   Stable: Clerk frontend shell, FastAPI bearer verification, authorized-party checks, first-session personal wallet creation, admin bootstrap, Tanergy profile onboarding/editing, Clerk-backed forgot-password and real staging session/admin smoke.
@@ -36,8 +36,8 @@ S1E Board packages            05%  [#-------------------]
   Stable: `.tgy` package decision, product/architecture contract and existing Konva Board JSON plus Asset foundations.
   Gate: package writer/reader, asset binary bundling, import rehydration, asset-id rewrite, UI actions and package safety tests.
 
-S2 AI runtime/provider routes 70%  [##############------]
-  Stable: model/route/pricing tables, quote/preflight, persisted AiRun shell, admin facts, backend text-run contract, durable terminal `text_output`, message-native chat-node backendization, GeekAI `qwq-plus-latest` text default, GeekAI image route defaults and a 240s live-image timeout boundary.
+S2 AI runtime/provider routes 72%  [##############------]
+  Stable: model/route/pricing tables, quote/preflight, persisted AiRun shell, admin facts, backend text-run contract, durable terminal `text_output`, message-native chat-node backendization, GeekAI `qwq-plus-latest` text default, direct staging Chat SSE, GeekAI image route defaults, staging DB route verification and a 240s live-image timeout boundary.
   Gate: staging live image smoke, broader live-provider coverage and retirement of production dependence on local AI fast paths.
 
 S3 Admin/billing/team         97%  [###################-]
@@ -48,9 +48,9 @@ Frontend product UI alignment 69%  [##############------]
   Stable: workspaces, boards, billing, team, usage, tabbed admin console, table-first AI route management, canvas node surfaces, Team/Group role-gated member actions, first-pass Billing actions, admin finance reconciliation panels, operator row-level invite/member/board loops and the wide full-browser layout pass exist.
   Gate: align navigation, loading/empty states, role language, plan labels and AI cost messaging against the now-live backend data.
 
-S4 Collaboration              34%  [#######-------------]
-  Stable: local Yjs document/awareness foundation, room-shaped transport, reconnect/resync smoke harness, local collaborative undo/redo, structural page reconcile, draft drawing presence preview and final-snapshot backend persistence now exist behind the Konva board path.
-  Gate: Redis/multi-instance backplane, TTL locks, provider-grade reconnect/resync, conflict semantics for page/shape/container moves and production performance smoke after S1/S2 authority boundaries are stable.
+S4 Collaboration              35%  [#######-------------]
+  Stable: local Yjs document/awareness foundation, room-shaped transport, reconnect/resync smoke harness, local collaborative undo/redo, structural page reconcile, draft drawing presence preview, final-snapshot backend persistence and post-stage mover-identity/camera/tooltip fixes now exist behind the Konva board path.
+  Gate: Redis/multi-instance backplane, TTL locks, provider-grade reconnect/resync, conflict semantics for page/shape/container moves, real two-user staging smoke and production performance smoke after S1/S2 authority boundaries are stable.
 ```
 
 Dependency view:
@@ -87,9 +87,9 @@ Frontend UI alignment runs across all lanes and should follow, not invent, serve
 | S1D Board CRUD | `ARCH_slice_S1D_auth_board_crud.md` | Permission-checked Board list/load/save/history/member/share APIs | Stable first-pass CRUD/member/share/public-share-open checkpoint with owner-only copy/delete, share expiry and known-foreign Asset guard |
 | S1E Board Packages | `ARCH_slice_S1E_board_packages.md` | `.tgy` package format, export/import flow, asset rewrite and package safety boundary | Planned; uses Konva Board serializer, Board guard and Asset APIs as foundations |
 | S1X Canvas Engine Migration | `ARCH_slice_S1X_canvas_engine_migration.md` | Legacy canvas migration closeout, Konva/Yjs replacement path | Konva-only formal Board route accepted; Page polish, page-limit guard, node minimum sizing, draft preview and legacy-doc safety landed; production collaboration still pending |
-| S2 AI Runtime | `ARCH_slice_S2_ai_runtime.md` | Node Registry, Model Registry, AiRun, provider routing, AI Chat planner | Mock/runtime dataflow and the local GeekAI-first canvas path now prove the user-facing image/analysis/chat flow; DB-backed model tiers/pricing/routes, quote/preflight, persisted lifecycle, attempt-level `ai_api_calls`, timeout-safe failover, extracted settlement orchestration, durable short `text_output`, current GeekAI route defaults, QwQ text streaming default and message-native chat backendization now exist; production gate is staging live image smoke plus broader live-provider coverage |
+| S2 AI Runtime | `ARCH_slice_S2_ai_runtime.md` | Node Registry, Model Registry, AiRun, provider routing, AI Chat planner | Mock/runtime dataflow and the local GeekAI-first canvas path now prove the user-facing image/analysis/chat flow; DB-backed model tiers/pricing/routes, quote/preflight, persisted lifecycle, attempt-level `ai_api_calls`, timeout-safe failover, extracted settlement orchestration, durable short `text_output`, current GeekAI route defaults, QwQ text streaming default and message-native chat backendization now exist and are verified on staging DB; production gate is staging live image smoke plus broader live-provider coverage |
 | S3 Admin/Billing/Analytics | `ARCH_slice_S3_admin_billing_analytics.md` | Admin roles, audit, Team wallets, personal Collaborate wallets, credits, subscriptions, workspace dashboards, AI charge facts, analytics, moderation facts | Active pivot: migration `20260508_0012/0013`, payer resolver, settlement contracts, Team/Collaborate checkout, provider-neutral checkout adapter, signed webhook inbox, workspace invite/member contracts, usage checkout buttons, admin directory APIs, tabbed admin console, active-tab server bootstrap, idle-warmed client tab keepalive, paginated Team/Group dashboards, AI route metrics, table-first AI route management, admin finance reconciliation panels, manual admin operations, operator inventory/detail read model, native user status/delete, native subscription freeze/unfreeze, arbitrary Team/Group invite-add-member writes, inline pending invite rows, local detail patching for invite/member/board mutations, board copy/delete writes, admin hot-path performance cleanup and local disposable-Postgres admin/payment smoke now support Team wallet vs personal Collaborate wallet while Stripe is unavailable; user delete is now a real hard-delete path and the next hardening cut is a structured blocker model for joined paid memberships/subscriptions beyond ownership-only guards |
-| S4 Collaboration | `ARCH_slice_S4_collaboration.md` | Multiplayer, presence, CRDT boundaries, roles | Planned next slice after the current acceptance spine; local Yjs room/document foundations, draft drawing presence preview, final-snapshot persistence and reusable invite/member contracts exist, while Redis backplane/providerization and production-hardening still wait on Auth, Board, Asset and AiRun authority |
+| S4 Collaboration | `ARCH_slice_S4_collaboration.md` | Multiplayer, presence, CRDT boundaries, roles | Planned next slice after the current acceptance spine; local Yjs room/document foundations, draft drawing presence preview, final-snapshot persistence, reusable invite/member contracts and post-stage presence/interaction fixes exist, while Redis backplane/providerization, two-user staging smoke and production-hardening still wait on Auth, Board, Asset and AiRun authority |
 
 ## Project Architecture Overview
 
@@ -159,7 +159,7 @@ Release and smoke artifacts:
 | `services/api/scripts/ops_external_proof_smoke.py` | WAF, rate limit, PITR, restore drill, alert/status and Sentry/APM proof smoke. |
 | `services/api/scripts/ops_readiness_smoke.py` | Public TLS, security header, CORS and static cache smoke for Web/API domains. |
 
-Remaining external proof before production: run the staging-only security gate with real Redis and Clerk/OIDC tokens, rerun ops smoke after the next deploy picks up the new headers, prove Cloudflare WAF/rate limits, prove managed Postgres backup/PITR restore, configure uptime/status alerts, wire Sentry/APM/source maps, and run object-storage plus payment-provider test-key smokes.
+Remaining external proof before production: run the staging-only security gate with real Redis and Clerk/OIDC tokens, prove Cloudflare WAF/rate limits, prove managed Postgres backup/PITR restore, configure uptime/status alerts, wire Sentry/APM/source maps, and run object-storage plus payment-provider test-key smokes.
 
 The current fullstack acceptance report is `docs/fullstack-security-acceptance-2026-05-20.md`.
 
@@ -539,8 +539,8 @@ S1A Schema/DB foundation      84%  [#################---]
   已稳定：user/workspace/board/asset/admin/AI/credit 的核心 join points、Team-wallet schema delta 和 fresh Supabase Pro Alembic-head smoke。
   闸门：真实 staging 数据增长后的 Supabase query plan 调优。
 
-S1B Deploy/staging            90%  [##################--]
-  已稳定：重建后的 Hetzner API 主机、public HTTPS API、Supabase Pro fresh schema、历史 R2/board smoke、Konva-only staging Web deploy、pooled runtime / slow-SQL 观测、release-style env、Web/API env 模板、ops readiness smoke、Sentry 可选接入和 realtime final-snapshot persistence 已转绿。
+S1B Deploy/staging            91%  [##################--]
+  已稳定：重建后的 Hetzner API 主机、public HTTPS API、Supabase Pro fresh schema、历史 R2/board smoke、Konva-only staging Web deploy、pooled runtime / slow-SQL 观测、release-style env、Web/API env 模板、当前公开 ops readiness smoke、Sentry 可选接入和 realtime final-snapshot persistence 已转绿。
   闸门：R2 clean asset smoke、重新创建 staging 数据、已经完成 wiring 的 `Manage board -> Copy board` Free-plan modal staging spot check、Google/email/OAuth 验证、staging auth 下的一条 live provider smoke，以及外部 uptime/status/backup/PITR/Sentry/APM 证明。
 
 S1C Auth/registration         78%  [################----]
@@ -555,8 +555,8 @@ S1E Board packages            05%  [#-------------------]
   已稳定：`.tgy` package 决策、产品 / 架构合同，以及现有 Konva Board JSON + Asset 基础。
   闸门：package writer/reader、asset binary bundling、import rehydration、asset-id rewrite、UI actions 和 package safety tests。
 
-S2 AI runtime/provider routes 70%  [##############------]
-  已稳定：model/route/pricing tables、quote/preflight、persisted AiRun shell、admin facts、durable `text_output`、message-native chat backendization、GeekAI `qwq-plus-latest` 文本默认、GeekAI 生图路线和 240s 生图超时边界。
+S2 AI runtime/provider routes 72%  [##############------]
+  已稳定：model/route/pricing tables、quote/preflight、persisted AiRun shell、admin facts、durable `text_output`、message-native chat backendization、GeekAI `qwq-plus-latest` 文本默认、GeekAI 生图路线、staging DB route 验证和 240s 生图超时边界。
   闸门：staging live image smoke、更广 live-provider coverage，以及彻底退出对本地 AI fast path 的生产依赖。
 
 S3 Admin/billing/team         96%  [###################-]
@@ -678,7 +678,7 @@ External Providers
 | `services/api/scripts/ops_external_proof_smoke.py` | WAF、rate limit、PITR、restore drill、alert/status 和 Sentry/APM 证明 smoke。 |
 | `services/api/scripts/ops_readiness_smoke.py` | 公开 Web/API TLS、安全头、CORS、静态缓存 smoke。 |
 
-生产前仍需外部证明：用真实 Redis 和 Clerk/OIDC token 跑 staging-only security gate，下一次部署带上新安全头后重跑 ops smoke，完成 Cloudflare WAF/rate limit、managed Postgres backup/PITR restore、uptime/status 告警、Sentry/APM/source maps、对象存储隔离和 payment provider test-key smoke。
+生产前仍需外部证明：用真实 Redis 和 Clerk/OIDC token 跑 staging-only security gate，完成 Cloudflare WAF/rate limit、managed Postgres backup/PITR restore、uptime/status 告警、Sentry/APM/source maps、对象存储隔离和 payment provider test-key smoke。
 
 当前全栈验收报告是 `docs/fullstack-security-acceptance-2026-05-20.md`。
 
@@ -1021,6 +1021,9 @@ S1 Real Boundary: staging + Auth + ownership + Board CRUD
 - Image binaries 和 thumbnails 属于 object storage；documents 只存 URLs / Asset ids。
 - Production Board runtime 默认必须是 Konva v2；legacy Board 文档会被阻止，而不是打开任何 fallback runtime。
 - AI provider calls 只在服务端执行，并通过 Model Registry + AiRun contracts。
+- Browser-to-API production mutations must preserve CSRF/Origin checks. Same-origin Next proxies may be used only for restricted route families, forwarding Bearer auth/trusted origin instead of broadening FastAPI CORS or disabling CSRF.
+- Board titles are a stricter data-safety field than general display names: accept letters, numbers, spaces, hyphen, underscore and dot only, and coerce legacy stored titles safely on read/save fallback.
+- Provider image outputs must be persisted with byte-detected MIME, not wrapper/header MIME, before they enter Asset storage.
 - Admin permissions 通过服务端 `admin_roles`；frontend role flags 不是 authority。
 - 真实 collaboration 等到 Asset、Board、Auth 和 AiRun boundaries 稳定后再做。
 - Source files 目标低于 300 行；这不是建议，而是全项目统一验收门槛。在已经很大的文件上继续加行为前先拆分；如果只能分阶段收口，就必须先把后续瘦身步骤记入当前 active plan。

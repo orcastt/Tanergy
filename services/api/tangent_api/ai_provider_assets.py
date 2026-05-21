@@ -5,10 +5,11 @@ from urllib.parse import urlparse
 
 import httpx
 
+from tangent_api.ai_provider_image_mime import resolve_provider_image_mime
 from tangent_api.ai_schemas import AiRunRequest
 from tangent_api.image_dimensions import get_image_dimensions
 from tangent_api.request_context import ApiRequestContext
-from tangent_api.storage.asset_store_common import MAX_ASSET_BYTES
+from tangent_api.storage.asset_store_common import MAX_ASSET_BYTES, detect_image_mime
 from tangent_api.storage.asset_storage_adapter import AssetStorageAdapter, get_asset_storage_adapter
 
 _RESOLUTION_PIXELS = {
@@ -149,7 +150,8 @@ def download_provider_image(url: str, timeout_seconds: float, headers: Optional[
         with client.stream("GET", url, headers=headers) as response:
             response.raise_for_status()
             content = _read_provider_image_response(response)
-    mime = response.headers.get("content-type", "").split(";")[0].strip() or detect_image_mime(content) or "image/png"
+    header_mime = response.headers.get("content-type", "").split(";")[0].strip()
+    mime = resolve_provider_image_mime(content, header_mime)
     width, height = get_image_dimensions(content, mime)
     return ProviderImageOutput(
         content=content,
@@ -181,16 +183,6 @@ def resolve_requested_dimensions(
         height = longest_edge
         width = max(1, round(longest_edge * ratio_width / ratio_height))
     return _even(width), _even(height)
-
-
-def detect_image_mime(content: bytes) -> Optional[str]:
-    if content.startswith(b"\x89PNG\r\n\x1a\n"):
-        return "image/png"
-    if content.startswith(b"\xff\xd8\xff"):
-        return "image/jpeg"
-    if content.startswith(b"RIFF") and content[8:12] == b"WEBP":
-        return "image/webp"
-    return None
 
 
 def resolve_provider_output_dimensions(
@@ -325,7 +317,7 @@ def decode_b64_image(data: str, mime: Optional[str] = None) -> ProviderImageOutp
         raise ValueError("Provider returned invalid base64 image output.") from exc
     if len(content) > MAX_ASSET_BYTES:
         raise ValueError("Provider image output exceeds the asset size limit.")
-    return ProviderImageOutput(content=content, mime=mime or detect_image_mime(content) or "image/png")
+    return ProviderImageOutput(content=content, mime=resolve_provider_image_mime(content, mime))
 
 
 def _read_provider_image_response(response: httpx.Response) -> bytes:

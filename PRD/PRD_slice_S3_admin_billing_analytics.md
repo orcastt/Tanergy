@@ -1,8 +1,8 @@
 # PRD Slice S3: Team, Group, Wallets, Billing And Admin
 
-**Updated**: 2026-05-18
+**Updated**: 2026-05-20
 **Mode**: Product slice.
-**Status**: Active commercial-architecture slice. Existing admin, ledger, seat and AI-control-plane scaffolds remain useful, but the Team charging rule has pivoted from member-personal credits to a Team wallet. Real staging session/admin smoke is now green; public pricing and draft legal/policy pages now exist without Auth; the next release-facing gates are live AI/payment depth, legal/compliance finalization, Google/email verification and broader browser acceptance.
+**Status**: Active commercial-architecture slice. Existing admin, ledger, seat and AI-control-plane scaffolds remain useful, but the Team charging rule has pivoted from member-personal credits to a Team wallet. Real staging session/admin smoke is now green; public pricing and draft legal/policy pages now exist without Auth. The latest local browser-write fix restores admin/workspace/invite mutation paths through narrow same-origin proxies while preserving backend CSRF/origin enforcement; the next release-facing gates are staging browser mutation smoke, live AI/payment depth, legal/compliance finalization, Google/email verification and broader browser acceptance.
 
 ## Goal
 
@@ -87,6 +87,7 @@ The Team / Group / Billing / Invite foundation is now explicitly confirmed befor
 - The AI API Routes tab should use the same dense admin layout language as User inventory: table-first route inventory, toolbar search/filter controls, one selected route detail form, separate image/text/video consumption tables and a full-width grouped API call ledger by `runId` with inline attempt inspection, without explanatory helper copy.
 - AiRun charge fields, quote/preflight, runtime facts, `ai_api_calls`, provider-cost facts and admin AI route/pricing panels.
 - Board permission resolver, owner-only copy/delete, share links, people lookup and Board member management.
+- 2026-05-20 post-stage browser-write fix: admin edits, workspace/member writes and invite generate/revoke now have a narrow same-origin proxy path for remote FastAPI mode so legitimate UI actions do not fail as `request not allowed` while backend Origin/CSRF checks remain enabled.
 
 ## Product Rule Drift To Fix
 
@@ -130,6 +131,7 @@ Required rework:
 - The User inventory is the primary developer-admin surface: one row per user with email, IP/registration facts, active and expired Team plans, Team credit bars, active and expired Collaborate/Group plans, personal credit, lifetime spent credits, block state and detail action.
 - The User detail surface has five local tabs after one bundle load: Billing, Team Plan, Joined Team, Group Plan and Joined Group. Tab switching must not perform a new access check or refetch.
 - Pending Team/Group invites should appear inline in the same detail rows as members, and invite/member/board row actions should reflect immediately from the returned mutation payload whenever a full detail refetch is not needed.
+- Invite generate/revoke and admin workspace/member writes must succeed from the authenticated staging browser without asking operators to disable security headers, CSRF checks or strict Origin validation.
 - Team/Group member management must be complete enough for both operator and end-user flows: create/revoke invite, accept invite, add member, remove member, change role, Team seat assignment, admin Join Team/Join Group, Team owner transfer and explicit Group owner-transfer denial.
 - `Usage` should show current period, valid-until and next-refresh state for each active Personal or Team plan/workspace block, while the `Subscription` page should separate Personal and Workspace offerings into vertically stacked comparison bands instead of hiding plan context in a modal.
 - Personal plan bands should explicitly show Group create cap, Group member cap, solo board/page limits and the free-owned Group board/page envelope; Team plan bands should explicitly show seat pricing, current seats, seat cap, Team board count, Team member count and Team wallet charging semantics.

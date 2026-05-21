@@ -8,6 +8,7 @@ import { getKonvaShapeCornerRadius } from './konvaCanvasShapeProps'
 import { getLineArrowHeadAnchor, getLineHead, getLinePathData, getLineStartHeadAnchor, type KonvaLineShape } from './konvaLineRouteUtils'
 import { KonvaImageShape } from './KonvaImageShape'
 import { KonvaNodeCardShape } from './KonvaNodeCardShape'
+import { getImagePreviewTier } from './KonvaNodeImagePreview'
 import type { RuntimeGraphImageAssetRef } from '@/features/node-runtime/runtimeGraphAssets'
 import type { KonvaNodeTextFieldName } from './KonvaNodeTextEditor'
 import { KonvaShapeLabel } from './KonvaShapeLabel'
@@ -218,7 +219,7 @@ function areShapePropsEqual(previous: KonvaCanvasShapeProps, next: KonvaCanvasSh
   if (previous.onNodeTextEditStart !== next.onNodeTextEditStart) return false
   if (previous.previewMode !== next.previewMode) return false
   if (previous.remotelyLocked !== next.remotelyLocked) return false
-  if (usesZoomPreviewTier(next.shape) && getZoomPreviewTier(previous.zoom) !== getZoomPreviewTier(next.zoom)) return false
+  if (usesZoomPreviewTier(next.shape) && getShapePreviewTier(previous.shape, previous.zoom) !== getShapePreviewTier(next.shape, next.zoom)) return false
   if (next.isSelected && previous.zoom !== next.zoom) return false
   return true
 }
@@ -227,11 +228,9 @@ function usesZoomPreviewTier(shape: CanvasShape) {
   return shape.type === 'image' || shape.type === 'node_card'
 }
 
-function getZoomPreviewTier(zoom: number) {
-  if (zoom <= 0.25) return 'tiny'
-  if (zoom <= 0.5) return 'small'
-  if (zoom <= 1) return 'medium'
-  return 'full'
+function getShapePreviewTier(shape: CanvasShape, zoom: number) {
+  if (shape.type !== 'image' && shape.type !== 'node_card') return 'full'
+  return getImagePreviewTier(zoom, shape.props)
 }
 
 function renderShape(

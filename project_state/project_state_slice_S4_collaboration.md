@@ -1,7 +1,7 @@
 # Project State Slice S4: Collaboration
 
-**Updated**: 2026-05-18
-**Status**: In progress first slice. Collaboration is still outside the current release promise, but the invite-entry product path, first presence polish, low-rate draft drawing preview and final-snapshot realtime persistence have now started in the real app shell. The local/backend contract layer is green again after the 2026-05-16 stale-regression reset, while real signed-in two-user staging smoke still remains the next acceptance gate.
+**Updated**: 2026-05-20
+**Status**: In progress first slice. Collaboration is still outside the current release promise, but the invite-entry product path, first presence polish, low-rate draft drawing preview and final-snapshot realtime persistence have now started in the real app shell. The local/backend contract layer is green again after the 2026-05-16 stale-regression reset. The 2026-05-20 post-stage regression pass fixes local invite mutation proxying, in-progress mover identity, tooltip cleanup and stale-camera drag jitter; real signed-in two-user staging smoke remains the next acceptance gate.
 
 ## Current Truth
 
@@ -32,6 +32,10 @@
 - 2026-05-18 draft drawing presence pass: new shape/stroke creation now publishes a sanitized `draftPreview` through collaboration presence at a low fixed cadence, and remote users render that in a non-interactive canvas overlay before the final document update lands. This gives drawing-process feedback without writing draft strokes into Postgres.
 - 2026-05-18 realtime persistence pass: backend board realtime now defaults to `final_snapshot`; ordinary websocket `yjs-update` process traffic stays room-local and is not debounce-written to Postgres, while accepted compacted `sync-state-publish` payloads and room-empty finalize still persist the final realtime document snapshot.
 - 2026-05-18 websocket payload pass: larger Yjs update payloads may travel as base64 envelopes instead of huge JSON number arrays, while small updates keep the legacy array shape. Both browser and FastAPI normalize the two forms before applying limits.
+- 2026-05-20 post-stage invite/admin fix: browser workspace and invite mutations now have a same-origin workspace proxy path for remote FastAPI mode. This is intended to keep strict backend Origin/CSRF checks enabled while preventing legitimate signed-in UI writes from failing with `request not allowed`.
+- 2026-05-20 post-stage mover identity fix: active transform awareness keeps publishing mover identity plus sanitized transform bounds during move/resize/rotate, so remote collaborators can see who is actively moving content before the final document update lands.
+- 2026-05-20 post-stage interaction fix: canvas drag now ignores stale preview/navigator camera snapshots when a newer local stage camera exists, reducing the sticky/flashing pan behavior reported after the security/collaboration changes.
+- 2026-05-20 post-stage tooltip fix: canvas/chat hover state is cleared across drag/resize/move boundaries, so tooltips should not remain floating after the node or viewport has moved.
 - The collaboration client surface has been cut into smaller pieces again: session/presence merge helpers now live in `boardCollaborationPresenceState.ts`, realtime awareness connection/publish lifecycle now lives in `useBoardRealtimeAwareness.ts`, and `useBoardCollaborationPresence.ts` is now focused on local optimistic presence state plus server session claim/release.
 - 2026-05-16 follow-up cleanup: claim/release/session heartbeat/debounced sync now live in `useBoardCollaborationSessionSync.ts`, which brings `useBoardCollaborationPresence.ts` down again. The next optional split, if we keep tightening it, is to peel local optimistic patch/apply helpers out of the remaining presence hook body.
 - 2026-05-17 local-app follow-up: the local board collaboration API store is now split again into thin access/presence/session-support modules. `localBoardCollaborationStore.ts` is a 121-line facade over `localBoardCollaborationAccess.ts`, `localBoardCollaborationPresence.ts`, `localBoardCollaborationSessionStore.ts` and `localBoardCollaborationSupport.ts`.
@@ -60,14 +64,15 @@
 ## Next Implementation Order
 
 1. Execute the new Team/Group dual-user smoke against real signed-in accounts, not only local/header-mode automation.
-2. Verify the invite -> accept -> joined workspace -> same board realtime reopen chain in the actual browser with two users, now that board-route session selection is pinned to the invite target workspace instead of the previous active workspace.
-3. Keep expanding live collaborator presence validation from cursor/name/color into active page, tool and invite-entry reopening flows.
-4. Validate draft stroke/process preview, page delete fallback and final snapshot recovery with real two-user same-board multi-page smoke before widening the marketing language around collaboration scope.
-5. Broaden optimistic merge rules only where page-scoped metadata can prove they are safe; keep same-page and full-board conflicts conservative.
-6. Add explicit two-user occupancy acceptance around focused text/node-parameter editing, then refine cursor easing/lerp behavior from "less jittery" toward a more Miro-like soft stop.
-7. Add TTL-based element/selection lock semantics only for the focused operations that need them; ordinary drawing/move should stay optimistic and process-broadcast first.
-8. After that, move from presence-first collaboration into the next Yjs/editor slice: shared selection semantics, stronger remote intent cues and multi-user object conflict policy.
-9. In parallel with the next collaboration slice, keep pulling S3/S4 support files under the `<300` rule, with the next collaboration hotspot now shifting to `team_subscription_lifecycle.py` and the remaining oversized admin/billing/client type files.
+2. Verify the invite -> accept -> joined workspace -> same board realtime reopen chain in the actual browser with two users, including invite generate/revoke from the dashboard after the same-origin proxy fix.
+3. In that same two-user browser pass, verify user A's active move/resize identity remains visible on user B's page during the gesture, not only after mouseup/final edit.
+4. Keep expanding live collaborator presence validation from cursor/name/color into active page, tool and invite-entry reopening flows.
+5. Validate draft stroke/process preview, page delete fallback and final snapshot recovery with real two-user same-board multi-page smoke before widening the marketing language around collaboration scope.
+6. Broaden optimistic merge rules only where page-scoped metadata can prove they are safe; keep same-page and full-board conflicts conservative.
+7. Add explicit two-user occupancy acceptance around focused text/node-parameter editing, then refine cursor easing/lerp behavior from "less jittery" toward a more Miro-like soft stop.
+8. Add TTL-based element/selection lock semantics only for the focused operations that need them; ordinary drawing/move should stay optimistic and process-broadcast first.
+9. After that, move from presence-first collaboration into the next Yjs/editor slice: shared selection semantics, stronger remote intent cues and multi-user object conflict policy.
+10. In parallel with the next collaboration slice, keep pulling S3/S4 support files under the `<300` rule, with the next collaboration hotspot now shifting to `team_subscription_lifecycle.py` and the remaining oversized admin/billing/client type files.
 
 ## Do Not Drift
 

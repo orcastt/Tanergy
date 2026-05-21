@@ -4,10 +4,16 @@ from fastapi.testclient import TestClient
 
 from tangent_api.main import app
 from tangent_api.request_context import ApiRequestContext
-from tangent_api.schemas import BoardSaveRequest, BoardSnapshotCreateRequest
+from tangent_api.schemas import BoardSaveRequest, BoardSnapshotCreateRequest, normalize_board_title
 from tangent_api.storage.postgres_board_snapshot_store import PostgresBoardSnapshotStore
 from tangent_api.storage.postgres_board_store import PostgresBoardStore
 from tests.persistence_fakes import FakePostgresDatabase
+
+
+def test_board_title_policy_rejects_symbols_but_coerces_legacy_fallback():
+    assert normalize_board_title(None, "Legacy & *") == "Legacy"
+    with pytest.raises(HTTPException):
+        normalize_board_title("Board & *")
 
 
 def test_board_local_dev_contract(tmp_path, monkeypatch):
@@ -142,6 +148,10 @@ def test_board_local_dev_contract(tmp_path, monkeypatch):
 
     empty_rename = client.patch("/api/v1/boards/api-smoke-board", headers=group_headers, json={"title": " "})
     assert empty_rename.status_code == 400
+
+    unsafe_rename = client.patch("/api/v1/boards/api-smoke-board", headers=group_headers, json={"title": "Board & *"})
+    assert unsafe_rename.status_code == 400
+    assert "letters, numbers" in unsafe_rename.json()["detail"]
 
     blocked = client.get(
         "/api/v1/boards/api-smoke-board",

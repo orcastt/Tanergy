@@ -69,14 +69,6 @@ src-tauri/target/
 .env.*
 !.env.example
 !**/.env.example
-legacy/**/.env*
+legacy/
 **/.vercel
-legacy/**/node_modules/
-legacy/**/.next/
-legacy/**/.venv/
-legacy/**/target/
-legacy/**/dist/
-legacy/**/build/
-legacy/**/*.tsbuildinfo
-legacy/**/.DS_Store
 .vercel

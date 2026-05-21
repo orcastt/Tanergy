@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { BoardThumbnail } from '@/components/boards/BoardThumbnail'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import type { BoardPersistenceSummary } from '@/features/boards/boardTypes'
-import { sanitizeUserLabelInput } from '@/features/security/safeText'
+import { sanitizeBoardTitleInput } from '@/features/security/safeText'
 import { WorkspaceBoardMenuAction } from './WorkspaceBoardMenuAction'
 import { getBoardDisplayCardColor } from './workspaceBoardUtils'
 
@@ -147,7 +147,7 @@ export function WorkspaceBoardItem({
       <div className="workspace-board-body">
         {isEditing ? (
           <form className="workspace-board-rename" onSubmit={onSubmitRename}>
-            <input autoFocus maxLength={80} onChange={(event) => onTitleChange(sanitizeUserLabelInput(event.target.value))} value={editingTitle} />
+            <input autoFocus maxLength={80} onChange={(event) => onTitleChange(sanitizeBoardTitleInput(event.target.value))} value={editingTitle} />
             <button disabled={isPending} type="submit">Save</button>
             <button disabled={isPending} onClick={onCancelRename} type="button">Cancel</button>
           </form>

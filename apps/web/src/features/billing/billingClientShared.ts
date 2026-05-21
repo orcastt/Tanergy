@@ -29,7 +29,7 @@ export async function loadBillingJson<T>(
   options: BillingClientOptions = {},
 ): Promise<T> {
   const headers = await persistenceAuthHeadersAsync(options.workspace)
-  const response = await fetch(persistenceApiUrl(path), {
+  const response = await fetch(billingApiUrl(path), {
     ...init,
     headers: {
       ...headers,
@@ -40,6 +40,13 @@ export async function loadBillingJson<T>(
   const payload = await response.json() as T & { detail?: string; error?: string }
   if (!response.ok) throw new Error(payload.error || payload.detail || 'Billing resource lookup failed.')
   return payload
+}
+
+function billingApiUrl(path: string) {
+  if (path.startsWith('/api/v1/workspaces/')) {
+    return `/api/workspace-proxy/${path.replace(/^\/api\/v1\/workspaces\/?/, '')}`
+  }
+  return persistenceApiUrl(path)
 }
 
 export function clearWorkspaceBillingCaches(workspace?: TangentWorkspace) {

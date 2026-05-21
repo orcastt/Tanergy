@@ -200,7 +200,7 @@ class PostgresBoardStoreMutationsMixin:
         context: ApiRequestContext,
     ) -> BoardSummary:
         record = self._load_board_without_touch(board_id, context, required_access="manage")
-        next_title = normalize_board_title(title, record.title) if title is not None else record.title
+        next_title = normalize_board_title(title, record.title)
 
         saved_at = datetime.now(timezone.utc).isoformat()
         next_description = normalize_board_description(description) if description is not None else record.description

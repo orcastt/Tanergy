@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server'
 import type { AiChatCompletionRequest, AiChatMessage, AiChatMessageContentPart } from '@/features/ai/aiTypes'
 import { getAiModelDefinition } from '@/features/ai/mockAiContracts'
-import { assertLocalAiBridgeAvailable } from '@/features/api/runtimeBridgePolicy'
 import { buildServerClerkApiHeaders } from '@/features/auth/serverClerkAuth'
 import { rejectCrossSiteMutation } from '../../../_lib/csrfGuard'
-import { getApiRequestContext } from '../../../_lib/apiRequestContext'
 import { readJsonRequestWithLimit, requestBodyErrorStatus } from '../../../_lib/requestBodyLimits'
 import { getProviderApiKey, getProviderBaseUrl } from '../../_lib/providerApiConfig'
 import {
@@ -31,7 +29,6 @@ export async function POST(request: Request) {
   try {
     const originRejection = rejectCrossSiteMutation(request)
     if (originRejection) return originRejection
-    assertLocalAiBridgeAvailable()
     const body = await readJsonRequestWithLimit<AiChatCompletionRequest>(request, maxChatRequestBytes)
     if (!body.model?.trim()) {
       return NextResponse.json({ error: 'Missing chat model.' }, { status: 400 })
@@ -165,10 +162,14 @@ function shouldInlineImageUrl(requestUrl: URL, targetUrl: URL) {
 }
 
 async function getForwardHeaders(request: Request) {
-  const context = getApiRequestContext(request)
-  const headers = new Headers(await buildServerClerkApiHeaders())
-  headers.set('x-tangent-user-id', context.userId)
-  headers.set('x-tangent-workspace-id', context.workspaceId)
+  const requestAuthorization = request.headers.get('authorization')?.trim()
+  const headers = new Headers(
+    requestAuthorization?.toLowerCase().startsWith('bearer ')
+      ? { Authorization: requestAuthorization }
+      : await buildServerClerkApiHeaders()
+  )
+  const workspaceId = request.headers.get('x-tangent-workspace-id')
+  if (workspaceId) headers.set('x-tangent-workspace-id', workspaceId)
   return headers
 }
 

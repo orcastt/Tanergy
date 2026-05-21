@@ -190,7 +190,7 @@
 - `security_release_gate.py` 现在支持 `--check-object-storage`、`--require-external-ops-proof` 和 `--check-external-ops-urls`，用于 staging/prod 硬闸门；本地默认 gate 仍不要求真实外部平台。
 - Realtime WebSocket replay 测试补了确定性同步点，避免 TestClient 在高频消息后立刻建立第二连接时偶发抢在前一条 `yjs-update` 入房间前读取旧版本。
 - 2026-05-20 全栈本地验收通过：`security_release_gate.py --env-file deploy/staging/api.env.example` 跑完 Web build、28 条 Playwright security E2E、API compileall、API performance smoke、367 条 backend tests 和 `git diff --check`。
-- 公开 staging ops smoke 当前仍失败在 Web/API 安全响应头，原因是线上部署还没有吃到当前 repo 改动；TLS、static cache 和 CORS 已通过。正式 staging 完成需要 redeploy 后重跑 `ops_readiness_smoke.py`。
+- 2026-05-20 staging redeploy 后，公开 ops smoke 已转绿：Web/API TLS、Web home 安全头、Next static cache、API `/health` 安全头和 CORS preflight 全部通过。上一轮失败点是已部署 release 未吃到安全头改动，当前 `b35adc0` release 已解决。
 
 ## 冲突解决口径
 - 不把拖拽过程中的每个像素位移当成最终文档事实；过程态是 awareness，最终态才进入 Yjs 文档。
@@ -389,9 +389,19 @@ PYTHONPATH=services/api python3 services/api/scripts/s4_realtime_multiplayer_loa
 - `npm audit --omit=dev` still reports a moderate Next/PostCSS advisory
   (`GHSA-qx2v-qp2m-jg93`) through Next's bundled PostCSS. Do not run
   `npm audit fix --force`; track this as a dependency upgrade confirmation.
-- Public staging ops smoke currently passes TLS, CORS and static cache, but the
-  deployed Web/API release is missing the new security headers on Web home and
-  API `/health`. Redeploy staging before treating ops smoke as green.
+- Public staging ops smoke is now green after the 2026-05-20 `b35adc0`
+  redeploy: Web/API TLS, Web home security headers, Next static cache, API
+  `/health` security headers and CORS preflight all passed. The previous
+  security-header failure was a stale deployed-release issue.
+- Post-stage browser regression fixes now keep CSRF strict while restoring
+  product writes: admin proxy forwards browser Bearer auth before falling back
+  to cookies and includes a trusted same-origin `Origin`; workspace settings,
+  seats and invitations use a same-origin `/api/workspace-proxy/[...path]`
+  allowlist; Board title validation now rejects symbol-heavy names at frontend,
+  local bridge and FastAPI persistence.
+- GeekAI/Nano Banana 2 output hardening now stores provider images using
+  byte-detected MIME rather than provider wrapper MIME, fixing JPEG/WebP outputs
+  mislabeled as PNG while preserving the SVG/PDF/non-image rejection path.
 
 ## 资料来源
 - [OWASP Top 10](https://owasp.org/Top10/)

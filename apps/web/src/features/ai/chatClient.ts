@@ -1,7 +1,6 @@
 'use client'
 
 import { persistenceJsonHeadersAsync } from '@/features/api/persistenceApi'
-import { assertLocalAiBridgeAvailable } from '@/features/api/runtimeBridgePolicy'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
 import type { AiChatCompletionRequest } from './aiTypes'
 
@@ -21,7 +20,6 @@ export async function streamAiChatCompletion(
   input: AiChatCompletionRequest,
   options: StreamOptions = {}
 ) {
-  assertLocalAiBridgeAvailable()
   const maxOutputChars = getPositiveLimit(options.maxOutputChars, defaultMaxOutputChars)
   const maxBufferChars = getPositiveLimit(options.maxBufferChars, defaultMaxBufferChars)
   const headers = await persistenceJsonHeadersAsync(options.workspace)

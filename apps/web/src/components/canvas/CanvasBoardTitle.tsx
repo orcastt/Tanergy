@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { normalizeBoardTitleInput, sanitizeBoardTitleInput, validateBoardTitleInput } from '@/features/security/safeText'
 
 type CanvasBoardTitleProps = {
   onRename?: (title: string) => Promise<string | void> | string | void
@@ -17,8 +18,13 @@ export function CanvasBoardTitle({ onRename, title }: CanvasBoardTitleProps) {
 
   const commit = useCallback(async () => {
     if (isCommitting.current) return
-    const nextTitle = draft.trim()
-    if (!onRename || !nextTitle || nextTitle === title) {
+    const validationError = validateBoardTitleInput(draft)
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+    const nextTitle = normalizeBoardTitleInput(draft)
+    if (!onRename || nextTitle === title) {
       setDraft(title)
       setEditing(false)
       return
@@ -86,7 +92,7 @@ export function CanvasBoardTitle({ onRename, title }: CanvasBoardTitleProps) {
         disabled={isSaving}
         maxLength={80}
         onBlur={() => void commit()}
-        onChange={(event) => setDraft(event.currentTarget.value)}
+        onChange={(event) => setDraft(sanitizeBoardTitleInput(event.currentTarget.value))}
         onKeyDown={handleKeyDown}
         value={draft}
       />

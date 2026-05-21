@@ -9,7 +9,7 @@ import {
   renameLocalBoardDocument,
 } from '@/features/boards/localBoardClient'
 import type { BoardPersistenceSummary } from '@/features/boards/boardTypes'
-import { normalizeUserLabelInput } from '@/features/security/safeText'
+import { normalizeBoardTitleInput, validateBoardTitleInput } from '@/features/security/safeText'
 import { BoardDashboardRow } from './BoardDashboardRow'
 
 const boardIdPattern = /^[a-zA-Z0-9._-]+$/
@@ -99,15 +99,12 @@ export function BoardDashboard() {
 
   const renameBoard = async (event: FormEvent<HTMLFormElement>, boardId: string) => {
     event.preventDefault()
-    const title = normalizeUserLabelInput(editingTitle)
-    if (!title) {
-      setError('Board title is required.')
+    const validationError = validateBoardTitleInput(editingTitle)
+    if (validationError) {
+      setError(validationError)
       return
     }
-    if (title.length > 80) {
-      setError('Board title must be 80 characters or fewer.')
-      return
-    }
+    const title = normalizeBoardTitleInput(editingTitle)
     setPendingBoardId(boardId)
     setError(null)
     try {

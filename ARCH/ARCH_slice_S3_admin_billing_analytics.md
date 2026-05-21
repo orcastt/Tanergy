@@ -1,8 +1,8 @@
 # ARCH Slice S3: Team, Group, Wallets, Billing And Admin
 
-**Updated**: 2026-05-18
+**Updated**: 2026-05-20
 **Mode**: Architecture slice.
-**Status**: Active architecture pivot. Existing admin, ledger, seat, subscription and AiRun facts are reusable, but Team charging must move to a workspace-owned Team wallet. Local operator/admin hot paths have now been tightened around dedicated read models and pooled-runtime observability; public pricing and legal/policy pages now exist without Auth while live checkout stays disabled; real staging session/admin smoke is green, while live AI/payment depth and remaining browser verification are the next gates.
+**Status**: Active architecture pivot. Existing admin, ledger, seat, subscription and AiRun facts are reusable, but Team charging must move to a workspace-owned Team wallet. Local operator/admin hot paths have now been tightened around dedicated read models and pooled-runtime observability; public pricing and legal/policy pages now exist without Auth while live checkout stays disabled; real staging session/admin smoke is green. The 2026-05-20 post-stage browser-write fix keeps admin/workspace writes behind server-derived auth and same-origin proxying instead of weakening backend CSRF/origin checks; live AI/payment depth and remaining browser verification are still the next gates.
 
 ## Scope
 
@@ -26,6 +26,7 @@ Server authority and data contracts for:
 - Board documents, node props and Board History store compact refs and summaries only.
 - Public `/pricing` may display plan facts, but live checkout, tax, invoice and refund authority must stay server-owned behind payment-provider readiness, signed webhooks, ledger writes and legal/compliance review.
 - Public legal/policy pages are static product documents for now. They must not read `.env`, payment credentials, database URLs or private operator notes.
+- Next-to-FastAPI admin/workspace proxying is allowed only as a narrow same-origin browser bridge. The proxy must derive auth server-side or prefer an existing browser Bearer token without forwarding arbitrary browser cookies or spoofable `x-tangent-*` role/plan headers, must keep a route allowlist, and must preserve trusted Origin semantics so FastAPI write-route CSRF/origin protections remain active.
 
 ## 2026-05-16 Confirmed Policy Invariants
 
@@ -157,6 +158,15 @@ Read-model requirements:
 - Billing history merges payments, credit ledger, subscriptions and admin audit facts into operator rows.
 - Joined Team/Group views are driven by membership rows and server-side permission facts, not frontend guesses.
 - Every write remains server-gated through `admin_roles` and writes audit metadata with a required reason.
+
+## 2026-05-20 Browser Write Regression Boundary
+
+The security hardening pass intentionally made backend write routes stricter. The follow-up browser regression fix keeps that security posture while restoring product writes:
+
+- Admin proxy uses a Bearer-first request path and avoids forwarding broad browser cookies or spoofable workspace role/plan headers.
+- Workspace/dashboard/invite mutations use a same-origin workspace proxy with an explicit route allowlist instead of direct cross-origin browser writes where CSRF/origin policy can reject legitimate signed-in UI actions.
+- Invite generate/revoke, admin content edits and workspace member mutations must be smoke-tested on staging after redeploy with a real signed-in operator/member session.
+- Any future proxy expansion must update the Admin route matrix tests and the Next security guard before being treated as accepted.
 
 Performance and UI contract:
 

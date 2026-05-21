@@ -8,7 +8,12 @@ import {
   type BoardCardColor,
   type BoardPersistenceSummary,
 } from '@/features/boards/boardTypes'
-import { normalizeUserLabelInput, sanitizeUserLabelInput } from '@/features/security/safeText'
+import {
+  normalizeBoardTitleInput,
+  sanitizeBoardTitleInput,
+  sanitizeUserLabelInput,
+  validateBoardTitleInput,
+} from '@/features/security/safeText'
 import { getPublicOwnerLabel } from '@/features/shared/publicUserDisplay'
 import { BoardManagementMembers } from './BoardManagementMembers'
 import { BoardManagementThumbnailSection } from './BoardManagementThumbnailSection'
@@ -64,6 +69,7 @@ export function BoardManagementPanel({
   const [isPinned, setIsPinned] = useState(Boolean(board.isPinned))
   const [thumbnailUrl, setThumbnailUrl] = useState(board.thumbnailUrl ?? '')
   const [title, setTitle] = useState(board.title)
+  const [titleError, setTitleError] = useState<string | null>(null)
   const editDisabled = !canManageBoard || isPending
   const isSharedWorkspace = Boolean(workspace && sharedWorkspaceKinds.has(workspace.kind))
   const canShareBoard = canManageBoard && isSharedWorkspace
@@ -79,7 +85,13 @@ export function BoardManagementPanel({
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (editDisabled) return
-    onSave({ cardColor, description, isPinned, thumbnailUrl, title: normalizeUserLabelInput(title) })
+    const validationError = validateBoardTitleInput(title)
+    if (validationError) {
+      setTitleError(validationError)
+      return
+    }
+    setTitleError(null)
+    onSave({ cardColor, description, isPinned, thumbnailUrl, title: normalizeBoardTitleInput(title) })
   }
 
   return (
@@ -162,7 +174,17 @@ export function BoardManagementPanel({
                 </div>
                 <label>
                   <span>Name</span>
-                  <input disabled={editDisabled} maxLength={80} onChange={(event) => setTitle(sanitizeUserLabelInput(event.target.value))} required value={title} />
+                  <input
+                    disabled={editDisabled}
+                    maxLength={80}
+                    onChange={(event) => {
+                      setTitle(sanitizeBoardTitleInput(event.target.value))
+                      setTitleError(null)
+                    }}
+                    required
+                    value={title}
+                  />
+                  {titleError ? <small role="alert">{titleError}</small> : null}
                 </label>
                 <label>
                   <span>Note</span>

@@ -2,7 +2,7 @@
 
 **Updated**: 2026-05-20
 **Mode**: Architecture slice.
-**Status**: In progress; rebuilt staging Web/API smoke is green again, Supabase Pro staging is now the database truth, the old Hetzner `staging-postgres` fallback and volume have been removed, R2 was cleared for a clean asset smoke lane, and board realtime persistence now keeps process updates in WebSocket room memory while writing only compacted/final snapshots to Postgres by default. The deployment/ops readiness layer now includes separate Web/API env templates, public TLS/header/CORS smoke, API slow-response/RSS log hooks and an ops acceptance artifact. Production still requires external uptime monitors, status page, backup/PITR proof, WAF/rate-limit dashboard confirmation and an error-tracking/APM provider before public launch. The second-round signed-in board/browser pass is mostly green, and the `Manage board -> Copy board` Free-plan modal path is wired locally across gallery/dashboard/manage-panel copy entrypoints; the remaining gates are R2 clean asset smoke, a staging spot check for that modal path, Google/email verification and one live provider path under strict staging auth.
+**Status**: In progress; rebuilt staging Web/API smoke is green again, Supabase Pro staging is now the database truth, the old Hetzner `staging-postgres` fallback and volume have been removed, R2 was cleared for a clean asset smoke lane, and board realtime persistence now keeps process updates in WebSocket room memory while writing only compacted/final snapshots to Postgres by default. The deployment/ops readiness layer now includes separate Web/API env templates, public TLS/header/CORS smoke, API slow-response/RSS log hooks and an ops acceptance artifact. The 2026-05-20 `b35adc0` redeploy made the public ops smoke fully green: Web/API TLS, Web headers, static cache, API `/health` headers and CORS all pass. Production still requires external uptime monitors, status page, backup/PITR proof, WAF/rate-limit dashboard confirmation and an error-tracking/APM provider before public launch. The second-round signed-in board/browser pass is mostly green, and the `Manage board -> Copy board` Free-plan modal path is wired locally across gallery/dashboard/manage-panel copy entrypoints; the remaining gates are R2 clean asset smoke, a staging spot check for that modal path, Google/email verification and one GeekAI live provider path under strict staging auth.
 
 ## Goal
 
@@ -153,6 +153,16 @@ External infrastructure still owns these production blockers:
 - Cloudflare WAF, bot/rate-limit rules and SSL mode must be confirmed in the dashboard.
 - Managed Postgres backups/PITR and one restore drill must be completed outside repo code.
 - Uptime monitor, status page, alert channel, error tracking and APM dashboards must exist before public launch.
+
+## 2026-05-20 Stage Comparison
+
+| Boundary | Previous staging state | Current staging state |
+| --- | --- | --- |
+| Web deploy | Konva-only Web was online, but the public smoke still caught missing home-page security headers in the deployed release. | `https://staging.tanergy.cc` returns 200 and passes the Web security-header check. |
+| API deploy | GeekAI API release was built, but Alembic `20260520_0033` initially failed because the QwQ model default referenced pricing before the pricing row existed; the first restart check also showed an old container image. | Release `b35adc0` is recreated, Docker health is green, `/health` is green locally and publicly, and Alembic reports `20260520_0033 (head)`. |
+| Network security | TLS, CORS and static cache were green; `/health` still missed `Cache-Control`. | `ops_readiness_smoke.py` is fully green and `/health` now returns `Cache-Control: no-store` plus standard security headers. |
+| Frontend/backend AI coordination | The provider switch was pushed but not yet verified against staging DB route facts. | Staging DB confirms enabled/healthy GeekAI routes for `qwq-plus-latest`, `qwen/qwen2.5-vl-72b-instruct`, `gpt-image-2`, `nano-banana-2` and `doubao-seedream-5.0-lite`; QwQ and GPT Image 2 are default text/image models. |
+| Post-stage browser regressions | Browser mutations surfaced strict-Origin false negatives on admin/workspace writes, and Board titles still accepted symbol-heavy values in some UI/local paths. | Next admin proxy is Bearer-first and forwards same-origin `Origin`; workspace/dashboard/invite writes use a same-origin allowlisted workspace proxy; Board title policy is strict across frontend, local bridge and FastAPI. |
 
 ## Official References
 

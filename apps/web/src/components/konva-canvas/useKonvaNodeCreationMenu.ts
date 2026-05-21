@@ -7,7 +7,6 @@ import {
   type CanvasNodeShape,
   type CanvasPoint,
 } from '@/features/canvas-engine'
-import { hasRemotePersistenceApi } from '@/features/api/persistenceApi'
 import { cancelAiRun, createAiRun } from '@/features/ai/aiClient'
 import { isInsufficientCreditsError } from '@/features/ai/aiRunErrors'
 import { streamAiChatCompletion } from '@/features/ai/chatClient'
@@ -41,6 +40,8 @@ import {
   setKonvaPromptOptimizerResult,
   syncKonvaPromptOptimizerAcceptedRun,
 } from './konvaPromptOptimizerStreaming'
+import { toggleKonvaAnalysisStream } from './konvaNodeTextRunStreaming'
+import { shouldUseRemoteTextRun } from './konvaTextRunMode'
 import type { KonvaCanvasTool } from './konvaCanvasTypes'
 import { createKonvaNodeCardShape } from './konvaNodeCardFactory'
 
@@ -183,7 +184,7 @@ export function useKonvaNodeCreationMenu({
         return
       }
 
-      if (hasRemotePersistenceApi() && prepared.remoteRequest) {
+      if (shouldUseRemoteTextRun() && prepared.remoteRequest) {
         const remoteRequest = prepared.remoteRequest
         void createAiRun(remoteRequest, { signal: controller.signal, workspace })
           .then(async (run) => {
@@ -270,6 +271,20 @@ export function useKonvaNodeCreationMenu({
       return
     }
 
+    if (node.props.nodeType === 'analysis' && !shouldUseRemoteTextRun()) {
+      toggleKonvaAnalysisStream({
+        activeControllersRef: activeRunControllersRef,
+        document,
+        latestDocumentRef,
+        normalizeRunError,
+        onDocumentChange,
+        runtimeStatus: node.props.runtimeSummary.status,
+        shapeId,
+        workspace,
+      })
+      return
+    }
+
 	    if (node.props.runtimeSummary.status === 'running') {
 	      activeRunControllersRef.current.get(shapeId)?.abort()
 	      activeRunControllersRef.current.delete(shapeId)
@@ -344,7 +359,7 @@ export function useKonvaNodeCreationMenu({
     latestDocumentRef.current = prepared.document
     onDocumentChange(prepared.document)
 
-    if (hasRemotePersistenceApi() && prepared.remoteRequest) {
+    if (shouldUseRemoteTextRun() && prepared.remoteRequest) {
       const remoteRequest = prepared.remoteRequest
       void createAiRun(remoteRequest, { signal: controller.signal, workspace })
         .then(async (run) => {
@@ -462,7 +477,7 @@ export function useKonvaNodeCreationMenu({
     latestDocumentRef.current = prepared.document
     onDocumentChange(prepared.document)
 
-    if (hasRemotePersistenceApi() && prepared.remoteRequest) {
+    if (shouldUseRemoteTextRun() && prepared.remoteRequest) {
       const remoteRequest = prepared.remoteRequest
       void createAiRun(remoteRequest, { signal: controller.signal, workspace })
         .then(async (run) => {

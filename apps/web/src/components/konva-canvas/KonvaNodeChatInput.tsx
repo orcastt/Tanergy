@@ -56,9 +56,13 @@ export function ChatInputBox({
     <Group
       onClick={(event) => {
         event.cancelBubble = true
+        onTooltipChange(null)
         onEdit()
       }}
-      onPointerDown={stopNodeCardControlEvent}
+      onPointerDown={(event) => {
+        stopNodeCardControlEvent(event)
+        onTooltipChange(null)
+      }}
     >
       <Rect cornerRadius={10} fill={palette.fieldBg} height={height} stroke={palette.fieldStroke} strokeWidth={1} width={width} x={x} y={y} />
       {editing ? null : (
@@ -91,6 +95,7 @@ export function ChatInputBox({
       <Group
         onClick={(event) => {
           event.cancelBubble = true
+          onTooltipChange(null)
           onSend()
         }}
         onDblClick={stopNodeCardControlEvent}
@@ -105,7 +110,10 @@ export function ChatInputBox({
         onMouseLeave={() =>
           onTooltipChange((current) => (current && current.id === 'chat-send' ? null : current))
         }
-        onPointerDown={stopNodeCardControlEvent}
+        onPointerDown={(event) => {
+          stopNodeCardControlEvent(event)
+          onTooltipChange(null)
+        }}
       >
         <Rect
           cornerRadius={999}

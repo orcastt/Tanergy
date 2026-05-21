@@ -9,6 +9,11 @@ type UseKonvaStageCameraOptions = {
   onCameraPreview: (camera: CanvasCamera) => void
 }
 
+type PendingCameraPreview = {
+  camera: CanvasCamera
+  version: number
+}
+
 export function useKonvaStageCamera({
   camera,
   onCameraCommit,
@@ -16,11 +21,18 @@ export function useKonvaStageCamera({
   stageRef,
 }: UseKonvaStageCameraOptions) {
   const cameraRef = useRef(camera)
+  const localCameraVersionRef = useRef(0)
+  const lastPublishedPreviewRef = useRef<PendingCameraPreview | null>(null)
   const previewTimerRef = useRef<number | null>(null)
   const commitTimerRef = useRef<number | null>(null)
-  const pendingPreviewRef = useRef<CanvasCamera | null>(null)
+  const pendingPreviewRef = useRef<PendingCameraPreview | null>(null)
 
   useEffect(() => {
+    const preview = lastPublishedPreviewRef.current
+    if (preview && preview.version < localCameraVersionRef.current && isSameCamera(camera, preview.camera)) {
+      return
+    }
+    if (isSameCamera(cameraRef.current, camera)) return
     cameraRef.current = camera
     applyStageCamera(stageRef.current, camera)
   }, [camera, stageRef])
@@ -31,13 +43,19 @@ export function useKonvaStageCamera({
   }, [])
 
   const publishPreview = useCallback((nextCamera: CanvasCamera) => {
-    pendingPreviewRef.current = nextCamera
+    pendingPreviewRef.current = {
+      camera: nextCamera,
+      version: localCameraVersionRef.current,
+    }
     if (previewTimerRef.current !== null) return
     previewTimerRef.current = window.setTimeout(() => {
       previewTimerRef.current = null
       const pending = pendingPreviewRef.current
       pendingPreviewRef.current = null
-      if (pending) onCameraPreview(pending)
+      if (pending) {
+        lastPublishedPreviewRef.current = pending
+        onCameraPreview(pending.camera)
+      }
     }, 90)
   }, [onCameraPreview])
 
@@ -51,6 +69,9 @@ export function useKonvaStageCamera({
   }, [onCameraCommit])
 
   const applyCamera = useCallback((nextCamera: CanvasCamera, options: { preview?: boolean } = {}) => {
+    if (!isSameCamera(cameraRef.current, nextCamera)) {
+      localCameraVersionRef.current += 1
+    }
     cameraRef.current = nextCamera
     applyStageCamera(stageRef.current, nextCamera)
     if (options.preview !== false) publishPreview(nextCamera)
@@ -74,4 +95,8 @@ function applyStageCamera(stage: Konva.Stage | null, camera: CanvasCamera) {
   stage.position({ x: camera.x, y: camera.y })
   stage.scale({ x: camera.zoom, y: camera.zoom })
   stage.batchDraw()
+}
+
+function isSameCamera(left: CanvasCamera, right: CanvasCamera) {
+  return left.x === right.x && left.y === right.y && left.zoom === right.zoom
 }

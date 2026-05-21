@@ -10,7 +10,12 @@ import { ChatInputBox } from './KonvaNodeChatInput'
 import { ChatMessageBubble } from './KonvaNodeChatMessages'
 import { ChatScrollbar } from './KonvaNodeChatScrollbar'
 import { clamp, getChatMessageLayouts, getShortModelLabel } from './konvaNodeChatBodyLayout'
-import type { ChatTooltipState, KonvaNodeChatBodyProps } from './konvaNodeChatBodyTypes'
+import type { ChatTooltipState, KonvaNodeChatBodyProps, SetChatTooltipState } from './konvaNodeChatBodyTypes'
+
+type ScopedChatTooltip = null | {
+  scope: string
+  value: ChatTooltipState
+}
 
 export function KonvaNodeChatBody({
   document,
@@ -30,7 +35,7 @@ export function KonvaNodeChatBody({
   const files = getKonvaChatReferenceFiles(shape.props.data)
   const inputResolution = resolveRuntimeGraphNodeInputs(document, shape)
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
-  const [tooltip, setTooltip] = useState<ChatTooltipState>(null)
+  const [scopedTooltip, setScopedTooltip] = useState<ScopedChatTooltip>(null)
   const localImageValues = references.map((reference, index): RuntimeGraphImageValue => ({
     assetId: reference.assetId,
     originalUrl: reference.originalUrl,
@@ -45,6 +50,7 @@ export function KonvaNodeChatBody({
   const modelId = getKonvaChatModelId(shape.props.data)
   const modelOptions = getChatModelSelectOptions()
   const modelLabel = getShortModelLabel(getChatModelDisplayName(modelId))
+  const tooltipScope = `${editingFieldName ?? ''}:${shape.x}:${shape.y}:${shape.props.width}:${shape.props.height}:${zoom}`
   const bodyTop = 82
   const inputBoxHeight = 96
   const inputBottom = 16
@@ -70,10 +76,30 @@ export function KonvaNodeChatBody({
       item.y + item.height >= visibleScrollY - 40 &&
       item.y <= visibleScrollY + bodyHeight + 40,
   )
+  const setTooltip: SetChatTooltipState = (next) => {
+    setScopedTooltip((current) => {
+      const currentValue = current?.value ?? null
+      const value = typeof next === 'function' ? next(currentValue) : next
+      return value ? { scope: tooltipScope, value } : null
+    })
+  }
+  const tooltip = scopedTooltip?.scope === tooltipScope ? scopedTooltip.value : null
 
   useEffect(() => {
     onFocusedEditStateChange?.(shape.id, 'chat-model-menu', modelMenuOpen)
   }, [modelMenuOpen, onFocusedEditStateChange, shape.id])
+
+  useEffect(() => {
+    const hideTooltip = () => setScopedTooltip(null)
+    globalThis.document?.addEventListener('pointerdown', hideTooltip, true)
+    globalThis.document?.addEventListener('pointercancel', hideTooltip, true)
+    globalThis.document?.addEventListener('keydown', hideTooltip, true)
+    return () => {
+      globalThis.document?.removeEventListener('pointerdown', hideTooltip, true)
+      globalThis.document?.removeEventListener('pointercancel', hideTooltip, true)
+      globalThis.document?.removeEventListener('keydown', hideTooltip, true)
+    }
+  }, [])
 
   useEffect(
     () => () => {
@@ -186,15 +212,20 @@ export function KonvaNodeChatBody({
         onModelSelect={(nextModelId) => {
           onChatModelChange?.(shape.id, nextModelId)
           setModelMenuOpen(false)
+          setTooltip(null)
         }}
         onModelToggle={() => {
+          setTooltip(null)
           setModelMenuOpen((current) => {
             if (current) return false
             if (onFocusedEditRequest && !onFocusedEditRequest(shape.id, 'chat-model-menu')) return current
             return true
           })
         }}
-        onSend={() => onChatSend?.(shape.id)}
+        onSend={() => {
+          setTooltip(null)
+          onChatSend?.(shape.id)
+        }}
         onTooltipChange={setTooltip}
         onUpload={() => onChatUpload?.(shape.id)}
         width={viewportWidth}

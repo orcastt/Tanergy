@@ -53,15 +53,23 @@ export function CanvasTooltipLayer() {
 
     document.addEventListener('pointerover', handleEnter)
     document.addEventListener('pointerout', handleLeave)
+    document.addEventListener('pointerdown', hideTooltip, true)
+    document.addEventListener('pointercancel', hideTooltip, true)
     document.addEventListener('focusin', handleEnter)
     document.addEventListener('focusout', handleLeave)
+    document.addEventListener('keydown', hideTooltip, true)
+    document.addEventListener('visibilitychange', hideTooltip)
     window.addEventListener('resize', hideTooltip)
     window.addEventListener('scroll', hideTooltip, true)
     return () => {
       document.removeEventListener('pointerover', handleEnter)
       document.removeEventListener('pointerout', handleLeave)
+      document.removeEventListener('pointerdown', hideTooltip, true)
+      document.removeEventListener('pointercancel', hideTooltip, true)
       document.removeEventListener('focusin', handleEnter)
       document.removeEventListener('focusout', handleLeave)
+      document.removeEventListener('keydown', hideTooltip, true)
+      document.removeEventListener('visibilitychange', hideTooltip)
       window.removeEventListener('resize', hideTooltip)
       window.removeEventListener('scroll', hideTooltip, true)
     }

@@ -203,7 +203,7 @@ def update_board_metadata(
     context: ApiRequestContext,
 ) -> BoardSummary:
     record = _load_board_without_touch(board_id, context, required_access="manage")
-    next_title = normalize_board_title(title, record.title) if title is not None else record.title
+    next_title = normalize_board_title(title, record.title)
 
     update_data = {"title": next_title, "saved_at": datetime.now(timezone.utc).isoformat()}
     if description is not None:

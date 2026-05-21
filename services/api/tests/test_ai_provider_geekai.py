@@ -1,3 +1,5 @@
+import base64
+
 import httpx
 
 from tangent_api.ai_provider_assets import ProviderImageOutput
@@ -124,6 +126,52 @@ def test_run_geekai_attempt_posts_nano_banana_chat_completion(monkeypatch):
     assert request_json["model"] == "gemini-3.1-flash-image-preview"
     assert request_json["image"] == {"aspect_ratio": "1:8", "image_size": "2K"}
     assert request_json["stream"] is False
+
+
+def test_run_geekai_attempt_detects_nano_banana_base64_mime(monkeypatch):
+    jpeg_b64 = base64.b64encode(b"\xff\xd8\xff\xe0nano").decode("ascii")
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            _ = args
+            _ = kwargs
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            _ = exc_type
+            _ = exc
+            _ = tb
+            return False
+
+        def post(self, url: str, headers: dict[str, str], json: dict[str, object]):
+            return httpx.Response(
+                200,
+                json={"choices": [{"message": {"image": {"url": f"data:image/png;base64,{jpeg_b64}"}}}]},
+                request=httpx.Request("POST", url),
+            )
+
+    def persist_outputs(outputs, context, payload, provider):
+        _ = (context, payload, provider)
+        assert len(outputs) == 1
+        assert outputs[0].mime == "image/jpeg"
+        return ["asset_nano_jpeg"]
+
+    monkeypatch.setattr("tangent_api.ai_provider_geekai.httpx.Client", FakeClient)
+    monkeypatch.setattr("tangent_api.ai_provider_geekai.persist_provider_output_assets", persist_outputs)
+
+    result = run_geekai_attempt(
+        _run_record(model_id="nano-banana-2", route_id="route_nano_banana_2_primary"),
+        _request(model_id="nano-banana-2", params={"aspectRatio": "1:1", "count": 1, "imageSize": "1K"}),
+        _route(provider_model="gemini-3.1-flash-image-preview", route_id="route_nano_banana_2_primary"),
+        _context(),
+        api_key="test-key",
+        base_url="https://geekai.co/api/v1",
+    )
+
+    assert result.status == "succeeded"
+    assert result.output_asset_ids == ["asset_nano_jpeg"]
 
 
 def _route(provider_model="gpt-image-2", route_id="route_gpt_image_2_primary"):

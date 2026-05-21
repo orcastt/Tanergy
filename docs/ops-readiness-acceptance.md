@@ -74,9 +74,20 @@ PYTHONPATH=services/api python3 services/api/scripts/ops_readiness_smoke.py \
 
 ## Current Residual Risks
 
-- Current public staging check on 2026-05-20 passed TLS, CORS and static asset
-  cache, but failed Web home and API `/health` security-header checks because
-  the deployed Web/API release has not picked up this repo change yet.
+- Current public staging check on 2026-05-20 is green after the `b35adc0`
+  API redeploy and the follow-up Vercel deployment
+  `dpl_CwARDUa1WkLxDbnZLjrZkHppATMg`: Web/API TLS, Web home security
+  headers, Next static asset cache, API `/health` security headers and CORS
+  preflight all passed.
+- Vercel server-only GeekAI env has been synced for the staging project. A
+  direct `/api/ai/chat/completions` smoke now returns `text/event-stream` and
+  live SSE chunks for `qwq-plus-latest`.
+- API host SSH from this workstation currently fails with
+  `Permission denied (publickey)`. Treat API-side uncommitted local fixes as
+  pending deployment until the staging deploy key/CI path is restored.
+- The previous public staging check failed Web home and API `/health`
+  security-header checks because the deployed release had not picked up the
+  repo change yet. That is resolved in the current staging release.
 - The full local security gate passed on 2026-05-20, including Web build, 28
   Playwright E2E checks, API compileall, API performance smoke and 367 backend
   tests.

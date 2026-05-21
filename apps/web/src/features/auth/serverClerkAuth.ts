@@ -3,6 +3,11 @@ import { cookies } from 'next/headers'
 import { type NextRequest } from 'next/server'
 
 export async function buildServerClerkApiHeaders(request?: NextRequest) {
+  const requestAuthorization = request?.headers.get('authorization')?.trim()
+  if (requestAuthorization && requestAuthorization.toLowerCase().startsWith('bearer ')) {
+    return { Authorization: requestAuthorization } satisfies Record<string, string>
+  }
+
   const token = await loadServerClerkToken(request)
   if (token) {
     return { Authorization: `Bearer ${token}` } satisfies Record<string, string>

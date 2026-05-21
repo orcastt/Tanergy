@@ -541,8 +541,9 @@
   left: 0;
   display: inline-flex;
   align-items: center;
+  gap: 5px;
   max-width: min(180px, 100%);
-  padding: 4px 7px;
+  padding: 3px 7px 3px 4px;
   border-radius: 5px;
   background: var(--collab-accent, #2563eb);
   color: #ffffff;
@@ -553,6 +554,24 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.konva-collaboration-transform__avatar {
+  display: inline-grid;
+  width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.konva-collaboration-transform__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .konva-collaboration-occupancy {

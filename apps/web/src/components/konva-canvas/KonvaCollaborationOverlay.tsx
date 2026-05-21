@@ -97,7 +97,12 @@ export function KonvaCollaborationOverlay({
         >
           {transformKind === 'move' ? null : <span className="konva-collaboration-transform__shade" />}
           <span className="konva-collaboration-transform__label">
-            {session.displayName}
+            <span className="konva-collaboration-transform__avatar">
+              {session.avatarInitials}
+            </span>
+            <span className="konva-collaboration-transform__name">
+              {session.displayName}
+            </span>
           </span>
         </div>
       ))}

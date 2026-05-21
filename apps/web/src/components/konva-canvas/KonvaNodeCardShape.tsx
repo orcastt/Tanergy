@@ -61,7 +61,7 @@ type KonvaNodeCardShapeProps = {
 }
 
 export function KonvaNodeCardShape({ document, editingFieldName = null, onChatClean, onChatModelChange, onChatRegenerate, onChatSend, onChatUpload, onFieldChange, onFocusedEditRequest, onFocusedEditStateChange, onGeneratedImageToCanvas, onImageNodeToCanvas, onImagePreviewOpen, onPortPointerDown, onRunToggle, onTextEditStart, opacity, previewMode = false, shape, zoom }: KonvaNodeCardShapeProps) {
-  const [hoveredPort, setHoveredPort] = useState<ResolvedNodePort | null>(null)
+  const [hoveredPort, setHoveredPort] = useState<{ port: ResolvedNodePort; scope: string } | null>(null)
   const [openFieldName, setOpenFieldName] = useState<string | null>(null)
   const definition = getNodeDefinition(shape.props.nodeType)
   const themeMode = useResolvedCanvasThemeMode()
@@ -73,6 +73,7 @@ export function KonvaNodeCardShape({ document, editingFieldName = null, onChatCl
   const title = shape.props.nodeType === 'image' ? 'Image' : getStringValue(shape.props.data.title) || definition.displayName
   const status = getStringValue(shape.props.runtimeSummary.status) || 'idle'
   const ports = getResolvedNodePorts(shape.props.nodeType, shape.props.data)
+  const hoverScope = getNodeHoverScope(shape)
 
   useEffect(() => {
     onFocusedEditStateChange?.(shape.id, 'field-dropdown', openFieldName !== null)
@@ -98,6 +99,7 @@ export function KonvaNodeCardShape({ document, editingFieldName = null, onChatCl
   const statusTone = getStatusTone(status, themeMode)
   const contentScale = getNodeContentScale(shape, definition.defaultCardSize)
   const contentShape = getNodeContentShape(shape, contentScale)
+  const contentZoom = zoom * contentScale
 
   return (
     <Group opacity={opacity}>
@@ -154,7 +156,7 @@ export function KonvaNodeCardShape({ document, editingFieldName = null, onChatCl
             openFieldName={openFieldName}
             setOpenFieldName={setOpenFieldName}
             shape={contentShape}
-            zoom={zoom}
+            zoom={contentZoom}
           />
         </Group>
       </Group>
@@ -165,7 +167,7 @@ export function KonvaNodeCardShape({ document, editingFieldName = null, onChatCl
           <Group key={`${port.direction}:${port.id}`}>
             <Circle
               fill="rgba(255, 255, 255, 0.01)"
-              onMouseEnter={() => setHoveredPort(port)}
+              onMouseEnter={() => setHoveredPort({ port, scope: hoverScope })}
               onMouseLeave={() => setHoveredPort(null)}
               onPointerDown={onPortPointerDown ? (event) => onPortPointerDown(shape.id, port.id, event) : undefined}
               radius={17}
@@ -174,7 +176,7 @@ export function KonvaNodeCardShape({ document, editingFieldName = null, onChatCl
             />
             <Circle
               fill={getPortColorName(port.dataType) === 'green' ? '#22c55e' : '#facc15'}
-              onMouseEnter={() => setHoveredPort(port)}
+              onMouseEnter={() => setHoveredPort({ port, scope: hoverScope })}
               onMouseLeave={() => setHoveredPort(null)}
               onPointerDown={onPortPointerDown ? (event) => onPortPointerDown(shape.id, port.id, event) : undefined}
               radius={10}
@@ -186,17 +188,19 @@ export function KonvaNodeCardShape({ document, editingFieldName = null, onChatCl
           </Group>
         )
       })}
-      {hoveredPort ? <PortTooltip port={hoveredPort} shape={shape} /> : null}
+      {hoveredPort?.scope === hoverScope ? <PortTooltip port={hoveredPort.port} shape={shape} /> : null}
     </Group>
   )
 }
 
 function ChatCleanButton({ onChatClean, shape }: { onChatClean?: (shapeId: string) => void; shape: CanvasNodeShape }) {
   const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
-  const [isHovered, setIsHovered] = useState(false)
+  const [hoverScope, setHoverScope] = useState<string | null>(null)
   const width = 30
   const x = shape.props.width - width - 14
   const hasHistory = Array.isArray(shape.props.data.chatMessages) && shape.props.data.chatMessages.length > 0
+  const currentScope = getNodeHoverScope(shape)
+  const isHovered = hoverScope === currentScope
   return (
     <>
       <Group
@@ -205,8 +209,8 @@ function ChatCleanButton({ onChatClean, shape }: { onChatClean?: (shapeId: strin
           if (hasHistory) onChatClean?.(shape.id)
         }}
         onDblClick={stopNodeCardControlEvent}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        onMouseEnter={() => setHoverScope(currentScope)}
+        onMouseLeave={() => setHoverScope(null)}
         onPointerDown={stopNodeCardControlEvent}
         opacity={hasHistory ? 1 : 0.42}
       >
@@ -330,6 +334,10 @@ function getNodeContentShape(shape: CanvasNodeShape, scale: number): CanvasNodeS
       width: shape.props.width / scale,
     },
   }
+}
+
+function getNodeHoverScope(shape: CanvasNodeShape) {
+  return `${shape.id}:${shape.x}:${shape.y}:${shape.props.width}:${shape.props.height}`
 }
 
 function ImageNodeToCanvasButton({ onImageNodeToCanvas, shape }: { onImageNodeToCanvas?: (shapeId: string) => void; shape: CanvasNodeShape }) {
@@ -544,9 +552,11 @@ function AnalysisBody({
   const status = getStringValue(shape.props.runtimeSummary.status) || 'idle'
   const error = getStringValue(shape.props.runtimeSummary.error)
   const textOutput = getStringValue(shape.props.runtimeSummary.textOutput)
-  const outputText = status === 'succeeded' && textOutput
+  const outputText = (status === 'succeeded' || status === 'running') && textOutput
     ? textOutput
-    : error ?? 'Connect an image first.'
+    : status === 'running'
+      ? 'Analyzing...'
+      : error ?? 'Connect an image first.'
   return (
     <>
       <NodeCardTextBox height={64} onEdit={() => onTextEditStart?.(shape.id, 'analysisPrompt')} text={editing ? '' : getStringValue(displayShape.props.data.analysisPrompt) ?? ''} width={shape.props.width - 28} x={14} y={116} />
@@ -624,7 +634,7 @@ function ImageBody({ accent, onImagePreviewOpen, shape, zoom }: { accent: string
   const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
   const bounds = { height: shape.props.height - 88, width: shape.props.width - 28, x: 14, y: 54 }
   const imageCrop = getNodeImageCrop(shape.props.data)
-  const imageSource = getNodeImageSource(shape.props.data, zoom)
+  const imageSource = getNodeImageSource(shape.props.data, zoom, bounds)
   const imageRef = getRuntimeGraphImageAssetRef(shape.props.data)
   const canUpload = !hasUpstreamImageInput(shape)
   return (
@@ -682,9 +692,10 @@ function GeneratedOutputPreviews({
   zoom: number
 }) {
   const palette = getCanvasThemePalette(useResolvedCanvasThemeMode())
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+  const [hoveredSlot, setHoveredSlot] = useState<{ index: number; scope: string } | null>(null)
   const slotCount = shape.props.nodeType === 'image_gen_4' ? 4 : 1
   const batches = getRuntimeGraphGeneratedOutputBatches(shape.props.data, slotCount)
+  const hoverScope = getNodeHoverScope(shape)
   const openPreview = (ref: RuntimeGraphImageAssetRef, index: number) => {
     const currentBatch = batches[0] ?? [ref]
     const selectedIndex = Math.max(0, currentBatch.findIndex((item) => item.assetId === ref.assetId))
@@ -699,7 +710,7 @@ function GeneratedOutputPreviews({
     <>
       {slotBounds.map((bounds, index) => {
         const ref = refs[index]
-        const showCanvasButton = hoveredIndex === index && Boolean(onGeneratedImageToCanvas)
+        const showCanvasButton = hoveredSlot?.scope === hoverScope && hoveredSlot.index === index && Boolean(onGeneratedImageToCanvas)
         return ref ? (
           <Group
             key={index}
@@ -707,12 +718,14 @@ function GeneratedOutputPreviews({
               event.cancelBubble = true
               openPreview(ref, index)
             }}
-            onMouseEnter={() => setHoveredIndex(index)}
-            onMouseLeave={() => setHoveredIndex((current) => (current === index ? null : current))}
+            onMouseEnter={() => setHoveredSlot({ index, scope: hoverScope })}
+            onMouseLeave={() => setHoveredSlot((current) => (
+              current?.scope === hoverScope && current.index === index ? null : current
+            ))}
           >
             <NodeImagePreview
               bounds={bounds}
-              source={getGeneratedOutputSource(ref, zoom)}
+              source={getGeneratedOutputSource(ref, zoom, bounds)}
             />
             <Rect
               fill="rgba(255,255,255,0.001)"

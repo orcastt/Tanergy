@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react'
 import type { CanvasDocument } from '@/features/canvas-engine'
-import { normalizeUserLabelInput } from '@/features/security/safeText'
+import { normalizeBoardTitleInput, validateBoardTitleInput } from '@/features/security/safeText'
 import type { useKonvaBoardPages } from './useKonvaBoardPages'
 
 type UseKonvaCanvasPageActionsOptions = {
@@ -41,7 +41,8 @@ export function useKonvaCanvasPageActions({
   }, [boardPages, document, history])
 
   const handleRenamePage = useCallback((pageId: string, title: string) => {
-    const nextTitle = normalizeUserLabelInput(title)
+    if (validateBoardTitleInput(title)) return
+    const nextTitle = normalizeBoardTitleInput(title)
     const currentTitle = boardPages.pages.find((page) => page.id === pageId)?.title.trim()
     if (!nextTitle || nextTitle === currentTitle) return
     history.checkpoint(document)

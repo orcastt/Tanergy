@@ -4,6 +4,7 @@ from typing import Any, Optional
 
 from fastapi import HTTPException
 
+from tangent_api.board_metadata import coerce_board_title
 from tangent_api.schemas import BoardRecord
 
 BOARD_ID_PATTERN = re.compile(r"^[a-zA-Z0-9._-]+$")
@@ -31,7 +32,7 @@ def board_record_from_row(row: tuple[Any, ...]) -> BoardRecord:
         shapeCount=row[7] or 0,
         shareId=row[17] if len(row) > 17 else None,
         thumbnailUrl=row[10],
-        title=row[3],
+        title=coerce_board_title(row[3]),
         visibility=row[16] if len(row) > 16 else "private",
         workspaceId=row[1],
     )

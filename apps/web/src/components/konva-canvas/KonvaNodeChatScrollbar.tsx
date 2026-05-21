@@ -1,3 +1,4 @@
+import type Konva from 'konva'
 import { Group, Rect } from 'react-konva'
 import { getCanvasThemePalette, useResolvedCanvasThemeMode } from '@/features/canvas-settings/canvasTheme'
 import { stopNodeCardControlEvent } from './KonvaNodeCardParts'
@@ -52,6 +53,9 @@ export function ChatScrollbar({
       <Rect
         cornerRadius={999}
         draggable
+        dragBoundFunc={function (this: Konva.Node, pos) {
+          return clampScrollbarDragPosition(this, pos, x, y, travel)
+        }}
         fill={palette.scrollbar}
         height={thumbHeight}
         onDragMove={(event) => {
@@ -68,4 +72,21 @@ export function ChatScrollbar({
       />
     </Group>
   )
+}
+
+function clampScrollbarDragPosition(
+  node: Konva.Node,
+  pos: { x: number; y: number },
+  x: number,
+  y: number,
+  travel: number,
+) {
+  const parent = node.getParent()
+  if (!parent) return pos
+  const parentTransform = parent.getAbsoluteTransform()
+  const local = parentTransform.copy().invert().point(pos)
+  return parentTransform.point({
+    x,
+    y: clamp(local.y, y, y + travel),
+  })
 }

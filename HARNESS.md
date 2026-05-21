@@ -1,6 +1,6 @@
 # TANGENT Development Harness
 
-**Updated**: 2026-05-17
+**Updated**: 2026-05-21
 **Purpose**: concise execution rules. Product, architecture and state details live in the folderized docs.
 
 ## Read Order
@@ -21,6 +21,8 @@ Architecture/API/Auth/AI/Admin/Billing/Deploy/Collaboration:
 4. `ARCH/ARCH.md`
 5. Relevant PRD/ARCH/project_state slice files
 6. `dev-plans/README.md`
+7. `knowledge/index.md`
+8. Relevant `knowledge/wiki/*.md`, especially `knowledge/wiki/agent_harness_and_skills.md`
 
 ## Definition Of Ready
 
@@ -44,6 +46,20 @@ Architecture/API/Auth/AI/Admin/Billing/Deploy/Collaboration:
 2. S1D permission hardening: active membership/invite state, explicit Asset-sharing allowlists and frontend/API role-label alignment on top of the current effective permission resolver and known-foreign Asset guard.
 3. S3 entitlement foundation: plan catalog, seat assignment, actor-personal credit account resolver, credit ledger preflight and Team usage visibility.
 4. S2 real AiRun only after permission and charge ownership are explicit server-side.
+
+## Harness Agent Skill Map
+
+- PRD Skill: user-visible behavior, acceptance and release scope.
+- ARCH Skill: APIs, schemas, storage, provider routes and authority boundaries.
+- Project State Skill: current truth, blockers, smoke results and handoff notes.
+- Harness/QA Skill: quality gates, security/deploy smokes and oversized-file checks.
+- AI Provider Skill: model/key/provider route facts and live text/image/analysis smokes.
+- Deploy/Ops Skill: Vercel, Hetzner, Supabase, R2, Clerk, Cloudflare and monitoring proof.
+- Security Skill: auth bypass, CSRF/origin, upload safety, data leakage, public share and realtime abuse.
+- Collaboration Skill: Yjs/WebSocket, presence, invite chain and multi-user acceptance.
+- Memory Wiki Skill: distilled cross-slice summaries, decision log, source notes and recurring audit checklists.
+
+Detailed operating rules live in `knowledge/wiki/agent_harness_and_skills.md`.
 
 ## Required Gates
 
@@ -72,7 +88,7 @@ git diff --check
 
 ## Hard Boundaries
 
-- Do not touch legacy unless explicitly requested.
+- `legacy/` has been removed from the active worktree/repo. Do not recreate it unless explicitly requested; recover old reference material from Git history or archived docs as a separate inspection task.
 - Do not read `.env`.
 - Do not put secrets in frontend code, docs or logs.
 - Do not treat nested local env files such as `apps/web/.env.local` or pulled `.vercel/.env.production.local` copies as deployment truth; Web runtime truth belongs in Vercel env, API runtime truth belongs in the server-local shared env file.

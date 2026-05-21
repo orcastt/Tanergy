@@ -14,6 +14,7 @@ import {
   loadSharedBoardDocument,
   renameLocalBoardDocument,
 } from '@/features/boards/localBoardClient'
+import { normalizeBoardTitleInput, validateBoardTitleInput } from '@/features/security/safeText'
 const KonvaCanvasSpike = dynamic(
   () => import('@/components/konva-canvas/KonvaCanvasSpike').then((module) => module.KonvaCanvasSpike),
   {
@@ -109,8 +110,9 @@ export default function BoardCanvasPage() {
   }, [boardId, candidateWorkspaces, isNewBoard, sessionStatus, shareId])
 
   const renameBoardTitle = useCallback(async (title: string) => {
-    const nextTitle = title.trim()
-    if (!nextTitle) return boardTitle
+    const validationError = validateBoardTitleInput(title)
+    if (validationError) throw new Error(validationError)
+    const nextTitle = normalizeBoardTitleInput(title)
     try {
       const response = await renameLocalBoardDocument(effectiveBoardId, nextTitle, resolvedWorkspace)
       const renamedTitle = response.board?.title ?? nextTitle
@@ -121,7 +123,7 @@ export default function BoardCanvasPage() {
       setBoardTitleOverride({ boardId: effectiveBoardId, title: nextTitle })
       return nextTitle
     }
-  }, [boardTitle, effectiveBoardId, isNewBoard, loadState.status, resolvedWorkspace, setBoardTitleOverride])
+  }, [effectiveBoardId, isNewBoard, loadState.status, resolvedWorkspace, setBoardTitleOverride])
 
   if (!shareId && sessionStatus === 'error') {
     return <BoardRouteState title="Board unavailable" detail={sessionError ?? 'Workspace session failed to load.'} />

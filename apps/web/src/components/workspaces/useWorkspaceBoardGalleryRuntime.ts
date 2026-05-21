@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { requestCurrentSessionRefresh } from '@/features/auth/sessionClient'
 import type { TangentWorkspace } from '@/features/auth/sessionTypes'
-import { normalizeUserLabelInput } from '@/features/security/safeText'
+import { normalizeBoardTitleInput, validateBoardTitleInput } from '@/features/security/safeText'
 import type { BoardMetadataUpdateInput, BoardPersistenceSummary } from '@/features/boards/boardTypes'
 import {
   copyLocalBoardDocument,
@@ -104,11 +104,12 @@ export function useWorkspaceBoardGalleryRuntime() {
 
   const renameBoard = async (event: FormEvent<HTMLFormElement>, boardId: string) => {
     event.preventDefault()
-    const title = normalizeUserLabelInput(editingTitle)
-    if (!title) {
-      data.setError('Board title is required.')
+    const validationError = validateBoardTitleInput(editingTitle)
+    if (validationError) {
+      data.setError(validationError)
       return
     }
+    const title = normalizeBoardTitleInput(editingTitle)
     setPendingBoardId(boardId)
     data.setError(null)
     try {

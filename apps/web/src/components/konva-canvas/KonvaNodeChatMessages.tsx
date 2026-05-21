@@ -150,6 +150,7 @@ function MessageActionButton({
       aria-label={ariaLabel}
       onClick={(event) => {
         event.cancelBubble = true
+        onTooltipChange(null)
         onClick?.()
       }}
       onDblClick={stopNodeCardControlEvent}
@@ -167,6 +168,7 @@ function MessageActionButton({
       }}
       onPointerDown={(event) => {
         event.cancelBubble = true
+        onTooltipChange(null)
         setIsPressed(true)
       }}
       onPointerUp={() => setIsPressed(false)}
