@@ -87,3 +87,7 @@ GEMINI.md
 legacy/
 **/.vercel
 .vercel
+
+# Playwright run artifacts
+apps/web/playwright-report/
+apps/web/test-results/
