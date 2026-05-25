@@ -2,6 +2,19 @@
 
 Append-only timeline for the `knowledge/` memory layer. Do not remove old entries; add corrective entries when facts change.
 
+## 2026-05-25
+
+- Added `wiki/pr_workflow_handoff.md` mirroring the `AGENTS.md` protected-main PR/Kanban handoff rule into cross-slice memory so future agents can recall it from `knowledge/index.md` without re-reading the full AGENTS contract.
+- Added `raw/source_agents_md_pr_workflow_2026-05-25.md` as the capture note for the page.
+- Updated `knowledge/index.md` Core Pages table and Current Fast Links to include the new page and source note.
+- Recorded the post-S1C-merge active-slice pointer in `project_state/project_state.md` so the index reflects that `feature/s1c-auth-admin-production-boundary` was merged via PR #11.
+
+Sources:
+
+- `AGENTS.md` § "PR workflow (hard rule)"
+- `CLAUDE.md` (Tanergy) § "Project tracking"
+- Issue [#14](https://github.com/orcastt/Tanergy/issues/14)
+
 ## 2026-05-21
 
 - Bootstrapped `knowledge/` as a lightweight LLM-maintained project memory layer.
