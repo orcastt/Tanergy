@@ -19,11 +19,11 @@ Every change into `main` — code, docs, config, any size — follows this order
 
 - Do not push to `main`. Do not merge your own PR. Do not approve a PR you authored.
 - If any step is missing, stop and tell the operator. Do not work around it.
-- Branch naming: `feat/<n>-<slug>` / `fix/<n>-<slug>` / `chore/<slug>`, where `<n>` is the issue number. Use `chore/<n>-<slug>` for docs-only or config-only changes.
+- Branch naming: `feat/<n>-<slug>` / `fix/<n>-<slug>` / `chore/<slug>`, where `<n>` is the issue number. Use `chore/<slug>` for docs-only or config-only changes; include the issue number inside the slug (e.g. `chore/14-align-docs`).
 
 ## Kanban Handoff
 
-GitHub Project board is the single source of truth for kanban state. The active board URL and project ID are documented alongside the canonical PR rule in `AGENTS.md`. Do not mirror board state into the repo.
+GitHub Project board is the single source of truth for kanban state. Do not mirror board state into the repo.
 
 Slice ↔ issue links live inline in `project_state/project_state.md` and slice files, not in a separate ledger.
 
