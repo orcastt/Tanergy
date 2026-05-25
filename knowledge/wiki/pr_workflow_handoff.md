@@ -19,11 +19,11 @@ Every change into `main` — code, docs, config, any size — follows this order
 
 - Do not push to `main`. Do not merge your own PR. Do not approve a PR you authored.
 - If any step is missing, stop and tell the operator. Do not work around it.
-- Branch naming: `feat/<n>-<slug>` / `fix/<n>-<slug>` / `chore/<slug>` / `docs/<n>-<slug>`, where `<n>` is the issue number.
+- Branch naming: `feat/<n>-<slug>` / `fix/<n>-<slug>` / `chore/<slug>`, where `<n>` is the issue number. Use `chore/<n>-<slug>` for docs-only or config-only changes.
 
 ## Kanban Handoff
 
-GitHub Project board is the single source of truth for kanban state. See `CLAUDE.md` (Tanergy) for the active board URL and ID. Do not mirror board state into the repo.
+GitHub Project board is the single source of truth for kanban state. The active board URL and project ID are documented alongside the canonical PR rule in `AGENTS.md`. Do not mirror board state into the repo.
 
 Slice ↔ issue links live inline in `project_state/project_state.md` and slice files, not in a separate ledger.
 
@@ -42,5 +42,4 @@ When closing a slice or task:
 ## Sources
 
 - `AGENTS.md` — canonical PR workflow rule.
-- `CLAUDE.md` (Tanergy) — project tracking and `gh` auth notes.
 - `knowledge/raw/source_agents_md_pr_workflow_2026-05-25.md` — capture note for this page.

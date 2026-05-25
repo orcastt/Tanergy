@@ -12,7 +12,6 @@ Append-only timeline for the `knowledge/` memory layer. Do not remove old entrie
 Sources:
 
 - `AGENTS.md` § "PR workflow (hard rule)"
-- `CLAUDE.md` (Tanergy) § "Project tracking"
 - Issue [#14](https://github.com/orcastt/Tanergy/issues/14)
 
 ## 2026-05-21

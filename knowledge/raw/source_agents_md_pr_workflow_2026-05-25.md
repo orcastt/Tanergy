@@ -12,12 +12,11 @@ Issue [#14](https://github.com/orcastt/Tanergy/issues/14) calls for this rule to
 
 ## Capture Decisions
 
-- Mirror the rule verbatim into `knowledge/wiki/pr_workflow_handoff.md`. Do not rewrite the steps; small drift between the wiki page and the source rule would cause future confusion.
+- Compile the rule into `knowledge/wiki/pr_workflow_handoff.md`. Keep the 5-step rule wording aligned with `AGENTS.md`; add only the Kanban/operational context that future agents need on a single page.
 - Keep the wiki page short and link back to this source note plus `AGENTS.md`.
 - If `AGENTS.md` changes, update the wiki page and append a corrective entry to `knowledge/log.md`.
 
 ## Related
 
 - `AGENTS.md` — § "PR workflow (hard rule)" and § "Git".
-- `CLAUDE.md` (Tanergy) — project tracking, `gh` auth and don'ts.
 - `knowledge/wiki/pr_workflow_handoff.md` — compiled wiki page for this rule.
