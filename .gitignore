@@ -87,3 +87,11 @@ GEMINI.md
 legacy/
 **/.vercel
 .vercel
+
+# Local-only planning / scratch (never push)
+dev-plans/_local/
+**/_local/
+
+# Playwright run artifacts
+apps/web/playwright-report/
+apps/web/test-results/
