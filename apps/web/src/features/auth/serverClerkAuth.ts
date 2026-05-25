@@ -19,11 +19,6 @@ export async function buildServerClerkApiHeaders(request?: NextRequest) {
     return { Cookie: `__session=${sessionCookie}` } satisfies Record<string, string>
   }
 
-  const canUseDevBypass = process.env.NODE_ENV !== 'production'
-    && process.env.TANGENT_ENABLE_DEV_AUTH_BYPASS === '1'
-    && cookieStore.get('tangent_dev_auth')?.value === '1'
-
-  if (canUseDevBypass) return {} as Record<string, string>
   return {} as Record<string, string>
 }
 
