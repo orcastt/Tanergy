@@ -1,6 +1,6 @@
 # TANGENT Knowledge Index
 
-**Updated**: 2026-05-21
+**Updated**: 2026-05-25
 **Mode**: Cross-slice project memory index.
 
 ## Read Order
@@ -17,7 +17,9 @@
 | `log.md` | Append-only timeline of knowledge-layer updates. | Any meaningful knowledge edit |
 | `raw/README.md` | Raw-source intake rules. | Raw-source policy changes |
 | `raw/source_karpathy_llm_wiki_2026-05-21.md` | External source note that shaped this folder. | Re-read or reinterpret the gist |
+| `raw/source_agents_md_pr_workflow_2026-05-25.md` | Source note for the PR workflow handoff page. | `AGENTS.md` PR workflow rule changes |
 | `wiki/project_memory_operating_model.md` | How this memory layer fits TANGENT and future coding. | Process or doc topology changes |
+| `wiki/pr_workflow_handoff.md` | Protected-main PR/Kanban handoff protocol for any agent before opening a PR. | `AGENTS.md` PR workflow rule changes |
 | `wiki/tangent_project_wiki.md` | One-page compiled project overview, release spine, architecture shape and open gates. | Major product/architecture/state checkpoint |
 | `wiki/agent_harness_and_skills.md` | Practical Harness Agent workflow and PRD/ARCH/project_state/QA/AI/deploy/security/collab skill map. | Agent workflow or doc ownership changes |
 | `wiki/connections_registry.md` | GitHub, Vercel, Hetzner, Supabase, R2, Clerk, GeekAI and Cloudflare ownership map. | Any provider/account/topology change |
@@ -42,6 +44,7 @@ These pages are not created yet, but they are good next candidates when the fact
 - Memory entry from project state: `project_state/project_memory_index.md`
 - Project wiki: `knowledge/wiki/tangent_project_wiki.md`
 - Agent harness and skills: `knowledge/wiki/agent_harness_and_skills.md`
+- PR workflow handoff: `knowledge/wiki/pr_workflow_handoff.md`
 - AI runtime architecture: `ARCH/ARCH_slice_S2_ai_runtime.md`
 - AI product acceptance: `PRD/PRD_slice_S2_ai_productization.md`
 - Full-stack security acceptance: `docs/fullstack-security-acceptance-2026-05-20.md`
