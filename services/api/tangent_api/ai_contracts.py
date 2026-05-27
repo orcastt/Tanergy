@@ -30,7 +30,7 @@ from tangent_api.ai_run_persistence import (
     persist_ai_run_record,
 )
 from tangent_api.ai_schemas import AiRunRecord, AiRunRequest
-from tangent_api.credit_ledger import build_credit_preflight_response
+from tangent_api.credit_ledger import build_credit_preflight_response, refund_outstanding_run_charge
 from tangent_api.request_context import ApiRequestContext
 
 RUNS: dict[str, AiRunRecord] = {}
@@ -160,6 +160,11 @@ def cancel_mock_run(run_id: str, context: ApiRequestContext) -> AiRunRecord:
         runs=RUNS,
         terminal_run_statuses=TERMINAL_RUN_STATUSES,
     )
+    refund_outstanding_run_charge(
+        context,
+        run_id,
+        metadata={"reason": "cancellation_refund", "runId": run_id},
+    )
     return canceled
 
 
@@ -197,6 +202,11 @@ def _execute_scheduled_run(run_id: str, payload: AiRunRequest, context: ApiReque
             else:
                 RUNS[run_id] = canceled
             prune_run_memory(run_contexts=RUN_CONTEXTS, run_memory_limit=RUN_MEMORY_LIMIT, run_memory_ttl_seconds=RUN_MEMORY_TTL_SECONDS, run_requests=RUN_REQUESTS, runs=RUNS, terminal_run_statuses=TERMINAL_RUN_STATUSES)
+            refund_outstanding_run_charge(
+                context,
+                run_id,
+                metadata={"reason": "cancellation_refund", "runId": run_id, "settledByExecutor": True},
+            )
             return
         persist_ai_run_record(finalization.run, payload, context)
         if has_run_persistence():

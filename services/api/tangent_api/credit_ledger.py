@@ -12,6 +12,8 @@ from tangent_api.credit_ledger_support import (
     positive_credits,
     write_credit_ledger_entry_for_account,
 )
+
+_REFUND_LEDGER_PAGE_SIZE = 100
 from tangent_api.credit_schemas import (
     CreditLedgerMutationResponse,
     CreditLedgerResponse,
@@ -209,6 +211,34 @@ def settle_usage_refund(
         reason="usage_refund",
         source_id=run_id,
         source_type="ai_run",
+        metadata=metadata,
+    )
+
+
+def refund_outstanding_run_charge(
+    context: ApiRequestContext,
+    run_id: str,
+    metadata: Optional[dict[str, Any]] = None,
+) -> Optional[CreditLedgerMutationResponse]:
+    if not os.getenv("DATABASE_URL"):
+        return None
+    charge = resolve_ai_charge_summary(context)
+    _, rows = load_credit_ledger_rows(
+        charge.charged_account_id,
+        _REFUND_LEDGER_PAGE_SIZE,
+        connect_db=_connect_to_postgres,
+        source_id=run_id,
+        source_type="ai_run",
+    )
+    outstanding_debt = 0.0
+    for row in rows:
+        outstanding_debt += float(row[6] or 0)
+    if outstanding_debt >= 0:
+        return None
+    return settle_usage_refund(
+        context=context,
+        credits=-outstanding_debt,
+        run_id=run_id,
         metadata=metadata,
     )
 
