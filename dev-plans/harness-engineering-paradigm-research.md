@@ -84,7 +84,7 @@ S2 AiRun embodies most harness properties. Code evidence:
 - **Registry tables**: `model_registry`, `model_parameter_tiers`, `model_provider_routes`, `model_pricing_rules` at `ARCH/ARCH_slice_S2_ai_runtime.md:45-83`
 - **Typed input**: `AiRunRequest` at `services/api/tangent_api/ai_schemas.py:39-103` — bounds run_type, prompt length, input assets count (8)
 - **Typed output**: `AiRunRecord` at `services/api/tangent_api/ai_schemas.py:106-134`
-- **Lifecycle**: `create_ai_run` at `services/api/tangent_api/ai_contracts.py:112-113`; `_execute_scheduled_run` at `services/api/tangent_api/ai_contracts.py:175-205`
+- **Lifecycle**: `create_ai_run` at `services/api/tangent_api/ai_contracts.py:112-113`; `_execute_scheduled_run` at `services/api/tangent_api/ai_contracts.py:175-231`
 - **Audit trail**: `tangent_ai_runs`, `tangent_ai_api_calls`, `tangent_api_cost_ledger` all wired
 - **Board safety**: `audit_board_document` at `services/api/tangent_api/board_guard.py:26-55`, `_audit_string` at `:100-140`
 - **Image bounds**: `MAX_IMAGE_OP_INPUT_BYTES` 30 MB and `MAX_IMAGE_OP_PIXELS` 24 MP at `services/api/tangent_api/image_ops.py:9-10`
@@ -145,6 +145,7 @@ A high-fidelity adversarial validator is itself an LLM call (e.g. vision model c
 **Cost accounting**:
 - Validator child: `cost_credits=0`, `credits_charged=0`, but provider cost row recorded with new `settlement_kind='validator_cost'` (extends existing settlement kinds at `services/api/tangent_api/ai_cost_ledger.py:66-71`)
 - Parent: customer credit settlement moves to *after harness acceptance*, not after raw provider success. **This is a code change to `services/api/tangent_api/ai_run_execution.py:50-89` and is non-trivial.**
+- **Settlement guard (Round 4 Codex finding, 2026-05-28)**: validator runs with `cost_credits=0` will be rejected by the existing `positive_credits()` check at `services/api/tangent_api/credit_ledger_support.py:262-265` (raises 400 for `<=0`). v2 implementation MUST bypass this guard on the validator path. Two viable options: (a) skip `settle_usage_charge_to_account` entirely when `run_type='validator'` and write the validator_cost ledger row via a new `record_validator_cost()` helper that does NOT call `positive_credits()`; (b) relax `positive_credits()` to accept `0` when the caller passes `settlement_kind='validator_cost'`. Decision deferred to v2 implementation — captured in #47.
 
 **Retry/exhaust semantics**:
 - Validator fail → triggers retry of upstream step → parent hold/preflight stays open
