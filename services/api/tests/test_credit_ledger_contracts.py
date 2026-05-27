@@ -5,6 +5,7 @@ from tangent_api.credit_ledger import (
     grant_subscription_credits,
     record_admin_adjustment,
     record_topup_purchase,
+    refund_outstanding_run_charge,
     settle_usage_charge,
     settle_usage_refund,
 )
@@ -98,6 +99,85 @@ def test_credit_ledger_refunds_and_admin_adjustments_write_auditable_reasons(mon
     assert adjustment.entry.reason == "admin_adjustment"
     assert adjustment.entry.metadata == {"note": "manual correction"}
     assert [row["credits_delta"] for row in fake_db.credit_ledger] == [8, -2]
+
+
+def test_refund_outstanding_run_charge_noop_when_no_ledger_activity(monkeypatch):
+    fake_db = _install_fake_credit_db(monkeypatch)
+    context = _context("user_refund_noop")
+
+    result = refund_outstanding_run_charge(context, run_id="airun_unknown")
+
+    assert result is None
+    assert fake_db.credit_ledger == []
+
+
+def test_refund_outstanding_run_charge_refunds_full_outstanding_charge(monkeypatch):
+    fake_db = _install_fake_credit_db(monkeypatch)
+    account_id = "credit_user_user_refund_full"
+    fake_db.credit_ledger = [
+        {
+            "account_id": account_id,
+            "credits_delta": 100,
+            "id": "ledger_seed_topup",
+            "reason": "topup_purchase",
+            "source_type": "payment",
+        },
+        {
+            "account_id": account_id,
+            "credits_delta": -25,
+            "id": "ledger_seed_charge",
+            "metadata": {"runId": "airun_cancel_full"},
+            "reason": "usage_charge",
+            "source_id": "airun_cancel_full",
+            "source_type": "ai_run",
+        },
+    ]
+    context = _context("user_refund_full")
+
+    result = refund_outstanding_run_charge(
+        context,
+        run_id="airun_cancel_full",
+        metadata={"reason": "cancellation_refund"},
+    )
+
+    assert result is not None
+    assert result.entry.reason == "usage_refund"
+    assert result.entry.credits_delta == 25
+    assert result.entry.source_id == "airun_cancel_full"
+    assert result.balance_credits == 100
+    assert [row["reason"] for row in fake_db.credit_ledger] == ["topup_purchase", "usage_charge", "usage_refund"]
+
+
+def test_refund_outstanding_run_charge_is_idempotent_on_repeat_calls(monkeypatch):
+    fake_db = _install_fake_credit_db(monkeypatch)
+    account_id = "credit_user_user_refund_idem"
+    fake_db.credit_ledger = [
+        {
+            "account_id": account_id,
+            "credits_delta": 50,
+            "id": "ledger_seed_topup",
+            "reason": "topup_purchase",
+            "source_type": "payment",
+        },
+        {
+            "account_id": account_id,
+            "credits_delta": -12,
+            "id": "ledger_seed_charge",
+            "reason": "usage_charge",
+            "source_id": "airun_double",
+            "source_type": "ai_run",
+        },
+    ]
+    context = _context("user_refund_idem")
+
+    first = refund_outstanding_run_charge(context, run_id="airun_double")
+    second = refund_outstanding_run_charge(context, run_id="airun_double")
+
+    assert first is not None
+    assert first.entry.credits_delta == 12
+    assert second is None
+    refund_rows = [row for row in fake_db.credit_ledger if row["reason"] == "usage_refund"]
+    assert len(refund_rows) == 1
 
 
 def test_credit_ledger_rejects_zero_or_negative_grants(monkeypatch):
