@@ -105,6 +105,92 @@ def load_credit_ledger_rows(
     return balance, rows
 
 
+def attempt_atomic_run_refund(
+    account_id: str,
+    actor_user_id: Optional[str],
+    workspace_id: Optional[str],
+    run_id: str,
+    *,
+    connect_db: Callable[[], object],
+    metadata: Optional[dict[str, Any]] = None,
+) -> Optional[CreditLedgerMutationResponse]:
+    """Refund the outstanding debt for a run atomically and idempotently.
+
+    Aggregates SUM(credits_delta) server-side for the (account_id, run_id, ai_run)
+    tuple — eliminates LIMIT-bounded reads and float accumulation drift. Insert
+    is gated by a WHERE NOT EXISTS clause keyed on (account_id, source_id,
+    source_type='ai_run', reason='usage_refund'); concurrent callers that race
+    will both see the same SUM but the second INSERT will be a no-op, so the
+    account is never double-credited.
+    """
+    entry_id = f"credit_ledger_{uuid4()}"
+    with connect_db() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT COALESCE(SUM(credits_delta), 0)
+                FROM tangent_credit_ledger
+                WHERE account_id = %s AND source_id = %s AND source_type = 'ai_run'
+                """,
+                (account_id, run_id),
+            )
+            sum_row = cursor.fetchone()
+            outstanding_debt = float(sum_row[0] or 0) if sum_row else 0.0
+            if outstanding_debt >= 0:
+                return None
+            refund_amount = -outstanding_debt
+            cursor.execute(
+                """
+                INSERT INTO tangent_credit_ledger (
+                    id,
+                    account_id,
+                    workspace_id,
+                    actor_user_id,
+                    source_type,
+                    source_id,
+                    credits_delta,
+                    reason,
+                    metadata
+                )
+                SELECT %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM tangent_credit_ledger
+                    WHERE account_id = %s
+                      AND source_id = %s
+                      AND source_type = 'ai_run'
+                      AND reason = 'usage_refund'
+                )
+                RETURNING id, account_id, workspace_id, actor_user_id, source_type, source_id,
+                          credits_delta, reason, metadata, created_at
+                """,
+                (
+                    entry_id,
+                    account_id,
+                    workspace_id,
+                    actor_user_id,
+                    "ai_run",
+                    run_id,
+                    refund_amount,
+                    "usage_refund",
+                    json.dumps(metadata or {}),
+                    account_id,
+                    run_id,
+                ),
+            )
+            row = cursor.fetchone()
+            if row is None:
+                connection.commit()
+                return None
+            balance = load_credit_balance(cursor, account_id)
+        connection.commit()
+    return CreditLedgerMutationResponse(
+        accountId=account_id,
+        balanceCredits=balance,
+        entry=credit_ledger_entry_from_row(row),
+        ok=True,
+    )
+
+
 def write_credit_ledger_entry_for_account(
     account_id: str,
     actor_user_id: str,

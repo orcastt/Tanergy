@@ -161,7 +161,7 @@ def cancel_mock_run(run_id: str, context: ApiRequestContext) -> AiRunRecord:
         terminal_run_statuses=TERMINAL_RUN_STATUSES,
     )
     refund_outstanding_run_charge(
-        context,
+        run_context,
         run_id,
         metadata={"reason": "cancellation_refund", "runId": run_id},
     )
@@ -203,7 +203,7 @@ def _execute_scheduled_run(run_id: str, payload: AiRunRequest, context: ApiReque
                 RUNS[run_id] = canceled
             prune_run_memory(run_contexts=RUN_CONTEXTS, run_memory_limit=RUN_MEMORY_LIMIT, run_memory_ttl_seconds=RUN_MEMORY_TTL_SECONDS, run_requests=RUN_REQUESTS, runs=RUNS, terminal_run_statuses=TERMINAL_RUN_STATUSES)
             refund_outstanding_run_charge(
-                context,
+                _resolve_run_context(run_id, context),
                 run_id,
                 metadata={"reason": "cancellation_refund", "runId": run_id, "settledByExecutor": True},
             )

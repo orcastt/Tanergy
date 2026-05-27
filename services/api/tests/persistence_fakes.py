@@ -86,20 +86,51 @@ class FakePostgresCursor:
                 self.database.admin_roles[existing_index] = next_row
         elif normalized.startswith("INSERT INTO tangent_credit_ledger"):
             metadata = json.loads(params[8]) if isinstance(params[8], str) else params[8]
-            row = {
-                "account_id": params[1],
-                "actor_user_id": params[3],
-                "created_at": f"2026-05-06T00:30:{len(self.database.credit_ledger):02d}Z",
-                "credits_delta": params[6],
-                "id": params[0],
-                "metadata": metadata or {},
-                "reason": params[7],
-                "source_id": params[5],
-                "source_type": params[4],
-                "workspace_id": params[2],
-            }
-            self.database.credit_ledger.append(row)
-            self.row = _credit_ledger_tuple(row)
+            if "WHERE NOT EXISTS" in normalized:
+                guard_account_id = params[9]
+                guard_source_id = params[10]
+                conflict = next(
+                    (
+                        entry for entry in self.database.credit_ledger
+                        if entry["account_id"] == guard_account_id
+                        and entry.get("source_id") == guard_source_id
+                        and entry.get("source_type") == "ai_run"
+                        and entry.get("reason") == "usage_refund"
+                    ),
+                    None,
+                )
+                if conflict is not None:
+                    self.row = None
+                else:
+                    row = {
+                        "account_id": params[1],
+                        "actor_user_id": params[3],
+                        "created_at": f"2026-05-06T00:30:{len(self.database.credit_ledger):02d}Z",
+                        "credits_delta": params[6],
+                        "id": params[0],
+                        "metadata": metadata or {},
+                        "reason": params[7],
+                        "source_id": params[5],
+                        "source_type": params[4],
+                        "workspace_id": params[2],
+                    }
+                    self.database.credit_ledger.append(row)
+                    self.row = _credit_ledger_tuple(row)
+            else:
+                row = {
+                    "account_id": params[1],
+                    "actor_user_id": params[3],
+                    "created_at": f"2026-05-06T00:30:{len(self.database.credit_ledger):02d}Z",
+                    "credits_delta": params[6],
+                    "id": params[0],
+                    "metadata": metadata or {},
+                    "reason": params[7],
+                    "source_id": params[5],
+                    "source_type": params[4],
+                    "workspace_id": params[2],
+                }
+                self.database.credit_ledger.append(row)
+                self.row = _credit_ledger_tuple(row)
         elif normalized.startswith("INSERT INTO tangent_payments"):
             if len(params) == 9:
                 payment_id, account_id, provider, provider_payment_id, amount_cents, currency, checkout_session_id, kind, metadata_value = params
@@ -2182,9 +2213,22 @@ class FakePostgresCursor:
                 row["status"] = "deleted"
         elif normalized.startswith("SELECT COALESCE(SUM(credits_delta), 0) FROM tangent_credit_ledger"):
             account_id = params[0]
-            self.row = (
-                sum(float(row.get("credits_delta", 0)) for row in self.database.credit_ledger if row["account_id"] == account_id),
-            )
+            filtered_source_id = None
+            filtered_source_type = None
+            if "source_id = %s" in normalized:
+                filtered_source_id = params[1]
+            if "source_type = 'ai_run'" in normalized:
+                filtered_source_type = "ai_run"
+            total = 0.0
+            for row in self.database.credit_ledger:
+                if row["account_id"] != account_id:
+                    continue
+                if filtered_source_id is not None and row.get("source_id") != filtered_source_id:
+                    continue
+                if filtered_source_type is not None and row.get("source_type") != filtered_source_type:
+                    continue
+                total += float(row.get("credits_delta", 0))
+            self.row = (total,)
         elif normalized.startswith("SELECT 1 FROM tangent_credit_ledger WHERE account_id = %s AND source_id = %s LIMIT 1"):
             account_id, source_id = params
             row = next(
