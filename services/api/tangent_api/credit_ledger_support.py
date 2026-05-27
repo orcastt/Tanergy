@@ -117,11 +117,16 @@ def attempt_atomic_run_refund(
     """Refund the outstanding debt for a run atomically and idempotently.
 
     Aggregates SUM(credits_delta) server-side for the (account_id, run_id, ai_run)
-    tuple — eliminates LIMIT-bounded reads and float accumulation drift. Insert
-    is gated by a WHERE NOT EXISTS clause keyed on (account_id, source_id,
-    source_type='ai_run', reason='usage_refund'); concurrent callers that race
-    will both see the same SUM but the second INSERT will be a no-op, so the
-    account is never double-credited.
+    tuple — eliminates LIMIT-bounded reads and float accumulation drift. The
+    INSERT uses the partial unique index ``tangent_credit_ledger_run_refund_uidx``
+    (migration 0034) on (account_id, source_id) WHERE source_type='ai_run'
+    AND reason='usage_refund' together with ``ON CONFLICT ... DO NOTHING`` so
+    concurrent callers that race the SUM step can never insert a second refund
+    row: Postgres serializes the unique-index check and the loser becomes a
+    no-op. On a successful insert we also bump
+    tangent_ai_runs.credits_refunded so admin analytics stay aligned with the
+    ledger (the ON CONFLICT DO UPDATE on tangent_ai_runs no longer touches
+    that column — see ai_run_persistence_store.py).
     """
     entry_id = f"credit_ledger_{uuid4()}"
     with connect_db() as connection:
@@ -152,14 +157,10 @@ def attempt_atomic_run_refund(
                     reason,
                     metadata
                 )
-                SELECT %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb
-                WHERE NOT EXISTS (
-                    SELECT 1 FROM tangent_credit_ledger
-                    WHERE account_id = %s
-                      AND source_id = %s
-                      AND source_type = 'ai_run'
-                      AND reason = 'usage_refund'
-                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb)
+                ON CONFLICT (account_id, source_id)
+                    WHERE source_type = 'ai_run' AND reason = 'usage_refund'
+                    DO NOTHING
                 RETURNING id, account_id, workspace_id, actor_user_id, source_type, source_id,
                           credits_delta, reason, metadata, created_at
                 """,
@@ -173,14 +174,21 @@ def attempt_atomic_run_refund(
                     refund_amount,
                     "usage_refund",
                     json.dumps(metadata or {}),
-                    account_id,
-                    run_id,
                 ),
             )
             row = cursor.fetchone()
             if row is None:
                 connection.commit()
                 return None
+            cursor.execute(
+                """
+                UPDATE tangent_ai_runs
+                SET credits_refunded = COALESCE(credits_refunded, 0) + %s,
+                    updated_at = NOW()
+                WHERE id = %s
+                """,
+                (refund_amount, run_id),
+            )
             balance = load_credit_balance(cursor, account_id)
         connection.commit()
     return CreditLedgerMutationResponse(

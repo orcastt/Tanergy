@@ -164,6 +164,7 @@ def cancel_mock_run(run_id: str, context: ApiRequestContext) -> AiRunRecord:
         run_context,
         run_id,
         metadata={"reason": "cancellation_refund", "runId": run_id},
+        account_id=canceled.charged_account_id,
     )
     return canceled
 
@@ -206,9 +207,30 @@ def _execute_scheduled_run(run_id: str, payload: AiRunRequest, context: ApiReque
                 _resolve_run_context(run_id, context),
                 run_id,
                 metadata={"reason": "cancellation_refund", "runId": run_id, "settledByExecutor": True},
+                account_id=canceled.charged_account_id,
             )
             return
         persist_ai_run_record(finalization.run, payload, context)
+        # Re-verify durable state: the persist above carries a
+        # WHERE status <> 'canceled' OR EXCLUDED.status = 'canceled' guard, so
+        # a cancel that landed between the previous check and the persist will
+        # leave the row in 'canceled'. In that case we must refund — otherwise
+        # the user would keep the credits and the work would still have
+        # executed.
+        durable = load_ai_run_record(run_id)
+        if durable is not None and durable.status == "canceled":
+            if has_run_persistence():
+                forget_run(run_contexts=RUN_CONTEXTS, run_id=run_id, run_requests=RUN_REQUESTS, runs=RUNS)
+            else:
+                RUNS[run_id] = durable
+            prune_run_memory(run_contexts=RUN_CONTEXTS, run_memory_limit=RUN_MEMORY_LIMIT, run_memory_ttl_seconds=RUN_MEMORY_TTL_SECONDS, run_requests=RUN_REQUESTS, runs=RUNS, terminal_run_statuses=TERMINAL_RUN_STATUSES)
+            refund_outstanding_run_charge(
+                _resolve_run_context(run_id, context),
+                run_id,
+                metadata={"reason": "cancellation_refund", "runId": run_id, "settledByExecutor": True, "racePostFinalize": True},
+                account_id=durable.charged_account_id,
+            )
+            return
         if has_run_persistence():
             forget_run(run_contexts=RUN_CONTEXTS, run_id=run_id, run_requests=RUN_REQUESTS, runs=RUNS)
         else:

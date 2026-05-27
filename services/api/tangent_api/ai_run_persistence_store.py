@@ -58,7 +58,9 @@ def persist_ai_run_record(
                     error_code = EXCLUDED.error_code,
                     error_message = EXCLUDED.error_message,
                     credits_charged = EXCLUDED.credits_charged,
-                    credits_refunded = EXCLUDED.credits_refunded,
+                    -- credits_refunded intentionally omitted: owned by the refund
+                    -- helper (attempt_atomic_run_refund); persist would otherwise
+                    -- reset it to 0 on every run-status update.
                     provider_cost = EXCLUDED.provider_cost,
                     provider_currency = EXCLUDED.provider_currency,
                     estimated_credits = EXCLUDED.estimated_credits,
@@ -69,6 +71,8 @@ def persist_ai_run_record(
                     preflight_status = EXCLUDED.preflight_status,
                     text_output = EXCLUDED.text_output,
                     updated_at = EXCLUDED.updated_at
+                WHERE tangent_ai_runs.status <> 'canceled'
+                   OR EXCLUDED.status = 'canceled'
                 """,
                 (
                     run.run_id,
