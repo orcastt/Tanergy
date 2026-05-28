@@ -3,9 +3,11 @@ from typing import Any, Optional
 
 from fastapi import HTTPException
 
+from tangent_api.credit_ledger_refund import (
+    refund_outstanding_run_charge as _refund_outstanding_run_charge_impl,
+)
 from tangent_api.credit_ledger_support import (
     LEDGER_REASONS,
-    attempt_atomic_run_refund,
     build_credit_preflight_for_account,
     credit_ledger_entry_from_row,
     load_credit_ledger_rows,
@@ -221,30 +223,12 @@ def refund_outstanding_run_charge(
     *,
     account_id: Optional[str] = None,
 ) -> Optional[CreditLedgerMutationResponse]:
-    """Refund any outstanding usage_charge for ``run_id``.
-
-    ``account_id`` MUST be supplied for any flow that already knows which
-    account was charged (e.g. cancel paths reading
-    ``tangent_ai_runs.charged_account_id`` for the run). Falling back to
-    ``resolve_ai_charge_summary(context)`` is only safe when the run's
-    billing context cannot have shifted since it was created — that
-    resolver can raise 402 or pick a different account if Team seats or
-    subscriptions changed in the meantime, which would leak the original
-    charge.
-    """
-    if not os.getenv("DATABASE_URL"):
-        return None
-    resolved_account_id = account_id
-    if not resolved_account_id:
-        charge = resolve_ai_charge_summary(context)
-        resolved_account_id = charge.charged_account_id
-    return attempt_atomic_run_refund(
-        account_id=resolved_account_id,
-        actor_user_id=context.user_id,
-        workspace_id=context.workspace_id,
-        run_id=run_id,
+    return _refund_outstanding_run_charge_impl(
+        context,
+        run_id,
+        metadata,
+        account_id=account_id,
         connect_db=_connect_to_postgres,
-        metadata=metadata,
     )
 
 

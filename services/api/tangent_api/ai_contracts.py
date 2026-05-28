@@ -141,6 +141,17 @@ def cancel_mock_run(run_id: str, context: ApiRequestContext) -> AiRunRecord:
     if run is None:
         raise HTTPException(status_code=404, detail="AI run not found.")
     if run.status == "canceled":
+        # The refund helper is idempotent (partial unique index on the ledger
+        # blocks duplicate usage_refund rows). Retrying through this branch
+        # lets a caller recover from a partial failure where the run was
+        # persisted as canceled but the prior refund attempt errored out
+        # before it could land.
+        refund_outstanding_run_charge(
+            run_context,
+            run_id,
+            metadata={"reason": "cancellation_refund", "runId": run_id, "retryOnAlreadyCanceled": True},
+            account_id=run.charged_account_id,
+        )
         return run
     if run.status not in {"queued", "running"}:
         raise HTTPException(status_code=409, detail="Only queued or running AI runs can be canceled.")
