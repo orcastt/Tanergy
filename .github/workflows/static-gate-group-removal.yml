@@ -32,7 +32,7 @@ jobs:
       - name: Backend grep gate
         continue-on-error: true
         env:
-          ENFORCE_DOCS_GATE: ${{ env.ENFORCE_DOCS_GATE || '0' }}
+          ENFORCE_GROUP_REMOVAL_GATE: '1'
         run: |
           PYTHONPATH=services/api python3 -m pytest \
             services/api/tests/static/test_no_group_collaborate_refs.py::test_backend_gate -v
@@ -40,7 +40,7 @@ jobs:
       - name: Frontend grep gate
         continue-on-error: true
         env:
-          ENFORCE_DOCS_GATE: ${{ env.ENFORCE_DOCS_GATE || '0' }}
+          ENFORCE_GROUP_REMOVAL_GATE: '1'
         run: |
           PYTHONPATH=services/api python3 -m pytest \
             services/api/tests/static/test_no_group_collaborate_refs.py::test_frontend_gate -v
@@ -79,6 +79,9 @@ jobs:
         run: pip install pytest
 
       - name: Run full gate (non-blocking signal on main)
+        continue-on-error: true
+        env:
+          ENFORCE_GROUP_REMOVAL_GATE: '1'
         run: |
           PYTHONPATH=services/api python3 -m pytest \
             services/api/tests/static/test_no_group_collaborate_refs.py -v

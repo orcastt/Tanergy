@@ -5,10 +5,10 @@ two full-DB pg_dump artifacts (schema-only + data-only) as PR [4]'s rollback sub
 
 Usage:
     PYTHONPATH=services/api python3 \\
-      services/api/scripts/group_collaborate_removal_preflight.py \\
-      --api-base-url https://staging.api.tanergy.app
+      services/api/scripts/group_collaborate_removal_preflight.py
 
-Prereqs: DATABASE_URL in env, pg_dump >= 14 on PATH, API base URL reachable.
+Prereqs: source deploy/<env>/api.env first so DATABASE_URL and
+TANGENT_BILLING_SELF_SERVE_CHECKOUT are loaded; pg_dump >= 14 on PATH.
 
 Outputs (gitignored except manifest):
     scripts/_local/group_removal_preflight_<ts>.json    full snapshot
@@ -38,7 +38,7 @@ API_ROOT = Path(__file__).resolve().parents[1]
 LOCAL_DIR = API_ROOT / "scripts" / "_local"
 EVIDENCE_DIR = API_ROOT / "migrations" / "_evidence"
 
-# 30 tables touched by migration 0034 (direct DELETE/UPDATE, cascade, SET NULL,
+# 35 tables touched by migration 0034 (direct DELETE/UPDATE, cascade, SET NULL,
 # transitive cascade children). Asserted to exist for schema-drift sanity; pg_dump
 # scope is the entire DB so FK-parent tables (e.g. tangent_users) are also captured.
 MUTATED_TABLES: tuple[str, ...] = (
@@ -49,6 +49,8 @@ MUTATED_TABLES: tuple[str, ...] = (
     "tangent_ai_runs", "tangent_api_call_logs", "tangent_workspace_seat_assignments",
     "tangent_workspace_usage_rollups", "tangent_ai_api_calls", "tangent_api_cost_ledger",
     "tangent_collection_boards", "tangent_board_assets", "tangent_board_snapshots",
+    "tangent_board_members", "tangent_board_user_preferences", "tangent_board_share_links",
+    "tangent_board_collaboration_sessions", "tangent_board_realtime_documents",
     "tangent_asset_variants", "tangent_ai_run_assets", "tangent_admin_audit_logs",
     "tangent_analytics_events", "tangent_moderation_items", "tangent_ai_control_plane_versions",
     "tangent_credit_ledger", "tangent_security_events",
@@ -57,8 +59,6 @@ MUTATED_TABLES: tuple[str, ...] = (
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    p.add_argument("--api-base-url", required=True,
-                   help="API base URL for the self-serve gate sanity POST")
     p.add_argument("--timestamp",
                    default=_dt.datetime.now(_dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ"))
     return p.parse_args()
@@ -80,7 +80,7 @@ def fetch_inventory(conn: psycopg.Connection) -> dict[str, Any]:
         FROM tangent_subscriptions WHERE plan_family = 'collaborate'
     """)
     snap["collaborate_payments"] = _rows(conn, """
-        SELECT id, user_id, kind, status, provider, amount_cents, checkout_session_id, created_at
+        SELECT id, account_id, kind, status, provider, amount_cents, checkout_session_id, created_at
         FROM tangent_payments WHERE kind = 'collaborate_subscription'
     """)
     snap["group_structure_dashboards"] = _rows(conn, """
@@ -97,7 +97,7 @@ def fetch_inventory(conn: psycopg.Connection) -> dict[str, Any]:
     snap["cascade_row_counts"] = ({n: _scalar(conn, q, (gw,)) for n, q in cascade_sql.items()}
                                   if gw else {n: 0 for n in cascade_sql})
     snap["in_flight_checkouts"] = _rows(conn, """
-        SELECT id, payment_id, provider, status FROM tangent_payments
+        SELECT id, provider_payment_id, provider, status FROM tangent_payments
         WHERE kind = 'collaborate_subscription'
           AND status IN ('pending', 'requires_action')
           AND checkout_session_id IS NOT NULL
@@ -111,25 +111,28 @@ def fetch_inventory(conn: psycopg.Connection) -> dict[str, Any]:
     return snap
 
 
-def check_aborts(conn: psycopg.Connection, api_base_url: str) -> list[dict[str, Any]]:
+def check_aborts(conn: psycopg.Connection) -> list[dict[str, Any]]:
     a1 = _scalar(conn, """
         SELECT COUNT(*) FROM tangent_subscriptions WHERE plan_family = 'collaborate'
-          AND status IN ('active', 'trialing', 'paused') AND provider != 'manual'
+          AND status IN ('active', 'trialing', 'paused')
+          AND provider NOT IN ('admin_manual', 'manual_test')
     """)
     a2 = _scalar(conn, """
         SELECT COUNT(*) FROM tangent_payments WHERE kind = 'collaborate_subscription'
-          AND status IN ('pending', 'succeeded', 'requires_action') AND provider != 'manual'
+          AND status IN ('pending', 'succeeded', 'requires_action')
+          AND provider NOT IN ('admin_manual', 'manual_test')
     """)
     a3 = _scalar(conn, """
         SELECT COUNT(*) FROM tangent_payments WHERE kind = 'collaborate_subscription'
           AND checkout_session_id IS NOT NULL
-          AND status NOT IN ('canceled', 'expired', 'failed')
+          AND status IN ('pending', 'requires_action')
+          AND provider NOT IN ('admin_manual', 'manual_test')
     """)
-    a4 = _check_self_serve_gate(api_base_url)
+    a4 = _check_self_serve_gate()
     return [
-        {"id": "A1", "description": "non-manual active/trialing/paused collaborate subscriptions",
+        {"id": "A1", "description": "real-provider active/trialing/paused collaborate subscriptions",
          "count": a1, "passed": a1 == 0},
-        {"id": "A2", "description": "non-manual pending/succeeded/requires_action collaborate payments",
+        {"id": "A2", "description": "real-provider pending/succeeded/requires_action collaborate payments",
          "count": a2, "passed": a2 == 0},
         {"id": "A3", "description": "open hosted-checkout sessions for collaborate",
          "count": a3, "passed": a3 == 0},
@@ -137,17 +140,21 @@ def check_aborts(conn: psycopg.Connection, api_base_url: str) -> list[dict[str, 
     ]
 
 
-def _check_self_serve_gate(api_base_url: str) -> dict[str, Any]:
-    """POST /api/v1/billing/collaborate/checkout; abort only on 2xx (gate open)."""
-    import httpx
-    url = api_base_url.rstrip("/") + "/api/v1/billing/collaborate/checkout"
-    try:
-        status = httpx.post(url, json={}, timeout=10.0).status_code
-    except httpx.HTTPError as exc:
-        return {"id": "A4", "description": f"self-serve gate POST to {url}",
-                "status": "error", "error": str(exc), "passed": False}
-    return {"id": "A4", "description": f"self-serve gate POST to {url}",
-            "status": status, "passed": not (200 <= status < 300)}
+def _check_self_serve_gate() -> dict[str, Any]:
+    """Verify TANGENT_BILLING_SELF_SERVE_CHECKOUT is not '1' in the loaded env.
+
+    Source of truth is the env var (see routers/billing.py
+    `_require_self_serve_checkout_enabled`). HTTP probing is unreliable: auth
+    and Pydantic validation layers can mask the gate state. Read directly.
+    """
+    raw = os.environ.get("TANGENT_BILLING_SELF_SERVE_CHECKOUT", "").strip()
+    gate_open = raw == "1"
+    return {
+        "id": "A4",
+        "description": f"TANGENT_BILLING_SELF_SERVE_CHECKOUT='{raw}' — gate {'OPEN' if gate_open else 'closed'}",
+        "value": raw,
+        "passed": not gate_open,
+    }
 
 
 def pg_dump_full(database_url: str, dest: Path, mode: str) -> None:
@@ -186,7 +193,7 @@ def write_manifest(path: Path, *, ts: str, snap: dict[str, Any], aborts: list[di
     lines.extend(["", "## Abort checks", "", "| ID | Description | Result |", "| --- | --- | --- |"])
     for c in aborts:
         result = "PASS" if c["passed"] else "FAIL"
-        detail = c.get("count", c.get("status", c.get("error", "")))
+        detail = c.get("count", c.get("status", c.get("error", c.get("value", ""))))
         lines.append(f"| {c['id']} | {c['description']} | {result} ({detail}) |")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -258,13 +265,13 @@ def main() -> int:
             return 1
         print(f"[preflight] schema-drift check OK ({len(MUTATED_TABLES)} tables present)")
         snap = fetch_inventory(conn)
-        aborts = check_aborts(conn, args.api_base_url)
+        aborts = check_aborts(conn)
 
     failed = [c for c in aborts if not c["passed"]]
     if failed:
         print("ABORT — one or more checks failed; no pg_dump written:", file=sys.stderr)
         for c in failed:
-            d = c.get("count", c.get("status", c.get("error", "")))
+            d = c.get("count", c.get("status", c.get("error", c.get("value", ""))))
             print(f"  {c['id']}: {c['description']} -> {d}", file=sys.stderr)
         return 1
 
