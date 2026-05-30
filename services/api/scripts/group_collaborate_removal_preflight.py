@@ -3,13 +3,11 @@
 Snapshots existing group/collaborate state, runs four hard abort checks, then takes
 two full-DB pg_dump artifacts (schema-only + data-only) as PR [4]'s rollback substrate.
 
-Usage:
-    PYTHONPATH=services/api python3 \\
-      services/api/scripts/group_collaborate_removal_preflight.py
+Usage: PYTHONPATH=services/api python3 services/api/scripts/group_collaborate_removal_preflight.py
 
 Prereqs: source deploy/<env>/api.env first so DATABASE_URL,
-TANGENT_BILLING_SELF_SERVE_CHECKOUT and TANGENT_ENV (staging|production) are
-loaded; pg_dump >= 14 on PATH.
+TANGENT_BILLING_SELF_SERVE_CHECKOUT and TANGENT_ENV (staging|production) load;
+non-TTY runs also need TANGENT_PREFLIGHT_CONFIRM=<env>; pg_dump >= 14 on PATH.
 
 Outputs (gitignored except manifest):
     scripts/_local/group_removal_preflight_<ts>.json    full snapshot
@@ -251,9 +249,11 @@ def main() -> int:
         print("ERROR: TANGENT_ENV must be 'staging' or 'production' (source the env file)", file=sys.stderr)
         return 1
     print(f"[preflight] target env: {env_name} · DB: {_argv_safe_dsn(database_url)[0]}")
-    if sys.stdin.isatty() and input(
-            f"Type '{env_name}' to confirm destructive-preflight target: ").strip() != env_name:
-        print("ERROR: env confirmation mismatch — aborting", file=sys.stderr)
+    confirm = os.environ.get("TANGENT_PREFLIGHT_CONFIRM", "").strip()
+    if not confirm and sys.stdin.isatty():
+        confirm = input(f"Type '{env_name}' to confirm destructive-preflight target: ").strip()
+    if confirm != env_name:
+        print(f"ERROR: confirmation required — set TANGENT_PREFLIGHT_CONFIRM={env_name} or run on a TTY", file=sys.stderr)
         return 1
 
     LOCAL_DIR.mkdir(parents=True, exist_ok=True)
