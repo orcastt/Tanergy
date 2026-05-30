@@ -9,7 +9,7 @@ present but skipped; PR [5] flips the env to enforce alongside the lockstep doc 
 Self-exclusion is load-bearing: this file, the preflight script, the not-yet-written
 migration file, and the planning notes all contain the denied tokens by necessity.
 
-Plan ref: dev-plans/group-removal-01-preflight-gate.md §2, master plan §Verification.
+Plan ref: GitHub epic #50, slice issue #55 (preflight + static grep gate).
 """
 
 from __future__ import annotations
