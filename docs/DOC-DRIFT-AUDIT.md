@@ -3,7 +3,7 @@
 **Date**: 2026-05-30
 **Branch**: `chore/58-doc-drift-audit`
 **Issue**: [#58](https://github.com/orcastt/Tanergy/issues/58) (cross-links [#48](https://github.com/orcastt/Tanergy/issues/48), [#49](https://github.com/orcastt/Tanergy/issues/49); migration drift routes to [#54](https://github.com/orcastt/Tanergy/issues/54))
-**Scope**: all 115 git-tracked markdown files. Vendored (`.venv/`, `node_modules/`) and gitignored paths excluded.
+**Scope**: all 115 pre-existing git-tracked markdown files (this audit report is the 116th). Vendored (`.venv/`, `node_modules/`) and gitignored paths excluded.
 
 ## TL;DR
 
@@ -39,7 +39,7 @@ All verified two ways. Pattern: **Chinese mirror sections lag the English** — 
 | `ARCH/ARCH.md` | L562 | S3 `96%` | `97%` | EN L43 = 97% (ZH snapshot lagged) |
 | `ARCH/ARCH.md` | L566 | UI `63%` `[#############-------]` | `69%` `[##############------]` | EN L47 = 69% |
 | `ARCH/ARCH.md` | L570 | S4 `34%` | `35%` | EN L51 = 35% |
-| `PRD/PRD.md` | L256 | S4 `34%` | `35%` | EN L98 + 3× project_state all say 35% |
+| `PRD/PRD.md` | L256 | S4 `34%` | `35%` | EN L98 + 2× project_state all say 35% |
 | `project_state/project_state.md` | L259 | 更新日期 `2026-05-20` | `2026-05-25` | EN header L3 = 2026-05-25 |
 | `project_state/project_state.md` | L260 | 分支 `feature/s1c-auth-admin-production-boundary` | `` `main`（S1C 已通过 PR #11 合入） `` | EN header L4 = `main`; S1C merged via PR #11 |
 | `project_state/project_state.md` | L182 + L400 | migration head `0007` | `20260520_0033` | actual Alembic head; same doc L20 already states `0033 head` |
@@ -55,7 +55,7 @@ These are real but require judgment, so they were left untouched per the PR's sc
 
 | File:line | Drift |
 | --- | --- |
-| `ARCH/ARCH_slice_S1C_auth_request_context.md:63` | Lists **9 auth API routes** as the contract; only **3** are implemented (`GET /session`, `PATCH /profile`, `DELETE /account`). |
+| `ARCH/ARCH_slice_S1C_auth_request_context.md:63` | Lists **10 auth API routes** as the contract; only **3** are implemented (`GET /session`, `PATCH /profile`, `DELETE /account`). |
 | `ARCH/ARCH_slice_S1D_auth_board_crud.md:77` (+ZH L286) | Documents `POST /api/v1/boards/{boardId}/open` — route does not exist; `last_opened_at` is a side effect of the GET load. |
 | `ARCH/ARCH.md:186` | Labels `src/components/canvas` as "retired / historical-only", but it's actively imported by production Konva canvas code. |
 | `ARCH/ARCH_slice_S1X_canvas_engine_migration.md:514,531` | "Migration Architecture" lists planned files (`store.ts`, `viewport.ts`, `history.ts`, `tools.ts`, `ydoc.ts`, `provider.ts`, `awareness.ts`) — most don't exist; real collaboration files live elsewhere. (MED) |
