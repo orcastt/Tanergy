@@ -559,15 +559,15 @@ S2 AI runtime/provider routes 72%  [##############------]
   已稳定：model/route/pricing tables、quote/preflight、persisted AiRun shell、admin facts、durable `text_output`、message-native chat backendization、GeekAI `qwq-plus-latest` 文本默认、GeekAI 生图路线、staging DB route 验证和 240s 生图超时边界。
   闸门：staging live image smoke、更广 live-provider coverage，以及彻底退出对本地 AI fast path 的生产依赖。
 
-S3 Admin/billing/team         96%  [###################-]
+S3 Admin/billing/team         97%  [###################-]
   已稳定：server-gated admin、active-tab server bootstrap、idle-warmed client tab keepalive、分页 Team/Group dashboards、table-first AI route management、AI route/pricing panels、Team checkout/top-up、Collaborate checkout、hosted checkout response contract、provider-neutral checkout adapter、signed webhook inbox、workspace invite/member contracts、payer settlement contracts、billing return routes、admin finance reconciliation、audited manual admin operations、operator User inventory/detail read model、五标签 user detail、centered manual-finance modals、native user status/delete、native subscription freeze/unfreeze、任意 Team/Group 的 invite/add-member actions、可搜索的 Join Team/Join Group detail modals、inline pending invite rows、invite/member/board mutation 的本地 detail patching、board copy/delete actions、统一的 payment/ledger/subscription/audit billing history rows，以及本地可选的 dense operator QA demo seed。
   闸门：重新部署当前 Web/API 到 staging 后重跑真实登录态 remote admin finance smoke、provider-specific signatures、renewal automation、invoices、refunds 和更深 route health views。
 
-Frontend product UI alignment 63%  [#############-------]
+Frontend product UI alignment 69%  [##############------]
   已稳定：workspaces、boards、billing、team、usage、admin、canvas node surfaces、带角色门控的 Team/Group member actions、第一阶段 Billing actions、admin finance reconciliation panels，以及 operator 行内 invite/member/board 操作回路已存在。
   闸门：统一 navigation、empty states、role language、plan labels 和 AI cost messaging。
 
-S4 Collaboration              34%  [#######-------------]
+S4 Collaboration              35%  [#######-------------]
   已稳定：本地 Yjs document/awareness、provider 形态 room transport、reconnect/resync smoke harness、draft drawing presence preview 和后端 final-snapshot persistence 已存在。
   闸门：Redis/multi-instance backplane、TTL locks，以及 Auth、Board、Asset、AiRun authority 稳定后的 Yjs/provider proof。
 ```
