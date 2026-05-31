@@ -179,7 +179,7 @@ Not production-complete:
 | --- | --- | --- |
 | S0 Local Polish | `Finished/project_state_slice_S0_local_polish.md` | Finished baseline; regression reference only |
 | S1 Staging/Auth/Board | `project_state_slice_S1_staging_auth_board.md` | Active umbrella slice; detailed truth now lives in S1A/S1B/S1C/S1D/S1X |
-| S1A DB Schema | `project_state_slice_S1A_db_schema.md` | S1A core implemented through `0006`; current migration head also includes S3 `0007` |
+| S1A DB Schema | `project_state_slice_S1A_db_schema.md` | S1A core implemented through `0006`; current migration head is `20260520_0033` |
 | S1B Staging Infra | `project_state_slice_S1B_staging_infra.md` | In progress; rebuilt public API host plus Supabase Pro fresh schema, historical R2/board smoke and current API health passed, the dirty old worktree has been retired after env migration, Web/API env templates plus ops readiness smoke and API observability are in place, the `Manage board -> Copy board` Free-plan modal path is wired locally, and R2 clean asset smoke plus re-created staging data, auth/email, the staging modal spot check and external ops-provider proof still remain |
 | S1C Auth Context | `project_state_slice_S1C_auth_request_context.md` | Active checkpoint; provider-backed auth, Tanergy profile ownership, Clerk recovery flow and a local account-deletion path are in place, while logout/session hardening and broader verification remain |
 | S1D Board CRUD | `project_state_slice_S1D_auth_board_crud.md` | Stable first-pass CRUD/member/share/public-share-open checkpoint with owner-only copy/delete, share expiry and known-foreign Asset guard |
@@ -256,8 +256,8 @@ Next major checkpoint should move from repaired staging infrastructure into the 
 
 # TANGENT 项目状态索引
 
-**更新日期**：2026-05-20
-**分支**：`feature/s1c-auth-admin-production-boundary`
+**更新日期**：2026-05-25
+**分支**：`main`（S1C 已通过 [PR #11](https://github.com/orcastt/Tanergy/pull/11) 合入）
 **最新本地检查点**：S1X Konva 路由稳定化 + 本地协同 presence/read-only + 被动远端保存同步 + 本地 Yjs room/snapshot foundation（含结构性 page reconcile、server room key 对齐、本地协同 undo/redo、draft drawing presence preview）+ S1D permission/share hardening + S2/S3 DB-backed AI control-plane 脚手架 + 第一阶段 billing/team/usage/admin surfaces + GeekAI-first 本地画布 UX proof + staging Konva-only 部署恢复 + Supabase Pro staging 数据库 clean rebuild + R2 清理 + realtime final snapshot persistence + 真实 Clerk session/admin smoke 转绿 + 生图模型刷新到 GPT Image 2、Nano Banana 2、Doubao Seedream 5.0 Lite，并把长耗时生图超时边界抬到 240s；2026-05-20 又把 active AI provider defaults 切回 GeekAI text / analysis / image routes，并补齐 Web/API env 模板、ops readiness smoke、Sentry 可选接入、API 慢响应/RSS 观测和事故手册。最新 post-stage 本地修复还覆盖 Board title 严格校验、admin/workspace/invite 同源代理写入、Chat/Optimizer/Analysis 流式输出、Nano Banana 2 MIME 持久化、协同移动者身份、画布拖拽粘滞和 tooltip 残留。当前业务系统检查点是 S3 Team/Group wallet 调整：Team 套餐使用彼此隔离的 Team workspace 和 Team wallet，Group/Collaborate 使用个人钱包。
 
 本目录取代了原来的根级长项目台账和短镜像文件。根目录 `project_state.md` 现在只做指针用途。
@@ -397,7 +397,7 @@ S4 Collaboration              35%  本地 Yjs room/document 基础、reconnect/r
 | --- | --- | --- |
 | S0 本地打磨 | `Finished/project_state_slice_S0_local_polish.md` | 已完成 baseline；仅作为 regression reference |
 | S1 Staging/Auth/Board | `project_state_slice_S1_staging_auth_board.md` | 活跃 umbrella；详细事实现在位于 S1A/S1B/S1C/S1D/S1X |
-| S1A DB Schema | `project_state_slice_S1A_db_schema.md` | S1A core 已通过 `0006` 实现；当前 migration head 还包含 S3 `0007` |
+| S1A DB Schema | `project_state_slice_S1A_db_schema.md` | S1A core 已通过 `0006` 实现；当前 migration head 为 `20260520_0033` |
 | S1B Staging Infra | `project_state_slice_S1B_staging_infra.md` | 进行中；FastAPI / Supabase Pro fresh schema / 历史 R2 smoke 已通过，`Manage board -> Copy board` Free-plan limit 弹窗路径已完成本地 wiring，R2 clean asset smoke、重新创建 staging 数据、auth/email 和 staging 弹窗 spot check 仍待完成 |
 | S1C Auth Context | `project_state_slice_S1C_auth_request_context.md` | 活跃检查点；provider-backed auth、Tanergy profile ownership 与 Clerk recovery flow 已到位，但 logout/session hardening 与更广验证仍待完成 |
 | S1D Board CRUD | `project_state_slice_S1D_auth_board_crud.md` | 第一阶段 CRUD/member/share/public-share-open 检查点稳定，并已带 owner-only copy/delete、share expiry 和 known-foreign Asset guard |
