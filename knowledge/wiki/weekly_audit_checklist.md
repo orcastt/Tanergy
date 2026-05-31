@@ -3,11 +3,7 @@
 **Updated**: 2026-05-21
 **Mode**: Recurring acceptance and drift-control checklist.
 
-Run from repo root:
-
-```bash
-cd "/Users/orcastt/Code project/TanvasAgent"
-```
+Run all commands from the repo root.
 
 ## Security
 
