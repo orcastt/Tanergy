@@ -86,20 +86,58 @@ class FakePostgresCursor:
                 self.database.admin_roles[existing_index] = next_row
         elif normalized.startswith("INSERT INTO tangent_credit_ledger"):
             metadata = json.loads(params[8]) if isinstance(params[8], str) else params[8]
-            row = {
-                "account_id": params[1],
-                "actor_user_id": params[3],
-                "created_at": f"2026-05-06T00:30:{len(self.database.credit_ledger):02d}Z",
-                "credits_delta": params[6],
-                "id": params[0],
-                "metadata": metadata or {},
-                "reason": params[7],
-                "source_id": params[5],
-                "source_type": params[4],
-                "workspace_id": params[2],
-            }
-            self.database.credit_ledger.append(row)
-            self.row = _credit_ledger_tuple(row)
+            if "ON CONFLICT" in normalized and "usage_refund" in normalized:
+                guard_account_id = params[1]
+                guard_source_id = params[5]
+                conflict = next(
+                    (
+                        entry for entry in self.database.credit_ledger
+                        if entry["account_id"] == guard_account_id
+                        and entry.get("source_id") == guard_source_id
+                        and entry.get("source_type") == "ai_run"
+                        and entry.get("reason") == "usage_refund"
+                    ),
+                    None,
+                )
+                if conflict is not None:
+                    self.row = None
+                else:
+                    row = {
+                        "account_id": params[1],
+                        "actor_user_id": params[3],
+                        "created_at": f"2026-05-06T00:30:{len(self.database.credit_ledger):02d}Z",
+                        "credits_delta": params[6],
+                        "id": params[0],
+                        "metadata": metadata or {},
+                        "reason": params[7],
+                        "source_id": params[5],
+                        "source_type": params[4],
+                        "workspace_id": params[2],
+                    }
+                    self.database.credit_ledger.append(row)
+                    self.row = _credit_ledger_tuple(row)
+            else:
+                row = {
+                    "account_id": params[1],
+                    "actor_user_id": params[3],
+                    "created_at": f"2026-05-06T00:30:{len(self.database.credit_ledger):02d}Z",
+                    "credits_delta": params[6],
+                    "id": params[0],
+                    "metadata": metadata or {},
+                    "reason": params[7],
+                    "source_id": params[5],
+                    "source_type": params[4],
+                    "workspace_id": params[2],
+                }
+                self.database.credit_ledger.append(row)
+                self.row = _credit_ledger_tuple(row)
+        elif normalized.startswith("UPDATE tangent_ai_runs SET credits_refunded"):
+            refund_amount, run_id = params
+            run = self.database.ai_runs.get(run_id)
+            if run is not None:
+                run["credits_refunded"] = float(run.get("credits_refunded") or 0) + float(refund_amount or 0)
+                run["updated_at"] = f"2026-05-28T00:00:{len(self.database.credit_ledger):02d}Z"
+                self.rowcount = 1
         elif normalized.startswith("INSERT INTO tangent_payments"):
             if len(params) == 9:
                 payment_id, account_id, provider, provider_payment_id, amount_cents, currency, checkout_session_id, kind, metadata_value = params
@@ -208,44 +246,59 @@ class FakePostgresCursor:
             self.database.workspace_invitations.append(row)
             self.row = _workspace_invitation_tuple(row)
         elif normalized.startswith("INSERT INTO tangent_ai_runs"):
-            row = {
-                "id": params[0],
-                "workspace_id": params[1],
-                "created_by": params[2],
-                "board_id": params[3],
-                "node_id": params[4],
-                "run_type": params[5],
-                "model_id": params[6],
-                "provider": params[7],
-                "status": params[8],
-                "input_asset_ids": json.loads(params[9]) if isinstance(params[9], str) else params[9],
-                "output_asset_ids": json.loads(params[10]) if isinstance(params[10], str) else params[10],
-                "params": json.loads(params[11]) if isinstance(params[11], str) else params[11],
-                "prompt_preview": params[12],
-                "cost_credits": params[13],
-                "latency_ms": params[14],
-                "error_code": params[15],
-                "error_message": params[16],
-                "workspace_kind": params[17],
-                "workspace_seat_id": params[18],
-                "charged_account_id": params[19],
-                "charged_scope": params[20],
-                "entitlement_source": params[21],
-                "credits_charged": params[22],
-                "credits_refunded": params[23],
-                "provider_cost": params[24],
-                "provider_currency": params[25],
-                "estimated_credits": params[26],
-                "pricing_rule_id": params[27],
-                "route_id": params[28],
-                "route_key": params[29],
-                "selected_tier_key": params[30],
-                "preflight_status": params[31],
-                "text_output": params[32],
-                "created_at": params[33],
-                "updated_at": params[34],
-            }
-            self.database.ai_runs[row["id"]] = row
+            run_id = params[0]
+            incoming_status = params[8]
+            existing = self.database.ai_runs.get(run_id)
+            # Mirror the ON CONFLICT WHERE guard: an UPDATE that would overwrite
+            # a canceled row with a non-canceled status is a no-op.
+            if (
+                existing is not None
+                and existing.get("status") == "canceled"
+                and incoming_status != "canceled"
+            ):
+                pass
+            else:
+                row = {
+                    "id": params[0],
+                    "workspace_id": params[1],
+                    "created_by": params[2],
+                    "board_id": params[3],
+                    "node_id": params[4],
+                    "run_type": params[5],
+                    "model_id": params[6],
+                    "provider": params[7],
+                    "status": params[8],
+                    "input_asset_ids": json.loads(params[9]) if isinstance(params[9], str) else params[9],
+                    "output_asset_ids": json.loads(params[10]) if isinstance(params[10], str) else params[10],
+                    "params": json.loads(params[11]) if isinstance(params[11], str) else params[11],
+                    "prompt_preview": params[12],
+                    "cost_credits": params[13],
+                    "latency_ms": params[14],
+                    "error_code": params[15],
+                    "error_message": params[16],
+                    "workspace_kind": params[17],
+                    "workspace_seat_id": params[18],
+                    "charged_account_id": params[19],
+                    "charged_scope": params[20],
+                    "entitlement_source": params[21],
+                    "credits_charged": params[22],
+                    # credits_refunded is no longer in the ON CONFLICT DO UPDATE list
+                    # (see ai_run_persistence_store.py) — preserve the existing
+                    # value on update so concurrent persists don't reset refunds.
+                    "credits_refunded": existing.get("credits_refunded") if existing is not None else params[23],
+                    "provider_cost": params[24],
+                    "provider_currency": params[25],
+                    "estimated_credits": params[26],
+                    "pricing_rule_id": params[27],
+                    "route_id": params[28],
+                    "route_key": params[29],
+                    "selected_tier_key": params[30],
+                    "preflight_status": params[31],
+                    "text_output": params[32],
+                    "created_at": params[33],
+                    "updated_at": params[34],
+                }
+                self.database.ai_runs[row["id"]] = row
         elif normalized.startswith("INSERT INTO tangent_ai_api_calls"):
             next_row = {
                 "id": params[0],
@@ -2182,9 +2235,22 @@ class FakePostgresCursor:
                 row["status"] = "deleted"
         elif normalized.startswith("SELECT COALESCE(SUM(credits_delta), 0) FROM tangent_credit_ledger"):
             account_id = params[0]
-            self.row = (
-                sum(float(row.get("credits_delta", 0)) for row in self.database.credit_ledger if row["account_id"] == account_id),
-            )
+            filtered_source_id = None
+            filtered_source_type = None
+            if "source_id = %s" in normalized:
+                filtered_source_id = params[1]
+            if "source_type = 'ai_run'" in normalized:
+                filtered_source_type = "ai_run"
+            total = 0.0
+            for row in self.database.credit_ledger:
+                if row["account_id"] != account_id:
+                    continue
+                if filtered_source_id is not None and row.get("source_id") != filtered_source_id:
+                    continue
+                if filtered_source_type is not None and row.get("source_type") != filtered_source_type:
+                    continue
+                total += float(row.get("credits_delta", 0))
+            self.row = (total,)
         elif normalized.startswith("SELECT 1 FROM tangent_credit_ledger WHERE account_id = %s AND source_id = %s LIMIT 1"):
             account_id, source_id = params
             row = next(

@@ -3,6 +3,9 @@ from typing import Any, Optional
 
 from fastapi import HTTPException
 
+from tangent_api.credit_ledger_refund import (
+    refund_outstanding_run_charge as _refund_outstanding_run_charge_impl,
+)
 from tangent_api.credit_ledger_support import (
     LEDGER_REASONS,
     build_credit_preflight_for_account,
@@ -210,6 +213,22 @@ def settle_usage_refund(
         source_id=run_id,
         source_type="ai_run",
         metadata=metadata,
+    )
+
+
+def refund_outstanding_run_charge(
+    context: ApiRequestContext,
+    run_id: str,
+    metadata: Optional[dict[str, Any]] = None,
+    *,
+    account_id: Optional[str] = None,
+) -> Optional[CreditLedgerMutationResponse]:
+    return _refund_outstanding_run_charge_impl(
+        context,
+        run_id,
+        metadata,
+        account_id=account_id,
+        connect_db=_connect_to_postgres,
     )
 
 

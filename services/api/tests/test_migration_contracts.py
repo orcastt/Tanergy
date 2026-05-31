@@ -63,6 +63,7 @@ def test_alembic_revision_chain_is_linear():
         load_migration("20260520_0031_security_rate_limit_idempotency.py"),
         load_migration("20260520_0032_geekai_provider_routes.py"),
         load_migration("20260520_0033_geekai_qwq_text_default.py"),
+        load_migration("20260528_0034_credit_ledger_refund_unique_index.py"),
     ]
 
     for previous, current in zip(migrations, migrations[1:]):

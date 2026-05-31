@@ -744,6 +744,64 @@ def test_ai_run_mock_can_cancel_while_queued_or_running(monkeypatch):
     assert loaded["status"] == "canceled"
 
 
+def test_ai_run_cancel_refunds_outstanding_charge(monkeypatch):
+    fake_db = FakePostgresDatabase()
+    fake_db.credit_ledger = [
+        {
+            "account_id": "credit_user_user_cancel_refund",
+            "credits_delta": 60,
+            "id": "ledger_seed_topup",
+            "reason": "topup_purchase",
+            "source_type": "payment",
+        }
+    ]
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test")
+    monkeypatch.setenv("TANGENT_AI_EXECUTION_START_DELAY_MS", "500")
+    monkeypatch.delenv("TANGENT_AI_MOCK_LEDGER_CHARGING", raising=False)
+    monkeypatch.setattr("tangent_api.ai_control_plane.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.ai_run_persistence.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.credit_ledger.connect_to_postgres", fake_db.connect)
+    monkeypatch.setattr("tangent_api.workspace_entitlements.connect_to_postgres", fake_db.connect)
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v1/ai/runs",
+        headers={
+            "x-tangent-user-id": "user_cancel_refund",
+            "x-tangent-workspace-id": "workspace_group",
+            "x-tangent-workspace-kind": "group_workspace",
+        },
+        json={
+            "prompt": "Cancel after charge",
+            "runType": "image_generation",
+            "selectedModelId": "gpt-image-2",
+        },
+    )
+    assert created.status_code == 200
+    run_id = created.json()["run"]["runId"]
+
+    fake_db.credit_ledger.append(
+        {
+            "account_id": "credit_user_user_cancel_refund",
+            "credits_delta": -7,
+            "id": "ledger_seed_charge",
+            "metadata": {"runId": run_id},
+            "reason": "usage_charge",
+            "source_id": run_id,
+            "source_type": "ai_run",
+        }
+    )
+
+    canceled = client.post(f"/api/v1/ai/runs/{run_id}/cancel")
+    assert canceled.status_code == 200
+    assert canceled.json()["run"]["status"] == "canceled"
+
+    refund_rows = [row for row in fake_db.credit_ledger if row["reason"] == "usage_refund" and row["source_id"] == run_id]
+    assert len(refund_rows) == 1
+    assert refund_rows[0]["credits_delta"] == 7
+    assert refund_rows[0]["metadata"]["reason"] == "cancellation_refund"
+
+
 def test_ai_run_uses_backup_route_when_primary_route_fails(monkeypatch):
     fake_db = FakePostgresDatabase()
     fake_db.model_registry = [
