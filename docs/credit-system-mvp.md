@@ -63,7 +63,7 @@ The set lives in `services/api/tangent_api/credit_ledger_support.py:LEDGER_REASO
 
 The following are **deferred** and not gated by this MVP acceptance test:
 
-- Stripe live integration (currently `manual_test` + generic hosted checkout)
+- Creem live integration (currently `manual_test` + generic hosted checkout; Creem replaces Stripe as the payment provider)
 - Invoice generation, tax calculation, automated refund processing
 - Subscription renewal automation against live providers
 - Deep provider-reconciliation against `api_cost_ledger` for billing dispute resolution
