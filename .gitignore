@@ -87,3 +87,6 @@ GEMINI.md
 legacy/
 **/.vercel
 .vercel
+
+# Local-only scratch dirs (preflight dumps, scratch artifacts — never commit)
+**/_local/

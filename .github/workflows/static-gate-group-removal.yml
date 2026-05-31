@@ -1,0 +1,87 @@
+name: static-gate-group-removal
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Activation strategy: every step runs `continue-on-error: true` from PR [1] through
+# PR [4] so the gate is visible but does not self-block destructive PRs that must
+# touch the denied tokens during the transition. PR [5] flips all steps to
+# `continue-on-error: false` AND sets `ENFORCE_DOCS_GATE=1` in one atomic switch.
+
+jobs:
+  static-gate:
+    name: static-gate
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install pytest
+        run: pip install pytest
+
+      - name: Backend grep gate
+        continue-on-error: true
+        env:
+          ENFORCE_GROUP_REMOVAL_GATE: '1'
+        run: |
+          PYTHONPATH=services/api python3 -m pytest \
+            services/api/tests/static/test_no_group_collaborate_refs.py::test_backend_gate -v
+
+      - name: Frontend grep gate
+        continue-on-error: true
+        env:
+          ENFORCE_GROUP_REMOVAL_GATE: '1'
+        run: |
+          PYTHONPATH=services/api python3 -m pytest \
+            services/api/tests/static/test_no_group_collaborate_refs.py::test_frontend_gate -v
+
+      - name: Docs grep gate (env-gated)
+        continue-on-error: true
+        env:
+          ENFORCE_DOCS_GATE: ${{ env.ENFORCE_DOCS_GATE || '0' }}
+        run: |
+          PYTHONPATH=services/api python3 -m pytest \
+            services/api/tests/static/test_no_group_collaborate_refs.py::test_docs_gate -v
+
+      - name: No /group route dir remains
+        continue-on-error: true
+        run: |
+          if [ -d apps/web/src/app/group ]; then
+            echo "::warning::apps/web/src/app/group still exists — PR [3] should remove it."
+            exit 1
+          fi
+
+  static-gate-main-sanity:
+    name: static-gate-main-sanity
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install pytest
+        run: pip install pytest
+
+      - name: Run full gate (non-blocking signal on main)
+        continue-on-error: true
+        env:
+          ENFORCE_GROUP_REMOVAL_GATE: '1'
+        run: |
+          PYTHONPATH=services/api python3 -m pytest \
+            services/api/tests/static/test_no_group_collaborate_refs.py -v
