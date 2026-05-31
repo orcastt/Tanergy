@@ -22,6 +22,8 @@ Root `PRD.md`, `ARCH.md` and `project_state.md` are pointers only.
 
 Do not recreate mirror files such as `ARCH/00-current-map.md` or `project_state/current-slice.md`.
 
+Root `ENG-HARNESS.md`:build-loop 的 agent 治理 doctrine(规范 AI agent 如何构建本仓库),引用本文件为 PR 硬规则的 source of truth、不重复其规则。
+
 ## Update Policy
 
 - During an active small slice, update only the relevant slice docs.
@@ -98,3 +100,5 @@ AI agent 额外约束：
 - **Merge gate。** 满足 `PR workflow`、required checks、非作者 approval,且按本节裁定的残留 blocker 为 0,即可 merge;所有非阻断项必须已有 linked issue 或明确不做。
 - **无轮数上限。** 不用轮数封顶压掉晚发现的真缺陷;收敛靠 blocker 证明负担、delta re-review scope、独立裁决兜底。
 - **本节校准。** 裁决若暴露本节盲点,开 issue 按 `PR workflow` 改本节;预期它随真实争议演进,但不靠临时编辑,也不冻在某次粘贴的 prompt 里。
+
+发散式 grind 的处理见 `ENG-HARNESS.md`(build-loop 改写策略)。
